@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>manpage.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">manpage.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">manpage.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">manpage.h - Man page template generation from options builder.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>parsed_section_t</b>
+  <br/>
+  Parsed section information.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>section_type_t</b> { <b>SECTION_TYPE_AUTO</b>,
+    <b>SECTION_TYPE_MANUAL</b>, <b>SECTION_TYPE_MERGE</b>,
+    <b>SECTION_TYPE_UNMARKED</b> }
+  <br/>
+  Section type marker.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b>
+    <b>options_config_generate_manpage_template</b> (const
+    <b>options_config_t</b> *config, const char *program_name, const char
+    *mode_name, const char *output_path, const char *brief_description)
+  <br/>
+  Generate a man page template from options builder configuration.
+    <b>asciichat_error_t</b> <b>options_builder_generate_manpage_template</b>
+    (<b>options_builder_t</b> *builder, const char *program_name, const char
+    *mode_name, const char *output_path, const char *brief_description)
+  <br/>
+  Generate man page template from builder (before build()).
+    <b>asciichat_error_t</b> <b>options_config_generate_manpage_merged</b>
+    (const <b>options_config_t</b> *config, const char *program_name, const char
+    *mode_name, const char *output_path, const char *brief_description)
+  <br/>
+  Generate merged man page template preserving manual content.
+    <b>parsed_section_t</b> * <b>parse_manpage_sections</b> (const char
+    *filepath, size_t *num_sections)
+  <br/>
+  Parse existing man page template to extract sections. void
+    <b>free_parsed_sections</b> (<b>parsed_section_t</b> *sections, size_t
+    num_sections)
+  <br/>
+  Free parsed sections array. const <b>parsed_section_t</b> *
+    <b>find_section</b> (const <b>parsed_section_t</b> *sections, size_t
+    num_sections, const char *section_name)
+  <br/>
+  Find section by name. <b>asciichat_error_t</b>
+    <b>options_config_generate_final_manpage</b> (const char *template_path,
+    const char *output_path, const char *version_string, const char
+    *content_file_path)
+  <br/>
+  Generate final man page (.1) from template (.1.in) with version substitution
+    and optional content file. const char * <b>escape_groff_special</b> (const
+    char *str)
+  <br/>
+  Escape special groff/troff characters in text. const char *
+    <b>format_mode_names</b> (<b>option_mode_bitmask_t</b> bitmask)
+  <br/>
+  Format option mode names as human-readable string.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Man page template generation from options builder.</p>
+<p class="Pp">This module provides functionality to auto-generate man page
+    templates from the options builder configuration. The generated templates
+    include auto-populated sections (SYNOPSIS, OPTIONS, EXAMPLES, USAGE) and
+    placeholders for manual sections (DESCRIPTION, FILES, NOTES, BUGS, AUTHOR,
+    SEE ALSO).</p>
+<p class="Pp"></p>
+<p class="Pp">Supports merging auto-generated content with existing manual
+    content using section markers (AUTO-START/END, MANUAL-START/END,
+    MERGE-START/END).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Man pages are generated in groff/troff format (man(5)
+  format)</div>
+<p class="Pp">Definition in file <b>manpage.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>section_type_t</b></a></h2>
+<p class="Pp">Section type marker.</p>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="SECTION_TYPE_AUTO"><a class="permalink" href="#SECTION_TYPE_AUTO"><b><i>SECTION_TYPE_AUTO
+    </i></b></a></dt>
+  <dd>Fully auto-generated, manual edits lost on regeneration.</dd>
+  <dt id="SECTION_TYPE_MANUAL"><a class="permalink" href="#SECTION_TYPE_MANUAL"><b><i>SECTION_TYPE_MANUAL
+    </i></b></a></dt>
+  <dd>Manually maintained, never touched by generator.</dd>
+  <dt id="SECTION_TYPE_MERGE"><a class="permalink" href="#SECTION_TYPE_MERGE"><b><i>SECTION_TYPE_MERGE
+    </i></b></a></dt>
+  <dd>Intelligently merged: auto + manual content.</dd>
+  <dt id="SECTION_TYPE_UNMARKED"><a class="permalink" href="#SECTION_TYPE_UNMARKED"><b><i>SECTION_TYPE_UNMARKED
+    </i></b></a></dt>
+  <dd>No marker found, defaults to MANUAL.</dd>
+</dl>
+<p class="Pp">Definition at line <b>28</b> of file <b>manpage.h</b>.</p>
+<pre>28              {
+29   SECTION_TYPE_AUTO,    
+30   SECTION_TYPE_MANUAL,  
+31   SECTION_TYPE_MERGE,   
+32   SECTION_TYPE_UNMARKED 
+33 } section_type_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

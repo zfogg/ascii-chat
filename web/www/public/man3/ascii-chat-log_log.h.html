@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>log.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">log.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">log.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">log.h - &#x1F4DD; Logging API with multiple log levels and
+    terminal output control</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>log_buffer_entry_t</b>
+  <br/>
+  A single buffered log entry.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>LOG_ATOMIC_UINT64</b> <b>atomic_t</b>
+  <br/>
+  #define <b>LOG_ATOMIC_UINT64_INIT</b>(val)
+  <br/>
+  #define <b>DEFAULT_LOG_LEVEL</b> <b>LOG_DEBUG</b>
+  <br/>
+  Default log level for debug builds (DEBUG and above). #define
+    <b>MAX_LOG_SIZE</b> (3 * 1024 * 1024)
+  <br/>
+  Maximum log file size in bytes (3MB) before rotation. #define
+    <b>MAX_TERMINAL_BUFFER_SIZE</b> (64 * 1024)
+  <br/>
+  Maximum size of terminal output buffer (64KB). #define
+    <b>MAX_TERMINAL_BUFFER_ENTRIES</b> 256
+  <br/>
+  Maximum number of buffered log entries. #define <b>LOG_MSG_BUFFER_SIZE</b>
+    4096
+  <br/>
+  Maximum size of a single log message (including formatting). #define
+    <b>LOG_MMAP_MSG_BUFFER_SIZE</b> 1024
+  <br/>
+  Maximum size of a log message in mmap mode. #define
+    <b>LOG_HEADER_BUFFER_SIZE</b> 512
+  <br/>
+  Maximum size of a log header (timestamp, level, file:line:func). #define
+    <b>LOG_TIMESTAMP_BUFFER_SIZE</b> 32
+  <br/>
+  Maximum size of a timestamp string. #define <b>log_plain</b>(...)
+  <br/>
+  Plain logging - writes to both log file and stderr without timestamps or log
+    levels. #define <b>log_plain_stderr</b>(...)
+  <br/>
+  Plain logging to stderr with newline. #define <b>log_plain_stdout</b>(...)
+  <br/>
+  Plain logging to stdout with newline. #define
+    <b>log_plain_stderr_nonewline</b>(...)
+  <br/>
+  Plain logging to stderr without newline - for interactive prompts. #define
+    <b>log_file</b>(...)
+  <br/>
+  File-only logging - writes to log file only, no stderr output. #define
+    <b>log_every</b>(log_level, interval_us, fmt, ...)
+  <br/>
+  Rate-limited logging macro (thread-safe). #define <b>log_nth</b>(log_level, n,
+    fmt, ...)
+  <br/>
+  Log every nth call to this code location (thread-safe). #define
+    <b>log_once</b>(log_level, fmt, ...)
+  <br/>
+  Log exactly once per call site (thread-safe). #define
+    <b>log_console</b>(level, message)
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Logging Macros</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Compile-time log level stripping: In release builds,
+  <b>log_dev()</b> and <b>log_debug()</b> are compiled out completely (no
+  runtime overhead). Override with LOG_COMPILE_LEVEL.</div>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>log_dev</b>(...)
+  <br/>
+  Log a DEV message (most verbose, development only). #define
+    <b>log_debug</b>(...)
+  <br/>
+  Log a DEBUG message. #define <b>log_info</b>(...)
+  <br/>
+  Log an INFO message. #define <b>log_warn</b>(...)
+  <br/>
+  Log a WARN message. #define <b>log_error</b>(...)
+  <br/>
+  Log an ERROR message. #define <b>log_fatal</b>(...)
+  <br/>
+  Log a FATAL message.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Rate-Limited Logging Macros</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>log_dev_every</b>(interval_us, fmt, ...)
+  <br/>
+  Rate-limited DEV logging. #define <b>log_debug_every</b>(interval_us, fmt,
+    ...)
+  <br/>
+  Rate-limited DEBUG logging. #define <b>log_info_every</b>(interval_us, fmt,
+    ...)
+  <br/>
+  Rate-limited INFO logging. #define <b>log_warn_every</b>(interval_us, fmt,
+    ...)
+  <br/>
+  Rate-limited WARN logging. #define <b>log_error_every</b>(interval_us, fmt,
+    ...)
+  <br/>
+  Rate-limited ERROR logging. #define <b>log_fatal_every</b>(interval_us, fmt,
+    ...)
+  <br/>
+  Rate-limited FATAL logging.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Nth-Call Logging Macros</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>log_dev_nth</b>(n, fmt, ...)
+  <br/>
+  Log DEV message every nth call. #define <b>log_debug_nth</b>(n, fmt, ...)
+  <br/>
+  Log DEBUG message every nth call. #define <b>log_info_nth</b>(n, fmt, ...)
+  <br/>
+  Log INFO message every nth call. #define <b>log_warn_nth</b>(n, fmt, ...)
+  <br/>
+  Log WARN message every nth call. #define <b>log_error_nth</b>(n, fmt, ...)
+  <br/>
+  Log ERROR message every nth call. #define <b>log_fatal_nth</b>(n, fmt, ...)
+  <br/>
+  Log FATAL message every nth call.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Once-Only Logging Macros</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>log_dev_once</b>(fmt, ...)
+  <br/>
+  Log DEV message exactly once. #define <b>log_debug_once</b>(fmt, ...)
+  <br/>
+  Log DEBUG message exactly once. #define <b>log_info_once</b>(fmt, ...)
+  <br/>
+  Log INFO message exactly once. #define <b>log_warn_once</b>(fmt, ...)
+  <br/>
+  Log WARN message exactly once. #define <b>log_error_once</b>(fmt, ...)
+  <br/>
+  Log ERROR message exactly once. #define <b>log_fatal_once</b>(fmt, ...)
+  <br/>
+  Log FATAL message exactly once.
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct color_scheme_t <b>color_scheme_t</b>
+  <br/>
+  typedef struct <b>log_mmap_config</b> <b>log_mmap_config_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>log_color_t</b> { <b>LOG_COLOR_DEV</b> = 0,
+    <b>LOG_COLOR_DEBUG</b> = 1, <b>LOG_COLOR_INFO</b> = 2, <b>LOG_COLOR_WARN</b>
+    = 3, <b>LOG_COLOR_ERROR</b> = 4, <b>LOG_COLOR_FATAL</b> = 5,
+    <b>LOG_COLOR_GREY</b> = 6, <b>LOG_COLOR_RESET</b> = 7 }
+  <br/>
+  Color enum for logging - indexes into color arrays.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>log_init</b> (const char *filename, <b>log_level_t</b>
+    level, <b>bool</b> force_stderr, <b>bool</b> use_mmap)
+  <br/>
+  Initialize the logging system. void <b>log_destroy</b> (void)
+  <br/>
+  Destroy the logging system and close log file. void <b>log_system_init</b>
+    (void)
+  <br/>
+  Initialize the logging system internal state (system-level init). void
+    <b>log_system_destroy</b> (void)
+  <br/>
+  Shutdown the logging system internal state (system-level cleanup). void
+    <b>log_set_level</b> (<b>log_level_t</b> level)
+  <br/>
+  Set the minimum log level. <b>log_level_t</b> <b>log_get_level</b> (void)
+  <br/>
+  Get the current minimum log level. <b>asciichat_error_t</b>
+    <b>log_set_format</b> (const char *format_str, <b>bool</b> console_only)
+  <br/>
+  Set a custom log format string. void <b>log_set_terminal_output</b>
+    (<b>bool</b> <b>enabled</b>)
+  <br/>
+  Control stderr output to terminal. <b>bool</b> <b>log_get_terminal_output</b>
+    (void)
+  <br/>
+  Get current terminal output setting. void <b>log_set_force_stderr</b>
+    (<b>bool</b> <b>enabled</b>)
+  <br/>
+  Force all terminal log output to stderr. <b>bool</b>
+    <b>log_get_force_stderr</b> (void)
+  <br/>
+  Get current force_stderr setting. void <b>log_disable_file_output</b> (void)
+  <br/>
+  Disable file output and use stderr instead. void <b>log_truncate_if_large</b>
+    (void)
+  <br/>
+  Manually truncate large log files. void <b>log_msg</b> (<b>log_level_t</b>
+    level, const char *file, int line, const char *func, const char *fmt,...)
+  <br/>
+  Log a message at a specific level. void <b>log_terminal_msg</b>
+    (<b>log_level_t</b> level, const char *file, int line, const char *func,
+    const char *fmt,...)
+  <br/>
+  Log a message to terminal only (no file output). void <b>log_plain_msg</b>
+    (const char *fmt,...)
+  <br/>
+  Plain logging without timestamps or levels. void <b>log_plain_stderr_msg</b>
+    (const char *fmt,...)
+  <br/>
+  Plain logging to stderr with newline. void <b>log_plain_stdout_msg</b> (const
+    char *fmt,...)
+  <br/>
+  Plain logging to stdout with newline. void
+    <b>log_plain_stderr_nonewline_msg</b> (const char *fmt,...)
+  <br/>
+  Plain logging to stderr without trailing newline. void <b>log_file_msg</b>
+    (const char *fmt,...)
+  <br/>
+  Log to file only, no stderr output. void <b>log_labeled</b> (const char
+    *label, <b>log_color_t</b> color, const char *message,...)
+  <br/>
+  Print a labeled message with color. const char * <b>log_level_color</b>
+    (<b>log_color_t</b> color)
+  <br/>
+  Get color string for a given color enum. const char **
+    <b>log_get_color_array</b> (void)
+  <br/>
+  Get the appropriate color array based on terminal capabilities. void
+    <b>log_redetect_terminal_capabilities</b> (void)
+  <br/>
+  Re-detect terminal capabilities after logging is initialized. void
+    <b>log_init_colors</b> (void)
+  <br/>
+  Initialize logging color system with current terminal capabilities. void
+    <b>log_set_color_scheme</b> (const <b>color_scheme_t</b> *scheme)
+  <br/>
+  Set the color scheme for logging output. <b>bool</b> <b>log_lock_terminal</b>
+    (void)
+  <br/>
+  Lock terminal output for exclusive access by the calling thread. void
+    <b>log_unlock_terminal</b> (<b>bool</b> previous_state)
+  <br/>
+  Release terminal lock and flush buffered messages. void
+    <b>log_set_flush_delay</b> (unsigned int delay_ms)
+  <br/>
+  Set the delay between flushing buffered log entries. char *
+    <b>format_message</b> (const char *format, va_list <b>args</b>)
+  <br/>
+  Format a message using va_list. size_t <b>get_current_time_formatted</b> (char
+    *time_buf)
+  <br/>
+  Get current time as formatted string. <b>asciichat_error_t</b>
+    <b>log_network_message</b> (<b>socket_t</b> sockfd, const struct
+    <b>crypto_context_t</b> *crypto_ctx, <b>log_level_t</b> level,
+    <b>remote_log_direction_t</b> direction, const char *fmt,...)
+  <br/>
+  Send a formatted log message over the network. <b>asciichat_error_t</b>
+    <b>log_net_message</b> (<b>socket_t</b> sockfd, const struct
+    <b>crypto_context_t</b> *crypto_ctx, <b>log_level_t</b> level,
+    <b>remote_log_direction_t</b> direction, const char *file, int line, const
+    char *func, const char *fmt,...)
+  <br/>
+  Log a message to all destinations (network, file, and terminal).
+    <b>asciichat_error_t</b> <b>log_enable_mmap</b> (const char *log_path)
+  <br/>
+  Enable lock-free mmap-based logging. <b>asciichat_error_t</b>
+    <b>log_enable_mmap_sized</b> (const char *log_path, size_t max_size)
+  <br/>
+  Enable lock-free mmap logging with custom file size. void
+    <b>log_disable_mmap</b> (void)
+  <br/>
+  Disable mmap logging and return to mutex-based logging. void
+    <b>log_shutdown_begin</b> (void)
+  <br/>
+  Begin shutdown phase - disable console logging but keep file logging. void
+    <b>log_shutdown_end</b> (void)
+  <br/>
+  End shutdown phase - restore previous logging settings. void
+    <b>log_cleanup_colors</b> (void)
+  <br/>
+  Clean up compiled color scheme. void <b>log_set_session_log_buffer</b>
+    (<b>session_log_buffer_t</b> *buf)
+  <br/>
+  Register a session log buffer with the logger. void
+    <b>log_clear_session_log_buffer</b> (void)
+  <br/>
+  Unregister the session log buffer. <b>session_log_buffer_t</b> *
+    <b>log_get_session_log_buffer</b> (void)
+  <br/>
+  Get the currently registered session log buffer. size_t
+    <b>log_recolor_plain_entry</b> (const char *plain_line, char *colored_buf,
+    size_t buf_size)
+  <br/>
+  Recolor a plain (non-colored) log line with proper ANSI codes. const char *
+    <b>get_level_string_padded</b> (<b>log_level_t</b> level)
+  <br/>
+  Get padded log level string (internal utility for formatting). void
+    <b>log_console_impl</b> (<b>log_level_t</b> level, const char *file, int
+    line, const char *func, const char *message)
+  <br/>
+  void * <b>log_get_template</b> (void)
+  <br/>
+  Get the current log format template (opaque pointer).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F4DD; Logging API with multiple log levels and terminal output
+    control</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>log/log.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_console(_level,__message)"><a class="permalink" href="#_define_log_console(_level,__message)">#define
+  log_console( level, message)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_console_impl((level), __FILE__, __LINE__, __func__, (message))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>994</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, and <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_debug_every(_interval_us,__fmt,__"><a class="permalink" href="#_define_log_debug_every(_interval_us,__fmt,__">#define
+  log_debug_every( interval_us, fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_every(DEBUG, interval_us, fmt, ##__VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Rate-limited DEBUG logging.</p>
+<p class="Pp">Definition at line <b>693</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert_with_capabilities()</b>,
+    <b>audio_ring_buffer_read()</b>,
+    <b>broadcast_server_state_to_all_clients()</b>,
+    <b>client_audio_render_thread()</b>, <b>client_send_thread_func()</b>,
+    <b>client_video_render_thread()</b>, <b>handle_audio_batch_packet()</b>,
+    <b>handle_audio_opus_batch_packet()</b>, <b>handle_audio_opus_packet()</b>,
+    <b>image_print_color_simd()</b>, <b>opus_codec_decode()</b>,
+    <b>opus_codec_encode()</b>, <b>send_packet_secure()</b>,
+    <b>session_render_loop()</b>, <b>term_renderer_create()</b>,
+    <b>terminal_fd_reader_next()</b>, <b>terminal_fd_writer_write()</b>,
+    <b>terminal_screen_render()</b>, <b>threaded_send_packet()</b>, and
+    <b>websocket_server_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_debug_nth(_n,__fmt,__"><a class="permalink" href="#_define_log_debug_nth(_n,__fmt,__">#define
+  log_debug_nth( n, fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_nth(DEBUG, n, fmt, ##__VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Log DEBUG message every nth call.</p>
+<p class="Pp">Definition at line <b>799</b> of file <b>log/log.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_debug_once(_fmt,__"><a class="permalink" href="#_define_log_debug_once(_fmt,__">#define
+  log_debug_once( fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_once(DEBUG, fmt, ##__VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Log DEBUG message exactly once.</p>
+<p class="Pp">Definition at line <b>824</b> of file <b>log/log.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_dev_every(_interval_us,__fmt,__"><a class="permalink" href="#_define_log_dev_every(_interval_us,__fmt,__">#define
+  log_dev_every( interval_us, fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_every(DEV, interval_us, fmt, ##__VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Rate-limited DEV logging.</p>
+<p class="Pp">Definition at line <b>690</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
+    <b>acip_server_receive_and_dispatch()</b>,
+    <b>audio_process_received_samples()</b>, <b>audio_ring_buffer_read()</b>,
+    <b>client_audio_render_thread()</b>, <b>client_dispatch_thread()</b>,
+    <b>client_receive_thread()</b>, <b>client_send_thread_func()</b>,
+    <b>client_video_render_thread()</b>,
+    <b>create_mixed_ascii_frame_for_client()</b>,
+    <b>ffmpeg_decoder_read_video_frame()</b>, <b>image_print_color_simd()</b>,
+    <b>mixer_process_excluding_source()</b>, <b>packet_queue_enqueue()</b>,
+    <b>session_capture_read_frame()</b>, <b>session_render_loop()</b>,
+    <b>terminal_screen_render()</b>, and <b>video_frame_commit()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_dev_nth(_n,__fmt,__"><a class="permalink" href="#_define_log_dev_nth(_n,__fmt,__">#define
+  log_dev_nth( n, fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_nth(DEV, n, fmt, ##__VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Log DEV message every nth call.</p>
+<p class="Pp">Definition at line <b>796</b> of file <b>log/log.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_dev_once(_fmt,__"><a class="permalink" href="#_define_log_dev_once(_fmt,__">#define
+  log_dev_once( fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_once(DEV, fmt, ##__VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Log DEV message exactly once.</p>
+<p class="Pp">Definition at line <b>821</b> of file <b>log/log.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_error_every(_interval_us,__fmt,__"><a class="permalink" href="#_define_log_error_every(_interval_us,__fmt,__">#define
+  log_error_every( interval_us, fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_every(ERROR, interval_us, fmt, ##__VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Rate-limited ERROR logging.</p>
+<p class="Pp">Definition at line <b>702</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Referenced by <b>mutex_stack_detect_deadlocks()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_error_nth(_n,__fmt,__"><a class="permalink" href="#_define_log_error_nth(_n,__fmt,__">#define
+  log_error_nth( n, fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_nth(ERROR, n, fmt, ##__VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Log ERROR message every nth call.</p>
+<p class="Pp">Definition at line <b>808</b> of file <b>log/log.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_error_once(_fmt,__"><a class="permalink" href="#_define_log_error_once(_fmt,__">#define
+  log_error_once( fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_once(ERROR, fmt, ##__VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Log ERROR message exactly once.</p>
+<p class="Pp">Definition at line <b>833</b> of file <b>log/log.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_fatal_every(_interval_us,__fmt,__"><a class="permalink" href="#_define_log_fatal_every(_interval_us,__fmt,__">#define
+  log_fatal_every( interval_us, fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_every(FATAL, interval_us, fmt, ##__VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Rate-limited FATAL logging.</p>
+<p class="Pp">Definition at line <b>705</b> of file <b>log/log.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_fatal_nth(_n,__fmt,__"><a class="permalink" href="#_define_log_fatal_nth(_n,__fmt,__">#define
+  log_fatal_nth( n, fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_nth(FATAL, n, fmt, ##__VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Log FATAL message every nth call.</p>
+<p class="Pp">Definition at line <b>811</b> of file <b>log/log.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_fatal_once(_fmt,__"><a class="permalink" href="#_define_log_fatal_once(_fmt,__">#define
+  log_fatal_once( fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_once(FATAL, fmt, ##__VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Log FATAL message exactly once.</p>
+<p class="Pp">Definition at line <b>836</b> of file <b>log/log.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_info_every(_interval_us,__fmt,__"><a class="permalink" href="#_define_log_info_every(_interval_us,__fmt,__">#define
+  log_info_every( interval_us, fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_every(INFO, interval_us, fmt, ##__VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Rate-limited INFO logging.</p>
+<p class="Pp">Definition at line <b>696</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Referenced by <b>client_send_thread_func()</b>,
+    <b>ffmpeg_decoder_read_audio_samples()</b>,
+    <b>handle_image_frame_h265_packet()</b>, <b>media_source_read_audio()</b>,
+    <b>media_source_read_video()</b>, <b>mixer_process_excluding_source()</b>,
+    <b>session_render_loop()</b>, and <b>websocket_server_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_info_nth(_n,__fmt,__"><a class="permalink" href="#_define_log_info_nth(_n,__fmt,__">#define
+  log_info_nth( n, fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_nth(INFO, n, fmt, ##__VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Log INFO message every nth call.</p>
+<p class="Pp">Definition at line <b>802</b> of file <b>log/log.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_info_once(_fmt,__"><a class="permalink" href="#_define_log_info_once(_fmt,__">#define
+  log_info_once( fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_once(INFO, fmt, ##__VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Log INFO message exactly once.</p>
+<p class="Pp">Definition at line <b>827</b> of file <b>log/log.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_warn_every(_interval_us,__fmt,__"><a class="permalink" href="#_define_log_warn_every(_interval_us,__fmt,__">#define
+  log_warn_every( interval_us, fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_every(WARN, interval_us, fmt, ##__VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Rate-limited WARN logging.</p>
+<p class="Pp">Definition at line <b>699</b> of file <b>log/log.h</b>.</p>
+<p class="Pp">Referenced by <b>ansi_rle_add_pixel()</b>,
+    <b>audio_process_received_samples()</b>, <b>audio_ring_buffer_read()</b>,
+    <b>audio_ring_buffer_write()</b>,
+    <b>client_audio_pipeline_process_duplex()</b>,
+    <b>client_audio_render_thread()</b>, <b>client_send_thread_func()</b>,
+    <b>ffmpeg_encoder_write_audio()</b>, <b>ffmpeg_encoder_write_frame()</b>,
+    <b>mixer_process_excluding_source()</b>, <b>send_packet_secure()</b>,
+    <b>session_display_encode_frame()</b>, and
+    <b>session_host_inject_audio()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_warn_nth(_n,__fmt,__"><a class="permalink" href="#_define_log_warn_nth(_n,__fmt,__">#define
+  log_warn_nth( n, fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_nth(WARN, n, fmt, ##__VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Log WARN message every nth call.</p>
+<p class="Pp">Definition at line <b>805</b> of file <b>log/log.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_log_warn_once(_fmt,__"><a class="permalink" href="#_define_log_warn_once(_fmt,__">#define
+  log_warn_once( fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>log_once(WARN, fmt, ##__VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Log WARN message exactly once.</p>
+<p class="Pp">Definition at line <b>830</b> of file <b>log/log.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
+  struct <b>log_mmap_config</b> <b>log_mmap_config_t</b></a></h2>
+<p class="Pp">Definition at line <b>852</b> of file <b>log/log.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_get_level_string_padded_("><a class="permalink" href="#const_char_*_get_level_string_padded_(">const
+  char * get_level_string_padded (<b>log_level_t</b> level)</a></h2>
+<p class="Pp">Get padded log level string (internal utility for formatting).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>level</i> Log level</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Padded level string (5 chars: &quot;DEBUG&quot;,
+  &quot;INFO &quot;, &quot;WARN &quot;, &quot;DEV &quot;, &quot;ERROR&quot;,
+  &quot;FATAL&quot;)</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Internal function - do not use directly in application
+  code</div>
+<p class="Pp">Get padded log level string (internal utility for formatting).</p>
+<p class="Pp"></p>
+<p class="Pp">Returns level names padded to 5 characters for visual alignment.
+    Used consistently in both colored and plain text formatters to ensure grep
+    pattern matching works correctly.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>level</i> Log level</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Padded level string (e.g., &quot;INFO &quot;, &quot;WARN
+  &quot;, &quot;DEBUG&quot;)</div>
+<p class="Pp">Definition at line <b>149</b> of file <b>log/log.c</b>.</p>
+<pre>149                                                        {
+150   const char *result;
+151   switch (level) {
+152   case LOG_INFO:
+153     result = &quot;INFO &quot;; // 5 chars: INFO + 1 space
+154     break;
+155   case LOG_WARN:
+156     result = &quot;WARN &quot;; // 5 chars: WARN + 1 space
+157     break;
+158   case LOG_DEV:
+159     result = &quot;DEV  &quot;; // 5 chars: DEV + 2 spaces
+160     break;
+161   case LOG_DEBUG:
+162     result = &quot;DEBUG&quot;; // 5 chars: DEBUG (no padding needed)
+163     break;
+164   case LOG_ERROR:
+165     result = &quot;ERROR&quot;; // 5 chars: ERROR (no padding needed)
+166     break;
+167   case LOG_FATAL:
+168     result = &quot;FATAL&quot;; // 5 chars: FATAL (no padding needed)
+169     break;
+170   default:
+171     result = &quot;?????&quot;; // Invalid level - return 5 question marks
+172   }
+173   // Verify length
+174   if (strlen(result) != 5) {
+175     fprintf(stderr, &quot;ERROR: get_level_string_padded() returned non-5-char string: '%s' (len=%zu)\n&quot;, result,
+176             strlen(result));
+177   }
+178   return result;
+179 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>LOG_DEBUG</b>, <b>LOG_DEV</b>, <b>LOG_ERROR</b>,
+    <b>LOG_FATAL</b>, <b>LOG_INFO</b>, and <b>LOG_WARN</b>.</p>
+<p class="Pp">Referenced by <b>log_template_apply()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_console_impl_("><a class="permalink" href="#void_log_console_impl_(">void
+  log_console_impl (<b>log_level_t</b> level, const char * file, int line, const
+  char * func, const char * message)</a></h2>
+<p class="Pp">Definition at line <b>2111</b> of file <b>log/log.c</b>.</p>
+<pre>2111                                                                                                             {
+2112   if (!message) {
+2113     return;
+2114   }
+2115 
+2116   int fd = terminal_choose_log_fd(level);
+2117   if (fd &lt; 0) {
+2118     return;
+2119   }
+2120 
+2121   // Check if JSON output is enabled (json_file &gt;= 0 means enabled)
+2122   int json_fd = atomic_load_int(&amp;g_log.json_file);
+2123   bool use_json = (json_fd &gt;= 0);
+2124 
+2125   if (use_json) {
+2126     // Use async-safe JSON formatter (safe for signal handlers)
+2127     log_json_async_safe(fd, level, file, line, func, message);
+2128   } else {
+2129     // Text output to console using platform_write_all to handle partial writes
+2130     size_t msg_len = strlen(message);
+2131     platform_write_all(fd, (const uint8_t *)message, msg_len);
+2132     if (msg_len == 0 || message[msg_len - 1] != '\n') {
+2133       platform_write_all(fd, (const uint8_t *)&quot;\n&quot;, 1);
+2134     }
+2135   }
+2136 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_int()</b>, <b>log_json_async_safe()</b>,
+    <b>platform_write_all()</b>, and <b>terminal_choose_log_fd()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

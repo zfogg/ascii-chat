@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>merger.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">merger.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">merger.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">merger.h - Man page content merging and orchestration.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">char * <b>manpage_merger_merge_options</b> (const
+    <b>options_config_t</b> *config, const <b>parsed_section_t</b>
+    *existing_section)
+  <br/>
+  Merge auto-generated options into section content. char *
+    <b>manpage_merger_merge_environment</b> (const <b>options_config_t</b>
+    *config, const <b>parsed_section_t</b> *existing_section)
+  <br/>
+  Merge environment variables from auto-generated and manual sources. char *
+    <b>manpage_merger_merge_positional</b> (const <b>options_config_t</b>
+    *config, const <b>parsed_section_t</b> *existing_section)
+  <br/>
+  Merge positional arguments and examples. <b>asciichat_error_t</b>
+    <b>manpage_merger_generate_usage</b> (const <b>options_config_t</b> *config,
+    char **out_content, size_t *out_len)
+  <br/>
+  Get auto-generated usage content. <b>asciichat_error_t</b>
+    <b>manpage_merger_generate_synopsis</b> (const char *mode_name, char
+    **out_content, size_t *out_len)
+  <br/>
+  Get auto-generated synopsis content. void <b>manpage_merger_free_content</b>
+    (char *content)
+  <br/>
+  Free merged section content.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Man page content merging and orchestration.</p>
+<p class="Pp">This module orchestrates the complete man page generation
+    pipeline:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Load resources (template and content files)</dd>
+  <dt>2.</dt>
+  <dd>Parse existing sections to preserve manual content</dd>
+  <dt>3.</dt>
+  <dd>Generate or merge new sections</dd>
+  <dt>4.</dt>
+  <dd>Write final output with proper formatting</dd>
+</dl>
+<p class="Pp">Handles three section types:</p>
+<ul class="Bl-bullet">
+  <li>AUTO: Fully auto-generated, regenerated each time</li>
+  <li>MANUAL: User-maintained, never modified by generator</li>
+  <li>MERGE: Intelligent merge of auto-generated and manual content</li>
+</ul>
+<p class="Pp">Definition in file <b>merger.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_manpage_merger_free_content_(char_*_content)"><a class="permalink" href="#void_manpage_merger_free_content_(char_*_content)">void
+  manpage_merger_free_content (char * content)</a></h2>
+<p class="Pp">Free merged section content. Frees memory allocated by merger
+    functions. Safe to call with NULL.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>content</i> Content to free (can be NULL)</div>
+<p class="Pp">Definition at line <b>179</b> of file <b>merger.c</b>.</p>
+<pre>179                                                 {
+180   if (content) {
+181     SAFE_FREE(content);
+182   }
+183 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>, and
+    <b>options_config_generate_manpage_template()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> manpage_merger_generate_synopsis (const
+  char * mode_name, char ** out_content, size_t * out_len)</h2>
+<p class="Pp">Get auto-generated synopsis content. Generates the SYNOPSIS
+    section for the specified mode.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>mode_name</i> Mode name or NULL for binary-level
+<br/>
+<i>out_content</i> Pointer to store generated content
+<br/>
+<i>out_len</i> Pointer to store content length</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller must free out_content using SAFE_FREE</div>
+<p class="Pp">Definition at line <b>137</b> of file <b>merger.c</b>.</p>
+<pre>137                                                                                                                {
+138   if (!out_content || !out_len) {
+139     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid output parameters for manpage_merger_generate_synopsis&quot;);
+140   }
+141 
+142   // Allocate buffer for synopsis
+143   size_t buffer_size = 512;
+144   char *buffer = SAFE_MALLOC(buffer_size, char *);
+145   size_t offset = 0;
+146 
+147   // Note: Section header is already in template, don't duplicate it
+148 
+149   if (mode_name) {
+150     // Mode-specific synopsis
+151     offset += safe_snprintf(buffer + offset, buffer_size - offset,
+152                             &quot;.B ascii-chat\n&quot;
+153                             &quot;.I %s\n&quot;
+154                             &quot;[\\fIoptions\\fR]\n&quot;,
+155                             mode_name);
+156   } else {
+157     // Binary-level synopsis - show main modes
+158     offset += safe_snprintf(buffer + offset, buffer_size - offset,
+159                             &quot;.B ascii-chat\n&quot;
+160                             &quot;[\\fIoptions\\fR]\n&quot;
+161                             &quot;\n&quot;
+162                             &quot;.B ascii-chat\n&quot;
+163                             &quot;[\\fIoptions\\fR] \\fI&lt;session-string&gt;\\fR\n&quot;
+164                             &quot;\n&quot;
+165                             &quot;.B ascii-chat\n&quot;
+166                             &quot;[\\fIoptions\\fR] [\\fBserver\\fR | \\fBclient\\fR | \\fBmirror\\fR | &quot;
+167                             &quot;\\fBdiscovery-service\\fR] [\\fImode-options\\fR]\n&quot;);
+168   }
+169 
+170   offset += safe_snprintf(buffer + offset, buffer_size - offset, &quot;\n&quot;);
+171 
+172   *out_content = buffer;
+173   *out_len = offset;
+174 
+175   log_debug(&quot;Generated synopsis section (%zu bytes)&quot;, *out_len);
+176   return ASCIICHAT_OK;
+177 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_size</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>, <b>SAFE_MALLOC</b>,
+    <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>, and
+    <b>options_config_generate_manpage_template()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> manpage_merger_generate_usage (const
+  <b>options_config_t</b> * config, char ** out_content, size_t * out_len)</h2>
+<p class="Pp">Get auto-generated usage content. Generates the USAGE section from
+    options config usage descriptors.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options config (can
+  be NULL to generate all modes)</b>
+<br/>
+<i>out_content</i> Pointer to store generated content
+<br/>
+<i>out_len</i> Pointer to store content length</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller must free out_content using SAFE_FREE</div>
+<p class="Pp">Definition at line <b>79</b> of file <b>merger.c</b>.</p>
+<pre>79                                                                                                                      {
+80   if (!out_content || !out_len) {
+81     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid output parameters for manpage_merger_generate_usage&quot;);
+82   }
+83 
+84   if (!config || config-&gt;num_usage_lines == 0) {
+85     *out_content = SAFE_MALLOC(1, char *);
+86     (*out_content)[0] = '\0';
+87     *out_len = 0;
+88     return ASCIICHAT_OK;
+89   }
+90 
+91   // Allocate growing buffer for usage section
+92   size_t buffer_capacity = 4096;
+93   char *buffer = SAFE_MALLOC(buffer_capacity, char *);
+94   size_t offset = 0;
+95 
+96   for (size_t i = 0; i &lt; config-&gt;num_usage_lines; i++) {
+97     const usage_descriptor_t *usage = &amp;config-&gt;usage_lines[i];
+98 
+99     // Ensure buffer is large enough
+100     if (offset + 512 &gt;= buffer_capacity) {
+101       buffer_capacity *= 2;
+102       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
+103     }
+104 
+105     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.TP\n&quot;);
+106     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B ascii-chat&quot;);
+107     if (usage-&gt;mode) {
+108       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot; %s&quot;, usage-&gt;mode);
+109     }
+110     if (usage-&gt;positional) {
+111       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot; %s&quot;, usage-&gt;positional);
+112     }
+113     if (usage-&gt;show_options) {
+114       // Use mode-specific options suffix for mode commands, regular options for binary-level
+115       if (usage-&gt;mode &amp;&amp; strcmp(usage-&gt;mode, &quot;&lt;mode&gt;&quot;) != 0) {
+116         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot; [mode-options...]&quot;);
+117       } else {
+118         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot; [options...]&quot;);
+119       }
+120     }
+121     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;\n&quot;);
+122 
+123     if (usage-&gt;description) {
+124       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;%s\n&quot;, usage-&gt;description);
+125     }
+126   }
+127 
+128   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;\n&quot;);
+129 
+130   *out_content = buffer;
+131   *out_len = offset;
+132 
+133   log_debug(&quot;Generated usage section (%zu bytes)&quot;, offset);
+134   return ASCIICHAT_OK;
+135 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>log_debug</b>, <b>options_config_t::num_usage_lines</b>,
+    <b>SAFE_MALLOC</b>, <b>SAFE_REALLOC</b>, <b>safe_snprintf()</b>,
+    <b>SET_ERRNO</b>, <b>usage()</b>, and
+  <b>options_config_t::usage_lines</b>.</p>
+<p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>, and
+    <b>options_config_generate_manpage_template()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_manpage_merger_merge_environment_(const_"><a class="permalink" href="#char_*_manpage_merger_merge_environment_(const_">char
+  * manpage_merger_merge_environment (const <b>options_config_t</b> * config,
+  const <b>parsed_section_t</b> * existing_section)</a></h2>
+<p class="Pp">Merge environment variables from auto-generated and manual
+    sources. Takes environment variables from the options config and
+    intelligently merges them with existing manual environment documentation (if
+    any).</p>
+<p class="Pp"></p>
+<p class="Pp">Handles deduplication and sorting of environment variable names
+    while preserving manual descriptions where they exist.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options config with
+  auto-generated environment variables</b>
+<br/>
+<i>existing_section</i> Existing section with manual documentation (can be
+  NULL)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Newly allocated merged content (caller must free)</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller must free the returned string</div>
+<p class="Pp">Definition at line <b>41</b> of file <b>merger.c</b>.</p>
+<pre>41                                                                                                                  {
+42   (void)existing_section; // Unused for now
+43 
+44   if (!config) {
+45     return NULL;
+46   }
+47 
+48   // For now, return empty content. In a full implementation, this would:
+49   // 1. Extract environment variables from config options
+50   // 2. Parse existing section for manual env var documentation
+51   // 3. Merge and deduplicate
+52   // 4. Return sorted, merged content
+53 
+54   log_debug(&quot;Merging environment section (currently unimplemented - returns empty)&quot;);
+55   char *content = SAFE_MALLOC(1, char *);
+56   content[0] = '\0';
+57   return content;
+58 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_debug</b>, and <b>SAFE_MALLOC</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_manpage_merger_merge_options_(const_"><a class="permalink" href="#char_*_manpage_merger_merge_options_(const_">char
+  * manpage_merger_merge_options (const <b>options_config_t</b> * config, const
+  <b>parsed_section_t</b> * existing_section)</a></h2>
+<p class="Pp">Merge auto-generated options into section content. Takes
+    auto-generated options content from config and intelligently merges it with
+    existing manual options (if any). Removes duplicates by option name while
+    preserving manual descriptions.</p>
+<p class="Pp"></p>
+<p class="Pp">Currently returns the auto-generated content as-is. In a full
+    implementation, this would parse both auto and manual option lists and merge
+    them.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options config with
+  auto-generated options</b>
+<br/>
+<i>existing_section</i> Existing section with manual options (can be NULL)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Newly allocated merged content (caller must free)</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller must free the returned string</div>
+<p class="Pp">Definition at line <b>22</b> of file <b>merger.c</b>.</p>
+<pre>22                                                                                                              {
+23   (void)existing_section; // Unused for now
+24 
+25   if (!config) {
+26     return NULL;
+27   }
+28 
+29   // For now, return empty content. In a full implementation, this would:
+30   // 1. Generate options from config
+31   // 2. Parse existing section for manual options
+32   // 3. Merge them by option name
+33   // 4. Return merged content
+34 
+35   log_debug(&quot;Merging options section (currently unimplemented - returns empty)&quot;);
+36   char *content = SAFE_MALLOC(1, char *);
+37   content[0] = '\0';
+38   return content;
+39 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_debug</b>, and <b>SAFE_MALLOC</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_manpage_merger_merge_positional_(const_"><a class="permalink" href="#char_*_manpage_merger_merge_positional_(const_">char
+  * manpage_merger_merge_positional (const <b>options_config_t</b> * config,
+  const <b>parsed_section_t</b> * existing_section)</a></h2>
+<p class="Pp">Merge positional arguments and examples. Takes auto-generated
+    positional arguments and examples and merges with existing manual
+  content.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options config with
+  auto-generated positional args</b>
+<br/>
+<i>existing_section</i> Existing section (can be NULL)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Newly allocated merged content (caller must free)</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller must free the returned string</div>
+<p class="Pp">Definition at line <b>60</b> of file <b>merger.c</b>.</p>
+<pre>60                                                                                                                 {
+61   (void)existing_section; // Unused for now
+62 
+63   if (!config) {
+64     return NULL;
+65   }
+66 
+67   // For now, return empty content. In a full implementation, this would:
+68   // 1. Generate positional arguments from config
+69   // 2. Parse existing section for manual content
+70   // 3. Merge intelligently
+71   // 4. Return merged content
+72 
+73   log_debug(&quot;Merging positional section (currently unimplemented - returns empty)&quot;);
+74   char *content = SAFE_MALLOC(1, char *);
+75   content[0] = '\0';
+76   return content;
+77 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_debug</b>, and <b>SAFE_MALLOC</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

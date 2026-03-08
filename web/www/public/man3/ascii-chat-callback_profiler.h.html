@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>callback_profiler.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">callback_profiler.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">callback_profiler.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">callback_profiler.h - &#x23F1;&#xFE0F; Profiling instrumentation
+    for libwebsockets callbacks</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>lws_callback_stats_t</b>
+  <br/>
+  Callback profiling statistics for a single LWS callback reason.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>lws_profiler_init</b> (void)
+  <br/>
+  Initialize the callback profiler. void <b>lws_profiler_destroy</b> (void)
+  <br/>
+  Cleanup the callback profiler. <b>uint64_t</b> <b>lws_profiler_start</b> (int
+    callback_reason, <b>uint32_t</b> client_id)
+  <br/>
+  Record a callback invocation with timing. void <b>lws_profiler_stop</b>
+    (<b>uint64_t</b> handle, size_t bytes_processed)
+  <br/>
+  Stop timing a callback invocation. <b>bool</b> <b>lws_profiler_get_stats</b>
+    (int callback_reason, <b>lws_callback_stats_t</b> *<b>stats</b>)
+  <br/>
+  Get statistics for a specific callback. void <b>lws_profiler_reset</b> (void)
+  <br/>
+  Reset all profiling statistics. void <b>lws_profiler_dump_report</b> (void)
+  <br/>
+  Print profiling report to logs. char * <b>lws_profiler_export_json</b> (void)
+  <br/>
+  Export statistics as JSON. <b>bool</b> <b>lws_profiler_is_initialized</b>
+    (void)
+  <br/>
+  Check if profiler is initialized.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x23F1;&#xFE0F; Profiling instrumentation for libwebsockets
+    callbacks</p>
+<p class="Pp">Tracks callback frequency, execution time, and data throughput for
+    performance analysis and optimization.</p>
+<p class="Pp"></p>
+<p class="Pp">Features:</p>
+<ul class="Bl-bullet">
+  <li>Per-callback statistics (execution time, frequency, data processed)</li>
+  <li>Thread-safe counters with minimal overhead</li>
+  <li>Min/max/average timing aggregation</li>
+  <li>JSON reporting for analysis</li>
+</ul>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Claude (asciichat/polecats/furiosa)</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">February 2026</div>
+<p class="Pp">Definition in file <b>callback_profiler.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_lws_profiler_destroy_(void_)"><a class="permalink" href="#void_lws_profiler_destroy_(void_)">void
+  lws_profiler_destroy (void )</a></h2>
+<p class="Pp">Cleanup the callback profiler. Frees all profiling structures and
+    destroys mutex. Called at application exit or when stopping profiling.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_lws_profiler_dump_report_(void_)"><a class="permalink" href="#void_lws_profiler_dump_report_(void_)">void
+  lws_profiler_dump_report (void )</a></h2>
+<p class="Pp">Print profiling report to logs. Generates a human-readable summary
+    of callback statistics including:</p>
+<ul class="Bl-bullet">
+  <li>Invocation frequency per callback type</li>
+  <li>Average/min/max execution times</li>
+  <li>Total data processed</li>
+  <li>Efficiency metrics</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_lws_profiler_export_json_(void_)"><a class="permalink" href="#char_*_lws_profiler_export_json_(void_)">char
+  * lws_profiler_export_json (void )</a></h2>
+<p class="Pp">Export statistics as JSON. Returns a JSON string with complete
+    profiling data. Caller must free the returned string.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Allocated JSON string, or NULL on failure</div>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> lws_profiler_get_stats (int callback_reason,
+  <b>lws_callback_stats_t</b> * stats)</h2>
+<p class="Pp">Get statistics for a specific callback. Retrieves accumulated
+    statistics for analysis and logging.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>callback_reason</i> LWS callback reason enum (as
+  integer)
+<br/>
+<i></i><b>stats</b><i></i><b> Output structure (caller-allocated)</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if statistics exist, false if callback never
+  invoked</div>
+<p class="Pp">References <b>stats</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> lws_profiler_init (void )</h2>
+<p class="Pp">Initialize the callback profiler. Must be called once at
+    application startup before any callbacks are profiled. Thread-safe operation
+    is ensured via internal mutex.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true on success, false on failure</div>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> lws_profiler_is_initialized (void )</h2>
+<p class="Pp">Check if profiler is initialized.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if profiler is active, false otherwise</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_lws_profiler_reset_(void_)"><a class="permalink" href="#void_lws_profiler_reset_(void_)">void
+  lws_profiler_reset (void )</a></h2>
+<p class="Pp">Reset all profiling statistics. Clears counters and timing data.
+    Useful for collecting data over specific time windows.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> lws_profiler_start (int callback_reason,
+  <b>uint32_t</b> client_id)</h2>
+<p class="Pp">Record a callback invocation with timing. Call this when entering
+    a callback to start timing. Returns an opaque handle used to stop
+  timing.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>callback_reason</i> LWS callback reason enum (as
+  integer)
+<br/>
+<i>client_id</i> Optional client identifier for per-client analysis</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Opaque timing handle (non-zero if profiler is
+  initialized)</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_lws_profiler_stop_("><a class="permalink" href="#void_lws_profiler_stop_(">void
+  lws_profiler_stop (<b>uint64_t</b> handle, size_t bytes_processed)</a></h2>
+<p class="Pp">Stop timing a callback invocation. Call this when exiting a
+    callback to record execution time. Updates min/max/average statistics and
+    invocation count.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>handle</i> Timing handle returned by
+  <b>lws_profiler_start()</b>
+<br/>
+<i>bytes_processed</i> Bytes processed by this callback (0 if not
+  applicable)</div>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

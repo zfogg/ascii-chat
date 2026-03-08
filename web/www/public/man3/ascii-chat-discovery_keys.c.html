@@ -39,28 +39,31 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>discovery_keys_download_https</b> (const char
-    *url, uint8_t pubkey_out[32])
+<p class="Pp"><b>asciichat_error_t</b> <b>discovery_keys_download_https</b>
+    (const char *url, <b>uint8_t</b> <b>pubkey_out</b>[32])
   <br/>
-  asciichat_error_t <b>discovery_keys_load_file</b> (const char
-    *<b>file_path</b>, uint8_t pubkey_out[32])
+  <b>asciichat_error_t</b> <b>discovery_keys_load_file</b> (const char
+    *<b>file_path</b>, <b>uint8_t</b> <b>pubkey_out</b>[32])
   <br/>
-  asciichat_error_t <b>discovery_keys_get_cache_path</b> (const char
-    *acds_server, char *path_out, size_t path_size)
+  <b>asciichat_error_t</b> <b>discovery_keys_get_cache_path</b> (const char
+    *acds_server, char *<b>path_out</b>, size_t <b>path_size</b>)
   <br/>
-  asciichat_error_t <b>discovery_keys_load_cached</b> (const char *acds_server,
-    uint8_t pubkey_out[32])
+  <b>asciichat_error_t</b> <b>discovery_keys_load_cached</b> (const char
+    *acds_server, <b>uint8_t</b> <b>pubkey_out</b>[32])
   <br/>
-  asciichat_error_t <b>discovery_keys_save_cached</b> (const char *acds_server,
-    const uint8_t pubkey[32])
+  <b>asciichat_error_t</b> <b>discovery_keys_save_cached</b> (const char
+    *acds_server, const <b>uint8_t</b> <b>pubkey</b>[32])
   <br/>
-  asciichat_error_t <b>discovery_keys_clear_cache</b> (const char *acds_server)
+  <b>asciichat_error_t</b> <b>discovery_keys_clear_cache</b> (const char
+    *acds_server)
   <br/>
-  asciichat_error_t <b>discovery_keys_verify_change</b> (const char
-    *acds_server, const uint8_t old_pubkey[32], const uint8_t new_pubkey[32])
+  <b>asciichat_error_t</b> <b>discovery_keys_verify_change</b> (const char
+    *acds_server, const <b>uint8_t</b> <b>old_pubkey</b>[32], const
+    <b>uint8_t</b> <b>new_pubkey</b>[32])
   <br/>
-  asciichat_error_t <b>discovery_keys_verify</b> (const char *acds_server, const
-    char *key_spec, uint8_t pubkey_out[32])
+  <b>asciichat_error_t</b> <b>discovery_keys_verify</b> (const char
+    *acds_server, const char *<b>key_spec</b>, <b>uint8_t</b>
+    <b>pubkey_out</b>[32])
   <br/>
   <br/>
 </p>
@@ -82,8 +85,8 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_discovery_keys_clear_cache_(const_char_*_acds_server)"><a class="permalink" href="#asciichat_error_t_discovery_keys_clear_cache_(const_char_*_acds_server)">asciichat_error_t
-  discovery_keys_clear_cache (const char * acds_server)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> discovery_keys_clear_cache (const char *
+  acds_server)</h2>
 <p class="Pp">Definition at line <b>186</b> of file <b>discovery_keys.c</b>.</p>
 <pre>186                                                                       {
 187   if (!acds_server) {
@@ -107,13 +110,15 @@
 205 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>discovery_keys_get_cache_path()</b>,
-    <b>platform_is_regular_file()</b>, and <b>PLATFORM_MAX_PATH_LENGTH</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>discovery_keys_get_cache_path()</b>, <b>ERROR_FILE_OPERATION</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
+    <b>platform_is_regular_file()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>,
+    <b>SET_ERRNO</b>, and <b>SET_ERRNO_SYS</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_discovery_keys_download_https_(const_char_*_url,_uint8_t_pubkey_out_32_)"><a class="permalink" href="#asciichat_error_t_discovery_keys_download_https_(const_char_*_url,_uint8_t_pubkey_out_32_)">asciichat_error_t
-  discovery_keys_download_https (const char * url, uint8_t
-  pubkey_out[32])</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> discovery_keys_download_https (const
+  char * url, <b>uint8_t</b> pubkey_out[32])</h2>
 <p class="Pp">Definition at line <b>58</b> of file <b>discovery_keys.c</b>.</p>
 <pre>58                                                                                          {
 59   if (!url || !pubkey_out) {
@@ -135,12 +140,13 @@
 75 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>parse_public_key()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CRYPTO_KEY</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>public_key_t::key</b>, <b>log_debug</b>,
+    <b>parse_public_key()</b>, <b>pubkey_out</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_discovery_keys_get_cache_path_(const_char_*_acds_server,_char_*_path_out,_size_t_path_size)"><a class="permalink" href="#asciichat_error_t_discovery_keys_get_cache_path_(const_char_*_acds_server,_char_*_path_out,_size_t_path_size)">asciichat_error_t
-  discovery_keys_get_cache_path (const char * acds_server, char * path_out,
-  size_t path_size)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> discovery_keys_get_cache_path (const
+  char * acds_server, char * path_out, size_t path_size)</h2>
 <p class="Pp">Definition at line <b>100</b> of file <b>discovery_keys.c</b>.</p>
 <pre>100                                                                                                            {
 101   if (!acds_server || !path_out || path_size == 0) {
@@ -161,16 +167,17 @@
 116 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>get_config_dir()</b>, and
-  <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>ACDS_KEYS_CACHE_DIR</b>, <b>ASCIICHAT_OK</b>,
+    <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_PARAM</b>, <b>get_config_dir()</b>,
+    <b>path_out</b>, <b>PATH_SEPARATOR_STR</b>, <b>path_size</b>,
+    <b>SAFE_FREE</b>, <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>discovery_keys_clear_cache()</b>,
     <b>discovery_keys_load_cached()</b>, and
     <b>discovery_keys_save_cached()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_discovery_keys_load_cached_(const_char_*_acds_server,_uint8_t_pubkey_out_32_)"><a class="permalink" href="#asciichat_error_t_discovery_keys_load_cached_(const_char_*_acds_server,_uint8_t_pubkey_out_32_)">asciichat_error_t
-  discovery_keys_load_cached (const char * acds_server, uint8_t
-  pubkey_out[32])</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> discovery_keys_load_cached (const char *
+  acds_server, <b>uint8_t</b> pubkey_out[32])</h2>
 <p class="Pp">Definition at line <b>118</b> of file <b>discovery_keys.c</b>.</p>
 <pre>118                                                                                               {
 119   if (!acds_server || !pubkey_out) {
@@ -193,15 +200,16 @@
 136 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>discovery_keys_get_cache_path()</b>,
-    <b>discovery_keys_load_file()</b>, <b>platform_is_regular_file()</b>, and
-    <b>PLATFORM_MAX_PATH_LENGTH</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>discovery_keys_get_cache_path()</b>, <b>discovery_keys_load_file()</b>,
+    <b>ERROR_FILE_NOT_FOUND</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>platform_is_regular_file()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>,
+    <b>pubkey_out</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>discovery_keys_verify()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_discovery_keys_load_file_(const_char_*_file_path,_uint8_t_pubkey_out_32_)"><a class="permalink" href="#asciichat_error_t_discovery_keys_load_file_(const_char_*_file_path,_uint8_t_pubkey_out_32_)">asciichat_error_t
-  discovery_keys_load_file (const char * file_path, uint8_t
-  pubkey_out[32])</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> discovery_keys_load_file (const char *
+  file_path, <b>uint8_t</b> pubkey_out[32])</h2>
 <p class="Pp">Definition at line <b>77</b> of file <b>discovery_keys.c</b>.</p>
 <pre>77                                                                                           {
 78   if (!file_path || !pubkey_out) {
@@ -223,13 +231,15 @@
 94 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>file_path</b>, and <b>parse_public_key()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CRYPTO_KEY</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>file_path</b>, <b>public_key_t::key</b>,
+    <b>log_debug</b>, <b>parse_public_key()</b>, <b>pubkey_out</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>discovery_keys_load_cached()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_discovery_keys_save_cached_(const_char_*_acds_server,_const_uint8_t_pubkey_32_)"><a class="permalink" href="#asciichat_error_t_discovery_keys_save_cached_(const_char_*_acds_server,_const_uint8_t_pubkey_32_)">asciichat_error_t
-  discovery_keys_save_cached (const char * acds_server, const uint8_t
-  pubkey[32])</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> discovery_keys_save_cached (const char *
+  acds_server, const <b>uint8_t</b> pubkey[32])</h2>
 <p class="Pp">Definition at line <b>138</b> of file <b>discovery_keys.c</b>.</p>
 <pre>138                                                                                                 {
 139   if (!acds_server || !pubkey) {
@@ -280,15 +290,17 @@
 184 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>discovery_keys_get_cache_path()</b>,
-    <b>platform_fopen()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>, and
-    <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>discovery_keys_get_cache_path()</b>, <b>ERROR_FILE_OPERATION</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>, <b>platform_fopen()</b>,
+    <b>platform_is_directory()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>,
+    <b>platform_mkdir()</b>, <b>pubkey</b>, <b>safe_snprintf()</b>,
+    <b>SET_ERRNO</b>, and <b>SET_ERRNO_SYS</b>.</p>
 <p class="Pp">Referenced by <b>discovery_keys_verify()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_discovery_keys_verify_(const_char_*_acds_server,_const_char_*_key_spec,_uint8_t_pubkey_out_32_)"><a class="permalink" href="#asciichat_error_t_discovery_keys_verify_(const_char_*_acds_server,_const_char_*_key_spec,_uint8_t_pubkey_out_32_)">asciichat_error_t
-  discovery_keys_verify (const char * acds_server, const char * key_spec,
-  uint8_t pubkey_out[32])</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> discovery_keys_verify (const char *
+  acds_server, const char * key_spec, <b>uint8_t</b> pubkey_out[32])</h2>
 <p class="Pp">Definition at line <b>254</b> of file <b>discovery_keys.c</b>.</p>
 <pre>254                                                                                                                {
 255   if (!acds_server || !pubkey_out) {
@@ -382,15 +394,20 @@
 343 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>discovery_keys_load_cached()</b>,
+<p class="Pp">References <b>ACDS_OFFICIAL_KEY_GPG_URL</b>,
+    <b>ACDS_OFFICIAL_KEY_SSH_URL</b>, <b>ACDS_OFFICIAL_SERVER</b>,
+    <b>ASCIICHAT_OK</b>, <b>discovery_keys_load_cached()</b>,
     <b>discovery_keys_save_cached()</b>, <b>discovery_keys_verify_change()</b>,
-    and <b>parse_public_key()</b>.</p>
+    <b>ERROR_CRYPTO_KEY</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>,
+    <b>public_key_t::key</b>, <b>key_spec</b>, <b>log_debug</b>,
+    <b>log_info</b>, <b>log_warn</b>, <b>new_pubkey</b>,
+    <b>parse_public_key()</b>, <b>pubkey_out</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_init()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_discovery_keys_verify_change_(const_char_*_acds_server,_const_uint8_t_old_pubkey_32_,_const_uint8_t_new_pubkey_32_)"><a class="permalink" href="#asciichat_error_t_discovery_keys_verify_change_(const_char_*_acds_server,_const_uint8_t_old_pubkey_32_,_const_uint8_t_new_pubkey_32_)">asciichat_error_t
-  discovery_keys_verify_change (const char * acds_server, const uint8_t
-  old_pubkey[32], const uint8_t new_pubkey[32])</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> discovery_keys_verify_change (const char
+  * acds_server, const <b>uint8_t</b> old_pubkey[32], const <b>uint8_t</b>
+  new_pubkey[32])</h2>
 <p class="Pp">Definition at line <b>211</b> of file <b>discovery_keys.c</b>.</p>
 <pre>212                                                                              {
 213   if (!acds_server || !old_pubkey || !new_pubkey) {
@@ -431,8 +448,10 @@
 248 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>compute_key_fingerprint()</b>, and
-    <b>platform_prompt_yes_no()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>compute_key_fingerprint()</b>,
+    <b>ERROR_CRYPTO_VERIFICATION</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>log_info</b>, <b>log_warn</b>, <b>new_pubkey</b>, <b>old_pubkey</b>,
+    <b>platform_prompt_yes_no()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>discovery_keys_verify()</b>.</p>
 </section>
 </section>
@@ -443,7 +462,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

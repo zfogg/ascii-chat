@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>custom_section_descriptor_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">custom_section_descriptor_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">custom_section_descriptor_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">custom_section_descriptor_t - Custom help section descriptor.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/options/builder.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">const char * <b>heading</b>
+  <br/>
+  Section heading (e.g., <i>INTERACTIVE</i>CONTROLS&quot;).<i></i> const char *
+    <b>content</b>
+  <br/>
+  Section content. <b>option_mode_bitmask_t</b> <b>mode_bitmask</b>
+  <br/>
+  Which modes show this section.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Custom help section descriptor.</p>
+<p class="Pp">Describes a custom section to be printed in help output. Sections
+    appear after EXAMPLES but before OPTIONS.</p>
+<p class="Pp">Definition at line <b>389</b> of file <b>builder.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_custom_section_descriptor_t::content"><a class="permalink" href="#const_char*_custom_section_descriptor_t::content">const
+  char* custom_section_descriptor_t::content</a></h2>
+<p class="Pp">Section content.</p>
+<p class="Pp">Definition at line <b>391</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_print_help_for_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_custom_section_descriptor_t::heading"><a class="permalink" href="#const_char*_custom_section_descriptor_t::heading">const
+  char* custom_section_descriptor_t::heading</a></h2>
+<p class="Pp">Section heading (e.g., &quot;INTERACTIVE CONTROLS&quot;).</p>
+<p class="Pp">Definition at line <b>390</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_print_help_for_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>option_mode_bitmask_t</b>
+  custom_section_descriptor_t::mode_bitmask</h2>
+<p class="Pp">Which modes show this section.</p>
+<p class="Pp">Definition at line <b>392</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_print_help_for_mode()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

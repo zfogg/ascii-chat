@@ -39,49 +39,65 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">ringbuffer_t * <b>ringbuffer_create</b> (size_t element_size,
-    size_t capacity)
+<p class="Pp"><b>ringbuffer_t</b> * <b>ringbuffer_create</b> (size_t
+    element_size, size_t capacity)
   <br/>
-  void <b>ringbuffer_destroy</b> (ringbuffer_t *rb)
+  Create a new ring buffer. void <b>ringbuffer_destroy</b> (<b>ringbuffer_t</b>
+    *rb)
   <br/>
-  <b>bool</b> <b>ringbuffer_write</b> (ringbuffer_t *rb, const void *data)
+  Destroy a ring buffer and free its memory. <b>bool</b> <b>ringbuffer_write</b>
+    (<b>ringbuffer_t</b> *rb, const void *data)
   <br/>
-  <b>bool</b> <b>ringbuffer_read</b> (ringbuffer_t *rb, void *data)
+  Try to write an element to the ring buffer (non-blocking). <b>bool</b>
+    <b>ringbuffer_read</b> (<b>ringbuffer_t</b> *rb, void *data)
   <br/>
-  <b>bool</b> <b>ringbuffer_peek</b> (ringbuffer_t *rb, void *data)
+  Try to read an element from the ring buffer (non-blocking). <b>bool</b>
+    <b>ringbuffer_peek</b> (<b>ringbuffer_t</b> *rb, void *data)
   <br/>
-  size_t <b>ringbuffer_size</b> (const ringbuffer_t *rb)
+  Peek at the next element without removing it. size_t <b>ringbuffer_size</b>
+    (const <b>ringbuffer_t</b> *rb)
   <br/>
-  <b>bool</b> <b>ringbuffer_is_empty</b> (const ringbuffer_t *rb)
+  Get current number of elements in the buffer. <b>bool</b>
+    <b>ringbuffer_is_empty</b> (const <b>ringbuffer_t</b> *rb)
   <br/>
-  <b>bool</b> <b>ringbuffer_is_full</b> (const ringbuffer_t *rb)
+  Check if buffer is empty. <b>bool</b> <b>ringbuffer_is_full</b> (const
+    <b>ringbuffer_t</b> *rb)
   <br/>
-  void <b>ringbuffer_clear</b> (ringbuffer_t *rb)
+  Check if buffer is full. void <b>ringbuffer_clear</b> (<b>ringbuffer_t</b>
+    *rb)
   <br/>
-  framebuffer_t * <b>framebuffer_create</b> (size_t capacity)
+  Clear all elements from the buffer. <b>framebuffer_t</b> *
+    <b>framebuffer_create</b> (size_t capacity)
   <br/>
-  framebuffer_t * <b>framebuffer_create_multi</b> (size_t capacity)
+  Create a frame buffer for ASCII frames. <b>framebuffer_t</b> *
+    <b>framebuffer_create_multi</b> (size_t capacity)
   <br/>
-  void <b>framebuffer_destroy</b> (framebuffer_t *fb)
+  Create a multi-source frame buffer for multi-user support. void
+    <b>framebuffer_destroy</b> (<b>framebuffer_t</b> *fb)
   <br/>
-  <b>bool</b> <b>framebuffer_write_frame</b> (framebuffer_t *fb, const char
-    *frame_data, size_t frame_size)
+  Destroy a frame buffer. <b>bool</b> <b>framebuffer_write_frame</b>
+    (<b>framebuffer_t</b> *fb, const char *frame_data, size_t frame_size)
   <br/>
-  <b>bool</b> <b>framebuffer_read_frame</b> (framebuffer_t *fb, frame_t
-    *<b>frame</b>)
+  Write a frame to the buffer. <b>bool</b> <b>framebuffer_read_frame</b>
+    (<b>framebuffer_t</b> *fb, <b>frame_t</b> *<b>frame</b>)
   <br/>
-  void <b>framebuffer_clear</b> (framebuffer_t *fb)
+  Read a frame from the buffer. void <b>framebuffer_clear</b>
+    (<b>framebuffer_t</b> *fb)
   <br/>
-  <b>bool</b> <b>framebuffer_write_multi_frame</b> (framebuffer_t *fb, const
-    char *frame_data, size_t frame_size, uint32_t source_client_id, uint32_t
-    frame_sequence, uint32_t timestamp)
+  Clear all frames from the buffer, freeing their data. <b>bool</b>
+    <b>framebuffer_write_multi_frame</b> (<b>framebuffer_t</b> *fb, const char
+    *frame_data, size_t frame_size, <b>uint32_t</b> source_client_id,
+    <b>uint32_t</b> frame_sequence, <b>uint32_t</b> timestamp)
   <br/>
-  <b>bool</b> <b>framebuffer_read_multi_frame</b> (framebuffer_t *fb,
-    multi_source_frame_t *<b>frame</b>)
+  Write a multi-source frame to the buffer (for multi-user support). <b>bool</b>
+    <b>framebuffer_read_multi_frame</b> (<b>framebuffer_t</b> *fb,
+    <b>multi_source_frame_t</b> *<b>frame</b>)
   <br/>
-  <b>bool</b> <b>framebuffer_peek_latest_multi_frame</b> (framebuffer_t *fb,
-    multi_source_frame_t *<b>frame</b>)
+  Read a multi-source frame from the buffer. <b>bool</b>
+    <b>framebuffer_peek_latest_multi_frame</b> (<b>framebuffer_t</b> *fb,
+    <b>multi_source_frame_t</b> *<b>frame</b>)
   <br/>
+  Peek at the latest multi-source frame without removing it.
   <br/>
 </p>
 </section>
@@ -96,642 +112,13 @@
 <p class="Pp">Definition in file <b>ringbuffer.c</b>.</p>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_framebuffer_clear_(framebuffer_t_*_fb)"><a class="permalink" href="#void_framebuffer_clear_(framebuffer_t_*_fb)">void
-  framebuffer_clear (framebuffer_t * fb)</a></h2>
-<p class="Pp">Definition at line <b>322</b> of file <b>ringbuffer.c</b>.</p>
-<pre>322                                           {
-323   if (!fb || !fb-&gt;rb)
-324     return;
-325 
-326   // Thread-safe access to framebuffer (was missing, causing race conditions)
-327   mutex_lock(&amp;fb-&gt;mutex);
-328 
-329   // Check the element size to determine frame type
-330   if (fb-&gt;rb-&gt;element_size == sizeof(multi_source_frame_t)) {
-331     // Multi-source frame buffer - read and free multi_source_frame_t
-332     multi_source_frame_t multi_frame;
-333     while (ringbuffer_read(fb-&gt;rb, &amp;multi_frame)) {
-334       if (IS_FRAME_VALID((frame_t *)&amp;multi_frame)) {
-335         MARK_FRAME_FREED((frame_t *)&amp;multi_frame); // Mark as freed to detect use-after-free
-336         buffer_pool_free(NULL, multi_frame.data, multi_frame.size);
-337       } else if (!IS_MAGIC_VALID(multi_frame.magic, FRAME_MAGIC) &amp;&amp; multi_frame.magic != 0) {
-338         SET_ERRNO(ERROR_INVALID_STATE, &quot;CORRUPTION: Invalid multi-source frame magic 0x%x during clear&quot;,
-339                   multi_frame.magic);
-340       }
-341     }
-342   } else if (fb-&gt;rb-&gt;element_size == sizeof(frame_t)) {
-343     // Single-source frame buffer - read and free frame_t
-344     frame_t frame;
-345     while (ringbuffer_read(fb-&gt;rb, &amp;frame)) {
-346       if (IS_FRAME_VALID(&amp;frame)) {
-347         MARK_FRAME_FREED(&amp;frame); // Mark as freed to detect use-after-free
-348         buffer_pool_free(NULL, frame.data, frame.size);
-349       } else if (!IS_MAGIC_VALID(frame.magic, FRAME_MAGIC) &amp;&amp; frame.magic != 0) {
-350         SET_ERRNO(ERROR_INVALID_STATE, &quot;CORRUPTION: Invalid frame magic 0x%x during clear&quot;, frame.magic);
-351       }
-352     }
-353   } else {
-354     SET_ERRNO(ERROR_INVALID_STATE, &quot;Unknown frame buffer type with element size %zu&quot;, fb-&gt;rb-&gt;element_size);
-355   }
-356 
-357   // Clear the ringbuffer indices
-358   ringbuffer_clear(fb-&gt;rb);
-359 
-360   // Zero out the entire buffer to prevent any dangling pointers
-361   if (fb-&gt;rb-&gt;buffer) {
-362     // Check for integer overflow before multiplication
-363     if (fb-&gt;rb-&gt;capacity &gt; SIZE_MAX / fb-&gt;rb-&gt;element_size) {
-364       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Buffer size would overflow: capacity=%zu, element_size=%zu&quot;, fb-&gt;rb-&gt;capacity,
-365                 fb-&gt;rb-&gt;element_size);
-366       mutex_unlock(&amp;fb-&gt;mutex);
-367       return;
-368     }
-369     size_t buffer_size = fb-&gt;rb-&gt;capacity * fb-&gt;rb-&gt;element_size;
-370     SAFE_MEMSET(fb-&gt;rb-&gt;buffer, buffer_size, 0, buffer_size);
-371   }
-372 
-373   mutex_unlock(&amp;fb-&gt;mutex);
-374 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_pool_free()</b>, <b>buffer_size</b>,
-    <b>frame</b>, <b>ringbuffer_clear()</b>, and <b>ringbuffer_read()</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="framebuffer_t_*_framebuffer_create_(size_t_capacity)"><a class="permalink" href="#framebuffer_t_*_framebuffer_create_(size_t_capacity)">framebuffer_t
-  * framebuffer_create (size_t capacity)</a></h2>
-<p class="Pp">Definition at line <b>146</b> of file <b>ringbuffer.c</b>.</p>
-<pre>146                                                    {
-147   if (capacity == 0) {
-148     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid frame buffer parameters&quot;);
-149     return NULL;
-150   }
-151 
-152   framebuffer_t *fb;
-153   fb = SAFE_CALLOC(1, sizeof(framebuffer_t), framebuffer_t *);
-154 
-155   // Initialize mutex for thread-safe access
-156   if (mutex_init(&amp;fb-&gt;mutex, &quot;framebuffer&quot;) != 0) {
-157     SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize framebuffer mutex&quot;);
-158     SAFE_FREE(fb);
-159     return NULL;
-160   }
-161 
-162   // Create ringbuffer to store frame_t structs
-163   fb-&gt;rb = ringbuffer_create(sizeof(frame_t), capacity);
-164   if (!fb-&gt;rb) {
-165     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate frame buffer&quot;);
-166     mutex_destroy(&amp;fb-&gt;mutex);
-167     SAFE_FREE(fb);
-168     return NULL;
-169   }
-170 
-171   return fb;
-172 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mutex_destroy()</b>, <b>mutex_init()</b>, and
-    <b>ringbuffer_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="framebuffer_t_*_framebuffer_create_multi_(size_t_capacity)"><a class="permalink" href="#framebuffer_t_*_framebuffer_create_multi_(size_t_capacity)">framebuffer_t
-  * framebuffer_create_multi (size_t capacity)</a></h2>
-<p class="Pp">Definition at line <b>174</b> of file <b>ringbuffer.c</b>.</p>
-<pre>174                                                          {
-175   if (capacity == 0) {
-176     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid capacity: %zu&quot;, capacity);
-177     return NULL;
-178   }
-179 
-180   framebuffer_t *fb;
-181   fb = SAFE_CALLOC(1, sizeof(framebuffer_t), framebuffer_t *);
-182 
-183   // Initialize mutex for thread-safe access
-184   if (mutex_init(&amp;fb-&gt;mutex, &quot;framebuffer_multi&quot;) != 0) {
-185     SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize framebuffer mutex&quot;);
-186     SAFE_FREE(fb);
-187     return NULL;
-188   }
-189 
-190   // Create ringbuffer to store multi_source_frame_t structs
-191   fb-&gt;rb = ringbuffer_create(sizeof(multi_source_frame_t), capacity);
-192 
-193   if (!fb-&gt;rb) {
-194     mutex_destroy(&amp;fb-&gt;mutex);
-195     SAFE_FREE(fb);
-196     return NULL;
-197   }
-198 
-199   return fb;
-200 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mutex_destroy()</b>, <b>mutex_init()</b>, and
-    <b>ringbuffer_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_framebuffer_destroy_(framebuffer_t_*_fb)"><a class="permalink" href="#void_framebuffer_destroy_(framebuffer_t_*_fb)">void
-  framebuffer_destroy (framebuffer_t * fb)</a></h2>
-<p class="Pp">Definition at line <b>202</b> of file <b>ringbuffer.c</b>.</p>
-<pre>202                                             {
-203   if (!fb)
-204     return;
-205 
-206   // Add magic number check to detect double-free using rb pointer
-207   if (fb-&gt;rb == (ringbuffer_t *)0xDEADBEEF) {
-208     SET_ERRNO(ERROR_INVALID_STATE, &quot;DOUBLE-FREE DETECTED: framebuffer %p already destroyed!&quot;, fb);
-209     return;
-210   }
-211 
-212   framebuffer_clear(fb);
-213   ringbuffer_destroy(fb-&gt;rb);
-214   mutex_destroy(&amp;fb-&gt;mutex);
-215 
-216   // Mark as destroyed before freeing
-217   fb-&gt;rb = (ringbuffer_t *)0xDEADBEEF;
-218   SAFE_FREE(fb);
-219 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>framebuffer_clear()</b>, <b>mutex_destroy()</b>, and
-    <b>ringbuffer_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> framebuffer_peek_latest_multi_frame (framebuffer_t *
-  fb, multi_source_frame_t * frame)</h2>
-<p class="Pp">Definition at line <b>459</b> of file <b>ringbuffer.c</b>.</p>
-<pre>459                                                                                          {
-460   if (!fb || !fb-&gt;rb || !frame) {
-461     return false;
-462   }
-463 
-464   // Thread-safe access to framebuffer
-465   mutex_lock(&amp;fb-&gt;mutex);
-466 
-467   // Use ringbuffer_peek to get the frame without consuming it
-468   bool result = ringbuffer_peek(fb-&gt;rb, frame);
-469 
-470   if (result) {
-471     // Validate frame magic
-472     if (!IS_MAGIC_VALID(frame-&gt;magic, FRAME_MAGIC)) {
-473       SET_ERRNO(ERROR_INVALID_STATE, &quot;CORRUPTION: Invalid multi-source frame magic 0x%x (expected 0x%x) in peek&quot;,
-474                 frame-&gt;magic, FRAME_MAGIC);
-475       frame-&gt;data = NULL;
-476       frame-&gt;size = 0;
-477       memset(frame-&gt;source_client_id, 0, sizeof(frame-&gt;source_client_id));
-478       mutex_unlock(&amp;fb-&gt;mutex);
-479       return false;
-480     }
-481 
-482     // Additional validation
-483     if (frame-&gt;size == 0 || !frame-&gt;data) {
-484       SET_ERRNO(ERROR_INVALID_STATE, &quot;CORRUPTION: Invalid multi-source frame data (size=%zu, data=%p) in peek&quot;,
-485                 frame-&gt;size, frame-&gt;data);
-486       mutex_unlock(&amp;fb-&gt;mutex);
-487       return false;
-488     }
-489 
-490     // IMPORTANT: We need to make a copy of the data since we're not consuming the frame
-491     // The original data pointer will remain valid in the ring buffer
-492     // Caller is responsible for freeing this copy with buffer_pool_free()
-493     char *data_copy;
-494     data_copy = (char *)buffer_pool_alloc(NULL, frame-&gt;size);
-495     if (!data_copy) {
-496       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate memory for frame data copy in peek&quot;);
-497       mutex_unlock(&amp;fb-&gt;mutex);
-498       return false;
-499     }
-500     SAFE_MEMCPY(data_copy, frame-&gt;size, frame-&gt;data, frame-&gt;size);
-501     frame-&gt;data = data_copy;
-502   }
-503 
-504   mutex_unlock(&amp;fb-&gt;mutex);
-505   return result;
-506 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_pool_alloc()</b>, <b>frame</b>, and
-    <b>ringbuffer_peek()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> framebuffer_read_frame (framebuffer_t * fb, frame_t *
-  frame)</h2>
-<p class="Pp">Definition at line <b>275</b> of file <b>ringbuffer.c</b>.</p>
-<pre>275                                                                {
-276   if (!fb || !frame) {
-277     return false;
-278   }
-279 
-280   // Initialize frame to safe values
-281   frame-&gt;magic = 0;
-282   frame-&gt;data = NULL;
-283   frame-&gt;size = 0;
-284 
-285   // Thread-safe access to framebuffer (fixes TOCTOU race condition)
-286   mutex_lock(&amp;fb-&gt;mutex);
-287 
-288   bool result = ringbuffer_read(fb-&gt;rb, frame);
-289 
-290   // Validate the frame we just read
-291   if (result) {
-292     if (!IS_MAGIC_VALID(frame-&gt;magic, FRAME_MAGIC)) {
-293       SET_ERRNO(ERROR_INVALID_STATE, &quot;CORRUPTION: Invalid frame magic 0x%x (expected 0x%x)&quot;, frame-&gt;magic, FRAME_MAGIC);
-294       frame-&gt;data = NULL;
-295       frame-&gt;size = 0;
-296       mutex_unlock(&amp;fb-&gt;mutex);
-297       return false;
-298     }
-299 
-300     if (IS_FRAME_FREED(frame)) {
-301       SET_ERRNO(ERROR_INVALID_STATE, &quot;CORRUPTION: Reading already-freed frame!&quot;);
-302       frame-&gt;data = NULL;
-303       frame-&gt;size = 0;
-304       mutex_unlock(&amp;fb-&gt;mutex);
-305       return false;
-306     }
-307 
-308     if (frame-&gt;size &gt; 10 * 1024 * 1024) {
-309       SET_ERRNO(ERROR_INVALID_STATE, &quot;CORRUPTION: Frame size too large: %zu&quot;, frame-&gt;size);
-310       SAFE_FREE(frame-&gt;data);
-311       frame-&gt;data = NULL;
-312       frame-&gt;size = 0;
-313       mutex_unlock(&amp;fb-&gt;mutex);
-314       return false;
-315     }
-316   }
-317 
-318   mutex_unlock(&amp;fb-&gt;mutex);
-319   return result;
-320 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>frame</b>, and <b>ringbuffer_read()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> framebuffer_read_multi_frame (framebuffer_t * fb,
-  multi_source_frame_t * frame)</h2>
-<p class="Pp">Definition at line <b>424</b> of file <b>ringbuffer.c</b>.</p>
-<pre>424                                                                                   {
-425   if (!fb || !fb-&gt;rb || !frame) {
-426     return false;
-427   }
-428 
-429   // Thread-safe access to framebuffer
-430   mutex_lock(&amp;fb-&gt;mutex);
-431 
-432   bool result = ringbuffer_read(fb-&gt;rb, frame);
-433 
-434   if (result) {
-435     // Validate frame magic
-436     if (!IS_MAGIC_VALID(frame-&gt;magic, FRAME_MAGIC)) {
-437       SET_ERRNO(ERROR_INVALID_STATE, &quot;CORRUPTION: Invalid multi-source frame magic 0x%x (expected 0x%x)&quot;, frame-&gt;magic,
-438                 FRAME_MAGIC);
-439       frame-&gt;data = NULL;
-440       frame-&gt;size = 0;
-441       memset(frame-&gt;source_client_id, 0, sizeof(frame-&gt;source_client_id));
-442       mutex_unlock(&amp;fb-&gt;mutex);
-443       return false;
-444     }
-445 
-446     // Additional validation
-447     if (frame-&gt;size == 0 || !frame-&gt;data) {
-448       SET_ERRNO(ERROR_INVALID_STATE, &quot;CORRUPTION: Invalid multi-source frame data (size=%zu, data=%p)&quot;, frame-&gt;size,
-449                 frame-&gt;data);
-450       mutex_unlock(&amp;fb-&gt;mutex);
-451       return false;
-452     }
-453   }
-454 
-455   mutex_unlock(&amp;fb-&gt;mutex);
-456   return result;
-457 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>frame</b>, and <b>ringbuffer_read()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> framebuffer_write_frame (framebuffer_t * fb, const
-  char * frame_data, size_t frame_size)</h2>
-<p class="Pp">Definition at line <b>221</b> of file <b>ringbuffer.c</b>.</p>
-<pre>221                                                                                            {
-222   if (!fb || !frame_data || frame_size == 0)
-223     return false;
-224 
-225   // Validate frame size to prevent overflow
-226   if (frame_size &gt; 10 * 1024 * 1024) { // 10MB max for ASCII frames
-227     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Rejecting oversized frame: %zu bytes&quot;, frame_size);
-228     return false;
-229   }
-230 
-231   // Thread-safe access to framebuffer (was missing, causing race conditions)
-232   mutex_lock(&amp;fb-&gt;mutex);
-233 
-234   // Check if buffer is full - if so, we need to drop the oldest frame
-235   if (ringbuffer_size(fb-&gt;rb) &gt;= fb-&gt;rb-&gt;capacity) {
-236     // Buffer is full, read and free the oldest frame before writing new one
-237     frame_t old_frame;
-238     if (ringbuffer_read(fb-&gt;rb, &amp;old_frame)) {
-239       if (IS_FRAME_VALID(&amp;old_frame)) {
-240         MARK_FRAME_FREED(&amp;old_frame);
-241         // Use buffer_pool_free since data was allocated with buffer_pool_alloc
-242         buffer_pool_free(NULL, old_frame.data, old_frame.size);
-243       } else if (!IS_MAGIC_VALID(old_frame.magic, FRAME_MAGIC)) {
-244         SET_ERRNO(ERROR_INVALID_STATE, &quot;CORRUPTION: Invalid old frame magic 0x%x when dropping&quot;, old_frame.magic);
-245       }
-246     }
-247   }
-248 
-249   // Allocate a copy of the frame data using buffer pool for better performance
-250   char *frame_copy = (char *)buffer_pool_alloc(NULL, frame_size + 1);
-251   if (!frame_copy) {
-252     mutex_unlock(&amp;fb-&gt;mutex);
-253     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate %zu bytes from buffer pool for frame&quot;, frame_size + 1);
-254     return false;
-255   }
-256 
-257   SAFE_MEMCPY(frame_copy, frame_size, frame_data, frame_size);
-258   frame_copy[frame_size] = '\0'; // Ensure null termination
-259 
-260   // Create a frame_t struct with the copy (store allocated size for proper cleanup)
-261   frame_t frame = {.magic = MAGIC_FRAME_VALID, .size = frame_size + 1, .data = frame_copy};
-262 
-263   bool result = ringbuffer_write(fb-&gt;rb, &amp;frame);
-264 
-265   if (!result) {
-266     // If we still couldn't write to ringbuffer, return the buffer to pool
-267     buffer_pool_free(NULL, frame_copy, frame_size + 1);
-268     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to write frame to ringbuffer even after dropping oldest&quot;);
-269   }
-270 
-271   mutex_unlock(&amp;fb-&gt;mutex);
-272   return result;
-273 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    <b>frame</b>, <b>ringbuffer_read()</b>, <b>ringbuffer_size()</b>, and
-    <b>ringbuffer_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> framebuffer_write_multi_frame (framebuffer_t * fb,
-  const char * frame_data, size_t frame_size, uint32_t source_client_id,
-  uint32_t frame_sequence, uint32_t timestamp)</h2>
-<p class="Pp">Definition at line <b>378</b> of file <b>ringbuffer.c</b>.</p>
-<pre>379                                                                                                            {
-380   if (!fb || !fb-&gt;rb || !frame_data || frame_size == 0) {
-381     return false;
-382   }
-383 
-384   // Allocate memory for frame data using buffer pool for better performance
-385   char *data_copy = (char *)buffer_pool_alloc(NULL, frame_size);
-386   if (!data_copy) {
-387     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate %zu bytes from buffer pool for multi-source frame&quot;, frame_size);
-388     return false;
-389   }
-390 
-391   // Copy frame data
-392   SAFE_MEMCPY(data_copy, frame_size, frame_data, frame_size);
-393 
-394   // Convert client ID number to string for storage in frame metadata
-395   char client_id_str[64];
-396   snprintf(client_id_str, sizeof(client_id_str), &quot;%u&quot;, source_client_id);
-397 
-398   // Create multi-source frame
-399   multi_source_frame_t multi_frame = {
-400       .magic = MAGIC_FRAME_VALID,
-401       .source_client_id = {0},
-402       .frame_sequence = frame_sequence,
-403       .timestamp = timestamp,
-404       .size = frame_size,
-405       .data = data_copy,
-406   };
-407   SAFE_MEMCPY(multi_frame.source_client_id, sizeof(multi_frame.source_client_id), client_id_str, strlen(client_id_str) + 1);
-408 
-409   // Thread-safe access to framebuffer
-410   mutex_lock(&amp;fb-&gt;mutex);
-411 
-412   // Try to write to ring buffer
-413   bool success = ringbuffer_write(fb-&gt;rb, &amp;multi_frame);
-414   if (!success) {
-415     // Buffer full, return the buffer to pool
-416     buffer_pool_free(NULL, data_copy, frame_size);
-417     log_debug(&quot;Frame buffer full, dropping multi-source frame from client %u&quot;, source_client_id);
-418   }
-419 
-420   mutex_unlock(&amp;fb-&gt;mutex);
-421   return success;
-422 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    and <b>ringbuffer_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ringbuffer_clear_(ringbuffer_t_*_rb)"><a class="permalink" href="#void_ringbuffer_clear_(ringbuffer_t_*_rb)">void
-  ringbuffer_clear (ringbuffer_t * rb)</a></h2>
-<p class="Pp">Definition at line <b>133</b> of file <b>ringbuffer.c</b>.</p>
-<pre>133                                         {
-134   if (rb) {
-135     atomic_store_u64(&amp;rb-&gt;head, 0);
-136     atomic_store_u64(&amp;rb-&gt;tail, 0);
-137     atomic_store_u64(&amp;rb-&gt;size, 0);
-138   }
-139 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_u64()</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_clear()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="ringbuffer_t_*_ringbuffer_create_(size_t_element_size,_size_t_capacity)"><a class="permalink" href="#ringbuffer_t_*_ringbuffer_create_(size_t_element_size,_size_t_capacity)">ringbuffer_t
-  * ringbuffer_create (size_t element_size, size_t capacity)</a></h2>
-<p class="Pp">Definition at line <b>29</b> of file <b>ringbuffer.c</b>.</p>
-<pre>29                                                                       {
-30   if (element_size == 0 || capacity == 0) {
-31     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid ring buffer parameters: element_size=%zu, capacity=%zu&quot;, element_size,
-32               capacity);
-33     return NULL;
-34   }
-35 
-36   ringbuffer_t *rb;
-37   rb = SAFE_CALLOC(1, sizeof(ringbuffer_t), ringbuffer_t *);
-38 
-39   /* Round capacity up to power of 2 for optimization */
-40   size_t actual_capacity = math_next_power_of_two(capacity);
-41 
-42   rb-&gt;buffer = SAFE_CALLOC(actual_capacity, element_size, char *);
-43 
-44   rb-&gt;element_size = element_size;
-45   rb-&gt;capacity = actual_capacity;
-46   rb-&gt;is_power_of_two = true;
-47   rb-&gt;capacity_mask = actual_capacity - 1;
-48   /* Atomic fields are zero-initialized by SAFE_CALLOC */
-49 
-50   return rb;
-51 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>,
-    <b>acip_websocket_client_transport_create()</b>,
-    <b>acip_websocket_server_transport_create()</b>,
-    <b>framebuffer_create()</b>, <b>framebuffer_create_multi()</b>,
-    <b>session_host_add_client()</b>, and
-    <b>session_host_add_memory_participant()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ringbuffer_destroy_(ringbuffer_t_*_rb)"><a class="permalink" href="#void_ringbuffer_destroy_(ringbuffer_t_*_rb)">void
-  ringbuffer_destroy (ringbuffer_t * rb)</a></h2>
-<p class="Pp">Definition at line <b>53</b> of file <b>ringbuffer.c</b>.</p>
-<pre>53                                           {
-54   if (rb) {
-55     SAFE_FREE(rb-&gt;buffer);
-56     SAFE_FREE(rb);
-57   }
-58 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>,
-    <b>acip_websocket_client_transport_create()</b>,
-    <b>acip_websocket_server_transport_create()</b>,
-    <b>framebuffer_destroy()</b>, <b>session_host_add_client()</b>,
-    <b>session_host_add_memory_participant()</b>, <b>session_host_destroy()</b>,
-    and <b>session_host_remove_client()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ringbuffer_is_empty (const ringbuffer_t * rb)</h2>
-<p class="Pp">Definition at line <b>125</b> of file <b>ringbuffer.c</b>.</p>
-<pre>125                                                  {
-126   return ringbuffer_size(rb) == 0;
-127 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ringbuffer_size()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ringbuffer_is_full (const ringbuffer_t * rb)</h2>
-<p class="Pp">Definition at line <b>129</b> of file <b>ringbuffer.c</b>.</p>
-<pre>129                                                 {
-130   return rb ? ringbuffer_size(rb) &gt;= rb-&gt;capacity : true;
-131 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ringbuffer_size()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ringbuffer_peek (ringbuffer_t * rb, void * data)</h2>
-<p class="Pp">Definition at line <b>104</b> of file <b>ringbuffer.c</b>.</p>
-<pre>104                                                    {
-105   if (!rb || !data)
-106     return false;
-107 
-108   size_t current_size = atomic_load_u64(&amp;rb-&gt;size);
-109   if (current_size == 0) {
-110     return false; /* Buffer empty */
-111   }
-112 
-113   size_t tail = atomic_load_u64(&amp;rb-&gt;tail);
-114 
-115   /* Copy data without updating tail */
-116   SAFE_MEMCPY(data, rb-&gt;element_size, rb-&gt;buffer + (tail * rb-&gt;element_size), rb-&gt;element_size);
-117 
-118   return true;
-119 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_peek_latest_multi_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ringbuffer_read (ringbuffer_t * rb, void * data)</h2>
-<p class="Pp">Definition at line <b>82</b> of file <b>ringbuffer.c</b>.</p>
-<pre>82                                                    {
-83   if (!rb || !data)
-84     return false;
-85 
-86   size_t current_size = atomic_load_u64(&amp;rb-&gt;size);
-87   if (current_size == 0) {
-88     return false; /* Buffer empty */
-89   }
-90 
-91   size_t tail = atomic_load_u64(&amp;rb-&gt;tail);
-92   size_t next_tail = (tail + 1) &amp; rb-&gt;capacity_mask;
-93 
-94   /* Copy data */
-95   SAFE_MEMCPY(data, rb-&gt;element_size, rb-&gt;buffer + (tail * rb-&gt;element_size), rb-&gt;element_size);
-96 
-97   /* Update tail and size atomically */
-98   atomic_store_u64(&amp;rb-&gt;tail, next_tail);
-99   atomic_fetch_sub_u64(&amp;rb-&gt;size, 1);
-100 
-101   return true;
-102 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_fetch_sub_u64()</b>,
-    <b>atomic_load_u64()</b>, and <b>atomic_store_u64()</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_clear()</b>,
-    <b>framebuffer_read_frame()</b>, <b>framebuffer_read_multi_frame()</b>, and
-    <b>framebuffer_write_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_ringbuffer_size_(const_ringbuffer_t_*_rb)"><a class="permalink" href="#size_t_ringbuffer_size_(const_ringbuffer_t_*_rb)">size_t
-  ringbuffer_size (const ringbuffer_t * rb)</a></h2>
-<p class="Pp">Definition at line <b>121</b> of file <b>ringbuffer.c</b>.</p>
-<pre>121                                                {
-122   return rb ? atomic_load_u64(&amp;rb-&gt;size) : 0;
-123 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_write_frame()</b>,
-    <b>ringbuffer_is_empty()</b>, and <b>ringbuffer_is_full()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ringbuffer_write (ringbuffer_t * rb, const void *
-  data)</h2>
-<p class="Pp">Definition at line <b>60</b> of file <b>ringbuffer.c</b>.</p>
-<pre>60                                                           {
-61   if (!rb || !data)
-62     return false;
-63 
-64   size_t current_size = atomic_load_u64(&amp;rb-&gt;size);
-65   if (current_size &gt;= rb-&gt;capacity) {
-66     return false; /* Buffer full */
-67   }
-68 
-69   size_t head = atomic_load_u64(&amp;rb-&gt;head);
-70   size_t next_head = (head + 1) &amp; rb-&gt;capacity_mask;
-71 
-72   /* Copy data */
-73   SAFE_MEMCPY(rb-&gt;buffer + (head * rb-&gt;element_size), rb-&gt;element_size, data, rb-&gt;element_size);
-74 
-75   /* Update head and size atomically */
-76   atomic_store_u64(&amp;rb-&gt;head, next_head);
-77   atomic_fetch_add_u64(&amp;rb-&gt;size, 1);
-78 
-79   return true;
-80 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_fetch_add_u64()</b>,
-    <b>atomic_load_u64()</b>, and <b>atomic_store_u64()</b>.</p>
-<p class="Pp">Referenced by <b>framebuffer_write_frame()</b>,
-    <b>framebuffer_write_multi_frame()</b>, and
-    <b>session_host_inject_audio()</b>.</p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

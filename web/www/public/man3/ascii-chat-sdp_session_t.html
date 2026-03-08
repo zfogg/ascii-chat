@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>sdp_session_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">sdp_session_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">sdp_session_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">sdp_session_t - SDP media session (simplified for WebRTC).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/webrtc/sdp.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">char <b>session_id</b> [32]
+  <br/>
+  Session identifier. char <b>session_version</b> [16]
+  <br/>
+  Session version (timestamp). <b>bool</b> <b>has_audio</b>
+  <br/>
+  Audio media included. <b>opus_config_t</b> <b>audio_config</b>
+  <br/>
+  Opus codec configuration. <b>uint32_t</b> <b>codec_capabilities_audio</b>
+  <br/>
+  AUDIO_CODEC_CAP_* bitmask (which audio codecs peer supports). <b>bool</b>
+    <b>has_video</b>
+  <br/>
+  Video media included. <b>terminal_capability_t</b> * <b>video_codecs</b>
+  <br/>
+  Array of supported capabilities. size_t <b>video_codec_count</b>
+  <br/>
+  Number of supported capabilities. <b>terminal_format_params_t</b>
+    <b>video_format</b>
+  <br/>
+  Default format parameters. <b>uint32_t</b> <b>codec_capabilities_video</b>
+  <br/>
+  VIDEO_CODEC_CAP_* bitmask (which video codecs peer supports). char
+    <b>sdp_string</b> [4096]
+  <br/>
+  Complete SDP as null-terminated string. size_t <b>sdp_length</b>
+  <br/>
+  Length of SDP string (excluding null).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">SDP media session (simplified for WebRTC).</p>
+<p class="Pp">Represents a complete SDP offer or answer. Includes audio (Opus)
+    and video (terminal capabilities) media sections.</p>
+<p class="Pp">Definition at line <b>115</b> of file <b>sdp.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>opus_config_t</b> sdp_session_t::audio_config</h2>
+<p class="Pp">Opus codec configuration.</p>
+<p class="Pp">Definition at line <b>122</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Referenced by <b>sdp_generate_answer()</b>,
+    <b>sdp_generate_offer()</b>, and <b>sdp_parse()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> sdp_session_t::codec_capabilities_audio</h2>
+<p class="Pp">AUDIO_CODEC_CAP_* bitmask (which audio codecs peer supports).</p>
+<p class="Pp">Definition at line <b>123</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Referenced by <b>sdp_generate_answer()</b>,
+    <b>sdp_generate_offer()</b>, and <b>sdp_parse()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> sdp_session_t::codec_capabilities_video</h2>
+<p class="Pp">VIDEO_CODEC_CAP_* bitmask (which video codecs peer supports).</p>
+<p class="Pp">Definition at line <b>130</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Referenced by <b>sdp_generate_answer()</b>,
+    <b>sdp_generate_offer()</b>, and <b>sdp_parse()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> sdp_session_t::has_audio</h2>
+<p class="Pp">Audio media included.</p>
+<p class="Pp">Definition at line <b>121</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Referenced by <b>sdp_generate_answer()</b>,
+    <b>sdp_generate_offer()</b>, and <b>sdp_parse()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> sdp_session_t::has_video</h2>
+<p class="Pp">Video media included.</p>
+<p class="Pp">Definition at line <b>126</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Referenced by <b>sdp_generate_answer()</b>,
+    <b>sdp_generate_offer()</b>, <b>sdp_get_selected_video_codec()</b>, and
+    <b>sdp_parse()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_sdp_session_t::sdp_length"><a class="permalink" href="#size_t_sdp_session_t::sdp_length">size_t
+  sdp_session_t::sdp_length</a></h2>
+<p class="Pp">Length of SDP string (excluding null).</p>
+<p class="Pp">Definition at line <b>134</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Referenced by <b>sdp_generate_answer()</b>,
+    <b>sdp_generate_offer()</b>, and <b>sdp_parse()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_sdp_session_t::sdp_string_4096_"><a class="permalink" href="#char_sdp_session_t::sdp_string_4096_">char
+  sdp_session_t::sdp_string[4096]</a></h2>
+<p class="Pp">Complete SDP as null-terminated string.</p>
+<p class="Pp">Definition at line <b>133</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Referenced by <b>sdp_generate_answer()</b>,
+    <b>sdp_generate_offer()</b>, and <b>sdp_parse()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_sdp_session_t::session_id_32_"><a class="permalink" href="#char_sdp_session_t::session_id_32_">char
+  sdp_session_t::session_id[32]</a></h2>
+<p class="Pp">Session identifier.</p>
+<p class="Pp">Definition at line <b>117</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Referenced by <b>sdp_generate_answer()</b>,
+    <b>sdp_generate_offer()</b>, and <b>sdp_parse()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_sdp_session_t::session_version_16_"><a class="permalink" href="#char_sdp_session_t::session_version_16_">char
+  sdp_session_t::session_version[16]</a></h2>
+<p class="Pp">Session version (timestamp).</p>
+<p class="Pp">Definition at line <b>118</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Referenced by <b>sdp_generate_answer()</b>, and
+    <b>sdp_generate_offer()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_sdp_session_t::video_codec_count"><a class="permalink" href="#size_t_sdp_session_t::video_codec_count">size_t
+  sdp_session_t::video_codec_count</a></h2>
+<p class="Pp">Number of supported capabilities.</p>
+<p class="Pp">Definition at line <b>128</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Referenced by <b>sdp_generate_answer()</b>,
+    <b>sdp_generate_offer()</b>, <b>sdp_get_selected_video_codec()</b>,
+    <b>sdp_parse()</b>, and <b>sdp_session_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>terminal_capability_t</b>* sdp_session_t::video_codecs</h2>
+<p class="Pp">Array of supported capabilities.</p>
+<p class="Pp">Definition at line <b>127</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Referenced by <b>sdp_generate_answer()</b>,
+    <b>sdp_generate_offer()</b>, <b>sdp_get_selected_video_codec()</b>,
+    <b>sdp_parse()</b>, and <b>sdp_session_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>terminal_format_params_t</b> sdp_session_t::video_format</h2>
+<p class="Pp">Default format parameters.</p>
+<p class="Pp">Definition at line <b>129</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Referenced by <b>sdp_generate_answer()</b>, and
+    <b>sdp_generate_offer()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

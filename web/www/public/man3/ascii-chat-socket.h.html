@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>socket.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">socket.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">socket.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">socket.h - Cross-platform socket interface for ascii-chat.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>INVALID_SOCKET_VALUE</b> (-1)
+  <br/>
+  Invalid socket value (POSIX: -1). #define <b>SOCKET_ERROR_WOULDBLOCK</b>
+    <b>EWOULDBLOCK</b>
+  <br/>
+  #define <b>SOCKET_ERROR_INPROGRESS</b> EINPROGRESS
+  <br/>
+  #define <b>SOCKET_ERROR_AGAIN</b> <b>EAGAIN</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>socket_init</b> (void)
+  <br/>
+  Initialize socket subsystem (required on Windows). void <b>socket_cleanup</b>
+    (void)
+  <br/>
+  Cleanup socket subsystem. <b>socket_t</b> <b>socket_create</b> (const char
+    *name, int domain, int type, int protocol)
+  <br/>
+  Create a new named socket. int <b>socket_close</b> (<b>socket_t</b> sock)
+  <br/>
+  Close a socket. int <b>socket_bind</b> (<b>socket_t</b> sock, const struct
+    sockaddr *addr, socklen_t addrlen)
+  <br/>
+  Bind a socket to an address. int <b>socket_listen</b> (<b>socket_t</b> sock,
+    int backlog)
+  <br/>
+  Listen for incoming connections. <b>socket_t</b> <b>socket_accept</b>
+    (<b>socket_t</b> sock, struct sockaddr *addr, socklen_t *addrlen, const char
+    *name)
+  <br/>
+  Accept an incoming connection. int <b>socket_connect</b> (<b>socket_t</b>
+    sock, const struct sockaddr *addr, socklen_t addrlen)
+  <br/>
+  Connect to a remote address. ssize_t <b>socket_send</b> (<b>socket_t</b> sock,
+    const void *buf, size_t len, int flags)
+  <br/>
+  Send data on a socket. ssize_t <b>socket_recv</b> (<b>socket_t</b> sock, void
+    *buf, size_t len, int flags)
+  <br/>
+  Receive data from a socket. ssize_t <b>socket_sendto</b> (<b>socket_t</b>
+    sock, const void *buf, size_t len, int flags, const struct sockaddr
+    *dest_addr, socklen_t addrlen)
+  <br/>
+  Send data to a specific address (UDP). ssize_t <b>socket_recvfrom</b>
+    (<b>socket_t</b> sock, void *buf, size_t len, int flags, struct sockaddr
+    *src_addr, socklen_t *addrlen)
+  <br/>
+  Receive data from a specific address (UDP). int <b>socket_setsockopt</b>
+    (<b>socket_t</b> sock, int level, int optname, const void *optval, socklen_t
+    optlen)
+  <br/>
+  Set socket option. int <b>socket_getsockopt</b> (<b>socket_t</b> sock, int
+    level, int optname, void *optval, socklen_t *optlen)
+  <br/>
+  Get socket option. int <b>socket_set_timeout_ns</b> (<b>socket_t</b> sock,
+    <b>uint64_t</b> timeout_ns)
+  <br/>
+  Set socket send/receive timeout in nanoseconds. int <b>socket_shutdown</b>
+    (<b>socket_t</b> sock, int how)
+  <br/>
+  Shutdown socket I/O. int <b>socket_getpeername</b> (<b>socket_t</b> sock,
+    struct sockaddr *addr, socklen_t *addrlen)
+  <br/>
+  Get peer address. int <b>socket_getsockname</b> (<b>socket_t</b> sock, struct
+    sockaddr *addr, socklen_t *addrlen)
+  <br/>
+  Get socket local address. int <b>socket_set_blocking</b> (<b>socket_t</b>
+    sock)
+  <br/>
+  Set socket to blocking mode. int <b>socket_set_nonblocking</b>
+    (<b>socket_t</b> sock, <b>bool</b> nonblocking)
+  <br/>
+  Set socket to non-blocking mode. int <b>socket_set_reuseaddr</b>
+    (<b>socket_t</b> sock, <b>bool</b> reuse)
+  <br/>
+  Set SO_REUSEADDR socket option. int <b>socket_set_nodelay</b> (<b>socket_t</b>
+    sock, <b>bool</b> nodelay)
+  <br/>
+  Set TCP_NODELAY socket option (disable Nagle's algorithm). int
+    <b>socket_set_keepalive</b> (<b>socket_t</b> sock, <b>bool</b> keepalive)
+  <br/>
+  Set SO_KEEPALIVE socket option. int <b>socket_set_keepalive_params</b>
+    (<b>socket_t</b> sock, <b>bool</b> enable, int idle, int interval, int
+    count)
+  <br/>
+  Set TCP keepalive parameters. int <b>socket_set_linger</b> (<b>socket_t</b>
+    sock, <b>bool</b> enable, int timeout)
+  <br/>
+  Set SO_LINGER socket option. int <b>socket_set_timeout</b> (<b>socket_t</b>
+    sock, <b>uint64_t</b> timeout_ns)
+  <br/>
+  Set socket receive and send timeouts. int <b>socket_set_buffer_sizes</b>
+    (<b>socket_t</b> sock, int recv_size, int send_size)
+  <br/>
+  Set socket buffer sizes. int <b>socket_get_peer_address</b> (<b>socket_t</b>
+    sock, struct sockaddr *addr, socklen_t *addrlen)
+  <br/>
+  Get peer address (convenience function). int <b>socket_get_error</b>
+    (<b>socket_t</b> sock)
+  <br/>
+  Get socket-specific error code. void <b>socket_optimize_for_streaming</b>
+    (<b>socket_t</b> sock)
+  <br/>
+  Optimize socket for high-throughput video streaming. int
+    <b>socket_get_last_error</b> (void)
+  <br/>
+  Get last socket error code. const char * <b>socket_get_error_string</b> (void)
+  <br/>
+  Get last socket error as string. int <b>socket_poll</b> (struct pollfd *fds,
+    nfds_t nfds, int64_t timeout_ns)
+  <br/>
+  Poll sockets for events (multiplexed I/O). int <b>socket_select</b>
+    (<b>socket_t</b> max_fd, fd_set *readfds, fd_set *writefds, fd_set
+    *exceptfds, struct timeval *timeout)
+  <br/>
+  Select sockets for I/O readiness. void <b>socket_fd_zero</b> (fd_set *set)
+  <br/>
+  Clear an fd_set. void <b>socket_fd_set</b> (<b>socket_t</b> sock, fd_set *set)
+  <br/>
+  Add a socket to an fd_set. int <b>socket_fd_isset</b> (<b>socket_t</b> sock,
+    fd_set *set)
+  <br/>
+  Check if a socket is in an fd_set. int <b>socket_get_fd</b> (<b>socket_t</b>
+    sock)
+  <br/>
+  Get the underlying file descriptor (POSIX compatibility). <b>bool</b>
+    <b>socket_is_valid</b> (<b>socket_t</b> sock)
+  <br/>
+  Check if a socket handle is valid. <b>bool</b>
+    <b>socket_is_would_block_error</b> (int <b>error_code</b>)
+  <br/>
+  Check if error code indicates
+    <i>would</i>block&quot;<i>(non-blocking</i>socket<i>would</i>wait).<i></i>
+    <b>bool</b> <b>socket_is_connection_reset_error</b> (int <b>error_code</b>)
+  <br/>
+  Check if error code indicates connection reset. <b>bool</b>
+    <b>socket_is_invalid_socket_error</b> (int <b>error_code</b>)
+  <br/>
+  Check if error code indicates a closed/invalid socket. <b>bool</b>
+    <b>socket_is_in_progress_error</b> (int <b>error_code</b>)
+  <br/>
+  Check if error indicates operation in progress (non-blocking connect). int
+    <b>platform_socket_set_timeout</b> (<b>socket_t</b> sock, <b>uint64_t</b>
+    timeout_ns)
+  <br/>
+  Set send/receive timeout for a socket. int
+    <b>platform_socket_connect_timeout</b> (<b>socket_t</b> sock, const struct
+    sockaddr *addr, socklen_t addr_len, <b>uint64_t</b> timeout_ns)
+  <br/>
+  Connect to remote address with timeout.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Cross-platform socket interface for ascii-chat.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>socket.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

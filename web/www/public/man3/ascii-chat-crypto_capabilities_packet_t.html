@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>crypto_capabilities_packet_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">crypto_capabilities_packet_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">crypto_capabilities_packet_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">crypto_capabilities_packet_t - Crypto capabilities packet
+    structure (Packet Type 14).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/packet/packet.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint16_t</b> <b>supported_kex_algorithms</b>
+  <br/>
+  Supported key exchange algorithms bitmask (KEX_ALGO_*). <b>uint16_t</b>
+    <b>supported_auth_algorithms</b>
+  <br/>
+  Supported authentication algorithms bitmask (AUTH_ALGO_*). <b>uint16_t</b>
+    <b>supported_cipher_algorithms</b>
+  <br/>
+  Supported cipher algorithms bitmask (CIPHER_ALGO_*). <b>uint8_t</b>
+    <b>requires_verification</b>
+  <br/>
+  Server verification requirement flag (1=required, 0=optional). <b>uint8_t</b>
+    <b>preferred_kex</b>
+  <br/>
+  Preferred key exchange algorithm (KEX_ALGO_*). <b>uint8_t</b>
+    <b>preferred_auth</b>
+  <br/>
+  Preferred authentication algorithm (AUTH_ALGO_*). <b>uint8_t</b>
+    <b>preferred_cipher</b>
+  <br/>
+  Preferred cipher algorithm (CIPHER_ALGO_*).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Crypto capabilities packet structure (Packet Type 14).</p>
+<p class="Pp">Sent by client to server during crypto handshake to advertise
+    supported cryptographic algorithms and preferences.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This packet must be sent UNENCRYPTED (handshake
+  packet).</div>
+<p class="Pp">Definition at line <b>952</b> of file <b>packet.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_capabilities_packet_t::preferred_auth</h2>
+<p class="Pp">Preferred authentication algorithm (AUTH_ALGO_*).</p>
+<p class="Pp">Definition at line <b>964</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
+    <b>discovery_session_process()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>
+  crypto_capabilities_packet_t::preferred_cipher</h2>
+<p class="Pp">Preferred cipher algorithm (CIPHER_ALGO_*).</p>
+<p class="Pp">Definition at line <b>966</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
+    <b>discovery_session_process()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_capabilities_packet_t::preferred_kex</h2>
+<p class="Pp">Preferred key exchange algorithm (KEX_ALGO_*).</p>
+<p class="Pp">Definition at line <b>962</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
+    <b>discovery_session_process()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>
+  crypto_capabilities_packet_t::requires_verification</h2>
+<p class="Pp">Server verification requirement flag (1=required, 0=optional).</p>
+<p class="Pp">Definition at line <b>960</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
+    <b>discovery_session_process()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b>
+  crypto_capabilities_packet_t::supported_auth_algorithms</h2>
+<p class="Pp">Supported authentication algorithms bitmask (AUTH_ALGO_*).</p>
+<p class="Pp">Definition at line <b>956</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>discovery_session_process()</b>, and
+  <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b>
+  crypto_capabilities_packet_t::supported_cipher_algorithms</h2>
+<p class="Pp">Supported cipher algorithms bitmask (CIPHER_ALGO_*).</p>
+<p class="Pp">Definition at line <b>958</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>discovery_session_process()</b>, and
+  <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b>
+  crypto_capabilities_packet_t::supported_kex_algorithms</h2>
+<p class="Pp">Supported key exchange algorithms bitmask (KEX_ALGO_*).</p>
+<p class="Pp">Definition at line <b>954</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>discovery_session_process()</b>, and
+  <b>server_crypto_handshake()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

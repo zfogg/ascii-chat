@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>uthash.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">uthash.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">uthash.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">uthash.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>HASH_FUNCTION</b>(keyptr, keylen, hashv)
+  <br/>
+  #define <b>HASH_JEN_MIX</b>(a, <b>b</b>, c)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_HASH_FUNCTION(_keyptr,__keylen,__hashv)"><a class="permalink" href="#_define_HASH_FUNCTION(_keyptr,__keylen,__hashv)">#define
+  HASH_FUNCTION( keyptr, keylen, hashv)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  if (!(keyptr) || (keylen) == 0) {                                                                                  \
+<br/>
+    (hashv) = 1; /* Non-zero constant for safety */                                                                  \
+<br/>
+  } else {                                                                                                           \
+<br/>
+    (hashv) = fnv1a_hash_bytes((keyptr), (keylen));                                                                  \
+<br/>
+  }                                                                                                                  \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>41</b> of file <b>uthash.h</b>.</p>
+<pre>41 #define HASH_FUNCTION(keyptr, keylen, hashv)                                                                           \
+42   do {                                                                                                                 \
+43     if (!(keyptr) || (keylen) == 0) {                                                                                  \
+44       (hashv) = 1; /* Non-zero constant for safety */                                                                  \
+45     } else {                                                                                                           \
+46       (hashv) = fnv1a_hash_bytes((keyptr), (keylen));                                                                  \
+47     }                                                                                                                  \
+48   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_HASH_JEN_MIX(_a,__"><a class="permalink" href="#_define_HASH_JEN_MIX(_a,__">#define
+  HASH_JEN_MIX( a, <b>b</b>, c)</a></h2>
+<p class="Pp">Definition at line <b>59</b> of file <b>uthash.h</b>.</p>
+<pre>59 #define HASH_JEN_MIX(a, b, c)                                                                                          \
+60   do {                                                                                                                 \
+61     /* Use 64-bit arithmetic for shifts to avoid undefined behavior, then mask back to 32-bit */                       \
+62     uint64_t _a = (uint64_t)(a), _b = (uint64_t)(b), _c = (uint64_t)(c);                                               \
+63     _a -= _b;                                                                                                          \
+64     _a -= _c;                                                                                                          \
+65     _a ^= (_c &gt;&gt; 13);                                                                                                  \
+66     a = (unsigned)(_a &amp; 0xFFFFFFFFU);                                                                                  \
+67                                                                                                                        \
+68     _b -= _c;                                                                                                          \
+69     _b -= (uint64_t)a;                                                                                                 \
+70     _b ^= (((uint64_t)a &lt;&lt; 8) &amp; 0xFFFFFFFFU);                                                                          \
+71     b = (unsigned)(_b &amp; 0xFFFFFFFFU);                                                                                  \
+72                                                                                                                        \
+73     _c -= (uint64_t)a;                                                                                                 \
+74     _c -= (uint64_t)b;                                                                                                 \
+75     _c ^= ((uint64_t)b &gt;&gt; 13);                                                                                         \
+76     c = (unsigned)(_c &amp; 0xFFFFFFFFU);                                                                                  \
+77                                                                                                                        \
+78     _a = (uint64_t)a;                                                                                                  \
+79     _a -= (uint64_t)b;                                                                                                 \
+80     _a -= (uint64_t)c;                                                                                                 \
+81     _a ^= ((uint64_t)c &gt;&gt; 12);                                                                                         \
+82     a = (unsigned)(_a &amp; 0xFFFFFFFFU);                                                                                  \
+83                                                                                                                        \
+84     _b = (uint64_t)b;                                                                                                  \
+85     _b -= (uint64_t)c;                                                                                                 \
+86     _b -= (uint64_t)a;                                                                                                 \
+87     _b ^= (((uint64_t)a &lt;&lt; 16) &amp; 0xFFFFFFFFU);                                                                         \
+88     b = (unsigned)(_b &amp; 0xFFFFFFFFU);                                                                                  \
+89                                                                                                                        \
+90     _c = (uint64_t)c;                                                                                                  \
+91     _c -= (uint64_t)a;                                                                                                 \
+92     _c -= (uint64_t)b;                                                                                                 \
+93     _c ^= ((uint64_t)b &gt;&gt; 5);                                                                                          \
+94     c = (unsigned)(_c &amp; 0xFFFFFFFFU);                                                                                  \
+95                                                                                                                        \
+96     _a = (uint64_t)a;                                                                                                  \
+97     _a -= (uint64_t)b;                                                                                                 \
+98     _a -= (uint64_t)c;                                                                                                 \
+99     _a ^= ((uint64_t)c &gt;&gt; 3);                                                                                          \
+100     a = (unsigned)(_a &amp; 0xFFFFFFFFU);                                                                                  \
+101                                                                                                                        \
+102     _b = (uint64_t)b;                                                                                                  \
+103     _b -= (uint64_t)c;                                                                                                 \
+104     _b -= (uint64_t)a;                                                                                                 \
+105     _b ^= (((uint64_t)a &lt;&lt; 10) &amp; 0xFFFFFFFFU);                                                                         \
+106     b = (unsigned)(_b &amp; 0xFFFFFFFFU);                                                                                  \
+107                                                                                                                        \
+108     _c = (uint64_t)c;                                                                                                  \
+109     _c -= (uint64_t)a;                                                                                                 \
+110     _c -= (uint64_t)b;                                                                                                 \
+111     _c ^= ((uint64_t)b &gt;&gt; 15);                                                                                         \
+112     c = (unsigned)(_c &amp; 0xFFFFFFFFU);                                                                                  \
+113   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

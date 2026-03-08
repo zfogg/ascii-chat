@@ -40,12 +40,12 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">tty_info_t <b>tty_info</b>
+<p class="Pp"><b>tty_info_t</b> <b>tty_info</b>
   <br/>
   TTY information (file descriptor, path, ownership). <b>bool</b> <b>has_tty</b>
   <br/>
-  True if we have a valid TTY for interactive output. terminal_capabilities_t
-    <b>caps</b>
+  True if we have a valid TTY for interactive output.
+    <b>terminal_capabilities_t</b> <b>caps</b>
   <br/>
   Detected terminal capabilities. char <b>palette_chars</b> [256]
   <br/>
@@ -53,12 +53,12 @@
   <br/>
   Number of characters in palette. char <b>luminance_palette</b> [256]
   <br/>
-  Luminance-to-character mapping table (256 entries). palette_type_t
+  Luminance-to-character mapping table (256 entries). <b>palette_type_t</b>
     <b>palette_type</b>
   <br/>
   Configured palette type. <b>bool</b> <b>snapshot_mode</b>
   <br/>
-  Snapshot mode enabled. atomic_t <b>first_frame</b>
+  Snapshot mode enabled. <b>atomic_t</b> <b>first_frame</b>
   <br/>
   First frame flag for logging control. <b>bool</b> <b>initialized</b>
   <br/>
@@ -66,21 +66,22 @@
   <br/>
   Audio playback is enabled. void * <b>audio_ctx</b>
   <br/>
-  Audio context for playback (borrowed, not owned). atomic_t
+  Audio context for playback (borrowed, not owned). <b>atomic_t</b>
     <b>keyboard_help_active</b>
   <br/>
   Keyboard help active flag (toggled with '?') - atomic for thread-safe access.
-    digital_rain_t * <b>digital_rain</b>
+    <b>digital_rain_t</b> * <b>digital_rain</b>
   <br/>
-  Digital rain effect context (NULL if disabled). uint64_t
+  Digital rain effect context (NULL if disabled). <b>uint64_t</b>
     <b>last_frame_time_ns</b>
   <br/>
-  Last frame timestamp for digital rain delta time calculation. fps_counter_t *
-    <b>fps_counter</b>
+  Last frame timestamp for digital rain delta time calculation.
+    <b>fps_counter_t</b> * <b>fps_counter</b>
   <br/>
-  FPS counter for measuring output throughput. uint32_t <b>render_fps</b>
+  FPS counter for measuring output throughput. <b>uint32_t</b> <b>render_fps</b>
   <br/>
-  Video FPS for render-file encoding. render_file_ctx_t * <b>render_file</b>
+  Video FPS for render-file encoding. <b>render_file_ctx_t</b> *
+    <b>render_file</b>
   <br/>
   Render-to-file context (NULL if disabled). <b>terminal_fd_reader_t</b> *
     <b>stdin_reader</b>
@@ -121,8 +122,7 @@
     <b>session_display_write_audio()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="terminal_capabilities_t_session_display_ctx::caps"><a class="permalink" href="#terminal_capabilities_t_session_display_ctx::caps">terminal_capabilities_t
-  session_display_ctx::caps</a></h2>
+<h2 class="Ss"><b>terminal_capabilities_t</b> session_display_ctx::caps</h2>
 <p class="Pp">Detected terminal capabilities.</p>
 <p class="Pp">Definition at line <b>62</b> of file
     <b>src/common/session/display.c</b>.</p>
@@ -131,8 +131,7 @@
     <b>session_display_write_ascii()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="digital_rain_t*_session_display_ctx::digital_rain"><a class="permalink" href="#digital_rain_t*_session_display_ctx::digital_rain">digital_rain_t*
-  session_display_ctx::digital_rain</a></h2>
+<h2 class="Ss"><b>digital_rain_t</b>* session_display_ctx::digital_rain</h2>
 <p class="Pp">Digital rain effect context (NULL if disabled).</p>
 <p class="Pp">Definition at line <b>95</b> of file
     <b>src/common/session/display.c</b>.</p>
@@ -141,8 +140,7 @@
     <b>session_display_write_ascii()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="atomic_t_session_display_ctx::first_frame"><a class="permalink" href="#atomic_t_session_display_ctx::first_frame">atomic_t
-  session_display_ctx::first_frame</a></h2>
+<h2 class="Ss"><b>atomic_t</b> session_display_ctx::first_frame</h2>
 <p class="Pp">First frame flag for logging control.</p>
 <p class="Pp">Definition at line <b>80</b> of file
     <b>src/common/session/display.c</b>.</p>
@@ -152,8 +150,7 @@
     <b>session_display_write_ascii()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="fps_counter_t*_session_display_ctx::fps_counter"><a class="permalink" href="#fps_counter_t*_session_display_ctx::fps_counter">fps_counter_t*
-  session_display_ctx::fps_counter</a></h2>
+<h2 class="Ss"><b>fps_counter_t</b>* session_display_ctx::fps_counter</h2>
 <p class="Pp">FPS counter for measuring output throughput.</p>
 <p class="Pp">Definition at line <b>101</b> of file
     <b>src/common/session/display.c</b>.</p>
@@ -195,19 +192,18 @@
     and <b>session_display_write_raw()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="atomic_t_session_display_ctx::keyboard_help_active"><a class="permalink" href="#atomic_t_session_display_ctx::keyboard_help_active">atomic_t
-  session_display_ctx::keyboard_help_active</a></h2>
+<h2 class="Ss"><b>atomic_t</b> session_display_ctx::keyboard_help_active</h2>
 <p class="Pp">Keyboard help active flag (toggled with '?') - atomic for
     thread-safe access.</p>
 <p class="Pp">Definition at line <b>92</b> of file
     <b>src/common/session/display.c</b>.</p>
 <p class="Pp">Referenced by <b>keyboard_help_is_active()</b>,
-    <b>keyboard_help_toggle()</b>, <b>session_display_create()</b>, and
-    <b>session_display_write_ascii()</b>.</p>
+    <b>keyboard_help_is_active_global()</b>, <b>keyboard_help_toggle()</b>,
+    <b>session_display_create()</b>, and
+  <b>session_display_write_ascii()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint64_t_session_display_ctx::last_frame_time_ns"><a class="permalink" href="#uint64_t_session_display_ctx::last_frame_time_ns">uint64_t
-  session_display_ctx::last_frame_time_ns</a></h2>
+<h2 class="Ss"><b>uint64_t</b> session_display_ctx::last_frame_time_ns</h2>
 <p class="Pp">Last frame timestamp for digital rain delta time calculation.</p>
 <p class="Pp">Definition at line <b>98</b> of file
     <b>src/common/session/display.c</b>.</p>
@@ -244,28 +240,26 @@
     <b>session_display_get_palette_len()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="palette_type_t_session_display_ctx::palette_type"><a class="permalink" href="#palette_type_t_session_display_ctx::palette_type">palette_type_t
-  session_display_ctx::palette_type</a></h2>
+<h2 class="Ss"><b>palette_type_t</b> session_display_ctx::palette_type</h2>
 <p class="Pp">Configured palette type.</p>
 <p class="Pp">Definition at line <b>74</b> of file
     <b>src/common/session/display.c</b>.</p>
 <p class="Pp">Referenced by <b>session_display_create()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="render_file_ctx_t*_session_display_ctx::render_file"><a class="permalink" href="#render_file_ctx_t*_session_display_ctx::render_file">render_file_ctx_t*
-  session_display_ctx::render_file</a></h2>
+<h2 class="Ss"><b>render_file_ctx_t</b>* session_display_ctx::render_file</h2>
 <p class="Pp">Render-to-file context (NULL if disabled).</p>
 <p class="Pp">Definition at line <b>108</b> of file
     <b>src/common/session/display.c</b>.</p>
 <p class="Pp">Referenced by <b>session_display_create()</b>,
     <b>session_display_destroy()</b>, <b>session_display_encode_frame()</b>,
     <b>session_display_has_render_file()</b>,
+    <b>session_display_set_render_audio_source()</b>,
     <b>session_display_set_snapshot_actual_duration()</b>, and
     <b>session_display_write_ascii()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint32_t_session_display_ctx::render_fps"><a class="permalink" href="#uint32_t_session_display_ctx::render_fps">uint32_t
-  session_display_ctx::render_fps</a></h2>
+<h2 class="Ss"><b>uint32_t</b> session_display_ctx::render_fps</h2>
 <p class="Pp">Video FPS for render-file encoding.</p>
 <p class="Pp">Definition at line <b>104</b> of file
     <b>src/common/session/display.c</b>.</p>
@@ -294,8 +288,7 @@
     <b>session_display_set_stdin_reader()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="tty_info_t_session_display_ctx::tty_info"><a class="permalink" href="#tty_info_t_session_display_ctx::tty_info">tty_info_t
-  session_display_ctx::tty_info</a></h2>
+<h2 class="Ss"><b>tty_info_t</b> session_display_ctx::tty_info</h2>
 <p class="Pp">TTY information (file descriptor, path, ownership).</p>
 <p class="Pp">Definition at line <b>56</b> of file
     <b>src/common/session/display.c</b>.</p>
@@ -315,7 +308,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>video_frame_buffer_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">video_frame_buffer_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">video_frame_buffer_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">video_frame_buffer_t - Video frame buffer manager.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/video/rgba/video_frame.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<p class="Pp"><b>Double Buffering</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>video_frame_t</b> * <b>front_buffer</b>
+  <br/>
+  Currently displayed frame (reader owns). <b>video_frame_t</b> *
+    <b>back_buffer</b>
+  <br/>
+  Currently written frame (writer owns).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Synchronization</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>atomic_t</b> <b>new_frame_available</b>
+  <br/>
+  Atomic flag: true when new frame available. <b>mutex_t</b> <b>swap_mutex</b>
+  <br/>
+  Brief mutex for pointer swap only.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Frame Allocation</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>video_frame_t</b> <b>frames</b> [2]
+  <br/>
+  Pre-allocated frame structures (reused forever).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Statistics</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>atomic_t</b> <b>total_frames_received</b>
+  <br/>
+  Total frames received (atomic counter). <b>atomic_t</b>
+    <b>total_frames_dropped</b>
+  <br/>
+  Total frames dropped (atomic counter). <b>atomic_t</b>
+    <b>last_frame_sequence</b>
+  <br/>
+  Last frame sequence number (atomic).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Quality Metrics</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>atomic_t</b> <b>avg_decode_time_ns</b>
+  <br/>
+  Average decode time in nanoseconds (atomic). <b>atomic_t</b>
+    <b>avg_render_time_ns</b>
+  <br/>
+  Average render time in nanoseconds (atomic).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Client Info</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  const char * <b>client_id</b>
+  <br/>
+  Client ID (name) this buffer belongs to. <b>bool</b> <b>active</b>
+  <br/>
+  True if buffer is active (receiving frames).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Buffer Management</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  size_t <b>allocated_buffer_size</b>
+  <br/>
+  Size of allocated data buffers (for cleanup).
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Video frame buffer manager.</p>
+<p class="Pp">Implements double-buffered frame management with atomic pointer
+    swaps for zero-copy frame transfer. Writer thread writes to back buffer
+    while reader thread reads from front buffer. Atomic swap makes new frames
+    available without blocking.</p>
+<p class="Pp"></p>
+<p class="Pp">DOUBLE BUFFERING ARCHITECTURE:</p>
+<ul class="Bl-bullet">
+  <li>front_buffer: Currently displayed frame (reader owns)</li>
+  <li>back_buffer: Currently written frame (writer owns)</li>
+  <li>Atomic swap: Swaps front/back when writer commits frame</li>
+</ul>
+<p class="Pp">SYNCHRONIZATION:</p>
+<ul class="Bl-bullet">
+  <li>Atomic bool flag signals when new frame is available</li>
+  <li>Brief mutex for pointer swap (minimal contention)</li>
+  <li>Lock-free reads (reader never blocks writer)</li>
+</ul>
+<p class="Pp">STATISTICS TRACKING:</p>
+<ul class="Bl-bullet">
+  <li>Total frames received/dropped</li>
+  <li>Frame drop rate</li>
+  <li>Average decode/render times</li>
+  <li>Quality metrics for adaptive streaming</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Pre-allocates buffers at creation time for
+  zero-allocation operation.
+<p class="Pp"></p>
+<p class="Pp">Latest-frame-wins semantics (old frames are dropped, not
+  queued).</p>
+<p class="Pp"></p>
+<p class="Pp">Thread-safe: Writer and reader can operate concurrently.</p>
+</div>
+<p class="Pp">Definition at line <b>177</b> of file <b>video_frame.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> video_frame_buffer_t::active</h2>
+<p class="Pp">True if buffer is active (receiving frames).</p>
+<p class="Pp">Definition at line <b>217</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>video_frame_begin_write()</b>,
+    <b>video_frame_buffer_create()</b>, <b>video_frame_buffer_destroy()</b>,
+    <b>video_frame_commit()</b>, <b>video_frame_get_latest()</b>, and
+    <b>video_frame_get_stats()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_video_frame_buffer_t::allocated_buffer_size"><a class="permalink" href="#size_t_video_frame_buffer_t::allocated_buffer_size">size_t
+  video_frame_buffer_t::allocated_buffer_size</a></h2>
+<p class="Pp">Size of allocated data buffers (for cleanup).</p>
+<p class="Pp">Definition at line <b>223</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>client_video_render_thread()</b>,
+    <b>video_frame_buffer_create()</b>, and
+  <b>video_frame_buffer_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> video_frame_buffer_t::avg_decode_time_ns</h2>
+<p class="Pp">Average decode time in nanoseconds (atomic).</p>
+<p class="Pp">Definition at line <b>209</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>video_frame_get_stats()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> video_frame_buffer_t::avg_render_time_ns</h2>
+<p class="Pp">Average render time in nanoseconds (atomic).</p>
+<p class="Pp">Definition at line <b>210</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>video_frame_get_stats()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>video_frame_t</b>* video_frame_buffer_t::back_buffer</h2>
+<p class="Pp">Currently written frame (writer owns).</p>
+<p class="Pp">Definition at line <b>182</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>video_frame_begin_write()</b>,
+    <b>video_frame_buffer_create()</b>, and <b>video_frame_commit()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_video_frame_buffer_t::client_id"><a class="permalink" href="#const_char*_video_frame_buffer_t::client_id">const
+  char* video_frame_buffer_t::client_id</a></h2>
+<p class="Pp">Client ID (name) this buffer belongs to.</p>
+<p class="Pp">Definition at line <b>216</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>video_frame_buffer_create()</b>,
+    <b>video_frame_buffer_destroy()</b>, and <b>video_frame_commit()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>video_frame_t</b> video_frame_buffer_t::frames[2]</h2>
+<p class="Pp">Pre-allocated frame structures (reused forever).</p>
+<p class="Pp">Definition at line <b>195</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>video_frame_buffer_create()</b>, and
+    <b>video_frame_buffer_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>video_frame_t</b>* video_frame_buffer_t::front_buffer</h2>
+<p class="Pp">Currently displayed frame (reader owns).</p>
+<p class="Pp">Definition at line <b>181</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>video_frame_buffer_create()</b>,
+    <b>video_frame_commit()</b>, and <b>video_frame_get_latest()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> video_frame_buffer_t::last_frame_sequence</h2>
+<p class="Pp">Last frame sequence number (atomic).</p>
+<p class="Pp">Definition at line <b>203</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>video_frame_buffer_create()</b>, and
+    <b>video_frame_buffer_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> video_frame_buffer_t::new_frame_available</h2>
+<p class="Pp">Atomic flag: true when new frame available.</p>
+<p class="Pp">Definition at line <b>188</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>video_frame_buffer_create()</b>,
+    <b>video_frame_buffer_destroy()</b>, <b>video_frame_commit()</b>, and
+    <b>video_frame_get_latest()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>mutex_t</b> video_frame_buffer_t::swap_mutex</h2>
+<p class="Pp">Brief mutex for pointer swap only.</p>
+<p class="Pp">Definition at line <b>189</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>video_frame_buffer_create()</b>,
+    <b>video_frame_buffer_destroy()</b>, <b>video_frame_commit()</b>, and
+    <b>video_frame_get_latest()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> video_frame_buffer_t::total_frames_dropped</h2>
+<p class="Pp">Total frames dropped (atomic counter).</p>
+<p class="Pp">Definition at line <b>202</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>video_frame_buffer_create()</b>,
+    <b>video_frame_buffer_destroy()</b>, <b>video_frame_commit()</b>, and
+    <b>video_frame_get_stats()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> video_frame_buffer_t::total_frames_received</h2>
+<p class="Pp">Total frames received (atomic counter).</p>
+<p class="Pp">Definition at line <b>201</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>video_frame_buffer_create()</b>,
+    <b>video_frame_buffer_destroy()</b>, <b>video_frame_commit()</b>, and
+    <b>video_frame_get_stats()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

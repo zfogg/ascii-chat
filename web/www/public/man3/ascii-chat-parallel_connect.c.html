@@ -49,8 +49,8 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>parallel_connect</b> (const
-    parallel_connect_config_t *config, <b>socket_t</b> *out_socket)
+<p class="Pp"><b>asciichat_error_t</b> <b>parallel_connect</b> (const
+    <b>parallel_connect_config_t</b> *config, <b>socket_t</b> *out_socket)
   <br/>
   <br/>
 </p>
@@ -68,9 +68,26 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_parallel_connect_(const_parallel_connect_config_t_*_config,_"><a class="permalink" href="#asciichat_error_t_parallel_connect_(const_parallel_connect_config_t_*_config,_">asciichat_error_t
-  parallel_connect (const parallel_connect_config_t * config, <b>socket_t</b> *
-  out_socket)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> parallel_connect (const
+  <b>parallel_connect_config_t</b> * config, <b>socket_t</b> * out_socket)</h2>
+<p class="Pp">Connect to hostname with parallel IPv4/IPv6 attempts</p>
+<p class="Pp"></p>
+<p class="Pp">Resolves hostname and attempts IPv4 and IPv6 connections in
+    parallel. Returns the first successful socket; the losing connection is
+    closed. Each connection attempt is non-blocking with select() timeout.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Connection
+  configuration</b>
+<br/>
+<i>out_socket</i> Pointer to receive winning socket</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_* on failure</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller is responsible for closing the returned socket
+<p class="Pp"></p>
+<p class="Pp">Timeout applies to each connection attempt independently</p>
+</div>
 <p class="Pp">Definition at line <b>174</b> of file
   <b>parallel_connect.c</b>.</p>
 <pre>174                                                                                                   {
@@ -227,14 +244,25 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>connection_attempt_t::addr</b>,
-    <b>connection_attempt_t::addr_len</b>, <b>asciichat_thread_create()</b>,
-    <b>asciichat_thread_join()</b>, <b>connection_attempt_t::callback_data</b>,
-    <b>connection_attempt_t::done</b>, <b>connection_attempt_t::family</b>,
-    <b>connection_attempt_t::family_name</b>, <b>connection_attempt_t::lock</b>,
-    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>safe_snprintf()</b>,
-    <b>connection_attempt_t::should_exit_callback</b>,
+    <b>connection_attempt_t::addr_len</b>, <b>ASCIICHAT_OK</b>,
+    <b>asciichat_thread_create()</b>, <b>asciichat_thread_init()</b>,
+    <b>asciichat_thread_is_initialized()</b>, <b>asciichat_thread_join()</b>,
+    <b>connection_attempt_t::callback_data</b>,
+    <b>parallel_connect_config_t::callback_data</b>, <b>cond_destroy()</b>,
+    <b>cond_init()</b>, <b>cond_timedwait</b>,
+    <b>connection_attempt_t::done</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_NETWORK</b>, <b>connection_attempt_t::family</b>,
+    <b>connection_attempt_t::family_name</b>,
+    <b>parallel_connect_config_t::hostname</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>connection_attempt_t::lock</b>, <b>log_debug</b>, <b>log_info</b>,
+    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, <b>NS_PER_MS_INT</b>,
+    <b>parallel_connect_config_t::port</b>, <b>safe_snprintf()</b>,
+    <b>SET_ERRNO</b>, <b>connection_attempt_t::should_exit_callback</b>,
+    <b>parallel_connect_config_t::should_exit_callback</b>,
     <b>connection_attempt_t::signal</b>, <b>connection_attempt_t::socket</b>,
-    <b>connection_attempt_t::timeout_ms</b>,
+    <b>socket_close()</b>, <b>connection_attempt_t::timeout_ms</b>,
+    <b>parallel_connect_config_t::timeout_ms</b>,
     <b>connection_attempt_t::winner_found</b>, and
     <b>connection_attempt_t::winner_socket</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_connect()</b>.</p>
@@ -247,7 +275,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

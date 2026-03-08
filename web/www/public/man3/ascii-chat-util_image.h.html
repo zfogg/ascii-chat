@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>image.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">image.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">image.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">image.h - &#x1F5BC;&#xFE0F; Safe overflow-checked buffer size
+    calculations for images and video frames</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>image_calc_pixel_count</b> (size_t
+    width, size_t height, size_t *out_pixel_count)
+  <br/>
+  Calculate pixel count with overflow checking. <b>asciichat_error_t</b>
+    <b>image_calc_pixel_buffer_size</b> (size_t pixel_count, size_t
+    bytes_per_pixel, size_t *out_size)
+  <br/>
+  Calculate pixel buffer size with overflow checking. <b>asciichat_error_t</b>
+    <b>image_calc_rgb_size</b> (size_t width, size_t height, size_t *out_size)
+  <br/>
+  Calculate total RGB buffer size from dimensions. <b>asciichat_error_t</b>
+    <b>image_calc_total_allocation</b> (size_t width, size_t height, size_t
+    struct_size, size_t bytes_per_pixel, size_t *out_size)
+  <br/>
+  Calculate combined size of image struct + pixel buffer.
+    <b>asciichat_error_t</b> <b>image_validate_dimensions</b> (size_t width,
+    size_t height)
+  <br/>
+  Validate image dimensions (non-zero, within limits). <b>asciichat_error_t</b>
+    <b>image_validate_buffer_size</b> (size_t requested_size)
+  <br/>
+  Validate buffer size against maximum allocation limit.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F5BC;&#xFE0F; Safe overflow-checked buffer size calculations
+    for images and video frames</p>
+<p class="Pp">Provides helpers for calculating buffer sizes with proper overflow
+    detection. All functions return error codes and set errno for detailed error
+    context.</p>
+<p class="Pp">Definition in file <b>util/image.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> image_calc_pixel_buffer_size (size_t
+  pixel_count, size_t bytes_per_pixel, size_t * out_size)</h2>
+<p class="Pp">Calculate pixel buffer size with overflow checking.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pixel_count</i> Number of pixels
+<br/>
+<i>bytes_per_pixel</i> Size of each pixel (e.g., 3 for RGB, 4 for RGBA)
+<br/>
+<i>out_size</i> Output: calculated buffer size in bytes</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM on
+  overflow</div>
+<p class="Pp">Safe wrapper for: size = pixel_count * bytes_per_pixel Prevents
+    integer overflow by checking before multiplication</p>
+<p class="Pp">Definition at line <b>31</b> of file <b>util/image.c</b>.</p>
+<pre>31                                                                                                              {
+32   if (!out_size) {
+33     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_size is NULL&quot;);
+34   }
+35 
+36   if (pixel_count == 0) {
+37     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Pixel count must be non-zero&quot;);
+38   }
+39 
+40   if (bytes_per_pixel == 0) {
+41     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;bytes_per_pixel must be non-zero&quot;);
+42   }
+43 
+44   // Check overflow before multiplication
+45   if (pixel_count &gt; SIZE_MAX / bytes_per_pixel) {
+46     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Pixel buffer too large (would overflow): %zu pixels * %zu bpp&quot;, pixel_count,
+47                      bytes_per_pixel);
+48   }
+49 
+50   *out_size = pixel_count * bytes_per_pixel;
+51   return ASCIICHAT_OK;
+52 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>image_calc_rgb_size()</b>, and
+    <b>image_calc_total_allocation()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> image_calc_pixel_count (size_t width,
+  size_t height, size_t * out_pixel_count)</h2>
+<p class="Pp">Calculate pixel count with overflow checking.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>width</i> Image width (pixels)
+<br/>
+<i>height</i> Image height (pixels)
+<br/>
+<i>out_pixel_count</i> Output: calculated pixel count</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM on
+  overflow</div>
+<p class="Pp">Safe wrapper for: pixel_count = width * height Prevents integer
+    overflow by checking before multiplication</p>
+<p class="Pp">Definition at line <b>12</b> of file <b>util/image.c</b>.</p>
+<pre>12                                                                                                {
+13   if (!out_pixel_count) {
+14     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_pixel_count is NULL&quot;);
+15   }
+16 
+17   // Check for zero dimensions
+18   if (width == 0 || height == 0) {
+19     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Image dimensions must be non-zero: %zu x %zu&quot;, width, height);
+20   }
+21 
+22   // Check overflow before multiplication
+23   if (height &gt; SIZE_MAX / width) {
+24     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Image dimensions too large (would overflow): %zu x %zu&quot;, width, height);
+25   }
+26 
+27   *out_pixel_count = width * height;
+28   return ASCIICHAT_OK;
+29 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>image_calc_rgb_size()</b>, and
+    <b>image_calc_total_allocation()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> image_calc_rgb_size (size_t width,
+  size_t height, size_t * out_size)</h2>
+<p class="Pp">Calculate total RGB buffer size from dimensions.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>width</i> Image width (pixels)
+<br/>
+<i>height</i> Image height (pixels)
+<br/>
+<i>out_size</i> Output: total buffer size (width * height * 3 bytes)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM on
+  overflow</div>
+<p class="Pp">Convenience function for RGB images (3 bytes per pixel). Safe
+    wrapper for: size = width * height * 3</p>
+<p class="Pp">Definition at line <b>54</b> of file <b>util/image.c</b>.</p>
+<pre>54                                                                                      {
+55   if (!out_size) {
+56     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_size is NULL&quot;);
+57   }
+58 
+59   // Calculate pixel count first
+60   size_t pixel_count;
+61   asciichat_error_t err = image_calc_pixel_count(width, height, &amp;pixel_count);
+62   if (err != ASCIICHAT_OK) {
+63     return err;
+64   }
+65 
+66   // Calculate size with 3 bytes per pixel (RGB)
+67   return image_calc_pixel_buffer_size(pixel_count, 3, out_size);
+68 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>image_calc_pixel_buffer_size()</b>, <b>image_calc_pixel_count()</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>handle_image_frame_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> image_calc_total_allocation (size_t
+  width, size_t height, size_t struct_size, size_t bytes_per_pixel, size_t *
+  out_size)</h2>
+<p class="Pp">Calculate combined size of image struct + pixel buffer.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>width</i> Image width (pixels)
+<br/>
+<i>height</i> Image height (pixels)
+<br/>
+<i>struct_size</i> Size of <b>image_t</b> structure (typically sizeof(image_t))
+<br/>
+<i>bytes_per_pixel</i> Size of each pixel
+<br/>
+<i>out_size</i> Output: total allocation size</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM on
+  overflow</div>
+<p class="Pp">Used for pool allocations where struct and pixels are contiguous.
+    Safe calculation of: struct_size + (width * height * bytes_per_pixel)</p>
+<p class="Pp">Definition at line <b>70</b> of file <b>util/image.c</b>.</p>
+<pre>71                                                                 {
+72   if (!out_size) {
+73     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_size is NULL&quot;);
+74   }
+75 
+76   // Calculate pixel count first with overflow checking
+77   size_t pixel_count;
+78   asciichat_error_t err = image_calc_pixel_count(width, height, &amp;pixel_count);
+79   if (err != ASCIICHAT_OK) {
+80     return err;
+81   }
+82 
+83   // Calculate pixel buffer size
+84   size_t pixel_buffer_size;
+85   err = image_calc_pixel_buffer_size(pixel_count, bytes_per_pixel, &amp;pixel_buffer_size);
+86   if (err != ASCIICHAT_OK) {
+87     return err;
+88   }
+89 
+90   // Check overflow when adding struct size
+91   if (pixel_buffer_size &gt; SIZE_MAX - struct_size) {
+92     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Total allocation size would overflow: struct=%zu + pixels=%zu&quot;, struct_size,
+93                      pixel_buffer_size);
+94   }
+95 
+96   *out_size = struct_size + pixel_buffer_size;
+97   return ASCIICHAT_OK;
+98 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>image_calc_pixel_buffer_size()</b>, <b>image_calc_pixel_count()</b>, and
+    <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> image_validate_buffer_size (size_t
+  requested_size)</h2>
+<p class="Pp">Validate buffer size against maximum allocation limit.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>requested_size</i> Requested buffer size</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK if valid, ERROR_INVALID_PARAM if exceeds
+  maximum</div>
+<p class="Pp">Checks that requested_size &lt;= IMAGE_MAX_PIXELS_SIZE Sets errno
+    with detailed context if validation fails</p>
+<p class="Pp">Definition at line <b>115</b> of file <b>util/image.c</b>.</p>
+<pre>115                                                                     {
+116   if (requested_size &gt; IMAGE_MAX_PIXELS_SIZE) {
+117     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Image buffer size exceeds maximum: %zu &gt; %zu bytes&quot;, requested_size,
+118                      IMAGE_MAX_PIXELS_SIZE);
+119   }
+120 
+121   return ASCIICHAT_OK;
+122 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>IMAGE_MAX_PIXELS_SIZE</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>handle_image_frame_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> image_validate_dimensions (size_t width,
+  size_t height)</h2>
+<p class="Pp">Validate image dimensions (non-zero, within limits).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>width</i> Image width to validate
+<br/>
+<i>height</i> Image height to validate</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK if valid, ERROR_INVALID_PARAM if
+  invalid</div>
+<p class="Pp">Checks that:</p>
+<ul class="Bl-bullet">
+  <li>Both width and height are non-zero</li>
+  <li>Dimensions don't exceed IMAGE_MAX_WIDTH and IMAGE_MAX_HEIGHT Sets errno
+      with detailed context if validation fails</li>
+</ul>
+<p class="Pp">Definition at line <b>12</b> of file <b>video.c</b>.</p>
+<pre>12                                                                          {
+13   if (width &gt; 0 &amp;&amp; height &gt; 0 &amp;&amp; width &lt;= 10000 &amp;&amp; height &lt;= 10000) {
+14     return ASCIICHAT_OK;
+15   }
+16   return ERROR_INVALID_PARAM;
+17 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>IMAGE_MAX_HEIGHT</b>, <b>IMAGE_MAX_WIDTH</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>handle_image_frame_packet()</b>, and
+    <b>image_new()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

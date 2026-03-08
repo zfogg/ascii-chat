@@ -71,6 +71,26 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> crypto_regex_extract_gpg_keygrip (const char * line,
   char ** keygrip_out)</h2>
+<p class="Pp">Extract GPG keygrip from colon-delimited GPG output</p>
+<p class="Pp"></p>
+<p class="Pp">Format: grp:::::::::D52FF935FBA59609EE65E1685287828242A1EA1A:
+    Where the keygrip is a 40-character hexadecimal string after 8
+    colon-delimited empty fields</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>line</i> Input line from GPG output (must start with
+  &quot;grp:&quot;)
+<br/>
+<i>keygrip_out</i> Output: allocated string with 40-char hex keygrip</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if line matches GPG keygrip format, false
+  otherwise</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller must free output string with <b>SAFE_FREE()</b>
+<p class="Pp"></p>
+<p class="Pp">Returns false if regex is not available (caller should use
+    fallback manual parsing)</p>
+</div>
 <p class="Pp">Definition at line <b>267</b> of file <b>regex.c</b>.</p>
 <pre>267                                                                             {
 268   if (!line || !keygrip_out) {
@@ -113,12 +133,32 @@
 305 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_extract_named_group()</b>.</p>
+<p class="Pp">References <b>asciichat_pcre2_extract_named_group()</b>,
+    <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>gpg_get_public_key()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> crypto_regex_extract_pem_base64 (const char *
   file_content, char ** base64_data_out)</h2>
+<p class="Pp">Extract base64 data from OpenSSH private key PEM format</p>
+<p class="Pp"></p>
+<p class="Pp">Format: -----BEGIN OPENSSH PRIVATE KEY----- &lt;multiline base64
+    data&gt; -----END OPENSSH PRIVATE KEY-----</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>file_content</i> Full contents of PEM key file
+<br/>
+<i>base64_data_out</i> Output: allocated string with base64 data (includes
+  whitespace)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if PEM structure found and extracted, false
+  otherwise</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller must free output string with <b>SAFE_FREE()</b>
+<p class="Pp"></p>
+<p class="Pp">Output includes newlines and whitespace (caller should remove as
+    needed)</p>
+</div>
 <p class="Pp">Definition at line <b>227</b> of file <b>regex.c</b>.</p>
 <pre>227                                                                                        {
 228   if (!file_content || !base64_data_out) {
@@ -161,13 +201,42 @@
 265 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_extract_named_group()</b>.</p>
+<p class="Pp">References <b>asciichat_pcre2_extract_named_group()</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>parse_ssh_private_key()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> crypto_regex_match_known_hosts (const char * line,
   char ** ip_port_out, char ** key_type_out, char ** hex_key_out, char **
   comment_out)</h2>
+<p class="Pp">Match SSH known_hosts line and extract components</p>
+<p class="Pp"></p>
+<p class="Pp">Format: &lt;IP:port&gt; &lt;keytype&gt; &lt;hex_key&gt; [comment]
+    Example: 192.0.2.1:8080 x25519 0123456789abcdef... ascii-chat</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>line</i> Input line from known_hosts file
+<br/>
+<i>ip_port_out</i> Output: allocated string with IP:port (e.g.,
+  &quot;192.0.2.1:8080&quot;)
+<br/>
+<i>key_type_out</i> Output: allocated string with key type (e.g.,
+  &quot;x25519&quot;, &quot;no-identity&quot;)
+<br/>
+<i>hex_key_out</i> Output: allocated string with 64-char hex key (may be NULL
+  for no-identity)
+<br/>
+<i>comment_out</i> Output: allocated string with comment (may be NULL)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if line matches known_hosts format, false
+  otherwise</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller must free all non-NULL output strings with
+  <b>SAFE_FREE()</b>
+<p class="Pp"></p>
+<p class="Pp">Returns false if any output pointer is NULL</p>
+</div>
 <p class="Pp">Definition at line <b>136</b> of file <b>regex.c</b>.</p>
 <pre>137                                                         {
 138   if (!line || !ip_port_out || !key_type_out || !hex_key_out || !comment_out) {
@@ -217,13 +286,35 @@
 182 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_extract_named_group()</b>.</p>
+<p class="Pp">References <b>asciichat_pcre2_extract_named_group()</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>SAFE_FREE</b>,
+    and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>check_known_host()</b>, and
     <b>check_known_host_no_identity()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> crypto_regex_match_public_key (const char * line,
   char ** base64_key_out, char ** comment_out)</h2>
+<p class="Pp">Match SSH Ed25519 public key line and extract base64</p>
+<p class="Pp"></p>
+<p class="Pp">Format: ssh-ed25519 &lt;base64_key&gt; [comment] Example:
+    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... test-key</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>line</i> Input line from SSH public key file
+<br/>
+<i>base64_key_out</i> Output: allocated string with base64-encoded key
+<br/>
+<i>comment_out</i> Output: allocated string with comment (may be NULL)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if line matches SSH Ed25519 format, false
+  otherwise</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller must free output strings with <b>SAFE_FREE()</b>
+<p class="Pp"></p>
+<p class="Pp">Case-insensitive: matches &quot;SSH-ED25519&quot; or
+    &quot;ssh-ed25519&quot;</p>
+</div>
 <p class="Pp">Definition at line <b>184</b> of file <b>regex.c</b>.</p>
 <pre>184                                                                                                 {
 185   if (!line || !base64_key_out || !comment_out) {
@@ -269,7 +360,9 @@
 225 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_extract_named_group()</b>.</p>
+<p class="Pp">References <b>asciichat_pcre2_extract_named_group()</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>SAFE_FREE</b>,
+    and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>parse_ssh_ed25519_line()</b>.</p>
 </section>
 </section>
@@ -280,7 +373,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

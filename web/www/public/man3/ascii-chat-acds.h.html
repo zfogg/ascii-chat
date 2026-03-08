@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>acds.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">acds.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">acds.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">acds.h - ascii-chat Discovery Service (ACDS) Protocol Message
+    Formats</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<p class="Pp"><b>ACDS Protocol Constants</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>ACIP_MAX_SESSION_STRING_LEN</b> 48
+  <br/>
+  Maximum session string length (e.g.,
+    <i>swift-river-mountain&quot;</i>=<i>20</i>chars).<i></i> #define
+    <b>ACIP_SESSION_EXPIRATION_MS</b> (24ULL * 60 * 60 * 1000)
+  <br/>
+  Session maximum lifetime (24 hours in milliseconds) Note: Sessions are
+    actually cleaned up after 3 hours of inactivity (last_activity_at), but
+    expires_at serves as an absolute maximum lifetime. #define
+    <b>ACIP_DISCOVERY_DEFAULT_PORT</b> <b>OPT_ACDS_PORT_INT_DEFAULT</b>
+  <br/>
+  Discovery server default port (use OPT_ACDS_PORT_INT_DEFAULT from options.h).
+    #define <b>ACIP_HOST_DEFAULT_PORT</b> <b>OPT_PORT_INT_DEFAULT</b>
+  <br/>
+  Default port for discovery mode hosts (use OPT_PORT_INT_DEFAULT from
+    options.h).
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>acds_session_type_t</b> { <b>SESSION_TYPE_DIRECT_TCP</b> =
+    0, <b>SESSION_TYPE_WEBRTC</b> = 1 }
+  <br/>
+  Session connection type.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<p class="Pp"><b>ACDS WebRTC Signaling Messages</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>acip_webrtc_sdp_t</b>
+  <br/>
+  <b>acip_webrtc_ice_t</b>
+  <br/>
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>ACDS String Reservation Messages (Future)</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>acip_string_reserve_t</b>
+  <br/>
+  <b>acip_string_reserved_t</b>
+  <br/>
+  <b>acip_string_renew_t</b>
+  <br/>
+  <b>acip_string_release_t</b>
+  <br/>
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>ACDS Ring Consensus Protocol (New P2P Design)</b>
+  <br/>
+  NEW ARCHITECTURE: Proactive future host election every 5 minutes. Participants
+    form a virtual ring and rotate who collects NAT data. Every 5 minutes, a new
+    &quot;quorum leader&quot; emerges with complete knowledge and elects the
+    future host. This pre-elected host is announced to all participants so they
+    know who will take over if current host dies.</p>
+<p class="Pp"></p>
+<p class="Pp">Benefits:</p>
+<ul class="Bl-bullet">
+  <li>No election delay when host dies (future host already known)</li>
+  <li>Fresh NAT data every 5 minutes (not stale)</li>
+  <li>Automatic rotation ensures fair load (each participant gets a turn)</li>
+  <li>Ring topology enables P2P coordination without central ACDS</li>
+</ul>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>acip_participant_list_t</b>
+  <br/>
+  <b>acip_participant_entry_t</b>
+  <br/>
+  <b>acip_ring_collect_t</b>
+  <br/>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ACDS_Discovery_Mode_Messages_(Host_Negotiation_&amp;_Migration)"><a class="permalink" href="#ACDS_Discovery_Mode_Messages_(Host_Negotiation_&amp;_Migration)">ACDS
+  Discovery Mode Messages (Host Negotiation &amp; Migration)</a></h2>
+<br/>
+<p class="Pp">enum <b>acip_nat_type_t</b> { <b>ACIP_NAT_TYPE_OPEN</b> = 0,
+    <b>ACIP_NAT_TYPE_FULL_CONE</b> = 1, <b>ACIP_NAT_TYPE_RESTRICTED</b> = 2,
+    <b>ACIP_NAT_TYPE_PORT_RESTRICTED</b> = 3, <b>ACIP_NAT_TYPE_SYMMETRIC</b> = 4
+    }
+  <br/>
+  NAT type classification for host selection. enum <b>acip_connection_type_t</b>
+    { <b>ACIP_CONNECTION_TYPE_DIRECT_PUBLIC</b> = 0,
+    <b>ACIP_CONNECTION_TYPE_UPNP</b> = 1, <b>ACIP_CONNECTION_TYPE_STUN</b> = 2,
+    <b>ACIP_CONNECTION_TYPE_TURN</b> = 3 }
+  <br/>
+  Connection type for host announcement. <b>acip_nat_quality_t</b>
+  <br/>
+  <b>acip_host_announcement_t</b>
+  <br/>
+  <b>acip_host_designated_t</b>
+  <br/>
+  <b>acip_host_lost_t</b>
+  <br/>
+  <b>acip_future_host_elected_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ACDS_Error_Handling"><a class="permalink" href="#ACDS_Error_Handling">ACDS
+  Error Handling</a></h2>
+<br/>
+<p class="Pp">enum <b>acip_error_code_t</b> { <b>ACIP_ERROR_NONE</b> = 0,
+    <b>ACIP_ERROR_SESSION_NOT_FOUND</b> = 1, <b>ACIP_ERROR_SESSION_FULL</b> = 2,
+    <b>ACIP_ERROR_INVALID_PASSWORD</b> = 3, <b>ACIP_ERROR_INVALID_SIGNATURE</b>
+    = 4, <b>ACIP_ERROR_RATE_LIMITED</b> = 5, <b>ACIP_ERROR_STRING_TAKEN</b> = 6,
+    <b>ACIP_ERROR_STRING_INVALID</b> = 7, <b>ACIP_ERROR_INTERNAL</b> = 255 }
+  <br/>
+  ACIP error codes. <b>acip_error_t</b>
+  <br/>
+  <b>acip_bandwidth_test_t</b>
+  <br/>
+  <b>acip_bandwidth_result_t</b>
+  <br/>
+  <b>acip_broadcast_ack_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ACDS_Session_Management_Messages"><a class="permalink" href="#ACDS_Session_Management_Messages">ACDS
+  Session Management Messages</a></h2>
+<br/>
+<p class="Pp"><b>acip_session_create_t</b>
+  <br/>
+  <b>acip_session_created_t</b>
+  <br/>
+  <b>acip_session_lookup_t</b>
+  <br/>
+  <b>acip_session_info_t</b>
+  <br/>
+  <b>acip_session_join_t</b>
+  <br/>
+  <b>acip_session_joined_t</b>
+  <br/>
+  <b>acip_participant_joined_t</b>
+  <br/>
+  <b>acip_participant_left_t</b>
+  <br/>
+  <b>acip_session_leave_t</b>
+  <br/>
+  <b>acip_session_end_t</b>
+  <br/>
+  <b>acip_session_reconnect_t</b>
+  <br/>
+  struct <b>__attribute__</b> ((packed))
+  <br/>
+  SESSION_CREATE (PACKET_TYPE_ACIP_SESSION_CREATE) - Create new session.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">ascii-chat Discovery Service (ACDS) Protocol Message Formats</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>acds.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

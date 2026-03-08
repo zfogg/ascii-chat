@@ -39,15 +39,15 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">char <b>address</b> [BUFFER_SIZE_SMALL]
+<p class="Pp">char <b>address</b> [<b>BUFFER_SIZE_SMALL</b>]
   <br/>
   Server address. int <b>port</b>
   <br/>
   Server port. <b>bool</b> <b>encryption_enabled</b>
   <br/>
-  Encryption enabled. char <b>password</b> [BUFFER_SIZE_SMALL]
+  Encryption enabled. char <b>password</b> [<b>BUFFER_SIZE_SMALL</b>]
   <br/>
-  Password (if any). char <b>server_key</b> [BUFFER_SIZE_MEDIUM]
+  Password (if any). char <b>server_key</b> [<b>BUFFER_SIZE_MEDIUM</b>]
   <br/>
   Server key for verification (if any). <b>bool</b> <b>enable_audio</b>
   <br/>
@@ -59,12 +59,12 @@
   <br/>
   User data for callbacks. <b>socket_t</b> <b>socket</b>
   <br/>
-  Connection socket. struct acip_transport * <b>transport</b>
+  Connection socket. struct <b>acip_transport</b> * <b>transport</b>
   <br/>
   Alternative transport (WebRTC, WebSocket, etc.) - NULL if using socket only.
     <b>bool</b> <b>connected</b>
   <br/>
-  Currently connected. uint32_t <b>client_id</b>
+  Currently connected. <b>uint32_t</b> <b>client_id</b>
   <br/>
   Assigned client ID. <b>bool</b> <b>video_active</b>
   <br/>
@@ -77,16 +77,17 @@
   Video capture context (for webcam/file media). <b>session_audio_ctx_t</b> *
     <b>audio_capture</b>
   <br/>
-  Audio capture context (for microphone). asciichat_thread_t
+  Audio capture context (for microphone). <b>asciichat_thread_t</b>
     <b>video_capture_thread</b>
   <br/>
-  Video capture thread handle. asciichat_thread_t <b>audio_capture_thread</b>
+  Video capture thread handle. <b>asciichat_thread_t</b>
+    <b>audio_capture_thread</b>
   <br/>
   Audio capture thread handle. <b>bool</b> <b>video_capture_running</b>
   <br/>
   Video capture thread running flag. <b>bool</b> <b>audio_capture_running</b>
   <br/>
-  Audio capture thread running flag. opus_codec_t * <b>opus_encoder</b>
+  Audio capture thread running flag. <b>opus_codec_t</b> * <b>opus_encoder</b>
   <br/>
   Opus encoder for audio compression. <b>bool</b> <b>initialized</b>
   <br/>
@@ -107,8 +108,8 @@
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="char_session_participant::address_BUFFER_SIZE_SMALL_"><a class="permalink" href="#char_session_participant::address_BUFFER_SIZE_SMALL_">char
-  session_participant::address[BUFFER_SIZE_SMALL]</a></h2>
+<h2 class="Ss" id="char_session_participant::address_"><a class="permalink" href="#char_session_participant::address_">char
+  session_participant::address[<b>BUFFER_SIZE_SMALL</b>]</a></h2>
 <p class="Pp">Server address.</p>
 <p class="Pp">Definition at line <b>45</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_connect()</b>, and
@@ -142,8 +143,8 @@
     <b>session_participant_stop_audio_capture()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_thread_t_session_participant::audio_capture_thread"><a class="permalink" href="#asciichat_thread_t_session_participant::audio_capture_thread">asciichat_thread_t
-  session_participant::audio_capture_thread</a></h2>
+<h2 class="Ss"><b>asciichat_thread_t</b>
+  session_participant::audio_capture_thread</h2>
 <p class="Pp">Audio capture thread handle.</p>
 <p class="Pp">Definition at line <b>102</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_start_audio_capture()</b>,
@@ -159,8 +160,7 @@
     <b>session_participant_disconnect()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint32_t_session_participant::client_id"><a class="permalink" href="#uint32_t_session_participant::client_id">uint32_t
-  session_participant::client_id</a></h2>
+<h2 class="Ss"><b>uint32_t</b> session_participant::client_id</h2>
 <p class="Pp">Assigned client ID.</p>
 <p class="Pp">Definition at line <b>81</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_connect()</b>,
@@ -231,16 +231,15 @@
     <b>session_participant_stop_video_capture()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="opus_codec_t*_session_participant::opus_encoder"><a class="permalink" href="#opus_codec_t*_session_participant::opus_encoder">opus_codec_t*
-  session_participant::opus_encoder</a></h2>
+<h2 class="Ss"><b>opus_codec_t</b>* session_participant::opus_encoder</h2>
 <p class="Pp">Opus encoder for audio compression.</p>
 <p class="Pp">Definition at line <b>111</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_destroy()</b>, and
     <b>session_participant_start_audio_capture()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="char_session_participant::password_BUFFER_SIZE_SMALL_"><a class="permalink" href="#char_session_participant::password_BUFFER_SIZE_SMALL_">char
-  session_participant::password[BUFFER_SIZE_SMALL]</a></h2>
+<h2 class="Ss" id="char_session_participant::password_"><a class="permalink" href="#char_session_participant::password_">char
+  session_participant::password[<b>BUFFER_SIZE_SMALL</b>]</a></h2>
 <p class="Pp">Password (if any).</p>
 <p class="Pp">Definition at line <b>54</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_create()</b>, and
@@ -255,8 +254,8 @@
     <b>session_participant_create()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="char_session_participant::server_key_BUFFER_SIZE_MEDIUM_"><a class="permalink" href="#char_session_participant::server_key_BUFFER_SIZE_MEDIUM_">char
-  session_participant::server_key[BUFFER_SIZE_MEDIUM]</a></h2>
+<h2 class="Ss" id="char_session_participant::server_key_"><a class="permalink" href="#char_session_participant::server_key_">char
+  session_participant::server_key[<b>BUFFER_SIZE_MEDIUM</b>]</a></h2>
 <p class="Pp">Server key for verification (if any).</p>
 <p class="Pp">Definition at line <b>57</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_create()</b>, and
@@ -279,8 +278,8 @@
     <b>session_participant_get_socket()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="struct_acip_transport*_session_participant::transport"><a class="permalink" href="#struct_acip_transport*_session_participant::transport">struct
-  acip_transport* session_participant::transport</a></h2>
+<h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
+  <b>acip_transport</b>* session_participant::transport</a></h2>
 <p class="Pp">Alternative transport (WebRTC, WebSocket, etc.) - NULL if using
     socket only.</p>
 <p class="Pp">Definition at line <b>75</b> of file <b>participant.c</b>.</p>
@@ -325,8 +324,8 @@
     <b>session_participant_stop_video_capture()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_thread_t_session_participant::video_capture_thread"><a class="permalink" href="#asciichat_thread_t_session_participant::video_capture_thread">asciichat_thread_t
-  session_participant::video_capture_thread</a></h2>
+<h2 class="Ss"><b>asciichat_thread_t</b>
+  session_participant::video_capture_thread</h2>
 <p class="Pp">Video capture thread handle.</p>
 <p class="Pp">Definition at line <b>99</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_start_video_capture()</b>,
@@ -341,7 +340,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

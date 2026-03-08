@@ -54,16 +54,18 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">wav_writer_t * <b>wav_writer_open</b> (const char *filepath, int
-    sample_rate, int channels)
+<p class="Pp"><b>wav_writer_t</b> * <b>wav_writer_open</b> (const char
+    *filepath, int sample_rate, int channels)
   <br/>
-  int <b>wav_writer_write</b> (wav_writer_t *writer, const float *samples, int
-    num_samples)
+  Open WAV file for writing. int <b>wav_writer_write</b> (<b>wav_writer_t</b>
+    *writer, const float *samples, int num_samples)
   <br/>
-  void <b>wav_writer_close</b> (wav_writer_t *writer)
+  Write audio samples to WAV file. void <b>wav_writer_close</b>
+    (<b>wav_writer_t</b> *writer)
   <br/>
-  <b>bool</b> <b>wav_dump_enabled</b> (void)
+  Close WAV file and finalize header. <b>bool</b> <b>wav_dump_enabled</b> (void)
   <br/>
+  Check if audio dumping is enabled via environment.
   <br/>
 </p>
 </section>
@@ -81,6 +83,9 @@
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> wav_dump_enabled (void )</h2>
+<p class="Pp">Check if audio dumping is enabled via environment.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if ASCIICHAT_DUMP_AUDIO=1</div>
 <p class="Pp">Definition at line <b>138</b> of file <b>wav_writer.c</b>.</p>
 <pre>138                             {
 139   const char *env = SAFE_GETENV(&quot;ASCIICHAT_DUMP_AUDIO&quot;);
@@ -88,12 +93,16 @@
 141 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SAFE_GETENV</b>.</p>
 <p class="Pp">Referenced by <b>audio_analysis_init()</b>, and
     <b>audio_client_init()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_wav_writer_close_(wav_writer_t_*_writer)"><a class="permalink" href="#void_wav_writer_close_(wav_writer_t_*_writer)">void
-  wav_writer_close (wav_writer_t * writer)</a></h2>
+<h2 class="Ss" id="void_wav_writer_close_("><a class="permalink" href="#void_wav_writer_close_(">void
+  wav_writer_close (<b>wav_writer_t</b> * writer)</a></h2>
+<p class="Pp">Close WAV file and finalize header.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>writer</i> WAV writer context</div>
 <p class="Pp">Definition at line <b>112</b> of file <b>wav_writer.c</b>.</p>
 <pre>112                                             {
 113   if (!writer) {
@@ -122,14 +131,24 @@
 136 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>wav_writer_t::file</b>, <b>SAFE_FREE</b>, and
+    <b>wav_writer_t::samples_written</b>.</p>
 <p class="Pp">Referenced by <b>audio_analysis_destroy()</b>,
     <b>audio_cleanup()</b>, <b>audio_client_init()</b>, and
     <b>client_audio_pipeline_destroy()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="wav_writer_t_*_wav_writer_open_(const_char_*_filepath,_int_sample_rate,_int_channels)"><a class="permalink" href="#wav_writer_t_*_wav_writer_open_(const_char_*_filepath,_int_sample_rate,_int_channels)">wav_writer_t
-  * wav_writer_open (const char * filepath, int sample_rate, int
-  channels)</a></h2>
+<h2 class="Ss"><b>wav_writer_t</b> * wav_writer_open (const char * filepath, int
+  sample_rate, int channels)</h2>
+<p class="Pp">Open WAV file for writing.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>filepath</i> Path to WAV file to create
+<br/>
+<i>sample_rate</i> Sample rate (e.g., 44100)
+<br/>
+<i>channels</i> Number of channels (1=mono, 2=stereo)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">WAV writer context or NULL on error</div>
 <p class="Pp">Definition at line <b>48</b> of file <b>wav_writer.c</b>.</p>
 <pre>48                                                                                    {
 49   if (!filepath || sample_rate &lt;= 0 || channels &lt;= 0 || channels &gt; 2) {
@@ -178,14 +197,26 @@
 92 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_fopen()</b>.</p>
+<p class="Pp">References <b>wav_writer_t::channels</b>,
+    <b>wav_writer_t::file</b>, <b>platform_fopen()</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>wav_writer_t::sample_rate</b>, and
+    <b>wav_writer_t::samples_written</b>.</p>
 <p class="Pp">Referenced by <b>audio_analysis_init()</b>,
     <b>audio_client_init()</b>, and <b>client_audio_pipeline_create()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_wav_writer_write_(wav_writer_t_*_writer,_const_float_*_samples,_int_num_samples)"><a class="permalink" href="#int_wav_writer_write_(wav_writer_t_*_writer,_const_float_*_samples,_int_num_samples)">int
-  wav_writer_write (wav_writer_t * writer, const float * samples, int
+<h2 class="Ss" id="int_wav_writer_write_("><a class="permalink" href="#int_wav_writer_write_(">int
+  wav_writer_write (<b>wav_writer_t</b> * writer, const float * samples, int
   num_samples)</a></h2>
+<p class="Pp">Write audio samples to WAV file.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>writer</i> WAV writer context
+<br/>
+<i>samples</i> Float samples in range [-1.0, 1.0]
+<br/>
+<i>num_samples</i> Number of samples to write</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, -1 on error</div>
 <p class="Pp">Definition at line <b>94</b> of file <b>wav_writer.c</b>.</p>
 <pre>94                                                                                   {
 95   if (!writer || !writer-&gt;file || !samples || num_samples &lt;= 0) {
@@ -206,6 +237,8 @@
 110 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>wav_writer_t::file</b>, and
+    <b>wav_writer_t::samples_written</b>.</p>
 <p class="Pp">Referenced by <b>audio_analysis_track_received_sample()</b>,
     <b>audio_analysis_track_sent_sample()</b>,
     <b>audio_process_received_samples()</b>, and
@@ -219,7 +252,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

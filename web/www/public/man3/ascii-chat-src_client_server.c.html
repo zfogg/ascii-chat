@@ -72,7 +72,7 @@
   Get ACIP transport instance. void <b>server_connection_set_transport</b>
     (<b>acip_transport_t</b> *transport)
   <br/>
-  Set ACIP transport instance from connection fallback. uint32_t
+  Set ACIP transport instance from connection fallback. <b>uint32_t</b>
     <b>server_connection_get_client_id</b> ()
   <br/>
   Get client ID assigned by server. const char * <b>server_connection_get_ip</b>
@@ -99,28 +99,28 @@
   Check if connection loss has been detected. void
     <b>server_connection_cleanup</b> ()
   <br/>
-  Cleanup connection management subsystem. asciichat_error_t
-    <b>threaded_send_packet</b> (packet_type_t type, const void *data, size_t
-    len)
+  Cleanup connection management subsystem. <b>asciichat_error_t</b>
+    <b>threaded_send_packet</b> (<b>packet_type_t</b> type, const void *data,
+    size_t len)
   <br/>
   Thread-safe packet transmission. int <b>threaded_send_audio_batch_packet</b>
     (const float *samples, int num_samples, int batch_count)
   <br/>
-  Thread-safe batched audio packet transmission. asciichat_error_t
-    <b>threaded_send_audio_opus</b> (const uint8_t *opus_data, size_t opus_size,
-    int sample_rate, int frame_duration)
+  Thread-safe batched audio packet transmission. <b>asciichat_error_t</b>
+    <b>threaded_send_audio_opus</b> (const <b>uint8_t</b> *opus_data, size_t
+    opus_size, int sample_rate, int frame_duration)
   <br/>
-  Thread-safe Opus audio frame transmission. asciichat_error_t
-    <b>threaded_send_audio_opus_batch</b> (const uint8_t *opus_data, size_t
-    opus_size, const uint16_t *frame_sizes, int frame_count)
+  Thread-safe Opus audio frame transmission. <b>asciichat_error_t</b>
+    <b>threaded_send_audio_opus_batch</b> (const <b>uint8_t</b> *opus_data,
+    size_t opus_size, const <b>uint16_t</b> *frame_sizes, int frame_count)
   <br/>
-  Thread-safe Opus audio batch packet transmission. asciichat_error_t
-    <b>threaded_send_image_frame</b> (const void *pixel_data, uint32_t width,
-    uint32_t height, uint32_t pixel_format)
+  Thread-safe Opus audio batch packet transmission. <b>asciichat_error_t</b>
+    <b>threaded_send_image_frame</b> (const void *pixel_data, <b>uint32_t</b>
+    width, <b>uint32_t</b> height, <b>uint32_t</b> pixel_format)
   <br/>
-  Thread-safe image frame transmission. asciichat_error_t
-    <b>threaded_send_image_frame_h265</b> (const void *pixel_data, uint32_t
-    width, uint32_t height)
+  Thread-safe image frame transmission. <b>asciichat_error_t</b>
+    <b>threaded_send_image_frame_h265</b> (const void *pixel_data,
+    <b>uint32_t</b> width, <b>uint32_t</b> height)
   <br/>
   Send H.265-encoded video frame to server (thread-safe). int
     <b>threaded_send_ping_packet</b> (void)
@@ -128,16 +128,16 @@
   Thread-safe ping packet transmission. int <b>threaded_send_pong_packet</b>
     (void)
   <br/>
-  Thread-safe pong packet transmission. asciichat_error_t
-    <b>threaded_send_stream_start_packet</b> (uint32_t stream_type)
+  Thread-safe pong packet transmission. <b>asciichat_error_t</b>
+    <b>threaded_send_stream_start_packet</b> (<b>uint32_t</b> stream_type)
   <br/>
-  Thread-safe stream start packet transmission. asciichat_error_t
+  Thread-safe stream start packet transmission. <b>asciichat_error_t</b>
     <b>threaded_send_terminal_size_with_auto_detect</b> (unsigned short width,
     unsigned short height)
   <br/>
   Thread-safe terminal size packet transmission with auto-detection. int
-    <b>threaded_send_client_join_packet</b> (const char *display_name, uint32_t
-    capabilities)
+    <b>threaded_send_client_join_packet</b> (const char *display_name,
+    <b>uint32_t</b> capabilities)
   <br/>
   Thread-safe client join packet transmission.
   <br/>
@@ -146,7 +146,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
 <br/>
-<p class="Pp">crypto_handshake_context_t <b>g_crypto_ctx</b> = {0}
+<p class="Pp"><b>crypto_handshake_context_t</b> <b>g_crypto_ctx</b> = {0}
   <br/>
   Per-connection crypto handshake context. <b>h265_encoder_t</b> *volatile
     <b>g_h265_encoder</b> = NULL
@@ -292,7 +292,7 @@
 1113 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>log_set_terminal_output()</b>,
+<p class="Pp">References <b>GET_OPTION</b>, <b>log_set_terminal_output()</b>,
     <b>mutex_destroy()</b>, and <b>server_connection_close()</b>.</p>
 </section>
 <section class="Ss">
@@ -350,8 +350,10 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_transport_destroy()</b>,
     <b>atomic_store_bool()</b>, <b>close_socket</b>,
-    <b>crypto_handshake_destroy()</b>, <b>g_crypto_ctx</b>, and
-    <b>log_set_terminal_output()</b>.</p>
+    <b>crypto_handshake_destroy()</b>, <b>g_crypto_ctx</b>, <b>GET_OPTION</b>,
+    <b>INVALID_SOCKET_VALUE</b>, <b>log_debug</b>,
+    <b>log_set_terminal_output()</b>, <b>mutex_lock</b>, and
+    <b>mutex_unlock</b>.</p>
 <p class="Pp">Referenced by <b>server_connection_cleanup()</b>.</p>
 </section>
 <section class="Ss">
@@ -821,15 +823,24 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_tcp_transport_create()</b>,
     <b>acip_transport_destroy()</b>,
-    <b>acip_websocket_client_transport_create()</b>, <b>atomic_store_bool()</b>,
+    <b>acip_websocket_client_transport_create()</b>, <b>ASCIICHAT_OK</b>,
+    <b>atomic_store_bool()</b>, <b>CLIENT_CAP_AUDIO</b>,
+    <b>CLIENT_CAP_COLOR</b>, <b>CLIENT_CAP_STRETCH</b>, <b>CLIENT_CAP_VIDEO</b>,
     <b>client_crypto_handshake()</b>, <b>client_crypto_init()</b>,
-    <b>close_socket</b>, <b>connect_with_timeout()</b>,
-    <b>CONNECTION_ERROR_AUTH_FAILED</b>, <b>crypto_client_get_context()</b>,
-    <b>crypto_client_is_ready()</b>, <b>format_ip_address()</b>,
-    <b>is_localhost_ipv4()</b>, <b>is_localhost_ipv6()</b>,
-    <b>log_set_terminal_output()</b>, <b>network_error_string()</b>,
-    <b>platform_sleep_us()</b>, <b>server_connection_set_ip()</b>,
-    <b>should_exit()</b>, <b>socket_configure_buffers()</b>,
+    <b>close_socket</b>, <b>COLOR_MODE_NONE</b>, <b>CONNECT_TIMEOUT</b>,
+    <b>connect_with_timeout()</b>, <b>CONNECTION_ERROR_AUTH_FAILED</b>,
+    <b>crypto_client_get_context()</b>, <b>crypto_client_is_ready()</b>,
+    <b>ERROR_CRYPTO_HANDSHAKE</b>, <b>FATAL</b>, <b>format_ip_address()</b>,
+    <b>GET_OPTION</b>, <b>url_parts_t::host</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>is_localhost_ipv4()</b>, <b>is_localhost_ipv6()</b>, <b>log_debug</b>,
+    <b>log_error</b>, <b>log_info</b>, <b>log_set_terminal_output()</b>,
+    <b>log_warn</b>, <b>MAX_DISPLAY_NAME_LEN</b>, <b>NET_TO_HOST_U16</b>,
+    <b>network_error_string()</b>, <b>platform_get_username()</b>,
+    <b>platform_sleep_us()</b>, <b>url_parts_t::port</b>, <b>SAFE_SNPRINTF</b>,
+    <b>SAFE_STRNCPY</b>, <b>url_parts_t::scheme</b>,
+    <b>server_connection_set_ip()</b>, <b>should_exit()</b>,
+    <b>socket_configure_buffers()</b>, <b>socket_create()</b>,
+    <b>socket_get_error()</b>, <b>socket_set_keepalive()</b>,
     <b>terminal_get_effective_height()</b>,
     <b>terminal_get_effective_width()</b>,
     <b>threaded_send_client_join_packet()</b>,
@@ -838,8 +849,7 @@
     <b>url_parts_destroy()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint32_t_server_connection_get_client_id_()"><a class="permalink" href="#uint32_t_server_connection_get_client_id_()">uint32_t
-  server_connection_get_client_id ()</a></h2>
+<h2 class="Ss"><b>uint32_t</b> server_connection_get_client_id ()</h2>
 <p class="Pp">Get client ID assigned by server.</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Client ID (based on local port) or 0 if not
@@ -964,8 +974,9 @@
 334 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, and
-  <b>mutex_init()</b>.</p>
+<p class="Pp">References <b>atomic_store_bool()</b>,
+    <b>INVALID_SOCKET_VALUE</b>, <b>log_error</b>, <b>mutex_init()</b>, and
+    <b>NAMED_REGISTER_ATOMIC</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> server_connection_is_active ()</h2>
@@ -981,7 +992,8 @@
 803 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>.</p>
+<p class="Pp">References <b>atomic_load_bool()</b>, and
+    <b>INVALID_SOCKET_VALUE</b>.</p>
 <p class="Pp">Referenced by <b>protocol_stop_connection()</b>,
     <b>threaded_send_image_frame()</b>, and
     <b>threaded_send_image_frame_h265()</b>.</p>
@@ -1051,6 +1063,7 @@
 918 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>log_debug</b>, and <b>SAFE_STRNCPY</b>.</p>
 <p class="Pp">Referenced by <b>client_main()</b>,
     <b>connection_attempt_tcp()</b>, and
   <b>server_connection_establish()</b>.</p>
@@ -1072,6 +1085,7 @@
 933 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>log_debug</b>.</p>
 <p class="Pp">Referenced by <b>client_main()</b>, and
     <b>connection_attempt_tcp()</b>.</p>
 </section>
@@ -1127,8 +1141,9 @@
 873 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>acip_transport_destroy()</b>, and
-    <b>atomic_store_bool()</b>.</p>
+<p class="Pp">References <b>acip_transport_destroy()</b>,
+    <b>atomic_store_bool()</b>, <b>INVALID_SOCKET_VALUE</b>, <b>log_debug</b>,
+    and <b>log_warn</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_server_connection_shutdown_()"><a class="permalink" href="#void_server_connection_shutdown_()">void
@@ -1170,7 +1185,8 @@
 1069 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>.</p>
+<p class="Pp">References <b>atomic_store_bool()</b>,
+    <b>INVALID_SOCKET_VALUE</b>, and <b>socket_shutdown()</b>.</p>
 <p class="Pp">Referenced by <b>client_main()</b>, and
     <b>protocol_stop_connection()</b>.</p>
 </section>
@@ -1222,13 +1238,14 @@
 1209 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>acip_send_audio_batch()</b>,
-    <b>atomic_load_bool()</b>, and <b>server_connection_lost()</b>.</p>
+<p class="Pp">References <b>acip_send_audio_batch()</b>, <b>ASCIICHAT_OK</b>,
+    <b>atomic_load_bool()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>, and
+    <b>server_connection_lost()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_threaded_send_audio_opus_(const_uint8_t_*_opus_data,_size_t_opus_size,_int_sample_rate,_int_frame_duration)"><a class="permalink" href="#asciichat_error_t_threaded_send_audio_opus_(const_uint8_t_*_opus_data,_size_t_opus_size,_int_sample_rate,_int_frame_duration)">asciichat_error_t
-  threaded_send_audio_opus (const uint8_t * opus_data, size_t opus_size, int
-  sample_rate, int frame_duration)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> threaded_send_audio_opus (const
+  <b>uint8_t</b> * opus_data, size_t opus_size, int sample_rate, int
+  frame_duration)</h2>
 <p class="Pp">Thread-safe Opus audio frame transmission. Sends a single
     Opus-encoded audio frame to the server with proper synchronization and
     encryption support.</p>
@@ -1295,14 +1312,17 @@
 1273 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, <b>buffer_pool_alloc()</b>,
-    <b>buffer_pool_free()</b>, <b>packet_send_via_transport()</b>, and
-    <b>server_connection_lost()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
+    <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>, <b>ERROR_MEMORY</b>,
+    <b>ERROR_NETWORK</b>, <b>HOST_TO_NET_U32</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, <b>packet_send_via_transport()</b>,
+    <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>, <b>server_connection_lost()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_threaded_send_audio_opus_batch_(const_uint8_t_*_opus_data,_size_t_opus_size,_const_uint16_t_*_frame_sizes,_int_frame_count)"><a class="permalink" href="#asciichat_error_t_threaded_send_audio_opus_batch_(const_uint8_t_*_opus_data,_size_t_opus_size,_const_uint16_t_*_frame_sizes,_int_frame_count)">asciichat_error_t
-  threaded_send_audio_opus_batch (const uint8_t * opus_data, size_t opus_size,
-  const uint16_t * frame_sizes, int frame_count)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> threaded_send_audio_opus_batch (const
+  <b>uint8_t</b> * opus_data, size_t opus_size, const <b>uint16_t</b> *
+  frame_sizes, int frame_count)</h2>
 <p class="Pp">Thread-safe Opus audio batch packet transmission. Sends a batch of
     Opus-encoded audio frames to the server with proper synchronization and
     encryption support.</p>
@@ -1352,11 +1372,13 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_send_audio_opus_batch()</b>,
-    <b>atomic_load_bool()</b>, and <b>server_connection_lost()</b>.</p>
+    <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>, <b>ERROR_NETWORK</b>,
+    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>server_connection_lost()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_threaded_send_client_join_packet_(const_char_*_display_name,_uint32_t_capabilities)"><a class="permalink" href="#int_threaded_send_client_join_packet_(const_char_*_display_name,_uint32_t_capabilities)">int
-  threaded_send_client_join_packet (const char * display_name, uint32_t
+<h2 class="Ss" id="int_threaded_send_client_join_packet_(const_char_*_display_name,_"><a class="permalink" href="#int_threaded_send_client_join_packet_(const_char_*_display_name,_">int
+  threaded_send_client_join_packet (const char * display_name, <b>uint32_t</b>
   capabilities)</a></h2>
 <p class="Pp">Thread-safe client join packet transmission. Sends client join
     packet with display name and capabilities to the server.</p>
@@ -1398,14 +1420,20 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_u64()</b>,
-    <b>crypto_client_get_context()</b>, <b>crypto_client_is_ready()</b>,
-    <b>log_network_message()</b>, and <b>threaded_send_packet()</b>.</p>
+    <b>client_info_packet_t::capabilities</b>,
+    <b>client_info_packet_t::client_id</b>, <b>crypto_client_get_context()</b>,
+    <b>crypto_client_is_ready()</b>, <b>client_info_packet_t::display_name</b>,
+    <b>HOST_TO_NET_U32</b>, <b>INVALID_SOCKET_VALUE</b>, <b>LOG_INFO</b>,
+    <b>log_network_message()</b>, <b>MAX_DISPLAY_NAME_LEN</b>,
+    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>PACKET_TYPE_CLIENT_JOIN</b>,
+    <b>REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER</b>, <b>SAFE_MEMSET</b>,
+    <b>SAFE_SNPRINTF</b>, and <b>threaded_send_packet()</b>.</p>
 <p class="Pp">Referenced by <b>server_connection_establish()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_threaded_send_image_frame_(const_void_*_pixel_data,_uint32_t_width,_uint32_t_height,_uint32_t_pixel_format)"><a class="permalink" href="#asciichat_error_t_threaded_send_image_frame_(const_void_*_pixel_data,_uint32_t_width,_uint32_t_height,_uint32_t_pixel_format)">asciichat_error_t
-  threaded_send_image_frame (const void * pixel_data, uint32_t width, uint32_t
-  height, uint32_t pixel_format)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> threaded_send_image_frame (const void *
+  pixel_data, <b>uint32_t</b> width, <b>uint32_t</b> height, <b>uint32_t</b>
+  pixel_format)</h2>
 <p class="Pp">Thread-safe image frame transmission. Sends image frames with
     serialization via g_send_mutex to prevent race conditions when multiple
     threads write to the same TCP socket.</p>
@@ -1452,15 +1480,15 @@
 1362 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>acip_send_image_frame()</b>,
-    <b>server_connection_get_transport()</b>,
-    <b>server_connection_is_active()</b>, and
-  <b>server_connection_lost()</b>.</p>
+<p class="Pp">References <b>acip_send_image_frame()</b>, <b>ASCIICHAT_OK</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, <b>server_connection_get_transport()</b>,
+    <b>server_connection_is_active()</b>, <b>server_connection_lost()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_threaded_send_image_frame_h265_(const_void_*_pixel_data,_uint32_t_width,_uint32_t_height)"><a class="permalink" href="#asciichat_error_t_threaded_send_image_frame_h265_(const_void_*_pixel_data,_uint32_t_width,_uint32_t_height)">asciichat_error_t
-  threaded_send_image_frame_h265 (const void * pixel_data, uint32_t width,
-  uint32_t height)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> threaded_send_image_frame_h265 (const
+  void * pixel_data, <b>uint32_t</b> width, <b>uint32_t</b> height)</h2>
 <p class="Pp">Send H.265-encoded video frame to server (thread-safe). Encodes
     RGB frame using H.265 codec before transmission. Much more
     bandwidth-efficient than raw pixel transmission. Uses mutex to prevent
@@ -1513,14 +1541,15 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_send_image_frame_h265()</b>,
-    <b>g_h265_encoder</b>, <b>server_connection_get_transport()</b>,
-    <b>server_connection_is_active()</b>, and
-  <b>server_connection_lost()</b>.</p>
+    <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>ERROR_NETWORK</b>, <b>g_h265_encoder</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, <b>server_connection_get_transport()</b>,
+    <b>server_connection_is_active()</b>, <b>server_connection_lost()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_threaded_send_packet_(packet_type_t_type,_const_void_*_data,_size_t_len)"><a class="permalink" href="#asciichat_error_t_threaded_send_packet_(packet_type_t_type,_const_void_*_data,_size_t_len)">asciichat_error_t
-  threaded_send_packet (packet_type_t type, const void * data, size_t
-  len)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> threaded_send_packet
+  (<b>packet_type_t</b> type, const void * data, size_t len)</h2>
 <p class="Pp">Thread-safe packet transmission. Sends a packet to the server with
     proper mutex protection and connection state checking. Automatically handles
     encryption if crypto is ready.</p>
@@ -1569,8 +1598,11 @@
 1167 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>,
-    <b>packet_send_via_transport()</b>, and <b>server_connection_lost()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
+    <b>ERROR_NETWORK</b>, <b>log_debug</b>, <b>log_debug_every</b>,
+    <b>LOG_RATE_SLOW</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>packet_send_via_transport()</b>, <b>server_connection_lost()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>threaded_send_client_join_packet()</b>,
     <b>threaded_send_ping_packet()</b>, <b>threaded_send_pong_packet()</b>,
     <b>threaded_send_stream_start_packet()</b>, and
@@ -1590,7 +1622,8 @@
 1423 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>threaded_send_packet()</b>.</p>
+<p class="Pp">References <b>PACKET_TYPE_PING</b>, and
+    <b>threaded_send_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_threaded_send_pong_packet_(void_)"><a class="permalink" href="#int_threaded_send_pong_packet_(void_)">int
@@ -1606,11 +1639,12 @@
 1435 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>threaded_send_packet()</b>.</p>
+<p class="Pp">References <b>PACKET_TYPE_PONG</b>, and
+    <b>threaded_send_packet()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_threaded_send_stream_start_packet_(uint32_t_stream_type)"><a class="permalink" href="#asciichat_error_t_threaded_send_stream_start_packet_(uint32_t_stream_type)">asciichat_error_t
-  threaded_send_stream_start_packet (uint32_t stream_type)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> threaded_send_stream_start_packet
+  (<b>uint32_t</b> stream_type)</h2>
 <p class="Pp">Thread-safe stream start packet transmission.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>stream_type</i> Type of stream (audio/video)</div>
@@ -1629,13 +1663,14 @@
 1453 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>threaded_send_packet()</b>.</p>
+<p class="Pp">References <b>HOST_TO_NET_U32</b>,
+    <b>PACKET_TYPE_STREAM_START</b>, and <b>threaded_send_packet()</b>.</p>
 <p class="Pp">Referenced by <b>protocol_start_connection()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_threaded_send_terminal_size_with_auto_detect_(unsigned_short_width,_unsigned_short_height)"><a class="permalink" href="#asciichat_error_t_threaded_send_terminal_size_with_auto_detect_(unsigned_short_width,_unsigned_short_height)">asciichat_error_t
+<h2 class="Ss"><b>asciichat_error_t</b>
   threaded_send_terminal_size_with_auto_detect (unsigned short width, unsigned
-  short height)</a></h2>
+  short height)</h2>
 <p class="Pp">Thread-safe terminal size packet transmission with auto-detection.
     Sends terminal capabilities packet to the server including terminal size,
     color capabilities, and rendering preferences. Auto-detects terminal
@@ -1743,10 +1778,42 @@
 1559 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>auto_height</b>, <b>auto_width</b>,
-    <b>detect_terminal_capabilities()</b>, <b>options_get()</b>,
-    <b>terminal_is_interactive()</b>, <b>terminal_is_stdin_tty()</b>,
-    <b>terminal_is_stdout_tty()</b>, and <b>threaded_send_packet()</b>.</p>
+<p class="Pp">References <b>apply_color_mode_override()</b>,
+    <b>AUDIO_CODEC_CAP_ALL</b>,
+    <b>terminal_capabilities_packet_t::capabilities</b>,
+    <b>terminal_capabilities_t::capabilities</b>,
+    <b>terminal_capabilities_packet_t::codec_capabilities_audio</b>,
+    <b>terminal_capabilities_packet_t::codec_capabilities_video</b>,
+    <b>terminal_capabilities_packet_t::color_count</b>,
+    <b>terminal_capabilities_t::color_count</b>,
+    <b>terminal_capabilities_packet_t::color_level</b>,
+    <b>terminal_capabilities_t::color_level</b>, <b>COLOR_MODE_AUTO</b>,
+    <b>terminal_capabilities_packet_t::colorterm</b>,
+    <b>terminal_capabilities_t::colorterm</b>, <b>DEFAULT_MAX_FPS</b>,
+    <b>terminal_capabilities_packet_t::desired_fps</b>,
+    <b>terminal_capabilities_t::desired_fps</b>,
+    <b>detect_terminal_capabilities()</b>,
+    <b>terminal_capabilities_packet_t::detection_reliable</b>,
+    <b>terminal_capabilities_t::detection_reliable</b>, <b>GET_OPTION</b>,
+    <b>terminal_capabilities_packet_t::height</b>, <b>HOST_TO_NET_U16</b>,
+    <b>HOST_TO_NET_U32</b>, <b>log_debug</b>, <b>log_warn</b>,
+    <b>options_get()</b>, <b>PACKET_TYPE_CLIENT_CAPABILITIES</b>,
+    <b>PALETTE_CUSTOM</b>, <b>options_state::palette_custom</b>,
+    <b>terminal_capabilities_packet_t::palette_custom</b>,
+    <b>options_state::palette_custom_set</b>,
+    <b>terminal_capabilities_packet_t::palette_type</b>,
+    <b>terminal_capabilities_packet_t::render_mode</b>,
+    <b>terminal_capabilities_t::render_mode</b>, <b>SAFE_MEMSET</b>,
+    <b>SAFE_STRNCPY</b>, <b>TERM_COLOR_NONE</b>,
+    <b>terminal_capabilities_packet_t::term_type</b>,
+    <b>terminal_capabilities_t::term_type</b>, <b>terminal_is_interactive()</b>,
+    <b>terminal_is_stdin_tty()</b>, <b>terminal_is_stdout_tty()</b>,
+    <b>threaded_send_packet()</b>, <b>UTF8_SETTING_FALSE</b>,
+    <b>terminal_capabilities_packet_t::utf8_support</b>,
+    <b>terminal_capabilities_t::utf8_support</b>, <b>VIDEO_CODEC_CAP_ALL</b>,
+    <b>terminal_capabilities_packet_t::wants_padding</b>,
+    <b>terminal_capabilities_t::wants_padding</b>, and
+    <b>terminal_capabilities_packet_t::width</b>.</p>
 <p class="Pp">Referenced by <b>protocol_start_connection()</b>, and
     <b>server_connection_establish()</b>.</p>
 </section>
@@ -1755,8 +1822,7 @@
 <h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="crypto_handshake_context_t_g_crypto_ctx_=__0_"><a class="permalink" href="#crypto_handshake_context_t_g_crypto_ctx_=__0_">crypto_handshake_context_t
-  g_crypto_ctx = {0}</a></h2>
+<h2 class="Ss"><b>crypto_handshake_context_t</b> g_crypto_ctx = {0}</h2>
 <p class="Pp">Per-connection crypto handshake context. Global crypto handshake
     context for this client connection.</p>
 <p class="Pp"></p>
@@ -1802,7 +1868,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>shutdown(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">shutdown(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">shutdown(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">shutdown - Shutdown System</p>
+<p class="Pp">
+  <br/>
+   - Clean shutdown detection without library accessing application state.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+<br/>
+<p class="Pp">file <b>shutdown.h</b>
+  <br/>
+  Shutdown check system for clean library/application separation.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef <b>bool</b>(* <b>shutdown_check_fn</b>) (void)
+  <br/>
+  Shutdown check callback function type.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>shutdown_register_callback</b> (<b>shutdown_check_fn</b>
+    callback)
+  <br/>
+  Register application's shutdown check function. <b>bool</b>
+    <b>shutdown_is_requested</b> (void)
+  <br/>
+  Check if shutdown has been requested.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Clean shutdown detection without library accessing application
+    state.</p>
+<p class="Pp">Provides clean separation between library and application for
+    shutdown detection. Library code should never directly access application
+    state.</p>
+<p class="Pp"></p>
+<p class="Pp">Usage: Application (server.c/client.c):
+    shutdown_register_callback(my_shutdown_check_fn);</p>
+<p class="Pp"></p>
+<p class="Pp">Library code (logging.c, debug/lock.c, etc.): if
+    (<b>shutdown_is_requested()</b>) { return; }</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_"><a class="permalink" href="#typedef_">typedef
+  <b>bool</b>(* shutdown_check_fn) (void)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/common/shutdown.h</b>&gt;<b></b></p>
+<p class="Pp">Shutdown check callback function type.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if shutdown has been requested, false
+  otherwise</div>
+<p class="Pp">Definition at line <b>32</b> of file <b>shutdown.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> shutdown_is_requested (void )</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/common/shutdown.h</b>&gt;<b></b></p>
+<p class="Pp">Check if shutdown has been requested.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if shutdown has been requested, false
+  otherwise</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Use this in library code to check for shutdown requests
+  without accessing application state directly. The callback must be registered
+  first with <b>shutdown_register_callback()</b>.</div>
+<p class="Pp">Definition at line <b>73</b> of file <b>common.c</b>.</p>
+<pre>73                                  {
+74   shutdown_check_fn callback = (shutdown_check_fn)atomic_ptr_load(&amp;g_shutdown_callback);
+75   if (callback == NULL) {
+76     return false; // No callback registered, assume not shutting down
+77   }
+78   return callback();
+79 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_ptr_load()</b>.</p>
+<p class="Pp">Referenced by <b>log_plain_msg()</b>,
+    <b>log_plain_stderr_msg()</b>, <b>log_plain_stderr_nonewline_msg()</b>,
+    <b>log_plain_stdout_msg()</b>, and <b>splash_wait_for_animation()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_shutdown_register_callback_("><a class="permalink" href="#void_shutdown_register_callback_(">void
+  shutdown_register_callback (<b>shutdown_check_fn</b> callback)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/common/shutdown.h</b>&gt;<b></b></p>
+<p class="Pp">Register application's shutdown check function.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>callback</i> Function to call to check if shutdown has
+  been requested</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Call this from <b>main()</b> to register the
+  application's shutdown detection function. Library code should use
+  <b>shutdown_is_requested()</b> instead of accessing application state
+  directly.</div>
+<p class="Pp">Definition at line <b>69</b> of file <b>common.c</b>.</p>
+<pre>69                                                             {
+70   atomic_ptr_store(&amp;g_shutdown_callback, (void *)callback);
+71 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_ptr_store()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, and <b>server_main()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

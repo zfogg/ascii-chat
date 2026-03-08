@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>rate_limit.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">rate_limit.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">rate_limit.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">rate_limit.h - &#x1F6A6; Rate limiting API with pluggable
+  backends</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>rate_limit_config_t</b>
+  <br/>
+  Rate limit configuration. struct <b>rate_limiter_backend_ops_t</b>
+  <br/>
+  Backend operations vtable.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>rate_limiter_s</b> <b>rate_limiter_t</b>
+  <br/>
+  Opaque rate limiter handle.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>rate_event_type_t</b> { <b>RATE_EVENT_SESSION_CREATE</b> =
+    0, <b>RATE_EVENT_SESSION_LOOKUP</b> = 1, <b>RATE_EVENT_SESSION_JOIN</b> = 2,
+    <b>RATE_EVENT_CONNECTION</b> = 3, <b>RATE_EVENT_IMAGE_FRAME</b> = 4,
+    <b>RATE_EVENT_AUDIO</b> = 5, <b>RATE_EVENT_PING</b> = 6,
+    <b>RATE_EVENT_CLIENT_JOIN</b> = 7, <b>RATE_EVENT_CONTROL</b> = 8,
+    <b>RATE_EVENT_MAX</b> }
+  <br/>
+  Rate limit event types.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>rate_limiter_t</b> * <b>rate_limiter_create_memory</b> (void)
+  <br/>
+  Create in-memory rate limiter. <b>rate_limiter_t</b> *
+    <b>rate_limiter_create_sqlite</b> (const char *db_path)
+  <br/>
+  Create SQLite-backed rate limiter. void <b>rate_limiter_set_sqlite_db</b>
+    (<b>rate_limiter_t</b> *limiter, void *db)
+  <br/>
+  Set SQLite database handle for rate limiter. void <b>rate_limiter_destroy</b>
+    (<b>rate_limiter_t</b> *limiter)
+  <br/>
+  Destroy rate limiter and free resources. <b>asciichat_error_t</b>
+    <b>rate_limiter_check</b> (<b>rate_limiter_t</b> *limiter, const char
+    *ip_address, <b>rate_event_type_t</b> event_type, const
+    <b>rate_limit_config_t</b> *config, <b>bool</b> *allowed)
+  <br/>
+  Check if an event from an IP address should be rate limited.
+    <b>asciichat_error_t</b> <b>rate_limiter_record</b> (<b>rate_limiter_t</b>
+    *limiter, const char *ip_address, <b>rate_event_type_t</b> event_type)
+  <br/>
+  Record a rate limit event. <b>asciichat_error_t</b> <b>rate_limiter_prune</b>
+    (<b>rate_limiter_t</b> *limiter, <b>uint32_t</b> max_age_secs)
+  <br/>
+  Clean up old rate limit events. const char *
+    <b>rate_limiter_event_type_string</b> (<b>rate_event_type_t</b> event_type)
+  <br/>
+  Get event type string for logging/database storage.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">const <b>rate_limit_config_t</b> <b>DEFAULT_RATE_LIMITS</b>
+    [<b>RATE_EVENT_MAX</b>]
+  <br/>
+  Default rate limits for each event type.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F6A6; Rate limiting API with pluggable backends</p>
+<p class="Pp">Supports two backends:</p>
+<ul class="Bl-bullet">
+  <li>Memory: Thread-safe in-memory tracking with uthash (for ascii-chat
+    server)</li>
+  <li>SQLite: Persistent database tracking (for acds discovery server)</li>
+</ul>
+<p class="Pp">Example usage:</p>
+<p class="Pp"></p>
+<pre>// Create in-memory rate limiter
+rate_limiter_t *limiter = rate_limiter_create_memory();
+// Or SQLite-backed limiter
+rate_limiter_t *limiter = rate_limiter_create_sqlite(&quot;acds.db&quot;);
+// Check rate limit
+bool allowed = false;
+rate_limiter_check(limiter, &quot;192.168.1.100&quot;, RATE_EVENT_SESSION_CREATE, NULL, &amp;allowed);
+if (allowed) {
+<br/>
+    rate_limiter_record(limiter, &quot;192.168.1.100&quot;, RATE_EVENT_SESSION_CREATE);
+<br/>
+    // Process request
+} else {
+<br/>
+    // Reject request
+}
+// Cleanup (call periodically)
+rate_limiter_prune(limiter, 3600);
+// Destroy
+rate_limiter_destroy(limiter);
+</pre>
+<p class="Pp">Definition in file <b>rate_limit.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
+  struct <b>rate_limiter_s</b> <b>rate_limiter_t</b></a></h2>
+<p class="Pp">Opaque rate limiter handle. Backend implementation is hidden from
+    users.</p>
+<p class="Pp">Definition at line <b>76</b> of file <b>rate_limit.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>rate_event_type_t</b></a></h2>
+<p class="Pp">Rate limit event types.</p>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="RATE_EVENT_SESSION_CREATE"><a class="permalink" href="#RATE_EVENT_SESSION_CREATE"><b><i>RATE_EVENT_SESSION_CREATE
+    </i></b></a></dt>
+  <dd>Session creation.</dd>
+  <dt id="RATE_EVENT_SESSION_LOOKUP"><a class="permalink" href="#RATE_EVENT_SESSION_LOOKUP"><b><i>RATE_EVENT_SESSION_LOOKUP
+    </i></b></a></dt>
+  <dd>Session lookup.</dd>
+  <dt id="RATE_EVENT_SESSION_JOIN"><a class="permalink" href="#RATE_EVENT_SESSION_JOIN"><b><i>RATE_EVENT_SESSION_JOIN
+    </i></b></a></dt>
+  <dd>Session join.</dd>
+  <dt id="RATE_EVENT_CONNECTION"><a class="permalink" href="#RATE_EVENT_CONNECTION"><b><i>RATE_EVENT_CONNECTION
+    </i></b></a></dt>
+  <dd>New connection.</dd>
+  <dt id="RATE_EVENT_IMAGE_FRAME"><a class="permalink" href="#RATE_EVENT_IMAGE_FRAME"><b><i>RATE_EVENT_IMAGE_FRAME
+    </i></b></a></dt>
+  <dd>Image frame from client (PACKET_TYPE_IMAGE_FRAME).</dd>
+  <dt id="RATE_EVENT_AUDIO"><a class="permalink" href="#RATE_EVENT_AUDIO"><b><i>RATE_EVENT_AUDIO
+    </i></b></a></dt>
+  <dd>Audio packet (PACKET_TYPE_AUDIO, PACKET_TYPE_AUDIO_BATCH).</dd>
+  <dt id="RATE_EVENT_PING"><a class="permalink" href="#RATE_EVENT_PING"><b><i>RATE_EVENT_PING
+    </i></b></a></dt>
+  <dd>Ping/pong keepalive (PACKET_TYPE_PING, PACKET_TYPE_PONG).</dd>
+  <dt id="RATE_EVENT_CLIENT_JOIN"><a class="permalink" href="#RATE_EVENT_CLIENT_JOIN"><b><i>RATE_EVENT_CLIENT_JOIN
+    </i></b></a></dt>
+  <dd>Client join request (PACKET_TYPE_CLIENT_JOIN).</dd>
+  <dt id="RATE_EVENT_CONTROL"><a class="permalink" href="#RATE_EVENT_CONTROL"><b><i>RATE_EVENT_CONTROL
+    </i></b></a></dt>
+  <dd>Control packets (CAPABILITIES, STREAM_START/STOP, LEAVE).</dd>
+  <dt id="RATE_EVENT_MAX"><a class="permalink" href="#RATE_EVENT_MAX"><b><i>RATE_EVENT_MAX
+    </i></b></a></dt>
+  <dd>Sentinel value.</dd>
+</dl>
+<p class="Pp">Definition at line <b>46</b> of file <b>rate_limit.h</b>.</p>
+<pre>46              {
+47   // ACDS discovery server events
+48   RATE_EVENT_SESSION_CREATE = 0, 
+49   RATE_EVENT_SESSION_LOOKUP = 1, 
+50   RATE_EVENT_SESSION_JOIN = 2,   
+51 
+52   // ascii-chat server events
+53   RATE_EVENT_CONNECTION = 3,  
+54   RATE_EVENT_IMAGE_FRAME = 4, 
+55   RATE_EVENT_AUDIO = 5,       
+56   RATE_EVENT_PING = 6,        
+57   RATE_EVENT_CLIENT_JOIN = 7, 
+58   RATE_EVENT_CONTROL = 8,     
+59 
+60   RATE_EVENT_MAX 
+61 } rate_event_type_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> rate_limiter_check
+  (<b>rate_limiter_t</b> * limiter, const char * ip_address,
+  <b>rate_event_type_t</b> event_type, const <b>rate_limit_config_t</b> *
+  config, <b>bool</b> * allowed)</h2>
+<p class="Pp">Check if an event from an IP address should be rate limited. Uses
+    sliding window: counts events in the last window_secs seconds.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>limiter</i> Rate limiter instance
+<br/>
+<i>ip_address</i> IP address string (IPv4 or IPv6)
+<br/>
+<i>event_type</i> Type of event
+<br/>
+<i></i><b>Config Module</b><i></i><b> Rate limit configuration (NULL = use
+  defaults)</b>
+<br/>
+<i>allowed</i> True if event is allowed, false if rate limited</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>128</b> of file <b>rate_limit.c</b>.</p>
+<pre>129                                                                                        {
+130   if (!limiter || !limiter-&gt;ops || !limiter-&gt;ops-&gt;check) {
+131     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid rate limiter&quot;);
+132   }
+133 
+134   if (!ip_address || !allowed) {
+135     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;ip_address or allowed is NULL&quot;);
+136   }
+137 
+138   if (event_type &gt;= RATE_EVENT_MAX) {
+139     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid event_type: %d&quot;, event_type);
+140   }
+141 
+142   return limiter-&gt;ops-&gt;check(limiter-&gt;backend_data, ip_address, event_type, config, allowed);
+143 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>rate_limiter_s::backend_data</b>,
+    <b>rate_limiter_backend_ops_t::check</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>rate_limiter_s::ops</b>, <b>RATE_EVENT_MAX</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>check_and_record_rate_limit()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>rate_limiter_t</b> * rate_limiter_create_memory (void )</h2>
+<p class="Pp">Create in-memory rate limiter. Thread-safe implementation using
+    uthash and mutexes. Suitable for ascii-chat server where persistence is not
+    needed.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Rate limiter instance or NULL on failure</div>
+<p class="Pp">Definition at line <b>73</b> of file <b>rate_limit.c</b>.</p>
+<pre>73                                                  {
+74   rate_limiter_t *limiter = malloc(sizeof(rate_limiter_t));
+75   if (!limiter) {
+76     log_error(&quot;Failed to allocate rate limiter&quot;);
+77     return NULL;
+78   }
+79 
+80   limiter-&gt;backend_data = memory_backend_create();
+81   if (!limiter-&gt;backend_data) {
+82     free(limiter);
+83     return NULL;
+84   }
+85 
+86   limiter-&gt;ops = &amp;memory_backend_ops;
+87   return limiter;
+88 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>rate_limiter_s::backend_data</b>, <b>log_error</b>,
+    <b>memory_backend_create()</b>, <b>memory_backend_ops</b>, and
+    <b>rate_limiter_s::ops</b>.</p>
+<p class="Pp">Referenced by <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>rate_limiter_t</b> * rate_limiter_create_sqlite (const char *
+  db_path)</h2>
+<p class="Pp">Create SQLite-backed rate limiter. Persistent implementation using
+    SQLite database. Suitable for acds discovery server where persistence is
+    needed.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db_path</i> Path to SQLite database (NULL = externally
+  managed database)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Rate limiter instance or NULL on failure</div>
+<p class="Pp">Definition at line <b>90</b> of file <b>rate_limit.c</b>.</p>
+<pre>90                                                                 {
+91   rate_limiter_t *limiter = malloc(sizeof(rate_limiter_t));
+92   if (!limiter) {
+93     log_error(&quot;Failed to allocate rate limiter&quot;);
+94     return NULL;
+95   }
+96 
+97   limiter-&gt;backend_data = sqlite_backend_create(db_path);
+98   if (!limiter-&gt;backend_data) {
+99     free(limiter);
+100     return NULL;
+101   }
+102 
+103   limiter-&gt;ops = &amp;sqlite_backend_ops;
+104   return limiter;
+105 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>rate_limiter_s::backend_data</b>, <b>log_error</b>,
+    <b>rate_limiter_s::ops</b>, <b>sqlite_backend_create()</b>, and
+    <b>sqlite_backend_ops</b>.</p>
+<p class="Pp">Referenced by <b>acds_server_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_rate_limiter_destroy_("><a class="permalink" href="#void_rate_limiter_destroy_(">void
+  rate_limiter_destroy (<b>rate_limiter_t</b> * limiter)</a></h2>
+<p class="Pp">Destroy rate limiter and free resources.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>limiter</i> Rate limiter instance (NULL-safe)</div>
+<p class="Pp">Definition at line <b>116</b> of file <b>rate_limit.c</b>.</p>
+<pre>116                                                    {
+117   if (!limiter) {
+118     return;
+119   }
+120 
+121   if (limiter-&gt;ops &amp;&amp; limiter-&gt;ops-&gt;destroy) {
+122     limiter-&gt;ops-&gt;destroy(limiter-&gt;backend_data);
+123   }
+124 
+125   free(limiter);
+126 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>rate_limiter_s::backend_data</b>,
+    <b>rate_limiter_backend_ops_t::destroy</b>, and
+  <b>rate_limiter_s::ops</b>.</p>
+<p class="Pp">Referenced by <b>acds_server_init()</b>,
+    <b>acds_server_shutdown()</b>, and <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_rate_limiter_event_type_string_("><a class="permalink" href="#const_char_*_rate_limiter_event_type_string_(">const
+  char * rate_limiter_event_type_string (<b>rate_event_type_t</b>
+  event_type)</a></h2>
+<p class="Pp">Get event type string for logging/database storage.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>event_type</i> Event type enum value</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Event type name string (e.g., &quot;session_create&quot;,
+  &quot;connection&quot;)</div>
+<p class="Pp">Get event type string for logging/database storage.</p>
+<p class="Pp"></p>
+<p class="Pp">Helper: Get event type string for logging.</p>
+<p class="Pp">Definition at line <b>176</b> of file <b>rate_limit.c</b>.</p>
+<pre>176                                                                          {
+177   if (event_type &gt;= RATE_EVENT_MAX) {
+178     return &quot;unknown&quot;;
+179   }
+180   return event_type_strings[event_type];
+181 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>RATE_EVENT_MAX</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> rate_limiter_prune
+  (<b>rate_limiter_t</b> * limiter, <b>uint32_t</b> max_age_secs)</h2>
+<p class="Pp">Clean up old rate limit events. Deletes events older than the
+    specified age to prevent unbounded growth. Should be called periodically
+    (e.g., every 5 minutes).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>limiter</i> Rate limiter instance
+<br/>
+<i>max_age_secs</i> Delete events older than this (0 = use default 1 hour)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>161</b> of file <b>rate_limit.c</b>.</p>
+<pre>161                                                                                      {
+162   if (!limiter || !limiter-&gt;ops || !limiter-&gt;ops-&gt;cleanup) {
+163     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid rate limiter&quot;);
+164   }
+165 
+166   return limiter-&gt;ops-&gt;cleanup(limiter-&gt;backend_data, max_age_secs);
+167 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>rate_limiter_s::backend_data</b>,
+    <b>rate_limiter_backend_ops_t::cleanup</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>rate_limiter_s::ops</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> rate_limiter_record
+  (<b>rate_limiter_t</b> * limiter, const char * ip_address,
+  <b>rate_event_type_t</b> event_type)</h2>
+<p class="Pp">Record a rate limit event. Should be called after
+    <b>rate_limiter_check()</b> returns allowed=true.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>limiter</i> Rate limiter instance
+<br/>
+<i>ip_address</i> IP address string
+<br/>
+<i>event_type</i> Type of event</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>145</b> of file <b>rate_limit.c</b>.</p>
+<pre>145                                                                                                                      {
+146   if (!limiter || !limiter-&gt;ops || !limiter-&gt;ops-&gt;record) {
+147     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid rate limiter&quot;);
+148   }
+149 
+150   if (!ip_address) {
+151     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;ip_address is NULL&quot;);
+152   }
+153 
+154   if (event_type &gt;= RATE_EVENT_MAX) {
+155     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid event_type: %d&quot;, event_type);
+156   }
+157 
+158   return limiter-&gt;ops-&gt;record(limiter-&gt;backend_data, ip_address, event_type);
+159 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>rate_limiter_s::backend_data</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>rate_limiter_s::ops</b>,
+    <b>RATE_EVENT_MAX</b>, <b>rate_limiter_backend_ops_t::record</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>check_and_record_rate_limit()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_rate_limiter_set_sqlite_db_("><a class="permalink" href="#void_rate_limiter_set_sqlite_db_(">void
+  rate_limiter_set_sqlite_db (<b>rate_limiter_t</b> * limiter, void *
+  db)</a></h2>
+<p class="Pp">Set SQLite database handle for rate limiter. For SQLite-backed
+    rate limiters where the database lifecycle is managed externally (e.g., ACDS
+    manages its own database). Must be called after
+    rate_limiter_create_sqlite(NULL).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>limiter</i> Rate limiter instance (must be SQLite
+  backend)
+<br/>
+<i>db</i> SQLite database handle</div>
+<p class="Pp">Definition at line <b>107</b> of file <b>rate_limit.c</b>.</p>
+<pre>107                                                                    {
+108   if (!limiter || !limiter-&gt;backend_data) {
+109     return;
+110   }
+111 
+112   // Call the SQLite backend function to set the database handle
+113   sqlite_backend_set_db(limiter-&gt;backend_data, (sqlite3 *)db);
+114 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>rate_limiter_s::backend_data</b>, and
+    <b>sqlite_backend_set_db()</b>.</p>
+<p class="Pp">Referenced by <b>acds_server_init()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>rate_limit_config_t</b> DEFAULT_RATE_LIMITS[<b>RATE_EVENT_MAX</b>]
+  [extern]</a></h2>
+<p class="Pp">Default rate limits for each event type.</p>
+<p class="Pp">Definition at line <b>30</b> of file <b>rate_limit.c</b>.</p>
+<pre>30                                                               {
+31 // ACDS discovery server limits
+32 #ifdef NDEBUG
+33     // Release mode: production limits (144 FPS video, 172 FPS audio)
+34     [RATE_EVENT_SESSION_CREATE] = {.max_events = 10, .window_secs = 60}, // 10 creates per minute
+35     [RATE_EVENT_SESSION_LOOKUP] = {.max_events = 30, .window_secs = 60}, // 30 lookups per minute
+36     [RATE_EVENT_SESSION_JOIN] = {.max_events = 20, .window_secs = 60},   // 20 joins per minute
+37     [RATE_EVENT_CONNECTION] = {.max_events = 50, .window_secs = 60},     // 50 connections per minute
+38     [RATE_EVENT_IMAGE_FRAME] = {.max_events = 8640, .window_secs = 60},  // 8640 frames/min = 144 FPS
+39     [RATE_EVENT_AUDIO] = {.max_events = 10320, .window_secs = 60},       // 10320 packets/min = 172 FPS
+40     [RATE_EVENT_PING] = {.max_events = 120, .window_secs = 60},          // 120 pings/min = 2 Hz max
+41     [RATE_EVENT_CLIENT_JOIN] = {.max_events = 10, .window_secs = 60},    // 10 joins per minute
+42     [RATE_EVENT_CONTROL] = {.max_events = 100, .window_secs = 60},       // 100 control packets/min
+43 #else
+44     // Debug mode: slightly relaxed limits for development/testing (1.5x production limits)
+45     [RATE_EVENT_SESSION_CREATE] = {.max_events = 15, .window_secs = 60}, // 15 creates per minute
+46     [RATE_EVENT_SESSION_LOOKUP] = {.max_events = 45, .window_secs = 60}, // 45 lookups per minute
+47     [RATE_EVENT_SESSION_JOIN] = {.max_events = 30, .window_secs = 60},   // 30 joins per minute
+48     [RATE_EVENT_CONNECTION] = {.max_events = 75, .window_secs = 60},     // 75 connections per minute
+49     [RATE_EVENT_IMAGE_FRAME] = {.max_events = 12960, .window_secs = 60}, // 12960 frames/min = 216 FPS
+50     [RATE_EVENT_AUDIO] = {.max_events = 15480, .window_secs = 60},       // 15480 packets/min = 258 FPS
+51     [RATE_EVENT_PING] = {.max_events = 180, .window_secs = 60},          // 180 pings/min = 3 Hz
+52     [RATE_EVENT_CLIENT_JOIN] = {.max_events = 25, .window_secs = 60},    // 25 joins per minute (for testing reconnects)
+53     [RATE_EVENT_CONTROL] = {.max_events = 150, .window_secs = 60},       // 150 control packets/min
+54 #endif
+55 };</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

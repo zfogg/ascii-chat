@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>memory.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">memory.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">memory.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">memory.h - &#x1F9E0; In-memory rate limiting backend interface</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void * <b>memory_backend_create</b> (void)
+  <br/>
+  Create memory backend instance. <b>uint64_t</b>
+    <b>rate_limiter_get_time_ms</b> (void)
+  <br/>
+  Helper: Get current time in milliseconds. const char *
+    <b>rate_limiter_event_type_string</b> (<b>rate_event_type_t</b> event_type)
+  <br/>
+  Helper: Get event type string for logging.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">const <b>rate_limiter_backend_ops_t</b> <b>memory_backend_ops</b>
+  <br/>
+  Memory backend operations vtable.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F9E0; In-memory rate limiting backend interface</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>network/rate_limit/memory.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_*_memory_backend_create_(void_)"><a class="permalink" href="#void_*_memory_backend_create_(void_)">void
+  * memory_backend_create (void )</a></h2>
+<p class="Pp">Create memory backend instance.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Backend instance or NULL on failure</div>
+<p class="Pp">Definition at line <b>239</b> of file
+    <b>network/rate_limit/memory.c</b>.</p>
+<pre>239                                   {
+240   memory_backend_t *backend = SAFE_MALLOC(sizeof(memory_backend_t), memory_backend_t *);
+241   if (!backend) {
+242     log_error(&quot;Failed to allocate memory backend&quot;);
+243     return NULL;
+244   }
+245 
+246   memset(backend, 0, sizeof(*backend));
+247 
+248   if (mutex_init(&amp;backend-&gt;lock, &quot;rate_limiter&quot;) != 0) {
+249     log_error(&quot;Failed to initialize mutex&quot;);
+250     SAFE_FREE(backend);
+251     return NULL;
+252   }
+253 
+254   log_debug(&quot;Memory rate limiter backend initialized&quot;);
+255   return backend;
+256 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>memory_backend_t::lock</b>, <b>log_debug</b>,
+    <b>log_error</b>, <b>mutex_init()</b>, <b>SAFE_FREE</b>, and
+    <b>SAFE_MALLOC</b>.</p>
+<p class="Pp">Referenced by <b>rate_limiter_create_memory()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_rate_limiter_event_type_string_("><a class="permalink" href="#const_char_*_rate_limiter_event_type_string_(">const
+  char * rate_limiter_event_type_string (<b>rate_event_type_t</b>
+  event_type)</a></h2>
+<p class="Pp">Helper: Get event type string for logging. Helper: Get event type
+    string for logging.</p>
+<p class="Pp">Definition at line <b>176</b> of file <b>rate_limit.c</b>.</p>
+<pre>176                                                                          {
+177   if (event_type &gt;= RATE_EVENT_MAX) {
+178     return &quot;unknown&quot;;
+179   }
+180   return event_type_strings[event_type];
+181 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> rate_limiter_get_time_ms (void )</h2>
+<p class="Pp">Helper: Get current time in milliseconds.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>rate_limiter_backend_ops_t</b> memory_backend_ops [extern]</a></h2>
+<p class="Pp">Memory backend operations vtable.</p>
+<p class="Pp">Definition at line <b>258</b> of file
+    <b>network/rate_limit/memory.c</b>.</p>
+<pre>258                                                     {
+259     .check = memory_check,
+260     .record = memory_record,
+261     .cleanup = memory_cleanup,
+262     .destroy = memory_destroy,
+263 };</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>rate_limiter_create_memory()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

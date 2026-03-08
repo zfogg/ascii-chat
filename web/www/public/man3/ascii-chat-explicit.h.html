@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>explicit.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">explicit.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">explicit.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">explicit.h - Check if an option was explicitly set via
+    command-line.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>IS_OPTION_EXPLICIT</b>(name, opts)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Check if an option was explicitly set via command-line.</p>
+<p class="Pp">Simple macro to check if an option was explicitly provided by the
+    user (as opposed to using a default value).</p>
+<p class="Pp"></p>
+<p class="Pp">Explicit tracking fields are stored directly in <b>options_t</b>
+    as ${optionName}_explicit. Only frequently-checked options have explicit
+    tracking to avoid struct bloat.</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="Usage"><a class="permalink" href="#Usage">Usage</a></h2>
+<pre>// Check if user explicitly set an option
+if (IS_OPTION_EXPLICIT(&quot;splash_screen&quot;, opts)) {
+<br/>
+    printf(&quot;User explicitly set splash_screen\n&quot;);
+}</pre>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">February 2026</div>
+<p class="Pp">Definition in file <b>explicit.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_IS_OPTION_EXPLICIT(_name,__opts)"><a class="permalink" href="#_define_IS_OPTION_EXPLICIT(_name,__opts)">#define
+  IS_OPTION_EXPLICIT( name, opts)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((opts) &amp;&amp; (opts)-&gt;name##_explicit)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>57</b> of file <b>explicit.h</b>.</p>
+<pre>57 #define IS_OPTION_EXPLICIT(name, opts) \
+58   ((opts) &amp;&amp; (opts)-&gt;name##_explicit)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

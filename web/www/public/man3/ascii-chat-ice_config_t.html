@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ice_config_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ice_config_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ice_config_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ice_config_t - ICE gathering configuration.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/webrtc/ice.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">const char * <b>ufrag</b>
+  <br/>
+  Username fragment for ICE (from offer). const char * <b>pwd</b>
+  <br/>
+  Password for ICE (from offer). <b>ice_send_candidate_callback_t</b>
+    <b>send_callback</b>
+  <br/>
+  Called for each gathered candidate. void * <b>user_data</b>
+  <br/>
+  Passed to callback.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">ICE gathering configuration.</p>
+<p class="Pp">Definition at line <b>157</b> of file <b>ice.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_ice_config_t::pwd"><a class="permalink" href="#const_char*_ice_config_t::pwd">const
+  char* ice_config_t::pwd</a></h2>
+<p class="Pp">Password for ICE (from offer).</p>
+<p class="Pp">Definition at line <b>159</b> of file <b>ice.h</b>.</p>
+<p class="Pp">Referenced by <b>ice_gather_candidates()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>ice_send_candidate_callback_t</b>
+  ice_config_t::send_callback</h2>
+<p class="Pp">Called for each gathered candidate.</p>
+<p class="Pp">Definition at line <b>160</b> of file <b>ice.h</b>.</p>
+<p class="Pp">Referenced by <b>ice_gather_candidates()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_ice_config_t::ufrag"><a class="permalink" href="#const_char*_ice_config_t::ufrag">const
+  char* ice_config_t::ufrag</a></h2>
+<p class="Pp">Username fragment for ICE (from offer).</p>
+<p class="Pp">Definition at line <b>158</b> of file <b>ice.h</b>.</p>
+<p class="Pp">Referenced by <b>ice_gather_candidates()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_ice_config_t::user_data"><a class="permalink" href="#void*_ice_config_t::user_data">void*
+  ice_config_t::user_data</a></h2>
+<p class="Pp">Passed to callback.</p>
+<p class="Pp">Definition at line <b>161</b> of file <b>ice.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

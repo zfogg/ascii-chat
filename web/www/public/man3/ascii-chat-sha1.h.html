@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>sha1.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">sha1.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">sha1.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">sha1.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>SHA1_CTX</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>SHA1_BLOCK_LENGTH</b> 64
+  <br/>
+  #define <b>SHA1_DIGEST_LENGTH</b> 20
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>SHA1Init</b> (<b>SHA1_CTX</b> *context)
+  <br/>
+  void <b>SHA1Transform</b> (<b>uint32_t</b> state[5], const unsigned char
+    buffer[64])
+  <br/>
+  void <b>SHA1Update</b> (<b>SHA1_CTX</b> *context, const void *data, unsigned
+    int len)
+  <br/>
+  void <b>SHA1Final</b> (unsigned char digest[20], <b>SHA1_CTX</b> *context)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_SHA1_BLOCK_LENGTH___64"><a class="permalink" href="#_define_SHA1_BLOCK_LENGTH___64">#define
+  SHA1_BLOCK_LENGTH 64</a></h2>
+<p class="Pp">Definition at line <b>16</b> of file <b>sha1.h</b>.</p>
+<p class="Pp">Referenced by <b>SHA1Transform()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SHA1_DIGEST_LENGTH___20"><a class="permalink" href="#_define_SHA1_DIGEST_LENGTH___20">#define
+  SHA1_DIGEST_LENGTH 20</a></h2>
+<p class="Pp">Definition at line <b>17</b> of file <b>sha1.h</b>.</p>
+<p class="Pp">Referenced by <b>SHA1Final()</b>, and
+    <b>turn_generate_credentials()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_SHA1Final_(unsigned_char_digest_20_,_"><a class="permalink" href="#void_SHA1Final_(unsigned_char_digest_20_,_">void
+  SHA1Final (unsigned char digest[20], <b>SHA1_CTX</b> * context)</a></h2>
+<p class="Pp">Definition at line <b>219</b> of file <b>sha1.c</b>.</p>
+<pre>219                                                                             {
+220   unsigned int i;
+221   unsigned char finalcount[8];
+222 
+223   for (i = 0; i &lt; 8; i++) {
+224     finalcount[i] = (unsigned char)((context-&gt;count &gt;&gt; ((7 - (i &amp; 7)) * 8)) &amp; 255); /* Endian independent */
+225   }
+226   SHA1Update(context, &quot;\200&quot;, 1);
+227   while ((context-&gt;count &amp; 504) != 448) {
+228     SHA1Update(context, &quot;\0&quot;, 1);
+229   }
+230   SHA1Update(context, finalcount, 8); /* Should cause a SHA1Transform() */
+231 
+232   for (i = 0; i &lt; SHA1_DIGEST_LENGTH; i++) {
+233     digest[i] = (unsigned char)((context-&gt;state[i &gt;&gt; 2] &gt;&gt; ((3 - (i &amp; 3)) * 8)) &amp; 255);
+234   }
+235   memset(&amp;finalcount, 0, sizeof(finalcount));
+236   memset(context, 0, sizeof(*context));
+237 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>SHA1_CTX::count</b>, <b>SHA1_DIGEST_LENGTH</b>,
+    <b>SHA1Update()</b>, and <b>SHA1_CTX::state</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_SHA1Init_("><a class="permalink" href="#void_SHA1Init_(">void
+  SHA1Init (<b>SHA1_CTX</b> * context)</a></h2>
+<p class="Pp">Definition at line <b>186</b> of file <b>sha1.c</b>.</p>
+<pre>186                                  {
+187   /* SHA1 initialization constants */
+188   context-&gt;count = 0;
+189   context-&gt;state[0] = 0x67452301;
+190   context-&gt;state[1] = 0xEFCDAB89;
+191   context-&gt;state[2] = 0x98BADCFE;
+192   context-&gt;state[3] = 0x10325476;
+193   context-&gt;state[4] = 0xC3D2E1F0;
+194 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>SHA1_CTX::count</b>, and <b>SHA1_CTX::state</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_SHA1Transform_("><a class="permalink" href="#void_SHA1Transform_(">void
+  SHA1Transform (<b>uint32_t</b> state[5], const unsigned char
+  buffer[64])</a></h2>
+<p class="Pp">Definition at line <b>70</b> of file <b>sha1.c</b>.</p>
+<pre>70                                                                                      {
+71   uint32_t a, b, c, d, e;
+72   typedef union {
+73     unsigned char c[64];
+74     uint32_t l[16];
+75   } CHAR64LONG16;
+76   CHAR64LONG16 *block;
+77 #ifdef SHA1HANDSOFF
+78   unsigned char workspace[SHA1_BLOCK_LENGTH];
+79 
+80   block = (CHAR64LONG16 *)workspace;
+81   memcpy(block, buffer, SHA1_BLOCK_LENGTH);
+82 #else
+83   block = (CHAR64LONG16 *)buffer;
+84 #endif
+85   /* Copy context-&gt;state[] to working vars */
+86   a = state[0];
+87   b = state[1];
+88   c = state[2];
+89   d = state[3];
+90   e = state[4];
+91 
+92   /* 4 rounds of 20 operations each. Loop unrolled. */
+93   R0(a, b, c, d, e, 0);
+94   R0(e, a, b, c, d, 1);
+95   R0(d, e, a, b, c, 2);
+96   R0(c, d, e, a, b, 3);
+97   R0(b, c, d, e, a, 4);
+98   R0(a, b, c, d, e, 5);
+99   R0(e, a, b, c, d, 6);
+100   R0(d, e, a, b, c, 7);
+101   R0(c, d, e, a, b, 8);
+102   R0(b, c, d, e, a, 9);
+103   R0(a, b, c, d, e, 10);
+104   R0(e, a, b, c, d, 11);
+105   R0(d, e, a, b, c, 12);
+106   R0(c, d, e, a, b, 13);
+107   R0(b, c, d, e, a, 14);
+108   R0(a, b, c, d, e, 15);
+109   R1(e, a, b, c, d, 16);
+110   R1(d, e, a, b, c, 17);
+111   R1(c, d, e, a, b, 18);
+112   R1(b, c, d, e, a, 19);
+113   R2(a, b, c, d, e, 20);
+114   R2(e, a, b, c, d, 21);
+115   R2(d, e, a, b, c, 22);
+116   R2(c, d, e, a, b, 23);
+117   R2(b, c, d, e, a, 24);
+118   R2(a, b, c, d, e, 25);
+119   R2(e, a, b, c, d, 26);
+120   R2(d, e, a, b, c, 27);
+121   R2(c, d, e, a, b, 28);
+122   R2(b, c, d, e, a, 29);
+123   R2(a, b, c, d, e, 30);
+124   R2(e, a, b, c, d, 31);
+125   R2(d, e, a, b, c, 32);
+126   R2(c, d, e, a, b, 33);
+127   R2(b, c, d, e, a, 34);
+128   R2(a, b, c, d, e, 35);
+129   R2(e, a, b, c, d, 36);
+130   R2(d, e, a, b, c, 37);
+131   R2(c, d, e, a, b, 38);
+132   R2(b, c, d, e, a, 39);
+133   R3(a, b, c, d, e, 40);
+134   R3(e, a, b, c, d, 41);
+135   R3(d, e, a, b, c, 42);
+136   R3(c, d, e, a, b, 43);
+137   R3(b, c, d, e, a, 44);
+138   R3(a, b, c, d, e, 45);
+139   R3(e, a, b, c, d, 46);
+140   R3(d, e, a, b, c, 47);
+141   R3(c, d, e, a, b, 48);
+142   R3(b, c, d, e, a, 49);
+143   R3(a, b, c, d, e, 50);
+144   R3(e, a, b, c, d, 51);
+145   R3(d, e, a, b, c, 52);
+146   R3(c, d, e, a, b, 53);
+147   R3(b, c, d, e, a, 54);
+148   R3(a, b, c, d, e, 55);
+149   R3(e, a, b, c, d, 56);
+150   R3(d, e, a, b, c, 57);
+151   R3(c, d, e, a, b, 58);
+152   R3(b, c, d, e, a, 59);
+153   R4(a, b, c, d, e, 60);
+154   R4(e, a, b, c, d, 61);
+155   R4(d, e, a, b, c, 62);
+156   R4(c, d, e, a, b, 63);
+157   R4(b, c, d, e, a, 64);
+158   R4(a, b, c, d, e, 65);
+159   R4(e, a, b, c, d, 66);
+160   R4(d, e, a, b, c, 67);
+161   R4(c, d, e, a, b, 68);
+162   R4(b, c, d, e, a, 69);
+163   R4(a, b, c, d, e, 70);
+164   R4(e, a, b, c, d, 71);
+165   R4(d, e, a, b, c, 72);
+166   R4(c, d, e, a, b, 73);
+167   R4(b, c, d, e, a, 74);
+168   R4(a, b, c, d, e, 75);
+169   R4(e, a, b, c, d, 76);
+170   R4(d, e, a, b, c, 77);
+171   R4(c, d, e, a, b, 78);
+172   R4(b, c, d, e, a, 79);
+173 
+174   /* Add the working vars back into context.state[] */
+175   state[0] += a;
+176   state[1] += b;
+177   state[2] += c;
+178   state[3] += d;
+179   state[4] += e;
+180   /* Wipe variables */
+181   a = b = c = d = e = 0;
+182 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>b</b>, <b>R0</b>, <b>R1</b>, <b>R2</b>, <b>R3</b>,
+    <b>R4</b>, and <b>SHA1_BLOCK_LENGTH</b>.</p>
+<p class="Pp">Referenced by <b>SHA1Update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_SHA1Update_("><a class="permalink" href="#void_SHA1Update_(">void
+  SHA1Update (<b>SHA1_CTX</b> * context, const void * data, unsigned int
+  len)</a></h2>
+<p class="Pp">Definition at line <b>198</b> of file <b>sha1.c</b>.</p>
+<pre>198                                                                           {
+199   const uint8_t *data = dataptr;
+200   unsigned int i;
+201   unsigned int j;
+202 
+203   j = (uint32_t)((context-&gt;count &gt;&gt; 3) &amp; 63);
+204   context-&gt;count += (len &lt;&lt; 3);
+205   if ((j + len) &gt; 63) {
+206     memcpy(&amp;context-&gt;buffer[j], data, (i = 64 - j));
+207     SHA1Transform(context-&gt;state, context-&gt;buffer);
+208     for (; i + 63 &lt; len; i += 64) {
+209       SHA1Transform(context-&gt;state, &amp;data[i]);
+210     }
+211     j = 0;
+212   } else
+213     i = 0;
+214   memcpy(&amp;context-&gt;buffer[j], &amp;data[i], len - i);
+215 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>SHA1_CTX::buffer</b>, <b>SHA1_CTX::count</b>,
+    <b>SHA1Transform()</b>, and <b>SHA1_CTX::state</b>.</p>
+<p class="Pp">Referenced by <b>SHA1Final()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

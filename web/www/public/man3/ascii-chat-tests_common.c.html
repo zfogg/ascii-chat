@@ -40,6 +40,7 @@
 <br/>
 <p class="Pp">const char * <b>test_get_binary_path</b> (void)
   <br/>
+  Get the path to the ascii-chat binary for integration tests.
   <br/>
 </p>
 </section>
@@ -53,81 +54,13 @@
 <p class="Pp">Definition in file <b>tests/common.c</b>.</p>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_test_get_binary_path_(void_)"><a class="permalink" href="#const_char_*_test_get_binary_path_(void_)">const
-  char * test_get_binary_path (void )</a></h2>
-<p class="Pp">Definition at line <b>16</b> of file <b>tests/common.c</b>.</p>
-<pre>16                                        {
-17   static char binary_path[256];
-18   static bool initialized = false;
-19 
-20   if (initialized) {
-21     return binary_path;
-22   }
-23 
-24 #ifdef _WIN32
-25   // Windows: try several paths
-26   const char *candidates[] = {
-27       &quot;./build/bin/ascii-chat.exe&quot;,
-28       &quot;./bin/ascii-chat.exe&quot;,
-29       &quot;ascii-chat.exe&quot;,
-30   };
-31   const char *fallback = &quot;./build/bin/ascii-chat.exe&quot;;
-32 #else
-33   // Check if we're in Docker (/.dockerenv file exists)
-34   bool in_docker = (access(&quot;/.dockerenv&quot;, F_OK) == 0);
-35   const char *build_dir = getenv(&quot;BUILD_DIR&quot;);
-36 
-37   // Try BUILD_DIR first if set
-38   if (build_dir) {
-39     safe_snprintf(binary_path, sizeof(binary_path), &quot;./%s/bin/ascii-chat&quot;, build_dir);
-40     if (access(binary_path, X_OK) == 0) {
-41       initialized = true;
-42       return binary_path;
-43     }
-44   }
-45 
-46   // Try several paths in order of preference
-47   const char *candidates[] = {
-48       // Relative paths from repo root
-49       in_docker ? &quot;./build_docker/bin/ascii-chat&quot; : &quot;./build/bin/ascii-chat&quot;,
-50       // Relative paths from build directory (when ctest runs from there)
-51       &quot;./bin/ascii-chat&quot;,
-52       // Absolute paths for Docker
-53       in_docker ? &quot;/app/build_docker/bin/ascii-chat&quot; : NULL,
-54   };
-55   const char *fallback = in_docker ? &quot;./build_docker/bin/ascii-chat&quot; : &quot;./build/bin/ascii-chat&quot;;
-56 #endif
-57 
-58   // Try each candidate path
-59   for (size_t i = 0; i &lt; sizeof(candidates) / sizeof(candidates[0]); i++) {
-60     if (candidates[i] &amp;&amp; access(candidates[i], X_OK) == 0) {
-61       safe_snprintf(binary_path, sizeof(binary_path), &quot;%s&quot;, candidates[i]);
-62       initialized = true;
-63       return binary_path;
-64     }
-65   }
-66 
-67   // Fallback to default (will likely fail but gives useful error)
-68   safe_snprintf(binary_path, sizeof(binary_path), &quot;%s&quot;, fallback);
-69   initialized = true;
-70   return binary_path;
-71 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>initialized</b>, and <b>safe_snprintf()</b>.</p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

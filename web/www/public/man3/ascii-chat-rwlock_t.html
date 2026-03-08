@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>rwlock_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">rwlock_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">rwlock_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">rwlock_t - Read-write lock type (POSIX: pthread_rwlock_t with
+    debug tracking).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/platform/rwlock.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">pthread_rwlock_t <b>impl</b>
+  <br/>
+  Underlying POSIX rwlock. const char * <b>name</b>
+  <br/>
+  Human-readable name for named registry (all builds). <b>uint64_t</b>
+    <b>last_rdlock_time_ns</b>
+  <br/>
+  Timestamp of last read lock acquisition (nanoseconds). <b>uint64_t</b>
+    <b>last_wrlock_time_ns</b>
+  <br/>
+  Timestamp of last write lock acquisition (nanoseconds). <b>uint64_t</b>
+    <b>last_unlock_time_ns</b>
+  <br/>
+  Timestamp of last unlock (nanoseconds). uintptr_t <b>write_held_by_key</b>
+  <br/>
+  Registry key of thread holding write lock (0 if not held). <b>atomic_t</b>
+    <b>read_lock_count</b>
+  <br/>
+  Number of threads holding read locks (thread-safe atomic). <b>uint64_t</b>
+    <b>rdlock_count</b>
+  <br/>
+  Total read lock acquisitions. <b>uint64_t</b> <b>wrlock_count</b>
+  <br/>
+  Total write lock acquisitions. <b>uint64_t</b> <b>unlock_count</b>
+  <br/>
+  Total unlocks.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Read-write lock type (POSIX: pthread_rwlock_t with debug
+    tracking).</p>
+<p class="Pp">Definition at line <b>61</b> of file <b>rwlock.h</b>.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

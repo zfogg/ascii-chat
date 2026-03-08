@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>send.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">send.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">send.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">send.h - ACIP shared/bidirectional packet sending functions.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>packet_send_via_transport</b>
+    (<b>acip_transport_t</b> *transport, <b>packet_type_t</b> type, const void
+    *payload, size_t payload_len, <b>uint32_t</b> client_id)
+  <br/>
+  Send arbitrary packet via transport (generic packet sender).
+    <b>asciichat_error_t</b> <b>acip_send_audio_batch</b>
+    (<b>acip_transport_t</b> *transport, const float *samples, <b>uint32_t</b>
+    num_samples, <b>uint32_t</b> batch_count)
+  <br/>
+  Send audio batch packet. <b>asciichat_error_t</b> <b>acip_send_audio_opus</b>
+    (<b>acip_transport_t</b> *transport, const void *opus_data, size_t opus_len)
+  <br/>
+  Send Opus-encoded audio packet. <b>asciichat_error_t</b>
+    <b>acip_send_audio_opus_batch</b> (<b>acip_transport_t</b> *transport, const
+    void *opus_data, size_t opus_len, const <b>uint16_t</b> *frame_sizes,
+    <b>uint32_t</b> frame_count, <b>uint32_t</b> sample_rate, <b>uint32_t</b>
+    frame_duration)
+  <br/>
+  Send batched Opus-encoded audio frames. <b>asciichat_error_t</b>
+    <b>acip_send_ping</b> (<b>acip_transport_t</b> *transport)
+  <br/>
+  Send ping packet. <b>asciichat_error_t</b> <b>acip_send_pong</b>
+    (<b>acip_transport_t</b> *transport)
+  <br/>
+  Send pong packet. <b>asciichat_error_t</b> <b>acip_send_error</b>
+    (<b>acip_transport_t</b> *transport, <b>uint32_t</b> <b>error_code</b>,
+    const char *message)
+  <br/>
+  Send error message packet. <b>asciichat_error_t</b>
+    <b>acip_send_remote_log</b> (<b>acip_transport_t</b> *transport,
+    <b>uint8_t</b> log_level, <b>uint8_t</b> direction, const char *message)
+  <br/>
+  Send remote log packet. <b>asciichat_error_t</b>
+    <b>acip_send_session_created</b> (<b>acip_transport_t</b> *transport, const
+    <b>acip_session_created_t</b> *response)
+  <br/>
+  Send SESSION_CREATED response packet. <b>asciichat_error_t</b>
+    <b>acip_send_session_info</b> (<b>acip_transport_t</b> *transport, const
+    <b>acip_session_info_t</b> *info)
+  <br/>
+  Send SESSION_INFO response packet. <b>asciichat_error_t</b>
+    <b>acip_send_session_joined</b> (<b>acip_transport_t</b> *transport, const
+    <b>acip_session_joined_t</b> *response)
+  <br/>
+  Send SESSION_JOINED response packet.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">ACIP shared/bidirectional packet sending functions.</p>
+<p class="Pp">Provides bidirectional send functions (used by both client and
+    server):</p>
+<ul class="Bl-bullet">
+  <li>Audio sending (PCM, Opus, batched)</li>
+  <li>Ping/Pong keepalive</li>
+  <li>Error messages and remote logging</li>
+  <li>Low-level <b>packet_send_via_transport()</b> utility</li>
+</ul>
+<p class="Pp">For client-specific sends (image frames, join/leave,
+    capabilities): &#x2192; See lib/network/acip/client.h</p>
+<p class="Pp"></p>
+<p class="Pp">For server-specific sends (ASCII frames, state updates, console
+    control): &#x2192; See lib/network/acip/server.h</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>send.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_audio_batch
+  (<b>acip_transport_t</b> * transport, const float * samples, <b>uint32_t</b>
+  num_samples, <b>uint32_t</b> batch_count)</h2>
+<p class="Pp">Send audio batch packet.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>samples</i> Audio samples (float array)
+<br/>
+<i>num_samples</i> Number of samples
+<br/>
+<i>batch_count</i> Number of batches aggregated</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>126</b> of file <b>send.c</b>.</p>
+<pre>127                                                               {
+128   if (!transport || !samples || num_samples == 0) {
+129     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+130   }
+131 
+132   // Build batch header
+133   audio_batch_packet_t header;
+134   header.batch_count = batch_count;
+135   header.total_samples = (uint32_t)num_samples;
+136   header.sample_rate = (uint32_t)AUDIO_SAMPLE_RATE;
+137   header.channels = 1;
+138 
+139   // Calculate total size (header + float samples)
+140   size_t samples_size = num_samples * sizeof(float);
+141   size_t total_size = sizeof(header) + samples_size;
+142 
+143   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
+144   if (!buffer) {
+145     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer&quot;);
+146   }
+147 
+148   // Copy header and samples
+149   memcpy(buffer, &amp;header, sizeof(header));
+150   memcpy(buffer + sizeof(header), samples, samples_size);
+151 
+152   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_BATCH, buffer, total_size, 0);
+153 
+154   buffer_pool_free(NULL, buffer, total_size);
+155   return result;
+156 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>AUDIO_SAMPLE_RATE</b>,
+    <b>audio_batch_packet_t::batch_count</b>, <b>buffer_pool_alloc()</b>,
+    <b>buffer_pool_free()</b>, <b>audio_batch_packet_t::channels</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_AUDIO_BATCH</b>,
+    <b>audio_batch_packet_t::sample_rate</b>, <b>SET_ERRNO</b>, and
+    <b>audio_batch_packet_t::total_samples</b>.</p>
+<p class="Pp">Referenced by <b>client_send_thread_func()</b>, and
+    <b>threaded_send_audio_batch_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_audio_opus
+  (<b>acip_transport_t</b> * transport, const void * opus_data, size_t
+  opus_len)</h2>
+<p class="Pp">Send Opus-encoded audio packet.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>opus_data</i> Opus-encoded audio data
+<br/>
+<i>opus_len</i> Length of encoded data</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>158</b> of file <b>send.c</b>.</p>
+<pre>158                                                                                                             {
+159   if (!transport || !opus_data || opus_len == 0) {
+160     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+161   }
+162 
+163   // Convert single opus frame to batch format (frame_count=1) with standard parameters
+164   // Standard: 48kHz sample rate, 20ms frame duration
+165   uint16_t frame_sizes[1] = {(uint16_t)opus_len};
+166   return acip_send_audio_opus_batch(transport, opus_data, opus_len, frame_sizes, 1, 48000, 20);
+167 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_send_audio_opus_batch()</b>,
+    <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_audio_opus_batch
+  (<b>acip_transport_t</b> * transport, const void * opus_data, size_t opus_len,
+  const <b>uint16_t</b> * frame_sizes, <b>uint32_t</b> frame_count,
+  <b>uint32_t</b> sample_rate, <b>uint32_t</b> frame_duration)</h2>
+<p class="Pp">Send batched Opus-encoded audio frames.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>opus_data</i> Opus-encoded data (multiple frames concatenated)
+<br/>
+<i>opus_len</i> Total length of encoded data
+<br/>
+<i>frame_sizes</i> Array of individual frame sizes
+<br/>
+<i>frame_count</i> Number of frames in batch
+<br/>
+<i>sample_rate</i> Sample rate in Hz
+<br/>
+<i>frame_duration</i> Duration per frame in milliseconds</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>169</b> of file <b>send.c</b>.</p>
+<pre>171                                                                       {
+172   if (!transport || !opus_data || !frame_sizes || frame_count == 0) {
+173     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+174   }
+175 
+176   // Build batch header (16 bytes)
+177   uint8_t header[16];
+178   *(uint32_t *)(header + 0) = HOST_TO_NET_U32(sample_rate);
+179   *(uint32_t *)(header + 4) = HOST_TO_NET_U32(frame_duration);
+180   *(uint32_t *)(header + 8) = HOST_TO_NET_U32(frame_count);
+181   *(uint32_t *)(header + 12) = 0; // reserved
+182 
+183   // Calculate sizes array size
+184   size_t sizes_len = frame_count * sizeof(uint16_t);
+185   size_t total_size = sizeof(header) + sizes_len + opus_len;
+186 
+187   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
+188   if (!buffer) {
+189     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer&quot;);
+190   }
+191 
+192   // Build packet: header + sizes + opus_data
+193   memcpy(buffer, header, sizeof(header));
+194 
+195   // Convert frame sizes to network byte order before copying
+196   // IMPORTANT: Server expects network byte order and will apply NET_TO_HOST_U16()
+197   uint16_t *sizes_buf = (uint16_t *)(buffer + sizeof(header));
+198   for (uint32_t i = 0; i &lt; frame_count; i++) {
+199     sizes_buf[i] = HOST_TO_NET_U16(frame_sizes[i]);
+200   }
+201 
+202   memcpy(buffer + sizeof(header) + sizes_len, opus_data, opus_len);
+203 
+204   log_info(&quot;&#x2605; OPUS_BATCH_SEND_DEBUG: header=16, frame_count=%u, sizes_len=%zu, opus_len=%zu, TOTAL=%zu&quot;, frame_count,
+205            sizes_len, opus_len, total_size);
+206 
+207   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS_BATCH, buffer, total_size, 0);
+208 
+209   buffer_pool_free(NULL, buffer, total_size);
+210   return result;
+211 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>HOST_TO_NET_U16</b>,
+    <b>HOST_TO_NET_U32</b>, <b>log_info</b>, <b>packet_send_via_transport()</b>,
+    <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_audio_opus()</b>,
+    <b>client_send_thread_func()</b>, and
+    <b>threaded_send_audio_opus_batch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_error (<b>acip_transport_t</b>
+  * transport, <b>uint32_t</b> error_code, const char * message)</h2>
+<p class="Pp">Send error message packet.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i></i><b>error_code</b><i></i><b> Error code from
+  </b><b>asciichat_error_t</b><b></b>
+<br/>
+<i>message</i> Error message (will be truncated to
+  MAX_ERROR_MESSAGE_LENGTH)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>247</b> of file <b>send.c</b>.</p>
+<pre>247                                                                                                          {
+248   if (!transport) {
+249     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
+250   }
+251 
+252   // Calculate message length (max MAX_ERROR_MESSAGE_LENGTH)
+253   size_t msg_len = 0;
+254   if (message) {
+255     msg_len = strlen(message);
+256     if (msg_len &gt; MAX_ERROR_MESSAGE_LENGTH) {
+257       msg_len = MAX_ERROR_MESSAGE_LENGTH;
+258     }
+259   }
+260 
+261   error_packet_t header;
+262   header.error_code = HOST_TO_NET_U32(error_code);
+263   header.message_length = HOST_TO_NET_U32((uint32_t)msg_len);
+264 
+265   // Allocate buffer for header + message
+266   size_t total_size = sizeof(header) + msg_len;
+267   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
+268   if (!buffer) {
+269     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer&quot;);
+270   }
+271 
+272   // Build packet
+273   memcpy(buffer, &amp;header, sizeof(header));
+274   if (msg_len &gt; 0) {
+275     memcpy(buffer + sizeof(header), message, msg_len);
+276   }
+277 
+278   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_ERROR_MESSAGE, buffer, total_size, 0);
+279 
+280   buffer_pool_free(NULL, buffer, total_size);
+281   return result;
+282 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
+    <b>error_code</b>, <b>error_packet_t::error_code</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>HOST_TO_NET_U32</b>,
+    <b>MAX_ERROR_MESSAGE_LENGTH</b>, <b>error_packet_t::message_length</b>,
+    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_ERROR_MESSAGE</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_handler()</b>, and
+    <b>disconnect_client_for_bad_data()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_ping (<b>acip_transport_t</b>
+  * transport)</h2>
+<p class="Pp">Send ping packet.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>217</b> of file <b>send.c</b>.</p>
+<pre>217                                                               {
+218   if (!transport) {
+219     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
+220   }
+221 
+222   // Ping has no payload
+223   return packet_send_via_transport(transport, PACKET_TYPE_PING, NULL, 0, 0);
+224 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
+    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_PING</b>, and
+    <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_pong (<b>acip_transport_t</b>
+  * transport)</h2>
+<p class="Pp">Send pong packet.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>226</b> of file <b>send.c</b>.</p>
+<pre>226                                                               {
+227   if (!transport) {
+228     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
+229   }
+230 
+231   // Pong has no payload
+232   return packet_send_via_transport(transport, PACKET_TYPE_PONG, NULL, 0, 0);
+233 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
+    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_PONG</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>handle_ping_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_remote_log
+  (<b>acip_transport_t</b> * transport, <b>uint8_t</b> log_level, <b>uint8_t</b>
+  direction, const char * message)</h2>
+<p class="Pp">Send remote log packet.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>log_level</i> Log level (0=DEBUG, 1=INFO, 2=WARN, 3=ERROR)
+<br/>
+<i>direction</i> Direction hint (0=client-&gt;server, 1=server-&gt;client)
+<br/>
+<i>message</i> Log message</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>284</b> of file <b>send.c</b>.</p>
+<pre>285                                                             {
+286   if (!transport || !message) {
+287     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or message&quot;);
+288   }
+289 
+290   size_t msg_len = strlen(message);
+291 
+292   remote_log_packet_t header;
+293   header.log_level = log_level;
+294   header.direction = direction;
+295   header.flags = 0;
+296   header.message_length = HOST_TO_NET_U32((uint32_t)msg_len);
+297 
+298   size_t total_size = sizeof(header) + msg_len;
+299 
+300   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
+301   if (!buffer) {
+302     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer&quot;);
+303   }
+304 
+305   // Build packet
+306   memcpy(buffer, &amp;header, sizeof(header));
+307   memcpy(buffer + sizeof(header), message, msg_len);
+308 
+309   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_REMOTE_LOG, buffer, total_size, 0);
+310 
+311   buffer_pool_free(NULL, buffer, total_size);
+312   return result;
+313 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
+    <b>remote_log_packet_t::direction</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_MEMORY</b>, <b>remote_log_packet_t::flags</b>,
+    <b>HOST_TO_NET_U32</b>, <b>remote_log_packet_t::log_level</b>,
+    <b>remote_log_packet_t::message_length</b>,
+    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_REMOTE_LOG</b>, and
+    <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_session_created
+  (<b>acip_transport_t</b> * transport, const <b>acip_session_created_t</b> *
+  response)</h2>
+<p class="Pp">Send SESSION_CREATED response packet.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>response</i> Session created response structure</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>319</b> of file <b>send.c</b>.</p>
+<pre>319                                                                                                                  {
+320   if (!transport || !response) {
+321     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or response&quot;);
+322   }
+323 
+324   return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_CREATED, response, sizeof(*response), 0);
+325 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_session_created_t</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>packet_send_via_transport()</b>,
+    <b>PACKET_TYPE_ACIP_SESSION_CREATED</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_session_info
+  (<b>acip_transport_t</b> * transport, const <b>acip_session_info_t</b> *
+  info)</h2>
+<p class="Pp">Send SESSION_INFO response packet.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>info</i> Session info structure</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>327</b> of file <b>send.c</b>.</p>
+<pre>327                                                                                                        {
+328   if (!transport || !info) {
+329     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or info&quot;);
+330   }
+331 
+332   return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_INFO, info, sizeof(*info), 0);
+333 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_session_info_t</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_ACIP_SESSION_INFO</b>,
+    and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_session_joined
+  (<b>acip_transport_t</b> * transport, const <b>acip_session_joined_t</b> *
+  response)</h2>
+<p class="Pp">Send SESSION_JOINED response packet.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>response</i> Session joined response structure</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>335</b> of file <b>send.c</b>.</p>
+<pre>335                                                                                                                {
+336   if (!transport || !response) {
+337     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or response&quot;);
+338   }
+339 
+340   return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(*response), 0);
+341 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_session_joined_t</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>packet_send_via_transport()</b>,
+    <b>PACKET_TYPE_ACIP_SESSION_JOINED</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> packet_send_via_transport
+  (<b>acip_transport_t</b> * transport, <b>packet_type_t</b> type, const void *
+  payload, size_t payload_len, <b>uint32_t</b> client_id)</h2>
+<p class="Pp">Send arbitrary packet via transport (generic packet sender).
+    Low-level function that builds packet header and sends via transport. Most
+    code should use the type-specific functions (acip_send_ping, etc.), but this
+    is useful for generic wrappers that handle multiple packet types.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>type</i> Packet type
+<br/>
+<i>payload</i> Packet payload (can be NULL if payload_len==0)
+<br/>
+<i>payload_len</i> Payload length
+<br/>
+<i>client_id</i> Client ID to include in packet header</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Send arbitrary packet via transport (generic packet sender).</p>
+<p class="Pp"></p>
+<p class="Pp">Wraps payload in ACIP packet header and sends via transport.
+    Handles CRC32 calculation and network byte order conversion.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>type</i> Packet type
+<br/>
+<i>payload</i> Payload data (may be NULL if payload_len is 0)
+<br/>
+<i>payload_len</i> Payload length
+<br/>
+<i>client_id</i> Client ID to include in packet header</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>41</b> of file <b>send.c</b>.</p>
+<pre>42                                                                                     {
+43   if (!transport) {
+44     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
+45   }
+46 
+47 // Sanity check: catch suspiciously large packets (likely a bug)
+48 #define MAX_REASONABLE_PACKET_SIZE (25 * 1024 * 1024) // 25 MB
+49   if (payload_len &gt; MAX_REASONABLE_PACKET_SIZE) {
+50     log_error(&quot;&#x2605; PACKET_SIZE_VALIDATION_FAILURE: Attempting to send %zu bytes (%zu MB) with type=%d (0x%04x), exceeds &quot;
+51               &quot;max %d bytes (25 MB) - likely a bug in caller's length calculation&quot;,
+52               payload_len, payload_len / (1024 * 1024), type, type, MAX_REASONABLE_PACKET_SIZE);
+53     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Packet payload too large: %zu bytes (max 25MB)&quot;, payload_len);
+54   }
+55 
+56   log_info(&quot;&#x2605; PACKET_SEND_VIA_TRANSPORT START: type=%d (0x%04x), payload_len=%zu bytes, client_id=%u, transport=%p&quot;,
+57            type, type, payload_len, client_id, (void *)transport);
+58 
+59   // Build packet header
+60   packet_header_t header;
+61   header.magic = HOST_TO_NET_U64(PACKET_MAGIC);
+62   header.type = HOST_TO_NET_U16(type);
+63   header.length = HOST_TO_NET_U32((uint32_t)payload_len);
+64   header.client_id = client_id;
+65 
+66   // Calculate CRC32 if we have payload
+67   if (payload &amp;&amp; payload_len &gt; 0) {
+68     header.crc32 = HOST_TO_NET_U32(asciichat_crc32((const uint8_t *)payload, payload_len));
+69     log_debug(&quot;&#x2605; PACKET_SEND: CRC32=0x%08x calculated for %zu byte payload&quot;, header.crc32, payload_len);
+70   } else {
+71     header.crc32 = 0;
+72     log_debug(&quot;&#x2605; PACKET_SEND: No payload, CRC32=0&quot;);
+73   }
+74 
+75   log_debug(&quot;&#x2605; PACKET_SEND: magic=0x%016llx, type=%d, length=%u bytes, client_id=%u&quot;, header.magic, type, header.length,
+76             header.client_id);
+77 
+78   // Calculate total packet size
+79   size_t total_size = sizeof(header) + payload_len;
+80   log_debug(&quot;&#x2605; PACKET_SEND: Header=%zu bytes + Payload=%zu bytes = Total=%zu bytes&quot;, sizeof(header), payload_len,
+81             total_size);
+82 
+83   // Allocate buffer for complete packet
+84   uint8_t *packet = SAFE_MALLOC(total_size, uint8_t *);
+85   if (!packet) {
+86     log_error(&quot;&#x2605; PACKET_SEND: Memory allocation FAILED for %zu byte packet buffer&quot;, total_size);
+87     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate packet buffer&quot;);
+88   }
+89 
+90   log_debug(&quot;&#x2605; PACKET_SEND: Packet buffer allocated at %p&quot;, (void *)packet);
+91 
+92   // Build complete packet: header + payload
+93   memcpy(packet, &amp;header, sizeof(header));
+94   if (payload &amp;&amp; payload_len &gt; 0) {
+95     memcpy(packet + sizeof(header), payload, payload_len);
+96     log_debug(&quot;&#x2605; PACKET_SEND: Payload copied to buffer offset %zu&quot;, sizeof(header));
+97   }
+98 
+99   // Send via transport (transport handles encryption if crypto_ctx present)
+100   // Transport does NOT take ownership - it only copies data to its own buffers
+101   log_info(&quot;&#x2605; PACKET_SEND: Calling acip_transport_send with %zu total bytes&quot;, total_size);
+102   asciichat_error_t result = acip_transport_send(transport, packet, total_size);
+103 
+104   if (result == ASCIICHAT_OK) {
+105     log_info(&quot;&#x2605; PACKET_SEND_VIA_TRANSPORT COMPLETE: SUCCESS - sent %zu bytes (type=%d, client_id=%u)&quot;, total_size, type,
+106              client_id);
+107   } else {
+108     log_error(&quot;&#x2605; PACKET_SEND_VIA_TRANSPORT FAILED: acip_transport_send returned error %d (%s) when sending %zu bytes &quot;
+109               &quot;type=%d to client_id=%u&quot;,
+110               result, asciichat_error_string(result), total_size, type, client_id);
+111   }
+112 
+113   // Always free the packet buffer
+114   SAFE_FREE(packet);
+115   return result;
+116 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_crc32</b>, <b>ASCIICHAT_OK</b>,
+    <b>packet_header_t::client_id</b>, <b>packet_header_t::crc32</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>HOST_TO_NET_U16</b>,
+    <b>HOST_TO_NET_U32</b>, <b>HOST_TO_NET_U64</b>,
+    <b>packet_header_t::length</b>, <b>log_debug</b>, <b>log_error</b>,
+    <b>log_info</b>, <b>packet_header_t::magic</b>,
+    <b>MAX_REASONABLE_PACKET_SIZE</b>, <b>PACKET_MAGIC</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, and <b>packet_header_t::type</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_ascii_frame()</b>,
+    <b>acip_send_audio_batch()</b>, <b>acip_send_audio_opus_batch()</b>,
+    <b>acip_send_capabilities()</b>, <b>acip_send_clear_console()</b>,
+    <b>acip_send_client_join()</b>, <b>acip_send_client_leave()</b>,
+    <b>acip_send_error()</b>, <b>acip_send_image_frame()</b>,
+    <b>acip_send_image_frame_h265()</b>, <b>acip_send_ping()</b>,
+    <b>acip_send_pong()</b>, <b>acip_send_protocol_version()</b>,
+    <b>acip_send_remote_log()</b>, <b>acip_send_server_state()</b>,
+    <b>acip_send_session_created()</b>, <b>acip_send_session_info()</b>,
+    <b>acip_send_session_joined()</b>, <b>acip_send_stream_start()</b>,
+    <b>acip_send_stream_stop()</b>, <b>client_send_thread_func()</b>,
+    <b>crypto_handshake_client_key_exchange()</b>,
+    <b>crypto_handshake_server_auth_challenge()</b>,
+    <b>crypto_handshake_server_complete()</b>,
+    <b>crypto_handshake_server_start()</b>, <b>threaded_send_audio_opus()</b>,
+    <b>threaded_send_packet()</b>, and
+  <b>websocket_client_send_packet()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>websocket_transport_data_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">websocket_transport_data_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">websocket_transport_data_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">websocket_transport_data_t - WebSocket transport implementation
+    data.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include
+  &lt;include/ascii-chat/network/websocket/internal.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">struct lws * <b>wsi</b>
+  <br/>
+  libwebsockets instance (owned) struct lws_context * <b>context</b>
+  <br/>
+  libwebsockets context (may be owned or borrowed) <b>bool</b>
+    <b>owns_context</b>
+  <br/>
+  True if transport owns context (client), false if borrowed (server).
+    <b>ringbuffer_t</b> * <b>recv_queue</b>
+  <br/>
+  Receive message queue. <b>ringbuffer_t</b> * <b>send_queue</b>
+  <br/>
+  Send message queue (for server-side transports). <b>mutex_t</b>
+    <b>recv_mutex</b>
+  <br/>
+  Protect recv_queue operations only. <b>cond_t</b> <b>recv_cond</b>
+  <br/>
+  Signal when recv_queue messages arrive. <b>mutex_t</b> <b>send_mutex</b>
+  <br/>
+  Protect send_queue operations only. <b>bool</b> <b>is_connected</b>
+  <br/>
+  Connection state. <b>bool</b> <b>connection_failed</b>
+  <br/>
+  Connection attempt failed (for client-side detection). <b>mutex_t</b>
+    <b>state_mutex</b>
+  <br/>
+  Protect state changes. <b>cond_t</b> <b>state_cond</b>
+  <br/>
+  Signal when is_connected changes (for connection wait). <b>uint8_t</b> *
+    <b>send_buffer</b>
+  <br/>
+  Send buffer with LWS_PRE padding. size_t <b>send_buffer_capacity</b>
+  <br/>
+  Current send buffer capacity. <b>asciichat_thread_t</b> <b>service_thread</b>
+  <br/>
+  Thread that services libwebsockets context. volatile <b>bool</b>
+    <b>service_running</b>
+  <br/>
+  Service thread running flag. <b>uint8_t</b> * <b>partial_buffer</b>
+  <br/>
+  Partial message buffer being assembled. size_t <b>partial_size</b>
+  <br/>
+  Current size of partial buffer. size_t <b>partial_capacity</b>
+  <br/>
+  Capacity of partial buffer. <b>uint64_t</b> <b>reassembly_start_ns</b>
+  <br/>
+  Start time of current reassembly (for timeout detection). int
+    <b>fragment_count</b>
+  <br/>
+  Fragment count for current reassembly. <b>bool</b> <b>reassembling</b>
+  <br/>
+  True if currently assembling a message. <b>ringbuffer_t</b> *
+    <b>pending_free_queue</b>
+  <br/>
+  Queue of buffers pending delayed free. <b>mutex_t</b>
+    <b>pending_free_mutex</b>
+  <br/>
+  Protect pending_free_queue operations. <b>atomic_t</b> <b>is_destroying</b>
+  <br/>
+  True when destruction has started.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">WebSocket transport implementation data.</p>
+<p class="Pp">Definition at line <b>47</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> websocket_transport_data_t::connection_failed</h2>
+<p class="Pp">Connection attempt failed (for client-side detection).</p>
+<p class="Pp">Definition at line <b>57</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="struct_lws_context*_websocket_transport_data_t::context"><a class="permalink" href="#struct_lws_context*_websocket_transport_data_t::context">struct
+  lws_context* websocket_transport_data_t::context</a></h2>
+<p class="Pp">libwebsockets context (may be owned or borrowed)</p>
+<p class="Pp">Definition at line <b>49</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>, and
+    <b>acip_websocket_server_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_websocket_transport_data_t::fragment_count"><a class="permalink" href="#int_websocket_transport_data_t::fragment_count">int
+  websocket_transport_data_t::fragment_count</a></h2>
+<p class="Pp">Fragment count for current reassembly.</p>
+<p class="Pp">Definition at line <b>74</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> websocket_transport_data_t::is_connected</h2>
+<p class="Pp">Connection state.</p>
+<p class="Pp">Definition at line <b>56</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>, and
+    <b>acip_websocket_server_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> websocket_transport_data_t::is_destroying</h2>
+<p class="Pp">True when destruction has started.</p>
+<p class="Pp">Definition at line <b>86</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> websocket_transport_data_t::owns_context</h2>
+<p class="Pp">True if transport owns context (client), false if borrowed
+    (server).</p>
+<p class="Pp">Definition at line <b>50</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>, and
+    <b>acip_websocket_server_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>* websocket_transport_data_t::partial_buffer</h2>
+<p class="Pp">Partial message buffer being assembled.</p>
+<p class="Pp">Definition at line <b>70</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_websocket_transport_data_t::partial_capacity"><a class="permalink" href="#size_t_websocket_transport_data_t::partial_capacity">size_t
+  websocket_transport_data_t::partial_capacity</a></h2>
+<p class="Pp">Capacity of partial buffer.</p>
+<p class="Pp">Definition at line <b>72</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_websocket_transport_data_t::partial_size"><a class="permalink" href="#size_t_websocket_transport_data_t::partial_size">size_t
+  websocket_transport_data_t::partial_size</a></h2>
+<p class="Pp">Current size of partial buffer.</p>
+<p class="Pp">Definition at line <b>71</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>mutex_t</b>
+  websocket_transport_data_t::pending_free_mutex</h2>
+<p class="Pp">Protect pending_free_queue operations.</p>
+<p class="Pp">Definition at line <b>81</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_server_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>ringbuffer_t</b>*
+  websocket_transport_data_t::pending_free_queue</h2>
+<p class="Pp">Queue of buffers pending delayed free.</p>
+<p class="Pp">Definition at line <b>80</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_server_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> websocket_transport_data_t::reassembling</h2>
+<p class="Pp">True if currently assembling a message.</p>
+<p class="Pp">Definition at line <b>75</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b>
+  websocket_transport_data_t::reassembly_start_ns</h2>
+<p class="Pp">Start time of current reassembly (for timeout detection).</p>
+<p class="Pp">Definition at line <b>73</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>cond_t</b> websocket_transport_data_t::recv_cond</h2>
+<p class="Pp">Signal when recv_queue messages arrive.</p>
+<p class="Pp">Definition at line <b>54</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>, and
+    <b>acip_websocket_server_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>mutex_t</b> websocket_transport_data_t::recv_mutex</h2>
+<p class="Pp">Protect recv_queue operations only.</p>
+<p class="Pp">Definition at line <b>53</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>, and
+    <b>acip_websocket_server_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>ringbuffer_t</b>* websocket_transport_data_t::recv_queue</h2>
+<p class="Pp">Receive message queue.</p>
+<p class="Pp">Definition at line <b>51</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>, and
+    <b>acip_websocket_server_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>* websocket_transport_data_t::send_buffer</h2>
+<p class="Pp">Send buffer with LWS_PRE padding.</p>
+<p class="Pp">Definition at line <b>60</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>, and
+    <b>acip_websocket_server_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_websocket_transport_data_t::send_buffer_capacity"><a class="permalink" href="#size_t_websocket_transport_data_t::send_buffer_capacity">size_t
+  websocket_transport_data_t::send_buffer_capacity</a></h2>
+<p class="Pp">Current send buffer capacity.</p>
+<p class="Pp">Definition at line <b>61</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>, and
+    <b>acip_websocket_server_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>mutex_t</b> websocket_transport_data_t::send_mutex</h2>
+<p class="Pp">Protect send_queue operations only.</p>
+<p class="Pp">Definition at line <b>55</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_server_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>ringbuffer_t</b>* websocket_transport_data_t::send_queue</h2>
+<p class="Pp">Send message queue (for server-side transports).</p>
+<p class="Pp">Definition at line <b>52</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>, and
+    <b>acip_websocket_server_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="volatile_"><a class="permalink" href="#volatile_">volatile
+  <b>bool</b> websocket_transport_data_t::service_running</a></h2>
+<p class="Pp">Service thread running flag.</p>
+<p class="Pp">Definition at line <b>65</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_thread_t</b>
+  websocket_transport_data_t::service_thread</h2>
+<p class="Pp">Thread that services libwebsockets context.</p>
+<p class="Pp">Definition at line <b>64</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>cond_t</b> websocket_transport_data_t::state_cond</h2>
+<p class="Pp">Signal when is_connected changes (for connection wait).</p>
+<p class="Pp">Definition at line <b>59</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>, and
+    <b>acip_websocket_server_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>mutex_t</b> websocket_transport_data_t::state_mutex</h2>
+<p class="Pp">Protect state changes.</p>
+<p class="Pp">Definition at line <b>58</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>, and
+    <b>acip_websocket_server_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="struct_lws*_websocket_transport_data_t::wsi"><a class="permalink" href="#struct_lws*_websocket_transport_data_t::wsi">struct
+  lws* websocket_transport_data_t::wsi</a></h2>
+<p class="Pp">libwebsockets instance (owned)</p>
+<p class="Pp">Definition at line <b>48</b> of file
+    <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>, and
+    <b>acip_websocket_server_transport_create()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

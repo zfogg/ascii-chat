@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>session_log_buffer.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">session_log_buffer.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">session_log_buffer.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">session_log_buffer.h - Thread-safe circular log buffer for session
+    screens (status, splash).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>session_log_entry_t</b>
+  <br/>
+  Single log entry with sequence number for ordering.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>SESSION_LOG_BUFFER_SIZE</b> 8192
+  <br/>
+  #define <b>SESSION_LOG_LINE_MAX</b> 1024
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>session_log_buffer_t</b> * <b>session_log_buffer_create</b>
+    (void)
+  <br/>
+  Create a new session log buffer instance. void
+    <b>session_log_buffer_destroy</b> (<b>session_log_buffer_t</b> *buf)
+  <br/>
+  Cleanup session log buffer instance. void <b>session_log_buffer_clear</b>
+    (<b>session_log_buffer_t</b> *buf)
+  <br/>
+  Clear all log entries from buffer. void <b>session_log_buffer_append</b>
+    (<b>session_log_buffer_t</b> *buf, const char *message)
+  <br/>
+  Append a log message to the buffer. size_t
+    <b>session_log_buffer_get_recent</b> (<b>session_log_buffer_t</b> *buf,
+    <b>session_log_entry_t</b> *out_entries, size_t max_count)
+  <br/>
+  Get recent log entries from buffer.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Thread-safe circular log buffer for session screens (status,
+    splash).</p>
+<p class="Pp">Provides a reusable log capture mechanism for session screens that
+    need to display logs alongside fixed header content without terminal
+    scrolling.</p>
+<p class="Pp"></p>
+<p class="Pp">Thread-safe for concurrent append operations. Designed for use
+  by:</p>
+<ul class="Bl-bullet">
+  <li>Server status screen (live log feed under status header)</li>
+  <li>Splash screen (logs under animated ASCII art)</li>
+</ul>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">February 2026</div>
+<p class="Pp">Definition in file
+    <b>include/ascii-chat/session/session_log_buffer.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_SESSION_LOG_BUFFER_SIZE___8192"><a class="permalink" href="#_define_SESSION_LOG_BUFFER_SIZE___8192">#define
+  SESSION_LOG_BUFFER_SIZE 8192</a></h2>
+<p class="Pp">Definition at line <b>24</b> of file
+    <b>include/ascii-chat/session/session_log_buffer.h</b>.</p>
+<p class="Pp">Referenced by <b>log_search_gather_and_filter_logs()</b>,
+    <b>session_log_buffer_append()</b>, <b>session_log_buffer_clear()</b>,
+    <b>session_log_buffer_get_recent()</b>, and
+  <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SESSION_LOG_LINE_MAX___1024"><a class="permalink" href="#_define_SESSION_LOG_LINE_MAX___1024">#define
+  SESSION_LOG_LINE_MAX 1024</a></h2>
+<p class="Pp">Definition at line <b>25</b> of file
+    <b>include/ascii-chat/session/session_log_buffer.h</b>.</p>
+<p class="Pp">Referenced by <b>log_search_gather_and_filter_logs()</b>,
+    <b>session_log_buffer_append()</b>, and <b>terminal_screen_render()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_session_log_buffer_append_("><a class="permalink" href="#void_session_log_buffer_append_(">void
+  session_log_buffer_append (<b>session_log_buffer_t</b> * buf, const char *
+  message)</a></h2>
+<p class="Pp">Append a log message to the buffer. Thread-safe. Called from
+    logging system to capture messages. Message is copied into circular buffer
+    (oldest entry overwritten if full).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>buf</i> Buffer instance (must not be NULL)
+<br/>
+<i>message</i> Log message text (already formatted with colors)</div>
+<p class="Pp">Definition at line <b>65</b> of file
+  <b>session_log_buffer.c</b>.</p>
+<pre>65                                                                                {
+66   if (!buf || !message) {
+67     // Fail silently - this is called FROM the logging system
+68     // Using SET_ERRNO here would cause infinite recursion
+69     return;
+70   }
+71 
+72   mutex_lock(&amp;buf-&gt;mutex);
+73 
+74   size_t pos = atomic_load_u64(&amp;buf-&gt;write_pos);
+75   uint64_t seq = atomic_fetch_add_u64(&amp;buf-&gt;sequence, 1);
+76 
+77   SAFE_STRNCPY(buf-&gt;entries[pos].message, message, SESSION_LOG_LINE_MAX);
+78   buf-&gt;entries[pos].sequence = seq;
+79 
+80   atomic_store_u64(&amp;buf-&gt;write_pos, (pos + 1) % SESSION_LOG_BUFFER_SIZE);
+81 
+82   mutex_unlock(&amp;buf-&gt;mutex);
+83 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_fetch_add_u64()</b>,
+    <b>atomic_load_u64()</b>, <b>atomic_store_u64()</b>,
+    <b>session_log_buffer::entries</b>, <b>session_log_entry_t::message</b>,
+    <b>session_log_buffer::mutex</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>SAFE_STRNCPY</b>, <b>session_log_buffer::sequence</b>,
+    <b>session_log_entry_t::sequence</b>, <b>SESSION_LOG_BUFFER_SIZE</b>,
+    <b>SESSION_LOG_LINE_MAX</b>, and <b>session_log_buffer::write_pos</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_log_buffer_clear_("><a class="permalink" href="#void_session_log_buffer_clear_(">void
+  session_log_buffer_clear (<b>session_log_buffer_t</b> * buf)</a></h2>
+<p class="Pp">Clear all log entries from buffer. Thread-safe. Resets buffer to
+    empty state, discarding all captured logs. Useful for clearing
+    initialization logs before screen starts rendering.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>buf</i> Buffer instance (must not be NULL)</div>
+<p class="Pp">Definition at line <b>45</b> of file
+  <b>session_log_buffer.c</b>.</p>
+<pre>45                                                          {
+46   if (!buf) {
+47     return;
+48   }
+49 
+50   mutex_lock(&amp;buf-&gt;mutex);
+51 
+52   // Reset write position and sequence
+53   atomic_store_u64(&amp;buf-&gt;write_pos, 0);
+54   atomic_store_u64(&amp;buf-&gt;sequence, 0);
+55 
+56   // Clear all entries
+57   for (size_t i = 0; i &lt; SESSION_LOG_BUFFER_SIZE; i++) {
+58     buf-&gt;entries[i].message[0] = '\0';
+59     buf-&gt;entries[i].sequence = 0;
+60   }
+61 
+62   mutex_unlock(&amp;buf-&gt;mutex);
+63 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64()</b>,
+    <b>session_log_buffer::entries</b>, <b>session_log_entry_t::message</b>,
+    <b>session_log_buffer::mutex</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>session_log_buffer::sequence</b>, <b>session_log_entry_t::sequence</b>,
+    <b>SESSION_LOG_BUFFER_SIZE</b>, and
+  <b>session_log_buffer::write_pos</b>.</p>
+<p class="Pp">Referenced by <b>terminal_screen_log_clear()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>session_log_buffer_t</b> * session_log_buffer_create (void
+  )</h2>
+<p class="Pp">Create a new session log buffer instance. Allocates and
+    initializes a circular buffer for log capture. Caller is responsible for
+    calling <b>session_log_buffer_destroy()</b> when done.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to new buffer instance, or NULL on allocation
+  failure</div>
+<p class="Pp">Definition at line <b>23</b> of file
+  <b>session_log_buffer.c</b>.</p>
+<pre>23                                                       {
+24   session_log_buffer_t *buf = SAFE_CALLOC(1, sizeof(session_log_buffer_t), session_log_buffer_t *);
+25   if (!buf) {
+26     return NULL;
+27   }
+28 
+29   atomic_store_u64(&amp;buf-&gt;write_pos, 0);
+30   atomic_store_u64(&amp;buf-&gt;sequence, 0);
+31   mutex_init(&amp;buf-&gt;mutex, &quot;log_buffer&quot;);
+32 
+33   return buf;
+34 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64()</b>,
+    <b>session_log_buffer::mutex</b>, <b>mutex_init()</b>, <b>SAFE_CALLOC</b>,
+    <b>session_log_buffer::sequence</b>, and
+    <b>session_log_buffer::write_pos</b>.</p>
+<p class="Pp">Referenced by <b>terminal_screen_log_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_log_buffer_destroy_("><a class="permalink" href="#void_session_log_buffer_destroy_(">void
+  session_log_buffer_destroy (<b>session_log_buffer_t</b> * buf)</a></h2>
+<p class="Pp">Cleanup session log buffer instance. Frees the buffer and all
+    internal resources. Safe to call with NULL.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>buf</i> Buffer instance to destroy (can be NULL)</div>
+<p class="Pp">Definition at line <b>36</b> of file
+  <b>session_log_buffer.c</b>.</p>
+<pre>36                                                            {
+37   if (!buf) {
+38     return;
+39   }
+40 
+41   mutex_destroy(&amp;buf-&gt;mutex);
+42   SAFE_FREE(buf);
+43 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>session_log_buffer::mutex</b>,
+    <b>mutex_destroy()</b>, and <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>terminal_screen_log_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_session_log_buffer_get_recent_("><a class="permalink" href="#size_t_session_log_buffer_get_recent_(">size_t
+  session_log_buffer_get_recent (<b>session_log_buffer_t</b> * buf,
+  <b>session_log_entry_t</b> * out_entries, size_t max_count)</a></h2>
+<p class="Pp">Get recent log entries from buffer. Thread-safe. Copies up to
+    max_count recent entries into out_entries. Entries are returned in
+    chronological order (oldest first).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>buf</i> Buffer instance (must not be NULL)
+<br/>
+<i>out_entries</i> Output array to fill with log entries
+<br/>
+<i>max_count</i> Maximum number of entries to return</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of entries actually copied (may be less than
+  max_count)</div>
+<p class="Pp">Definition at line <b>85</b> of file
+  <b>session_log_buffer.c</b>.</p>
+<pre>85                                                                                                                     {
+86   if (!buf || !out_entries || max_count == 0) {
+87     // Fail silently - called from display code that handles 0 gracefully
+88     // Using SET_ERRNO here could cause recursion if error logging is enabled
+89     return 0;
+90   }
+91 
+92   mutex_lock(&amp;buf-&gt;mutex);
+93 
+94   size_t write_pos = atomic_load_u64(&amp;buf-&gt;write_pos);
+95   uint64_t total_entries = atomic_load_u64(&amp;buf-&gt;sequence);
+96 
+97   size_t start_pos = write_pos;
+98   size_t entries_to_check = SESSION_LOG_BUFFER_SIZE;
+99 
+100   if (total_entries &lt; SESSION_LOG_BUFFER_SIZE) {
+101     start_pos = 0;
+102     entries_to_check = write_pos;
+103   }
+104 
+105   size_t count = 0;
+106   for (size_t i = 0; i &lt; entries_to_check &amp;&amp; count &lt; max_count; i++) {
+107     size_t idx = (start_pos + i) % SESSION_LOG_BUFFER_SIZE;
+108     if (buf-&gt;entries[idx].sequence &gt; 0) {
+109       memcpy(&amp;out_entries[count], &amp;buf-&gt;entries[idx], sizeof(session_log_entry_t));
+110       count++;
+111     }
+112   }
+113 
+114   mutex_unlock(&amp;buf-&gt;mutex);
+115   return count;
+116 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>,
+    <b>session_log_buffer::entries</b>, <b>session_log_buffer::mutex</b>,
+    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>session_log_buffer::sequence</b>,
+    <b>session_log_entry_t::sequence</b>, <b>SESSION_LOG_BUFFER_SIZE</b>,
+    <b>session_log_buffer::write_pos</b>, and <b>write_pos</b>.</p>
+<p class="Pp">Referenced by <b>log_search_gather_and_filter_logs()</b>, and
+    <b>terminal_screen_render()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -38,8 +38,10 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>completions_generate_fish</b> (FILE *output)
+<p class="Pp"><b>asciichat_error_t</b> <b>completions_generate_fish</b> (FILE
+    *output)
   <br/>
+  Generate fish completion script.
   <br/>
 </p>
 </section>
@@ -56,8 +58,9 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_completions_generate_fish_(FILE_*_output)"><a class="permalink" href="#asciichat_error_t_completions_generate_fish_(FILE_*_output)">asciichat_error_t
-  completions_generate_fish (FILE * output)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> completions_generate_fish (FILE *
+  output)</h2>
+<p class="Pp">Generate fish completion script.</p>
 <p class="Pp">Definition at line <b>130</b> of file <b>fish.c</b>.</p>
 <pre>130                                                           {
 131   if (!output) {
@@ -164,7 +167,11 @@
 232 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>options_registry_get_for_display()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>MODE_CLIENT</b>, <b>MODE_DISCOVERY</b>, <b>MODE_DISCOVERY_SERVICE</b>,
+    <b>MODE_MIRROR</b>, <b>MODE_SERVER</b>,
+    <b>options_registry_get_for_display()</b>, <b>SAFE_FREE</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>completions_generate_for_shell()</b>.</p>
 </section>
 </section>
@@ -175,7 +182,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

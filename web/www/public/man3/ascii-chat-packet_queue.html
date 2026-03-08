@@ -1,0 +1,1852 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>packet_queue(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">packet_queue(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">packet_queue(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">packet_queue - Packet_queue</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>queued_packet_t</b>
+  <br/>
+  Single packet ready to send (header already in network byte order). struct
+    <b>packet_node</b>
+  <br/>
+  Node in the packet queue linked list. struct <b>node_pool</b>
+  <br/>
+  Memory pool for packet nodes to reduce malloc/free overhead. struct
+    <b>packet_queue_t</b>
+  <br/>
+  Thread-safe packet queue for producer-consumer communication.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>packet_node</b> <b>packet_node_t</b>
+  <br/>
+  Forward declaration for packet queue node. typedef struct <b>node_pool</b>
+    <b>node_pool_t</b>
+  <br/>
+  Memory pool for packet nodes to reduce malloc/free overhead.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp"><b>packet_header_t</b> <b>queued_packet_t::header</b>
+  <br/>
+  Complete packet header (already in network byte order). void *
+    <b>queued_packet_t::data</b>
+  <br/>
+  Packet payload data (can be NULL for header-only packets). size_t
+    <b>queued_packet_t::data_len</b>
+  <br/>
+  Length of payload data in bytes. <b>bool</b> <b>queued_packet_t::owns_data</b>
+  <br/>
+  If true, free data when packet is freed. <b>buffer_pool_t</b> *
+    <b>queued_packet_t::buffer_pool</b>
+  <br/>
+  Pool that allocated the data (NULL if malloc'd). <b>queued_packet_t</b>
+    <b>packet_node::packet</b>
+  <br/>
+  The queued packet data. <b>atomic_ptr_t</b> <b>packet_node::next</b>
+  <br/>
+  Pointer to next node in linked list (NULL for tail) - atomic for lock-free
+    operations. <b>atomic_ptr_t</b> <b>node_pool::free_list</b>
+  <br/>
+  Stack of free nodes (LIFO for cache locality) - atomic for lock-free access.
+    <b>packet_node_t</b> * <b>node_pool::nodes</b>
+  <br/>
+  Pre-allocated array of all nodes. size_t <b>node_pool::pool_size</b>
+  <br/>
+  Total number of nodes in pool. <b>atomic_t</b> <b>node_pool::used_count</b>
+  <br/>
+  Number of nodes currently in use - atomic for lock-free tracking.
+    <b>atomic_ptr_t</b> <b>packet_queue_t::head</b>
+  <br/>
+  Front of queue (dequeue from here) - atomic for lock-free access.
+    <b>atomic_ptr_t</b> <b>packet_queue_t::tail</b>
+  <br/>
+  Back of queue (enqueue here) - atomic for lock-free access. <b>atomic_t</b>
+    <b>packet_queue_t::count</b>
+  <br/>
+  Number of packets currently in queue - atomic for lock-free access. size_t
+    <b>packet_queue_t::max_size</b>
+  <br/>
+  Maximum queue size (0 = unlimited). <b>atomic_t</b>
+    <b>packet_queue_t::bytes_queued</b>
+  <br/>
+  Total bytes of data queued (for monitoring) - atomic for lock-free access.
+    <b>node_pool_t</b> * <b>packet_queue_t::node_pool</b>
+  <br/>
+  Optional memory pool for nodes (NULL = use malloc/free). <b>buffer_pool_t</b>
+    * <b>packet_queue_t::buffer_pool</b>
+  <br/>
+  Optional memory pool for data buffers (NULL = use malloc/free).
+    <b>atomic_t</b> <b>packet_queue_t::packets_enqueued</b>
+  <br/>
+  Total packets enqueued (statistics) - atomic for lock-free access.
+    <b>atomic_t</b> <b>packet_queue_t::packets_dequeued</b>
+  <br/>
+  Total packets dequeued (statistics) - atomic for lock-free access.
+    <b>atomic_t</b> <b>packet_queue_t::packets_dropped</b>
+  <br/>
+  Total packets dropped due to queue full (statistics) - atomic for lock-free
+    access. <b>atomic_t</b> <b>packet_queue_t::shutdown</b>
+  <br/>
+  Shutdown flag (true = dequeue returns NULL) - atomic for lock-free access.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Node_Pool_Functions"><a class="permalink" href="#Node_Pool_Functions">Node
+  Pool Functions</a></h2>
+<br/>
+<p class="Pp"><b>node_pool_t</b> * <b>node_pool_create</b> (size_t pool_size)
+  <br/>
+  Create a memory pool for packet queue nodes. void <b>node_pool_destroy</b>
+    (<b>node_pool_t</b> *<b>pool</b>)
+  <br/>
+  Destroy a node pool and free all memory. <b>packet_node_t</b> *
+    <b>node_pool_get</b> (<b>node_pool_t</b> *<b>pool</b>)
+  <br/>
+  Get a free node from the pool. void <b>node_pool_put</b> (<b>node_pool_t</b>
+    *<b>pool</b>, <b>packet_node_t</b> *node)
+  <br/>
+  Return a node to the pool.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Queue_Management_Functions"><a class="permalink" href="#Queue_Management_Functions">Queue
+  Management Functions</a></h2>
+<br/>
+<p class="Pp"><b>packet_queue_t</b> * <b>packet_queue_create</b> (size_t
+    max_size)
+  <br/>
+  Create a new packet queue. <b>packet_queue_t</b> *
+    <b>packet_queue_create_with_pool</b> (size_t max_size, size_t pool_size)
+  <br/>
+  Create a packet queue with node pool. <b>packet_queue_t</b> *
+    <b>packet_queue_create_with_pools</b> (size_t max_size, size_t
+    node_pool_size, <b>bool</b> use_buffer_pool)
+  <br/>
+  Create a packet queue with both node and buffer pools. void
+    <b>packet_queue_stop</b> (<b>packet_queue_t</b> *queue)
+  <br/>
+  Destroy a packet queue and free all resources.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Queue_Operations"><a class="permalink" href="#Queue_Operations">Queue
+  Operations</a></h2>
+<br/>
+<p class="Pp">int <b>packet_queue_enqueue</b> (<b>packet_queue_t</b> *queue,
+    <b>packet_type_t</b> type, const void *data, size_t data_len,
+    <b>uint32_t</b> client_id, <b>bool</b> copy_data)
+  <br/>
+  Enqueue a packet into the queue. int <b>packet_queue_enqueue_packet</b>
+    (<b>packet_queue_t</b> *queue, const <b>queued_packet_t</b> *packet)
+  <br/>
+  Enqueue a pre-built packet (for special cases like compressed frames).
+    <b>queued_packet_t</b> * <b>packet_queue_dequeue</b> (<b>packet_queue_t</b>
+    *queue)
+  <br/>
+  Dequeue a packet from the queue (non-blocking). <b>queued_packet_t</b> *
+    <b>packet_queue_try_dequeue</b> (<b>packet_queue_t</b> *queue)
+  <br/>
+  Try to dequeue a packet without blocking. void <b>packet_queue_free_packet</b>
+    (<b>queued_packet_t</b> *packet)
+  <br/>
+  Free a dequeued packet.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Queue_Status_Functions"><a class="permalink" href="#Queue_Status_Functions">Queue
+  Status Functions</a></h2>
+<br/>
+<p class="Pp">size_t <b>packet_queue_size</b> (<b>packet_queue_t</b> *queue)
+  <br/>
+  Get current number of packets in queue. <b>bool</b>
+    <b>packet_queue_is_empty</b> (<b>packet_queue_t</b> *queue)
+  <br/>
+  Check if queue is empty. <b>bool</b> <b>packet_queue_is_full</b>
+    (<b>packet_queue_t</b> *queue)
+  <br/>
+  Check if queue is full.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Queue_Control_Functions"><a class="permalink" href="#Queue_Control_Functions">Queue
+  Control Functions</a></h2>
+<br/>
+<p class="Pp">void <b>packet_queue_destroy</b> (<b>packet_queue_t</b> *queue)
+  <br/>
+  Signal queue shutdown (causes dequeue to return NULL). void
+    <b>packet_queue_clear</b> (<b>packet_queue_t</b> *queue)
+  <br/>
+  Clear all packets from queue.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Statistics_Functions"><a class="permalink" href="#Statistics_Functions">Statistics
+  Functions</a></h2>
+<br/>
+<p class="Pp">void <b>packet_queue_get_stats</b> (<b>packet_queue_t</b> *queue,
+    <b>uint64_t</b> *enqueued, <b>uint64_t</b> *dequeued, <b>uint64_t</b>
+    *dropped)
+  <br/>
+  Get queue statistics. <b>bool</b> <b>packet_queue_validate_packet</b> (const
+    <b>queued_packet_t</b> *packet)
+  <br/>
+  Validate packet integrity.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">This module implements a high-performance thread-safe queue for
+    network packets, enabling producer threads (audio mixer, video broadcast) to
+    enqueue packets while consumer threads (per-client send threads) dequeue and
+    transmit them. This design eliminates shared bottlenecks and enables linear
+    scaling across multiple clients.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CORE_RESPONSIBILITIES:"><a class="permalink" href="#CORE_RESPONSIBILITIES:">CORE
+  RESPONSIBILITIES: </a></h1>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Thread-safe packet queuing for producer-consumer architecture</dd>
+  <dt>2.</dt>
+  <dd>Per-client queue isolation (each client has separate audio/video
+    queues)</dd>
+  <dt>3.</dt>
+  <dd>Memory-efficient packet node pooling to reduce malloc/free overhead</dd>
+  <dt>4.</dt>
+  <dd>Queue size limits with automatic packet dropping under load</dd>
+  <dt>5.</dt>
+  <dd>Graceful shutdown handling for clean thread termination</dd>
+  <dt>6.</dt>
+  <dd>Comprehensive statistics collection for performance monitoring</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ARCHITECTURAL_OVERVIEW:"><a class="permalink" href="#ARCHITECTURAL_OVERVIEW:">ARCHITECTURAL
+  OVERVIEW: </a></h1>
+<p class="Pp">PRODUCER-CONSUMER MODEL:</p>
+<ul class="Bl-bullet">
+  <li>Producer threads (audio mixer, video render): Enqueue packets
+      asynchronously</li>
+  <li>Consumer threads (per-client send threads): Dequeue packets and
+    transmit</li>
+  <li>Lock-free operations with atomic retry patterns (no busy-waiting with
+      backoff)</li>
+</ul>
+<p class="Pp">QUEUE DESIGN:</p>
+<ul class="Bl-bullet">
+  <li>Linked-list implementation with head/tail pointers for O(1)
+      enqueue/dequeue</li>
+  <li>Optional node pool reduces malloc/free overhead for high-frequency
+      operations</li>
+  <li>Optional buffer pool integration for zero-allocation packet data
+      management</li>
+  <li>Size limits prevent unbounded memory growth under load</li>
+</ul>
+<p class="Pp">MEMORY MANAGEMENT:</p>
+<ul class="Bl-bullet">
+  <li>Node pool pre-allocates queue nodes to eliminate per-packet
+    allocations</li>
+  <li>Buffer pool integration allows zero-allocation packet data (when
+      available)</li>
+  <li>Automatic cleanup when queue is destroyed</li>
+  <li>Statistics track memory efficiency</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="THREAD_SAFETY:"><a class="permalink" href="#THREAD_SAFETY:">THREAD
+  SAFETY: </a></h1>
+<p class="Pp">SYNCHRONIZATION PRIMITIVES:</p>
+<ul class="Bl-bullet">
+  <li>Atomic operations for lock-free queue state (head, tail, count, etc.)</li>
+  <li>Atomic statistics fields for performance monitoring</li>
+  <li>Atomic shutdown flag for graceful termination</li>
+  <li>No mutexes or condition variables (lock-free design)</li>
+</ul>
+<p class="Pp">LOCK-FREE PATTERN:</p>
+<ul class="Bl-bullet">
+  <li>All queue operations use atomic operations for thread-safe access</li>
+  <li>Memory ordering (acquire/release) ensures proper synchronization</li>
+  <li>Non-blocking dequeue operations (caller should retry if needed)</li>
+  <li>Lock-free operations eliminate lock contention bottlenecks</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="INTEGRATION_WITH_OTHER_MODULES:"><a class="permalink" href="#INTEGRATION_WITH_OTHER_MODULES:">INTEGRATION
+  WITH OTHER MODULES: </a></h1>
+<ul class="Bl-bullet">
+  <li><b>buffer_pool.h</b>: Optional integration for zero-allocation packet
+    data</li>
+  <li>network/packet.h: Uses <b>packet_header_t</b> and
+    <b>packet_type_t</b></li>
+  <li>Per-client send threads: Consume packets from queues</li>
+  <li>Audio mixer / Video render: Produce packets into queues</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="PERFORMANCE_CHARACTERISTICS:"><a class="permalink" href="#PERFORMANCE_CHARACTERISTICS:">PERFORMANCE
+  CHARACTERISTICS: </a></h1>
+<ul class="Bl-bullet">
+  <li>O(1) enqueue/dequeue operations (amortized)</li>
+  <li>Zero-allocation operation when pools are configured</li>
+  <li>Minimal lock contention due to per-client queue isolation</li>
+  <li>Automatic backpressure via queue size limits</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Each client should have separate queues for audio and
+  video to enable prioritization and prevent one stream from blocking the other.
+<p class="Pp"></p>
+<p class="Pp">When max_size &gt; 0, full queues drop oldest packets
+    automatically. This prevents memory exhaustion but may cause frame drops
+    under load.</p>
+<p class="Pp"></p>
+<p class="Pp">Queue shutdown causes dequeue operations to return NULL, allowing
+    consumer threads to exit gracefully without blocking forever.</p>
+</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">Always free dequeued packets with
+  <b>packet_queue_free_packet()</b> to properly release memory (either to pool
+  or free()).
+<p class="Pp"></p>
+<p class="Pp">Queue destruction does NOT free packets still in the queue. Clear
+    the queue first or ensure all packets are dequeued.</p>
+</div>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">September 2025</div>
+<p class="Pp"><b>Version</b></p>
+<div class="Bd-indent">2.0 (Post-Modularization)</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">typedef struct <b>node_pool</b> <b>node_pool_t</b></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Memory pool for packet nodes to reduce malloc/free overhead.
+    Pre-allocates a fixed-size array of packet nodes and maintains a lock-free
+    free list using atomic compare-and-swap operations. This eliminates
+    per-packet malloc/free calls and avoids lock contention for high-frequency
+    packet queue operations.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Pool operations are thread-safe via lock-free atomics (no
+  mutexes).
+<p class="Pp"></p>
+<p class="Pp">If pool is exhausted, operations fall back to malloc/free.</p>
+</div>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef struct <b>packet_node</b> <b>packet_node_t</b></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Forward declaration for packet queue node.</p>
+<p class="Pp">Definition at line <b>137</b> of file <b>queue.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>node_pool_t</b> * node_pool_create (size_t pool_size)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Create a memory pool for packet queue nodes.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pool_size</i> Number of nodes to pre-allocate</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to node pool, or NULL on failure</div>
+<p class="Pp">Pre-allocates a fixed-size array of packet nodes to eliminate
+    per-packet malloc/free overhead. All nodes are initialized and added to the
+    free list.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Pool size should be chosen based on expected queue depth.
+  Too small causes fallback to malloc, too large wastes memory.</div>
+<p class="Pp">Definition at line <b>25</b> of file <b>queue.c</b>.</p>
+<pre>25                                                 {
+26   if (pool_size == 0) {
+27     return NULL;
+28   }
+29 
+30   node_pool_t *pool;
+31   pool = SAFE_MALLOC(sizeof(node_pool_t), node_pool_t *);
+32 
+33   // Allocate all nodes at once
+34   pool-&gt;nodes = SAFE_MALLOC(sizeof(packet_node_t) * pool_size, packet_node_t *);
+35 
+36   // Link all nodes into free list (using atomic stores for consistency with atomic type)
+37   for (size_t i = 0; i &lt; pool_size - 1; i++) {
+38     atomic_ptr_store(&amp;pool-&gt;nodes[i].next, (void *)&amp;pool-&gt;nodes[i + 1]);
+39   }
+40   atomic_ptr_store(&amp;pool-&gt;nodes[pool_size - 1].next, NULL);
+41 
+42   // Initialize atomics for lock-free operations
+43   atomic_ptr_store(&amp;pool-&gt;free_list, (void *)&amp;pool-&gt;nodes[0]);
+44   pool-&gt;pool_size = pool_size;
+45   atomic_store_u64(&amp;pool-&gt;used_count, 0);
+46 
+47   NAMED_REGISTER_NODE_POOL(pool, &quot;node_pool&quot;, NULL);
+48 
+49   return pool;
+50 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_ptr_store()</b>, <b>atomic_store_u64()</b>,
+    <b>NAMED_REGISTER_NODE_POOL</b>, <b>pool</b>, and <b>SAFE_MALLOC</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_create_with_pools()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_node_pool_destroy_("><a class="permalink" href="#void_node_pool_destroy_(">void
+  node_pool_destroy (<b>node_pool_t</b> * pool)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Destroy a node pool and free all memory.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>pool</b><i></i><b> Node pool to destroy (can be
+  NULL)</b></div>
+<p class="Pp">Frees all pre-allocated nodes and the pool structure itself.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">Pool must not be in use by any queues when
+  destroyed.</div>
+<p class="Pp">Definition at line <b>52</b> of file <b>queue.c</b>.</p>
+<pre>52                                           {
+53   if (!pool) {
+54     return;
+55   }
+56 
+57   NAMED_UNREGISTER(pool);
+58 
+59   SAFE_FREE(pool-&gt;nodes);
+60   SAFE_FREE(pool);
+61 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>NAMED_UNREGISTER</b>, <b>pool</b>, and
+    <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>packet_node_t</b> * node_pool_get (<b>node_pool_t</b> *
+  pool)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Get a free node from the pool.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>pool</b><i></i><b> Node pool</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to free node, or NULL if pool is exhausted</div>
+<p class="Pp">Removes a node from the free list. If pool is exhausted, returns
+    NULL (caller should fall back to malloc).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe (protected by pool_mutex).</div>
+<p class="Pp">Definition at line <b>63</b> of file <b>queue.c</b>.</p>
+<pre>63                                                 {
+64   if (!pool) {
+65     // No pool, fallback to malloc
+66     packet_node_t *node;
+67     node = SAFE_MALLOC(sizeof(packet_node_t), packet_node_t *);
+68     return node;
+69   }
+70 
+71   // Lock-free pop from free_list stack using CAS (same pattern as buffer_pool)
+72   packet_node_t *node = (packet_node_t *)atomic_ptr_load(&amp;pool-&gt;free_list);
+73   while (node) {
+74     packet_node_t *next = (packet_node_t *)atomic_ptr_load(&amp;node-&gt;next);
+75     if (atomic_ptr_cas(&amp;pool-&gt;free_list, (void **)&amp;node, next)) {
+76       // Successfully popped - clear next pointer and increment used_count
+77       atomic_ptr_store(&amp;node-&gt;next, (void *)(packet_node_t *)NULL);
+78       atomic_fetch_add_u64(&amp;pool-&gt;used_count, 1);
+79       return node;
+80     }
+81     // CAS failed - reload and retry (another thread grabbed the node)
+82     node = (packet_node_t *)atomic_ptr_load(&amp;pool-&gt;free_list);
+83   }
+84 
+85   // Pool exhausted, fallback to malloc
+86   node = SAFE_MALLOC(sizeof(packet_node_t), packet_node_t *);
+87   size_t used = atomic_load_u64(&amp;pool-&gt;used_count);
+88   log_debug(&quot;Memory pool exhausted, falling back to SAFE_MALLOC (used: %zu/%zu)&quot;, used, pool-&gt;pool_size);
+89 
+90   return node;
+91 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_fetch_add_u64()</b>,
+    <b>atomic_load_u64()</b>, <b>atomic_ptr_cas()</b>, <b>atomic_ptr_load()</b>,
+    <b>atomic_ptr_store()</b>, <b>log_debug</b>, <b>packet_node::next</b>,
+    <b>pool</b>, and <b>SAFE_MALLOC</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_enqueue()</b>, and
+    <b>packet_queue_enqueue_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_node_pool_put_("><a class="permalink" href="#void_node_pool_put_(">void
+  node_pool_put (<b>node_pool_t</b> * pool, <b>packet_node_t</b> *
+  node)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Return a node to the pool.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>pool</b><i></i><b> Node pool</b>
+<br/>
+<i>node</i> Node to return (must have been allocated from this pool)</div>
+<p class="Pp">Returns a node to the free list for reuse. Node should not be in
+    use by any queue when returned.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe (protected by pool_mutex).</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">Do not return nodes that are still in use by
+  queues.</div>
+<p class="Pp">Definition at line <b>93</b> of file <b>queue.c</b>.</p>
+<pre>93                                                            {
+94   if (!node) {
+95     return;
+96   }
+97 
+98   if (!pool) {
+99     // No pool, just free
+100     SAFE_FREE(node);
+101     return;
+102   }
+103 
+104   // Check if this node is from our pool
+105   bool is_pool_node = (node &gt;= pool-&gt;nodes &amp;&amp; node &lt; pool-&gt;nodes + pool-&gt;pool_size);
+106 
+107   if (is_pool_node) {
+108     // Lock-free push to free_list stack using CAS
+109     packet_node_t *head = (packet_node_t *)atomic_ptr_load(&amp;pool-&gt;free_list);
+110     do {
+111       atomic_ptr_store(&amp;node-&gt;next, (void *)head);
+112     } while (!atomic_ptr_cas(&amp;pool-&gt;free_list, (void **)&amp;head, node));
+113     atomic_fetch_sub_u64(&amp;pool-&gt;used_count, 1);
+114   } else {
+115     // This was malloc'd, so free it
+116     SAFE_FREE(node);
+117   }
+118 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_fetch_sub_u64()</b>, <b>atomic_ptr_cas()</b>,
+    <b>atomic_ptr_load()</b>, <b>atomic_ptr_store()</b>,
+    <b>packet_node::next</b>, <b>pool</b>, and <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_enqueue()</b>,
+    <b>packet_queue_enqueue_packet()</b>, and
+  <b>packet_queue_try_dequeue()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_packet_queue_clear_("><a class="permalink" href="#void_packet_queue_clear_(">void
+  packet_queue_clear (<b>packet_queue_t</b> * queue)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Clear all packets from queue.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>queue</i> Packet queue</div>
+<p class="Pp">Removes and frees all packets currently in the queue. Useful for
+    cleanup before queue destruction or when resetting queue state.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe (lock-free using atomic operations).
+<p class="Pp"></p>
+<p class="Pp">This function frees all queued packets, so ensure nothing is still
+    referencing them.</p>
+</div>
+<p class="Pp">Definition at line <b>626</b> of file <b>queue.c</b>.</p>
+<pre>626                                                {
+627   if (!queue)
+628     return;
+629 
+630   // Lock-free clear: drain queue by repeatedly dequeuing until empty
+631   queued_packet_t *packet;
+632   while ((packet = packet_queue_try_dequeue(queue)) != NULL) {
+633     packet_queue_free_packet(packet);
+634   }
+635 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_queue_free_packet()</b>, and
+    <b>packet_queue_try_dequeue()</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>packet_queue_t</b> * packet_queue_create (size_t
+  max_size)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Create a new packet queue.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>max_size</i> Maximum queue size (0 = unlimited)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to new queue, or NULL on failure</div>
+<p class="Pp">Creates a packet queue without memory pools. Queue will use
+    malloc/free for all node and data allocations.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">For high-performance scenarios, use
+  <b>packet_queue_create_with_pools()</b> instead to enable zero-allocation
+  operation.</div>
+<p class="Pp">Definition at line <b>125</b> of file <b>queue.c</b>.</p>
+<pre>125                                                      {
+126   return packet_queue_create_with_pool(max_size, 0); // No pool by default
+127 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_queue_create_with_pool()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>packet_queue_t</b> * packet_queue_create_with_pool (size_t
+  max_size, size_t pool_size)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Create a packet queue with node pool.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>max_size</i> Maximum queue size (0 = unlimited)
+<br/>
+<i>pool_size</i> Number of nodes to pre-allocate in pool</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to new queue, or NULL on failure</div>
+<p class="Pp">Creates a packet queue with optional node pool to reduce malloc
+    overhead. Queue will still use malloc/free for packet data allocations.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">For zero-allocation operation, use
+  <b>packet_queue_create_with_pools()</b> with use_buffer_pool = true.</div>
+<p class="Pp">Definition at line <b>129</b> of file <b>queue.c</b>.</p>
+<pre>129                                                                                  {
+130   return packet_queue_create_with_pools(max_size, pool_size, false);
+131 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_queue_create_with_pools()</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>packet_queue_t</b> * packet_queue_create_with_pools (size_t
+  max_size, size_t node_pool_size, <b>bool</b> use_buffer_pool)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Create a packet queue with both node and buffer pools.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>max_size</i> Maximum queue size (0 = unlimited)
+<br/>
+<i>node_pool_size</i> Number of nodes to pre-allocate
+<br/>
+<i>use_buffer_pool</i> If true, use global buffer pool for packet data</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to new queue, or NULL on failure</div>
+<p class="Pp">Creates a high-performance packet queue with both node and buffer
+    pools enabled. This enables zero-allocation operation when pools are
+    configured.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">When use_buffer_pool is true, queue uses global buffer
+  pool singleton. Buffer pool must be initialized before queue creation.</div>
+<p class="Pp">Definition at line <b>133</b> of file <b>queue.c</b>.</p>
+<pre>133                                                                                                              {
+134   packet_queue_t *queue;
+135   queue = SAFE_MALLOC(sizeof(packet_queue_t), packet_queue_t *);
+136 
+137   // Initialize atomic fields
+138   // For atomic pointer types, use atomic_store with relaxed ordering for initialization
+139   atomic_ptr_store(&amp;queue-&gt;head, (void *)(packet_node_t *)NULL);
+140   atomic_ptr_store(&amp;queue-&gt;tail, (void *)(packet_node_t *)NULL);
+141   atomic_store_u64(&amp;queue-&gt;count, 0);
+142   queue-&gt;max_size = max_size;
+143   atomic_store_u64(&amp;queue-&gt;bytes_queued, 0);
+144 
+145   // Create memory pools if requested
+146   queue-&gt;node_pool = node_pool_size &gt; 0 ? node_pool_create(node_pool_size) : NULL;
+147   queue-&gt;buffer_pool = use_buffer_pool ? buffer_pool_create(0, 0) : NULL;
+148 
+149   // Initialize atomic statistics
+150   atomic_store_u64(&amp;queue-&gt;packets_enqueued, 0);
+151   atomic_store_u64(&amp;queue-&gt;packets_dequeued, 0);
+152   atomic_store_u64(&amp;queue-&gt;packets_dropped, 0);
+153   atomic_store_bool(&amp;queue-&gt;shutdown, false);
+154 
+155   NAMED_REGISTER_PACKET_QUEUE(queue, &quot;packet_queue&quot;, NULL);
+156   if (queue-&gt;node_pool) {
+157     NAMED_REGISTER_NODE_POOL(queue-&gt;node_pool, &quot;node_pool&quot;, (uintptr_t)(const void *)(queue));
+158   }
+159 
+160   // Register atomic fields for sync state monitoring - descriptive names for lock-free queue tracking
+161   NAMED_REGISTER_ATOMIC(&amp;queue-&gt;count, &quot;current_packet_count&quot;, (uintptr_t)(const void *)(queue));
+162   NAMED_REGISTER_ATOMIC(&amp;queue-&gt;bytes_queued, &quot;total_bytes_currently_queued&quot;, (uintptr_t)(const void *)(queue));
+163   NAMED_REGISTER_ATOMIC(&amp;queue-&gt;packets_enqueued, &quot;lifetime_packets_enqueued_total&quot;, (uintptr_t)(const void *)(queue));
+164   NAMED_REGISTER_ATOMIC(&amp;queue-&gt;packets_dequeued, &quot;lifetime_packets_dequeued_total&quot;, (uintptr_t)(const void *)(queue));
+165   NAMED_REGISTER_ATOMIC(&amp;queue-&gt;packets_dropped, &quot;lifetime_packets_dropped_overflow&quot;, (uintptr_t)(const void *)(queue));
+166   NAMED_REGISTER_ATOMIC(&amp;queue-&gt;shutdown, &quot;is_shutdown_requested&quot;, (uintptr_t)(const void *)(queue));
+167   NAMED_REGISTER_ATOMIC_PTR(&amp;queue-&gt;head, &quot;head_node_pointer&quot;, (uintptr_t)(const void *)(queue));
+168   NAMED_REGISTER_ATOMIC_PTR(&amp;queue-&gt;tail, &quot;tail_node_pointer&quot;, (uintptr_t)(const void *)(queue));
+169 
+170   return queue;
+171 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_ptr_store()</b>, <b>atomic_store_bool()</b>,
+    <b>atomic_store_u64()</b>, <b>packet_queue_t::buffer_pool</b>,
+    <b>buffer_pool_create()</b>, <b>packet_queue_t::bytes_queued</b>,
+    <b>packet_queue_t::count</b>, <b>packet_queue_t::head</b>,
+    <b>packet_queue_t::max_size</b>, <b>NAMED_REGISTER_ATOMIC</b>,
+    <b>NAMED_REGISTER_ATOMIC_PTR</b>, <b>NAMED_REGISTER_NODE_POOL</b>,
+    <b>NAMED_REGISTER_PACKET_QUEUE</b>, <b>packet_queue_t::node_pool</b>,
+    <b>node_pool_create()</b>, <b>packet_queue_t::packets_dequeued</b>,
+    <b>packet_queue_t::packets_dropped</b>,
+    <b>packet_queue_t::packets_enqueued</b>, <b>SAFE_MALLOC</b>,
+    <b>packet_queue_t::shutdown</b>, and <b>packet_queue_t::tail</b>.</p>
+<p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>, and
+    <b>packet_queue_create_with_pool()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>queued_packet_t</b> * packet_queue_dequeue
+  (<b>packet_queue_t</b> * queue)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Dequeue a packet from the queue (non-blocking).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>queue</i> Packet queue</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to dequeued packet, or NULL if queue is empty or
+  shutdown</div>
+<p class="Pp">Removes and returns the packet at the head of the queue. Returns
+    NULL immediately if queue is empty or shutdown (non-blocking operation).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller must free the returned packet with
+  <b>packet_queue_free_packet()</b> to properly release memory (either to pool
+  or free()).
+<p class="Pp"></p>
+<p class="Pp">Returns NULL when queue is empty or shutdown (allows consumer
+    threads to exit). Caller should retry periodically if queue is expected to
+    have data.</p>
+<p class="Pp"></p>
+<p class="Pp">Thread-safe (lock-free using atomic operations).</p>
+</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">Always free dequeued packets with
+  <b>packet_queue_free_packet()</b>.</div>
+<p class="Pp">Definition at line <b>479</b> of file <b>queue.c</b>.</p>
+<pre>479                                                              {
+480   // Non-blocking dequeue (same as try_dequeue for lock-free design)
+481   return packet_queue_try_dequeue(queue);
+482 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_queue_try_dequeue()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_packet_queue_destroy_("><a class="permalink" href="#void_packet_queue_destroy_(">void
+  packet_queue_destroy (<b>packet_queue_t</b> * queue)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Signal queue shutdown (causes dequeue to return NULL).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>queue</i> Packet queue</div>
+<p class="Pp">Sets the shutdown flag, causing all dequeue operations to return
+    NULL. This allows consumer threads to exit gracefully without blocking
+    forever.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">After shutdown, enqueue operations still succeed, but
+  dequeue returns NULL.
+<p class="Pp"></p>
+<p class="Pp">Thread-safe (wakes all waiting dequeue threads).</p>
+</div>
+<p class="Pp">Definition at line <b>173</b> of file <b>queue.c</b>.</p>
+<pre>173                                                  {
+174   if (!queue)
+175     return;
+176 
+177   // Unregister atomic fields
+178   NAMED_UNREGISTER(&amp;queue-&gt;count);
+179   NAMED_UNREGISTER(&amp;queue-&gt;bytes_queued);
+180   NAMED_UNREGISTER(&amp;queue-&gt;packets_enqueued);
+181   NAMED_UNREGISTER(&amp;queue-&gt;packets_dequeued);
+182   NAMED_UNREGISTER(&amp;queue-&gt;packets_dropped);
+183   NAMED_UNREGISTER(&amp;queue-&gt;shutdown);
+184   NAMED_UNREGISTER(&amp;queue-&gt;head);
+185   NAMED_UNREGISTER(&amp;queue-&gt;tail);
+186 
+187   NAMED_UNREGISTER(queue);
+188 
+189   // Signal shutdown first
+190   packet_queue_stop(queue);
+191 
+192   // Clear any remaining packets
+193   packet_queue_clear(queue);
+194 
+195   // Destroy memory pools if present
+196   if (queue-&gt;node_pool) {
+197     node_pool_destroy(queue-&gt;node_pool);
+198   }
+199   if (queue-&gt;buffer_pool) {
+200     buffer_pool_log_stats(queue-&gt;buffer_pool, &quot;packet_queue&quot;);
+201     buffer_pool_destroy(queue-&gt;buffer_pool);
+202   }
+203 
+204   // No mutex/cond to destroy (lock-free design)
+205 
+206   SAFE_FREE(queue);
+207 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_queue_t::buffer_pool</b>,
+    <b>buffer_pool_destroy()</b>, <b>buffer_pool_log_stats()</b>,
+    <b>packet_queue_t::bytes_queued</b>, <b>packet_queue_t::count</b>,
+    <b>packet_queue_t::head</b>, <b>NAMED_UNREGISTER</b>,
+    <b>packet_queue_t::node_pool</b>, <b>node_pool_destroy()</b>,
+    <b>packet_queue_clear()</b>, <b>packet_queue_stop()</b>,
+    <b>packet_queue_t::packets_dequeued</b>,
+    <b>packet_queue_t::packets_dropped</b>,
+    <b>packet_queue_t::packets_enqueued</b>, <b>SAFE_FREE</b>,
+    <b>packet_queue_t::shutdown</b>, and <b>packet_queue_t::tail</b>.</p>
+<p class="Pp">Referenced by <b>add_client()</b>, and
+    <b>cleanup_client_packet_queues()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_packet_queue_enqueue_("><a class="permalink" href="#int_packet_queue_enqueue_(">int
+  packet_queue_enqueue (<b>packet_queue_t</b> * queue, <b>packet_type_t</b>
+  type, const void * data, size_t data_len, <b>uint32_t</b> client_id,
+  <b>bool</b> copy_data)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Enqueue a packet into the queue.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>queue</i> Packet queue
+<br/>
+<i>type</i> Packet type (from packet_types.h)
+<br/>
+<i>data</i> Packet payload data (can be NULL)
+<br/>
+<i>data_len</i> Length of payload data in bytes
+<br/>
+<i>client_id</i> Client ID for packet header
+<br/>
+<i>copy_data</i> If true, copy data into pool/malloc buffer; if false, use data
+  pointer directly</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, -1 on error</div>
+<p class="Pp">Enqueues a new packet at the tail of the queue. If copy_data is
+    true, packet data is copied into a buffer (from pool if available, otherwise
+    malloc). If copy_data is false, the data pointer is used directly (caller
+    must ensure data remains valid until packet is dequeued and freed).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">If queue is full (max_size &gt; 0 and count &gt;=
+  max_size), oldest packet is automatically dropped to make room (packet count
+  does not exceed max_size).
+<p class="Pp"></p>
+<p class="Pp">Thread-safe (lock-free using atomic operations).</p>
+</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">When copy_data is false, caller must ensure data pointer
+  remains valid until packet is freed.</div>
+<p class="Pp">Definition at line <b>209</b> of file <b>queue.c</b>.</p>
+<pre>210                                                              {
+211   if (!queue)
+212     return -1;
+213 
+214   // Check if shutdown (atomic read with acquire semantics)
+215   if (atomic_load_bool(&amp;queue-&gt;shutdown)) {
+216     return -1;
+217   }
+218 
+219   // Check if queue is full and drop oldest packet if needed (lock-free)
+220   size_t current_count = atomic_load_u64(&amp;queue-&gt;count);
+221   if (queue-&gt;max_size &gt; 0 &amp;&amp; current_count &gt;= queue-&gt;max_size) {
+222     // Drop oldest packet (head) using atomic compare-and-swap
+223     packet_node_t *head = (packet_node_t *)atomic_ptr_load(&amp;queue-&gt;head);
+224     if (head) {
+225       packet_node_t *next = (packet_node_t *)atomic_ptr_load(&amp;head-&gt;next);
+226       // Atomically update head pointer
+227       if (atomic_ptr_cas(&amp;queue-&gt;head, (void **)&amp;head, next)) {
+228         // Successfully claimed head node
+229         if (next == NULL) {
+230           // Queue became empty, also update tail
+231           atomic_ptr_store(&amp;queue-&gt;tail, (void *)(packet_node_t *)NULL);
+232         }
+233 
+234         // Update counters atomically
+235         size_t bytes = head-&gt;packet.data_len;
+236         atomic_fetch_sub_u64(&amp;queue-&gt;bytes_queued, bytes);
+237         atomic_fetch_sub_u64(&amp;queue-&gt;count, 1);
+238         atomic_fetch_add_u64(&amp;queue-&gt;packets_dropped, 1);
+239 
+240         // Free dropped packet data
+241         if (head-&gt;packet.owns_data &amp;&amp; head-&gt;packet.data) {
+242           buffer_pool_free(head-&gt;packet.buffer_pool, head-&gt;packet.data, head-&gt;packet.data_len);
+243         }
+244         node_pool_put(queue-&gt;node_pool, head);
+245 
+246         log_dev_every(4500 * US_PER_MS_INT, &quot;Dropped packet from queue (full): type=%d, client=%u&quot;, type, client_id);
+247       }
+248       // If CAS failed, another thread already dequeued - continue to enqueue
+249     }
+250   }
+251 
+252   // Create new node (use pool if available)
+253   packet_node_t *node = node_pool_get(queue-&gt;node_pool);
+254   if (!node) {
+255     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate packet node&quot;);
+256     return -1;
+257   }
+258 
+259   // Build packet header
+260   node-&gt;packet.header.magic = HOST_TO_NET_U64(PACKET_MAGIC);
+261   node-&gt;packet.header.type = HOST_TO_NET_U16((uint16_t)type);
+262   node-&gt;packet.header.length = HOST_TO_NET_U32((uint32_t)data_len);
+263   node-&gt;packet.header.client_id = HOST_TO_NET_U32(client_id);
+264   // Calculate CRC32 for the data (0 for empty packets)
+265   node-&gt;packet.header.crc32 = HOST_TO_NET_U32(data_len &gt; 0 ? asciichat_crc32(data, data_len) : 0);
+266 
+267   // Handle data
+268   if (data_len &gt; 0 &amp;&amp; data) {
+269     if (copy_data) {
+270       // Try to allocate from buffer pool (local or global)
+271       if (queue-&gt;buffer_pool) {
+272         node-&gt;packet.data = buffer_pool_alloc(queue-&gt;buffer_pool, data_len);
+273         node-&gt;packet.buffer_pool = queue-&gt;buffer_pool;
+274       } else {
+275         // Use global pool if no local pool
+276         node-&gt;packet.data = buffer_pool_alloc(NULL, data_len);
+277         node-&gt;packet.buffer_pool = buffer_pool_get_global();
+278       }
+279       SAFE_MEMCPY(node-&gt;packet.data, data_len, data, data_len);
+280       node-&gt;packet.owns_data = true;
+281     } else {
+282       // Use the data pointer directly (caller must ensure it stays valid)
+283       node-&gt;packet.data = (void *)data;
+284       node-&gt;packet.owns_data = false;
+285       node-&gt;packet.buffer_pool = NULL;
+286     }
+287   } else {
+288     node-&gt;packet.data = NULL;
+289     node-&gt;packet.owns_data = false;
+290     node-&gt;packet.buffer_pool = NULL;
+291   }
+292 
+293   node-&gt;packet.data_len = data_len;
+294   atomic_ptr_store(&amp;node-&gt;next, (void *)(packet_node_t *)NULL);
+295 
+296   // Add to queue using lock-free CAS-based enqueue (Michael-Scott algorithm)
+297   while (true) {
+298     packet_node_t *tail = (packet_node_t *)atomic_ptr_load(&amp;queue-&gt;tail);
+299 
+300     if (tail == NULL) {
+301       // Empty queue - atomically set both head and tail
+302       packet_node_t *expected = NULL;
+303       if (atomic_ptr_cas(&amp;queue-&gt;head, (void **)&amp;expected, node)) {
+304         // Successfully set head (queue was empty)
+305         atomic_ptr_store(&amp;queue-&gt;tail, (void *)node);
+306         break; // Enqueue successful
+307       }
+308       // CAS failed - another thread initialized queue, retry
+309       continue;
+310     }
+311 
+312     // Queue is non-empty - try to append to tail
+313     packet_node_t *next = (packet_node_t *)atomic_ptr_load(&amp;tail-&gt;next);
+314     packet_node_t *current_tail = (packet_node_t *)atomic_ptr_load(&amp;queue-&gt;tail);
+315 
+316     // Verify tail hasn't changed (ABA problem mitigation)
+317     if (tail != current_tail) {
+318       // Tail was updated by another thread, retry
+319       continue;
+320     }
+321 
+322     if (next == NULL) {
+323       // Tail is actually the last node - try to link new node
+324       packet_node_t *expected_null = NULL;
+325       if (atomic_ptr_cas(&amp;tail-&gt;next, (void **)&amp;expected_null, node)) {
+326         // Successfully linked node - try to swing tail forward (best-effort, ignore failure)
+327         atomic_ptr_cas(&amp;queue-&gt;tail, (void **)&amp;tail, node);
+328         break; // Enqueue successful
+329       }
+330       // CAS failed - another thread appended to tail, retry
+331     } else {
+332       // Tail is lagging behind - help advance it
+333       atomic_ptr_cas(&amp;queue-&gt;tail, (void **)&amp;tail, next);
+334       // Retry with new tail
+335     }
+336   }
+337 
+338   // Update counters atomically
+339   atomic_fetch_add_u64(&amp;queue-&gt;count, (size_t)1);
+340   atomic_fetch_add_u64(&amp;queue-&gt;bytes_queued, data_len);
+341   atomic_fetch_add_u64(&amp;queue-&gt;packets_enqueued, (uint64_t)1);
+342 
+343   return 0;
+344 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_crc32</b>, <b>atomic_fetch_add_u64()</b>,
+    <b>atomic_fetch_sub_u64()</b>, <b>atomic_load_bool()</b>,
+    <b>atomic_load_u64()</b>, <b>atomic_ptr_cas()</b>, <b>atomic_ptr_load()</b>,
+    <b>atomic_ptr_store()</b>, <b>packet_queue_t::buffer_pool</b>,
+    <b>queued_packet_t::buffer_pool</b>, <b>buffer_pool_alloc()</b>,
+    <b>buffer_pool_free()</b>, <b>buffer_pool_get_global()</b>,
+    <b>packet_queue_t::bytes_queued</b>, <b>packet_header_t::client_id</b>,
+    <b>packet_queue_t::count</b>, <b>packet_header_t::crc32</b>,
+    <b>queued_packet_t::data</b>, <b>queued_packet_t::data_len</b>,
+    <b>ERROR_MEMORY</b>, <b>packet_queue_t::head</b>,
+    <b>queued_packet_t::header</b>, <b>HOST_TO_NET_U16</b>,
+    <b>HOST_TO_NET_U32</b>, <b>HOST_TO_NET_U64</b>,
+    <b>packet_header_t::length</b>, <b>log_dev_every</b>,
+    <b>packet_header_t::magic</b>, <b>packet_queue_t::max_size</b>,
+    <b>packet_node::next</b>, <b>packet_queue_t::node_pool</b>,
+    <b>node_pool_get()</b>, <b>node_pool_put()</b>,
+    <b>queued_packet_t::owns_data</b>, <b>packet_node::packet</b>,
+    <b>PACKET_MAGIC</b>, <b>packet_queue_t::packets_dropped</b>,
+    <b>packet_queue_t::packets_enqueued</b>, <b>SAFE_MEMCPY</b>,
+    <b>SET_ERRNO</b>, <b>packet_queue_t::shutdown</b>,
+    <b>packet_queue_t::tail</b>, <b>packet_header_t::type</b>, and
+    <b>US_PER_MS_INT</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_render_thread()</b>,
+    <b>client_receive_thread()</b>, and <b>queue_audio_for_client()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_packet_queue_enqueue_packet_("><a class="permalink" href="#int_packet_queue_enqueue_packet_(">int
+  packet_queue_enqueue_packet (<b>packet_queue_t</b> * queue, const
+  <b>queued_packet_t</b> * packet)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Enqueue a pre-built packet (for special cases like compressed
+    frames).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>queue</i> Packet queue
+<br/>
+<i>packet</i> Pre-built packet structure</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, -1 on error</div>
+<p class="Pp">Enqueues a packet that has already been built (header, data,
+    etc.). Useful for special cases like compressed frames where packet
+    construction is done outside the normal enqueue path.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Packet is copied into the queue, but data ownership
+  semantics follow the packet's owns_data flag.
+<p class="Pp"></p>
+<p class="Pp">Thread-safe (lock-free using atomic operations).</p>
+</div>
+<p class="Pp">Definition at line <b>346</b> of file <b>queue.c</b>.</p>
+<pre>346                                                                                       {
+347   if (!queue || !packet) {
+348     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: queue=%p, packet=%p&quot;, queue, packet);
+349     return -1;
+350   }
+351 
+352   // Validate packet before enqueueing
+353   if (!packet_queue_validate_packet(packet)) {
+354     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Refusing to enqueue invalid packet&quot;);
+355     return -1;
+356   }
+357 
+358   // Check if shutdown (atomic read with acquire semantics)
+359   if (atomic_load_bool(&amp;queue-&gt;shutdown)) {
+360     return -1;
+361   }
+362 
+363   // Check if queue is full and drop oldest packet if needed (lock-free)
+364   size_t current_count = atomic_load_u64(&amp;queue-&gt;count);
+365   if (queue-&gt;max_size &gt; 0 &amp;&amp; current_count &gt;= queue-&gt;max_size) {
+366     // Drop oldest packet (head) using atomic compare-and-swap
+367     packet_node_t *head = (packet_node_t *)atomic_ptr_load(&amp;queue-&gt;head);
+368     if (head) {
+369       packet_node_t *next = (packet_node_t *)atomic_ptr_load(&amp;head-&gt;next);
+370       // Atomically update head pointer
+371       if (atomic_ptr_cas(&amp;queue-&gt;head, (void **)&amp;head, next)) {
+372         // Successfully claimed head node
+373         if (next == NULL) {
+374           // Queue became empty, also update tail
+375           atomic_ptr_store(&amp;queue-&gt;tail, (void *)(packet_node_t *)NULL);
+376         }
+377 
+378         // Update counters atomically
+379         size_t bytes = head-&gt;packet.data_len;
+380         atomic_fetch_sub_u64(&amp;queue-&gt;bytes_queued, bytes);
+381         atomic_fetch_sub_u64(&amp;queue-&gt;count, 1);
+382         atomic_fetch_add_u64(&amp;queue-&gt;packets_dropped, 1);
+383 
+384         // Free dropped packet data
+385         if (head-&gt;packet.owns_data &amp;&amp; head-&gt;packet.data) {
+386           buffer_pool_free(head-&gt;packet.buffer_pool, head-&gt;packet.data, head-&gt;packet.data_len);
+387         }
+388         node_pool_put(queue-&gt;node_pool, head);
+389       }
+390       // If CAS failed, another thread already dequeued - continue to enqueue
+391     }
+392   }
+393 
+394   // Create new node (use pool if available)
+395   packet_node_t *node = node_pool_get(queue-&gt;node_pool);
+396   if (!node) {
+397     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate packet node&quot;);
+398     return -1;
+399   }
+400 
+401   // Copy the packet header
+402   SAFE_MEMCPY(&amp;node-&gt;packet, sizeof(queued_packet_t), packet, sizeof(queued_packet_t));
+403 
+404   // Deep copy the data if needed
+405   if (packet-&gt;data &amp;&amp; packet-&gt;data_len &gt; 0 &amp;&amp; packet-&gt;owns_data) {
+406     // If the packet owns its data, we need to make a copy
+407     // Try to allocate from buffer pool (local or global)
+408     void *data_copy;
+409     if (queue-&gt;buffer_pool) {
+410       data_copy = buffer_pool_alloc(queue-&gt;buffer_pool, packet-&gt;data_len);
+411       node-&gt;packet.buffer_pool = queue-&gt;buffer_pool;
+412     } else {
+413       // Use global pool if no local pool
+414       data_copy = buffer_pool_alloc(NULL, packet-&gt;data_len);
+415       node-&gt;packet.buffer_pool = buffer_pool_get_global();
+416     }
+417     SAFE_MEMCPY(data_copy, packet-&gt;data_len, packet-&gt;data, packet-&gt;data_len);
+418     node-&gt;packet.data = data_copy;
+419     node-&gt;packet.owns_data = true;
+420   } else {
+421     // Either no data or packet doesn't own it (shared reference is OK)
+422     node-&gt;packet.data = packet-&gt;data;
+423     node-&gt;packet.owns_data = packet-&gt;owns_data;
+424     node-&gt;packet.buffer_pool = packet-&gt;buffer_pool; // Preserve original pool reference
+425   }
+426 
+427   atomic_ptr_store(&amp;node-&gt;next, (void *)(packet_node_t *)NULL);
+428 
+429   // Add to queue using lock-free CAS-based enqueue (Michael-Scott algorithm)
+430   while (true) {
+431     packet_node_t *tail = (packet_node_t *)atomic_ptr_load(&amp;queue-&gt;tail);
+432 
+433     if (tail == NULL) {
+434       // Empty queue - atomically set both head and tail
+435       packet_node_t *expected = NULL;
+436       if (atomic_ptr_cas(&amp;queue-&gt;head, (void **)&amp;expected, node)) {
+437         // Successfully set head (queue was empty)
+438         atomic_ptr_store(&amp;queue-&gt;tail, (void *)node);
+439         break; // Enqueue successful
+440       }
+441       // CAS failed - another thread initialized queue, retry
+442       continue;
+443     }
+444 
+445     // Queue is non-empty - try to append to tail
+446     packet_node_t *next = (packet_node_t *)atomic_ptr_load(&amp;tail-&gt;next);
+447     packet_node_t *current_tail = (packet_node_t *)atomic_ptr_load(&amp;queue-&gt;tail);
+448 
+449     // Verify tail hasn't changed (ABA problem mitigation)
+450     if (tail != current_tail) {
+451       // Tail was updated by another thread, retry
+452       continue;
+453     }
+454 
+455     if (next == NULL) {
+456       // Tail is actually the last node - try to link new node
+457       packet_node_t *expected_null = NULL;
+458       if (atomic_ptr_cas(&amp;tail-&gt;next, (void **)&amp;expected_null, node)) {
+459         // Successfully linked node - try to swing tail forward (best-effort, ignore failure)
+460         atomic_ptr_cas(&amp;queue-&gt;tail, (void **)&amp;tail, node);
+461         break; // Enqueue successful
+462       }
+463       // CAS failed - another thread appended to tail, retry
+464     } else {
+465       // Tail is lagging behind - help advance it
+466       atomic_ptr_cas(&amp;queue-&gt;tail, (void **)&amp;tail, next);
+467       // Retry with new tail
+468     }
+469   }
+470 
+471   // Update counters atomically
+472   atomic_fetch_add_u64(&amp;queue-&gt;count, (size_t)1);
+473   atomic_fetch_add_u64(&amp;queue-&gt;bytes_queued, packet-&gt;data_len);
+474   atomic_fetch_add_u64(&amp;queue-&gt;packets_enqueued, (uint64_t)1);
+475 
+476   return 0;
+477 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_fetch_add_u64()</b>,
+    <b>atomic_fetch_sub_u64()</b>, <b>atomic_load_bool()</b>,
+    <b>atomic_load_u64()</b>, <b>atomic_ptr_cas()</b>, <b>atomic_ptr_load()</b>,
+    <b>atomic_ptr_store()</b>, <b>packet_queue_t::buffer_pool</b>,
+    <b>queued_packet_t::buffer_pool</b>, <b>buffer_pool_alloc()</b>,
+    <b>buffer_pool_free()</b>, <b>buffer_pool_get_global()</b>,
+    <b>packet_queue_t::bytes_queued</b>, <b>packet_queue_t::count</b>,
+    <b>queued_packet_t::data</b>, <b>queued_packet_t::data_len</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+    <b>packet_queue_t::head</b>, <b>packet_queue_t::max_size</b>,
+    <b>packet_node::next</b>, <b>packet_queue_t::node_pool</b>,
+    <b>node_pool_get()</b>, <b>node_pool_put()</b>,
+    <b>queued_packet_t::owns_data</b>, <b>packet_node::packet</b>,
+    <b>packet_queue_validate_packet()</b>,
+    <b>packet_queue_t::packets_dropped</b>,
+    <b>packet_queue_t::packets_enqueued</b>, <b>SAFE_MEMCPY</b>,
+    <b>SET_ERRNO</b>, <b>packet_queue_t::shutdown</b>, and
+    <b>packet_queue_t::tail</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_packet_queue_free_packet_("><a class="permalink" href="#void_packet_queue_free_packet_(">void
+  packet_queue_free_packet (<b>queued_packet_t</b> * packet)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Free a dequeued packet.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>packet</i> Packet to free (can be NULL)</div>
+<p class="Pp">Properly frees packet memory, returning data to buffer pool if
+    applicable, or calling free() if allocated with malloc. Also frees packet
+    structure itself.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Safe to call with NULL (no-op).
+<p class="Pp"></p>
+<p class="Pp">Always call this for packets returned by dequeue functions.</p>
+</div>
+<p class="Pp">Definition at line <b>568</b> of file <b>queue.c</b>.</p>
+<pre>568                                                        {
+569   if (!packet)
+570     return;
+571 
+572   // Check if packet was already freed (detect double-free)
+573   if (packet-&gt;header.magic != HOST_TO_NET_U64(PACKET_MAGIC)) {
+574     log_warn(&quot;Attempted double-free of packet (magic=0x%llx, expected=0x%llx)&quot;, NET_TO_HOST_U64(packet-&gt;header.magic),
+575              PACKET_MAGIC);
+576     return;
+577   }
+578 
+579   if (packet-&gt;owns_data &amp;&amp; packet-&gt;data) {
+580     // Return to appropriate pool or free
+581     if (packet-&gt;buffer_pool) {
+582       buffer_pool_free(packet-&gt;buffer_pool, packet-&gt;data, packet-&gt;data_len);
+583     } else {
+584       // This was allocated from global pool or malloc, use buffer_pool_free which handles both
+585       buffer_pool_free(NULL, packet-&gt;data, packet-&gt;data_len);
+586     }
+587   }
+588 
+589   // Mark as freed to detect future double-free attempts
+590   // Use network byte order for consistency on big-endian systems
+591   packet-&gt;header.magic = HOST_TO_NET_U64(0xBEEFDEADULL); // Different magic in network byte order
+592   SAFE_FREE(packet);
+593 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>queued_packet_t::buffer_pool</b>,
+    <b>buffer_pool_free()</b>, <b>queued_packet_t::data</b>,
+    <b>queued_packet_t::data_len</b>, <b>queued_packet_t::header</b>,
+    <b>HOST_TO_NET_U64</b>, <b>log_warn</b>, <b>packet_header_t::magic</b>,
+    <b>NET_TO_HOST_U64</b>, <b>queued_packet_t::owns_data</b>,
+    <b>PACKET_MAGIC</b>, and <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>client_dispatch_thread()</b>,
+    <b>client_send_thread_func()</b>, and <b>packet_queue_clear()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_packet_queue_get_stats_("><a class="permalink" href="#void_packet_queue_get_stats_(">void
+  packet_queue_get_stats (<b>packet_queue_t</b> * queue, <b>uint64_t</b> *
+  enqueued, <b>uint64_t</b> * dequeued, <b>uint64_t</b> * dropped)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Get queue statistics.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>queue</i> Packet queue
+<br/>
+<i>enqueued</i> Output: Total packets enqueued
+<br/>
+<i>dequeued</i> Output: Total packets dequeued
+<br/>
+<i>dropped</i> Output: Total packets dropped (due to queue full)</div>
+<p class="Pp">Retrieves cumulative statistics for the queue. Useful for
+    performance monitoring and debugging.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe (lock-free using atomic operations).
+<p class="Pp"></p>
+<p class="Pp">All output parameters must be non-NULL.</p>
+</div>
+<p class="Pp">Definition at line <b>637</b> of file <b>queue.c</b>.</p>
+<pre>637                                                                                                               {
+638   if (!queue)
+639     return;
+640 
+641   // Lock-free atomic reads (acquire semantics for consistency)
+642   if (enqueued)
+643     *enqueued = atomic_load_u64(&amp;queue-&gt;packets_enqueued);
+644   if (dequeued)
+645     *dequeued = atomic_load_u64(&amp;queue-&gt;packets_dequeued);
+646   if (dropped)
+647     *dropped = atomic_load_u64(&amp;queue-&gt;packets_dropped);
+648 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>,
+    <b>packet_queue_t::packets_dequeued</b>,
+    <b>packet_queue_t::packets_dropped</b>, and
+    <b>packet_queue_t::packets_enqueued</b>.</p>
+<p class="Pp">Referenced by <b>stats_logger_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> packet_queue_is_empty (<b>packet_queue_t</b> *
+  queue)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Check if queue is empty.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>queue</i> Packet queue</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if queue is empty, false otherwise</div>
+<p class="Pp">Returns true if queue contains no packets. Snapshot value may
+    change immediately after return due to concurrent operations.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe (lock-free using atomic operations).</div>
+<p class="Pp">Definition at line <b>603</b> of file <b>queue.c</b>.</p>
+<pre>603                                                   {
+604   return packet_queue_size(queue) == 0;
+605 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_queue_size()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> packet_queue_is_full (<b>packet_queue_t</b> *
+  queue)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Check if queue is full.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>queue</i> Packet queue</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if queue is full (max_size &gt; 0 and count &gt;=
+  max_size), false otherwise</div>
+<p class="Pp">Returns true if queue has reached its maximum size. Unlimited
+    queues (max_size == 0) never return true from this function.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe (lock-free using atomic operations).</div>
+<p class="Pp">Definition at line <b>607</b> of file <b>queue.c</b>.</p>
+<pre>607                                                  {
+608   if (!queue || queue-&gt;max_size == 0)
+609     return false;
+610 
+611   // Lock-free atomic read
+612   size_t count = atomic_load_u64(&amp;queue-&gt;count);
+613   return (count &gt;= queue-&gt;max_size);
+614 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>, <b>packet_queue_t::count</b>,
+    and <b>packet_queue_t::max_size</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_packet_queue_size_("><a class="permalink" href="#size_t_packet_queue_size_(">size_t
+  packet_queue_size (<b>packet_queue_t</b> * queue)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Get current number of packets in queue.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>queue</i> Packet queue</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of packets currently queued</div>
+<p class="Pp">Returns the current queue size (count field). This is a snapshot
+    and may change immediately after return due to concurrent enqueue/dequeue
+    operations.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe (lock-free using atomic operations).</div>
+<p class="Pp">Definition at line <b>595</b> of file <b>queue.c</b>.</p>
+<pre>595                                                 {
+596   if (!queue)
+597     return 0;
+598 
+599   // Lock-free atomic read
+600   return atomic_load_u64(&amp;queue-&gt;count);
+601 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>, and
+    <b>packet_queue_t::count</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_render_thread()</b>, and
+    <b>packet_queue_is_empty()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_packet_queue_stop_("><a class="permalink" href="#void_packet_queue_stop_(">void
+  packet_queue_stop (<b>packet_queue_t</b> * queue)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Destroy a packet queue and free all resources.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>queue</i> Queue to destroy (can be NULL)</div>
+<p class="Pp">Destroys the queue and all associated resources (node pool,
+  etc.).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">Packets still in the queue are NOT freed. Clear the queue
+  first or ensure all packets are dequeued before destruction.</div>
+<p class="Pp">Definition at line <b>616</b> of file <b>queue.c</b>.</p>
+<pre>616                                               {
+617   if (!queue) {
+618     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: queue=%p&quot;, queue);
+619     return;
+620   }
+621 
+622   // Lock-free atomic store (release semantics ensures visibility to other threads)
+623   atomic_store_u64(&amp;queue-&gt;shutdown, true);
+624 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>SET_ERRNO</b>, and <b>packet_queue_t::shutdown</b>.</p>
+<p class="Pp">Referenced by <b>disconnect_client_for_bad_data()</b>,
+    <b>packet_queue_destroy()</b>, and <b>remove_client()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>queued_packet_t</b> * packet_queue_try_dequeue
+  (<b>packet_queue_t</b> * queue)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Try to dequeue a packet without blocking.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>queue</i> Packet queue</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to dequeued packet, or NULL if queue is empty or
+  shutdown</div>
+<p class="Pp">Non-blocking version of <b>packet_queue_dequeue()</b>. Returns
+    immediately with NULL if queue is empty or shutdown, otherwise returns next
+    packet.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller must free the returned packet with
+  <b>packet_queue_free_packet()</b>.
+<p class="Pp"></p>
+<p class="Pp">Thread-safe (lock-free using atomic operations).</p>
+</div>
+<p class="Pp">Definition at line <b>484</b> of file <b>queue.c</b>.</p>
+<pre>484                                                                  {
+485   if (!queue)
+486     return NULL;
+487 
+488   // Check if shutdown (atomic read with acquire semantics)
+489   if (atomic_load_bool(&amp;queue-&gt;shutdown)) {
+490     return NULL;
+491   }
+492 
+493   // Check if queue is empty (atomic read with acquire semantics)
+494   size_t current_count = atomic_load_u64(&amp;queue-&gt;count);
+495   if (current_count == 0) {
+496     return NULL;
+497   }
+498 
+499   // Remove from head atomically (lock-free dequeue)
+500   packet_node_t *head = (packet_node_t *)atomic_ptr_load(&amp;queue-&gt;head);
+501   if (!head) {
+502     return NULL;
+503   }
+504 
+505   // Atomically update head pointer
+506   packet_node_t *next = (packet_node_t *)atomic_ptr_load(&amp;head-&gt;next);
+507   if (atomic_ptr_cas(&amp;queue-&gt;head, (void **)&amp;head, next)) {
+508     // Successfully claimed head node
+509     if (next == NULL) {
+510       // Queue became empty, also update tail atomically
+511       atomic_ptr_store(&amp;queue-&gt;tail, (void *)(packet_node_t *)NULL);
+512     }
+513 
+514     // Update counters atomically
+515     size_t bytes = head-&gt;packet.data_len;
+516     atomic_fetch_sub_u64(&amp;queue-&gt;bytes_queued, bytes);
+517     atomic_fetch_sub_u64(&amp;queue-&gt;count, 1);
+518     atomic_fetch_add_u64(&amp;queue-&gt;packets_dequeued, (uint64_t)1);
+519 
+520     // Verify packet magic number for corruption detection
+521     uint64_t magic = NET_TO_HOST_U64(head-&gt;packet.header.magic);
+522     if (magic != PACKET_MAGIC) {
+523       SET_ERRNO(ERROR_BUFFER, &quot;CORRUPTION: Invalid magic in try_dequeued packet: 0x%llx (expected 0x%llx), type=%u&quot;,
+524                 magic, PACKET_MAGIC, NET_TO_HOST_U16(head-&gt;packet.header.type));
+525       // Still return node to pool but don't return corrupted packet
+526       node_pool_put(queue-&gt;node_pool, head);
+527       return NULL;
+528     }
+529 
+530     // Validate CRC if there's data
+531     if (head-&gt;packet.data_len &gt; 0 &amp;&amp; head-&gt;packet.data) {
+532       uint32_t expected_crc = NET_TO_HOST_U32(head-&gt;packet.header.crc32);
+533       uint32_t actual_crc = asciichat_crc32(head-&gt;packet.data, head-&gt;packet.data_len);
+534       if (actual_crc != expected_crc) {
+535         SET_ERRNO(ERROR_BUFFER,
+536                   &quot;CORRUPTION: CRC mismatch in try_dequeued packet: got 0x%x, expected 0x%x, type=%u, len=%zu&quot;,
+537                   actual_crc, expected_crc, NET_TO_HOST_U16(head-&gt;packet.header.type), head-&gt;packet.data_len);
+538         // Free data if packet owns it
+539         if (head-&gt;packet.owns_data &amp;&amp; head-&gt;packet.data) {
+540           // Use buffer_pool_free for global pool allocations, buffer_pool_free for local pools
+541           if (head-&gt;packet.buffer_pool) {
+542             buffer_pool_free(head-&gt;packet.buffer_pool, head-&gt;packet.data, head-&gt;packet.data_len);
+543           } else {
+544             // This was allocated from global pool or malloc, use buffer_pool_free which handles both
+545             buffer_pool_free(NULL, head-&gt;packet.data, head-&gt;packet.data_len);
+546           }
+547           // Clear pointer to prevent double-free when packet is copied later.
+548           head-&gt;packet.data = NULL;
+549           head-&gt;packet.owns_data = false;
+550         }
+551         node_pool_put(queue-&gt;node_pool, head);
+552         return NULL;
+553       }
+554     }
+555 
+556     // Extract packet and return node to pool
+557     queued_packet_t *packet;
+558     packet = SAFE_MALLOC(sizeof(queued_packet_t), queued_packet_t *);
+559     SAFE_MEMCPY(packet, sizeof(queued_packet_t), &amp;head-&gt;packet, sizeof(queued_packet_t));
+560     node_pool_put(queue-&gt;node_pool, head);
+561     return packet;
+562   }
+563 
+564   // CAS failed - another thread dequeued, retry if needed (or return NULL for non-blocking)
+565   return NULL;
+566 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_crc32</b>, <b>atomic_fetch_add_u64()</b>,
+    <b>atomic_fetch_sub_u64()</b>, <b>atomic_load_bool()</b>,
+    <b>atomic_load_u64()</b>, <b>atomic_ptr_cas()</b>, <b>atomic_ptr_load()</b>,
+    <b>atomic_ptr_store()</b>, <b>queued_packet_t::buffer_pool</b>,
+    <b>buffer_pool_free()</b>, <b>packet_queue_t::bytes_queued</b>,
+    <b>packet_queue_t::count</b>, <b>packet_header_t::crc32</b>,
+    <b>queued_packet_t::data</b>, <b>queued_packet_t::data_len</b>,
+    <b>ERROR_BUFFER</b>, <b>packet_queue_t::head</b>,
+    <b>queued_packet_t::header</b>, <b>packet_header_t::magic</b>,
+    <b>NET_TO_HOST_U16</b>, <b>NET_TO_HOST_U32</b>, <b>NET_TO_HOST_U64</b>,
+    <b>packet_node::next</b>, <b>packet_queue_t::node_pool</b>,
+    <b>node_pool_put()</b>, <b>queued_packet_t::owns_data</b>,
+    <b>packet_node::packet</b>, <b>PACKET_MAGIC</b>,
+    <b>packet_queue_t::packets_dequeued</b>, <b>SAFE_MALLOC</b>,
+    <b>SAFE_MEMCPY</b>, <b>SET_ERRNO</b>, <b>packet_queue_t::shutdown</b>,
+    <b>packet_queue_t::tail</b>, and <b>packet_header_t::type</b>.</p>
+<p class="Pp">Referenced by <b>client_dispatch_thread()</b>,
+    <b>client_send_thread_func()</b>, <b>packet_queue_clear()</b>, and
+    <b>packet_queue_dequeue()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> packet_queue_validate_packet (const
+  <b>queued_packet_t</b> * packet)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/queue.h</b>&gt;<b></b></p>
+<p class="Pp">Validate packet integrity.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>packet</i> Packet to validate</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if packet is valid, false otherwise</div>
+<p class="Pp">Validates packet structure and header integrity. Useful for
+    debugging and detecting memory corruption.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This is a basic validation - does not verify payload
+  contents.</div>
+<p class="Pp">Definition at line <b>650</b> of file <b>queue.c</b>.</p>
+<pre>650                                                                  {
+651   if (!packet) {
+652     return false;
+653   }
+654 
+655   // Check magic number
+656   uint64_t magic = NET_TO_HOST_U64(packet-&gt;header.magic);
+657   if (magic != PACKET_MAGIC) {
+658     SET_ERRNO(ERROR_BUFFER, &quot;Invalid packet magic: 0x%llx (expected 0x%llx)&quot;, magic, PACKET_MAGIC);
+659     return false;
+660   }
+661 
+662   // Check packet type is valid (must be non-zero and within reasonable range)
+663   uint16_t type = NET_TO_HOST_U16(packet-&gt;header.type);
+664   if (type == 0 || type &gt; 10000) {
+665     SET_ERRNO(ERROR_BUFFER, &quot;Invalid packet type: %u&quot;, type);
+666     return false;
+667   }
+668 
+669   // Check length matches data_len
+670   uint32_t length = NET_TO_HOST_U32(packet-&gt;header.length);
+671   if (length != packet-&gt;data_len) {
+672     SET_ERRNO(ERROR_BUFFER, &quot;Packet length mismatch: header says %u, data_len is %zu&quot;, length, packet-&gt;data_len);
+673     return false;
+674   }
+675 
+676   // Check CRC if there's data
+677   if (packet-&gt;data_len &gt; 0 &amp;&amp; packet-&gt;data) {
+678     uint32_t expected_crc = NET_TO_HOST_U32(packet-&gt;header.crc32);
+679     uint32_t actual_crc = asciichat_crc32(packet-&gt;data, packet-&gt;data_len);
+680     if (actual_crc != expected_crc) {
+681       SET_ERRNO(ERROR_BUFFER, &quot;Packet CRC mismatch: got 0x%x, expected 0x%x&quot;, actual_crc, expected_crc);
+682       return false;
+683     }
+684   }
+685 
+686   return true;
+687 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_crc32</b>, <b>packet_header_t::crc32</b>,
+    <b>queued_packet_t::data</b>, <b>queued_packet_t::data_len</b>,
+    <b>ERROR_BUFFER</b>, <b>queued_packet_t::header</b>, <b>length</b>,
+    <b>packet_header_t::length</b>, <b>packet_header_t::magic</b>,
+    <b>NET_TO_HOST_U16</b>, <b>NET_TO_HOST_U32</b>, <b>NET_TO_HOST_U64</b>,
+    <b>PACKET_MAGIC</b>, <b>SET_ERRNO</b>, and <b>packet_header_t::type</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_enqueue_packet()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>buffer_pool_t</b>* packet_queue_t::buffer_pool</h2>
+<p class="Pp">Optional memory pool for data buffers (NULL = use
+  malloc/free).</p>
+<p class="Pp">Definition at line <b>226</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_create_with_pools()</b>,
+    <b>packet_queue_destroy()</b>, <b>packet_queue_enqueue()</b>, and
+    <b>packet_queue_enqueue_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>buffer_pool_t</b>* queued_packet_t::buffer_pool</h2>
+<p class="Pp">Pool that allocated the data (NULL if malloc'd).</p>
+<p class="Pp">Definition at line <b>130</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_enqueue()</b>,
+    <b>packet_queue_enqueue_packet()</b>, <b>packet_queue_free_packet()</b>, and
+    <b>packet_queue_try_dequeue()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> packet_queue_t::bytes_queued</h2>
+<p class="Pp">Total bytes of data queued (for monitoring) - atomic for lock-free
+    access.</p>
+<p class="Pp">Definition at line <b>221</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_create_with_pools()</b>,
+    <b>packet_queue_destroy()</b>, <b>packet_queue_enqueue()</b>,
+    <b>packet_queue_enqueue_packet()</b>, and
+  <b>packet_queue_try_dequeue()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> packet_queue_t::count</h2>
+<p class="Pp">Number of packets currently in queue - atomic for lock-free
+    access.</p>
+<p class="Pp">Definition at line <b>217</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_create_with_pools()</b>,
+    <b>packet_queue_destroy()</b>, <b>packet_queue_enqueue()</b>,
+    <b>packet_queue_enqueue_packet()</b>, <b>packet_queue_is_full()</b>,
+    <b>packet_queue_size()</b>, and <b>packet_queue_try_dequeue()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_queued_packet_t::data"><a class="permalink" href="#void*_queued_packet_t::data">void*
+  queued_packet_t::data</a></h2>
+<p class="Pp">Packet payload data (can be NULL for header-only packets).</p>
+<p class="Pp">Definition at line <b>124</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>client_dispatch_thread()</b>,
+    <b>packet_queue_enqueue()</b>, <b>packet_queue_enqueue_packet()</b>,
+    <b>packet_queue_free_packet()</b>, <b>packet_queue_try_dequeue()</b>, and
+    <b>packet_queue_validate_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_queued_packet_t::data_len"><a class="permalink" href="#size_t_queued_packet_t::data_len">size_t
+  queued_packet_t::data_len</a></h2>
+<p class="Pp">Length of payload data in bytes.</p>
+<p class="Pp">Definition at line <b>126</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>client_dispatch_thread()</b>,
+    <b>client_send_thread_func()</b>, <b>packet_queue_enqueue()</b>,
+    <b>packet_queue_enqueue_packet()</b>, <b>packet_queue_free_packet()</b>,
+    <b>packet_queue_try_dequeue()</b>, and
+    <b>packet_queue_validate_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_ptr_t</b> node_pool::free_list</h2>
+<p class="Pp">Stack of free nodes (LIFO for cache locality) - atomic for
+    lock-free access.</p>
+<p class="Pp">Definition at line <b>169</b> of file <b>queue.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_ptr_t</b> packet_queue_t::head</h2>
+<p class="Pp">Front of queue (dequeue from here) - atomic for lock-free
+  access.</p>
+<p class="Pp">Definition at line <b>213</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_create_with_pools()</b>,
+    <b>packet_queue_destroy()</b>, <b>packet_queue_enqueue()</b>,
+    <b>packet_queue_enqueue_packet()</b>, and
+  <b>packet_queue_try_dequeue()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>packet_header_t</b> queued_packet_t::header</h2>
+<p class="Pp">Complete packet header (already in network byte order).</p>
+<p class="Pp">Definition at line <b>122</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_enqueue()</b>,
+    <b>packet_queue_free_packet()</b>, <b>packet_queue_try_dequeue()</b>, and
+    <b>packet_queue_validate_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_packet_queue_t::max_size"><a class="permalink" href="#size_t_packet_queue_t::max_size">size_t
+  packet_queue_t::max_size</a></h2>
+<p class="Pp">Maximum queue size (0 = unlimited).</p>
+<p class="Pp">Definition at line <b>219</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_create_with_pools()</b>,
+    <b>packet_queue_enqueue()</b>, <b>packet_queue_enqueue_packet()</b>, and
+    <b>packet_queue_is_full()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_ptr_t</b> packet_node::next</h2>
+<p class="Pp">Pointer to next node in linked list (NULL for tail) - atomic for
+    lock-free operations.</p>
+<p class="Pp">Definition at line <b>151</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>node_pool_get()</b>, <b>node_pool_put()</b>,
+    <b>packet_queue_enqueue()</b>, <b>packet_queue_enqueue_packet()</b>, and
+    <b>packet_queue_try_dequeue()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>node_pool_t</b>* packet_queue_t::node_pool</h2>
+<p class="Pp">Optional memory pool for nodes (NULL = use malloc/free).</p>
+<p class="Pp">Definition at line <b>224</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_create_with_pools()</b>,
+    <b>packet_queue_destroy()</b>, <b>packet_queue_enqueue()</b>,
+    <b>packet_queue_enqueue_packet()</b>, and
+  <b>packet_queue_try_dequeue()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>packet_node_t</b>* node_pool::nodes</h2>
+<p class="Pp">Pre-allocated array of all nodes.</p>
+<p class="Pp">Definition at line <b>171</b> of file <b>queue.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> queued_packet_t::owns_data</h2>
+<p class="Pp">If true, free data when packet is freed.</p>
+<p class="Pp">Definition at line <b>128</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_enqueue()</b>,
+    <b>packet_queue_enqueue_packet()</b>, <b>packet_queue_free_packet()</b>, and
+    <b>packet_queue_try_dequeue()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>queued_packet_t</b> packet_node::packet</h2>
+<p class="Pp">The queued packet data.</p>
+<p class="Pp">Definition at line <b>149</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_enqueue()</b>,
+    <b>packet_queue_enqueue_packet()</b>, and
+  <b>packet_queue_try_dequeue()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> packet_queue_t::packets_dequeued</h2>
+<p class="Pp">Total packets dequeued (statistics) - atomic for lock-free
+  access.</p>
+<p class="Pp">Definition at line <b>231</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_create_with_pools()</b>,
+    <b>packet_queue_destroy()</b>, <b>packet_queue_get_stats()</b>, and
+    <b>packet_queue_try_dequeue()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> packet_queue_t::packets_dropped</h2>
+<p class="Pp">Total packets dropped due to queue full (statistics) - atomic for
+    lock-free access.</p>
+<p class="Pp">Definition at line <b>233</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_create_with_pools()</b>,
+    <b>packet_queue_destroy()</b>, <b>packet_queue_enqueue()</b>,
+    <b>packet_queue_enqueue_packet()</b>, and
+  <b>packet_queue_get_stats()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> packet_queue_t::packets_enqueued</h2>
+<p class="Pp">Total packets enqueued (statistics) - atomic for lock-free
+  access.</p>
+<p class="Pp">Definition at line <b>229</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_create_with_pools()</b>,
+    <b>packet_queue_destroy()</b>, <b>packet_queue_enqueue()</b>,
+    <b>packet_queue_enqueue_packet()</b>, and
+  <b>packet_queue_get_stats()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_node_pool::pool_size"><a class="permalink" href="#size_t_node_pool::pool_size">size_t
+  node_pool::pool_size</a></h2>
+<p class="Pp">Total number of nodes in pool.</p>
+<p class="Pp">Definition at line <b>173</b> of file <b>queue.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> packet_queue_t::shutdown</h2>
+<p class="Pp">Shutdown flag (true = dequeue returns NULL) - atomic for lock-free
+    access.</p>
+<p class="Pp">Definition at line <b>236</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_create_with_pools()</b>,
+    <b>packet_queue_destroy()</b>, <b>packet_queue_enqueue()</b>,
+    <b>packet_queue_enqueue_packet()</b>, <b>packet_queue_stop()</b>, and
+    <b>packet_queue_try_dequeue()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_ptr_t</b> packet_queue_t::tail</h2>
+<p class="Pp">Back of queue (enqueue here) - atomic for lock-free access.</p>
+<p class="Pp">Definition at line <b>215</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_create_with_pools()</b>,
+    <b>packet_queue_destroy()</b>, <b>packet_queue_enqueue()</b>,
+    <b>packet_queue_enqueue_packet()</b>, and
+  <b>packet_queue_try_dequeue()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> node_pool::used_count</h2>
+<p class="Pp">Number of nodes currently in use - atomic for lock-free
+  tracking.</p>
+<p class="Pp">Definition at line <b>175</b> of file <b>queue.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

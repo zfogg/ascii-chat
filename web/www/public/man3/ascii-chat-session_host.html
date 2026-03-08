@@ -67,28 +67,29 @@
   <br/>
   Client array. int <b>client_count</b>
   <br/>
-  Current client count. uint32_t <b>next_client_id</b>
+  Current client count. <b>uint32_t</b> <b>next_client_id</b>
   <br/>
-  Next client ID counter. mutex_t <b>clients_mutex</b>
+  Next client ID counter. <b>mutex_t</b> <b>clients_mutex</b>
   <br/>
-  Client list mutex. asciichat_thread_t <b>accept_thread</b>
+  Client list mutex. <b>asciichat_thread_t</b> <b>accept_thread</b>
   <br/>
   Accept thread handle. <b>bool</b> <b>accept_thread_running</b>
   <br/>
-  Accept thread is running. asciichat_thread_t <b>receive_thread</b>
+  Accept thread is running. <b>asciichat_thread_t</b> <b>receive_thread</b>
   <br/>
   Receive thread handle. <b>bool</b> <b>receive_thread_running</b>
   <br/>
-  Receive thread is running. asciichat_thread_t <b>render_thread</b>
+  Receive thread is running. <b>asciichat_thread_t</b> <b>render_thread</b>
   <br/>
   Render thread handle (for video mixing and audio distribution). <b>bool</b>
     <b>render_thread_running</b>
   <br/>
   Render thread is running. <b>session_audio_ctx_t</b> * <b>audio_ctx</b>
   <br/>
-  Audio context for mixing (host only). opus_codec_t * <b>opus_decoder</b>
+  Audio context for mixing (host only). <b>opus_codec_t</b> *
+    <b>opus_decoder</b>
   <br/>
-  Opus decoder for decoding incoming Opus audio. opus_codec_t *
+  Opus decoder for decoding incoming Opus audio. <b>opus_codec_t</b> *
     <b>opus_encoder</b>
   <br/>
   Opus encoder for encoding mixed audio for broadcast. <b>bool</b>
@@ -111,8 +112,7 @@
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_thread_t_session_host::accept_thread"><a class="permalink" href="#asciichat_thread_t_session_host::accept_thread">asciichat_thread_t
-  session_host::accept_thread</a></h2>
+<h2 class="Ss"><b>asciichat_thread_t</b> session_host::accept_thread</h2>
 <p class="Pp">Accept thread handle.</p>
 <p class="Pp">Definition at line <b>133</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_start()</b>, and
@@ -169,8 +169,7 @@
   <b>session_host_stop()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="mutex_t_session_host::clients_mutex"><a class="permalink" href="#mutex_t_session_host::clients_mutex">mutex_t
-  session_host::clients_mutex</a></h2>
+<h2 class="Ss"><b>mutex_t</b> session_host::clients_mutex</h2>
 <p class="Pp">Client list mutex.</p>
 <p class="Pp">Definition at line <b>130</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
@@ -250,8 +249,7 @@
   <b>session_host_stop()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint32_t_session_host::next_client_id"><a class="permalink" href="#uint32_t_session_host::next_client_id">uint32_t
-  session_host::next_client_id</a></h2>
+<h2 class="Ss"><b>uint32_t</b> session_host::next_client_id</h2>
 <p class="Pp">Next client ID counter.</p>
 <p class="Pp">Definition at line <b>127</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
@@ -259,8 +257,7 @@
     <b>session_host_create()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="opus_codec_t*_session_host::opus_decoder"><a class="permalink" href="#opus_codec_t*_session_host::opus_decoder">opus_codec_t*
-  session_host::opus_decoder</a></h2>
+<h2 class="Ss"><b>opus_codec_t</b>* session_host::opus_decoder</h2>
 <p class="Pp">Opus decoder for decoding incoming Opus audio.</p>
 <p class="Pp">Definition at line <b>154</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_destroy()</b>,
@@ -268,8 +265,7 @@
   <b>session_host_stop_render()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="opus_codec_t*_session_host::opus_encoder"><a class="permalink" href="#opus_codec_t*_session_host::opus_encoder">opus_codec_t*
-  session_host::opus_encoder</a></h2>
+<h2 class="Ss"><b>opus_codec_t</b>* session_host::opus_encoder</h2>
 <p class="Pp">Opus encoder for encoding mixed audio for broadcast.</p>
 <p class="Pp">Definition at line <b>157</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_start_render()</b>, and
@@ -292,8 +288,7 @@
     <b>session_host_start()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_thread_t_session_host::receive_thread"><a class="permalink" href="#asciichat_thread_t_session_host::receive_thread">asciichat_thread_t
-  session_host::receive_thread</a></h2>
+<h2 class="Ss"><b>asciichat_thread_t</b> session_host::receive_thread</h2>
 <p class="Pp">Receive thread handle.</p>
 <p class="Pp">Definition at line <b>139</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_start()</b>, and
@@ -307,8 +302,7 @@
     <b>session_host_stop()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_thread_t_session_host::render_thread"><a class="permalink" href="#asciichat_thread_t_session_host::render_thread">asciichat_thread_t
-  session_host::render_thread</a></h2>
+<h2 class="Ss"><b>asciichat_thread_t</b> session_host::render_thread</h2>
 <p class="Pp">Render thread handle (for video mixing and audio
   distribution).</p>
 <p class="Pp">Definition at line <b>145</b> of file <b>host.c</b>.</p>
@@ -366,7 +360,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

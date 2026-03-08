@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>rcu.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">rcu.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">rcu.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">rcu.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>options_state_init</b> (void)
+  <br/>
+  Initialize RCU options system. <b>asciichat_error_t</b>
+    <b>options_state_set</b> (const <b>options_t</b> *opts)
+  <br/>
+  Set options from a parsed options struct. void <b>options_state_destroy</b>
+    (void)
+  <br/>
+  Shutdown RCU options system. const <b>options_t</b> * <b>options_get</b>
+    (void)
+  <br/>
+  Get current options (lock-free read). void <b>options_cleanup_schema</b>
+    (void)
+  <br/>
+  Clean up schema resources.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_options_cleanup_schema_(void_)"><a class="permalink" href="#void_options_cleanup_schema_(void_)">void
+  options_cleanup_schema (void )</a></h2>
+<p class="Pp">Clean up schema resources. Frees the dynamically allocated options
+    schema array and all associated strings. Should be called at program
+    shutdown after <b>options_state_destroy()</b>. Safe to call multiple times
+    or if schema was never built.</p>
+<p class="Pp">Definition at line <b>478</b> of file <b>rcu.c</b>.</p>
+<pre>478                                   {
+479   config_schema_destroy();
+480 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>config_schema_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_options_state_destroy_(void_)"><a class="permalink" href="#void_options_state_destroy_(void_)">void
+  options_state_destroy (void )</a></h2>
+<p class="Pp">Shutdown RCU options system. Frees the current options struct and
+    cleans up resources. Should be called at program shutdown after all threads
+    have exited.</p>
+<p class="Pp">Definition at line <b>447</b> of file <b>rcu.c</b>.</p>
+<pre>447                                  {
+448   // Check if initialized using lifecycle
+449   if (!lifecycle_is_initialized(&amp;g_options_lifecycle)) {
+450     return;
+451   }
+452 
+453   /* Shutdown lifecycle to mark as no longer initialized */
+454   lifecycle_shutdown(&amp;g_options_lifecycle);
+455 
+456   // Get current options pointer
+457   options_t *current = atomic_ptr_load(&amp;g_options);
+458 
+459   // Clear the atomic pointer (prevent further reads)
+460   atomic_ptr_store(&amp;g_options, NULL);
+461 
+462   // Free current struct
+463   SAFE_FREE(current);
+464 
+465   // Free all deferred structs
+466   deferred_free_all();
+467 
+468   // Cleanup schema (frees all dynamically allocated config strings)
+469   config_schema_destroy();
+470 
+471   // Destroy dynamically created mutexes
+472   mutex_destroy(&amp;g_options_write_mutex);
+473   mutex_destroy(&amp;g_deferred_free_mutex);
+474 
+475   log_debug(&quot;Options state shutdown complete&quot;);
+476 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_ptr_load()</b>, <b>atomic_ptr_store()</b>,
+    <b>config_schema_destroy()</b>, <b>lifecycle_is_initialized()</b>,
+    <b>lifecycle_shutdown()</b>, <b>log_debug</b>, <b>mutex_destroy()</b>, and
+    <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
+    <b>client_cleanup()</b>, <b>main()</b>, and <b>mirror_cleanup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> options_state_init (void )</h2>
+<p class="Pp">Initialize RCU options system. Must be called once at program
+    startup before any threads access options. Allocates initial options struct
+    and sets up atomic pointer.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>365</b> of file <b>rcu.c</b>.</p>
+<pre>365                                            {
+366   // Detect fork: after fork(), child process must reinitialize
+367   pid_t current_pid = platform_get_pid();
+368   if ((lifecycle_is_initialized(&amp;g_options_lifecycle) || g_init_pid != -1) &amp;&amp; g_init_pid != current_pid) {
+369     log_debug(&quot;Detected fork in options_state_init (parent PID %d, child PID %d) - resetting lifecycle&quot;, g_init_pid,
+370               current_pid);
+371     /* Reset lifecycle to allow reinitialization after fork */
+372     lifecycle_shutdown(&amp;g_options_lifecycle);
+373     g_init_pid = current_pid;
+374   }
+375 
+376   // Check if already initialized in this process using lifecycle
+377   if (lifecycle_is_initialized(&amp;g_options_lifecycle) &amp;&amp; g_init_pid == current_pid) {
+378     log_warn(&quot;Options state already initialized&quot;);
+379     return ASCIICHAT_OK;
+380   }
+381 
+382   /* Use lifecycle to serialize initialization */
+383   if (!lifecycle_init(&amp;g_options_lifecycle, &quot;options&quot;)) {
+384     /* Another thread is initializing or already initialized */
+385     if (lifecycle_is_initialized(&amp;g_options_lifecycle)) {
+386       return ASCIICHAT_OK;
+387     }
+388     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to acquire options initialization lock&quot;);
+389   }
+390 
+391   // Initialize write mutex
+392   if (mutex_init(&amp;g_options_write_mutex, &quot;options_write&quot;) != 0) {
+393     lifecycle_shutdown(&amp;g_options_lifecycle);
+394     return SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize options write mutex&quot;);
+395   }
+396 
+397   // Initialize deferred free mutex
+398   if (mutex_init(&amp;g_deferred_free_mutex, &quot;deferred_free&quot;) != 0) {
+399     mutex_destroy(&amp;g_options_write_mutex);
+400     lifecycle_shutdown(&amp;g_options_lifecycle);
+401     return SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize deferred free mutex&quot;);
+402   }
+403 
+404   // Allocate initial options struct (will be populated later by options_state_populate_from_globals)
+405   options_t *initial_opts = SAFE_MALLOC(sizeof(options_t), options_t *);
+406   if (!initial_opts) {
+407     mutex_destroy(&amp;g_options_write_mutex);
+408     mutex_destroy(&amp;g_deferred_free_mutex);
+409     lifecycle_shutdown(&amp;g_options_lifecycle);
+410     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate initial options struct&quot;);
+411   }
+412 
+413   // Initialize all defaults using options_t_new()
+414   *initial_opts = options_t_new();
+415 
+416   // Publish initial struct (release semantics - make all fields visible to readers)
+417   atomic_ptr_store(&amp;g_options, initial_opts);
+418 
+419   g_init_pid = current_pid; // Record PID to detect fork later
+420   log_dev(&quot;Options state initialized with RCU pattern (PID %d)&quot;, current_pid);
+421 
+422   return ASCIICHAT_OK;
+423 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_ptr_store()</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>,
+    <b>lifecycle_init()</b>, <b>lifecycle_is_initialized()</b>,
+    <b>lifecycle_shutdown()</b>, <b>log_debug</b>, <b>log_dev</b>,
+    <b>log_warn</b>, <b>mutex_destroy()</b>, <b>mutex_init()</b>,
+    <b>options_t_new()</b>, <b>platform_get_pid()</b>, <b>SAFE_MALLOC</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>__attribute__()</b>, and
+  <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> options_state_set (const
+  <b>options_t</b> * opts)</h2>
+<p class="Pp">Set options from a parsed options struct. Called by
+    <b>options_init()</b> after parsing to publish the options struct to RCU.
+    This atomically replaces the current options with the provided struct.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>opts</i> Pointer to options struct to publish (will be
+  copied)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>425</b> of file <b>rcu.c</b>.</p>
+<pre>425                                                            {
+426   if (!opts) {
+427     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;opts is NULL&quot;);
+428   }
+429 
+430   // Check initialization state using lifecycle
+431   if (!lifecycle_is_initialized(&amp;g_options_lifecycle)) {
+432     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Options state not initialized (call options_state_init first)&quot;);
+433   }
+434 
+435   // Get current struct (should be the initial zero-initialized one during startup)
+436   options_t *current = atomic_ptr_load(&amp;g_options);
+437 
+438   // Copy provided options into current struct
+439   // Note: No need for RCU update here since this is called during initialization
+440   // before any reader threads exist
+441   memcpy(current, opts, sizeof(options_t));
+442 
+443   log_debug(&quot;Options state set from parsed struct&quot;);
+444   return ASCIICHAT_OK;
+445 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_ptr_load()</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>lifecycle_is_initialized()</b>, <b>log_debug</b>, and
+  <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>config_load_and_apply()</b>, and
+    <b>options_init()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

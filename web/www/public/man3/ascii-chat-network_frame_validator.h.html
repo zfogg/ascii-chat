@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>frame_validator.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">frame_validator.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">frame_validator.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">frame_validator.h - Frame validation utilities for IMAGE_FRAME
+    packets.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>FRAME_HEADER_SIZE_LEGACY</b> 8
+  <br/>
+  Legacy frame header size (width:4 + height:4). #define
+    <b>FRAME_HEADER_SIZE_NEW</b> 16
+  <br/>
+  New frame header size (width:4 + height:4 + compressed:4 + size:4). #define
+    <b>FRAME_HEADER_FIELD_SIZE</b> 4
+  <br/>
+  Size of each header field (<b>uint32_t</b> = 4 bytes).
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>frame_validate_legacy</b> (size_t len,
+    size_t expected_rgb_size)
+  <br/>
+  Validate legacy frame format. <b>asciichat_error_t</b>
+    <b>frame_validate_new</b> (void *data, size_t len, <b>bool</b>
+    *out_compressed, <b>uint32_t</b> *out_data_size)
+  <br/>
+  Validate new frame format with optional compression. <b>asciichat_error_t</b>
+    <b>frame_check_size_overflow</b> (size_t header_size, size_t data_size)
+  <br/>
+  Check for overflow when adding header to data. void
+    <b>frame_extract_dimensions</b> (const void *data, <b>uint32_t</b> *width,
+    <b>uint32_t</b> *height)
+  <br/>
+  Extract width and height from frame header. void
+    <b>frame_extract_new_header</b> (const void *data, <b>uint32_t</b>
+    *compressed, <b>uint32_t</b> *data_size)
+  <br/>
+  Extract compressed flag and data size from new format header.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Frame validation utilities for IMAGE_FRAME packets.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>network/frame_validator.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_FRAME_HEADER_FIELD_SIZE___4"><a class="permalink" href="#_define_FRAME_HEADER_FIELD_SIZE___4">#define
+  FRAME_HEADER_FIELD_SIZE 4</a></h2>
+<p class="Pp">Size of each header field (<b>uint32_t</b> = 4 bytes).</p>
+<p class="Pp">Definition at line <b>22</b> of file
+    <b>network/frame_validator.h</b>.</p>
+<p class="Pp">Referenced by <b>frame_extract_dimensions()</b>, and
+    <b>frame_extract_new_header()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_FRAME_HEADER_SIZE_LEGACY___8"><a class="permalink" href="#_define_FRAME_HEADER_SIZE_LEGACY___8">#define
+  FRAME_HEADER_SIZE_LEGACY 8</a></h2>
+<p class="Pp">Legacy frame header size (width:4 + height:4).</p>
+<p class="Pp">Definition at line <b>16</b> of file
+    <b>network/frame_validator.h</b>.</p>
+<p class="Pp">Referenced by <b>frame_validate_legacy()</b>, and
+    <b>handle_image_frame_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_FRAME_HEADER_SIZE_NEW___16"><a class="permalink" href="#_define_FRAME_HEADER_SIZE_NEW___16">#define
+  FRAME_HEADER_SIZE_NEW 16</a></h2>
+<p class="Pp">New frame header size (width:4 + height:4 + compressed:4 +
+    size:4).</p>
+<p class="Pp">Definition at line <b>19</b> of file
+    <b>network/frame_validator.h</b>.</p>
+<p class="Pp">Referenced by <b>frame_validate_new()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

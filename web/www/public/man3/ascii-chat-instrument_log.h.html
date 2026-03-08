@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>instrument_log.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">instrument_log.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">instrument_log.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">instrument_log.h - &#x1F50D; Debug instrumentation logging runtime
+    for ascii-chat line tracing</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>ASCII_INSTR_SOURCE_PRINT_SIGNAL_HANDLER</b>
+  <br/>
+  Attribute to mark signal handler functions.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum { <b>ASCII_INSTR_SOURCE_PRINT_MACRO_NONE</b> = 0u,
+    <b>ASCII_INSTR_SOURCE_PRINT_MACRO_EXPANSION</b> = 1u,
+    <b>ASCII_INSTR_SOURCE_PRINT_MACRO_INVOCATION</b> = 2u }
+  <br/>
+  Macro expansion indicator values for <b>asciichat_instr_log_line()</b>.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_instr_runtime_t</b> *
+    <b>asciichat_instr_runtime_get</b> (void)
+  <br/>
+  Get or create the thread-local runtime context. void
+    <b>asciichat_instr_runtime_destroy</b> (<b>asciichat_instr_runtime_t</b>
+    *runtime)
+  <br/>
+  Destroy a runtime context and release resources. void
+    <b>asciichat_instr_runtime_global_destroy</b> (void)
+  <br/>
+  Global shutdown of the instrumentation system. void
+    <b>asciichat_instr_log_line</b> (const char *<b>file_path</b>,
+    <b>uint32_t</b> line_number, const char *function_name, const char *snippet,
+    <b>uint8_t</b> is_macro_expansion)
+  <br/>
+  Log a source line execution event. <b>bool</b>
+    <b>asciichat_instr_coverage_enabled</b> (void)
+  <br/>
+  Check if coverage logging is enabled. void <b>asciichat_instr_log_pc</b>
+    (uintptr_t program_counter)
+  <br/>
+  Log a program counter for coverage analysis.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F50D; Debug instrumentation logging runtime for ascii-chat
+    line tracing</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>instrument_log.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

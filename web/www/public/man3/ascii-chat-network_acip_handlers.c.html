@@ -62,13 +62,13 @@
 <section class="Ss">
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
-<p class="Pp">typedef asciichat_error_t(* <b>acip_client_handler_func_t</b>)
-    (const void *payload, size_t payload_len, const acip_client_callbacks_t
-    *callbacks)
+<p class="Pp">typedef <b>asciichat_error_t</b>(*
+    <b>acip_client_handler_func_t</b>) (const void *payload, size_t payload_len,
+    const <b>acip_client_callbacks_t</b> *callbacks)
   <br/>
-  typedef asciichat_error_t(* <b>acip_server_handler_func_t</b>) (const void
-    *payload, size_t payload_len, void *client_ctx, const
-    acip_server_callbacks_t *callbacks)
+  typedef <b>asciichat_error_t</b>(* <b>acip_server_handler_func_t</b>) (const
+    void *payload, size_t payload_len, void *client_ctx, const
+    <b>acip_server_callbacks_t</b> *callbacks)
   <br/>
   <br/>
 </p>
@@ -76,14 +76,17 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>acip_handle_client_packet</b>
-    (<b>acip_transport_t</b> *transport, packet_type_t type, const void
-    *payload, size_t payload_len, const acip_client_callbacks_t *callbacks)
+<p class="Pp"><b>asciichat_error_t</b> <b>acip_handle_client_packet</b>
+    (<b>acip_transport_t</b> *transport, <b>packet_type_t</b> type, const void
+    *payload, size_t payload_len, const <b>acip_client_callbacks_t</b>
+    *callbacks)
   <br/>
-  asciichat_error_t <b>acip_handle_server_packet</b> (<b>acip_transport_t</b>
-    *transport, packet_type_t type, const void *payload, size_t payload_len,
-    void *client_ctx, const acip_server_callbacks_t *callbacks)
+  Handle incoming packet on client side. <b>asciichat_error_t</b>
+    <b>acip_handle_server_packet</b> (<b>acip_transport_t</b> *transport,
+    <b>packet_type_t</b> type, const void *payload, size_t payload_len, void
+    *client_ctx, const <b>acip_server_callbacks_t</b> *callbacks)
   <br/>
+  Handle incoming packet on server side.
   <br/>
 </p>
 </section>
@@ -138,17 +141,16 @@
 <h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="typedef_asciichat_error_t(*_acip_client_handler_func_t)_(const_void_*payload,_size_t_payload_len,_const_acip_client_callbacks_t_*callbacks)"><a class="permalink" href="#typedef_asciichat_error_t(*_acip_client_handler_func_t)_(const_void_*payload,_size_t_payload_len,_const_acip_client_callbacks_t_*callbacks)">typedef
-  asciichat_error_t(* acip_client_handler_func_t) (const void *payload, size_t
-  payload_len, const acip_client_callbacks_t *callbacks)</a></h2>
+<h2 class="Ss">typedef <b>asciichat_error_t</b>(* acip_client_handler_func_t)
+  (const void *payload, size_t payload_len, const <b>acip_client_callbacks_t</b>
+  *callbacks)</h2>
 <p class="Pp">Definition at line <b>29</b> of file
     <b>network/acip/handlers.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="typedef_asciichat_error_t(*_acip_server_handler_func_t)_(const_void_*payload,_size_t_payload_len,_void_*client_ctx,_const_acip_server_callbacks_t_*callbacks)"><a class="permalink" href="#typedef_asciichat_error_t(*_acip_server_handler_func_t)_(const_void_*payload,_size_t_payload_len,_void_*client_ctx,_const_acip_server_callbacks_t_*callbacks)">typedef
-  asciichat_error_t(* acip_server_handler_func_t) (const void *payload, size_t
-  payload_len, void *client_ctx, const acip_server_callbacks_t
-  *callbacks)</a></h2>
+<h2 class="Ss">typedef <b>asciichat_error_t</b>(* acip_server_handler_func_t)
+  (const void *payload, size_t payload_len, void *client_ctx, const
+  <b>acip_server_callbacks_t</b> *callbacks)</h2>
 <p class="Pp">Definition at line <b>32</b> of file
     <b>network/acip/handlers.c</b>.</p>
 </section>
@@ -157,10 +159,26 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_acip_handle_client_packet_("><a class="permalink" href="#asciichat_error_t_acip_handle_client_packet_(">asciichat_error_t
-  acip_handle_client_packet (<b>acip_transport_t</b> * transport, packet_type_t
-  type, const void * payload, size_t payload_len, const acip_client_callbacks_t
-  * callbacks)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> acip_handle_client_packet
+  (<b>acip_transport_t</b> * transport, <b>packet_type_t</b> type, const void *
+  payload, size_t payload_len, const <b>acip_client_callbacks_t</b> *
+  callbacks)</h2>
+<p class="Pp">Handle incoming packet on client side. Dispatches packet to
+    appropriate callback based on type. Transport-agnostic - works with TCP,
+    WebSocket, etc.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>type</i> Packet type
+<br/>
+<i>payload</i> Packet payload
+<br/>
+<i>payload_len</i> Payload length
+<br/>
+<i>callbacks</i> Application callbacks</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>196</b> of file
     <b>network/acip/handlers.c</b>.</p>
 <pre>197                                                                                                           {
@@ -179,13 +197,32 @@
 210 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_acip_handle_server_packet_("><a class="permalink" href="#asciichat_error_t_acip_handle_server_packet_(">asciichat_error_t
-  acip_handle_server_packet (<b>acip_transport_t</b> * transport, packet_type_t
-  type, const void * payload, size_t payload_len, void * client_ctx, const
-  acip_server_callbacks_t * callbacks)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> acip_handle_server_packet
+  (<b>acip_transport_t</b> * transport, <b>packet_type_t</b> type, const void *
+  payload, size_t payload_len, void * client_ctx, const
+  <b>acip_server_callbacks_t</b> * callbacks)</h2>
+<p class="Pp">Handle incoming packet on server side. Dispatches packet to
+    appropriate callback based on type. Transport-agnostic - works with TCP,
+    WebSocket, etc.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>type</i> Packet type
+<br/>
+<i>payload</i> Packet payload
+<br/>
+<i>payload_len</i> Payload length
+<br/>
+<i>client_ctx</i> Per-client context (e.g., client_info_t*)
+<br/>
+<i>callbacks</i> Application callbacks</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>687</b> of file
     <b>network/acip/handlers.c</b>.</p>
 <pre>689                                                                                       {
@@ -220,6 +257,8 @@
 718 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>log_error</b>, <b>log_info</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acip_server_receive_and_dispatch()</b>, and
     <b>client_dispatch_thread()</b>.</p>
 </section>
@@ -231,7 +270,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

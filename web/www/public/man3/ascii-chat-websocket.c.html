@@ -40,8 +40,10 @@
 <br/>
 <p class="Pp">void <b>lws_log_init_server</b> (void)
   <br/>
-  void <b>lws_log_init_client</b> (void)
+  Initialize libwebsockets logging for server mode. void
+    <b>lws_log_init_client</b> (void)
   <br/>
+  Initialize libwebsockets logging for client mode.
   <br/>
 </p>
 </section>
@@ -59,6 +61,9 @@
 <section class="Ss">
 <h2 class="Ss" id="void_lws_log_init_client_(void_)"><a class="permalink" href="#void_lws_log_init_client_(void_)">void
   lws_log_init_client (void )</a></h2>
+<p class="Pp">Initialize libwebsockets logging for client mode. Sets up the
+    lws_set_log_level() callback to route client logs through our logging system
+    with [LWS:client] prefix.</p>
 <p class="Pp">Definition at line <b>99</b> of file <b>websocket.c</b>.</p>
 <pre>99                                {
 100   // Enable libwebsockets logging with our custom callback
@@ -78,6 +83,9 @@
 <section class="Ss">
 <h2 class="Ss" id="void_lws_log_init_server_(void_)"><a class="permalink" href="#void_lws_log_init_server_(void_)">void
   lws_log_init_server (void )</a></h2>
+<p class="Pp">Initialize libwebsockets logging for server mode. Sets up the
+    lws_set_log_level() callback to route server logs through our logging system
+    with [LWS:server] prefix.</p>
 <p class="Pp">Definition at line <b>87</b> of file <b>websocket.c</b>.</p>
 <pre>87                                {
 88   // Enable libwebsockets logging with our custom callback
@@ -102,7 +110,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

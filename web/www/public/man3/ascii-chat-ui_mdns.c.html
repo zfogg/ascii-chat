@@ -61,26 +61,28 @@
 <br/>
 <p class="Pp">void <b>ui_mdns_log_init</b> (void)
   <br/>
-  void <b>ui_mdns_log_destroy</b> (void)
+  Initialize log buffer for mDNS discovery UI. void <b>ui_mdns_log_destroy</b>
+    (void)
   <br/>
-  void <b>ui_mdns_log_clear</b> (void)
+  Destroy mDNS discovery log buffer. void <b>ui_mdns_log_clear</b> (void)
   <br/>
-  void <b>ui_mdns_log_append</b> (const char *message)
+  Clear mDNS discovery log buffer. void <b>ui_mdns_log_append</b> (const char
+    *message)
   <br/>
-  ui_mdns_server_t * <b>ui_mdns_query</b> (const ui_mdns_config_t *config, int
-    *out_count)
+  Append message to mDNS discovery log buffer. <b>ui_mdns_server_t</b> *
+    <b>ui_mdns_query</b> (const <b>ui_mdns_config_t</b> *config, int *out_count)
   <br/>
   TUI wrapper around core mDNS discovery. void <b>ui_mdns_free_results</b>
-    (ui_mdns_server_t *servers)
+    (<b>ui_mdns_server_t</b> *servers)
   <br/>
   Free results from mDNS discovery. int <b>ui_mdns_prompt_selection</b> (const
-    ui_mdns_server_t *servers, int count)
+    <b>ui_mdns_server_t</b> *servers, int count)
   <br/>
   Interactive server selection. int <b>ui_mdns_select</b> (const
-    ui_mdns_server_t *servers, int count)
+    <b>ui_mdns_server_t</b> *servers, int count)
   <br/>
   TUI-based server selection with formatted display. const char *
-    <b>ui_mdns_get_best_address</b> (const ui_mdns_server_t *server)
+    <b>ui_mdns_get_best_address</b> (const <b>ui_mdns_server_t</b> *server)
   <br/>
   Get best address for a server.
   <br/>
@@ -147,9 +149,10 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="void_ui_mdns_free_results_(ui_mdns_server_t_*_servers)"><a class="permalink" href="#void_ui_mdns_free_results_(ui_mdns_server_t_*_servers)">void
-  ui_mdns_free_results (ui_mdns_server_t * servers)</a></h2>
-<p class="Pp">Free results from mDNS discovery.</p>
+<h2 class="Ss" id="void_ui_mdns_free_results_("><a class="permalink" href="#void_ui_mdns_free_results_(">void
+  ui_mdns_free_results (<b>ui_mdns_server_t</b> * servers)</a></h2>
+<p class="Pp">Free results from mDNS discovery. Free results from TUI discovery
+    query.</p>
 <p class="Pp">Definition at line <b>76</b> of file <b>ui/mdns.c</b>.</p>
 <pre>76                                                      {
 77   discovery_mdns_destroy(servers);
@@ -160,9 +163,11 @@
 <p class="Pp">Referenced by <b>client_main()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_char_*_ui_mdns_get_best_address_(const_ui_mdns_server_t_*_server)"><a class="permalink" href="#const_char_*_ui_mdns_get_best_address_(const_ui_mdns_server_t_*_server)">const
-  char * ui_mdns_get_best_address (const ui_mdns_server_t * server)</a></h2>
-<p class="Pp">Get best address for a server.</p>
+<h2 class="Ss" id="const_char_*_ui_mdns_get_best_address_(const_"><a class="permalink" href="#const_char_*_ui_mdns_get_best_address_(const_">const
+  char * ui_mdns_get_best_address (const <b>ui_mdns_server_t</b> *
+  server)</a></h2>
+<p class="Pp">Get best address for a server. Get best address representation for
+    a discovered server.</p>
 <p class="Pp">Definition at line <b>235</b> of file <b>ui/mdns.c</b>.</p>
 <pre>235                                                                      {
 236   if (!server) {
@@ -184,12 +189,20 @@
 252 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>ui_mdns_server_t::address</b>,
+    <b>ui_mdns_server_t::ipv4</b>, <b>ui_mdns_server_t::ipv6</b>, and
+    <b>ui_mdns_server_t::name</b>.</p>
 <p class="Pp">Referenced by <b>client_main()</b>,
     <b>ui_mdns_prompt_selection()</b>, and <b>ui_mdns_select()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_ui_mdns_log_append_(const_char_*_message)"><a class="permalink" href="#void_ui_mdns_log_append_(const_char_*_message)">void
   ui_mdns_log_append (const char * message)</a></h2>
+<p class="Pp">Append message to mDNS discovery log buffer. Delegates to the
+    logging system which automatically captures to session log buffer.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>message</i> Log message to append</div>
 <p class="Pp">Definition at line <b>45</b> of file <b>ui/mdns.c</b>.</p>
 <pre>45                                              {
 46   if (message) {
@@ -198,10 +211,13 @@
 49 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>log_info</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_ui_mdns_log_clear_(void_)"><a class="permalink" href="#void_ui_mdns_log_clear_(void_)">void
   ui_mdns_log_clear (void )</a></h2>
+<p class="Pp">Clear mDNS discovery log buffer. Delegates to terminal_screen log
+    clear. Useful when starting fresh mDNS discovery screen.</p>
 <p class="Pp">Definition at line <b>41</b> of file <b>ui/mdns.c</b>.</p>
 <pre>41                              {
 42   terminal_screen_log_clear();
@@ -213,6 +229,8 @@
 <section class="Ss">
 <h2 class="Ss" id="void_ui_mdns_log_destroy_(void_)"><a class="permalink" href="#void_ui_mdns_log_destroy_(void_)">void
   ui_mdns_log_destroy (void )</a></h2>
+<p class="Pp">Destroy mDNS discovery log buffer. Delegates to terminal_screen
+    log cleanup.</p>
 <p class="Pp">Definition at line <b>36</b> of file <b>ui/mdns.c</b>.</p>
 <pre>36                                {
 37   log_clear_session_log_buffer();
@@ -226,6 +244,9 @@
 <section class="Ss">
 <h2 class="Ss" id="void_ui_mdns_log_init_(void_)"><a class="permalink" href="#void_ui_mdns_log_init_(void_)">void
   ui_mdns_log_init (void )</a></h2>
+<p class="Pp">Initialize log buffer for mDNS discovery UI. Delegates to
+    terminal_screen log initialization. Call once at startup before rendering
+    mDNS discovery screen.</p>
 <p class="Pp">Definition at line <b>29</b> of file <b>ui/mdns.c</b>.</p>
 <pre>29                             {
 30   session_log_buffer_t *buf = terminal_screen_log_init();
@@ -239,10 +260,11 @@
     <b>terminal_screen_log_init()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_ui_mdns_prompt_selection_(const_ui_mdns_server_t_*_servers,_int_count)"><a class="permalink" href="#int_ui_mdns_prompt_selection_(const_ui_mdns_server_t_*_servers,_int_count)">int
-  ui_mdns_prompt_selection (const ui_mdns_server_t * servers, int
+<h2 class="Ss" id="int_ui_mdns_prompt_selection_(const_"><a class="permalink" href="#int_ui_mdns_prompt_selection_(const_">int
+  ui_mdns_prompt_selection (const <b>ui_mdns_server_t</b> * servers, int
   count)</a></h2>
-<p class="Pp">Interactive server selection.</p>
+<p class="Pp">Interactive server selection. Display discovered servers to user
+    and prompt for selection.</p>
 <p class="Pp">Definition at line <b>83</b> of file <b>ui/mdns.c</b>.</p>
 <pre>83                                                                          {
 84   if (!servers || count &lt;= 0) {
@@ -287,16 +309,19 @@
 123 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ui_mdns_get_best_address()</b>, and
+<p class="Pp">References <b>ui_mdns_server_t::name</b>,
+    <b>ui_mdns_server_t::port</b>, <b>ui_mdns_get_best_address()</b>, and
     <b>ui_mdns_prompt_selection()</b>.</p>
 <p class="Pp">Referenced by <b>ui_mdns_prompt_selection()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="ui_mdns_server_t_*_ui_mdns_query_(const_ui_mdns_config_t_*_config,_int_*_out_count)"><a class="permalink" href="#ui_mdns_server_t_*_ui_mdns_query_(const_ui_mdns_config_t_*_config,_int_*_out_count)">ui_mdns_server_t
-  * ui_mdns_query (const ui_mdns_config_t * config, int * out_count)</a></h2>
-<p class="Pp">TUI wrapper around core mDNS discovery. Calls
-    <b>discovery_mdns_query()</b> from <b>discovery.c</b> with TUI-friendly
-    configuration.</p>
+<h2 class="Ss"><b>ui_mdns_server_t</b> * ui_mdns_query (const
+  <b>ui_mdns_config_t</b> * config, int * out_count)</h2>
+<p class="Pp">TUI wrapper around core mDNS discovery. Discover ascii-chat
+    servers on the local network via mDNS.</p>
+<p class="Pp"></p>
+<p class="Pp">Calls <b>discovery_mdns_query()</b> from <b>discovery.c</b> with
+    TUI-friendly configuration.</p>
 <p class="Pp">Definition at line <b>56</b> of file <b>ui/mdns.c</b>.</p>
 <pre>56                                                                                 {
 57   if (!out_count) {
@@ -316,12 +341,15 @@
 71 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>discovery_mdns_query()</b>.</p>
+<p class="Pp">References <b>discovery_mdns_query()</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ui_mdns_config_t::max_servers</b>,
+    <b>ui_mdns_config_t::quiet</b>, <b>SET_ERRNO</b>, and
+    <b>ui_mdns_config_t::timeout_ms</b>.</p>
 <p class="Pp">Referenced by <b>client_main()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_ui_mdns_select_(const_ui_mdns_server_t_*_servers,_int_count)"><a class="permalink" href="#int_ui_mdns_select_(const_ui_mdns_server_t_*_servers,_int_count)">int
-  ui_mdns_select (const ui_mdns_server_t * servers, int count)</a></h2>
+<h2 class="Ss" id="int_ui_mdns_select_(const_"><a class="permalink" href="#int_ui_mdns_select_(const_">int
+  ui_mdns_select (const <b>ui_mdns_server_t</b> * servers, int count)</a></h2>
 <p class="Pp">TUI-based server selection with formatted display. Displays
     discovered servers in a terminal UI with the following features:</p>
 <ul class="Bl-bullet">
@@ -423,8 +451,9 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>ANSI_BOLD</b>, <b>ANSI_CLEAR</b>, <b>ANSI_CYAN</b>,
     <b>ANSI_GREEN</b>, <b>ANSI_RESET</b>, <b>ANSI_YELLOW</b>,
-    <b>log_lock_terminal()</b>, <b>log_unlock_terminal()</b>,
-    <b>platform_sleep_ms()</b>, <b>ui_mdns_get_best_address()</b>, and
+    <b>log_lock_terminal()</b>, <b>log_plain</b>, <b>log_unlock_terminal()</b>,
+    <b>ui_mdns_server_t::name</b>, <b>platform_sleep_ms()</b>,
+    <b>ui_mdns_server_t::port</b>, <b>ui_mdns_get_best_address()</b>, and
     <b>ui_mdns_select()</b>.</p>
 <p class="Pp">Referenced by <b>client_main()</b>, and
   <b>ui_mdns_select()</b>.</p>
@@ -437,7 +466,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

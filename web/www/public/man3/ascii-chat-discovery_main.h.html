@@ -78,7 +78,7 @@
 <ul class="Bl-bullet">
   <li>Accept no arguments: int mode_main(void)</li>
   <li>Options are already parsed by main dispatcher (available via
-    GET_OPTION())</li>
+      <b>GET_OPTION()</b>)</li>
   <li>Return 0 on success, non-zero error code on failure</li>
   <li>Perform mode-specific initialization and main loop</li>
   <li>Perform complete cleanup before returning</li>
@@ -118,7 +118,7 @@
   <li>Graceful shutdown and cleanup</li>
 </ul>
 <p class="Pp">Options are already parsed by the main dispatcher before this
-    function is called, so they are available via GET_OPTION().</p>
+    function is called, so they are available via <b>GET_OPTION()</b>.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, non-zero error code on failure</div>
@@ -239,9 +239,10 @@ ascii-chat swift-river-mountain
 420 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>discovery_session_create()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>discovery_session_create()</b>,
     <b>discovery_session_destroy()</b>, <b>discovery_session_start()</b>,
-    <b>discovery_session_stop()</b>, <b>session_client_like_run()</b>, and
+    <b>discovery_session_stop()</b>, <b>ERROR_MEMORY</b>, <b>GET_OPTION</b>,
+    <b>log_debug</b>, <b>log_fatal</b>, <b>session_client_like_run()</b>, and
     <b>set_interrupt_callback()</b>.</p>
 </section>
 </section>
@@ -252,7 +253,7 @@ ascii-chat swift-river-mountain
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

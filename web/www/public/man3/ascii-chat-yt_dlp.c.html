@@ -50,9 +50,11 @@
 <br/>
 <p class="Pp"><b>bool</b> <b>yt_dlp_is_available</b> (void)
   <br/>
-  asciichat_error_t <b>yt_dlp_extract_stream_url</b> (const char *url, const
-    char *yt_dlp_options, char *output_url, size_t output_size)
+  Check if yt-dlp is installed and accessible. <b>asciichat_error_t</b>
+    <b>yt_dlp_extract_stream_url</b> (const char *url, const char
+    *yt_dlp_options, char *output_url, size_t output_size)
   <br/>
+  Extract stream URL using yt-dlp with optional parameters.
   <br/>
 </p>
 </section>
@@ -66,174 +68,13 @@
 <p class="Pp">Definition in file <b>yt_dlp.c</b>.</p>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_yt_dlp_extract_stream_url_(const_char_*_url,_const_char_*_yt_dlp_options,_char_*_output_url,_size_t_output_size)"><a class="permalink" href="#asciichat_error_t_yt_dlp_extract_stream_url_(const_char_*_url,_const_char_*_yt_dlp_options,_char_*_output_url,_size_t_output_size)">asciichat_error_t
-  yt_dlp_extract_stream_url (const char * url, const char * yt_dlp_options, char
-  * output_url, size_t output_size)</a></h2>
-<p class="Pp">Definition at line <b>151</b> of file <b>yt_dlp.c</b>.</p>
-<pre>152                                                                 {
-153   if (!url || !output_url || output_size &lt; 256) {
-154     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for yt-dlp URL extraction&quot;);
-155     return ERROR_INVALID_PARAM;
-156   }
-157 
-158   // Check if yt-dlp is available
-159   if (!yt_dlp_is_available()) {
-160     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, &quot;yt-dlp is not installed. Please install it with: &quot;
-161                                             &quot;pip install yt-dlp (or: brew install yt-dlp on macOS)&quot;);
-162     return ERROR_YOUTUBE_EXTRACT_FAILED;
-163   }
-164 
-165   // Check if we have a cached extraction for this URL+options combination
-166   char cached_url[8192] = {0};
-167   if (yt_dlp_cache_get(url, yt_dlp_options, cached_url, sizeof(cached_url))) {
-168     if (cached_url[0] != '\0') {
-169       // Cached success - return the URL
-170       SAFE_STRNCPY(output_url, cached_url, output_size - 1);
-171       output_url[output_size - 1] = '\0';
-172       return ASCIICHAT_OK;
-173     } else {
-174       // Cached failure - return error without logging again
-175       return ERROR_YOUTUBE_EXTRACT_FAILED;
-176     }
-177   }
-178 
-179   // Build yt-dlp command
-180   char command[4096];
-181   const char *opts = yt_dlp_options ? yt_dlp_options : &quot;&quot;;
-182 
-183   int cmd_ret;
-184   if (opts[0] != '\0') {
-185     // User provided custom options
-186     cmd_ret = safe_snprintf(command, sizeof(command),
-187                             &quot;yt-dlp --quiet --no-warnings &quot;
-188                             &quot;--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) &quot;
-189                             &quot;AppleWebKit/537.36' &quot;
-190                             &quot;%s &quot;
-191                             &quot;-f 'b' -O '%%(url)s' '%s' 2&gt;&amp;1&quot;,
-192                             opts, url);
-193   } else {
-194     // No custom options, use default
-195     cmd_ret = safe_snprintf(command, sizeof(command),
-196                             &quot;yt-dlp --quiet --no-warnings &quot;
-197                             &quot;--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) &quot;
-198                             &quot;AppleWebKit/537.36' &quot;
-199                             &quot;-f 'b' -O '%%(url)s' '%s' 2&gt;&amp;1&quot;,
-200                             url);
-201   }
-202 
-203   if (cmd_ret &lt; 0 || cmd_ret &gt;= (int)sizeof(command)) {
-204     SET_ERRNO(ERROR_INVALID_PARAM, &quot;URL or yt-dlp options too long&quot;);
-205     return ERROR_INVALID_PARAM;
-206   }
-207 
-208   log_debug(&quot;Executing yt-dlp: %s&quot;, command);
-209 
-210   // Execute yt-dlp and capture output
-211   FILE *pipe = NULL;
-212   if (platform_popen(&quot;yt_dlp_extract&quot;, command, &quot;r&quot;, &amp;pipe) != ASCIICHAT_OK || !pipe) {
-213     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, &quot;Failed to execute yt-dlp subprocess&quot;);
-214     return ERROR_YOUTUBE_EXTRACT_FAILED;
-215   }
-216 
-217   // Read output looking for stream URL (should be last line starting with http)
-218   char url_buffer[8192] = {0};
-219   char full_output[16384] = {0};
-220   size_t ytdlp_output_len = 0;
-221   size_t url_size = 0;
-222   int c;
-223 
-224   while ((c = fgetc(pipe)) != EOF &amp;&amp; ytdlp_output_len &lt; sizeof(full_output) - 1) {
-225     full_output[ytdlp_output_len++] = (char)c;
-226 
-227     // Track current line - looking for http:// or https:// stream URL
-228     if ((url_size == 0 &amp;&amp; c == 'h') || (url_size &gt; 0 &amp;&amp; c != '\n' &amp;&amp; url_size &lt; sizeof(url_buffer) - 1)) {
-229       url_buffer[url_size++] = (char)c;
-230     } else if (c == '\n') {
-231       if (url_size &gt; 0) {
-232         url_buffer[url_size] = '\0';
-233         if (url_is_valid(url_buffer)) {
-234           break; // Found valid URL
-235         }
-236       }
-237       url_size = 0; // Reset for next line
-238     }
-239   }
-240   full_output[ytdlp_output_len] = '\0';
-241   url_buffer[url_size] = '\0';
-242 
-243   int pclose_ret = (platform_pclose(&amp;pipe) == ASCIICHAT_OK) ? 0 : -1;
-244   if (pclose_ret != 0) {
-245     yt_dlp_cache_set(url, yt_dlp_options, NULL); // Cache failure
-246 
-247     log_debug(&quot;yt-dlp exited with code %d&quot;, pclose_ret);
-248     if (ytdlp_output_len &gt; 0) {
-249       log_error(&quot;yt-dlp output:\n%s&quot;, full_output);
-250       SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, &quot;yt-dlp failed to extract stream: %s&quot;, full_output);
-251     } else {
-252       SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, &quot;yt-dlp failed to extract stream&quot;);
-253     }
-254     return ERROR_YOUTUBE_EXTRACT_FAILED;
-255   }
-256 
-257   if (url_size == 0 || (url_size == 2 &amp;&amp; strncmp(url_buffer, &quot;NA&quot;, 2) == 0)) {
-258     yt_dlp_cache_set(url, yt_dlp_options, NULL);
-259     log_error(&quot;yt-dlp returned empty output for URL: %s&quot;, url);
-260     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, &quot;yt-dlp returned no playable formats&quot;);
-261     return ERROR_YOUTUBE_EXTRACT_FAILED;
-262   }
-263 
-264   if (url_buffer[0] != 'h' || strncmp(url_buffer, &quot;http&quot;, 4) != 0) {
-265     yt_dlp_cache_set(url, yt_dlp_options, NULL);
-266     log_error(&quot;Invalid URL from yt-dlp: %s (full output: %s)&quot;, url_buffer, full_output);
-267     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, &quot;yt-dlp returned invalid URL&quot;);
-268     return ERROR_YOUTUBE_EXTRACT_FAILED;
-269   }
-270 
-271   if (url_size &gt;= output_size) {
-272     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Stream URL too long for output buffer (%zu bytes, max %zu)&quot;, url_size, output_size);
-273     return ERROR_INVALID_PARAM;
-274   }
-275 
-276   SAFE_STRNCPY(output_url, url_buffer, output_size - 1);
-277   output_url[output_size - 1] = '\0';
-278 
-279   // Cache successful result
-280   yt_dlp_cache_set(url, yt_dlp_options, output_url);
-281 
-282   log_debug(&quot;yt-dlp successfully extracted stream URL (%zu bytes)&quot;, url_size);
-283   return ASCIICHAT_OK;
-284 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>safe_snprintf()</b>, <b>url_is_valid()</b>, and
-    <b>yt_dlp_is_available()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> yt_dlp_is_available (void )</h2>
-<p class="Pp">Definition at line <b>143</b> of file <b>yt_dlp.c</b>.</p>
-<pre>143                                {
-144   int ret = 0;
-145   LOG_IO(&quot;yt-dlp&quot;, {
-146     ret = system(&quot;yt-dlp --version &gt;/dev/null 2&gt;&amp;1&quot;);
-147   });
-148   return (ret == 0);
-149 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>yt_dlp_extract_stream_url()</b>.</p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

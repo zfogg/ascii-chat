@@ -40,10 +40,10 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">image_t * <b>image</b>
+<p class="Pp"><b>image_t</b> * <b>image</b>
   <br/>
   Pointer to client's current video frame (owned by buffer system). char
-    <b>client_id</b> [MAX_CLIENT_ID_LEN]
+    <b>client_id</b> [<b>MAX_CLIENT_ID_LEN</b>]
   <br/>
   Unique client identifier for this source. <b>bool</b> <b>has_video</b>
   <br/>
@@ -64,8 +64,8 @@
 <h1 class="Sh" id="before_creating_composite_layouts_for_multi-user_display"><a class="permalink" href="#before_creating_composite_layouts_for_multi-user_display">before
   creating composite layouts for multi-user display. </a></h1>
 <ul class="Bl-bullet">
-  <li>image: Pointer to the client's current video frame (image_t
-    structure)</li>
+  <li>image: Pointer to the client's current video frame (<b>image_t</b>
+      structure)</li>
   <li>client_id: Unique identifier for this client</li>
   <li>has_video: Whether this client is actively sending video</li>
 </ul>
@@ -104,7 +104,8 @@
 <h1 class="Sh" id="MEMORY_MANAGEMENT:"><a class="permalink" href="#MEMORY_MANAGEMENT:">MEMORY
   MANAGEMENT: </a></h1>
 <ul class="Bl-bullet">
-  <li>image pointer points to frame data managed by video_frame_buffer_t</li>
+  <li>image pointer points to frame data managed by
+    <b>video_frame_buffer_t</b></li>
   <li>Frame data is owned by the double-buffer system, not this structure</li>
   <li>No manual memory management needed (automatic via buffer system)</li>
 </ul>
@@ -122,8 +123,8 @@
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="char_image_source_t::client_id_MAX_CLIENT_ID_LEN_"><a class="permalink" href="#char_image_source_t::client_id_MAX_CLIENT_ID_LEN_">char
-  image_source_t::client_id[MAX_CLIENT_ID_LEN]</a></h2>
+<h2 class="Ss" id="char_image_source_t::client_id_"><a class="permalink" href="#char_image_source_t::client_id_">char
+  image_source_t::client_id[<b>MAX_CLIENT_ID_LEN</b>]</a></h2>
 <p class="Pp">Unique client identifier for this source.</p>
 <p class="Pp">Definition at line <b>209</b> of file <b>stream.c</b>.</p>
 </section>
@@ -133,8 +134,7 @@
 <p class="Pp">Definition at line <b>211</b> of file <b>stream.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="image_t*_image_source_t::image"><a class="permalink" href="#image_t*_image_source_t::image">image_t*
-  image_source_t::image</a></h2>
+<h2 class="Ss"><b>image_t</b>* image_source_t::image</h2>
 <p class="Pp">Pointer to client's current video frame (owned by buffer
   system).</p>
 <p class="Pp">Definition at line <b>207</b> of file <b>stream.c</b>.</p>
@@ -148,7 +148,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -38,18 +38,18 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">webrtc_signaling_callbacks_t
+<p class="Pp"><b>webrtc_signaling_callbacks_t</b>
     <b>discovery_webrtc_get_direct_signaling_callbacks</b>
-    (<b>acip_transport_t</b> *tcp_transport, const uint8_t
-    <b>session_id</b>[16], const uint8_t <b>participant_id</b>[16])
+    (<b>acip_transport_t</b> *tcp_transport, const <b>uint8_t</b>
+    <b>session_id</b>[16], const <b>uint8_t</b> <b>participant_id</b>[16])
   <br/>
   Create signaling callbacks for direct peer-to-peer connection during failover.
     void <b>discovery_webrtc_set_tcp_transport</b> (<b>acip_transport_t</b>
     *transport)
   <br/>
   Set the TCP transport for direct peer-to-peer signaling. void
-    <b>discovery_webrtc_set_session_context</b> (const uint8_t
-    <b>session_id</b>[16], const uint8_t <b>participant_id</b>[16])
+    <b>discovery_webrtc_set_session_context</b> (const <b>uint8_t</b>
+    <b>session_id</b>[16], const <b>uint8_t</b> <b>participant_id</b>[16])
   <br/>
   Set session and participant IDs for direct signaling. void
     <b>discovery_webrtc_cleanup_transport</b> (void)
@@ -97,12 +97,13 @@
 293 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>mutex_lock</b>, and <b>mutex_unlock</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="webrtc_signaling_callbacks_t_discovery_webrtc_get_direct_signaling_callbacks_("><a class="permalink" href="#webrtc_signaling_callbacks_t_discovery_webrtc_get_direct_signaling_callbacks_(">webrtc_signaling_callbacks_t
+<h2 class="Ss"><b>webrtc_signaling_callbacks_t</b>
   discovery_webrtc_get_direct_signaling_callbacks (<b>acip_transport_t</b> *
-  tcp_transport, const uint8_t session_id[16], const uint8_t
-  participant_id[16])</a></h2>
+  tcp_transport, const <b>uint8_t</b> session_id[16], const <b>uint8_t</b>
+  participant_id[16])</h2>
 <p class="Pp">Create signaling callbacks for direct peer-to-peer connection
     during failover. Returns callbacks that send SDP/ICE directly over TCP to
     the peer (not through ACDS). Used when participants reconnect to a new host
@@ -153,12 +154,13 @@
 261 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>participant_id</b>, and <b>session_id</b>.</p>
+<p class="Pp">References <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>participant_id</b>, and <b>session_id</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_discovery_webrtc_set_session_context_(const_uint8_t_session_id_16_,_const_uint8_t_participant_id_16_)"><a class="permalink" href="#void_discovery_webrtc_set_session_context_(const_uint8_t_session_id_16_,_const_uint8_t_participant_id_16_)">void
-  discovery_webrtc_set_session_context (const uint8_t session_id[16], const
-  uint8_t participant_id[16])</a></h2>
+<h2 class="Ss" id="void_discovery_webrtc_set_session_context_(const_"><a class="permalink" href="#void_discovery_webrtc_set_session_context_(const_">void
+  discovery_webrtc_set_session_context (const <b>uint8_t</b> session_id[16],
+  const <b>uint8_t</b> participant_id[16])</a></h2>
 <p class="Pp">Set session and participant IDs for direct signaling. Configures
     the session context used when sending SDP/ICE messages directly. Must be
     called before peer manager generates any local descriptions.</p>
@@ -190,7 +192,8 @@
 283 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>participant_id</b>, and <b>session_id</b>.</p>
+<p class="Pp">References <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>participant_id</b>, and <b>session_id</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_discovery_webrtc_set_tcp_transport_("><a class="permalink" href="#void_discovery_webrtc_set_tcp_transport_(">void
@@ -221,6 +224,7 @@
 268 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>mutex_lock</b>, and <b>mutex_unlock</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -232,14 +236,12 @@
     <b>src/discovery/webrtc.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint8_t_participant_id_16_"><a class="permalink" href="#uint8_t_participant_id_16_">uint8_t
-  participant_id[16]</a></h2>
+<h2 class="Ss"><b>uint8_t</b> participant_id[16]</h2>
 <p class="Pp">Definition at line <b>49</b> of file
     <b>src/discovery/webrtc.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint8_t_session_id_16_"><a class="permalink" href="#uint8_t_session_id_16_">uint8_t
-  session_id[16]</a></h2>
+<h2 class="Ss"><b>uint8_t</b> session_id[16]</h2>
 <p class="Pp">Definition at line <b>48</b> of file
     <b>src/discovery/webrtc.c</b>.</p>
 </section>
@@ -251,7 +253,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

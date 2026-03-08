@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>time.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">time.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">time.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">time.h - &#x23F1;&#xFE0F; High-precision timing utilities using
+    sokol_time.h and uthash</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>timer_record</b>
+  <br/>
+  Individual timer record for a named timing operation. struct
+    <b>adaptive_sleep_config_t</b>
+  <br/>
+  Configuration for adaptive sleep behavior. struct
+    <b>adaptive_sleep_state_t</b>
+  <br/>
+  Runtime state for adaptive sleep.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>TIME_ATOMIC_UINT64</b> <b>atomic_t</b>
+  <br/>
+  #define <b>TIME_ATOMIC_UINT64_INIT</b>(val)
+  <br/>
+  #define <b>NS_PER_US</b> 1000.0
+  <br/>
+  #define <b>NS_PER_MS</b> (1000.0 * <b>NS_PER_US</b>)
+  <br/>
+  #define <b>NS_PER_SEC</b> (1000.0 * <b>NS_PER_MS</b>)
+  <br/>
+  #define <b>NS_PER_MIN</b> (60.0 * <b>NS_PER_SEC</b>)
+  <br/>
+  #define <b>NS_PER_HOUR</b> (60.0 * <b>NS_PER_MIN</b>)
+  <br/>
+  #define <b>NS_PER_DAY</b> (24.0 * <b>NS_PER_HOUR</b>)
+  <br/>
+  #define <b>NS_PER_YEAR</b> (365.25 * <b>NS_PER_DAY</b>)
+  <br/>
+  #define <b>NS_PER_US_INT</b> 1000ULL
+  <br/>
+  #define <b>NS_PER_MS_INT</b> (1000ULL * <b>NS_PER_US_INT</b>)
+  <br/>
+  #define <b>NS_PER_SEC_INT</b> (1000ULL * <b>NS_PER_MS_INT</b>)
+  <br/>
+  #define <b>US_PER_MS_INT</b> 1000ULL
+  <br/>
+  #define <b>US_PER_SEC_INT</b> 1000000ULL
+  <br/>
+  #define <b>MS_PER_SEC_INT</b> 1000ULL
+  <br/>
+  #define <b>SEC_PER_MIN</b> 60ULL
+  <br/>
+  #define <b>SEC_PER_HOUR</b> (<b>SEC_PER_MIN</b> * <b>SEC_PER_MIN</b>)
+  <br/>
+  #define <b>SEC_PER_DAY</b> (24ULL * <b>SEC_PER_HOUR</b>)
+  <br/>
+  #define <b>NS_PER_MIN_INT</b> (<b>SEC_PER_MIN</b> * <b>NS_PER_SEC_INT</b>)
+  <br/>
+  #define <b>NS_PER_HOUR_INT</b> (<b>SEC_PER_HOUR</b> * <b>NS_PER_SEC_INT</b>)
+  <br/>
+  #define <b>NS_PER_DAY_INT</b> (<b>SEC_PER_DAY</b> * <b>NS_PER_SEC_INT</b>)
+  <br/>
+  #define <b>START_TIMER</b>(name_fmt, ...)
+  <br/>
+  Start a timer with formatted name. #define <b>START_TIMER_GLOBAL</b>(name_fmt,
+    ...)
+  <br/>
+  Start a timer without thread ID (for cross-thread timers). #define
+    <b>STOP_TIMER_GLOBAL</b>(name_fmt, ...)
+  <br/>
+  Stop a cross-thread timer and return elapsed time. #define
+    <b>STOP_TIMER</b>(name_fmt, ...)
+  <br/>
+  Stop a timer with formatted name and return elapsed time. #define
+    <b>STOP_TIMER_AND_LOG</b>(log_level, threshold_ns, timer_name, msg_fmt, ...)
+  <br/>
+  Stop a timer and log the result with a custom message. #define
+    <b>STOP_TIMER_AND_LOG_EVERY</b>(log_level, interval_ns, threshold_ns,
+    timer_name, msg_fmt, ...)
+  <br/>
+  Stop a timer and log the result with rate limiting.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>timer_record</b> <b>timer_record_t</b>
+  <br/>
+  Individual timer record for a named timing operation.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>uint64_t</b> <b>time_get_ns</b> (void)
+  <br/>
+  Get current monotonic time in nanoseconds. <b>uint64_t</b>
+    <b>time_get_realtime_ns</b> (void)
+  <br/>
+  Get current wall-clock (real) time in nanoseconds. void <b>time_sleep_ns</b>
+    (<b>uint64_t</b> ns)
+  <br/>
+  Sleep for specified nanoseconds. <b>uint64_t</b> <b>time_elapsed_ns</b>
+    (<b>uint64_t</b> start_ns, <b>uint64_t</b> end_ns)
+  <br/>
+  Calculate elapsed time with wraparound safety. <b>bool</b>
+    <b>timer_system_init</b> (void)
+  <br/>
+  Initialize the timing system. void <b>timer_system_destroy</b> (void)
+  <br/>
+  Cleanup the timing system. <b>bool</b> <b>timer_start</b> (const char *name)
+  <br/>
+  Start a named timer. double <b>timer_stop</b> (const char *name)
+  <br/>
+  Stop a named timer and return elapsed time. <b>bool</b>
+    <b>timer_is_initialized</b> (void)
+  <br/>
+  Check if timing system is initialized. int <b>time_pretty</b> (<b>uint64_t</b>
+    nanoseconds, int decimals, char *buffer, size_t <b>buffer_size</b>)
+  <br/>
+  Format nanoseconds as pretty duration with spaces and configurable precision.
+    int <b>time_pretty_now</b> (int decimals, char *buffer, size_t
+    <b>buffer_size</b>)
+  <br/>
+  Format current monotonic time as pretty duration. int
+    <b>time_human_readable</b> (int64_t nanoseconds, char *buffer, size_t
+    <b>buffer_size</b>)
+  <br/>
+  Format nanoseconds as human-readable relative duration (moment.js style). int
+    <b>time_human_readable_unsigned</b> (<b>uint64_t</b> nanoseconds, char
+    *buffer, size_t <b>buffer_size</b>)
+  <br/>
+  Format elapsed time as human-readable relative duration (unsigned version).
+    int <b>time_human_readable_now</b> (char *buffer, size_t <b>buffer_size</b>)
+  <br/>
+  Format current monotonic time as human-readable relative duration. int
+    <b>format_uptime_hms</b> (int hours, int minutes, int seconds, char *buffer,
+    size_t <b>buffer_size</b>)
+  <br/>
+  Format uptime as HH:MM:SS string. void <b>adaptive_sleep_init</b>
+    (<b>adaptive_sleep_state_t</b> *state, const <b>adaptive_sleep_config_t</b>
+    *config)
+  <br/>
+  Initialize adaptive sleep state with configuration. <b>uint64_t</b>
+    <b>adaptive_sleep_calculate</b> (<b>adaptive_sleep_state_t</b> *state,
+    size_t queue_depth, size_t target_depth)
+  <br/>
+  Calculate adaptive sleep time based on queue depth. void
+    <b>adaptive_sleep_do</b> (<b>adaptive_sleep_state_t</b> *state, size_t
+    queue_depth, size_t target_depth)
+  <br/>
+  Calculate sleep time and immediately sleep for that duration. <b>bool</b>
+    <b>time_format_is_valid_strftime</b> (const char *format_str)
+  <br/>
+  Validate strftime format string against known safe specifiers. int
+    <b>time_format_now</b> (const char *format_str, char *buf, size_t buf_size)
+  <br/>
+  Format current time using strftime format string. <b>asciichat_error_t</b>
+    <b>time_format_safe</b> (const char *format_str, char *buf, size_t buf_size)
+  <br/>
+  Safe wrapper for time formatting with validation and error codes.
+    <b>uint64_t</b> <b>time_timespec_to_ns</b> (const struct timespec *ts)
+  <br/>
+  Convert struct timespec to nanoseconds. void <b>time_ns_to_timespec</b>
+    (<b>uint64_t</b> ns, struct timespec *ts)
+  <br/>
+  Convert nanoseconds to struct timespec.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x23F1;&#xFE0F; High-precision timing utilities using
+    sokol_time.h and uthash</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>time.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

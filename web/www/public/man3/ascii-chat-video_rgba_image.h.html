@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>image.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">image.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">image.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">image.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>PACKED_ATTR</b>
+  <br/>
+  RGB pixel structure. struct <b>ALIGNED_ATTR</b>
+  <br/>
+  SIMD-aligned RGB pixel structure for optimal NEON/AVX performance. struct
+    <b>image_t</b>
+  <br/>
+  Image structure.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>IMAGE_MAX_WIDTH</b> 3840
+  <br/>
+  Maximum image width (4K resolution). #define <b>IMAGE_MAX_HEIGHT</b> 2160
+  <br/>
+  Maximum image height (4K resolution). #define <b>IMAGE_MAX_PIXELS_SIZE</b>
+    (<b>IMAGE_MAX_WIDTH</b> * <b>IMAGE_MAX_HEIGHT</b> * sizeof(rgb_pixel_t))
+  <br/>
+  Maximum pixel data size in bytes.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>image_alloc_method_t</b> { <b>IMAGE_ALLOC_SIMD</b> = 0,
+    <b>IMAGE_ALLOC_POOL</b> = 1 }
+  <br/>
+  Pixel allocation method tracking.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>image_t</b> * <b>image_new</b> (size_t width, size_t height)
+  <br/>
+  Create a new image with standard allocation. void <b>image_destroy</b>
+    (<b>image_t</b> *p)
+  <br/>
+  Destroy an image allocated with <b>image_new()</b>. <b>image_t</b> *
+    <b>image_new_from_pool</b> (size_t width, size_t height)
+  <br/>
+  Create a new image from buffer pool. void <b>image_destroy_to_pool</b>
+    (<b>image_t</b> *image)
+  <br/>
+  Destroy an image allocated from buffer pool. void <b>image_clear</b>
+    (<b>image_t</b> *p)
+  <br/>
+  Clear image (set all pixels to black). <b>image_t</b> * <b>image_new_copy</b>
+    (const <b>image_t</b> *source)
+  <br/>
+  Create a copy of an existing image. char * <b>image_print</b> (const
+    <b>image_t</b> *p, const char *palette)
+  <br/>
+  Print image as ASCII art (monochrome). char * <b>image_print_color</b> (const
+    <b>image_t</b> *p, const char *palette)
+  <br/>
+  Print image as ASCII art with color. char *
+    <b>image_print_with_capabilities</b> (const <b>image_t</b> *image, const
+    <b>terminal_capabilities_t</b> *caps, const char *palette)
+  <br/>
+  Convert image to ASCII art with terminal capabilities. char *
+    <b>image_print_256color</b> (const <b>image_t</b> *image, const char
+    *palette)
+  <br/>
+  Print image using 256-color ANSI mode. char * <b>image_print_16color</b>
+    (const <b>image_t</b> *image, const char *palette)
+  <br/>
+  Print image using 16-color ANSI mode. char *
+    <b>image_print_16color_dithered</b> (const <b>image_t</b> *image, const char
+    *palette)
+  <br/>
+  Print image using 16-color ANSI mode with dithering. char *
+    <b>image_print_16color_dithered_with_background</b> (const <b>image_t</b>
+    *image, <b>bool</b> use_background, const char *palette)
+  <br/>
+  Print image using 16-color ANSI mode with dithering and background colors.
+    void <b>quantize_color</b> (int *r, int *g, int *<b>b</b>, int levels)
+  <br/>
+  Quantize color to specified number of levels. void <b>precalc_rgb_palettes</b>
+    (const float red, const float green, const float blue)
+  <br/>
+  Precalculate RGB palettes with color adjustment. void <b>image_resize</b>
+    (const <b>image_t</b> *source, <b>image_t</b> *dest)
+  <br/>
+  Resize image using nearest-neighbor interpolation. void
+    <b>image_resize_interpolation</b> (const <b>image_t</b> *source,
+    <b>image_t</b> *dest)
+  <br/>
+  Resize image using bilinear interpolation. char * <b>rgb_to_ansi_fg</b> (int
+    r, int g, int <b>b</b>)
+  <br/>
+  Convert RGB to ANSI foreground color code. char * <b>rgb_to_ansi_bg</b> (int
+    r, int g, int <b>b</b>)
+  <br/>
+  Convert RGB to ANSI background color code. void <b>rgb_to_ansi_8bit</b> (int
+    r, int g, int <b>b</b>, int *fg_code, int *bg_code)
+  <br/>
+  Convert RGB to 8-bit ANSI color codes.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

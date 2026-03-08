@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>session.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">session.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">session.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">session.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>participant_t</b>
+  <br/>
+  Participant in a session. struct <b>host_lost_candidate_t</b>
+  <br/>
+  Host migration state for collecting HOST_LOST packets. struct
+    <b>session_entry</b>
+  <br/>
+  Session entry data structure.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>MAX_PARTICIPANTS</b> 16
+  <br/>
+  Maximum participants per session.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>session_entry</b> <b>session_entry_t</b>
+  <br/>
+  Session entry data structure.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>session_entry_destroy</b> (<b>session_entry_t</b> *entry)
+  <br/>
+  Free a session entry and all its resources.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_MAX_PARTICIPANTS___16"><a class="permalink" href="#_define_MAX_PARTICIPANTS___16">#define
+  MAX_PARTICIPANTS 16</a></h2>
+<p class="Pp">Maximum participants per session.</p>
+<p class="Pp">Definition at line <b>20</b> of file
+    <b>include/ascii-chat/discovery/session.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
+  struct <b>session_entry</b> <b>session_entry_t</b></a></h2>
+<p class="Pp">Session entry data structure. Contains all session metadata.
+    Stored in SQLite database.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_session_entry_destroy_("><a class="permalink" href="#void_session_entry_destroy_(">void
+  session_entry_destroy (<b>session_entry_t</b> * entry)</a></h2>
+<p class="Pp">Free a session entry and all its resources.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>entry</i> Session entry to free</div>
+<p class="Pp">Definition at line <b>15</b> of file
+    <b>lib/discovery/session.c</b>.</p>
+<pre>15                                                    {
+16   if (!entry) {
+17     return;
+18   }
+19 
+20   // Free all participants
+21   for (size_t i = 0; i &lt; MAX_PARTICIPANTS; i++) {
+22     if (entry-&gt;participants[i]) {
+23       SAFE_FREE(entry-&gt;participants[i]);
+24     }
+25   }
+26 
+27   // Free the entry itself
+28   SAFE_FREE(entry);
+29 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>MAX_PARTICIPANTS</b>,
+    <b>session_entry::participants</b>, and <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>database_session_join()</b>,
+    <b>signaling_broadcast()</b>, <b>signaling_relay_ice()</b>, and
+    <b>signaling_relay_sdp()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

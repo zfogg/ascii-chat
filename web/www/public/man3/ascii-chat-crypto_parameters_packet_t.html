@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>crypto_parameters_packet_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">crypto_parameters_packet_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">crypto_parameters_packet_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">crypto_parameters_packet_t - Crypto parameters packet structure
+    (Packet Type 15).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/packet/packet.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint8_t</b> <b>selected_kex</b>
+  <br/>
+  Selected key exchange algorithm (KEX_ALGO_*). <b>uint8_t</b>
+    <b>selected_auth</b>
+  <br/>
+  Selected authentication algorithm (AUTH_ALGO_*). <b>uint8_t</b>
+    <b>selected_cipher</b>
+  <br/>
+  Selected cipher algorithm (CIPHER_ALGO_*). <b>uint8_t</b>
+    <b>verification_enabled</b>
+  <br/>
+  Server verification enabled flag (1=enabled, 0=disabled). <b>uint16_t</b>
+    <b>kex_public_key_size</b>
+  <br/>
+  Key exchange public key size in bytes (e.g., 32 for X25519, 1568 for
+    Kyber1024). <b>uint16_t</b> <b>auth_public_key_size</b>
+  <br/>
+  Authentication public key size in bytes (e.g., 32 for Ed25519, 1952 for
+    Dilithium3). <b>uint16_t</b> <b>signature_size</b>
+  <br/>
+  Signature size in bytes (e.g., 64 for Ed25519, 3309 for Dilithium3).
+    <b>uint16_t</b> <b>shared_secret_size</b>
+  <br/>
+  Shared secret size in bytes (e.g., 32 for X25519). <b>uint8_t</b>
+    <b>nonce_size</b>
+  <br/>
+  Nonce size in bytes (e.g., 24 for XSalsa20). <b>uint8_t</b> <b>mac_size</b>
+  <br/>
+  MAC size in bytes (e.g., 16 for Poly1305). <b>uint8_t</b> <b>hmac_size</b>
+  <br/>
+  HMAC size in bytes (e.g., 32 for HMAC-SHA256). <b>uint8_t</b> <b>reserved</b>
+    [3]
+  <br/>
+  Reserved bytes for future use (must be zero).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Crypto parameters packet structure (Packet Type 15).</p>
+<p class="Pp">Sent by server to client during crypto handshake to communicate
+    chosen algorithms and algorithm-specific data sizes for handshake.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This packet must be sent UNENCRYPTED (handshake packet).
+<p class="Pp"></p>
+<p class="Pp">Structure is 24 bytes total (packed).</p>
+</div>
+<p class="Pp">Definition at line <b>981</b> of file <b>packet.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b>
+  crypto_parameters_packet_t::auth_public_key_size</h2>
+<p class="Pp">Authentication public key size in bytes (e.g., 32 for Ed25519,
+    1952 for Dilithium3).</p>
+<p class="Pp">Definition at line <b>993</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>crypto_handshake_set_parameters()</b>,
+    <b>send_crypto_parameters_packet()</b>, and
+    <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_parameters_packet_t::hmac_size</h2>
+<p class="Pp">HMAC size in bytes (e.g., 32 for HMAC-SHA256).</p>
+<p class="Pp">Definition at line <b>1003</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_set_parameters()</b>, and
+    <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b>
+  crypto_parameters_packet_t::kex_public_key_size</h2>
+<p class="Pp">Key exchange public key size in bytes (e.g., 32 for X25519, 1568
+    for Kyber1024).</p>
+<p class="Pp">Definition at line <b>991</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>crypto_handshake_set_parameters()</b>,
+    <b>send_crypto_parameters_packet()</b>, and
+    <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_parameters_packet_t::mac_size</h2>
+<p class="Pp">MAC size in bytes (e.g., 16 for Poly1305).</p>
+<p class="Pp">Definition at line <b>1001</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_set_parameters()</b>, and
+    <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_parameters_packet_t::nonce_size</h2>
+<p class="Pp">Nonce size in bytes (e.g., 24 for XSalsa20).</p>
+<p class="Pp">Definition at line <b>999</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_set_parameters()</b>, and
+    <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_parameters_packet_t::reserved[3]</h2>
+<p class="Pp">Reserved bytes for future use (must be zero).</p>
+<p class="Pp">Definition at line <b>1005</b> of file <b>packet.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_parameters_packet_t::selected_auth</h2>
+<p class="Pp">Selected authentication algorithm (AUTH_ALGO_*).</p>
+<p class="Pp">Definition at line <b>985</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
+    <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_parameters_packet_t::selected_cipher</h2>
+<p class="Pp">Selected cipher algorithm (CIPHER_ALGO_*).</p>
+<p class="Pp">Definition at line <b>987</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
+    <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_parameters_packet_t::selected_kex</h2>
+<p class="Pp">Selected key exchange algorithm (KEX_ALGO_*).</p>
+<p class="Pp">Definition at line <b>983</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
+    <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b>
+  crypto_parameters_packet_t::shared_secret_size</h2>
+<p class="Pp">Shared secret size in bytes (e.g., 32 for X25519).</p>
+<p class="Pp">Definition at line <b>997</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>crypto_handshake_set_parameters()</b>,
+    <b>send_crypto_parameters_packet()</b>, and
+    <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> crypto_parameters_packet_t::signature_size</h2>
+<p class="Pp">Signature size in bytes (e.g., 64 for Ed25519, 3309 for
+    Dilithium3).</p>
+<p class="Pp">Definition at line <b>995</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>crypto_handshake_set_parameters()</b>,
+    <b>send_crypto_parameters_packet()</b>, and
+    <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>
+  crypto_parameters_packet_t::verification_enabled</h2>
+<p class="Pp">Server verification enabled flag (1=enabled, 0=disabled).</p>
+<p class="Pp">Definition at line <b>989</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
+    <b>server_crypto_handshake()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

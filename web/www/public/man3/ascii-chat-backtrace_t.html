@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>backtrace_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">backtrace_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">backtrace_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">backtrace_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/asciichat_errno.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">void * <b>ptrs</b> [32]
+  <br/>
+  Raw return addresses. char ** <b>symbols</b>
+  <br/>
+  Symbolized strings (NULL until backtrace_symbolize called). int <b>count</b>
+  <br/>
+  Number of frames captured. <b>bool</b> <b>tried_symbolize</b>
+  <br/>
+  Track if we've already tried to symbolize (prevents duplicate work).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>221</b> of file
+  <b>asciichat_errno.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_backtrace_t::count"><a class="permalink" href="#int_backtrace_t::count">int
+  backtrace_t::count</a></h2>
+<p class="Pp">Number of frames captured.</p>
+<p class="Pp">Definition at line <b>224</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_fatal_with_context()</b>,
+    <b>asciichat_print_error_context()</b>, <b>backtrace_capture()</b>,
+    <b>backtrace_format()</b>, <b>backtrace_print()</b>,
+    <b>backtrace_print_symbols()</b>, and <b>backtrace_symbolize()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_backtrace_t::ptrs_32_"><a class="permalink" href="#void*_backtrace_t::ptrs_32_">void*
+  backtrace_t::ptrs[32]</a></h2>
+<p class="Pp">Raw return addresses.</p>
+<p class="Pp">Definition at line <b>222</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>backtrace_capture()</b>, and
+    <b>backtrace_symbolize()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char**_backtrace_t::symbols"><a class="permalink" href="#char**_backtrace_t::symbols">char**
+  backtrace_t::symbols</a></h2>
+<p class="Pp">Symbolized strings (NULL until backtrace_symbolize called).</p>
+<p class="Pp">Definition at line <b>223</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_print_error_context()</b>,
+    <b>backtrace_format()</b>, <b>backtrace_print()</b>,
+    <b>backtrace_print_symbols()</b>, <b>backtrace_symbolize()</b>, and
+    <b>backtrace_t_free()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> backtrace_t::tried_symbolize</h2>
+<p class="Pp">Track if we've already tried to symbolize (prevents duplicate
+    work).</p>
+<p class="Pp">Definition at line <b>225</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>backtrace_symbolize()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

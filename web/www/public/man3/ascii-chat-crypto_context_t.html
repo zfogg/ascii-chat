@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>crypto_context_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">crypto_context_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">crypto_context_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">crypto_context_t - Cryptographic context structure.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/crypto/crypto.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint8_t</b> <b>public_key</b> [32]
+  <br/>
+  <b>uint8_t</b> <b>private_key</b> [32]
+  <br/>
+  <b>uint8_t</b> <b>peer_public_key</b> [32]
+  <br/>
+  <b>uint8_t</b> <b>shared_key</b> [32]
+  <br/>
+  <b>uint8_t</b> <b>password_key</b> [32]
+  <br/>
+  <b>uint8_t</b> <b>password_salt</b> [32]
+  <br/>
+  <b>uint8_t</b> <b>nonce_size</b>
+  <br/>
+  <b>uint8_t</b> <b>mac_size</b>
+  <br/>
+  <b>uint8_t</b> <b>hmac_size</b>
+  <br/>
+  <b>uint8_t</b> <b>encryption_key_size</b>
+  <br/>
+  <b>uint8_t</b> <b>auth_challenge_size</b>
+  <br/>
+  <b>uint16_t</b> <b>public_key_size</b>
+  <br/>
+  <b>uint16_t</b> <b>private_key_size</b>
+  <br/>
+  <b>uint16_t</b> <b>shared_key_size</b>
+  <br/>
+  <b>uint16_t</b> <b>auth_public_key_size</b>
+  <br/>
+  <b>uint16_t</b> <b>salt_size</b>
+  <br/>
+  <b>uint16_t</b> <b>signature_size</b>
+  <br/>
+  <b>bool</b> <b>initialized</b>
+  <br/>
+  <b>bool</b> <b>has_password</b>
+  <br/>
+  <b>bool</b> <b>key_exchange_complete</b>
+  <br/>
+  <b>bool</b> <b>peer_key_received</b>
+  <br/>
+  <b>bool</b> <b>handshake_complete</b>
+  <br/>
+  <b>bool</b> <b>encrypt_data</b>
+  <br/>
+  <b>uint8_t</b> <b>auth_nonce</b> [32]
+  <br/>
+  <b>uint8_t</b> <b>auth_hmac</b> [32]
+  <br/>
+  <b>uint64_t</b> <b>nonce_counter</b>
+  <br/>
+  <b>uint8_t</b> <b>session_id</b> [16]
+  <br/>
+  <b>uint64_t</b> <b>rekey_packet_count</b>
+  <br/>
+  time_t <b>rekey_last_time</b>
+  <br/>
+  time_t <b>rekey_last_request_time</b>
+  <br/>
+  <b>bool</b> <b>rekey_in_progress</b>
+  <br/>
+  <b>uint8_t</b> <b>rekey_failure_count</b>
+  <br/>
+  <b>uint8_t</b> <b>temp_public_key</b> [32]
+  <br/>
+  <b>uint8_t</b> <b>temp_private_key</b> [32]
+  <br/>
+  <b>uint8_t</b> <b>temp_shared_key</b> [32]
+  <br/>
+  <b>bool</b> <b>has_temp_key</b>
+  <br/>
+  <b>uint64_t</b> <b>rekey_packet_threshold</b>
+  <br/>
+  time_t <b>rekey_time_threshold</b>
+  <br/>
+  <b>uint64_t</b> <b>bytes_encrypted</b>
+  <br/>
+  <b>uint64_t</b> <b>bytes_decrypted</b>
+  <br/>
+  <b>uint64_t</b> <b>rekey_count</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Cryptographic context structure.</p>
+<p class="Pp">Manages all cryptographic state for a single connection, including
+    key exchange, encryption/decryption, authentication, and session
+  rekeying.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Nonce generation: Nonces are constructed as
+  <b>session_id</b> || counter<b> where session_id is 16 bytes and counter fills
+  the remaining bytes. This prevents both within-session and cross-session
+  replay attacks.</b>
+<p class="Pp"></p>
+<p class="Pp">Session ID: Generated once per connection and remains constant.
+    Used to prevent cross-session replay attacks.</p>
+<p class="Pp"></p>
+<p class="Pp">Nonce counter: Starts at 1 (0 is reserved for testing) and
+    increments for each encryption operation. Prevents nonce reuse within a
+    session.</p>
+<p class="Pp"></p>
+<p class="Pp">Byte order: Client must convert network byte order to host byte
+    order for crypto parameters. Server uses host byte order directly.</p>
+<p class="Pp"></p>
+<p class="Pp">Key exchange formats:</p>
+<ul class="Bl-bullet">
+  <li>Simple format: Only ephemeral public key (when server has no identity
+    key)</li>
+  <li>Authenticated format: Ephemeral key + identity key + signature (when
+      server has identity key)</li>
+</ul>
+</div>
+<p class="Pp">Definition at line <b>261</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_context_t::auth_challenge_size</h2>
+<p class="Pp">Authentication challenge nonce size (e.g., 32)</p>
+<p class="Pp">Definition at line <b>277</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_create_auth_challenge()</b>,
+    <b>crypto_handshake_client_auth_response()</b>,
+    <b>crypto_handshake_server_auth_challenge()</b>,
+    <b>crypto_handshake_server_complete()</b>,
+    <b>crypto_handshake_set_parameters()</b>,
+    <b>crypto_handshake_validate_packet_size()</b>, <b>crypto_init()</b>, and
+    <b>crypto_process_auth_challenge()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_context_t::auth_hmac[32]</h2>
+<p class="Pp">Client's HMAC response (or expected on server)</p>
+<p class="Pp">Definition at line <b>297</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_context_t::auth_nonce[32]</h2>
+<p class="Pp">Authentication state Server-generated challenge nonce</p>
+<p class="Pp">Definition at line <b>296</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_create_auth_challenge()</b>,
+    <b>crypto_handshake_server_auth_challenge()</b>,
+    <b>crypto_handshake_server_complete()</b>,
+    <b>crypto_process_auth_challenge()</b>, and
+    <b>crypto_process_auth_response()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> crypto_context_t::auth_public_key_size</h2>
+<p class="Pp">Authentication public key size (32 for Ed25519, 1952 for
+    Dilithium3)</p>
+<p class="Pp">Definition at line <b>283</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>,
+    <b>crypto_handshake_server_start()</b>,
+    <b>crypto_handshake_set_parameters()</b>, and
+    <b>crypto_handshake_validate_packet_size()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> crypto_context_t::bytes_decrypted</h2>
+<p class="Pp">Total bytes decrypted</p>
+<p class="Pp">Definition at line <b>322</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_decrypt()</b>, <b>crypto_destroy()</b>,
+    <b>crypto_get_status()</b>, and <b>crypto_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> crypto_context_t::bytes_encrypted</h2>
+<p class="Pp">Performance tracking Total bytes encrypted</p>
+<p class="Pp">Definition at line <b>321</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_destroy()</b>, <b>crypto_encrypt()</b>,
+    <b>crypto_get_status()</b>, and <b>crypto_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> crypto_context_t::encrypt_data</h2>
+<p class="Pp">Whether payload encryption is enabled (false = auth-only mode)</p>
+<p class="Pp">Definition at line <b>293</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_init()</b>, and
+    <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_context_t::encryption_key_size</h2>
+<p class="Pp">Encryption key size (e.g., 32 for XSalsa20, 32 for AES-256)</p>
+<p class="Pp">Definition at line <b>276</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_derive_password_key()</b>,
+    <b>crypto_handshake_set_parameters()</b>, <b>crypto_init()</b>, and
+    <b>crypto_verify_password()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> crypto_context_t::handshake_complete</h2>
+<p class="Pp">Whether full handshake is complete</p>
+<p class="Pp">Definition at line <b>292</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_client_auth_response()</b>,
+    <b>crypto_handshake_server_auth_challenge()</b>, <b>crypto_init()</b>,
+    <b>crypto_process_auth_response()</b>, and <b>crypto_should_rekey()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> crypto_context_t::has_password</h2>
+<p class="Pp">Whether password-based encryption is enabled</p>
+<p class="Pp">Definition at line <b>289</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_compute_auth_response()</b>,
+    <b>crypto_decrypt()</b>, <b>crypto_encrypt()</b>,
+    <b>crypto_get_status()</b>, <b>crypto_handshake_client_auth_response()</b>,
+    <b>crypto_handshake_server_auth_challenge()</b>,
+    <b>crypto_handshake_server_complete()</b>, <b>crypto_init()</b>,
+    <b>crypto_init_with_password()</b>, <b>crypto_is_ready()</b>,
+    <b>crypto_verify_auth_response()</b>, and
+  <b>crypto_verify_password()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> crypto_context_t::has_temp_key</h2>
+<p class="Pp">True if temporary keys are valid</p>
+<p class="Pp">Definition at line <b>314</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_process_rekey_complete()</b>,
+    <b>crypto_handshake_process_rekey_response()</b>,
+    <b>crypto_handshake_rekey_complete()</b>,
+    <b>crypto_handshake_rekey_response()</b>, <b>crypto_init()</b>,
+    <b>crypto_rekey_abort()</b>, <b>crypto_rekey_commit()</b>,
+    <b>crypto_rekey_init()</b>, <b>crypto_rekey_process_request()</b>, and
+    <b>crypto_rekey_process_response()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_context_t::hmac_size</h2>
+<p class="Pp">HMAC size (e.g., 32 for HMAC-SHA256, 64 for HMAC-SHA512)</p>
+<p class="Pp">Definition at line <b>275</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_client_complete()</b>,
+    <b>crypto_handshake_server_complete()</b>,
+    <b>crypto_handshake_set_parameters()</b>,
+    <b>crypto_handshake_validate_packet_size()</b>, and
+  <b>crypto_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> crypto_context_t::initialized</h2>
+<p class="Pp">State tracking flags Whether context has been initialized</p>
+<p class="Pp">Definition at line <b>288</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_create_auth_challenge()</b>,
+    <b>crypto_create_public_key_packet()</b>, <b>crypto_decrypt()</b>,
+    <b>crypto_derive_password_key()</b>, <b>crypto_destroy()</b>,
+    <b>crypto_encrypt()</b>, <b>crypto_get_public_key()</b>,
+    <b>crypto_get_status()</b>, <b>crypto_init()</b>, <b>crypto_is_ready()</b>,
+    <b>crypto_process_auth_challenge()</b>,
+    <b>crypto_process_auth_response()</b>,
+    <b>crypto_process_public_key_packet()</b>, <b>crypto_rekey_commit()</b>,
+    <b>crypto_rekey_init()</b>, <b>crypto_rekey_process_request()</b>,
+    <b>crypto_rekey_process_response()</b>, <b>crypto_set_peer_public_key()</b>,
+    <b>crypto_should_rekey()</b>, and <b>crypto_verify_password()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> crypto_context_t::key_exchange_complete</h2>
+<p class="Pp">Whether DH key exchange is complete</p>
+<p class="Pp">Definition at line <b>290</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_compute_auth_response()</b>,
+    <b>crypto_decrypt()</b>, <b>crypto_encrypt()</b>,
+    <b>crypto_get_status()</b>, <b>crypto_handshake_server_complete()</b>,
+    <b>crypto_init()</b>, <b>crypto_is_ready()</b>,
+    <b>crypto_set_peer_public_key()</b>, and
+    <b>crypto_verify_auth_response()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_context_t::mac_size</h2>
+<p class="Pp">MAC size (e.g., 16 for Poly1305, 16 for GCM)</p>
+<p class="Pp">Definition at line <b>274</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_create_encrypted_packet()</b>,
+    <b>crypto_decrypt()</b>, <b>crypto_encrypt()</b>,
+    <b>crypto_handshake_set_parameters()</b>, and <b>crypto_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> crypto_context_t::nonce_counter</h2>
+<p class="Pp">Security parameters Nonce counter (starts at 1, increments per
+    encryption)</p>
+<p class="Pp">Definition at line <b>300</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_encrypt()</b>, <b>crypto_get_status()</b>,
+    <b>crypto_init()</b>, and <b>crypto_rekey_commit()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_context_t::nonce_size</h2>
+<p class="Pp">Dynamic crypto parameters (negotiated during handshake) Nonce size
+    (e.g., 24 for XSalsa20, 12 for ChaCha20)</p>
+<p class="Pp">Definition at line <b>273</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_create_encrypted_packet()</b>,
+    <b>crypto_decrypt()</b>, <b>crypto_encrypt()</b>,
+    <b>crypto_handshake_set_parameters()</b>, and <b>crypto_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_context_t::password_key[32]</h2>
+<p class="Pp">Password-derived key (optional additional layer) Argon2id-derived
+    key from password</p>
+<p class="Pp">Definition at line <b>269</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_compute_auth_response()</b>,
+    <b>crypto_decrypt()</b>, <b>crypto_derive_password_key()</b>,
+    <b>crypto_destroy()</b>, <b>crypto_encrypt()</b>,
+    <b>crypto_verify_auth_response()</b>, and
+  <b>crypto_verify_password()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_context_t::password_salt[32]</h2>
+<p class="Pp">Salt used for password derivation</p>
+<p class="Pp">Definition at line <b>270</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_derive_password_key()</b>, and
+    <b>crypto_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> crypto_context_t::peer_key_received</h2>
+<p class="Pp">Whether peer's public key has been received</p>
+<p class="Pp">Definition at line <b>291</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_init()</b>, and
+    <b>crypto_set_peer_public_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_context_t::peer_public_key[32]</h2>
+<p class="Pp">Peer's ephemeral public key</p>
+<p class="Pp">Definition at line <b>265</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_set_peer_public_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_context_t::private_key[32]</h2>
+<p class="Pp">Our ephemeral private key</p>
+<p class="Pp">Definition at line <b>264</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_destroy()</b>,
+    <b>crypto_generate_keypair()</b>, and
+  <b>crypto_set_peer_public_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> crypto_context_t::private_key_size</h2>
+<p class="Pp">Key exchange private key size (32 for X25519, 1568 for
+  Kyber1024)</p>
+<p class="Pp">Definition at line <b>281</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_set_parameters()</b>, and
+    <b>crypto_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_context_t::public_key[32]</h2>
+<p class="Pp">X25519 key exchange keys Our ephemeral public key</p>
+<p class="Pp">Definition at line <b>263</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_create_public_key_packet()</b>,
+    <b>crypto_generate_keypair()</b>, <b>crypto_get_public_key()</b>,
+    <b>crypto_handshake_client_key_exchange()</b>, and
+    <b>crypto_handshake_server_start()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> crypto_context_t::public_key_size</h2>
+<p class="Pp">Key sizes for dynamic negotiation (future: post-quantum crypto)
+    Key exchange public key size (32 for X25519, 1568 for Kyber1024)</p>
+<p class="Pp">Definition at line <b>280</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_create_public_key_packet()</b>,
+    <b>crypto_get_public_key()</b>,
+    <b>crypto_handshake_client_key_exchange()</b>,
+    <b>crypto_handshake_server_auth_challenge()</b>,
+    <b>crypto_handshake_server_start()</b>,
+    <b>crypto_handshake_set_parameters()</b>,
+    <b>crypto_handshake_validate_packet_size()</b>, <b>crypto_init()</b>,
+    <b>crypto_process_public_key_packet()</b>, and
+    <b>crypto_set_peer_public_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> crypto_context_t::rekey_count</h2>
+<p class="Pp">Number of successful rekeys performed</p>
+<p class="Pp">Definition at line <b>323</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_get_rekey_status()</b>,
+    <b>crypto_init()</b>, and <b>crypto_rekey_commit()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_context_t::rekey_failure_count</h2>
+<p class="Pp">Consecutive rekey failures (for exponential backoff)</p>
+<p class="Pp">Definition at line <b>308</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_get_rekey_status()</b>,
+    <b>crypto_init()</b>, <b>crypto_rekey_abort()</b>,
+    <b>crypto_rekey_commit()</b>, and <b>crypto_rekey_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> crypto_context_t::rekey_in_progress</h2>
+<p class="Pp">Rekey handshake currently in progress</p>
+<p class="Pp">Definition at line <b>307</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_get_rekey_status()</b>,
+    <b>crypto_handshake_process_rekey_complete()</b>,
+    <b>crypto_handshake_process_rekey_response()</b>,
+    <b>crypto_handshake_rekey_complete()</b>,
+    <b>crypto_handshake_rekey_response()</b>, <b>crypto_init()</b>,
+    <b>crypto_rekey_abort()</b>, <b>crypto_rekey_commit()</b>,
+    <b>crypto_rekey_init()</b>, <b>crypto_rekey_process_request()</b>,
+    <b>crypto_rekey_process_response()</b>, and
+  <b>crypto_should_rekey()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="time_t_crypto_context_t::rekey_last_request_time"><a class="permalink" href="#time_t_crypto_context_t::rekey_last_request_time">time_t
+  crypto_context_t::rekey_last_request_time</a></h2>
+<p class="Pp">Timestamp of last rekey request (for DDoS protection)</p>
+<p class="Pp">Definition at line <b>306</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_process_rekey_request()</b>, and
+    <b>crypto_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="time_t_crypto_context_t::rekey_last_time"><a class="permalink" href="#time_t_crypto_context_t::rekey_last_time">time_t
+  crypto_context_t::rekey_last_time</a></h2>
+<p class="Pp">Timestamp of last successful rekey (or initial handshake)</p>
+<p class="Pp">Definition at line <b>305</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_get_rekey_status()</b>,
+    <b>crypto_init()</b>, <b>crypto_rekey_commit()</b>,
+    <b>crypto_rekey_init()</b>, and <b>crypto_should_rekey()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> crypto_context_t::rekey_packet_count</h2>
+<p class="Pp">Session rekeying state Packets encrypted since last
+    rekey/handshake</p>
+<p class="Pp">Definition at line <b>304</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_encrypt()</b>,
+    <b>crypto_get_rekey_status()</b>, <b>crypto_init()</b>,
+    <b>crypto_rekey_commit()</b>, <b>crypto_rekey_init()</b>, and
+    <b>crypto_should_rekey()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> crypto_context_t::rekey_packet_threshold</h2>
+<p class="Pp">Configurable rekeying thresholds Rekey after N packets (default:
+    1,000,000)</p>
+<p class="Pp">Definition at line <b>317</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_get_rekey_status()</b>,
+    <b>crypto_init()</b>, and <b>crypto_should_rekey()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="time_t_crypto_context_t::rekey_time_threshold"><a class="permalink" href="#time_t_crypto_context_t::rekey_time_threshold">time_t
+  crypto_context_t::rekey_time_threshold</a></h2>
+<p class="Pp">Rekey after N seconds (default: 3600 = 1 hour)</p>
+<p class="Pp">Definition at line <b>318</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_get_rekey_status()</b>,
+    <b>crypto_init()</b>, and <b>crypto_should_rekey()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> crypto_context_t::salt_size</h2>
+<p class="Pp">Salt size (32 for Argon2id)</p>
+<p class="Pp">Definition at line <b>284</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_derive_password_key()</b>,
+    <b>crypto_handshake_set_parameters()</b>, <b>crypto_init()</b>, and
+    <b>crypto_verify_password()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_context_t::session_id[16]</h2>
+<p class="Pp">Unique session ID (16 bytes, prevents cross-session replay)</p>
+<p class="Pp">Definition at line <b>301</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_init()</b>, and
+    <b>crypto_rekey_commit()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_context_t::shared_key[32]</h2>
+<p class="Pp">Computed shared secret from DH</p>
+<p class="Pp">Definition at line <b>266</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_compute_auth_response()</b>,
+    <b>crypto_decrypt()</b>, <b>crypto_destroy()</b>, <b>crypto_encrypt()</b>,
+    <b>crypto_handshake_process_rekey_complete()</b>,
+    <b>crypto_handshake_rekey_complete()</b>,
+    <b>crypto_process_auth_response()</b>, <b>crypto_rekey_commit()</b>,
+    <b>crypto_set_peer_public_key()</b>, and
+    <b>crypto_verify_auth_response()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> crypto_context_t::shared_key_size</h2>
+<p class="Pp">Shared secret size (32 for X25519, 32 for Kyber1024)</p>
+<p class="Pp">Definition at line <b>282</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_set_parameters()</b>, and
+    <b>crypto_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> crypto_context_t::signature_size</h2>
+<p class="Pp">Signature size (64 for Ed25519, 3309 for Dilithium3)</p>
+<p class="Pp">Definition at line <b>285</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>,
+    <b>crypto_handshake_server_complete()</b>,
+    <b>crypto_handshake_server_start()</b>,
+    <b>crypto_handshake_set_parameters()</b>,
+    <b>crypto_handshake_validate_packet_size()</b>, and
+  <b>crypto_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_context_t::temp_private_key[32]</h2>
+<p class="Pp">New ephemeral private key (not yet active)</p>
+<p class="Pp">Definition at line <b>312</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_rekey_abort()</b>,
+    <b>crypto_rekey_commit()</b>, <b>crypto_rekey_init()</b>,
+    <b>crypto_rekey_process_request()</b>, and
+    <b>crypto_rekey_process_response()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_context_t::temp_public_key[32]</h2>
+<p class="Pp">Temporary keys during rekeying transition New ephemeral public key
+    (not yet active)</p>
+<p class="Pp">Definition at line <b>311</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_rekey_request()</b>,
+    <b>crypto_handshake_rekey_response()</b>, <b>crypto_rekey_abort()</b>,
+    <b>crypto_rekey_commit()</b>, <b>crypto_rekey_init()</b>, and
+    <b>crypto_rekey_process_request()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> crypto_context_t::temp_shared_key[32]</h2>
+<p class="Pp">New shared secret (not yet active)</p>
+<p class="Pp">Definition at line <b>313</b> of file
+    <b>include/ascii-chat/crypto/crypto.h</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_process_rekey_complete()</b>,
+    <b>crypto_handshake_rekey_complete()</b>, <b>crypto_rekey_abort()</b>,
+    <b>crypto_rekey_commit()</b>, <b>crypto_rekey_process_request()</b>, and
+    <b>crypto_rekey_process_response()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

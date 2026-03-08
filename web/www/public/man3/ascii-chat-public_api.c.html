@@ -38,44 +38,53 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>options_registry_add_all_to_builder</b>
-    (options_builder_t *builder)
+<p class="Pp"><b>asciichat_error_t</b>
+    <b>options_registry_add_all_to_builder</b> (<b>options_builder_t</b>
+    *builder)
   <br/>
-  const registry_entry_t * <b>options_registry_get_raw</b> (void)
+  Add all options from registry to builder. const <b>registry_entry_t</b> *
+    <b>options_registry_get_raw</b> (void)
   <br/>
   Get raw access to registry for completions filtering. size_t
     <b>options_registry_get_count</b> (void)
   <br/>
-  Get total number of registry entries. const option_descriptor_t *
+  Get total number of registry entries. const <b>option_descriptor_t</b> *
     <b>options_registry_find_by_name</b> (const char *long_name)
   <br/>
-  const option_descriptor_t * <b>options_registry_find_by_short</b> (char
-    short_name)
+  Get option descriptor by name. const <b>option_descriptor_t</b> *
+    <b>options_registry_find_by_short</b> (char short_name)
   <br/>
-  const option_descriptor_t * <b>options_registry_get_for_mode</b>
-    (asciichat_mode_t mode, size_t *num_options)
-  <br/>
-  const option_descriptor_t * <b>options_registry_get_binary_options</b> (size_t
+  Get option descriptor by short name. const <b>option_descriptor_t</b> *
+    <b>options_registry_get_for_mode</b> (<b>asciichat_mode_t</b> mode, size_t
     *num_options)
   <br/>
-  const option_descriptor_t * <b>options_registry_get_for_display</b>
-    (asciichat_mode_t mode, <b>bool</b> for_binary_help, size_t *num_options)
+  Get all options for a specific mode. const <b>option_descriptor_t</b> *
+    <b>options_registry_get_binary_options</b> (size_t *num_options)
   <br/>
-  const option_metadata_t * <b>options_registry_get_metadata</b> (const char
+  Get all binary-level options. const <b>option_descriptor_t</b> *
+    <b>options_registry_get_for_display</b> (<b>asciichat_mode_t</b> mode,
+    <b>bool</b> for_binary_help, size_t *num_options)
+  <br/>
+  Get options for help/completions display with unified filtering. const
+    <b>option_metadata_t</b> * <b>options_registry_get_metadata</b> (const char
     *long_name)
   <br/>
-  const char ** <b>options_registry_get_enum_values</b> (const char
-    *option_name, const char ***descriptions, size_t *count)
+  Get complete metadata for an option. const char **
+    <b>options_registry_get_enum_values</b> (const char *option_name, const char
+    ***descriptions, size_t *count)
   <br/>
-  <b>bool</b> <b>options_registry_get_numeric_range</b> (const char
-    *option_name, int *min_out, int *max_out, int *step_out)
+  Get enum values for an option. <b>bool</b>
+    <b>options_registry_get_numeric_range</b> (const char *option_name, int
+    *min_out, int *max_out, int *step_out)
   <br/>
-  const char ** <b>options_registry_get_examples</b> (const char *option_name,
-    size_t *count)
+  Get numeric range for an option. const char **
+    <b>options_registry_get_examples</b> (const char *option_name, size_t
+    *count)
   <br/>
-  option_input_type_t <b>options_registry_get_input_type</b> (const char
-    *option_name)
+  Get example values for an option. <b>option_input_type_t</b>
+    <b>options_registry_get_input_type</b> (const char *option_name)
   <br/>
+  Get input type for an option.
   <br/>
 </p>
 </section>
@@ -86,7 +95,7 @@
 <p class="Pp">Public API functions for the options registry.</p>
 <p class="Pp">This file contains all the public-facing functions that external
     code uses to interact with the options registry. These functions are
-    declared in ascii-chat/options/registry.h.</p>
+    declared in <b>ascii-chat/options/registry.h</b>.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Author</b></p>
 <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
@@ -98,8 +107,16 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_options_registry_add_all_to_builder_(options_builder_t_*_builder)"><a class="permalink" href="#asciichat_error_t_options_registry_add_all_to_builder_(options_builder_t_*_builder)">asciichat_error_t
-  options_registry_add_all_to_builder (options_builder_t * builder)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> options_registry_add_all_to_builder
+  (<b>options_builder_t</b> * builder)</h2>
+<p class="Pp">Add all options from registry to builder. Iterates through the
+    central options registry and adds each option to the provided builder with
+    its mode bitmask set.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>builder</i> Options builder to add options to</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>20</b> of file <b>public_api.c</b>.</p>
 <pre>20                                                                                   {
 21   if (!builder) {
@@ -202,8 +219,21 @@
 <p class="Pp">References <b>action_check_update()</b>,
     <b>action_list_microphones()</b>, <b>action_list_speakers()</b>,
     <b>action_list_webcams()</b>, <b>action_show_capabilities()</b>,
+    <b>registry_entry_t::arg_placeholder</b>, <b>ASCIICHAT_OK</b>,
+    <b>registry_entry_t::default_value</b>,
+    <b>registry_entry_t::default_value_size</b>,
+    <b>option_metadata_t::enum_values</b>,
+    <b>registry_entry_t::env_var_name</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>g_options_registry</b>, <b>g_registry_size</b>,
-    <b>options_builder_add_action()</b>, <b>options_builder_add_bool()</b>,
+    <b>registry_entry_t::group</b>, <b>registry_entry_t::help_text</b>,
+    <b>registry_entry_t::long_name</b>, <b>option_metadata_t::max</b>,
+    <b>registry_entry_t::metadata</b>, <b>registry_entry_t::mode_bitmask</b>,
+    <b>option_metadata_t::numeric_range</b>, <b>registry_entry_t::offset</b>,
+    <b>OPTION_TYPE_ACTION</b>, <b>OPTION_TYPE_BOOL</b>,
+    <b>OPTION_TYPE_CALLBACK</b>, <b>OPTION_TYPE_DOUBLE</b>,
+    <b>OPTION_TYPE_INT</b>, <b>OPTION_TYPE_STRING</b>,
+    <b>registry_entry_t::optional_arg</b>, <b>options_builder_add_action()</b>,
+    <b>options_builder_add_bool()</b>,
     <b>options_builder_add_callback_with_metadata()</b>,
     <b>options_builder_add_double()</b>,
     <b>options_builder_add_double_with_metadata()</b>,
@@ -211,14 +241,24 @@
     <b>options_builder_add_int_with_metadata()</b>,
     <b>options_builder_add_string()</b>,
     <b>options_builder_set_arg_placeholder()</b>,
-    <b>options_builder_set_mode_bitmask()</b>, and
-  <b>registry_init_size()</b>.</p>
+    <b>options_builder_set_mode_bitmask()</b>,
+    <b>registry_entry_t::parse_fn</b>, <b>registry_init_size()</b>,
+    <b>registry_entry_t::required</b>, <b>SET_ERRNO</b>,
+    <b>registry_entry_t::short_name</b>, <b>registry_entry_t::type</b>, and
+    <b>registry_entry_t::validate_fn</b>.</p>
 <p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_option_descriptor_t_*_options_registry_find_by_name_(const_char_*_long_name)"><a class="permalink" href="#const_option_descriptor_t_*_options_registry_find_by_name_(const_char_*_long_name)">const
-  option_descriptor_t * options_registry_find_by_name (const char *
-  long_name)</a></h2>
+<h2 class="Ss">const <b>option_descriptor_t</b> * options_registry_find_by_name
+  (const char * long_name)</h2>
+<p class="Pp">Get option descriptor by name. Looks up an option descriptor from
+    the registry by its long name.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>long_name</i> Long option name (e.g.,
+  &quot;port&quot;)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to option descriptor, or NULL if not found</div>
 <p class="Pp">Definition at line <b>140</b> of file <b>public_api.c</b>.</p>
 <pre>140                                                                                 {
 141   if (!long_name) {
@@ -261,13 +301,42 @@
 178 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>registry_find_entry_by_name()</b>, and
-    <b>registry_init_size()</b>.</p>
+<p class="Pp">References <b>option_descriptor_t::action_fn</b>,
+    <b>option_descriptor_t::default_value</b>,
+    <b>registry_entry_t::default_value</b>,
+    <b>option_descriptor_t::env_var_name</b>,
+    <b>registry_entry_t::env_var_name</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_NOT_FOUND</b>, <b>option_descriptor_t::group</b>,
+    <b>registry_entry_t::group</b>, <b>option_descriptor_t::help_text</b>,
+    <b>registry_entry_t::help_text</b>,
+    <b>option_descriptor_t::hide_from_binary_help</b>,
+    <b>option_descriptor_t::hide_from_mode_help</b>,
+    <b>option_descriptor_t::long_name</b>, <b>registry_entry_t::long_name</b>,
+    <b>option_descriptor_t::mode_bitmask</b>,
+    <b>registry_entry_t::mode_bitmask</b>, <b>option_descriptor_t::offset</b>,
+    <b>registry_entry_t::offset</b>, <b>option_descriptor_t::optional_arg</b>,
+    <b>registry_entry_t::optional_arg</b>,
+    <b>option_descriptor_t::owns_memory</b>,
+    <b>registry_entry_t::owns_memory</b>, <b>option_descriptor_t::parse_fn</b>,
+    <b>registry_entry_t::parse_fn</b>, <b>registry_find_entry_by_name()</b>,
+    <b>registry_init_size()</b>, <b>option_descriptor_t::required</b>,
+    <b>registry_entry_t::required</b>, <b>SET_ERRNO</b>,
+    <b>option_descriptor_t::short_name</b>, <b>registry_entry_t::short_name</b>,
+    <b>option_descriptor_t::type</b>, <b>registry_entry_t::type</b>,
+    <b>option_descriptor_t::validate</b>, and
+    <b>registry_entry_t::validate_fn</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_option_descriptor_t_*_options_registry_find_by_short_(char_short_name)"><a class="permalink" href="#const_option_descriptor_t_*_options_registry_find_by_short_(char_short_name)">const
-  option_descriptor_t * options_registry_find_by_short (char
-  short_name)</a></h2>
+<h2 class="Ss">const <b>option_descriptor_t</b> * options_registry_find_by_short
+  (char short_name)</h2>
+<p class="Pp">Get option descriptor by short name. Looks up an option descriptor
+    from the registry by its short name.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>short_name</i> Short option character (e.g.,
+  'p')</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to option descriptor, or NULL if not found</div>
 <p class="Pp">Definition at line <b>180</b> of file <b>public_api.c</b>.</p>
 <pre>180                                                                            {
 181   if (short_name == '\0') {
@@ -307,13 +376,44 @@
 215 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>registry_find_entry_by_short()</b>, and
-    <b>registry_init_size()</b>.</p>
+<p class="Pp">References <b>option_descriptor_t::action_fn</b>,
+    <b>option_descriptor_t::default_value</b>,
+    <b>registry_entry_t::default_value</b>,
+    <b>option_descriptor_t::env_var_name</b>,
+    <b>registry_entry_t::env_var_name</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_NOT_FOUND</b>, <b>option_descriptor_t::group</b>,
+    <b>registry_entry_t::group</b>, <b>option_descriptor_t::help_text</b>,
+    <b>registry_entry_t::help_text</b>,
+    <b>option_descriptor_t::hide_from_binary_help</b>,
+    <b>option_descriptor_t::hide_from_mode_help</b>,
+    <b>option_descriptor_t::long_name</b>, <b>registry_entry_t::long_name</b>,
+    <b>option_descriptor_t::mode_bitmask</b>,
+    <b>registry_entry_t::mode_bitmask</b>, <b>option_descriptor_t::offset</b>,
+    <b>registry_entry_t::offset</b>, <b>option_descriptor_t::optional_arg</b>,
+    <b>registry_entry_t::optional_arg</b>,
+    <b>option_descriptor_t::owns_memory</b>,
+    <b>registry_entry_t::owns_memory</b>, <b>option_descriptor_t::parse_fn</b>,
+    <b>registry_entry_t::parse_fn</b>, <b>registry_find_entry_by_short()</b>,
+    <b>registry_init_size()</b>, <b>option_descriptor_t::required</b>,
+    <b>registry_entry_t::required</b>, <b>SET_ERRNO</b>,
+    <b>option_descriptor_t::short_name</b>, <b>registry_entry_t::short_name</b>,
+    <b>option_descriptor_t::type</b>, <b>registry_entry_t::type</b>,
+    <b>option_descriptor_t::validate</b>, and
+    <b>registry_entry_t::validate_fn</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_option_descriptor_t_*_options_registry_get_binary_options_(size_t_*_num_options)"><a class="permalink" href="#const_option_descriptor_t_*_options_registry_get_binary_options_(size_t_*_num_options)">const
-  option_descriptor_t * options_registry_get_binary_options (size_t *
-  num_options)</a></h2>
+<h2 class="Ss">const <b>option_descriptor_t</b> *
+  options_registry_get_binary_options (size_t * num_options)</h2>
+<p class="Pp">Get all binary-level options. Returns an array of all binary-level
+    options (those with OPTION_MODE_BINARY). The array is allocated and must be
+    freed by the caller.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>num_options</i> OUTPUT: Number of options
+  returned</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Array of option descriptors (caller must free), or NULL
+  on error</div>
 <p class="Pp">Definition at line <b>282</b> of file <b>public_api.c</b>.</p>
 <pre>282                                                                                     {
 283   if (!num_options) {
@@ -357,8 +457,10 @@
 321 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>g_options_registry</b>, <b>g_registry_size</b>,
-    <b>registry_entry_to_descriptor()</b>, and <b>registry_init_size()</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>g_options_registry</b>, <b>g_registry_size</b>,
+    <b>OPTION_MODE_BINARY</b>, <b>registry_entry_to_descriptor()</b>,
+    <b>registry_init_size()</b>, <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_options_registry_get_count_(void_)"><a class="permalink" href="#size_t_options_registry_get_count_(void_)">size_t
@@ -381,6 +483,35 @@
 <h2 class="Ss" id="const_char_**_options_registry_get_enum_values_(const_char_*_option_name,_const_char_***_descriptions,_size_t_*_count)"><a class="permalink" href="#const_char_**_options_registry_get_enum_values_(const_char_*_option_name,_const_char_***_descriptions,_size_t_*_count)">const
   char ** options_registry_get_enum_values (const char * option_name, const char
   *** descriptions, size_t * count)</a></h2>
+<p class="Pp">Get enum values for an option. Retrieves enum values and
+    descriptions for an option that has OPTION_INPUT_ENUM type in its
+  metadata.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>option_name</i> Long name of option
+<br/>
+<i>descriptions</i> OUTPUT: Pointer to descriptions array (or NULL if not
+  needed)
+<br/>
+<i>count</i> OUTPUT: Number of values/descriptions</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Array of enum value strings, or NULL if not found or not
+  an enum type</div>
+<p class="Pp">Example:</p>
+<p class="Pp"></p>
+<pre>const char **values;
+const char **descs;
+size_t count;
+values = options_registry_get_enum_values(&quot;color-mode&quot;, &amp;descs, &amp;count);
+if (values) {
+<br/>
+    for (size_t i = 0; i &lt; count; i++) {
+<br/>
+        printf(&quot;%s: %s\n&quot;, values[i], descs[i]);
+<br/>
+    }
+}
+</pre>
 <p class="Pp">Definition at line <b>390</b> of file <b>public_api.c</b>.</p>
 <pre>390                                                                                                                   {
 391   if (!option_name || !count) {
@@ -413,12 +544,26 @@
 418 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>options_registry_get_metadata()</b>.</p>
+<p class="Pp">References <b>option_metadata_t::enum_descriptions</b>,
+    <b>option_metadata_t::enum_values</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_NOT_FOUND</b>, <b>option_metadata_t::input_type</b>,
+    <b>OPTION_INPUT_ENUM</b>, <b>options_registry_get_metadata()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_**_options_registry_get_examples_(const_char_*_option_name,_size_t_*_count)"><a class="permalink" href="#const_char_**_options_registry_get_examples_(const_char_*_option_name,_size_t_*_count)">const
   char ** options_registry_get_examples (const char * option_name, size_t *
   count)</a></h2>
+<p class="Pp">Get example values for an option. Retrieves example values or
+    command invocations for an option.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>option_name</i> Long name of option
+<br/>
+<i>count</i> OUTPUT: Number of examples</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Array of example strings, or NULL if no examples
+  defined</div>
 <p class="Pp">Definition at line <b>440</b> of file <b>public_api.c</b>.</p>
 <pre>440                                                                                    {
 441   if (!option_name || !count) {
@@ -445,12 +590,42 @@
 462 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>options_registry_get_metadata()</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
+    <b>option_metadata_t::examples</b>, <b>options_registry_get_metadata()</b>,
+    and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_option_descriptor_t_*_options_registry_get_for_display_(asciichat_mode_t_mode,_"><a class="permalink" href="#const_option_descriptor_t_*_options_registry_get_for_display_(asciichat_mode_t_mode,_">const
-  option_descriptor_t * options_registry_get_for_display (asciichat_mode_t mode,
-  <b>bool</b> for_binary_help, size_t * num_options)</a></h2>
+<h2 class="Ss">const <b>option_descriptor_t</b> *
+  options_registry_get_for_display (<b>asciichat_mode_t</b> mode, <b>bool</b>
+  for_binary_help, size_t * num_options)</h2>
+<p class="Pp">Get options for help/completions display with unified filtering.
+    Returns options filtered using the same logic as the help system. This
+    ensures help output and completions are always in sync.</p>
+<p class="Pp"></p>
+<p class="Pp">Uses the same filtering rules as
+    <b>options_print_help_for_mode()</b>:</p>
+<ul class="Bl-bullet">
+  <li>For binary-level help (mode == MODE_DISCOVERY): shows all options that
+      apply to any mode</li>
+  <li>For mode-specific help: shows only options for that mode (binary options
+      excluded unless also mode-specific)</li>
+  <li>Respects hide_from_binary_help and hide_from_mode_help flags</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>mode</i> Mode to filter for (use MODE_DISCOVERY for
+  binary-level help)
+<br/>
+<i>for_binary_help</i> If true, use binary-help filtering; if false, use
+  mode-specific filtering
+<br/>
+<i>num_options</i> OUTPUT: Number of options returned</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Array of option descriptors (caller must free), or NULL
+  on error</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This is the AUTHORITATIVE filtering function for both
+  help and completions. Always use this function to ensure consistency across
+  the application.</div>
 <p class="Pp">Definition at line <b>323</b> of file <b>public_api.c</b>.</p>
 <pre>324                                                                                  {
 325   if (!num_options) {
@@ -494,17 +669,29 @@
 363 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>g_options_registry</b>, <b>g_registry_size</b>,
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+    <b>g_options_registry</b>, <b>g_registry_size</b>,
     <b>registry_entry_applies_to_mode()</b>,
-    <b>registry_entry_to_descriptor()</b>, and <b>registry_init_size()</b>.</p>
+    <b>registry_entry_to_descriptor()</b>, <b>registry_init_size()</b>,
+    <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>completions_generate_fish()</b>,
     <b>completions_generate_powershell()</b>, and
     <b>completions_generate_zsh()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_option_descriptor_t_*_options_registry_get_for_mode_(asciichat_mode_t_mode,_size_t_*_num_options)"><a class="permalink" href="#const_option_descriptor_t_*_options_registry_get_for_mode_(asciichat_mode_t_mode,_size_t_*_num_options)">const
-  option_descriptor_t * options_registry_get_for_mode (asciichat_mode_t mode,
-  size_t * num_options)</a></h2>
+<h2 class="Ss">const <b>option_descriptor_t</b> * options_registry_get_for_mode
+  (<b>asciichat_mode_t</b> mode, size_t * num_options)</h2>
+<p class="Pp">Get all options for a specific mode. Returns an array of option
+    descriptors that apply to the given mode. The array is allocated and must be
+    freed by the caller.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>mode</i> Mode to filter by
+<br/>
+<i>num_options</i> OUTPUT: Number of options returned</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Array of option descriptors (caller must free), or NULL
+  on error</div>
 <p class="Pp">Definition at line <b>217</b> of file <b>public_api.c</b>.</p>
 <pre>217                                                                                                      {
 218   if (!num_options) {
@@ -572,13 +759,25 @@
 280 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>g_options_registry</b>, <b>g_registry_size</b>,
-    <b>registry_entry_to_descriptor()</b>, and <b>registry_init_size()</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>g_options_registry</b>, <b>g_registry_size</b>, <b>MODE_CLIENT</b>,
+    <b>MODE_DISCOVERY</b>, <b>MODE_DISCOVERY_SERVICE</b>, <b>MODE_MIRROR</b>,
+    <b>MODE_SERVER</b>, <b>OPTION_MODE_CLIENT</b>, <b>OPTION_MODE_DISCOVERY</b>,
+    <b>OPTION_MODE_DISCOVERY_SVC</b>, <b>OPTION_MODE_MIRROR</b>,
+    <b>OPTION_MODE_SERVER</b>, <b>registry_entry_to_descriptor()</b>,
+    <b>registry_init_size()</b>, <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>completions_collect_all_modes_unique()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="option_input_type_t_options_registry_get_input_type_(const_char_*_option_name)"><a class="permalink" href="#option_input_type_t_options_registry_get_input_type_(const_char_*_option_name)">option_input_type_t
-  options_registry_get_input_type (const char * option_name)</a></h2>
+<h2 class="Ss"><b>option_input_type_t</b> options_registry_get_input_type (const
+  char * option_name)</h2>
+<p class="Pp">Get input type for an option. Retrieves the input type
+    (OPTION_INPUT_ENUM, OPTION_INPUT_NUMERIC, etc.) for the given option.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>option_name</i> Long name of option</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Input type (OPTION_INPUT_NONE if not found)</div>
 <p class="Pp">Definition at line <b>464</b> of file <b>public_api.c</b>.</p>
 <pre>464                                                                              {
 465   if (!option_name) {
@@ -596,12 +795,25 @@
 477 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>options_registry_get_metadata()</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_FOUND</b>,
+    <b>option_metadata_t::input_type</b>, <b>OPTION_INPUT_NONE</b>,
+    <b>options_registry_get_metadata()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_option_metadata_t_*_options_registry_get_metadata_(const_char_*_long_name)"><a class="permalink" href="#const_option_metadata_t_*_options_registry_get_metadata_(const_char_*_long_name)">const
-  option_metadata_t * options_registry_get_metadata (const char *
-  long_name)</a></h2>
+<h2 class="Ss">const <b>option_metadata_t</b> * options_registry_get_metadata
+  (const char * long_name)</h2>
+<p class="Pp">Get complete metadata for an option. Retrieves all completion
+    metadata for the given option, including enum values, numeric ranges,
+    examples, input type, etc.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>long_name</i> Long name of option to look up</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to metadata structure, or NULL if option not
+  found</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">The returned pointer points to data within the registry
+  and should not be modified or freed.</div>
 <p class="Pp">Definition at line <b>369</b> of file <b>public_api.c</b>.</p>
 <pre>369                                                                               {
 370   if (!long_name) {
@@ -625,8 +837,10 @@
 388 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>g_options_registry</b>, <b>g_registry_size</b>, and
-    <b>registry_init_size()</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>g_options_registry</b>,
+    <b>g_registry_size</b>, <b>registry_entry_t::long_name</b>,
+    <b>registry_entry_t::metadata</b>, <b>registry_init_size()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>options_registry_get_enum_values()</b>,
     <b>options_registry_get_examples()</b>,
     <b>options_registry_get_input_type()</b>, and
@@ -635,6 +849,28 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> options_registry_get_numeric_range (const char *
   option_name, int * min_out, int * max_out, int * step_out)</h2>
+<p class="Pp">Get numeric range for an option. Retrieves min/max/step values for
+    an option that has OPTION_INPUT_NUMERIC type in its metadata.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>option_name</i> Long name of option
+<br/>
+<i>min_out</i> OUTPUT: Minimum value (or 0 if no limit)
+<br/>
+<i>max_out</i> OUTPUT: Maximum value (or 0 if no limit)
+<br/>
+<i>step_out</i> OUTPUT: Step size (or 0 if continuous)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if option found and has numeric range, false
+  otherwise</div>
+<p class="Pp">Example:</p>
+<p class="Pp"></p>
+<pre>int min, max, step;
+if (options_registry_get_numeric_range(&quot;compression-level&quot;, &amp;min, &amp;max, &amp;step)) {
+<br/>
+    printf(&quot;Range: %d-%d (step: %d)\n&quot;, min, max, step);
+}
+</pre>
 <p class="Pp">Definition at line <b>420</b> of file <b>public_api.c</b>.</p>
 <pre>420                                                                                                             {
 421   if (!option_name || !min_out || !max_out || !step_out) {
@@ -657,11 +893,15 @@
 438 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>options_registry_get_metadata()</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
+    <b>option_metadata_t::input_type</b>, <b>option_metadata_t::max</b>,
+    <b>option_metadata_t::min</b>, <b>option_metadata_t::numeric_range</b>,
+    <b>OPTION_INPUT_NUMERIC</b>, <b>options_registry_get_metadata()</b>,
+    <b>SET_ERRNO</b>, and <b>option_metadata_t::step</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_registry_entry_t_*_options_registry_get_raw_(void_)"><a class="permalink" href="#const_registry_entry_t_*_options_registry_get_raw_(void_)">const
-  registry_entry_t * options_registry_get_raw (void )</a></h2>
+<h2 class="Ss">const <b>registry_entry_t</b> * options_registry_get_raw (void
+  )</h2>
 <p class="Pp">Get raw access to registry for completions filtering. Returns a
     pointer to the internal registry array. The array is NULL-terminated (final
     entry has long_name == NULL). Used by completions generators.</p>
@@ -687,7 +927,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

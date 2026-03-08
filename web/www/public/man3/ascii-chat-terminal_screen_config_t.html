@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>terminal_screen_config_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">terminal_screen_config_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">terminal_screen_config_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">terminal_screen_config_t - Configuration for terminal screen
+    rendering.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/ui/terminal_screen.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">int <b>fixed_header_lines</b>
+  <br/>
+  How many lines the header takes (e.g., 4 for status, 8 for splash).
+    <b>terminal_screen_header_fn</b> <b>render_header</b>
+  <br/>
+  Callback to draw header content. void * <b>user_data</b>
+  <br/>
+  Passed to render_header callback. <b>bool</b> <b>show_logs</b>
+  <br/>
+  Whether to show log feed below header.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Configuration for terminal screen rendering.</p>
+<p class="Pp">Definition at line <b>42</b> of file <b>terminal_screen.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_terminal_screen_config_t::fixed_header_lines"><a class="permalink" href="#int_terminal_screen_config_t::fixed_header_lines">int
+  terminal_screen_config_t::fixed_header_lines</a></h2>
+<p class="Pp">How many lines the header takes (e.g., 4 for status, 8 for
+    splash).</p>
+<p class="Pp">Definition at line <b>43</b> of file <b>terminal_screen.h</b>.</p>
+<p class="Pp">Referenced by <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>terminal_screen_header_fn</b>
+  terminal_screen_config_t::render_header</h2>
+<p class="Pp">Callback to draw header content.</p>
+<p class="Pp">Definition at line <b>44</b> of file <b>terminal_screen.h</b>.</p>
+<p class="Pp">Referenced by <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> terminal_screen_config_t::show_logs</h2>
+<p class="Pp">Whether to show log feed below header.</p>
+<p class="Pp">Definition at line <b>46</b> of file <b>terminal_screen.h</b>.</p>
+<p class="Pp">Referenced by <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_terminal_screen_config_t::user_data"><a class="permalink" href="#void*_terminal_screen_config_t::user_data">void*
+  terminal_screen_config_t::user_data</a></h2>
+<p class="Pp">Passed to render_header callback.</p>
+<p class="Pp">Definition at line <b>45</b> of file <b>terminal_screen.h</b>.</p>
+<p class="Pp">Referenced by <b>terminal_screen_render()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

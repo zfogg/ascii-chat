@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>log.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">log.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">log.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">log.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>LOG_CLIENT_IMPL</b>(client, level, fmt, ...)
+  <br/>
+  #define <b>log_debug_client</b>(client, fmt, ...)
+  <br/>
+  Server sends DEBUG log message to client. #define
+    <b>log_info_client</b>(client, fmt, ...)
+  <br/>
+  Server sends INFO log message to client. #define
+    <b>log_warn_client</b>(client, fmt, ...)
+  <br/>
+  Server sends WARN log message to client. #define
+    <b>log_error_client</b>(client, fmt, ...)
+  <br/>
+  Server sends ERROR log message to client. #define
+    <b>log_fatal_client</b>(client, fmt, ...)
+  <br/>
+  Server sends FATAL log message to client. #define
+    <b>LOG_SERVER_IMPL</b>(sockfd, crypto_ctx, level, fmt, ...)
+  <br/>
+  #define <b>log_debug_server</b>(sockfd, crypto_ctx, fmt, ...)
+  <br/>
+  Client sends DEBUG log message to server. #define
+    <b>log_info_server</b>(sockfd, crypto_ctx, fmt, ...)
+  <br/>
+  Client sends INFO log message to server. #define
+    <b>log_warn_server</b>(sockfd, crypto_ctx, fmt, ...)
+  <br/>
+  Client sends WARN log message to server. #define
+    <b>log_error_server</b>(sockfd, crypto_ctx, fmt, ...)
+  <br/>
+  Client sends ERROR log message to server. #define
+    <b>log_fatal_server</b>(sockfd, crypto_ctx, fmt, ...)
+  <br/>
+  Client sends FATAL log message to server.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef enum <b>remote_log_direction</b>
+    <b>remote_log_direction_t</b>
+  <br/>
+  Remote log packet direction enumeration.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>remote_log_direction</b> {
+    <b>REMOTE_LOG_DIRECTION_UNKNOWN</b> = 0,
+    <b>REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT</b> = 1,
+    <b>REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER</b> = 2 }
+  <br/>
+  Remote log packet direction enumeration.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

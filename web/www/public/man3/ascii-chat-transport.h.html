@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>transport.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">transport.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">transport.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">transport.h - Transport abstraction layer for ACIP protocol.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>acip_transport_methods_t</b>
+  <br/>
+  Transport method table (virtual function table). struct <b>acip_transport</b>
+  <br/>
+  Transport instance structure.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>acip_transport_type_t</b> { <b>ACIP_TRANSPORT_TCP</b> = 1,
+    <b>ACIP_TRANSPORT_WEBSOCKET</b> = 2, <b>ACIP_TRANSPORT_WEBRTC</b> = 3,
+    <b>ACIP_TRANSPORT_HTTP</b> = 4, <b>ACIP_TRANSPORT_QUIC</b> = 5 }
+  <br/>
+  Transport type enumeration.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>acip_transport_destroy</b> (<b>acip_transport_t</b>
+    *transport)
+  <br/>
+  Destroy transport and free all resources. <b>acip_transport_t</b> *
+    <b>acip_tcp_transport_create</b> (const char *name, <b>socket_t</b> sockfd,
+    <b>crypto_context_t</b> *crypto_ctx)
+  <br/>
+  Create TCP transport from existing socket. <b>acip_transport_t</b> *
+    <b>acip_websocket_client_transport_create</b> (const char *name, const char
+    *url, <b>crypto_context_t</b> *crypto_ctx)
+  <br/>
+  Create WebSocket client transport. <b>acip_transport_t</b> *
+    <b>acip_websocket_server_transport_create</b> (const char *name, struct lws
+    *wsi, <b>crypto_context_t</b> *crypto_ctx)
+  <br/>
+  Create WebSocket server transport from existing connection.
+    <b>acip_transport_t</b> * <b>acip_webrtc_transport_create</b> (struct
+    <b>webrtc_peer_connection</b> *peer_conn, struct <b>webrtc_data_channel</b>
+    *data_channel, <b>crypto_context_t</b> *crypto_ctx)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Transport abstraction layer for ACIP protocol.</p>
+<p class="Pp">Provides a transport-agnostic interface that allows ACIP protocol
+    handlers to work with any underlying transport (TCP, WebSocket, HTTP,
+  etc.).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Transport_Layer_Design"><a class="permalink" href="#Transport_Layer_Design">Transport
+  Layer Design</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Architecture"><a class="permalink" href="#Architecture">Architecture</a></h2>
+<p class="Pp">The transport layer abstracts protocol delivery, allowing the same
+    ACIP protocol handlers to work with multiple underlying transports:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>TCP</b> (acip_tcp_transport_create): Raw TCP sockets, binary packet
+      streaming</li>
+  <li><b>WebSocket</b> (acip_websocket_client_transport_create): HTTP upgrade,
+      frame-based</li>
+  <li><b>WebRTC</b> (acip_webrtc_transport_create): P2P data channels,
+      encryption at transport</li>
+  <li><b>HTTP</b> (future): Long-polling, REST-style</li>
+  <li><b>QUIC</b> (future): UDP with congestion control</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Design_Principles"><a class="permalink" href="#Design_Principles">Design
+  Principles</a></h2>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Protocol code never calls socket()/send()/recv() directly</dd>
+  <dt>2.</dt>
+  <dd>Same ACIP handlers work with any transport implementation</dd>
+  <dt>3.</dt>
+  <dd>Each transport handles its own connection state and reliability</dd>
+  <dt>4.</dt>
+  <dd>Clean separation between protocol logic (acip_*) and transport logic</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Packet_Framing"><a class="permalink" href="#Packet_Framing">Packet
+  Framing</a></h2>
+<p class="Pp">Transports handle packet framing transparently:</p>
+<ul class="Bl-bullet">
+  <li><b>TCP</b>: Uses <b>packet_header_t</b> (magic + type + length + CRC32 +
+      client_id)</li>
+  <li><b>WebSocket</b>: Wraps packets in WebSocket frames</li>
+  <li><b>WebRTC</b>: Sends packets directly on data channel</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Version_Information"><a class="permalink" href="#Version_Information">Version
+  Information</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Transport API Version</b>: 1.0 (stable)</li>
+  <li><b>Supported ACIP Version</b>: 1.0</li>
+  <li><b>Release Date</b>: January 2026</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESIGN_GOALS:"><a class="permalink" href="#DESIGN_GOALS:">DESIGN
+  GOALS: </a></h1>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Protocol code never calls socket()/send()/recv() directly</dd>
+  <dt>2.</dt>
+  <dd>Same ACIP handlers work with TCP, WebSocket, or any future transport</dd>
+  <dt>3.</dt>
+  <dd>Transport implementations handle their own connection state</dd>
+  <dt>4.</dt>
+  <dd>Clean separation between protocol logic and transport logic</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="USAGE_PATTERN:"><a class="permalink" href="#USAGE_PATTERN:">USAGE
+  PATTERN: </a></h1>
+<pre>// Create TCP transport from existing socket
+acip_transport_t *tcp = acip_tcp_transport_create(sockfd, crypto_ctx);
+// Send packet with type-specific helper
+asciichat_error_t result = acip_send_ascii_frame(tcp, frame_data, frame_size, ...);
+// Receive packet with dispatcher
+acip_client_receive_and_dispatch(tcp, &amp;callbacks);
+// Or create WebSocket client transport
+acip_transport_t *ws = acip_websocket_client_transport_create(&quot;ws://localhost:27225&quot;, crypto_ctx);
+asciichat_error_t result = acip_send_ascii_frame(ws, frame_data, frame_size, ...);
+// Cleanup
+acip_transport_destroy(tcp);
+acip_transport_destroy(ws);</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="MEMORY_OWNERSHIP:"><a class="permalink" href="#MEMORY_OWNERSHIP:">MEMORY
+  OWNERSHIP: </a></h1>
+<ul class="Bl-bullet">
+  <li>Transport owns its connection state (socket, pointers, etc.)</li>
+  <li>send() does NOT take ownership of data (caller must keep it valid)</li>
+  <li>recv() allocates buffer, caller must free via out_allocated_buffer</li>
+  <li>destroy() cleans up all transport resources and frees transport
+    structure</li>
+</ul>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp"><b>Version</b></p>
+<div class="Bd-indent">1.0 (Transport API)</div>
+<p class="Pp">Definition in file <b>transport.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>acip_transport_type_t</b></a></h2>
+<p class="Pp">Transport type enumeration. Identifies which transport
+    implementation is being used. Useful for debugging and conditional
+  logic.</p>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="ACIP_TRANSPORT_TCP"><a class="permalink" href="#ACIP_TRANSPORT_TCP"><b><i>ACIP_TRANSPORT_TCP
+    </i></b></a></dt>
+  <dd>Raw TCP socket.</dd>
+  <dt id="ACIP_TRANSPORT_WEBSOCKET"><a class="permalink" href="#ACIP_TRANSPORT_WEBSOCKET"><b><i>ACIP_TRANSPORT_WEBSOCKET
+    </i></b></a></dt>
+  <dd>WebSocket over TCP.</dd>
+  <dt id="ACIP_TRANSPORT_WEBRTC"><a class="permalink" href="#ACIP_TRANSPORT_WEBRTC"><b><i>ACIP_TRANSPORT_WEBRTC
+    </i></b></a></dt>
+  <dd>WebRTC DataChannel (P2P).</dd>
+  <dt id="ACIP_TRANSPORT_HTTP"><a class="permalink" href="#ACIP_TRANSPORT_HTTP"><b><i>ACIP_TRANSPORT_HTTP
+    </i></b></a></dt>
+  <dd>HTTP long-polling (future).</dd>
+  <dt id="ACIP_TRANSPORT_QUIC"><a class="permalink" href="#ACIP_TRANSPORT_QUIC"><b><i>ACIP_TRANSPORT_QUIC
+    </i></b></a></dt>
+  <dd>QUIC/UDP (future).</dd>
+</dl>
+<p class="Pp">Definition at line <b>93</b> of file <b>transport.h</b>.</p>
+<pre>93              {
+94   ACIP_TRANSPORT_TCP = 1,       
+95   ACIP_TRANSPORT_WEBSOCKET = 2, 
+96   ACIP_TRANSPORT_WEBRTC = 3,    
+97   ACIP_TRANSPORT_HTTP = 4,      
+98   ACIP_TRANSPORT_QUIC = 5       
+99 } acip_transport_type_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>acip_transport_t</b> * acip_tcp_transport_create (const char *
+  name, <b>socket_t</b> sockfd, <b>crypto_context_t</b> * crypto_ctx)</h2>
+<p class="Pp">Create TCP transport from existing socket.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name</i> Debug name for tracking this transport
+  (required, e.g., &quot;transport_client_5&quot;)
+<br/>
+<i>sockfd</i> Connected socket descriptor
+<br/>
+<i>crypto_ctx</i> Optional crypto context (may be NULL)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Transport instance or NULL on error</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller retains socket ownership (transport doesn't close
+  on destroy)</div>
+<p class="Pp">Definition at line <b>344</b> of file <b>tcp/transport.c</b>.</p>
+<pre>344                                                                                                              {
+345   if (!name) {
+346     SET_ERRNO(ERROR_INVALID_STATE, &quot;Transport name is required&quot;);
+347     return NULL;
+348   }
+349 
+350   if (sockfd == INVALID_SOCKET_VALUE) {
+351     log_error(&quot;[TCP_CREATE_STATE] &#x274C; INVALID_SOCKET: sockfd=%d&quot;, sockfd);
+352     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket descriptor&quot;);
+353     return NULL;
+354   }
+355 
+356   log_info(&quot;[TCP_CREATE_STATE] &#x1F7E2; CREATE_START: sockfd=%d, crypto=%s&quot;, sockfd, crypto_ctx ? &quot;yes&quot; : &quot;no&quot;);
+357 
+358   // Allocate transport structure
+359   acip_transport_t *transport = SAFE_MALLOC(sizeof(acip_transport_t), acip_transport_t *);
+360   if (!transport) {
+361     log_error(&quot;[TCP_CREATE_STATE] &#x274C; ALLOC_TRANSPORT_FAILED: size=%zu&quot;, sizeof(acip_transport_t));
+362     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate TCP transport&quot;);
+363     return NULL;
+364   }
+365 
+366   log_debug(&quot;[TCP_CREATE_STATE] &#x1F7E2; TRANSPORT_ALLOCATED: transport=%p&quot;, (void *)transport);
+367 
+368   // Allocate TCP-specific data
+369   tcp_transport_data_t *tcp_data = SAFE_MALLOC(sizeof(tcp_transport_data_t), tcp_transport_data_t *);
+370   if (!tcp_data) {
+371     log_error(&quot;[TCP_CREATE_STATE] &#x274C; ALLOC_TCP_DATA_FAILED: size=%zu&quot;, sizeof(tcp_transport_data_t));
+372     SAFE_FREE(transport);
+373     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate TCP transport data&quot;);
+374     return NULL;
+375   }
+376 
+377   log_debug(&quot;[TCP_CREATE_STATE] &#x1F7E2; TCP_DATA_ALLOCATED: tcp_data=%p&quot;, (void *)tcp_data);
+378 
+379   // Initialize TCP data
+380   tcp_data-&gt;sockfd = sockfd;
+381   tcp_data-&gt;is_connected = true;
+382 
+383   // Initialize send mutex to protect concurrent sends from multiple threads
+384   int mutex_result = mutex_init(&amp;tcp_data-&gt;send_mutex, &quot;tcp_send&quot;);
+385   if (mutex_result != 0) {
+386     log_error(&quot;[TCP_CREATE_STATE] &#x274C; MUTEX_INIT_FAILED: result=%d&quot;, mutex_result);
+387     SAFE_FREE(tcp_data);
+388     SAFE_FREE(transport);
+389     SET_ERRNO(ERROR_MEMORY, &quot;Failed to initialize send mutex&quot;);
+390     return NULL;
+391   }
+392 
+393   log_info(&quot;[TCP_CREATE_STATE] &#x1F7E2; TCP_DATA_INITIALIZED: sockfd=%d, is_connected=true, send_mutex=initialized&quot;, sockfd);
+394 
+395   // Enable TCP_NODELAY to disable Nagle's algorithm
+396   // This ensures small packets are sent immediately instead of being buffered
+397   int nodelay = 1;
+398   if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (const char *)&amp;nodelay, sizeof(nodelay)) &lt; 0) {
+399     log_warn(&quot;[TCP_CREATE_STATE] &#x26A0;&#xFE0F;  TCP_NODELAY_FAILED: sockfd=%d, %s&quot;, sockfd, SAFE_STRERROR(errno));
+400     // Continue anyway - this is not fatal
+401   } else {
+402     log_debug(&quot;[TCP_CREATE_STATE] &#x1F7E2; TCP_NODELAY_SET: sockfd=%d&quot;, sockfd);
+403   }
+404 
+405   // Initialize transport
+406   transport-&gt;methods = &amp;tcp_methods;
+407   transport-&gt;crypto_ctx = crypto_ctx;
+408   transport-&gt;impl_data = tcp_data;
+409 
+410   log_info(&quot;[TCP_CREATE_STATE] &#x2705; CREATE_COMPLETE: transport=%p, sockfd=%d, is_connected=true, crypto=%s&quot;,
+411            (void *)transport, sockfd, crypto_ctx ? &quot;enabled&quot; : &quot;disabled&quot;);
+412 
+413   // Register transport
+414   NAMED_REGISTER_TRANSPORT(transport, name, NULL);
+415 
+416   // Register impl_data with transport as parent
+417   NAMED_REGISTER(tcp_data, &quot;impl&quot;, &quot;tcp_impl&quot;, &quot;0x%tx&quot;, (uintptr_t)(const void *)(transport));
+418 
+419   return transport;
+420 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_transport::crypto_ctx</b>, <b>errno</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
+    <b>acip_transport::impl_data</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>tcp_transport_data_t::is_connected</b>, <b>log_debug</b>,
+    <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
+    <b>acip_transport::methods</b>, <b>mutex_init()</b>, <b>NAMED_REGISTER</b>,
+    <b>NAMED_REGISTER_TRANSPORT</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>SAFE_STRERROR</b>, <b>tcp_transport_data_t::send_mutex</b>,
+    <b>SET_ERRNO</b>, and <b>tcp_transport_data_t::sockfd</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_handler()</b>, <b>add_client()</b>,
+    <b>connection_attempt_tcp()</b>,
+    <b>crypto_handshake_client_auth_response_socket()</b>,
+    <b>crypto_handshake_client_complete_socket()</b>,
+    <b>crypto_handshake_client_key_exchange_socket()</b>,
+    <b>crypto_handshake_server_auth_challenge_socket()</b>,
+    <b>crypto_handshake_server_complete_socket()</b>,
+    <b>crypto_handshake_server_start_socket()</b>,
+    <b>server_connection_establish()</b>, and <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_acip_transport_destroy_("><a class="permalink" href="#void_acip_transport_destroy_(">void
+  acip_transport_destroy (<b>acip_transport_t</b> * transport)</a></h2>
+<p class="Pp">Destroy transport and free all resources.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport to destroy (may be NULL)</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Calls close() first if still connected
+<p class="Pp"></p>
+<p class="Pp">Frees the transport structure itself</p>
+<p class="Pp"></p>
+<p class="Pp">Safe to pass NULL</p>
+</div>
+<p class="Pp">Definition at line <b>426</b> of file <b>tcp/transport.c</b>.</p>
+<pre>426                                                          {
+427   if (!transport) {
+428     log_debug(&quot;[TRANSPORT_DESTROY] &#x26A0;&#xFE0F;  NULL_TRANSPORT: nothing to destroy&quot;);
+429     return;
+430   }
+431 
+432   log_warn(&quot;[TRANSPORT_DESTROY] &#x1F534; DESTROY_START: transport=%p, impl_data=%p&quot;, (void *)transport, transport-&gt;impl_data);
+433 
+434   // Get type before we destroy for logging
+435   acip_transport_type_t type = 0;
+436   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;get_type) {
+437     type = transport-&gt;methods-&gt;get_type(transport);
+438     log_info(&quot;[TRANSPORT_DESTROY] &#x1F4CB; TRANSPORT_TYPE: type=%d (1=TCP, 2=WebSocket, 3=WebRTC, ...)&quot;, type);
+439   }
+440 
+441   // Close if still connected
+442   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;close &amp;&amp; transport-&gt;methods-&gt;is_connected &amp;&amp;
+443       transport-&gt;methods-&gt;is_connected(transport)) {
+444     log_warn(&quot;[TRANSPORT_DESTROY] &#x1F534; STILL_CONNECTED: calling close() first (type=%d)&quot;, type);
+445     asciichat_error_t close_result = transport-&gt;methods-&gt;close(transport);
+446     log_info(&quot;[TRANSPORT_DESTROY] &#x1F534; CLOSE_CALLED: result=%d&quot;, close_result != ASCIICHAT_OK ? -1 : 0);
+447   } else {
+448     log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; ALREADY_CLOSED: skipping close (type=%d)&quot;, type);
+449   }
+450 
+451   // Call custom destroy implementation if provided
+452   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;destroy_impl) {
+453     log_info(&quot;[TRANSPORT_DESTROY] &#x1F527; CALLING_DESTROY_IMPL: type=%d&quot;, type);
+454     transport-&gt;methods-&gt;destroy_impl(transport);
+455     log_info(&quot;[TRANSPORT_DESTROY] &#x2705; DESTROY_IMPL_COMPLETE: type=%d&quot;, type);
+456   } else {
+457     log_debug(&quot;[TRANSPORT_DESTROY] &#x23ED;&#xFE0F;  NO_CUSTOM_DESTROY: type=%d (using generic cleanup)&quot;, type);
+458   }
+459 
+460   // Free implementation data
+461   if (transport-&gt;impl_data) {
+462     log_debug(&quot;[TRANSPORT_DESTROY] &#x1F5D1;&#xFE0F;  FREEING_IMPL_DATA: %p&quot;, transport-&gt;impl_data);
+463     NAMED_UNREGISTER(transport-&gt;impl_data);
+464     SAFE_FREE(transport-&gt;impl_data);
+465     log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; IMPL_DATA_FREED&quot;);
+466   }
+467 
+468   // Free transport structure
+469   log_debug(&quot;[TRANSPORT_DESTROY] &#x1F5D1;&#xFE0F;  FREEING_TRANSPORT: %p&quot;, (void *)transport);
+470   SAFE_FREE(transport);
+471 
+472   log_warn(&quot;[TRANSPORT_DESTROY] &#x2705; DESTROY_COMPLETE: type=%d&quot;, type);
+473 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>acip_transport_methods_t::close</b>,
+    <b>acip_transport_methods_t::destroy_impl</b>,
+    <b>acip_transport_methods_t::get_type</b>, <b>acip_transport::impl_data</b>,
+    <b>acip_transport_methods_t::is_connected</b>, <b>log_debug</b>,
+    <b>log_info</b>, <b>log_warn</b>, <b>acip_transport::methods</b>,
+    <b>NAMED_UNREGISTER</b>, and <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>connection_context_cleanup()</b>,
+    <b>crypto_handshake_client_auth_response_socket()</b>,
+    <b>crypto_handshake_client_complete_socket()</b>,
+    <b>crypto_handshake_client_key_exchange_socket()</b>,
+    <b>crypto_handshake_server_auth_challenge_socket()</b>,
+    <b>crypto_handshake_server_complete_socket()</b>,
+    <b>crypto_handshake_server_start_socket()</b>, <b>remove_client()</b>,
+    <b>server_connection_close()</b>, <b>server_connection_establish()</b>,
+    <b>server_connection_set_transport()</b>, and <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>acip_transport_t</b> * acip_webrtc_transport_create (struct
+  <b>webrtc_peer_connection</b> * peer_conn, struct <b>webrtc_data_channel</b> *
+  data_channel, <b>crypto_context_t</b> * crypto_ctx)</h2>
+<p class="Pp">Definition at line <b>368</b> of file
+  <b>webrtc/transport.c</b>.</p>
+<pre>369                                                                              {
+370   if (!peer_conn || !data_channel) {
+371     SET_ERRNO(ERROR_INVALID_PARAM, &quot;peer_conn and data_channel are required&quot;);
+372     return NULL;
+373   }
+374 
+375   // Allocate transport structure
+376   acip_transport_t *transport = SAFE_MALLOC(sizeof(acip_transport_t), acip_transport_t *);
+377   if (!transport) {
+378     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate WebRTC transport&quot;);
+379     return NULL;
+380   }
+381 
+382   // Allocate WebRTC-specific data
+383   webrtc_transport_data_t *wrtc_data = SAFE_MALLOC(sizeof(webrtc_transport_data_t), webrtc_transport_data_t *);
+384   if (!wrtc_data) {
+385     SAFE_FREE(transport);
+386     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate WebRTC transport data&quot;);
+387     return NULL;
+388   }
+389 
+390   // Create receive queue
+391   wrtc_data-&gt;recv_queue = ringbuffer_create(sizeof(webrtc_recv_msg_t), WEBRTC_RECV_QUEUE_SIZE);
+392   if (!wrtc_data-&gt;recv_queue) {
+393     SAFE_FREE(wrtc_data);
+394     SAFE_FREE(transport);
+395     SET_ERRNO(ERROR_MEMORY, &quot;Failed to create receive queue&quot;);
+396     return NULL;
+397   }
+398 
+399   // Initialize synchronization primitives
+400   if (mutex_init(&amp;wrtc_data-&gt;queue_mutex, &quot;webrtc_queue&quot;) != 0) {
+401     ringbuffer_destroy(wrtc_data-&gt;recv_queue);
+402     SAFE_FREE(wrtc_data);
+403     SAFE_FREE(transport);
+404     SET_ERRNO(ERROR_INTERNAL, &quot;Failed to initialize queue mutex&quot;);
+405     return NULL;
+406   }
+407 
+408   if (cond_init(&amp;wrtc_data-&gt;queue_cond, &quot;queue&quot;) != 0) {
+409     mutex_destroy(&amp;wrtc_data-&gt;queue_mutex);
+410     ringbuffer_destroy(wrtc_data-&gt;recv_queue);
+411     SAFE_FREE(wrtc_data);
+412     SAFE_FREE(transport);
+413     SET_ERRNO(ERROR_INTERNAL, &quot;Failed to initialize queue condition variable&quot;);
+414     return NULL;
+415   }
+416 
+417   if (mutex_init(&amp;wrtc_data-&gt;state_mutex, &quot;webrtc_state&quot;) != 0) {
+418     cond_destroy(&amp;wrtc_data-&gt;queue_cond);
+419     mutex_destroy(&amp;wrtc_data-&gt;queue_mutex);
+420     ringbuffer_destroy(wrtc_data-&gt;recv_queue);
+421     SAFE_FREE(wrtc_data);
+422     SAFE_FREE(transport);
+423     SET_ERRNO(ERROR_INTERNAL, &quot;Failed to initialize state mutex&quot;);
+424     return NULL;
+425   }
+426 
+427   // Initialize WebRTC data
+428   wrtc_data-&gt;peer_conn = peer_conn;
+429   wrtc_data-&gt;data_channel = data_channel;
+430   wrtc_data-&gt;is_connected = false; // Will be set to true in on_open callback
+431 
+432   // Register DataChannel callbacks
+433   webrtc_datachannel_callbacks_t callbacks = {
+434       .on_open = webrtc_on_open,
+435       .on_close = webrtc_on_close,
+436       .on_error = webrtc_on_error,
+437       .on_message = webrtc_on_message,
+438       .user_data = wrtc_data,
+439   };
+440 
+441   asciichat_error_t result = webrtc_datachannel_set_callbacks(data_channel, &amp;callbacks);
+442   if (result != ASCIICHAT_OK) {
+443     mutex_destroy(&amp;wrtc_data-&gt;state_mutex);
+444     cond_destroy(&amp;wrtc_data-&gt;queue_cond);
+445     mutex_destroy(&amp;wrtc_data-&gt;queue_mutex);
+446     ringbuffer_destroy(wrtc_data-&gt;recv_queue);
+447     SAFE_FREE(wrtc_data);
+448     SAFE_FREE(transport);
+449     SET_ERRNO(ERROR_INTERNAL, &quot;Failed to set DataChannel callbacks&quot;);
+450     return NULL;
+451   }
+452 
+453   // IMPORTANT: The transport is always created from peer_manager's on_datachannel_open callback,
+454   // which means the DataChannel is ALREADY OPEN when we get here. However, by setting our own
+455   // callbacks above (webrtc_datachannel_set_callbacks), we replaced the callbacks that would
+456   // have set dc-&gt;is_open=true. So we need to manually mark both the transport AND the DataChannel
+457   // as open/connected now.
+458   //
+459   // We cannot rely on webrtc_on_open being called later because:
+460   // 1. The DataChannel is already open
+461   // 2. libdatachannel won't fire the open event again
+462   // 3. Setting callbacks after open doesn't trigger a retroactive open event
+463 
+464   // Mark DataChannel as open (needed for webrtc_datachannel_send() check)
+465   webrtc_datachannel_set_open_state(data_channel, true);
+466 
+467   // Mark transport as connected
+468   mutex_lock(&amp;wrtc_data-&gt;state_mutex);
+469   wrtc_data-&gt;is_connected = true;
+470   mutex_unlock(&amp;wrtc_data-&gt;state_mutex);
+471   log_debug(&quot;Transport and DataChannel marked as connected/open (already open from peer_manager callback)&quot;);
+472 
+473   // Initialize transport
+474   transport-&gt;methods = &amp;webrtc_methods;
+475   transport-&gt;crypto_ctx = crypto_ctx;
+476   transport-&gt;impl_data = wrtc_data;
+477 
+478   log_info(&quot;Created WebRTC transport (crypto: %s)&quot;, crypto_ctx ? &quot;enabled&quot; : &quot;disabled&quot;);
+479 
+480   // Register WebRTC transport implementation data with transport as parent
+481   NAMED_REGISTER(wrtc_data, &quot;impl&quot;, &quot;webrtc_impl&quot;, &quot;0x%tx&quot;, (uintptr_t)(const void *)(transport));
+482 
+483   return transport;
+484 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>cond_destroy()</b>,
+    <b>cond_init()</b>, <b>acip_transport::crypto_ctx</b>,
+    <b>webrtc_transport_data_t::data_channel</b>, <b>ERROR_INTERNAL</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+    <b>acip_transport::impl_data</b>,
+    <b>webrtc_transport_data_t::is_connected</b>, <b>log_debug</b>,
+    <b>log_info</b>, <b>acip_transport::methods</b>, <b>mutex_destroy()</b>,
+    <b>mutex_init()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>NAMED_REGISTER</b>, <b>webrtc_transport_data_t::peer_conn</b>,
+    <b>webrtc_transport_data_t::queue_cond</b>,
+    <b>webrtc_transport_data_t::queue_mutex</b>,
+    <b>webrtc_transport_data_t::recv_queue</b>, <b>ringbuffer_create()</b>,
+    <b>ringbuffer_destroy()</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>SET_ERRNO</b>, <b>webrtc_transport_data_t::state_mutex</b>,
+    <b>webrtc_datachannel_set_callbacks()</b>,
+    <b>webrtc_datachannel_set_open_state()</b>, and
+    <b>WEBRTC_RECV_QUEUE_SIZE</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>acip_transport_t</b> * acip_websocket_client_transport_create
+  (const char * name, const char * url, <b>crypto_context_t</b> *
+  crypto_ctx)</h2>
+<p class="Pp">Create WebSocket client transport. Connects to a WebSocket server
+    at the specified URL and creates a transport for sending/receiving ACIP
+    packets over the WebSocket connection.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name</i> Debug name for tracking this transport
+  (required, e.g., &quot;transport_websocket_client&quot;)
+<br/>
+<i>url</i> WebSocket URL (e.g., &quot;ws://localhost:27225&quot; or
+  &quot;wss://example.com/path&quot;)
+<br/>
+<i>crypto_ctx</i> Optional encryption context (can be NULL)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Transport instance or NULL on failure</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">The URL must include the protocol (ws:// or wss://)
+<p class="Pp"></p>
+<p class="Pp">Port defaults to 80 for ws:// and 443 for wss:// if not
+  specified</p>
+<p class="Pp"></p>
+<p class="Pp">Connection is established synchronously during creation</p>
+</div>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>url</i> WebSocket URL (e.g.,
+  &quot;ws://localhost:27225&quot;)
+<br/>
+<i>crypto_ctx</i> Optional encryption context (can be NULL)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Transport instance or NULL on failure</div>
+<p class="Pp">Definition at line <b>1357</b> of file
+    <b>websocket/transport.c</b>.</p>
+<pre>1358                                                                                        {
+1359   if (!name) {
+1360     SET_ERRNO(ERROR_INVALID_STATE, &quot;Transport name is required&quot;);
+1361     return NULL;
+1362   }
+1363 
+1364   if (!url) {
+1365     SET_ERRNO(ERROR_INVALID_PARAM, &quot;url is required&quot;);
+1366     return NULL;
+1367   }
+1368 
+1369   // Parse URL to extract host, port, and path
+1370   // Format: ws://host:port/path or wss://host:port/path
+1371   const char *protocol_end = strstr(url, &quot;://&quot;);
+1372   if (!protocol_end) {
+1373     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid WebSocket URL format (missing ://)&quot;);
+1374     return NULL;
+1375   }
+1376 
+1377   bool use_ssl = (strncmp(url, &quot;wss://&quot;, 6) == 0);
+1378   const char *host_start = protocol_end + 3;
+1379 
+1380   // Find port (if specified)
+1381   const char *port_start = strchr(host_start, ':');
+1382   const char *path_start = strchr(host_start, '/');
+1383 
+1384   char host[256] = {0};
+1385   int port = use_ssl ? 443 : 27226; // Default: wss:// uses 443, ws:// uses 27226 (ascii-chat WebSocket port)
+1386   char path[256] = &quot;/&quot;;
+1387 
+1388   if (port_start &amp;&amp; (!path_start || port_start &lt; path_start)) {
+1389     // Port is specified
+1390     size_t host_len = port_start - host_start;
+1391     if (host_len &gt;= sizeof(host)) {
+1392       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Host name too long&quot;);
+1393       return NULL;
+1394     }
+1395     memcpy(host, host_start, host_len);
+1396     host[host_len] = '\0';
+1397 
+1398     // Extract port
+1399     port = atoi(port_start + 1);
+1400     if (port &lt;= 0 || port &gt; 65535) {
+1401       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid port number&quot;);
+1402       return NULL;
+1403     }
+1404   } else {
+1405     // No port specified, use default
+1406     size_t host_len = path_start ? (size_t)(path_start - host_start) : strlen(host_start);
+1407     if (host_len &gt;= sizeof(host)) {
+1408       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Host name too long&quot;);
+1409       return NULL;
+1410     }
+1411     memcpy(host, host_start, host_len);
+1412     host[host_len] = '\0';
+1413   }
+1414 
+1415   // Extract path
+1416   if (path_start) {
+1417     SAFE_STRNCPY(path, path_start, sizeof(path) - 1);
+1418     path[sizeof(path) - 1] = '\0';
+1419   }
+1420 
+1421   log_info(&quot;Connecting to WebSocket: %s (host=%s, port=%d, path=%s, ssl=%d)&quot;, url, host, port, path, use_ssl);
+1422 
+1423   // Allocate transport structure
+1424   acip_transport_t *transport = SAFE_MALLOC(sizeof(acip_transport_t), acip_transport_t *);
+1425   if (!transport) {
+1426     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate WebSocket transport&quot;);
+1427     return NULL;
+1428   }
+1429 
+1430   // Allocate WebSocket-specific data
+1431   websocket_transport_data_t *ws_data =
+1432       SAFE_CALLOC(1, sizeof(websocket_transport_data_t), websocket_transport_data_t *);
+1433   if (!ws_data) {
+1434     SAFE_FREE(transport);
+1435     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate WebSocket transport data&quot;);
+1436     return NULL;
+1437   }
+1438 
+1439   // Initialize destruction state flag (CALLOC zero-initializes, but explicit for clarity)
+1440   atomic_store_bool(&amp;ws_data-&gt;is_destroying, false);
+1441 
+1442   // Create receive queue
+1443   ws_data-&gt;recv_queue = ringbuffer_create(sizeof(websocket_recv_msg_t), WEBSOCKET_RECV_QUEUE_SIZE);
+1444   if (!ws_data-&gt;recv_queue) {
+1445     SAFE_FREE(ws_data);
+1446     SAFE_FREE(transport);
+1447     SET_ERRNO(ERROR_MEMORY, &quot;Failed to create receive queue&quot;);
+1448     return NULL;
+1449   }
+1450 
+1451   // Create send queue for client transport to buffer outgoing messages
+1452   ws_data-&gt;send_queue = ringbuffer_create(sizeof(websocket_msg_t), WEBSOCKET_SEND_QUEUE_SIZE);
+1453   if (!ws_data-&gt;send_queue) {
+1454     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1455     SAFE_FREE(ws_data);
+1456     SAFE_FREE(transport);
+1457     SET_ERRNO(ERROR_MEMORY, &quot;Failed to create send queue&quot;);
+1458     return NULL;
+1459   }
+1460 
+1461   // Initialize synchronization primitives with transport-aware names
+1462   char recv_name[64], state_name[64];
+1463   snprintf(recv_name, sizeof(recv_name), &quot;recv_%s&quot;, name);
+1464   snprintf(state_name, sizeof(state_name), &quot;state_%s&quot;, name);
+1465 
+1466   if (mutex_init(&amp;ws_data-&gt;recv_mutex, recv_name) != 0) {
+1467     ringbuffer_destroy(ws_data-&gt;send_queue);
+1468     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1469     SAFE_FREE(ws_data);
+1470     SAFE_FREE(transport);
+1471     SET_ERRNO(ERROR_INTERNAL, &quot;Failed to initialize recv mutex&quot;);
+1472     return NULL;
+1473   }
+1474 
+1475   if (cond_init(&amp;ws_data-&gt;recv_cond, recv_name) != 0) {
+1476     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1477     ringbuffer_destroy(ws_data-&gt;send_queue);
+1478     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1479     SAFE_FREE(ws_data);
+1480     SAFE_FREE(transport);
+1481     SET_ERRNO(ERROR_INTERNAL, &quot;Failed to initialize recv condition variable&quot;);
+1482     return NULL;
+1483   }
+1484 
+1485   if (mutex_init(&amp;ws_data-&gt;state_mutex, state_name) != 0) {
+1486     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1487     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1488     ringbuffer_destroy(ws_data-&gt;send_queue);
+1489     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1490     SAFE_FREE(ws_data);
+1491     SAFE_FREE(transport);
+1492     SET_ERRNO(ERROR_INTERNAL, &quot;Failed to initialize state mutex&quot;);
+1493     return NULL;
+1494   }
+1495 
+1496   if (cond_init(&amp;ws_data-&gt;state_cond, state_name) != 0) {
+1497     mutex_destroy(&amp;ws_data-&gt;state_mutex);
+1498     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1499     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1500     ringbuffer_destroy(ws_data-&gt;send_queue);
+1501     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1502     SAFE_FREE(ws_data);
+1503     SAFE_FREE(transport);
+1504     SET_ERRNO(ERROR_INTERNAL, &quot;Failed to initialize state condition variable&quot;);
+1505     return NULL;
+1506   }
+1507 
+1508   // Allocate initial send buffer
+1509   ws_data-&gt;send_buffer_capacity = LWS_PRE + 524288; // Match tx_packet_size (512KB)
+1510   ws_data-&gt;send_buffer = SAFE_MALLOC(ws_data-&gt;send_buffer_capacity, uint8_t *);
+1511   if (!ws_data-&gt;send_buffer) {
+1512     mutex_destroy(&amp;ws_data-&gt;state_mutex);
+1513     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1514     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1515     ringbuffer_destroy(ws_data-&gt;send_queue);
+1516     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1517     SAFE_FREE(ws_data);
+1518     SAFE_FREE(transport);
+1519     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate send buffer&quot;);
+1520     return NULL;
+1521   }
+1522 
+1523   // Create libwebsockets context
+1524   // Protocol array must persist for lifetime of context - use static
+1525   // NOTE: Define ONLY &quot;acip&quot; protocol for WebSocket connections
+1526   // libwebsockets provides built-in &quot;h1&quot; and &quot;http&quot; protocols for WebSocket upgrade handshake.
+1527   // When local_protocol_name=&quot;h1&quot; and protocol=&quot;acip&quot; are specified:
+1528   // 1. libwebsockets uses built-in h1 (HTTP/1.1) for initial connection
+1529   // 2. HTTP upgrade happens automatically (101 Switching Protocols)
+1530   // 3. Connection switches to &quot;acip&quot; protocol using our custom callback
+1531   static struct lws_protocols client_protocols[] = {
+1532       {
+1533           &quot;acip&quot;, // ACIP protocol - used after WebSocket upgrade handshake completes
+1534           websocket_callback,
+1535           0,      // Per-session data - using connect_info.userdata instead
+1536           524288, // RX buffer size
+1537           0,      // ID
+1538           NULL,   // User pointer (set from connect_info.userdata)
+1539           524288  // TX packet size
+1540       },
+1541       {NULL, NULL, 0, 0, 0, NULL, 0} // Terminator
+1542   };
+1543 
+1544   // Disable client compression for now - causes assertion in lws_set_extension_option()
+1545   // This is a known issue with libwebsockets permessage-deflate negotiation
+1546   // Server-side compression is still enabled, data will be compressed from server to client
+1547   // but client-&gt;server traffic remains uncompressed (acceptable since client sends less data)
+1548   // static const struct lws_extension client_extensions[] = {
+1549   //     {&quot;permessage-deflate&quot;, lws_extension_callback_pm_deflate, &quot;permessage-deflate; client_max_window_bits=15&quot;},
+1550   //     {NULL, NULL, NULL}};
+1551 
+1552   struct lws_context_creation_info info;
+1553   memset(&amp;info, 0, sizeof(info));
+1554   info.port = CONTEXT_PORT_NO_LISTEN; // Client mode - no listening
+1555   info.protocols = client_protocols;
+1556   info.gid = (gid_t)-1; // Cast to avoid undefined behavior with unsigned type
+1557   info.uid = (uid_t)-1; // Cast to avoid undefined behavior with unsigned type
+1558   // Initialize SSL globally for client (required even for clients to use OpenSSL)
+1559   // The LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT flag works for both servers and clients
+1560   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
+1561   info.extensions = NULL; // Disable client compression due to lws_set_extension_option() assertion
+1562 
+1563   // Increase per-thread service buffer to prevent fragmentation of large messages
+1564   // Default is 4KB, causing 291KB frames to fragment into 73 &#x00D7; 4KB chunks
+1565   // Increase to 512KB to match server and allow larger WebSocket frames without fragmentation
+1566   info.pt_serv_buf_size = 512 * 1024; // 512KB per-thread service buffer
+1567 
+1568   // Configure keep-alive to prevent idle disconnects during handshake
+1569   // PING every 30 seconds if idle, close after 35 seconds total with no response
+1570   static const lws_retry_bo_t client_keep_alive_policy = {
+1571       .secs_since_valid_ping = 30,   // Send PING after 30s idle
+1572       .secs_since_valid_hangup = 35, // Hangup if still idle after 35s
+1573   };
+1574   info.retry_and_idle_policy = &amp;client_keep_alive_policy;
+1575 
+1576   // Enable libwebsockets logging through centralized logging system
+1577   lws_log_init_client();
+1578 
+1579   ws_data-&gt;context = lws_create_context(&amp;info);
+1580 
+1581   if (!ws_data-&gt;context) {
+1582     SAFE_FREE(ws_data-&gt;send_buffer);
+1583     cond_destroy(&amp;ws_data-&gt;state_cond);
+1584     mutex_destroy(&amp;ws_data-&gt;state_mutex);
+1585     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1586     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1587     ringbuffer_destroy(ws_data-&gt;send_queue);
+1588     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1589     SAFE_FREE(ws_data);
+1590     SAFE_FREE(transport);
+1591     SET_ERRNO(ERROR_NETWORK, &quot;Failed to create libwebsockets context&quot;);
+1592     return NULL;
+1593   }
+1594 
+1595   // Initialize connection state flags BEFORE calling lws_client_connect_via_info
+1596   // The callback might fire immediately, so all fields must be ready
+1597   ws_data-&gt;is_connected = false;      // Will be set to true in LWS_CALLBACK_CLIENT_ESTABLISHED
+1598   ws_data-&gt;connection_failed = false; // Set to true in LWS_CALLBACK_CLIENT_CONNECTION_ERROR
+1599   ws_data-&gt;owns_context = true;       // Client transport owns the context
+1600 
+1601   // Connect to WebSocket server
+1602   log_debug(&quot;Initiating WebSocket connection to %s:%d%s&quot;, host, port, path);
+1603   struct lws_client_connect_info connect_info;
+1604   memset(&amp;connect_info, 0, sizeof(connect_info));
+1605   connect_info.context = ws_data-&gt;context;
+1606   connect_info.address = host;
+1607   connect_info.port = port;
+1608   connect_info.path = path;
+1609   connect_info.host = host;
+1610   connect_info.origin = host;
+1611   // Use h1 (HTTP/1.1) protocol for WebSocket upgrade with acip as the subprotocol
+1612   // - local_protocol_name=&quot;h1&quot;: libwebsockets' built-in HTTP/1.1 handler for WebSocket upgrade
+1613   // - protocol=&quot;acip&quot;: Request this subprotocol from the remote server (Sec-WebSocket-Protocol header)
+1614   // libwebsockets internally uses h1 regardless of the protocol name, so we use h1 directly
+1615   connect_info.local_protocol_name = &quot;h1&quot;; // libwebsockets built-in HTTP/1.1
+1616   connect_info.protocol = &quot;acip&quot;;          // Remote subprotocol to request from server
+1617   // Use SSL + skip server certificate hostname verification + allow self-signed certs (for development)
+1618   connect_info.ssl_connection =
+1619       use_ssl ? (LCCSCF_USE_SSL | LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK | LCCSCF_ALLOW_SELFSIGNED) : 0;
+1620   connect_info.userdata = ws_data;
+1621 
+1622   log_debug(&quot;Calling lws_client_connect_via_info...&quot;);
+1623   ws_data-&gt;wsi = lws_client_connect_via_info(&amp;connect_info);
+1624   log_debug(&quot;lws_client_connect_via_info returned: %p&quot;, (void *)ws_data-&gt;wsi);
+1625   if (!ws_data-&gt;wsi) {
+1626     lws_context_destroy(ws_data-&gt;context);
+1627     SAFE_FREE(ws_data-&gt;send_buffer);
+1628     cond_destroy(&amp;ws_data-&gt;state_cond);
+1629     mutex_destroy(&amp;ws_data-&gt;state_mutex);
+1630     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1631     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1632     ringbuffer_destroy(ws_data-&gt;send_queue);
+1633     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1634     SAFE_FREE(ws_data);
+1635     SAFE_FREE(transport);
+1636     SET_ERRNO(ERROR_NETWORK, &quot;Failed to connect to WebSocket server&quot;);
+1637     return NULL;
+1638   }
+1639 
+1640   // Initialize transport
+1641   transport-&gt;methods = &amp;websocket_methods;
+1642   transport-&gt;crypto_ctx = crypto_ctx;
+1643   transport-&gt;impl_data = ws_data;
+1644 
+1645   // Start service thread immediately - it will drive TLS handshake with frequent polling
+1646   // The service thread checks is_destroying and context validity before calling lws_service,
+1647   // so it's safe to start it right away without delays.
+1648   ws_data-&gt;service_running = true;
+1649   if (asciichat_thread_create(&amp;ws_data-&gt;service_thread, &quot;ws_service&quot;, websocket_service_thread, ws_data) != 0) {
+1650     log_error(&quot;Failed to create WebSocket service thread&quot;);
+1651     ws_data-&gt;service_running = false;
+1652     lws_context_destroy(ws_data-&gt;context);
+1653     SAFE_FREE(ws_data-&gt;send_buffer);
+1654     cond_destroy(&amp;ws_data-&gt;state_cond);
+1655     mutex_destroy(&amp;ws_data-&gt;state_mutex);
+1656     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1657     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1658     ringbuffer_destroy(ws_data-&gt;send_queue);
+1659     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1660     SAFE_FREE(ws_data);
+1661     SAFE_FREE(transport);
+1662     SET_ERRNO(ERROR_INTERNAL, &quot;Failed to create service thread&quot;);
+1663     return NULL;
+1664   }
+1665   log_debug(&quot;WebSocket service thread started&quot;);
+1666 
+1667   // CRITICAL FIX: Do NOT block the main thread waiting for connection!
+1668   // This prevents stdin/keyboard input from being processed and causes the client to hang.
+1669   // The service thread will establish the connection asynchronously.
+1670   // The protocol layer (recv) will detect if connection fails and handle it there.
+1671   // Return immediately so the main thread can respond to keyboard input.
+1672   log_debug(&quot;WebSocket transport created, service thread will establish connection asynchronously&quot;);
+1673 
+1674   // Register transport
+1675   NAMED_REGISTER_TRANSPORT(transport, name, NULL);
+1676 
+1677   // Register websocket implementation data with transport as parent
+1678   (void)NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, &quot;impl&quot;, (uintptr_t)(const void *)(transport));
+1679 
+1680   // Return transport immediately - connection will be established by service thread
+1681   // If connection fails, recv() will detect is_connected=false and return error
+1682   return transport;
+1683 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_create()</b>,
+    <b>atomic_store_bool()</b>, <b>cond_destroy()</b>, <b>cond_init()</b>,
+    <b>websocket_transport_data_t::connection_failed</b>,
+    <b>websocket_transport_data_t::context</b>,
+    <b>acip_transport::crypto_ctx</b>, <b>ERROR_INTERNAL</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
+    <b>ERROR_NETWORK</b>, <b>acip_transport::impl_data</b>,
+    <b>websocket_transport_data_t::is_connected</b>,
+    <b>websocket_transport_data_t::is_destroying</b>, <b>log_debug</b>,
+    <b>log_error</b>, <b>log_info</b>, <b>lws_log_init_client()</b>,
+    <b>acip_transport::methods</b>, <b>mutex_destroy()</b>, <b>mutex_init()</b>,
+    <b>NAMED_REGISTER_TRANSPORT</b>, <b>NAMED_REGISTER_WEBSOCKET_IMPL</b>,
+    <b>websocket_transport_data_t::owns_context</b>,
+    <b>websocket_transport_data_t::recv_cond</b>,
+    <b>websocket_transport_data_t::recv_mutex</b>,
+    <b>websocket_transport_data_t::recv_queue</b>, <b>ringbuffer_create()</b>,
+    <b>ringbuffer_destroy()</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>,
+    <b>websocket_transport_data_t::send_buffer</b>,
+    <b>websocket_transport_data_t::send_buffer_capacity</b>,
+    <b>websocket_transport_data_t::send_queue</b>,
+    <b>websocket_transport_data_t::service_running</b>,
+    <b>websocket_transport_data_t::service_thread</b>, <b>SET_ERRNO</b>,
+    <b>websocket_transport_data_t::state_cond</b>,
+    <b>websocket_transport_data_t::state_mutex</b>,
+    <b>WEBSOCKET_RECV_QUEUE_SIZE</b>, <b>WEBSOCKET_SEND_QUEUE_SIZE</b>, and
+    <b>websocket_transport_data_t::wsi</b>.</p>
+<p class="Pp">Referenced by <b>server_connection_establish()</b>, and
+    <b>websocket_client_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>acip_transport_t</b> * acip_websocket_server_transport_create
+  (const char * name, struct lws * wsi, <b>crypto_context_t</b> *
+  crypto_ctx)</h2>
+<p class="Pp">Create WebSocket server transport from existing connection. Wraps
+    an already-established libwebsockets connection (from server accept). Used
+    by <b>websocket_server</b> module to create transports for incoming
+  clients.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>wsi</i> Established libwebsockets connection (not
+  owned by transport)
+<br/>
+<i>crypto_ctx</i> Optional crypto context</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Transport instance or NULL on error</div>
+<p class="Pp">Definition at line <b>1695</b> of file
+    <b>websocket/transport.c</b>.</p>
+<pre>1696                                                                                        {
+1697   if (!name) {
+1698     SET_ERRNO(ERROR_INVALID_STATE, &quot;Transport name is required&quot;);
+1699     return NULL;
+1700   }
+1701 
+1702   if (!wsi) {
+1703     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid wsi parameter&quot;);
+1704     return NULL;
+1705   }
+1706 
+1707   // Allocate transport structure
+1708   acip_transport_t *transport = SAFE_CALLOC(1, sizeof(acip_transport_t), acip_transport_t *);
+1709   if (!transport) {
+1710     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate WebSocket transport&quot;);
+1711     return NULL;
+1712   }
+1713 
+1714   // Allocate transport-specific data
+1715   websocket_transport_data_t *ws_data =
+1716       SAFE_CALLOC(1, sizeof(websocket_transport_data_t), websocket_transport_data_t *);
+1717   if (!ws_data) {
+1718     SAFE_FREE(transport);
+1719     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate WebSocket transport data&quot;);
+1720     return NULL;
+1721   }
+1722 
+1723   // Initialize receive queue
+1724   ws_data-&gt;recv_queue = ringbuffer_create(sizeof(websocket_recv_msg_t), WEBSOCKET_RECV_QUEUE_SIZE);
+1725   if (!ws_data-&gt;recv_queue) {
+1726     SAFE_FREE(ws_data);
+1727     SAFE_FREE(transport);
+1728     SET_ERRNO(ERROR_MEMORY, &quot;Failed to create receive queue&quot;);
+1729     return NULL;
+1730   }
+1731 
+1732   // Initialize send queue (for server-side transports)
+1733   ws_data-&gt;send_queue = ringbuffer_create(sizeof(websocket_recv_msg_t), WEBSOCKET_SEND_QUEUE_SIZE);
+1734   if (!ws_data-&gt;send_queue) {
+1735     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1736     SAFE_FREE(ws_data);
+1737     SAFE_FREE(transport);
+1738     SET_ERRNO(ERROR_MEMORY, &quot;Failed to create send queue&quot;);
+1739     return NULL;
+1740   }
+1741 
+1742   // Initialize pending-free queue for deferred buffer freeing
+1743   // permessage-deflate compression holds buffer references asynchronously,
+1744   // so we defer freeing to prevent use-after-free errors
+1745   ws_data-&gt;pending_free_queue = ringbuffer_create(sizeof(pending_free_item_t), 256);
+1746   if (!ws_data-&gt;pending_free_queue) {
+1747     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1748     ringbuffer_destroy(ws_data-&gt;send_queue);
+1749     SAFE_FREE(ws_data);
+1750     SAFE_FREE(transport);
+1751     SET_ERRNO(ERROR_MEMORY, &quot;Failed to create pending-free queue&quot;);
+1752     return NULL;
+1753   }
+1754 
+1755   // Initialize synchronization primitives with transport-aware names
+1756   char recv_name[64], send_name[64], state_name[64], pending_free_name[64];
+1757   snprintf(recv_name, sizeof(recv_name), &quot;recv_%s&quot;, name);
+1758   snprintf(send_name, sizeof(send_name), &quot;send_%s&quot;, name);
+1759   snprintf(state_name, sizeof(state_name), &quot;state_%s&quot;, name);
+1760   snprintf(pending_free_name, sizeof(pending_free_name), &quot;pending_free_%s&quot;, name);
+1761 
+1762   if (mutex_init(&amp;ws_data-&gt;recv_mutex, recv_name) != 0) {
+1763     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1764     ringbuffer_destroy(ws_data-&gt;send_queue);
+1765     SAFE_FREE(ws_data);
+1766     SAFE_FREE(transport);
+1767     SET_ERRNO(ERROR_NETWORK, &quot;Failed to initialize recv mutex&quot;);
+1768     return NULL;
+1769   }
+1770 
+1771   if (cond_init(&amp;ws_data-&gt;recv_cond, recv_name) != 0) {
+1772     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1773     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1774     ringbuffer_destroy(ws_data-&gt;send_queue);
+1775     SAFE_FREE(ws_data);
+1776     SAFE_FREE(transport);
+1777     SET_ERRNO(ERROR_NETWORK, &quot;Failed to initialize recv condition variable&quot;);
+1778     return NULL;
+1779   }
+1780 
+1781   if (mutex_init(&amp;ws_data-&gt;send_mutex, send_name) != 0) {
+1782     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1783     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1784     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1785     ringbuffer_destroy(ws_data-&gt;send_queue);
+1786     SAFE_FREE(ws_data);
+1787     SAFE_FREE(transport);
+1788     SET_ERRNO(ERROR_NETWORK, &quot;Failed to initialize send mutex&quot;);
+1789     return NULL;
+1790   }
+1791 
+1792   if (mutex_init(&amp;ws_data-&gt;state_mutex, state_name) != 0) {
+1793     mutex_destroy(&amp;ws_data-&gt;send_mutex);
+1794     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1795     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1796     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1797     ringbuffer_destroy(ws_data-&gt;send_queue);
+1798     SAFE_FREE(ws_data);
+1799     SAFE_FREE(transport);
+1800     SET_ERRNO(ERROR_NETWORK, &quot;Failed to initialize state mutex&quot;);
+1801     return NULL;
+1802   }
+1803 
+1804   if (cond_init(&amp;ws_data-&gt;state_cond, state_name) != 0) {
+1805     mutex_destroy(&amp;ws_data-&gt;state_mutex);
+1806     mutex_destroy(&amp;ws_data-&gt;send_mutex);
+1807     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1808     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1809     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1810     ringbuffer_destroy(ws_data-&gt;send_queue);
+1811     SAFE_FREE(ws_data);
+1812     SAFE_FREE(transport);
+1813     SET_ERRNO(ERROR_NETWORK, &quot;Failed to initialize state condition variable&quot;);
+1814     return NULL;
+1815   }
+1816 
+1817   if (mutex_init(&amp;ws_data-&gt;pending_free_mutex, pending_free_name) != 0) {
+1818     cond_destroy(&amp;ws_data-&gt;state_cond);
+1819     mutex_destroy(&amp;ws_data-&gt;state_mutex);
+1820     mutex_destroy(&amp;ws_data-&gt;send_mutex);
+1821     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1822     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1823     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1824     ringbuffer_destroy(ws_data-&gt;send_queue);
+1825     ringbuffer_destroy(ws_data-&gt;pending_free_queue);
+1826     SAFE_FREE(ws_data);
+1827     SAFE_FREE(transport);
+1828     SET_ERRNO(ERROR_NETWORK, &quot;Failed to initialize pending-free mutex&quot;);
+1829     return NULL;
+1830   }
+1831 
+1832   // Allocate send buffer with LWS_PRE padding
+1833   size_t initial_capacity = 4096 + LWS_PRE;
+1834   ws_data-&gt;send_buffer = SAFE_MALLOC(initial_capacity, uint8_t *);
+1835   if (!ws_data-&gt;send_buffer) {
+1836     mutex_destroy(&amp;ws_data-&gt;state_mutex);
+1837     mutex_destroy(&amp;ws_data-&gt;send_mutex);
+1838     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1839     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1840     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1841     ringbuffer_destroy(ws_data-&gt;send_queue);
+1842     SAFE_FREE(ws_data);
+1843     SAFE_FREE(transport);
+1844     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate send buffer&quot;);
+1845     return NULL;
+1846   }
+1847   ws_data-&gt;send_buffer_capacity = initial_capacity;
+1848 
+1849   // Store connection info (server-side: no context ownership, connection already established)
+1850   ws_data-&gt;wsi = wsi;
+1851   ws_data-&gt;context = lws_get_context(wsi); // Get context from wsi (not owned)
+1852   ws_data-&gt;owns_context = false;           // Server owns context, not transport
+1853   ws_data-&gt;is_connected = true;            // Already connected (server-side)
+1854   log_info(&quot;[WEBSOCKET_TRANSPORT_CREATE] &#x2605;&#x2605;&#x2605; SERVER TRANSPORT CREATED: is_connected=true, wsi=%p, ws_data=%p&quot;,
+1855            (void *)wsi, (void *)ws_data);
+1856   log_debug(&quot;Server transport created: is_connected=true, wsi=%p&quot;, (void *)wsi);
+1857 
+1858   // Initialize transport
+1859   transport-&gt;methods = &amp;websocket_methods;
+1860   transport-&gt;crypto_ctx = crypto_ctx;
+1861   transport-&gt;impl_data = ws_data;
+1862 
+1863   log_info(&quot;Created WebSocket server transport (crypto: %s)&quot;, crypto_ctx ? &quot;enabled&quot; : &quot;disabled&quot;);
+1864 
+1865   // Register transport
+1866   NAMED_REGISTER_TRANSPORT(transport, name, NULL);
+1867 
+1868   // Register websocket implementation data with transport as parent
+1869   (void)NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, &quot;impl&quot;, (uintptr_t)(const void *)(transport));
+1870 
+1871   return transport;
+1872 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>cond_destroy()</b>, <b>cond_init()</b>,
+    <b>websocket_transport_data_t::context</b>,
+    <b>acip_transport::crypto_ctx</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>,
+    <b>acip_transport::impl_data</b>,
+    <b>websocket_transport_data_t::is_connected</b>, <b>log_debug</b>,
+    <b>log_info</b>, <b>acip_transport::methods</b>, <b>mutex_destroy()</b>,
+    <b>mutex_init()</b>, <b>NAMED_REGISTER_TRANSPORT</b>,
+    <b>NAMED_REGISTER_WEBSOCKET_IMPL</b>,
+    <b>websocket_transport_data_t::owns_context</b>,
+    <b>websocket_transport_data_t::pending_free_mutex</b>,
+    <b>websocket_transport_data_t::pending_free_queue</b>,
+    <b>websocket_transport_data_t::recv_cond</b>,
+    <b>websocket_transport_data_t::recv_mutex</b>,
+    <b>websocket_transport_data_t::recv_queue</b>, <b>ringbuffer_create()</b>,
+    <b>ringbuffer_destroy()</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>websocket_transport_data_t::send_buffer</b>,
+    <b>websocket_transport_data_t::send_buffer_capacity</b>,
+    <b>websocket_transport_data_t::send_mutex</b>,
+    <b>websocket_transport_data_t::send_queue</b>, <b>SET_ERRNO</b>,
+    <b>websocket_transport_data_t::state_cond</b>,
+    <b>websocket_transport_data_t::state_mutex</b>,
+    <b>WEBSOCKET_RECV_QUEUE_SIZE</b>, <b>WEBSOCKET_SEND_QUEUE_SIZE</b>, and
+    <b>websocket_transport_data_t::wsi</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

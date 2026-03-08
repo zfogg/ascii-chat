@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ice_candidate_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ice_candidate_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ice_candidate_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ice_candidate_t - Single ICE candidate for connectivity.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/webrtc/ice.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">char <b>foundation</b> [32]
+  <br/>
+  Unique identifier for candidate (for pairing). <b>uint32_t</b>
+    <b>component_id</b>
+  <br/>
+  Component (1=RTP, 2=RTCP; usually 1). <b>ice_protocol_t</b> <b>protocol</b>
+  <br/>
+  UDP or TCP. <b>uint32_t</b> <b>priority</b>
+  <br/>
+  Candidate priority (used for preference). char <b>ip_address</b> [64]
+  <br/>
+  IP address (IPv4 or IPv6). <b>uint16_t</b> <b>port</b>
+  <br/>
+  Port number. <b>ice_candidate_type_t</b> <b>type</b>
+  <br/>
+  host, srflx, prflx, or relay char <b>raddr</b> [64]
+  <br/>
+  Related address (for srflx/prflx). <b>uint16_t</b> <b>rport</b>
+  <br/>
+  Related port. <b>ice_tcp_type_t</b> <b>tcp_type</b>
+  <br/>
+  active, passive, so char <b>extensions</b> [256]
+  <br/>
+  Additional extensions (e.g., <i>tcptype</i>passive&quot;).<i></i>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Single ICE candidate for connectivity.</p>
+<p class="Pp">Represents one possible address/port combination for connection.
+    The WebRTC agent will test all candidate pairs to find working path.</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="String_Format_(attribute_line)"><a class="permalink" href="#String_Format_(attribute_line)">String
+  Format (attribute line)</a></h2>
+<pre>a=candidate:foundation 1 udp priority 192.168.1.100 12345 typ host
+a=candidate:foundation 2 udp priority 203.0.113.45 54321 typ srflx raddr 192.168.1.100 rport 12345
+a=candidate:foundation 3 udp priority 198.51.100.7 3478 typ relay raddr 203.0.113.45 rport 54321</pre>
+<p class="Pp">Definition at line <b>111</b> of file <b>ice.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> ice_candidate_t::component_id</h2>
+<p class="Pp">Component (1=RTP, 2=RTCP; usually 1).</p>
+<p class="Pp">Definition at line <b>114</b> of file <b>ice.h</b>.</p>
+<p class="Pp">Referenced by <b>ice_calculate_priority_for_candidate()</b>, and
+    <b>ice_format_candidate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_ice_candidate_t::extensions_256_"><a class="permalink" href="#char_ice_candidate_t::extensions_256_">char
+  ice_candidate_t::extensions[256]</a></h2>
+<p class="Pp">Additional extensions (e.g., &quot;tcptype passive&quot;).</p>
+<p class="Pp">Definition at line <b>133</b> of file <b>ice.h</b>.</p>
+<p class="Pp">Referenced by <b>ice_format_candidate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_ice_candidate_t::foundation_32_"><a class="permalink" href="#char_ice_candidate_t::foundation_32_">char
+  ice_candidate_t::foundation[32]</a></h2>
+<p class="Pp">Unique identifier for candidate (for pairing).</p>
+<p class="Pp">Definition at line <b>113</b> of file <b>ice.h</b>.</p>
+<p class="Pp">Referenced by <b>ice_add_remote_candidate()</b>, and
+    <b>ice_format_candidate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_ice_candidate_t::ip_address_64_"><a class="permalink" href="#char_ice_candidate_t::ip_address_64_">char
+  ice_candidate_t::ip_address[64]</a></h2>
+<p class="Pp">IP address (IPv4 or IPv6).</p>
+<p class="Pp">Definition at line <b>119</b> of file <b>ice.h</b>.</p>
+<p class="Pp">Referenced by <b>ice_add_remote_candidate()</b>,
+    <b>ice_calculate_priority_for_candidate()</b>, and
+    <b>ice_format_candidate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> ice_candidate_t::port</h2>
+<p class="Pp">Port number.</p>
+<p class="Pp">Definition at line <b>120</b> of file <b>ice.h</b>.</p>
+<p class="Pp">Referenced by <b>ice_add_remote_candidate()</b>, and
+    <b>ice_format_candidate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> ice_candidate_t::priority</h2>
+<p class="Pp">Candidate priority (used for preference).</p>
+<p class="Pp">Definition at line <b>116</b> of file <b>ice.h</b>.</p>
+<p class="Pp">Referenced by <b>ice_format_candidate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>ice_protocol_t</b> ice_candidate_t::protocol</h2>
+<p class="Pp">UDP or TCP.</p>
+<p class="Pp">Definition at line <b>115</b> of file <b>ice.h</b>.</p>
+<p class="Pp">Referenced by <b>ice_format_candidate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_ice_candidate_t::raddr_64_"><a class="permalink" href="#char_ice_candidate_t::raddr_64_">char
+  ice_candidate_t::raddr[64]</a></h2>
+<p class="Pp">Related address (for srflx/prflx).</p>
+<p class="Pp">Definition at line <b>126</b> of file <b>ice.h</b>.</p>
+<p class="Pp">Referenced by <b>ice_format_candidate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> ice_candidate_t::rport</h2>
+<p class="Pp">Related port.</p>
+<p class="Pp">Definition at line <b>127</b> of file <b>ice.h</b>.</p>
+<p class="Pp">Referenced by <b>ice_format_candidate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>ice_tcp_type_t</b> ice_candidate_t::tcp_type</h2>
+<p class="Pp">active, passive, so</p>
+<p class="Pp">Definition at line <b>130</b> of file <b>ice.h</b>.</p>
+<p class="Pp">Referenced by <b>ice_format_candidate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>ice_candidate_type_t</b> ice_candidate_t::type</h2>
+<p class="Pp">host, srflx, prflx, or relay</p>
+<p class="Pp">Definition at line <b>123</b> of file <b>ice.h</b>.</p>
+<p class="Pp">Referenced by <b>ice_add_remote_candidate()</b>,
+    <b>ice_calculate_priority_for_candidate()</b>, and
+    <b>ice_format_candidate()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

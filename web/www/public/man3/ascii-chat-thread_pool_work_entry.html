@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>thread_pool_work_entry(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">thread_pool_work_entry(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">thread_pool_work_entry(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">thread_pool_work_entry - Work queue entry for task-based thread
+    pools.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/thread_pool.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">void *(* <b>work_func</b> )(void *)
+  <br/>
+  Work function to execute. void * <b>work_arg</b>
+  <br/>
+  Argument passed to work function. struct <b>thread_pool_work_entry</b> *
+    <b>next</b>
+  <br/>
+  Linked list next pointer.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Work queue entry for task-based thread pools.</p>
+<p class="Pp">Represents a single unit of work to be executed by a pool
+  worker.</p>
+<p class="Pp">Definition at line <b>87</b> of file <b>thread_pool.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
+  <b>thread_pool_work_entry</b>* thread_pool_work_entry::next</a></h2>
+<p class="Pp">Linked list next pointer.</p>
+<p class="Pp">Definition at line <b>90</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Referenced by <b>thread_pool_destroy()</b>, and
+    <b>thread_pool_queue_work()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_thread_pool_work_entry::work_arg"><a class="permalink" href="#void*_thread_pool_work_entry::work_arg">void*
+  thread_pool_work_entry::work_arg</a></h2>
+<p class="Pp">Argument passed to work function.</p>
+<p class="Pp">Definition at line <b>89</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Referenced by <b>thread_pool_queue_work()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_*(*_thread_pool_work_entry::work_func)_(void_*)"><a class="permalink" href="#void_*(*_thread_pool_work_entry::work_func)_(void_*)">void
+  *(* thread_pool_work_entry::work_func) (void *)</a></h2>
+<p class="Pp">Work function to execute.</p>
+<p class="Pp">Definition at line <b>88</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Referenced by <b>thread_pool_queue_work()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

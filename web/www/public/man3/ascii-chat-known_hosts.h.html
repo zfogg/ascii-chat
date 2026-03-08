@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>known_hosts.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">known_hosts.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">known_hosts.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">known_hosts.h - Known hosts management for MITM attack
+  prevention.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<p class="Pp"><b>Known Hosts Verification</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>asciichat_error_t</b> <b>check_known_host</b> (const char *server_ip,
+    <b>uint16_t</b> port, const <b>uint8_t</b> server_key[32])
+  <br/>
+  Check if server key is in known_hosts. <b>asciichat_error_t</b>
+    <b>check_known_host_no_identity</b> (const char *server_ip, <b>uint16_t</b>
+    port)
+  <br/>
+  Check known_hosts for servers without identity key (no-identity entries).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Known Hosts Management</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>asciichat_error_t</b> <b>add_known_host</b> (const char *server_ip,
+    <b>uint16_t</b> port, const <b>uint8_t</b> server_key[32])
+  <br/>
+  Add server to known_hosts. <b>asciichat_error_t</b> <b>remove_known_host</b>
+    (const char *server_ip, <b>uint16_t</b> port)
+  <br/>
+  Remove server from known_hosts. const char * <b>get_known_hosts_path</b>
+    (void)
+  <br/>
+  Get the path to the known_hosts file.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>User Interaction</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>bool</b> <b>display_mitm_warning</b> (const char *server_ip,
+    <b>uint16_t</b> port, const <b>uint8_t</b> expected_key[32], const
+    <b>uint8_t</b> received_key[32])
+  <br/>
+  Display MITM warning with key comparison and prompt user for confirmation.
+    <b>bool</b> <b>prompt_unknown_host</b> (const char *server_ip,
+    <b>uint16_t</b> port, const <b>uint8_t</b> server_key[32])
+  <br/>
+  Interactive prompt for unknown host - returns true if user wants to add, false
+    to abort. <b>bool</b> <b>prompt_unknown_host_no_identity</b> (const char
+    *server_ip, <b>uint16_t</b> port)
+  <br/>
+  Interactive prompt for unknown host without identity key - returns true if
+    user wants to continue, false to abort.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Key Fingerprinting</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  void <b>compute_key_fingerprint</b> (const <b>uint8_t</b> key[32], char
+    fingerprint[65])
+  <br/>
+  Compute SHA256 fingerprint of Ed25519 key for display.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Cleanup</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  void <b>known_hosts_destroy</b> (void)
+  <br/>
+  Cleanup function to free cached known_hosts path.
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Known hosts management for MITM attack prevention.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>known_hosts.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

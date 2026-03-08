@@ -47,71 +47,71 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">void <b>disconnect_client_for_bad_data</b> (client_info_t *client,
-    const char *format,...)
+<p class="Pp">void <b>disconnect_client_for_bad_data</b> (<b>client_info_t</b>
+    *client, const char *format,...)
   <br/>
-  void <b>handle_client_join_packet</b> (client_info_t *client, const void
-    *data, size_t len)
+  void <b>handle_client_join_packet</b> (<b>client_info_t</b> *client, const
+    void *data, size_t len)
   <br/>
   Process CLIENT_JOIN packet - client announces identity and capabilities. void
-    <b>handle_protocol_version_packet</b> (client_info_t *client, const void
-    *data, size_t len)
+    <b>handle_protocol_version_packet</b> (<b>client_info_t</b> *client, const
+    void *data, size_t len)
   <br/>
   Process PROTOCOL_VERSION packet - validate protocol compatibility. void
-    <b>handle_client_leave_packet</b> (client_info_t *client, const void *data,
-    size_t len)
+    <b>handle_client_leave_packet</b> (<b>client_info_t</b> *client, const void
+    *data, size_t len)
   <br/>
   Process CLIENT_LEAVE packet - handle clean client disconnect. void
-    <b>handle_stream_start_packet</b> (client_info_t *client, const void *data,
-    size_t len)
+    <b>handle_stream_start_packet</b> (<b>client_info_t</b> *client, const void
+    *data, size_t len)
   <br/>
   Process STREAM_START packet - client requests to begin media transmission.
-    void <b>handle_stream_stop_packet</b> (client_info_t *client, const void
-    *data, size_t len)
+    void <b>handle_stream_stop_packet</b> (<b>client_info_t</b> *client, const
+    void *data, size_t len)
   <br/>
   Process STREAM_STOP packet - client requests to halt media transmission. void
-    <b>handle_ping_packet</b> (client_info_t *client, const void *data, size_t
-    len)
+    <b>handle_ping_packet</b> (<b>client_info_t</b> *client, const void *data,
+    size_t len)
   <br/>
   Handle PING packet - respond with PONG. void <b>handle_pong_packet</b>
-    (client_info_t *client, const void *data, size_t len)
+    (<b>client_info_t</b> *client, const void *data, size_t len)
   <br/>
   Handle PONG packet - client acknowledged our PING. void
-    <b>handle_image_frame_packet</b> (client_info_t *client, void *data, size_t
-    len)
+    <b>handle_image_frame_packet</b> (<b>client_info_t</b> *client, void *data,
+    size_t len)
   <br/>
   Process IMAGE_FRAME packet - store client's video data for rendering. void
-    <b>handle_image_frame_h265_packet</b> (client_info_t *client, const void
-    *data, size_t len)
+    <b>handle_image_frame_h265_packet</b> (<b>client_info_t</b> *client, const
+    void *data, size_t len)
   <br/>
   Process H.265-encoded image frame from client. void <b>handle_audio_packet</b>
-    (client_info_t *client, const void *data, size_t len)
+    (<b>client_info_t</b> *client, const void *data, size_t len)
   <br/>
   Process AUDIO packet - store single audio sample batch (legacy format). void
-    <b>handle_remote_log_packet_from_client</b> (client_info_t *client, const
-    void *data, size_t len)
+    <b>handle_remote_log_packet_from_client</b> (<b>client_info_t</b> *client,
+    const void *data, size_t len)
   <br/>
-  void <b>handle_audio_batch_packet</b> (client_info_t *client, const void
-    *data, size_t len)
+  void <b>handle_audio_batch_packet</b> (<b>client_info_t</b> *client, const
+    void *data, size_t len)
   <br/>
   Process AUDIO_BATCH packet - store efficiently batched audio samples. void
-    <b>handle_audio_opus_batch_packet</b> (client_info_t *client, const void
-    *data, size_t len)
-  <br/>
-  Process AUDIO_OPUS_BATCH packet - efficient Opus-encoded audio batch from
-    client. void <b>handle_audio_opus_packet</b> (client_info_t *client, const
+    <b>handle_audio_opus_batch_packet</b> (<b>client_info_t</b> *client, const
     void *data, size_t len)
   <br/>
+  Process AUDIO_OPUS_BATCH packet - efficient Opus-encoded audio batch from
+    client. void <b>handle_audio_opus_packet</b> (<b>client_info_t</b> *client,
+    const void *data, size_t len)
+  <br/>
   Process AUDIO_OPUS packet - decode single Opus frame from client. void
-    <b>handle_client_capabilities_packet</b> (client_info_t *client, const void
-    *data, size_t len)
+    <b>handle_client_capabilities_packet</b> (<b>client_info_t</b> *client,
+    const void *data, size_t len)
   <br/>
   Process CLIENT_CAPABILITIES packet - configure client-specific rendering. void
-    <b>handle_size_packet</b> (client_info_t *client, const void *data, size_t
-    len)
+    <b>handle_size_packet</b> (<b>client_info_t</b> *client, const void *data,
+    size_t len)
   <br/>
   Process terminal size update packet - handle client window resize. int
-    <b>send_server_state_to_client</b> (client_info_t *client)
+    <b>send_server_state_to_client</b> (<b>client_info_t</b> *client)
   <br/>
   Send current server state to a specific client. void
     <b>broadcast_clear_console_to_all_clients</b> (void)
@@ -278,7 +278,7 @@
 <p class="Pp"><b>See also</b></p>
 <div class="Bd-indent">client.c For client receive thread implementation
 <p class="Pp"></p>
-<p class="Pp">render.c For media buffer consumption</p>
+<p class="Pp">render.c For <b>Media</b> buffer consumption</p>
 <p class="Pp"></p>
 <p class="Pp">network.h For packet structure definitions</p>
 </div>
@@ -338,126 +338,13 @@
 1935 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_STATE</b>, <b>log_warn</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_disconnect_client_for_bad_data_(client_info_t_*_client,_const_char_*_format,__"><a class="permalink" href="#void_disconnect_client_for_bad_data_(client_info_t_*_client,_const_char_*_format,__">void
-  disconnect_client_for_bad_data (client_info_t * client, const char * format,
-  ...)</a></h2>
-<p class="Pp">Definition at line <b>154</b> of file
-  <b>server/protocol.c</b>.</p>
-<pre>154                                                                                     {
-155   if (!client) {
-156     return;
-157   }
-158 
-159   protocol_cleanup_thread_locals();
-160 
-161   // Atomically set the disconnect flag and get the old value
-162   // This ensures only one thread proceeds to disconnect (the first one)
-163   bool already_requested = atomic_exchange_bool(&amp;client-&gt;protocol_disconnect_requested, true);
-164   if (already_requested) {
-165     return;  // Already disconnecting, don't do it again
-166   }
-167 
-168   char reason[BUFFER_SIZE_SMALL] = {0};
-169   if (format) {
-170     va_list args;
-171     va_start(args, format);
-172     safe_vsnprintf(reason, sizeof(reason), format, args);
-173     va_end(args);
-174   } else {
-175     SAFE_STRNCPY(reason, &quot;Protocol violation&quot;, sizeof(reason));
-176   }
-177 
-178   const char *reason_str = reason[0] != '\0' ? reason : &quot;Protocol violation&quot;;
-179   const char *client_id = client-&gt;client_id;
-180 
-181   socket_t socket_snapshot = INVALID_SOCKET_VALUE;
-182   const crypto_context_t *crypto_ctx = NULL;
-183   acip_transport_t *transport_snapshot = NULL;
-184 
-185   mutex_lock(&amp;client-&gt;client_state_mutex);
-186   if (client-&gt;socket != INVALID_SOCKET_VALUE) {
-187     socket_snapshot = client-&gt;socket;
-188     if (client-&gt;crypto_initialized) {
-189       crypto_ctx = crypto_handshake_get_context(&amp;client-&gt;crypto_handshake_ctx);
-190     }
-191   }
-192   mutex_unlock(&amp;client-&gt;client_state_mutex);
-193 
-194   // Get transport reference for WebSocket clients
-195   mutex_lock(&amp;client-&gt;send_mutex);
-196   transport_snapshot = client-&gt;transport;
-197   mutex_unlock(&amp;client-&gt;send_mutex);
-198 
-199   // NOTE: Disconnecting a client due to the client's own bad behavior isn't an
-200   // error for us, it's desired behavior for us, so we simply warn and do not
-201   // have a need for asciichat_errno here.
-202   log_warn(&quot;Disconnecting client %u due to protocol violation: %s&quot;, client_id, reason_str);
-203 
-204   if (socket_snapshot != INVALID_SOCKET_VALUE) {
-205     // Protect socket writes with send_mutex to prevent race with send_thread.
-206     // This receive_thread and send_thread both write to same socket.
-207     mutex_lock(&amp;client-&gt;send_mutex);
-208 
-209     asciichat_error_t log_result =
-210         log_network_message(socket_snapshot, (const struct crypto_context_t *)crypto_ctx, LOG_ERROR,
-211                             REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, &quot;Protocol violation: %s&quot;, reason_str);
-212     if (log_result != ASCIICHAT_OK) {
-213       log_warn(&quot;Failed to send remote log to client %u: %s&quot;, client_id, asciichat_error_string(log_result));
-214     }
-215 
-216     asciichat_error_t send_result = packet_send_error(socket_snapshot, crypto_ctx, ERROR_NETWORK_PROTOCOL, reason_str);
-217     if (send_result != ASCIICHAT_OK) {
-218       log_warn(&quot;Failed to send error packet to client %u: %s&quot;, client_id, asciichat_error_string(send_result));
-219     }
-220 
-221     mutex_unlock(&amp;client-&gt;send_mutex);
-222   } else if (transport_snapshot) {
-223     // For WebSocket clients, try to send error via transport
-224     log_debug(&quot;Sending error to WebSocket client %u via transport&quot;, client_id);
-225     acip_send_error(transport_snapshot, ERROR_NETWORK_PROTOCOL, reason_str);
-226   }
-227 
-228   platform_sleep_ms(500);
-229 
-230   log_debug(&quot;Setting active=false in disconnect_client_for_bad_data (client_id=%u, reason=%s)&quot;, client_id, reason_str);
-231   atomic_store_bool(&amp;client-&gt;active, false);
-232   atomic_store_bool(&amp;client-&gt;shutting_down, true);
-233   atomic_store_bool(&amp;client-&gt;send_thread_running, false);
-234   atomic_store_bool(&amp;client-&gt;video_render_thread_running, false);
-235   atomic_store_bool(&amp;client-&gt;audio_render_thread_running, false);
-236 
-237   if (client-&gt;audio_queue) {
-238     packet_queue_stop(client-&gt;audio_queue);
-239   }
-240 
-241   mutex_lock(&amp;client-&gt;client_state_mutex);
-242   if (client-&gt;socket != INVALID_SOCKET_VALUE) {
-243     socket_shutdown(client-&gt;socket, 2);
-244     socket_close(client-&gt;socket);
-245     client-&gt;socket = INVALID_SOCKET_VALUE;
-246   }
-247   mutex_unlock(&amp;client-&gt;client_state_mutex);
-248 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_send_error()</b>, <b>args</b>,
-    <b>atomic_exchange_bool()</b>, <b>atomic_store_bool()</b>,
-    <b>crypto_handshake_get_context()</b>, <b>log_network_message()</b>,
-    <b>packet_queue_stop()</b>, <b>packet_send_error()</b>,
-    <b>platform_sleep_ms()</b>, and <b>safe_vsnprintf()</b>.</p>
-<p class="Pp">Referenced by <b>handle_audio_batch_packet()</b>,
-    <b>handle_audio_opus_batch_packet()</b>, <b>handle_audio_opus_packet()</b>,
-    <b>handle_client_join_packet()</b>, <b>handle_image_frame_h265_packet()</b>,
-    <b>handle_image_frame_packet()</b>, <b>handle_protocol_version_packet()</b>,
-    <b>handle_remote_log_packet_from_client()</b>, and
-    <b>process_decrypted_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_handle_audio_batch_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_audio_batch_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
-  handle_audio_batch_packet (client_info_t * client, const void * data, size_t
-  len)</a></h2>
+<h2 class="Ss" id="void_handle_audio_batch_packet_("><a class="permalink" href="#void_handle_audio_batch_packet_(">void
+  handle_audio_batch_packet (<b>client_info_t</b> * client, const void * data,
+  size_t len)</a></h2>
 <p class="Pp">Process AUDIO_BATCH packet - store efficiently batched audio
     samples. Handles the optimized audio packet format that bundles multiple
     sample chunks into a single packet. This reduces packet overhead and
@@ -466,17 +353,17 @@
 <p class="Pp">PACKET STRUCTURE EXPECTED:</p>
 <dl class="Bl-tag">
   <dt>&#x2022;</dt>
-  <dd>audio_batch_packet_t header:</dd>
+  <dd><b>audio_batch_packet_t</b> header:</dd>
 </dl>
 <dl class="Bl-tag">
   <dt> &#x2022;</dt>
-  <dd>uint32_t batch_count: Number of sample chunks in this batch</dd>
+  <dd><b>uint32_t</b> batch_count: Number of sample chunks in this batch</dd>
   <dt> &#x2022;</dt>
-  <dd>uint32_t total_samples: Total number of float samples</dd>
+  <dd><b>uint32_t</b> total_samples: Total number of float samples</dd>
   <dt> &#x2022;</dt>
-  <dd>uint32_t sample_rate: Samples per second (typically 44100)</dd>
+  <dd><b>uint32_t</b> sample_rate: Samples per second (typically 44100)</dd>
   <dt> &#x2022;</dt>
-  <dd>uint32_t channels: Number of audio channels (1 = mono)</dd>
+  <dd><b>uint32_t</b> channels: Number of audio channels (1 = mono)</dd>
 </dl>
 <dl class="Bl-tag">
   <dt>&#x2022;</dt>
@@ -490,7 +377,7 @@
 </ul>
 <p class="Pp">VALIDATION PERFORMED:</p>
 <ul class="Bl-bullet">
-  <li>Header size matches audio_batch_packet_t</li>
+  <li>Header size matches <b>audio_batch_packet_t</b></li>
   <li>Total packet size matches header + samples</li>
   <li>Sample count is within reasonable bounds</li>
   <li>Client is authorized to send audio</li>
@@ -523,7 +410,7 @@
 <div class="Bd-indent"><b>handle_audio_packet()</b> For legacy single-batch
   format
 <p class="Pp"></p>
-<p class="Pp">AUDIO_BATCH_SAMPLES For maximum batch size constant</p>
+<p class="Pp"><b>AUDIO_BATCH_SAMPLES</b> For maximum batch size constant</p>
 </div>
 <p class="Pp">Definition at line <b>1188</b> of file
   <b>server/protocol.c</b>.</p>
@@ -620,17 +507,24 @@
 1278 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>,
-    <b>audio_dequantize_samples()</b>, <b>audio_parse_batch_header()</b>,
-    <b>audio_ring_buffer_write()</b>, <b>audio_batch_info_t::batch_count</b>,
-    <b>disconnect_client_for_bad_data()</b>,
-    <b>audio_batch_info_t::sample_rate</b>, and
-    <b>audio_batch_info_t::total_samples</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
+    <b>AUDIO_BATCH_SAMPLES</b>, <b>audio_dequantize_samples()</b>,
+    <b>audio_parse_batch_header()</b>, <b>audio_ring_buffer_write()</b>,
+    <b>audio_batch_info_t::batch_count</b>, <b>client_info::client_id</b>,
+    <b>disconnect_client_for_bad_data()</b>, <b>ERROR_MEMORY</b>,
+    <b>client_info::incoming_audio_buffer</b>,
+    <b>client_info::is_sending_audio</b>, <b>log_debug_every</b>,
+    <b>log_error</b>, <b>log_info</b>, <b>LOG_RATE_DEFAULT</b>,
+    <b>NET_TO_HOST_U32</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>safe_size_mul</b>, <b>audio_batch_info_t::sample_rate</b>,
+    <b>SET_ERRNO</b>, <b>audio_batch_info_t::total_samples</b>,
+    <b>VALIDATE_AUDIO_STREAM_ENABLED</b>, <b>VALIDATE_MIN_SIZE</b>,
+    <b>VALIDATE_NONZERO</b>, and <b>VALIDATE_NOTNULL_DATA</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_handle_audio_opus_batch_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_audio_opus_batch_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
-  handle_audio_opus_batch_packet (client_info_t * client, const void * data,
-  size_t len)</a></h2>
+<h2 class="Ss" id="void_handle_audio_opus_batch_packet_("><a class="permalink" href="#void_handle_audio_opus_batch_packet_(">void
+  handle_audio_opus_batch_packet (<b>client_info_t</b> * client, const void *
+  data, size_t len)</a></h2>
 <p class="Pp">Process AUDIO_OPUS_BATCH packet - efficient Opus-encoded audio
     batch from client. Handles batched Opus-encoded audio frames sent by the
     client. This provides ~98% bandwidth reduction compared to raw PCM audio
@@ -683,7 +577,7 @@
 <p class="Pp"></p>
 <p class="Pp"><b>opus_codec_decode()</b> For Opus decoding</p>
 <p class="Pp"></p>
-<p class="Pp"><b>handle_audio_batch_packet()</b> For raw PCM audio batch
+<p class="Pp"><b>handle_audio_batch_packet()</b> For raw PCM <b>Audio</b> batch
     handling</p>
 </div>
 <p class="Pp">Definition at line <b>1315</b> of file
@@ -831,24 +725,32 @@
 1455 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>audio_ring_buffer_write()</b>,
-    <b>disconnect_client_for_bad_data()</b>, <b>opus_codec_decode()</b>,
-    <b>OPUS_DECODE_STATIC_MAX_SAMPLES</b>, and
-  <b>packet_parse_opus_batch()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>audio_ring_buffer_write()</b>,
+    <b>client_info::client_id</b>, <b>disconnect_client_for_bad_data()</b>,
+    <b>ERROR_MEMORY</b>, <b>client_info::incoming_audio_buffer</b>,
+    <b>log_debug_every</b>, <b>log_error</b>, <b>log_info</b>,
+    <b>LOG_RATE_DEFAULT</b>, <b>LOG_RATE_SLOW</b>, <b>log_warn</b>,
+    <b>NET_TO_HOST_U16</b>, <b>opus_codec_decode()</b>,
+    <b>OPUS_DECODE_STATIC_MAX_SAMPLES</b>, <b>client_info::opus_decoder</b>,
+    <b>packet_parse_opus_batch()</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>SET_ERRNO</b>, <b>VALIDATE_AUDIO_STREAM_ENABLED</b>,
+    <b>VALIDATE_NONZERO</b>, <b>VALIDATE_NOTNULL_DATA</b>,
+    <b>VALIDATE_RANGE</b>, and <b>VALIDATE_RESOURCE_INITIALIZED</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_handle_audio_opus_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_audio_opus_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
-  handle_audio_opus_packet (client_info_t * client, const void * data, size_t
-  len)</a></h2>
+<h2 class="Ss" id="void_handle_audio_opus_packet_("><a class="permalink" href="#void_handle_audio_opus_packet_(">void
+  handle_audio_opus_packet (<b>client_info_t</b> * client, const void * data,
+  size_t len)</a></h2>
 <p class="Pp">Process AUDIO_OPUS packet - decode single Opus frame from client.
     Handles single Opus-encoded audio frames sent by clients. The packet format
     includes a 16-byte header followed by the Opus-encoded data.</p>
 <p class="Pp"></p>
 <p class="Pp">PACKET STRUCTURE:</p>
 <ul class="Bl-bullet">
-  <li>Offset 0: sample_rate (uint32_t, native byte order - bug in client)</li>
-  <li>Offset 4: frame_duration (uint32_t, native byte order - bug in
+  <li>Offset 0: sample_rate (<b>uint32_t</b>, native byte order - bug in
     client)</li>
+  <li>Offset 4: frame_duration (<b>uint32_t</b>, native byte order - bug in
+      client)</li>
   <li>Offset 8: reserved (8 bytes)</li>
   <li>Offset 16: Opus-encoded audio data</li>
 </ul>
@@ -936,13 +838,18 @@
 1548 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>,
-    <b>audio_ring_buffer_write()</b>, <b>disconnect_client_for_bad_data()</b>,
-    and <b>opus_codec_decode()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
+    <b>audio_ring_buffer_write()</b>, <b>client_info::client_id</b>,
+    <b>disconnect_client_for_bad_data()</b>,
+    <b>client_info::incoming_audio_buffer</b>,
+    <b>client_info::is_sending_audio</b>, <b>log_debug_every</b>,
+    <b>log_error</b>, <b>LOG_RATE_DEFAULT</b>, <b>LOG_RATE_VERY_FAST</b>,
+    <b>NET_TO_HOST_U32</b>, <b>opus_codec_decode()</b>,
+    <b>client_info::opus_decoder</b>, and <b>VALIDATE_PACKET_NOT_NULL</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_handle_audio_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_audio_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
-  handle_audio_packet (client_info_t * client, const void * data, size_t
+<h2 class="Ss" id="void_handle_audio_packet_("><a class="permalink" href="#void_handle_audio_packet_(">void
+  handle_audio_packet (<b>client_info_t</b> * client, const void * data, size_t
   len)</a></h2>
 <p class="Pp">Process AUDIO packet - store single audio sample batch (legacy
     format). Handles the original audio packet format that sends one batch of
@@ -1016,12 +923,16 @@
 1105 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>audio_ring_buffer_write()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>audio_ring_buffer_write()</b>,
+    <b>AUDIO_SAMPLES_PER_PACKET</b>, <b>client_info::incoming_audio_buffer</b>,
+    <b>log_error</b>, <b>VALIDATE_AUDIO_ALIGNMENT</b>,
+    <b>VALIDATE_AUDIO_SAMPLE_COUNT</b>, <b>VALIDATE_AUDIO_STREAM_ENABLED</b>,
+    <b>VALIDATE_NOTNULL_DATA</b>, and <b>VALIDATE_RESOURCE_INITIALIZED</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_handle_client_capabilities_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_client_capabilities_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
-  handle_client_capabilities_packet (client_info_t * client, const void * data,
-  size_t len)</a></h2>
+<h2 class="Ss" id="void_handle_client_capabilities_packet_("><a class="permalink" href="#void_handle_client_capabilities_packet_(">void
+  handle_client_capabilities_packet (<b>client_info_t</b> * client, const void *
+  data, size_t len)</a></h2>
 <p class="Pp">Process CLIENT_CAPABILITIES packet - configure client-specific
     rendering. This packet contains detailed information about the client's
     terminal capabilities and preferences. The server uses this data to generate
@@ -1030,7 +941,7 @@
 <p class="Pp">PACKET STRUCTURE EXPECTED:</p>
 <dl class="Bl-tag">
   <dt>&#x2022;</dt>
-  <dd>terminal_capabilities_packet_t containing:</dd>
+  <dd><b>terminal_capabilities_packet_t</b> containing:</dd>
 </dl>
 <dl class="Bl-tag">
   <dt> &#x2022;</dt>
@@ -1102,7 +1013,7 @@
 <div class="Bd-indent"><i>client</i> Target client whose capabilities are being
   configured
 <br/>
-<i>data</i> Packet payload containing terminal_capabilities_packet_t
+<i>data</i> Packet payload containing <b>terminal_capabilities_packet_t</b>
 <br/>
 <i>len</i> Size of packet payload in bytes</div>
 <p class="Pp"><b>Note</b></p>
@@ -1113,10 +1024,11 @@
 <p class="Pp">Changes affect all subsequent ASCII frame generation</p>
 </div>
 <p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>initialize_client_palette()</b> For palette setup
-  details
+<div class="Bd-indent"><b>initialize_client_palette()</b> For <b>Palette</b>
+  setup details
 <p class="Pp"></p>
-<p class="Pp">terminal_color_level_name() For color level descriptions</p>
+<p class="Pp"><b>terminal_color_level_name()</b> For color level
+  descriptions</p>
 </div>
 <p class="Pp">Definition at line <b>1619</b> of file
   <b>server/protocol.c</b>.</p>
@@ -1256,13 +1168,58 @@
 1752 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>initialize_client_palette()</b>.</p>
+<p class="Pp">References <b>terminal_capabilities_packet_t::capabilities</b>,
+    <b>terminal_capabilities_t::capabilities</b>, <b>client_info::client_id</b>,
+    <b>client_info::client_luminance_palette</b>,
+    <b>client_info::client_palette_chars</b>,
+    <b>client_info::client_palette_initialized</b>,
+    <b>client_info::client_palette_len</b>,
+    <b>client_info::client_palette_type</b>,
+    <b>client_info::client_state_mutex</b>,
+    <b>client_info::codec_capabilities_audio</b>,
+    <b>terminal_capabilities_packet_t::codec_capabilities_audio</b>,
+    <b>client_info::codec_capabilities_video</b>,
+    <b>terminal_capabilities_packet_t::codec_capabilities_video</b>,
+    <b>terminal_capabilities_packet_t::color_count</b>,
+    <b>terminal_capabilities_t::color_count</b>,
+    <b>terminal_capabilities_packet_t::color_level</b>,
+    <b>terminal_capabilities_t::color_level</b>,
+    <b>terminal_capabilities_packet_t::colorterm</b>,
+    <b>terminal_capabilities_t::colorterm</b>,
+    <b>terminal_capabilities_packet_t::desired_fps</b>,
+    <b>terminal_capabilities_t::desired_fps</b>,
+    <b>terminal_capabilities_packet_t::detection_reliable</b>,
+    <b>terminal_capabilities_t::detection_reliable</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>client_info::has_terminal_caps</b>,
+    <b>client_info::height</b>, <b>terminal_capabilities_packet_t::height</b>,
+    <b>initialize_client_palette()</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>log_debug</b>, <b>log_info</b>, <b>log_info_client</b>, <b>log_warn</b>,
+    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>NET_TO_HOST_U16</b>,
+    <b>NET_TO_HOST_U32</b>, <b>PALETTE_CUSTOM</b>,
+    <b>terminal_capabilities_packet_t::palette_custom</b>,
+    <b>terminal_capabilities_t::palette_custom</b>,
+    <b>terminal_capabilities_packet_t::palette_type</b>,
+    <b>terminal_capabilities_t::palette_type</b>,
+    <b>terminal_capabilities_packet_t::render_mode</b>,
+    <b>terminal_capabilities_t::render_mode</b>, <b>RENDER_MODE_BACKGROUND</b>,
+    <b>RENDER_MODE_HALF_BLOCK</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
+    <b>client_info::socket</b>,
+    <b>terminal_capabilities_packet_t::term_type</b>,
+    <b>terminal_capabilities_t::term_type</b>,
+    <b>client_info::terminal_caps</b>, <b>terminal_color_level_name()</b>,
+    <b>terminal_capabilities_packet_t::utf8_support</b>,
+    <b>terminal_capabilities_t::utf8_support</b>, <b>VALIDATE_NONZERO</b>,
+    <b>VALIDATE_PACKET_SIZE</b>, <b>VALIDATE_RANGE</b>,
+    <b>terminal_capabilities_t::wants_background</b>,
+    <b>terminal_capabilities_packet_t::wants_padding</b>,
+    <b>terminal_capabilities_t::wants_padding</b>, <b>client_info::width</b>,
+    and <b>terminal_capabilities_packet_t::width</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_handle_client_join_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_client_join_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
-  handle_client_join_packet (client_info_t * client, const void * data, size_t
-  len)</a></h2>
+<h2 class="Ss" id="void_handle_client_join_packet_("><a class="permalink" href="#void_handle_client_join_packet_(">void
+  handle_client_join_packet (<b>client_info_t</b> * client, const void * data,
+  size_t len)</a></h2>
 <p class="Pp">Process CLIENT_JOIN packet - client announces identity and
     capabilities. This is the first substantive packet clients send after
     establishing a TCP connection. It provides the server with essential
@@ -1271,7 +1228,7 @@
 <p class="Pp">PACKET STRUCTURE EXPECTED:</p>
 <dl class="Bl-tag">
   <dt>&#x2022;</dt>
-  <dd>client_info_packet_t containing:</dd>
+  <dd><b>client_info_packet_t</b> containing:</dd>
 </dl>
 <dl class="Bl-tag">
   <dt> &#x2022;</dt>
@@ -1301,7 +1258,7 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>client</i> Target client whose state will be updated
 <br/>
-<i>data</i> Packet payload (should be client_info_packet_t)
+<i>data</i> Packet payload (should be <b>client_info_packet_t</b>)
 <br/>
 <i>len</i> Size of packet payload in bytes</div>
 <p class="Pp"><b>Note</b></p>
@@ -1312,8 +1269,8 @@
   serialization</p>
 </div>
 <p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>handle_stream_start_packet()</b> For enabling media
-  transmission</div>
+<div class="Bd-indent"><b>handle_stream_start_packet()</b> For enabling
+  <b>Media</b> transmission</div>
 <p class="Pp">Definition at line <b>292</b> of file
   <b>server/protocol.c</b>.</p>
 <pre>292                                                                                     {
@@ -1353,12 +1310,22 @@
 326 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>disconnect_client_for_bad_data()</b>.</p>
+<p class="Pp">References <b>client_info::can_send_audio</b>,
+    <b>client_info::can_send_video</b>,
+    <b>client_info_packet_t::capabilities</b>, <b>CLIENT_CAP_AUDIO</b>,
+    <b>CLIENT_CAP_COLOR</b>, <b>CLIENT_CAP_STRETCH</b>, <b>CLIENT_CAP_VIDEO</b>,
+    <b>client_info::client_id</b>, <b>disconnect_client_for_bad_data()</b>,
+    <b>client_info::display_name</b>, <b>client_info_packet_t::display_name</b>,
+    <b>INVALID_SOCKET_VALUE</b>, <b>log_info</b>, <b>log_info_client</b>,
+    <b>MAX_DISPLAY_NAME_LEN</b>, <b>NET_TO_HOST_U32</b>, <b>SAFE_STRNCPY</b>,
+    <b>client_info::socket</b>, <b>VALIDATE_CAPABILITY_FLAGS</b>,
+    <b>VALIDATE_FLAGS_MASK</b>, <b>VALIDATE_PACKET_SIZE</b>, and
+    <b>client_info::wants_stretch</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_handle_client_leave_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_client_leave_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
-  handle_client_leave_packet (client_info_t * client, const void * data, size_t
-  len)</a></h2>
+<h2 class="Ss" id="void_handle_client_leave_packet_("><a class="permalink" href="#void_handle_client_leave_packet_(">void
+  handle_client_leave_packet (<b>client_info_t</b> * client, const void * data,
+  size_t len)</a></h2>
 <p class="Pp">Process CLIENT_LEAVE packet - handle clean client disconnect.
     Clients may send this packet before disconnecting to allow the server to log
     the disconnect reason and perform clean state management. This is optional
@@ -1445,12 +1412,14 @@
 483 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>.</p>
+<p class="Pp">References <b>client_info::active</b>, <b>atomic_store_bool()</b>,
+    <b>client_info::client_id</b>, <b>ERROR_INVALID_STATE</b>, <b>log_debug</b>,
+    <b>log_info</b>, <b>log_warn</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_handle_image_frame_h265_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_image_frame_h265_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
-  handle_image_frame_h265_packet (client_info_t * client, const void * data,
-  size_t len)</a></h2>
+<h2 class="Ss" id="void_handle_image_frame_h265_packet_("><a class="permalink" href="#void_handle_image_frame_h265_packet_(">void
+  handle_image_frame_h265_packet (<b>client_info_t</b> * client, const void *
+  data, size_t len)</a></h2>
 <p class="Pp">Process H.265-encoded image frame from client. Handles incoming
     H.265/HEVC-encoded video frames from clients. Frames are decoded to ASCII
     art and added to the compositing pipeline.</p>
@@ -1597,16 +1566,24 @@
 1048 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_exchange_bool()</b>,
-    <b>atomic_load_bool()</b>, <b>disconnect_client_for_bad_data()</b>,
-    <b>frame</b>, <b>g_h265_server</b>, <b>g_should_exit</b>,
-    <b>h265_server_decode_and_convert()</b>,
-    <b>h265_server_get_client_decoder()</b>, <b>time_get_realtime_ns()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_exchange_bool()</b>,
+    <b>atomic_load_bool()</b>, <b>client_info::client_id</b>,
+    <b>client_info::codec_capabilities_video</b>,
+    <b>disconnect_client_for_bad_data()</b>, <b>frame</b>,
+    <b>client_info::frames_received</b>, <b>g_h265_server</b>,
+    <b>g_should_exit</b>, <b>h265_server_decode_and_convert()</b>,
+    <b>h265_server_get_client_decoder()</b>,
+    <b>client_info::incoming_video_buffer</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>client_info::is_sending_video</b>, <b>log_debug</b>, <b>log_error</b>,
+    <b>log_info</b>, <b>log_info_client</b>, <b>log_info_every</b>,
+    <b>log_warn</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>client_info::socket</b>, <b>time_get_realtime_ns()</b>,
+    <b>VIDEO_CODEC_H265</b>, <b>VIDEO_CODEC_SUPPORTED</b>,
     <b>video_frame_begin_write()</b>, and <b>video_frame_commit()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_handle_image_frame_packet_(client_info_t_*_client,_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_image_frame_packet_(client_info_t_*_client,_void_*_data,_size_t_len)">void
-  handle_image_frame_packet (client_info_t * client, void * data, size_t
+<h2 class="Ss" id="void_handle_image_frame_packet_("><a class="permalink" href="#void_handle_image_frame_packet_(">void
+  handle_image_frame_packet (<b>client_info_t</b> * client, void * data, size_t
   len)</a></h2>
 <p class="Pp">Process IMAGE_FRAME packet - store client's video data for
     rendering. This is the most performance-critical packet handler, processing
@@ -1615,8 +1592,8 @@
 <p class="Pp"></p>
 <p class="Pp">PACKET STRUCTURE EXPECTED:</p>
 <ul class="Bl-bullet">
-  <li>uint32_t width (network byte order)</li>
-  <li>uint32_t height (network byte order)</li>
+  <li><b>uint32_t</b> width (network byte order)</li>
+  <li><b>uint32_t</b> height (network byte order)</li>
   <li>rgb_pixel_t pixels[width * height] (RGB888 format)</li>
 </ul>
 <p class="Pp">PERFORMANCE CHARACTERISTICS:</p>
@@ -1861,17 +1838,30 @@
 912 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_cas_bool()</b>, <b>atomic_load_bool()</b>,
-    <b>disconnect_client_for_bad_data()</b>, <b>format_bytes_pretty()</b>,
-    <b>frame</b>, <b>frame_check_size_overflow()</b>,
-    <b>frame_validate_legacy()</b>, <b>g_should_exit</b>,
-    <b>image_calc_rgb_size()</b>, <b>image_validate_buffer_size()</b>,
-    <b>image_validate_dimensions()</b>, <b>video_frame_begin_write()</b>, and
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_cas_bool()</b>,
+    <b>atomic_load_bool()</b>, <b>client_info::client_id</b>,
+    <b>client_info::client_state_mutex</b>,
+    <b>client_info::codec_capabilities_video</b>,
+    <b>disconnect_client_for_bad_data()</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>format_bytes_pretty()</b>, <b>frame</b>,
+    <b>frame_check_size_overflow()</b>, <b>FRAME_HEADER_SIZE_LEGACY</b>,
+    <b>frame_validate_legacy()</b>, <b>client_info::frames_received</b>,
+    <b>client_info::frames_received_logged</b>, <b>g_should_exit</b>,
+    <b>HOST_TO_NET_U32</b>, <b>image_calc_rgb_size()</b>,
+    <b>image_validate_buffer_size()</b>, <b>image_validate_dimensions()</b>,
+    <b>client_info::incoming_video_buffer</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>client_info::is_sending_video</b>,
+    <b>client_info::last_received_frame_hash</b>, <b>log_debug</b>,
+    <b>log_error</b>, <b>log_info</b>, <b>log_info_client</b>, <b>log_warn</b>,
+    <b>MAX_FRAME_BUFFER_SIZE</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>NET_TO_HOST_U32</b>, <b>NS_PER_SEC_INT</b>, <b>SAFE_FREE</b>,
+    <b>SET_ERRNO</b>, <b>client_info::socket</b>, <b>VIDEO_CODEC_RGBA</b>,
+    <b>VIDEO_CODEC_SUPPORTED</b>, <b>video_frame_begin_write()</b>, and
     <b>video_frame_commit()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_handle_ping_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_ping_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
-  handle_ping_packet (client_info_t * client, const void * data, size_t
+<h2 class="Ss" id="void_handle_ping_packet_("><a class="permalink" href="#void_handle_ping_packet_(">void
+  handle_ping_packet (<b>client_info_t</b> * client, const void * data, size_t
   len)</a></h2>
 <p class="Pp">Handle PING packet - respond with PONG.</p>
 <p class="Pp">Definition at line <b>645</b> of file
@@ -1898,12 +1888,15 @@
 664 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>acip_send_pong()</b>, and
-  <b>atomic_load_bool()</b>.</p>
+<p class="Pp">References <b>acip_send_pong()</b>, <b>ASCIICHAT_OK</b>,
+    <b>atomic_load_bool()</b>, <b>client_info::client_id</b>,
+    <b>ERROR_NETWORK</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>client_info::send_mutex</b>, <b>SET_ERRNO</b>,
+    <b>client_info::shutting_down</b>, and <b>client_info::transport</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_handle_pong_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_pong_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
-  handle_pong_packet (client_info_t * client, const void * data, size_t
+<h2 class="Ss" id="void_handle_pong_packet_("><a class="permalink" href="#void_handle_pong_packet_(">void
+  handle_pong_packet (<b>client_info_t</b> * client, const void * data, size_t
   len)</a></h2>
 <p class="Pp">Handle PONG packet - client acknowledged our PING.</p>
 <p class="Pp">Definition at line <b>669</b> of file
@@ -1918,9 +1911,9 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_handle_protocol_version_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_protocol_version_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
-  handle_protocol_version_packet (client_info_t * client, const void * data,
-  size_t len)</a></h2>
+<h2 class="Ss" id="void_handle_protocol_version_packet_("><a class="permalink" href="#void_handle_protocol_version_packet_(">void
+  handle_protocol_version_packet (<b>client_info_t</b> * client, const void *
+  data, size_t len)</a></h2>
 <p class="Pp">Process PROTOCOL_VERSION packet - validate protocol compatibility.
     Clients send this packet to announce their protocol version and
     capabilities. The server validates that the major version matches and logs
@@ -1929,7 +1922,7 @@
 <p class="Pp">PACKET STRUCTURE EXPECTED:</p>
 <dl class="Bl-tag">
   <dt>&#x2022;</dt>
-  <dd>protocol_version_packet_t containing:</dd>
+  <dd><b>protocol_version_packet_t</b> containing:</dd>
 </dl>
 <dl class="Bl-tag">
   <dt> &#x2022;</dt>
@@ -1958,7 +1951,7 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>client</i> Client that sent the packet
 <br/>
-<i>data</i> Packet payload (protocol_version_packet_t)
+<i>data</i> Packet payload (<b>protocol_version_packet_t</b>)
 <br/>
 <i>len</i> Size of packet payload in bytes</div>
 <p class="Pp"><b>Note</b></p>
@@ -2018,12 +2011,22 @@
 406 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>disconnect_client_for_bad_data()</b>.</p>
+<p class="Pp">References <b>ACIP_CRYPTO_HAS_ENCRYPT</b>,
+    <b>client_info::client_id</b>,
+    <b>protocol_version_packet_t::compression_algorithms</b>,
+    <b>disconnect_client_for_bad_data()</b>,
+    <b>protocol_version_packet_t::feature_flags</b>, <b>log_debug</b>,
+    <b>log_info</b>, <b>log_warn</b>, <b>NET_TO_HOST_U16</b>,
+    <b>protocol_version_packet_t::protocol_revision</b>,
+    <b>protocol_version_packet_t::protocol_version</b>,
+    <b>PROTOCOL_VERSION_MAJOR</b>, <b>PROTOCOL_VERSION_MINOR</b>,
+    <b>protocol_version_packet_t::reserved</b>, and
+    <b>protocol_version_packet_t::supports_encryption</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_handle_remote_log_packet_from_client_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_remote_log_packet_from_client_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
-  handle_remote_log_packet_from_client (client_info_t * client, const void *
-  data, size_t len)</a></h2>
+<h2 class="Ss" id="void_handle_remote_log_packet_from_client_("><a class="permalink" href="#void_handle_remote_log_packet_from_client_(">void
+  handle_remote_log_packet_from_client (<b>client_info_t</b> * client, const
+  void * data, size_t len)</a></h2>
 <p class="Pp">Definition at line <b>1107</b> of file
   <b>server/protocol.c</b>.</p>
 <pre>1107                                                                                                {
@@ -2062,12 +2065,17 @@
 1140 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>disconnect_client_for_bad_data()</b>,
-    <b>log_msg()</b>, and <b>packet_parse_remote_log()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>client_info::client_id</b>,
+    <b>disconnect_client_for_bad_data()</b>, <b>client_info::display_name</b>,
+    <b>LOG_INFO</b>, <b>log_msg()</b>, <b>MAX_REMOTE_LOG_MESSAGE_LENGTH</b>,
+    <b>packet_parse_remote_log()</b>,
+    <b>REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER</b>,
+    <b>REMOTE_LOG_DIRECTION_UNKNOWN</b>, and
+  <b>REMOTE_LOG_FLAG_TRUNCATED</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_handle_size_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_size_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
-  handle_size_packet (client_info_t * client, const void * data, size_t
+<h2 class="Ss" id="void_handle_size_packet_("><a class="permalink" href="#void_handle_size_packet_(">void
+  handle_size_packet (<b>client_info_t</b> * client, const void * data, size_t
   len)</a></h2>
 <p class="Pp">Process terminal size update packet - handle client window resize.
     Clients send this packet when their terminal window is resized, allowing the
@@ -2077,13 +2085,13 @@
 <p class="Pp">PACKET STRUCTURE EXPECTED:</p>
 <dl class="Bl-tag">
   <dt>&#x2022;</dt>
-  <dd>size_packet_t containing:</dd>
+  <dd><b>size_packet_t</b> containing:</dd>
 </dl>
 <dl class="Bl-tag">
   <dt> &#x2022;</dt>
-  <dd>uint16_t width: New terminal width in characters</dd>
+  <dd><b>uint16_t</b> width: New terminal width in characters</dd>
   <dt> &#x2022;</dt>
-  <dd>uint16_t height: New terminal height in characters</dd>
+  <dd><b>uint16_t</b> height: New terminal height in characters</dd>
 </dl>
 <p class="Pp">STATE CHANGES PERFORMED:</p>
 <ul class="Bl-bullet">
@@ -2139,11 +2147,17 @@
 1808 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>client_info::client_id</b>,
+    <b>client_info::client_state_mutex</b>, <b>client_info::height</b>,
+    <b>size_packet_t::height</b>, <b>log_info</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, <b>NET_TO_HOST_U16</b>, <b>VALIDATE_NONZERO</b>,
+    <b>VALIDATE_PACKET_SIZE</b>, <b>VALIDATE_RANGE</b>,
+    <b>client_info::width</b>, and <b>size_packet_t::width</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_handle_stream_start_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_stream_start_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
-  handle_stream_start_packet (client_info_t * client, const void * data, size_t
-  len)</a></h2>
+<h2 class="Ss" id="void_handle_stream_start_packet_("><a class="permalink" href="#void_handle_stream_start_packet_(">void
+  handle_stream_start_packet (<b>client_info_t</b> * client, const void * data,
+  size_t len)</a></h2>
 <p class="Pp">Process STREAM_START packet - client requests to begin media
     transmission. Clients send this packet to indicate they're ready to start
     sending video and/or audio data. The server updates its internal state to
@@ -2151,7 +2165,7 @@
 <p class="Pp"></p>
 <p class="Pp">PACKET STRUCTURE EXPECTED:</p>
 <ul class="Bl-bullet">
-  <li>uint32_t stream_type (network byte order)</li>
+  <li><b>uint32_t</b> stream_type (network byte order)</li>
   <li>Bitmask containing STREAM_TYPE_VIDEO and/or STREAM_TYPE_AUDIO</li>
 </ul>
 <p class="Pp">STATE CHANGES PERFORMED:</p>
@@ -2189,10 +2203,11 @@
   cycle</p>
 </div>
 <p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>handle_stream_stop_packet()</b> For stopping media
-  transmission
+<div class="Bd-indent"><b>handle_stream_stop_packet()</b> For stopping
+  <b>Media</b> transmission
 <p class="Pp"></p>
-<p class="Pp"><b>handle_image_frame_packet()</b> For video data processing</p>
+<p class="Pp"><b>handle_image_frame_packet()</b> For <b>Video</b> data
+    processing</p>
 </div>
 <p class="Pp">Definition at line <b>521</b> of file
   <b>server/protocol.c</b>.</p>
@@ -2245,13 +2260,20 @@
 567 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, and
-    <b>opus_codec_create_decoder()</b>.</p>
+<p class="Pp">References <b>atomic_store_bool()</b>,
+    <b>client_info::client_id</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>client_info::is_sending_audio</b>, <b>client_info::is_sending_video</b>,
+    <b>log_error</b>, <b>log_info</b>, <b>log_info_client</b>,
+    <b>NET_TO_HOST_U32</b>, <b>opus_codec_create_decoder()</b>,
+    <b>client_info::opus_decoder</b>, <b>client_info::socket</b>,
+    <b>STREAM_TYPE_AUDIO</b>, <b>STREAM_TYPE_VIDEO</b>,
+    <b>VALIDATE_CAPABILITY_FLAGS</b>, <b>VALIDATE_FLAGS_MASK</b>, and
+    <b>VALIDATE_PACKET_SIZE</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_handle_stream_stop_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_stream_stop_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
-  handle_stream_stop_packet (client_info_t * client, const void * data, size_t
-  len)</a></h2>
+<h2 class="Ss" id="void_handle_stream_stop_packet_("><a class="permalink" href="#void_handle_stream_stop_packet_(">void
+  handle_stream_stop_packet (<b>client_info_t</b> * client, const void * data,
+  size_t len)</a></h2>
 <p class="Pp">Process STREAM_STOP packet - client requests to halt media
     transmission. Clients send this packet to gracefully stop sending video
     and/or audio data. The server updates its state to exclude this client from
@@ -2259,7 +2281,7 @@
 <p class="Pp"></p>
 <p class="Pp">PACKET STRUCTURE EXPECTED:</p>
 <ul class="Bl-bullet">
-  <li>uint32_t stream_type (network byte order)</li>
+  <li><b>uint32_t</b> stream_type (network byte order)</li>
   <li>Bitmask containing STREAM_TYPE_VIDEO and/or STREAM_TYPE_AUDIO</li>
 </ul>
 <p class="Pp">STATE CHANGES PERFORMED:</p>
@@ -2294,8 +2316,8 @@
   cycle</p>
 </div>
 <p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>handle_stream_start_packet()</b> For starting media
-  transmission</div>
+<div class="Bd-indent"><b>handle_stream_start_packet()</b> For starting
+  <b>Media</b> transmission</div>
 <p class="Pp">Definition at line <b>604</b> of file
   <b>server/protocol.c</b>.</p>
 <pre>604                                                                                     {
@@ -2337,11 +2359,17 @@
 640 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>.</p>
+<p class="Pp">References <b>atomic_store_bool()</b>,
+    <b>client_info::client_id</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>client_info::is_sending_audio</b>, <b>client_info::is_sending_video</b>,
+    <b>log_info</b>, <b>log_info_client</b>, <b>NET_TO_HOST_U32</b>,
+    <b>client_info::socket</b>, <b>STREAM_TYPE_AUDIO</b>,
+    <b>STREAM_TYPE_VIDEO</b>, <b>VALIDATE_CAPABILITY_FLAGS</b>,
+    <b>VALIDATE_FLAGS_MASK</b>, and <b>VALIDATE_PACKET_SIZE</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_send_server_state_to_client_(client_info_t_*_client)"><a class="permalink" href="#int_send_server_state_to_client_(client_info_t_*_client)">int
-  send_server_state_to_client (client_info_t * client)</a></h2>
+<h2 class="Ss" id="int_send_server_state_to_client_("><a class="permalink" href="#int_send_server_state_to_client_(">int
+  send_server_state_to_client (<b>client_info_t</b> * client)</a></h2>
 <p class="Pp">Send current server state to a specific client. Generates and
     queues a SERVER_STATE packet containing information about the current number
     of connected and active clients. This helps clients understand the
@@ -2350,7 +2378,7 @@
 <p class="Pp">PACKET CONTENT GENERATED:</p>
 <dl class="Bl-tag">
   <dt>&#x2022;</dt>
-  <dd>server_state_packet_t containing:</dd>
+  <dd><b>server_state_packet_t</b> containing:</dd>
 </dl>
 <dl class="Bl-tag">
   <dt> &#x2022;</dt>
@@ -2444,7 +2472,13 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_send_server_state()</b>,
-    <b>atomic_load_bool()</b>, and <b>g_client_manager</b>.</p>
+    <b>server_state_packet_t::active_client_count</b>, <b>ASCIICHAT_OK</b>,
+    <b>atomic_load_bool()</b>, <b>client_info::client_id</b>,
+    <b>server_state_packet_t::connected_client_count</b>, <b>ERROR_NETWORK</b>,
+    <b>g_client_manager</b>, <b>HOST_TO_NET_U32</b>, <b>log_debug</b>,
+    <b>MAX_CLIENTS</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>server_state_packet_t::reserved</b>, <b>client_info::send_mutex</b>,
+    <b>SET_ERRNO</b>, and <b>client_info::transport</b>.</p>
 <p class="Pp">Referenced by <b>add_webrtc_client()</b>.</p>
 </section>
 </section>
@@ -2455,7 +2489,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

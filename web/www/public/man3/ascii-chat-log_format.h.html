@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>format.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">format.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">format.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">format.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>log_format_spec_t</b>
+  <br/>
+  A single parsed format specifier. struct <b>log_template_t</b>
+  <br/>
+  Compiled log format ready for use in <b>log_template_apply()</b>.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>log_template_type_t</b> { <b>LOG_FORMAT_LITERAL</b>,
+    <b>LOG_FORMAT_TIME</b>, <b>LOG_FORMAT_LEVEL</b>,
+    <b>LOG_FORMAT_LEVEL_ALIGNED</b>, <b>LOG_FORMAT_FILE</b>,
+    <b>LOG_FORMAT_FILE_RELATIVE</b>, <b>LOG_FORMAT_LINE</b>,
+    <b>LOG_FORMAT_FUNC</b>, <b>LOG_FORMAT_TID</b>, <b>LOG_FORMAT_TNAME</b>,
+    <b>LOG_FORMAT_MESSAGE</b>, <b>LOG_FORMAT_COLORLOG_LEVEL</b>,
+    <b>LOG_FORMAT_COLOR</b>, <b>LOG_FORMAT_COLORED_MESSAGE</b>,
+    <b>LOG_FORMAT_MICROSECONDS</b>, <b>LOG_FORMAT_NANOSECONDS</b>,
+    <b>LOG_FORMAT_STRFTIME_CODE</b>, <b>LOG_FORMAT_NEWLINE</b> }
+  <br/>
+  Types of format specifiers that can appear in a format string.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>log_template_t</b> * <b>log_template_parse</b> (const char
+    *format_str, <b>bool</b> console_only)
+  <br/>
+  Parse a format string into compiled format structure. void
+    <b>log_template_free</b> (<b>log_template_t</b> *format)
+  <br/>
+  Free compiled format structure. int <b>log_template_apply</b> (const
+    <b>log_template_t</b> *format, char *buf, size_t buf_size,
+    <b>log_level_t</b> level, const char *timestamp, const char *file, int line,
+    const char *func, <b>uint64_t</b> tid, const char *message, <b>bool</b>
+    use_colors, <b>uint64_t</b> time_nanoseconds)
+  <br/>
+  Apply format to a log entry and write result to buffer.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>log_template_type_t</b></a></h2>
+<p class="Pp">Types of format specifiers that can appear in a format string.</p>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="LOG_FORMAT_LITERAL"><a class="permalink" href="#LOG_FORMAT_LITERAL"><b><i>LOG_FORMAT_LITERAL
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="LOG_FORMAT_TIME"><a class="permalink" href="#LOG_FORMAT_TIME"><b><i>LOG_FORMAT_TIME
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="LOG_FORMAT_LEVEL"><a class="permalink" href="#LOG_FORMAT_LEVEL"><b><i>LOG_FORMAT_LEVEL
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="LOG_FORMAT_LEVEL_ALIGNED"><a class="permalink" href="#LOG_FORMAT_LEVEL_ALIGNED"><b><i>LOG_FORMAT_LEVEL_ALIGNED
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="LOG_FORMAT_FILE"><a class="permalink" href="#LOG_FORMAT_FILE"><b><i>LOG_FORMAT_FILE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="LOG_FORMAT_FILE_RELATIVE"><a class="permalink" href="#LOG_FORMAT_FILE_RELATIVE"><b><i>LOG_FORMAT_FILE_RELATIVE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="LOG_FORMAT_LINE"><a class="permalink" href="#LOG_FORMAT_LINE"><b><i>LOG_FORMAT_LINE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="LOG_FORMAT_FUNC"><a class="permalink" href="#LOG_FORMAT_FUNC"><b><i>LOG_FORMAT_FUNC
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="LOG_FORMAT_TID"><a class="permalink" href="#LOG_FORMAT_TID"><b><i>LOG_FORMAT_TID
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="LOG_FORMAT_TNAME"><a class="permalink" href="#LOG_FORMAT_TNAME"><b><i>LOG_FORMAT_TNAME
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="LOG_FORMAT_MESSAGE"><a class="permalink" href="#LOG_FORMAT_MESSAGE"><b><i>LOG_FORMAT_MESSAGE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="LOG_FORMAT_COLORLOG_LEVEL"><a class="permalink" href="#LOG_FORMAT_COLORLOG_LEVEL"><b><i>LOG_FORMAT_COLORLOG_LEVEL
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="LOG_FORMAT_COLOR"><a class="permalink" href="#LOG_FORMAT_COLOR"><b><i>LOG_FORMAT_COLOR
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="LOG_FORMAT_COLORED_MESSAGE"><a class="permalink" href="#LOG_FORMAT_COLORED_MESSAGE"><b><i>LOG_FORMAT_COLORED_MESSAGE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="LOG_FORMAT_MICROSECONDS"><a class="permalink" href="#LOG_FORMAT_MICROSECONDS"><b><i>LOG_FORMAT_MICROSECONDS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="LOG_FORMAT_NANOSECONDS"><a class="permalink" href="#LOG_FORMAT_NANOSECONDS"><b><i>LOG_FORMAT_NANOSECONDS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="LOG_FORMAT_STRFTIME_CODE"><a class="permalink" href="#LOG_FORMAT_STRFTIME_CODE"><b><i>LOG_FORMAT_STRFTIME_CODE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="LOG_FORMAT_NEWLINE"><a class="permalink" href="#LOG_FORMAT_NEWLINE"><b><i>LOG_FORMAT_NEWLINE
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>25</b> of file <b>log/format.h</b>.</p>
+<pre>25              {
+26   LOG_FORMAT_LITERAL,         /* Plain text (no % prefix) */
+27   LOG_FORMAT_TIME,            /* %time(fmt) - custom time format */
+28   LOG_FORMAT_LEVEL,           /* %level - log level as string */
+29   LOG_FORMAT_LEVEL_ALIGNED,   /* %level_aligned - log level padded */
+30   LOG_FORMAT_FILE,            /* %file - file path */
+31   LOG_FORMAT_FILE_RELATIVE,   /* %file_relative - file path relative to project root */
+32   LOG_FORMAT_LINE,            /* %line - line number */
+33   LOG_FORMAT_FUNC,            /* %func - function name */
+34   LOG_FORMAT_TID,             /* %tid - thread ID */
+35   LOG_FORMAT_TNAME,           /* %tname - thread name (from debug registry) */
+36   LOG_FORMAT_MESSAGE,         /* %message - log message */
+37   LOG_FORMAT_COLORLOG_LEVEL,  /* %colorlog_level_string_to_color - color code */
+38   LOG_FORMAT_COLOR,           /* %color(LEVEL, content) - colorize content using LEVEL's color */
+39   LOG_FORMAT_COLORED_MESSAGE, /* %colored_message - message with things like filenames and 0x numbers colored */
+40   LOG_FORMAT_MICROSECONDS,    /* %ms - microseconds component of current time (000000-999999) */
+41   LOG_FORMAT_NANOSECONDS,     /* %ns - nanoseconds component of current time (000000000-999999999) */
+42   LOG_FORMAT_STRFTIME_CODE,   /* %H, %M, %S, %A, %B, etc. - strftime format codes */
+43   LOG_FORMAT_NEWLINE,         /* Platform-aware newline (\n) */
+44 } log_template_type_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

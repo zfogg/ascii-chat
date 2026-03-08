@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>tcp_server(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">tcp_server(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">tcp_server(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">tcp_server - TCP server state.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/tcp/server.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>socket_t</b> <b>listen_socket</b>
+  <br/>
+  IPv4 listen socket. <b>socket_t</b> <b>listen_socket6</b>
+  <br/>
+  IPv6 listen socket. <b>atomic_t</b> <b>running</b>
+  <br/>
+  Server running flag (set false to shutdown). <b>tcp_server_config_t</b>
+    <b>config</b>
+  <br/>
+  Server configuration. <b>tcp_client_entry_t</b> * <b>clients</b>
+  <br/>
+  Hash table of connected clients. <b>rwlock_t</b> <b>clients_rwlock</b>
+  <br/>
+  Read-write lock (allows concurrent readers, exclusive writers).
+    <b>tcp_client_cleanup_fn</b> <b>cleanup_fn</b>
+  <br/>
+  Callback for cleaning up client data.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">TCP server state.</p>
+<p class="Pp">Maintains server sockets, client registry, and runtime state.</p>
+<p class="Pp">Definition at line <b>170</b> of file
+    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>tcp_client_cleanup_fn</b> tcp_server::cleanup_fn</h2>
+<p class="Pp">Callback for cleaning up client data.</p>
+<p class="Pp">Definition at line <b>179</b> of file
+    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
+<p class="Pp">Referenced by <b>tcp_server_destroy()</b>,
+    <b>tcp_server_init()</b>, <b>tcp_server_remove_client()</b>, and
+    <b>tcp_server_set_cleanup_callback()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>tcp_client_entry_t</b>* tcp_server::clients</h2>
+<p class="Pp">Hash table of connected clients.</p>
+<p class="Pp">Definition at line <b>177</b> of file
+    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
+<p class="Pp">Referenced by <b>tcp_server_add_client()</b>,
+    <b>tcp_server_destroy()</b>, <b>tcp_server_foreach_client()</b>,
+    <b>tcp_server_get_client()</b>, <b>tcp_server_get_client_count()</b>,
+    <b>tcp_server_get_thread_count()</b>, <b>tcp_server_init()</b>,
+    <b>tcp_server_remove_client()</b>, <b>tcp_server_spawn_thread()</b>, and
+    <b>tcp_server_stop_client_threads()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>rwlock_t</b> tcp_server::clients_rwlock</h2>
+<p class="Pp">Read-write lock (allows concurrent readers, exclusive
+  writers).</p>
+<p class="Pp">Definition at line <b>178</b> of file
+    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
+<p class="Pp">Referenced by <b>tcp_server_add_client()</b>,
+    <b>tcp_server_destroy()</b>, <b>tcp_server_foreach_client()</b>,
+    <b>tcp_server_get_client()</b>, <b>tcp_server_get_client_count()</b>,
+    <b>tcp_server_get_thread_count()</b>, <b>tcp_server_init()</b>,
+    <b>tcp_server_remove_client()</b>, <b>tcp_server_spawn_thread()</b>, and
+    <b>tcp_server_stop_client_threads()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>tcp_server_config_t</b> tcp_server::config</h2>
+<p class="Pp">Server configuration.</p>
+<p class="Pp">Definition at line <b>174</b> of file
+    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
+<p class="Pp">Referenced by <b>tcp_server_init()</b>, and
+    <b>tcp_server_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>socket_t</b> tcp_server::listen_socket</h2>
+<p class="Pp">IPv4 listen socket.</p>
+<p class="Pp">Definition at line <b>171</b> of file
+    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
+<p class="Pp">Referenced by <b>tcp_server_destroy()</b>,
+    <b>tcp_server_init()</b>, and <b>tcp_server_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>socket_t</b> tcp_server::listen_socket6</h2>
+<p class="Pp">IPv6 listen socket.</p>
+<p class="Pp">Definition at line <b>172</b> of file
+    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
+<p class="Pp">Referenced by <b>tcp_server_destroy()</b>,
+    <b>tcp_server_init()</b>, and <b>tcp_server_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> tcp_server::running</h2>
+<p class="Pp">Server running flag (set false to shutdown).</p>
+<p class="Pp">Definition at line <b>173</b> of file
+    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_handler()</b>,
+    <b>tcp_server_destroy()</b>, <b>tcp_server_init()</b>, and
+    <b>tcp_server_run()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

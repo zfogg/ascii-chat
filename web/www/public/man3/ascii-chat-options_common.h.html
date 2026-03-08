@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>common.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">common.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">common.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">common.h - Common utilities and helpers for option parsing across
+    all modes.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>OPTIONS_COMMON_H</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">const char * <b>find_similar_option</b> (const char *unknown_opt,
+    const struct option *options)
+  <br/>
+  Find a similar option name for typo suggestions. const char *
+    <b>format_available_modes</b> (<b>option_mode_bitmask_t</b> mode_bitmask)
+  <br/>
+  Format all available modes for an option as comma-separated list. int
+    <b>strtoint_safe</b> (const char *str)
+  <br/>
+  Safely parse string to integer with validation. char *
+    <b>validate_required_argument</b> (const char *optarg, char *argbuf, size_t
+    argbuf_size, const char *option_name, <b>asciichat_mode_t</b> mode)
+  <br/>
+  Validate and retrieve required argument for an option. <b>bool</b>
+    <b>validate_positive_int_opt</b> (const char *value_str, int *out_value,
+    const char *param_name)
+  <br/>
+  Validate a positive integer value. <b>bool</b> <b>validate_port_opt</b> (const
+    char *value_str, <b>uint16_t</b> *out_port)
+  <br/>
+  Validate port number (1-65535). <b>bool</b> <b>validate_fps_opt</b> (const
+    char *value_str, int *out_fps)
+  <br/>
+  Validate FPS value (1-144). <b>bool</b> <b>validate_webcam_index</b> (const
+    char *value_str, unsigned short int *out_index)
+  <br/>
+  Validate webcam index using the common device index validator.
+    <b>asciichat_error_t</b> <b>validate_options_and_report</b> (const void
+    *config, const void *opts)
+  <br/>
+  Validate options and report errors to stderr. <b>asciichat_error_t</b>
+    <b>detect_default_ssh_key</b> (char *key_path, size_t <b>path_size</b>)
+  <br/>
+  Detect default SSH key path for the current user. char *
+    <b>strip_equals_prefix</b> (const char *opt_value, char *buffer, size_t
+    <b>buffer_size</b>)
+  <br/>
+  Strip equals sign prefix from option argument. char *
+    <b>get_required_argument</b> (const char *opt_value, char *buffer, size_t
+    <b>buffer_size</b>, const char *option_name, <b>asciichat_mode_t</b> mode)
+  <br/>
+  Handle required arguments with consistent error messages. char *
+    <b>read_password_from_stdin</b> (const char *prompt)
+  <br/>
+  Read password from stdin with prompt. <b>asciichat_error_t</b>
+    <b>parse_color_mode_option</b> (const char *value_str, <b>options_t</b>
+    *opts)
+  <br/>
+  Parse --color-mode option and set opts-&gt;color_mode.
+    <b>asciichat_error_t</b> <b>parse_render_mode_option</b> (const char
+    *value_str, <b>options_t</b> *opts)
+  <br/>
+  Parse --render-mode option and set opts-&gt;render_mode.
+    <b>asciichat_error_t</b> <b>parse_palette_option</b> (const char *value_str,
+    <b>options_t</b> *opts)
+  <br/>
+  Parse --palette option and set opt_palette_type. <b>asciichat_error_t</b>
+    <b>parse_palette_chars_option</b> (const char *value_str, <b>options_t</b>
+    *opts)
+  <br/>
+  Parse --palette-chars option and set opt_palette_custom.
+    <b>asciichat_error_t</b> <b>parse_width_option</b> (const char *value_str,
+    <b>options_t</b> *opts)
+  <br/>
+  Parse --width option and set opts-&gt;width. <b>asciichat_error_t</b>
+    <b>parse_height_option</b> (const char *value_str, <b>options_t</b> *opts)
+  <br/>
+  Parse --height option and set opts-&gt;height. <b>asciichat_error_t</b>
+    <b>parse_webcam_index_option</b> (const char *value_str, <b>options_t</b>
+    *opts)
+  <br/>
+  Parse --webcam-index option and set opts-&gt;webcam_index.
+    <b>asciichat_error_t</b> <b>parse_snapshot_delay_option</b> (const char
+    *value_str, <b>options_t</b> *opts)
+  <br/>
+  Parse --snapshot-delay option and set opts-&gt;snapshot_delay.
+    <b>asciichat_error_t</b> <b>parse_log_level_option</b> (const char
+    *value_str, <b>options_t</b> *opts)
+  <br/>
+  Parse --log-level option and set opt_log_level. void
+    <b>update_dimensions_for_full_height</b> (<b>options_t</b> *opts)
+  <br/>
+  Update dimensions for full-height mode. void
+    <b>update_dimensions_to_terminal_size</b> (<b>options_t</b> *opts)
+  <br/>
+  Update dimensions to current terminal size. void <b>print_project_links</b>
+    (FILE *desc)
+  <br/>
+  Print project links with link emoji and colored styling.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Common utilities and helpers for option parsing across all
+  modes.</p>
+<p class="Pp">This module provides shared utilities used by the entire options
+    system:</p>
+<ul class="Bl-bullet">
+  <li>Validators for numeric ranges, file existence, formats (IP, port,
+    etc.)</li>
+  <li>String parsing helpers (safe integer conversion, color mode parsing,
+    etc.)</li>
+  <li>Terminal dimension management functions</li>
+  <li>Option lookup and typo suggestion (Levenshtein distance)</li>
+  <li>SSH key detection and defaults</li>
+</ul>
+<p class="Pp"><b>Design Philosophy</b>:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Single Responsibility</b>: Each validator handles one specific type of
+      validation</li>
+  <li><b>Consistent Error Reporting</b>: All validators provide helpful error
+      messages</li>
+  <li><b>No Side Effects</b>: Validators are pure functions (no global state
+      modification)</li>
+  <li><b>Reusability</b>: These functions are used by registry, builder, and
+      parsers modules</li>
+  <li><b>Cross-Cutting Concerns</b>: Handles validation needs for all modes
+      uniformly</li>
+</ul>
+<p class="Pp"><b>Validator Functions</b>:</p>
+<p class="Pp"></p>
+<p class="Pp">Return conventions:</p>
+<ul class="Bl-bullet">
+  <li>Numeric validators: Return parsed value on success, INT_MIN/-1 on
+    error</li>
+  <li>Boolean validators: Return true/false with error message on failure</li>
+  <li>String validators: Validate format, write to output buffer</li>
+</ul>
+<p class="Pp"><b>Typical Usage</b>:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Validate port number
+uint16_t port;
+if (!validate_port_opt(&quot;8080&quot;, &amp;port)) {
+<br/>
+    fprintf(stderr, &quot;Invalid port: 8080\\n&quot;);
+<br/>
+    return false;
+}
+// Parse color mode from string
+asciichat_error_t err = parse_color_mode_option(&quot;256&quot;, opts);
+if (err != ASCIICHAT_OK) {
+<br/>
+    fprintf(stderr, &quot;Unknown color mode\\n&quot;);
+<br/>
+    return false;
+}
+// Find similar option if user misspelled
+const char *suggestion = find_similar_option(&quot;prot&quot;, all_options);
+if (suggestion) {
+<br/>
+    fprintf(stderr, &quot;Did you mean: --%s?\\n&quot;, suggestion);
+}</pre>
+<p class="Pp"><b>Option Parsing Helpers</b>:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>strtoint_safe()</b><b>: Safe integer parsing with range
+    checking</b></li>
+  <li><b>find_similar_option()</b><b>: Typo detection using Levenshtein
+      distance</b></li>
+  <li><b>validate_positive_int_opt()</b><b>: Validate positive integers</b></li>
+  <li><b>validate_port_opt()</b><b>: Validate port numbers (1-65535)</b></li>
+  <li><b>validate_fps_opt()</b><b>: Validate frame rates</b></li>
+  <li><b>validate_webcam_index()</b><b>: Validate webcam device indices</b></li>
+</ul>
+<p class="Pp"><b>Display Option Parsers</b>:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>parse_color_mode_option()</b><b>: Parse color mode strings (auto, mono,
+      16, 256, truecolor)</b></li>
+  <li><b>parse_render_mode_option()</b><b>: Parse render mode (foreground,
+      background, half-block)</b></li>
+  <li><b>parse_palette_option()</b><b>: Parse palette type selection</b></li>
+  <li><b>parse_palette_chars_option()</b><b>: Parse custom palette character
+      set</b></li>
+</ul>
+<p class="Pp"><b>Terminal Functions</b>:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>update_dimensions_for_full_height()</b><b>: Adjust dimensions to use
+      full terminal height</b></li>
+  <li><b>update_dimensions_to_terminal_size()</b><b>: Sync dimensions with
+      current terminal size</b></li>
+  <li><b>print_project_links()</b><b>: Print ascii-chat project links and
+      info</b></li>
+</ul>
+<p class="Pp"><b>Cryptography Helpers</b>:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>detect_default_ssh_key()</b><b>: Find default SSH key if not
+      specified</b></li>
+  <li><b>validate_options_and_report()</b><b>: Cross-field validation with error
+      reporting</b></li>
+</ul>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent">options.h - Main <b>Options Module</b> module
+<p class="Pp"></p>
+<p class="Pp"><b>registry.h</b> - Central registry of all <b>Options
+  Module</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>builder.h</b> - Builder API using these validators</p>
+<p class="Pp"></p>
+<p class="Pp">validation.h - Additional <b>Validation Helpers</b> functions</p>
+</div>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>options/common.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPTIONS_COMMON_H"><a class="permalink" href="#_define_OPTIONS_COMMON_H">#define
+  OPTIONS_COMMON_H</a></h2>
+<p class="Pp">Definition at line <b>91</b> of file <b>options/common.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> detect_default_ssh_key (char * key_path,
+  size_t path_size)</h2>
+<p class="Pp">Detect default SSH key path for the current user. Checks if
+    ~/.ssh/id_ed25519 exists and is a regular file. Only supports Ed25519 keys
+    (modern, secure, fast).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>key_path</i> Buffer to store detected key path
+<br/>
+<i></i><b>path_size</b><i></i><b> Size of key_path buffer</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK if found, ERROR_CRYPTO_KEY with helpful
+  message otherwise</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Uses <b>expand_path()</b> to resolve tilde (~) in path
+<p class="Pp"></p>
+<p class="Pp">Prints message to stderr suggesting key generation if not
+  found</p>
+</div>
+<p class="Pp">Example:</p>
+<p class="Pp"></p>
+<pre>char key_path[OPTIONS_BUFF_SIZE];
+if (detect_default_ssh_key(key_path, sizeof(key_path)) == ASCIICHAT_OK) {
+<br/>
+    log_debug(&quot;Using default SSH key: %s&quot;, key_path);
+<br/>
+    SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, &quot;%s&quot;, key_path);
+}
+</pre>
+<p class="Pp">Definition at line <b>262</b> of file <b>options/common.c</b>.</p>
+<pre>262                                                                            {
+263   // Use expand_path utility to resolve ~/.ssh/id_ed25519
+264   char *full_path = expand_path(&quot;~/.ssh/id_ed25519&quot;);
+265   if (!full_path) {
+266     return SET_ERRNO(ERROR_CONFIG, &quot;Could not expand SSH key path&quot;);
+267   }
+268 
+269   // Check if the Ed25519 private key file exists
+270   struct stat st;
+271   bool found = (stat(full_path, &amp;st) == 0 &amp;&amp; S_ISREG(st.st_mode));
+272 
+273   if (found) {
+274     SAFE_SNPRINTF(key_path, path_size, &quot;%s&quot;, full_path);
+275     log_debug(&quot;Found default SSH key: %s&quot;, full_path);
+276     SAFE_FREE(full_path);
+277     return ASCIICHAT_OK;
+278   }
+279 
+280   log_error(&quot;No Ed25519 SSH key found at %s&quot;, full_path);
+281   SAFE_FREE(full_path);
+282   return SET_ERRNO(
+283       ERROR_CRYPTO_KEY,
+284       &quot;Only Ed25519 keys are supported (modern, secure, fast). Generate a new key with: ssh-keygen -t ed25519&quot;);
+285 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>,
+    <b>ERROR_CRYPTO_KEY</b>, <b>expand_path()</b>, <b>log_debug</b>,
+    <b>log_error</b>, <b>path_size</b>, <b>SAFE_FREE</b>, <b>SAFE_SNPRINTF</b>,
+    and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_find_similar_option_(const_char_*_unknown_opt,_const_struct_option_*_options)"><a class="permalink" href="#const_char_*_find_similar_option_(const_char_*_unknown_opt,_const_struct_option_*_options)">const
+  char * find_similar_option (const char * unknown_opt, const struct option *
+  options)</a></h2>
+<p class="Pp">Find a similar option name for typo suggestions. Uses Levenshtein
+    distance to find the most similar option name from the provided options
+    array. Only suggests options within a reasonable edit distance.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>unknown_opt</i> The unknown/misspelled option name
+<br/>
+<i></i><b>Options Module</b><i></i><b> Array of valid option structures (must be
+  NULL-terminated)</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Suggested option name, or NULL if no good match
+  found</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Uses LEVENSHTEIN_SUGGESTION_THRESHOLD to filter poor
+  matches</div>
+<p class="Pp">Example:</p>
+<p class="Pp"></p>
+<pre>const char *suggestion = find_similar_option(&quot;--colr&quot;, client_options);
+if (suggestion) {
+<br/>
+    fprintf(stderr, &quot;Did you mean '--%s'?\n&quot;, suggestion);
+}
+</pre>
+<p class="Pp">Definition at line <b>38</b> of file <b>options/common.c</b>.</p>
+<pre>38                                                                                        {
+39   if (!unknown_opt || !options) {
+40     return NULL;
+41   }
+42 
+43   const char *best_match = NULL;
+44   size_t best_distance = SIZE_MAX;
+45 
+46   for (int i = 0; options[i].name != NULL; i++) {
+47     size_t dist = levenshtein(unknown_opt, options[i].name);
+48     if (dist &lt; best_distance) {
+49       best_distance = dist;
+50       best_match = options[i].name;
+51     }
+52   }
+53 
+54   // Only suggest if the distance is within our threshold
+55   if (best_distance &lt;= LEVENSHTEIN_SUGGESTION_THRESHOLD) {
+56     return best_match;
+57   }
+58 
+59   return NULL;
+60 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>levenshtein()</b>, and
+    <b>LEVENSHTEIN_SUGGESTION_THRESHOLD</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_format_available_modes_("><a class="permalink" href="#const_char_*_format_available_modes_(">const
+  char * format_available_modes (<b>option_mode_bitmask_t</b>
+  mode_bitmask)</a></h2>
+<p class="Pp">Format all available modes for an option as comma-separated list.
+    Converts a mode bitmask to a human-readable comma-separated list of mode
+    names. Used in error messages to show which modes support a given
+  option.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>mode_bitmask</i> Bitmask of modes (OPTION_MODE_SERVER
+  | OPTION_MODE_CLIENT, etc.)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Formatted string like &quot;server, client, mirror&quot;
+  or &quot;global options&quot;</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Returns pointer to static buffer - not thread-safe</div>
+<p class="Pp">Example:</p>
+<p class="Pp"></p>
+<pre>option_mode_bitmask_t bitmask = OPTION_MODE_SERVER | OPTION_MODE_CLIENT;
+const char *modes = format_available_modes(bitmask);
+// modes == &quot;server, client&quot;
+</pre>
+<p class="Pp">Definition at line <b>64</b> of file <b>options/common.c</b>.</p>
+<pre>64                                                                        {
+65   static char buffer[256];
+66   buffer[0] = '\0';
+67 
+68   bool first = true;
+69 
+70   // Check if it's a global/binary option
+71   if (mode_bitmask &amp; OPTION_MODE_BINARY) {
+72     SAFE_SNPRINTF(buffer, sizeof(buffer), &quot;global options&quot;);
+73     return buffer;
+74   }
+75 
+76   // Build comma-separated list of modes (ordered: default, client, server, mirror, discovery-service)
+77   if (mode_bitmask &amp; OPTION_MODE_DISCOVERY) {
+78     safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), &quot;%sdefault&quot;, first ? &quot;&quot; : &quot;, &quot;);
+79     first = false;
+80   }
+81   if (mode_bitmask &amp; OPTION_MODE_CLIENT) {
+82     safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), &quot;%sclient&quot;, first ? &quot;&quot; : &quot;, &quot;);
+83     first = false;
+84   }
+85   if (mode_bitmask &amp; OPTION_MODE_SERVER) {
+86     safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), &quot;%sserver&quot;, first ? &quot;&quot; : &quot;, &quot;);
+87     first = false;
+88   }
+89   if (mode_bitmask &amp; OPTION_MODE_MIRROR) {
+90     safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), &quot;%smirror&quot;, first ? &quot;&quot; : &quot;, &quot;);
+91     first = false;
+92   }
+93   if (mode_bitmask &amp; OPTION_MODE_DISCOVERY_SVC) {
+94     safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), &quot;%sdiscovery-service&quot;, first ? &quot;&quot; : &quot;, &quot;);
+95     first = false;
+96   }
+97 
+98   // Fallback if no modes matched
+99   if (buffer[0] == '\0') {
+100     SAFE_SNPRINTF(buffer, sizeof(buffer), &quot;unknown mode&quot;);
+101   }
+102 
+103   return buffer;
+104 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>OPTION_MODE_BINARY</b>, <b>OPTION_MODE_CLIENT</b>,
+    <b>OPTION_MODE_DISCOVERY</b>, <b>OPTION_MODE_DISCOVERY_SVC</b>,
+    <b>OPTION_MODE_MIRROR</b>, <b>OPTION_MODE_SERVER</b>, <b>SAFE_SNPRINTF</b>,
+    and <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>find_similar_option_with_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_get_required_argument_(const_char_*_opt_value,_char_*_buffer,_size_t_buffer_size,_const_char_*_option_name,_"><a class="permalink" href="#char_*_get_required_argument_(const_char_*_opt_value,_char_*_buffer,_size_t_buffer_size,_const_char_*_option_name,_">char
+  * get_required_argument (const char * opt_value, char * buffer, size_t
+  buffer_size, const char * option_name, <b>asciichat_mode_t</b> mode)</a></h2>
+<p class="Pp">Handle required arguments with consistent error messages.
+    Validates that an option has a non-empty argument and processes it. Returns
+    NULL on error with appropriate error message printed.</p>
+<p class="Pp"></p>
+<p class="Pp">Handles edge cases:</p>
+<ul class="Bl-bullet">
+  <li>NULL or empty opt_value</li>
+  <li>getopt_long bug where option name is returned as argument</li>
+  <li>Arguments with '=' prefix (GNU-style --option=value)</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>opt_value</i> Argument value from getopt_long
+<br/>
+<i>buffer</i> Buffer for storing processed argument
+<br/>
+<i></i><b>buffer_size</b><i></i><b> Size of buffer</b>
+<br/>
+<i>option_name</i> Name of the option (for error messages)
+<br/>
+<i>mode</i> Current mode (client/server/mirror) for error messages</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to processed argument string in buffer, or NULL
+  on error</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Prints &quot;option '--&lt;name&gt;' requires an
+  argument&quot; to stderr on error
+<p class="Pp"></p>
+<p class="Pp">Used internally by <b>validate_required_argument()</b></p>
+</div>
+<p class="Pp">Example:</p>
+<p class="Pp"></p>
+<pre>char argbuf[OPTIONS_BUFF_SIZE];
+char *value = get_required_argument(optarg, argbuf, sizeof(argbuf), &quot;key&quot;, MODE_CLIENT);
+if (!value) {
+<br/>
+    return option_error_invalid();
+}
+SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, &quot;%s&quot;, value);
+</pre>
+<p class="Pp">Definition at line <b>312</b> of file <b>options/common.c</b>.</p>
+<pre>313                                                    {
+314   // Check if opt_value is NULL or empty
+315   if (!opt_value || strlen(opt_value) == 0) {
+316     goto error;
+317   }
+318 
+319   // Check if getopt_long returned the option name itself as the argument
+320   // This happens when a long option requiring an argument is at the end of argv
+321   if (opt_value &amp;&amp; option_name &amp;&amp; strcmp(opt_value, option_name) == 0) {
+322     goto error;
+323   }
+324 
+325   // Process the argument normally
+326   char *value_str = strip_equals_prefix(opt_value, buffer, buffer_size);
+327   if (!value_str) {
+328     goto error;
+329   }
+330 
+331   return value_str;
+332 
+333 error:
+334   (void)0;
+335   const char *mode_name = (mode == MODE_SERVER ? &quot;server&quot; : (mode == MODE_MIRROR ? &quot;mirror&quot; : &quot;client&quot;));
+336   log_error(&quot;%s: option '--%s' requires an argument&quot;, mode_name, option_name);
+337   return NULL; // Signal error to caller
+338 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_size</b>, <b>log_error</b>,
+    <b>MODE_MIRROR</b>, <b>MODE_SERVER</b>, and
+  <b>strip_equals_prefix()</b>.</p>
+<p class="Pp">Referenced by <b>validate_required_argument()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> parse_color_mode_option (const char *
+  value_str, <b>options_t</b> * opts)</h2>
+<p class="Pp">Parse --color-mode option and set opts-&gt;color_mode. Validates
+    color mode string and sets opts-&gt;color_mode field. Accepts:
+    &quot;auto&quot;, &quot;none&quot;, &quot;mono&quot;, &quot;16&quot;,
+    &quot;16color&quot;, &quot;256&quot;, &quot;256color&quot;,
+    &quot;truecolor&quot;, &quot;24bit&quot;</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Color mode string from command line
+<br/>
+<i>opts</i> Options struct to update</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid
+  mode</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Prints error message to stderr on failure
+<p class="Pp"></p>
+<p class="Pp">Sets opts-&gt;color_mode on success</p>
+</div>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> parse_height_option (const char *
+  value_str, <b>options_t</b> * opts)</h2>
+<p class="Pp">Parse --height option and set opts-&gt;height. Validates height
+    value and sets opts-&gt;height and opts-&gt;auto_height fields.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Height value from command line
+<br/>
+<i>opts</i> Options struct to update</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM if
+  invalid</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Prints error message to stderr on failure
+<p class="Pp"></p>
+<p class="Pp">Sets opts-&gt;height and opts-&gt;auto_height = false on
+  success</p>
+</div>
+<p class="Pp">Definition at line <b>488</b> of file <b>options/common.c</b>.</p>
+<pre>488                                                                               {
+489   if (!opts) {
+490     return ERROR_INVALID_PARAM;
+491   }
+492 
+493   int height_val;
+494   if (!validate_positive_int_opt(value_str, &amp;height_val, &quot;height&quot;)) {
+495     return ERROR_INVALID_PARAM;
+496   }
+497 
+498   opts-&gt;height = height_val;
+499   opts-&gt;auto_height = false;
+500 
+501   return ASCIICHAT_OK;
+502 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>options_state::auto_height</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>options_state::height</b>, and
+    <b>validate_positive_int_opt()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> parse_log_level_option (const char *
+  value_str, <b>options_t</b> * opts)</h2>
+<p class="Pp">Parse --log-level option and set opt_log_level. Validates log
+    level string and sets global opt_log_level variable. Accepts:
+    &quot;dev&quot;, &quot;debug&quot;, &quot;info&quot;, &quot;warn&quot;,
+    &quot;error&quot;, &quot;fatal&quot; (case-insensitive)</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Log level string from command line</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM if
+  invalid</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Prints error message to stderr on failure
+<p class="Pp"></p>
+<p class="Pp">Sets opt_log_level global variable on success</p>
+<p class="Pp"></p>
+<p class="Pp">Uses <b>validate_opt_log_level()</b> from validation.h</p>
+</div>
+<p class="Pp">Definition at line <b>536</b> of file <b>options/common.c</b>.</p>
+<pre>536                                                                                  {
+537   if (!opts) {
+538     return ERROR_INVALID_PARAM;
+539   }
+540 
+541   char error_msg[BUFFER_SIZE_SMALL];
+542   int log_level = validate_opt_log_level(value_str, error_msg, sizeof(error_msg));
+543 
+544   if (log_level == -1) {
+545     log_error(&quot;%s&quot;, error_msg);
+546     return ERROR_INVALID_PARAM;
+547   }
+548 
+549   opts-&gt;log_level = (log_level_t)log_level;
+550 
+551   return ASCIICHAT_OK;
+552 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>BUFFER_SIZE_SMALL</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>error_msg</b>, <b>log_error</b>,
+    <b>options_state::log_level</b>, and <b>validate_opt_log_level()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> parse_palette_chars_option (const char *
+  value_str, <b>options_t</b> * opts)</h2>
+<p class="Pp">Parse --palette-chars option and set opt_palette_custom. Validates
+    custom palette characters and sets global opt_palette_custom,
+    opt_palette_custom_set, and opt_palette_type variables.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Custom palette characters from command
+  line</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM if too
+  long</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Prints error message to stderr on failure
+<p class="Pp"></p>
+<p class="Pp">Sets opt_palette_custom, opt_palette_custom_set, and
+    opt_palette_type on success</p>
+<p class="Pp"></p>
+<p class="Pp">Maximum length is 255 characters (sizeof(opt_palette_custom) -
+  1)</p>
+</div>
+<p class="Pp">Definition at line <b>453</b> of file <b>options/common.c</b>.</p>
+<pre>453                                                                                      {
+454   if (!value_str || !opts) {
+455     return ERROR_INVALID_PARAM;
+456   }
+457 
+458   if (strlen(value_str) &gt;= sizeof(opts-&gt;palette_custom)) {
+459     log_error(&quot;Invalid palette-chars: too long (%zu chars, max %zu)&quot;, strlen(value_str),
+460               sizeof(opts-&gt;palette_custom) - 1);
+461     return ERROR_INVALID_PARAM;
+462   }
+463 
+464   SAFE_STRNCPY(opts-&gt;palette_custom, value_str, sizeof(opts-&gt;palette_custom));
+465   opts-&gt;palette_custom[sizeof(opts-&gt;palette_custom) - 1] = '\0';
+466   opts-&gt;palette_custom_set = true;
+467   opts-&gt;palette_type = PALETTE_CUSTOM;
+468 
+469   return ASCIICHAT_OK;
+470 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>log_error</b>, <b>PALETTE_CUSTOM</b>,
+    <b>options_state::palette_custom</b>,
+    <b>options_state::palette_custom_set</b>,
+    <b>options_state::palette_type</b>, and <b>SAFE_STRNCPY</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> parse_palette_option (const char *
+  value_str, <b>options_t</b> * opts)</h2>
+<p class="Pp">Parse --palette option and set opt_palette_type. Validates palette
+    type string and sets global opt_palette_type variable. Accepts:
+    &quot;standard&quot;, &quot;blocks&quot;, &quot;digital&quot;,
+    &quot;minimal&quot;, &quot;cool&quot;, &quot;custom&quot;</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Palette type string from command
+  line</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid
+  palette</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Prints error message to stderr on failure
+<p class="Pp"></p>
+<p class="Pp">Sets opt_palette_type global variable on success</p>
+</div>
+<p class="Pp">Definition at line <b>428</b> of file <b>options/common.c</b>.</p>
+<pre>428                                                                                {
+429   if (!value_str || !opts) {
+430     return ERROR_INVALID_PARAM;
+431   }
+432 
+433   if (strcmp(value_str, &quot;standard&quot;) == 0) {
+434     opts-&gt;palette_type = PALETTE_STANDARD;
+435   } else if (strcmp(value_str, &quot;blocks&quot;) == 0) {
+436     opts-&gt;palette_type = PALETTE_BLOCKS;
+437   } else if (strcmp(value_str, &quot;digital&quot;) == 0) {
+438     opts-&gt;palette_type = PALETTE_DIGITAL;
+439   } else if (strcmp(value_str, &quot;minimal&quot;) == 0) {
+440     opts-&gt;palette_type = PALETTE_MINIMAL;
+441   } else if (strcmp(value_str, &quot;cool&quot;) == 0) {
+442     opts-&gt;palette_type = PALETTE_COOL;
+443   } else if (strcmp(value_str, &quot;custom&quot;) == 0) {
+444     opts-&gt;palette_type = PALETTE_CUSTOM;
+445   } else {
+446     log_error(&quot;Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom&quot;, value_str);
+447     return ERROR_INVALID_PARAM;
+448   }
+449 
+450   return ASCIICHAT_OK;
+451 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>log_error</b>, <b>PALETTE_BLOCKS</b>, <b>PALETTE_COOL</b>,
+    <b>PALETTE_CUSTOM</b>, <b>PALETTE_DIGITAL</b>, <b>PALETTE_MINIMAL</b>,
+    <b>PALETTE_STANDARD</b>, and <b>options_state::palette_type</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> parse_render_mode_option (const char *
+  value_str, <b>options_t</b> * opts)</h2>
+<p class="Pp">Parse --render-mode option and set opts-&gt;render_mode. Validates
+    render mode string and sets opts-&gt;render_mode field. Accepts:
+    &quot;foreground&quot;, &quot;fg&quot;, &quot;background&quot;,
+    &quot;bg&quot;, &quot;half-block&quot;, &quot;halfblock&quot;</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Render mode string from command line
+<br/>
+<i>opts</i> Options struct to update</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid
+  mode</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Prints error message to stderr on failure
+<p class="Pp"></p>
+<p class="Pp">Sets opts-&gt;render_mode on success</p>
+</div>
+<p class="Pp">Definition at line <b>409</b> of file <b>options/common.c</b>.</p>
+<pre>409                                                                                    {
+410   if (!value_str || !opts) {
+411     return ERROR_INVALID_PARAM;
+412   }
+413 
+414   if (strcmp(value_str, &quot;foreground&quot;) == 0 || strcmp(value_str, &quot;fg&quot;) == 0) {
+415     opts-&gt;render_mode = RENDER_MODE_FOREGROUND;
+416   } else if (strcmp(value_str, &quot;background&quot;) == 0 || strcmp(value_str, &quot;bg&quot;) == 0) {
+417     opts-&gt;render_mode = RENDER_MODE_BACKGROUND;
+418   } else if (strcmp(value_str, &quot;half-block&quot;) == 0 || strcmp(value_str, &quot;halfblock&quot;) == 0) {
+419     opts-&gt;render_mode = RENDER_MODE_HALF_BLOCK;
+420   } else {
+421     log_error(&quot;Invalid render mode '%s'. Valid modes: foreground, background, half-block&quot;, value_str);
+422     return ERROR_INVALID_PARAM;
+423   }
+424 
+425   return ASCIICHAT_OK;
+426 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>log_error</b>, <b>options_state::render_mode</b>,
+    <b>RENDER_MODE_BACKGROUND</b>, <b>RENDER_MODE_FOREGROUND</b>, and
+    <b>RENDER_MODE_HALF_BLOCK</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> parse_snapshot_delay_option (const char
+  * value_str, <b>options_t</b> * opts)</h2>
+<p class="Pp">Parse --snapshot-delay option and set opts-&gt;snapshot_delay.
+    Validates snapshot delay (non-negative float) and sets
+    opts-&gt;snapshot_delay field.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Snapshot delay in seconds from command
+  line
+<br/>
+<i>opts</i> Options struct to update</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM if
+  invalid</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Prints error message to stderr on failure
+<p class="Pp"></p>
+<p class="Pp">Sets opts-&gt;snapshot_delay on success</p>
+</div>
+<p class="Pp">Definition at line <b>519</b> of file <b>options/common.c</b>.</p>
+<pre>519                                                                                       {
+520   if (!value_str || !opts) {
+521     return ERROR_INVALID_PARAM;
+522   }
+523 
+524   char *endptr;
+525   float delay = strtof(value_str, &amp;endptr);
+526   if (endptr == value_str || *endptr != '\0' || delay &lt; 0.0f) {
+527     log_error(&quot;Invalid snapshot delay '%s'. Must be a non-negative number.&quot;, value_str);
+528     return ERROR_INVALID_PARAM;
+529   }
+530 
+531   opts-&gt;snapshot_delay = delay;
+532 
+533   return ASCIICHAT_OK;
+534 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>log_error</b>, and <b>options_state::snapshot_delay</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> parse_webcam_index_option (const char *
+  value_str, <b>options_t</b> * opts)</h2>
+<p class="Pp">Parse --webcam-index option and set opts-&gt;webcam_index.
+    Validates webcam index and sets opts-&gt;webcam_index field.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Webcam index from command line
+<br/>
+<i>opts</i> Options struct to update</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM if
+  invalid</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Prints error message to stderr on failure
+<p class="Pp"></p>
+<p class="Pp">Sets opts-&gt;webcam_index on success</p>
+</div>
+<p class="Pp">Definition at line <b>504</b> of file <b>options/common.c</b>.</p>
+<pre>504                                                                                     {
+505   if (!opts) {
+506     return ERROR_INVALID_PARAM;
+507   }
+508 
+509   unsigned short int index_val;
+510   if (!validate_webcam_index(value_str, &amp;index_val)) {
+511     return ERROR_INVALID_PARAM;
+512   }
+513 
+514   opts-&gt;webcam_index = index_val;
+515 
+516   return ASCIICHAT_OK;
+517 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>validate_webcam_index()</b>, and <b>options_state::webcam_index</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> parse_width_option (const char *
+  value_str, <b>options_t</b> * opts)</h2>
+<p class="Pp">Parse --width option and set opts-&gt;width. Validates width value
+    and sets opts-&gt;width and opts-&gt;auto_width fields.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Width value from command line
+<br/>
+<i>opts</i> Options struct to update</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM if
+  invalid</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Prints error message to stderr on failure
+<p class="Pp"></p>
+<p class="Pp">Sets opts-&gt;width and opts-&gt;auto_width = false on success</p>
+</div>
+<p class="Pp">Definition at line <b>472</b> of file <b>options/common.c</b>.</p>
+<pre>472                                                                              {
+473   if (!opts) {
+474     return ERROR_INVALID_PARAM;
+475   }
+476 
+477   int width_val;
+478   if (!validate_positive_int_opt(value_str, &amp;width_val, &quot;width&quot;)) {
+479     return ERROR_INVALID_PARAM;
+480   }
+481 
+482   opts-&gt;width = width_val;
+483   opts-&gt;auto_width = false;
+484 
+485   return ASCIICHAT_OK;
+486 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>options_state::auto_width</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>validate_positive_int_opt()</b>, and
+    <b>options_state::width</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_print_project_links_(FILE_*_desc)"><a class="permalink" href="#void_print_project_links_(FILE_*_desc)">void
+  print_project_links (FILE * desc)</a></h2>
+<p class="Pp">Print project links with link emoji and colored styling.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>desc</i> Output file stream (typically stdout)</div>
+<p class="Pp">Definition at line <b>739</b> of file <b>options/common.c</b>.</p>
+<pre>739                                      {
+740   if (!desc) {
+741     return;
+742   }
+743 
+744   (void)fprintf(desc, &quot;&#x1F517; %s\n&quot;, colored_string(LOG_COLOR_GREY, &quot;https://ascii-chat.com&quot;));
+745   (void)fprintf(desc, &quot;&#x1F517; %s\n&quot;, colored_string(LOG_COLOR_GREY, &quot;https://github.com/zfogg/ascii-chat&quot;));
+746 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colored_string()</b>, and <b>LOG_COLOR_GREY</b>.</p>
+<p class="Pp">Referenced by <b>options_print_help_for_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_read_password_from_stdin_(const_char_*_prompt)"><a class="permalink" href="#char_*_read_password_from_stdin_(const_char_*_prompt)">char
+  * read_password_from_stdin (const char * prompt)</a></h2>
+<p class="Pp">Read password from stdin with prompt.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>prompt</i> Prompt message to display to user</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Allocated password string (caller must free), or NULL on
+  error</div>
+<p class="Pp">Prompts user for password input using
+    <b>prompt_password_simple()</b> from <b>util/password.h</b>. Returns
+    dynamically allocated string that must be freed by caller.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Returns NULL if password input fails or if not running in
+  a TTY.
+<p class="Pp"></p>
+<p class="Pp">Caller must use <b>SAFE_FREE()</b> to deallocate returned
+  string.</p>
+</div>
+<p class="Pp">Definition at line <b>341</b> of file <b>options/common.c</b>.</p>
+<pre>341                                                    {
+342   char *password_buf = SAFE_MALLOC(PASSWORD_MAX_LEN, char *);
+343   if (!password_buf) {
+344     return NULL;
+345   }
+346 
+347   if (prompt_password_simple(prompt, password_buf, PASSWORD_MAX_LEN) != 0) {
+348     SAFE_FREE(password_buf);
+349     return NULL;
+350   }
+351 
+352   return password_buf; // Caller must free
+353 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>PASSWORD_MAX_LEN</b>,
+    <b>prompt_password_simple()</b>, <b>SAFE_FREE</b>, and
+  <b>SAFE_MALLOC</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_strip_equals_prefix_(const_char_*_opt_value,_char_*_buffer,_size_t_buffer_size)"><a class="permalink" href="#char_*_strip_equals_prefix_(const_char_*_opt_value,_char_*_buffer,_size_t_buffer_size)">char
+  * strip_equals_prefix (const char * opt_value, char * buffer, size_t
+  buffer_size)</a></h2>
+<p class="Pp">Strip equals sign prefix from option argument. Internal helper
+    that handles GNU-style long options with = syntax (--option=value). Copies
+    argument to buffer and returns pointer past the '=' if present.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>opt_value</i> Raw option value from getopt_long
+<br/>
+<i>buffer</i> Buffer to store processed value
+<br/>
+<i></i><b>buffer_size</b><i></i><b> Size of buffer</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to value in buffer (past '=' if present), or NULL
+  if empty</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Returns NULL for empty strings after stripping '='
+<p class="Pp"></p>
+<p class="Pp">Buffer is always null-terminated via SAFE_SNPRINTF</p>
+</div>
+<p class="Pp">Example:</p>
+<p class="Pp"></p>
+<pre>char argbuf[OPTIONS_BUFF_SIZE];
+char *value = strip_equals_prefix(&quot;=1234&quot;, argbuf, sizeof(argbuf));
+// value points to &quot;1234&quot; in argbuf
+</pre>
+<p class="Pp">Definition at line <b>292</b> of file <b>options/common.c</b>.</p>
+<pre>292                                                                                    {
+293   if (!opt_value)
+294     return NULL;
+295 
+296   SAFE_SNPRINTF(buffer, buffer_size, &quot;%s&quot;, opt_value);
+297   char *value_str = buffer;
+298   if (value_str[0] == '=') {
+299     value_str++; // Skip the equals sign
+300   }
+301 
+302   // Return NULL for empty strings (treat as missing argument)
+303   if (strlen(value_str) == 0) {
+304     return NULL;
+305   }
+306 
+307   return value_str;
+308 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_size</b>, and <b>SAFE_SNPRINTF</b>.</p>
+<p class="Pp">Referenced by <b>get_required_argument()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_strtoint_safe_(const_char_*_str)"><a class="permalink" href="#int_strtoint_safe_(const_char_*_str)">int
+  strtoint_safe (const char * str)</a></h2>
+<p class="Pp">Safely parse string to integer with validation. Parses a string to
+    integer using <b>parse_int32()</b> with full range checking. Returns INT_MIN
+    on error (NULL input, empty string, invalid format, out of range).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>str</i> String to parse</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Parsed integer value, or INT_MIN on error</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">INT_MIN is used as error sentinel, so cannot represent
+  INT_MIN value</div>
+<p class="Pp">Example:</p>
+<p class="Pp"></p>
+<pre>int val = strtoint_safe(optarg);
+if (val == INT_MIN) {
+<br/>
+    fprintf(stderr, &quot;Invalid integer: %s\n&quot;, optarg);
+<br/>
+    return ERROR_INVALID_PARAM;
+}
+</pre>
+<p class="Pp">Definition at line <b>164</b> of file <b>options/common.c</b>.</p>
+<pre>164                                    {
+165   if (!str || *str == '\0') {
+166     return INT_MIN; // Error: NULL or empty string
+167   }
+168 
+169   int32_t result = 0;
+170   // Use safe parsing utility with full int32 range validation
+171   if (parse_int32(str, &amp;result, INT_MIN, INT_MAX) != ASCIICHAT_OK) {
+172     return INT_MIN; // Error: invalid input or out of range
+173   }
+174 
+175   return (int)result;
+176 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_update_dimensions_for_full_height_("><a class="permalink" href="#void_update_dimensions_for_full_height_(">void
+  update_dimensions_for_full_height (<b>options_t</b> * opts)</a></h2>
+<p class="Pp">Update dimensions for full-height mode. Sets opt_height to
+    terminal height when auto-detected. Used during initialization to maximize
+    vertical space usage.</p>
+<p class="Pp"></p>
+<p class="Pp">Behavior:</p>
+<ul class="Bl-bullet">
+  <li>Both auto: Set both width and height to terminal size</li>
+  <li>Only height auto: Set height to terminal height</li>
+  <li>Only width auto: Set width to terminal width</li>
+  <li>Neither auto: No change</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Does not use log_debug because logging may not be
+  initialized yet
+<p class="Pp"></p>
+<p class="Pp">Fails silently if terminal size detection fails (keeps
+  defaults)</p>
+</div>
+<p class="Pp">Example:</p>
+<p class="Pp"></p>
+<pre>// During options_init():
+if (auto_height || auto_width) {
+<br/>
+    update_dimensions_for_full_height();
+}
+</pre>
+<p class="Pp">Definition at line <b>606</b> of file <b>options/common.c</b>.</p>
+<pre>606                                                         {
+607   if (!opts) {
+608     return;
+609   }
+610 
+611   unsigned short int term_width, term_height;
+612 
+613   // Note: Logging is not available during options_init, so we can't use log_debug here
+614   asciichat_error_t result = get_terminal_size(&amp;term_width, &amp;term_height);
+615   if (result == ASCIICHAT_OK) {
+616     // If both dimensions are auto, set height to terminal height and let
+617     // aspect_ratio calculate width
+618     if (opts-&gt;auto_height &amp;&amp; opts-&gt;auto_width) {
+619       opts-&gt;height = term_height;
+620       opts-&gt;width = term_width; // Also set width when both are auto
+621     }
+622     // If only height is auto, use full terminal height
+623     else if (opts-&gt;auto_height) {
+624       opts-&gt;height = term_height;
+625     }
+626     // If only width is auto, use full terminal width
+627     else if (opts-&gt;auto_width) {
+628       opts-&gt;width = term_width;
+629     }
+630   } else {
+631     // Terminal size detection failed, but we can still continue with defaults
+632   }
+633 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_update_dimensions_to_terminal_size_("><a class="permalink" href="#void_update_dimensions_to_terminal_size_(">void
+  update_dimensions_to_terminal_size (<b>options_t</b> * opts)</a></h2>
+<p class="Pp">Update dimensions to current terminal size. Updates opt_width and
+    opt_height to current terminal size for auto-detected dimensions. Used after
+    logging is initialized (can use log_debug).</p>
+<p class="Pp"></p>
+<p class="Pp">Behavior:</p>
+<ul class="Bl-bullet">
+  <li>auto_width: Set width to terminal width</li>
+  <li>auto_height: Set height to terminal height</li>
+  <li>Neither: No change</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Logs debug messages about dimension updates
+<p class="Pp"></p>
+<p class="Pp">Logs debug message if terminal size detection fails</p>
+</div>
+<p class="Pp">Example:</p>
+<p class="Pp"></p>
+<pre>// After logging initialization:
+update_dimensions_to_terminal_size();
+log_info(&quot;Terminal dimensions: %dx%d&quot;, opt_width, opt_height);
+</pre>
+<p class="Pp">Definition at line <b>635</b> of file <b>options/common.c</b>.</p>
+<pre>635                                                          {
+636   if (!opts) {
+637     return;
+638   }
+639 
+640   unsigned short int term_width, term_height;
+641   // Get current terminal size (get_terminal_size already handles ioctl first, then $COLUMNS/$LINES fallback)
+642   asciichat_error_t terminal_result = get_terminal_size(&amp;term_width, &amp;term_height);
+643   if (terminal_result == ASCIICHAT_OK) {
+644     // Use INFO level so this is visible without -v flag (important for debugging dimension issues)
+645     log_dev(&quot;Terminal size detected: %ux%u (auto_width=%d, auto_height=%d)&quot;, term_width, term_height, opts-&gt;auto_width,
+646             opts-&gt;auto_height);
+647     if (opts-&gt;auto_width) {
+648       opts-&gt;width = term_width;
+649       log_debug(&quot;Auto-width: set width to %u&quot;, opts-&gt;width);
+650     }
+651     if (opts-&gt;auto_height) {
+652       opts-&gt;height = term_height;
+653       log_debug(&quot;Auto-height: set height to %u&quot;, opts-&gt;height);
+654     }
+655     log_debug(&quot;Final dimensions: %ux%u&quot;, opts-&gt;width, opts-&gt;height);
+656   } else {
+657     // Terminal detection failed - keep the default values set in options_init()
+658     log_warn(&quot;TERMINAL_DETECT_FAIL: Could not detect terminal size, using defaults: %ux%u&quot;, opts-&gt;width, opts-&gt;height);
+659   }
+660 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> validate_fps_opt (const char * value_str, int *
+  out_fps)</h2>
+<p class="Pp">Validate FPS value (1-144). Internal option parsing helper that
+    validates FPS is in reasonable range. Range chosen to support 1 FPS
+    (slideshows) to 144 FPS (high refresh monitors).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> String to validate
+<br/>
+<i>out_fps</i> Output parameter for validated FPS</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if valid, false otherwise</div>
+<p class="Pp">Example:</p>
+<p class="Pp"></p>
+<pre>int fps;
+if (!validate_fps_opt(optarg, &amp;fps)) {
+<br/>
+    return option_error_invalid();
+}
+opt_fps = fps;
+</pre>
+<p class="Pp">Definition at line <b>224</b> of file <b>options/common.c</b>.</p>
+<pre>224                                                            {
+225   if (!value_str || !out_fps) {
+226     return false;
+227   }
+228 
+229   int fps_val = strtoint_safe(value_str);
+230   if (fps_val == INT_MIN || fps_val &lt; 1 || fps_val &gt; 144) {
+231     log_error(&quot;Invalid FPS value '%s'. FPS must be between 1 and 144.&quot;, value_str);
+232     return false;
+233   }
+234 
+235   *out_fps = fps_val;
+236   return true;
+237 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_error</b>, and <b>strtoint_safe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> validate_options_and_report (const void
+  * config, const void * opts)</h2>
+<p class="Pp">Validate options and report errors to stderr. Calls
+    <b>options_config_validate()</b> and handles error message display and
+    cleanup. Validates all option dependencies, conflicts, and custom
+    validators.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options
+  configuration (opaque pointer, defined in </b><b>builder.h</b><b>)</b>
+<br/>
+<i>opts</i> Options struct to validate</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK if valid, error code otherwise</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Prints error message to stderr if validation fails
+<p class="Pp"></p>
+<p class="Pp">Frees error message internally</p>
+</div>
+<p class="Pp">Example:</p>
+<p class="Pp"></p>
+<pre>asciichat_error_t result = validate_options_and_report(config, opts);
+if (result != ASCIICHAT_OK) {
+<br/>
+    options_config_destroy(config);
+<br/>
+    return result;
+}
+</pre>
+<p class="Pp">Definition at line <b>717</b> of file <b>options/common.c</b>.</p>
+<pre>717                                                                                     {
+718   if (!config || !opts) {
+719     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or options is NULL&quot;);
+720   }
+721 
+722   char *error_message = NULL;
+723   // Cast opaque config pointer to actual type
+724   const options_config_t *config_typed = (const options_config_t *)config;
+725   asciichat_error_t result = options_config_validate(config_typed, opts, &amp;error_message);
+726   if (result != ASCIICHAT_OK) {
+727     if (error_message) {
+728       log_error(&quot;%s&quot;, error_message);
+729       free(error_message);
+730     }
+731   }
+732   return result;
+733 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>log_error</b>, <b>options_config_validate()</b>, and
+  <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> validate_port_opt (const char * value_str,
+  <b>uint16_t</b> * out_port)</h2>
+<p class="Pp">Validate port number (1-65535). Internal option parsing helper
+    that validates a port number is in valid range. Uses <b>parse_port()</b> for
+    robust validation.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> String to validate
+<br/>
+<i>out_port</i> Output parameter for validated port</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if valid, false otherwise</div>
+<p class="Pp">Example:</p>
+<p class="Pp"></p>
+<pre>uint16_t port;
+if (!validate_port_opt(optarg, &amp;port)) {
+<br/>
+    return option_error_invalid();
+}
+opt_port = port;
+</pre>
+<p class="Pp">Definition at line <b>209</b> of file <b>options/common.c</b>.</p>
+<pre>209                                                                   {
+210   if (!value_str || !out_port) {
+211     return false;
+212   }
+213 
+214   // Use safe integer parsing with range validation
+215   if (parse_port(value_str, out_port) != ASCIICHAT_OK) {
+216     log_error(&quot;Invalid port value '%s'. Port must be a number between 1 and 65535.&quot;, value_str);
+217     return false;
+218   }
+219 
+220   return true;
+221 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>log_error</b>, and
+    <b>parse_port()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> validate_positive_int_opt (const char * value_str,
+  int * out_value, const char * param_name)</h2>
+<p class="Pp">Validate a positive integer value. Internal option parsing helper
+    that validates a string represents a positive integer (&gt; 0). Prints error
+    message on failure.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> String to validate
+<br/>
+<i>out_value</i> Output parameter for validated integer
+<br/>
+<i>param_name</i> Parameter name for error messages</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if valid, false otherwise</div>
+<p class="Pp">Example:</p>
+<p class="Pp"></p>
+<pre>int fps;
+if (!validate_positive_int_opt(optarg, &amp;fps, &quot;FPS&quot;)) {
+<br/>
+    return option_error_invalid();
+}
+</pre>
+<p class="Pp">Definition at line <b>193</b> of file <b>options/common.c</b>.</p>
+<pre>193                                                                                               {
+194   if (!value_str || !out_value) {
+195     return false;
+196   }
+197 
+198   int val = strtoint_safe(value_str);
+199   if (val == INT_MIN || val &lt;= 0) {
+200     log_error(&quot;Invalid %s value '%s'. %s must be a positive integer.&quot;, param_name, value_str, param_name);
+201     return false;
+202   }
+203 
+204   *out_value = val;
+205   return true;
+206 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_error</b>, and <b>strtoint_safe()</b>.</p>
+<p class="Pp">Referenced by <b>parse_height_option()</b>, and
+    <b>parse_width_option()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_validate_required_argument_(const_char_*_optarg,_char_*_argbuf,_size_t_argbuf_size,_const_char_*_option_name,_"><a class="permalink" href="#char_*_validate_required_argument_(const_char_*_optarg,_char_*_argbuf,_size_t_argbuf_size,_const_char_*_option_name,_">char
+  * validate_required_argument (const char * optarg, char * argbuf, size_t
+  argbuf_size, const char * option_name, <b>asciichat_mode_t</b> mode)</a></h2>
+<p class="Pp">Validate and retrieve required argument for an option. Wrapper
+    around <b>get_required_argument()</b> that also sets error code on failure.
+    Used for options that must have an argument.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>optarg</i> Argument value from getopt_long
+<br/>
+<i>argbuf</i> Buffer for storing processed argument
+<br/>
+<i>argbuf_size</i> Size of argbuf
+<br/>
+<i>option_name</i> Name of the option (for error messages)
+<br/>
+<i>mode</i> Current mode (client/server/mirror) for error messages</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to processed argument string in argbuf, or NULL
+  on error</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">On error, prints message to stderr and calls
+  option_error_invalid()</div>
+<p class="Pp">Example:</p>
+<p class="Pp"></p>
+<pre>char argbuf[OPTIONS_BUFF_SIZE];
+char *value = validate_required_argument(optarg, argbuf, sizeof(argbuf), &quot;port&quot;, MODE_CLIENT);
+if (!value) {
+<br/>
+    return option_error_invalid();
+}
+</pre>
+<p class="Pp">Definition at line <b>183</b> of file <b>options/common.c</b>.</p>
+<pre>184                                                         {
+185   char *value = get_required_argument(optarg, argbuf, argbuf_size, option_name, mode);
+186   if (!value) {
+187     (void)option_error_invalid();
+188   }
+189   return value;
+190 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>get_required_argument()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> validate_webcam_index (const char * value_str,
+  unsigned short int * out_index)</h2>
+<p class="Pp">Validate webcam index using the common device index validator.
+    Validates webcam index is a non-negative integer. Unlike audio device
+    indices, webcam indices do not support -1 (default).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> String to validate
+<br/>
+<i>out_index</i> Output parameter for validated index</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if valid, false otherwise</div>
+<p class="Pp">Example:</p>
+<p class="Pp"></p>
+<pre>unsigned short int webcam_idx;
+if (!validate_webcam_index(optarg, &amp;webcam_idx)) {
+<br/>
+    return option_error_invalid();
+}
+opt_webcam_index = webcam_idx;
+</pre>
+<p class="Pp">Definition at line <b>240</b> of file <b>options/common.c</b>.</p>
+<pre>240                                                                                  {
+241   if (!value_str || !out_index) {
+242     return false;
+243   }
+244 
+245   char error_msg[BUFFER_SIZE_SMALL];
+246   int parsed_index = validate_opt_device_index(value_str, error_msg, sizeof(error_msg));
+247   if (parsed_index == INT_MIN) {
+248     log_error(&quot;Invalid webcam index: %s&quot;, error_msg);
+249     return false;
+250   }
+251   // Webcam index doesn't support -1 (default), must be &gt;= 0
+252   if (parsed_index &lt; 0) {
+253     log_error(&quot;Invalid webcam index '%s'. Webcam index must be a non-negative integer.&quot;, value_str);
+254     return false;
+255   }
+256 
+257   *out_index = (unsigned short int)parsed_index;
+258   return true;
+259 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>BUFFER_SIZE_SMALL</b>, <b>error_msg</b>,
+    <b>log_error</b>, and <b>validate_opt_device_index()</b>.</p>
+<p class="Pp">Referenced by <b>parse_webcam_index_option()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

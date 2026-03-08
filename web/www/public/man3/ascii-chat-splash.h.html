@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>splash.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">splash.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">splash.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">splash.h - Intro and status screen display for ascii-chat with
+    animated rainbow effects.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>splash_log_init</b> (void)
+  <br/>
+  Initialize log buffer for splash animation. void <b>splash_log_destroy</b>
+    (void)
+  <br/>
+  Destroy splash log buffer. void <b>splash_log_clear</b> (void)
+  <br/>
+  Clear splash log buffer. void <b>splash_log_append</b> (const char *message)
+  <br/>
+  Append message to splash log buffer. int <b>splash_intro_start</b>
+    (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  Start animated intro screen with rainbow ASCII art (non-blocking). int
+    <b>splash_intro_done</b> (void)
+  <br/>
+  Signal that intro splash should end (first frame ready to render). void
+    <b>splash_wait_for_animation</b> (void)
+  <br/>
+  Wait for splash animation thread to fully exit. <b>bool</b>
+    <b>splash_should_display</b> (<b>bool</b> is_intro)
+  <br/>
+  Check if splash screen should display. void <b>splash_restore_stderr</b>
+    (void)
+  <br/>
+  Restore stderr after splash animation completes. void
+    <b>splash_set_update_notification</b> (const char *notification)
+  <br/>
+  Set update notification to display on splash/status screens. void
+    <b>splash_clear_display_context</b> (void)
+  <br/>
+  Clear the cached display context to prevent use-after-free. void
+    <b>splash_notify_first_frame</b> (void)
+  <br/>
+  Notify splash that the first frame has been rendered. <b>bool</b>
+    <b>splash_is_running</b> (void)
+  <br/>
+  Check if splash screen animation is currently running.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Intro and status screen display for ascii-chat with animated
+    rainbow effects.</p>
+<p class="Pp">Provides splash screen functionality for displaying:</p>
+<ul class="Bl-bullet">
+  <li>Intro screen with animated rainbow ASCII art (client/mirror/discovery
+      modes)</li>
+  <li>Status screen with server/discovery-service information</li>
+</ul>
+<p class="Pp">The splash screen displays while initialization happens in the
+    background:</p>
+<ul class="Bl-bullet">
+  <li>For clients/mirror: displays during network connection &amp; frame
+      preparation</li>
+  <li>For servers: displays during binding and initialization</li>
+</ul>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">February 2026</div>
+<p class="Pp">Definition in file <b>splash.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

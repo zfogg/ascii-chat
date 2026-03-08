@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>atomic.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">atomic.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">atomic.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">atomic.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>SHOULD_EXIT</b>()
+  <br/>
+  #define <b>CLIENT_SHOULD_EXIT</b>()
+  <br/>
+  #define <b>ATOMIC_LOAD_BOOL</b>(ptr)
+  <br/>
+  #define <b>ATOMIC_LOAD_UINT32</b>(ptr)
+  <br/>
+  #define <b>ATOMIC_LOAD_UINT64</b>(ptr)
+  <br/>
+  #define <b>ATOMIC_STORE_BOOL</b>(ptr, value)
+  <br/>
+  #define <b>ATOMIC_STORE_UINT32</b>(ptr, value)
+  <br/>
+  #define <b>ATOMIC_STORE_UINT64</b>(ptr, value)
+  <br/>
+  #define <b>ATOMIC_CAS_BOOL</b>(ptr, expected, new_value)
+  <br/>
+  #define <b>ATOMIC_CAS_UINT32</b>(ptr, expected, new_value)
+  <br/>
+  #define <b>ATOMIC_ADD_UINT32</b>(ptr, delta)
+  <br/>
+  #define <b>ATOMIC_SUB_UINT32</b>(ptr, delta)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_ATOMIC_ADD_UINT32(_ptr,__delta)"><a class="permalink" href="#_define_ATOMIC_ADD_UINT32(_ptr,__delta)">#define
+  ATOMIC_ADD_UINT32( ptr, delta)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>atomic_fetch_add((atomic_uint32_t *)(ptr), (delta))</pre>
+<pre></pre>
+<p class="Pp">Atomically add to an unsigned 32-bit value.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ptr</i> Pointer to atomic_uint32_t variable
+<br/>
+<i>delta</i> Value to add</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Previous value of the atomic variable</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>uint32_t previous = ATOMIC_ADD_UINT32(&amp;g_frame_counter, 1);
+log_debug(&quot;Frame count before: %u&quot;, previous);
+</pre>
+<p class="Pp">Definition at line <b>208</b> of file <b>util/atomic.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ATOMIC_CAS_BOOL(_ptr,__expected,__new_value)"><a class="permalink" href="#_define_ATOMIC_CAS_BOOL(_ptr,__expected,__new_value)">#define
+  ATOMIC_CAS_BOOL( ptr, expected, new_value)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>atomic_compare_exchange_strong((atomic_t *)(ptr), &amp;(expected), (new_value))</pre>
+<pre></pre>
+<p class="Pp">Compare and swap operation for boolean atomics. Atomically
+    compares the value at ptr with expected, and if equal, stores new_value and
+    returns true. Otherwise returns false.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ptr</i> Pointer to <b>atomic_t</b> variable
+<br/>
+<i>expected</i> Expected value
+<br/>
+<i>new_value</i> New value to store if comparison succeeds</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if swap succeeded (value was equal to expected),
+  false otherwise</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>// Try to set client as active (was inactive)
+if (ATOMIC_CAS_BOOL(&amp;client-&gt;active, false, true)) {
+<br/>
+    log_debug(&quot;Client activated&quot;);
+} else {
+<br/>
+    log_debug(&quot;Client already active&quot;);
+}
+</pre>
+<p class="Pp">Definition at line <b>173</b> of file <b>util/atomic.h</b>.</p>
+<pre>173 #define ATOMIC_CAS_BOOL(ptr, expected, new_value)                                                                      \
+174   atomic_compare_exchange_strong((atomic_t *)(ptr), &amp;(expected), (new_value))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ATOMIC_CAS_UINT32(_ptr,__expected,__new_value)"><a class="permalink" href="#_define_ATOMIC_CAS_UINT32(_ptr,__expected,__new_value)">#define
+  ATOMIC_CAS_UINT32( ptr, expected, new_value)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>atomic_compare_exchange_strong((atomic_uint32_t *)(ptr), (expected), (new_value))</pre>
+<pre></pre>
+<p class="Pp">Compare and swap operation for unsigned 32-bit atomics.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ptr</i> Pointer to atomic_uint32_t variable
+<br/>
+<i>expected</i> Expected value (passed by reference)
+<br/>
+<i>new_value</i> New value to store if comparison succeeds</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if swap succeeded, false otherwise</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>uint32_t expected = current_id;
+if (ATOMIC_CAS_UINT32(&amp;g_next_client_id, &amp;expected, current_id + 1)) {
+<br/>
+    log_debug(&quot;Claimed client ID %u&quot;, expected);
+}
+</pre>
+<p class="Pp">Definition at line <b>192</b> of file <b>util/atomic.h</b>.</p>
+<pre>192 #define ATOMIC_CAS_UINT32(ptr, expected, new_value)                                                                    \
+193   atomic_compare_exchange_strong((atomic_uint32_t *)(ptr), (expected), (new_value))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ATOMIC_LOAD_BOOL(_ptr)"><a class="permalink" href="#_define_ATOMIC_LOAD_BOOL(_ptr)">#define
+  ATOMIC_LOAD_BOOL( ptr)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>atomic_load((atomic_t *)(ptr))</pre>
+<pre></pre>
+<p class="Pp">Safely load a boolean atomic value.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ptr</i> Pointer to <b>atomic_t</b> variable</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Current value of the atomic variable</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>bool is_active = ATOMIC_LOAD_BOOL(&amp;client-&gt;active);
+</pre>
+<p class="Pp">Definition at line <b>86</b> of file <b>util/atomic.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ATOMIC_LOAD_UINT32(_ptr)"><a class="permalink" href="#_define_ATOMIC_LOAD_UINT32(_ptr)">#define
+  ATOMIC_LOAD_UINT32( ptr)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>atomic_load((atomic_uint32_t *)(ptr))</pre>
+<pre></pre>
+<p class="Pp">Safely load an unsigned 32-bit atomic value.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ptr</i> Pointer to atomic_uint32_t variable</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Current value of the atomic variable</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>uint32_t client_id = ATOMIC_LOAD_UINT32(&amp;client-&gt;client_id);
+</pre>
+<p class="Pp">Definition at line <b>99</b> of file <b>util/atomic.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ATOMIC_LOAD_UINT64(_ptr)"><a class="permalink" href="#_define_ATOMIC_LOAD_UINT64(_ptr)">#define
+  ATOMIC_LOAD_UINT64( ptr)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>atomic_load((atomic_uint64_t *)(ptr))</pre>
+<pre></pre>
+<p class="Pp">Safely load an unsigned 64-bit atomic value.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ptr</i> Pointer to atomic_uint64_t variable</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Current value of the atomic variable</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>uint64_t timestamp = ATOMIC_LOAD_UINT64(&amp;client-&gt;last_activity);
+</pre>
+<p class="Pp">Definition at line <b>112</b> of file <b>util/atomic.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ATOMIC_STORE_BOOL(_ptr,__value)"><a class="permalink" href="#_define_ATOMIC_STORE_BOOL(_ptr,__value)">#define
+  ATOMIC_STORE_BOOL( ptr, value)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>atomic_store((atomic_t *)(ptr), (value))</pre>
+<pre></pre>
+<p class="Pp">Safely store a boolean atomic value.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ptr</i> Pointer to <b>atomic_t</b> variable
+<br/>
+<i>value</i> Value to store</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>ATOMIC_STORE_BOOL(&amp;client-&gt;active, true);
+</pre>
+<p class="Pp">Definition at line <b>125</b> of file <b>util/atomic.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ATOMIC_STORE_UINT32(_ptr,__value)"><a class="permalink" href="#_define_ATOMIC_STORE_UINT32(_ptr,__value)">#define
+  ATOMIC_STORE_UINT32( ptr, value)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>atomic_store((atomic_uint32_t *)(ptr), (value))</pre>
+<pre></pre>
+<p class="Pp">Safely store an unsigned 32-bit atomic value.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ptr</i> Pointer to atomic_uint32_t variable
+<br/>
+<i>value</i> Value to store</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>ATOMIC_STORE_UINT32(&amp;client-&gt;client_id, 42);
+</pre>
+<p class="Pp">Definition at line <b>138</b> of file <b>util/atomic.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ATOMIC_STORE_UINT64(_ptr,__value)"><a class="permalink" href="#_define_ATOMIC_STORE_UINT64(_ptr,__value)">#define
+  ATOMIC_STORE_UINT64( ptr, value)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>atomic_store((atomic_uint64_t *)(ptr), (value))</pre>
+<pre></pre>
+<p class="Pp">Safely store an unsigned 64-bit atomic value.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ptr</i> Pointer to atomic_uint64_t variable
+<br/>
+<i>value</i> Value to store</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>ATOMIC_STORE_UINT64(&amp;client-&gt;last_activity, get_time_ms());
+</pre>
+<p class="Pp">Definition at line <b>151</b> of file <b>util/atomic.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ATOMIC_SUB_UINT32(_ptr,__delta)"><a class="permalink" href="#_define_ATOMIC_SUB_UINT32(_ptr,__delta)">#define
+  ATOMIC_SUB_UINT32( ptr, delta)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>atomic_fetch_sub((atomic_uint32_t *)(ptr), (delta))</pre>
+<pre></pre>
+<p class="Pp">Atomically subtract from an unsigned 32-bit value.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ptr</i> Pointer to atomic_uint32_t variable
+<br/>
+<i>delta</i> Value to subtract</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Previous value of the atomic variable</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>uint32_t previous = ATOMIC_SUB_UINT32(&amp;g_active_clients, 1);
+log_debug(&quot;Active clients before: %u&quot;, previous);
+</pre>
+<p class="Pp">Definition at line <b>223</b> of file <b>util/atomic.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_CLIENT_SHOULD_EXIT()"><a class="permalink" href="#_define_CLIENT_SHOULD_EXIT()">#define
+  CLIENT_SHOULD_EXIT()</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>(atomic_load(&amp;g_should_exit))</pre>
+<pre></pre>
+<p class="Pp">Check if the global client should exit. Requires g_should_exit to
+    be declared as <b>atomic_t</b> in the compilation unit.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if shutdown is requested, false otherwise</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>extern atomic_t g_should_exit;
+while (!CLIENT_SHOULD_EXIT()) {
+<br/>
+    process_client_event();
+}
+</pre>
+<p class="Pp">Definition at line <b>73</b> of file <b>util/atomic.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SHOULD_EXIT()"><a class="permalink" href="#_define_SHOULD_EXIT()">#define
+  SHOULD_EXIT()</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>(atomic_load(&amp;g_should_exit))</pre>
+<pre></pre>
+<p class="Pp">Check if the global server should exit. Requires g_should_exit to
+    be declared as <b>atomic_t</b> in the compilation unit.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if shutdown is requested, false otherwise</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>extern atomic_t g_should_exit;
+while (!SHOULD_EXIT()) {
+<br/>
+    process_event();
+}
+</pre>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This assumes g_should_exit is declared in the same file
+  or extern declared.</div>
+<p class="Pp">Definition at line <b>56</b> of file <b>util/atomic.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

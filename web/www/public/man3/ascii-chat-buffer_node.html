@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>buffer_node(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">buffer_node(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">buffer_node(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">buffer_node - Node header embedded before user data.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/buffer_pool.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint32_t</b> <b>magic</b>
+  <br/>
+  Magic to identify pooled buffers. <b>uint32_t</b> <b>_pad</b>
+  <br/>
+  Padding for alignment. size_t <b>size</b>
+  <br/>
+  Size of user data portion. <b>atomic_ptr_t</b> <b>next</b>
+  <br/>
+  Next in free list (lock-free). <b>atomic_t</b> <b>returned_at_ns</b>
+  <br/>
+  Timestamp when returned to free list (nanoseconds). struct <b>buffer_pool</b>
+    * <b>pool</b>
+  <br/>
+  Owning pool (for free).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Node header embedded before user data.</p>
+<p class="Pp">Layout in memory: [<b>buffer_node_t</b> header][user data...] ^--
+    pointer returned to caller</p>
+<p class="Pp">Definition at line <b>71</b> of file <b>buffer_pool.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> buffer_node::_pad</h2>
+<p class="Pp">Padding for alignment.</p>
+<p class="Pp">Definition at line <b>73</b> of file <b>buffer_pool.h</b>.</p>
+<p class="Pp">Referenced by <b>buffer_pool_alloc()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> buffer_node::magic</h2>
+<p class="Pp">Magic to identify pooled buffers.</p>
+<p class="Pp">Definition at line <b>72</b> of file <b>buffer_pool.h</b>.</p>
+<p class="Pp">Referenced by <b>buffer_pool_alloc()</b>, and
+    <b>buffer_pool_free()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_ptr_t</b> buffer_node::next</h2>
+<p class="Pp">Next in free list (lock-free).</p>
+<p class="Pp">Definition at line <b>75</b> of file <b>buffer_pool.h</b>.</p>
+<p class="Pp">Referenced by <b>buffer_pool_alloc()</b>,
+    <b>buffer_pool_destroy()</b>, <b>buffer_pool_free()</b>, and
+    <b>buffer_pool_shrink()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
+  <b>buffer_pool</b>* buffer_node::pool</a></h2>
+<p class="Pp">Owning pool (for free).</p>
+<p class="Pp">Definition at line <b>77</b> of file <b>buffer_pool.h</b>.</p>
+<p class="Pp">Referenced by <b>buffer_pool_alloc()</b>, and
+    <b>buffer_pool_free()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> buffer_node::returned_at_ns</h2>
+<p class="Pp">Timestamp when returned to free list (nanoseconds).</p>
+<p class="Pp">Definition at line <b>76</b> of file <b>buffer_pool.h</b>.</p>
+<p class="Pp">Referenced by <b>buffer_pool_alloc()</b>,
+    <b>buffer_pool_free()</b>, and <b>buffer_pool_shrink()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_buffer_node::size"><a class="permalink" href="#size_t_buffer_node::size">size_t
+  buffer_node::size</a></h2>
+<p class="Pp">Size of user data portion.</p>
+<p class="Pp">Definition at line <b>74</b> of file <b>buffer_pool.h</b>.</p>
+<p class="Pp">Referenced by <b>buffer_pool_alloc()</b>,
+    <b>buffer_pool_free()</b>, and <b>buffer_pool_shrink()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

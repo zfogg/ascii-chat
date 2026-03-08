@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>abstraction.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">abstraction.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">abstraction.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">abstraction.h - Platform abstraction layer umbrella header
+    providing unified cross-platform API.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<p class="Pp"><b>Platform Detection Macros</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>PLATFORM_WINDOWS</b> 0
+  <br/>
+  Platform detection: 1 on Windows, 0 on POSIX. #define <b>PLATFORM_POSIX</b> 1
+  <br/>
+  Platform detection: 1 on POSIX, 0 on Windows.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Compiler Attribute Macros</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>PACKED_STRUCT_BEGIN</b>
+  <br/>
+  Begin a packed structure (POSIX: no-op, uses attribute). #define
+    <b>PACKED_STRUCT_END</b>
+  <br/>
+  End a packed structure (POSIX: no-op, uses attribute). #define
+    <b>PACKED_ATTR</b> <b>__attribute__</b>((packed))
+  <br/>
+  Packed structure attribute (POSIX: <b>attribute</b>((packed))). #define
+    <b>ALIGNED_ATTR</b>(x)
+  <br/>
+  Memory alignment attribute (POSIX: <b>attribute</b>((aligned))).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Utility Macros</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>PLATFORM_BINARY_NAME</b> 'ascii-chat'
+  <br/>
+  Suppress unused parameter warnings. #define
+    <b>PLATFORM_SHELL_NULL_REDIRECT</b> '2&gt;/dev/null'
+  <br/>
+  Shell null device/error redirect for platform.
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<p class="Pp"><b>Cross-Platform Utility Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  void <b>platform_sleep_us</b> (unsigned int usec)
+  <br/>
+  High-precision sleep function with microsecond precision. void
+    <b>platform_sleep_ns</b> (<b>uint64_t</b> ns)
+  <br/>
+  Platform-safe sleep function with nanosecond precision.
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Platform abstraction layer umbrella header providing unified
+    cross-platform API.</p>
+<p class="Pp">This is the main entry point for the platform abstraction layer.
+    It includes all platform-specific component headers (<b>system.h</b>,
+    <b>terminal.h</b>, thread.h, etc.) and provides a unified API that works
+    identically on Windows, Linux, and macOS.</p>
+<p class="Pp"></p>
+<p class="Pp">The actual function declarations and implementations are in the
+    component headers:</p>
+<ul class="Bl-bullet">
+  <li><b>system.h</b> / system.c - System functions, timers, environment
+      variables</li>
+  <li><b>terminal.h</b> / terminal.c - Terminal I/O and control sequences</li>
+  <li>thread.h - Threading primitives</li>
+  <li><b>socket.h</b> - Network socket operations</li>
+  <li>mutex.h, <b>rwlock.h</b>, <b>cond.h</b> - Synchronization primitives</li>
+  <li>string.h, memory.h - Safe string and memory functions</li>
+  <li>file.h, <b>process.h</b> - File and process operations</li>
+</ul>
+<p class="Pp">Platform-specific implementations are in lib/platform/posix/ and
+    lib/platform/windows/</p>
+<p class="Pp">Definition in file <b>abstraction.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

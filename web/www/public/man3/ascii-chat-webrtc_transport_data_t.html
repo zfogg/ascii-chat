@@ -40,19 +40,19 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">webrtc_peer_connection_t * <b>peer_conn</b>
+<p class="Pp"><b>webrtc_peer_connection_t</b> * <b>peer_conn</b>
   <br/>
-  Peer connection (owned). webrtc_data_channel_t * <b>data_channel</b>
+  Peer connection (owned). <b>webrtc_data_channel_t</b> * <b>data_channel</b>
   <br/>
-  Data channel (owned). ringbuffer_t * <b>recv_queue</b>
+  Data channel (owned). <b>ringbuffer_t</b> * <b>recv_queue</b>
   <br/>
-  Receive message queue. mutex_t <b>queue_mutex</b>
+  Receive message queue. <b>mutex_t</b> <b>queue_mutex</b>
   <br/>
-  Protect queue operations. cond_t <b>queue_cond</b>
+  Protect queue operations. <b>cond_t</b> <b>queue_cond</b>
   <br/>
   Signal when messages arrive. <b>bool</b> <b>is_connected</b>
   <br/>
-  Connection state. mutex_t <b>state_mutex</b>
+  Connection state. <b>mutex_t</b> <b>state_mutex</b>
   <br/>
   Protect state changes.
   <br/>
@@ -70,8 +70,8 @@
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="webrtc_data_channel_t*_webrtc_transport_data_t::data_channel"><a class="permalink" href="#webrtc_data_channel_t*_webrtc_transport_data_t::data_channel">webrtc_data_channel_t*
-  webrtc_transport_data_t::data_channel</a></h2>
+<h2 class="Ss"><b>webrtc_data_channel_t</b>*
+  webrtc_transport_data_t::data_channel</h2>
 <p class="Pp">Data channel (owned).</p>
 <p class="Pp">Definition at line <b>63</b> of file
   <b>webrtc/transport.c</b>.</p>
@@ -85,40 +85,36 @@
 <p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="webrtc_peer_connection_t*_webrtc_transport_data_t::peer_conn"><a class="permalink" href="#webrtc_peer_connection_t*_webrtc_transport_data_t::peer_conn">webrtc_peer_connection_t*
-  webrtc_transport_data_t::peer_conn</a></h2>
+<h2 class="Ss"><b>webrtc_peer_connection_t</b>*
+  webrtc_transport_data_t::peer_conn</h2>
 <p class="Pp">Peer connection (owned).</p>
 <p class="Pp">Definition at line <b>62</b> of file
   <b>webrtc/transport.c</b>.</p>
 <p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="cond_t_webrtc_transport_data_t::queue_cond"><a class="permalink" href="#cond_t_webrtc_transport_data_t::queue_cond">cond_t
-  webrtc_transport_data_t::queue_cond</a></h2>
+<h2 class="Ss"><b>cond_t</b> webrtc_transport_data_t::queue_cond</h2>
 <p class="Pp">Signal when messages arrive.</p>
 <p class="Pp">Definition at line <b>66</b> of file
   <b>webrtc/transport.c</b>.</p>
 <p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="mutex_t_webrtc_transport_data_t::queue_mutex"><a class="permalink" href="#mutex_t_webrtc_transport_data_t::queue_mutex">mutex_t
-  webrtc_transport_data_t::queue_mutex</a></h2>
+<h2 class="Ss"><b>mutex_t</b> webrtc_transport_data_t::queue_mutex</h2>
 <p class="Pp">Protect queue operations.</p>
 <p class="Pp">Definition at line <b>65</b> of file
   <b>webrtc/transport.c</b>.</p>
 <p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="ringbuffer_t*_webrtc_transport_data_t::recv_queue"><a class="permalink" href="#ringbuffer_t*_webrtc_transport_data_t::recv_queue">ringbuffer_t*
-  webrtc_transport_data_t::recv_queue</a></h2>
+<h2 class="Ss"><b>ringbuffer_t</b>* webrtc_transport_data_t::recv_queue</h2>
 <p class="Pp">Receive message queue.</p>
 <p class="Pp">Definition at line <b>64</b> of file
   <b>webrtc/transport.c</b>.</p>
 <p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="mutex_t_webrtc_transport_data_t::state_mutex"><a class="permalink" href="#mutex_t_webrtc_transport_data_t::state_mutex">mutex_t
-  webrtc_transport_data_t::state_mutex</a></h2>
+<h2 class="Ss"><b>mutex_t</b> webrtc_transport_data_t::state_mutex</h2>
 <p class="Pp">Protect state changes.</p>
 <p class="Pp">Definition at line <b>68</b> of file
   <b>webrtc/transport.c</b>.</p>
@@ -133,7 +129,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

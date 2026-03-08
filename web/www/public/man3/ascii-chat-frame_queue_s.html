@@ -48,11 +48,11 @@
   <br/>
   int <b>count</b>
   <br/>
-  mutex_t <b>mu</b>
+  <b>mutex_t</b> <b>mu</b>
   <br/>
-  cond_t <b>not_empty</b>
+  <b>cond_t</b> <b>not_empty</b>
   <br/>
-  cond_t <b>not_full</b>
+  <b>cond_t</b> <b>not_full</b>
   <br/>
   const char * <b>name</b>
   <br/>
@@ -63,7 +63,7 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">Definition at line <b>38</b> of file <b>pipeline.c</b>.</p>
+<p class="Pp">Definition at line <b>39</b> of file <b>pipeline.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -71,47 +71,47 @@
 <section class="Ss">
 <h2 class="Ss" id="int_frame_queue_s::capacity"><a class="permalink" href="#int_frame_queue_s::capacity">int
   frame_queue_s::capacity</a></h2>
-<p class="Pp">Definition at line <b>40</b> of file <b>pipeline.c</b>.</p>
+<p class="Pp">Definition at line <b>41</b> of file <b>pipeline.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_frame_queue_s::count"><a class="permalink" href="#int_frame_queue_s::count">int
   frame_queue_s::count</a></h2>
-<p class="Pp">Definition at line <b>41</b> of file <b>pipeline.c</b>.</p>
+<p class="Pp">Definition at line <b>42</b> of file <b>pipeline.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_frame_queue_s::head"><a class="permalink" href="#int_frame_queue_s::head">int
   frame_queue_s::head</a></h2>
-<p class="Pp">Definition at line <b>41</b> of file <b>pipeline.c</b>.</p>
+<p class="Pp">Definition at line <b>42</b> of file <b>pipeline.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="mutex_t_frame_queue_s::mu"><a class="permalink" href="#mutex_t_frame_queue_s::mu">mutex_t
-  frame_queue_s::mu</a></h2>
-<p class="Pp">Definition at line <b>42</b> of file <b>pipeline.c</b>.</p>
+<h2 class="Ss"><b>mutex_t</b> frame_queue_s::mu</h2>
+<p class="Pp">Definition at line <b>43</b> of file <b>pipeline.c</b>.</p>
+<p class="Pp">Referenced by <b>session_pipeline_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char*_frame_queue_s::name"><a class="permalink" href="#const_char*_frame_queue_s::name">const
   char* frame_queue_s::name</a></h2>
-<p class="Pp">Definition at line <b>45</b> of file <b>pipeline.c</b>.</p>
+<p class="Pp">Definition at line <b>46</b> of file <b>pipeline.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="cond_t_frame_queue_s::not_empty"><a class="permalink" href="#cond_t_frame_queue_s::not_empty">cond_t
-  frame_queue_s::not_empty</a></h2>
-<p class="Pp">Definition at line <b>43</b> of file <b>pipeline.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="cond_t_frame_queue_s::not_full"><a class="permalink" href="#cond_t_frame_queue_s::not_full">cond_t
-  frame_queue_s::not_full</a></h2>
+<h2 class="Ss"><b>cond_t</b> frame_queue_s::not_empty</h2>
 <p class="Pp">Definition at line <b>44</b> of file <b>pipeline.c</b>.</p>
+<p class="Pp">Referenced by <b>session_pipeline_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>cond_t</b> frame_queue_s::not_full</h2>
+<p class="Pp">Definition at line <b>45</b> of file <b>pipeline.c</b>.</p>
+<p class="Pp">Referenced by <b>session_pipeline_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void**_frame_queue_s::slots"><a class="permalink" href="#void**_frame_queue_s::slots">void**
   frame_queue_s::slots</a></h2>
-<p class="Pp">Definition at line <b>39</b> of file <b>pipeline.c</b>.</p>
+<p class="Pp">Definition at line <b>40</b> of file <b>pipeline.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_frame_queue_s::tail"><a class="permalink" href="#int_frame_queue_s::tail">int
   frame_queue_s::tail</a></h2>
-<p class="Pp">Definition at line <b>41</b> of file <b>pipeline.c</b>.</p>
+<p class="Pp">Definition at line <b>42</b> of file <b>pipeline.c</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -122,7 +122,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

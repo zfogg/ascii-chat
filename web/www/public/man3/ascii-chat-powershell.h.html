@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>powershell.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">powershell.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">powershell.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">powershell.h - PowerShell completion generator.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>completions_generate_powershell</b>
+    (FILE *output)
+  <br/>
+  Generate PowerShell completion script.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">PowerShell completion generator.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>powershell.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> completions_generate_powershell (FILE *
+  output)</h2>
+<p class="Pp">Generate PowerShell completion script.</p>
+<p class="Pp">Definition at line <b>130</b> of file <b>powershell.c</b>.</p>
+<pre>130                                                                 {
+131   if (!output) {
+132     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output stream cannot be NULL&quot;);
+133   }
+134 
+135   fprintf(output, &quot;# PowerShell completion script for ascii-chat\n&quot;
+136                   &quot;# Generated from options registry - DO NOT EDIT MANUALLY\n&quot;
+137                   &quot;# Usage: ascii-chat --completions powershell | Out-String | Invoke-Expression\n&quot;
+138                   &quot;\n&quot;
+139                   &quot;$script:AsciiChatCompleter = {\n&quot;
+140                   &quot;  param($wordToComplete, $commandAst, $cursorPosition)\n&quot;
+141                   &quot;\n&quot;
+142                   &quot;  $words = @($commandAst.CommandElements | ForEach-Object { $_.Value })\n&quot;
+143                   &quot;  $mode = $null\n&quot;
+144                   &quot;\n&quot;
+145                   &quot;  foreach ($word in $words) {\n&quot;
+146                   &quot;    if ($word -in @('server', 'client', 'mirror')) {\n&quot;
+147                   &quot;      $mode = $word\n&quot;
+148                   &quot;      break\n&quot;
+149                   &quot;    }\n&quot;
+150                   &quot;  }\n&quot;
+151                   &quot;\n&quot;
+152                   &quot;  $binaryOptions = @(\n&quot;);
+153 
+154   /* Binary options - use unified display API matching help system */
+155   size_t binary_count = 0;
+156   const option_descriptor_t *binary_opts = options_registry_get_for_display(MODE_DISCOVERY, true, &amp;binary_count);
+157 
+158   if (binary_opts) {
+159     for (size_t i = 0; i &lt; binary_count; i++) {
+160       ps_write_option(output, &amp;binary_opts[i]);
+161     }
+162     SAFE_FREE(binary_opts);
+163   }
+164 
+165   fprintf(output, &quot;  )\n\n  $serverOptions = @(\n&quot;);
+166 
+167   /* Server options - use unified display API matching help system */
+168   size_t server_count = 0;
+169   const option_descriptor_t *server_opts = options_registry_get_for_display(MODE_SERVER, false, &amp;server_count);
+170 
+171   if (server_opts) {
+172     for (size_t i = 0; i &lt; server_count; i++) {
+173       ps_write_option(output, &amp;server_opts[i]);
+174     }
+175     SAFE_FREE(server_opts);
+176   }
+177 
+178   fprintf(output, &quot;  )\n\n  $clientOptions = @(\n&quot;);
+179 
+180   /* Client options - use unified display API matching help system */
+181   size_t client_count = 0;
+182   const option_descriptor_t *client_opts = options_registry_get_for_display(MODE_CLIENT, false, &amp;client_count);
+183 
+184   if (client_opts) {
+185     for (size_t i = 0; i &lt; client_count; i++) {
+186       ps_write_option(output, &amp;client_opts[i]);
+187     }
+188     SAFE_FREE(client_opts);
+189   }
+190 
+191   fprintf(output, &quot;  )\n\n  $mirrorOptions = @(\n&quot;);
+192 
+193   /* Mirror options - use unified display API matching help system */
+194   size_t mirror_count = 0;
+195   const option_descriptor_t *mirror_opts = options_registry_get_for_display(MODE_MIRROR, false, &amp;mirror_count);
+196 
+197   if (mirror_opts) {
+198     for (size_t i = 0; i &lt; mirror_count; i++) {
+199       ps_write_option(output, &amp;mirror_opts[i]);
+200     }
+201     SAFE_FREE(mirror_opts);
+202   }
+203 
+204   fprintf(output, &quot;  )\n\n  $discoverySvcOptions = @(\n&quot;);
+205 
+206   /* Discovery-service options */
+207   size_t discovery_svc_count = 0;
+208   const option_descriptor_t *discovery_svc_opts =
+209       options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &amp;discovery_svc_count);
+210 
+211   if (discovery_svc_opts) {
+212     for (size_t i = 0; i &lt; discovery_svc_count; i++) {
+213       ps_write_option(output, &amp;discovery_svc_opts[i]);
+214     }
+215     SAFE_FREE(discovery_svc_opts);
+216   }
+217 
+218   fprintf(output,
+219           &quot;  )\n&quot;
+220           &quot;\n&quot;
+221           &quot;  $options = $binaryOptions\n&quot;
+222           &quot;  \n&quot;
+223           &quot;  if ($mode -eq 'server') {\n&quot;
+224           &quot;    $options += $serverOptions\n&quot;
+225           &quot;  } elseif ($mode -eq 'client') {\n&quot;
+226           &quot;    $options += $clientOptions\n&quot;
+227           &quot;  } elseif ($mode -eq 'mirror') {\n&quot;
+228           &quot;    $options += $mirrorOptions\n&quot;
+229           &quot;  } elseif ($mode -eq 'discovery-service') {\n&quot;
+230           &quot;    $options += $discoverySvcOptions\n&quot;
+231           &quot;  }\n&quot;
+232           &quot;\n&quot;
+233           &quot;  if (-not $mode -and -not $wordToComplete.StartsWith('-')) {\n&quot;
+234           &quot;    @('server', 'client', 'mirror', 'discovery-service') | Where-Object { $_ -like \&quot;$wordToComplete*\&quot; } | &quot;
+235           &quot;ForEach-Object {\n&quot;
+236           &quot;      [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', \&quot;Mode: $_\&quot;)\n&quot;
+237           &quot;    }\n&quot;
+238           &quot;  } else {\n&quot;
+239           &quot;    $options | Where-Object { $_.Name -like \&quot;$wordToComplete*\&quot; } | ForEach-Object {\n&quot;
+240           &quot;      if ($_.Values) {\n&quot;
+241           &quot;        $_.Values | ForEach-Object {\n&quot;
+242           &quot;          [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_.Description)\n&quot;
+243           &quot;        }\n&quot;
+244           &quot;      } else {\n&quot;
+245           &quot;        [System.Management.Automation.CompletionResult]::new($_.Name, $_.Name, 'ParameterValue', &quot;
+246           &quot;$_.Description)\n&quot;
+247           &quot;      }\n&quot;
+248           &quot;    }\n&quot;
+249           &quot;  }\n&quot;
+250           &quot;}\n&quot;
+251           &quot;\n&quot;
+252           &quot;Register-ArgumentCompleter -CommandName ascii-chat -ScriptBlock $script:AsciiChatCompleter\n&quot;);
+253 
+254   return ASCIICHAT_OK;
+255 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

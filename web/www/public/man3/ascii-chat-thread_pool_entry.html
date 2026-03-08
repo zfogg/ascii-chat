@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>thread_pool_entry(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">thread_pool_entry(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">thread_pool_entry(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">thread_pool_entry - Thread pool entry (internal linked list
+  node).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/thread_pool.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_thread_t</b> <b>thread</b>
+  <br/>
+  Thread handle. int <b>stop_id</b>
+  <br/>
+  Cleanup order (lower = stop first, -1 = unordered). void *(*
+    <b>thread_func</b> )(void *)
+  <br/>
+  Thread function. void * <b>thread_arg</b>
+  <br/>
+  Thread argument. char <b>name</b> [64]
+  <br/>
+  Thread name for debugging. struct <b>thread_pool_entry</b> * <b>next</b>
+  <br/>
+  Linked list next pointer.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Thread pool entry (internal linked list node).</p>
+<p class="Pp">Tracks individual threads in the pool. Threads are maintained in a
+    sorted linked list by stop_id for ordered cleanup.</p>
+<p class="Pp">Definition at line <b>99</b> of file <b>thread_pool.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char_thread_pool_entry::name_64_"><a class="permalink" href="#char_thread_pool_entry::name_64_">char
+  thread_pool_entry::name[64]</a></h2>
+<p class="Pp">Thread name for debugging.</p>
+<p class="Pp">Definition at line <b>104</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Referenced by <b>thread_pool_create_with_workers()</b>,
+    <b>thread_pool_interrupt_all()</b>, <b>thread_pool_spawn()</b>, and
+    <b>thread_pool_stop_all()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
+  <b>thread_pool_entry</b>* thread_pool_entry::next</a></h2>
+<p class="Pp">Linked list next pointer.</p>
+<p class="Pp">Definition at line <b>105</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Referenced by <b>thread_pool_create_with_workers()</b>,
+    <b>thread_pool_interrupt_all()</b>, <b>thread_pool_spawn()</b>, and
+    <b>thread_pool_stop_all()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_thread_pool_entry::stop_id"><a class="permalink" href="#int_thread_pool_entry::stop_id">int
+  thread_pool_entry::stop_id</a></h2>
+<p class="Pp">Cleanup order (lower = stop first, -1 = unordered).</p>
+<p class="Pp">Definition at line <b>101</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Referenced by <b>thread_pool_create_with_workers()</b>,
+    <b>thread_pool_spawn()</b>, and <b>thread_pool_stop_all()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_thread_t</b> thread_pool_entry::thread</h2>
+<p class="Pp">Thread handle.</p>
+<p class="Pp">Definition at line <b>100</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Referenced by <b>thread_pool_create_with_workers()</b>,
+    <b>thread_pool_interrupt_all()</b>, <b>thread_pool_spawn()</b>, and
+    <b>thread_pool_stop_all()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_thread_pool_entry::thread_arg"><a class="permalink" href="#void*_thread_pool_entry::thread_arg">void*
+  thread_pool_entry::thread_arg</a></h2>
+<p class="Pp">Thread argument.</p>
+<p class="Pp">Definition at line <b>103</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Referenced by <b>thread_pool_create_with_workers()</b>, and
+    <b>thread_pool_spawn()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_*(*_thread_pool_entry::thread_func)_(void_*)"><a class="permalink" href="#void_*(*_thread_pool_entry::thread_func)_(void_*)">void
+  *(* thread_pool_entry::thread_func) (void *)</a></h2>
+<p class="Pp">Thread function.</p>
+<p class="Pp">Definition at line <b>102</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Referenced by <b>thread_pool_create_with_workers()</b>, and
+    <b>thread_pool_spawn()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

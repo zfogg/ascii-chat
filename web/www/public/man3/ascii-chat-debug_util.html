@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>debug_util(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">debug_util(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">debug_util(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">debug_util - Debug_util</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+<br/>
+<p class="Pp">file <b>backtrace.c</b>
+  <br/>
+  &#x1F4CD; Backtrace capture, symbolization, and formatting implementation file
+    <b>memory.c</b>
+  <br/>
+  &#x1F9E0; Memory debugging implementation for ascii-chat debug builds file
+    <b>backtrace.h</b>
+  <br/>
+  &#x1F4CD; Backtrace capture, symbolization, and formatting
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>backtrace_print_symbols</b> (const char *label, char
+    **symbols, int count, int skip_frames, int max_frames,
+    <b>backtrace_frame_filter_t</b> filter)
+  <br/>
+  Print pre-resolved backtrace symbols with consistent formatting. void
+    <b>backtrace_log_frames</b> (int num_frames, int skip_frames)
+  <br/>
+  Log N backtrace frames with function name, line number, and file. void
+    <b>platform_install_crash_handler</b> (void)
+  <br/>
+  Install crash handlers for the application.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Provides a unified <b>backtrace_t</b> type and API for capturing,
+    symbolizing, and printing stack traces. This abstraction consolidates
+    backtrace handling that was previously scattered across multiple files.</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="Purpose"><a class="permalink" href="#Purpose">Purpose</a></h2>
+<p class="Pp">Stack traces are invaluable for understanding program flow
+  during:</p>
+<ul class="Bl-bullet">
+  <li><b>Development</b>: Debugging segfaults, assertion failures, and
+      unexpected state</li>
+  <li><b>Production</b>: Correlating errors with their root causes in
+      logs/reports</li>
+  <li><b>Testing</b>: Validating execution paths and error conditions</li>
+</ul>
+<p class="Pp">This module provides efficient capture (single syscall), optional
+    symbolization (maps addresses to function names/source locations), and
+    flexible printing (colored terminal vs. plain log file formats).</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Key_Features"><a class="permalink" href="#Key_Features">Key
+  Features</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Platform abstraction</b>: POSIX (backtrace/addr2line) and Windows
+      (StackWalk) support</li>
+  <li><b>Efficient capture</b>: Minimal overhead - single
+      <b>platform_backtrace()</b> call</li>
+  <li><b>Lazy symbolization</b>: Only symbolize when needed, not on every
+      capture</li>
+  <li><b>Frame filtering</b>: Skip internal/framework frames to focus on
+      application code</li>
+  <li><b>Dual output</b>: Colored stderr for development, plain text for log
+      files</li>
+  <li><b>Multiple formats</b>: Print to stderr, format to buffer, or batch-print
+      multiple traces</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Usage_Examples"><a class="permalink" href="#Usage_Examples">Usage
+  Examples</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Development:_Quick_Backtrace_on_Error"><a class="permalink" href="#Development:_Quick_Backtrace_on_Error">Development:
+  Quick Backtrace on Error</a></h2>
+<pre>asciichat_error_t result = some_operation();
+if (result != ASCIICHAT_OK) {
+<br/>
+    backtrace_t bt;
+<br/>
+    backtrace_capture_and_symbolize(&amp;bt);
+<br/>
+    backtrace_print(&quot;Error backtrace&quot;, &amp;bt, 0, 5, NULL);
+<br/>
+    backtrace_t_free(&amp;bt);
+<br/>
+    return result;
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Production:_Memory_Leak_with_Source_Locations"><a class="permalink" href="#Production:_Memory_Leak_with_Source_Locations">Production:
+  Memory Leak with Source Locations</a></h2>
+<pre>// During allocation - store backtrace for leak reporting
+backtrace_t alloc_trace;
+backtrace_capture_and_symbolize(&amp;alloc_trace);
+// ... store trace in allocation metadata ...
+// On leak detection (exit time):
+backtrace_print(&quot;Leaked from&quot;, &amp;alloc_trace, 0, 0, NULL);</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Filtering:_Skip_Framework_Frames"><a class="permalink" href="#Filtering:_Skip_Framework_Frames">Filtering:
+  Skip Framework Frames</a></h2>
+<pre>bool skip_internal_frames(const char *frame) {
+<br/>
+    // Skip lib/platform and lib/log frames
+<br/>
+    return strstr(frame, &quot;lib/platform&quot;) != NULL ||
+<br/>
+           strstr(frame, &quot;lib/log&quot;) != NULL;
+}
+backtrace_t bt;
+backtrace_capture_and_symbolize(&amp;bt);
+backtrace_print(&quot;Application trace&quot;, &amp;bt, 0, 10, skip_internal_frames);</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Buffer_Formatting:_Log-Safe_Output"><a class="permalink" href="#Buffer_Formatting:_Log-Safe_Output">Buffer
+  Formatting: Log-Safe Output</a></h2>
+<pre>backtrace_t bt;
+backtrace_capture_and_symbolize(&amp;bt);
+char buffer[4096];
+int written = backtrace_format(buffer, sizeof(buffer),
+<br/>
+                               &quot;Trace&quot;, &amp;bt, 0, 0, NULL);
+if (written &gt; 0) {
+<br/>
+    log_info(&quot;Stack: %s&quot;, buffer);  // Safe for log system
+}
+backtrace_t_free(&amp;bt);</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Build_Modes"><a class="permalink" href="#Build_Modes">Build
+  Modes</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Full support</b>: Linux with addr2line, macOS, Windows with DWARF/PDB
+      info</li>
+  <li><b>Limited support</b>: Embedded systems may have symbolic info
+    stripped</li>
+  <li><b>Graceful degradation</b>: Hex addresses are always available even if
+      symbols fail</li>
+</ul>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent">lib/platform/backtrace.h for platform-specific
+  implementations
+<p class="Pp"></p>
+<p class="Pp"><b>asciichat_errno.h</b> for <b>backtrace_t</b> structure
+    definition</p>
+</div>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_backtrace_log_frames_(int_num_frames,_int_skip_frames)"><a class="permalink" href="#void_backtrace_log_frames_(int_num_frames,_int_skip_frames)">void
+  backtrace_log_frames (int num_frames, int skip_frames)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/backtrace.h</b>&gt;<b></b></p>
+<p class="Pp">Log N backtrace frames with function name, line number, and file.
+    Captures and logs the backtrace at debug level, showing the function name,
+    file path, and line number for each frame.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>num_frames</i> Number of frames to capture and log (0
+  = all available)
+<br/>
+<i>skip_frames</i> Number of frames to skip from the top (e.g., skip this
+  function itself)</div>
+<p class="Pp">Example output: [0] my_function() at <b>src/main.c</b>:42 [1]
+    caller_function() at src/caller.c:123 [2] <b>main()</b> at
+    <b>src/main.c</b>:999</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Uses <b>log_debug()</b> for output
+<p class="Pp"></p>
+<p class="Pp">Call with skip_frames=1 to skip the
+    platform_log_backtrace_frames() call itself</p>
+</div>
+<p class="Pp">Definition at line <b>393</b> of file
+  <b>debug/backtrace.c</b>.</p>
+<pre>393                                                            {
+394   backtrace_t bt;
+395   backtrace_capture_and_symbolize(&amp;bt);
+396   backtrace_print(&quot;Backtrace&quot;, &amp;bt, skip_frames, num_frames, NULL);
+397   backtrace_t_free(&amp;bt);
+398 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>backtrace_capture_and_symbolize()</b>,
+    <b>backtrace_print()</b>, and <b>backtrace_t_free()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_backtrace_print_symbols_(const_char_*_label,_char_**_symbols,_int_count,_int_skip_frames,_int_max_frames,_"><a class="permalink" href="#void_backtrace_print_symbols_(const_char_*_label,_char_**_symbols,_int_count,_int_skip_frames,_int_max_frames,_">void
+  backtrace_print_symbols (const char * label, char ** symbols, int count, int
+  skip_frames, int max_frames, <b>backtrace_frame_filter_t</b> filter)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/backtrace.h</b>&gt;<b></b></p>
+<p class="Pp">Print pre-resolved backtrace symbols with consistent formatting.
+    Uses colored format for all backtraces: [-1]
+    <b>crypto_handshake_server_complete()</b> (lib/crypto/handshake.c:1471) [0]
+    <b>server_crypto_handshake()</b> (<b>src/server/crypto.c</b>:511)</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>label</i> Header label (e.g., &quot;Backtrace&quot;,
+  &quot;Call stack&quot;)
+<br/>
+<i>symbols</i> Array of pre-resolved symbol strings
+<br/>
+<i>count</i> Number of symbols in the array
+<br/>
+<i>skip_frames</i> Number of frames to skip from the start
+<br/>
+<i>max_frames</i> Maximum frames to print (-1 = unlimited)
+<br/>
+<i>filter</i> Optional filter callback to skip specific frames (NULL = no
+  filtering)</div>
+<p class="Pp">Definition at line <b>400</b> of file
+  <b>debug/backtrace.c</b>.</p>
+<pre>401                                                               {
+402   backtrace_t bt = {0};
+403   bt.symbols = symbols;
+404   bt.count = count;
+405   backtrace_print(label, &amp;bt, skip_frames, max_frames, filter);
+406 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>backtrace_print()</b>, <b>backtrace_t::count</b>,
+    and <b>backtrace_t::symbols</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_platform_install_crash_handler_(void_)"><a class="permalink" href="#void_platform_install_crash_handler_(void_)">void
+  platform_install_crash_handler (void )</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/platform/system.h</b>&gt;<b></b></p>
+<p class="Pp">Install crash handlers for the application. Installs signal
+    handlers for common crash signals (SIGSEGV, SIGABRT, etc.) that will print a
+    backtrace before terminating the process.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This should be called early in program
+  initialization.</div>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

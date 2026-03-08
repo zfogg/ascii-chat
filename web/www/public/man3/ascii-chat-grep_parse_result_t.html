@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>grep_parse_result_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">grep_parse_result_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">grep_parse_result_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">grep_parse_result_t - Parsed pattern result from /pattern/flags
+    syntax.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/log/grep.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">char <b>pattern</b> [4096]
+  <br/>
+  Parsed pattern string. <b>uint32_t</b> <b>pcre2_options</b>
+  <br/>
+  PCRE2 compile options. <b>bool</b> <b>is_fixed_string</b>
+  <br/>
+  True if fixed string (not regex). <b>bool</b> <b>case_insensitive</b>
+  <br/>
+  Case-insensitive (i flag). <b>bool</b> <b>invert</b>
+  <br/>
+  Invert match (I flag). <b>bool</b> <b>global_flag</b>
+  <br/>
+  Highlight all matches (g flag). int <b>context_before</b>
+  <br/>
+  Lines before match (B&lt;n&gt; flag). int <b>context_after</b>
+  <br/>
+  Lines after match (A&lt;n&gt; flag). <b>bool</b> <b>valid</b>
+  <br/>
+  True if parsing succeeded.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Parsed pattern result from /pattern/flags syntax.</p>
+<p class="Pp">Shared between --grep CLI filtering and interactive grep.</p>
+<p class="Pp">Definition at line <b>18</b> of file <b>grep.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> grep_parse_result_t::case_insensitive</h2>
+<p class="Pp">Case-insensitive (i flag).</p>
+<p class="Pp">Definition at line <b>22</b> of file <b>grep.h</b>.</p>
+<p class="Pp">Referenced by <b>grep_init()</b>, <b>grep_parse_pattern()</b>,
+    <b>log_search_enter_mode()</b>, <b>log_search_exit_mode()</b>,
+    <b>log_search_handle_key()</b>, and <b>log_search_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_grep_parse_result_t::context_after"><a class="permalink" href="#int_grep_parse_result_t::context_after">int
+  grep_parse_result_t::context_after</a></h2>
+<p class="Pp">Lines after match (A&lt;n&gt; flag).</p>
+<p class="Pp">Definition at line <b>26</b> of file <b>grep.h</b>.</p>
+<p class="Pp">Referenced by <b>grep_init()</b>, <b>grep_parse_pattern()</b>,
+    <b>log_search_enter_mode()</b>, <b>log_search_exit_mode()</b>,
+    <b>log_search_handle_key()</b>, and <b>log_search_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_grep_parse_result_t::context_before"><a class="permalink" href="#int_grep_parse_result_t::context_before">int
+  grep_parse_result_t::context_before</a></h2>
+<p class="Pp">Lines before match (B&lt;n&gt; flag).</p>
+<p class="Pp">Definition at line <b>25</b> of file <b>grep.h</b>.</p>
+<p class="Pp">Referenced by <b>grep_init()</b>, <b>grep_parse_pattern()</b>,
+    <b>log_search_enter_mode()</b>, <b>log_search_exit_mode()</b>,
+    <b>log_search_handle_key()</b>, and <b>log_search_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> grep_parse_result_t::global_flag</h2>
+<p class="Pp">Highlight all matches (g flag).</p>
+<p class="Pp">Definition at line <b>24</b> of file <b>grep.h</b>.</p>
+<p class="Pp">Referenced by <b>grep_init()</b>, <b>grep_parse_pattern()</b>,
+    <b>log_search_enter_mode()</b>, <b>log_search_exit_mode()</b>,
+    <b>log_search_handle_key()</b>, and <b>log_search_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> grep_parse_result_t::invert</h2>
+<p class="Pp">Invert match (I flag).</p>
+<p class="Pp">Definition at line <b>23</b> of file <b>grep.h</b>.</p>
+<p class="Pp">Referenced by <b>grep_init()</b>, <b>grep_parse_pattern()</b>,
+    <b>log_search_enter_mode()</b>, <b>log_search_exit_mode()</b>,
+    <b>log_search_handle_key()</b>, and <b>log_search_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> grep_parse_result_t::is_fixed_string</h2>
+<p class="Pp">True if fixed string (not regex).</p>
+<p class="Pp">Definition at line <b>21</b> of file <b>grep.h</b>.</p>
+<p class="Pp">Referenced by <b>grep_init()</b>, <b>grep_parse_pattern()</b>,
+    <b>log_search_enter_mode()</b>, <b>log_search_exit_mode()</b>,
+    <b>log_search_handle_key()</b>, and <b>log_search_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_grep_parse_result_t::pattern_4096_"><a class="permalink" href="#char_grep_parse_result_t::pattern_4096_">char
+  grep_parse_result_t::pattern[4096]</a></h2>
+<p class="Pp">Parsed pattern string.</p>
+<p class="Pp">Definition at line <b>19</b> of file <b>grep.h</b>.</p>
+<p class="Pp">Referenced by <b>grep_init()</b>, <b>grep_parse_pattern()</b>,
+    <b>log_search_enter_mode()</b>, <b>log_search_exit_mode()</b>,
+    <b>log_search_gather_and_filter_logs()</b>,
+    <b>log_search_get_match_info()</b>, <b>log_search_handle_key()</b>, and
+    <b>log_search_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> grep_parse_result_t::pcre2_options</h2>
+<p class="Pp">PCRE2 compile options.</p>
+<p class="Pp">Definition at line <b>20</b> of file <b>grep.h</b>.</p>
+<p class="Pp">Referenced by <b>grep_init()</b>, <b>grep_parse_pattern()</b>,
+    <b>log_search_enter_mode()</b>, <b>log_search_exit_mode()</b>,
+    <b>log_search_handle_key()</b>, and <b>log_search_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> grep_parse_result_t::valid</h2>
+<p class="Pp">True if parsing succeeded.</p>
+<p class="Pp">Definition at line <b>27</b> of file <b>grep.h</b>.</p>
+<p class="Pp">Referenced by <b>grep_init()</b>, <b>grep_parse_pattern()</b>,
+    <b>log_search_enter_mode()</b>, <b>log_search_exit_mode()</b>,
+    <b>log_search_get_match_info()</b>, <b>log_search_handle_key()</b>, and
+    <b>log_search_init()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>question.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">question.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">question.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">question.h - Cross-platform interactive prompting utilities.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>prompt_opts_t</b>
+  <br/>
+  Options for text prompts.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>PROMPT_OPTS_DEFAULT</b> (<b>prompt_opts_t</b>){.echo =
+    <b>true</b>, .same_line = <b>false</b>, .mask_char = 0}
+  <br/>
+  Default prompt options (echo enabled, answer on next line). #define
+    <b>PROMPT_OPTS_PASSWORD</b> (<b>prompt_opts_t</b>){.echo = <b>false</b>,
+    .same_line = <b>true</b>, .mask_char = '*'}
+  <br/>
+  Prompt options for password input (no echo, asterisk masking, same line).
+    #define <b>PROMPT_OPTS_INLINE</b> (<b>prompt_opts_t</b>){.echo =
+    <b>true</b>, .same_line = <b>true</b>, .mask_char = 0}
+  <br/>
+  Prompt options for inline text input (echo enabled, same line).
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>platform_prompt_question</b> (const char *prompt, char
+    *buffer, size_t max_len, <b>prompt_opts_t</b> opts)
+  <br/>
+  Prompt the user for text input. <b>bool</b> <b>platform_prompt_yes_no</b>
+    (const char *prompt, <b>bool</b> default_yes)
+  <br/>
+  Prompt the user for a yes/no answer. <b>bool</b>
+    <b>platform_is_interactive</b> (void)
+  <br/>
+  Check if interactive prompting is available.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Cross-platform interactive prompting utilities.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>question.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

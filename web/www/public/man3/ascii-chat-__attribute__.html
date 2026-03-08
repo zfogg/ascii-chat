@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>__attribute__(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">__attribute__(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">__attribute__(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">__attribute__ - Network quality metrics for a single
+  participant.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include
+  &lt;include/ascii-chat/network/consensus/metrics.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint8_t</b> <b>participant_id</b> [16]
+  <br/>
+  UUID of participant. <b>uint8_t</b> <b>nat_tier</b>
+  <br/>
+  0=LAN, 1=Public, 2=UPnP, 3=STUN, 4=TURN <b>uint32_t</b> <b>upload_kbps</b>
+  <br/>
+  Upload bandwidth in Kbps (network byte order). <b>uint32_t</b> <b>rtt_ns</b>
+  <br/>
+  RTT to current host in nanoseconds (network byte order). <b>uint8_t</b>
+    <b>stun_probe_success_pct</b>
+  <br/>
+  0-100: percentage of successful STUN probes char <b>public_address</b> [64]
+  <br/>
+  Detected public IP address. <b>uint16_t</b> <b>public_port</b>
+  <br/>
+  Detected public port (network byte order). <b>uint8_t</b>
+    <b>connection_type</b>
+  <br/>
+  Direct=0, UPnP=1, STUN=2, TURN=3. <b>uint64_t</b> <b>measurement_time_ns</b>
+  <br/>
+  Unix ns when measured (network byte order). <b>uint64_t</b>
+    <b>measurement_window_ns</b>
+  <br/>
+  Duration of measurement in ns (network byte order).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Network quality metrics for a single participant.</p>
+<p class="Pp">Used for host selection in consensus algorithm. Includes NAT
+    classification, bandwidth estimates, latency, and probe success rates.</p>
+<p class="Pp">Definition at line <b>33</b> of file <b>metrics.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> __attribute__::connection_type</h2>
+<p class="Pp">Direct=0, UPnP=1, STUN=2, TURN=3.</p>
+<p class="Pp">Definition at line <b>41</b> of file <b>metrics.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> __attribute__::measurement_time_ns</h2>
+<p class="Pp">Unix ns when measured (network byte order).</p>
+<p class="Pp">Definition at line <b>42</b> of file <b>metrics.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> __attribute__::measurement_window_ns</h2>
+<p class="Pp">Duration of measurement in ns (network byte order).</p>
+<p class="Pp">Definition at line <b>43</b> of file <b>metrics.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> __attribute__::nat_tier</h2>
+<p class="Pp">0=LAN, 1=Public, 2=UPnP, 3=STUN, 4=TURN</p>
+<p class="Pp">Definition at line <b>35</b> of file <b>metrics.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> __attribute__::participant_id[16]</h2>
+<p class="Pp">UUID of participant.</p>
+<p class="Pp">Definition at line <b>34</b> of file <b>metrics.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char___attribute__::public_address_64_"><a class="permalink" href="#char___attribute__::public_address_64_">char
+  __attribute__::public_address[64]</a></h2>
+<p class="Pp">Detected public IP address.</p>
+<p class="Pp">Definition at line <b>39</b> of file <b>metrics.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> __attribute__::public_port</h2>
+<p class="Pp">Detected public port (network byte order).</p>
+<p class="Pp">Definition at line <b>40</b> of file <b>metrics.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> __attribute__::rtt_ns</h2>
+<p class="Pp">RTT to current host in nanoseconds (network byte order).</p>
+<p class="Pp">Definition at line <b>37</b> of file <b>metrics.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> __attribute__::stun_probe_success_pct</h2>
+<p class="Pp">0-100: percentage of successful STUN probes</p>
+<p class="Pp">Definition at line <b>38</b> of file <b>metrics.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> __attribute__::upload_kbps</h2>
+<p class="Pp">Upload bandwidth in Kbps (network byte order).</p>
+<p class="Pp">Definition at line <b>36</b> of file <b>metrics.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>video_frame_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">video_frame_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">video_frame_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">video_frame_t - Video frame structure.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/video/rgba/video_frame.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<p class="Pp"><b>Frame Data</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  void * <b>data</b>
+  <br/>
+  Frame data pointer (points to pre-allocated buffer). size_t <b>size</b>
+  <br/>
+  Size of frame data in bytes.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Frame Dimensions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>uint32_t</b> <b>width</b>
+  <br/>
+  Frame width in pixels. <b>uint32_t</b> <b>height</b>
+  <br/>
+  Frame height in pixels.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Timing Information</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>uint64_t</b> <b>capture_timestamp_ns</b>
+  <br/>
+  Timestamp when frame was captured (nanoseconds). <b>uint64_t</b>
+    <b>receive_timestamp_ns</b>
+  <br/>
+  Timestamp when frame was received (nanoseconds). <b>uint64_t</b>
+    <b>sequence_number</b>
+  <br/>
+  Frame sequence number (for drop detection).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Quality Metrics</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>uint64_t</b> <b>encoding_time_ns</b>
+  <br/>
+  Time taken to encode/decode frame (nanoseconds). <b>bool</b>
+    <b>is_keyframe</b>
+  <br/>
+  True if this is a keyframe (important frame).
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Video frame structure.</p>
+<p class="Pp">Represents a single video frame with data, dimensions, timing, and
+    quality metrics. Frame data points to pre-allocated buffers managed by the
+    frame buffer system.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Frame data is not owned by this structure - it points to
+  pre-allocated buffers that are reused across frames.
+<p class="Pp"></p>
+<p class="Pp">Sequence numbers are used to detect dropped frames (gaps in
+    sequence).</p>
+<p class="Pp"></p>
+<p class="Pp">Timestamps are in microseconds for high precision timing.</p>
+</div>
+<p class="Pp">Definition at line <b>116</b> of file <b>video_frame.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> video_frame_t::capture_timestamp_ns</h2>
+<p class="Pp">Timestamp when frame was captured (nanoseconds).</p>
+<p class="Pp">Definition at line <b>134</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>client_video_render_thread()</b>, and
+    <b>simple_frame_swap_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_video_frame_t::data"><a class="permalink" href="#void*_video_frame_t::data">void*
+  video_frame_t::data</a></h2>
+<p class="Pp">Frame data pointer (points to pre-allocated buffer).</p>
+<p class="Pp">Definition at line <b>120</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>client_video_render_thread()</b>,
+    <b>simple_frame_swap_create()</b>, <b>simple_frame_swap_destroy()</b>,
+    <b>simple_frame_swap_update()</b>, <b>video_frame_buffer_create()</b>, and
+    <b>video_frame_buffer_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> video_frame_t::encoding_time_ns</h2>
+<p class="Pp">Time taken to encode/decode frame (nanoseconds).</p>
+<p class="Pp">Definition at line <b>142</b> of file <b>video_frame.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> video_frame_t::height</h2>
+<p class="Pp">Frame height in pixels.</p>
+<p class="Pp">Definition at line <b>128</b> of file <b>video_frame.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> video_frame_t::is_keyframe</h2>
+<p class="Pp">True if this is a keyframe (important frame).</p>
+<p class="Pp">Definition at line <b>143</b> of file <b>video_frame.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> video_frame_t::receive_timestamp_ns</h2>
+<p class="Pp">Timestamp when frame was received (nanoseconds).</p>
+<p class="Pp">Definition at line <b>135</b> of file <b>video_frame.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> video_frame_t::sequence_number</h2>
+<p class="Pp">Frame sequence number (for drop detection).</p>
+<p class="Pp">Definition at line <b>136</b> of file <b>video_frame.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_video_frame_t::size"><a class="permalink" href="#size_t_video_frame_t::size">size_t
+  video_frame_t::size</a></h2>
+<p class="Pp">Size of frame data in bytes.</p>
+<p class="Pp">Definition at line <b>121</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>client_video_render_thread()</b>,
+    <b>simple_frame_swap_update()</b>, and
+  <b>video_frame_buffer_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> video_frame_t::width</h2>
+<p class="Pp">Frame width in pixels.</p>
+<p class="Pp">Definition at line <b>127</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

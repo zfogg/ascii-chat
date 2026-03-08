@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>example_descriptor_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">example_descriptor_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">example_descriptor_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">example_descriptor_t - Example descriptor for programmatic
+    EXAMPLES generation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/options/builder.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint32_t</b> <b>mode_bitmask</b>
+  <br/>
+  Bitmask of modes (OPTION_MODE_SERVER, OPTION_MODE_CLIENT, etc.). const char *
+    <b>args</b>
+  <br/>
+  Command-line arguments part of the example. const char * <b>description</b>
+  <br/>
+  <b>bool</b> <b>owns_args_memory</b>
+  <br/>
+  True if args memory should be freed by options_config_destroy. <b>bool</b>
+    <b>is_utility_command</b>
+  <br/>
+  True if this is a utility command (don't prepend program name).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Example descriptor for programmatic EXAMPLES generation.</p>
+<p class="Pp">Stores command components separately for semantic coloring:</p>
+<ul class="Bl-bullet">
+  <li>mode_bitmask: which modes this example applies to</li>
+  <li>args: green</li>
+</ul>
+<p class="Pp">Definition at line <b>310</b> of file <b>builder.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_example_descriptor_t::args"><a class="permalink" href="#const_char*_example_descriptor_t::args">const
+  char* example_descriptor_t::args</a></h2>
+<p class="Pp">Command-line arguments part of the example.</p>
+<p class="Pp">Definition at line <b>312</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_content_generate_examples()</b>,
+    <b>options_builder_add_example()</b>,
+    <b>options_builder_add_example_utility()</b>, and
+    <b>options_config_calculate_max_col_width()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_example_descriptor_t::description"><a class="permalink" href="#const_char*_example_descriptor_t::description">const
+  char* example_descriptor_t::description</a></h2>
+<p class="Pp">Definition at line <b>313</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_content_generate_examples()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> example_descriptor_t::is_utility_command</h2>
+<p class="Pp">True if this is a utility command (don't prepend program
+  name).</p>
+<p class="Pp">Definition at line <b>315</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_config_calculate_max_col_width()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> example_descriptor_t::mode_bitmask</h2>
+<p class="Pp">Bitmask of modes (OPTION_MODE_SERVER, OPTION_MODE_CLIENT,
+  etc.).</p>
+<p class="Pp">Definition at line <b>311</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_content_generate_examples()</b>, and
+    <b>options_config_calculate_max_col_width()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> example_descriptor_t::owns_args_memory</h2>
+<p class="Pp">True if args memory should be freed by options_config_destroy.</p>
+<p class="Pp">Definition at line <b>314</b> of file <b>builder.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

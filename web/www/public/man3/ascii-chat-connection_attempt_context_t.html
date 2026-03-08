@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>connection_attempt_context_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">connection_attempt_context_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">connection_attempt_context_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">connection_attempt_context_t - Context for connection attempts
+    (TCP or WebSocket).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include
+  &lt;include/ascii-chat/network/connection_attempt.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>connection_state_t</b> <b>current_state</b>
+  <br/>
+  Current connection state. <b>connection_state_t</b> <b>previous_state</b>
+  <br/>
+  Previous state (for debugging). <b>uint64_t</b> <b>attempt_start_time_ns</b>
+  <br/>
+  When current attempt began. <b>uint64_t</b> <b>timeout_ns</b>
+  <br/>
+  Timeout for connection attempt. <b>acip_transport_t</b> *
+    <b>active_transport</b>
+  <br/>
+  Currently active transport. struct <b>tcp_client</b> *
+    <b>tcp_client_instance</b>
+  <br/>
+  TCP client instance - owned by context. struct <b>websocket_client</b> *
+    <b>ws_client_instance</b>
+  <br/>
+  WebSocket client instance - owned by context. <b>uint32_t</b>
+    <b>reconnect_attempt</b>
+  <br/>
+  Reconnection attempt number (1st, 2nd, etc.). <b>uint32_t</b>
+    <b>total_transitions</b>
+  <br/>
+  Total state transitions (for metrics). <b>bool</b> <b>is_reconnection</b>
+  <br/>
+  True if reconnecting after successful connection (not first connect).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Context for connection attempts (TCP or WebSocket).</p>
+<p class="Pp">Manages connection state including:</p>
+<ul class="Bl-bullet">
+  <li>State machine tracking (current state, previous state)</li>
+  <li>Timeout management</li>
+  <li>Transport instance (TCP or WebSocket)</li>
+  <li>Statistics (retry count, transitions)</li>
+</ul>
+<p class="Pp">Created at client startup, persists across reconnection
+  attempts.</p>
+<p class="Pp">Definition at line <b>84</b> of file
+  <b>connection_attempt.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>acip_transport_t</b>*
+  connection_attempt_context_t::active_transport</h2>
+<p class="Pp">Currently active transport.</p>
+<p class="Pp">Definition at line <b>94</b> of file
+  <b>connection_attempt.h</b>.</p>
+<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
+    <b>connection_attempt_websocket()</b>, and
+    <b>connection_context_cleanup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b>
+  connection_attempt_context_t::attempt_start_time_ns</h2>
+<p class="Pp">When current attempt began.</p>
+<p class="Pp">Definition at line <b>90</b> of file
+  <b>connection_attempt.h</b>.</p>
+<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
+    <b>connection_attempt_websocket()</b>, <b>connection_check_timeout()</b>,
+    and <b>connection_context_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>connection_state_t</b>
+  connection_attempt_context_t::current_state</h2>
+<p class="Pp">Current connection state.</p>
+<p class="Pp">Definition at line <b>86</b> of file
+  <b>connection_attempt.h</b>.</p>
+<p class="Pp">Referenced by <b>connection_context_init()</b>, and
+    <b>connection_state_transition()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> connection_attempt_context_t::is_reconnection</h2>
+<p class="Pp">True if reconnecting after successful connection (not first
+    connect).</p>
+<p class="Pp">Definition at line <b>103</b> of file
+  <b>connection_attempt.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>connection_state_t</b>
+  connection_attempt_context_t::previous_state</h2>
+<p class="Pp">Previous state (for debugging).</p>
+<p class="Pp">Definition at line <b>87</b> of file
+  <b>connection_attempt.h</b>.</p>
+<p class="Pp">Referenced by <b>connection_context_init()</b>, and
+    <b>connection_state_transition()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b>
+  connection_attempt_context_t::reconnect_attempt</h2>
+<p class="Pp">Reconnection attempt number (1st, 2nd, etc.).</p>
+<p class="Pp">Definition at line <b>99</b> of file
+  <b>connection_attempt.h</b>.</p>
+<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>, and
+    <b>connection_context_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">struct <b>tcp_client</b>*
+  connection_attempt_context_t::tcp_client_instance</h2>
+<p class="Pp">TCP client instance - owned by context.</p>
+<p class="Pp">Definition at line <b>95</b> of file
+  <b>connection_attempt.h</b>.</p>
+<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>, and
+    <b>connection_context_cleanup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> connection_attempt_context_t::timeout_ns</h2>
+<p class="Pp">Timeout for connection attempt.</p>
+<p class="Pp">Definition at line <b>91</b> of file
+  <b>connection_attempt.h</b>.</p>
+<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
+    <b>connection_attempt_websocket()</b>, <b>connection_check_timeout()</b>,
+    and <b>connection_context_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b>
+  connection_attempt_context_t::total_transitions</h2>
+<p class="Pp">Total state transitions (for metrics).</p>
+<p class="Pp">Definition at line <b>100</b> of file
+  <b>connection_attempt.h</b>.</p>
+<p class="Pp">Referenced by <b>connection_context_init()</b>, and
+    <b>connection_state_transition()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">struct <b>websocket_client</b>*
+  connection_attempt_context_t::ws_client_instance</h2>
+<p class="Pp">WebSocket client instance - owned by context.</p>
+<p class="Pp">Definition at line <b>96</b> of file
+  <b>connection_attempt.h</b>.</p>
+<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
+    <b>connection_attempt_websocket()</b>, and
+    <b>connection_context_cleanup()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

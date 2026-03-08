@@ -50,8 +50,8 @@
   <br/>
   EMSCRIPTEN_KEEPALIVE void <b>mirror_cleanup</b> (void)
   <br/>
-  EMSCRIPTEN_KEEPALIVE char * <b>mirror_convert_frame</b> (uint8_t *rgba_data,
-    int src_width, int src_height)
+  EMSCRIPTEN_KEEPALIVE char * <b>mirror_convert_frame</b> (<b>uint8_t</b>
+    *rgba_data, int src_width, int src_height)
   <br/>
   EMSCRIPTEN_KEEPALIVE void <b>mirror_free_string</b> (char *ptr)
   <br/>
@@ -91,11 +91,12 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>digital_rain_destroy()</b>,
-    <b>options_state_destroy()</b>, and <b>platform_destroy()</b>.</p>
+    <b>options_state_destroy()</b>, <b>platform_destroy()</b>, and
+    <b>SAFE_FREE</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_char_*_mirror_convert_frame_(uint8_t_*_rgba_data,_int_src_width,_int_src_height)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_char_*_mirror_convert_frame_(uint8_t_*_rgba_data,_int_src_width,_int_src_height)">EMSCRIPTEN_KEEPALIVE
-  char * mirror_convert_frame (uint8_t * rgba_data, int src_width, int
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_char_*_mirror_convert_frame_("><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_char_*_mirror_convert_frame_(">EMSCRIPTEN_KEEPALIVE
+  char * mirror_convert_frame (<b>uint8_t</b> * rgba_data, int src_width, int
   src_height)</a></h2>
 <p class="Pp">Definition at line <b>114</b> of file <b>mirror.c</b>.</p>
 <pre>114                                                                               {
@@ -281,11 +282,29 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>apply_color_filter()</b>,
     <b>ascii_convert_with_capabilities()</b>, <b>aspect_ratio()</b>,
+    <b>terminal_capabilities_t::capabilities</b>,
+    <b>terminal_capabilities_t::color_count</b>,
+    <b>terminal_capabilities_t::color_filter</b>, <b>COLOR_FILTER_NONE</b>,
+    <b>COLOR_FILTER_RAINBOW</b>, <b>terminal_capabilities_t::color_level</b>,
+    <b>terminal_capabilities_t::desired_fps</b>,
+    <b>terminal_capabilities_t::detection_reliable</b>,
     <b>digital_rain_apply()</b>, <b>digital_rain_destroy()</b>,
     <b>digital_rain_init()</b>, <b>digital_rain_set_color_from_filter()</b>,
+    <b>GET_OPTION</b>, <b>IMAGE_ALLOC_SIMD</b>, <b>log_error</b>,
+    <b>PALETTE_BLOCKS</b>, <b>PALETTE_CHARS_BLOCKS</b>,
+    <b>PALETTE_CHARS_COOL</b>, <b>PALETTE_CHARS_DIGITAL</b>,
+    <b>PALETTE_CHARS_MINIMAL</b>, <b>PALETTE_CHARS_STANDARD</b>,
+    <b>PALETTE_COOL</b>, <b>PALETTE_CUSTOM</b>, <b>PALETTE_DIGITAL</b>,
+    <b>PALETTE_MINIMAL</b>, <b>PALETTE_STANDARD</b>,
+    <b>terminal_capabilities_t::palette_type</b>,
     <b>RAIN_UPDATE_INTERVAL_MS</b>, <b>rainbow_replace_ansi_colors()</b>,
-    <b>terminal_get_effective_height()</b>, and
-    <b>terminal_get_effective_width()</b>.</p>
+    <b>terminal_capabilities_t::render_mode</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>TERM_COLOR_16</b>, <b>TERM_COLOR_256</b>,
+    <b>TERM_COLOR_NONE</b>, <b>terminal_get_effective_height()</b>,
+    <b>terminal_get_effective_width()</b>,
+    <b>terminal_capabilities_t::utf8_support</b>,
+    <b>terminal_capabilities_t::wants_background</b>, and
+    <b>terminal_capabilities_t::wants_padding</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_void_mirror_free_string_(char_*_ptr)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_void_mirror_free_string_(char_*_ptr)">EMSCRIPTEN_KEEPALIVE
@@ -296,6 +315,7 @@
 297 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SAFE_FREE</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_mirror_init_with_args_(const_char_*_args_json)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_mirror_init_with_args_(const_char_*_args_json)">EMSCRIPTEN_KEEPALIVE
@@ -360,7 +380,8 @@
 93 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ansi_fast_init()</b>, <b>log_init()</b>,
+<p class="Pp">References <b>ansi_fast_init()</b>, <b>argc</b>, <b>argv</b>,
+    <b>ASCIICHAT_OK</b>, <b>LOG_DEBUG</b>, <b>log_init()</b>,
     <b>options_init()</b>, <b>platform_init()</b>, <b>WASM_ERROR</b>,
     <b>WASM_LOG</b>, <b>WASM_LOG_INT</b>, and <b>wasm_parse_args()</b>.</p>
 </section>
@@ -372,7 +393,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

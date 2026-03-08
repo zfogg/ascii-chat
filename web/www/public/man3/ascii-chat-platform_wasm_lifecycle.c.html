@@ -37,20 +37,20 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp"><b>bool</b> <b>lifecycle_init</b> (lifecycle_t *lc, const char
-    *name)
+<p class="Pp"><b>bool</b> <b>lifecycle_init</b> (<b>lifecycle_t</b> *lc, const
+    char *name)
   <br/>
-  <b>bool</b> <b>lifecycle_init_once</b> (lifecycle_t *lc)
+  <b>bool</b> <b>lifecycle_init_once</b> (<b>lifecycle_t</b> *lc)
   <br/>
-  void <b>lifecycle_init_commit</b> (lifecycle_t *lc)
+  void <b>lifecycle_init_commit</b> (<b>lifecycle_t</b> *lc)
   <br/>
-  void <b>lifecycle_init_abort</b> (lifecycle_t *lc)
+  void <b>lifecycle_init_abort</b> (<b>lifecycle_t</b> *lc)
   <br/>
-  <b>bool</b> <b>lifecycle_shutdown</b> (lifecycle_t *lc)
+  <b>bool</b> <b>lifecycle_shutdown</b> (<b>lifecycle_t</b> *lc)
   <br/>
-  <b>bool</b> <b>lifecycle_shutdown_forever</b> (lifecycle_t *lc)
+  <b>bool</b> <b>lifecycle_shutdown_forever</b> (<b>lifecycle_t</b> *lc)
   <br/>
-  <b>bool</b> <b>lifecycle_is_initialized</b> (const lifecycle_t *lc)
+  <b>bool</b> <b>lifecycle_is_initialized</b> (const <b>lifecycle_t</b> *lc)
   <br/>
   <br/>
 </p>
@@ -60,8 +60,24 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> lifecycle_init (lifecycle_t * lc, const char *
+<h2 class="Ss"><b>bool</b> lifecycle_init (<b>lifecycle_t</b> * lc, const char *
   name)</h2>
+<p class="Pp">CAS-based initialization: UNINIT &#x2192; INITIALIZED.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state (may include sync_type and sync
+  pointer)
+<br/>
+<i>name</i> name tag for any sync primitive (for debugging), or NULL if no
+  sync</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if THIS caller won the race and should do init work
+<p class="Pp"></p>
+<p class="Pp">false if already INITIALIZED, INITIALIZING, or DEAD</p>
+</div>
+<p class="Pp">Suitable for single-threaded startup or contexts where the caller
+    guarantees serialization. If lc-&gt;sync_type != SYNC_NONE, initializes the
+    sync primitive.</p>
 <p class="Pp">Definition at line <b>10</b> of file
     <b>platform/wasm/lifecycle.c</b>.</p>
 <pre>10                                                        {
@@ -72,11 +88,20 @@
 15 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_int()</b>.</p>
+<p class="Pp">References <b>atomic_store_int()</b>,
+    <b>LIFECYCLE_INITIALIZED</b>, and <b>lifecycle_t::state</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_lifecycle_init_abort_(lifecycle_t_*_lc)"><a class="permalink" href="#void_lifecycle_init_abort_(lifecycle_t_*_lc)">void
-  lifecycle_init_abort (lifecycle_t * lc)</a></h2>
+<h2 class="Ss" id="void_lifecycle_init_abort_("><a class="permalink" href="#void_lifecycle_init_abort_(">void
+  lifecycle_init_abort (<b>lifecycle_t</b> * lc)</a></h2>
+<p class="Pp">Abort failed initialization: INITIALIZING &#x2192; UNINITIALIZED.
+    Call this if <b>lifecycle_init_once()</b> returns true but init work
+  fails.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state</div>
+<p class="Pp">Allows the next caller to retry initialization. Wakes
+  spinners.</p>
 <p class="Pp">Definition at line <b>30</b> of file
     <b>platform/wasm/lifecycle.c</b>.</p>
 <pre>30                                            {
@@ -85,11 +110,21 @@
 33 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_int()</b>.</p>
+<p class="Pp">References <b>atomic_store_int()</b>,
+    <b>LIFECYCLE_UNINITIALIZED</b>, and <b>lifecycle_t::state</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_lifecycle_init_commit_(lifecycle_t_*_lc)"><a class="permalink" href="#void_lifecycle_init_commit_(lifecycle_t_*_lc)">void
-  lifecycle_init_commit (lifecycle_t * lc)</a></h2>
+<h2 class="Ss" id="void_lifecycle_init_commit_("><a class="permalink" href="#void_lifecycle_init_commit_(">void
+  lifecycle_init_commit (<b>lifecycle_t</b> * lc)</a></h2>
+<p class="Pp">Commit successful initialization: INITIALIZING &#x2192;
+    INITIALIZED. Call this after <b>lifecycle_init_once()</b> returns true and
+    init work succeeds.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state</div>
+<p class="Pp">Wakes all spinners waiting in <b>lifecycle_init_once()</b>. Must
+    be called by the <b>lifecycle_init_once()</b> winner after successful init
+    work.</p>
 <p class="Pp">Definition at line <b>25</b> of file
     <b>platform/wasm/lifecycle.c</b>.</p>
 <pre>25                                             {
@@ -98,10 +133,36 @@
 28 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_int()</b>.</p>
+<p class="Pp">References <b>atomic_store_int()</b>,
+    <b>LIFECYCLE_INITIALIZED</b>, and <b>lifecycle_t::state</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> lifecycle_init_once (lifecycle_t * lc)</h2>
+<h2 class="Ss"><b>bool</b> lifecycle_init_once (<b>lifecycle_t</b> * lc)</h2>
+<p class="Pp">Lock-free concurrent initialization: CAS UNINIT &#x2192;
+    INITIALIZING.</p>
+<p class="Pp"></p>
+<p class="Pp">Winner receives true and must complete the two-phase sequence:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Do actual init work</dd>
+  <dt>2.</dt>
+  <dd>Call <b>lifecycle_init_commit()</b> on success or
+      <b>lifecycle_init_abort()</b> on failure</dd>
+</dl>
+<p class="Pp">Losing callers spin on the transient INITIALIZING state until the
+    winner commits, then return false without doing work.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if THIS caller won the init race and should do work
+<p class="Pp"></p>
+<p class="Pp">false if init already happened (or is in progress) or module is
+    DEAD</p>
+</div>
+<p class="Pp">Safe for concurrent callers. Exactly one caller gets true (the CAS
+    winner). Other concurrent callers spin until the winner moves to INITIALIZED
+    or DEAD.</p>
 <p class="Pp">Definition at line <b>17</b> of file
     <b>platform/wasm/lifecycle.c</b>.</p>
 <pre>17                                           {
@@ -113,11 +174,19 @@
 23 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_cas_int()</b>.</p>
+<p class="Pp">References <b>atomic_cas_int()</b>, <b>LIFECYCLE_INITIALIZING</b>,
+    <b>LIFECYCLE_UNINITIALIZED</b>, and <b>lifecycle_t::state</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> lifecycle_is_initialized (const lifecycle_t *
+<h2 class="Ss"><b>bool</b> lifecycle_is_initialized (const <b>lifecycle_t</b> *
   lc)</h2>
+<p class="Pp">Query: is module in INITIALIZED state?</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if state == LIFECYCLE_INITIALIZED</div>
+<p class="Pp">Load-only, no side effects. Safe to call from any thread.</p>
 <p class="Pp">Definition at line <b>45</b> of file
     <b>platform/wasm/lifecycle.c</b>.</p>
 <pre>45                                                      {
@@ -126,10 +195,23 @@
 48 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_int()</b>.</p>
+<p class="Pp">References <b>atomic_load_int()</b>, <b>LIFECYCLE_INITIALIZED</b>,
+    and <b>lifecycle_t::state</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> lifecycle_shutdown (lifecycle_t * lc)</h2>
+<h2 class="Ss"><b>bool</b> lifecycle_shutdown (<b>lifecycle_t</b> * lc)</h2>
+<p class="Pp">Regular shutdown: INITIALIZED &#x2192; UNINITIALIZED.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state (may include sync_type and sync
+  pointer)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if THIS caller should do shutdown work
+<p class="Pp"></p>
+<p class="Pp">false if already UNINITIALIZED or DEAD</p>
+</div>
+<p class="Pp">Allows re-initialization after shutdown (unlike shutdown_forever).
+    If lc-&gt;sync_type != SYNC_NONE, destroys the sync primitive.</p>
 <p class="Pp">Definition at line <b>35</b> of file
     <b>platform/wasm/lifecycle.c</b>.</p>
 <pre>35                                          {
@@ -139,11 +221,26 @@
 39 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_int()</b>.</p>
+<p class="Pp">References <b>atomic_store_int()</b>,
+    <b>LIFECYCLE_UNINITIALIZED</b>, and <b>lifecycle_t::state</b>.</p>
 <p class="Pp">Referenced by <b>lifecycle_shutdown_forever()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> lifecycle_shutdown_forever (lifecycle_t * lc)</h2>
+<h2 class="Ss"><b>bool</b> lifecycle_shutdown_forever (<b>lifecycle_t</b> *
+  lc)</h2>
+<p class="Pp">Permanent shutdown: any non-DEAD &#x2192; DEAD.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if module was INITIALIZED and caller should do
+  shutdown work
+<p class="Pp"></p>
+<p class="Pp">false if already DEAD</p>
+</div>
+<p class="Pp">Once DEAD, future init/init_once calls always return false. Spins
+    if called while init_once is in progress (INITIALIZING state). Used for
+    modules that must never be re-initialized.</p>
 <p class="Pp">Definition at line <b>41</b> of file
     <b>platform/wasm/lifecycle.c</b>.</p>
 <pre>41                                                  {
@@ -161,7 +258,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

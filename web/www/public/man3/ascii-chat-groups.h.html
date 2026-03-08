@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>groups.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">groups.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">groups.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">groups.h - Option group definitions for composable mode
+  presets.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>MODE_SERVER_GROUPS</b>
+  <br/>
+  Mode group presets. #define <b>MODE_CLIENT_GROUPS</b>
+  <br/>
+  #define <b>MODE_MIRROR_GROUPS</b> (<b>OPT_GROUP_BINARY</b> |
+    <b>OPT_GROUP_TERMINAL</b> | <b>OPT_GROUP_WEBCAM</b> |
+    <b>OPT_GROUP_DISPLAY</b> | <b>OPT_GROUP_SNAPSHOT</b> |
+    <b>OPT_GROUP_MEDIA</b>)
+  <br/>
+  #define <b>MODE_DISCOVERY_GROUPS</b>
+  <br/>
+  #define <b>MODE_ACDS_GROUPS</b> (<b>OPT_GROUP_BINARY</b> |
+    <b>OPT_GROUP_NETWORK</b> | <b>OPT_GROUP_CRYPTO</b> |
+    <b>OPT_GROUP_WEBRTC</b>)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>option_group_t</b> { <b>OPT_GROUP_NONE</b> = 0,
+    <b>OPT_GROUP_BINARY</b> = (1 &lt;&lt; 0), <b>OPT_GROUP_TERMINAL</b> = (1
+    &lt;&lt; 1), <b>OPT_GROUP_NETWORK</b> = (1 &lt;&lt; 2),
+    <b>OPT_GROUP_WEBCAM</b> = (1 &lt;&lt; 3), <b>OPT_GROUP_DISPLAY</b> = (1
+    &lt;&lt; 4), <b>OPT_GROUP_AUDIO</b> = (1 &lt;&lt; 5),
+    <b>OPT_GROUP_SNAPSHOT</b> = (1 &lt;&lt; 6), <b>OPT_GROUP_CRYPTO</b> = (1
+    &lt;&lt; 7), <b>OPT_GROUP_COMPRESSION</b> = (1 &lt;&lt; 8),
+    <b>OPT_GROUP_ACDS</b> = (1 &lt;&lt; 9), <b>OPT_GROUP_MEDIA</b> = (1 &lt;&lt;
+    10), <b>OPT_GROUP_SERVER</b> = (1 &lt;&lt; 11), <b>OPT_GROUP_CLIENT</b> = (1
+    &lt;&lt; 12), <b>OPT_GROUP_WEBRTC</b> = (1 &lt;&lt; 13) }
+  <br/>
+  Option group identifiers.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Option group definitions for composable mode presets.</p>
+<p class="Pp">This header defines option groups that allow modes to share common
+    options without duplication. Each group is a collection of related options
+    that can be added to a builder to create mode-specific configurations.</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="Option_Group_Architecture"><a class="permalink" href="#Option_Group_Architecture">Option
+  Group Architecture</a></h2>
+<p class="Pp">Options are organized into logical groups:</p>
+<ul class="Bl-bullet">
+  <li><b>BINARY</b>: Options parsed before mode selection (help, version,
+      logging)</li>
+  <li><b>TERMINAL</b>: Terminal dimension options (width, height)</li>
+  <li><b>NETWORK</b>: Network connection options (address, port, reconnect)</li>
+  <li><b>WEBCAM</b>: Video capture options (device, flip, test pattern)</li>
+  <li><b>DISPLAY</b>: Rendering options (color mode, palette, render mode)</li>
+  <li><b>AUDIO</b>: Audio streaming options (enable, devices, volume)</li>
+  <li><b>SNAPSHOT</b>: Single-frame capture options</li>
+  <li><b>CRYPTO</b>: Encryption and authentication options</li>
+  <li><b>COMPRESSION</b>: Network compression options</li>
+  <li><b>ACDS</b>: Discovery service integration options</li>
+  <li><b>MEDIA</b>: Media file streaming options</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Mode_Group_Composition"><a class="permalink" href="#Mode_Group_Composition">Mode
+  Group Composition</a></h2>
+<p class="Pp">Each mode uses a specific combination of groups:</p>
+<ul class="Bl-bullet">
+  <li><b>Server</b>: BINARY + NETWORK + CRYPTO + COMPRESSION + ACDS</li>
+  <li><b>Client</b>: BINARY + TERMINAL + NETWORK + WEBCAM + DISPLAY + AUDIO +
+      SNAPSHOT + CRYPTO + COMPRESSION + ACDS + MEDIA</li>
+  <li><b>Mirror</b>: BINARY + TERMINAL + WEBCAM + DISPLAY + SNAPSHOT +
+    MEDIA</li>
+  <li><b>Discovery</b>: BINARY + TERMINAL + NETWORK + WEBCAM + DISPLAY + AUDIO +
+      SNAPSHOT + CRYPTO + ACDS + MEDIA</li>
+  <li><b>ACDS</b>: BINARY + NETWORK + CRYPTO</li>
+</ul>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>groups.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_MODE_ACDS_GROUPS___("><a class="permalink" href="#_define_MODE_ACDS_GROUPS___(">#define
+  MODE_ACDS_GROUPS (<b>OPT_GROUP_BINARY</b> | <b>OPT_GROUP_NETWORK</b> |
+  <b>OPT_GROUP_CRYPTO</b> | <b>OPT_GROUP_WEBRTC</b>)</a></h2>
+<p class="Pp">ACDS mode options: discovery service with network and crypto</p>
+<p class="Pp">Definition at line <b>99</b> of file <b>groups.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_MODE_CLIENT_GROUPS"><a class="permalink" href="#_define_MODE_CLIENT_GROUPS">#define
+  MODE_CLIENT_GROUPS</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>(OPT_GROUP_BINARY | OPT_GROUP_TERMINAL | OPT_GROUP_NETWORK | OPT_GROUP_WEBCAM | OPT_GROUP_DISPLAY |                  \
+<br/>
+ OPT_GROUP_AUDIO | OPT_GROUP_SNAPSHOT | OPT_GROUP_CRYPTO | OPT_GROUP_COMPRESSION | OPT_GROUP_ACDS |                  \
+<br/>
+ OPT_GROUP_MEDIA | OPT_GROUP_CLIENT | OPT_GROUP_WEBRTC)</pre>
+<pre></pre>
+<p class="Pp">Client mode options: display, webcam, audio, crypto, ACDS</p>
+<p class="Pp">Definition at line <b>83</b> of file <b>groups.h</b>.</p>
+<pre>83 #define MODE_CLIENT_GROUPS                                                                                             \
+84   (OPT_GROUP_BINARY | OPT_GROUP_TERMINAL | OPT_GROUP_NETWORK | OPT_GROUP_WEBCAM | OPT_GROUP_DISPLAY |                  \
+85    OPT_GROUP_AUDIO | OPT_GROUP_SNAPSHOT | OPT_GROUP_CRYPTO | OPT_GROUP_COMPRESSION | OPT_GROUP_ACDS |                  \
+86    OPT_GROUP_MEDIA | OPT_GROUP_CLIENT | OPT_GROUP_WEBRTC)</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_MODE_DISCOVERY_GROUPS"><a class="permalink" href="#_define_MODE_DISCOVERY_GROUPS">#define
+  MODE_DISCOVERY_GROUPS</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>(OPT_GROUP_BINARY | OPT_GROUP_TERMINAL | OPT_GROUP_NETWORK | OPT_GROUP_WEBCAM | OPT_GROUP_DISPLAY |                  \
+<br/>
+ OPT_GROUP_AUDIO | OPT_GROUP_SNAPSHOT | OPT_GROUP_CRYPTO | OPT_GROUP_COMPRESSION | OPT_GROUP_ACDS |                  \
+<br/>
+ OPT_GROUP_MEDIA | OPT_GROUP_WEBRTC)</pre>
+<pre></pre>
+<p class="Pp">Discovery mode options: participant that can become host</p>
+<p class="Pp">Definition at line <b>93</b> of file <b>groups.h</b>.</p>
+<pre>93 #define MODE_DISCOVERY_GROUPS                                                                                          \
+94   (OPT_GROUP_BINARY | OPT_GROUP_TERMINAL | OPT_GROUP_NETWORK | OPT_GROUP_WEBCAM | OPT_GROUP_DISPLAY |                  \
+95    OPT_GROUP_AUDIO | OPT_GROUP_SNAPSHOT | OPT_GROUP_CRYPTO | OPT_GROUP_COMPRESSION | OPT_GROUP_ACDS |                  \
+96    OPT_GROUP_MEDIA | OPT_GROUP_WEBRTC)</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_MODE_MIRROR_GROUPS___("><a class="permalink" href="#_define_MODE_MIRROR_GROUPS___(">#define
+  MODE_MIRROR_GROUPS (<b>OPT_GROUP_BINARY</b> | <b>OPT_GROUP_TERMINAL</b> |
+  <b>OPT_GROUP_WEBCAM</b> | <b>OPT_GROUP_DISPLAY</b> | <b>OPT_GROUP_SNAPSHOT</b>
+  | <b>OPT_GROUP_MEDIA</b>)</a></h2>
+<p class="Pp">Mirror mode options: local webcam preview without networking</p>
+<p class="Pp">Definition at line <b>89</b> of file <b>groups.h</b>.</p>
+<pre>89 #define MODE_MIRROR_GROUPS                                                                                             \
+90   (OPT_GROUP_BINARY | OPT_GROUP_TERMINAL | OPT_GROUP_WEBCAM | OPT_GROUP_DISPLAY | OPT_GROUP_SNAPSHOT | OPT_GROUP_MEDIA)</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -39,10 +39,12 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>platform_enable_keepawake</b> (void)
+<p class="Pp"><b>asciichat_error_t</b> <b>platform_enable_keepawake</b> (void)
   <br/>
-  void <b>platform_disable_keepawake</b> (void)
+  Enable system sleep prevention (keepawake mode). void
+    <b>platform_disable_keepawake</b> (void)
   <br/>
+  Disable system sleep prevention (allow OS to sleep).
   <br/>
 </p>
 </section>
@@ -56,56 +58,13 @@
 <p class="Pp">Definition in file <b>macos/keepawake.c</b>.</p>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_platform_disable_keepawake_(void_)"><a class="permalink" href="#void_platform_disable_keepawake_(void_)">void
-  platform_disable_keepawake (void )</a></h2>
-<p class="Pp">Definition at line <b>33</b> of file <b>macos/keepawake.c</b>.</p>
-<pre>33                                       {
-34   if (g_power_assertion != kIOPMNullAssertionID) {
-35     IOPMAssertionRelease(g_power_assertion);
-36     log_debug(&quot;Keepawake disabled (released assertion ID: %u)&quot;, g_power_assertion);
-37     g_power_assertion = kIOPMNullAssertionID;
-38   }
-39 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_platform_enable_keepawake_(void_)"><a class="permalink" href="#asciichat_error_t_platform_enable_keepawake_(void_)">asciichat_error_t
-  platform_enable_keepawake (void )</a></h2>
-<p class="Pp">Definition at line <b>14</b> of file <b>macos/keepawake.c</b>.</p>
-<pre>14                                                   {
-15   // macOS: Use IOKit power assertions
-16   if (g_power_assertion != kIOPMNullAssertionID) {
-17     log_debug(&quot;Keepawake already enabled&quot;);
-18     return ASCIICHAT_OK;
-19   }
-20 
-21   CFStringRef reason = CFSTR(&quot;ascii-chat is running&quot;);
-22   IOReturn result = IOPMAssertionCreateWithName(kIOPMAssertionTypePreventSystemSleep, kIOPMAssertionLevelOn, reason,
-23                                                 &amp;g_power_assertion);
-24 
-25   if (result != kIOReturnSuccess) {
-26     return SET_ERRNO(ERROR_PLATFORM_INIT, &quot;Failed to create power assertion (error %d)&quot;, result);
-27   }
-28 
-29   log_debug(&quot;Keepawake enabled via IOKit (assertion ID: %u)&quot;, g_power_assertion);
-30   return ASCIICHAT_OK;
-31 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

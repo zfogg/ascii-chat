@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>state.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">state.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">state.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">state.h - Ring consensus state machine.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>consensus_state_machine_t</b> {
+    <b>CONSENSUS_STATE_IDLE</b> = 0, <b>CONSENSUS_STATE_COLLECTION_START</b> =
+    1, <b>CONSENSUS_STATE_COLLECTING</b> = 2,
+    <b>CONSENSUS_STATE_COLLECTION_COMPLETE</b> = 3,
+    <b>CONSENSUS_STATE_ELECTION_START</b> = 4, <b>CONSENSUS_STATE_ELECTING</b> =
+    5, <b>CONSENSUS_STATE_ELECTION_COMPLETE</b> = 6,
+    <b>CONSENSUS_STATE_FAILED</b> = 7 }
+  <br/>
+  State machine lifecycle states.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>consensus_state_create</b> (const
+    <b>uint8_t</b> my_id[16], const <b>consensus_topology_t</b> *topology,
+    <b>consensus_state_t</b> **out_state)
+  <br/>
+  Initialize state machine with topology. void <b>consensus_state_destroy</b>
+    (<b>consensus_state_t</b> *state)
+  <br/>
+  Destroy state machine and free resources. <b>asciichat_error_t</b>
+    <b>consensus_state_start_collection</b> (<b>consensus_state_t</b> *state)
+  <br/>
+  Transition to COLLECTION_START state. <b>asciichat_error_t</b>
+    <b>consensus_state_add_metrics</b> (<b>consensus_state_t</b> *state, const
+    participant_metrics_t *metrics)
+  <br/>
+  Add collected metrics from a participant. <b>asciichat_error_t</b>
+    <b>consensus_state_collection_complete</b> (<b>consensus_state_t</b> *state)
+  <br/>
+  Transition to COLLECTION_COMPLETE state. <b>asciichat_error_t</b>
+    <b>consensus_state_compute_election</b> (<b>consensus_state_t</b> *state)
+  <br/>
+  Run election algorithm and transition to ELECTION_COMPLETE.
+    <b>asciichat_error_t</b> <b>consensus_state_reset_to_idle</b>
+    (<b>consensus_state_t</b> *state)
+  <br/>
+  Transition back to IDLE from ELECTION_COMPLETE.
+    <b>consensus_state_machine_t</b> <b>consensus_state_get_current_state</b>
+    (const <b>consensus_state_t</b> *state)
+  <br/>
+  Get current state machine state. <b>asciichat_error_t</b>
+    <b>consensus_state_get_elected_host</b> (const <b>consensus_state_t</b>
+    *state, <b>uint8_t</b> out_host_id[16])
+  <br/>
+  Get elected host ID from last election. <b>asciichat_error_t</b>
+    <b>consensus_state_get_elected_backup</b> (const <b>consensus_state_t</b>
+    *state, <b>uint8_t</b> out_backup_id[16])
+  <br/>
+  Get elected backup host ID from last election. <b>bool</b>
+    <b>consensus_state_is_leader</b> (const <b>consensus_state_t</b> *state)
+  <br/>
+  Check if we are the elected leader for this round. int
+    <b>consensus_state_get_metrics_count</b> (const <b>consensus_state_t</b>
+    *state)
+  <br/>
+  Get count of metrics collected in current round. <b>asciichat_error_t</b>
+    <b>consensus_state_get_metric_at</b> (const <b>consensus_state_t</b> *state,
+    int index, participant_metrics_t *out_metrics)
+  <br/>
+  Get collected metrics at index.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Ring consensus state machine.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>state.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>consensus_state_machine_t</b></a></h2>
+<p class="Pp">State machine lifecycle states.</p>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="CONSENSUS_STATE_IDLE"><a class="permalink" href="#CONSENSUS_STATE_IDLE"><b><i>CONSENSUS_STATE_IDLE
+    </i></b></a></dt>
+  <dd>Waiting for round to start</dd>
+  <dt id="CONSENSUS_STATE_COLLECTION_START"><a class="permalink" href="#CONSENSUS_STATE_COLLECTION_START"><b><i>CONSENSUS_STATE_COLLECTION_START
+    </i></b></a></dt>
+  <dd>Round started, prepare collection</dd>
+  <dt id="CONSENSUS_STATE_COLLECTING"><a class="permalink" href="#CONSENSUS_STATE_COLLECTING"><b><i>CONSENSUS_STATE_COLLECTING
+    </i></b></a></dt>
+  <dd>Collecting metrics</dd>
+  <dt id="CONSENSUS_STATE_COLLECTION_COMPLETE"><a class="permalink" href="#CONSENSUS_STATE_COLLECTION_COMPLETE"><b><i>CONSENSUS_STATE_COLLECTION_COMPLETE
+    </i></b></a></dt>
+  <dd>All metrics received</dd>
+  <dt id="CONSENSUS_STATE_ELECTION_START"><a class="permalink" href="#CONSENSUS_STATE_ELECTION_START"><b><i>CONSENSUS_STATE_ELECTION_START
+    </i></b></a></dt>
+  <dd>Preparing election (leader only)</dd>
+  <dt id="CONSENSUS_STATE_ELECTING"><a class="permalink" href="#CONSENSUS_STATE_ELECTING"><b><i>CONSENSUS_STATE_ELECTING
+    </i></b></a></dt>
+  <dd>Running election algorithm</dd>
+  <dt id="CONSENSUS_STATE_ELECTION_COMPLETE"><a class="permalink" href="#CONSENSUS_STATE_ELECTION_COMPLETE"><b><i>CONSENSUS_STATE_ELECTION_COMPLETE
+    </i></b></a></dt>
+  <dd>Election result computed</dd>
+  <dt id="CONSENSUS_STATE_FAILED"><a class="permalink" href="#CONSENSUS_STATE_FAILED"><b><i>CONSENSUS_STATE_FAILED
+    </i></b></a></dt>
+  <dd>Error state</dd>
+</dl>
+<p class="Pp">Definition at line <b>18</b> of file <b>state.h</b>.</p>
+<pre>18              {
+19   CONSENSUS_STATE_IDLE = 0,                
+20   CONSENSUS_STATE_COLLECTION_START = 1,    
+21   CONSENSUS_STATE_COLLECTING = 2,          
+22   CONSENSUS_STATE_COLLECTION_COMPLETE = 3, 
+23   CONSENSUS_STATE_ELECTION_START = 4,      
+24   CONSENSUS_STATE_ELECTING = 5,            
+25   CONSENSUS_STATE_ELECTION_COMPLETE = 6,   
+26   CONSENSUS_STATE_FAILED = 7               
+27 } consensus_state_machine_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> consensus_state_add_metrics
+  (<b>consensus_state_t</b> * state, const participant_metrics_t * metrics)</h2>
+<p class="Pp">Add collected metrics from a participant. Valid in: COLLECTING
+    state Stores metrics in dynamic array (grows as needed, initial capacity
+  10)</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>state</i> State machine handle
+<br/>
+<i>metrics</i> Participant metrics to store</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_STATE if not in
+  COLLECTING state</div>
+<p class="Pp">Definition at line <b>100</b> of file <b>state.c</b>.</p>
+<pre>100                                                                                                               {
+101   if (!state || !metrics) {
+102     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+103   }
+104 
+105   if (state-&gt;current_state != CONSENSUS_STATE_COLLECTING) {
+106     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid state for adding metrics: %d&quot;, state-&gt;current_state);
+107   }
+108 
+109   /* Grow array if needed */
+110   if (state-&gt;metrics_count &gt;= state-&gt;metrics_capacity) {
+111     int new_capacity = state-&gt;metrics_capacity * 2;
+112     participant_metrics_t *new_metrics =
+113         SAFE_REALLOC(state-&gt;metrics, new_capacity * sizeof(participant_metrics_t), participant_metrics_t *);
+114     state-&gt;metrics = new_metrics;
+115     state-&gt;metrics_capacity = new_capacity;
+116   }
+117 
+118   /* Copy metrics into array */
+119   memcpy(&amp;state-&gt;metrics[state-&gt;metrics_count], metrics, sizeof(participant_metrics_t));
+120   state-&gt;metrics_count++;
+121 
+122   return ASCIICHAT_OK;
+123 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>CONSENSUS_STATE_COLLECTING</b>,
+    <b>consensus_state::current_state</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>consensus_state::metrics</b>,
+    <b>consensus_state::metrics_capacity</b>,
+    <b>consensus_state::metrics_count</b>, <b>SAFE_REALLOC</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_on_stats_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> consensus_state_collection_complete
+  (<b>consensus_state_t</b> * state)</h2>
+<p class="Pp">Transition to COLLECTION_COMPLETE state. Valid from: COLLECTING
+    Transitions to: ELECTION_START (if leader) or IDLE (if not leader)</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>state</i> State machine handle</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_STATE if
+  transition invalid</div>
+<p class="Pp">Definition at line <b>125</b> of file <b>state.c</b>.</p>
+<pre>125                                                                                 {
+126   if (!state) {
+127     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;State is NULL&quot;);
+128   }
+129 
+130   if (state-&gt;current_state != CONSENSUS_STATE_COLLECTING) {
+131     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid transition from state %d&quot;, state-&gt;current_state);
+132   }
+133 
+134   /* Transition: if we're leader, go to ELECTION_START; otherwise go to IDLE */
+135   if (consensus_topology_am_leader(state-&gt;topology)) {
+136     state-&gt;current_state = CONSENSUS_STATE_ELECTION_START;
+137   } else {
+138     state-&gt;current_state = CONSENSUS_STATE_IDLE;
+139   }
+140 
+141   return ASCIICHAT_OK;
+142 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>CONSENSUS_STATE_COLLECTING</b>,
+    <b>CONSENSUS_STATE_ELECTION_START</b>, <b>CONSENSUS_STATE_IDLE</b>,
+    <b>consensus_topology_am_leader()</b>,
+    <b>consensus_state::current_state</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>SET_ERRNO</b>, and
+    <b>consensus_state::topology</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> consensus_state_compute_election
+  (<b>consensus_state_t</b> * state)</h2>
+<p class="Pp">Run election algorithm and transition to ELECTION_COMPLETE. Valid
+    from: ELECTION_START or ELECTION_COMPLETE Processes collected metrics to
+    select best host and backup. Election selects host as participant with best
+    score, backup as second-best. Score is computed from metrics: lower RTT +
+    higher bandwidth = better score. Only leader should call this.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>state</i> State machine handle</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_STATE if not in
+  ELECTION_START state</div>
+<p class="Pp">Definition at line <b>144</b> of file <b>state.c</b>.</p>
+<pre>144                                                                              {
+145   if (!state) {
+146     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;State is NULL&quot;);
+147   }
+148 
+149   if (state-&gt;current_state != CONSENSUS_STATE_ELECTION_START) {
+150     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid transition from state %d&quot;, state-&gt;current_state);
+151   }
+152 
+153   if (state-&gt;metrics_count &lt; 2) {
+154     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Need at least 2 metrics for election, have %d&quot;, state-&gt;metrics_count);
+155   }
+156 
+157   /* Find best and second-best metrics */
+158   int best_idx = 0;
+159   int backup_idx = 1;
+160 
+161   double best_score = compute_metric_score(&amp;state-&gt;metrics[0]);
+162   double backup_score = compute_metric_score(&amp;state-&gt;metrics[1]);
+163 
+164   /* Ensure best_idx has lower score */
+165   if (best_score &gt; backup_score) {
+166     int tmp = best_idx;
+167     best_idx = backup_idx;
+168     backup_idx = tmp;
+169     double tmp_score = best_score;
+170     best_score = backup_score;
+171     backup_score = tmp_score;
+172   }
+173 
+174   /* Find best and second-best */
+175   for (int i = 2; i &lt; state-&gt;metrics_count; i++) {
+176     double score = compute_metric_score(&amp;state-&gt;metrics[i]);
+177     if (score &lt; best_score) {
+178       backup_idx = best_idx;
+179       backup_score = best_score;
+180       best_idx = i;
+181       best_score = score;
+182     } else if (score &lt; backup_score) {
+183       backup_idx = i;
+184       backup_score = score;
+185     }
+186   }
+187 
+188   /* Store election result */
+189   memcpy(state-&gt;election_result.host_id, state-&gt;metrics[best_idx].participant_id, 16);
+190   memcpy(state-&gt;election_result.backup_id, state-&gt;metrics[backup_idx].participant_id, 16);
+191   state-&gt;election_result.timestamp_ns = time_get_realtime_ns();
+192 
+193   state-&gt;current_state = CONSENSUS_STATE_ELECTION_COMPLETE;
+194   return ASCIICHAT_OK;
+195 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>election_result_t::backup_id</b>,
+    <b>CONSENSUS_STATE_ELECTION_COMPLETE</b>,
+    <b>CONSENSUS_STATE_ELECTION_START</b>,
+    <b>consensus_state::current_state</b>,
+    <b>consensus_state::election_result</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>election_result_t::host_id</b>,
+    <b>consensus_state::metrics</b>, <b>consensus_state::metrics_count</b>,
+    <b>SET_ERRNO</b>, <b>time_get_realtime_ns()</b>, and
+    <b>election_result_t::timestamp_ns</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> consensus_state_create (const
+  <b>uint8_t</b> my_id[16], const <b>consensus_topology_t</b> * topology,
+  <b>consensus_state_t</b> ** out_state)</h2>
+<p class="Pp">Initialize state machine with topology. Creates a new state
+    machine for managing consensus rounds. Initial state is
+    CONSENSUS_STATE_IDLE.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>my_id</i> My 16-byte UUID
+<br/>
+<i>topology</i> Topology handle (not owned by state machine)
+<br/>
+<i>out_state</i> Output state machine handle (caller must destroy)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>50</b> of file <b>state.c</b>.</p>
+<pre>51                                                                         {
+52   if (!my_id || !topology || !out_state) {
+53     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid state creation parameters&quot;);
+54   }
+55 
+56   consensus_state_t *state = SAFE_MALLOC(sizeof(*state), consensus_state_t *);
+57   memset(state, 0, sizeof(*state));
+58 
+59   state-&gt;current_state = CONSENSUS_STATE_IDLE;
+60   state-&gt;topology = (consensus_topology_t *)topology; /* Cast away const for storage */
+61   memcpy(state-&gt;my_id, my_id, 16);
+62 
+63   /* Initialize metrics array with initial capacity of 10 */
+64   state-&gt;metrics_capacity = 10;
+65   state-&gt;metrics_count = 0;
+66   state-&gt;metrics = SAFE_MALLOC(state-&gt;metrics_capacity * sizeof(participant_metrics_t), participant_metrics_t *);
+67 
+68   memset(&amp;state-&gt;election_result, 0, sizeof(election_result_t));
+69 
+70   *out_state = state;
+71   return ASCIICHAT_OK;
+72 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>CONSENSUS_STATE_IDLE</b>,
+    <b>consensus_state::current_state</b>,
+    <b>consensus_state::election_result</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>consensus_state::metrics</b>, <b>consensus_state::metrics_capacity</b>,
+    <b>consensus_state::metrics_count</b>, <b>consensus_state::my_id</b>,
+    <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, and
+  <b>consensus_state::topology</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_create()</b>, and
+    <b>consensus_coordinator_on_ring_members()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_consensus_state_destroy_("><a class="permalink" href="#void_consensus_state_destroy_(">void
+  consensus_state_destroy (<b>consensus_state_t</b> * state)</a></h2>
+<p class="Pp">Destroy state machine and free resources.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>state</i> State machine handle (safe to pass
+  NULL)</div>
+<p class="Pp">Definition at line <b>74</b> of file <b>state.c</b>.</p>
+<pre>74                                                        {
+75   if (state) {
+76     if (state-&gt;metrics) {
+77       SAFE_FREE(state-&gt;metrics);
+78     }
+79     SAFE_FREE(state);
+80   }
+81 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_state::metrics</b>, and
+  <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_destroy()</b>, and
+    <b>consensus_coordinator_on_ring_members()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>consensus_state_machine_t</b>
+  consensus_state_get_current_state (const <b>consensus_state_t</b> *
+  state)</h2>
+<p class="Pp">Get current state machine state.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>state</i> State machine handle</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Current state (FAILED if state is NULL)</div>
+<p class="Pp">Definition at line <b>210</b> of file <b>state.c</b>.</p>
+<pre>210                                                                                             {
+211   if (!state) {
+212     return CONSENSUS_STATE_FAILED;
+213   }
+214   return state-&gt;current_state;
+215 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>CONSENSUS_STATE_FAILED</b>, and
+    <b>consensus_state::current_state</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_get_current_host()</b>,
+    <b>consensus_coordinator_get_state()</b>,
+    <b>consensus_coordinator_on_collection_start()</b>,
+    <b>consensus_coordinator_on_election_result()</b>,
+    <b>consensus_coordinator_on_ring_members()</b>,
+    <b>consensus_coordinator_on_stats_update()</b>, and
+    <b>consensus_coordinator_process()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> consensus_state_get_elected_backup
+  (const <b>consensus_state_t</b> * state, <b>uint8_t</b>
+  out_backup_id[16])</h2>
+<p class="Pp">Get elected backup host ID from last election. Valid from:
+    ELECTION_COMPLETE state</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>state</i> State machine handle
+<br/>
+<i>out_backup_id</i> Output 16-byte backup UUID (caller provides buffer)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_STATE if election
+  not complete</div>
+<p class="Pp">Definition at line <b>230</b> of file <b>state.c</b>.</p>
+<pre>230                                                                                                                 {
+231   if (!state || !out_backup_id) {
+232     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+233   }
+234 
+235   if (state-&gt;current_state != CONSENSUS_STATE_ELECTION_COMPLETE) {
+236     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Election not complete, current state: %d&quot;, state-&gt;current_state);
+237   }
+238 
+239   memcpy(out_backup_id, state-&gt;election_result.backup_id, 16);
+240   return ASCIICHAT_OK;
+241 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>election_result_t::backup_id</b>,
+    <b>CONSENSUS_STATE_ELECTION_COMPLETE</b>,
+    <b>consensus_state::current_state</b>,
+    <b>consensus_state::election_result</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_get_current_host()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> consensus_state_get_elected_host (const
+  <b>consensus_state_t</b> * state, <b>uint8_t</b> out_host_id[16])</h2>
+<p class="Pp">Get elected host ID from last election. Valid from:
+    ELECTION_COMPLETE state</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>state</i> State machine handle
+<br/>
+<i>out_host_id</i> Output 16-byte host UUID (caller provides buffer)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_STATE if election
+  not complete</div>
+<p class="Pp">Definition at line <b>217</b> of file <b>state.c</b>.</p>
+<pre>217                                                                                                             {
+218   if (!state || !out_host_id) {
+219     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+220   }
+221 
+222   if (state-&gt;current_state != CONSENSUS_STATE_ELECTION_COMPLETE) {
+223     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Election not complete, current state: %d&quot;, state-&gt;current_state);
+224   }
+225 
+226   memcpy(out_host_id, state-&gt;election_result.host_id, 16);
+227   return ASCIICHAT_OK;
+228 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>CONSENSUS_STATE_ELECTION_COMPLETE</b>,
+    <b>consensus_state::current_state</b>,
+    <b>consensus_state::election_result</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>election_result_t::host_id</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_get_current_host()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> consensus_state_get_metric_at (const
+  <b>consensus_state_t</b> * state, int index, participant_metrics_t *
+  out_metrics)</h2>
+<p class="Pp">Get collected metrics at index. Valid from: COLLECTING,
+    COLLECTION_COMPLETE, or ELECTION states</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>state</i> State machine handle
+<br/>
+<i>index</i> Index of metric to retrieve (0-based)
+<br/>
+<i>out_metrics</i> Output metrics structure</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>257</b> of file <b>state.c</b>.</p>
+<pre>258                                                                                     {
+259   if (!state || !out_metrics || index &lt; 0) {
+260     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+261   }
+262 
+263   if (index &gt;= state-&gt;metrics_count) {
+264     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Index %d out of bounds (count: %d)&quot;, index, state-&gt;metrics_count);
+265   }
+266 
+267   /* Valid to retrieve metrics in COLLECTING, COLLECTION_COMPLETE, or ELECTION states */
+268   if (state-&gt;current_state != CONSENSUS_STATE_COLLECTING &amp;&amp;
+269       state-&gt;current_state != CONSENSUS_STATE_COLLECTION_COMPLETE &amp;&amp;
+270       state-&gt;current_state != CONSENSUS_STATE_ELECTION_START &amp;&amp; state-&gt;current_state != CONSENSUS_STATE_ELECTING &amp;&amp;
+271       state-&gt;current_state != CONSENSUS_STATE_ELECTION_COMPLETE) {
+272     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Cannot retrieve metrics in state %d&quot;, state-&gt;current_state);
+273   }
+274 
+275   memcpy(out_metrics, &amp;state-&gt;metrics[index], sizeof(participant_metrics_t));
+276   return ASCIICHAT_OK;
+277 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>CONSENSUS_STATE_COLLECTING</b>,
+    <b>CONSENSUS_STATE_COLLECTION_COMPLETE</b>, <b>CONSENSUS_STATE_ELECTING</b>,
+    <b>CONSENSUS_STATE_ELECTION_COMPLETE</b>,
+    <b>CONSENSUS_STATE_ELECTION_START</b>,
+    <b>consensus_state::current_state</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>consensus_state::metrics</b>,
+    <b>consensus_state::metrics_count</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_consensus_state_get_metrics_count_(const_"><a class="permalink" href="#int_consensus_state_get_metrics_count_(const_">int
+  consensus_state_get_metrics_count (const <b>consensus_state_t</b> *
+  state)</a></h2>
+<p class="Pp">Get count of metrics collected in current round.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>state</i> State machine handle</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of metrics collected, or -1 if invalid</div>
+<p class="Pp">Definition at line <b>250</b> of file <b>state.c</b>.</p>
+<pre>250                                                                       {
+251   if (!state) {
+252     return -1;
+253   }
+254   return state-&gt;metrics_count;
+255 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_state::metrics_count</b>.</p>
+<p class="Pp">Referenced by
+  <b>consensus_coordinator_get_metrics_count()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> consensus_state_is_leader (const
+  <b>consensus_state_t</b> * state)</h2>
+<p class="Pp">Check if we are the elected leader for this round.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>state</i> State machine handle</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if we are the ring leader, false otherwise</div>
+<p class="Pp">Definition at line <b>243</b> of file <b>state.c</b>.</p>
+<pre>243                                                                {
+244   if (!state) {
+245     return false;
+246   }
+247   return consensus_topology_am_leader(state-&gt;topology);
+248 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_topology_am_leader()</b>, and
+    <b>consensus_state::topology</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> consensus_state_reset_to_idle
+  (<b>consensus_state_t</b> * state)</h2>
+<p class="Pp">Transition back to IDLE from ELECTION_COMPLETE. Valid from:
+    ELECTION_COMPLETE Transitions to: IDLE</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>state</i> State machine handle</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_STATE if
+  transition invalid</div>
+<p class="Pp">Definition at line <b>197</b> of file <b>state.c</b>.</p>
+<pre>197                                                                           {
+198   if (!state) {
+199     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;State is NULL&quot;);
+200   }
+201 
+202   if (state-&gt;current_state != CONSENSUS_STATE_ELECTION_COMPLETE) {
+203     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid transition from state %d&quot;, state-&gt;current_state);
+204   }
+205 
+206   state-&gt;current_state = CONSENSUS_STATE_IDLE;
+207   return ASCIICHAT_OK;
+208 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>CONSENSUS_STATE_ELECTION_COMPLETE</b>, <b>CONSENSUS_STATE_IDLE</b>,
+    <b>consensus_state::current_state</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by
+  <b>consensus_coordinator_on_election_result()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> consensus_state_start_collection
+  (<b>consensus_state_t</b> * state)</h2>
+<p class="Pp">Transition to COLLECTION_START state. Valid from: IDLE Transitions
+    to: COLLECTING</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>state</i> State machine handle</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_STATE if
+  transition invalid</div>
+<p class="Pp">Definition at line <b>83</b> of file <b>state.c</b>.</p>
+<pre>83                                                                              {
+84   if (!state) {
+85     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;State is NULL&quot;);
+86   }
+87 
+88   if (state-&gt;current_state != CONSENSUS_STATE_IDLE) {
+89     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid transition from state %d&quot;, state-&gt;current_state);
+90   }
+91 
+92   /* Reset metrics from previous round */
+93   state-&gt;metrics_count = 0;
+94   memset(&amp;state-&gt;election_result, 0, sizeof(election_result_t));
+95 
+96   state-&gt;current_state = CONSENSUS_STATE_COLLECTING;
+97   return ASCIICHAT_OK;
+98 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>CONSENSUS_STATE_COLLECTING</b>,
+    <b>CONSENSUS_STATE_IDLE</b>, <b>consensus_state::current_state</b>,
+    <b>consensus_state::election_result</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>consensus_state::metrics_count</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by
+  <b>consensus_coordinator_on_collection_start()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -38,10 +38,10 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">void <b>options_builder_add_logging_group</b> (options_builder_t
-    *b)
+<p class="Pp">void <b>options_builder_add_logging_group</b>
+    (<b>options_builder_t</b> *<b>b</b>)
   <br/>
-  Add binary-level logging options to a builder. options_config_t *
+  Add binary-level logging options to a builder. <b>options_config_t</b> *
     <b>options_preset_unified</b> (const char *program_name, const char
     *description)
   <br/>
@@ -62,8 +62,8 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="void_options_builder_add_logging_group_(options_builder_t_*_b)"><a class="permalink" href="#void_options_builder_add_logging_group_(options_builder_t_*_b)">void
-  options_builder_add_logging_group (options_builder_t * b)</a></h2>
+<h2 class="Ss" id="void_options_builder_add_logging_group_("><a class="permalink" href="#void_options_builder_add_logging_group_(">void
+  options_builder_add_logging_group (<b>options_builder_t</b> * b)</a></h2>
 <p class="Pp">Add binary-level logging options to a builder.</p>
 <p class="Pp"><b>Deprecated</b></p>
 <div class="Bd-indent">This function is deprecated. Use
@@ -76,15 +76,18 @@
 34 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>b</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="options_config_t_*_options_preset_unified_(const_char_*_program_name,_const_char_*_description)"><a class="permalink" href="#options_config_t_*_options_preset_unified_(const_char_*_program_name,_const_char_*_description)">options_config_t
-  * options_preset_unified (const char * program_name, const char *
-  description)</a></h2>
+<h2 class="Ss"><b>options_config_t</b> * options_preset_unified (const char *
+  program_name, const char * description)</h2>
 <p class="Pp">Build unified options config with ALL options (binary + all
-    modes). This is the single source of truth for all options. Each option has
-    a mode_bitmask indicating which modes it applies to. The config includes all
-    options, and validation happens after parsing based on detected mode.</p>
+    modes). Get binary-level options preset.</p>
+<p class="Pp"></p>
+<p class="Pp">This is the single source of truth for all options. Each option
+    has a mode_bitmask indicating which modes it applies to. The config includes
+    all options, and validation happens after parsing based on detected
+  mode.</p>
 <p class="Pp">Definition at line <b>51</b> of file <b>presets.c</b>.</p>
 <pre>51                                                                                             {
 52   options_builder_t *b = options_builder_create(sizeof(options_t));
@@ -351,102 +354,108 @@
 313                               &quot;Enforce identity verification for all parties&quot;, false);
 314 
 315   // Add mode descriptions
-316   options_builder_add_mode(b, &quot;server&quot;, &quot;Run as multi-client video chat server&quot;);
-317   options_builder_add_mode(b, &quot;client&quot;, &quot;Run as video chat client (connect to server)&quot;);
-318   options_builder_add_mode(b, &quot;mirror&quot;, &quot;View local media as ASCII art (no server)&quot;);
-319   options_builder_add_mode(b, &quot;discovery-service&quot;, &quot;Secure P2P session signalling&quot;);
-320 
-321   // Add custom help sections for interactive modes (client, mirror, and discovery)
-322   options_builder_add_custom_section(b, &quot;KEYBINDINGS&quot;,
-323                                      &quot;Available in ascii-chat client, mirror, and discovery modes. &quot;
-324                                      &quot;While rendering, press '?' to display a keyboard shortcuts help menu showing:\n&quot;
-325                                      &quot;  - Available keybindings (?, Space, arrows, m, c, f, r)\n&quot;
-326                                      &quot;  - Current settings (volume, color mode, audio status, etc.)&quot;,
-327                                      OPTION_MODE_CLIENT_LIKE);
-328 
-329   // Add environment variables section (all modes)
-330   options_builder_add_custom_section(
-331       b, &quot;ENVIRONMENT&quot;,
-332       &quot;All command-line flags that accept values have corresponding environment variables.\n&quot;
-333       &quot;  Format: ASCII_CHAT_&lt;FLAG_NAME&gt; where FLAG_NAME is uppercase with hyphens replaced by underscores\n&quot;
-334       &quot;  Example: --color-filter maps to ASCII_CHAT_COLOR_FILTER\n&quot;
-335       &quot;\n&quot;
-336       &quot;  Configuration precedence (lowest to highest):\n&quot;
-337       &quot;    1. Config file values (~/.ascii-chat/config.toml)\n&quot;
-338       &quot;    2. Environment variables (ASCII_CHAT_*)\n&quot;
-339       &quot;    3. Command-line flags (--flag-name)\n&quot;
-340       &quot;\n&quot;
-341       &quot;  Additional environment variables are documented in the ascii-chat(1) man page.&quot;,
-342       OPTION_MODE_ALL);
-343 
-344   // Add common dependencies (these will be validated after parsing)
-345   // Note: Dependencies are validated at runtime, so we add them here for documentation
-346 
-347   // ============================================================================
-348   // Media Source Conflicts
-349   // ============================================================================
-350   // URL conflicts: --url cannot be used with --file or --loop
-351   options_builder_add_dependency_conflicts(b, &quot;url&quot;, &quot;file&quot;,
-352                                            &quot;Option --url cannot be used with --file (--url takes priority)&quot;);
-353   options_builder_add_dependency_conflicts(
-354       b, &quot;url&quot;, &quot;loop&quot;, &quot;Option --url cannot be used with --loop (network streams cannot be looped)&quot;);
-355 
-356   // ============================================================================
-357   // Encryption &amp; Authentication Conflicts
-358   // ============================================================================
-359   // Cannot use both --encrypt and --no-encrypt
-360   options_builder_add_dependency_conflicts(b, &quot;no-encrypt&quot;, &quot;encrypt&quot;, &quot;Cannot use --no-encrypt with --encrypt&quot;);
-361 
-362   // Cannot use --no-auth with authentication material (--key, --password, --client-keys, --server-key)
-363   options_builder_add_dependency_conflicts(b, &quot;no-auth&quot;, &quot;key&quot;,
-364                                            &quot;Cannot use --no-auth with --key (key requires authentication)&quot;);
-365   options_builder_add_dependency_conflicts(b, &quot;no-auth&quot;, &quot;password&quot;,
-366                                            &quot;Cannot use --no-auth with --password (password requires authentication)&quot;);
-367   options_builder_add_dependency_conflicts(
-368       b, &quot;no-auth&quot;, &quot;client-keys&quot;, &quot;Cannot use --no-auth with --client-keys (key list requires authentication)&quot;);
-369   options_builder_add_dependency_conflicts(
-370       b, &quot;no-auth&quot;, &quot;server-key&quot;, &quot;Cannot use --no-auth with --server-key (verification requires authentication)&quot;);
-371 
-372   // Cannot use --key with --server-key (both server-side key options)
-373   options_builder_add_dependency_conflicts(
-374       b, &quot;key&quot;, &quot;server-key&quot;,
-375       &quot;Cannot use --key with --server-key (--key is server identity, --server-key is client-side)&quot;);
-376 
-377   // ============================================================================
-378   // Compression Conflicts
-379   // ============================================================================
-380   // Cannot use --no-compress with --compression-level
-381   options_builder_add_dependency_conflicts(b, &quot;no-compress&quot;, &quot;compression-level&quot;,
-382                                            &quot;Cannot use --no-compress with --compression-level&quot;);
-383 
-384   // ============================================================================
-385   // Audio Encoding Conflicts
-386   // ============================================================================
-387   // Cannot use both --encode-audio and --no-encode-audio
-388   options_builder_add_dependency_conflicts(b, &quot;encode-audio&quot;, &quot;no-encode-audio&quot;,
-389                                            &quot;Cannot use both --encode-audio and --no-encode-audio&quot;);
-390 
-391   // ============================================================================
-392   // Display &amp; Screen Conflicts
-393   // ============================================================================
-394 
-395   // ============================================================================
-396   // Requirements (dependencies that must be satisfied)
-397   // ============================================================================
-398   // --snapshot-delay requires --snapshot
-399   options_builder_add_dependency_requires(b, &quot;snapshot-delay&quot;, &quot;snapshot&quot;,
-400                                           &quot;Option --snapshot-delay requires --snapshot&quot;);
-401 
-402   // --loop requires --file (can't loop network streams)
-403   options_builder_add_dependency_requires(b, &quot;loop&quot;, &quot;file&quot;, &quot;Option --loop requires --file&quot;);
-404 
-405   const options_config_t *config = options_builder_build(b);
-406   options_builder_destroy(b);
-407   return config;
-408 }</pre>
+316   options_builder_add_mode(b, &quot;default&quot;, &quot;When the ascii-chat binary is used without a mode, it operates as either client or server automatically and uses the discovery-service to make peer connections with session strings&quot;);
+317   options_builder_add_mode(b, &quot;server&quot;, &quot;Run as multi-client video chat server&quot;);
+318   options_builder_add_mode(b, &quot;client&quot;, &quot;Run as video chat client (connect to server)&quot;);
+319   options_builder_add_mode(b, &quot;mirror&quot;, &quot;View local media as ASCII art (no server)&quot;);
+320   options_builder_add_mode(b, &quot;discovery-service&quot;, &quot;Secure P2P session signalling&quot;);
+321 
+322   // Add custom help sections for interactive modes (client, mirror, and discovery)
+323   options_builder_add_custom_section(b, &quot;KEYBINDINGS&quot;,
+324                                      &quot;Available in ascii-chat client, mirror, and discovery modes. &quot;
+325                                      &quot;While rendering, press '?' to display a keyboard shortcuts help menu showing:\n&quot;
+326                                      &quot;  - Available keybindings (?, Space, arrows, m, c, f, r)\n&quot;
+327                                      &quot;  - Current settings (volume, color mode, audio status, etc.)&quot;,
+328                                      OPTION_MODE_CLIENT_LIKE);
+329 
+330   // Add environment variables section (all modes)
+331   options_builder_add_custom_section(
+332       b, &quot;ENVIRONMENT&quot;,
+333       &quot;All command-line flags that accept values have corresponding environment variables.\n&quot;
+334       &quot;  Format: ASCII_CHAT_&lt;FLAG_NAME&gt; where FLAG_NAME is uppercase with hyphens replaced by underscores\n&quot;
+335       &quot;  Example: --color-filter maps to ASCII_CHAT_COLOR_FILTER\n&quot;
+336       &quot;\n&quot;
+337       &quot;  Configuration precedence (lowest to highest):\n&quot;
+338       &quot;    1. Config file values (~/.ascii-chat/config.toml)\n&quot;
+339       &quot;    2. Environment variables (ASCII_CHAT_*)\n&quot;
+340       &quot;    3. Command-line flags (--flag-name)\n&quot;
+341       &quot;\n&quot;
+342       &quot;  Additional environment variables are documented in the ascii-chat(1) man page.&quot;,
+343       OPTION_MODE_ALL);
+344 
+345   // Add common dependencies (these will be validated after parsing)
+346   // Note: Dependencies are validated at runtime, so we add them here for documentation
+347 
+348   // ============================================================================
+349   // Media Source Conflicts
+350   // ============================================================================
+351   // URL conflicts: --url cannot be used with --file or --loop
+352   options_builder_add_dependency_conflicts(b, &quot;url&quot;, &quot;file&quot;,
+353                                            &quot;Option --url cannot be used with --file (--url takes priority)&quot;);
+354   options_builder_add_dependency_conflicts(
+355       b, &quot;url&quot;, &quot;loop&quot;, &quot;Option --url cannot be used with --loop (network streams cannot be looped)&quot;);
+356 
+357   // ============================================================================
+358   // Encryption &amp; Authentication Conflicts
+359   // ============================================================================
+360   // Cannot use both --encrypt and --no-encrypt
+361   options_builder_add_dependency_conflicts(b, &quot;no-encrypt&quot;, &quot;encrypt&quot;, &quot;Cannot use --no-encrypt with --encrypt&quot;);
+362 
+363   // Cannot use --no-auth with authentication material (--key, --password, --client-keys, --server-key)
+364   options_builder_add_dependency_conflicts(b, &quot;no-auth&quot;, &quot;key&quot;,
+365                                            &quot;Cannot use --no-auth with --key (key requires authentication)&quot;);
+366   options_builder_add_dependency_conflicts(b, &quot;no-auth&quot;, &quot;password&quot;,
+367                                            &quot;Cannot use --no-auth with --password (password requires authentication)&quot;);
+368   options_builder_add_dependency_conflicts(
+369       b, &quot;no-auth&quot;, &quot;client-keys&quot;, &quot;Cannot use --no-auth with --client-keys (key list requires authentication)&quot;);
+370   options_builder_add_dependency_conflicts(
+371       b, &quot;no-auth&quot;, &quot;server-key&quot;, &quot;Cannot use --no-auth with --server-key (verification requires authentication)&quot;);
+372 
+373   // Cannot use --key with --server-key (both server-side key options)
+374   options_builder_add_dependency_conflicts(
+375       b, &quot;key&quot;, &quot;server-key&quot;,
+376       &quot;Cannot use --key with --server-key (--key is server identity, --server-key is client-side)&quot;);
+377 
+378   // ============================================================================
+379   // Compression Conflicts
+380   // ============================================================================
+381   // Cannot use --no-compress with --compression-level
+382   options_builder_add_dependency_conflicts(b, &quot;no-compress&quot;, &quot;compression-level&quot;,
+383                                            &quot;Cannot use --no-compress with --compression-level&quot;);
+384 
+385   // ============================================================================
+386   // Audio Encoding Conflicts
+387   // ============================================================================
+388   // Cannot use both --encode-audio and --no-encode-audio
+389   options_builder_add_dependency_conflicts(b, &quot;encode-audio&quot;, &quot;no-encode-audio&quot;,
+390                                            &quot;Cannot use both --encode-audio and --no-encode-audio&quot;);
+391 
+392   // ============================================================================
+393   // Display &amp; Screen Conflicts
+394   // ============================================================================
+395 
+396   // ============================================================================
+397   // Requirements (dependencies that must be satisfied)
+398   // ============================================================================
+399   // --snapshot-delay requires --snapshot
+400   options_builder_add_dependency_requires(b, &quot;snapshot-delay&quot;, &quot;snapshot&quot;,
+401                                           &quot;Option --snapshot-delay requires --snapshot&quot;);
+402 
+403   // --loop requires --file (can't loop network streams)
+404   options_builder_add_dependency_requires(b, &quot;loop&quot;, &quot;file&quot;, &quot;Option --loop requires --file&quot;);
+405 
+406   const options_config_t *config = options_builder_build(b);
+407   options_builder_destroy(b);
+408   return config;
+409 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>acds_string_generate()</b>,
+<p class="Pp">References <b>acds_string_generate()</b>, <b>ASCIICHAT_OK</b>,
+    <b>b</b>, <b>ERROR_MEMORY</b>, <b>OPTION_MODE_ALL</b>,
+    <b>OPTION_MODE_BINARY</b>, <b>OPTION_MODE_CLIENT</b>,
+    <b>OPTION_MODE_CLIENT_LIKE</b>, <b>OPTION_MODE_DISCOVERY</b>,
+    <b>OPTION_MODE_DISCOVERY_SVC</b>, <b>OPTION_MODE_MIRROR</b>,
+    <b>OPTION_MODE_SERVER</b>, <b>OPTION_MODE_SERVER_LIKE</b>,
     <b>options_builder_add_custom_section()</b>,
     <b>options_builder_add_dependency_conflicts()</b>,
     <b>options_builder_add_dependency_requires()</b>,
@@ -457,7 +466,8 @@
     <b>options_builder_create()</b>, <b>options_builder_destroy()</b>,
     <b>options_registry_add_all_to_builder()</b>, <b>parse_client_address()</b>,
     <b>parse_mirror_media()</b>, <b>parse_server_bind_address()</b>,
-    <b>safe_snprintf()</b>, and <b>SESSION_STRING_BUFFER_SIZE</b>.</p>
+    <b>safe_snprintf()</b>, <b>SESSION_STRING_BUFFER_SIZE</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>action_create_config()</b>,
     <b>action_create_manpage()</b>, <b>options_init()</b>, and
   <b>usage()</b>.</p>
@@ -470,7 +480,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -39,18 +39,22 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>manpage_parser_parse_file</b> (FILE *f,
-    parsed_section_t **out_sections, size_t *out_count)
+<p class="Pp"><b>asciichat_error_t</b> <b>manpage_parser_parse_file</b> (FILE
+    *f, <b>parsed_section_t</b> **out_sections, size_t *out_count)
   <br/>
-  asciichat_error_t <b>manpage_parser_parse_memory</b> (const char *content,
-    size_t content_len, parsed_section_t **out_sections, size_t *out_count)
+  Parse man page sections from a FILE handle. <b>asciichat_error_t</b>
+    <b>manpage_parser_parse_memory</b> (const char *content, size_t content_len,
+    <b>parsed_section_t</b> **out_sections, size_t *out_count)
   <br/>
-  void <b>manpage_parser_free_sections</b> (parsed_section_t *sections, size_t
-    count)
+  Parse man page sections from memory buffer. void
+    <b>manpage_parser_free_sections</b> (<b>parsed_section_t</b> *sections,
+    size_t count)
   <br/>
-  const parsed_section_t * <b>manpage_parser_find_section</b> (const
-    parsed_section_t *sections, size_t count, const char *section_name)
+  Free parsed sections array. const <b>parsed_section_t</b> *
+    <b>manpage_parser_find_section</b> (const <b>parsed_section_t</b> *sections,
+    size_t count, const char *section_name)
   <br/>
+  Find section by name.
   <br/>
 </p>
 </section>
@@ -68,9 +72,21 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="const_parsed_section_t_*_manpage_parser_find_section_(const_parsed_section_t_*_sections,_size_t_count,_const_char_*_section_name)"><a class="permalink" href="#const_parsed_section_t_*_manpage_parser_find_section_(const_parsed_section_t_*_sections,_size_t_count,_const_char_*_section_name)">const
-  parsed_section_t * manpage_parser_find_section (const parsed_section_t *
-  sections, size_t count, const char * section_name)</a></h2>
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>parsed_section_t</b> * manpage_parser_find_section (const
+  <b>parsed_section_t</b> * sections, size_t count, const char *
+  section_name)</a></h2>
+<p class="Pp">Find section by name. Searches the parsed sections array for a
+    section with matching name. Comparison is case-sensitive.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>sections</i> Array of parsed sections
+<br/>
+<i>count</i> Number of sections
+<br/>
+<i>section_name</i> Section name to search for (case-sensitive)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to matching section, or NULL if not found</div>
 <p class="Pp">Definition at line <b>396</b> of file <b>parser.c</b>.</p>
 <pre>397                                                                               {
 398   if (!sections || !section_name) {
@@ -90,9 +106,17 @@
 <p class="Pp">Referenced by <b>find_section()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_manpage_parser_free_sections_(parsed_section_t_*_sections,_size_t_count)"><a class="permalink" href="#void_manpage_parser_free_sections_(parsed_section_t_*_sections,_size_t_count)">void
-  manpage_parser_free_sections (parsed_section_t * sections, size_t
+<h2 class="Ss" id="void_manpage_parser_free_sections_("><a class="permalink" href="#void_manpage_parser_free_sections_(">void
+  manpage_parser_free_sections (<b>parsed_section_t</b> * sections, size_t
   count)</a></h2>
+<p class="Pp">Free parsed sections array. Frees all allocated memory for
+    sections array including section names and content. Safe to call with NULL
+    pointers.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>sections</i> Array of parsed sections (can be NULL)
+<br/>
+<i>count</i> Number of sections in array</div>
 <p class="Pp">Definition at line <b>379</b> of file <b>parser.c</b>.</p>
 <pre>379                                                                             {
 380   if (!sections) {
@@ -112,12 +136,42 @@
 394 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SAFE_FREE</b>.</p>
 <p class="Pp">Referenced by <b>free_parsed_sections()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_manpage_parser_parse_file_(FILE_*_f,_parsed_section_t_**_out_sections,_size_t_*_out_count)"><a class="permalink" href="#asciichat_error_t_manpage_parser_parse_file_(FILE_*_f,_parsed_section_t_**_out_sections,_size_t_*_out_count)">asciichat_error_t
-  manpage_parser_parse_file (FILE * f, parsed_section_t ** out_sections, size_t
-  * out_count)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> manpage_parser_parse_file (FILE * f,
+  <b>parsed_section_t</b> ** out_sections, size_t * out_count)</h2>
+<p class="Pp">Parse man page sections from a FILE handle. Parses a man page
+    template from an open FILE*, detecting:</p>
+<ul class="Bl-bullet">
+  <li>Section headers (.SH directive)</li>
+  <li>Section markers (AUTO-START/END, MANUAL-START/END, MERGE-START/END)</li>
+  <li>Section content and boundaries</li>
+</ul>
+<p class="Pp">Memory is allocated for each section. Caller must use
+    <b>manpage_parser_free_sections()</b> to clean up.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>f</i> Open file handle to parse (cannot be NULL)
+<br/>
+<i>out_sections</i> Pointer to array of <b>parsed_section_t</b> (output)
+<br/>
+<i>out_count</i> Number of sections parsed (output)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success
+<p class="Pp"></p>
+<p class="Pp">ERROR_INVALID_PARAM if parameters are invalid</p>
+<p class="Pp"></p>
+<p class="Pp">ERROR_CONFIG if parsing fails or memory allocation fails</p>
+</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller must call
+  manpage_parser_free_sections(out_sections, out_count)
+<p class="Pp"></p>
+<p class="Pp">The file position is not reset; caller may need to fseek if
+  needed</p>
+</div>
 <p class="Pp">Definition at line <b>338</b> of file <b>parser.c</b>.</p>
 <pre>338                                                                                                          {
 339   if (!f || !out_sections || !out_count) {
@@ -128,12 +182,47 @@
 344 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>parse_manpage_sections()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_manpage_parser_parse_memory_(const_char_*_content,_size_t_content_len,_parsed_section_t_**_out_sections,_size_t_*_out_count)"><a class="permalink" href="#asciichat_error_t_manpage_parser_parse_memory_(const_char_*_content,_size_t_content_len,_parsed_section_t_**_out_sections,_size_t_*_out_count)">asciichat_error_t
-  manpage_parser_parse_memory (const char * content, size_t content_len,
-  parsed_section_t ** out_sections, size_t * out_count)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> manpage_parser_parse_memory (const char
+  * content, size_t content_len, <b>parsed_section_t</b> ** out_sections, size_t
+  * out_count)</h2>
+<p class="Pp">Parse man page sections from memory buffer. Parses man page
+    content from a memory buffer, detecting sections and markers like
+    parse_file() but from pre-loaded content.</p>
+<p class="Pp"></p>
+<p class="Pp">Uses platform-specific optimizations:</p>
+<ul class="Bl-bullet">
+  <li>Unix/macOS: fmemopen() for zero-copy parsing (if available)</li>
+  <li>Windows/fallback: Creates temporary file</li>
+</ul>
+<p class="Pp">Memory is allocated for each section. Caller must use
+    <b>manpage_parser_free_sections()</b> to clean up.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>content</i> Pointer to memory buffer containing man
+  page (cannot be NULL)
+<br/>
+<i>content_len</i> Length of buffer in bytes (must be &gt; 0)
+<br/>
+<i>out_sections</i> Pointer to array of <b>parsed_section_t</b> (output)
+<br/>
+<i>out_count</i> Number of sections parsed (output)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success
+<p class="Pp"></p>
+<p class="Pp">ERROR_INVALID_PARAM if parameters are invalid</p>
+<p class="Pp"></p>
+<p class="Pp">ERROR_CONFIG if parsing fails or memory allocation fails</p>
+</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller must call
+  manpage_parser_free_sections(out_sections, out_count)
+<p class="Pp"></p>
+<p class="Pp">Available in all builds (Debug, Dev, Release)</p>
+</div>
 <p class="Pp">Definition at line <b>346</b> of file <b>parser.c</b>.</p>
 <pre>347                                                                  {
 348   if (!content || content_len == 0 || !out_sections || !out_count) {
@@ -168,7 +257,8 @@
 377 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_tmpfile()</b>.</p>
+<p class="Pp">References <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>platform_tmpfile()</b>, <b>SET_ERRNO</b>, and <b>SET_ERRNO_SYS</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -178,7 +268,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

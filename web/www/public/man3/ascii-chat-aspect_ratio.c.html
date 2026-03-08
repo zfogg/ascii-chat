@@ -59,13 +59,16 @@
     img_h, const ssize_t width, const ssize_t height, const <b>bool</b> stretch,
     ssize_t *out_width, ssize_t *out_height)
   <br/>
-  void <b>aspect_ratio2</b> (const ssize_t img_w, const ssize_t img_h, const
+  Calculate aspect ratio with terminal character correction. void
+    <b>aspect_ratio2</b> (const ssize_t img_w, const ssize_t img_h, const
     ssize_t target_w, const ssize_t target_h, ssize_t *out_width, ssize_t
     *out_height)
   <br/>
-  void <b>calculate_fit_dimensions_pixel</b> (int img_width, int img_height, int
+  Simple aspect ratio calculation without terminal character correction. void
+    <b>calculate_fit_dimensions_pixel</b> (int img_width, int img_height, int
     max_width, int max_height, int *out_width, int *out_height)
   <br/>
+  Calculate fit dimensions for pixel-based images.
   <br/>
 </p>
 </section>
@@ -111,166 +114,13 @@
 </section>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_aspect_ratio_(const_ssize_t_img_w,_const_ssize_t_img_h,_const_ssize_t_width,_const_ssize_t_height,_const_"><a class="permalink" href="#void_aspect_ratio_(const_ssize_t_img_w,_const_ssize_t_img_h,_const_ssize_t_width,_const_ssize_t_height,_const_">void
-  aspect_ratio (const ssize_t img_w, const ssize_t img_h, const ssize_t width,
-  const ssize_t height, const <b>bool</b> stretch, ssize_t * out_width, ssize_t
-  * out_height)</a></h2>
-<p class="Pp">Definition at line <b>69</b> of file <b>aspect_ratio.c</b>.</p>
-<pre>70                                                                                {
-71   // Input validation
-72   if (!out_width || !out_height) {
-73     return; // or log error
-74   }
-75 
-76   if (img_w &lt;= 0 || img_h &lt;= 0) {
-77     // Handle degenerate image dimensions
-78     *out_width = MIN_DIMENSION;
-79     *out_height = MIN_DIMENSION;
-80     return;
-81   }
-82 
-83   if (stretch) {
-84     // If stretching is enabled, just use the full terminal dimensions
-85     *out_width = width;
-86     *out_height = height;
-87   } else {
-88     // Calculate aspect-correct dimensions to fit within the given width/height
-89     calculate_fit_dimensions(img_w, img_h, width, height, out_width, out_height);
-90   }
-91 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>MIN_DIMENSION</b>.</p>
-<p class="Pp">Referenced by <b>ascii_convert()</b>,
-    <b>ascii_convert_with_capabilities()</b>, and
-  <b>mirror_convert_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_aspect_ratio2_(const_ssize_t_img_w,_const_ssize_t_img_h,_const_ssize_t_target_w,_const_ssize_t_target_h,_ssize_t_*_out_width,_ssize_t_*_out_height)"><a class="permalink" href="#void_aspect_ratio2_(const_ssize_t_img_w,_const_ssize_t_img_h,_const_ssize_t_target_w,_const_ssize_t_target_h,_ssize_t_*_out_width,_ssize_t_*_out_height)">void
-  aspect_ratio2 (const ssize_t img_w, const ssize_t img_h, const ssize_t
-  target_w, const ssize_t target_h, ssize_t * out_width, ssize_t *
-  out_height)</a></h2>
-<p class="Pp">Definition at line <b>95</b> of file <b>aspect_ratio.c</b>.</p>
-<pre>96                                                             {
-97   // Input validation
-98   if (!out_width || !out_height) {
-99     return;
-100   }
-101 
-102   if (img_w &lt;= 0 || img_h &lt;= 0 || target_w &lt;= 0 || target_h &lt;= 0) {
-103     // Handle invalid dimensions
-104     *out_width = MIN_DIMENSION;
-105     *out_height = MIN_DIMENSION;
-106     return;
-107   }
-108 
-109   // Calculate aspect ratio
-110   float img_aspect = (float)img_w / (float)img_h;
-111 
-112   // We want the image to fill at least one dimension of the target box
-113   // while maintaining aspect ratio and fitting within the box
-114 
-115   // Calculate dimensions if we scale to fill width
-116   ssize_t width_if_fill_width = target_w;
-117   ssize_t height_if_fill_width = (ssize_t)((float)target_w / img_aspect);
-118 
-119   // Calculate dimensions if we scale to fill height
-120   ssize_t width_if_fill_height = (ssize_t)((float)target_h * img_aspect);
-121   ssize_t height_if_fill_height = target_h;
-122 
-123   // Choose the scaling that maximizes usage of the target box
-124   // We want to fill at least one dimension completely
-125   if (height_if_fill_width &lt;= target_h) {
-126     // Filling width fits within height - use it
-127     *out_width = width_if_fill_width;
-128     *out_height = height_if_fill_width;
-129   } else {
-130     // Filling width would exceed height, so fill height instead
-131     *out_width = width_if_fill_height;
-132     *out_height = height_if_fill_height;
-133   }
-134 
-135   // Ensure minimum dimensions
-136   if (*out_width &lt;= 0) {
-137     *out_width = MIN_DIMENSION;
-138   }
-139   if (*out_height &lt;= 0) {
-140     *out_height = MIN_DIMENSION;
-141   }
-142 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>MIN_DIMENSION</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_calculate_fit_dimensions_pixel_(int_img_width,_int_img_height,_int_max_width,_int_max_height,_int_*_out_width,_int_*_out_height)"><a class="permalink" href="#void_calculate_fit_dimensions_pixel_(int_img_width,_int_img_height,_int_max_width,_int_max_height,_int_*_out_width,_int_*_out_height)">void
-  calculate_fit_dimensions_pixel (int img_width, int img_height, int max_width,
-  int max_height, int * out_width, int * out_height)</a></h2>
-<p class="Pp">Definition at line <b>146</b> of file <b>aspect_ratio.c</b>.</p>
-<pre>147                                                      {
-148   if (!out_width || !out_height || img_width &lt;= 0 || img_height &lt;= 0) {
-149     if (out_width)
-150       *out_width = max_width;
-151     if (out_height)
-152       *out_height = max_height;
-153     return;
-154   }
-155 
-156   float src_aspect = (float)img_width / (float)img_height;
-157 
-158   // Try filling width
-159   int width_if_fill_w = max_width;
-160   int height_if_fill_w = (int)(((float)max_width / src_aspect) + 0.5f);
-161 
-162   // Try filling height
-163   int width_if_fill_h = (int)(((float)max_height * src_aspect) + 0.5f);
-164   int height_if_fill_h = max_height;
-165 
-166   // log_debug(&quot;calculate_fit_dimensions: img %dx%d (aspect %.3f), max %dx%d&quot;, img_width, img_height, src_aspect,
-167   //           max_width, max_height);
-168   // log_debug(&quot;  Fill width: %dx%d, Fill height: %dx%d&quot;, width_if_fill_w, height_if_fill_w, width_if_fill_h,
-169   //           height_if_fill_h);
-170 
-171   // Choose the option that fits
-172   if (height_if_fill_w &lt;= max_height) {
-173     // Filling width fits
-174     // log_debug(&quot;  Choosing fill width: %dx%d&quot;, width_if_fill_w, height_if_fill_w);
-175     *out_width = width_if_fill_w;
-176     *out_height = height_if_fill_w;
-177   } else {
-178     // Fill height instead
-179     // log_debug(&quot;  Choosing fill height: %dx%d&quot;, width_if_fill_h, height_if_fill_h);
-180     *out_width = width_if_fill_h;
-181     *out_height = height_if_fill_h;
-182   }
-183 
-184   // Clamp to bounds
-185   if (*out_width &gt; max_width)
-186     *out_width = max_width;
-187   if (*out_height &gt; max_height)
-188     *out_height = max_height;
-189   if (*out_width &lt; 1)
-190     *out_width = 1;
-191   if (*out_height &lt; 1)
-192     *out_height = 1;
-193 
-194   // log_debug(&quot;  Final output: %dx%d&quot;, *out_width, *out_height);
-195 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -45,7 +45,7 @@
   <br/>
   void <b>unregisterOutputPath</b> (const std::string &amp;path)
   <br/>
-  int <b>main</b> (int argc, const char **argv)
+  int <b>main</b> (int <b>argc</b>, const char **<b>argv</b>)
   <br/>
   <br/>
 </p>
@@ -215,320 +215,283 @@
 967     }
 968   }
 969 
-970   // Disable default system includes - we'll add them back explicitly in the correct order
-971   // This prevents clang's builtin path from shadowing SDK system headers
-972   prependArgs.push_back(&quot;-nostdinc&quot;);
+970   if (!resourceDir.empty()) {
+971     prependArgs.push_back(std::string(&quot;-resource-dir=&quot;) + resourceDir);
+972   }
 973 
-974   if (!resourceDir.empty()) {
-975     prependArgs.push_back(std::string(&quot;-resource-dir=&quot;) + resourceDir);
-976   }
-977 
-978   // Add target triple - LibTooling needs this to validate architecture-specific flags
-979   // Without a target, flags like -mavx2 cause &quot;unsupported option for target ''&quot; errors
-980 #ifdef __APPLE__
-981 #ifdef __arm64__
+974   // Add target triple - LibTooling needs this to validate architecture-specific flags
+975   // Without a target, flags like -mavx2 cause &quot;unsupported option for target ''&quot; errors
+976 #ifdef __APPLE__
+977 #ifdef __arm64__
+978   prependArgs.push_back(&quot;-target&quot;);
+979   prependArgs.push_back(&quot;arm64-apple-darwin&quot;);
+980   // llvm::errs() &lt;&lt; &quot;Using target: arm64-apple-darwin\n&quot;;
+981 #else
 982   prependArgs.push_back(&quot;-target&quot;);
-983   prependArgs.push_back(&quot;arm64-apple-darwin&quot;);
-984   // llvm::errs() &lt;&lt; &quot;Using target: arm64-apple-darwin\n&quot;;
-985 #else
-986   prependArgs.push_back(&quot;-target&quot;);
-987   prependArgs.push_back(&quot;x86_64-apple-darwin&quot;);
-988   // llvm::errs() &lt;&lt; &quot;Using target: x86_64-apple-darwin\n&quot;;
-989 #endif
-990 #elif defined(__linux__)
-991 #ifdef __aarch64__
+983   prependArgs.push_back(&quot;x86_64-apple-darwin&quot;);
+984   // llvm::errs() &lt;&lt; &quot;Using target: x86_64-apple-darwin\n&quot;;
+985 #endif
+986 #elif defined(__linux__)
+987 #ifdef __aarch64__
+988   prependArgs.push_back(&quot;-target&quot;);
+989   prependArgs.push_back(&quot;aarch64-linux-gnu&quot;);
+990   // llvm::errs() &lt;&lt; &quot;Using target: aarch64-linux-gnu\n&quot;;
+991 #else
 992   prependArgs.push_back(&quot;-target&quot;);
-993   prependArgs.push_back(&quot;aarch64-linux-gnu&quot;);
-994   // llvm::errs() &lt;&lt; &quot;Using target: aarch64-linux-gnu\n&quot;;
-995 #else
-996   prependArgs.push_back(&quot;-target&quot;);
-997   prependArgs.push_back(&quot;x86_64-linux-gnu&quot;);
-998   // llvm::errs() &lt;&lt; &quot;Using target: x86_64-linux-gnu\n&quot;;
-999 #endif
-1000 #endif
-1001 
-1002   // Override the sysroot for macOS. Homebrew's LLVM config file sets -isysroot
-1003   // to CommandLineTools SDK, but we strip that from compile_commands.json and
-1004   // set our own explicitly to ensure consistent behavior.
-1005   std::vector&lt;std::string&gt; appendArgs;
-1006   std::string selectedSDK;
-1007 #ifdef __APPLE__
-1008   {
-1009     const char *sdkPaths[] = {
-1010         // Xcode SDK (preferred - most complete headers and frameworks)
-1011         &quot;/Applications/Xcode.app/Contents/Developer/Platforms/&quot;
-1012         &quot;MacOSX.platform/Developer/SDKs/MacOSX.sdk&quot;,
-1013         // CommandLineTools SDK (fallback for users without Xcode)
-1014         &quot;/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk&quot;,
-1015     };
-1016 
-1017     for (const char *sdk : sdkPaths) {
-1018       if (llvm::sys::fs::exists(sdk)) {
-1019         selectedSDK = sdk;
-1020         break;
-1021       }
-1022     }
-1023 
-1024     if (!selectedSDK.empty()) {
-1025       prependArgs.push_back(&quot;-isysroot&quot;);
-1026       prependArgs.push_back(selectedSDK);
-1027       // llvm::errs() &lt;&lt; &quot;Using macOS SDK: &quot; &lt;&lt; selectedSDK &lt;&lt; &quot;\n&quot;;
+993   prependArgs.push_back(&quot;x86_64-linux-gnu&quot;);
+994   // llvm::errs() &lt;&lt; &quot;Using target: x86_64-linux-gnu\n&quot;;
+995 #endif
+996 #endif
+997 
+998   // Override the sysroot for macOS. Homebrew's LLVM config file sets -isysroot
+999   // to CommandLineTools SDK, but we strip that from compile_commands.json and
+1000   // set our own explicitly to ensure consistent behavior.
+1001   std::string selectedSDK;
+1002 #ifdef __APPLE__
+1003   {
+1004     const char *sdkPaths[] = {
+1005         // Xcode SDK (preferred - most complete headers and frameworks)
+1006         &quot;/Applications/Xcode.app/Contents/Developer/Platforms/&quot;
+1007         &quot;MacOSX.platform/Developer/SDKs/MacOSX.sdk&quot;,
+1008         // CommandLineTools SDK (fallback for users without Xcode)
+1009         &quot;/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk&quot;,
+1010     };
+1011 
+1012     for (const char *sdk : sdkPaths) {
+1013       if (llvm::sys::fs::exists(sdk)) {
+1014         selectedSDK = sdk;
+1015         break;
+1016       }
+1017     }
+1018 
+1019     if (!selectedSDK.empty()) {
+1020       prependArgs.push_back(&quot;-isysroot&quot;);
+1021       prependArgs.push_back(selectedSDK);
+1022       // llvm::errs() &lt;&lt; &quot;Using macOS SDK: &quot; &lt;&lt; selectedSDK &lt;&lt; &quot;\n&quot;;
+1023     } else {
+1024       llvm::errs() &lt;&lt; &quot;Warning: No macOS SDK found, system headers may not be available\n&quot;;
+1025     }
+1026   }
+1027 #endif
 1028 
-1029       const std::string sdkUsrInclude = selectedSDK + &quot;/usr/include&quot;;
-1030       if (llvm::sys::fs::exists(sdkUsrInclude)) {
-1031         appendArgs.push_back(&quot;-isystem&quot;);
-1032         appendArgs.push_back(sdkUsrInclude);
-1033       }
-1034 
-1035       // Ensure ptrcheck.h is discoverable for SDK headers that probe it.
-1036       // Prefer CLT clang 17 include path, then Xcode toolchain fallback.
-1037       const char *ptrcheckIncludeCandidates[] = {
-1038           &quot;/Library/Developer/CommandLineTools/usr/lib/clang/17/include&quot;,
-1039           &quot;/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include&quot;,
-1040       };
-1041       for (const char *candidate : ptrcheckIncludeCandidates) {
-1042         if (llvm::sys::fs::exists(candidate)) {
-1043           appendArgs.push_back(&quot;-isystem&quot;);
-1044           appendArgs.push_back(candidate);
-1045           break;
-1046         }
-1047       }
-1048     } else {
-1049       llvm::errs() &lt;&lt; &quot;Warning: No macOS SDK found, system headers may not be available\n&quot;;
-1050     }
-1051   }
-1052 #endif
-1053 
-1054   // Build list of system include paths to add as -isystem paths.
-1055   // LibTooling (cc1 mode) doesn't automatically add system include paths like
-1056   // the clang driver does, so we add them explicitly:
-1057   // We use -isysroot to let cc1 mode find SDK headers, and DON'T add clang's builtin
-1058   // include path explicitly since cc1 mode searches it automatically and it would
-1059   // shadow the system headers when included with -isystem.
-1060   // Note: We skip adding resourceDir/include as -isystem because cc1 mode
-1061   // searches the clang resource directory automatically BEFORE -isystem paths,
-1062   // which would cause it to look for stdio.h in the wrong place.
-1063 
-1064   // NOTE: We rely on -isysroot (set in prependArgs) to find system headers.
-1065   // LibTooling on LLVM 21 has a bug where __has_include() evaluates even in non-taken
-1066   // preprocessor branches and creates VFS entries for non-existent files (ptrcheck.h).
-1067   // By using -isysroot alone without explicitly adding -isystem paths, we avoid
-1068   // triggering this bug while still allowing cc1 mode to find system headers.
-1069 
-1070   // Single consolidated argument adjuster that:
-1071   // 1. Preserves compiler path (first arg)
-1072   // 2. Inserts prepend args immediately after compiler (-nostdlibinc, -resource-dir, -isysroot)
-1073   // 3. Strips unnecessary flags from remaining args
-1074   // 4. Adds system include paths as -isystem at the end (after project -I paths)
-1075   // 5. Adds defer tool parsing define BEFORE the &quot;--&quot; separator
-1076   std::string inputRootStr = inputRoot.string();
-1077   auto consolidatedAdjuster = [prependArgs, appendArgs, inputRootStr](const tooling::CommandLineArguments &amp;args,
-1078                                                                       StringRef) {
-1079     // Helper to check if a path is under the project root
-1080     auto isProjectPath = [&amp;inputRootStr](const std::string &amp;path) -&gt; bool {
-1081       if (inputRootStr.empty())
-1082         return false;
-1083       // Normalize both paths for comparison
-1084       std::error_code ec;
-1085       auto normalizedPath = fs::canonical(path, ec);
-1086       if (ec)
-1087         return false; // Path doesn't exist or can't be resolved
-1088       auto normalizedRoot = fs::canonical(inputRootStr, ec);
-1089       if (ec)
-1090         return false;
-1091       // Check if the path starts with the root
-1092       std::string pathStr = normalizedPath.string();
-1093       std::string rootStr = normalizedRoot.string();
-1094       if (pathStr.find(rootStr) != 0)
-1095         return false;
-1096       // Exclude .deps-cache directory - these are cached dependencies that use
-1097       // angled includes (&lt;header.h&gt;) and need -isystem, not -iquote
-1098       if (pathStr.find(&quot;/.deps-cache/&quot;) != std::string::npos)
-1099         return false;
-1100       return true;
-1101     };
-1102     auto isPublicIncludePath = [&amp;inputRootStr](const std::string &amp;path) -&gt; bool {
-1103       if (inputRootStr.empty())
-1104         return false;
-1105       std::error_code ec;
-1106       auto normalizedPath = fs::canonical(path, ec);
-1107       if (ec)
-1108         return false;
-1109       auto normalizedRoot = fs::canonical(inputRootStr, ec);
-1110       if (ec)
-1111         return false;
-1112       std::string pathStr = normalizedPath.string();
-1113       std::string rootStr = normalizedRoot.string();
-1114       std::string publicInclude = rootStr + &quot;/include&quot;;
-1115       return pathStr == publicInclude || pathStr.find(publicInclude + &quot;/&quot;) == 0;
-1116     };
-1117     tooling::CommandLineArguments result;
-1118 
-1119     if (args.empty()) {
-1120       return result;
-1121     }
-1122 
-1123     // First: preserve the compiler path (first argument)
-1124     result.push_back(args[0]);
-1125 
-1126     // Second: add the prepend args right after the compiler
-1127     for (const auto &amp;arg : prependArgs) {
-1128       result.push_back(arg);
-1129     }
-1130 
-1131     // Third: process remaining arguments, stripping unnecessary flags
-1132     // IMPORTANT: Convert -I to -iquote for project include paths.
-1133     // Clang include search order for &lt;header.h&gt;:  -I paths -&gt; -isystem paths -&gt; system paths
-1134     // Clang include search order for &quot;header.h&quot;:  -iquote paths -&gt; -I paths -&gt; -isystem paths -&gt; system paths
-1135     //
-1136     // The problem: Project -I paths are searched BEFORE -isystem paths for &lt;stdio.h&gt;.
-1137     // This causes LibTooling to look for &lt;stdio.h&gt; in the project's lib/ directory first.
-1138     //
-1139     // The fix: Convert project -I to -iquote. Then &lt;stdio.h&gt; skips project paths entirely
-1140     // and finds system headers in -isystem paths instead.
-1141     //
-1142     // ALSO: Collect all -isystem paths and reorder them so clang builtins come FIRST.
-1143     // LibTooling on LLVM 21 has a VFS bug where it creates phantom entries for headers
-1144     // in -isystem directories even when the header doesn't exist there.
-1145     std::vector&lt;std::string&gt; collectedIsystemPaths;
-1146     bool foundSeparator = false;
-1147     size_t separatorIndex = 0;
-1148     for (size_t i = 1; i &lt; args.size(); ++i) {
-1149       const std::string &amp;arg = args[i];
-1150 
-1151       // When we hit &quot;--&quot;, note its position and break
-1152       if (arg == &quot;--&quot;) {
-1153         foundSeparator = true;
-1154         separatorIndex = i;
-1155         break;
-1156       }
-1157 
-1158       // Skip sanitizer flags
-1159       if (arg.find(&quot;-fsanitize&quot;) != std::string::npos)
+1029   // Build list of system include paths to add as -isystem paths.
+1030   // LibTooling (cc1 mode) doesn't automatically add system include paths like
+1031   // the clang driver does, so we add them explicitly:
+1032   // 1. Clang's builtin headers (stdbool.h, stddef.h, etc.) - FIRST so they shadow SDK builtins
+1033   // 2. SDK's usr/include (stdio.h, stdlib.h, etc.) - for system headers
+1034   std::vector&lt;std::string&gt; appendArgs;
+1035   if (!resourceDir.empty()) {
+1036     std::string builtinInclude = resourceDir + &quot;/include&quot;;
+1037     if (llvm::sys::fs::exists(builtinInclude)) {
+1038       appendArgs.push_back(&quot;-isystem&quot;);
+1039       appendArgs.push_back(builtinInclude);
+1040       // llvm::errs() &lt;&lt; &quot;Added clang builtin -isystem: &quot; &lt;&lt; builtinInclude &lt;&lt; &quot;\n&quot;;
+1041     }
+1042   }
+1043   // NOTE: We intentionally do NOT add SDK's usr/include to the -isystem path.
+1044   // LibTooling on LLVM 21 has a bug where __has_include_next() evaluates even
+1045   // in non-taken preprocessor branches and creates VFS entries that can't be opened.
+1046   // The clang builtin stdbool.h has:
+1047   //   #if defined(__MVS__) &amp;&amp; __has_include_next(&lt;stdbool.h&gt;)
+1048   // Even though __MVS__ is not defined on macOS, LLVM 21's LibTooling still tries
+1049   // to resolve __has_include_next(&lt;stdbool.h&gt;), looks in SDK/usr/include, and fails
+1050   // because stdbool.h doesn't exist there (it's a builtin header).
+1051   //
+1052   // By not adding SDK/usr/include, the __has_include_next won't find any entry
+1053   // and will return false without trying to open a non-existent file.
+1054   // The -isysroot flag still provides access to SDK headers through framework paths.
+1055 
+1056   // Single consolidated argument adjuster that:
+1057   // 1. Preserves compiler path (first arg)
+1058   // 2. Inserts prepend args immediately after compiler (-nostdlibinc, -resource-dir, -isysroot)
+1059   // 3. Strips unnecessary flags from remaining args
+1060   // 4. Adds system include paths as -isystem at the end (after project -I paths)
+1061   // 5. Adds defer tool parsing define BEFORE the &quot;--&quot; separator
+1062   std::string inputRootStr = inputRoot.string();
+1063   auto consolidatedAdjuster = [prependArgs, appendArgs, inputRootStr](const tooling::CommandLineArguments &amp;args,
+1064                                                                       StringRef) {
+1065     // Helper to check if a path is under the project root
+1066     auto isProjectPath = [&amp;inputRootStr](const std::string &amp;path) -&gt; bool {
+1067       if (inputRootStr.empty())
+1068         return false;
+1069       // Normalize both paths for comparison
+1070       std::error_code ec;
+1071       auto normalizedPath = fs::canonical(path, ec);
+1072       if (ec)
+1073         return false; // Path doesn't exist or can't be resolved
+1074       auto normalizedRoot = fs::canonical(inputRootStr, ec);
+1075       if (ec)
+1076         return false;
+1077       // Check if the path starts with the root
+1078       std::string pathStr = normalizedPath.string();
+1079       std::string rootStr = normalizedRoot.string();
+1080       if (pathStr.find(rootStr) != 0)
+1081         return false;
+1082       // Exclude .deps-cache directory - these are cached dependencies that use
+1083       // angled includes (&lt;header.h&gt;) and need -isystem, not -iquote
+1084       if (pathStr.find(&quot;/.deps-cache/&quot;) != std::string::npos)
+1085         return false;
+1086       return true;
+1087     };
+1088     tooling::CommandLineArguments result;
+1089 
+1090     if (args.empty()) {
+1091       return result;
+1092     }
+1093 
+1094     // First: preserve the compiler path (first argument)
+1095     result.push_back(args[0]);
+1096 
+1097     // Second: add the prepend args right after the compiler
+1098     for (const auto &amp;arg : prependArgs) {
+1099       result.push_back(arg);
+1100     }
+1101 
+1102     // Third: process remaining arguments, stripping unnecessary flags
+1103     // IMPORTANT: Convert -I to -iquote for project include paths.
+1104     // Clang include search order for &lt;header.h&gt;:  -I paths -&gt; -isystem paths -&gt; system paths
+1105     // Clang include search order for &quot;header.h&quot;:  -iquote paths -&gt; -I paths -&gt; -isystem paths -&gt; system paths
+1106     //
+1107     // The problem: Project -I paths are searched BEFORE -isystem paths for &lt;stdio.h&gt;.
+1108     // This causes LibTooling to look for &lt;stdio.h&gt; in the project's lib/ directory first.
+1109     //
+1110     // The fix: Convert project -I to -iquote. Then &lt;stdio.h&gt; skips project paths entirely
+1111     // and finds system headers in -isystem paths instead.
+1112     //
+1113     // ALSO: Collect all -isystem paths and reorder them so clang builtins come FIRST.
+1114     // LibTooling on LLVM 21 has a VFS bug where it creates phantom entries for headers
+1115     // in -isystem directories even when the header doesn't exist there.
+1116     std::vector&lt;std::string&gt; collectedIsystemPaths;
+1117     bool foundSeparator = false;
+1118     size_t separatorIndex = 0;
+1119     for (size_t i = 1; i &lt; args.size(); ++i) {
+1120       const std::string &amp;arg = args[i];
+1121 
+1122       // When we hit &quot;--&quot;, note its position and break
+1123       if (arg == &quot;--&quot;) {
+1124         foundSeparator = true;
+1125         separatorIndex = i;
+1126         break;
+1127       }
+1128 
+1129       // Skip sanitizer flags
+1130       if (arg.find(&quot;-fsanitize&quot;) != std::string::npos)
+1131         continue;
+1132       if (arg.find(&quot;-fno-sanitize&quot;) != std::string::npos)
+1133         continue;
+1134       // Skip debug info flags (not needed for AST parsing)
+1135       if (arg == &quot;-g&quot; || arg == &quot;-g2&quot; || arg == &quot;-g3&quot;)
+1136         continue;
+1137       if (arg == &quot;-fno-eliminate-unused-debug-types&quot;)
+1138         continue;
+1139       if (arg == &quot;-fno-inline&quot;)
+1140         continue;
+1141       // Strip -resource-dir flags and their arguments - we added our embedded path
+1142       if (arg == &quot;-resource-dir&quot;) {
+1143         ++i;
+1144         continue;
+1145       }
+1146       if (arg.find(&quot;-resource-dir=&quot;) == 0)
+1147         continue;
+1148       // Strip -isysroot flags and their arguments - we added our embedded SDK path
+1149       if (arg == &quot;-isysroot&quot;) {
+1150         ++i;
+1151         continue;
+1152       }
+1153       if (arg.find(&quot;-isysroot=&quot;) == 0 || (arg.find(&quot;-isysroot&quot;) == 0 &amp;&amp; arg.length() &gt; 9))
+1154         continue;
+1155 
+1156       // Collect -isystem paths instead of passing them through
+1157       // We'll add them at the end in the correct order (clang builtins first)
+1158       if (arg == &quot;-isystem&quot; &amp;&amp; i + 1 &lt; args.size()) {
+1159         collectedIsystemPaths.push_back(args[++i]);
 1160         continue;
-1161       if (arg.find(&quot;-fno-sanitize&quot;) != std::string::npos)
-1162         continue;
-1163       // Skip debug info flags (not needed for AST parsing)
-1164       if (arg == &quot;-g&quot; || arg == &quot;-g2&quot; || arg == &quot;-g3&quot;)
-1165         continue;
-1166       if (arg == &quot;-fno-eliminate-unused-debug-types&quot;)
-1167         continue;
-1168       if (arg == &quot;-fno-inline&quot;)
-1169         continue;
-1170       // Strip -resource-dir flags and their arguments - we added our embedded path
-1171       if (arg == &quot;-resource-dir&quot;) {
-1172         ++i;
-1173         continue;
-1174       }
-1175       if (arg.find(&quot;-resource-dir=&quot;) == 0)
-1176         continue;
-1177       // Strip -isysroot flags and their arguments - we added our embedded SDK path
-1178       if (arg == &quot;-isysroot&quot;) {
-1179         ++i;
-1180         continue;
-1181       }
-1182       if (arg.find(&quot;-isysroot=&quot;) == 0 || (arg.find(&quot;-isysroot&quot;) == 0 &amp;&amp; arg.length() &gt; 9))
-1183         continue;
-1184 
-1185       // Collect -isystem paths instead of passing them through
-1186       // We'll add them at the end in the correct order (clang builtins first)
-1187       if (arg == &quot;-isystem&quot; &amp;&amp; i + 1 &lt; args.size()) {
-1188         collectedIsystemPaths.push_back(args[++i]);
-1189         continue;
-1190       }
-1191       if (arg.find(&quot;-isystem&quot;) == 0 &amp;&amp; arg.length() &gt; 8) {
-1192         collectedIsystemPaths.push_back(arg.substr(8));
-1193         continue;
-1194       }
-1195 
-1196       // Convert -I to -iquote for all project include paths
-1197       // Convert -I to -isystem for dependency paths (so they come after our clang builtins)
-1198       // This prevents &lt;stdio.h&gt; and &lt;stdbool.h&gt; from being searched in project directories
-1199       // before system include paths.
-1200       //
-1201       // LibTooling's cc1 mode searches -I paths BEFORE -isystem paths for &lt;stdio.h&gt;, which
-1202       // causes it to look in the project's include directory before system headers. By converting
-1203       // all project -I to -iquote, &lt;stdio.h&gt; will skip project paths and find the system header.
-1204       //
-1205       // For public API headers like &lt;ascii-chat/header.h&gt;, using -iquote works fine because:
-1206       // -iquote paths come first in the search order for quoted includes, and quoted includes
-1207       // can find both public and private headers.
-1208       if (arg == &quot;-I&quot; &amp;&amp; i + 1 &lt; args.size()) {
-1209         // -I /path/to/dir (separate argument)
-1210         const std::string &amp;includePath = args[++i];
-1211         if (isProjectPath(includePath)) {
-1212           // Keep public include/ visible for angle includes (&lt;ascii-chat/...&gt;).
-1213           // Other project paths remain quote-only to avoid shadowing system headers.
-1214           if (isPublicIncludePath(includePath)) {
-1215             collectedIsystemPaths.push_back(includePath);
-1216           } else {
-1217             result.push_back(&quot;-iquote&quot;);
-1218             result.push_back(includePath);
-1219           }
-1220         } else {
-1221           // Collect dependency -I paths to add as -isystem after our builtins
-1222           collectedIsystemPaths.push_back(includePath);
-1223         }
-1224         continue;
-1225       }
-1226       if (arg.find(&quot;-I&quot;) == 0 &amp;&amp; arg.length() &gt; 2) {
-1227         // -I/path/to/dir (combined form)
-1228         std::string includePath = arg.substr(2);
-1229         if (isProjectPath(includePath)) {
-1230           // Keep public include/ visible for angle includes (&lt;ascii-chat/...&gt;).
-1231           // Other project paths remain quote-only to avoid shadowing system headers.
-1232           if (isPublicIncludePath(includePath)) {
-1233             collectedIsystemPaths.push_back(includePath);
-1234           } else {
-1235             result.push_back(&quot;-iquote&quot;);
-1236             result.push_back(includePath);
-1237           }
-1238         } else {
-1239           // Collect dependency -I paths to add as -isystem after our builtins
-1240           collectedIsystemPaths.push_back(includePath);
-1241         }
-1242         continue;
-1243       }
-1244 
-1245       result.push_back(arg);
-1246     }
-1247 
-1248     // Fourth: add system include paths in the correct order
-1249     // Order matters for LibTooling on LLVM 21 - clang builtins MUST come first
-1250     // to shadow any phantom VFS entries that might be created for other paths
-1251     for (const auto &amp;arg : appendArgs) {
-1252       result.push_back(arg);
-1253     }
-1254     // Then add the collected -isystem paths from the compilation database
-1255     for (const auto &amp;path : collectedIsystemPaths) {
-1256       result.push_back(&quot;-isystem&quot;);
-1257       result.push_back(path);
-1258     }
-1259 
-1260     // Fifth: add the defer tool define and separator
-1261     result.push_back(&quot;-DASCIICHAT_DEFER_TOOL_PARSING&quot;);
-1262     if (foundSeparator) {
-1263       result.push_back(&quot;--&quot;);
-1264       // Copy any remaining args after &quot;--&quot;
-1265       for (size_t i = separatorIndex + 1; i &lt; args.size(); ++i) {
-1266         result.push_back(args[i]);
-1267       }
-1268     }
-1269 
-1270     return result;
-1271   };
-1272   tool.appendArgumentsAdjuster(consolidatedAdjuster);
-1273 
-1274   DeferActionFactory actionFactory(outputDir, inputRoot);
-1275   const int executionResult = tool.run(&amp;actionFactory);
-1276   if (executionResult != 0) {
-1277     llvm::errs() &lt;&lt; &quot;Defer transformation failed with code &quot; &lt;&lt; executionResult &lt;&lt; &quot;\n&quot;;
-1278   }
-1279   return executionResult;
-1280 }</pre>
+1161       }
+1162       if (arg.find(&quot;-isystem&quot;) == 0 &amp;&amp; arg.length() &gt; 8) {
+1163         collectedIsystemPaths.push_back(arg.substr(8));
+1164         continue;
+1165       }
+1166 
+1167       // Convert -I to -iquote for project include paths
+1168       // Convert -I to -isystem for dependency paths (so they come after our clang builtins)
+1169       // This prevents &lt;stdbool.h&gt; from being searched in dependency directories
+1170       // before our clang builtin path
+1171       // EXCEPTION: Keep -I for the public &quot;include/&quot; directory since it contains
+1172       // public API headers meant to be included with angle brackets like &lt;ascii-chat/header.h&gt;
+1173       if (arg == &quot;-I&quot; &amp;&amp; i + 1 &lt; args.size()) {
+1174         // -I /path/to/dir (separate argument)
+1175         const std::string &amp;includePath = args[++i];
+1176         if (isProjectPath(includePath) &amp;&amp; includePath.find(&quot;/include&quot;) == std::string::npos) {
+1177           // Project path but NOT the public include directory - convert to -iquote
+1178           result.push_back(&quot;-iquote&quot;);
+1179           result.push_back(includePath);
+1180         } else if (!isProjectPath(includePath)) {
+1181           // Collect dependency -I paths to add as -isystem after our builtins
+1182           collectedIsystemPaths.push_back(includePath);
+1183         } else {
+1184           // Public include directory - keep as -I for angle-bracket includes
+1185           result.push_back(&quot;-I&quot;);
+1186           result.push_back(includePath);
+1187         }
+1188         continue;
+1189       }
+1190       if (arg.find(&quot;-I&quot;) == 0 &amp;&amp; arg.length() &gt; 2) {
+1191         // -I/path/to/dir (combined form)
+1192         std::string includePath = arg.substr(2);
+1193         if (isProjectPath(includePath) &amp;&amp; includePath.find(&quot;/include&quot;) == std::string::npos) {
+1194           // Project path but NOT the public include directory - convert to -iquote
+1195           result.push_back(&quot;-iquote&quot;);
+1196           result.push_back(includePath);
+1197         } else if (!isProjectPath(includePath)) {
+1198           // Collect dependency -I paths to add as -isystem after our builtins
+1199           collectedIsystemPaths.push_back(includePath);
+1200         } else {
+1201           // Public include directory - keep as -I for angle-bracket includes
+1202           result.push_back(&quot;-I&quot;);
+1203           result.push_back(includePath);
+1204         }
+1205         continue;
+1206       }
+1207 
+1208       result.push_back(arg);
+1209     }
+1210 
+1211     // Fourth: add system include paths in the correct order
+1212     // Order matters for LibTooling on LLVM 21 - clang builtins MUST come first
+1213     // to shadow any phantom VFS entries that might be created for other paths
+1214     for (const auto &amp;arg : appendArgs) {
+1215       result.push_back(arg);
+1216     }
+1217     // Then add the collected -isystem paths from the compilation database
+1218     for (const auto &amp;path : collectedIsystemPaths) {
+1219       result.push_back(&quot;-isystem&quot;);
+1220       result.push_back(path);
+1221     }
+1222 
+1223     // Fifth: add the defer tool define and separator
+1224     result.push_back(&quot;-DASCIICHAT_DEFER_TOOL_PARSING&quot;);
+1225     if (foundSeparator) {
+1226       result.push_back(&quot;--&quot;);
+1227       // Copy any remaining args after &quot;--&quot;
+1228       for (size_t i = separatorIndex + 1; i &lt; args.size(); ++i) {
+1229         result.push_back(args[i]);
+1230       }
+1231     }
+1232 
+1233     return result;
+1234   };
+1235   tool.appendArgumentsAdjuster(consolidatedAdjuster);
+1236 
+1237   DeferActionFactory actionFactory(outputDir, inputRoot);
+1238   const int executionResult = tool.run(&amp;actionFactory);
+1239   if (executionResult != 0) {
+1240     llvm::errs() &lt;&lt; &quot;Defer transformation failed with code &quot; &lt;&lt; executionResult &lt;&lt; &quot;\n&quot;;
+1241   }
+1242   return executionResult;
+1243 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
+<p class="Pp">References <b>argc</b>, <b>args</b>, and <b>argv</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="std::unordered_set__std::string___&amp;_outputRegistry_()"><a class="permalink" href="#std::unordered_set__std::string___&amp;_outputRegistry_()">std::unordered_set&lt;
@@ -592,7 +555,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

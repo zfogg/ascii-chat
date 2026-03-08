@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>wasm_console.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">wasm_console.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">wasm_console.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">wasm_console.h - WASM browser console logging API.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>wasm_log_to_console</b> (int fd, const <b>uint8_t</b>
+    *buf, size_t count)
+  <br/>
+  Route output to browser console based on log level. int
+    <b>wasm_parse_log_level</b> (const <b>uint8_t</b> *buf, size_t count)
+  <br/>
+  Parse log level from formatted message.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">WASM browser console logging API.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>wasm_console.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_wasm_log_to_console_(int_fd,_const_"><a class="permalink" href="#void_wasm_log_to_console_(int_fd,_const_">void
+  wasm_log_to_console (int fd, const <b>uint8_t</b> * buf, size_t
+  count)</a></h2>
+<p class="Pp">Route output to browser console based on log level. Parses the log
+    level from the message format [LEVEL] and routes to the appropriate console
+    method (console.debug, console.log, etc).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>fd</i> File descriptor (typically 1 for stdout, 2 for
+  stderr)
+<br/>
+<i>buf</i> Message buffer
+<br/>
+<i>count</i> Message length</div>
+<p class="Pp">Definition at line <b>99</b> of file <b>console.c</b>.</p>
+<pre>99                                                                    {
+100   // For WASM, route stdout/stderr to browser console
+101   if ((fd == 1 || fd == 2) &amp;&amp; buf &amp;&amp; count &gt; 0) {
+102     // Parse log level from formatted message
+103     int level = wasm_parse_log_level(buf, count);
+104     if (level &gt;= 0) {
+105       // Create null-terminated string for console output
+106       // Copy buffer to local array and null-terminate
+107       static char msg_buffer[4096];
+108       size_t copy_len = (count &lt; sizeof(msg_buffer) - 1) ? count : (sizeof(msg_buffer) - 1);
+109       memcpy(msg_buffer, buf, copy_len);
+110       msg_buffer[copy_len] = '\0';
+111 
+112       // Remove trailing newline if present (console adds it automatically)
+113       if (copy_len &gt; 0 &amp;&amp; msg_buffer[copy_len - 1] == '\n') {
+114         msg_buffer[copy_len - 1] = '\0';
+115       }
+116 
+117       // Route to console
+118       js_console_log(level, msg_buffer);
+119     }
+120   }
+121 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>wasm_parse_log_level()</b>.</p>
+<p class="Pp">Referenced by <b>platform_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_wasm_parse_log_level_(const_"><a class="permalink" href="#int_wasm_parse_log_level_(const_">int
+  wasm_parse_log_level (const <b>uint8_t</b> * buf, size_t count)</a></h2>
+<p class="Pp">Parse log level from formatted message. Expects format:
+    &quot;[LEVEL] message...&quot;</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>buf</i> Message buffer
+<br/>
+<i>count</i> Message length</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent"><b>log_level_t</b> enum value (0-5), or -1 if not
+  found</div>
+<p class="Pp">Definition at line <b>48</b> of file <b>console.c</b>.</p>
+<pre>48                                                            {
+49   if (!buf || count &lt; 5) {
+50     return -1; // Too short to contain [LEVEL]
+51   }
+52 
+53   // Check if message starts with [
+54   if (buf[0] != '[') {
+55     return -1;
+56   }
+57 
+58   // Look for closing ]
+59   int bracket_end = -1;
+60   for (size_t i = 1; i &lt; count &amp;&amp; i &lt; 10; i++) {
+61     if (buf[i] == ']') {
+62       bracket_end = (int)i;
+63       break;
+64     }
+65   }
+66 
+67   if (bracket_end &lt; 3) {
+68     return -1; // Too short, minimum is [XX]
+69   }
+70 
+71   // Extract level string
+72   int level_len = bracket_end - 1;
+73   const char *level_start = (const char *)&amp;buf[1];
+74 
+75   // Match against known level strings (from logging.c)
+76   if (level_len == 3 &amp;&amp; strncmp(level_start, &quot;DEV&quot;, 3) == 0) {
+77     return LOG_DEV;
+78   }
+79   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;DEBUG&quot;, 5) == 0) {
+80     return LOG_DEBUG;
+81   }
+82   if (level_len == 4 &amp;&amp; strncmp(level_start, &quot;INFO&quot;, 4) == 0) {
+83     return LOG_INFO;
+84   }
+85   if (level_len == 4 &amp;&amp; strncmp(level_start, &quot;WARN&quot;, 4) == 0) {
+86     return LOG_WARN;
+87   }
+88   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;ERROR&quot;, 5) == 0) {
+89     return LOG_ERROR;
+90   }
+91   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;FATAL&quot;, 5) == 0) {
+92     return LOG_FATAL;
+93   }
+94 
+95   return -1; // Level not recognized
+96 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>LOG_DEBUG</b>, <b>LOG_DEV</b>, <b>LOG_ERROR</b>,
+    <b>LOG_FATAL</b>, <b>LOG_INFO</b>, and <b>LOG_WARN</b>.</p>
+<p class="Pp">Referenced by <b>wasm_log_to_console()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

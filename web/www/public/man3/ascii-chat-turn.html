@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>turn(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">turn(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">turn(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">turn - Turn</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">struct <b>__attribute__</b> ((packed))
+  <br/>
+  TURN server configuration with credentials.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp"><b>turn_server_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="TURN_Protocol_Constants"><a class="permalink" href="#TURN_Protocol_Constants">TURN
+  Protocol Constants</a></h2>
+<br/>
+<p class="Pp">#define <b>TURN_DEFAULT_PORT</b> 3478
+  <br/>
+  Standard TURN port (RFC 5766). #define <b>TURN_TLS_DEFAULT_PORT</b> 5349
+  <br/>
+  TURN over TLS port (RFC 5766). #define <b>TURN_MAX_URL_LEN</b> 64
+  <br/>
+  Maximum TURN URL length. #define <b>TURN_MAX_USERNAME_LEN</b> 32
+  <br/>
+  Maximum TURN username length. #define <b>TURN_MAX_CREDENTIAL_LEN</b> 64
+  <br/>
+  Maximum TURN credential length. #define <b>TURN_CREDENTIAL_EXPIRY_SECS</b> (24
+    * 60 * 60)
+  <br/>
+  Recommended credential expiration time (seconds).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">This module defines TURN server configuration structures for
+    WebRTC connectivity. TURN servers act as relay servers when direct
+    peer-to-peer connections are not possible due to restrictive NAT or
+    firewalls.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>RFC 5766</b>: Traversal Using Relays around NAT (TURN) <b>RFC
+    8656</b>: TURN Extensions for IPv6</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="TURN_SERVER_ROLE:"><a class="permalink" href="#TURN_SERVER_ROLE:">TURN
+  SERVER ROLE: </a></h1>
+<ul class="Bl-bullet">
+  <li>Relays media traffic when direct P2P connection fails</li>
+  <li>Fallback mechanism when STUN-based connectivity doesn't work</li>
+  <li>Requires authentication (username/credential)</li>
+  <li>Uses server bandwidth (unlike STUN which is free)</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="USAGE_IN_ACDS:"><a class="permalink" href="#USAGE_IN_ACDS:">USAGE
+  IN ACDS: </a></h1>
+<ul class="Bl-bullet">
+  <li>Discovery server provides TURN server list in SESSION_CREATED
+    response</li>
+  <li>Credentials are time-limited for security</li>
+  <li>Clients use TURN as last resort for ICE connectivity</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SECURITY_CONSIDERATIONS:"><a class="permalink" href="#SECURITY_CONSIDERATIONS:">SECURITY
+  CONSIDERATIONS: </a></h1>
+<ul class="Bl-bullet">
+  <li>Credentials should be time-limited (ephemeral)</li>
+  <li>TURN servers should enforce rate limiting</li>
+  <li>Use TURN over TLS (TURNS) when possible for privacy</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">All structures are packed with <b>attribute</b>((packed))
+  for wire format</div>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp"><b>Version</b></p>
+<div class="Bd-indent">1.0</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_TURN_CREDENTIAL_EXPIRY_SECS___(24_*_60_*_60)"><a class="permalink" href="#_define_TURN_CREDENTIAL_EXPIRY_SECS___(24_*_60_*_60)">#define
+  TURN_CREDENTIAL_EXPIRY_SECS (24 * 60 * 60)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b></b></p>
+<p class="Pp">Recommended credential expiration time (seconds).</p>
+<p class="Pp">Definition at line <b>125</b> of file <b>turn.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TURN_DEFAULT_PORT___3478"><a class="permalink" href="#_define_TURN_DEFAULT_PORT___3478">#define
+  TURN_DEFAULT_PORT 3478</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b></b></p>
+<p class="Pp">Standard TURN port (RFC 5766).</p>
+<p class="Pp">Definition at line <b>110</b> of file <b>turn.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TURN_MAX_CREDENTIAL_LEN___64"><a class="permalink" href="#_define_TURN_MAX_CREDENTIAL_LEN___64">#define
+  TURN_MAX_CREDENTIAL_LEN 64</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b></b></p>
+<p class="Pp">Maximum TURN credential length.</p>
+<p class="Pp">Definition at line <b>122</b> of file <b>turn.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TURN_MAX_URL_LEN___64"><a class="permalink" href="#_define_TURN_MAX_URL_LEN___64">#define
+  TURN_MAX_URL_LEN 64</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b></b></p>
+<p class="Pp">Maximum TURN URL length.</p>
+<p class="Pp">Definition at line <b>116</b> of file <b>turn.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TURN_MAX_USERNAME_LEN___32"><a class="permalink" href="#_define_TURN_MAX_USERNAME_LEN___32">#define
+  TURN_MAX_USERNAME_LEN 32</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b></b></p>
+<p class="Pp">Maximum TURN username length.</p>
+<p class="Pp">Definition at line <b>119</b> of file <b>turn.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TURN_TLS_DEFAULT_PORT___5349"><a class="permalink" href="#_define_TURN_TLS_DEFAULT_PORT___5349">#define
+  TURN_TLS_DEFAULT_PORT 5349</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b></b></p>
+<p class="Pp">TURN over TLS port (RFC 5766).</p>
+<p class="Pp">Definition at line <b>113</b> of file <b>turn.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="struct___attribute___((packed)_)"><a class="permalink" href="#struct___attribute___((packed)_)">struct
+  __attribute__ ((packed) )</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b></b></p>
+<p class="Pp">TURN server configuration with credentials. Used in ACDS
+    SESSION_CREATED response to provide WebRTC relay information. Includes
+    time-limited credentials for secure TURN access.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Protocol Format</b>:</p>
+<ul class="Bl-bullet">
+  <li>url_len: 1 byte (length of URL string)</li>
+  <li>url: 64 bytes (null-terminated TURN URL)</li>
+  <li>username_len: 1 byte (length of username)</li>
+  <li>username: 32 bytes (null-terminated username)</li>
+  <li>credential_len: 1 byte (length of credential)</li>
+  <li>credential: 64 bytes (null-terminated time-limited credential)</li>
+</ul>
+<p class="Pp"><b>URL Format Examples</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>Turn</b>:discovery.ascii.chat:3478<b> (standard TURN)</b></li>
+  <li>turns:discovery.ascii.chat:5349 (TURN over TLS)</li>
+  <li><b>Turn</b>:relay.example.com:3478?transport=udp<b> (UDP
+    transport)</b></li>
+  <li><b>Turn</b>:relay.example.com:3478?transport=tcp<b> (TCP
+    transport)</b></li>
+</ul>
+<p class="Pp"><b>Credential Types</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>Short-term</b>: Simple username/password (less secure)</li>
+  <li><b>Long-term</b>: HMAC-based with timestamp (recommended)</li>
+  <li><b>OAuth</b>: Token-based authentication</li>
+</ul>
+<p class="Pp"><b>Wire Format</b> (163 bytes total):</p>
+<p class="Pp"></p>
+<pre>+---------+----------------+---------------+----------------+--------------+
+| url_len |    url[64]     | username_len  |  username[32]  |credential_len|
++---------+----------------+---------------+----------------+--------------+
+| 1 byte  |   64 bytes     |    1 byte     |   32 bytes     |   1 byte     |
++---------+----------------+---------------+----------------+--------------+
+|                  credential[64]                                          |
++--------------------------------------------------------------------------+
+|                      64 bytes                                            |
++--------------------------------------------------------------------------+
+</pre>
+<p class="Pp">
+  <br/>
+   &lt; Length of URL string (actual length)</p>
+<p class="Pp"></p>
+<p class="Pp">&lt; TURN server URL (e.g.,
+    &quot;turn:discovery.ascii.chat:3478&quot;)</p>
+<p class="Pp"></p>
+<p class="Pp">&lt; Length of username string</p>
+<p class="Pp"></p>
+<p class="Pp">&lt; TURN authentication username</p>
+<p class="Pp"></p>
+<p class="Pp">&lt; Length of credential string</p>
+<p class="Pp"></p>
+<p class="Pp">&lt; Time-limited TURN credential/password</p>
+<p class="Pp">Definition at line <b>1</b> of file <b>turn.h</b>.</p>
+<pre>94                                        {
+95   uint8_t url_len;        
+96   char url[64];           
+97   uint8_t username_len;   
+98   char username[32];      
+99   uint8_t credential_len; 
+100   char credential[64];    
+101 } turn_server_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="turn_server_t"><a class="permalink" href="#turn_server_t">turn_server_t</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>101</b> of file <b>turn.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

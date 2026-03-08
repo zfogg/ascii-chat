@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>enums.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">enums.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">enums.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">enums.h - Option enum value definitions - single source of
+  truth.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>enum_to_string_entry_t</b>
+  <br/>
+  Enum value mapping with description for shell completions. struct
+    <b>enum_descriptor_t</b>
+  <br/>
+  Enum value mapping for an option.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>OPT_LOG_LEVEL_DEV</b> 'dev'
+  <br/>
+  #define <b>OPT_LOG_LEVEL_DEBUG</b> 'debug'
+  <br/>
+  #define <b>OPT_LOG_LEVEL_INFO</b> 'info'
+  <br/>
+  #define <b>OPT_LOG_LEVEL_WARN</b> 'warn'
+  <br/>
+  #define <b>OPT_LOG_LEVEL_ERROR</b> 'error'
+  <br/>
+  #define <b>OPT_LOG_LEVEL_FATAL</b> 'fatal'
+  <br/>
+  #define <b>OPT_COLOR_MODE_AUTO</b> 'auto'
+  <br/>
+  #define <b>OPT_COLOR_MODE_NONE</b> 'none'
+  <br/>
+  #define <b>OPT_COLOR_MODE_16</b> '16'
+  <br/>
+  #define <b>OPT_COLOR_MODE_256</b> '256'
+  <br/>
+  #define <b>OPT_COLOR_MODE_TRUECOLOR</b> 'truecolor'
+  <br/>
+  #define <b>OPT_COLOR_FILTER_NONE</b> 'none'
+  <br/>
+  #define <b>OPT_COLOR_FILTER_BLACK</b> 'black'
+  <br/>
+  #define <b>OPT_COLOR_FILTER_WHITE</b> 'white'
+  <br/>
+  #define <b>OPT_COLOR_FILTER_GREEN</b> 'green'
+  <br/>
+  #define <b>OPT_COLOR_FILTER_MAGENTA</b> 'magenta'
+  <br/>
+  #define <b>OPT_COLOR_FILTER_FUCHSIA</b> 'fuchsia'
+  <br/>
+  #define <b>OPT_COLOR_FILTER_ORANGE</b> 'orange'
+  <br/>
+  #define <b>OPT_COLOR_FILTER_TEAL</b> 'teal'
+  <br/>
+  #define <b>OPT_COLOR_FILTER_CYAN</b> 'cyan'
+  <br/>
+  #define <b>OPT_COLOR_FILTER_PINK</b> 'pink'
+  <br/>
+  #define <b>OPT_COLOR_FILTER_RED</b> 'red'
+  <br/>
+  #define <b>OPT_COLOR_FILTER_YELLOW</b> 'yellow'
+  <br/>
+  #define <b>OPT_COLOR_FILTER_RAINBOW</b> 'rainbow'
+  <br/>
+  #define <b>OPT_PALETTE_STANDARD</b> 'standard'
+  <br/>
+  #define <b>OPT_PALETTE_BLOCKS</b> 'blocks'
+  <br/>
+  #define <b>OPT_PALETTE_DIGITAL</b> 'digital'
+  <br/>
+  #define <b>OPT_PALETTE_MINIMAL</b> 'minimal'
+  <br/>
+  #define <b>OPT_PALETTE_COOL</b> 'cool'
+  <br/>
+  #define <b>OPT_PALETTE_CUSTOM</b> 'custom'
+  <br/>
+  #define <b>OPT_RENDER_MODE_FOREGROUND</b> 'foreground'
+  <br/>
+  #define <b>OPT_RENDER_MODE_FG</b> 'fg'
+  <br/>
+  #define <b>OPT_RENDER_MODE_BACKGROUND</b> 'background'
+  <br/>
+  #define <b>OPT_RENDER_MODE_BG</b> 'bg'
+  <br/>
+  #define <b>OPT_RENDER_MODE_HALF_BLOCK</b> 'half-block'
+  <br/>
+  #define <b>OPT_RECONNECT_OFF</b> 'off'
+  <br/>
+  #define <b>OPT_RECONNECT_AUTO</b> 'auto'
+  <br/>
+  #define <b>OPT_AUDIO_SOURCE_AUTO</b> 'auto'
+  <br/>
+  #define <b>OPT_AUDIO_SOURCE_MIC</b> 'mic'
+  <br/>
+  #define <b>OPT_AUDIO_SOURCE_MEDIA</b> 'media'
+  <br/>
+  #define <b>OPT_AUDIO_SOURCE_BOTH</b> 'both'
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">const <b>enum_to_string_entry_t</b> *
+    <b>options_get_enum_entries</b> (const char *option_name, size_t
+    *entry_count)
+  <br/>
+  Get enum entries with descriptions for an option. const char **
+    <b>options_get_enum_values</b> (const char *option_name, size_t
+    *value_count)
+  <br/>
+  Get enum values for an option. <b>bool</b> <b>options_is_enum_option</b>
+    (const char *option_name)
+  <br/>
+  Check if an option has enum values.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Option enum value definitions - single source of truth.</p>
+<p class="Pp">Defines all enum values for options in one place so they can be
+    used by:</p>
+<ul class="Bl-bullet">
+  <li>Option parsers</li>
+  <li>Help text generation</li>
+  <li>Shell completions (bash/fish/zsh/powershell)</li>
+  <li>Configuration file validation</li>
+</ul>
+<p class="Pp">This ensures consistency across all parts of the application.</p>
+<p class="Pp">Definition in file <b>enums.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_AUDIO_SOURCE_AUTO___'auto'"><a class="permalink" href="#_define_OPT_AUDIO_SOURCE_AUTO___'auto'">#define
+  OPT_AUDIO_SOURCE_AUTO 'auto'</a></h2>
+<p class="Pp">Definition at line <b>124</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_audio_source()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_AUDIO_SOURCE_BOTH___'both'"><a class="permalink" href="#_define_OPT_AUDIO_SOURCE_BOTH___'both'">#define
+  OPT_AUDIO_SOURCE_BOTH 'both'</a></h2>
+<p class="Pp">Definition at line <b>127</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_audio_source()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_AUDIO_SOURCE_MEDIA___'media'"><a class="permalink" href="#_define_OPT_AUDIO_SOURCE_MEDIA___'media'">#define
+  OPT_AUDIO_SOURCE_MEDIA 'media'</a></h2>
+<p class="Pp">Definition at line <b>126</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_audio_source()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_AUDIO_SOURCE_MIC___'mic'"><a class="permalink" href="#_define_OPT_AUDIO_SOURCE_MIC___'mic'">#define
+  OPT_AUDIO_SOURCE_MIC 'mic'</a></h2>
+<p class="Pp">Definition at line <b>125</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_audio_source()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_COLOR_FILTER_BLACK___'black'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_BLACK___'black'">#define
+  OPT_COLOR_FILTER_BLACK 'black'</a></h2>
+<p class="Pp">Definition at line <b>91</b> of file <b>enums.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_COLOR_FILTER_CYAN___'cyan'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_CYAN___'cyan'">#define
+  OPT_COLOR_FILTER_CYAN 'cyan'</a></h2>
+<p class="Pp">Definition at line <b>98</b> of file <b>enums.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_COLOR_FILTER_FUCHSIA___'fuchsia'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_FUCHSIA___'fuchsia'">#define
+  OPT_COLOR_FILTER_FUCHSIA 'fuchsia'</a></h2>
+<p class="Pp">Definition at line <b>95</b> of file <b>enums.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_COLOR_FILTER_GREEN___'green'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_GREEN___'green'">#define
+  OPT_COLOR_FILTER_GREEN 'green'</a></h2>
+<p class="Pp">Definition at line <b>93</b> of file <b>enums.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_COLOR_FILTER_MAGENTA___'magenta'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_MAGENTA___'magenta'">#define
+  OPT_COLOR_FILTER_MAGENTA 'magenta'</a></h2>
+<p class="Pp">Definition at line <b>94</b> of file <b>enums.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_COLOR_FILTER_NONE___'none'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_NONE___'none'">#define
+  OPT_COLOR_FILTER_NONE 'none'</a></h2>
+<p class="Pp">Definition at line <b>90</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_color_filter()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_COLOR_FILTER_ORANGE___'orange'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_ORANGE___'orange'">#define
+  OPT_COLOR_FILTER_ORANGE 'orange'</a></h2>
+<p class="Pp">Definition at line <b>96</b> of file <b>enums.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_COLOR_FILTER_PINK___'pink'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_PINK___'pink'">#define
+  OPT_COLOR_FILTER_PINK 'pink'</a></h2>
+<p class="Pp">Definition at line <b>99</b> of file <b>enums.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_COLOR_FILTER_RAINBOW___'rainbow'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_RAINBOW___'rainbow'">#define
+  OPT_COLOR_FILTER_RAINBOW 'rainbow'</a></h2>
+<p class="Pp">Definition at line <b>102</b> of file <b>enums.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_COLOR_FILTER_RED___'red'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_RED___'red'">#define
+  OPT_COLOR_FILTER_RED 'red'</a></h2>
+<p class="Pp">Definition at line <b>100</b> of file <b>enums.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_COLOR_FILTER_TEAL___'teal'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_TEAL___'teal'">#define
+  OPT_COLOR_FILTER_TEAL 'teal'</a></h2>
+<p class="Pp">Definition at line <b>97</b> of file <b>enums.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_COLOR_FILTER_WHITE___'white'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_WHITE___'white'">#define
+  OPT_COLOR_FILTER_WHITE 'white'</a></h2>
+<p class="Pp">Definition at line <b>92</b> of file <b>enums.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_COLOR_FILTER_YELLOW___'yellow'"><a class="permalink" href="#_define_OPT_COLOR_FILTER_YELLOW___'yellow'">#define
+  OPT_COLOR_FILTER_YELLOW 'yellow'</a></h2>
+<p class="Pp">Definition at line <b>101</b> of file <b>enums.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_COLOR_MODE_16___'16'"><a class="permalink" href="#_define_OPT_COLOR_MODE_16___'16'">#define
+  OPT_COLOR_MODE_16 '16'</a></h2>
+<p class="Pp">Definition at line <b>85</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_color_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_COLOR_MODE_256___'256'"><a class="permalink" href="#_define_OPT_COLOR_MODE_256___'256'">#define
+  OPT_COLOR_MODE_256 '256'</a></h2>
+<p class="Pp">Definition at line <b>86</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_color_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_COLOR_MODE_AUTO___'auto'"><a class="permalink" href="#_define_OPT_COLOR_MODE_AUTO___'auto'">#define
+  OPT_COLOR_MODE_AUTO 'auto'</a></h2>
+<p class="Pp">Definition at line <b>83</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_color_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_COLOR_MODE_NONE___'none'"><a class="permalink" href="#_define_OPT_COLOR_MODE_NONE___'none'">#define
+  OPT_COLOR_MODE_NONE 'none'</a></h2>
+<p class="Pp">Definition at line <b>84</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_color_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_COLOR_MODE_TRUECOLOR___'truecolor'"><a class="permalink" href="#_define_OPT_COLOR_MODE_TRUECOLOR___'truecolor'">#define
+  OPT_COLOR_MODE_TRUECOLOR 'truecolor'</a></h2>
+<p class="Pp">Definition at line <b>87</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_color_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_LOG_LEVEL_DEBUG___'debug'"><a class="permalink" href="#_define_OPT_LOG_LEVEL_DEBUG___'debug'">#define
+  OPT_LOG_LEVEL_DEBUG 'debug'</a></h2>
+<p class="Pp">Definition at line <b>76</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_log_level()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_LOG_LEVEL_DEV___'dev'"><a class="permalink" href="#_define_OPT_LOG_LEVEL_DEV___'dev'">#define
+  OPT_LOG_LEVEL_DEV 'dev'</a></h2>
+<p class="Pp">Definition at line <b>75</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_log_level()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_LOG_LEVEL_ERROR___'error'"><a class="permalink" href="#_define_OPT_LOG_LEVEL_ERROR___'error'">#define
+  OPT_LOG_LEVEL_ERROR 'error'</a></h2>
+<p class="Pp">Definition at line <b>79</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_log_level()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_LOG_LEVEL_FATAL___'fatal'"><a class="permalink" href="#_define_OPT_LOG_LEVEL_FATAL___'fatal'">#define
+  OPT_LOG_LEVEL_FATAL 'fatal'</a></h2>
+<p class="Pp">Definition at line <b>80</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_log_level()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_LOG_LEVEL_INFO___'info'"><a class="permalink" href="#_define_OPT_LOG_LEVEL_INFO___'info'">#define
+  OPT_LOG_LEVEL_INFO 'info'</a></h2>
+<p class="Pp">Definition at line <b>77</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_log_level()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_LOG_LEVEL_WARN___'warn'"><a class="permalink" href="#_define_OPT_LOG_LEVEL_WARN___'warn'">#define
+  OPT_LOG_LEVEL_WARN 'warn'</a></h2>
+<p class="Pp">Definition at line <b>78</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_log_level()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_PALETTE_BLOCKS___'blocks'"><a class="permalink" href="#_define_OPT_PALETTE_BLOCKS___'blocks'">#define
+  OPT_PALETTE_BLOCKS 'blocks'</a></h2>
+<p class="Pp">Definition at line <b>106</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_palette_type()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_PALETTE_COOL___'cool'"><a class="permalink" href="#_define_OPT_PALETTE_COOL___'cool'">#define
+  OPT_PALETTE_COOL 'cool'</a></h2>
+<p class="Pp">Definition at line <b>109</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_palette_type()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_PALETTE_CUSTOM___'custom'"><a class="permalink" href="#_define_OPT_PALETTE_CUSTOM___'custom'">#define
+  OPT_PALETTE_CUSTOM 'custom'</a></h2>
+<p class="Pp">Definition at line <b>110</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_palette_type()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_PALETTE_DIGITAL___'digital'"><a class="permalink" href="#_define_OPT_PALETTE_DIGITAL___'digital'">#define
+  OPT_PALETTE_DIGITAL 'digital'</a></h2>
+<p class="Pp">Definition at line <b>107</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_palette_type()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_PALETTE_MINIMAL___'minimal'"><a class="permalink" href="#_define_OPT_PALETTE_MINIMAL___'minimal'">#define
+  OPT_PALETTE_MINIMAL 'minimal'</a></h2>
+<p class="Pp">Definition at line <b>108</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_palette_type()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_PALETTE_STANDARD___'standard'"><a class="permalink" href="#_define_OPT_PALETTE_STANDARD___'standard'">#define
+  OPT_PALETTE_STANDARD 'standard'</a></h2>
+<p class="Pp">Definition at line <b>105</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_palette_type()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_RECONNECT_AUTO___'auto'"><a class="permalink" href="#_define_OPT_RECONNECT_AUTO___'auto'">#define
+  OPT_RECONNECT_AUTO 'auto'</a></h2>
+<p class="Pp">Definition at line <b>121</b> of file <b>enums.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_RECONNECT_OFF___'off'"><a class="permalink" href="#_define_OPT_RECONNECT_OFF___'off'">#define
+  OPT_RECONNECT_OFF 'off'</a></h2>
+<p class="Pp">Definition at line <b>120</b> of file <b>enums.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_RENDER_MODE_BACKGROUND___'background'"><a class="permalink" href="#_define_OPT_RENDER_MODE_BACKGROUND___'background'">#define
+  OPT_RENDER_MODE_BACKGROUND 'background'</a></h2>
+<p class="Pp">Definition at line <b>115</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_render_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_RENDER_MODE_BG___'bg'"><a class="permalink" href="#_define_OPT_RENDER_MODE_BG___'bg'">#define
+  OPT_RENDER_MODE_BG 'bg'</a></h2>
+<p class="Pp">Definition at line <b>116</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_render_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_RENDER_MODE_FG___'fg'"><a class="permalink" href="#_define_OPT_RENDER_MODE_FG___'fg'">#define
+  OPT_RENDER_MODE_FG 'fg'</a></h2>
+<p class="Pp">Definition at line <b>114</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_render_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_RENDER_MODE_FOREGROUND___'foreground'"><a class="permalink" href="#_define_OPT_RENDER_MODE_FOREGROUND___'foreground'">#define
+  OPT_RENDER_MODE_FOREGROUND 'foreground'</a></h2>
+<p class="Pp">Definition at line <b>113</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_render_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPT_RENDER_MODE_HALF_BLOCK___'half"><a class="permalink" href="#_define_OPT_RENDER_MODE_HALF_BLOCK___'half">#define
+  OPT_RENDER_MODE_HALF_BLOCK 'half-block'</a></h2>
+<p class="Pp">Definition at line <b>117</b> of file <b>enums.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_render_mode()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>enum_to_string_entry_t</b> * options_get_enum_entries (const char *
+  option_name, size_t * entry_count)</a></h2>
+<p class="Pp">Get enum entries with descriptions for an option. Returns entries
+    containing both string values and descriptions for shell completion.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>option_name</i> Option long name (e.g.,
+  &quot;log-level&quot;)
+<br/>
+<i>entry_count</i> OUTPUT: Number of entries returned</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Array of enum entries, or NULL if not an enum
+  option</div>
+<p class="Pp">Get enum entries with descriptions for an option.</p>
+<p class="Pp"></p>
+<p class="Pp">Returns entries containing both string values and descriptions for
+    shell completion. Used by zsh completion to show descriptions alongside
+    values.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>option_name</i> Option long name (e.g.,
+  &quot;log-level&quot;)
+<br/>
+<i>entry_count</i> OUTPUT: Number of entries returned</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Array of enum entries, or NULL if not an enum
+  option</div>
+<p class="Pp">Definition at line <b>134</b> of file <b>enums.c</b>.</p>
+<pre>134                                                                                                      {
+135   if (!option_name || !entry_count) {
+136     return NULL;
+137   }
+138 
+139   for (size_t i = 0; enum_registry[i].option_name != NULL; i++) {
+140     if (strcmp(enum_registry[i].option_name, option_name) == 0) {
+141       /* Count entries up to terminator */
+142       size_t count = 0;
+143       for (size_t j = 0; enum_registry[i].map[j].enum_value != -1; j++) {
+144         count++;
+145       }
+146       *entry_count = count;
+147       return enum_registry[i].map;
+148     }
+149   }
+150 
+151   *entry_count = 0;
+152   return NULL;
+153 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_**_options_get_enum_values_(const_char_*_option_name,_size_t_*_value_count)"><a class="permalink" href="#const_char_**_options_get_enum_values_(const_char_*_option_name,_size_t_*_value_count)">const
+  char ** options_get_enum_values (const char * option_name, size_t *
+  value_count)</a></h2>
+<p class="Pp">Get enum values for an option.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>option_name</i> Option long name (e.g.,
+  &quot;log-level&quot;)
+<br/>
+<i>value_count</i> OUTPUT: Number of values returned</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Array of valid string values, or NULL if not an enum
+  option</div>
+<p class="Pp">Get enum values for an option.</p>
+<p class="Pp"></p>
+<p class="Pp">Extracts the list of valid string values for an enum option. For
+    options with aliases (like render-mode which has &quot;foreground&quot; and
+    &quot;fg&quot;), both values are included.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>option_name</i> Option long name (e.g.,
+  &quot;log-level&quot;)
+<br/>
+<i>value_count</i> OUTPUT: Number of values returned</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Array of valid string values, or NULL if not an enum
+  option</div>
+<p class="Pp">Definition at line <b>166</b> of file <b>enums.c</b>.</p>
+<pre>166                                                                                    {
+167   if (!option_name || !value_count) {
+168     return NULL;
+169   }
+170 
+171   /* Find the option's mapping in the registry */
+172   const enum_map_descriptor_t *descriptor = NULL;
+173   for (size_t i = 0; enum_registry[i].option_name != NULL; i++) {
+174     if (strcmp(enum_registry[i].option_name, option_name) == 0) {
+175       descriptor = &amp;enum_registry[i];
+176       break;
+177     }
+178   }
+179 
+180   if (!descriptor || !descriptor-&gt;map) {
+181     *value_count = 0;
+182     return NULL;
+183   }
+184 
+185   /* Count non-terminator entries */
+186   size_t count = 0;
+187   for (size_t i = 0; descriptor-&gt;map[i].enum_value != -1; i++) {
+188     count++;
+189   }
+190 
+191   /* Build array of unique strings (skip duplicates from aliases) */
+192   const char **values = SAFE_MALLOC(count * sizeof(const char *), const char **);
+193   size_t unique_count = 0;
+194 
+195   for (size_t i = 0; descriptor-&gt;map[i].enum_value != -1; i++) {
+196     const char *str = descriptor-&gt;map[i].string;
+197 
+198     /* Check if we already have this string (for aliases) */
+199     bool already_added = false;
+200     for (size_t j = 0; j &lt; unique_count; j++) {
+201       if (strcmp(values[j], str) == 0) {
+202         already_added = true;
+203         break;
+204       }
+205     }
+206 
+207     if (!already_added) {
+208       values[unique_count++] = str;
+209     }
+210   }
+211 
+212   *value_count = unique_count;
+213   return values;
+214 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>enum_to_string_entry_t::enum_value</b>,
+    <b>enum_map_descriptor_t::map</b>, <b>SAFE_MALLOC</b>, and
+    <b>enum_to_string_entry_t::string</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_suggest_enum_value()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> options_is_enum_option (const char *
+  option_name)</h2>
+<p class="Pp">Check if an option has enum values.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>option_name</i> Option long name</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if option has enum values, false otherwise</div>
+<p class="Pp">Definition at line <b>222</b> of file <b>enums.c</b>.</p>
+<pre>222                                                      {
+223   if (!option_name) {
+224     return false;
+225   }
+226 
+227   for (size_t i = 0; enum_registry[i].option_name != NULL; i++) {
+228     if (strcmp(enum_registry[i].option_name, option_name) == 0) {
+229       return true;
+230     }
+231   }
+232 
+233   return false;
+234 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

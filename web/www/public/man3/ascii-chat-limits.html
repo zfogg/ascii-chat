@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>limits(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">limits(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">limits(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">limits - Application Limits</p>
+<p class="Pp">
+  <br/>
+   - Limits for clients, frame rates, display names, and other constraints.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+<br/>
+<p class="Pp">file <b>limits.h</b>
+  <br/>
+  Application limits and constraints.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>MAX_DISPLAY_NAME_LEN</b> 32
+  <br/>
+  Maximum display name length in characters. #define <b>MAX_CLIENT_ID_LEN</b> 64
+  <br/>
+  Maximum client ID length - format:
+    <i>noun.N</i>(transport:port)&quot;<i>e.g.,</i>mountain.0
+    (tcp:48036)<i>.</i> #define <b>MAX_CLIENTS</b> 32
+  <br/>
+  Maximum possible clients (static array size) - actual runtime limit set by
+    --max-clients (1-32). #define <b>DEFAULT_MAX_FPS</b> 60
+  <br/>
+  Default maximum frame rate (frames per second). #define
+    <b>FRAME_INTERVAL_MS</b> (1000 / <b>DEFAULT_MAX_FPS</b>)
+  <br/>
+  Frame interval in milliseconds based on default FPS (compile-time constant).
+    #define <b>FRAME_BUFFER_CAPACITY</b> (<b>DEFAULT_MAX_FPS</b> / 4)
+  <br/>
+  Frame buffer capacity based on default FPS (compile-time constant).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Limits for clients, frame rates, display names, and other
+    constraints.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_DEFAULT_MAX_FPS___60"><a class="permalink" href="#_define_DEFAULT_MAX_FPS___60">#define
+  DEFAULT_MAX_FPS 60</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/common/limits.h</b>&gt;<b></b></p>
+<p class="Pp">Default maximum frame rate (frames per second).</p>
+<p class="Pp">Definition at line <b>29</b> of file <b>limits.h</b>.</p>
+<p class="Pp">Referenced by
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_FRAME_BUFFER_CAPACITY___("><a class="permalink" href="#_define_FRAME_BUFFER_CAPACITY___(">#define
+  FRAME_BUFFER_CAPACITY (<b>DEFAULT_MAX_FPS</b> / 4)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/common/limits.h</b>&gt;<b></b></p>
+<p class="Pp">Frame buffer capacity based on default FPS (compile-time
+    constant).</p>
+<p class="Pp">Definition at line <b>35</b> of file <b>limits.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_FRAME_INTERVAL_MS___(1000_/_"><a class="permalink" href="#_define_FRAME_INTERVAL_MS___(1000_/_">#define
+  FRAME_INTERVAL_MS (1000 / <b>DEFAULT_MAX_FPS</b>)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/common/limits.h</b>&gt;<b></b></p>
+<p class="Pp">Frame interval in milliseconds based on default FPS (compile-time
+    constant).</p>
+<p class="Pp">Definition at line <b>32</b> of file <b>limits.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_MAX_CLIENT_ID_LEN___64"><a class="permalink" href="#_define_MAX_CLIENT_ID_LEN___64">#define
+  MAX_CLIENT_ID_LEN 64</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/common/limits.h</b>&gt;<b></b></p>
+<p class="Pp">Maximum client ID length - format: &quot;noun.N
+    (transport:port)&quot; e.g., &quot;mountain.0 (tcp:48036)&quot;.</p>
+<p class="Pp">Definition at line <b>23</b> of file <b>limits.h</b>.</p>
+<p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
+    <b>broadcast_server_state_to_all_clients()</b>,
+    <b>client_audio_render_thread()</b>, <b>client_video_render_thread()</b>,
+    and <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_MAX_CLIENTS___32"><a class="permalink" href="#_define_MAX_CLIENTS___32">#define
+  MAX_CLIENTS 32</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/common/limits.h</b>&gt;<b></b></p>
+<p class="Pp">Maximum possible clients (static array size) - actual runtime
+    limit set by --max-clients (1-32).</p>
+<p class="Pp">Definition at line <b>26</b> of file <b>limits.h</b>.</p>
+<p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
+    <b>any_clients_sending_video()</b>,
+    <b>broadcast_server_state_to_all_clients()</b>,
+    <b>client_crypto_handshake()</b>,
+    <b>create_mixed_ascii_frame_for_client()</b>,
+    <b>crypto_handshake_client_key_exchange()</b>,
+    <b>fetch_github_gpg_keys()</b>, <b>fetch_github_ssh_keys()</b>,
+    <b>fetch_gitlab_gpg_keys()</b>, <b>fetch_gitlab_ssh_keys()</b>,
+    <b>find_client_by_socket()</b>, <b>h265_server_context_create()</b>,
+    <b>h265_server_context_destroy()</b>,
+    <b>h265_server_get_client_decoder()</b>, <b>h265_server_remove_client()</b>,
+    <b>remove_client()</b>, <b>send_server_state_to_client()</b>,
+    <b>server_main()</b>, <b>stats_logger_thread()</b>, and
+    <b>update_server_stats()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_MAX_DISPLAY_NAME_LEN___32"><a class="permalink" href="#_define_MAX_DISPLAY_NAME_LEN___32">#define
+  MAX_DISPLAY_NAME_LEN 32</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/common/limits.h</b>&gt;<b></b></p>
+<p class="Pp">Maximum display name length in characters.</p>
+<p class="Pp">Definition at line <b>20</b> of file <b>limits.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_join_packet()</b>,
+    <b>remove_client()</b>, <b>server_connection_establish()</b>, and
+    <b>threaded_send_client_join_packet()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

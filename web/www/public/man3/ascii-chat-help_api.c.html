@@ -38,8 +38,8 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">const char * <b>options_get_help_text</b> (asciichat_mode_t mode,
-    const char *option_name)
+<p class="Pp">const char * <b>options_get_help_text</b> (<b>asciichat_mode_t</b>
+    mode, const char *option_name)
   <br/>
   Get help text for an option in a specific mode.
   <br/>
@@ -60,83 +60,13 @@
 <p class="Pp">Definition in file <b>help_api.c</b>.</p>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_options_get_help_text_(asciichat_mode_t_mode,_const_char_*_option_name)"><a class="permalink" href="#const_char_*_options_get_help_text_(asciichat_mode_t_mode,_const_char_*_option_name)">const
-  char * options_get_help_text (asciichat_mode_t mode, const char *
-  option_name)</a></h2>
-<p class="Pp">Get help text for an option in a specific mode.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>mode</i> The mode context (MODE_SERVER, MODE_CLIENT,
-  MODE_MIRROR, etc.)
-<br/>
-<i>option_name</i> The long name of the option (e.g., &quot;color-mode&quot;,
-  &quot;fps&quot;)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Help text string, or NULL if option doesn't apply to this
-  mode</div>
-<p class="Pp">Searches the options registry for the given option name and checks
-    if it applies to the requested mode. If it does, returns the help text. If
-    the option doesn't exist or doesn't apply to the mode, returns NULL.</p>
-<p class="Pp">Definition at line <b>27</b> of file <b>help_api.c</b>.</p>
-<pre>27                                                                                   {
-28   if (!option_name || !option_name[0]) {
-29     return NULL;
-30   }
-31 
-32   // Get the registry (initializes size if needed)
-33   registry_init_size();
-34 
-35   // Search through all registered options
-36   for (size_t i = 0; i &lt; g_registry_size; i++) {
-37     const registry_entry_t *entry = &amp;g_options_registry[i];
-38 
-39     // Skip empty entries or entries without a long name
-40     if (!entry-&gt;long_name || !entry-&gt;long_name[0]) {
-41       continue;
-42     }
-43 
-44     // Check if this is the option we're looking for
-45     if (strcmp(entry-&gt;long_name, option_name) != 0) {
-46       continue;
-47     }
-48 
-49     // Check if this option applies to the requested mode
-50     // Convert mode to bitmask for comparison
-51     // Validate mode is in valid range (0-4) to avoid undefined behavior in bit shift
-52     if (mode &lt; 0 || mode &gt;= MODE_INVALID) {
-53       continue; // Skip invalid mode
-54     }
-55     uint32_t mode_bitmask = (1 &lt;&lt; mode) | OPTION_MODE_BINARY;
-56 
-57     if ((entry-&gt;mode_bitmask &amp; mode_bitmask) == 0) {
-58       // Option doesn't apply to this mode
-59       return NULL;
-60     }
-61 
-62     // Return the help text (or empty string if not set)
-63     return entry-&gt;help_text ? entry-&gt;help_text : &quot;&quot;;
-64   }
-65 
-66   // Option not found
-67   return NULL;
-68 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>g_options_registry</b>, <b>g_registry_size</b>, and
-    <b>registry_init_size()</b>.</p>
-<p class="Pp">Referenced by <b>get_help_text()</b>.</p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>websocket_server(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">websocket_server(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">websocket_server(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">websocket_server - WebSocket server state.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/websocket/server.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">struct lws_context * <b>context</b>
+  <br/>
+  libwebsockets context <b>websocket_client_handler_fn</b> <b>handler</b>
+  <br/>
+  Client handler function. void * <b>user_data</b>
+  <br/>
+  User data for handlers. <b>atomic_t</b> <b>running</b>
+  <br/>
+  Server running flag. int <b>port</b>
+  <br/>
+  Listening port. struct <b>thread_pool</b> * <b>handler_pool</b>
+  <br/>
+  Thread pool for queueing handler work.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">WebSocket server state.</p>
+<p class="Pp">Definition at line <b>102</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="struct_lws_context*_websocket_server::context"><a class="permalink" href="#struct_lws_context*_websocket_server::context">struct
+  lws_context* websocket_server::context</a></h2>
+<p class="Pp">libwebsockets context</p>
+<p class="Pp">Definition at line <b>103</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+<p class="Pp">Referenced by <b>websocket_server_cancel_service()</b>,
+    <b>websocket_server_destroy()</b>, <b>websocket_server_init()</b>, and
+    <b>websocket_server_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>websocket_client_handler_fn</b> websocket_server::handler</h2>
+<p class="Pp">Client handler function.</p>
+<p class="Pp">Definition at line <b>104</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+<p class="Pp">Referenced by <b>websocket_server_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
+  <b>thread_pool</b>* websocket_server::handler_pool</a></h2>
+<p class="Pp">Thread pool for queueing handler work.</p>
+<p class="Pp">Definition at line <b>108</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+<p class="Pp">Referenced by <b>websocket_server_destroy()</b>, and
+    <b>websocket_server_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_websocket_server::port"><a class="permalink" href="#int_websocket_server::port">int
+  websocket_server::port</a></h2>
+<p class="Pp">Listening port.</p>
+<p class="Pp">Definition at line <b>107</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+<p class="Pp">Referenced by <b>websocket_server_init()</b>, and
+    <b>websocket_server_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> websocket_server::running</h2>
+<p class="Pp">Server running flag.</p>
+<p class="Pp">Definition at line <b>106</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+<p class="Pp">Referenced by <b>websocket_server_destroy()</b>,
+    <b>websocket_server_init()</b>, and <b>websocket_server_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_websocket_server::user_data"><a class="permalink" href="#void*_websocket_server::user_data">void*
+  websocket_server::user_data</a></h2>
+<p class="Pp">User data for handlers.</p>
+<p class="Pp">Definition at line <b>105</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+<p class="Pp">Referenced by <b>websocket_server_init()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -42,6 +42,7 @@
 <p class="Pp">void <b>format_bytes_pretty</b> (size_t bytes, char *out, size_t
     out_capacity)
   <br/>
+  Format byte count into human-readable string.
   <br/>
 </p>
 </section>
@@ -56,65 +57,13 @@
 <p class="Pp">Definition in file <b>util/format.c</b>.</p>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_format_bytes_pretty_(size_t_bytes,_char_*_out,_size_t_out_capacity)"><a class="permalink" href="#void_format_bytes_pretty_(size_t_bytes,_char_*_out,_size_t_out_capacity)">void
-  format_bytes_pretty (size_t bytes, char * out, size_t out_capacity)</a></h2>
-<p class="Pp">Definition at line <b>10</b> of file <b>util/format.c</b>.</p>
-<pre>10                                                                        {
-11   const double KB = 1024.0;
-12   const double MB = KB * 1024.0;
-13   const double GB = MB * 1024.0;
-14   const double TB = GB * 1024.0;
-15   const double PB = TB * 1024.0;
-16   const double EB = PB * 1024.0;
-17 
-18   const double THRESHOLD = 0.8;
-19 
-20   double byte_val = (double)bytes;
-21 
-22   if (byte_val &lt; THRESHOLD * KB) {
-23     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, &quot;%zu B&quot;, bytes));
-24   } else if (byte_val &lt; THRESHOLD * MB) {
-25     double value = byte_val / KB;
-26     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, &quot;%.2f KB&quot;, value));
-27   } else if (byte_val &lt; THRESHOLD * GB) {
-28     double value = byte_val / MB;
-29     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, &quot;%.2f MB&quot;, value));
-30   } else if (byte_val &lt; THRESHOLD * TB) {
-31     double value = byte_val / GB;
-32     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, &quot;%.2f GB&quot;, value));
-33   } else if (byte_val &lt; THRESHOLD * PB) {
-34     double value = byte_val / TB;
-35     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, &quot;%.2f TB&quot;, value));
-36   } else if (byte_val &lt; THRESHOLD * EB) {
-37     double value = byte_val / PB;
-38     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, &quot;%.2f PB&quot;, value));
-39   } else {
-40     double value = byte_val / EB;
-41     SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, &quot;%.2f EB&quot;, value));
-42   }
-43 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>safe_snprintf()</b>.</p>
-<p class="Pp">Referenced by <b>buffer_pool_create()</b>,
-    <b>buffer_pool_log_stats()</b>, <b>crypto_destroy()</b>,
-    <b>frame_check_size_overflow()</b>, <b>frame_validate_new()</b>,
-    <b>handle_image_frame_packet()</b>,
-    <b>packet_decode_frame_data_malloc()</b>, and
-    <b>packet_validate_frame_dimensions()</b>.</p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

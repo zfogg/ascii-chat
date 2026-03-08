@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>terminal_capabilities_packet_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">terminal_capabilities_packet_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">terminal_capabilities_packet_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">terminal_capabilities_packet_t - Terminal capabilities packet
+    structure (Packet Type 5).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/packet/packet.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint32_t</b> <b>capabilities</b>
+  <br/>
+  Terminal capabilities bitmask (TERM_CAP_* flags). <b>uint32_t</b>
+    <b>color_level</b>
+  <br/>
+  Color level enum value (<b>terminal_color_mode_t</b>). <b>uint32_t</b>
+    <b>color_count</b>
+  <br/>
+  Actual color count (16, 256, or 16777216). <b>uint32_t</b> <b>render_mode</b>
+  <br/>
+  Render mode enum value (foreground/background/half-block). <b>uint16_t</b>
+    <b>width</b>
+  <br/>
+  Terminal width in characters. <b>uint16_t</b> <b>height</b>
+  <br/>
+  Terminal height in characters. char <b>term_type</b> [32]
+  <br/>
+  $TERM environment variable value (for debugging) char <b>colorterm</b> [32]
+  <br/>
+  $COLORTERM environment variable value (for debugging) <b>uint8_t</b>
+    <b>detection_reliable</b>
+  <br/>
+  Detection reliability flag (1=reliable detection, 0=best guess).
+    <b>uint32_t</b> <b>utf8_support</b>
+  <br/>
+  UTF-8 support flag (0=no UTF-8, 1=UTF-8 supported). <b>uint32_t</b>
+    <b>palette_type</b>
+  <br/>
+  Palette type enum value (<b>palette_type_t</b>). char <b>palette_custom</b>
+    [64]
+  <br/>
+  Custom palette characters (if palette_type == PALETTE_CUSTOM). <b>uint8_t</b>
+    <b>desired_fps</b>
+  <br/>
+  Client's desired frame rate (1-144 FPS). <b>uint8_t</b> <b>color_filter</b>
+  <br/>
+  Monochromatic color filter enum value (<b>color_filter_t</b>). <b>uint8_t</b>
+    <b>wants_padding</b>
+  <br/>
+  Whether client wants frame padding (1=padding enabled, 0=no padding for
+    snapshot/piped modes). <b>uint32_t</b> <b>codec_capabilities_video</b>
+  <br/>
+  Video codec capabilities bitmask (VIDEO_CODEC_CAP_*). <b>uint32_t</b>
+    <b>codec_capabilities_audio</b>
+  <br/>
+  Audio codec capabilities bitmask (AUDIO_CODEC_CAP_*).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Terminal capabilities packet structure (Packet Type 5).</p>
+<p class="Pp">Sent by client to server to report terminal capabilities,
+    dimensions, color support, rendering preferences, and supported codecs for
+    optimal frame delivery.</p>
+<p class="Pp">Definition at line <b>1018</b> of file <b>packet.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> terminal_capabilities_packet_t::capabilities</h2>
+<p class="Pp">Terminal capabilities bitmask (TERM_CAP_* flags).</p>
+<p class="Pp">Definition at line <b>1020</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b>
+  terminal_capabilities_packet_t::codec_capabilities_audio</h2>
+<p class="Pp">Audio codec capabilities bitmask (AUDIO_CODEC_CAP_*).</p>
+<p class="Pp">Definition at line <b>1052</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b>
+  terminal_capabilities_packet_t::codec_capabilities_video</h2>
+<p class="Pp">Video codec capabilities bitmask (VIDEO_CODEC_CAP_*).</p>
+<p class="Pp">Definition at line <b>1050</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> terminal_capabilities_packet_t::color_count</h2>
+<p class="Pp">Actual color count (16, 256, or 16777216).</p>
+<p class="Pp">Definition at line <b>1024</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> terminal_capabilities_packet_t::color_filter</h2>
+<p class="Pp">Monochromatic color filter enum value (<b>color_filter_t</b>).</p>
+<p class="Pp">Definition at line <b>1046</b> of file <b>packet.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> terminal_capabilities_packet_t::color_level</h2>
+<p class="Pp">Color level enum value (<b>terminal_color_mode_t</b>).</p>
+<p class="Pp">Definition at line <b>1022</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_terminal_capabilities_packet_t::colorterm_32_"><a class="permalink" href="#char_terminal_capabilities_packet_t::colorterm_32_">char
+  terminal_capabilities_packet_t::colorterm[32]</a></h2>
+<p class="Pp">$COLORTERM environment variable value (for debugging)</p>
+<p class="Pp">Definition at line <b>1034</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> terminal_capabilities_packet_t::desired_fps</h2>
+<p class="Pp">Client's desired frame rate (1-144 FPS).</p>
+<p class="Pp">Definition at line <b>1044</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>
+  terminal_capabilities_packet_t::detection_reliable</h2>
+<p class="Pp">Detection reliability flag (1=reliable detection, 0=best
+  guess).</p>
+<p class="Pp">Definition at line <b>1036</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> terminal_capabilities_packet_t::height</h2>
+<p class="Pp">Terminal height in characters.</p>
+<p class="Pp">Definition at line <b>1030</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_terminal_capabilities_packet_t::palette_custom_64_"><a class="permalink" href="#char_terminal_capabilities_packet_t::palette_custom_64_">char
+  terminal_capabilities_packet_t::palette_custom[64]</a></h2>
+<p class="Pp">Custom palette characters (if palette_type == PALETTE_CUSTOM).</p>
+<p class="Pp">Definition at line <b>1042</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> terminal_capabilities_packet_t::palette_type</h2>
+<p class="Pp">Palette type enum value (<b>palette_type_t</b>).</p>
+<p class="Pp">Definition at line <b>1040</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> terminal_capabilities_packet_t::render_mode</h2>
+<p class="Pp">Render mode enum value (foreground/background/half-block).</p>
+<p class="Pp">Definition at line <b>1026</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_terminal_capabilities_packet_t::term_type_32_"><a class="permalink" href="#char_terminal_capabilities_packet_t::term_type_32_">char
+  terminal_capabilities_packet_t::term_type[32]</a></h2>
+<p class="Pp">$TERM environment variable value (for debugging)</p>
+<p class="Pp">Definition at line <b>1032</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> terminal_capabilities_packet_t::utf8_support</h2>
+<p class="Pp">UTF-8 support flag (0=no UTF-8, 1=UTF-8 supported).</p>
+<p class="Pp">Definition at line <b>1038</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> terminal_capabilities_packet_t::wants_padding</h2>
+<p class="Pp">Whether client wants frame padding (1=padding enabled, 0=no
+    padding for snapshot/piped modes).</p>
+<p class="Pp">Definition at line <b>1048</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> terminal_capabilities_packet_t::width</h2>
+<p class="Pp">Terminal width in characters.</p>
+<p class="Pp">Definition at line <b>1028</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>error_codes(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">error_codes(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">error_codes(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">error_codes - Error and Exit Codes</p>
+<p class="Pp">
+  <br/>
+   - Error codes and status values for ascii-chat.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+<br/>
+<p class="Pp">file <b>error_codes.h</b>
+  <br/>
+  Error and exit codes - unified status values (0-255).
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>asciichat_error_t</b> { <b>ASCIICHAT_OK</b> = 0,
+    <b>ERROR_GENERAL</b> = 1, <b>ERROR_USAGE</b> = 2, <b>ERROR_MEMORY</b> = 3,
+    <b>ERROR_CONFIG</b> = 4, <b>ERROR_CRYPTO_INIT</b> = 5,
+    <b>ERROR_LOGGING_INIT</b> = 6, <b>ERROR_PLATFORM_INIT</b> = 7,
+    <b>ERROR_INIT</b> = 8, <b>ERROR_WEBCAM</b> = 20, <b>ERROR_WEBCAM_IN_USE</b>
+    = 21, <b>ERROR_WEBCAM_PERMISSION</b> = 22, <b>ERROR_AUDIO</b> = 23,
+    <b>ERROR_AUDIO_IN_USE</b> = 24, <b>ERROR_TERMINAL</b> = 25,
+    <b>ERROR_MEDIA_INIT</b> = 26, <b>ERROR_MEDIA_OPEN</b> = 27,
+    <b>ERROR_MEDIA_DECODE</b> = 28, <b>ERROR_MEDIA_SEEK</b> = 29,
+    <b>ERROR_NOT_SUPPORTED</b> = 30, <b>ERROR_NETWORK</b> = 40,
+    <b>ERROR_NETWORK_BIND</b> = 41, <b>ERROR_NETWORK_CONNECT</b> = 42,
+    <b>ERROR_NETWORK_TIMEOUT</b> = 43, <b>ERROR_NETWORK_PROTOCOL</b> = 44,
+    <b>ERROR_NETWORK_SIZE</b> = 45, <b>ERROR_RATE_LIMITED</b> = 46,
+    <b>ERROR_SESSION_NOT_FOUND</b> = 47, <b>ERROR_SESSION_FULL</b> = 48,
+    <b>ERROR_INVALID_PASSWORD</b> = 49, <b>ERROR_INVALID_SIGNATURE</b> = 50,
+    <b>ERROR_ACDS_STRING_TAKEN</b> = 51, <b>ERROR_ACDS_STRING_INVALID</b> = 52,
+    <b>ERROR_INTERNAL</b> = 53, <b>ERROR_UNKNOWN_PACKET</b> = 54,
+    <b>ERROR_CRYPTO</b> = 60, <b>ERROR_CRYPTO_KEY</b> = 61,
+    <b>ERROR_CRYPTO_AUTH</b> = 62, <b>ERROR_CRYPTO_HANDSHAKE</b> = 63,
+    <b>ERROR_CRYPTO_VERIFICATION</b> = 64, <b>ERROR_THREAD</b> = 80,
+    <b>ERROR_BUFFER</b> = 81, <b>ERROR_BUFFER_FULL</b> = 82,
+    <b>ERROR_BUFFER_OVERFLOW</b> = 83, <b>ERROR_DISPLAY</b> = 84,
+    <b>ERROR_INVALID_STATE</b> = 85, <b>ERROR_INVALID_PARAM</b> = 86,
+    <b>ERROR_INVALID_FRAME</b> = 87, <b>ERROR_RESOURCE_EXHAUSTED</b> = 88,
+    <b>ERROR_FORMAT</b> = 89, <b>ERROR_STRING</b> = 90, <b>ERROR_NOT_FOUND</b> =
+    91, <b>ERROR_SIGNAL_INTERRUPT</b> = 100, <b>ERROR_SIGNAL_CRASH</b> = 101,
+    <b>ERROR_ASSERTION_FAILED</b> = 102, <b>ERROR_COMPRESSION</b> = 103,
+    <b>ERROR_DECOMPRESSION</b> = 104, <b>ERROR_FILE_OPERATION</b> = 105,
+    <b>ERROR_FILE_NOT_FOUND</b> = 106, <b>ERROR_PROCESS_FAILED</b> = 110,
+    <b>ERROR_YOUTUBE_INVALID_URL</b> = 111, <b>ERROR_YOUTUBE_EXTRACT_FAILED</b>
+    = 112, <b>ERROR_YOUTUBE_UNPLAYABLE</b> = 113, <b>ERROR_YOUTUBE_NETWORK</b> =
+    114, <b>ERROR_YOUTUBE_NOT_SUPPORTED</b> = 115 }
+  <br/>
+  Error and exit codes - unified status values (0-255).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Error codes and status values for ascii-chat.</p>
+<p class="Pp">Single enum for both function return values and process exit
+    codes. Following Unix conventions: 0 = success, 1 = general error, 2 = usage
+    error.</p>
+<p class="Pp"></p>
+<p class="Pp">Error codes are organized into ranges:</p>
+<ul class="Bl-bullet">
+  <li>0: Success</li>
+  <li>1-2: Standard errors (general, usage)</li>
+  <li>3-19: Initialization failures</li>
+  <li>20-39: Hardware/Device errors</li>
+  <li>40-59: Network errors</li>
+  <li>60-79: Security/Crypto errors</li>
+  <li>80-99: Runtime errors</li>
+  <li>100-127: Signal/Crash handlers</li>
+  <li>128-255: Reserved (128+N = terminated by signal N on Unix)</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>asciichat_error_t</b></a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/common/error_codes.h</b>&gt;<b></b></p>
+<p class="Pp">Error and exit codes - unified status values (0-255). Single enum
+    for both function return values and process exit codes. Following Unix
+    conventions: 0 = success, 1 = general error, 2 = usage error.</p>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="ASCIICHAT_OK"><a class="permalink" href="#ASCIICHAT_OK"><b><i>ASCIICHAT_OK
+    </i></b></a></dt>
+  <dd>Success</dd>
+  <dt id="ERROR_GENERAL"><a class="permalink" href="#ERROR_GENERAL"><b><i>ERROR_GENERAL
+    </i></b></a></dt>
+  <dd>Unspecified error</dd>
+  <dt id="ERROR_USAGE"><a class="permalink" href="#ERROR_USAGE"><b><i>ERROR_USAGE
+    </i></b></a></dt>
+  <dd>Invalid command line arguments or options</dd>
+  <dt id="ERROR_MEMORY"><a class="permalink" href="#ERROR_MEMORY"><b><i>ERROR_MEMORY
+    </i></b></a></dt>
+  <dd>Memory allocation failed (OOM)</dd>
+  <dt id="ERROR_CONFIG"><a class="permalink" href="#ERROR_CONFIG"><b><i>ERROR_CONFIG
+    </i></b></a></dt>
+  <dd>Configuration file or settings error</dd>
+  <dt id="ERROR_CRYPTO_INIT"><a class="permalink" href="#ERROR_CRYPTO_INIT"><b><i>ERROR_CRYPTO_INIT
+    </i></b></a></dt>
+  <dd>Cryptographic initialization failed</dd>
+  <dt id="ERROR_LOGGING_INIT"><a class="permalink" href="#ERROR_LOGGING_INIT"><b><i>ERROR_LOGGING_INIT
+    </i></b></a></dt>
+  <dd>Logging system initialization failed</dd>
+  <dt id="ERROR_PLATFORM_INIT"><a class="permalink" href="#ERROR_PLATFORM_INIT"><b><i>ERROR_PLATFORM_INIT
+    </i></b></a></dt>
+  <dd>Platform-specific initialization failed</dd>
+  <dt id="ERROR_INIT"><a class="permalink" href="#ERROR_INIT"><b><i>ERROR_INIT
+    </i></b></a></dt>
+  <dd>General initialization failed</dd>
+  <dt id="ERROR_WEBCAM"><a class="permalink" href="#ERROR_WEBCAM"><b><i>ERROR_WEBCAM
+    </i></b></a></dt>
+  <dd>Webcam initialization or capture failed</dd>
+  <dt id="ERROR_WEBCAM_IN_USE"><a class="permalink" href="#ERROR_WEBCAM_IN_USE"><b><i>ERROR_WEBCAM_IN_USE
+    </i></b></a></dt>
+  <dd>Webcam is in use by another application</dd>
+  <dt id="ERROR_WEBCAM_PERMISSION"><a class="permalink" href="#ERROR_WEBCAM_PERMISSION"><b><i>ERROR_WEBCAM_PERMISSION
+    </i></b></a></dt>
+  <dd>Webcam permission denied</dd>
+  <dt id="ERROR_AUDIO"><a class="permalink" href="#ERROR_AUDIO"><b><i>ERROR_AUDIO
+    </i></b></a></dt>
+  <dd>Audio device initialization or I/O failed</dd>
+  <dt id="ERROR_AUDIO_IN_USE"><a class="permalink" href="#ERROR_AUDIO_IN_USE"><b><i>ERROR_AUDIO_IN_USE
+    </i></b></a></dt>
+  <dd>Audio device is in use</dd>
+  <dt id="ERROR_TERMINAL"><a class="permalink" href="#ERROR_TERMINAL"><b><i>ERROR_TERMINAL
+    </i></b></a></dt>
+  <dd>Terminal initialization or capability detection failed</dd>
+  <dt id="ERROR_MEDIA_INIT"><a class="permalink" href="#ERROR_MEDIA_INIT"><b><i>ERROR_MEDIA_INIT
+    </i></b></a></dt>
+  <dd>Media source initialization failed</dd>
+  <dt id="ERROR_MEDIA_OPEN"><a class="permalink" href="#ERROR_MEDIA_OPEN"><b><i>ERROR_MEDIA_OPEN
+    </i></b></a></dt>
+  <dd>Failed to open media file or stream</dd>
+  <dt id="ERROR_MEDIA_DECODE"><a class="permalink" href="#ERROR_MEDIA_DECODE"><b><i>ERROR_MEDIA_DECODE
+    </i></b></a></dt>
+  <dd>Media decoding failed</dd>
+  <dt id="ERROR_MEDIA_SEEK"><a class="permalink" href="#ERROR_MEDIA_SEEK"><b><i>ERROR_MEDIA_SEEK
+    </i></b></a></dt>
+  <dd>Media seek operation failed</dd>
+  <dt id="ERROR_NOT_SUPPORTED"><a class="permalink" href="#ERROR_NOT_SUPPORTED"><b><i>ERROR_NOT_SUPPORTED
+    </i></b></a></dt>
+  <dd>Operation not supported</dd>
+  <dt id="ERROR_NETWORK"><a class="permalink" href="#ERROR_NETWORK"><b><i>ERROR_NETWORK
+    </i></b></a></dt>
+  <dd>General network error</dd>
+  <dt id="ERROR_NETWORK_BIND"><a class="permalink" href="#ERROR_NETWORK_BIND"><b><i>ERROR_NETWORK_BIND
+    </i></b></a></dt>
+  <dd>Cannot bind to port (server)</dd>
+  <dt id="ERROR_NETWORK_CONNECT"><a class="permalink" href="#ERROR_NETWORK_CONNECT"><b><i>ERROR_NETWORK_CONNECT
+    </i></b></a></dt>
+  <dd>Cannot connect to server (client)</dd>
+  <dt id="ERROR_NETWORK_TIMEOUT"><a class="permalink" href="#ERROR_NETWORK_TIMEOUT"><b><i>ERROR_NETWORK_TIMEOUT
+    </i></b></a></dt>
+  <dd>Network operation timed out</dd>
+  <dt id="ERROR_NETWORK_PROTOCOL"><a class="permalink" href="#ERROR_NETWORK_PROTOCOL"><b><i>ERROR_NETWORK_PROTOCOL
+    </i></b></a></dt>
+  <dd>Protocol violation or incompatible version</dd>
+  <dt id="ERROR_NETWORK_SIZE"><a class="permalink" href="#ERROR_NETWORK_SIZE"><b><i>ERROR_NETWORK_SIZE
+    </i></b></a></dt>
+  <dd>Network packet size error</dd>
+  <dt id="ERROR_RATE_LIMITED"><a class="permalink" href="#ERROR_RATE_LIMITED"><b><i>ERROR_RATE_LIMITED
+    </i></b></a></dt>
+  <dd>Rate limit exceeded</dd>
+  <dt id="ERROR_SESSION_NOT_FOUND"><a class="permalink" href="#ERROR_SESSION_NOT_FOUND"><b><i>ERROR_SESSION_NOT_FOUND
+    </i></b></a></dt>
+  <dd>Session not found or expired</dd>
+  <dt id="ERROR_SESSION_FULL"><a class="permalink" href="#ERROR_SESSION_FULL"><b><i>ERROR_SESSION_FULL
+    </i></b></a></dt>
+  <dd>Session has reached max participants</dd>
+  <dt id="ERROR_INVALID_PASSWORD"><a class="permalink" href="#ERROR_INVALID_PASSWORD"><b><i>ERROR_INVALID_PASSWORD
+    </i></b></a></dt>
+  <dd>Incorrect password</dd>
+  <dt id="ERROR_INVALID_SIGNATURE"><a class="permalink" href="#ERROR_INVALID_SIGNATURE"><b><i>ERROR_INVALID_SIGNATURE
+    </i></b></a></dt>
+  <dd>Invalid cryptographic signature</dd>
+  <dt id="ERROR_ACDS_STRING_TAKEN"><a class="permalink" href="#ERROR_ACDS_STRING_TAKEN"><b><i>ERROR_ACDS_STRING_TAKEN
+    </i></b></a></dt>
+  <dd>Requested session string already in use (ACDS)</dd>
+  <dt id="ERROR_ACDS_STRING_INVALID"><a class="permalink" href="#ERROR_ACDS_STRING_INVALID"><b><i>ERROR_ACDS_STRING_INVALID
+    </i></b></a></dt>
+  <dd>Invalid session string format (ACDS)</dd>
+  <dt id="ERROR_INTERNAL"><a class="permalink" href="#ERROR_INTERNAL"><b><i>ERROR_INTERNAL
+    </i></b></a></dt>
+  <dd>Internal server error</dd>
+  <dt id="ERROR_UNKNOWN_PACKET"><a class="permalink" href="#ERROR_UNKNOWN_PACKET"><b><i>ERROR_UNKNOWN_PACKET
+    </i></b></a></dt>
+  <dd>Unknown packet type received</dd>
+  <dt id="ERROR_CRYPTO"><a class="permalink" href="#ERROR_CRYPTO"><b><i>ERROR_CRYPTO
+    </i></b></a></dt>
+  <dd>Cryptographic operation failed</dd>
+  <dt id="ERROR_CRYPTO_KEY"><a class="permalink" href="#ERROR_CRYPTO_KEY"><b><i>ERROR_CRYPTO_KEY
+    </i></b></a></dt>
+  <dd>Key loading, parsing, or generation failed</dd>
+  <dt id="ERROR_CRYPTO_AUTH"><a class="permalink" href="#ERROR_CRYPTO_AUTH"><b><i>ERROR_CRYPTO_AUTH
+    </i></b></a></dt>
+  <dd>Authentication failed</dd>
+  <dt id="ERROR_CRYPTO_HANDSHAKE"><a class="permalink" href="#ERROR_CRYPTO_HANDSHAKE"><b><i>ERROR_CRYPTO_HANDSHAKE
+    </i></b></a></dt>
+  <dd>Cryptographic handshake failed</dd>
+  <dt id="ERROR_CRYPTO_VERIFICATION"><a class="permalink" href="#ERROR_CRYPTO_VERIFICATION"><b><i>ERROR_CRYPTO_VERIFICATION
+    </i></b></a></dt>
+  <dd>Signature or key verification failed</dd>
+  <dt id="ERROR_THREAD"><a class="permalink" href="#ERROR_THREAD"><b><i>ERROR_THREAD
+    </i></b></a></dt>
+  <dd>Thread creation or management failed</dd>
+  <dt id="ERROR_BUFFER"><a class="permalink" href="#ERROR_BUFFER"><b><i>ERROR_BUFFER
+    </i></b></a></dt>
+  <dd>Buffer allocation or overflow</dd>
+  <dt id="ERROR_BUFFER_FULL"><a class="permalink" href="#ERROR_BUFFER_FULL"><b><i>ERROR_BUFFER_FULL
+    </i></b></a></dt>
+  <dd>Buffer full</dd>
+  <dt id="ERROR_BUFFER_OVERFLOW"><a class="permalink" href="#ERROR_BUFFER_OVERFLOW"><b><i>ERROR_BUFFER_OVERFLOW
+    </i></b></a></dt>
+  <dd>Buffer overflow</dd>
+  <dt id="ERROR_DISPLAY"><a class="permalink" href="#ERROR_DISPLAY"><b><i>ERROR_DISPLAY
+    </i></b></a></dt>
+  <dd>Display rendering or output error</dd>
+  <dt id="ERROR_INVALID_STATE"><a class="permalink" href="#ERROR_INVALID_STATE"><b><i>ERROR_INVALID_STATE
+    </i></b></a></dt>
+  <dd>Invalid program state</dd>
+  <dt id="ERROR_INVALID_PARAM"><a class="permalink" href="#ERROR_INVALID_PARAM"><b><i>ERROR_INVALID_PARAM
+    </i></b></a></dt>
+  <dd>Invalid parameter</dd>
+  <dt id="ERROR_INVALID_FRAME"><a class="permalink" href="#ERROR_INVALID_FRAME"><b><i>ERROR_INVALID_FRAME
+    </i></b></a></dt>
+  <dd>Invalid frame data</dd>
+  <dt id="ERROR_RESOURCE_EXHAUSTED"><a class="permalink" href="#ERROR_RESOURCE_EXHAUSTED"><b><i>ERROR_RESOURCE_EXHAUSTED
+    </i></b></a></dt>
+  <dd>System resources exhausted</dd>
+  <dt id="ERROR_FORMAT"><a class="permalink" href="#ERROR_FORMAT"><b><i>ERROR_FORMAT
+    </i></b></a></dt>
+  <dd>String formatting operation failed</dd>
+  <dt id="ERROR_STRING"><a class="permalink" href="#ERROR_STRING"><b><i>ERROR_STRING
+    </i></b></a></dt>
+  <dd>String manipulation operation failed</dd>
+  <dt id="ERROR_NOT_FOUND"><a class="permalink" href="#ERROR_NOT_FOUND"><b><i>ERROR_NOT_FOUND
+    </i></b></a></dt>
+  <dd>Resource not found in registry or lookup</dd>
+  <dt id="ERROR_SIGNAL_INTERRUPT"><a class="permalink" href="#ERROR_SIGNAL_INTERRUPT"><b><i>ERROR_SIGNAL_INTERRUPT
+    </i></b></a></dt>
+  <dd>Interrupted by signal (SIGINT, SIGTERM)</dd>
+  <dt id="ERROR_SIGNAL_CRASH"><a class="permalink" href="#ERROR_SIGNAL_CRASH"><b><i>ERROR_SIGNAL_CRASH
+    </i></b></a></dt>
+  <dd>Fatal signal (SIGSEGV, SIGABRT, etc.)</dd>
+  <dt id="ERROR_ASSERTION_FAILED"><a class="permalink" href="#ERROR_ASSERTION_FAILED"><b><i>ERROR_ASSERTION_FAILED
+    </i></b></a></dt>
+  <dd>Assertion or invariant violation</dd>
+  <dt id="ERROR_COMPRESSION"><a class="permalink" href="#ERROR_COMPRESSION"><b><i>ERROR_COMPRESSION
+    </i></b></a></dt>
+  <dd>Compression operation failed</dd>
+  <dt id="ERROR_DECOMPRESSION"><a class="permalink" href="#ERROR_DECOMPRESSION"><b><i>ERROR_DECOMPRESSION
+    </i></b></a></dt>
+  <dd>Decompression operation failed</dd>
+  <dt id="ERROR_FILE_OPERATION"><a class="permalink" href="#ERROR_FILE_OPERATION"><b><i>ERROR_FILE_OPERATION
+    </i></b></a></dt>
+  <dd>File or directory operation failed</dd>
+  <dt id="ERROR_FILE_NOT_FOUND"><a class="permalink" href="#ERROR_FILE_NOT_FOUND"><b><i>ERROR_FILE_NOT_FOUND
+    </i></b></a></dt>
+  <dd>File or directory not found</dd>
+  <dt id="ERROR_PROCESS_FAILED"><a class="permalink" href="#ERROR_PROCESS_FAILED"><b><i>ERROR_PROCESS_FAILED
+    </i></b></a></dt>
+  <dd>Process execution or termination failed</dd>
+  <dt id="ERROR_YOUTUBE_INVALID_URL"><a class="permalink" href="#ERROR_YOUTUBE_INVALID_URL"><b><i>ERROR_YOUTUBE_INVALID_URL
+    </i></b></a></dt>
+  <dd>Invalid YouTube URL format</dd>
+  <dt id="ERROR_YOUTUBE_EXTRACT_FAILED"><a class="permalink" href="#ERROR_YOUTUBE_EXTRACT_FAILED"><b><i>ERROR_YOUTUBE_EXTRACT_FAILED
+    </i></b></a></dt>
+  <dd>YouTube URL extraction/parsing failed</dd>
+  <dt id="ERROR_YOUTUBE_UNPLAYABLE"><a class="permalink" href="#ERROR_YOUTUBE_UNPLAYABLE"><b><i>ERROR_YOUTUBE_UNPLAYABLE
+    </i></b></a></dt>
+  <dd>Video cannot be played (age-restricted, geo-blocked, etc.)</dd>
+  <dt id="ERROR_YOUTUBE_NETWORK"><a class="permalink" href="#ERROR_YOUTUBE_NETWORK"><b><i>ERROR_YOUTUBE_NETWORK
+    </i></b></a></dt>
+  <dd>Network error fetching YouTube watch page</dd>
+  <dt id="ERROR_YOUTUBE_NOT_SUPPORTED"><a class="permalink" href="#ERROR_YOUTUBE_NOT_SUPPORTED"><b><i>ERROR_YOUTUBE_NOT_SUPPORTED
+    </i></b></a></dt>
+  <dd>YouTube support not compiled in (requires libytdl)</dd>
+</dl>
+<p class="Pp">Definition at line <b>49</b> of file <b>error_codes.h</b>.</p>
+<pre>49              {
+50   /* Standard codes (0-2) - Unix conventions */
+51   ASCIICHAT_OK = 0,  
+52   ERROR_GENERAL = 1, 
+53   ERROR_USAGE = 2,   
+54 
+55   /* Initialization failures (3-19) */
+56   ERROR_MEMORY = 3,        
+57   ERROR_CONFIG = 4,        
+58   ERROR_CRYPTO_INIT = 5,   
+59   ERROR_LOGGING_INIT = 6,  
+60   ERROR_PLATFORM_INIT = 7, 
+61   ERROR_INIT = 8,          
+62 
+63   /* Hardware/Device errors (20-39) */
+64   ERROR_WEBCAM = 20,            
+65   ERROR_WEBCAM_IN_USE = 21,     
+66   ERROR_WEBCAM_PERMISSION = 22, 
+67   ERROR_AUDIO = 23,             
+68   ERROR_AUDIO_IN_USE = 24,      
+69   ERROR_TERMINAL = 25,          
+70   ERROR_MEDIA_INIT = 26,        
+71   ERROR_MEDIA_OPEN = 27,        
+72   ERROR_MEDIA_DECODE = 28,      
+73   ERROR_MEDIA_SEEK = 29,        
+74   ERROR_NOT_SUPPORTED = 30,     
+75 
+76   /* Network errors (40-59) */
+77   ERROR_NETWORK = 40,          
+78   ERROR_NETWORK_BIND = 41,     
+79   ERROR_NETWORK_CONNECT = 42,  
+80   ERROR_NETWORK_TIMEOUT = 43,  
+81   ERROR_NETWORK_PROTOCOL = 44, 
+82   ERROR_NETWORK_SIZE = 45,     
+83 
+84   /* Session and protocol errors (46-55) */
+85   ERROR_RATE_LIMITED = 46,        
+86   ERROR_SESSION_NOT_FOUND = 47,   
+87   ERROR_SESSION_FULL = 48,        
+88   ERROR_INVALID_PASSWORD = 49,    
+89   ERROR_INVALID_SIGNATURE = 50,   
+90   ERROR_ACDS_STRING_TAKEN = 51,   
+91   ERROR_ACDS_STRING_INVALID = 52, 
+92   ERROR_INTERNAL = 53,            
+93   ERROR_UNKNOWN_PACKET = 54,      
+94 
+95   /* Security/Crypto errors (60-79) */
+96   ERROR_CRYPTO = 60,              
+97   ERROR_CRYPTO_KEY = 61,          
+98   ERROR_CRYPTO_AUTH = 62,         
+99   ERROR_CRYPTO_HANDSHAKE = 63,    
+100   ERROR_CRYPTO_VERIFICATION = 64, 
+101 
+102   /* Runtime errors (80-99) */
+103   ERROR_THREAD = 80,             
+104   ERROR_BUFFER = 81,             
+105   ERROR_BUFFER_FULL = 82,        
+106   ERROR_BUFFER_OVERFLOW = 83,    
+107   ERROR_DISPLAY = 84,            
+108   ERROR_INVALID_STATE = 85,      
+109   ERROR_INVALID_PARAM = 86,      
+110   ERROR_INVALID_FRAME = 87,      
+111   ERROR_RESOURCE_EXHAUSTED = 88, 
+112   ERROR_FORMAT = 89,             
+113   ERROR_STRING = 90,             
+114   ERROR_NOT_FOUND = 91,          
+115 
+116   /* Signal/Crash handlers (100-127) */
+117   ERROR_SIGNAL_INTERRUPT = 100, 
+118   ERROR_SIGNAL_CRASH = 101,     
+119   ERROR_ASSERTION_FAILED = 102, 
+120 
+121   /* Compression errors (103-104) */
+122   ERROR_COMPRESSION = 103,   
+123   ERROR_DECOMPRESSION = 104, 
+124 
+125   /* File system errors (105-109) */
+126   ERROR_FILE_OPERATION = 105, 
+127   ERROR_FILE_NOT_FOUND = 106, 
+128 
+129   /* Process errors (110-119) */
+130   ERROR_PROCESS_FAILED = 110, 
+131 
+132   /* YouTube/URL streaming errors (111-116) */
+133   ERROR_YOUTUBE_INVALID_URL = 111,    
+134   ERROR_YOUTUBE_EXTRACT_FAILED = 112, 
+135   ERROR_YOUTUBE_UNPLAYABLE = 113,     
+136   ERROR_YOUTUBE_NETWORK = 114,        
+137   ERROR_YOUTUBE_NOT_SUPPORTED = 115,  
+138 
+139   /* Reserved (128-255) - Should not be used */
+140   /* 128+N typically means &quot;terminated by signal N&quot; on Unix systems */
+141 
+142 } asciichat_error_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>palette.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">palette.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">palette.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">palette.h - ASCII Palette Management for Video-to-ASCII
+    Conversion.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>palette_def_t</b>
+  <br/>
+  Palette definition structure. struct <b>utf8_capabilities_t</b>
+  <br/>
+  UTF-8 capability detection structure. struct <b>utf8_char_info_t</b>
+  <br/>
+  UTF-8 character information structure. struct <b>utf8_palette_t</b>
+  <br/>
+  UTF-8 palette structure.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<p class="Pp"><b>Built-in Palette Character Strings</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>PALETTE_CHARS_STANDARD</b> ' ...',;:clodxkO0KXNWM'
+  <br/>
+  Standard ASCII palette character string. #define <b>PALETTE_CHARS_BLOCKS</b> '
+    &#x2591;&#x2591;&#x2592;&#x2592;&#x2593;&#x2593;&#x2588;&#x2588;'
+  <br/>
+  Unicode block palette character string. #define <b>PALETTE_CHARS_DIGITAL</b> '
+    -=&#x2261;&#x2263;&#x25B0;&#x25B1;&#x25FC;'
+  <br/>
+  Digital/glitch palette character string. #define <b>PALETTE_CHARS_MINIMAL</b>
+    ' .-+*#'
+  <br/>
+  Minimal ASCII palette character string. #define <b>PALETTE_CHARS_COOL</b> '
+    &#x2581;&#x2582;&#x2583;&#x2584;&#x2585;&#x2586;&#x2587;&#x2588;'
+  <br/>
+  Cool ascending blocks palette character string.
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<p class="Pp"><b>ASCII Palette Types</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  enum <b>palette_type_t</b> { <b>PALETTE_UNSET</b> = 0,
+    <b>PALETTE_STANDARD</b>, <b>PALETTE_BLOCKS</b>, <b>PALETTE_DIGITAL</b>,
+    <b>PALETTE_MINIMAL</b>, <b>PALETTE_COOL</b>, <b>PALETTE_CUSTOM</b>,
+    <b>PALETTE_COUNT</b> }
+  <br/>
+  Built-in palette type enumeration.
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<p class="Pp"><b>Palette Management Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  const <b>palette_def_t</b> * <b>get_builtin_palette</b> (<b>palette_type_t</b>
+    type)
+  <br/>
+  Get built-in palette definition. <b>bool</b> <b>validate_palette_chars</b>
+    (const char *chars, size_t len)
+  <br/>
+  Validate palette character sequence. <b>bool</b>
+    <b>palette_requires_utf8_encoding</b> (const char *chars, size_t len)
+  <br/>
+  Check if palette requires UTF-8 encoding. <b>bool</b>
+    <b>detect_client_utf8_support</b> (<b>utf8_capabilities_t</b> *caps)
+  <br/>
+  Detect client UTF-8 support capabilities. <b>palette_type_t</b>
+    <b>select_compatible_palette</b> (<b>palette_type_t</b> requested,
+    <b>bool</b> client_utf8)
+  <br/>
+  Select compatible palette based on client capabilities. int
+    <b>apply_palette_config</b> (<b>palette_type_t</b> type, const char
+    *custom_chars)
+  <br/>
+  Apply palette configuration (set global palette). int
+    <b>build_client_luminance_palette</b> (const char *palette_chars, size_t
+    palette_len, char luminance_mapping[256])
+  <br/>
+  Build luminance mapping table from palette characters. int
+    <b>initialize_client_palette</b> (<b>palette_type_t</b> palette_type, const
+    char *custom_chars, char client_palette_chars[256], size_t
+    *client_palette_len, char client_luminance_palette[256])
+  <br/>
+  Initialize client palette with full configuration.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>UTF-8 Palette Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>utf8_palette_t</b> * <b>utf8_palette_create</b> (const char
+    *palette_string)
+  <br/>
+  Create a UTF-8 palette from string. void <b>utf8_palette_destroy</b>
+    (<b>utf8_palette_t</b> *palette)
+  <br/>
+  Destroy a UTF-8 palette and free resources. const <b>utf8_char_info_t</b> *
+    <b>utf8_palette_get_char</b> (const <b>utf8_palette_t</b> *palette, size_t
+    index)
+  <br/>
+  Get UTF-8 character information at index. size_t
+    <b>utf8_palette_get_char_count</b> (const <b>utf8_palette_t</b> *palette)
+  <br/>
+  Get number of characters in UTF-8 palette. <b>bool</b>
+    <b>utf8_palette_contains_char</b> (const <b>utf8_palette_t</b> *palette,
+    const char *utf8_char, size_t char_bytes)
+  <br/>
+  Check if UTF-8 palette contains a specific character. size_t
+    <b>utf8_palette_find_char_index</b> (const <b>utf8_palette_t</b> *palette,
+    const char *utf8_char, size_t char_bytes)
+  <br/>
+  Find index of UTF-8 character in palette. size_t
+    <b>utf8_palette_find_all_char_indices</b> (const <b>utf8_palette_t</b>
+    *palette, const char *utf8_char, size_t char_bytes, size_t *indices, size_t
+    max_indices)
+  <br/>
+  Find all indices of UTF-8 character in palette.
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<p class="Pp"><b>Default Palette Constants</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  const char <b>DEFAULT_ASCII_PALETTE</b> []
+  <br/>
+  Default ASCII palette for legacy functions. const size_t
+    <b>DEFAULT_ASCII_PALETTE_LEN</b>
+  <br/>
+  Length of default ASCII palette.
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">ASCII Palette Management for Video-to-ASCII Conversion.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>palette.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

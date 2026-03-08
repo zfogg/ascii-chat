@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>option_metadata_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">option_metadata_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">option_metadata_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">option_metadata_t - Metadata for shell completion generation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/options/builder.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">const char ** <b>enum_values</b>
+  <br/>
+  Enum value strings (null-terminated, e.g.,
+    {<i>auto&quot;,</i>none<i>,</i>16<i>,</i>256<i>,</i>truecolor<i>,</i>NULL}).<i></i>
+    const char ** <b>enum_descriptions</b>
+  <br/>
+  Descriptions parallel to enum_values (null-terminated, e.g.,
+    <i>Auto-detect</i>from<i>terminal&quot;).</i> const int *
+    <b>enum_integer_values</b>
+  <br/>
+  Actual enum integer values (e.g., {-1, 0, 1, 2, 3} for non-sequential enums).
+    struct {
+  <br/>
+   int <b>min</b>
+  <br/>
+  Minimum value (or 0 if no limit). int <b>max</b>
+  <br/>
+  Maximum value (or 0 if no limit). int <b>step</b>
+  <br/>
+  Step size (0 = no step, continuous). } <b>numeric_range</b>
+  <br/>
+  const char ** <b>examples</b>
+  <br/>
+  Example values or command invocations (null-terminated array). const char *
+    <b>default_value</b>
+  <br/>
+  Default value as string for display. <b>option_input_type_t</b>
+    <b>input_type</b>
+  <br/>
+  What kind of input this option expects. <b>bool</b> <b>is_list</b>
+  <br/>
+  If true, option accepts multiple comma-separated or space-separated values.
+    const char * <b>validation_pattern</b>
+  <br/>
+  Optional regex pattern for validation hints.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Metadata for shell completion generation.</p>
+<p class="Pp">Stores additional information about options to enable smart shell
+    completions with value suggestions, numeric ranges, examples, etc. This data
+    is used by all shell completion generators (bash, fish, zsh,
+  powershell).</p>
+<p class="Pp">Definition at line <b>192</b> of file <b>builder.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_option_metadata_t::default_value"><a class="permalink" href="#const_char*_option_metadata_t::default_value">const
+  char* option_metadata_t::default_value</a></h2>
+<p class="Pp">Default value as string for display.</p>
+<p class="Pp">Definition at line <b>211</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by
+  <b>options_builder_set_default_value_display()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_*_option_metadata_t::enum_descriptions"><a class="permalink" href="#const_char*_*_option_metadata_t::enum_descriptions">const
+  char* * option_metadata_t::enum_descriptions</a></h2>
+<p class="Pp">Descriptions parallel to enum_values (null-terminated, e.g.,
+    &quot;Auto-detect from terminal&quot;).</p>
+<p class="Pp">Definition at line <b>197</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_set_enum_values()</b>, and
+    <b>options_registry_get_enum_values()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_int*_option_metadata_t::enum_integer_values"><a class="permalink" href="#const_int*_option_metadata_t::enum_integer_values">const
+  int* option_metadata_t::enum_integer_values</a></h2>
+<p class="Pp">Actual enum integer values (e.g., {-1, 0, 1, 2, 3} for
+    non-sequential enums).</p>
+<p class="Pp">Definition at line <b>198</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>format_option_default_value_str()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_*_option_metadata_t::enum_values"><a class="permalink" href="#const_char*_*_option_metadata_t::enum_values">const
+  char* * option_metadata_t::enum_values</a></h2>
+<p class="Pp">Enum value strings (null-terminated, e.g., {&quot;auto&quot;,
+    &quot;none&quot;, &quot;16&quot;, &quot;256&quot;, &quot;truecolor&quot;,
+    NULL}).</p>
+<p class="Pp">Definition at line <b>195</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>format_option_default_value_str()</b>,
+    <b>get_option_help_placeholder_str()</b>,
+    <b>options_builder_set_enum_values()</b>,
+    <b>options_registry_add_all_to_builder()</b>, and
+    <b>options_registry_get_enum_values()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char**_option_metadata_t::examples"><a class="permalink" href="#const_char**_option_metadata_t::examples">const
+  char** option_metadata_t::examples</a></h2>
+<p class="Pp">Example values or command invocations (null-terminated array).</p>
+<p class="Pp">Definition at line <b>208</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_set_examples()</b>, and
+    <b>options_registry_get_examples()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>option_input_type_t</b> option_metadata_t::input_type</h2>
+<p class="Pp">What kind of input this option expects.</p>
+<p class="Pp">Definition at line <b>214</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_set_input_type()</b>,
+    <b>options_registry_get_enum_values()</b>,
+    <b>options_registry_get_input_type()</b>, and
+    <b>options_registry_get_numeric_range()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> option_metadata_t::is_list</h2>
+<p class="Pp">If true, option accepts multiple comma-separated or
+    space-separated values.</p>
+<p class="Pp">Definition at line <b>217</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_mark_as_list()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_option_metadata_t::max"><a class="permalink" href="#int_option_metadata_t::max">int
+  option_metadata_t::max</a></h2>
+<p class="Pp">Maximum value (or 0 if no limit).</p>
+<p class="Pp">Definition at line <b>203</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>,
+    <b>format_option_default_value_str()</b>,
+    <b>options_builder_set_numeric_range()</b>,
+    <b>options_registry_add_all_to_builder()</b>, and
+    <b>options_registry_get_numeric_range()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_option_metadata_t::min"><a class="permalink" href="#int_option_metadata_t::min">int
+  option_metadata_t::min</a></h2>
+<p class="Pp">Minimum value (or 0 if no limit).</p>
+<p class="Pp">Definition at line <b>202</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>,
+    <b>format_option_default_value_str()</b>,
+    <b>options_builder_set_numeric_range()</b>, and
+    <b>options_registry_get_numeric_range()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="struct____"><a class="permalink" href="#struct____">struct {
+  ... } option_metadata_t::numeric_range</a></h2>
+<p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>,
+    <b>format_option_default_value_str()</b>,
+    <b>options_builder_set_numeric_range()</b>,
+    <b>options_registry_add_all_to_builder()</b>, and
+    <b>options_registry_get_numeric_range()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_option_metadata_t::step"><a class="permalink" href="#int_option_metadata_t::step">int
+  option_metadata_t::step</a></h2>
+<p class="Pp">Step size (0 = no step, continuous).</p>
+<p class="Pp">Definition at line <b>204</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_set_numeric_range()</b>, and
+    <b>options_registry_get_numeric_range()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_option_metadata_t::validation_pattern"><a class="permalink" href="#const_char*_option_metadata_t::validation_pattern">const
+  char* option_metadata_t::validation_pattern</a></h2>
+<p class="Pp">Optional regex pattern for validation hints.</p>
+<p class="Pp">Definition at line <b>220</b> of file <b>builder.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

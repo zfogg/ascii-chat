@@ -55,13 +55,13 @@
   <br/>
   <b>JsonValue</b> (std::nullptr_t)
   <br/>
-  <b>JsonValue</b> (<b>bool</b> b)
+  <b>JsonValue</b> (<b>bool</b> <b>b</b>)
   <br/>
   <b>JsonValue</b> (int i)
   <br/>
   <b>JsonValue</b> (int64_t i)
   <br/>
-  <b>JsonValue</b> (uint64_t u)
+  <b>JsonValue</b> (<b>uint64_t</b> u)
   <br/>
   <b>JsonValue</b> (double d)
   <br/>
@@ -93,7 +93,8 @@
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
 <p class="Pp">JSON value wrapper (can hold any JSON type).</p>
-<p class="Pp">Definition at line <b>80</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>80</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Member_Enumeration_Documentation"><a class="permalink" href="#Member_Enumeration_Documentation">Member
@@ -126,7 +127,8 @@
     </i></b></a></dt>
   <dd></dd>
 </dl>
-<p class="Pp">Definition at line <b>82</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>82</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>82 { Null, Bool, Int, UInt, Double, String, Array, Object };</pre>
 <pre></pre>
 <p class="Pp"></p>
@@ -138,7 +140,8 @@
 <section class="Ss">
 <h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_()"><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_()">ascii_query::json::JsonValue::JsonValue
   () [inline]</a></h2>
-<p class="Pp">Definition at line <b>84</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>84</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>84 : type_(Type::Null) {}</pre>
 <pre></pre>
 <p class="Pp"></p>
@@ -147,23 +150,27 @@
 <section class="Ss">
 <h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_(std::nullptr_t_)"><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_(std::nullptr_t_)">ascii_query::json::JsonValue::JsonValue
   (std::nullptr_t ) [inline]</a></h2>
-<p class="Pp">Definition at line <b>85</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>85</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>85 : type_(Type::Null) {}</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_("><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_(">ascii_query::json::JsonValue::JsonValue
-  (<b>bool</b> b) [inline]</a></h2>
-<p class="Pp">Definition at line <b>86</b> of file <b>json.h</b>.</p>
+<h2 class="Ss">ascii_query::json::JsonValue::JsonValue (<b>bool</b> b)
+  [inline]</h2>
+<p class="Pp">Definition at line <b>86</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>86 : type_(Type::Bool), bool_val_(b) {}</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>b</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_(int_i)"><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_(int_i)">ascii_query::json::JsonValue::JsonValue
   (int i) [inline]</a></h2>
-<p class="Pp">Definition at line <b>87</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>87</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>87 : type_(Type::Int), int_val_(i) {}</pre>
 <pre></pre>
 <p class="Pp"></p>
@@ -171,15 +178,17 @@
 <section class="Ss">
 <h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_(int64_t_i)"><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_(int64_t_i)">ascii_query::json::JsonValue::JsonValue
   (int64_t i) [inline]</a></h2>
-<p class="Pp">Definition at line <b>88</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>88</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>88 : type_(Type::Int), int_val_(i) {}</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_(uint64_t_u)"><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_(uint64_t_u)">ascii_query::json::JsonValue::JsonValue
-  (uint64_t u) [inline]</a></h2>
-<p class="Pp">Definition at line <b>89</b> of file <b>json.h</b>.</p>
+<h2 class="Ss">ascii_query::json::JsonValue::JsonValue (<b>uint64_t</b> u)
+  [inline]</h2>
+<p class="Pp">Definition at line <b>89</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>89 : type_(Type::UInt), uint_val_(u) {}</pre>
 <pre></pre>
 <p class="Pp"></p>
@@ -187,7 +196,8 @@
 <section class="Ss">
 <h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_(double_d)"><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_(double_d)">ascii_query::json::JsonValue::JsonValue
   (double d) [inline]</a></h2>
-<p class="Pp">Definition at line <b>90</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>90</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>90 : type_(Type::Double), double_val_(d) {}</pre>
 <pre></pre>
 <p class="Pp"></p>
@@ -195,7 +205,8 @@
 <section class="Ss">
 <h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_(const_char_*_s)"><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_(const_char_*_s)">ascii_query::json::JsonValue::JsonValue
   (const char * s) [inline]</a></h2>
-<p class="Pp">Definition at line <b>91</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>91</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>91 : type_(Type::String), str_val_(s) {}</pre>
 <pre></pre>
 <p class="Pp"></p>
@@ -203,7 +214,8 @@
 <section class="Ss">
 <h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_(const_std::string_&amp;_s)"><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_(const_std::string_&amp;_s)">ascii_query::json::JsonValue::JsonValue
   (const std::string &amp; s) [inline]</a></h2>
-<p class="Pp">Definition at line <b>92</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>92</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>92 : type_(Type::String), str_val_(s) {}</pre>
 <pre></pre>
 <p class="Pp"></p>
@@ -211,7 +223,8 @@
 <section class="Ss">
 <h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_(std::string_&amp;&amp;_s)"><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_(std::string_&amp;&amp;_s)">ascii_query::json::JsonValue::JsonValue
   (std::string &amp;&amp; s) [inline]</a></h2>
-<p class="Pp">Definition at line <b>93</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>93</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>93 : type_(Type::String), str_val_(std::move(s)) {}</pre>
 <pre></pre>
 <p class="Pp"></p>
@@ -223,7 +236,8 @@
 <section class="Ss">
 <h2 class="Ss"><b>JsonValue</b> ascii_query::json::JsonValue::fromArray (const
   std::string &amp; serialized) [inline], [static]</h2>
-<p class="Pp">Definition at line <b>96</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>96</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>96                                                           {
 97     JsonValue v;
 98     v.type_ = Type::Array;
@@ -239,7 +253,8 @@
 <section class="Ss">
 <h2 class="Ss"><b>JsonValue</b> ascii_query::json::JsonValue::fromObject (const
   std::string &amp; serialized) [inline], [static]</h2>
-<p class="Pp">Definition at line <b>103</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>103</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>103                                                            {
 104     JsonValue v;
 105     v.type_ = Type::Object;
@@ -255,7 +270,8 @@
 <section class="Ss">
 <h2 class="Ss" id="std::string_ascii_query::json::JsonValue::toString_()_const"><a class="permalink" href="#std::string_ascii_query::json::JsonValue::toString_()_const">std::string
   ascii_query::json::JsonValue::toString () const [inline], [nodiscard]</a></h2>
-<p class="Pp">Definition at line <b>110</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>110</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>110                                            {
 111     switch (type_) {
 112     case Type::Null:
@@ -294,7 +310,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

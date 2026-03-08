@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>mixer_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">mixer_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">mixer_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">mixer_t - Main mixer structure for multi-source audio
+  processing.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/audio/mixer.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">int <b>num_sources</b>
+  <br/>
+  Current number of active audio sources. int <b>max_sources</b>
+  <br/>
+  Maximum number of sources (allocated array sizes). int <b>sample_rate</b>
+  <br/>
+  Sample rate in Hz (e.g., 44100). <b>audio_ring_buffer_t</b> **
+    <b>source_buffers</b>
+  <br/>
+  Array of pointers to client audio ring buffers. const char **
+    <b>source_ids</b>
+  <br/>
+  Array of client ID strings (one per source slot). <b>bool</b> *
+    <b>source_active</b>
+  <br/>
+  Array of active flags (true if source is active). <b>uint64_t</b>
+    <b>active_sources_mask</b>
+  <br/>
+  Bitset of active sources (bit i = source i is active, O(1) iteration).
+    <b>uint8_t</b> <b>source_id_to_index</b> [256]
+  <br/>
+  Hash table mapping client_id &#x2192; mixer source index (uses hash function
+    for strings). const char * <b>source_id_at_hash</b> [256]
+  <br/>
+  Client ID strings stored at each hash index for collision detection.
+    <b>rwlock_t</b> <b>source_lock</b>
+  <br/>
+  Reader-writer lock protecting source arrays and bitset. float
+    <b>crowd_alpha</b>
+  <br/>
+  Crowd scaling exponent (typically 0.5 for sqrt scaling). float
+    <b>base_gain</b>
+  <br/>
+  Base gain before crowd scaling is applied. <b>ducking_t</b> <b>ducking</b>
+  <br/>
+  Ducking system (active speaker detection and attenuation). <b>compressor_t</b>
+    <b>compressor</b>
+  <br/>
+  Compressor (dynamic range compression). float * <b>mix_buffer</b>
+  <br/>
+  Temporary buffer for mixing operations (pre-allocated).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Main mixer structure for multi-source audio processing.</p>
+<p class="Pp">Manages multiple audio sources (clients) and processes them
+    through a professional audio processing pipeline. Supports up to
+    MIXER_MAX_SOURCES simultaneous sources with automatic crowd scaling and
+    active speaker detection.</p>
+<p class="Pp"></p>
+<p class="Pp">MIXER ARCHITECTURE:</p>
+<ul class="Bl-bullet">
+  <li>Source Management: Array of audio ring buffers, one per client</li>
+  <li>Optimized Lookup: Bitset + hash table for O(1) source exclusion</li>
+  <li>Thread Safety: Reader-writer locks for concurrent access</li>
+  <li>Crowd Scaling: Automatic volume adjustment based on participant count</li>
+  <li>Audio Processing: Ducking, compression, noise gate, high-pass filter</li>
+</ul>
+<p class="Pp">PERFORMANCE OPTIMIZATIONS:</p>
+<ul class="Bl-bullet">
+  <li>Bitset-based active source tracking (O(1) exclusion)</li>
+  <li>Hash table for client ID to mixer index mapping</li>
+  <li>Pre-allocated mix buffer (no allocations in hot path)</li>
+  <li>Reader-writer locks for concurrent reads</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Each source is indexed by position in arrays (0 to
+  max_sources-1). Client IDs are mapped to indices via source_id_to_index hash
+  table.
+<p class="Pp"></p>
+<p class="Pp">Active sources are tracked in two ways:</p>
+<ul class="Bl-bullet">
+  <li>source_active[] array for per-source status</li>
+  <li>active_sources_mask bitset for O(1) iteration exclusion</li>
+</ul>
+</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">Source arrays must be locked (read or write) during
+  iteration to prevent concurrent modifications.</div>
+<p class="Pp">Definition at line <b>325</b> of file <b>mixer.h</b>.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

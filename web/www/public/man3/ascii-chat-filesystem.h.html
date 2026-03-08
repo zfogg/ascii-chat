@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>filesystem.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">filesystem.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">filesystem.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">filesystem.h - Cross-platform filesystem operations.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>platform_stat_t</b>
+  <br/>
+  File type information from stat(). struct <b>config_file_result_t</b>
+  <br/>
+  Result of a config file search. struct <b>config_file_list_t</b>
+  <br/>
+  List of config file search results.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>PLATFORM_O_RDONLY</b> O_RDONLY
+  <br/>
+  #define <b>PLATFORM_O_WRONLY</b> O_WRONLY
+  <br/>
+  #define <b>PLATFORM_O_RDWR</b> O_RDWR
+  <br/>
+  #define <b>PLATFORM_O_CREAT</b> O_CREAT
+  <br/>
+  #define <b>PLATFORM_O_EXCL</b> O_EXCL
+  <br/>
+  #define <b>PLATFORM_O_TRUNC</b> O_TRUNC
+  <br/>
+  #define <b>PLATFORM_O_APPEND</b> O_APPEND
+  <br/>
+  #define <b>PLATFORM_O_BINARY</b> 0
+  <br/>
+  #define <b>PATH_DELIM</b> '/'
+  <br/>
+  Platform-specific path separator character. #define <b>PATH_SEPARATOR_STR</b>
+    '/'
+  <br/>
+  #define <b>PATH_ENV_SEPARATOR</b> ':'
+  <br/>
+  Platform-specific PATH environment variable separator. #define
+    <b>PLATFORM_MAX_PATH_LENGTH</b> 4096
+  <br/>
+  Maximum path length supported by the operating system. #define
+    <b>PLATFORM_MAX_ENV_VALUE_LENGTH</b> 32768
+  <br/>
+  Maximum environment variable value length. #define <b>FILE_PERM_PRIVATE</b>
+    0600
+  <br/>
+  File permission: Private (owner read/write only). #define
+    <b>DIR_PERM_PRIVATE</b> 0700
+  <br/>
+  Directory permission: Private (owner read/write/execute only). #define
+    <b>FILE_PERM_PUBLIC_READ</b> 0644
+  <br/>
+  File permission: Public read, owner write. #define <b>FILE_PERM_MASK</b> 0777
+  <br/>
+  Permission mask for all permissions. #define <b>PLATFORM_ACCESS_EXISTS</b> 0
+  <br/>
+  Access modes for <b>platform_access()</b>. #define
+    <b>PLATFORM_ACCESS_WRITE</b> 2
+  <br/>
+  Check if file/directory is writable. #define <b>PLATFORM_ACCESS_READ</b> 4
+  <br/>
+  Check if file/directory is readable.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>platform_stat</b> (const char *path,
+    <b>platform_stat_t</b> *stat_out)
+  <br/>
+  Get file statistics. int <b>platform_is_regular_file</b> (const char *path)
+  <br/>
+  Check if a path is a regular file. int <b>platform_is_directory</b> (const
+    char *path)
+  <br/>
+  Check if a path is a directory. <b>asciichat_error_t</b> <b>platform_mkdir</b>
+    (const char *path, int mode)
+  <br/>
+  Create a directory. <b>asciichat_error_t</b> <b>platform_mkdir_recursive</b>
+    (const char *path, int mode)
+  <br/>
+  Create directories recursively (mkdir -p equivalent). <b>asciichat_error_t</b>
+    <b>platform_mkdtemp</b> (char *<b>path_out</b>, size_t <b>path_size</b>,
+    const char *prefix)
+  <br/>
+  Create a temporary directory with a given prefix. <b>asciichat_error_t</b>
+    <b>platform_rmdir_recursive</b> (const char *path)
+  <br/>
+  Recursively delete a directory and all its contents. int
+    <b>platform_create_temp_file</b> (char *<b>path_out</b>, size_t
+    <b>path_size</b>, const char *prefix, int *fd)
+  <br/>
+  Create a temporary file with a given prefix. int
+    <b>platform_delete_temp_file</b> (const char *path)
+  <br/>
+  Delete a temporary file. <b>asciichat_error_t</b>
+    <b>platform_temp_file_open</b> (const char *name, const char *path, int
+    *fd_out)
+  <br/>
+  Open a temporary file for writing. <b>asciichat_error_t</b>
+    <b>platform_truncate_file</b> (const char *path, size_t size)
+  <br/>
+  Truncate a file to a specific size. <b>bool</b>
+    <b>platform_path_is_absolute</b> (const char *path)
+  <br/>
+  Check if a path is absolute (not relative). char
+    <b>platform_path_get_separator</b> (void)
+  <br/>
+  Get the path separator character for current platform.
+    <b>asciichat_error_t</b> <b>platform_path_normalize</b> (const char *input,
+    char *output, size_t output_size)
+  <br/>
+  Normalize and validate a file path. <b>asciichat_error_t</b>
+    <b>platform_validate_key_file_permissions</b> (const char *key_path)
+  <br/>
+  Validate that a cryptographic key file has appropriate permissions.
+    <b>asciichat_error_t</b> <b>platform_find_config_file</b> (const char
+    *filename, <b>config_file_list_t</b> *list_out)
+  <br/>
+  Find config file across multiple standard locations. void
+    <b>config_file_list_destroy</b> (<b>config_file_list_t</b> *list)
+  <br/>
+  Free config file list resources. const char * <b>platform_get_home_dir</b>
+    (void)
+  <br/>
+  Get the user's home directory. char * <b>platform_get_config_dir</b> (void)
+  <br/>
+  Get the application configuration directory. char *
+    <b>platform_get_data_dir</b> (void)
+  <br/>
+  Get the application data directory. int <b>platform_open</b> (const char
+    *name, const char *pathname, int flags,...)
+  <br/>
+  Safe file open (open replacement). FILE * <b>platform_fopen</b> (const char
+    *name, const char *filename, const char *mode)
+  <br/>
+  Safe file open stream (fopen replacement). FILE * <b>platform_tmpfile</b>
+    (void)
+  <br/>
+  Create a temporary file (tmpfile replacement). FILE * <b>platform_fdopen</b>
+    (const char *name, int fd, const char *mode)
+  <br/>
+  Convert file descriptor to stream (fdopen replacement). ssize_t
+    <b>platform_read</b> (int fd, void *buf, size_t count)
+  <br/>
+  Safe file read (read replacement). ssize_t <b>platform_write</b> (int fd,
+    const void *buf, size_t count)
+  <br/>
+  Safe file write (write replacement). int <b>platform_close</b> (int fd)
+  <br/>
+  Safe file close (close replacement). int <b>platform_unlink</b> (const char
+    *pathname)
+  <br/>
+  Delete/unlink file. int <b>platform_chmod</b> (const char *pathname, int mode)
+  <br/>
+  Change file permissions/mode. const char *
+    <b>platform_path_skip_absolute_prefix</b> (const char *path)
+  <br/>
+  Skip absolute path prefix (drive letter on Windows). void
+    <b>platform_normalize_path_separators</b> (char *path)
+  <br/>
+  Normalize path separators for the current platform. int
+    <b>platform_path_strcasecmp</b> (const char *a, const char *<b>b</b>, size_t
+    n)
+  <br/>
+  Platform-aware path string comparison. const char *
+    <b>file_read_error_message</b> (const char *path)
+  <br/>
+  Get human-readable error message for file read failure. const char *
+    <b>file_write_error_message</b> (const char *path)
+  <br/>
+  Get human-readable error message for file write failure. <b>bool</b>
+    <b>file_is_readable</b> (const char *path)
+  <br/>
+  Check if file is readable. <b>bool</b> <b>file_is_writable</b> (const char
+    *path)
+  <br/>
+  Check if file is writable. <b>bool</b> <b>platform_get_executable_path</b>
+    (char *exe_path, size_t <b>path_size</b>)
+  <br/>
+  Get the path to the current executable. <b>bool</b>
+    <b>platform_get_temp_dir</b> (char *temp_dir, size_t <b>path_size</b>)
+  <br/>
+  Get the system temporary directory path. <b>bool</b> <b>platform_get_cwd</b>
+    (char *cwd, size_t <b>path_size</b>)
+  <br/>
+  Get the current working directory of the process. int <b>platform_access</b>
+    (const char *path, int mode)
+  <br/>
+  Check file/directory access permissions. <b>bool</b>
+    <b>platform_is_binary_in_path</b> (const char *bin_name)
+  <br/>
+  Check if a binary is available in the system PATH. void
+    <b>platform_cleanup_binary_path_cache</b> (void)
+  <br/>
+  Cleanup the binary PATH cache. int <b>platform_fsync</b> (int fd)
+  <br/>
+  Synchronize a file descriptor to disk. <b>bool</b>
+    <b>check_binary_in_path_uncached</b> (const char *bin_name)
+  <br/>
+  Check if a binary is in PATH (uncached, platform-specific implementation).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Cross-platform filesystem operations.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>filesystem.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

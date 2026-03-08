@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>atomic_ptr_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">atomic_ptr_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">atomic_ptr_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">atomic_ptr_t - Atomic pointer wrapper.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/atomic.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Public_Member_Functions"><a class="permalink" href="#Public_Member_Functions">Public
+  Member Functions</a></h2>
+<br/>
+<p class="Pp"><b>_Atomic</b> (void *) impl
+  <br/>
+  Underlying C11 atomic pointer.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint64_t</b> <b>last_store_time_ns</b>
+  <br/>
+  <b>uint64_t</b> <b>last_load_time_ns</b>
+  <br/>
+  <b>uint64_t</b> <b>store_count</b>
+  <br/>
+  <b>uint64_t</b> <b>load_count</b>
+  <br/>
+  <b>uint64_t</b> <b>cas_count</b>
+  <br/>
+  <b>uint64_t</b> <b>cas_success_count</b>
+  <br/>
+  <b>uint64_t</b> <b>exchange_count</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Atomic pointer wrapper.</p>
+<p class="Pp">Wraps C11 <b>_Atomic(void *)</b> with debug tracking fields. The
+    name is registered separately via NAMED_REGISTER_ATOMIC_PTR, stored in
+    named.c registry (not in this struct).</p>
+<p class="Pp"></p>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>_Atomic(void *) g_ptr = {0};
+NAMED_REGISTER_ATOMIC_PTR(&amp;g_ptr, &quot;g_ptr&quot;);
+atomic_ptr_store(&amp;g_ptr, some_pointer);
+</pre>
+<p class="Pp">Definition at line <b>106</b> of file <b>atomic.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Member_Function_Documentation"><a class="permalink" href="#Member_Function_Documentation">Member
+  Function Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="atomic_ptr_t::_Atomic_(void_*_)"><a class="permalink" href="#atomic_ptr_t::_Atomic_(void_*_)">atomic_ptr_t::_Atomic
+  (void * )</a></h2>
+<p class="Pp">Underlying C11 atomic pointer.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> atomic_ptr_t::cas_count</h2>
+<p class="Pp">Definition at line <b>113</b> of file <b>atomic.h</b>.</p>
+<p class="Pp">Referenced by <b>atomic_ptr_on_cas()</b>, and
+    <b>debug_atomic_ptr_format_timing()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> atomic_ptr_t::cas_success_count</h2>
+<p class="Pp">Definition at line <b>114</b> of file <b>atomic.h</b>.</p>
+<p class="Pp">Referenced by <b>atomic_ptr_on_cas()</b>, and
+    <b>debug_atomic_ptr_format_timing()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> atomic_ptr_t::exchange_count</h2>
+<p class="Pp">Definition at line <b>115</b> of file <b>atomic.h</b>.</p>
+<p class="Pp">Referenced by <b>atomic_ptr_on_exchange()</b>, and
+    <b>debug_atomic_ptr_format_timing()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> atomic_ptr_t::last_load_time_ns</h2>
+<p class="Pp">Definition at line <b>110</b> of file <b>atomic.h</b>.</p>
+<p class="Pp">Referenced by <b>atomic_ptr_on_load()</b>, and
+    <b>debug_atomic_ptr_format_timing()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> atomic_ptr_t::last_store_time_ns</h2>
+<p class="Pp">Definition at line <b>109</b> of file <b>atomic.h</b>.</p>
+<p class="Pp">Referenced by <b>atomic_ptr_on_cas()</b>,
+    <b>atomic_ptr_on_exchange()</b>, <b>atomic_ptr_on_store()</b>, and
+    <b>debug_atomic_ptr_format_timing()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> atomic_ptr_t::load_count</h2>
+<p class="Pp">Definition at line <b>112</b> of file <b>atomic.h</b>.</p>
+<p class="Pp">Referenced by <b>atomic_ptr_on_load()</b>, and
+    <b>debug_atomic_ptr_format_timing()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> atomic_ptr_t::store_count</h2>
+<p class="Pp">Definition at line <b>111</b> of file <b>atomic.h</b>.</p>
+<p class="Pp">Referenced by <b>atomic_ptr_on_store()</b>, and
+    <b>debug_atomic_ptr_format_timing()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

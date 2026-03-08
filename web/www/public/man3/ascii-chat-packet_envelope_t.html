@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>packet_envelope_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">packet_envelope_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">packet_envelope_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">packet_envelope_t - Packet envelope containing received packet
+    data.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/packet/packet.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>packet_type_t</b> <b>type</b>
+  <br/>
+  Packet type (from packet_types.h). void * <b>data</b>
+  <br/>
+  Packet payload data (decrypted and decompressed if applicable). size_t
+    <b>len</b>
+  <br/>
+  Length of payload data in bytes. <b>bool</b> <b>was_encrypted</b>
+  <br/>
+  True if packet was encrypted (decrypted before envelope creation). void *
+    <b>allocated_buffer</b>
+  <br/>
+  Buffer that needs to be freed by caller (may be NULL if not allocated). size_t
+    <b>allocated_size</b>
+  <br/>
+  Size of allocated buffer in bytes.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Packet envelope containing received packet data.</p>
+<p class="Pp">Represents a complete received packet with all metadata. The
+    envelope includes packet type, payload data, encryption status, and buffer
+    ownership information for proper memory management.</p>
+<p class="Pp"></p>
+<p class="Pp">MEMORY MANAGEMENT:</p>
+<ul class="Bl-bullet">
+  <li>allocated_buffer points to buffer that needs to be freed</li>
+  <li>allocated_size indicates size of allocated buffer</li>
+  <li>Caller must free allocated_buffer when done with packet</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">If was_encrypted is true, data has already been decrypted
+  before being placed in the envelope.
+<p class="Pp"></p>
+<p class="Pp">allocated_buffer may be different from data if packet was
+    encrypted/compressed (data points into allocated_buffer).</p>
+</div>
+<p class="Pp">Definition at line <b>1129</b> of file <b>packet.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void*_packet_envelope_t::allocated_buffer"><a class="permalink" href="#void*_packet_envelope_t::allocated_buffer">void*
+  packet_envelope_t::allocated_buffer</a></h2>
+<p class="Pp">Buffer that needs to be freed by caller (may be NULL if not
+    allocated).</p>
+<p class="Pp">Definition at line <b>1139</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
+    <b>acip_server_receive_and_dispatch()</b>, <b>add_client()</b>,
+    <b>packet_decrypt_envelope()</b>, and <b>receive_packet_secure()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_packet_envelope_t::allocated_size"><a class="permalink" href="#size_t_packet_envelope_t::allocated_size">size_t
+  packet_envelope_t::allocated_size</a></h2>
+<p class="Pp">Size of allocated buffer in bytes.</p>
+<p class="Pp">Definition at line <b>1141</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
+    <b>acip_server_receive_and_dispatch()</b>, <b>add_client()</b>,
+    <b>packet_decrypt_envelope()</b>, and <b>receive_packet_secure()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_packet_envelope_t::data"><a class="permalink" href="#void*_packet_envelope_t::data">void*
+  packet_envelope_t::data</a></h2>
+<p class="Pp">Packet payload data (decrypted and decompressed if
+  applicable).</p>
+<p class="Pp">Definition at line <b>1133</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
+    <b>acip_server_receive_and_dispatch()</b>, <b>add_client()</b>,
+    <b>packet_decrypt_envelope()</b>, and <b>receive_packet_secure()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_packet_envelope_t::len"><a class="permalink" href="#size_t_packet_envelope_t::len">size_t
+  packet_envelope_t::len</a></h2>
+<p class="Pp">Length of payload data in bytes.</p>
+<p class="Pp">Definition at line <b>1135</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
+    <b>acip_server_receive_and_dispatch()</b>, <b>add_client()</b>,
+    <b>packet_decrypt_envelope()</b>, and <b>receive_packet_secure()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>packet_type_t</b> packet_envelope_t::type</h2>
+<p class="Pp">Packet type (from packet_types.h).</p>
+<p class="Pp">Definition at line <b>1131</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
+    <b>acip_server_receive_and_dispatch()</b>, <b>add_client()</b>,
+    <b>packet_decrypt_envelope()</b>, and <b>receive_packet_secure()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> packet_envelope_t::was_encrypted</h2>
+<p class="Pp">True if packet was encrypted (decrypted before envelope
+  creation).</p>
+<p class="Pp">Definition at line <b>1137</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

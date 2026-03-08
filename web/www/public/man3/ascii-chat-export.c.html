@@ -38,9 +38,10 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">int <b>gpg_get_public_key</b> (const char *key_id, uint8_t
+<p class="Pp">int <b>gpg_get_public_key</b> (const char *key_id, <b>uint8_t</b>
     *public_key_out, char *keygrip_out)
   <br/>
+  Get public key from GPG keyring by key ID.
   <br/>
 </p>
 </section>
@@ -54,234 +55,13 @@
 <p class="Pp">Definition in file <b>export.c</b>.</p>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_gpg_get_public_key_(const_char_*_key_id,_uint8_t_*_public_key_out,_char_*_keygrip_out)"><a class="permalink" href="#int_gpg_get_public_key_(const_char_*_key_id,_uint8_t_*_public_key_out,_char_*_keygrip_out)">int
-  gpg_get_public_key (const char * key_id, uint8_t * public_key_out, char *
-  keygrip_out)</a></h2>
-<p class="Pp">Definition at line <b>253</b> of file <b>export.c</b>.</p>
-<pre>253                                                                                        {
-254   if (!key_id || !public_key_out) {
-255     log_error(&quot;Invalid arguments to gpg_get_public_key&quot;);
-256     return -1;
-257   }
-258 
-259   // SECURITY: Validate key_id to prevent command injection
-260   // GPG key IDs should be hexadecimal (0-9, a-f, A-F)
-261   if (!validate_shell_safe(key_id, NULL)) {
-262     log_error(&quot;Invalid GPG key ID format - contains unsafe characters: %s&quot;, key_id);
-263     return -1;
-264   }
-265 
-266   // Additional validation: ensure key_id is hex alphanumeric
-267   for (size_t i = 0; key_id[i] != '\0'; i++) {
-268     if (!isxdigit((unsigned char)key_id[i])) {
-269       log_error(&quot;Invalid GPG key ID format - must be hexadecimal: %s&quot;, key_id);
-270       return -1;
-271     }
-272   }
-273 
-274   // Escape key_id for safe use in shell command (single quotes)
-275   char escaped_key_id[BUFFER_SIZE_MEDIUM];
-276   if (!escape_shell_single_quotes(key_id, escaped_key_id, sizeof(escaped_key_id))) {
-277     log_error(&quot;Failed to escape GPG key ID for shell command&quot;);
-278     return -1;
-279   }
-280 
-281   // Use gpg to list the key and get the keygrip
-282   char cmd[BUFFER_SIZE_LARGE];
-283   safe_snprintf(cmd, sizeof(cmd), &quot;gpg --list-keys --with-keygrip --with-colons 0x%s &quot; PLATFORM_SHELL_NULL_REDIRECT,
-284                 escaped_key_id);
-285 
-286   FILE *fp = NULL;
-287   if (platform_popen(&quot;gpg_export&quot;, cmd, &quot;r&quot;, &amp;fp) != ASCIICHAT_OK || !fp) {
-288     log_error(&quot;Failed to run gpg command - GPG may not be installed&quot;);
-289 #ifdef _WIN32
-290     log_error(&quot;To install GPG on Windows, download Gpg4win from:&quot;);
-291     log_error(&quot;  https://www.gpg4win.org/download.html&quot;);
-292 #elif defined(__APPLE__)
-293     log_error(&quot;To install GPG on macOS, use Homebrew:&quot;);
-294     log_error(&quot;  brew install gnupg&quot;);
-295 #else
-296     log_error(&quot;To install GPG on Linux:&quot;);
-297     log_error(&quot;  Debian/Ubuntu: sudo apt-get install gnupg&quot;);
-298     log_error(&quot;  Fedora/RHEL:   sudo dnf install gnupg2&quot;);
-299     log_error(&quot;  Arch Linux:    sudo pacman -S gnupg&quot;);
-300     log_error(&quot;  Alpine Linux:  sudo apk add gnupg&quot;);
-301 #endif
-302     return -1;
-303   }
-304 
-305   char line[BUFFER_SIZE_XLARGE];
-306   char found_keygrip[128] = {0};
-307   bool found_key = false;
-308 
-309   // Parse gpg output
-310   // Format: pub:..., grp:::::::::&lt;keygrip&gt;:
-311   while (fgets(line, sizeof(line), fp)) {
-312     if (strncmp(line, &quot;pub:&quot;, 4) == 0) {
-313       // Found the public key line
-314       found_key = true;
-315     } else if (found_key &amp;&amp; strncmp(line, &quot;grp:&quot;, 4) == 0) {
-316       // Extract keygrip using PCRE2 regex
-317       // Format: grp:::::::::D52FF935FBA59609EE65E1685287828242A1EA1A:
-318       char *keygrip_extracted = NULL;
-319 
-320       if (crypto_regex_extract_gpg_keygrip(line, &amp;keygrip_extracted)) {
-321         // Successfully extracted keygrip
-322         SAFE_STRNCPY(found_keygrip, keygrip_extracted, sizeof(found_keygrip));
-323         if (keygrip_out) {
-324           SAFE_STRNCPY(keygrip_out, found_keygrip, 41);
-325         }
-326         SAFE_FREE(keygrip_extracted);
-327       } else {
-328         // Fallback to manual parsing if regex fails
-329         const char *grp_start = line + 4;
-330         int colon_count = 0;
-331         while (*grp_start &amp;&amp; colon_count &lt; 8) {
-332           if (*grp_start == ':') {
-333             colon_count++;
-334           }
-335           grp_start++;
-336         }
-337 
-338         if (colon_count == 8) {
-339           const char *grp_end = strchr(grp_start, ':');
-340           if (grp_end) {
-341             size_t grp_len = grp_end - grp_start;
-342             if (grp_len &lt; sizeof(found_keygrip)) {
-343               memcpy(found_keygrip, grp_start, grp_len);
-344               found_keygrip[grp_len] = '\0';
-345 
-346               if (keygrip_out) {
-347                 SAFE_STRNCPY(keygrip_out, found_keygrip, 41);
-348               }
-349             }
-350           }
-351         }
-352       }
-353       break;
-354     }
-355   }
-356 
-357   platform_pclose(&amp;fp);
-358 
-359   if (!found_key || strlen(found_keygrip) == 0) {
-360     log_error(&quot;Could not find GPG key with ID: %s&quot;, key_id);
-361     return -1;
-362   }
-363 
-364   log_debug(&quot;Found keygrip for key %s: %s&quot;, key_id, found_keygrip);
-365 
-366   // Try to use GPG agent API to read the public key directly via READKEY command
-367   int agent_sock = gpg_agent_connect();
-368   if (agent_sock &lt; 0) {
-369     log_debug(&quot;GPG agent not available, falling back to gpg --export for public key extraction&quot;);
-370     // Fallback: Use gpg --export to get the public key
-371     int export_result = gpg_export_public_key(key_id, public_key_out);
-372     if (export_result == 0) {
-373       log_debug(&quot;Successfully extracted public key using fallback method&quot;);
-374     } else {
-375       log_error(&quot;Fallback public key extraction failed for key ID: %s&quot;, key_id);
-376     }
-377     return export_result;
-378   }
-379 
-380   // Send READKEY command with keygrip to get the public key S-expression
-381   char readkey_cmd[BUFFER_SIZE_SMALL];
-382   safe_snprintf(readkey_cmd, sizeof(readkey_cmd), &quot;READKEY %s\n&quot;, found_keygrip);
-383 
-384   // Cast agent_sock back to pipe_t (gpg_agent_connect returns pipe_t cast to int for portability)
-385   pipe_t agent_pipe = (pipe_t)(intptr_t)agent_sock;
-386   ssize_t bytes_written = platform_pipe_write(agent_pipe, (const unsigned char *)readkey_cmd, strlen(readkey_cmd));
-387   if (bytes_written != (ssize_t)strlen(readkey_cmd)) {
-388     log_error(&quot;Failed to send READKEY command to GPG agent&quot;);
-389     gpg_agent_disconnect(agent_sock);
-390     return -1;
-391   }
-392 
-393   // Read the response (public key S-expression)
-394   char response[BUFFER_SIZE_XXXLARGE];
-395   memset(response, 0, sizeof(response));
-396   ssize_t bytes_read = platform_pipe_read(agent_pipe, (unsigned char *)response, sizeof(response) - 1);
-397 
-398   gpg_agent_disconnect(agent_sock);
-399 
-400   if (bytes_read &lt;= 0) {
-401     log_error(&quot;Failed to read READKEY response from GPG agent&quot;);
-402     return -1;
-403   }
-404 
-405   // Parse the S-expression to extract Ed25519 public key (q value)
-406   // GPG agent returns binary S-expressions in format: (1:q&lt;length&gt;:&lt;binary-data&gt;)
-407   // Example: (1:q33:&lt;33-bytes&gt;) where first byte is 0x40 (Ed25519 prefix), then 32-byte key
-408   const char *q_marker = strstr(response, &quot;(1:q&quot;);
-409   if (!q_marker) {
-410     log_warn(&quot;Failed to find public key (1:q) in GPG agent READKEY response, trying gpg --export fallback&quot;);
-411     log_debug(&quot;Response was: %.*s&quot;, (int)(bytes_read &lt; 200 ? bytes_read : 200), response);
-412     gpg_agent_disconnect(agent_sock);
-413 
-414     // Fallback: Use gpg --export for public-only keys
-415     int export_result = gpg_export_public_key(key_id, public_key_out);
-416     if (export_result == 0) {
-417       log_debug(&quot;Successfully extracted public key using gpg --export fallback&quot;);
-418     } else {
-419       log_error(&quot;Fallback public key extraction failed for key ID: %s&quot;, key_id);
-420     }
-421     return export_result;
-422   }
-423 
-424   // Skip &quot;(1:q&quot; to get to the length field
-425   const char *len_start = q_marker + 4;
-426 
-427   // Parse the length (e.g., &quot;33:&quot;)
-428   char *colon = strchr(len_start, ':');
-429   if (!colon) {
-430     log_error(&quot;Malformed S-expression: missing colon after length&quot;);
-431     return -1;
-432   }
-433 
-434   size_t key_len = strtoul(len_start, NULL, 10);
-435   if (key_len != 33) {
-436     log_error(&quot;Unexpected Ed25519 public key length: %zu bytes (expected 33)&quot;, key_len);
-437     return -1;
-438   }
-439 
-440   // Skip the colon to get to the binary data
-441   const unsigned char *binary_start = (const unsigned char *)(colon + 1);
-442 
-443   // Ed25519 public keys in GPG format have a 0x40 prefix byte, then 32 bytes of actual key
-444   if (binary_start[0] != 0x40) {
-445     log_error(&quot;Invalid Ed25519 public key prefix: 0x%02x (expected 0x40)&quot;, binary_start[0]);
-446     return -1;
-447   }
-448 
-449   // Copy the 32-byte public key (skip the 0x40 prefix)
-450   memcpy(public_key_out, binary_start + 1, 32);
-451 
-452   log_debug(&quot;Extracted Ed25519 public key from GPG agent via READKEY command&quot;);
-453   return 0;
-454 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>bytes_written</b>,
-    <b>crypto_regex_extract_gpg_keygrip()</b>,
-    <b>escape_shell_single_quotes()</b>, <b>gpg_agent_connect()</b>,
-    <b>gpg_agent_disconnect()</b>, <b>safe_snprintf()</b>, and
-    <b>validate_shell_safe()</b>.</p>
-<p class="Pp">Referenced by <b>extract_ed25519_from_gpg()</b>, and
-    <b>parse_private_key()</b>.</p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

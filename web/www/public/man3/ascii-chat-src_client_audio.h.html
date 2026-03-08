@@ -55,13 +55,14 @@
   <br/>
   Check if audio capture thread has exited. void <b>audio_cleanup</b> (void)
   <br/>
-  Cleanup audio subsystem. client_audio_pipeline_t * <b>audio_get_pipeline</b>
-    (void)
+  Cleanup audio subsystem. <b>client_audio_pipeline_t</b> *
+    <b>audio_get_pipeline</b> (void)
   <br/>
   Get the audio pipeline (for advanced usage). int <b>audio_decode_opus</b>
-    (const uint8_t *opus_data, size_t opus_len, float *output, int max_samples)
+    (const <b>uint8_t</b> *opus_data, size_t opus_len, float *output, int
+    max_samples)
   <br/>
-  Decode Opus packet using the audio pipeline. audio_context_t *
+  Decode Opus packet using the audio pipeline. <b>audio_context_t</b> *
     <b>audio_get_context</b> (void)
   <br/>
   Get the global audio context for use by other subsystems.
@@ -94,7 +95,7 @@
 <h2 class="Ss" id="Configuration"><a class="permalink" href="#Configuration">Configuration</a></h2>
 <p class="Pp"><b>Options</b>:</p>
 <ul class="Bl-bullet">
-  <li>--audio: Enable audio (disabled by default)</li>
+  <li>--<b>Audio</b><b>: Enable audio (disabled by default)</b></li>
   <li>--audio-device &lt;index&gt;: Select audio input/output device</li>
 </ul>
 <p class="Pp"><b>Parameters</b>:</p>
@@ -219,7 +220,8 @@
 <p class="Pp">References <b>audio_destroy()</b>, <b>audio_sender_cleanup()</b>,
     <b>audio_set_pipeline()</b>, <b>audio_stop_duplex()</b>,
     <b>audio_stop_thread()</b>, <b>audio_terminate_portaudio_final()</b>,
-    <b>client_audio_pipeline_destroy()</b>, and <b>wav_writer_close()</b>.</p>
+    <b>client_audio_pipeline_destroy()</b>, <b>GET_OPTION</b>, <b>log_debug</b>,
+    and <b>wav_writer_close()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_audio_client_init_(void_)"><a class="permalink" href="#int_audio_client_init_(void_)">int
@@ -249,7 +251,7 @@
 <ul class="Bl-bullet">
   <li>--audio-device &lt;index&gt;: Which audio device to use (default: system
       default)</li>
-  <li>--audio flag must be set (audio disabled by default)</li>
+  <li>--<b>Audio</b><b> flag must be set (audio disabled by default)</b></li>
 </ul>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, negative on error:
@@ -385,20 +387,34 @@
 1040 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>audio_destroy()</b>, <b>audio_init()</b>,
-    <b>audio_set_pipeline()</b>, <b>audio_start_duplex()</b>,
-    <b>client_audio_pipeline_create()</b>,
+<p class="Pp">References <b>client_audio_pipeline_flags_t::agc</b>,
+    <b>ASCIICHAT_OK</b>, <b>audio_destroy()</b>, <b>audio_init()</b>,
+    <b>AUDIO_SAMPLE_RATE</b>, <b>audio_set_pipeline()</b>,
+    <b>audio_start_duplex()</b>, <b>client_audio_pipeline_create()</b>,
     <b>client_audio_pipeline_default_config()</b>,
-    <b>client_audio_pipeline_destroy()</b>, <b>lifecycle_init_abort()</b>,
-    <b>lifecycle_init_commit()</b>, <b>lifecycle_init_once()</b>,
-    <b>lifecycle_is_initialized()</b>, <b>platform_sleep_us()</b>,
-    <b>wav_dump_enabled()</b>, <b>wav_writer_close()</b>, and
-    <b>wav_writer_open()</b>.</p>
+    <b>client_audio_pipeline_destroy()</b>,
+    <b>client_audio_pipeline_flags_t::compressor</b>,
+    <b>client_audio_pipeline_flags_t::echo_cancel</b>,
+    <b>client_audio_pipeline_config_t::flags</b>, <b>GET_OPTION</b>,
+    <b>client_audio_pipeline_flags_t::highpass</b>,
+    <b>client_audio_pipeline_flags_t::jitter_buffer</b>,
+    <b>client_audio_pipeline_config_t::jitter_margin_ns</b>,
+    <b>lifecycle_init_abort()</b>, <b>lifecycle_init_commit()</b>,
+    <b>lifecycle_init_once()</b>, <b>lifecycle_is_initialized()</b>,
+    <b>log_debug</b>, <b>log_error</b>,
+    <b>client_audio_pipeline_flags_t::lowpass</b>,
+    <b>client_audio_pipeline_flags_t::noise_gate</b>,
+    <b>client_audio_pipeline_flags_t::noise_suppress</b>,
+    <b>client_audio_pipeline_config_t::opus_bitrate</b>,
+    <b>platform_sleep_us()</b>,
+    <b>client_audio_pipeline_config_t::sample_rate</b>,
+    <b>client_audio_pipeline_flags_t::vad</b>, <b>wav_dump_enabled()</b>,
+    <b>wav_writer_close()</b>, and <b>wav_writer_open()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_audio_decode_opus_(const_uint8_t_*_opus_data,_size_t_opus_len,_float_*_output,_int_max_samples)"><a class="permalink" href="#int_audio_decode_opus_(const_uint8_t_*_opus_data,_size_t_opus_len,_float_*_output,_int_max_samples)">int
-  audio_decode_opus (const uint8_t * opus_data, size_t opus_len, float * output,
-  int max_samples)</a></h2>
+<h2 class="Ss" id="int_audio_decode_opus_(const_"><a class="permalink" href="#int_audio_decode_opus_(const_">int
+  audio_decode_opus (const <b>uint8_t</b> * opus_data, size_t opus_len, float *
+  output, int max_samples)</a></h2>
 <p class="Pp">Decode Opus packet using the audio pipeline. Decodes a single
     Opus-encoded audio packet to PCM samples. Can be used independently of the
     audio pipeline for testing or external audio processing.</p>
@@ -441,8 +457,7 @@
 <p class="Pp">References <b>client_audio_pipeline_playback()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="audio_context_t_*_audio_get_context_(void_)"><a class="permalink" href="#audio_context_t_*_audio_get_context_(void_)">audio_context_t
-  * audio_get_context (void )</a></h2>
+<h2 class="Ss"><b>audio_context_t</b> * audio_get_context (void )</h2>
 <p class="Pp">Get the global audio context for use by other subsystems. Returns
     the audio context for access to low-level audio state. Used by capture
     subsystem to enable microphone fallback when media file has no audio.</p>
@@ -466,8 +481,7 @@
 <p class="Pp">Referenced by <b>capture_init()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="client_audio_pipeline_t_*_audio_get_pipeline_(void_)"><a class="permalink" href="#client_audio_pipeline_t_*_audio_get_pipeline_(void_)">client_audio_pipeline_t
-  * audio_get_pipeline (void )</a></h2>
+<h2 class="Ss"><b>client_audio_pipeline_t</b> * audio_get_pipeline (void )</h2>
 <p class="Pp">Get the audio pipeline (for advanced usage). Returns the internal
     audio pipeline structure for direct access to encoder/decoder or buffer
     manipulation (advanced usage only).</p>
@@ -606,8 +620,11 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>audio_analysis_track_received_sample()</b>,
-    <b>audio_ring_buffer_available_read()</b>, <b>audio_write_samples()</b>, and
-    <b>wav_writer_write()</b>.</p>
+    <b>AUDIO_BATCH_SAMPLES</b>, <b>audio_ring_buffer_available_read()</b>,
+    <b>audio_write_samples()</b>, <b>ERROR_INVALID_PARAM</b>, <b>GET_OPTION</b>,
+    <b>log_debug</b>, <b>log_dev_every</b>, <b>log_warn</b>,
+    <b>log_warn_every</b>, <b>NS_PER_MS_INT</b>, <b>SET_ERRNO</b>,
+    <b>US_PER_MS_INT</b>, and <b>wav_writer_write()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_audio_sender_init_(void_)"><a class="permalink" href="#void_audio_sender_init_(void_)">void
@@ -677,8 +694,9 @@
 381 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>,
-    <b>g_client_worker_pool</b>, <b>lifecycle_init()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
+    <b>cond_init()</b>, <b>g_client_worker_pool</b>, <b>lifecycle_init()</b>,
+    <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>, <b>log_info</b>,
     <b>mutex_destroy()</b>, <b>mutex_init()</b>, and
   <b>thread_pool_spawn()</b>.</p>
 <p class="Pp">Referenced by <b>protocol_start_connection()</b>.</p>
@@ -777,8 +795,12 @@
 1103 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
-    <b>g_client_worker_pool</b>, and <b>thread_pool_spawn()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>asciichat_thread_join_timeout()</b>, <b>atomic_load_bool()</b>,
+    <b>atomic_store_bool()</b>, <b>g_client_worker_pool</b>, <b>GET_OPTION</b>,
+    <b>log_debug</b>, <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>,
+    <b>log_warn</b>, <b>NAMED_REGISTER_ATOMIC</b>, <b>NS_PER_MS_INT</b>, and
+    <b>thread_pool_spawn()</b>.</p>
 <p class="Pp">Referenced by <b>protocol_start_connection()</b>.</p>
 </section>
 <section class="Ss">
@@ -919,9 +941,11 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
-    <b>lifecycle_destroy_commit()</b>, <b>lifecycle_destroy_once()</b>,
-    <b>lifecycle_init()</b>, <b>lifecycle_is_initialized()</b>, and
-    <b>platform_sleep_us()</b>.</p>
+    <b>cond_signal()</b>, <b>lifecycle_destroy_commit()</b>,
+    <b>lifecycle_destroy_once()</b>, <b>lifecycle_init()</b>,
+    <b>lifecycle_is_initialized()</b>, <b>log_debug</b>, <b>log_warn</b>,
+    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>platform_sleep_us()</b>,
+    <b>THREAD_IS_CREATED</b>, and <b>US_PER_MS_INT</b>.</p>
 <p class="Pp">Referenced by <b>audio_cleanup()</b>,
     <b>protocol_stop_connection()</b>, and <b>session_client_like_run()</b>.</p>
 </section>
@@ -957,7 +981,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

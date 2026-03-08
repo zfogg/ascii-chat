@@ -74,7 +74,7 @@
   Create a new session host. void <b>session_host_destroy</b>
     (<b>session_host_t</b> *host)
   <br/>
-  Destroy session host and free resources. asciichat_error_t
+  Destroy session host and free resources. <b>asciichat_error_t</b>
     <b>session_host_start</b> (<b>session_host_t</b> *host)
   <br/>
   Start accepting client connections. void <b>session_host_stop</b>
@@ -83,60 +83,60 @@
   Stop accepting connections and disconnect all clients. <b>bool</b>
     <b>session_host_is_running</b> (<b>session_host_t</b> *host)
   <br/>
-  Check if host is running. uint32_t <b>session_host_add_client</b>
+  Check if host is running. <b>uint32_t</b> <b>session_host_add_client</b>
     (<b>session_host_t</b> *host, <b>socket_t</b> socket, const char *ip, int
     port)
   <br/>
-  Add a client from an accepted socket. uint32_t
+  Add a client from an accepted socket. <b>uint32_t</b>
     <b>session_host_add_memory_participant</b> (<b>session_host_t</b> *host)
   <br/>
-  Add a memory participant (host's own media). asciichat_error_t
-    <b>session_host_inject_frame</b> (<b>session_host_t</b> *host, uint32_t
-    <b>participant_id</b>, const image_t *<b>frame</b>)
+  Add a memory participant (host's own media). <b>asciichat_error_t</b>
+    <b>session_host_inject_frame</b> (<b>session_host_t</b> *host,
+    <b>uint32_t</b> <b>participant_id</b>, const <b>image_t</b> *<b>frame</b>)
   <br/>
-  Inject a video frame from memory participant. asciichat_error_t
-    <b>session_host_inject_audio</b> (<b>session_host_t</b> *host, uint32_t
-    <b>participant_id</b>, const float *samples, size_t count)
+  Inject a video frame from memory participant. <b>asciichat_error_t</b>
+    <b>session_host_inject_audio</b> (<b>session_host_t</b> *host,
+    <b>uint32_t</b> <b>participant_id</b>, const float *samples, size_t count)
   <br/>
-  Inject audio samples from memory participant. asciichat_error_t
-    <b>session_host_remove_client</b> (<b>session_host_t</b> *host, uint32_t
-    client_id)
+  Inject audio samples from memory participant. <b>asciichat_error_t</b>
+    <b>session_host_remove_client</b> (<b>session_host_t</b> *host,
+    <b>uint32_t</b> client_id)
   <br/>
-  Remove a client by ID. asciichat_error_t <b>session_host_find_client</b>
-    (<b>session_host_t</b> *host, uint32_t client_id,
-    <b>session_host_client_info_t</b> *info)
+  Remove a client by ID. <b>asciichat_error_t</b>
+    <b>session_host_find_client</b> (<b>session_host_t</b> *host,
+    <b>uint32_t</b> client_id, <b>session_host_client_info_t</b> *info)
   <br/>
   Find a client by ID. int <b>session_host_get_client_count</b>
     (<b>session_host_t</b> *host)
   <br/>
   Get number of connected clients. int <b>session_host_get_client_ids</b>
-    (<b>session_host_t</b> *host, uint32_t *ids, int max_ids)
+    (<b>session_host_t</b> *host, <b>uint32_t</b> *ids, int max_ids)
   <br/>
-  Get list of all connected client IDs. asciichat_error_t
+  Get list of all connected client IDs. <b>asciichat_error_t</b>
     <b>session_host_broadcast_frame</b> (<b>session_host_t</b> *host, const char
     *<b>frame</b>)
   <br/>
-  Broadcast ASCII frame to all clients. asciichat_error_t
-    <b>session_host_send_frame</b> (<b>session_host_t</b> *host, uint32_t
+  Broadcast ASCII frame to all clients. <b>asciichat_error_t</b>
+    <b>session_host_send_frame</b> (<b>session_host_t</b> *host, <b>uint32_t</b>
     client_id, const char *<b>frame</b>)
   <br/>
-  Send ASCII frame to a specific client. asciichat_error_t
+  Send ASCII frame to a specific client. <b>asciichat_error_t</b>
     <b>session_host_start_render</b> (<b>session_host_t</b> *host)
   <br/>
   Start media rendering thread (video mixing and audio distribution). void
     <b>session_host_stop_render</b> (<b>session_host_t</b> *host)
   <br/>
-  Stop media rendering thread. asciichat_error_t
+  Stop media rendering thread. <b>asciichat_error_t</b>
     <b>session_host_set_client_transport</b> (<b>session_host_t</b> *host,
-    uint32_t client_id, <b>acip_transport_t</b> *transport)
+    <b>uint32_t</b> client_id, <b>acip_transport_t</b> *transport)
   <br/>
   Set an alternative transport for a specific client in the host.
     <b>acip_transport_t</b> * <b>session_host_get_client_transport</b>
-    (<b>session_host_t</b> *host, uint32_t client_id)
+    (<b>session_host_t</b> *host, <b>uint32_t</b> client_id)
   <br/>
   Get the current transport for a specific client in the host. <b>bool</b>
     <b>session_host_client_has_transport</b> (<b>session_host_t</b> *host,
-    uint32_t client_id)
+    <b>uint32_t</b> client_id)
   <br/>
   Check if a specific client has an active alternative transport.
   <br/>
@@ -178,7 +178,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

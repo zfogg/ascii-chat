@@ -38,20 +38,24 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>send_error_packet</b> (<b>socket_t</b>
-    sockfd, asciichat_error_t <b>error_code</b>)
+<p class="Pp"><b>asciichat_error_t</b> <b>send_error_packet</b> (<b>socket_t</b>
+    sockfd, <b>asciichat_error_t</b> <b>error_code</b>)
   <br/>
-  asciichat_error_t <b>send_error_packet_message</b> (<b>socket_t</b> sockfd,
-    asciichat_error_t <b>error_code</b>, const char *message)
+  Send an ACIP error packet using <b>asciichat_error_t</b>.
+    <b>asciichat_error_t</b> <b>send_error_packet_message</b> (<b>socket_t</b>
+    sockfd, <b>asciichat_error_t</b> <b>error_code</b>, const char *message)
   <br/>
-  <b>bool</b> <b>check_and_record_rate_limit</b> (rate_limiter_t *rate_limiter,
-    const char *client_ip, rate_event_type_t event_type, <b>socket_t</b>
+  Send an ACIP error packet with custom message. <b>bool</b>
+    <b>check_and_record_rate_limit</b> (<b>rate_limiter_t</b> *rate_limiter,
+    const char *client_ip, <b>rate_event_type_t</b> event_type, <b>socket_t</b>
     client_socket, const char *operation_name)
   <br/>
-  <b>bool</b> <b>check_and_record_packet_rate_limit</b> (rate_limiter_t
+  Check rate limit and send error if exceeded. <b>bool</b>
+    <b>check_and_record_packet_rate_limit</b> (<b>rate_limiter_t</b>
     *rate_limiter, const char *client_ip, <b>socket_t</b> client_socket,
-    packet_type_t packet_type)
+    <b>packet_type_t</b> packet_type)
   <br/>
+  Map packet type to rate event type and check rate limit.
   <br/>
 </p>
 </section>
@@ -68,9 +72,36 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> check_and_record_packet_rate_limit (rate_limiter_t *
-  rate_limiter, const char * client_ip, <b>socket_t</b> client_socket,
-  packet_type_t packet_type)</h2>
+<h2 class="Ss"><b>bool</b> check_and_record_packet_rate_limit
+  (<b>rate_limiter_t</b> * rate_limiter, const char * client_ip, <b>socket_t</b>
+  client_socket, <b>packet_type_t</b> packet_type)</h2>
+<p class="Pp">Map packet type to rate event type and check rate limit. Maps
+    <b>packet_type_t</b> to the corresponding <b>rate_event_type_t</b> and
+    performs rate limiting check. Sends ERROR_RATE_LIMITED response if
+  exceeded.</p>
+<p class="Pp"></p>
+<p class="Pp">Packet type to rate event mapping:</p>
+<ul class="Bl-bullet">
+  <li>IMAGE_FRAME -&gt; RATE_EVENT_IMAGE_FRAME</li>
+  <li>AUDIO, AUDIO_BATCH, AUDIO_OPUS, AUDIO_OPUS_BATCH -&gt;
+    RATE_EVENT_AUDIO</li>
+  <li>PING, PONG -&gt; RATE_EVENT_PING</li>
+  <li>CLIENT_JOIN -&gt; RATE_EVENT_CLIENT_JOIN</li>
+  <li>CLIENT_CAPABILITIES, STREAM_START, STREAM_STOP, CLIENT_LEAVE -&gt;
+      RATE_EVENT_CONTROL</li>
+  <li>All other packets -&gt; No rate limiting (always allowed)</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>rate_limiter</i> Rate limiter instance
+<br/>
+<i>client_ip</i> Client IP address
+<br/>
+<i>client_socket</i> Client socket for sending error response
+<br/>
+<i>packet_type</i> Packet type being processed</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if allowed (and event recorded), false if rate
+  limited</div>
 <p class="Pp">Definition at line <b>54</b> of file <b>errors.c</b>.</p>
 <pre>55                                                                    {
 56   // Map packet type to rate event type
@@ -118,13 +149,46 @@
 98 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>check_and_record_rate_limit()</b>.</p>
+<p class="Pp">References <b>check_and_record_rate_limit()</b>,
+    <b>PACKET_TYPE_AUDIO_BATCH</b>, <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>,
+    <b>PACKET_TYPE_CLIENT_CAPABILITIES</b>, <b>PACKET_TYPE_CLIENT_JOIN</b>,
+    <b>PACKET_TYPE_CLIENT_LEAVE</b>, <b>PACKET_TYPE_IMAGE_FRAME</b>,
+    <b>PACKET_TYPE_PING</b>, <b>PACKET_TYPE_PONG</b>,
+    <b>PACKET_TYPE_STREAM_START</b>, <b>PACKET_TYPE_STREAM_STOP</b>,
+    <b>RATE_EVENT_AUDIO</b>, <b>RATE_EVENT_CLIENT_JOIN</b>,
+    <b>RATE_EVENT_CONTROL</b>, <b>RATE_EVENT_IMAGE_FRAME</b>, and
+    <b>RATE_EVENT_PING</b>.</p>
 <p class="Pp">Referenced by <b>process_decrypted_packet()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> check_and_record_rate_limit (rate_limiter_t *
-  rate_limiter, const char * client_ip, rate_event_type_t event_type,
+<h2 class="Ss"><b>bool</b> check_and_record_rate_limit (<b>rate_limiter_t</b> *
+  rate_limiter, const char * client_ip, <b>rate_event_type_t</b> event_type,
   <b>socket_t</b> client_socket, const char * operation_name)</h2>
+<p class="Pp">Check rate limit and send error if exceeded. Helper function that
+    checks rate limit, sends error response if exceeded, and records the event
+    if allowed. Encapsulates the common pattern:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Check rate limit</dd>
+  <dt>2.</dt>
+  <dd>Send ERROR_RATE_LIMITED if exceeded</dd>
+  <dt>3.</dt>
+  <dd>Record event if allowed</dd>
+</dl>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>rate_limiter</i> Rate limiter instance
+<br/>
+<i>client_ip</i> Client IP address for logging
+<br/>
+<i>event_type</i> Type of event being rate limited
+<br/>
+<i>client_socket</i> Socket to send error packet on
+<br/>
+<i>operation_name</i> Name of operation for logging (e.g.,
+  &quot;SESSION_CREATE&quot;)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if allowed (and event recorded), false if rate
+  limited</div>
 <p class="Pp">Definition at line <b>38</b> of file <b>errors.c</b>.</p>
 <pre>39                                                                                      {
 40   bool allowed = false;
@@ -142,14 +206,25 @@
 52 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>rate_limiter_check()</b>,
-    <b>rate_limiter_record()</b>, and <b>send_error_packet_message()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_RATE_LIMITED</b>,
+    <b>log_warn</b>, <b>rate_limiter_check()</b>, <b>rate_limiter_record()</b>,
+    and <b>send_error_packet_message()</b>.</p>
 <p class="Pp">Referenced by <b>check_and_record_packet_rate_limit()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_send_error_packet_("><a class="permalink" href="#asciichat_error_t_send_error_packet_(">asciichat_error_t
-  send_error_packet (<b>socket_t</b> sockfd, asciichat_error_t
-  error_code)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> send_error_packet (<b>socket_t</b>
+  sockfd, <b>asciichat_error_t</b> error_code)</h2>
+<p class="Pp">Send an ACIP error packet using <b>asciichat_error_t</b>. Converts
+    an <b>asciichat_error_t</b> code to an ACIP error packet and sends it. Uses
+    asciichat_error_string() for the error message.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>sockfd</i> Socket to send error on
+<br/>
+<i></i><b>error_code</b><i></i><b> Error code from
+  </b><b>asciichat_error_t</b><b> enum</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>11</b> of file <b>errors.c</b>.</p>
 <pre>11                                                                                    {
 12   return send_error_packet_message(sockfd, error_code, asciichat_error_string(error_code));
@@ -160,9 +235,22 @@
     <b>send_error_packet_message()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_send_error_packet_message_("><a class="permalink" href="#asciichat_error_t_send_error_packet_message_(">asciichat_error_t
-  send_error_packet_message (<b>socket_t</b> sockfd, asciichat_error_t
-  error_code, const char * message)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> send_error_packet_message
+  (<b>socket_t</b> sockfd, <b>asciichat_error_t</b> error_code, const char *
+  message)</h2>
+<p class="Pp">Send an ACIP error packet with custom message. Converts an
+    <b>asciichat_error_t</b> code to an ACIP error packet with a custom error
+    message.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>sockfd</i> Socket to send error on
+<br/>
+<i></i><b>error_code</b><i></i><b> Error code from
+  </b><b>asciichat_error_t</b><b> enum</b>
+<br/>
+<i>message</i> Custom error message (max 255 chars)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>15</b> of file <b>errors.c</b>.</p>
 <pre>15                                                                                                                 {
 16   if (sockfd == INVALID_SOCKET_VALUE) {
@@ -188,7 +276,10 @@
 36 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>error_code</b>, and <b>send_packet()</b>.</p>
+<p class="Pp">References <b>acip_error_t</b>, <b>ASCIICHAT_OK</b>,
+    <b>error_code</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>,
+    <b>INVALID_SOCKET_VALUE</b>, <b>PACKET_TYPE_ACIP_ERROR</b>,
+    <b>SAFE_STRNCPY</b>, <b>send_packet()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>check_and_record_rate_limit()</b>, and
     <b>send_error_packet()</b>.</p>
 </section>
@@ -200,7 +291,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

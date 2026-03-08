@@ -43,7 +43,7 @@
   <br/>
   Socket descriptor (NOT owned - don't close). <b>bool</b> <b>is_connected</b>
   <br/>
-  Connection state. mutex_t <b>send_mutex</b>
+  Connection state. <b>mutex_t</b> <b>send_mutex</b>
   <br/>
   Mutex to protect concurrent sends (multiple threads may send packets).
   <br/>
@@ -66,8 +66,7 @@
 <p class="Pp">Referenced by <b>acip_tcp_transport_create()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="mutex_t_tcp_transport_data_t::send_mutex"><a class="permalink" href="#mutex_t_tcp_transport_data_t::send_mutex">mutex_t
-  tcp_transport_data_t::send_mutex</a></h2>
+<h2 class="Ss"><b>mutex_t</b> tcp_transport_data_t::send_mutex</h2>
 <p class="Pp">Mutex to protect concurrent sends (multiple threads may send
     packets).</p>
 <p class="Pp">Definition at line <b>30</b> of file <b>tcp/transport.c</b>.</p>
@@ -88,7 +87,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

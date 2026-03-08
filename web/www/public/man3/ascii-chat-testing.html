@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>testing(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">testing(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">testing(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">testing - Testing</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+<br/>
+<p class="Pp">file <b>common.c</b>
+  <br/>
+  Common test utilities implementation. file <b>globals.c</b>
+  <br/>
+  &#x1F517; Global symbol stubs for test executables to satisfy linker
+    dependencies file <b>logging.c</b>
+  <br/>
+  &#x1F9EA; Test utilities for logging: stdout/stderr redirection and capture
+    helpers file <b>common.h</b>
+  <br/>
+  Common test utilities and environment detection. file <b>test_env.h</b>
+  <br/>
+  Test environment detection utilities.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>test_logging_disable</b> (<b>bool</b> disable_stdout,
+    <b>bool</b> disable_stderr)
+  <br/>
+  Disable stdout/stderr output for quiet test execution. int
+    <b>test_logging_restore</b> (void)
+  <br/>
+  Restore stdout/stderr output after test logging disable. <b>bool</b>
+    <b>test_logging_is_disabled</b> (void)
+  <br/>
+  Check if logging is currently disabled. const char *
+    <b>test_get_binary_path</b> (void)
+  <br/>
+  Get the path to the ascii-chat binary for integration tests.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">This header provides common utilities and helpers for writing
+    ascii-chat tests. It includes standard test headers, platform detection, and
+    environment checks to help tests run reliably across different environments
+    (CI, Docker, WSL).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CORE_FEATURES:"><a class="permalink" href="#CORE_FEATURES:">CORE
+  FEATURES: </a></h1>
+<ul class="Bl-bullet">
+  <li>Test environment detection (CI, Docker, WSL)</li>
+  <li>Standard test framework includes (Criterion)</li>
+  <li>Common project headers and utilities</li>
+  <li>Platform-specific includes (POSIX/Windows)</li>
+  <li>Headless environment detection for webcam tests</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="TEST_ENVIRONMENT:"><a class="permalink" href="#TEST_ENVIRONMENT:">TEST
+  ENVIRONMENT: </a></h1>
+<p class="Pp">This header automatically includes:</p>
+<ul class="Bl-bullet">
+  <li>Criterion test framework</li>
+  <li>Project common headers</li>
+  <li>Test logging utilities</li>
+  <li>Platform-specific system headers</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="HEADLESS_ENVIRONMENT_DETECTION:"><a class="permalink" href="#HEADLESS_ENVIRONMENT_DETECTION:">HEADLESS
+  ENVIRONMENT DETECTION: </a></h1>
+<p class="Pp">Tests that require hardware (like webcam) can use
+    test_is_in_headless_environment() to skip when running in CI/Docker/WSL.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This header must be included before any test code that
+  uses the test environment detection functions.
+<p class="Pp"></p>
+<p class="Pp">All test files should include this header for consistent test
+    infrastructure.</p>
+</div>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">August 2025</div>
+<p class="Pp">This header provides test environment detection functions that can
+    be used by both test code and production code (to adjust behavior like
+    timeouts).</p>
+<p class="Pp"></p>
+<p class="Pp">Unlike common.h, this header has NO Criterion dependency, so it
+    can be safely included by any code that needs to detect if it's running in a
+    test environment.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This is the canonical location for test environment
+  detection. Do NOT duplicate this logic in other files.</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_test_get_binary_path_(void_)"><a class="permalink" href="#const_char_*_test_get_binary_path_(void_)">const
+  char * test_get_binary_path (void )</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/tests/common.h</b>&gt;<b></b></p>
+<p class="Pp">Get the path to the ascii-chat binary for integration tests. This
+    function finds the ascii-chat binary by trying multiple candidate paths. It
+    handles both direct test invocation from the repo root and ctest invocation
+    from the build directory.</p>
+<p class="Pp"></p>
+<p class="Pp">Search order:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>BUILD_DIR environment variable (if set)</dd>
+  <dt>2.</dt>
+  <dd>./build_docker/bin/ascii-chat (Docker from repo root)</dd>
+  <dt>3.</dt>
+  <dd>./build/bin/ascii-chat (local from repo root)</dd>
+  <dt>4.</dt>
+  <dd>./bin/ascii-chat (from build directory - ctest)</dd>
+  <dt>5.</dt>
+  <dd>/app/build_docker/bin/ascii-chat (Docker absolute)</dd>
+</dl>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Path to the ascii-chat binary, or a fallback path if not
+  found</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">The returned string is static - do not free it.
+<p class="Pp"></p>
+<p class="Pp">On Windows, returns paths with .exe extension.</p>
+</div>
+<p class="Pp"><b>Example</b></p>
+<div class="Bd-indent">
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>Test(my_suite, integration_test) {
+<br/>
+  const char *binary = test_get_binary_path();
+<br/>
+  pid_t pid = fork();
+<br/>
+  if (pid == 0) {
+<br/>
+    execl(binary, &quot;ascii-chat&quot;, &quot;server&quot;, &quot;--help&quot;, NULL);
+<br/>
+    exit(127);
+<br/>
+  }
+<br/>
+  // ...
+}
+</pre>
+</div>
+<p class="Pp">Definition at line <b>16</b> of file <b>tests/common.c</b>.</p>
+<pre>16                                        {
+17   static char binary_path[256];
+18   static bool initialized = false;
+19 
+20   if (initialized) {
+21     return binary_path;
+22   }
+23 
+24 #ifdef _WIN32
+25   // Windows: try several paths
+26   const char *candidates[] = {
+27       &quot;./build/bin/ascii-chat.exe&quot;,
+28       &quot;./bin/ascii-chat.exe&quot;,
+29       &quot;ascii-chat.exe&quot;,
+30   };
+31   const char *fallback = &quot;./build/bin/ascii-chat.exe&quot;;
+32 #else
+33   // Check if we're in Docker (/.dockerenv file exists)
+34   bool in_docker = (access(&quot;/.dockerenv&quot;, F_OK) == 0);
+35   const char *build_dir = getenv(&quot;BUILD_DIR&quot;);
+36 
+37   // Try BUILD_DIR first if set
+38   if (build_dir) {
+39     safe_snprintf(binary_path, sizeof(binary_path), &quot;./%s/bin/ascii-chat&quot;, build_dir);
+40     if (access(binary_path, X_OK) == 0) {
+41       initialized = true;
+42       return binary_path;
+43     }
+44   }
+45 
+46   // Try several paths in order of preference
+47   const char *candidates[] = {
+48       // Relative paths from repo root
+49       in_docker ? &quot;./build_docker/bin/ascii-chat&quot; : &quot;./build/bin/ascii-chat&quot;,
+50       // Relative paths from build directory (when ctest runs from there)
+51       &quot;./bin/ascii-chat&quot;,
+52       // Absolute paths for Docker
+53       in_docker ? &quot;/app/build_docker/bin/ascii-chat&quot; : NULL,
+54   };
+55   const char *fallback = in_docker ? &quot;./build_docker/bin/ascii-chat&quot; : &quot;./build/bin/ascii-chat&quot;;
+56 #endif
+57 
+58   // Try each candidate path
+59   for (size_t i = 0; i &lt; sizeof(candidates) / sizeof(candidates[0]); i++) {
+60     if (candidates[i] &amp;&amp; access(candidates[i], X_OK) == 0) {
+61       safe_snprintf(binary_path, sizeof(binary_path), &quot;%s&quot;, candidates[i]);
+62       initialized = true;
+63       return binary_path;
+64     }
+65   }
+66 
+67   // Fallback to default (will likely fail but gives useful error)
+68   safe_snprintf(binary_path, sizeof(binary_path), &quot;%s&quot;, fallback);
+69   initialized = true;
+70   return binary_path;
+71 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>candidates</b>, <b>initialized</b>, and
+    <b>safe_snprintf()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_test_logging_disable_("><a class="permalink" href="#int_test_logging_disable_(">int
+  test_logging_disable (<b>bool</b> disable_stdout, <b>bool</b>
+  disable_stderr)</a></h2>
+<p class="Pp">#include &lt;<b>lib/tests/logging.c</b>&gt;<b></b></p>
+<p class="Pp">Disable stdout/stderr output for quiet test execution.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>disable_stdout</i> If true, redirect stdout to
+  /dev/null
+<br/>
+<i>disable_stderr</i> If true, redirect stderr to /dev/null</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, -1 on error</div>
+<p class="Pp">Definition at line <b>33</b> of file <b>tests/logging.c</b>.</p>
+<pre>33                                                                    {
+34   // If already disabled, return success
+35   if (logging_disabled) {
+36     return 0;
+37   }
+38 
+39   // Open /dev/null for writing
+40   dev_null_fd = platform_open(&quot;/dev/null&quot;, PLATFORM_O_WRONLY);
+41   if (dev_null_fd == -1) {
+42     return -1;
+43   }
+44 
+45   // Save original file descriptors if we need to redirect them
+46   if (disable_stdout) {
+47     original_stdout_fd = dup(STDOUT_FILENO);
+48     if (original_stdout_fd == -1) {
+49       close(dev_null_fd);
+50       dev_null_fd = -1;
+51       return -1;
+52     }
+53     dup2(dev_null_fd, STDOUT_FILENO);
+54     // Reopen stdout to use the redirected file descriptor
+55     (void)freopen(&quot;/dev/null&quot;, &quot;w&quot;, stdout);
+56     // Make stdout unbuffered to ensure immediate redirection
+57     (void)setvbuf(stdout, NULL, _IONBF, 0);
+58   }
+59 
+60   if (disable_stderr) {
+61     original_stderr_fd = dup(STDERR_FILENO);
+62     if (original_stderr_fd == -1) {
+63       // Clean up stdout if it was redirected
+64       if (disable_stdout &amp;&amp; original_stdout_fd != -1) {
+65         dup2(original_stdout_fd, STDOUT_FILENO);
+66         close(original_stdout_fd);
+67         original_stdout_fd = -1;
+68       }
+69       close(dev_null_fd);
+70       dev_null_fd = -1;
+71       return -1;
+72     }
+73     dup2(dev_null_fd, STDERR_FILENO);
+74     // Reopen stderr to use the redirected file descriptor
+75     (void)freopen(&quot;/dev/null&quot;, &quot;w&quot;, stderr);
+76     // Make stderr unbuffered to ensure immediate redirection
+77     (void)setvbuf(stderr, NULL, _IONBF, 0);
+78   }
+79 
+80   logging_disabled = true;
+81   return 0;
+82 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>PLATFORM_O_WRONLY</b>, and
+  <b>platform_open()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> test_logging_is_disabled (void )</h2>
+<p class="Pp">#include &lt;<b>lib/tests/logging.c</b>&gt;<b></b></p>
+<p class="Pp">Check if logging is currently disabled.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if logging is disabled, false otherwise</div>
+<p class="Pp">Definition at line <b>132</b> of file <b>tests/logging.c</b>.</p>
+<pre>132                                     {
+133   return logging_disabled;
+134 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_test_logging_restore_(void_)"><a class="permalink" href="#int_test_logging_restore_(void_)">int
+  test_logging_restore (void )</a></h2>
+<p class="Pp">#include &lt;<b>lib/tests/logging.c</b>&gt;<b></b></p>
+<p class="Pp">Restore stdout/stderr output after test logging disable.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, -1 on error</div>
+<p class="Pp">Definition at line <b>89</b> of file <b>tests/logging.c</b>.</p>
+<pre>89                                {
+90   // If not disabled, return success
+91   if (!logging_disabled) {
+92     return 0;
+93   }
+94 
+95   // Restore original stdout
+96   if (original_stdout_fd != -1) {
+97     dup2(original_stdout_fd, STDOUT_FILENO);
+98     // Reopen stdout to use the restored file descriptor
+99     (void)freopen(&quot;/dev/stdout&quot;, &quot;w&quot;, stdout);
+100     // Restore line buffering for stdout
+101     (void)setvbuf(stdout, NULL, _IOLBF, 0);
+102     close(original_stdout_fd);
+103     original_stdout_fd = -1;
+104   }
+105 
+106   // Restore original stderr
+107   if (original_stderr_fd != -1) {
+108     dup2(original_stderr_fd, STDERR_FILENO);
+109     // Reopen stderr to use the restored file descriptor
+110     (void)freopen(&quot;/dev/stderr&quot;, &quot;w&quot;, stderr);
+111     // Restore unbuffered mode for stderr
+112     (void)setvbuf(stderr, NULL, _IONBF, 0);
+113     close(original_stderr_fd);
+114     original_stderr_fd = -1;
+115   }
+116 
+117   // Close /dev/null file descriptor
+118   if (dev_null_fd != -1) {
+119     close(dev_null_fd);
+120     dev_null_fd = -1;
+121   }
+122 
+123   logging_disabled = false;
+124   return 0;
+125 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

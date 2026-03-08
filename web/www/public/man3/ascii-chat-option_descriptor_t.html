@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>option_descriptor_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">option_descriptor_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">option_descriptor_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">option_descriptor_t - Option descriptor.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/options/builder.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">const char * <b>long_name</b>
+  <br/>
+  Long option name (e.g., <i>port&quot;).</i> char <b>short_name</b>
+  <br/>
+  Short option char (e.g., 'p', or '&#x00A0;' if none). <b>option_type_t</b>
+    <b>type</b>
+  <br/>
+  Value type. size_t <b>offset</b>
+  <br/>
+  offsetof(struct, field) - where to store value const char * <b>help_text</b>
+  <br/>
+  Description for --help. const char * <b>group</b>
+  <br/>
+  Group name for help sections (e.g., <i>NETWORK</i>OPTIONS&quot;).<i></i> const
+    char * <b>arg_placeholder</b>
+  <br/>
+  Custom argument placeholder (e.g.,
+    <i>SHELL</i>[FILE]&quot;<i>instead</i>of<i>STR</i>).<i></i> <b>bool</b>
+    <b>hide_from_mode_help</b>
+  <br/>
+  If true, don't show in mode-specific help (binary-level only). <b>bool</b>
+    <b>hide_from_binary_help</b>
+  <br/>
+  If true, don't show in binary-level help (e.g., in release builds). const void
+    * <b>default_value</b>
+  <br/>
+  Pointer to default value (or NULL if required). <b>bool</b> <b>required</b>
+  <br/>
+  If true, option must be provided. const char * <b>env_var_name</b>
+  <br/>
+  Environment variable fallback (or NULL). <b>bool</b>(* <b>validate</b> )(const
+    void *options_struct, char **<b>error_msg</b>)
+  <br/>
+  <b>bool</b>(* <b>parse_fn</b> )(const char *arg, void *dest, char
+    **<b>error_msg</b>)
+  <br/>
+  void(* <b>action_fn</b> )(void)
+  <br/>
+  Action to execute (may call exit). <b>bool</b> <b>owns_memory</b>
+  <br/>
+  If true, strings are strdup'd and freed on cleanup. <b>bool</b>
+    <b>optional_arg</b>
+  <br/>
+  If true, argument is optional (for callbacks like --verbose).
+    <b>option_mode_bitmask_t</b> <b>mode_bitmask</b>
+  <br/>
+  Which modes this option applies to. <b>option_metadata_t</b> <b>metadata</b>
+  <br/>
+  Metadata for shell completions (enums, ranges, examples, etc.). const void *(*
+    <b>mode_default_getter</b> )(<b>asciichat_mode_t</b> mode)
+  <br/>
+  Get mode-specific default value (NULL if not mode-aware).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Option descriptor.</p>
+<p class="Pp">Describes a single command-line option with all its metadata.
+    Includes both parsing information and completion metadata for generating
+    smart shell completions.</p>
+<p class="Pp">Definition at line <b>241</b> of file <b>builder.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void(*_option_descriptor_t::action_fn)_(void)"><a class="permalink" href="#void(*_option_descriptor_t::action_fn)_(void)">void(*
+  option_descriptor_t::action_fn) (void)</a></h2>
+<p class="Pp">Action to execute (may call exit).</p>
+<p class="Pp">Definition at line <b>269</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>, and
+    <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_option_descriptor_t::arg_placeholder"><a class="permalink" href="#const_char*_option_descriptor_t::arg_placeholder">const
+  char* option_descriptor_t::arg_placeholder</a></h2>
+<p class="Pp">Custom argument placeholder (e.g., &quot;SHELL [FILE]&quot;
+    instead of &quot;STR&quot;).</p>
+<p class="Pp">Definition at line <b>253</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>get_option_help_placeholder_str()</b>,
+    <b>manpage_content_generate_options()</b>,
+    <b>options_builder_set_arg_placeholder()</b>, and
+    <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_void*_option_descriptor_t::default_value"><a class="permalink" href="#const_void*_option_descriptor_t::default_value">const
+  void* option_descriptor_t::default_value</a></h2>
+<p class="Pp">Pointer to default value (or NULL if required).</p>
+<p class="Pp">Definition at line <b>258</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>format_option_default_value_str()</b>,
+    <b>manpage_content_generate_options()</b>,
+    <b>options_config_print_options_sections_with_width()</b>,
+    <b>options_config_print_usage()</b>, <b>options_config_set_defaults()</b>,
+    <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>, and
+    <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_option_descriptor_t::env_var_name"><a class="permalink" href="#const_char*_option_descriptor_t::env_var_name">const
+  char* option_descriptor_t::env_var_name</a></h2>
+<p class="Pp">Environment variable fallback (or NULL).</p>
+<p class="Pp">Definition at line <b>260</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_content_generate_environment()</b>,
+    <b>manpage_content_generate_environment_with_manual()</b>,
+    <b>options_config_generate_manpage_template()</b>,
+    <b>options_config_set_defaults()</b>, <b>options_config_validate()</b>,
+    <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>, and
+    <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_option_descriptor_t::group"><a class="permalink" href="#const_char*_option_descriptor_t::group">const
+  char* option_descriptor_t::group</a></h2>
+<p class="Pp">Group name for help sections (e.g., &quot;NETWORK
+  OPTIONS&quot;).</p>
+<p class="Pp">Definition at line <b>252</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>,
+    <b>manpage_content_generate_options()</b>,
+    <b>options_config_calculate_max_col_width()</b>,
+    <b>options_config_print_options_sections_with_width()</b>,
+    <b>options_config_print_usage()</b>, <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>, and
+    <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_option_descriptor_t::help_text"><a class="permalink" href="#const_char*_option_descriptor_t::help_text">const
+  char* option_descriptor_t::help_text</a></h2>
+<p class="Pp">Description for --help.</p>
+<p class="Pp">Definition at line <b>251</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>,
+    <b>manpage_content_generate_environment()</b>,
+    <b>manpage_content_generate_environment_with_manual()</b>,
+    <b>manpage_content_generate_options()</b>,
+    <b>options_config_print_options_sections_with_width()</b>,
+    <b>options_config_print_usage()</b>, <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>, and
+    <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> option_descriptor_t::hide_from_binary_help</h2>
+<p class="Pp">If true, don't show in binary-level help (e.g., in release
+    builds).</p>
+<p class="Pp">Definition at line <b>255</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_content_generate_options()</b>,
+    <b>option_applies_to_mode()</b>, <b>options_builder_add_action()</b>,
+    <b>options_config_calculate_max_col_width()</b>,
+    <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>, and
+    <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> option_descriptor_t::hide_from_mode_help</h2>
+<p class="Pp">If true, don't show in mode-specific help (binary-level only).</p>
+<p class="Pp">Definition at line <b>254</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_content_generate_options()</b>,
+    <b>option_applies_to_mode()</b>, <b>options_builder_mark_binary_only()</b>,
+    <b>options_config_calculate_max_col_width()</b>,
+    <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>, and
+    <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_option_descriptor_t::long_name"><a class="permalink" href="#const_char*_option_descriptor_t::long_name">const
+  char* option_descriptor_t::long_name</a></h2>
+<p class="Pp">Long option name (e.g., &quot;port&quot;).</p>
+<p class="Pp">Definition at line <b>243</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>,
+    <b>find_option()</b>, <b>find_option_descriptor()</b>,
+    <b>find_similar_option_with_mode()</b>,
+    <b>manpage_content_generate_environment_with_manual()</b>,
+    <b>manpage_content_generate_options()</b>,
+    <b>options_builder_mark_binary_only()</b>,
+    <b>options_config_calculate_max_col_width()</b>,
+    <b>options_config_print_options_sections_with_width()</b>,
+    <b>options_config_print_usage()</b>, <b>options_config_validate()</b>,
+    <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>, and
+    <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>option_metadata_t</b> option_descriptor_t::metadata</h2>
+<p class="Pp">Metadata for shell completions (enums, ranges, examples,
+  etc.).</p>
+<p class="Pp">Definition at line <b>281</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>,
+    <b>format_option_default_value_str()</b>,
+    <b>get_option_help_placeholder_str()</b>,
+    <b>options_builder_mark_as_list()</b>,
+    <b>options_builder_set_default_value_display()</b>,
+    <b>options_builder_set_enum_values()</b>,
+    <b>options_builder_set_examples()</b>,
+    <b>options_builder_set_input_type()</b>,
+    <b>options_builder_set_numeric_range()</b>, and
+    <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>option_mode_bitmask_t</b>
+  option_descriptor_t::mode_bitmask</h2>
+<p class="Pp">Which modes this option applies to.</p>
+<p class="Pp">Definition at line <b>278</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>,
+    <b>find_similar_option_with_mode()</b>,
+    <b>manpage_content_generate_options()</b>, <b>option_applies_to_mode()</b>,
+    <b>options_builder_set_mode_bitmask()</b>,
+    <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>, and
+    <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_void_*(*_option_descriptor_t::mode_default_getter)_("><a class="permalink" href="#const_void_*(*_option_descriptor_t::mode_default_getter)_(">const
+  void *(* option_descriptor_t::mode_default_getter) (<b>asciichat_mode_t</b>
+  mode)</a></h2>
+<p class="Pp">Get mode-specific default value (NULL if not mode-aware).</p>
+<p class="Pp">Definition at line <b>284</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>, and
+    <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_option_descriptor_t::offset"><a class="permalink" href="#size_t_option_descriptor_t::offset">size_t
+  option_descriptor_t::offset</a></h2>
+<p class="Pp">offsetof(struct, field) - where to store value</p>
+<p class="Pp">Definition at line <b>248</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>,
+    <b>is_option_set()</b>, <b>options_config_set_defaults()</b>,
+    <b>options_config_validate()</b>, <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>, <b>options_struct_destroy()</b>,
+    and <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> option_descriptor_t::optional_arg</h2>
+<p class="Pp">If true, argument is optional (for callbacks like --verbose).</p>
+<p class="Pp">Definition at line <b>275</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>, and
+    <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> option_descriptor_t::owns_memory</h2>
+<p class="Pp">If true, strings are strdup'd and freed on cleanup.</p>
+<p class="Pp">Definition at line <b>272</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>, <b>options_struct_destroy()</b>,
+    and <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b>(* option_descriptor_t::parse_fn) (const char *arg,
+  void *dest, char **<b>error_msg</b>)</h2>
+<p class="Pp">Definition at line <b>266</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>,
+    <b>options_config_set_defaults()</b>,
+    <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>, and
+    <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> option_descriptor_t::required</h2>
+<p class="Pp">If true, option must be provided.</p>
+<p class="Pp">Definition at line <b>259</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_content_generate_options()</b>,
+    <b>options_config_print_options_sections_with_width()</b>,
+    <b>options_config_print_usage()</b>, <b>options_config_validate()</b>,
+    <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>, and
+    <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_option_descriptor_t::short_name"><a class="permalink" href="#char_option_descriptor_t::short_name">char
+  option_descriptor_t::short_name</a></h2>
+<p class="Pp">Short option char (e.g., 'p', or '\0' if none).</p>
+<p class="Pp">Definition at line <b>244</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>find_option_descriptor()</b>,
+    <b>manpage_content_generate_options()</b>,
+    <b>options_config_calculate_max_col_width()</b>,
+    <b>options_config_print_options_sections_with_width()</b>,
+    <b>options_config_print_usage()</b>, <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>, and
+    <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>option_type_t</b> option_descriptor_t::type</h2>
+<p class="Pp">Value type.</p>
+<p class="Pp">Definition at line <b>247</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>,
+    <b>format_option_default_value_str()</b>,
+    <b>get_option_help_placeholder_str()</b>, <b>is_option_set()</b>,
+    <b>manpage_content_generate_options()</b>,
+    <b>options_config_print_options_sections_with_width()</b>,
+    <b>options_config_print_usage()</b>, <b>options_config_set_defaults()</b>,
+    <b>options_config_validate()</b>, <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>, <b>options_struct_destroy()</b>,
+    and <b>registry_entry_to_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b>(* option_descriptor_t::validate) (const void
+  *options_struct, char **<b>error_msg</b>)</h2>
+<p class="Pp">Definition at line <b>263</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>,
+    <b>options_config_validate()</b>, <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>, and
+    <b>registry_entry_to_descriptor()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

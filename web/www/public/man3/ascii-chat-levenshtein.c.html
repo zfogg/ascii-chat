@@ -39,13 +39,13 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">size_t <b>levenshtein_n</b> (const char *a, const size_t length,
-    const char *b, const size_t bLength)
+<p class="Pp">size_t <b>levenshtein_n</b> (const char *a, const size_t
+    <b>length</b>, const char *<b>b</b>, const size_t <b>bLength</b>)
   <br/>
-  size_t <b>levenshtein</b> (const char *a, const char *b)
+  size_t <b>levenshtein</b> (const char *a, const char *<b>b</b>)
   <br/>
   const char * <b>levenshtein_find_similar</b> (const char *unknown, const char
-    *const *candidates)
+    *const *<b>candidates</b>)
   <br/>
   <br/>
 </p>
@@ -145,7 +145,8 @@
 147 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>utf8_char_count()</b>, and
+<p class="Pp">References <b>b</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>utf8_char_count()</b>, and
     <b>utf8_to_codepoints()</b>.</p>
 <p class="Pp">Referenced by <b>find_similar_option()</b>,
     <b>find_similar_option_with_mode()</b>, and
@@ -181,7 +182,8 @@
 171 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>levenshtein()</b>.</p>
+<p class="Pp">References <b>candidates</b>, <b>levenshtein()</b>, and
+    <b>LEVENSHTEIN_SUGGESTION_THRESHOLD</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_suggest_enum_value()</b>, and
     <b>asciichat_suggest_mode()</b>.</p>
 </section>
@@ -243,6 +245,8 @@
 72 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>b</b>, <b>bLength</b>, <b>length</b>,
+    <b>SAFE_CALLOC</b>, and <b>SAFE_FREE</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -252,7 +256,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

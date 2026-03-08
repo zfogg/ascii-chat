@@ -39,13 +39,14 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">session_log_entry_t <b>entries</b> [SESSION_LOG_BUFFER_SIZE]
+<p class="Pp"><b>session_log_entry_t</b> <b>entries</b>
+    [<b>SESSION_LOG_BUFFER_SIZE</b>]
   <br/>
-  atomic_t <b>write_pos</b>
+  <b>atomic_t</b> <b>write_pos</b>
   <br/>
-  atomic_t <b>sequence</b>
+  <b>atomic_t</b> <b>sequence</b>
   <br/>
-  mutex_t <b>mutex</b>
+  <b>mutex_t</b> <b>mutex</b>
   <br/>
   <br/>
 </p>
@@ -62,8 +63,8 @@
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="session_log_entry_t_session_log_buffer::entries_SESSION_LOG_BUFFER_SIZE_"><a class="permalink" href="#session_log_entry_t_session_log_buffer::entries_SESSION_LOG_BUFFER_SIZE_">session_log_entry_t
-  session_log_buffer::entries[SESSION_LOG_BUFFER_SIZE]</a></h2>
+<h2 class="Ss"><b>session_log_entry_t</b>
+  session_log_buffer::entries[<b>SESSION_LOG_BUFFER_SIZE</b>]</h2>
 <p class="Pp">Definition at line <b>17</b> of file
   <b>session_log_buffer.c</b>.</p>
 <p class="Pp">Referenced by <b>session_log_buffer_append()</b>,
@@ -71,8 +72,7 @@
     <b>session_log_buffer_get_recent()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="mutex_t_session_log_buffer::mutex"><a class="permalink" href="#mutex_t_session_log_buffer::mutex">mutex_t
-  session_log_buffer::mutex</a></h2>
+<h2 class="Ss"><b>mutex_t</b> session_log_buffer::mutex</h2>
 <p class="Pp">Definition at line <b>20</b> of file
   <b>session_log_buffer.c</b>.</p>
 <p class="Pp">Referenced by <b>session_log_buffer_append()</b>,
@@ -81,8 +81,7 @@
     <b>session_log_buffer_get_recent()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="atomic_t_session_log_buffer::sequence"><a class="permalink" href="#atomic_t_session_log_buffer::sequence">atomic_t
-  session_log_buffer::sequence</a></h2>
+<h2 class="Ss"><b>atomic_t</b> session_log_buffer::sequence</h2>
 <p class="Pp">Definition at line <b>19</b> of file
   <b>session_log_buffer.c</b>.</p>
 <p class="Pp">Referenced by <b>session_log_buffer_append()</b>,
@@ -90,8 +89,7 @@
     <b>session_log_buffer_get_recent()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="atomic_t_session_log_buffer::write_pos"><a class="permalink" href="#atomic_t_session_log_buffer::write_pos">atomic_t
-  session_log_buffer::write_pos</a></h2>
+<h2 class="Ss"><b>atomic_t</b> session_log_buffer::write_pos</h2>
 <p class="Pp">Definition at line <b>18</b> of file
   <b>session_log_buffer.c</b>.</p>
 <p class="Pp">Referenced by <b>session_log_buffer_append()</b>,
@@ -107,7 +105,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

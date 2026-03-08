@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>webcam.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">webcam.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">webcam.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">webcam.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>webcam_device_info_t</b>
+  <br/>
+  Webcam device information structure.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>WEBCAM_DEVICE_NAME_MAX</b> 256
+  <br/>
+  Maximum length of webcam device name.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>webcam_context_t</b> <b>webcam_context_t</b>
+  <br/>
+  Opaque webcam context structure.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>webcam_list_devices</b>
+    (<b>webcam_device_info_t</b> **devices, unsigned int *count)
+  <br/>
+  Enumerate available webcam devices. void <b>webcam_free_device_list</b>
+    (<b>webcam_device_info_t</b> *devices)
+  <br/>
+  Free device list returned by <b>webcam_list_devices()</b>.
+    <b>asciichat_error_t</b> <b>webcam_init</b> (unsigned short int
+    webcam_index)
+  <br/>
+  Initialize global webcam interface. <b>image_t</b> * <b>webcam_read</b> (void)
+  <br/>
+  Capture a frame from global webcam. void <b>webcam_destroy</b> (void)
+  <br/>
+  Clean up global webcam interface. void <b>webcam_flush</b> (void)
+  <br/>
+  Flush/interrupt any pending webcam read operations. void
+    <b>webcam_print_init_error_help</b> (<b>asciichat_error_t</b>
+    <b>error_code</b>)
+  <br/>
+  Print helpful error diagnostics for webcam initialization failures.
+    <b>asciichat_error_t</b> <b>webcam_init_context</b> (<b>webcam_context_t</b>
+    **ctx, unsigned short int device_index)
+  <br/>
+  Initialize webcam context for advanced operations. void
+    <b>webcam_cleanup_context</b> (<b>webcam_context_t</b> *ctx)
+  <br/>
+  Clean up webcam context and release resources. void
+    <b>webcam_flush_context</b> (<b>webcam_context_t</b> *ctx)
+  <br/>
+  Flush/interrupt pending read operations on webcam context. <b>image_t</b> *
+    <b>webcam_read_context</b> (<b>webcam_context_t</b> *ctx)
+  <br/>
+  Capture a frame from webcam context. <b>image_t</b> * <b>webcam_read_async</b>
+    (<b>webcam_context_t</b> *ctx)
+  <br/>
+  Get the most recent frame from async camera thread (non-blocking).
+    <b>asciichat_error_t</b> <b>webcam_get_dimensions</b>
+    (<b>webcam_context_t</b> *ctx, int *width, int *height)
+  <br/>
+  Get webcam frame dimensions.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

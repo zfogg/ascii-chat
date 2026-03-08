@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>multi_source_frame_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">multi_source_frame_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">multi_source_frame_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">multi_source_frame_t - Multi-source frame structure for multi-user
+    support.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/ringbuffer.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint64_t</b> <b>magic</b>
+  <br/>
+  Magic number to detect corruption (FRAME_MAGIC when valid). char
+    <b>source_client_id</b> [64]
+  <br/>
+  Client ID that sent this frame. <b>uint32_t</b> <b>frame_sequence</b>
+  <br/>
+  Frame sequence number for ordering. <b>uint32_t</b> <b>timestamp</b>
+  <br/>
+  Timestamp when frame was captured. size_t <b>size</b>
+  <br/>
+  Actual size of frame data in bytes. char * <b>data</b>
+  <br/>
+  Pointer to frame data (not owned by this struct).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Multi-source frame structure for multi-user support.</p>
+<p class="Pp">Tracks which client sent the frame along with metadata including
+    sequence numbers and timestamps for proper frame ordering and display.</p>
+<p class="Pp">Definition at line <b>401</b> of file <b>ringbuffer.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char*_multi_source_frame_t::data"><a class="permalink" href="#char*_multi_source_frame_t::data">char*
+  multi_source_frame_t::data</a></h2>
+<p class="Pp">Pointer to frame data (not owned by this struct).</p>
+<p class="Pp">Definition at line <b>413</b> of file <b>ringbuffer.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> multi_source_frame_t::frame_sequence</h2>
+<p class="Pp">Frame sequence number for ordering.</p>
+<p class="Pp">Definition at line <b>407</b> of file <b>ringbuffer.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> multi_source_frame_t::magic</h2>
+<p class="Pp">Magic number to detect corruption (FRAME_MAGIC when valid).</p>
+<p class="Pp">Definition at line <b>403</b> of file <b>ringbuffer.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_multi_source_frame_t::size"><a class="permalink" href="#size_t_multi_source_frame_t::size">size_t
+  multi_source_frame_t::size</a></h2>
+<p class="Pp">Actual size of frame data in bytes.</p>
+<p class="Pp">Definition at line <b>411</b> of file <b>ringbuffer.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_multi_source_frame_t::source_client_id_64_"><a class="permalink" href="#char_multi_source_frame_t::source_client_id_64_">char
+  multi_source_frame_t::source_client_id[64]</a></h2>
+<p class="Pp">Client ID that sent this frame.</p>
+<p class="Pp">Definition at line <b>405</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Referenced by <b>framebuffer_write_multi_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> multi_source_frame_t::timestamp</h2>
+<p class="Pp">Timestamp when frame was captured.</p>
+<p class="Pp">Definition at line <b>409</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

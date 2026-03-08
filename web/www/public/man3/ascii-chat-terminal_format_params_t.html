@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>terminal_format_params_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">terminal_format_params_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">terminal_format_params_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">terminal_format_params_t - Terminal rendering format
+  parameters.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/webrtc/sdp.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Public_Types"><a class="permalink" href="#Public_Types">Public
+  Types</a></h2>
+<br/>
+<p class="Pp">enum { <b>RENDERER_BLOCK</b>, <b>RENDERER_HALFBLOCK</b>,
+    <b>RENDERER_BRAILLE</b> }
+  <br/>
+  enum { <b>CHARSET_ASCII</b>, <b>CHARSET_UTF8</b>, <b>CHARSET_UTF8_WIDE</b> }
+  <br/>
+  enum { <b>COMPRESSION_NONE</b>, <b>COMPRESSION_RLE</b>,
+    <b>COMPRESSION_ZSTD</b> }
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint16_t</b> <b>width</b>
+  <br/>
+  Terminal width in characters. <b>uint16_t</b> <b>height</b>
+  <br/>
+  Terminal height in characters. enum terminal_format_params_t:: { ... }
+    <b>renderer</b>
+  <br/>
+  enum terminal_format_params_t:: { ... } <b>charset</b>
+  <br/>
+  enum terminal_format_params_t:: { ... } <b>compression</b>
+  <br/>
+  <b>bool</b> <b>csi_rep_support</b>
+  <br/>
+  CSI REP (repeat) support. const char * <b>palette_hint</b>
+  <br/>
+  Palette name (informational).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Terminal rendering format parameters.</p>
+<p class="Pp">Definition at line <b>87</b> of file <b>sdp.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Member_Enumeration_Documentation"><a class="permalink" href="#Member_Enumeration_Documentation">Member
+  Enumeration Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">anonymous enum</h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="COMPRESSION_NONE"><a class="permalink" href="#COMPRESSION_NONE"><b><i>COMPRESSION_NONE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="COMPRESSION_RLE"><a class="permalink" href="#COMPRESSION_RLE"><b><i>COMPRESSION_RLE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="COMPRESSION_ZSTD"><a class="permalink" href="#COMPRESSION_ZSTD"><b><i>COMPRESSION_ZSTD
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>92</b> of file <b>sdp.h</b>.</p>
+<pre>92 { COMPRESSION_NONE, COMPRESSION_RLE, COMPRESSION_ZSTD } compression;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">anonymous enum</h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="RENDERER_BLOCK"><a class="permalink" href="#RENDERER_BLOCK"><b><i>RENDERER_BLOCK
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="RENDERER_HALFBLOCK"><a class="permalink" href="#RENDERER_HALFBLOCK"><b><i>RENDERER_HALFBLOCK
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="RENDERER_BRAILLE"><a class="permalink" href="#RENDERER_BRAILLE"><b><i>RENDERER_BRAILLE
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>90</b> of file <b>sdp.h</b>.</p>
+<pre>90 { RENDERER_BLOCK, RENDERER_HALFBLOCK, RENDERER_BRAILLE } renderer;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">anonymous enum</h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="CHARSET_ASCII"><a class="permalink" href="#CHARSET_ASCII"><b><i>CHARSET_ASCII
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="CHARSET_UTF8"><a class="permalink" href="#CHARSET_UTF8"><b><i>CHARSET_UTF8
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="CHARSET_UTF8_WIDE"><a class="permalink" href="#CHARSET_UTF8_WIDE"><b><i>CHARSET_UTF8_WIDE
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>91</b> of file <b>sdp.h</b>.</p>
+<pre>91 { CHARSET_ASCII, CHARSET_UTF8, CHARSET_UTF8_WIDE } charset;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">enum { ... } terminal_format_params_t::charset</h2>
+<p class="Pp">Referenced by <b>sdp_detect_terminal_capabilities()</b>,
+    <b>sdp_generate_answer()</b>, and <b>sdp_generate_offer()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">enum { ... } terminal_format_params_t::compression</h2>
+<p class="Pp">Referenced by <b>sdp_detect_terminal_capabilities()</b>,
+    <b>sdp_generate_answer()</b>, and <b>sdp_generate_offer()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> terminal_format_params_t::csi_rep_support</h2>
+<p class="Pp">CSI REP (repeat) support.</p>
+<p class="Pp">Definition at line <b>93</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Referenced by <b>sdp_detect_terminal_capabilities()</b>,
+    <b>sdp_generate_answer()</b>, and <b>sdp_generate_offer()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> terminal_format_params_t::height</h2>
+<p class="Pp">Terminal height in characters.</p>
+<p class="Pp">Definition at line <b>89</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Referenced by <b>sdp_detect_terminal_capabilities()</b>,
+    <b>sdp_generate_answer()</b>, <b>sdp_generate_offer()</b>, and
+    <b>sdp_get_selected_video_codec()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_terminal_format_params_t::palette_hint"><a class="permalink" href="#const_char*_terminal_format_params_t::palette_hint">const
+  char* terminal_format_params_t::palette_hint</a></h2>
+<p class="Pp">Palette name (informational).</p>
+<p class="Pp">Definition at line <b>94</b> of file <b>sdp.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">enum { ... } terminal_format_params_t::renderer</h2>
+<p class="Pp">Referenced by <b>sdp_detect_terminal_capabilities()</b>,
+    <b>sdp_generate_answer()</b>, and <b>sdp_generate_offer()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> terminal_format_params_t::width</h2>
+<p class="Pp">Terminal width in characters.</p>
+<p class="Pp">Definition at line <b>88</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Referenced by <b>sdp_detect_terminal_capabilities()</b>,
+    <b>sdp_generate_answer()</b>, <b>sdp_generate_offer()</b>, and
+    <b>sdp_get_selected_video_codec()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

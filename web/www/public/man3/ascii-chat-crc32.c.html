@@ -39,12 +39,16 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">uint32_t <b>asciichat_crc32_hw</b> (const void *data, size_t len)
+<p class="Pp"><b>uint32_t</b> <b>asciichat_crc32_hw</b> (const void *data,
+    size_t len)
   <br/>
-  <b>bool</b> <b>crc32_hw_is_available</b> (void)
+  Compute CRC32 checksum with hardware acceleration (if available). <b>bool</b>
+    <b>crc32_hw_is_available</b> (void)
   <br/>
-  uint32_t <b>asciichat_crc32_sw</b> (const void *data, size_t len)
+  Check if hardware CRC32 acceleration is available at runtime. <b>uint32_t</b>
+    <b>asciichat_crc32_sw</b> (const void *data, size_t len)
   <br/>
+  Compute CRC32 checksum using software implementation only.
   <br/>
 </p>
 </section>
@@ -59,94 +63,13 @@
 <p class="Pp">Definition in file <b>crc32.c</b>.</p>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="uint32_t_asciichat_crc32_hw_(const_void_*_data,_size_t_len)"><a class="permalink" href="#uint32_t_asciichat_crc32_hw_(const_void_*_data,_size_t_len)">uint32_t
-  asciichat_crc32_hw (const void * data, size_t len)</a></h2>
-<p class="Pp">Definition at line <b>132</b> of file <b>crc32.c</b>.</p>
-<pre>132                                                           {
-133   check_crc32_hw_support();
-134 
-135   if (!crc32_hw_available) {
-136     // DEBUG: Log fallback to software
-137     static bool logged_fallback = false;
-138     if (!logged_fallback) {
-139       log_debug(&quot;Using software CRC32 (no hardware acceleration)&quot;);
-140       logged_fallback = true;
-141     }
-142     return asciichat_crc32_sw(data, len);
-143   }
-144 
-145 #ifdef ARCH_ARM64
-146   static bool logged_arm = false;
-147   if (!logged_arm) {
-148     log_debug(&quot;Using ARM64 hardware CRC32&quot;);
-149     logged_arm = true;
-150   }
-151   return crc32_arm_hw(data, len);
-152 #elif defined(ARCH_X86_64)
-153   static bool logged_intel = false;
-154   if (!logged_intel) {
-155     log_debug(&quot;Using Intel x86_64 hardware CRC32 (SSE4.2)&quot;);
-156     logged_intel = true;
-157   }
-158   return crc32_intel_hw(data, len);
-159 #else
-160   return asciichat_crc32_sw(data, len);
-161 #endif
-162 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_crc32_sw()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="uint32_t_asciichat_crc32_sw_(const_void_*_data,_size_t_len)"><a class="permalink" href="#uint32_t_asciichat_crc32_sw_(const_void_*_data,_size_t_len)">uint32_t
-  asciichat_crc32_sw (const void * data, size_t len)</a></h2>
-<p class="Pp">Definition at line <b>171</b> of file <b>crc32.c</b>.</p>
-<pre>171                                                           {
-172   const uint8_t *bytes = (const uint8_t *)data;
-173   uint32_t crc = 0xFFFFFFFF;
-174 
-175   // CRC32-C (Castagnoli) polynomial: 0x1EDC6F41
-176   // Reversed (for LSB-first): 0x82F63B78
-177   for (size_t i = 0; i &lt; len; i++) {
-178     crc ^= bytes[i];
-179     for (int j = 0; j &lt; 8; j++) {
-180       if (crc &amp; 1) {
-181         crc = (crc &gt;&gt; 1) ^ 0x82F63B78; // CRC32-C polynomial (reversed)
-182       } else {
-183         crc &gt;&gt;= 1;
-184       }
-185     }
-186   }
-187 
-188   return ~crc;
-189 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>asciichat_crc32_hw()</b>, and
-    <b>client_serialize_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> crc32_hw_is_available (void )</h2>
-<p class="Pp">Definition at line <b>164</b> of file <b>crc32.c</b>.</p>
-<pre>164                                  {
-165   check_crc32_hw_support();
-166   return crc32_hw_available;
-167 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ringbuffer.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ringbuffer.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ringbuffer.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ringbuffer.h - Lock-Free Ring Buffer and Frame Buffer
+  Management.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>ringbuffer_t</b>
+  <br/>
+  Lock-free ring buffer structure. struct <b>audio_ring_buffer</b>
+  <br/>
+  Audio ring buffer for real-time audio streaming. struct <b>frame_t</b>
+  <br/>
+  Frame structure that stores both data and actual size. struct
+    <b>multi_source_frame_t</b>
+  <br/>
+  Multi-source frame structure for multi-user support. struct
+    <b>framebuffer_t</b>
+  <br/>
+  Frame buffer structure for managing video frames.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<p class="Pp"><b>Audio Ring Buffer Constants</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>AUDIO_RING_BUFFER_SIZE</b> 192000
+  <br/>
+  Audio ring buffer size in samples (192000 samples = 4 seconds @ 48kHz).
+    #define <b>AUDIO_JITTER_BUFFER_THRESHOLD</b> 4800
+  <br/>
+  Jitter buffer threshold - samples needed before starting playback. #define
+    <b>AUDIO_JITTER_LOW_WATER_MARK</b> 2400
+  <br/>
+  Low water mark - warn when available drops below this. #define
+    <b>AUDIO_JITTER_HIGH_WATER_MARK</b> (<b>AUDIO_JITTER_BUFFER_THRESHOLD</b> *
+    2)
+  <br/>
+  High water mark - drop OLD samples when buffer exceeds this. #define
+    <b>AUDIO_JITTER_TARGET_LEVEL</b> (<b>AUDIO_JITTER_BUFFER_THRESHOLD</b> +
+    480)
+  <br/>
+  Target buffer level after dropping old samples. #define
+    <b>AUDIO_CROSSFADE_SAMPLES</b> 256
+  <br/>
+  Crossfade duration in samples for smooth underrun recovery.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Frame Magic Numbers</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>FRAME_MAGIC</b> <b>MAGIC_FRAME_VALID</b>
+  <br/>
+  Magic number indicating a valid frame (0xDEADBEEF) - Alias for backward
+    compatibility. #define <b>FRAME_FREED</b> <b>MAGIC_FRAME_FREED</b>
+  <br/>
+  Magic number indicating a freed frame (0xFEEDFACE) - Alias for backward
+    compatibility.
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>audio_ring_buffer</b> <b>audio_ring_buffer_t</b>
+  <br/>
+  Audio ring buffer for real-time audio streaming.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>ringbuffer_t</b> * <b>ringbuffer_create</b> (size_t
+    element_size, size_t capacity)
+  <br/>
+  Create a new ring buffer. void <b>ringbuffer_destroy</b> (<b>ringbuffer_t</b>
+    *rb)
+  <br/>
+  Destroy a ring buffer and free its memory. <b>bool</b> <b>ringbuffer_write</b>
+    (<b>ringbuffer_t</b> *rb, const void *data)
+  <br/>
+  Try to write an element to the ring buffer (non-blocking). <b>bool</b>
+    <b>ringbuffer_read</b> (<b>ringbuffer_t</b> *rb, void *data)
+  <br/>
+  Try to read an element from the ring buffer (non-blocking). <b>bool</b>
+    <b>ringbuffer_peek</b> (<b>ringbuffer_t</b> *rb, void *data)
+  <br/>
+  Peek at the next element without removing it. size_t <b>ringbuffer_size</b>
+    (const <b>ringbuffer_t</b> *rb)
+  <br/>
+  Get current number of elements in the buffer. <b>bool</b>
+    <b>ringbuffer_is_empty</b> (const <b>ringbuffer_t</b> *rb)
+  <br/>
+  Check if buffer is empty. <b>bool</b> <b>ringbuffer_is_full</b> (const
+    <b>ringbuffer_t</b> *rb)
+  <br/>
+  Check if buffer is full. void <b>ringbuffer_clear</b> (<b>ringbuffer_t</b>
+    *rb)
+  <br/>
+  Clear all elements from the buffer. <b>framebuffer_t</b> *
+    <b>framebuffer_create</b> (size_t capacity)
+  <br/>
+  Create a frame buffer for ASCII frames. <b>framebuffer_t</b> *
+    <b>framebuffer_create_multi</b> (size_t capacity)
+  <br/>
+  Create a multi-source frame buffer for multi-user support. void
+    <b>framebuffer_destroy</b> (<b>framebuffer_t</b> *fb)
+  <br/>
+  Destroy a frame buffer. <b>bool</b> <b>framebuffer_write_frame</b>
+    (<b>framebuffer_t</b> *fb, const char *frame_data, size_t frame_size)
+  <br/>
+  Write a frame to the buffer. <b>bool</b> <b>framebuffer_read_frame</b>
+    (<b>framebuffer_t</b> *fb, <b>frame_t</b> *<b>frame</b>)
+  <br/>
+  Read a frame from the buffer. void <b>framebuffer_clear</b>
+    (<b>framebuffer_t</b> *fb)
+  <br/>
+  Clear all frames from the buffer, freeing their data. <b>bool</b>
+    <b>framebuffer_write_multi_frame</b> (<b>framebuffer_t</b> *fb, const char
+    *frame_data, size_t frame_size, <b>uint32_t</b> source_client_id,
+    <b>uint32_t</b> frame_sequence, <b>uint32_t</b> timestamp)
+  <br/>
+  Write a multi-source frame to the buffer (for multi-user support). <b>bool</b>
+    <b>framebuffer_read_multi_frame</b> (<b>framebuffer_t</b> *fb,
+    <b>multi_source_frame_t</b> *<b>frame</b>)
+  <br/>
+  Read a multi-source frame from the buffer. <b>bool</b>
+    <b>framebuffer_peek_latest_multi_frame</b> (<b>framebuffer_t</b> *fb,
+    <b>multi_source_frame_t</b> *<b>frame</b>)
+  <br/>
+  Peek at the latest multi-source frame without removing it.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Lock-Free Ring Buffer and Frame Buffer Management.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>ringbuffer.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

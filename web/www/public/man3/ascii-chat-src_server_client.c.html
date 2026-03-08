@@ -69,8 +69,8 @@
 <section class="Ss">
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
-<p class="Pp">typedef void(* <b>client_packet_handler_t</b>) (client_info_t
-    *client, const void *data, size_t len)
+<p class="Pp">typedef void(* <b>client_packet_handler_t</b>)
+    (<b>client_info_t</b> *client, const void *data, size_t len)
   <br/>
   <br/>
 </p>
@@ -85,19 +85,19 @@
   Async dispatch thread for WebRTC clients. void
     <b>broadcast_server_state_to_all_clients</b> (void)
   <br/>
-  Notify all clients of state changes. client_info_t * <b>find_client_by_id</b>
-    (const char *client_id)
+  Notify all clients of state changes. <b>client_info_t</b> *
+    <b>find_client_by_id</b> (const char *client_id)
   <br/>
-  Fast O(1) client lookup by ID using hash table. client_info_t *
+  Fast O(1) client lookup by ID using hash table. <b>client_info_t</b> *
     <b>find_client_by_socket</b> (<b>socket_t</b> socket)
   <br/>
-  Find client by socket descriptor using linear search. client_info_t *
+  Find client by socket descriptor using linear search. <b>client_info_t</b> *
     <b>add_client</b> (<b>server_context_t</b> *server_ctx, <b>socket_t</b>
     socket, const char *client_ip, int port)
   <br/>
-  client_info_t * <b>add_webrtc_client</b> (<b>server_context_t</b> *server_ctx,
-    <b>acip_transport_t</b> *transport, const char *client_ip, <b>bool</b>
-    start_threads)
+  <b>client_info_t</b> * <b>add_webrtc_client</b> (<b>server_context_t</b>
+    *server_ctx, <b>acip_transport_t</b> *transport, const char *client_ip,
+    <b>bool</b> start_threads)
   <br/>
   Register a WebRTC client with the server. int <b>remove_client</b>
     (<b>server_context_t</b> *server_ctx, const char *client_id)
@@ -108,17 +108,18 @@
     const char *client_id)
   <br/>
   Start threads for a WebRTC client after crypto initialization. void
-    <b>stop_client_threads</b> (client_info_t *client)
+    <b>stop_client_threads</b> (<b>client_info_t</b> *client)
   <br/>
-  void <b>cleanup_client_media_buffers</b> (client_info_t *client)
+  void <b>cleanup_client_media_buffers</b> (<b>client_info_t</b> *client)
   <br/>
-  void <b>cleanup_client_packet_queues</b> (client_info_t *client)
+  void <b>cleanup_client_packet_queues</b> (<b>client_info_t</b> *client)
   <br/>
-  int <b>process_encrypted_packet</b> (client_info_t *client, packet_type_t
-    *type, void **data, size_t *len, uint32_t *sender_id)
+  int <b>process_encrypted_packet</b> (<b>client_info_t</b> *client,
+    <b>packet_type_t</b> *type, void **data, size_t *len, <b>uint32_t</b>
+    *sender_id)
   <br/>
-  void <b>process_decrypted_packet</b> (client_info_t *client, packet_type_t
-    type, void *data, size_t len)
+  void <b>process_decrypted_packet</b> (<b>client_info_t</b> *client,
+    <b>packet_type_t</b> type, void *data, size_t len)
   <br/>
   <br/>
 </p>
@@ -128,7 +129,7 @@
 <br/>
 <p class="Pp"><b>client_manager_t</b> <b>g_client_manager</b>
   <br/>
-  Global client manager singleton - central coordination point. rwlock_t
+  Global client manager singleton - central coordination point. <b>rwlock_t</b>
     <b>g_client_manager_rwlock</b> = {0}
   <br/>
   Reader-writer lock protecting the global client manager.
@@ -177,15 +178,15 @@
   <dt>1.</dt>
   <dd><b>client_manager_t</b> (global singleton):</dd>
   <dt> &#x2022;</dt>
-  <dd>Array of client_info_t structs (backing storage)</dd>
+  <dd>Array of <b>client_info_t</b> structs (backing storage)</dd>
   <dt> &#x2022;</dt>
-  <dd>Hash table for O(1) client_id -&gt; client_info_t lookups</dd>
+  <dd>Hash table for O(1) client_id -&gt; <b>client_info_t</b> lookups</dd>
   <dt> &#x2022;</dt>
   <dd>Protected by reader-writer lock (g_client_manager_rwlock)</dd>
   <dt> &#x2022;</dt>
   <dd>Allows concurrent reads, exclusive writes</dd>
   <dt>2.</dt>
-  <dd>client_info_t (per-client state):</dd>
+  <dd><b>client_info_t</b> (per-client state):</dd>
   <dt> &#x2022;</dt>
   <dd>Network connection details and capabilities</dd>
   <dt> &#x2022;</dt>
@@ -349,9 +350,9 @@
 <h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="typedef_void(*_client_packet_handler_t)_(client_info_t_*client,_const_void_*data,_size_t_len)"><a class="permalink" href="#typedef_void(*_client_packet_handler_t)_(client_info_t_*client,_const_void_*data,_size_t_len)">typedef
-  void(* client_packet_handler_t) (client_info_t *client, const void *data,
-  size_t len)</a></h2>
+<h2 class="Ss" id="typedef_void(*_client_packet_handler_t)_("><a class="permalink" href="#typedef_void(*_client_packet_handler_t)_(">typedef
+  void(* client_packet_handler_t) (<b>client_info_t</b> *client, const void
+  *data, size_t len)</a></h2>
 <p class="Pp">Definition at line <b>168</b> of file
   <b>src/server/client.c</b>.</p>
 </section>
@@ -360,9 +361,8 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="client_info_t_*_add_client_("><a class="permalink" href="#client_info_t_*_add_client_(">client_info_t
-  * add_client (<b>server_context_t</b> * server_ctx, <b>socket_t</b> socket,
-  const char * client_ip, int port)</a></h2>
+<h2 class="Ss"><b>client_info_t</b> * add_client (<b>server_context_t</b> *
+  server_ctx, <b>socket_t</b> socket, const char * client_ip, int port)</h2>
 <p class="Pp">Definition at line <b>613</b> of file
   <b>src/server/client.c</b>.</p>
 <pre>613                                                                                                           {
@@ -746,30 +746,61 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_tcp_transport_create()</b>,
+    <b>client_info::active</b>, <b>packet_envelope_t::allocated_buffer</b>,
+    <b>packet_envelope_t::allocated_size</b>, <b>ASCIICHAT_OK</b>,
     <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
-    <b>atomic_store_u64()</b>, <b>audio_ring_buffer_create_for_capture()</b>,
+    <b>atomic_store_u64()</b>, <b>client_info::audio_queue</b>,
+    <b>audio_ring_buffer_create_for_capture()</b>,
     <b>audio_ring_buffer_destroy()</b>,
     <b>audio_ring_buffer_register_atomics()</b>,
     <b>broadcast_server_state_to_all_clients()</b>, <b>buffer_pool_free()</b>,
-    <b>crypto_handshake_is_ready()</b>, <b>crypto_server_get_context()</b>,
-    <b>g_audio_mixer</b>, <b>g_client_manager</b>,
+    <b>client_info::client_id</b>, <b>client_info::client_ip</b>,
+    <b>client_info::client_state_mutex</b>,
+    <b>client_info::codec_capabilities_audio</b>,
+    <b>client_info::codec_capabilities_video</b>,
+    <b>client_info::connected_at</b>, <b>client_info::crypto_handshake_ctx</b>,
+    <b>crypto_handshake_is_ready()</b>, <b>client_info::crypto_initialized</b>,
+    <b>crypto_server_get_context()</b>, <b>packet_envelope_t::data</b>,
+    <b>client_info::display_name</b>, <b>errno</b>, <b>ERROR_INTERNAL</b>,
+    <b>ERROR_MEMORY</b>, <b>g_audio_mixer</b>, <b>g_client_manager</b>,
     <b>g_client_manager_rwlock</b>, <b>generate_client_id()</b>,
-    <b>generate_client_name()</b>, <b>handle_client_capabilities_packet()</b>,
-    <b>mixer_add_source()</b>, <b>mutex_init()</b>,
-    <b>network_error_string()</b>, <b>packet_queue_create_with_pools()</b>,
-    <b>packet_queue_destroy()</b>, <b>receive_packet_secure()</b>,
-    <b>remove_client()</b>, <b>safe_snprintf()</b>,
+    <b>generate_client_name()</b>, <b>GET_OPTION</b>,
+    <b>handle_client_capabilities_packet()</b>,
+    <b>client_info::incoming_audio_buffer</b>,
+    <b>client_info::incoming_video_buffer</b>,
+    <b>client_info::is_tcp_client</b>,
+    <b>client_info::last_rendered_grid_sources</b>,
+    <b>client_info::last_sent_grid_sources</b>, <b>packet_envelope_t::len</b>,
+    <b>log_debug</b>, <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>,
+    <b>log_info</b>, <b>log_warn</b>, <b>MAX_CLIENT_ID_LEN</b>,
+    <b>MAX_CLIENTS</b>, <b>MAX_FRAME_BUFFER_SIZE</b>, <b>mixer_add_source()</b>,
+    <b>mutex_init()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>NAMED_REGISTER_CLIENT</b>, <b>network_error_string()</b>,
+    <b>NS_PER_SEC_INT</b>, <b>client_info::outgoing_video_buffer</b>,
+    <b>packet_queue_create_with_pools()</b>, <b>packet_queue_destroy()</b>,
+    <b>PACKET_RECV_SUCCESS</b>, <b>PACKET_TYPE_CLIENT_CAPABILITIES</b>,
+    <b>client_info::pending_packet_length</b>,
+    <b>client_info::pending_packet_payload</b>,
+    <b>client_info::pending_packet_type</b>, <b>client_info::port</b>,
+    <b>receive_packet_secure()</b>, <b>remove_client()</b>,
+    <b>rwlock_wrlock</b>, <b>rwlock_wrunlock</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC_ALIGNED</b>, <b>safe_snprintf()</b>, <b>SAFE_STRERROR</b>,
+    <b>SAFE_STRNCPY</b>, <b>client_info::send_buffer</b>,
+    <b>client_info::send_buffer_size</b>, <b>client_info::send_mutex</b>,
     <b>server_crypto_handshake()</b>, <b>server_crypto_init()</b>,
+    <b>client_info::server_ctx</b>, <b>client_info::session_client_id</b>,
     <b>server_context_t::session_host</b>, <b>session_host_add_client()</b>,
-    <b>set_socket_timeout()</b>, <b>server_context_t::tcp_server</b>,
-    <b>tcp_server_add_client()</b>, <b>video_frame_buffer_create()</b>, and
+    <b>SET_ERRNO</b>, <b>set_socket_timeout()</b>,
+    <b>client_info::shutting_down</b>, <b>client_info::socket</b>,
+    <b>socket_send()</b>, <b>server_context_t::tcp_server</b>,
+    <b>tcp_server_add_client()</b>, <b>client_info::transport</b>,
+    <b>packet_envelope_t::type</b>, <b>video_frame_buffer_create()</b>, and
     <b>video_frame_buffer_destroy()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="client_info_t_*_add_webrtc_client_("><a class="permalink" href="#client_info_t_*_add_webrtc_client_(">client_info_t
-  * add_webrtc_client (<b>server_context_t</b> * server_ctx,
-  <b>acip_transport_t</b> * transport, const char * client_ip, <b>bool</b>
-  start_threads)</a></h2>
+<h2 class="Ss"><b>client_info_t</b> * add_webrtc_client (<b>server_context_t</b>
+  * server_ctx, <b>acip_transport_t</b> * transport, const char * client_ip,
+  <b>bool</b> start_threads)</h2>
 <p class="Pp">Register a WebRTC client with the server. Registers a client that
     connected via WebRTC data channel instead of TCP socket. This function
     reuses most of <b>add_client()</b> logic but skips:</p>
@@ -783,7 +814,7 @@
   <li>Takes an already-created acip_transport_t* instead of socket</li>
   <li>No crypto handshake (WebRTC signaling handled authentication)</li>
   <li>No socket configuration (WebRTC handles buffering)</li>
-  <li>Uses generic thread spawning instead of tcp_server thread pool</li>
+  <li>Uses generic thread spawning instead of <b>tcp_server</b> thread pool</li>
 </ul>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>server_ctx</i> Server context
@@ -792,7 +823,7 @@
 <br/>
 <i>client_ip</i> Client IP address for logging (may be empty for P2P)</div>
 <p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to client_info_t on success, NULL on
+<div class="Bd-indent">Pointer to <b>client_info_t</b> on success, NULL on
   failure</div>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">The transport must be fully initialized and ready to
@@ -1081,16 +1112,49 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_send_server_state()</b>,
+    <b>client_info::active</b>,
+    <b>server_state_packet_t::active_client_count</b>, <b>ASCIICHAT_OK</b>,
     <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
-    <b>atomic_store_u64()</b>, <b>audio_ring_buffer_create_for_capture()</b>,
+    <b>atomic_store_u64()</b>, <b>client_info::audio_queue</b>,
+    <b>audio_ring_buffer_create_for_capture()</b>,
     <b>audio_ring_buffer_destroy()</b>,
-    <b>broadcast_server_state_to_all_clients()</b>, <b>g_audio_mixer</b>,
+    <b>broadcast_server_state_to_all_clients()</b>,
+    <b>client_info::client_id</b>, <b>client_info::client_ip</b>,
+    <b>client_info::client_state_mutex</b>, <b>cond_init()</b>,
+    <b>client_info::connected_at</b>,
+    <b>server_state_packet_t::connected_client_count</b>,
+    <b>client_info::crypto_handshake_ctx</b>,
+    <b>client_info::crypto_initialized</b>,
+    <b>client_info::dispatch_queue_cond</b>, <b>client_info::display_name</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+    <b>ERROR_RESOURCE_EXHAUSTED</b>, <b>g_audio_mixer</b>,
     <b>g_client_manager</b>, <b>g_client_manager_rwlock</b>,
-    <b>generate_client_id()</b>, <b>mixer_add_source()</b>, <b>mutex_init()</b>,
-    <b>packet_queue_create_with_pools()</b>, <b>remove_client()</b>,
-    <b>send_server_state_to_client()</b>, <b>server_context_t::session_host</b>,
-    <b>session_host_add_client()</b>, <b>video_frame_buffer_create()</b>, and
-    <b>video_frame_buffer_destroy()</b>.</p>
+    <b>generate_client_id()</b>, <b>GET_OPTION</b>, <b>HOST_TO_NET_U32</b>,
+    <b>client_info::incoming_audio_buffer</b>,
+    <b>client_info::incoming_video_buffer</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>client_info::is_tcp_client</b>,
+    <b>client_info::last_rendered_grid_sources</b>,
+    <b>client_info::last_sent_grid_sources</b>, <b>log_debug</b>,
+    <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
+    <b>MAX_CLIENT_ID_LEN</b>, <b>MAX_CLIENTS</b>, <b>MAX_FRAME_BUFFER_SIZE</b>,
+    <b>mixer_add_source()</b>, <b>mutex_init()</b>,
+    <b>client_info::outgoing_video_buffer</b>,
+    <b>packet_queue_create_with_pools()</b>,
+    <b>client_info::pending_packet_length</b>,
+    <b>client_info::pending_packet_payload</b>,
+    <b>client_info::pending_packet_type</b>, <b>client_info::port</b>,
+    <b>client_info::received_packet_queue</b>, <b>remove_client()</b>,
+    <b>server_state_packet_t::reserved</b>, <b>rwlock_rdlock</b>,
+    <b>rwlock_rdunlock</b>, <b>rwlock_wrlock</b>, <b>rwlock_wrunlock</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC_ALIGNED</b>, <b>SAFE_STRNCPY</b>,
+    <b>client_info::send_buffer</b>, <b>client_info::send_buffer_size</b>,
+    <b>client_info::send_mutex</b>, <b>send_server_state_to_client()</b>,
+    <b>client_info::server_ctx</b>, <b>client_info::session_client_id</b>,
+    <b>server_context_t::session_host</b>, <b>session_host_add_client()</b>,
+    <b>SET_ERRNO</b>, <b>client_info::shutting_down</b>,
+    <b>client_info::socket</b>, <b>client_info::transport</b>,
+    <b>video_frame_buffer_create()</b>, and
+  <b>video_frame_buffer_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_broadcast_server_state_to_all_clients_(void_)"><a class="permalink" href="#void_broadcast_server_state_to_all_clients_(void_)">void
@@ -1225,16 +1289,25 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_send_server_state()</b>,
-    <b>atomic_load_bool()</b>, <b>crypto_handshake_get_context()</b>,
-    <b>find_client_by_id()</b>, <b>g_client_manager</b>,
-    <b>g_client_manager_rwlock</b>, <b>time_elapsed_ns()</b>,
-    <b>time_get_ns()</b>, and <b>time_pretty()</b>.</p>
+    <b>server_state_packet_t::active_client_count</b>, <b>ASCIICHAT_OK</b>,
+    <b>atomic_load_bool()</b>, <b>client_info::client_id</b>,
+    <b>server_state_packet_t::connected_client_count</b>,
+    <b>crypto_handshake_get_context()</b>, <b>find_client_by_id()</b>,
+    <b>g_client_manager</b>, <b>g_client_manager_rwlock</b>, <b>GET_OPTION</b>,
+    <b>HOST_TO_NET_U32</b>, <b>INVALID_SOCKET_VALUE</b>, <b>log_debug</b>,
+    <b>log_debug_every</b>, <b>log_error</b>, <b>log_warn</b>,
+    <b>MAX_CLIENT_ID_LEN</b>, <b>MAX_CLIENTS</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, <b>NS_PER_MS_INT</b>,
+    <b>server_state_packet_t::reserved</b>, <b>rwlock_rdlock</b>,
+    <b>rwlock_rdunlock</b>, <b>SAFE_STRNCPY</b>, <b>client_info::send_mutex</b>,
+    <b>time_elapsed_ns()</b>, <b>time_get_ns()</b>, <b>time_pretty()</b>,
+    <b>client_info::transport</b>, and <b>US_PER_MS_INT</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>, and
     <b>remove_client()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_cleanup_client_media_buffers_(client_info_t_*_client)"><a class="permalink" href="#void_cleanup_client_media_buffers_(client_info_t_*_client)">void
-  cleanup_client_media_buffers (client_info_t * client)</a></h2>
+<h2 class="Ss" id="void_cleanup_client_media_buffers_("><a class="permalink" href="#void_cleanup_client_media_buffers_(">void
+  cleanup_client_media_buffers (<b>client_info_t</b> * client)</a></h2>
 <p class="Pp">Definition at line <b>2671</b> of file
   <b>src/server/client.c</b>.</p>
 <pre>2671                                                          {
@@ -1293,11 +1366,18 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>audio_ring_buffer_destroy()</b>,
-    <b>opus_codec_destroy()</b>, and <b>video_frame_buffer_destroy()</b>.</p>
+    <b>ERROR_INVALID_PARAM</b>, <b>client_info::h265_decode_frame</b>,
+    <b>client_info::h265_decoder_ctx</b>, <b>client_info::h265_rgb_frame</b>,
+    <b>client_info::h265_sws_ctx</b>, <b>client_info::incoming_audio_buffer</b>,
+    <b>client_info::incoming_video_buffer</b>, <b>opus_codec_destroy()</b>,
+    <b>client_info::opus_decoder</b>, <b>client_info::outgoing_video_buffer</b>,
+    <b>SAFE_FREE</b>, <b>client_info::send_buffer</b>,
+    <b>client_info::send_buffer_size</b>, <b>SET_ERRNO</b>, and
+    <b>video_frame_buffer_destroy()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_cleanup_client_packet_queues_(client_info_t_*_client)"><a class="permalink" href="#void_cleanup_client_packet_queues_(client_info_t_*_client)">void
-  cleanup_client_packet_queues (client_info_t * client)</a></h2>
+<h2 class="Ss" id="void_cleanup_client_packet_queues_("><a class="permalink" href="#void_cleanup_client_packet_queues_(">void
+  cleanup_client_packet_queues (<b>client_info_t</b> * client)</a></h2>
 <p class="Pp">Definition at line <b>2725</b> of file
   <b>src/server/client.c</b>.</p>
 <pre>2725                                                          {
@@ -1319,7 +1399,9 @@
 2741 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_queue_destroy()</b>.</p>
+<p class="Pp">References <b>client_info::audio_queue</b>,
+    <b>packet_queue_destroy()</b>, and
+    <b>client_info::received_packet_queue</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_*_client_dispatch_thread_(void_*_arg)"><a class="permalink" href="#void_*_client_dispatch_thread_(void_*_arg)">void
@@ -1491,10 +1573,21 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_handle_server_packet()</b>,
-    <b>atomic_load_bool()</b>, <b>crypto_decrypt()</b>,
-    <b>crypto_result_to_string()</b>, <b>g_should_exit</b>,
+    <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
+    <b>client_info::client_id</b>, <b>client_info::client_state_mutex</b>,
+    <b>cond_timedwait</b>, <b>acip_transport::crypto_ctx</b>,
+    <b>crypto_decrypt()</b>, <b>CRYPTO_OK</b>, <b>crypto_result_to_string()</b>,
+    <b>queued_packet_t::data</b>, <b>queued_packet_t::data_len</b>,
+    <b>client_info::dispatch_queue_cond</b>,
+    <b>client_info::dispatch_thread_running</b>, <b>g_should_exit</b>,
+    <b>packet_header_t::length</b>, <b>log_dev_every</b>, <b>log_error</b>,
+    <b>log_info</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>NET_TO_HOST_U16</b>, <b>NET_TO_HOST_U32</b>,
     <b>packet_queue_free_packet()</b>, <b>packet_queue_try_dequeue()</b>,
-    <b>time_get_ns()</b>, and <b>time_pretty()</b>.</p>
+    <b>PACKET_TYPE_ENCRYPTED</b>, <b>client_info::received_packet_queue</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>time_get_ns()</b>,
+    <b>time_pretty()</b>, <b>client_info::transport</b>,
+    <b>packet_header_t::type</b>, and <b>US_PER_MS_INT</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_*_client_receive_thread_(void_*_arg)"><a class="permalink" href="#void_*_client_receive_thread_(void_*_arg)">void
@@ -1732,11 +1825,30 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_server_receive_and_dispatch()</b>,
-    <b>asciichat_errno_destroy()</b>, <b>asciichat_thread_self()</b>,
+    <b>client_info::active</b>, <b>asciichat_errno_destroy()</b>,
+    <b>ASCIICHAT_OK</b>, <b>asciichat_thread_self()</b>,
     <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
-    <b>buffer_pool_free()</b>, <b>g_should_exit</b>,
-    <b>packet_queue_enqueue()</b>, <b>platform_sleep_ms()</b>, and
-    <b>remove_client()</b>.</p>
+    <b>client_info::audio_render_thread_running</b>, <b>buffer_pool_free()</b>,
+    <b>client_info::client_id</b>, <b>asciichat_error_context_t::code</b>,
+    <b>cond_signal()</b>, <b>asciichat_error_context_t::context_message</b>,
+    <b>client_info::dispatch_queue_cond</b>, <b>client_info::display_name</b>,
+    <b>ERROR_CRYPTO</b>, <b>ERROR_NETWORK</b>, <b>g_should_exit</b>,
+    <b>HAS_ERRNO</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>client_info::is_tcp_client</b>, <b>packet_header_t::length</b>,
+    <b>log_debug</b>, <b>log_dev_every</b>, <b>log_error</b>,
+    <b>log_error_client</b>, <b>log_info</b>, <b>log_warn</b>,
+    <b>acip_transport::methods</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>NET_TO_HOST_U16</b>, <b>NET_TO_HOST_U32</b>,
+    <b>packet_queue_enqueue()</b>, <b>platform_sleep_ms()</b>,
+    <b>client_info::protocol_disconnect_requested</b>,
+    <b>client_info::receive_thread_id</b>,
+    <b>client_info::received_packet_queue</b>,
+    <b>acip_transport_methods_t::recv</b>, <b>remove_client()</b>,
+    <b>client_info::send_mutex</b>, <b>client_info::send_thread_running</b>,
+    <b>client_info::server_ctx</b>, <b>client_info::shutting_down</b>,
+    <b>client_info::socket</b>, <b>client_info::transport</b>,
+    <b>packet_header_t::type</b>, and
+    <b>client_info::video_render_thread_running</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_*_client_send_thread_func_(void_*_arg)"><a class="permalink" href="#void_*_client_send_thread_func_(void_*_arg)">void
@@ -2247,19 +2359,39 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_send_ascii_frame()</b>,
     <b>acip_send_audio_batch()</b>, <b>acip_send_audio_opus_batch()</b>,
-    <b>acip_send_clear_console()</b>, <b>asciichat_errno_destroy()</b>,
+    <b>acip_send_clear_console()</b>, <b>client_info::active</b>,
+    <b>asciichat_errno_destroy()</b>, <b>ASCIICHAT_OK</b>,
     <b>atomic_fetch_add_u64()</b>, <b>atomic_load_bool()</b>,
     <b>atomic_store_bool()</b>, <b>atomic_store_u64()</b>,
+    <b>client_info::audio_queue</b>, <b>AUDIO_SAMPLE_RATE</b>,
+    <b>client_info::client_id</b>, <b>client_info::client_state_mutex</b>,
+    <b>client_info::crypto_handshake_ctx</b>,
     <b>crypto_handshake_is_ready()</b>, <b>crypto_handshake_rekey_request()</b>,
-    <b>crypto_handshake_should_rekey()</b>, <b>frame</b>, <b>g_should_exit</b>,
-    <b>MAX_AUDIO_BATCH</b>, <b>packet_queue_free_packet()</b>,
-    <b>packet_queue_try_dequeue()</b>, <b>packet_send_via_transport()</b>,
-    <b>platform_sleep_us()</b>, <b>time_elapsed_ns()</b>, <b>time_get_ns()</b>,
-    <b>time_pretty()</b>, and <b>video_frame_get_latest()</b>.</p>
+    <b>crypto_handshake_should_rekey()</b>,
+    <b>client_info::crypto_initialized</b>, <b>queued_packet_t::data_len</b>,
+    <b>client_info::display_name</b>, <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>,
+    <b>frame</b>, <b>client_info::frames_sent_count</b>, <b>g_should_exit</b>,
+    <b>GET_OPTION</b>, <b>client_info::height</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>client_info::last_rendered_grid_sources</b>,
+    <b>client_info::last_sent_grid_sources</b>, <b>log_debug</b>,
+    <b>log_debug_every</b>, <b>log_dev</b>, <b>log_dev_every</b>,
+    <b>log_error</b>, <b>log_info</b>, <b>log_info_client</b>,
+    <b>log_info_every</b>, <b>LOG_RATE_DEFAULT</b>, <b>LOG_RATE_FAST</b>,
+    <b>log_warn</b>, <b>log_warn_every</b>, <b>MAX_AUDIO_BATCH</b>,
+    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>NET_TO_HOST_U16</b>,
+    <b>NS_PER_MS</b>, <b>client_info::outgoing_video_buffer</b>,
+    <b>packet_queue_free_packet()</b>, <b>packet_queue_try_dequeue()</b>,
+    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>,
+    <b>platform_sleep_us()</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>client_info::send_mutex</b>, <b>client_info::send_thread_running</b>,
+    <b>SET_ERRNO</b>, <b>client_info::shutting_down</b>,
+    <b>client_info::socket</b>, <b>time_elapsed_ns()</b>, <b>time_get_ns()</b>,
+    <b>time_pretty()</b>, <b>client_info::transport</b>, <b>US_PER_MS_INT</b>,
+    <b>video_frame_get_latest()</b>, and <b>client_info::width</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="client_info_t_*_find_client_by_id_(const_char_*_client_id)"><a class="permalink" href="#client_info_t_*_find_client_by_id_(const_char_*_client_id)">client_info_t
-  * find_client_by_id (const char * client_id)</a></h2>
+<h2 class="Ss"><b>client_info_t</b> * find_client_by_id (const char *
+  client_id)</h2>
 <p class="Pp">Fast O(1) client lookup by ID using hash table. This is the
     primary method for locating clients throughout the server. It uses a hash
     table for constant-time lookups regardless of client count, making it
@@ -2281,8 +2413,8 @@
 <div class="Bd-indent"><i>client_id</i> Unique identifier for the client (0 is
   invalid)</div>
 <p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to client_info_t if found, NULL if not found or
-  invalid ID</div>
+<div class="Bd-indent">Pointer to <b>client_info_t</b> if found, NULL if not
+  found or invalid ID</div>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Does not require external locking - hash table provides
   thread safety
@@ -2314,8 +2446,9 @@
 405 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>g_client_manager</b>, and
-    <b>g_client_manager_rwlock</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>g_client_manager</b>,
+    <b>g_client_manager_rwlock</b>, <b>log_warn</b>, <b>rwlock_rdlock</b>,
+    <b>rwlock_rdunlock</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>broadcast_server_state_to_all_clients()</b>,
     <b>crypto_server_cleanup_client()</b>,
     <b>crypto_server_decrypt_packet()</b>,
@@ -2324,8 +2457,8 @@
   <b>start_webrtc_client_threads()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="client_info_t_*_find_client_by_socket_("><a class="permalink" href="#client_info_t_*_find_client_by_socket_(">client_info_t
-  * find_client_by_socket (<b>socket_t</b> socket)</a></h2>
+<h2 class="Ss"><b>client_info_t</b> * find_client_by_socket (<b>socket_t</b>
+  socket)</h2>
 <p class="Pp">Find client by socket descriptor using linear search. This
     function provides socket-based client lookup, primarily used during
     connection establishment before client IDs are assigned. Less efficient than
@@ -2348,7 +2481,7 @@
 <div class="Bd-indent"><i>socket</i> Platform-abstracted socket descriptor to
   search for</div>
 <p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to client_info_t if found, NULL if not
+<div class="Bd-indent">Pointer to <b>client_info_t</b> if found, NULL if not
   found</div>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Only searches active clients (avoids returning stale
@@ -2375,13 +2508,14 @@
 443 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, <b>g_client_manager</b>, and
-    <b>g_client_manager_rwlock</b>.</p>
+<p class="Pp">References <b>atomic_load_bool()</b>, <b>g_client_manager</b>,
+    <b>g_client_manager_rwlock</b>, <b>MAX_CLIENTS</b>, <b>rwlock_rdlock</b>,
+    and <b>rwlock_rdunlock</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_process_decrypted_packet_(client_info_t_*_client,_packet_type_t_type,_void_*_data,_size_t_len)"><a class="permalink" href="#void_process_decrypted_packet_(client_info_t_*_client,_packet_type_t_type,_void_*_data,_size_t_len)">void
-  process_decrypted_packet (client_info_t * client, packet_type_t type, void *
-  data, size_t len)</a></h2>
+<h2 class="Ss" id="void_process_decrypted_packet_("><a class="permalink" href="#void_process_decrypted_packet_(">void
+  process_decrypted_packet (<b>client_info_t</b> * client, <b>packet_type_t</b>
+  type, void * data, size_t len)</a></h2>
 <p class="Pp">Process a decrypted packet from a client</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
@@ -2428,12 +2562,14 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>check_and_record_packet_rate_limit()</b>,
-    <b>disconnect_client_for_bad_data()</b>, and <b>g_rate_limiter</b>.</p>
+    <b>client_info::client_id</b>, <b>client_info::client_ip</b>,
+    <b>disconnect_client_for_bad_data()</b>, <b>g_rate_limiter</b>,
+    <b>log_debug</b>, <b>log_error</b>, and <b>client_info::socket</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_process_encrypted_packet_(client_info_t_*_client,_packet_type_t_*_type,_void_**_data,_size_t_*_len,_uint32_t_*_sender_id)"><a class="permalink" href="#int_process_encrypted_packet_(client_info_t_*_client,_packet_type_t_*_type,_void_**_data,_size_t_*_len,_uint32_t_*_sender_id)">int
-  process_encrypted_packet (client_info_t * client, packet_type_t * type, void
-  ** data, size_t * len, uint32_t * sender_id)</a></h2>
+<h2 class="Ss" id="int_process_encrypted_packet_("><a class="permalink" href="#int_process_encrypted_packet_(">int
+  process_encrypted_packet (<b>client_info_t</b> * client, <b>packet_type_t</b>
+  * type, void ** data, size_t * len, <b>uint32_t</b> * sender_id)</a></h2>
 <p class="Pp">Process an encrypted packet from a client</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
@@ -2503,8 +2639,11 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    <b>crypto_server_decrypt_packet()</b>, and
-  <b>crypto_server_is_ready()</b>.</p>
+    <b>client_info::client_id</b>, <b>packet_header_t::client_id</b>,
+    <b>crypto_server_decrypt_packet()</b>, <b>crypto_server_is_ready()</b>,
+    <b>ERROR_CRYPTO</b>, <b>log_error</b>, <b>NET_TO_HOST_U16</b>,
+    <b>NET_TO_HOST_U32</b>, <b>SET_ERRNO</b>, and
+  <b>packet_header_t::type</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_remove_client_("><a class="permalink" href="#int_remove_client_(">int
@@ -2804,16 +2943,37 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_transport_destroy()</b>,
-    <b>asciichat_thread_equal()</b>, <b>asciichat_thread_join()</b>,
-    <b>asciichat_thread_self()</b>, <b>atomic_load_bool()</b>,
-    <b>atomic_store_bool()</b>, <b>broadcast_server_state_to_all_clients()</b>,
-    <b>crypto_handshake_destroy()</b>, <b>g_audio_mixer</b>,
-    <b>g_client_manager</b>, <b>g_client_manager_rwlock</b>,
-    <b>mixer_remove_source()</b>, <b>mutex_destroy()</b>,
+    <b>client_info::active</b>, <b>ASCIICHAT_OK</b>,
+    <b>asciichat_thread_equal()</b>, <b>asciichat_thread_is_initialized()</b>,
+    <b>asciichat_thread_join()</b>, <b>asciichat_thread_self()</b>,
+    <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
+    <b>client_info::audio_queue</b>, <b>client_info::audio_render_thread</b>,
+    <b>broadcast_server_state_to_all_clients()</b>,
+    <b>client_info::client_id</b>, <b>client_info::client_state_mutex</b>,
+    <b>cond_destroy()</b>, <b>client_info::crypto_handshake_ctx</b>,
+    <b>crypto_handshake_destroy()</b>, <b>client_info::crypto_initialized</b>,
+    <b>client_info::dispatch_queue_cond</b>,
+    <b>client_info::dispatch_thread</b>,
+    <b>client_info::dispatch_thread_running</b>,
+    <b>client_info::display_name</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_NOT_FOUND</b>, <b>g_audio_mixer</b>, <b>g_client_manager</b>,
+    <b>g_client_manager_rwlock</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>client_info::is_sending_audio</b>, <b>client_info::is_sending_video</b>,
+    <b>client_info::is_tcp_client</b>, <b>log_debug</b>, <b>log_error</b>,
+    <b>log_info</b>, <b>log_warn</b>, <b>MAX_CLIENTS</b>,
+    <b>MAX_DISPLAY_NAME_LEN</b>, <b>mixer_remove_source()</b>,
+    <b>mutex_destroy()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
     <b>packet_queue_stop()</b>, <b>platform_sleep_us()</b>,
+    <b>client_info::receive_thread</b>, <b>client_info::receive_thread_id</b>,
+    <b>rwlock_wrlock</b>, <b>rwlock_wrunlock</b>, <b>SAFE_STRNCPY</b>,
+    <b>client_info::send_mutex</b>, <b>client_info::send_thread</b>,
+    <b>client_info::session_client_id</b>,
     <b>server_context_t::session_host</b>, <b>session_host_remove_client()</b>,
-    <b>server_context_t::tcp_server</b>, and
-    <b>tcp_server_stop_client_threads()</b>.</p>
+    <b>SET_ERRNO</b>, <b>client_info::shutting_down</b>,
+    <b>client_info::socket</b>, <b>socket_close()</b>,
+    <b>server_context_t::tcp_server</b>,
+    <b>tcp_server_stop_client_threads()</b>, <b>client_info::transport</b>,
+    <b>US_PER_MS_INT</b>, and <b>client_info::video_render_thread</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>client_receive_thread()</b>, and <b>server_main()</b>.</p>
 </section>
@@ -2851,11 +3011,12 @@
 2644 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>find_client_by_id()</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_FOUND</b>,
+    <b>find_client_by_id()</b>, <b>log_debug</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_stop_client_threads_(client_info_t_*_client)"><a class="permalink" href="#void_stop_client_threads_(client_info_t_*_client)">void
-  stop_client_threads (client_info_t * client)</a></h2>
+<h2 class="Ss" id="void_stop_client_threads_("><a class="permalink" href="#void_stop_client_threads_(">void
+  stop_client_threads (<b>client_info_t</b> * client)</a></h2>
 <p class="Pp">Definition at line <b>2646</b> of file
   <b>src/server/client.c</b>.</p>
 <pre>2646                                                 {
@@ -2884,8 +3045,14 @@
 2669 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_join()</b>, and
-    <b>atomic_store_bool()</b>.</p>
+<p class="Pp">References <b>client_info::active</b>,
+    <b>asciichat_thread_is_initialized()</b>, <b>asciichat_thread_join()</b>,
+    <b>atomic_store_bool()</b>, <b>client_info::client_id</b>,
+    <b>client_info::dispatch_thread</b>,
+    <b>client_info::dispatch_thread_running</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>log_debug</b>, <b>client_info::receive_thread</b>,
+    <b>client_info::send_thread</b>, <b>client_info::send_thread_running</b>,
+    and <b>SET_ERRNO</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -2902,7 +3069,7 @@
 <p class="Pp"></p>
 <p class="Pp">STRUCTURE COMPONENTS:</p>
 <ul class="Bl-bullet">
-  <li>clients[]: Array backing storage for client_info_t structs</li>
+  <li>clients[]: Array backing storage for <b>client_info_t</b> structs</li>
   <li>client_hashtable: O(1) lookup table for client_id -&gt;
     client_info_t*</li>
   <li>client_count: Current number of active clients</li>
@@ -2921,8 +3088,7 @@
     <b>stats_logger_thread()</b>, and <b>update_server_stats()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="rwlock_t_g_client_manager_rwlock_=__0_"><a class="permalink" href="#rwlock_t_g_client_manager_rwlock_=__0_">rwlock_t
-  g_client_manager_rwlock = {0}</a></h2>
+<h2 class="Ss"><b>rwlock_t</b> g_client_manager_rwlock = {0}</h2>
 <p class="Pp">Reader-writer lock protecting the global client manager.
     Read-write lock protecting client manager.</p>
 <p class="Pp"></p>
@@ -2936,8 +3102,9 @@
 </ul>
 <p class="Pp">USAGE PATTERN:</p>
 <ul class="Bl-bullet">
-  <li>Read operations: rwlock_rdlock() for client lookups, stats gathering</li>
-  <li>Write operations: rwlock_wrlock() for <b>add_client()</b>,
+  <li>Read operations: <b>rwlock_rdlock()</b> for client lookups, stats
+      gathering</li>
+  <li>Write operations: <b>rwlock_wrlock()</b> for <b>add_client()</b>,
       <b>remove_client()</b></li>
   <li>Always acquire THIS lock before per-client mutexes (lock ordering)</li>
 </ul>
@@ -2960,7 +3127,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

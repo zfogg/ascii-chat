@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ice.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ice.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ice.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ice.h - ICE (Interactive Connectivity Establishment) for
+  WebRTC.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>ice_candidate_t</b>
+  <br/>
+  Single ICE candidate for connectivity. struct <b>ice_config_t</b>
+  <br/>
+  ICE gathering configuration.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef <b>asciichat_error_t</b>(*
+    <b>ice_send_candidate_callback_t</b>) (const <b>ice_candidate_t</b>
+    *candidate, const char *mid, void *user_data)
+  <br/>
+  Callback for sending ICE candidate to peer.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>ice_candidate_type_t</b> { <b>ICE_CANDIDATE_HOST</b> = 0,
+    <b>ICE_CANDIDATE_SRFLX</b> = 1, <b>ICE_CANDIDATE_PRFLX</b> = 2,
+    <b>ICE_CANDIDATE_RELAY</b> = 3 }
+  <br/>
+  ICE candidate type enumeration (RFC 5245). enum <b>ice_protocol_t</b> {
+    <b>ICE_PROTOCOL_UDP</b> = 0, <b>ICE_PROTOCOL_TCP</b> = 1 }
+  <br/>
+  ICE candidate transport protocol. enum <b>ice_tcp_type_t</b> {
+    <b>ICE_TCP_TYPE_ACTIVE</b> = 0, <b>ICE_TCP_TYPE_PASSIVE</b> = 1,
+    <b>ICE_TCP_TYPE_SO</b> = 2 }
+  <br/>
+  ICE candidate TCP type (if applicable).
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>ice_gather_candidates</b> (const
+    <b>ice_config_t</b> *config)
+  <br/>
+  Start ICE candidate gathering. <b>asciichat_error_t</b>
+    <b>ice_parse_candidate</b> (const char *line, <b>ice_candidate_t</b>
+    *candidate)
+  <br/>
+  Parse ICE candidate from attribute string. <b>asciichat_error_t</b>
+    <b>ice_format_candidate</b> (const <b>ice_candidate_t</b> *candidate, char
+    *line, size_t line_size)
+  <br/>
+  Format ICE candidate to attribute string. <b>uint32_t</b>
+    <b>ice_calculate_priority</b> (<b>ice_candidate_type_t</b> type,
+    <b>uint16_t</b> local_preference, <b>uint8_t</b> component_id)
+  <br/>
+  Calculate candidate priority. <b>uint32_t</b>
+    <b>ice_calculate_priority_for_candidate</b> (const <b>ice_candidate_t</b>
+    *candidate)
+  <br/>
+  Calculate candidate priority with IP-aware local preference.
+    <b>asciichat_error_t</b> <b>ice_add_remote_candidate</b> (struct
+    <b>webrtc_peer_connection</b> *pc, const <b>ice_candidate_t</b> *candidate,
+    const char *mid)
+  <br/>
+  Add remote candidate to peer connection. <b>bool</b> <b>ice_is_connected</b>
+    (struct <b>webrtc_peer_connection</b> *pc)
+  <br/>
+  Check ICE connection state. int <b>webrtc_get_rtc_id</b> (struct
+    <b>webrtc_peer_connection</b> *pc)
+  <br/>
+  Get the internal libdatachannel peer connection ID. <b>asciichat_error_t</b>
+    <b>ice_get_selected_pair</b> (struct <b>webrtc_peer_connection</b> *pc,
+    <b>ice_candidate_t</b> *local_candidate, <b>ice_candidate_t</b>
+    *remote_candidate)
+  <br/>
+  Get selected candidate pair. const char * <b>ice_candidate_type_name</b>
+    (<b>ice_candidate_type_t</b> type)
+  <br/>
+  Get human-readable candidate type name. const char * <b>ice_protocol_name</b>
+    (<b>ice_protocol_t</b> protocol)
+  <br/>
+  Get human-readable protocol name.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">ICE (Interactive Connectivity Establishment) for WebRTC.</p>
+<p class="Pp">Handles ICE candidate gathering, exchange, and connectivity
+    checking. ICE is the mechanism that allows WebRTC peers to discover and
+    connect across NATs and firewalls using STUN and TURN servers.</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="ICE_Candidate_Types"><a class="permalink" href="#ICE_Candidate_Types">ICE
+  Candidate Types</a></h2>
+<p class="Pp"><b>Host candidates</b>: Local IP addresses</p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Direct connection if both peers on same network</dd>
+</dl>
+<p class="Pp"><b>Server-reflexive (srflx) candidates</b>: NAT-discovered
+    addresses</p>
+<ul class="Bl-bullet">
+  <li>Obtained from STUN server</li>
+  <li>Allows hole punching across NATs</li>
+</ul>
+<p class="Pp"><b>Peer-reflexive (prflx) candidates</b>: Discovered during
+    connectivity checks</p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>May emerge when direct STUN-based connection works</dd>
+</dl>
+<p class="Pp"><b>Relay candidates</b>: TURN relay server addresses</p>
+<ul class="Bl-bullet">
+  <li>Guaranteed to work through any firewall</li>
+  <li>Last resort for restrictive networks</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ICE_Candidate_Exchange"><a class="permalink" href="#ICE_Candidate_Exchange">ICE
+  Candidate Exchange</a></h2>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Gathering phase</b>: Collect candidates from all sources</dd>
+  <dt> &#x2022;</dt>
+  <dd>Host candidates (network interfaces)</dd>
+  <dt> &#x2022;</dt>
+  <dd>STUN server response</dd>
+  <dt> &#x2022;</dt>
+  <dd>TURN relay addresses</dd>
+  <dt>2.</dt>
+  <dd><b>Signaling phase</b>: Send candidates to peer via ACDS relay</dd>
+  <dt> &#x2022;</dt>
+  <dd>Each candidate sent as ACIP_WEBRTC_ICE packet</dd>
+  <dt> &#x2022;</dt>
+  <dd>Order: host first, then srflx, then relay</dd>
+  <dt>3.</dt>
+  <dd><b>Connectivity checking</b>: Verify which candidates work</dd>
+  <dt> &#x2022;</dt>
+  <dd>WebRTC agent tests each candidate pair</dd>
+  <dt> &#x2022;</dt>
+  <dd>Selects best pair (lowest latency, highest bandwidth)</dd>
+  <dt>4.</dt>
+  <dd><b>Connection</b>: Data flows through selected candidate pair</dd>
+  <dt> &#x2022;</dt>
+  <dd>May change during session (ICE restart)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Integration_with_ACDS"><a class="permalink" href="#Integration_with_ACDS">Integration
+  with ACDS</a></h2>
+<p class="Pp">ICE candidates are sent via ACDS signaling relay:</p>
+<ul class="Bl-bullet">
+  <li>PACKET_TYPE_ACIP_WEBRTC_ICE for each candidate</li>
+  <li>Peer decodes and adds to peer connection</li>
+  <li>Peer agent tests connectivity with received candidates</li>
+</ul>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>ice.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_"><a class="permalink" href="#typedef_">typedef
+  <b>asciichat_error_t</b>(* ice_send_candidate_callback_t) (const
+  <b>ice_candidate_t</b> *candidate, const char *mid, void *user_data)</a></h2>
+<p class="Pp">Callback for sending ICE candidate to peer. Called by ICE agent
+    when a new candidate is discovered. Implementation should send via ACDS
+    relay.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>candidate</i> Discovered candidate
+<br/>
+<i>mid</i> Media stream ID (e.g., &quot;0&quot; for audio, &quot;1&quot; for
+  video)
+<br/>
+<i>user_data</i> User context pointer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>151</b> of file <b>ice.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">enum <b>ice_candidate_type_t</b></h2>
+<p class="Pp">ICE candidate type enumeration (RFC 5245).</p>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="ICE_CANDIDATE_HOST"><a class="permalink" href="#ICE_CANDIDATE_HOST"><b><i>ICE_CANDIDATE_HOST
+    </i></b></a></dt>
+  <dd>Host candidate (local IP address).</dd>
+  <dt id="ICE_CANDIDATE_SRFLX"><a class="permalink" href="#ICE_CANDIDATE_SRFLX"><b><i>ICE_CANDIDATE_SRFLX
+    </i></b></a></dt>
+  <dd>Server-reflexive (NAT-discovered via STUN).</dd>
+  <dt id="ICE_CANDIDATE_PRFLX"><a class="permalink" href="#ICE_CANDIDATE_PRFLX"><b><i>ICE_CANDIDATE_PRFLX
+    </i></b></a></dt>
+  <dd>Peer-reflexive (discovered during checks).</dd>
+  <dt id="ICE_CANDIDATE_RELAY"><a class="permalink" href="#ICE_CANDIDATE_RELAY"><b><i>ICE_CANDIDATE_RELAY
+    </i></b></a></dt>
+  <dd>Relay candidate (TURN server).</dd>
+</dl>
+<p class="Pp">Definition at line <b>74</b> of file <b>ice.h</b>.</p>
+<pre>74              {
+75   ICE_CANDIDATE_HOST = 0,  
+76   ICE_CANDIDATE_SRFLX = 1, 
+77   ICE_CANDIDATE_PRFLX = 2, 
+78   ICE_CANDIDATE_RELAY = 3, 
+79 } ice_candidate_type_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">enum <b>ice_protocol_t</b></h2>
+<p class="Pp">ICE candidate transport protocol.</p>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="ICE_PROTOCOL_UDP"><a class="permalink" href="#ICE_PROTOCOL_UDP"><b><i>ICE_PROTOCOL_UDP
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="ICE_PROTOCOL_TCP"><a class="permalink" href="#ICE_PROTOCOL_TCP"><b><i>ICE_PROTOCOL_TCP
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>84</b> of file <b>ice.h</b>.</p>
+<pre>84              {
+85   ICE_PROTOCOL_UDP = 0,
+86   ICE_PROTOCOL_TCP = 1,
+87 } ice_protocol_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">enum <b>ice_tcp_type_t</b></h2>
+<p class="Pp">ICE candidate TCP type (if applicable).</p>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="ICE_TCP_TYPE_ACTIVE"><a class="permalink" href="#ICE_TCP_TYPE_ACTIVE"><b><i>ICE_TCP_TYPE_ACTIVE
+    </i></b></a></dt>
+  <dd>Actively opens connection.</dd>
+  <dt id="ICE_TCP_TYPE_PASSIVE"><a class="permalink" href="#ICE_TCP_TYPE_PASSIVE"><b><i>ICE_TCP_TYPE_PASSIVE
+    </i></b></a></dt>
+  <dd>Passively waits for connection.</dd>
+  <dt id="ICE_TCP_TYPE_SO"><a class="permalink" href="#ICE_TCP_TYPE_SO"><b><i>ICE_TCP_TYPE_SO
+    </i></b></a></dt>
+  <dd>Simultaneous open.</dd>
+</dl>
+<p class="Pp">Definition at line <b>92</b> of file <b>ice.h</b>.</p>
+<pre>92              {
+93   ICE_TCP_TYPE_ACTIVE = 0,  
+94   ICE_TCP_TYPE_PASSIVE = 1, 
+95   ICE_TCP_TYPE_SO = 2,      
+96 } ice_tcp_type_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ice_add_remote_candidate (struct
+  <b>webrtc_peer_connection</b> * pc, const <b>ice_candidate_t</b> * candidate,
+  const char * mid)</h2>
+<p class="Pp">Add remote candidate to peer connection. Called when receiving
+    candidate from peer. The WebRTC agent will test connectivity with this
+    candidate.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pc</i> Peer connection to add candidate to
+<br/>
+<i>candidate</i> Remote candidate from peer
+<br/>
+<i>mid</i> Media stream ID</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>422</b> of file <b>ice.c</b>.</p>
+<pre>423                                                             {
+424   if (!pc || !candidate || !mid) {
+425     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid remote candidate parameters&quot;);
+426   }
+427 
+428   // Validate candidate has required fields
+429   if (candidate-&gt;ip_address[0] == '\0' || candidate-&gt;port == 0) {
+430     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Candidate missing IP address or port&quot;);
+431   }
+432 
+433   log_debug(&quot;ICE: Adding remote candidate %s:%u (type=%s, foundation=%s) on mid=%s&quot;, candidate-&gt;ip_address,
+434             candidate-&gt;port, ice_candidate_type_name(candidate-&gt;type), candidate-&gt;foundation, mid);
+435 
+436   // Format candidate to SDP attribute line for libdatachannel
+437   char candidate_line[512];
+438   asciichat_error_t err = ice_format_candidate(candidate, candidate_line, sizeof(candidate_line));
+439   if (err != ASCIICHAT_OK) {
+440     return err;
+441   }
+442 
+443   // Delegate to WebRTC layer
+444   return webrtc_add_remote_candidate(pc, candidate_line, mid);
+445 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ice_candidate_t::foundation</b>, <b>ice_candidate_type_name()</b>,
+    <b>ice_format_candidate()</b>, <b>ice_candidate_t::ip_address</b>,
+    <b>log_debug</b>, <b>ice_candidate_t::port</b>, <b>SET_ERRNO</b>,
+    <b>ice_candidate_t::type</b>, and <b>webrtc_add_remote_candidate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> ice_calculate_priority
+  (<b>ice_candidate_type_t</b> type, <b>uint16_t</b> local_preference,
+  <b>uint8_t</b> component_id)</h2>
+<p class="Pp">Calculate candidate priority. Implements RFC 5245 priority
+    formula: priority = (2^24 * typePreference) + (2^8 * localPreference) + (256
+    - componentID)</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>type</i> Candidate type (determines typePreference)
+<br/>
+<i>local_preference</i> Local preference (0-65535, higher = preferred)
+<br/>
+<i>component_id</i> Component ID (1 or 2)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Calculated priority</div>
+<p class="Pp">Definition at line <b>101</b> of file <b>ice.c</b>.</p>
+<pre>101                                                                                                             {
+102   // RFC 5245: priority = (2^24 * typePreference) + (2^8 * localPreference) + (256 - componentID)
+103 
+104   // Type preference (higher is better):
+105   // - Host: 126 (most preferred, lowest latency)
+106   // - SRFLX: 100 (STUN-discovered address)
+107   // - PRFLX: 110 (discovered during connectivity checks)
+108   // - Relay: 0 (least preferred, uses bandwidth)
+109 
+110   uint8_t type_preference = 0;
+111   switch (type) {
+112   case ICE_CANDIDATE_HOST:
+113     type_preference = 126;
+114     break;
+115   case ICE_CANDIDATE_SRFLX:
+116     type_preference = 100;
+117     break;
+118   case ICE_CANDIDATE_PRFLX:
+119     type_preference = 110;
+120     break;
+121   case ICE_CANDIDATE_RELAY:
+122     type_preference = 0;
+123     break;
+124   default:
+125     type_preference = 0;
+126     break;
+127   }
+128 
+129   uint32_t priority =
+130       (((uint32_t)type_preference) &lt;&lt; 24) | (((uint32_t)local_preference) &lt;&lt; 8) | (256 - (uint32_t)component_id);
+131 
+132   return priority;
+133 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ICE_CANDIDATE_HOST</b>, <b>ICE_CANDIDATE_PRFLX</b>,
+    <b>ICE_CANDIDATE_RELAY</b>, and <b>ICE_CANDIDATE_SRFLX</b>.</p>
+<p class="Pp">Referenced by <b>ice_calculate_priority_for_candidate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> ice_calculate_priority_for_candidate (const
+  <b>ice_candidate_t</b> * candidate)</h2>
+<p class="Pp">Calculate candidate priority with IP-aware local preference.
+    Automatically determines local_preference based on IP address
+    classification:</p>
+<ul class="Bl-bullet">
+  <li>LAN addresses (192.168.x.x, 10.x.x.x, etc.): Highest priority (65535)</li>
+  <li>Localhost (127.x.x.x, ::1): High priority (65000)</li>
+  <li>Internet (public IPs): Medium priority (32768)</li>
+  <li>Unknown/invalid: Lowest priority (0)</li>
+</ul>
+<p class="Pp">This prioritization improves connection establishment by
+    preferring:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Local network peers (lowest latency, no NAT)</dd>
+  <dt>2.</dt>
+  <dd>Public IPs (direct connectivity)</dd>
+  <dt>3.</dt>
+  <dd>Unknown addresses (fallback)</dd>
+</dl>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>candidate</i> ICE candidate with IP address to
+  classify</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Calculated priority using RFC 5245 formula with IP-based
+  local preference</div>
+<p class="Pp"><b>Example</b></p>
+<div class="Bd-indent">
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>ice_candidate_t candidate = {
+<br/>
+  .type = ICE_CANDIDATE_HOST,
+<br/>
+  .ip_address = &quot;192.168.1.100&quot;,
+<br/>
+  .component_id = 1
+};
+uint32_t priority = ice_calculate_priority_for_candidate(&amp;candidate);
+// Returns high priority due to LAN address
+</pre>
+</div>
+<p class="Pp">Definition at line <b>135</b> of file <b>ice.c</b>.</p>
+<pre>135                                                                                 {
+136   if (!candidate) {
+137     return 0;
+138   }
+139 
+140   // Calculate local preference based on IP classification
+141   uint16_t local_pref = ice_calculate_local_preference_by_ip(candidate-&gt;ip_address);
+142 
+143   // Use standard RFC 5245 priority formula with IP-aware local preference
+144   return ice_calculate_priority(candidate-&gt;type, local_pref, (uint8_t)candidate-&gt;component_id);
+145 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ice_candidate_t::component_id</b>,
+    <b>ice_calculate_priority()</b>, <b>ice_candidate_t::ip_address</b>, and
+    <b>ice_candidate_t::type</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_ice_candidate_type_name_("><a class="permalink" href="#const_char_*_ice_candidate_type_name_(">const
+  char * ice_candidate_type_name (<b>ice_candidate_type_t</b> type)</a></h2>
+<p class="Pp">Get human-readable candidate type name.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>type</i> Candidate type</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Static string (e.g., &quot;host&quot;, &quot;srflx&quot;,
+  &quot;relay&quot;)</div>
+<p class="Pp">Definition at line <b>26</b> of file <b>ice.c</b>.</p>
+<pre>26                                                                {
+27   switch (type) {
+28   case ICE_CANDIDATE_HOST:
+29     return &quot;host&quot;;
+30   case ICE_CANDIDATE_SRFLX:
+31     return &quot;srflx&quot;;
+32   case ICE_CANDIDATE_PRFLX:
+33     return &quot;prflx&quot;;
+34   case ICE_CANDIDATE_RELAY:
+35     return &quot;relay&quot;;
+36   default:
+37     return &quot;unknown&quot;;
+38   }
+39 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ICE_CANDIDATE_HOST</b>, <b>ICE_CANDIDATE_PRFLX</b>,
+    <b>ICE_CANDIDATE_RELAY</b>, and <b>ICE_CANDIDATE_SRFLX</b>.</p>
+<p class="Pp">Referenced by <b>ice_add_remote_candidate()</b>, and
+    <b>ice_format_candidate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ice_format_candidate (const
+  <b>ice_candidate_t</b> * candidate, char * line, size_t line_size)</h2>
+<p class="Pp">Format ICE candidate to attribute string. Converts
+    <b>ice_candidate_t</b> structure to SDP attribute line.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>candidate</i> Candidate to format
+<br/>
+<i>line</i> Output buffer for SDP line (without &quot;a=candidate:&quot; prefix)
+<br/>
+<i>line_size</i> Size of output buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>322</b> of file <b>ice.c</b>.</p>
+<pre>322                                                                                                        {
+323   if (!candidate || !line || line_size == 0) {
+324     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid candidate format parameters&quot;);
+325   }
+326 
+327   // Format: foundation component protocol priority ip port typ type [raddr rport] [tcptype type]
+328   // Example: 1 1 udp 2130706431 192.168.1.1 54321 typ host
+329   // Example with raddr: 1 1 udp 2130706431 203.0.113.45 54321 typ srflx raddr 192.168.1.1 rport 12345
+330 
+331   int written = safe_snprintf(line, line_size, &quot;%s %u %s %u %s %u typ %s&quot;, candidate-&gt;foundation,
+332                               candidate-&gt;component_id, ice_protocol_name(candidate-&gt;protocol), candidate-&gt;priority,
+333                               candidate-&gt;ip_address, candidate-&gt;port, ice_candidate_type_name(candidate-&gt;type));
+334 
+335   if (written &lt; 0 || (size_t)written &gt;= line_size) {
+336     return SET_ERRNO(ERROR_BUFFER_FULL, &quot;Candidate line too large for buffer&quot;);
+337   }
+338 
+339   size_t remaining = line_size - (size_t)written;
+340   char *pos = line + written;
+341 
+342   // 2. If srflx/prflx/relay: append raddr and rport
+343   if (candidate-&gt;type == ICE_CANDIDATE_SRFLX || candidate-&gt;type == ICE_CANDIDATE_PRFLX ||
+344       candidate-&gt;type == ICE_CANDIDATE_RELAY) {
+345     if (candidate-&gt;raddr[0] != '\0') {
+346       int appended = safe_snprintf(pos, remaining, &quot; raddr %s rport %u&quot;, candidate-&gt;raddr, candidate-&gt;rport);
+347       if (appended &lt; 0 || (size_t)appended &gt;= remaining) {
+348         return SET_ERRNO(ERROR_BUFFER_FULL, &quot;Cannot append raddr/rport to candidate line&quot;);
+349       }
+350       pos += appended;
+351       remaining -= (size_t)appended;
+352     }
+353   }
+354 
+355   // 3. If TCP: append tcptype
+356   if (candidate-&gt;protocol == ICE_PROTOCOL_TCP) {
+357     const char *tcptype_str = &quot;passive&quot;; // default
+358     if (candidate-&gt;tcp_type == ICE_TCP_TYPE_ACTIVE) {
+359       tcptype_str = &quot;active&quot;;
+360     } else if (candidate-&gt;tcp_type == ICE_TCP_TYPE_SO) {
+361       tcptype_str = &quot;so&quot;;
+362     }
+363 
+364     int appended = safe_snprintf(pos, remaining, &quot; tcptype %s&quot;, tcptype_str);
+365     if (appended &lt; 0 || (size_t)appended &gt;= remaining) {
+366       return SET_ERRNO(ERROR_BUFFER_FULL, &quot;Cannot append tcptype to candidate line&quot;);
+367     }
+368     pos += appended;
+369     remaining -= (size_t)appended;
+370   }
+371 
+372   // 4. Append any extensions
+373   if (candidate-&gt;extensions[0] != '\0') {
+374     int appended = safe_snprintf(pos, remaining, &quot; %s&quot;, candidate-&gt;extensions);
+375     if (appended &lt; 0 || (size_t)appended &gt;= remaining) {
+376       return SET_ERRNO(ERROR_BUFFER_FULL, &quot;Cannot append extensions to candidate line&quot;);
+377     }
+378   }
+379 
+380   // 5. Ensure line is null-terminated (snprintf already does this)
+381   return ASCIICHAT_OK;
+382 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>ice_candidate_t::component_id</b>, <b>ERROR_BUFFER_FULL</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ice_candidate_t::extensions</b>,
+    <b>ice_candidate_t::foundation</b>, <b>ICE_CANDIDATE_PRFLX</b>,
+    <b>ICE_CANDIDATE_RELAY</b>, <b>ICE_CANDIDATE_SRFLX</b>,
+    <b>ice_candidate_type_name()</b>, <b>ice_protocol_name()</b>,
+    <b>ICE_PROTOCOL_TCP</b>, <b>ICE_TCP_TYPE_ACTIVE</b>, <b>ICE_TCP_TYPE_SO</b>,
+    <b>ice_candidate_t::ip_address</b>, <b>ice_candidate_t::port</b>,
+    <b>ice_candidate_t::priority</b>, <b>ice_candidate_t::protocol</b>,
+    <b>ice_candidate_t::raddr</b>, <b>ice_candidate_t::rport</b>,
+    <b>safe_snprintf()</b>, <b>SET_ERRNO</b>, <b>ice_candidate_t::tcp_type</b>,
+    and <b>ice_candidate_t::type</b>.</p>
+<p class="Pp">Referenced by <b>ice_add_remote_candidate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ice_gather_candidates (const
+  <b>ice_config_t</b> * config)</h2>
+<p class="Pp">Start ICE candidate gathering. Initiates gathering of candidates
+    from all sources:</p>
+<ul class="Bl-bullet">
+  <li>Host candidates (network interfaces)</li>
+  <li>STUN server (server-reflexive)</li>
+  <li>TURN relay</li>
+</ul>
+<p class="Pp">Candidates are reported via callback as they're discovered.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> ICE gathering
+  configuration</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>388</b> of file <b>ice.c</b>.</p>
+<pre>388                                                                     {
+389   if (!config) {
+390     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid ICE config&quot;);
+391   }
+392 
+393   if (!config-&gt;send_callback) {
+394     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;ICE config missing send_callback&quot;);
+395   }
+396 
+397   log_debug(&quot;ICE: Starting candidate gathering (ufrag=%s, pwd=%s)&quot;, config-&gt;ufrag, config-&gt;pwd);
+398 
+399   // NOTE: libdatachannel (juice) handles ICE candidate gathering internally.
+400   // This function is a placeholder for the callback-based API.
+401   // The actual gathering happens in the peer_manager when you:
+402   //   1. Create peer connection with rtcCreatePeerConnection()
+403   //   2. Set ice candidate callback with rtcSetIceCandidateCallback()
+404   //   3. libdatachannel automatically gathers candidates from:
+405   //      - Local interfaces (host candidates)
+406   //      - STUN servers (server-reflexive candidates)
+407   //      - TURN servers (relay candidates)
+408   //   4. When a candidate is found, rtcSetIceCandidateCallback() is called
+409   //   5. Application (webrtc.c) formats and sends via ACDS signaling
+410   //
+411   // This ice_gather_candidates() function may not be called directly -
+412   // the gathering happens automatically when peer connection is created.
+413   // Keeping this for API compatibility.
+414 
+415   return ASCIICHAT_OK;
+416 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>log_debug</b>, <b>ice_config_t::pwd</b>,
+    <b>ice_config_t::send_callback</b>, <b>SET_ERRNO</b>, and
+    <b>ice_config_t::ufrag</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ice_get_selected_pair (struct
+  <b>webrtc_peer_connection</b> * pc, <b>ice_candidate_t</b> * local_candidate,
+  <b>ice_candidate_t</b> * remote_candidate)</h2>
+<p class="Pp">Get selected candidate pair. Returns the local and remote
+    candidates that were selected for data flow. Uses libdatachannel's
+    rtcGetSelectedCandidatePair() API via C++ bindings.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pc</i> Peer connection to query
+<br/>
+<i>local_candidate</i> Selected local candidate (output, may be NULL)
+<br/>
+<i>remote_candidate</i> Selected remote candidate (output, may be NULL)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK if pair selected, ERROR_INVALID_STATE if no
+  pair selected yet</div>
+<p class="Pp">Definition at line <b>461</b> of file <b>ice.c</b>.</p>
+<pre>462                                                                            {
+463   // Delegate to C++ implementation which uses libdatachannel's C++ API
+464   return ice_get_selected_pair_impl(pc, local_candidate, remote_candidate);
+465 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ice_get_selected_pair_impl()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ice_is_connected (struct
+  <b>webrtc_peer_connection</b> * pc)</h2>
+<p class="Pp">Check ICE connection state.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pc</i> Peer connection to check</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if connected, false otherwise</div>
+<p class="Pp">Definition at line <b>447</b> of file <b>ice.c</b>.</p>
+<pre>447                                                     {
+448   if (!pc) {
+449     return false;
+450   }
+451 
+452   // Check peer connection state
+453   webrtc_state_t state = webrtc_get_state(pc);
+454   return (state == WEBRTC_STATE_CONNECTED);
+455 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>webrtc_get_state()</b>, and
+    <b>WEBRTC_STATE_CONNECTED</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ice_parse_candidate (const char * line,
+  <b>ice_candidate_t</b> * candidate)</h2>
+<p class="Pp">Parse ICE candidate from attribute string. Converts SDP candidate
+    attribute line to <b>ice_candidate_t</b> structure.</p>
+<p class="Pp"></p>
+<p class="Pp">Format: a=candidate:foundation component protocol priority ip port
+    typ type [raddr rport] [extensions]</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>line</i> SDP candidate line (without
+  &quot;a=candidate:&quot; prefix)
+<br/>
+<i>candidate</i> Parsed candidate (output)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>318</b> of file <b>ice.c</b>.</p>
+<pre>318                                                                                     {
+319   return ice_parse_candidate_pcre2(line, candidate);
+320 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_ice_protocol_name_("><a class="permalink" href="#const_char_*_ice_protocol_name_(">const
+  char * ice_protocol_name (<b>ice_protocol_t</b> protocol)</a></h2>
+<p class="Pp">Get human-readable protocol name.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>protocol</i> Protocol type</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Static string (e.g., &quot;udp&quot;,
+  &quot;tcp&quot;)</div>
+<p class="Pp">Definition at line <b>41</b> of file <b>ice.c</b>.</p>
+<pre>41                                                        {
+42   switch (protocol) {
+43   case ICE_PROTOCOL_UDP:
+44     return &quot;udp&quot;;
+45   case ICE_PROTOCOL_TCP:
+46     return &quot;tcp&quot;;
+47   default:
+48     return &quot;unknown&quot;;
+49   }
+50 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ICE_PROTOCOL_TCP</b>, and
+  <b>ICE_PROTOCOL_UDP</b>.</p>
+<p class="Pp">Referenced by <b>ice_format_candidate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_webrtc_get_rtc_id_("><a class="permalink" href="#int_webrtc_get_rtc_id_(">int
+  webrtc_get_rtc_id (<b>webrtc_peer_connection_t</b> * pc)</a></h2>
+<p class="Pp">Get the internal libdatachannel peer connection ID. Helper
+    function for C++ code that needs access to internal rtc_id without exposing
+    the full structure definition.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pc</i> Peer connection to query</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">libdatachannel peer connection ID, or -1 if pc is
+  NULL</div>
+<p class="Pp">Helper function for C++ code that needs access to internal rtc_id
+    without exposing the full structure definition.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pc</i> Peer connection</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">libdatachannel peer connection ID, or -1 if pc is
+  NULL</div>
+<p class="Pp">Definition at line <b>807</b> of file
+    <b>lib/network/webrtc/webrtc.c</b>.</p>
+<pre>807                                                     {
+808   if (!pc) {
+809     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid null peer connectiont&quot;);
+810     return -1;
+811   }
+812   return pc-&gt;rtc_id;
+813 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

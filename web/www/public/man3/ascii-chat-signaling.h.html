@@ -37,18 +37,20 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>signaling_relay_sdp</b> (sqlite3 *db,
-    tcp_server_t *tcp_server, const acip_webrtc_sdp_t *sdp, size_t
+<p class="Pp"><b>asciichat_error_t</b> <b>signaling_relay_sdp</b> (sqlite3 *db,
+    <b>tcp_server_t</b> *<b>tcp_server</b>, const <b>acip_webrtc_sdp_t</b> *sdp,
+    size_t total_packet_len)
+  <br/>
+  Relay SDP offer/answer to recipient. <b>asciichat_error_t</b>
+    <b>signaling_relay_ice</b> (sqlite3 *db, <b>tcp_server_t</b>
+    *<b>tcp_server</b>, const <b>acip_webrtc_ice_t</b> *ice, size_t
     total_packet_len)
   <br/>
-  Relay SDP offer/answer to recipient. asciichat_error_t
-    <b>signaling_relay_ice</b> (sqlite3 *db, tcp_server_t *tcp_server, const
-    acip_webrtc_ice_t *ice, size_t total_packet_len)
-  <br/>
-  Relay ICE candidate to recipient. asciichat_error_t <b>signaling_broadcast</b>
-    (sqlite3 *db, tcp_server_t *tcp_server, const uint8_t <b>session_id</b>[16],
-    packet_type_t packet_type, const void *packet, size_t packet_len, const
-    uint8_t *exclude_participant_id)
+  Relay ICE candidate to recipient. <b>asciichat_error_t</b>
+    <b>signaling_broadcast</b> (sqlite3 *db, <b>tcp_server_t</b>
+    *<b>tcp_server</b>, const <b>uint8_t</b> <b>session_id</b>[16],
+    <b>packet_type_t</b> packet_type, const void *packet, size_t packet_len,
+    const <b>uint8_t</b> *exclude_participant_id)
   <br/>
   Broadcast packet to all session participants.
   <br/>
@@ -59,10 +61,10 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_signaling_broadcast_(sqlite3_*_db,_tcp_server_t_*_tcp_server,_const_uint8_t_session_id_16_,_packet_type_t_packet_type,_const_void_*_packet,_size_t_packet_len,_const_uint8_t_*_exclude_participant_id)"><a class="permalink" href="#asciichat_error_t_signaling_broadcast_(sqlite3_*_db,_tcp_server_t_*_tcp_server,_const_uint8_t_session_id_16_,_packet_type_t_packet_type,_const_void_*_packet,_size_t_packet_len,_const_uint8_t_*_exclude_participant_id)">asciichat_error_t
-  signaling_broadcast (sqlite3 * db, tcp_server_t * tcp_server, const uint8_t
-  session_id[16], packet_type_t packet_type, const void * packet, size_t
-  packet_len, const uint8_t * exclude_participant_id)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> signaling_broadcast (sqlite3 * db,
+  <b>tcp_server_t</b> * tcp_server, const <b>uint8_t</b> session_id[16],
+  <b>packet_type_t</b> packet_type, const void * packet, size_t packet_len,
+  const <b>uint8_t</b> * exclude_participant_id)</h2>
 <p class="Pp">Broadcast packet to all session participants. Sends packet to all
     participants in a session (optionally excluding one). Used internally by
     SDP/ICE relay when recipient_id is all zeros.</p>
@@ -70,7 +72,7 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>db</i> SQLite database handle (for session validation)
 <br/>
-<i>tcp_server</i> TCP server with client registry
+<i></i><b>tcp_server</b><i></i><b> TCP server with client registry</b>
 <br/>
 <i></i><b>session_id</b><i></i><b> Session UUID</b>
 <br/>
@@ -117,16 +119,19 @@
 247 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>database_session_find_by_id()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>database_session_find_by_id()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_NETWORK_PROTOCOL</b>, <b>log_debug</b>, <b>log_warn</b>,
     <b>broadcast_context_t::sent_count</b>, <b>session_entry_destroy()</b>,
-    <b>session_id</b>, and <b>tcp_server_foreach_client()</b>.</p>
+    <b>session_id</b>, <b>SET_ERRNO</b>, and
+  <b>tcp_server_foreach_client()</b>.</p>
 <p class="Pp">Referenced by <b>signaling_relay_ice()</b>, and
     <b>signaling_relay_sdp()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_signaling_relay_ice_(sqlite3_*_db,_tcp_server_t_*_tcp_server,_const_acip_webrtc_ice_t_*_ice,_size_t_total_packet_len)"><a class="permalink" href="#asciichat_error_t_signaling_relay_ice_(sqlite3_*_db,_tcp_server_t_*_tcp_server,_const_acip_webrtc_ice_t_*_ice,_size_t_total_packet_len)">asciichat_error_t
-  signaling_relay_ice (sqlite3 * db, tcp_server_t * tcp_server, const
-  acip_webrtc_ice_t * ice, size_t total_packet_len)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> signaling_relay_ice (sqlite3 * db,
+  <b>tcp_server_t</b> * tcp_server, const <b>acip_webrtc_ice_t</b> * ice, size_t
+  total_packet_len)</h2>
 <p class="Pp">Relay ICE candidate to recipient. Relays ICE packet to specific
     participant or broadcasts to all participants in the session if recipient_id
     is all zeros.</p>
@@ -134,7 +139,7 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>db</i> SQLite database handle (for session validation)
 <br/>
-<i>tcp_server</i> TCP server with client registry
+<i></i><b>tcp_server</b><i></i><b> TCP server with client registry</b>
 <br/>
 <i>ice</i> ICE packet to relay (with variable-length candidate data following
   struct)
@@ -185,16 +190,19 @@
 214 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>database_session_find_by_id()</b>,
+<p class="Pp">References <b>acip_webrtc_ice_t</b>, <b>ASCIICHAT_OK</b>,
+    <b>database_session_find_by_id()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_NETWORK</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
     <b>find_client_context_t::found</b>,
-    <b>find_client_context_t::found_socket</b>, <b>send_packet()</b>,
-    <b>session_entry_destroy()</b>, <b>signaling_broadcast()</b>, and
-    <b>tcp_server_foreach_client()</b>.</p>
+    <b>find_client_context_t::found_socket</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>log_debug</b>, <b>PACKET_TYPE_ACIP_WEBRTC_ICE</b>, <b>send_packet()</b>,
+    <b>session_entry_destroy()</b>, <b>SET_ERRNO</b>,
+    <b>signaling_broadcast()</b>, and <b>tcp_server_foreach_client()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_signaling_relay_sdp_(sqlite3_*_db,_tcp_server_t_*_tcp_server,_const_acip_webrtc_sdp_t_*_sdp,_size_t_total_packet_len)"><a class="permalink" href="#asciichat_error_t_signaling_relay_sdp_(sqlite3_*_db,_tcp_server_t_*_tcp_server,_const_acip_webrtc_sdp_t_*_sdp,_size_t_total_packet_len)">asciichat_error_t
-  signaling_relay_sdp (sqlite3 * db, tcp_server_t * tcp_server, const
-  acip_webrtc_sdp_t * sdp, size_t total_packet_len)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> signaling_relay_sdp (sqlite3 * db,
+  <b>tcp_server_t</b> * tcp_server, const <b>acip_webrtc_sdp_t</b> * sdp, size_t
+  total_packet_len)</h2>
 <p class="Pp">Relay SDP offer/answer to recipient. Relays SDP packet to specific
     participant or broadcasts to all participants in the session if recipient_id
     is all zeros.</p>
@@ -202,7 +210,7 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>db</i> SQLite database handle (for session validation)
 <br/>
-<i>tcp_server</i> TCP server with client registry
+<i></i><b>tcp_server</b><i></i><b> TCP server with client registry</b>
 <br/>
 <i>sdp</i> SDP packet to relay (with variable-length SDP data following struct)
 <br/>
@@ -257,11 +265,14 @@
 172 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>database_session_find_by_id()</b>,
+<p class="Pp">References <b>acip_webrtc_sdp_t</b>, <b>ASCIICHAT_OK</b>,
+    <b>database_session_find_by_id()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_NETWORK</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
     <b>find_client_context_t::found</b>,
-    <b>find_client_context_t::found_socket</b>, <b>send_packet()</b>,
-    <b>session_entry_destroy()</b>, <b>signaling_broadcast()</b>, and
-    <b>tcp_server_foreach_client()</b>.</p>
+    <b>find_client_context_t::found_socket</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>log_debug</b>, <b>PACKET_TYPE_ACIP_WEBRTC_SDP</b>, <b>send_packet()</b>,
+    <b>session_entry_destroy()</b>, <b>SET_ERRNO</b>,
+    <b>signaling_broadcast()</b>, and <b>tcp_server_foreach_client()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -271,7 +282,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

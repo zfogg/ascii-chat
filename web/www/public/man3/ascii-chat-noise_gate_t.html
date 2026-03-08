@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>noise_gate_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">noise_gate_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">noise_gate_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">noise_gate_t - Noise gate settings and state.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/audio/mixer.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">float <b>threshold</b>
+  <br/>
+  Gate threshold in linear units (e.g., 0.01f for -40dB). <b>uint64_t</b>
+    <b>attack_ns</b>
+  <br/>
+  Attack time in nanoseconds (how fast gate opens). <b>uint64_t</b>
+    <b>release_ns</b>
+  <br/>
+  Release time in nanoseconds (how fast gate closes). float <b>hysteresis</b>
+  <br/>
+  Hysteresis factor (0-1, prevents gate chatter). float <b>sample_rate</b>
+  <br/>
+  Sample rate in Hz (set during initialization). float <b>envelope</b>
+  <br/>
+  Current envelope follower state (linear, 0-1). float <b>attack_coeff</b>
+  <br/>
+  Attack coefficient (converted from attack_ms). float <b>release_coeff</b>
+  <br/>
+  Release coefficient (converted from release_ms). <b>bool</b> <b>gate_open</b>
+  <br/>
+  True if gate is currently open (allowing audio through).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Noise gate settings and state.</p>
+<p class="Pp">Implements noise gate to suppress background noise below
+    threshold. Uses hysteresis to prevent gate chatter (rapid
+  opening/closing).</p>
+<p class="Pp"></p>
+<p class="Pp">GATE BEHAVIOR:</p>
+<ul class="Bl-bullet">
+  <li>Closes (mutes) when input is below threshold</li>
+  <li>Opens (allows through) when input is above threshold</li>
+  <li>Hysteresis prevents rapid on/off cycling</li>
+  <li>Smooth attack/release prevents clicks and pops</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Hysteresis means gate opens at threshold but closes at
+  threshold * hysteresis (lower level), preventing chatter.</div>
+<p class="Pp">Definition at line <b>180</b> of file <b>mixer.h</b>.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

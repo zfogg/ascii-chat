@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>options_builder_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">options_builder_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">options_builder_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">options_builder_t - Options builder.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/options/builder.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>option_descriptor_t</b> * <b>descriptors</b>
+  <br/>
+  Dynamic array of descriptors. size_t <b>num_descriptors</b>
+  <br/>
+  Current count. size_t <b>descriptor_capacity</b>
+  <br/>
+  Allocated capacity. <b>option_dependency_t</b> * <b>dependencies</b>
+  <br/>
+  Dynamic array of dependencies. size_t <b>num_dependencies</b>
+  <br/>
+  Current count. size_t <b>dependency_capacity</b>
+  <br/>
+  Allocated capacity. <b>positional_arg_descriptor_t</b> *
+    <b>positional_args</b>
+  <br/>
+  Dynamic array of positional args. size_t <b>num_positional_args</b>
+  <br/>
+  Current count. size_t <b>positional_arg_capacity</b>
+  <br/>
+  Allocated capacity. <b>usage_descriptor_t</b> * <b>usage_lines</b>
+  <br/>
+  Dynamic array of usage lines. size_t <b>num_usage_lines</b>
+  <br/>
+  Current count. size_t <b>usage_line_capacity</b>
+  <br/>
+  Allocated capacity. <b>example_descriptor_t</b> * <b>examples</b>
+  <br/>
+  Dynamic array of examples. size_t <b>num_examples</b>
+  <br/>
+  Current count. size_t <b>example_capacity</b>
+  <br/>
+  Allocated capacity. <b>help_mode_descriptor_t</b> * <b>modes</b>
+  <br/>
+  Dynamic array of modes. size_t <b>num_modes</b>
+  <br/>
+  Current count. size_t <b>mode_capacity</b>
+  <br/>
+  Allocated capacity. <b>custom_section_descriptor_t</b> *
+    <b>custom_sections</b>
+  <br/>
+  Dynamic array of custom sections. size_t <b>num_custom_sections</b>
+  <br/>
+  Current count. size_t <b>custom_section_capacity</b>
+  <br/>
+  Allocated capacity. size_t <b>struct_size</b>
+  <br/>
+  const char * <b>program_name</b>
+  <br/>
+  const char * <b>description</b>
+  <br/>
+  char ** <b>owned_strings_builder</b>
+  <br/>
+  size_t <b>num_owned_strings_builder</b>
+  <br/>
+  size_t <b>owned_strings_builder_capacity</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Options builder.</p>
+<p class="Pp">For incrementally constructing option configurations. Use builder
+    functions to add options and dependencies, then build an immutable
+  config.</p>
+<p class="Pp">Definition at line <b>441</b> of file <b>builder.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_builder_t::custom_section_capacity"><a class="permalink" href="#size_t_options_builder_t::custom_section_capacity">size_t
+  options_builder_t::custom_section_capacity</a></h2>
+<p class="Pp">Allocated capacity.</p>
+<p class="Pp">Definition at line <b>468</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>custom_section_descriptor_t</b>*
+  options_builder_t::custom_sections</h2>
+<p class="Pp">Dynamic array of custom sections.</p>
+<p class="Pp">Definition at line <b>466</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_custom_section()</b>,
+    <b>options_builder_build()</b>, <b>options_builder_create()</b>, and
+    <b>options_builder_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>option_dependency_t</b>* options_builder_t::dependencies</h2>
+<p class="Pp">Dynamic array of dependencies.</p>
+<p class="Pp">Definition at line <b>446</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>ensure_dependency_capacity()</b>,
+    <b>options_builder_add_dependency()</b>,
+    <b>options_builder_add_dependency_conflicts()</b>,
+    <b>options_builder_add_dependency_implies()</b>,
+    <b>options_builder_add_dependency_requires()</b>,
+    <b>options_builder_build()</b>, <b>options_builder_create()</b>, and
+    <b>options_builder_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_builder_t::dependency_capacity"><a class="permalink" href="#size_t_options_builder_t::dependency_capacity">size_t
+  options_builder_t::dependency_capacity</a></h2>
+<p class="Pp">Allocated capacity.</p>
+<p class="Pp">Definition at line <b>448</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>ensure_dependency_capacity()</b>, and
+    <b>options_builder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_options_builder_t::description"><a class="permalink" href="#const_char*_options_builder_t::description">const
+  char* options_builder_t::description</a></h2>
+<p class="Pp">Definition at line <b>472</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>,
+    <b>options_builder_create()</b>, and
+  <b>options_builder_from_preset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_builder_t::descriptor_capacity"><a class="permalink" href="#size_t_options_builder_t::descriptor_capacity">size_t
+  options_builder_t::descriptor_capacity</a></h2>
+<p class="Pp">Allocated capacity.</p>
+<p class="Pp">Definition at line <b>444</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>ensure_descriptor_capacity()</b>, and
+    <b>options_builder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>option_descriptor_t</b>* options_builder_t::descriptors</h2>
+<p class="Pp">Dynamic array of descriptors.</p>
+<p class="Pp">Definition at line <b>442</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>ensure_descriptor_capacity()</b>,
+    <b>options_builder_add_action()</b>, <b>options_builder_add_bool()</b>,
+    <b>options_builder_add_callback()</b>,
+    <b>options_builder_add_callback_optional()</b>,
+    <b>options_builder_add_callback_with_metadata()</b>,
+    <b>options_builder_add_descriptor()</b>,
+    <b>options_builder_add_double()</b>,
+    <b>options_builder_add_double_with_metadata()</b>,
+    <b>options_builder_add_int()</b>,
+    <b>options_builder_add_int_with_metadata()</b>,
+    <b>options_builder_add_string()</b>, <b>options_builder_build()</b>,
+    <b>options_builder_create()</b>, <b>options_builder_destroy()</b>,
+    <b>options_builder_mark_as_list()</b>,
+    <b>options_builder_mark_binary_only()</b>,
+    <b>options_builder_set_arg_placeholder()</b>,
+    <b>options_builder_set_default_value_display()</b>,
+    <b>options_builder_set_enum_values()</b>,
+    <b>options_builder_set_examples()</b>,
+    <b>options_builder_set_input_type()</b>,
+    <b>options_builder_set_mode_bitmask()</b>, and
+    <b>options_builder_set_numeric_range()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_builder_t::example_capacity"><a class="permalink" href="#size_t_options_builder_t::example_capacity">size_t
+  options_builder_t::example_capacity</a></h2>
+<p class="Pp">Allocated capacity.</p>
+<p class="Pp">Definition at line <b>460</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>example_descriptor_t</b>* options_builder_t::examples</h2>
+<p class="Pp">Dynamic array of examples.</p>
+<p class="Pp">Definition at line <b>458</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_example()</b>,
+    <b>options_builder_add_example_utility()</b>,
+    <b>options_builder_build()</b>, <b>options_builder_create()</b>, and
+    <b>options_builder_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_builder_t::mode_capacity"><a class="permalink" href="#size_t_options_builder_t::mode_capacity">size_t
+  options_builder_t::mode_capacity</a></h2>
+<p class="Pp">Allocated capacity.</p>
+<p class="Pp">Definition at line <b>464</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>help_mode_descriptor_t</b>* options_builder_t::modes</h2>
+<p class="Pp">Dynamic array of modes.</p>
+<p class="Pp">Definition at line <b>462</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_mode()</b>,
+    <b>options_builder_build()</b>, <b>options_builder_create()</b>, and
+    <b>options_builder_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_builder_t::num_custom_sections"><a class="permalink" href="#size_t_options_builder_t::num_custom_sections">size_t
+  options_builder_t::num_custom_sections</a></h2>
+<p class="Pp">Current count.</p>
+<p class="Pp">Definition at line <b>467</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_custom_section()</b>,
+    <b>options_builder_build()</b>, and <b>options_builder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_builder_t::num_dependencies"><a class="permalink" href="#size_t_options_builder_t::num_dependencies">size_t
+  options_builder_t::num_dependencies</a></h2>
+<p class="Pp">Current count.</p>
+<p class="Pp">Definition at line <b>447</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>ensure_dependency_capacity()</b>,
+    <b>options_builder_add_dependency()</b>,
+    <b>options_builder_add_dependency_conflicts()</b>,
+    <b>options_builder_add_dependency_implies()</b>,
+    <b>options_builder_add_dependency_requires()</b>,
+    <b>options_builder_build()</b>, and <b>options_builder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_builder_t::num_descriptors"><a class="permalink" href="#size_t_options_builder_t::num_descriptors">size_t
+  options_builder_t::num_descriptors</a></h2>
+<p class="Pp">Current count.</p>
+<p class="Pp">Definition at line <b>443</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>ensure_descriptor_capacity()</b>,
+    <b>options_builder_add_action()</b>, <b>options_builder_add_bool()</b>,
+    <b>options_builder_add_callback()</b>,
+    <b>options_builder_add_callback_optional()</b>,
+    <b>options_builder_add_callback_with_metadata()</b>,
+    <b>options_builder_add_descriptor()</b>,
+    <b>options_builder_add_double()</b>,
+    <b>options_builder_add_double_with_metadata()</b>,
+    <b>options_builder_add_int()</b>,
+    <b>options_builder_add_int_with_metadata()</b>,
+    <b>options_builder_add_string()</b>, <b>options_builder_build()</b>,
+    <b>options_builder_create()</b>, <b>options_builder_mark_binary_only()</b>,
+    <b>options_builder_set_arg_placeholder()</b>, and
+    <b>options_builder_set_mode_bitmask()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_builder_t::num_examples"><a class="permalink" href="#size_t_options_builder_t::num_examples">size_t
+  options_builder_t::num_examples</a></h2>
+<p class="Pp">Current count.</p>
+<p class="Pp">Definition at line <b>459</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_example()</b>,
+    <b>options_builder_add_example_utility()</b>,
+    <b>options_builder_build()</b>, and <b>options_builder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_builder_t::num_modes"><a class="permalink" href="#size_t_options_builder_t::num_modes">size_t
+  options_builder_t::num_modes</a></h2>
+<p class="Pp">Current count.</p>
+<p class="Pp">Definition at line <b>463</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_mode()</b>,
+    <b>options_builder_build()</b>, and <b>options_builder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_builder_t::num_owned_strings_builder"><a class="permalink" href="#size_t_options_builder_t::num_owned_strings_builder">size_t
+  options_builder_t::num_owned_strings_builder</a></h2>
+<p class="Pp">Definition at line <b>476</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>, and
+    <b>options_builder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_builder_t::num_positional_args"><a class="permalink" href="#size_t_options_builder_t::num_positional_args">size_t
+  options_builder_t::num_positional_args</a></h2>
+<p class="Pp">Current count.</p>
+<p class="Pp">Definition at line <b>451</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>ensure_positional_arg_capacity()</b>,
+    <b>options_builder_add_positional()</b>, <b>options_builder_build()</b>, and
+    <b>options_builder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_builder_t::num_usage_lines"><a class="permalink" href="#size_t_options_builder_t::num_usage_lines">size_t
+  options_builder_t::num_usage_lines</a></h2>
+<p class="Pp">Current count.</p>
+<p class="Pp">Definition at line <b>455</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_usage()</b>,
+    <b>options_builder_build()</b>, and <b>options_builder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char**_options_builder_t::owned_strings_builder"><a class="permalink" href="#char**_options_builder_t::owned_strings_builder">char**
+  options_builder_t::owned_strings_builder</a></h2>
+<p class="Pp">Definition at line <b>475</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>,
+    <b>options_builder_create()</b>, and <b>options_builder_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_builder_t::owned_strings_builder_capacity"><a class="permalink" href="#size_t_options_builder_t::owned_strings_builder_capacity">size_t
+  options_builder_t::owned_strings_builder_capacity</a></h2>
+<p class="Pp">Definition at line <b>477</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>, and
+    <b>options_builder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_builder_t::positional_arg_capacity"><a class="permalink" href="#size_t_options_builder_t::positional_arg_capacity">size_t
+  options_builder_t::positional_arg_capacity</a></h2>
+<p class="Pp">Allocated capacity.</p>
+<p class="Pp">Definition at line <b>452</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>ensure_positional_arg_capacity()</b>, and
+    <b>options_builder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>positional_arg_descriptor_t</b>*
+  options_builder_t::positional_args</h2>
+<p class="Pp">Dynamic array of positional args.</p>
+<p class="Pp">Definition at line <b>450</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>ensure_positional_arg_capacity()</b>,
+    <b>options_builder_add_positional()</b>, <b>options_builder_build()</b>,
+    <b>options_builder_create()</b>, and <b>options_builder_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_options_builder_t::program_name"><a class="permalink" href="#const_char*_options_builder_t::program_name">const
+  char* options_builder_t::program_name</a></h2>
+<p class="Pp">Definition at line <b>471</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>,
+    <b>options_builder_create()</b>, and
+  <b>options_builder_from_preset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_builder_t::struct_size"><a class="permalink" href="#size_t_options_builder_t::struct_size">size_t
+  options_builder_t::struct_size</a></h2>
+<p class="Pp">Definition at line <b>470</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>, and
+    <b>options_builder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_builder_t::usage_line_capacity"><a class="permalink" href="#size_t_options_builder_t::usage_line_capacity">size_t
+  options_builder_t::usage_line_capacity</a></h2>
+<p class="Pp">Allocated capacity.</p>
+<p class="Pp">Definition at line <b>456</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>usage_descriptor_t</b>* options_builder_t::usage_lines</h2>
+<p class="Pp">Dynamic array of usage lines.</p>
+<p class="Pp">Definition at line <b>454</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_usage()</b>,
+    <b>options_builder_build()</b>, <b>options_builder_create()</b>, and
+    <b>options_builder_destroy()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

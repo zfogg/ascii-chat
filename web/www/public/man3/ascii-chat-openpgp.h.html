@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>openpgp.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">openpgp.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">openpgp.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">openpgp.h - OpenPGP (RFC 4880) packet format parser.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>openpgp_packet_header_t</b>
+  <br/>
+  OpenPGP packet header information. struct <b>openpgp_public_key_t</b>
+  <br/>
+  OpenPGP public key packet data. struct <b>openpgp_secret_key_t</b>
+  <br/>
+  OpenPGP secret key packet data.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<p class="Pp"><b>OpenPGP Constants</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>OPENPGP_TAG_PUBLIC_KEY</b> 6
+  <br/>
+  OpenPGP packet tag for Public Key Packet. #define
+    <b>OPENPGP_TAG_SECRET_KEY</b> 5
+  <br/>
+  OpenPGP packet tag for Secret Key Packet. #define <b>OPENPGP_TAG_USER_ID</b>
+    13
+  <br/>
+  OpenPGP packet tag for User ID Packet. #define <b>OPENPGP_TAG_SIGNATURE</b> 2
+  <br/>
+  OpenPGP packet tag for Signature Packet. #define <b>OPENPGP_ALGO_EDDSA</b> 22
+  <br/>
+  OpenPGP algorithm ID for EdDSA (Ed25519). #define <b>OPENPGP_ALGO_ECDH</b> 18
+  <br/>
+  OpenPGP algorithm ID for ECDH (Curve25519).
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<p class="Pp"><b>PGP Armored Format Parsing</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>asciichat_error_t</b> <b>openpgp_parse_armored_pubkey</b> (const char
+    *armored_text, <b>uint8_t</b> ed25519_pk[32])
+  <br/>
+  Parse PGP armored key block and extract Ed25519 public key.
+    <b>asciichat_error_t</b> <b>openpgp_parse_armored_seckey</b> (const char
+    *armored_text, <b>uint8_t</b> ed25519_pk[32], <b>uint8_t</b> ed25519_sk[32])
+  <br/>
+  Parse PGP armored secret key block and extract Ed25519 keypair.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>OpenPGP Packet Parsing</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>asciichat_error_t</b> <b>openpgp_parse_packet_header</b> (const
+    <b>uint8_t</b> *data, size_t data_len, <b>openpgp_packet_header_t</b>
+    *header)
+  <br/>
+  Parse OpenPGP packet header. <b>asciichat_error_t</b>
+    <b>openpgp_parse_public_key_packet</b> (const <b>uint8_t</b> *packet_body,
+    size_t body_len, <b>openpgp_public_key_t</b> *<b>pubkey</b>)
+  <br/>
+  Parse OpenPGP Public Key Packet (tag 6). <b>asciichat_error_t</b>
+    <b>openpgp_parse_secret_key_packet</b> (const <b>uint8_t</b> *packet_body,
+    size_t body_len, <b>openpgp_secret_key_t</b> *seckey)
+  <br/>
+  Parse OpenPGP Secret Key Packet (tag 5). <b>asciichat_error_t</b>
+    <b>openpgp_extract_ed25519_from_mpi</b> (const <b>uint8_t</b> *mpi, size_t
+    mpi_len, <b>uint8_t</b> ed25519_pk[32])
+  <br/>
+  Extract Ed25519 public key from MPI-encoded data.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Base64 Decoding for PGP Armor</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>asciichat_error_t</b> <b>openpgp_base64_decode</b> (const char *base64,
+    size_t base64_len, <b>uint8_t</b> **binary_out, size_t *binary_len)
+  <br/>
+  Decode PGP armored base64 data.
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">OpenPGP (RFC 4880) packet format parser.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>openpgp.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

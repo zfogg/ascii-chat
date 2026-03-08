@@ -58,31 +58,32 @@
 <section class="Ss">
 <h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
 <br/>
-<p class="Pp">mixer_t *volatile <b>g_audio_mixer</b> = NULL
+<p class="Pp"><b>mixer_t</b> *volatile <b>g_audio_mixer</b> = NULL
   <br/>
   Global audio mixer instance for multi-client audio processing.
     <b>h265_server_context_t</b> *volatile <b>g_h265_server</b> = NULL
   <br/>
-  Global H.265 codec server context. static_cond_t <b>g_shutdown_cond</b> =
-    STATIC_COND_INIT
+  Global H.265 codec server context. <b>static_cond_t</b> <b>g_shutdown_cond</b>
+    = <b>STATIC_COND_INIT</b>
   <br/>
-  Global shutdown condition variable for waking blocked threads. rate_limiter_t
-    * <b>g_rate_limiter</b> = NULL
+  Global shutdown condition variable for waking blocked threads.
+    <b>rate_limiter_t</b> * <b>g_rate_limiter</b> = NULL
   <br/>
   Global rate limiter for connection attempts and packet processing. <b>bool</b>
     <b>g_server_encryption_enabled</b> = <b>false</b>
   <br/>
-  Global flag indicating if server encryption is enabled. private_key_t
+  Global flag indicating if server encryption is enabled. <b>private_key_t</b>
     <b>g_server_private_key</b> = {0}
   <br/>
   Global server private key (first identity key, for backward compatibility).
-    private_key_t <b>g_server_identity_keys</b> [MAX_IDENTITY_KEYS] = {0}
+    <b>private_key_t</b> <b>g_server_identity_keys</b>
+    [<b>MAX_IDENTITY_KEYS</b>] = {0}
   <br/>
   Global server identity keys array (multi-key support). size_t
     <b>g_num_server_identity_keys</b> = 0
   <br/>
-  Number of loaded server identity keys. public_key_t <b>g_client_whitelist</b>
-    [MAX_CLIENTS] = {0}
+  Number of loaded server identity keys. <b>public_key_t</b>
+    <b>g_client_whitelist</b> [<b>MAX_CLIENTS</b>] = {0}
   <br/>
   Global client public key whitelist. size_t <b>g_num_whitelisted_clients</b> =
     0
@@ -1299,53 +1300,94 @@ ascii-chat server --port 8080
 2859 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>acds_client_config_init_defaults()</b>,
-    <b>acds_client_connect()</b>, <b>acds_client_disconnect()</b>,
+<p class="Pp">References <b>ACCEPT_TIMEOUT</b>,
+    <b>acds_client_config_init_defaults()</b>, <b>acds_client_connect()</b>,
+    <b>acds_client_disconnect()</b>,
+    <b>acds_session_create_params_t::acds_expose_ip</b>,
     <b>acds_session_create()</b>, <b>acds_session_join()</b>,
     <b>acds_string_generate()</b>, <b>acip_tcp_transport_create()</b>,
     <b>acip_transport_destroy()</b>, <b>ascii_simd_init()</b>,
     <b>asciichat_error_stats_print()</b>, <b>asciichat_mdns_destroy()</b>,
-    <b>asciichat_mdns_init()</b>, <b>asciichat_thread_create()</b>,
-    <b>asciichat_thread_join()</b>, <b>atomic_load_bool()</b>,
-    <b>atomic_store_bool()</b>, <b>atomic_store_u64()</b>,
-    <b>debug_sync_destroy()</b>, <b>g_audio_mixer</b>, <b>g_client_manager</b>,
-    <b>g_client_manager_rwlock</b>, <b>g_client_whitelist</b>,
-    <b>g_h265_server</b>, <b>g_num_whitelisted_clients</b>,
-    <b>g_rate_limiter</b>, <b>g_server_encryption_enabled</b>,
-    <b>g_server_private_key</b>, <b>g_should_exit</b>, <b>g_shutdown_cond</b>,
-    <b>g_stats</b>, <b>g_stats_mutex</b>, <b>server_context_t::h265_server</b>,
-    <b>h265_server_context_create()</b>, <b>h265_server_context_destroy()</b>,
-    <b>is_localhost_ipv4()</b>, <b>is_localhost_ipv6()</b>,
-    <b>lifecycle_init()</b>, <b>log_search_init()</b>, <b>mixer_create()</b>,
-    <b>mixer_destroy()</b>, <b>mutex_destroy()</b>, <b>mutex_init()</b>,
-    <b>nat_upnp_get_address()</b>, <b>nat_upnp_open()</b>,
+    <b>asciichat_mdns_init()</b>, <b>ASCIICHAT_OK</b>,
+    <b>asciichat_thread_create()</b>, <b>asciichat_thread_join()</b>,
+    <b>asciichat_thread_join_timeout()</b>, <b>atomic_load_bool()</b>,
+    <b>ATOMIC_REGISTER_AUTO</b>, <b>atomic_store_bool()</b>,
+    <b>atomic_store_u64()</b>, <b>AUDIO_SAMPLE_RATE</b>,
+    <b>acds_session_create_params_t::capabilities</b>,
+    <b>client_info::client_id</b>, <b>debug_sync_destroy()</b>,
+    <b>ERROR_AUDIO</b>, <b>ERROR_CONFIG</b>, <b>ERROR_CRYPTO</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEDIA_INIT</b>, <b>ERROR_MEMORY</b>,
+    <b>acds_session_join_result_t::error_message</b>, <b>ERROR_NETWORK</b>,
+    <b>ERROR_THREAD</b>, <b>FATAL</b>, <b>g_audio_mixer</b>,
+    <b>g_client_manager</b>, <b>g_client_manager_rwlock</b>,
+    <b>g_client_whitelist</b>, <b>g_h265_server</b>,
+    <b>g_num_whitelisted_clients</b>, <b>g_rate_limiter</b>,
+    <b>g_server_encryption_enabled</b>, <b>g_server_private_key</b>,
+    <b>g_should_exit</b>, <b>g_shutdown_cond</b>, <b>g_stats</b>,
+    <b>g_stats_mutex</b>, <b>GET_OPTION</b>,
+    <b>server_context_t::h265_server</b>, <b>h265_server_context_create()</b>,
+    <b>h265_server_context_destroy()</b>,
+    <b>acds_session_create_params_t::has_password</b>,
+    <b>acds_session_join_params_t::has_password</b>,
+    <b>acds_session_create_params_t::identity_pubkey</b>,
+    <b>acds_session_join_params_t::identity_pubkey</b>,
+    <b>INVALID_SOCKET_VALUE</b>, <b>is_localhost_ipv4()</b>,
+    <b>is_localhost_ipv6()</b>, <b>LIFECYCLE_INIT</b>, <b>lifecycle_init()</b>,
+    <b>log_console</b>, <b>log_debug</b>, <b>LOG_ERRNO_IF_SET</b>,
+    <b>log_error</b>, <b>LOG_INFO</b>, <b>log_info</b>, <b>log_plain</b>,
+    <b>log_search_init()</b>, <b>log_warn</b>, <b>MAX_CLIENT_ID_LEN</b>,
+    <b>MAX_CLIENTS</b>, <b>acds_session_create_params_t::max_participants</b>,
+    <b>mixer_create()</b>, <b>mixer_destroy()</b>, <b>MS_PER_SEC_INT</b>,
+    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>NAMED_REGISTER_RWLOCK</b>,
+    <b>nat_upnp_get_address()</b>, <b>nat_upnp_open()</b>, <b>NS_PER_MS_INT</b>,
+    <b>NS_PER_SEC_INT</b>, <b>OPT_ENDPOINT_STUN_SERVERS_DEFAULT</b>,
+    <b>acds_session_join_result_t::participant_id</b>,
+    <b>acds_session_create_params_t::password</b>,
+    <b>acds_session_join_params_t::password</b>,
     <b>platform_disable_keepawake()</b>, <b>platform_enable_keepawake()</b>,
     <b>platform_get_monotonic_time_us()</b>, <b>platform_prompt_yes_no()</b>,
-    <b>platform_sleep_us()</b>, <b>precalc_rgb_palettes()</b>,
-    <b>rate_limiter_create_memory()</b>, <b>rate_limiter_destroy()</b>,
-    <b>remove_client()</b>, <b>rwlock_init()</b>, <b>safe_snprintf()</b>,
+    <b>platform_signal()</b>, <b>platform_sleep_us()</b>,
+    <b>precalc_rgb_palettes()</b>, <b>rate_limiter_create_memory()</b>,
+    <b>rate_limiter_destroy()</b>, <b>remove_client()</b>,
+    <b>rwlock_destroy()</b>, <b>rwlock_init()</b>, <b>rwlock_rdlock</b>,
+    <b>rwlock_rdunlock</b>, <b>rwlock_wrlock</b>, <b>rwlock_wrunlock</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>,
+    <b>SAFE_STRNCPY</b>, <b>acds_client_config_t::server_address</b>,
+    <b>acds_session_create_params_t::server_address</b>,
+    <b>acds_client_config_t::server_port</b>,
+    <b>acds_session_create_params_t::server_port</b>,
     <b>server_context_t::session_host</b>, <b>session_host_create()</b>,
-    <b>session_host_destroy()</b>, <b>shutdown_register_callback()</b>,
-    <b>stats_cleanup()</b>, <b>stats_init()</b>, <b>stats_logger_thread()</b>,
-    <b>stun_servers_parse()</b>, <b>tcp_server_destroy()</b>,
-    <b>tcp_server_init()</b>, <b>tcp_server_run()</b>,
-    <b>terminal_can_prompt_user()</b>, <b>terminal_is_interactive()</b>,
-    <b>thread_pool_create()</b>, <b>thread_pool_destroy()</b>,
-    <b>thread_pool_spawn()</b>, <b>ui_status_log_clear()</b>,
-    <b>ui_status_log_destroy()</b>, <b>ui_status_log_init()</b>,
-    <b>webrtc_init()</b>, <b>webrtc_peer_manager_create()</b>,
-    <b>webrtc_peer_manager_destroy()</b>,
-    <b>websocket_server_cancel_service()</b>, <b>websocket_server_destroy()</b>,
-    <b>websocket_server_init()</b>, <b>weight_blue</b>, <b>weight_green</b>, and
-    <b>weight_red</b>.</p>
+    <b>session_host_destroy()</b>,
+    <b>acds_session_create_result_t::session_id</b>,
+    <b>acds_session_join_result_t::session_id</b>,
+    <b>acds_session_create_result_t::session_string</b>,
+    <b>acds_session_join_params_t::session_string</b>,
+    <b>acds_session_create_params_t::session_type</b>,
+    <b>SESSION_TYPE_DIRECT_TCP</b>, <b>SESSION_TYPE_WEBRTC</b>,
+    <b>shutdown_register_callback()</b>, <b>client_info::socket</b>,
+    <b>socket_cleanup()</b>, <b>socket_close()</b>, <b>stats_cleanup()</b>,
+    <b>stats_init()</b>, <b>stats_logger_thread()</b>, <b>stun_server_t</b>,
+    <b>stun_servers_parse()</b>, <b>acds_session_join_result_t::success</b>,
+    <b>tcp_server_destroy()</b>, <b>tcp_server_init()</b>,
+    <b>tcp_server_run()</b>, <b>terminal_can_prompt_user()</b>,
+    <b>terminal_is_interactive()</b>, <b>thread_pool_create()</b>,
+    <b>thread_pool_destroy()</b>, <b>thread_pool_spawn()</b>,
+    <b>acds_client_config_t::timeout_ms</b>,
+    <b>websocket_server_config_t::tls_cert_path</b>,
+    <b>websocket_server_config_t::tls_key_path</b>,
+    <b>ui_status_log_clear()</b>, <b>ui_status_log_destroy()</b>,
+    <b>ui_status_log_init()</b>, <b>US_PER_MS_INT</b>, <b>webrtc_init()</b>,
+    <b>webrtc_peer_manager_create()</b>, <b>webrtc_peer_manager_destroy()</b>,
+    <b>WEBRTC_ROLE_CREATOR</b>, <b>websocket_server_cancel_service()</b>,
+    <b>websocket_server_destroy()</b>, <b>websocket_server_init()</b>,
+    <b>weight_blue</b>, <b>weight_green</b>, and <b>weight_red</b>.</p>
 </section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="mixer_t*_volatile_g_audio_mixer_=_NULL"><a class="permalink" href="#mixer_t*_volatile_g_audio_mixer_=_NULL">mixer_t*
-  volatile g_audio_mixer = NULL</a></h2>
+<h2 class="Ss"><b>mixer_t</b>* volatile g_audio_mixer = NULL</h2>
 <p class="Pp">Global audio mixer instance for multi-client audio processing.
     Global audio mixer.</p>
 <p class="Pp"></p>
@@ -1364,8 +1406,8 @@ ascii-chat server --port 8080
     <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="public_key_t_g_client_whitelist_MAX_CLIENTS__=__0_"><a class="permalink" href="#public_key_t_g_client_whitelist_MAX_CLIENTS__=__0_">public_key_t
-  g_client_whitelist[MAX_CLIENTS] = {0}</a></h2>
+<h2 class="Ss"><b>public_key_t</b> g_client_whitelist[<b>MAX_CLIENTS</b>] =
+  {0}</h2>
 <p class="Pp">Global client public key whitelist. Whitelist of allowed client
     public keys.</p>
 <p class="Pp"></p>
@@ -1421,8 +1463,7 @@ ascii-chat server --port 8080
     <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="rate_limiter_t*_g_rate_limiter_=_NULL"><a class="permalink" href="#rate_limiter_t*_g_rate_limiter_=_NULL">rate_limiter_t*
-  g_rate_limiter = NULL</a></h2>
+<h2 class="Ss"><b>rate_limiter_t</b>* g_rate_limiter = NULL</h2>
 <p class="Pp">Global rate limiter for connection attempts and packet processing.
     Global connection rate limiter.</p>
 <p class="Pp"></p>
@@ -1466,8 +1507,8 @@ ascii-chat server --port 8080
     <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="private_key_t_g_server_identity_keys_MAX_IDENTITY_KEYS__=__0_"><a class="permalink" href="#private_key_t_g_server_identity_keys_MAX_IDENTITY_KEYS__=__0_">private_key_t
-  g_server_identity_keys[MAX_IDENTITY_KEYS] = {0}</a></h2>
+<h2 class="Ss"><b>private_key_t</b>
+  g_server_identity_keys[<b>MAX_IDENTITY_KEYS</b>] = {0}</h2>
 <p class="Pp">Global server identity keys array (multi-key support). Array of
     server identity keys.</p>
 <p class="Pp"></p>
@@ -1486,8 +1527,7 @@ ascii-chat server --port 8080
 <p class="Pp">Referenced by <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="private_key_t_g_server_private_key_=__0_"><a class="permalink" href="#private_key_t_g_server_private_key_=__0_">private_key_t
-  g_server_private_key = {0}</a></h2>
+<h2 class="Ss"><b>private_key_t</b> g_server_private_key = {0}</h2>
 <p class="Pp">Global server private key (first identity key, for backward
     compatibility). Server's private key.</p>
 <p class="Pp"></p>
@@ -1510,8 +1550,8 @@ ascii-chat server --port 8080
     <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="static_cond_t_g_shutdown_cond_=_STATIC_COND_INIT"><a class="permalink" href="#static_cond_t_g_shutdown_cond_=_STATIC_COND_INIT">static_cond_t
-  g_shutdown_cond = STATIC_COND_INIT</a></h2>
+<h2 class="Ss"><b>static_cond_t</b> g_shutdown_cond =
+  <b>STATIC_COND_INIT</b></h2>
 <p class="Pp">Global shutdown condition variable for waking blocked threads.
     Used to wake up threads that might be blocked on condition variables (like
     packet queues) during shutdown. This ensures responsive shutdown even when
@@ -1527,7 +1567,7 @@ ascii-chat server --port 8080
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

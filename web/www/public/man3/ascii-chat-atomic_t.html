@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>atomic_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">atomic_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">atomic_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">atomic_t - Atomic value wrapper for integral/boolean types.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/atomic.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Public_Member_Functions"><a class="permalink" href="#Public_Member_Functions">Public
+  Member Functions</a></h2>
+<br/>
+<p class="Pp"><b>_Atomic</b> (<b>uint64_t</b>) impl
+  <br/>
+  Underlying C11 atomic value.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint64_t</b> <b>last_store_time_ns</b>
+  <br/>
+  <b>uint64_t</b> <b>last_load_time_ns</b>
+  <br/>
+  <b>uint64_t</b> <b>store_count</b>
+  <br/>
+  <b>uint64_t</b> <b>load_count</b>
+  <br/>
+  <b>uint64_t</b> <b>cas_count</b>
+  <br/>
+  <b>uint64_t</b> <b>cas_success_count</b>
+  <br/>
+  <b>uint64_t</b> <b>fetch_count</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Atomic value wrapper for integral/boolean types.</p>
+<p class="Pp">Wraps C11 <b>_Atomic(uint64_t)</b> with debug tracking fields. All
+    values (bool, int, <b>uint64_t</b>, size_t) fit in <b>uint64_t</b> on 64-bit
+    platforms.</p>
+<p class="Pp"></p>
+<p class="Pp">The name is registered separately via NAMED_REGISTER_ATOMIC macro,
+    stored in named.c registry (not in this struct).</p>
+<p class="Pp"></p>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>// Global declaration
+atomic_t g_counter = {0};
+// Register name for debug tracking (in main()):
+NAMED_REGISTER_ATOMIC(&amp;g_counter, &quot;g_counter&quot;);
+// Use:
+atomic_store_u64(&amp;g_counter, 0);
+uint64_t val = atomic_load_u64(&amp;g_counter);
+</pre>
+<p class="Pp">Definition at line <b>76</b> of file <b>atomic.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Member_Function_Documentation"><a class="permalink" href="#Member_Function_Documentation">Member
+  Function Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="atomic_t::_Atomic_("><a class="permalink" href="#atomic_t::_Atomic_(">atomic_t::_Atomic
+  (<b>uint64_t</b> )</a></h2>
+<p class="Pp">Underlying C11 atomic value.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> atomic_t::cas_count</h2>
+<p class="Pp">Definition at line <b>83</b> of file <b>atomic.h</b>.</p>
+<p class="Pp">Referenced by <b>atomic_on_cas()</b>, and
+    <b>debug_atomic_format_timing()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> atomic_t::cas_success_count</h2>
+<p class="Pp">Definition at line <b>84</b> of file <b>atomic.h</b>.</p>
+<p class="Pp">Referenced by <b>atomic_on_cas()</b>, and
+    <b>debug_atomic_format_timing()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> atomic_t::fetch_count</h2>
+<p class="Pp">Definition at line <b>85</b> of file <b>atomic.h</b>.</p>
+<p class="Pp">Referenced by <b>atomic_on_fetch()</b>, and
+    <b>debug_atomic_format_timing()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> atomic_t::last_load_time_ns</h2>
+<p class="Pp">Definition at line <b>80</b> of file <b>atomic.h</b>.</p>
+<p class="Pp">Referenced by <b>atomic_on_load()</b>, and
+    <b>debug_atomic_format_timing()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> atomic_t::last_store_time_ns</h2>
+<p class="Pp">Definition at line <b>79</b> of file <b>atomic.h</b>.</p>
+<p class="Pp">Referenced by <b>atomic_on_cas()</b>, <b>atomic_on_fetch()</b>,
+    <b>atomic_on_store()</b>, and <b>debug_atomic_format_timing()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> atomic_t::load_count</h2>
+<p class="Pp">Definition at line <b>82</b> of file <b>atomic.h</b>.</p>
+<p class="Pp">Referenced by <b>atomic_on_load()</b>, and
+    <b>debug_atomic_format_timing()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> atomic_t::store_count</h2>
+<p class="Pp">Definition at line <b>81</b> of file <b>atomic.h</b>.</p>
+<p class="Pp">Referenced by <b>atomic_on_store()</b>, and
+    <b>debug_atomic_format_timing()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

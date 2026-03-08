@@ -48,7 +48,7 @@
     <b>any_clients_sending_video</b> (void)
   <br/>
   Check if any connected clients are currently sending video. int
-    <b>queue_audio_for_client</b> (client_info_t *client, const void
+    <b>queue_audio_for_client</b> (<b>client_info_t</b> *client, const void
     *audio_data, size_t data_size)
   <br/>
   Queue ASCII frame for delivery to specific client.
@@ -58,7 +58,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
 <br/>
-<p class="Pp">atomic_t <b>g_should_exit</b>
+<p class="Pp"><b>atomic_t</b> <b>g_should_exit</b>
   <br/>
   Global application exit flag (shared across all modes).
   <br/>
@@ -117,8 +117,9 @@
 1344 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, and
-  <b>g_client_manager</b>.</p>
+<p class="Pp">References <b>client_info::active</b>, <b>atomic_load_bool()</b>,
+    <b>client_info::client_id</b>, <b>g_client_manager</b>,
+    <b>client_info::is_sending_video</b>, and <b>MAX_CLIENTS</b>.</p>
 <p class="Pp">Referenced by <b>client_video_render_thread()</b>.</p>
 </section>
 <section class="Ss">
@@ -501,14 +502,22 @@
 1191 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_cas_u64()</b>, <b>atomic_load_u64()</b>,
-    <b>image_destroy()</b>, <b>image_destroy_to_pool()</b>,
-    <b>image_new_copy()</b>, <b>time_get_ns()</b>, and <b>time_pretty()</b>.</p>
+<p class="Pp">References <b>image_t::alloc_method</b>, <b>atomic_cas_u64()</b>,
+    <b>atomic_load_u64()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>, <b>ERROR_TERMINAL</b>,
+    <b>IMAGE_ALLOC_POOL</b>, <b>image_destroy()</b>,
+    <b>image_destroy_to_pool()</b>, <b>image_new_copy()</b>,
+    <b>log_dev_every</b>, <b>log_error</b>, <b>log_info</b>,
+    <b>LOG_RATE_DEFAULT</b>, <b>LOG_RATE_SLOW</b>, <b>log_warn</b>,
+    <b>MAX_CLIENTS</b>, <b>NAMED_REGISTER_ATOMIC</b>, <b>NS_PER_MS</b>,
+    <b>NS_PER_MS_INT</b>, <b>SET_ERRNO</b>, <b>START_TIMER</b>,
+    <b>STOP_TIMER_AND_LOG</b>, <b>time_get_ns()</b>, <b>time_pretty()</b>, and
+    <b>US_PER_MS_INT</b>.</p>
 <p class="Pp">Referenced by <b>client_video_render_thread()</b>.</p>
 <section class="Ss">
-<h2 class="Ss" id="int_queue_audio_for_client_(client_info_t_*_client,_const_void_*_audio_data,_size_t_data_size)"><a class="permalink" href="#int_queue_audio_for_client_(client_info_t_*_client,_const_void_*_audio_data,_size_t_data_size)">int
-  queue_audio_for_client (client_info_t * client, const void * audio_data,
-  size_t data_size)</a></h2>
+<h2 class="Ss" id="int_queue_audio_for_client_("><a class="permalink" href="#int_queue_audio_for_client_(">int
+  queue_audio_for_client (<b>client_info_t</b> * client, const void *
+  audio_data, size_t data_size)</a></h2>
 <p class="Pp">Queue ASCII frame for delivery to specific client. Packages a
     generated ASCII frame into a protocol packet and queues it for asynchronous
     delivery to the target client. This function handles all protocol details
@@ -521,7 +530,7 @@
   STRUCTURE CREATED: </a></h1>
 <dl class="Bl-tag">
   <dt>&#x2022;</dt>
-  <dd>ascii_frame_packet_t header containing:</dd>
+  <dd><b>ascii_frame_packet_t</b> header containing:</dd>
 </dl>
 <dl class="Bl-tag">
   <dt> &#x2022;</dt>
@@ -596,7 +605,7 @@
 <div class="Bd-indent"><b>packet_queue_enqueue()</b> For underlying queue
   implementation
 <p class="Pp"></p>
-<p class="Pp">asciichat_crc32() For checksum generation</p>
+<p class="Pp"><b>asciichat_crc32()</b> For checksum generation</p>
 </div>
 <p class="Pp">Queue audio data for delivery to specific client</p>
 <p class="Pp"></p>
@@ -658,7 +667,7 @@
 <div class="Bd-indent"><b>packet_queue_enqueue()</b> For underlying queue
   implementation
 <p class="Pp"></p>
-<p class="Pp"><b>mixer.c</b> For audio mixing implementation</p>
+<p class="Pp"><b>mixer.c</b> For <b>Audio</b> mixing implementation</p>
 </div>
 <p class="Pp">Definition at line <b>1301</b> of file <b>stream.c</b>.</p>
 <pre>1301                                                                                             {
@@ -670,14 +679,14 @@
 1307 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_queue_enqueue()</b>.</p>
+<p class="Pp">References <b>client_info::audio_queue</b>,
+    <b>packet_queue_enqueue()</b>, and <b>PACKET_TYPE_AUDIO_BATCH</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="atomic_t_g_should_exit"><a class="permalink" href="#atomic_t_g_should_exit">atomic_t
-  g_should_exit [extern]</a></h2>
+<h2 class="Ss"><b>atomic_t</b> g_should_exit [extern]</h2>
 <p class="Pp">Global application exit flag (shared across all modes). Global
     shutdown flag referenced by lib/logging.c and lib/debug/lock.c In production
     builds, this is defined in main.c and set during shutdown. For tests, we
@@ -702,7 +711,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

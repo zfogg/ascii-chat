@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>client.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">client.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">client.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">client.h - Client-side H.265 media capture and encoding
+  pipeline.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct h265_client_encoder <b>h265_client_encoder_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>h265_media_source_t</b> { <b>H265_SOURCE_TEST_PATTERN</b>
+    = 0, <b>H265_SOURCE_FILE</b> = 1, <b>H265_SOURCE_URL</b> = 2,
+    <b>H265_SOURCE_WEBCAM</b> = 3 }
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>h265_client_context_t</b> * <b>h265_client_context_create</b>
+    (<b>uint16_t</b> width, <b>uint16_t</b> height)
+  <br/>
+  void <b>h265_client_context_destroy</b> (<b>h265_client_context_t</b> *ctx)
+  <br/>
+  <b>asciichat_error_t</b> <b>h265_client_init_media_source</b>
+    (<b>h265_client_context_t</b> *ctx, <b>h265_media_source_t</b> source_type,
+    const char *source_location)
+  <br/>
+  <b>asciichat_error_t</b> <b>h265_client_capture_and_encode</b>
+    (<b>h265_client_context_t</b> *ctx, <b>uint8_t</b> *output_buf, size_t
+    *output_size)
+  <br/>
+  void <b>h265_client_request_keyframe</b> (<b>h265_client_context_t</b> *ctx)
+  <br/>
+  void <b>h265_client_get_stats</b> (<b>h265_client_context_t</b> *ctx,
+    <b>uint64_t</b> *total_frames, <b>uint64_t</b> *keyframes, <b>uint32_t</b>
+    *avg_bitrate)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Client-side H.265 media capture and encoding pipeline.</p>
+<p class="Pp">The client encodes media from various sources into H.265 and sends
+    encoded frames to the server:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Test pattern: Procedurally generated color grids</li>
+  <li>File: Local video files (MP4, MKV, AVI, etc.) via FFmpeg</li>
+  <li>URL: Remote streams (HTTP, RTSP, HLS, DASH, YouTube, etc.) via FFmpeg +
+      yt-dlp</li>
+  <li>Webcam: Live camera input via PortAudio/libwebsockets</li>
+</ul>
+<p class="Pp">Each media source is decoded to RGBA, then:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Converted to ASCII art via color-to-character mapping</dd>
+  <dt>2.</dt>
+  <dd>Encoded to H.265 with <b>h265_encoder</b></dd>
+  <dt>3.</dt>
+  <dd>Sent to server in H.265 packets</dd>
+</dl>
+<p class="Pp">Definition in file <b>src/session/h265/client.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_h265_client_encoder_"><a class="permalink" href="#typedef_struct_h265_client_encoder_">typedef
+  struct h265_client_encoder <b>h265_client_encoder_t</b></a></h2>
+<p class="Pp">Definition at line <b>26</b> of file
+    <b>src/session/h265/client.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>h265_media_source_t</b></a></h2>
+<p class="Pp">Media source type</p>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="H265_SOURCE_TEST_PATTERN"><a class="permalink" href="#H265_SOURCE_TEST_PATTERN"><b><i>H265_SOURCE_TEST_PATTERN
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="H265_SOURCE_FILE"><a class="permalink" href="#H265_SOURCE_FILE"><b><i>H265_SOURCE_FILE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="H265_SOURCE_URL"><a class="permalink" href="#H265_SOURCE_URL"><b><i>H265_SOURCE_URL
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="H265_SOURCE_WEBCAM"><a class="permalink" href="#H265_SOURCE_WEBCAM"><b><i>H265_SOURCE_WEBCAM
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>31</b> of file
+    <b>src/session/h265/client.h</b>.</p>
+<pre>31              {
+32     H265_SOURCE_TEST_PATTERN = 0,   // Procedural test pattern
+33     H265_SOURCE_FILE = 1,           // Local file
+34     H265_SOURCE_URL = 2,            // Remote URL (with yt-dlp support)
+35     H265_SOURCE_WEBCAM = 3,         // Live camera
+36 } h265_media_source_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> h265_client_capture_and_encode
+  (<b>h265_client_context_t</b> * ctx, <b>uint8_t</b> * output_buf, size_t *
+  output_size)</h2>
+<p class="Pp">Capture and encode the next frame Reads from the media source,
+    converts to ASCII, and encodes to H.265</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Client context
+<br/>
+<i>output_buf</i> Output buffer for H.265 packet
+<br/>
+<i>output_size</i> Input: buffer size, Output: actual packet size</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Error code (ASCIICHAT_OK on success)</div>
+<p class="Pp">The output packet includes: [flags: u8][width: u16][height:
+    u16][x265_data...] as defined in <b>h265_encoder</b></p>
+<p class="Pp">Definition at line <b>113</b> of file
+    <b>src/session/h265/client.c</b>.</p>
+<pre>117   {
+118     if (!ctx || !output_buf || !output_size) {
+119         return SET_ERRNO(ERROR_INTERNAL, &quot;Invalid arguments to capture_and_encode&quot;);
+120     }
+121 
+122     if (!ctx-&gt;encoder) {
+123         return SET_ERRNO(ERROR_INTERNAL, &quot;Encoder not initialized&quot;);
+124     }
+125 
+126     memset(ctx-&gt;frame_buf, 128, ctx-&gt;frame_buf_size);
+127 
+128     asciichat_error_t result = h265_encode(
+129         ctx-&gt;encoder,
+130         ctx-&gt;current_width,
+131         ctx-&gt;current_height,
+132         ctx-&gt;frame_buf,
+133         output_buf,
+134         output_size
+135     );
+136 
+137     return result;
+138 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>h265_client_context::current_height</b>,
+    <b>h265_client_context::current_width</b>,
+    <b>h265_client_context::encoder</b>, <b>ERROR_INTERNAL</b>,
+    <b>h265_client_context::frame_buf</b>,
+    <b>h265_client_context::frame_buf_size</b>, <b>h265_encode()</b>, and
+    <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>h265_client_context_t</b> * h265_client_context_create
+  (<b>uint16_t</b> width, <b>uint16_t</b> height)</h2>
+<p class="Pp">Create a client H.265 encoding context Initializes the encoder and
+    media pipeline</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>width</i> Initial frame width (characters)
+<br/>
+<i>height</i> Initial frame height (characters)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Context handle, or NULL on error</div>
+<p class="Pp">Definition at line <b>27</b> of file
+    <b>src/session/h265/client.c</b>.</p>
+<pre>27                                                                                    {
+28     if (width == 0 || height == 0) {
+29         SET_ERRNO(ERROR_MEDIA_INIT, &quot;Frame dimensions must be non-zero&quot;);
+30         return NULL;
+31     }
+32 
+33     h265_client_context_t *ctx = SAFE_CALLOC(1, sizeof(h265_client_context_t), h265_client_context_t *);
+34     if (!ctx) {
+35         SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate client context&quot;);
+36         return NULL;
+37     }
+38 
+39     ctx-&gt;encoder = h265_encoder_create(width, height);
+40     if (!ctx-&gt;encoder) {
+41         SET_ERRNO(ERROR_MEDIA_INIT, &quot;Failed to create H.265 encoder&quot;);
+42         SAFE_FREE(ctx);
+43         return NULL;
+44     }
+45 
+46     ctx-&gt;current_width = width;
+47     ctx-&gt;current_height = height;
+48     ctx-&gt;frame_buf_size = width * height;
+49     ctx-&gt;frame_buf = SAFE_MALLOC(ctx-&gt;frame_buf_size, uint8_t *);
+50     if (!ctx-&gt;frame_buf) {
+51         SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate frame buffer&quot;);
+52         h265_encoder_destroy(ctx-&gt;encoder);
+53         SAFE_FREE(ctx);
+54         return NULL;
+55     }
+56 
+57     log_info(&quot;H.265 client context created: %ux%u&quot;, width, height);
+58     return ctx;
+59 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>h265_client_context::current_height</b>,
+    <b>h265_client_context::current_width</b>,
+    <b>h265_client_context::encoder</b>, <b>ERROR_MEDIA_INIT</b>,
+    <b>ERROR_MEMORY</b>, <b>h265_client_context::frame_buf</b>,
+    <b>h265_client_context::frame_buf_size</b>, <b>h265_encoder_create()</b>,
+    <b>h265_encoder_destroy()</b>, <b>log_info</b>, <b>SAFE_CALLOC</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_h265_client_context_destroy_("><a class="permalink" href="#void_h265_client_context_destroy_(">void
+  h265_client_context_destroy (<b>h265_client_context_t</b> * ctx)</a></h2>
+<p class="Pp">Destroy the client context and encoder</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Context to destroy (may be NULL)</div>
+<p class="Pp">Definition at line <b>61</b> of file
+    <b>src/session/h265/client.c</b>.</p>
+<pre>61                                                              {
+62     if (!ctx) return;
+63 
+64     if (ctx-&gt;encoder) {
+65         h265_encoder_destroy(ctx-&gt;encoder);
+66     }
+67     if (ctx-&gt;frame_buf) {
+68         SAFE_FREE(ctx-&gt;frame_buf);
+69     }
+70     if (ctx-&gt;source_location) {
+71         SAFE_FREE(ctx-&gt;source_location);
+72     }
+73     SAFE_FREE(ctx);
+74 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>h265_client_context::encoder</b>,
+    <b>h265_client_context::frame_buf</b>, <b>h265_encoder_destroy()</b>,
+    <b>SAFE_FREE</b>, and <b>h265_client_context::source_location</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_h265_client_get_stats_("><a class="permalink" href="#void_h265_client_get_stats_(">void
+  h265_client_get_stats (<b>h265_client_context_t</b> * ctx, <b>uint64_t</b> *
+  total_frames, <b>uint64_t</b> * keyframes, <b>uint32_t</b> *
+  avg_bitrate)</a></h2>
+<p class="Pp">Get encoder statistics</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Client context
+<br/>
+<i>total_frames</i> Output: total frames encoded
+<br/>
+<i>keyframes</i> Output: total keyframes encoded
+<br/>
+<i>avg_bitrate</i> Output: average bitrate in bits per second</div>
+<p class="Pp">Definition at line <b>146</b> of file
+    <b>src/session/h265/client.c</b>.</p>
+<pre>151   {
+152     if (!ctx || !ctx-&gt;encoder) return;
+153 
+154     h265_encoder_get_stats(ctx-&gt;encoder, total_frames, keyframes, avg_bitrate);
+155 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>h265_client_context::encoder</b>, and
+    <b>h265_encoder_get_stats()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> h265_client_init_media_source
+  (<b>h265_client_context_t</b> * ctx, <b>h265_media_source_t</b> source_type,
+  const char * source_location)</h2>
+<p class="Pp">Initialize media source for the client encoder This prepares the
+    media pipeline (opens file, connects to stream, etc.)</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Client context
+<br/>
+<i>source_type</i> Type of media source (file, URL, webcam, test pattern)
+<br/>
+<i>source_location</i> File path, URL, or device path (NULL for test
+  pattern)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Error code (ASCIICHAT_OK on success)</div>
+<p class="Pp">Examples: h265_client_init_media_source(ctx, H265_SOURCE_FILE,
+    &quot;/path/to/video.mp4&quot;) h265_client_init_media_source(ctx,
+    H265_SOURCE_URL, &quot;https://www.youtube.com/watch?v=...&quot;)
+    h265_client_init_media_source(ctx, H265_SOURCE_WEBCAM,
+    &quot;/dev/video0&quot;) h265_client_init_media_source(ctx,
+    H265_SOURCE_TEST_PATTERN, NULL)</p>
+<p class="Pp">Definition at line <b>76</b> of file
+    <b>src/session/h265/client.c</b>.</p>
+<pre>80   {
+81     if (!ctx) {
+82         return SET_ERRNO(ERROR_INTERNAL, &quot;Invalid client context&quot;);
+83     }
+84 
+85     ctx-&gt;source_type = source_type;
+86 
+87     if (source_location) {
+88         ctx-&gt;source_location = SAFE_MALLOC(strlen(source_location) + 1, char *);
+89         if (!ctx-&gt;source_location) {
+90             return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate source location string&quot;);
+91         }
+92         strcpy(ctx-&gt;source_location, source_location);
+93     }
+94 
+95     switch (source_type) {
+96         case H265_SOURCE_TEST_PATTERN:
+97             log_info(&quot;H.265 client media source: test pattern&quot;);
+98             break;
+99         case H265_SOURCE_FILE:
+100             log_info(&quot;H.265 client media source: file '%s'&quot;, source_location);
+101             break;
+102         case H265_SOURCE_URL:
+103             log_info(&quot;H.265 client media source: URL '%s'&quot;, source_location);
+104             break;
+105         case H265_SOURCE_WEBCAM:
+106             log_info(&quot;H.265 client media source: webcam '%s'&quot;, source_location);
+107             break;
+108     }
+109 
+110     return ASCIICHAT_OK;
+111 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INTERNAL</b>,
+    <b>ERROR_MEMORY</b>, <b>H265_SOURCE_FILE</b>,
+    <b>H265_SOURCE_TEST_PATTERN</b>, <b>H265_SOURCE_URL</b>,
+    <b>H265_SOURCE_WEBCAM</b>, <b>log_info</b>, <b>SAFE_MALLOC</b>,
+    <b>SET_ERRNO</b>, <b>h265_client_context::source_location</b>, and
+    <b>h265_client_context::source_type</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_h265_client_request_keyframe_("><a class="permalink" href="#void_h265_client_request_keyframe_(">void
+  h265_client_request_keyframe (<b>h265_client_context_t</b> * ctx)</a></h2>
+<p class="Pp">Request a keyframe on the next encode Used for error recovery and
+    stream synchronization</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Client context</div>
+<p class="Pp">Definition at line <b>140</b> of file
+    <b>src/session/h265/client.c</b>.</p>
+<pre>140                                                               {
+141     if (ctx &amp;&amp; ctx-&gt;encoder) {
+142         h265_encoder_request_keyframe(ctx-&gt;encoder);
+143     }
+144 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>h265_client_context::encoder</b>, and
+    <b>h265_encoder_request_keyframe()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

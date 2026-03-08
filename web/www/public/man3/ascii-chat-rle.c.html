@@ -40,182 +40,12 @@
 <p class="Pp">char * <b>ansi_expand_rle</b> (const char *input, size_t
     input_len)
   <br/>
-  char * <b>ansi_compress_rle</b> (const char *input, size_t input_len)
+  Expand RLE escape sequences in a string. char * <b>ansi_compress_rle</b>
+    (const char *input, size_t input_len)
   <br/>
+  Compress repeated characters using RLE escape sequences.
   <br/>
 </p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="char_*_ansi_compress_rle_(const_char_*_input,_size_t_input_len)"><a class="permalink" href="#char_*_ansi_compress_rle_(const_char_*_input,_size_t_input_len)">char
-  * ansi_compress_rle (const char * input, size_t input_len)</a></h2>
-<p class="Pp">Definition at line <b>98</b> of file <b>rle.c</b>.</p>
-<pre>98                                                              {
-99   if (!input || input_len == 0) {
-100     return NULL;
-101   }
-102 
-103   outbuf_t ob = {0};
-104   ob_reserve(&amp;ob, input_len);
-105 
-106   size_t i = 0;
-107   while (i &lt; input_len) {
-108     // Check for ESC character (start of ANSI sequence)
-109     if (input[i] == '\x1b' &amp;&amp; i + 1 &lt; input_len &amp;&amp; input[i + 1] == '[') {
-110       size_t seq_start = i;
-111       i += 2; // Skip ESC[
-112 
-113       // Skip parameter bytes
-114       while (i &lt; input_len &amp;&amp; ((input[i] &gt;= '0' &amp;&amp; input[i] &lt;= '9') || input[i] == ';')) {
-115         i++;
-116       }
-117 
-118       // Skip final byte
-119       if (i &lt; input_len) {
-120         i++;
-121       }
-122 
-123       // Copy entire escape sequence as-is
-124       ob_write(&amp;ob, input + seq_start, i - seq_start);
-125     } else {
-126       // Regular character - check for runs
-127       char c = input[i];
-128 
-129       // Only compress printable characters (not newlines, not control chars)
-130       if (c &gt;= 0x20 &amp;&amp; c != 0x7F) {
-131         // Count run length
-132         size_t run_len = 1;
-133         i++;
-134 
-135         while (i &lt; input_len &amp;&amp; input[i] == c) {
-136           run_len++;
-137           i++;
-138         }
-139 
-140         // Emit first character
-141         ob_putc(&amp;ob, c);
-142 
-143         // Use RLE if profitable (run &gt; overhead of ESC[Nb)
-144         if (run_len &gt; 1 &amp;&amp; rep_is_profitable((uint32_t)run_len)) {
-145           emit_rep(&amp;ob, (uint32_t)(run_len - 1));
-146         } else {
-147           // Emit remaining characters directly
-148           for (size_t k = 1; k &lt; run_len; k++) {
-149             ob_putc(&amp;ob, c);
-150           }
-151         }
-152       } else {
-153         // Non-compressible character (newline, etc.)
-154         ob_putc(&amp;ob, c);
-155         i++;
-156       }
-157     }
-158   }
-159 
-160   ob_term(&amp;ob);
-161   return ob.buf;
-162 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>emit_rep()</b>, <b>ob_putc()</b>,
-    <b>ob_reserve()</b>, <b>ob_term()</b>, <b>ob_write()</b>, and
-    <b>rep_is_profitable()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_ansi_expand_rle_(const_char_*_input,_size_t_input_len)"><a class="permalink" href="#char_*_ansi_expand_rle_(const_char_*_input,_size_t_input_len)">char
-  * ansi_expand_rle (const char * input, size_t input_len)</a></h2>
-<p class="Pp">Definition at line <b>13</b> of file <b>rle.c</b>.</p>
-<pre>13                                                            {
-14   if (!input || input_len == 0) {
-15     return NULL;
-16   }
-17 
-18   // RLE expansion can make output larger than input, start with 2x capacity
-19   outbuf_t ob = {0};
-20   ob_reserve(&amp;ob, input_len * 2);
-21 
-22   // Track the last character/grapheme for RLE expansion
-23   // UTF-8 characters can be up to 4 bytes
-24   char last_char[5] = &quot; &quot;;
-25   size_t last_char_len = 1;
-26 
-27   size_t i = 0;
-28   while (i &lt; input_len) {
-29     // Check for ESC character (start of ANSI sequence)
-30     if (input[i] == '\x1b' &amp;&amp; i + 1 &lt; input_len &amp;&amp; input[i + 1] == '[') {
-31       size_t seq_start = i;
-32       i += 2; // Skip ESC[
-33 
-34       // Parse parameter bytes (digits and semicolons)
-35       uint32_t param = 0;
-36       while (i &lt; input_len &amp;&amp; ((input[i] &gt;= '0' &amp;&amp; input[i] &lt;= '9') || input[i] == ';')) {
-37         if (input[i] &gt;= '0' &amp;&amp; input[i] &lt;= '9') {
-38           param = param * 10 + (uint32_t)(input[i] - '0');
-39         } else if (input[i] == ';') {
-40           param = 0; // Reset for next parameter
-41         }
-42         i++;
-43       }
-44 
-45       // Check for final byte
-46       if (i &lt; input_len) {
-47         char final_byte = input[i];
-48         i++;
-49 
-50         // Handle RLE: ESC[Nb repeats previous character N times
-51         if (final_byte == 'b' &amp;&amp; param &gt; 0) {
-52           for (uint32_t r = 0; r &lt; param; r++) {
-53             ob_write(&amp;ob, last_char, last_char_len);
-54           }
-55         } else {
-56           // Not RLE - copy the entire escape sequence as-is
-57           ob_write(&amp;ob, input + seq_start, i - seq_start);
-58         }
-59       }
-60     } else {
-61       // Regular character - copy to output and track for RLE
-62       unsigned char c = (unsigned char)input[i];
-63       size_t char_len = 1;
-64 
-65       // Determine UTF-8 character length from first byte
-66       if ((c &amp; 0x80) == 0) {
-67         char_len = 1; // ASCII
-68       } else if ((c &amp; 0xE0) == 0xC0) {
-69         char_len = 2; // 2-byte UTF-8
-70       } else if ((c &amp; 0xF0) == 0xE0) {
-71         char_len = 3; // 3-byte UTF-8
-72       } else if ((c &amp; 0xF8) == 0xF0) {
-73         char_len = 4; // 4-byte UTF-8
-74       }
-75 
-76       // Make sure we don't read past end of input
-77       if (i + char_len &gt; input_len) {
-78         char_len = input_len - i;
-79       }
-80 
-81       // Copy full UTF-8 character to output
-82       ob_write(&amp;ob, input + i, char_len);
-83 
-84       // Track last printable character for RLE (skip control chars)
-85       if (c &gt;= 0x20 &amp;&amp; c != 0x7F) {
-86         SAFE_MEMCPY(last_char, sizeof(last_char), input + i, char_len);
-87         last_char[char_len] = '\0';
-88         last_char_len = char_len;
-89       }
-90       i += char_len;
-91     }
-92   }
-93 
-94   ob_term(&amp;ob);
-95   return ob.buf;
-96 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ob_reserve()</b>, <b>ob_term()</b>, and
-    <b>ob_write()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -225,7 +55,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -39,16 +39,20 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">void <b>backtrace_t_free</b> (backtrace_t *bt)
+<p class="Pp">void <b>backtrace_t_free</b> (<b>backtrace_t</b> *bt)
   <br/>
-  void <b>backtrace_print</b> (const char *label, const backtrace_t *bt, int
-    skip_frames, int max_frames, backtrace_frame_filter_t filter)
+  Free backtrace symbols. void <b>backtrace_print</b> (const char *label, const
+    <b>backtrace_t</b> *bt, int skip_frames, int max_frames,
+    <b>backtrace_frame_filter_t</b> filter)
   <br/>
-  void <b>backtrace_print_many</b> (const char *label, const backtrace_t *bts,
-    int count)
+  Print backtrace with dual output: colored stderr + plain log file. void
+    <b>backtrace_print_many</b> (const char *label, const <b>backtrace_t</b>
+    *bts, int count)
   <br/>
-  void <b>backtrace_symbolize</b> (backtrace_t *bt)
+  Print multiple backtraces. void <b>backtrace_symbolize</b> (<b>backtrace_t</b>
+    *bt)
   <br/>
+  Symbolize bt-&gt;ptrs into bt-&gt;symbols.
   <br/>
 </p>
 </section>
@@ -65,9 +69,68 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="void_backtrace_print_(const_char_*_label,_const_backtrace_t_*_bt,_int_skip_frames,_int_max_frames,_backtrace_frame_filter_t_filter)"><a class="permalink" href="#void_backtrace_print_(const_char_*_label,_const_backtrace_t_*_bt,_int_skip_frames,_int_max_frames,_backtrace_frame_filter_t_filter)">void
-  backtrace_print (const char * label, const backtrace_t * bt, int skip_frames,
-  int max_frames, backtrace_frame_filter_t filter)</a></h2>
+<h2 class="Ss" id="void_backtrace_print_(const_char_*_label,_const_"><a class="permalink" href="#void_backtrace_print_(const_char_*_label,_const_">void
+  backtrace_print (const char * label, const <b>backtrace_t</b> * bt, int
+  skip_frames, int max_frames, <b>backtrace_frame_filter_t</b> filter)</a></h2>
+<p class="Pp">Print backtrace with dual output: colored stderr + plain log file.
+    Intelligently formats and routes backtraces to multiple destinations:</p>
+<ul class="Bl-bullet">
+  <li><b>stderr</b>: Colored output with semantic highlighting (for interactive
+      debugging)</li>
+  <li><b>log file</b> (if logging): Plain ASCII without ANSI codes (for file
+      parsing)</li>
+</ul>
+<p class="Pp">This dual-output design ensures readable terminal output during
+    development while keeping log files clean and searchable in production.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Output_Format"><a class="permalink" href="#Output_Format">Output
+  Format</a></h2>
+<p class="Pp">Terminal output example:</p>
+<p class="Pp"></p>
+<pre>=== Backtrace: Error ===
+[0] 0x7f1234567890 in main() [src/main.c:42]
+[1] 0x7f1234567800 in process_request() [src/network.c:128]
+[2] 0x7f1234567700 in send_data() [src/io.c:67]
+</pre>
+<p class="Pp">Log file (same content, no colors):</p>
+<p class="Pp"></p>
+<pre>=== Backtrace: Error ===
+[0] 0x7f1234567890 in main() [src/main.c:42]
+...
+</pre>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>label</i> Header label (e.g., &quot;Backtrace&quot;,
+  &quot;Leak trace&quot;, &quot;Assertion failure&quot;)
+<br/>
+<i>bt</i> Backtrace to print (must not be NULL, must be symbolized via
+  backtrace_capture_and_symbolize)
+<br/>
+<i>skip_frames</i> Number of frames to skip from start (0 = include all, 1 =
+  skip first frame, etc.)
+<br/>
+<i>max_frames</i> Maximum frames to print (0 = unlimited, 5 = first 5 frames
+  only)
+<br/>
+<i>filter</i> Optional callback to selectively skip frames (e.g., filter
+  internal frames) Return true to skip frame, false to include. NULL = no
+  filtering.</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Backtrace must be symbolized. Unsymbolized (raw hex)
+  traces are less useful.
+<p class="Pp"></p>
+<p class="Pp">Frame filtering is useful to focus on application code,
+  excluding:</p>
+<ul class="Bl-bullet">
+  <li>lib/platform internal calls</li>
+  <li>lib/log infrastructure</li>
+  <li>Exception handling wrappers</li>
+</ul>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>backtrace_format()</b> for buffer-based output (safe
+  for log system)</div>
 <p class="Pp">Definition at line <b>14</b> of file
     <b>platform/wasm/backtrace.c</b>.</p>
 <pre>15                                                       {
@@ -82,9 +145,18 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_backtrace_print_many_(const_char_*_label,_const_backtrace_t_*_bts,_int_count)"><a class="permalink" href="#void_backtrace_print_many_(const_char_*_label,_const_backtrace_t_*_bts,_int_count)">void
-  backtrace_print_many (const char * label, const backtrace_t * bts, int
+<h2 class="Ss" id="void_backtrace_print_many_(const_char_*_label,_const_"><a class="permalink" href="#void_backtrace_print_many_(const_char_*_label,_const_">void
+  backtrace_print_many (const char * label, const <b>backtrace_t</b> * bts, int
   count)</a></h2>
+<p class="Pp">Print multiple backtraces. Convenience function for iterating and
+    printing multiple <b>backtrace_t</b> entries.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>label</i> Header label for all backtraces
+<br/>
+<i>bts</i> Array of backtrace structures
+<br/>
+<i>count</i> Number of backtraces to print</div>
 <p class="Pp">Definition at line <b>24</b> of file
     <b>platform/wasm/backtrace.c</b>.</p>
 <pre>24                                                                                 {
@@ -97,8 +169,16 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_backtrace_symbolize_(backtrace_t_*_bt)"><a class="permalink" href="#void_backtrace_symbolize_(backtrace_t_*_bt)">void
-  backtrace_symbolize (backtrace_t * bt)</a></h2>
+<h2 class="Ss" id="void_backtrace_symbolize_("><a class="permalink" href="#void_backtrace_symbolize_(">void
+  backtrace_symbolize (<b>backtrace_t</b> * bt)</a></h2>
+<p class="Pp">Symbolize bt-&gt;ptrs into bt-&gt;symbols. Calls
+    <b>platform_backtrace_symbols()</b> to convert raw addresses to symbol
+    strings. This is a no-op if symbols are already set (already
+  symbolized).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>bt</i> Backtrace structure to symbolize (must not be
+  NULL)</div>
 <p class="Pp">Definition at line <b>31</b> of file
     <b>platform/wasm/backtrace.c</b>.</p>
 <pre>31                                           {
@@ -109,8 +189,14 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_backtrace_t_free_(backtrace_t_*_bt)"><a class="permalink" href="#void_backtrace_t_free_(backtrace_t_*_bt)">void
-  backtrace_t_free (backtrace_t * bt)</a></h2>
+<h2 class="Ss" id="void_backtrace_t_free_("><a class="permalink" href="#void_backtrace_t_free_(">void
+  backtrace_t_free (<b>backtrace_t</b> * bt)</a></h2>
+<p class="Pp">Free backtrace symbols. Calls
+    <b>platform_backtrace_symbols_destroy()</b> to free the symbols array. Nulls
+    the symbols pointer after freeing.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>bt</i> Backtrace structure (must not be NULL)</div>
 <p class="Pp">Definition at line <b>9</b> of file
     <b>platform/wasm/backtrace.c</b>.</p>
 <pre>9                                        {
@@ -128,7 +214,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

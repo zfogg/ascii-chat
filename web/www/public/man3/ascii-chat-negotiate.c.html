@@ -39,18 +39,18 @@
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">void <b>negotiate_init</b> (<b>negotiate_ctx_t</b> *ctx, const
-    uint8_t <b>session_id</b>[16], const uint8_t <b>participant_id</b>[16],
-    <b>bool</b> is_initiator)
+    <b>uint8_t</b> <b>session_id</b>[16], const <b>uint8_t</b>
+    <b>participant_id</b>[16], <b>bool</b> is_initiator)
   <br/>
-  Initialize negotiation context. asciichat_error_t
+  Initialize negotiation context. <b>asciichat_error_t</b>
     <b>negotiate_start_detection</b> (<b>negotiate_ctx_t</b> *ctx, const char
-    *stun_server, uint16_t local_port)
+    *stun_server, <b>uint16_t</b> local_port)
   <br/>
-  Start NAT detection phase. asciichat_error_t
+  Start NAT detection phase. <b>asciichat_error_t</b>
     <b>negotiate_receive_peer_quality</b> (<b>negotiate_ctx_t</b> *ctx, const
-    acip_nat_quality_t *peer_quality)
+    <b>acip_nat_quality_t</b> *peer_quality)
   <br/>
-  Process received peer NAT quality. asciichat_error_t
+  Process received peer NAT quality. <b>asciichat_error_t</b>
     <b>negotiate_determine_result</b> (<b>negotiate_ctx_t</b> *ctx)
   <br/>
   Determine negotiation result. <b>negotiate_state_t</b>
@@ -59,13 +59,13 @@
   Get current negotiation state. <b>bool</b> <b>negotiate_is_complete</b> (const
     <b>negotiate_ctx_t</b> *ctx)
   <br/>
-  Check if negotiation is complete. asciichat_error_t <b>negotiate_get_error</b>
-    (const <b>negotiate_ctx_t</b> *ctx)
+  Check if negotiation is complete. <b>asciichat_error_t</b>
+    <b>negotiate_get_error</b> (const <b>negotiate_ctx_t</b> *ctx)
   <br/>
-  Get negotiation error (if failed). asciichat_error_t
-    <b>negotiate_elect_future_host</b> (const acip_nat_quality_t
-    collected_quality[], const uint8_t participant_ids[][16], size_t
-    num_participants, uint8_t out_future_host_id[16])
+  Get negotiation error (if failed). <b>asciichat_error_t</b>
+    <b>negotiate_elect_future_host</b> (const <b>acip_nat_quality_t</b>
+    collected_quality[], const <b>uint8_t</b> participant_ids[][16], size_t
+    num_participants, <b>uint8_t</b> out_future_host_id[16])
   <br/>
   Elect future host from multiple participants (NEW P2P design).
   <br/>
@@ -84,8 +84,8 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_negotiate_determine_result_("><a class="permalink" href="#asciichat_error_t_negotiate_determine_result_(">asciichat_error_t
-  negotiate_determine_result (<b>negotiate_ctx_t</b> * ctx)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> negotiate_determine_result
+  (<b>negotiate_ctx_t</b> * ctx)</h2>
 <p class="Pp">Determine negotiation result. Called after both parties have
     exchanged NAT quality. Sets we_are_host and related fields.</p>
 <p class="Pp"></p>
@@ -148,16 +148,18 @@
 162 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>negotiate_ctx_t::connection_type</b>,
-    <b>nat_quality_t::detection_complete</b>,
-    <b>negotiate_ctx_t::host_address</b>, <b>negotiate_ctx_t::host_port</b>,
-    <b>negotiate_ctx_t::is_initiator</b>, <b>nat_compare_quality()</b>,
+<p class="Pp">References <b>ACIP_HOST_DEFAULT_PORT</b>, <b>ASCIICHAT_OK</b>,
+    <b>negotiate_ctx_t::connection_type</b>,
+    <b>nat_quality_t::detection_complete</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>negotiate_ctx_t::host_address</b>,
+    <b>negotiate_ctx_t::host_port</b>, <b>negotiate_ctx_t::is_initiator</b>,
+    <b>log_info</b>, <b>nat_compare_quality()</b>,
     <b>NEGOTIATE_STATE_COMPARING</b>, <b>NEGOTIATE_STATE_COMPLETE</b>,
     <b>NEGOTIATE_STATE_THEY_HOST</b>, <b>NEGOTIATE_STATE_WE_HOST</b>,
     <b>negotiate_ctx_t::our_quality</b>, <b>negotiate_ctx_t::peer_quality</b>,
     <b>negotiate_ctx_t::peer_quality_received</b>,
-    <b>nat_quality_t::public_address</b>, <b>negotiate_ctx_t::state</b>,
-    <b>nat_quality_t::upnp_available</b>,
+    <b>nat_quality_t::public_address</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
+    <b>negotiate_ctx_t::state</b>, <b>nat_quality_t::upnp_available</b>,
     <b>nat_quality_t::upnp_mapped_port</b>, and
     <b>negotiate_ctx_t::we_are_host</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_process()</b>,
@@ -165,10 +167,10 @@
     <b>negotiate_start_detection()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_negotiate_elect_future_host_(const_acip_nat_quality_t_collected_quality__,_const_uint8_t_participant_ids___16_,_size_t_num_participants,_uint8_t_out_future_host_id_16_)"><a class="permalink" href="#asciichat_error_t_negotiate_elect_future_host_(const_acip_nat_quality_t_collected_quality__,_const_uint8_t_participant_ids___16_,_size_t_num_participants,_uint8_t_out_future_host_id_16_)">asciichat_error_t
-  negotiate_elect_future_host (const acip_nat_quality_t collected_quality[],
-  const uint8_t participant_ids[][16], size_t num_participants, uint8_t
-  out_future_host_id[16])</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> negotiate_elect_future_host (const
+  <b>acip_nat_quality_t</b> collected_quality[], const <b>uint8_t</b>
+  participant_ids[][16], size_t num_participants, <b>uint8_t</b>
+  out_future_host_id[16])</h2>
 <p class="Pp">Elect future host from multiple participants (NEW P2P design).
     Called by quorum leader after collecting NAT quality from all participants.
     Determines who should become host if current host dies. Uses deterministic
@@ -258,12 +260,14 @@
 244 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>MAX_PARTICIPANTS</b>, <b>nat_compare_quality()</b>,
-    and <b>nat_quality_from_acip()</b>.</p>
+<p class="Pp">References <b>acip_nat_quality_t</b>, <b>ASCIICHAT_OK</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>log_info</b>, <b>MAX_PARTICIPANTS</b>,
+    <b>nat_compare_quality()</b>, <b>nat_quality_from_acip()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_negotiate_get_error_(const_"><a class="permalink" href="#asciichat_error_t_negotiate_get_error_(const_">asciichat_error_t
-  negotiate_get_error (const <b>negotiate_ctx_t</b> * ctx)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> negotiate_get_error (const
+  <b>negotiate_ctx_t</b> * ctx)</h2>
 <p class="Pp">Get negotiation error (if failed).</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>ctx</i> Negotiation context</div>
@@ -277,7 +281,8 @@
 180 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>negotiate_ctx_t::error</b>.</p>
+<p class="Pp">References <b>negotiate_ctx_t::error</b>, and
+    <b>ERROR_INVALID_PARAM</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>negotiate_state_t</b> negotiate_get_state (const
@@ -300,8 +305,9 @@
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_negotiate_init_("><a class="permalink" href="#void_negotiate_init_(">void
-  negotiate_init (<b>negotiate_ctx_t</b> * ctx, const uint8_t session_id[16],
-  const uint8_t participant_id[16], <b>bool</b> is_initiator)</a></h2>
+  negotiate_init (<b>negotiate_ctx_t</b> * ctx, const <b>uint8_t</b>
+  session_id[16], const <b>uint8_t</b> participant_id[16], <b>bool</b>
+  is_initiator)</a></h2>
 <p class="Pp">Initialize negotiation context.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>ctx</i> Context to initialize
@@ -335,7 +341,7 @@
 38 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>negotiate_ctx_t::is_initiator</b>,
+<p class="Pp">References <b>negotiate_ctx_t::is_initiator</b>, <b>log_debug</b>,
     <b>nat_quality_init()</b>, <b>NEGOTIATE_STATE_INIT</b>,
     <b>negotiate_ctx_t::our_quality</b>, <b>negotiate_ctx_t::participant_id</b>,
     <b>participant_id</b>, <b>negotiate_ctx_t::peer_quality</b>,
@@ -364,9 +370,9 @@
     <b>NEGOTIATE_STATE_FAILED</b>, and <b>negotiate_ctx_t::state</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_negotiate_receive_peer_quality_("><a class="permalink" href="#asciichat_error_t_negotiate_receive_peer_quality_(">asciichat_error_t
-  negotiate_receive_peer_quality (<b>negotiate_ctx_t</b> * ctx, const
-  acip_nat_quality_t * peer_quality)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> negotiate_receive_peer_quality
+  (<b>negotiate_ctx_t</b> * ctx, const <b>acip_nat_quality_t</b> *
+  peer_quality)</h2>
 <p class="Pp">Process received peer NAT quality.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>ctx</i> Negotiation context
@@ -397,17 +403,18 @@
 86 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>nat_quality_t::detection_complete</b>,
-    <b>nat_compute_tier()</b>, <b>nat_quality_from_acip()</b>,
+<p class="Pp">References <b>acip_nat_quality_t</b>, <b>ASCIICHAT_OK</b>,
+    <b>nat_quality_t::detection_complete</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>log_info</b>, <b>nat_compute_tier()</b>, <b>nat_quality_from_acip()</b>,
     <b>negotiate_determine_result()</b>, <b>NEGOTIATE_STATE_COMPARING</b>,
     <b>negotiate_ctx_t::our_quality</b>, <b>negotiate_ctx_t::peer_quality</b>,
-    <b>negotiate_ctx_t::peer_quality_received</b>,
+    <b>negotiate_ctx_t::peer_quality_received</b>, <b>SET_ERRNO</b>,
     <b>negotiate_ctx_t::state</b>, and <b>nat_quality_t::upload_kbps</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_negotiate_start_detection_("><a class="permalink" href="#asciichat_error_t_negotiate_start_detection_(">asciichat_error_t
-  negotiate_start_detection (<b>negotiate_ctx_t</b> * ctx, const char *
-  stun_server, uint16_t local_port)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> negotiate_start_detection
+  (<b>negotiate_ctx_t</b> * ctx, const char * stun_server, <b>uint16_t</b>
+  local_port)</h2>
 <p class="Pp">Start NAT detection phase.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>ctx</i> Negotiation context
@@ -446,12 +453,13 @@
 65 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>negotiate_ctx_t::error</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>negotiate_ctx_t::error</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>log_error</b>, <b>log_info</b>,
     <b>nat_detect_quality()</b>, <b>negotiate_determine_result()</b>,
     <b>NEGOTIATE_STATE_COMPARING</b>, <b>NEGOTIATE_STATE_DETECTING_NAT</b>,
     <b>NEGOTIATE_STATE_FAILED</b>, <b>NEGOTIATE_STATE_WAITING_PEER</b>,
     <b>negotiate_ctx_t::our_quality</b>,
-    <b>negotiate_ctx_t::peer_quality_received</b>, and
+    <b>negotiate_ctx_t::peer_quality_received</b>, <b>SET_ERRNO</b>, and
     <b>negotiate_ctx_t::state</b>.</p>
 </section>
 </section>
@@ -462,7 +470,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

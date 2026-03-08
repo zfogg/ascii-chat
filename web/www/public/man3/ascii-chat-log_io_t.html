@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>log_io_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">log_io_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">log_io_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">log_io_t - Opaque handle for IO capture state.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/log/io.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">int <b>saved_stdout_fd</b>
+  <br/>
+  Saved stdout file descriptor. int <b>saved_stderr_fd</b>
+  <br/>
+  Saved stderr file descriptor. int <b>pipe_fd</b>
+  <br/>
+  Read end of pipe for captured output.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Opaque handle for IO capture state.</p>
+<p class="Pp">Definition at line <b>29</b> of file <b>io.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_log_io_t::pipe_fd"><a class="permalink" href="#int_log_io_t::pipe_fd">int
+  log_io_t::pipe_fd</a></h2>
+<p class="Pp">Read end of pipe for captured output.</p>
+<p class="Pp">Definition at line <b>32</b> of file <b>io.h</b>.</p>
+<p class="Pp">Referenced by <b>log_io_start()</b>, and <b>log_io_stop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_log_io_t::saved_stderr_fd"><a class="permalink" href="#int_log_io_t::saved_stderr_fd">int
+  log_io_t::saved_stderr_fd</a></h2>
+<p class="Pp">Saved stderr file descriptor.</p>
+<p class="Pp">Definition at line <b>31</b> of file <b>io.h</b>.</p>
+<p class="Pp">Referenced by <b>log_io_start()</b>, and <b>log_io_stop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_log_io_t::saved_stdout_fd"><a class="permalink" href="#int_log_io_t::saved_stdout_fd">int
+  log_io_t::saved_stdout_fd</a></h2>
+<p class="Pp">Saved stdout file descriptor.</p>
+<p class="Pp">Definition at line <b>30</b> of file <b>io.h</b>.</p>
+<p class="Pp">Referenced by <b>log_io_start()</b>, and <b>log_io_stop()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

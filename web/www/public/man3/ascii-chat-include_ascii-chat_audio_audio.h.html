@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>audio.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">audio.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">audio.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">audio.h - &#x1F50A; Audio Capture and Playback Interface for
+    ascii-chat</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>audio_context_t</b>
+  <br/>
+  Audio context for full-duplex capture and playback. struct
+    <b>audio_device_info_t</b>
+  <br/>
+  Audio device information structure. struct <b>audio_batch_info_t</b>
+  <br/>
+  Parsed audio batch packet header information.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>AUDIO_SAMPLE_RATE</b> 48000
+  <br/>
+  Audio sample rate (48kHz professional quality, Opus-compatible). #define
+    <b>AUDIO_FRAMES_PER_BUFFER</b> 480
+  <br/>
+  Audio frames per buffer (480 = 10ms at 48kHz, matches WebRTC AEC3 frame size).
+    #define <b>AUDIO_CHANNELS</b> 1
+  <br/>
+  Number of audio channels (1 = mono). #define <b>AUDIO_BUFFER_SIZE</b>
+    (<b>AUDIO_FRAMES_PER_BUFFER</b> * <b>AUDIO_CHANNELS</b>)
+  <br/>
+  Total audio buffer size (frames &#x00D7; channels). #define
+    <b>AUDIO_DEVICE_NAME_MAX</b> 256
+  <br/>
+  Maximum length of audio device name.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>audio_init</b> (<b>audio_context_t</b>
+    *ctx)
+  <br/>
+  Initialize audio context and PortAudio. void <b>audio_destroy</b>
+    (<b>audio_context_t</b> *ctx)
+  <br/>
+  Destroy audio context and clean up resources. void
+    <b>audio_terminate_portaudio_final</b> (void)
+  <br/>
+  Terminate PortAudio and free all device resources. void
+    <b>audio_set_pipeline</b> (<b>audio_context_t</b> *ctx, void *pipeline)
+  <br/>
+  Set audio pipeline for echo cancellation. <b>asciichat_error_t</b>
+    <b>audio_start_duplex</b> (<b>audio_context_t</b> *ctx)
+  <br/>
+  Start full-duplex audio (simultaneous capture and playback).
+    <b>asciichat_error_t</b> <b>audio_stop_duplex</b> (<b>audio_context_t</b>
+    *ctx)
+  <br/>
+  Stop full-duplex audio. <b>asciichat_error_t</b> <b>audio_read_samples</b>
+    (<b>audio_context_t</b> *ctx, float *buffer, int num_samples)
+  <br/>
+  Read captured audio samples from capture buffer. <b>asciichat_error_t</b>
+    <b>audio_write_samples</b> (<b>audio_context_t</b> *ctx, const float
+    *buffer, int num_samples)
+  <br/>
+  Write audio samples to playback buffer. <b>asciichat_error_t</b>
+    <b>audio_set_realtime_priority</b> (void)
+  <br/>
+  Request real-time priority for current thread. <b>asciichat_error_t</b>
+    <b>audio_list_input_devices</b> (<b>audio_device_info_t</b> **out_devices,
+    unsigned int *out_count)
+  <br/>
+  List available audio input devices (microphones). <b>asciichat_error_t</b>
+    <b>audio_list_output_devices</b> (<b>audio_device_info_t</b> **out_devices,
+    unsigned int *out_count)
+  <br/>
+  List available audio output devices (speakers). void
+    <b>audio_free_device_list</b> (<b>audio_device_info_t</b> *devices)
+  <br/>
+  Free device list allocated by
+    audio_list_input_devices/audio_list_output_devices. <b>asciichat_error_t</b>
+    <b>audio_dequantize_samples</b> (const <b>uint8_t</b> *samples_ptr,
+    <b>uint32_t</b> total_samples, float *out_samples)
+  <br/>
+  Dequantize network audio samples from int32 to float.
+    <b>audio_ring_buffer_t</b> * <b>audio_ring_buffer_create</b> (void)
+  <br/>
+  Create a new audio ring buffer (for playback with jitter buffering).
+    <b>audio_ring_buffer_t</b> * <b>audio_ring_buffer_create_for_capture</b>
+    (void)
+  <br/>
+  Create a new audio ring buffer for capture (without jitter buffering). void
+    <b>audio_ring_buffer_destroy</b> (<b>audio_ring_buffer_t</b> *rb)
+  <br/>
+  Destroy an audio ring buffer. void <b>audio_ring_buffer_register_atomics</b>
+    (<b>audio_ring_buffer_t</b> *rb, const char *context_name)
+  <br/>
+  Register audio ring buffer atomic fields for debug tracking. void
+    <b>audio_ring_buffer_unregister_atomics</b> (<b>audio_ring_buffer_t</b> *rb)
+  <br/>
+  Unregister audio ring buffer atomic fields. void
+    <b>audio_ring_buffer_clear</b> (<b>audio_ring_buffer_t</b> *rb)
+  <br/>
+  Clear all audio samples from ring buffer. <b>asciichat_error_t</b>
+    <b>audio_ring_buffer_write</b> (<b>audio_ring_buffer_t</b> *rb, const float
+    *data, int samples)
+  <br/>
+  Write audio samples to ring buffer. size_t <b>audio_ring_buffer_read</b>
+    (<b>audio_ring_buffer_t</b> *rb, float *data, size_t samples)
+  <br/>
+  Read audio samples from ring buffer. size_t <b>audio_ring_buffer_peek</b>
+    (<b>audio_ring_buffer_t</b> *rb, float *data, size_t samples)
+  <br/>
+  Peek at available samples without consuming them (for AEC3 render signal).
+    size_t <b>audio_ring_buffer_available_read</b> (<b>audio_ring_buffer_t</b>
+    *rb)
+  <br/>
+  Get number of samples available for reading. size_t
+    <b>audio_ring_buffer_available_write</b> (<b>audio_ring_buffer_t</b> *rb)
+  <br/>
+  Get number of sample slots available for writing. void <b>resample_linear</b>
+    (const float *src, size_t src_samples, float *dst, size_t dst_samples,
+    double src_rate, double dst_rate)
+  <br/>
+  Resample audio using linear interpolation. <b>asciichat_error_t</b>
+    <b>audio_parse_batch_header</b> (const void *data, size_t len,
+    <b>audio_batch_info_t</b> *out_batch)
+  <br/>
+  Parse an audio batch packet header from raw packet data.
+    <b>asciichat_error_t</b> <b>audio_validate_batch_params</b> (const
+    <b>audio_batch_info_t</b> *batch)
+  <br/>
+  Validate audio batch parameters for sanity. <b>bool</b>
+    <b>audio_is_supported_sample_rate</b> (<b>uint32_t</b> sample_rate)
+  <br/>
+  Check if a sample rate is a standard/supported rate. void
+    <b>audio_flush_playback_buffers</b> (<b>audio_context_t</b> *ctx)
+  <br/>
+  Flush all audio buffers to synchronize with seek operations. <b>bool</b>
+    <b>audio_should_enable_microphone</b> (<b>audio_source_t</b> source,
+    <b>bool</b> has_media_audio)
+  <br/>
+  Determine if microphone should be enabled based on audio source setting and
+    media state.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F50A; Audio Capture and Playback Interface for ascii-chat</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>include/ascii-chat/audio/audio.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_AUDIO_DEVICE_NAME_MAX___256"><a class="permalink" href="#_define_AUDIO_DEVICE_NAME_MAX___256">#define
+  AUDIO_DEVICE_NAME_MAX 256</a></h2>
+<p class="Pp">Maximum length of audio device name.</p>
+<p class="Pp">Definition at line <b>382</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

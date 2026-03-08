@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>core.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">core.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">core.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">core.h - Internal helper functions and data for registry
+    implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>registry_init_from_builders</b> (void)
+  <br/>
+  Initialize registry from category builders Populates g_options_registry by
+    concatenating all category arrays. <b>asciichat_error_t</b>
+    <b>registry_validate_unique_options</b> (void)
+  <br/>
+  Validate that no short or long options appear more than once in the registry.
+    void <b>registry_init_size</b> (void)
+  <br/>
+  Initialize registry size and metadata. const <b>registry_entry_t</b> *
+    <b>registry_find_entry_by_name</b> (const char *long_name)
+  <br/>
+  Get a registry entry by long name. const <b>registry_entry_t</b> *
+    <b>registry_find_entry_by_short</b> (char short_name)
+  <br/>
+  Get a registry entry by short name. <b>option_descriptor_t</b>
+    <b>registry_entry_to_descriptor</b> (const <b>registry_entry_t</b> *entry)
+  <br/>
+  Convert registry entry to option descriptor. <b>bool</b>
+    <b>registry_entry_applies_to_mode</b> (const <b>registry_entry_t</b> *entry,
+    <b>asciichat_mode_t</b> mode, <b>bool</b> for_binary_help)
+  <br/>
+  Check if an option applies to the given mode for display purposes.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp"><b>registry_entry_t</b> <b>g_options_registry</b> [2048]
+  <br/>
+  size_t <b>g_registry_size</b>
+  <br/>
+  <b>bool</b> <b>g_metadata_populated</b>
+  <br/>
+  <b>category_builder_t</b> <b>g_category_builders</b> []
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Internal helper functions and data for registry
+  implementation.</p>
+<p class="Pp">This header declares internal helper functions and global registry
+    data that are used by <b>core.c</b> and <b>public_api.c</b>. These are NOT
+    part of the public API.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>core.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> registry_entry_applies_to_mode (const
+  <b>registry_entry_t</b> * entry, <b>asciichat_mode_t</b> mode, <b>bool</b>
+  for_binary_help)</h2>
+<p class="Pp">Check if an option applies to the given mode for display purposes.
+    This implements the same filtering logic as the help system's
+    <b>option_applies_to_mode()</b>. Used by
+    <b>options_registry_get_for_display()</b> to ensure completions match help
+    output.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>entry</i> Registry entry to check
+<br/>
+<i>mode</i> Mode to check (use MODE_DISCOVERY for binary help)
+<br/>
+<i>for_binary_help</i> If true, show all options for any mode; if false, filter
+  by mode</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if option should be displayed for this mode</div>
+<p class="Pp">Definition at line <b>200</b> of file <b>core.c</b>.</p>
+<pre>200                                                                                                                 {
+201   if (!entry) {
+202     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Entry is NULL&quot;);
+203     return false;
+204   }
+205 
+206   // Hardcoded list of options to hide from binary help (matches builder.c line 752)
+207   // These are options that have hide_from_binary_help=true set in builder.c
+208   const char *hidden_from_binary[] = {NULL};
+209 
+210   // When for_binary_help is true (i.e., for 'ascii-chat --help'),
+211   // we want to show all options that apply to any mode, plus binary-level options.
+212   if (for_binary_help) {
+213     // Check if this option is explicitly hidden from binary help
+214     for (int i = 0; hidden_from_binary[i] != NULL; i++) {
+215       if (strcmp(entry-&gt;long_name, hidden_from_binary[i]) == 0) {
+216         return false; // Hidden from binary help
+217       }
+218     }
+219 
+220     // An option applies if its mode_bitmask has any bit set for any valid mode.
+221     // OPTION_MODE_ALL is a bitmask of all modes (including OPTION_MODE_BINARY).
+222     return (entry-&gt;mode_bitmask &amp; OPTION_MODE_ALL) != 0;
+223   }
+224 
+225   // For mode-specific help, show only options for that mode.
+226   // Do not show binary options here unless it also specifically applies to the mode.
+227   if (mode &lt; 0 || mode &gt; MODE_DISCOVERY) {
+228     return false;
+229   }
+230   option_mode_bitmask_t mode_bit = (1 &lt;&lt; mode);
+231 
+232   // Check if it's a binary option. If so, only show if it also explicitly applies to this mode.
+233   if ((entry-&gt;mode_bitmask &amp; OPTION_MODE_BINARY) &amp;&amp; !(entry-&gt;mode_bitmask &amp; mode_bit)) {
+234     return false; // Binary options not shown in mode-specific help unless also mode-specific
+235   }
+236 
+237   return (entry-&gt;mode_bitmask &amp; mode_bit) != 0;
+238 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
+    <b>registry_entry_t::long_name</b>, <b>registry_entry_t::mode_bitmask</b>,
+    <b>MODE_DISCOVERY</b>, <b>OPTION_MODE_ALL</b>, <b>OPTION_MODE_BINARY</b>,
+    and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>options_registry_get_for_display()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>option_descriptor_t</b> registry_entry_to_descriptor (const
+  <b>registry_entry_t</b> * entry)</h2>
+<p class="Pp">Convert registry entry to option descriptor.</p>
+<p class="Pp">Definition at line <b>161</b> of file <b>core.c</b>.</p>
+<pre>161                                                                                 {
+162   option_descriptor_t desc = {0};
+163   if (entry) {
+164     desc.long_name = entry-&gt;long_name;
+165     desc.short_name = entry-&gt;short_name;
+166     desc.type = entry-&gt;type;
+167     desc.offset = entry-&gt;offset;
+168     desc.help_text = entry-&gt;help_text;
+169     desc.group = entry-&gt;group;
+170     desc.arg_placeholder = entry-&gt;arg_placeholder;
+171     desc.hide_from_mode_help = false;
+172     // Hide discovery service options from binary-level help (they're for discovery-service mode only)
+173     desc.hide_from_binary_help = (entry-&gt;mode_bitmask == OPTION_MODE_DISCOVERY_SVC);
+174     desc.default_value = entry-&gt;default_value;
+175     desc.required = entry-&gt;required;
+176     desc.env_var_name = entry-&gt;env_var_name;
+177     desc.validate = entry-&gt;validate_fn;
+178     desc.parse_fn = entry-&gt;parse_fn;
+179     desc.action_fn = NULL;
+180     desc.owns_memory = entry-&gt;owns_memory;
+181     desc.optional_arg = entry-&gt;optional_arg;
+182     desc.mode_bitmask = entry-&gt;mode_bitmask;
+183     desc.metadata = entry-&gt;metadata;
+184     desc.mode_default_getter = entry-&gt;mode_default_getter;
+185   }
+186   return desc;
+187 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>option_descriptor_t::action_fn</b>,
+    <b>option_descriptor_t::arg_placeholder</b>,
+    <b>registry_entry_t::arg_placeholder</b>,
+    <b>option_descriptor_t::default_value</b>,
+    <b>registry_entry_t::default_value</b>,
+    <b>option_descriptor_t::env_var_name</b>,
+    <b>registry_entry_t::env_var_name</b>, <b>option_descriptor_t::group</b>,
+    <b>registry_entry_t::group</b>, <b>option_descriptor_t::help_text</b>,
+    <b>registry_entry_t::help_text</b>,
+    <b>option_descriptor_t::hide_from_binary_help</b>,
+    <b>option_descriptor_t::hide_from_mode_help</b>,
+    <b>option_descriptor_t::long_name</b>, <b>registry_entry_t::long_name</b>,
+    <b>option_descriptor_t::metadata</b>, <b>registry_entry_t::metadata</b>,
+    <b>option_descriptor_t::mode_bitmask</b>,
+    <b>registry_entry_t::mode_bitmask</b>,
+    <b>option_descriptor_t::mode_default_getter</b>,
+    <b>registry_entry_t::mode_default_getter</b>,
+    <b>option_descriptor_t::offset</b>, <b>registry_entry_t::offset</b>,
+    <b>OPTION_MODE_DISCOVERY_SVC</b>, <b>option_descriptor_t::optional_arg</b>,
+    <b>registry_entry_t::optional_arg</b>,
+    <b>option_descriptor_t::owns_memory</b>,
+    <b>registry_entry_t::owns_memory</b>, <b>option_descriptor_t::parse_fn</b>,
+    <b>registry_entry_t::parse_fn</b>, <b>option_descriptor_t::required</b>,
+    <b>registry_entry_t::required</b>, <b>option_descriptor_t::short_name</b>,
+    <b>registry_entry_t::short_name</b>, <b>option_descriptor_t::type</b>,
+    <b>registry_entry_t::type</b>, <b>option_descriptor_t::validate</b>, and
+    <b>registry_entry_t::validate_fn</b>.</p>
+<p class="Pp">Referenced by <b>options_registry_get_binary_options()</b>,
+    <b>options_registry_get_for_display()</b>, and
+    <b>options_registry_get_for_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">const <b>registry_entry_t</b> * registry_find_entry_by_name
+  (const char * long_name)</h2>
+<p class="Pp">Get a registry entry by long name.</p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This is used internally for option lookup</div>
+<p class="Pp">Definition at line <b>127</b> of file <b>core.c</b>.</p>
+<pre>127                                                                            {
+128   if (!long_name) {
+129     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Long name is NULL&quot;);
+130     return NULL;
+131   }
+132 
+133   for (size_t i = 0; g_options_registry[i].long_name != NULL; i++) {
+134     if (strcmp(g_options_registry[i].long_name, long_name) == 0) {
+135       return &amp;g_options_registry[i];
+136     }
+137   }
+138   return NULL;
+139 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>g_options_registry</b>,
+    and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>options_registry_find_by_name()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">const <b>registry_entry_t</b> * registry_find_entry_by_short
+  (char short_name)</h2>
+<p class="Pp">Get a registry entry by short name.</p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This is used internally for option lookup</div>
+<p class="Pp">Definition at line <b>145</b> of file <b>core.c</b>.</p>
+<pre>145                                                                       {
+146   if (short_name == '\0') {
+147     return NULL;
+148   }
+149 
+150   for (size_t i = 0; g_options_registry[i].long_name != NULL; i++) {
+151     if (g_options_registry[i].short_name == short_name) {
+152       return &amp;g_options_registry[i];
+153     }
+154   }
+155   return NULL;
+156 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>g_options_registry</b>.</p>
+<p class="Pp">Referenced by <b>options_registry_find_by_short()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_registry_init_from_builders_(void_)"><a class="permalink" href="#void_registry_init_from_builders_(void_)">void
+  registry_init_from_builders (void )</a></h2>
+<p class="Pp">Initialize registry from category builders Populates
+    g_options_registry by concatenating all category arrays.</p>
+<p class="Pp">Definition at line <b>23</b> of file <b>core.c</b>.</p>
+<pre>23                                        {
+24   static bool initialized = false;
+25   if (initialized) {
+26     return;
+27   }
+28 
+29   size_t offset = 0;
+30   for (int i = 0; g_category_builders[i].entries != NULL; i++) {
+31     // Count entries in this category (until sentinel terminator)
+32     size_t count = 0;
+33     for (const registry_entry_t *e = g_category_builders[i].entries; e-&gt;long_name != NULL; e++) {
+34       count++;
+35     }
+36 
+37     // Copy category entries (count already excludes sentinel)
+38     if (offset + count &lt;= 2048) {
+39       memcpy(&amp;g_options_registry[offset], g_category_builders[i].entries, count * sizeof(registry_entry_t));
+40       offset += count;
+41     }
+42   }
+43 
+44   // Add final null terminator
+45   if (offset &lt; 2048) {
+46     g_options_registry[offset] = (registry_entry_t){.long_name = NULL,
+47                                                     .short_name = '\0',
+48                                                     .type = OPTION_TYPE_BOOL,
+49                                                     .offset = 0,
+50                                                     .default_value = NULL,
+51                                                     .default_value_size = 0,
+52                                                     .help_text = NULL,
+53                                                     .group = NULL,
+54                                                     .required = false,
+55                                                     .env_var_name = NULL,
+56                                                     .validate_fn = NULL,
+57                                                     .parse_fn = NULL,
+58                                                     .owns_memory = false,
+59                                                     .optional_arg = false,
+60                                                     .mode_bitmask = OPTION_MODE_NONE,
+61                                                     .metadata = {0}};
+62   }
+63 
+64   initialized = true;
+65 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>g_category_builders</b>, <b>g_options_registry</b>,
+    <b>initialized</b>, <b>OPTION_MODE_NONE</b>, and
+  <b>OPTION_TYPE_BOOL</b>.</p>
+<p class="Pp">Referenced by <b>registry_init_size()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_registry_init_size_(void_)"><a class="permalink" href="#void_registry_init_size_(void_)">void
+  registry_init_size (void )</a></h2>
+<p class="Pp">Initialize registry size and metadata.</p>
+<p class="Pp">Definition at line <b>108</b> of file <b>core.c</b>.</p>
+<pre>108                               {
+109   registry_init_from_builders();
+110 
+111   if (g_registry_size == 0) {
+112     for (size_t i = 0; g_options_registry[i].long_name != NULL; i++) {
+113       g_registry_size++;
+114     }
+115     // Validate that all options have unique short and long names
+116     registry_validate_unique_options();
+117     // DEPRECATED: Metadata is now initialized compile-time in registry entries
+118     // registry_populate_metadata_for_critical_options();
+119     g_metadata_populated = true;
+120   }
+121 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>g_metadata_populated</b>, <b>g_options_registry</b>,
+    <b>g_registry_size</b>, <b>registry_init_from_builders()</b>, and
+    <b>registry_validate_unique_options()</b>.</p>
+<p class="Pp">Referenced by <b>options_get_help_text()</b>,
+    <b>options_registry_add_all_to_builder()</b>,
+    <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>,
+    <b>options_registry_get_binary_options()</b>,
+    <b>options_registry_get_count()</b>,
+    <b>options_registry_get_for_display()</b>,
+    <b>options_registry_get_for_mode()</b>,
+    <b>options_registry_get_metadata()</b>, and
+    <b>options_registry_get_raw()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> registry_validate_unique_options (void
+  )</h2>
+<p class="Pp">Validate that no short or long options appear more than once in
+    the registry.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Result of SET_ERRNO if duplicates found, ASCIICHAT_OK if
+  valid</div>
+<p class="Pp">Definition at line <b>71</b> of file <b>core.c</b>.</p>
+<pre>71                                                          {
+72   // Check for duplicate long options
+73   for (size_t i = 0; g_options_registry[i].long_name != NULL; i++) {
+74     const char *long_name = g_options_registry[i].long_name;
+75     if (!long_name || long_name[0] == '\0') {
+76       continue; // Skip empty long names
+77     }
+78 
+79     for (size_t j = i + 1; g_options_registry[j].long_name != NULL; j++) {
+80       if (strcmp(g_options_registry[j].long_name, long_name) == 0) {
+81         return SET_ERRNO(ERROR_CONFIG, &quot;Duplicate long option '--%s' at registry indices %zu and %zu&quot;, long_name, i, j);
+82       }
+83     }
+84   }
+85 
+86   // Check for duplicate short options (skip if '\0')
+87   for (size_t i = 0; g_options_registry[i].long_name != NULL; i++) {
+88     char short_name = g_options_registry[i].short_name;
+89     if (short_name == '\0') {
+90       continue; // Skip if no short option
+91     }
+92 
+93     for (size_t j = i + 1; g_options_registry[j].long_name != NULL; j++) {
+94       if (g_options_registry[j].short_name == short_name) {
+95         return SET_ERRNO(ERROR_CONFIG,
+96                          &quot;Duplicate short option '-%c' for '--%s' and '--%s' at registry indices %zu and %zu&quot;,
+97                          short_name, g_options_registry[i].long_name, g_options_registry[j].long_name, i, j);
+98       }
+99     }
+100   }
+101 
+102   return ASCIICHAT_OK;
+103 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>,
+    <b>g_options_registry</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>registry_init_size()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>category_builder_t</b> g_category_builders[] [extern]</h2>
+<p class="Pp">Definition at line <b>27</b> of file <b>registry.c</b>.</p>
+<pre>27                                          {
+28     {g_general_entries, &quot;GENERAL&quot;},   {g_logging_entries, &quot;LOGGING&quot;},
+29     {g_terminal_entries, &quot;TERMINAL&quot;}, {g_configuration_entries, &quot;CONFIGURATION&quot;},
+30     {g_display_entries, &quot;DISPLAY&quot;},   {g_webcam_entries, &quot;WEBCAM&quot;},
+31     {g_audio_entries, &quot;AUDIO&quot;},       {g_media_entries, &quot;MEDIA&quot;},
+32     {g_network_entries, &quot;NETWORK&quot;},   {g_security_entries, &quot;SECURITY&quot;},
+33     {g_database_entries, &quot;DATABASE&quot;}, {g_debug_entries, &quot;DEBUG&quot;},
+34     {NULL, NULL}};</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>registry_init_from_builders()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> g_metadata_populated [extern]</h2>
+<p class="Pp">Definition at line <b>50</b> of file <b>registry.c</b>.</p>
+<p class="Pp">Referenced by <b>registry_init_size()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>registry_entry_t</b> g_options_registry[2048] [extern]</h2>
+<p class="Pp">Definition at line <b>47</b> of file <b>registry.c</b>.</p>
+<p class="Pp">Referenced by <b>options_get_help_text()</b>,
+    <b>options_registry_add_all_to_builder()</b>,
+    <b>options_registry_get_binary_options()</b>,
+    <b>options_registry_get_for_display()</b>,
+    <b>options_registry_get_for_mode()</b>,
+    <b>options_registry_get_metadata()</b>, <b>options_registry_get_raw()</b>,
+    <b>registry_find_entry_by_name()</b>, <b>registry_find_entry_by_short()</b>,
+    <b>registry_init_from_builders()</b>, <b>registry_init_size()</b>, and
+    <b>registry_validate_unique_options()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_g_registry_size"><a class="permalink" href="#size_t_g_registry_size">size_t
+  g_registry_size [extern]</a></h2>
+<p class="Pp">Definition at line <b>49</b> of file <b>registry.c</b>.</p>
+<p class="Pp">Referenced by <b>options_get_help_text()</b>,
+    <b>options_registry_add_all_to_builder()</b>,
+    <b>options_registry_get_binary_options()</b>,
+    <b>options_registry_get_count()</b>,
+    <b>options_registry_get_for_display()</b>,
+    <b>options_registry_get_for_mode()</b>,
+    <b>options_registry_get_metadata()</b>, and <b>registry_init_size()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

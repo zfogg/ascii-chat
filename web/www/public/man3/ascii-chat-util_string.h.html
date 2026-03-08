@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>string.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">string.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">string.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">string.h - &#x1F524; String Manipulation and Shell Escaping
+    Utilities</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>escape_ascii</b> (const char *str, const char
+    *escape_char, char *out_buffer, size_t out_buffer_size)
+  <br/>
+  Escape ASCII characters in a string. <b>bool</b>
+    <b>escape_shell_single_quotes</b> (const char *str, char *out_buffer, size_t
+    out_buffer_size)
+  <br/>
+  Validate that a string contains only safe characters for shell commands.
+    <b>bool</b> <b>escape_shell_double_quotes</b> (const char *str, char
+    *out_buffer, size_t out_buffer_size)
+  <br/>
+  Escape a string for safe use in shell commands (double quotes,
+    Windows-compatible). <b>bool</b> <b>escape_path_for_shell</b> (const char
+    *path, char *out_buffer, size_t out_buffer_size)
+  <br/>
+  Check if a string needs shell quoting (contains spaces or special chars).
+    const char * <b>colored_string</b> (<b>log_color_t</b> color, const char
+    *text)
+  <br/>
+  Build a colored string for terminal output. void
+    <b>truncate_utf8_with_ellipsis</b> (const char *input, char *output, size_t
+    output_size, int max_width)
+  <br/>
+  Truncate UTF-8 string to fit within max display width, adding ellipsis if
+    truncated.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F524; String Manipulation and Shell Escaping Utilities</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>util/string.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

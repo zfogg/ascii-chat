@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>acds_client(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">acds_client(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">acds_client(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">acds_client - Acds_client</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Client-side ACIP (ascii-chat IP Protocol) implementation for:</p>
+<ul class="Bl-bullet">
+  <li>Session discovery and management (create, lookup, join, leave)</li>
+  <li>WebRTC signaling relay (SDP, ICE candidates)</li>
+  <li>String reservation (future feature)</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ACDS_Client_Protocol"><a class="permalink" href="#ACDS_Client_Protocol">ACDS
+  Client Protocol</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Protocol_Overview"><a class="permalink" href="#Protocol_Overview">Protocol
+  Overview</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Transport</b>: TCP (default port 27225, configurable)</li>
+  <li><b>Protocol</b>: ACIP binary protocol (not HTTP/JSON)</li>
+  <li><b>Packet Format</b>: <b>packet_header_t</b> + payload (see
+      <b>network/acip/protocol.h</b>)</li>
+  <li><b>Authentication</b>: Ed25519 digital signatures (ECDSA alternative
+      available)</li>
+  <li><b>Encryption</b>: Optional TLS or application-level encryption via
+      <b>crypto_context_t</b></li>
+  <li><b>Validation</b>: CRC32 checksum on every packet payload</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Session_Lifecycle_(Client_Perspective)"><a class="permalink" href="#Session_Lifecycle_(Client_Perspective)">Session
+  Lifecycle (Client Perspective)</a></h2>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Discovery</b> (Optional): Lookup existing session by string</dd>
+  <dt> &#x2022;</dt>
+  <dd>Send: SESSION_LOOKUP packet with session_string</dd>
+  <dt> &#x2022;</dt>
+  <dd>Recv: SESSION_INFO packet with session metadata (no connection
+    details)</dd>
+  <dt>2.</dt>
+  <dd><b>Creation</b> (Host): Create new session and become host</dd>
+  <dt> &#x2022;</dt>
+  <dd>Send: SESSION_CREATE packet with host public key + signature</dd>
+  <dt> &#x2022;</dt>
+  <dd>Recv: SESSION_CREATED packet with session_id, participant_id, STUN/TURN
+      servers</dd>
+  <dt> &#x2022;</dt>
+  <dd>Server assigns participant ID and tracks session in database</dd>
+  <dt>3.</dt>
+  <dd><b>Join</b> (Guest): Connect to existing session</dd>
+  <dt> &#x2022;</dt>
+  <dd>Send: SESSION_JOIN packet with credentials (password or identity)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Recv: SESSION_JOINED packet with server address, TURN credentials</dd>
+  <dt> &#x2022;</dt>
+  <dd>Server verifies credentials and reveals IP:port to authenticated
+    client</dd>
+  <dt>4.</dt>
+  <dd><b>P2P Negotiation</b> (Discovery Mode):</dd>
+  <dt> &#x2022;</dt>
+  <dd>Send/Recv: WEBRTC_SDP packets for offer/answer</dd>
+  <dt> &#x2022;</dt>
+  <dd>Send/Recv: WEBRTC_ICE packets for candidate exchange</dd>
+  <dt> &#x2022;</dt>
+  <dd>Negotiate best connection (host election if no host exists)</dd>
+  <dt>5.</dt>
+  <dd><b>Disconnect</b>: Leave session cleanly</dd>
+  <dt> &#x2022;</dt>
+  <dd>Send: SESSION_LEAVE packet</dd>
+  <dt> &#x2022;</dt>
+  <dd>Recv: SESSION_END notification when all participants leave</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Packet_Type_Summary"><a class="permalink" href="#Packet_Type_Summary">Packet
+  Type Summary</a></h2>
+<ul class="Bl-bullet">
+  <li>SESSION_CREATE (100): Host creates new session</li>
+  <li>SESSION_CREATED (101): Discovery confirms creation</li>
+  <li>SESSION_LOOKUP (102): Client queries for session</li>
+  <li>SESSION_INFO (103): Discovery returns metadata</li>
+  <li>SESSION_JOIN (104): Guest requests to join</li>
+  <li>SESSION_JOINED (105): Discovery confirms join with details</li>
+  <li>SESSION_LEAVE (106): Client notifies disconnect</li>
+  <li>SESSION_END (107): Discovery notifies session closed</li>
+  <li>WEBRTC_SDP (110): P2P session description</li>
+  <li>WEBRTC_ICE (111): P2P ICE candidate</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Connection_Configuration"><a class="permalink" href="#Connection_Configuration">Connection
+  Configuration</a></h2>
+<p class="Pp">The <b>acds_client_config_t</b> structure specifies:</p>
+<ul class="Bl-bullet">
+  <li>Server address (IPv4, IPv6, or hostname)</li>
+  <li>Server port (default: 27225)</li>
+  <li>Timeout (connection timeout in milliseconds)</li>
+  <li>Optional callback for graceful shutdown</li>
+</ul>
+<p class="Pp"><b>ACIP Protocol Overview:</b></p>
+<ul class="Bl-bullet">
+  <li>Binary TCP protocol (not HTTP/JSON)</li>
+  <li>Packet-based with CRC32 validation</li>
+  <li>Ed25519 identity signatures (alternative to password auth)</li>
+  <li>Optional password protection</li>
+  <li>UUID identifiers for sessions and participants (16 bytes each)</li>
+</ul>
+<p class="Pp"><b>Primary Use Case:</b> Connecting to ACDS (ascii-chat Discovery
+    Service) servers for session discovery and WebRTC peer coordination.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Integration:</b> This library is part of libasciichat and can
+    be used by any application needing ACIP/ACDS integration.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>network/acip/acds.h</b> for ACDS message structures
+<p class="Pp"></p>
+<p class="Pp"><b>network/acip/protocol.h</b> for ACIP packet types and protocol
+    version</p>
+<p class="Pp"></p>
+<p class="Pp"><b>network/acip/transport.h</b> for transport abstraction
+  layer</p>
+</div>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp"><b>Version</b></p>
+<div class="Bd-indent">1.0 (ACDS Client API)</div>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

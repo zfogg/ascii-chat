@@ -42,8 +42,8 @@
 <p class="Pp">typedef <b>bool</b>(* <b>session_should_exit_fn</b>) (void
     *user_data)
   <br/>
-  Exit condition callback type. typedef image_t *(* <b>session_capture_fn</b>)
-    (void *user_data)
+  Exit condition callback type. typedef <b>image_t</b> *(*
+    <b>session_capture_fn</b>) (void *user_data)
   <br/>
   Capture callback for event-driven frame source. typedef void(*
     <b>session_sleep_for_frame_fn</b>) (void *user_data)
@@ -59,7 +59,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>session_render_loop</b>
+<p class="Pp"><b>asciichat_error_t</b> <b>session_render_loop</b>
     (<b>session_capture_ctx_t</b> *capture, <b>session_display_ctx_t</b>
     *display, <b>session_should_exit_fn</b> <b>should_exit</b>,
     <b>session_capture_fn</b> capture_cb, <b>session_sleep_for_frame_fn</b>
@@ -102,7 +102,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

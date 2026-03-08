@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>config_file_list_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">config_file_list_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">config_file_list_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">config_file_list_t - List of config file search results.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/platform/filesystem.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>config_file_result_t</b> * <b>files</b>
+  <br/>
+  Array of results (allocated, must be freed). size_t <b>count</b>
+  <br/>
+  Number of results found. size_t <b>capacity</b>
+  <br/>
+  Allocated capacity.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">List of config file search results.</p>
+<p class="Pp">Contains all matching config files in priority order (highest
+    priority first).</p>
+<p class="Pp">Definition at line <b>568</b> of file <b>filesystem.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="size_t_config_file_list_t::capacity"><a class="permalink" href="#size_t_config_file_list_t::capacity">size_t
+  config_file_list_t::capacity</a></h2>
+<p class="Pp">Allocated capacity.</p>
+<p class="Pp">Definition at line <b>571</b> of file <b>filesystem.h</b>.</p>
+<p class="Pp">Referenced by <b>platform_find_config_file()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_config_file_list_t::count"><a class="permalink" href="#size_t_config_file_list_t::count">size_t
+  config_file_list_t::count</a></h2>
+<p class="Pp">Number of results found.</p>
+<p class="Pp">Definition at line <b>570</b> of file <b>filesystem.h</b>.</p>
+<p class="Pp">Referenced by <b>check_known_host()</b>,
+    <b>config_load_system_and_user()</b>, and
+    <b>platform_find_config_file()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>config_file_result_t</b>* config_file_list_t::files</h2>
+<p class="Pp">Array of results (allocated, must be freed).</p>
+<p class="Pp">Definition at line <b>569</b> of file <b>filesystem.h</b>.</p>
+<p class="Pp">Referenced by <b>check_known_host()</b>,
+    <b>config_load_system_and_user()</b>, and
+    <b>platform_find_config_file()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -39,48 +39,62 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">const palette_def_t * <b>get_builtin_palette</b> (palette_type_t
-    type)
+<p class="Pp">const <b>palette_def_t</b> * <b>get_builtin_palette</b>
+    (<b>palette_type_t</b> type)
   <br/>
-  <b>bool</b> <b>palette_requires_utf8_encoding</b> (const char *chars, size_t
-    len)
+  Get built-in palette definition. <b>bool</b>
+    <b>palette_requires_utf8_encoding</b> (const char *chars, size_t len)
   <br/>
-  <b>bool</b> <b>validate_palette_chars</b> (const char *chars, size_t len)
+  Check if palette requires UTF-8 encoding. <b>bool</b>
+    <b>validate_palette_chars</b> (const char *chars, size_t len)
   <br/>
-  <b>bool</b> <b>detect_client_utf8_support</b> (utf8_capabilities_t *caps)
+  Validate palette character sequence. <b>bool</b>
+    <b>detect_client_utf8_support</b> (<b>utf8_capabilities_t</b> *caps)
   <br/>
-  palette_type_t <b>select_compatible_palette</b> (palette_type_t requested,
+  Detect client UTF-8 support capabilities. <b>palette_type_t</b>
+    <b>select_compatible_palette</b> (<b>palette_type_t</b> requested,
     <b>bool</b> client_utf8)
   <br/>
-  int <b>apply_palette_config</b> (palette_type_t type, const char
+  Select compatible palette based on client capabilities. int
+    <b>apply_palette_config</b> (<b>palette_type_t</b> type, const char
     *custom_chars)
   <br/>
-  int <b>build_client_luminance_palette</b> (const char *palette_chars, size_t
+  Apply palette configuration (set global palette). int
+    <b>build_client_luminance_palette</b> (const char *palette_chars, size_t
     palette_len, char luminance_mapping[256])
   <br/>
-  int <b>initialize_client_palette</b> (palette_type_t palette_type, const char
-    *custom_chars, char client_palette_chars[256], size_t *client_palette_len,
-    char client_luminance_palette[256])
+  Build luminance mapping table from palette characters. int
+    <b>initialize_client_palette</b> (<b>palette_type_t</b> palette_type, const
+    char *custom_chars, char client_palette_chars[256], size_t
+    *client_palette_len, char client_luminance_palette[256])
   <br/>
-  utf8_palette_t * <b>utf8_palette_create</b> (const char *palette_string)
+  Initialize client palette with full configuration. <b>utf8_palette_t</b> *
+    <b>utf8_palette_create</b> (const char *palette_string)
   <br/>
-  void <b>utf8_palette_destroy</b> (utf8_palette_t *palette)
+  Create a UTF-8 palette from string. void <b>utf8_palette_destroy</b>
+    (<b>utf8_palette_t</b> *palette)
   <br/>
-  const utf8_char_info_t * <b>utf8_palette_get_char</b> (const utf8_palette_t
-    *palette, size_t index)
+  Destroy a UTF-8 palette and free resources. const <b>utf8_char_info_t</b> *
+    <b>utf8_palette_get_char</b> (const <b>utf8_palette_t</b> *palette, size_t
+    index)
   <br/>
-  size_t <b>utf8_palette_get_char_count</b> (const utf8_palette_t *palette)
+  Get UTF-8 character information at index. size_t
+    <b>utf8_palette_get_char_count</b> (const <b>utf8_palette_t</b> *palette)
   <br/>
-  <b>bool</b> <b>utf8_palette_contains_char</b> (const utf8_palette_t *palette,
+  Get number of characters in UTF-8 palette. <b>bool</b>
+    <b>utf8_palette_contains_char</b> (const <b>utf8_palette_t</b> *palette,
     const char *utf8_char, size_t char_bytes)
   <br/>
-  size_t <b>utf8_palette_find_char_index</b> (const utf8_palette_t *palette,
+  Check if UTF-8 palette contains a specific character. size_t
+    <b>utf8_palette_find_char_index</b> (const <b>utf8_palette_t</b> *palette,
     const char *utf8_char, size_t char_bytes)
   <br/>
-  size_t <b>utf8_palette_find_all_char_indices</b> (const utf8_palette_t
+  Find index of UTF-8 character in palette. size_t
+    <b>utf8_palette_find_all_char_indices</b> (const <b>utf8_palette_t</b>
     *palette, const char *utf8_char, size_t char_bytes, size_t *indices, size_t
     max_indices)
   <br/>
+  Find all indices of UTF-8 character in palette.
   <br/>
 </p>
 </section>
@@ -88,10 +102,12 @@
 <h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
 <br/>
 <p class="Pp">const char <b>DEFAULT_ASCII_PALETTE</b> [] =
-    PALETTE_CHARS_STANDARD
+    <b>PALETTE_CHARS_STANDARD</b>
   <br/>
-  const size_t <b>DEFAULT_ASCII_PALETTE_LEN</b> = 23
+  Default ASCII palette for legacy functions. const size_t
+    <b>DEFAULT_ASCII_PALETTE_LEN</b> = 23
   <br/>
+  Length of default ASCII palette.
   <br/>
 </p>
 </section>
@@ -106,645 +122,13 @@
 <p class="Pp">Definition in file <b>palette.c</b>.</p>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_apply_palette_config_(palette_type_t_type,_const_char_*_custom_chars)"><a class="permalink" href="#int_apply_palette_config_(palette_type_t_type,_const_char_*_custom_chars)">int
-  apply_palette_config (palette_type_t type, const char * custom_chars)</a></h2>
-<p class="Pp">Definition at line <b>250</b> of file <b>palette.c</b>.</p>
-<pre>250                                                                         {
-251   // This function is now used only for client-side initialization
-252   // Server uses initialize_client_palette() for per-client palettes
-253 
-254   log_debug(&quot;Client palette config: type=%d, custom_chars=%s&quot;, type, custom_chars ? custom_chars : &quot;(none)&quot;);
-255 
-256   // Just validate the palette - no global state changes
-257   if (type == PALETTE_CUSTOM) {
-258     if (!custom_chars || strlen(custom_chars) == 0) {
-259       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Custom palette requested but no characters provided&quot;);
-260       return -1;
-261     }
-262 
-263     if (!validate_palette_chars(custom_chars, strlen(custom_chars))) {
-264       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Custom palette validation failed&quot;);
-265       return -1;
-266     }
-267   } else {
-268     const palette_def_t *palette = get_builtin_palette(type);
-269     if (!palette) {
-270       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid palette type: %d&quot;, type);
-271       return -1;
-272     }
-273   }
-274 
-275   return 0; // Validation successful, no global state to update
-276 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>get_builtin_palette()</b>, and
-    <b>validate_palette_chars()</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_build_client_luminance_palette_(const_char_*_palette_chars,_size_t_palette_len,_char_luminance_mapping_256_)"><a class="permalink" href="#int_build_client_luminance_palette_(const_char_*_palette_chars,_size_t_palette_len,_char_luminance_mapping_256_)">int
-  build_client_luminance_palette (const char * palette_chars, size_t
-  palette_len, char luminance_mapping[256])</a></h2>
-<p class="Pp">Definition at line <b>279</b> of file <b>palette.c</b>.</p>
-<pre>279                                                                                                                {
-280   if (!palette_chars || palette_len == 0 || !luminance_mapping) {
-281     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for client luminance palette&quot;);
-282     return -1;
-283   }
-284 
-285   // Map 256 luminance values to palette indices for this specific client
-286   for (int i = 0; i &lt; 256; i++) {
-287     // Linear mapping with proper rounding
-288     size_t palette_index = (i * (palette_len - 1) + 127) / 255;
-289     if (palette_index &gt;= palette_len) {
-290       palette_index = palette_len - 1;
-291     }
-292     luminance_mapping[i] = palette_chars[palette_index];
-293   }
-294 
-295   return 0;
-296 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>initialize_client_palette()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> detect_client_utf8_support (utf8_capabilities_t *
-  caps)</h2>
-<p class="Pp">Definition at line <b>148</b> of file <b>palette.c</b>.</p>
-<pre>148                                                            {
-149   if (!caps) {
-150     return false;
-151   }
-152 
-153   // Initialize structure
-154   SAFE_MEMSET(caps, sizeof(utf8_capabilities_t), 0, sizeof(utf8_capabilities_t));
-155 
-156   // Check environment variables
-157   const char *term = SAFE_GETENV(&quot;TERM&quot;);
-158 
-159   // Store terminal type
-160   if (term) {
-161     SAFE_STRNCPY(caps-&gt;terminal_type, term, sizeof(caps-&gt;terminal_type));
-162   }
-163 
-164   // Use platform-specific UTF-8 detection from platform abstraction layer
-165   caps-&gt;utf8_support = terminal_supports_utf8();
-166 
-167   if (caps-&gt;utf8_support) {
-168     SAFE_STRNCPY(caps-&gt;locale_encoding, &quot;UTF-8&quot;, sizeof(caps-&gt;locale_encoding));
-169   } else {
-170     // Try to detect encoding via locale
-171     char *current_locale = setlocale(LC_CTYPE, NULL);
-172     char *old_locale = NULL;
-173     if (current_locale) {
-174       SAFE_STRDUP(old_locale, current_locale);
-175     }
-176     if (setlocale(LC_CTYPE, &quot;&quot;)) {
-177 #ifndef _WIN32
-178       const char *codeset = nl_langinfo(CODESET);
-179       if (codeset) {
-180         SAFE_STRNCPY(caps-&gt;locale_encoding, codeset, sizeof(caps-&gt;locale_encoding));
-181       }
-182 #else
-183       // Windows may not have locale set but still support UTF-8
-184       SAFE_STRNCPY(caps-&gt;locale_encoding, &quot;CP1252&quot;, sizeof(caps-&gt;locale_encoding));
-185 #endif
-186       // Restore old locale
-187       if (old_locale) {
-188         (void)setlocale(LC_CTYPE, old_locale);
-189       }
-190     }
-191     // Always free old_locale regardless of setlocale success
-192     if (old_locale) {
-193       SAFE_FREE(old_locale);
-194     }
-195   }
-196 
-197   // Check for known UTF-8 supporting terminals
-198   if (term) {
-199     const char *utf8_terminals[] = {
-200         &quot;xterm-256color&quot;, &quot;screen-256color&quot;, &quot;tmux-256color&quot;, &quot;alacritty&quot;,   &quot;kitty&quot;, &quot;iterm&quot;,
-201         &quot;iterm2&quot;,         &quot;gnome-terminal&quot;,  &quot;konsole&quot;,       &quot;terminology&quot;, NULL};
-202 
-203     for (int i = 0; utf8_terminals[i]; i++) {
-204       if (strstr(term, utf8_terminals[i])) {
-205         caps-&gt;utf8_support = true;
-206         break;
-207       }
-208     }
-209   }
-210 
-211   log_debug(&quot;UTF-8 support detection: %s (term=%s, encoding=%s)&quot;, caps-&gt;utf8_support ? &quot;supported&quot; : &quot;not supported&quot;,
-212             caps-&gt;terminal_type[0] ? caps-&gt;terminal_type : &quot;unknown&quot;,
-213             caps-&gt;locale_encoding[0] ? caps-&gt;locale_encoding : &quot;unknown&quot;);
-214 
-215   return caps-&gt;utf8_support;
-216 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>terminal_supports_utf8()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_palette_def_t_*_get_builtin_palette_(palette_type_t_type)"><a class="permalink" href="#const_palette_def_t_*_get_builtin_palette_(palette_type_t_type)">const
-  palette_def_t * get_builtin_palette (palette_type_t type)</a></h2>
-<p class="Pp">Definition at line <b>47</b> of file <b>palette.c</b>.</p>
-<pre>47                                                               {
-48   if (type &gt;= PALETTE_COUNT || type == PALETTE_CUSTOM || type == PALETTE_UNSET) {
-49     return NULL;
-50   }
-51   return &amp;builtin_palettes[type];
-52 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>apply_palette_config()</b>,
-    <b>initialize_client_palette()</b>, and
-  <b>select_compatible_palette()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_initialize_client_palette_(palette_type_t_palette_type,_const_char_*_custom_chars,_char_client_palette_chars_256_,_size_t_*_client_palette_len,_char_client_luminance_palette_256_)"><a class="permalink" href="#int_initialize_client_palette_(palette_type_t_palette_type,_const_char_*_custom_chars,_char_client_palette_chars_256_,_size_t_*_client_palette_len,_char_client_luminance_palette_256_)">int
-  initialize_client_palette (palette_type_t palette_type, const char *
-  custom_chars, char client_palette_chars[256], size_t * client_palette_len,
-  char client_luminance_palette[256])</a></h2>
-<p class="Pp">Definition at line <b>299</b> of file <b>palette.c</b>.</p>
-<pre>300                                                                                               {
-301   const palette_def_t *palette = NULL;
-302   const char *chars_to_use = NULL;
-303   size_t len_to_use = 0;
-304 
-305   if (palette_type == PALETTE_CUSTOM) {
-306     if (!custom_chars) {
-307       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Client requested custom palette but custom_chars is NULL&quot;);
-308       return -1;
-309     }
-310 
-311     len_to_use = strlen(custom_chars);
-312     if (len_to_use == 0) {
-313       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Client requested custom palette but custom_chars is empty&quot;);
-314       return -1;
-315     }
-316     if (len_to_use &gt;= 256) {
-317       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Client custom palette too long: %zu chars&quot;, len_to_use);
-318       return -1;
-319     }
-320 
-321     // Validate custom palette
-322     if (!validate_palette_chars(custom_chars, len_to_use)) {
-323       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Client custom palette validation failed&quot;);
-324       return -1;
-325     }
-326 
-327     chars_to_use = custom_chars;
-328   } else {
-329     palette = get_builtin_palette(palette_type);
-330     if (!palette) {
-331       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid client palette type: %d&quot;, palette_type);
-332       return -1;
-333     }
-334 
-335     chars_to_use = palette-&gt;chars;
-336     len_to_use = strlen(palette-&gt;chars); // Use actual byte count for UTF-8, not character count
-337 
-338     // Skip validation for built-in palettes since they're already validated
-339     log_dev(&quot;Using built-in palette: %s, chars='%s', char_count=%zu, byte_len=%zu&quot;, palette-&gt;name, chars_to_use,
-340             palette-&gt;length, len_to_use);
-341   }
-342 
-343   // Copy palette to client cache
-344   SAFE_MEMCPY(client_palette_chars, len_to_use, chars_to_use, len_to_use);
-345   client_palette_chars[len_to_use] = '\0';
-346   *client_palette_len = len_to_use;
-347 
-348   // Build client-specific luminance mapping
-349   if (build_client_luminance_palette(chars_to_use, len_to_use, client_luminance_palette) != 0) {
-350     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to build client luminance palette&quot;);
-351     return -1;
-352   }
-353 
-354   log_dev(&quot;Initialized client palette: type=%d, %zu chars, first_char='%c', last_char='%c'&quot;, palette_type, len_to_use,
-355           chars_to_use[0], chars_to_use[len_to_use - 1]);
-356 
-357   return 0;
-358 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>build_client_luminance_palette()</b>,
-    <b>get_builtin_palette()</b>, and <b>validate_palette_chars()</b>.</p>
-<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>, and
-    <b>session_display_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> palette_requires_utf8_encoding (const char * chars,
-  size_t len)</h2>
-<p class="Pp">Definition at line <b>55</b> of file <b>palette.c</b>.</p>
-<pre>55                                                                    {
-56   // Handle NULL or empty string
-57   if (!chars || len == 0) {
-58     return false;
-59   }
-60 
-61   for (size_t i = 0; i &lt; len; i++) {
-62     // Any byte with high bit set indicates UTF-8
-63     if ((unsigned char)chars[i] &gt;= 128) {
-64       return true;
-65     }
-66   }
-67   return false;
-68 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="palette_type_t_select_compatible_palette_(palette_type_t_requested,_"><a class="permalink" href="#palette_type_t_select_compatible_palette_(palette_type_t_requested,_">palette_type_t
-  select_compatible_palette (palette_type_t requested, <b>bool</b>
-  client_utf8)</a></h2>
-<p class="Pp">Definition at line <b>219</b> of file <b>palette.c</b>.</p>
-<pre>219                                                                                      {
-220   const palette_def_t *palette = get_builtin_palette(requested);
-221 
-222   // Custom palettes are validated separately
-223   if (requested == PALETTE_CUSTOM) {
-224     return PALETTE_CUSTOM;
-225   }
-226 
-227   if (!palette) {
-228     log_warn(&quot;Invalid palette type %d, falling back to standard&quot;, requested);
-229     return PALETTE_STANDARD;
-230   }
-231 
-232   // If palette requires UTF-8 but client doesn't support it, find fallback
-233   if (palette-&gt;requires_utf8 &amp;&amp; !client_utf8) {
-234     log_warn(&quot;Client doesn't support UTF-8, falling back from %s&quot;, palette-&gt;name);
-235 
-236     // Fallback hierarchy
-237     switch (requested) {
-238     case PALETTE_BLOCKS:
-239     case PALETTE_DIGITAL:
-240     case PALETTE_COOL:
-241     default:
-242       return PALETTE_STANDARD; // ASCII equivalent
-243     }
-244   }
-245 
-246   return requested; // Compatible, use as requested
-247 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>get_builtin_palette()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> utf8_palette_contains_char (const utf8_palette_t *
-  palette, const char * utf8_char, size_t char_bytes)</h2>
-<p class="Pp">Definition at line <b>510</b> of file <b>palette.c</b>.</p>
-<pre>510                                                                                                          {
-511   if (!palette || !utf8_char || char_bytes == 0 || char_bytes &gt; 4) {
-512     return false;
-513   }
-514 
-515   for (size_t i = 0; i &lt; palette-&gt;char_count; i++) {
-516     const utf8_char_info_t *char_info = &amp;palette-&gt;chars[i];
-517     if (char_info-&gt;byte_len == char_bytes &amp;&amp; memcmp(char_info-&gt;bytes, utf8_char, char_bytes) == 0) {
-518       return true;
-519     }
-520   }
-521 
-522   return false;
-523 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="utf8_palette_t_*_utf8_palette_create_(const_char_*_palette_string)"><a class="permalink" href="#utf8_palette_t_*_utf8_palette_create_(const_char_*_palette_string)">utf8_palette_t
-  * utf8_palette_create (const char * palette_string)</a></h2>
-<p class="Pp">Definition at line <b>363</b> of file <b>palette.c</b>.</p>
-<pre>363                                                                 {
-364   if (!palette_string || *palette_string == '\0') {
-365     return NULL;
-366   }
-367 
-368   utf8_palette_t *palette;
-369   palette = SAFE_MALLOC(sizeof(utf8_palette_t), utf8_palette_t *);
-370 
-371   // Count UTF-8 characters (not bytes)
-372   size_t char_count = 0;
-373   const char *p = palette_string;
-374   size_t total_bytes = strlen(palette_string);
-375 
-376   // First pass: count characters
-377   size_t bytes_processed = 0;
-378   while (bytes_processed &lt; total_bytes) {
-379     int bytes = 1;
-380     unsigned char c = (unsigned char)p[0];
-381 
-382     if ((c &amp; 0x80) == 0) {
-383       bytes = 1; // ASCII
-384     } else if ((c &amp; 0xE0) == 0xC0) {
-385       bytes = 2; // 2-byte UTF-8
-386     } else if ((c &amp; 0xF0) == 0xE0) {
-387       bytes = 3; // 3-byte UTF-8
-388     } else if ((c &amp; 0xF8) == 0xF0) {
-389       bytes = 4; // 4-byte UTF-8
-390     }
-391 
-392     // Verify we have enough bytes left
-393     if (bytes_processed + bytes &gt; total_bytes) {
-394       break;
-395     }
-396 
-397     p += bytes;
-398     bytes_processed += bytes;
-399     char_count++;
-400   }
-401 
-402   // Validate we got at least one character
-403   if (char_count == 0) {
-404     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Palette string contains no valid UTF-8 characters&quot;);
-405     SAFE_FREE(palette);
-406     return NULL;
-407   }
-408 
-409   // Allocate character array
-410   palette-&gt;chars = SAFE_MALLOC(char_count * sizeof(utf8_char_info_t), utf8_char_info_t *);
-411   palette-&gt;raw_string = SAFE_MALLOC(total_bytes + 1, char *);
-412   // Explicit NULL checks to satisfy static analyzer (SAFE_MALLOC calls FATAL on failure)
-413   if (palette-&gt;chars == NULL || palette-&gt;raw_string == NULL) {
-414     SAFE_FREE(palette-&gt;chars);
-415     SAFE_FREE(palette-&gt;raw_string);
-416     SAFE_FREE(palette);
-417     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate palette character array&quot;);
-418     return NULL;
-419   }
-420 
-421   SAFE_MEMCPY(palette-&gt;raw_string, total_bytes + 1, palette_string, total_bytes + 1);
-422   palette-&gt;char_count = char_count;
-423   palette-&gt;total_bytes = total_bytes; // Use strlen() value
-424 
-425   // Second pass: parse characters
-426   p = palette_string;
-427   size_t char_idx = 0;
-428   bytes_processed = 0;
-429 
-430   // Set locale for wcwidth - save a copy of the old locale
-431   char old_locale[256] = {0};
-432   char *current_locale = setlocale(LC_CTYPE, NULL);
-433   if (current_locale) {
-434     SAFE_STRNCPY(old_locale, current_locale, sizeof(old_locale));
-435   }
-436   (void)setlocale(LC_CTYPE, &quot;&quot;);
-437 
-438   while (char_idx &lt; char_count &amp;&amp; bytes_processed &lt; total_bytes) {
-439     utf8_char_info_t *char_info = &amp;palette-&gt;chars[char_idx];
-440 
-441     // Determine UTF-8 byte length
-442     unsigned char c = (unsigned char)*p;
-443     int bytes = 1;
-444 
-445     if ((c &amp; 0x80) == 0) {
-446       bytes = 1;
-447     } else if ((c &amp; 0xE0) == 0xC0) {
-448       bytes = 2;
-449     } else if ((c &amp; 0xF0) == 0xE0) {
-450       bytes = 3;
-451     } else if ((c &amp; 0xF8) == 0xF0) {
-452       bytes = 4;
-453     }
-454 
-455     // Verify we have enough bytes left
-456     if (bytes_processed + bytes &gt; total_bytes) {
-457       break;
-458     }
-459 
-460     // Copy bytes and null-terminate
-461     SAFE_MEMCPY(char_info-&gt;bytes, bytes, p, bytes);
-462     if (bytes &lt; 4) {
-463       SAFE_MEMSET(char_info-&gt;bytes + bytes, 4 - bytes, 0, 4 - bytes);
-464     }
-465     char_info-&gt;byte_len = bytes;
-466 
-467     // Get display width using utf8_display_width
-468     int width = utf8_display_width_n(p, bytes);
-469     char_info-&gt;display_width = (width &gt; 0 &amp;&amp; width &lt;= 2) ? width : 1;
-470 
-471     p += bytes;
-472     bytes_processed += bytes;
-473     char_idx++;
-474   }
-475 
-476   // Restore locale
-477   if (old_locale[0] != '\0') {
-478     (void)setlocale(LC_CTYPE, old_locale);
-479   }
-480 
-481   return palette;
-482 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>utf8_display_width_n()</b>.</p>
-<p class="Pp">Referenced by <b>build_ramp64()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_utf8_palette_destroy_(utf8_palette_t_*_palette)"><a class="permalink" href="#void_utf8_palette_destroy_(utf8_palette_t_*_palette)">void
-  utf8_palette_destroy (utf8_palette_t * palette)</a></h2>
-<p class="Pp">Definition at line <b>485</b> of file <b>palette.c</b>.</p>
-<pre>485                                                    {
-486   if (palette) {
-487     SAFE_FREE(palette-&gt;chars);
-488     SAFE_FREE(palette-&gt;raw_string);
-489     SAFE_FREE(palette);
-490   }
-491 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>build_ramp64()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_utf8_palette_find_all_char_indices_(const_utf8_palette_t_*_palette,_const_char_*_utf8_char,_size_t_char_bytes,_size_t_*_indices,_size_t_max_indices)"><a class="permalink" href="#size_t_utf8_palette_find_all_char_indices_(const_utf8_palette_t_*_palette,_const_char_*_utf8_char,_size_t_char_bytes,_size_t_*_indices,_size_t_max_indices)">size_t
-  utf8_palette_find_all_char_indices (const utf8_palette_t * palette, const char
-  * utf8_char, size_t char_bytes, size_t * indices, size_t max_indices)</a></h2>
-<p class="Pp">Definition at line <b>543</b> of file <b>palette.c</b>.</p>
-<pre>544                                                                                {
-545   if (!palette || !utf8_char || char_bytes == 0 || char_bytes &gt; 4 || !indices || max_indices == 0) {
-546     return 0;
-547   }
-548 
-549   size_t found_count = 0;
-550 
-551   for (size_t i = 0; i &lt; palette-&gt;char_count &amp;&amp; found_count &lt; max_indices; i++) {
-552     const utf8_char_info_t *char_info = &amp;palette-&gt;chars[i];
-553     if (char_info-&gt;byte_len == char_bytes &amp;&amp; memcmp(char_info-&gt;bytes, utf8_char, char_bytes) == 0) {
-554       indices[found_count++] = i;
-555     }
-556   }
-557 
-558   return found_count;
-559 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_utf8_palette_find_char_index_(const_utf8_palette_t_*_palette,_const_char_*_utf8_char,_size_t_char_bytes)"><a class="permalink" href="#size_t_utf8_palette_find_char_index_(const_utf8_palette_t_*_palette,_const_char_*_utf8_char,_size_t_char_bytes)">size_t
-  utf8_palette_find_char_index (const utf8_palette_t * palette, const char *
-  utf8_char, size_t char_bytes)</a></h2>
-<p class="Pp">Definition at line <b>526</b> of file <b>palette.c</b>.</p>
-<pre>526                                                                                                              {
-527   if (!palette || !utf8_char || char_bytes == 0 || char_bytes &gt; 4) {
-528     return (size_t)-1;
-529   }
-530 
-531   for (size_t i = 0; i &lt; palette-&gt;char_count; i++) {
-532     const utf8_char_info_t *char_info = &amp;palette-&gt;chars[i];
-533     if (char_info-&gt;byte_len == char_bytes &amp;&amp; memcmp(char_info-&gt;bytes, utf8_char, char_bytes) == 0) {
-534       return i;
-535     }
-536   }
-537 
-538   return (size_t)-1;
-539 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_utf8_char_info_t_*_utf8_palette_get_char_(const_utf8_palette_t_*_palette,_size_t_index)"><a class="permalink" href="#const_utf8_char_info_t_*_utf8_palette_get_char_(const_utf8_palette_t_*_palette,_size_t_index)">const
-  utf8_char_info_t * utf8_palette_get_char (const utf8_palette_t * palette,
-  size_t index)</a></h2>
-<p class="Pp">Definition at line <b>494</b> of file <b>palette.c</b>.</p>
-<pre>494                                                                                            {
-495   if (!palette || index &gt;= palette-&gt;char_count) {
-496     return NULL;
-497   }
-498   return &amp;palette-&gt;chars[index];
-499 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>build_ramp64()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_utf8_palette_get_char_count_(const_utf8_palette_t_*_palette)"><a class="permalink" href="#size_t_utf8_palette_get_char_count_(const_utf8_palette_t_*_palette)">size_t
-  utf8_palette_get_char_count (const utf8_palette_t * palette)</a></h2>
-<p class="Pp">Definition at line <b>502</b> of file <b>palette.c</b>.</p>
-<pre>502                                                                   {
-503   if (!palette) {
-504     return 0;
-505   }
-506   return palette-&gt;char_count;
-507 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>build_ramp64()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> validate_palette_chars (const char * chars, size_t
-  len)</h2>
-<p class="Pp">Definition at line <b>71</b> of file <b>palette.c</b>.</p>
-<pre>71                                                            {
-72   if (!chars || len == 0) {
-73     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Palette validation failed: empty or NULL palette&quot;);
-74     return false;
-75   }
-76 
-77   if (len &gt; 256) {
-78     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Palette validation failed: palette too long (%zu chars, max 256)&quot;, len);
-79     return false;
-80   }
-81 
-82   // Decode UTF-8 string into codepoints
-83   uint32_t codepoints[256];
-84   size_t codepoint_count = utf8_to_codepoints(chars, codepoints, 256);
-85 
-86   if (codepoint_count == SIZE_MAX) {
-87     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Palette validation failed: invalid UTF-8 sequence&quot;);
-88     return false;
-89   }
-90 
-91   // Validate each codepoint
-92   for (size_t i = 0; i &lt; codepoint_count; i++) {
-93     uint32_t cp = codepoints[i];
-94 
-95     // Check for control characters (except tab)
-96     if (cp &lt; 32 &amp;&amp; cp != '\t') {
-97       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Palette validation failed: control character at position %zu&quot;, i);
-98       return false;
-99     }
-100 
-101     // Convert codepoint to UTF-8 and check display width
-102     // For ASCII characters, this is straightforward
-103     // For multi-byte UTF-8, we need to check the display width
-104     if (cp &lt; 128) {
-105       // ASCII character - always width 1
-106       continue;
-107     } else {
-108       // Non-ASCII: use utf8_display_width to check character width
-109       // Create a temporary buffer with the UTF-8 encoded character
-110       uint8_t utf8_buf[5] = {0};
-111 
-112       // Encode codepoint to UTF-8 (simple for demo, should use proper encoder)
-113       if (cp &lt;= 0x7F) {
-114         utf8_buf[0] = (uint8_t)cp;
-115       } else if (cp &lt;= 0x7FF) {
-116         utf8_buf[0] = (uint8_t)(0xC0 | (cp &gt;&gt; 6));
-117         utf8_buf[1] = (uint8_t)(0x80 | (cp &amp; 0x3F));
-118       } else if (cp &lt;= 0xFFFF) {
-119         utf8_buf[0] = (uint8_t)(0xE0 | (cp &gt;&gt; 12));
-120         utf8_buf[1] = (uint8_t)(0x80 | ((cp &gt;&gt; 6) &amp; 0x3F));
-121         utf8_buf[2] = (uint8_t)(0x80 | (cp &amp; 0x3F));
-122       } else if (cp &lt;= 0x10FFFF) {
-123         utf8_buf[0] = (uint8_t)(0xF0 | (cp &gt;&gt; 18));
-124         utf8_buf[1] = (uint8_t)(0x80 | ((cp &gt;&gt; 12) &amp; 0x3F));
-125         utf8_buf[2] = (uint8_t)(0x80 | ((cp &gt;&gt; 6) &amp; 0x3F));
-126         utf8_buf[3] = (uint8_t)(0x80 | (cp &amp; 0x3F));
-127       } else {
-128         SET_ERRNO(ERROR_INVALID_PARAM, &quot;Palette validation failed: invalid codepoint at position %zu&quot;, i);
-129         return false;
-130       }
-131 
-132       // Check character width - allow width 1 and 2 (for emoji and wide characters)
-133       int width = utf8_display_width((const char *)utf8_buf);
-134       if (width &lt; 0 || width &gt; 2) {
-135         SET_ERRNO(ERROR_INVALID_PARAM,
-136                   &quot;Palette validation failed: character at position %zu has invalid width %d (must be 1 or 2)&quot;, i,
-137                   width);
-138         return false;
-139       }
-140     }
-141   }
-142 
-143   log_debug(&quot;Palette validation successful: %zu characters validated&quot;, codepoint_count);
-144   return true;
-145 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>utf8_display_width()</b>, and
-    <b>utf8_to_codepoints()</b>.</p>
-<p class="Pp">Referenced by <b>apply_palette_config()</b>, and
-    <b>initialize_client_palette()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_char_DEFAULT_ASCII_PALETTE___=_PALETTE_CHARS_STANDARD"><a class="permalink" href="#const_char_DEFAULT_ASCII_PALETTE___=_PALETTE_CHARS_STANDARD">const
-  char DEFAULT_ASCII_PALETTE[] = PALETTE_CHARS_STANDARD</a></h2>
-<p class="Pp">Definition at line <b>25</b> of file <b>palette.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_size_t_DEFAULT_ASCII_PALETTE_LEN_=_23"><a class="permalink" href="#const_size_t_DEFAULT_ASCII_PALETTE_LEN_=_23">const
-  size_t DEFAULT_ASCII_PALETTE_LEN = 23</a></h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>palette.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

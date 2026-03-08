@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>webrtc_peer_manager_config_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">webrtc_peer_manager_config_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">webrtc_peer_manager_config_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">webrtc_peer_manager_config_t - Peer manager configuration.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include
+  &lt;include/ascii-chat/network/webrtc/peer_manager.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>webrtc_peer_role_t</b> <b>role</b>
+  <br/>
+  Session role (creator or joiner). <b>stun_server_t</b> * <b>stun_servers</b>
+  <br/>
+  STUN servers for ICE. size_t <b>stun_count</b>
+  <br/>
+  Number of STUN servers. <b>turn_server_t</b> * <b>turn_servers</b>
+  <br/>
+  TURN servers for relay. size_t <b>turn_count</b>
+  <br/>
+  Number of TURN servers. <b>webrtc_transport_ready_callback_t</b>
+    <b>on_transport_ready</b>
+  <br/>
+  Called when DataChannel ready. <b>webrtc_gathering_timeout_callback_t</b>
+    <b>on_gathering_timeout</b>
+  <br/>
+  Called when ICE gathering times out. void * <b>user_data</b>
+  <br/>
+  Passed to callbacks. <b>crypto_context_t</b> * <b>crypto_ctx</b>
+  <br/>
+  Crypto context for transports.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Peer manager configuration.</p>
+<p class="Pp">Definition at line <b>89</b> of file <b>peer_manager.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>crypto_context_t</b>*
+  webrtc_peer_manager_config_t::crypto_ctx</h2>
+<p class="Pp">Crypto context for transports.</p>
+<p class="Pp">Definition at line <b>98</b> of file <b>peer_manager.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>webrtc_gathering_timeout_callback_t</b>
+  webrtc_peer_manager_config_t::on_gathering_timeout</h2>
+<p class="Pp">Called when ICE gathering times out.</p>
+<p class="Pp">Definition at line <b>96</b> of file <b>peer_manager.h</b>.</p>
+<p class="Pp">Referenced by
+    <b>webrtc_peer_manager_check_gathering_timeouts()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>webrtc_transport_ready_callback_t</b>
+  webrtc_peer_manager_config_t::on_transport_ready</h2>
+<p class="Pp">Called when DataChannel ready.</p>
+<p class="Pp">Definition at line <b>95</b> of file <b>peer_manager.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>webrtc_peer_role_t</b> webrtc_peer_manager_config_t::role</h2>
+<p class="Pp">Session role (creator or joiner).</p>
+<p class="Pp">Definition at line <b>90</b> of file <b>peer_manager.h</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_peer_manager_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_webrtc_peer_manager_config_t::stun_count"><a class="permalink" href="#size_t_webrtc_peer_manager_config_t::stun_count">size_t
+  webrtc_peer_manager_config_t::stun_count</a></h2>
+<p class="Pp">Number of STUN servers.</p>
+<p class="Pp">Definition at line <b>92</b> of file <b>peer_manager.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>stun_server_t</b>*
+  webrtc_peer_manager_config_t::stun_servers</h2>
+<p class="Pp">STUN servers for ICE.</p>
+<p class="Pp">Definition at line <b>91</b> of file <b>peer_manager.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_webrtc_peer_manager_config_t::turn_count"><a class="permalink" href="#size_t_webrtc_peer_manager_config_t::turn_count">size_t
+  webrtc_peer_manager_config_t::turn_count</a></h2>
+<p class="Pp">Number of TURN servers.</p>
+<p class="Pp">Definition at line <b>94</b> of file <b>peer_manager.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>turn_server_t</b>*
+  webrtc_peer_manager_config_t::turn_servers</h2>
+<p class="Pp">TURN servers for relay.</p>
+<p class="Pp">Definition at line <b>93</b> of file <b>peer_manager.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_webrtc_peer_manager_config_t::user_data"><a class="permalink" href="#void*_webrtc_peer_manager_config_t::user_data">void*
+  webrtc_peer_manager_config_t::user_data</a></h2>
+<p class="Pp">Passed to callbacks.</p>
+<p class="Pp">Definition at line <b>97</b> of file <b>peer_manager.h</b>.</p>
+<p class="Pp">Referenced by
+    <b>webrtc_peer_manager_check_gathering_timeouts()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

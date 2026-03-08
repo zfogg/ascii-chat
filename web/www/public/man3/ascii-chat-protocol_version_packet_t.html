@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>protocol_version_packet_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">protocol_version_packet_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">protocol_version_packet_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">protocol_version_packet_t - Protocol version negotiation packet
+    structure (Packet Type 1).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/packet/packet.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint16_t</b> <b>protocol_version</b>
+  <br/>
+  Major protocol version (must match for compatibility). <b>uint16_t</b>
+    <b>protocol_revision</b>
+  <br/>
+  Minor protocol revision (server can be newer). <b>uint8_t</b>
+    <b>supports_encryption</b>
+  <br/>
+  Encryption &amp; authentication mode bitmask (ACIP_CRYPTO_* constants: NONE,
+    ENCRYPT, AUTH, or FULL). <b>uint8_t</b> <b>compression_algorithms</b>
+  <br/>
+  Supported compression algorithms bitmask (COMPRESS_ALGO_*). <b>uint8_t</b>
+    <b>compression_threshold</b>
+  <br/>
+  Compression threshold percentage (0-100, e.g., 80 = compress if &gt;80% size
+    reduction). <b>uint16_t</b> <b>feature_flags</b>
+  <br/>
+  Feature flags bitmask (FEATURE_RLE_ENCODING, etc.). <b>uint8_t</b>
+    <b>reserved</b> [7]
+  <br/>
+  Reserved bytes for future expansion (must be zero).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Protocol version negotiation packet structure (Packet Type 1).</p>
+<p class="Pp">Initial handshake packet sent by both client and server to
+    negotiate protocol capabilities, version, compression, and optional
+    features.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This is the first packet exchanged in every connection.
+<p class="Pp"></p>
+<p class="Pp">Structure is 16 bytes total (packed).</p>
+</div>
+<p class="Pp">Definition at line <b>818</b> of file <b>packet.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>
+  protocol_version_packet_t::compression_algorithms</h2>
+<p class="Pp">Supported compression algorithms bitmask (COMPRESS_ALGO_*).</p>
+<p class="Pp">Definition at line <b>826</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>discovery_session_process()</b>, <b>handle_protocol_version_packet()</b>,
+    and <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>
+  protocol_version_packet_t::compression_threshold</h2>
+<p class="Pp">Compression threshold percentage (0-100, e.g., 80 = compress if
+    &gt;80% size reduction).</p>
+<p class="Pp">Definition at line <b>828</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>discovery_session_process()</b>, and
+  <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> protocol_version_packet_t::feature_flags</h2>
+<p class="Pp">Feature flags bitmask (FEATURE_RLE_ENCODING, etc.).</p>
+<p class="Pp">Definition at line <b>830</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>discovery_session_process()</b>, <b>handle_protocol_version_packet()</b>,
+    and <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> protocol_version_packet_t::protocol_revision</h2>
+<p class="Pp">Minor protocol revision (server can be newer).</p>
+<p class="Pp">Definition at line <b>822</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>discovery_session_process()</b>, <b>handle_protocol_version_packet()</b>,
+    and <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> protocol_version_packet_t::protocol_version</h2>
+<p class="Pp">Major protocol version (must match for compatibility).</p>
+<p class="Pp">Definition at line <b>820</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>discovery_session_process()</b>, <b>handle_protocol_version_packet()</b>,
+    and <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> protocol_version_packet_t::reserved[7]</h2>
+<p class="Pp">Reserved bytes for future expansion (must be zero).</p>
+<p class="Pp">Definition at line <b>832</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_protocol_version_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>
+  protocol_version_packet_t::supports_encryption</h2>
+<p class="Pp">Encryption &amp; authentication mode bitmask (ACIP_CRYPTO_*
+    constants: NONE, ENCRYPT, AUTH, or FULL).</p>
+<p class="Pp">Definition at line <b>824</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>discovery_session_process()</b>, <b>handle_protocol_version_packet()</b>,
+    and <b>server_crypto_handshake()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

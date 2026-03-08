@@ -39,7 +39,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>TERM_SIZE_CHECK_INTERVAL_US</b> US_PER_SEC_INT
+<p class="Pp">#define <b>TERM_SIZE_CHECK_INTERVAL_US</b> <b>US_PER_SEC_INT</b>
   <br/>
   #define <b>MAX_CACHED_LINES</b> 256
   <br/>
@@ -49,21 +49,28 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">void <b>terminal_screen_render</b> (const terminal_screen_config_t
-    *config)
+<p class="Pp">void <b>terminal_screen_render</b> (const
+    <b>terminal_screen_config_t</b> *config)
   <br/>
-  void <b>terminal_screen_cleanup</b> (void)
+  Render a terminal screen with fixed header and scrolling logs. void
+    <b>terminal_screen_cleanup</b> (void)
   <br/>
-  <b>session_log_buffer_t</b> * <b>terminal_screen_log_init</b> (void)
+  Clean up terminal screen resources. <b>session_log_buffer_t</b> *
+    <b>terminal_screen_log_init</b> (void)
   <br/>
-  void <b>terminal_screen_log_destroy</b> (void)
+  Initialize session log buffer for terminal screens. void
+    <b>terminal_screen_log_destroy</b> (void)
   <br/>
-  void <b>terminal_screen_log_clear</b> (void)
+  Standard log cleanup for terminal screens. void
+    <b>terminal_screen_log_clear</b> (void)
   <br/>
-  <b>session_log_buffer_t</b> * <b>terminal_screen_get_log_buffer</b> (void)
+  Clear buffered logs for terminal screens. <b>session_log_buffer_t</b> *
+    <b>terminal_screen_get_log_buffer</b> (void)
   <br/>
-  void <b>terminal_screen_set_output_fd</b> (int fd)
+  Get the current session log buffer. void <b>terminal_screen_set_output_fd</b>
+    (int fd)
   <br/>
+  Set output file descriptor for terminal screens (splash/status).
   <br/>
 </p>
 </section>
@@ -97,8 +104,8 @@
 <p class="Pp">Referenced by <b>terminal_screen_render()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="_define_TERM_SIZE_CHECK_INTERVAL_US___US_PER_SEC_INT"><a class="permalink" href="#_define_TERM_SIZE_CHECK_INTERVAL_US___US_PER_SEC_INT">#define
-  TERM_SIZE_CHECK_INTERVAL_US US_PER_SEC_INT</a></h2>
+<h2 class="Ss" id="_define_TERM_SIZE_CHECK_INTERVAL_US___"><a class="permalink" href="#_define_TERM_SIZE_CHECK_INTERVAL_US___">#define
+  TERM_SIZE_CHECK_INTERVAL_US <b>US_PER_SEC_INT</b></a></h2>
 <p class="Pp">Definition at line <b>88</b> of file <b>terminal_screen.c</b>.</p>
 <p class="Pp">Referenced by <b>terminal_screen_render()</b>.</p>
 </section>
@@ -109,6 +116,9 @@
 <section class="Ss">
 <h2 class="Ss" id="void_terminal_screen_cleanup_(void_)"><a class="permalink" href="#void_terminal_screen_cleanup_(void_)">void
   terminal_screen_cleanup (void )</a></h2>
+<p class="Pp">Clean up terminal screen resources. Destroys the internal static
+    frame buffer allocated by <b>terminal_screen_render()</b>. Call at program
+    exit or when terminal screen rendering is no longer needed.</p>
 <p class="Pp">Definition at line <b>586</b> of file
   <b>terminal_screen.c</b>.</p>
 <pre>586                                    {
@@ -125,6 +135,12 @@
 <section class="Ss">
 <h2 class="Ss"><b>session_log_buffer_t</b> * terminal_screen_get_log_buffer
   (void )</h2>
+<p class="Pp">Get the current session log buffer. Returns the log buffer owned
+    by this module, or NULL if not initialized. Used by splash/status screens to
+    register with the logger.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to log buffer, or NULL</div>
 <p class="Pp">Definition at line <b>615</b> of file
   <b>terminal_screen.c</b>.</p>
 <pre>615                                                            {
@@ -136,6 +152,9 @@
 <section class="Ss">
 <h2 class="Ss" id="void_terminal_screen_log_clear_(void_)"><a class="permalink" href="#void_terminal_screen_log_clear_(void_)">void
   terminal_screen_log_clear (void )</a></h2>
+<p class="Pp">Clear buffered logs for terminal screens. Clears all previously
+    captured log entries from the buffer. Useful when transitioning between
+    screens to start fresh.</p>
 <p class="Pp">Definition at line <b>609</b> of file
   <b>terminal_screen.c</b>.</p>
 <pre>609                                      {
@@ -152,6 +171,8 @@
 <section class="Ss">
 <h2 class="Ss" id="void_terminal_screen_log_destroy_(void_)"><a class="permalink" href="#void_terminal_screen_log_destroy_(void_)">void
   terminal_screen_log_destroy (void )</a></h2>
+<p class="Pp">Standard log cleanup for terminal screens. Destroys the session
+    log buffer after screens are done rendering.</p>
 <p class="Pp">Definition at line <b>602</b> of file
   <b>terminal_screen.c</b>.</p>
 <pre>602                                        {
@@ -169,6 +190,12 @@
 <section class="Ss">
 <h2 class="Ss"><b>session_log_buffer_t</b> * terminal_screen_log_init (void
   )</h2>
+<p class="Pp">Initialize session log buffer for terminal screens. Creates a new
+    session log buffer owned by this module. Splash and status screens use this
+    buffer to display logs.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to created buffer, or NULL on failure</div>
 <p class="Pp">Definition at line <b>593</b> of file
   <b>terminal_screen.c</b>.</p>
 <pre>593                                                      {
@@ -186,8 +213,34 @@
     and <b>ui_status_log_init()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_terminal_screen_render_(const_terminal_screen_config_t_*_config)"><a class="permalink" href="#void_terminal_screen_render_(const_terminal_screen_config_t_*_config)">void
-  terminal_screen_render (const terminal_screen_config_t * config)</a></h2>
+<h2 class="Ss" id="void_terminal_screen_render_(const_"><a class="permalink" href="#void_terminal_screen_render_(const_">void
+  terminal_screen_render (const <b>terminal_screen_config_t</b> *
+  config)</a></h2>
+<p class="Pp">Render a terminal screen with fixed header and scrolling logs.
+    Renders a screen following the pattern:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Clear screen and move cursor to home (both stdout and stderr)</dd>
+  <dt>2.</dt>
+  <dd>Call render_header() callback to draw fixed header</dd>
+  <dt>3.</dt>
+  <dd>Calculate log area: rows - fixed_header_lines - 1 (prevent scroll)</dd>
+  <dt>4.</dt>
+  <dd>Fetch recent logs from <b>session_log_buffer</b></dd>
+  <dt>5.</dt>
+  <dd>Calculate which logs fit (working backwards, accounting for wrapping)</dd>
+  <dt>6.</dt>
+  <dd>Display logs chronologically (oldest to newest, latest at bottom)</dd>
+  <dt>7.</dt>
+  <dd>Fill remaining lines to prevent terminal scroll</dd>
+  <dt>8.</dt>
+  <dd>Flush stdout</dd>
+</dl>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Screen
+  configuration (header callback, line count, etc.)</b></div>
+<p class="Pp">Terminal size is cached internally with 1-second refresh interval
+    to avoid flooding error logs if terminal size checks fail repeatedly.</p>
 <p class="Pp">Definition at line <b>105</b> of file
   <b>terminal_screen.c</b>.</p>
 <pre>105                                                                     {
@@ -672,29 +725,49 @@
 584 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>display_height()</b>, <b>display_width()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>terminal_size_t::cols</b>,
+    <b>display_height()</b>, <b>display_width()</b>,
+    <b>terminal_screen_config_t::fixed_header_lines</b>,
     <b>frame_buffer_clear_screen()</b>, <b>frame_buffer_create()</b>,
     <b>frame_buffer_cursor_home()</b>, <b>frame_buffer_destroy()</b>,
     <b>frame_buffer_flush()</b>, <b>frame_buffer_get_content()</b>,
     <b>frame_buffer_get_length()</b>,
     <b>frame_buffer_get_screen_output_fd()</b>, <b>frame_buffer_printf()</b>,
     <b>frame_buffer_reset()</b>, <b>grep_highlight_colored()</b>,
-    <b>log_get_level()</b>, <b>log_search_gather_and_filter_logs()</b>,
+    <b>options_state::height</b>, <b>log_debug_every</b>, <b>log_dev_every</b>,
+    <b>LOG_FATAL</b>, <b>log_get_level()</b>,
+    <b>log_search_gather_and_filter_logs()</b>,
     <b>log_search_get_cursor_position()</b>,
     <b>log_search_get_input_buffer()</b>, <b>log_search_get_input_len()</b>,
     <b>log_search_get_match_info()</b>, <b>log_search_get_mutex()</b>,
     <b>log_search_is_active()</b>, <b>log_search_is_entering()</b>,
     <b>log_search_needs_rerender()</b>, <b>log_search_render_input_line()</b>,
-    <b>log_set_level()</b>, <b>MAX_CACHED_LINES</b>, <b>options_get()</b>,
+    <b>log_set_level()</b>, <b>MAX_CACHED_LINES</b>,
+    <b>session_log_entry_t::message</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>NS_PER_SEC_INT</b>, <b>options_get()</b>,
     <b>platform_get_monotonic_time_us()</b>, <b>platform_write_all()</b>,
-    <b>session_log_buffer_get_recent()</b>, <b>TERM_SIZE_CHECK_INTERVAL_US</b>,
-    <b>terminal_cursor_show()</b>, and <b>terminal_get_size()</b>.</p>
+    <b>terminal_screen_config_t::render_header</b>,
+    <b>terminal_size_t::rows</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>SAFE_STRNCPY</b>, <b>session_log_buffer_get_recent()</b>,
+    <b>SESSION_LOG_BUFFER_SIZE</b>, <b>SESSION_LOG_LINE_MAX</b>,
+    <b>terminal_screen_config_t::show_logs</b>,
+    <b>TERM_SIZE_CHECK_INTERVAL_US</b>, <b>terminal_cursor_show()</b>,
+    <b>terminal_get_size()</b>, <b>terminal_screen_config_t::user_data</b>, and
+    <b>options_state::width</b>.</p>
 <p class="Pp">Referenced by <b>ui_status_display()</b>, and
     <b>ui_status_display_interactive()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_terminal_screen_set_output_fd_(int_fd)"><a class="permalink" href="#void_terminal_screen_set_output_fd_(int_fd)">void
   terminal_screen_set_output_fd (int fd)</a></h2>
+<p class="Pp">Set output file descriptor for terminal screens
+  (splash/status).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>fd</i> File descriptor (STDOUT_FILENO for TTY,
+  STDERR_FILENO for piped)</div>
+<p class="Pp">Configures where splash and status screens write their output.
+    Should be called before <b>terminal_screen_render()</b> to control output
+    destination.</p>
 <p class="Pp">Definition at line <b>619</b> of file
   <b>terminal_screen.c</b>.</p>
 <pre>619                                            {
@@ -714,7 +787,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

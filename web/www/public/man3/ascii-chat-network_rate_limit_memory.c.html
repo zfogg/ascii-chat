@@ -62,14 +62,16 @@
 <br/>
 <p class="Pp">void * <b>memory_backend_create</b> (void)
   <br/>
+  Create memory backend instance.
   <br/>
 </p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
 <br/>
-<p class="Pp">const rate_limiter_backend_ops_t <b>memory_backend_ops</b>
+<p class="Pp">const <b>rate_limiter_backend_ops_t</b> <b>memory_backend_ops</b>
   <br/>
+  Memory backend operations vtable.
   <br/>
 </p>
 </section>
@@ -97,6 +99,9 @@
 <section class="Ss">
 <h2 class="Ss" id="void_*_memory_backend_create_(void_)"><a class="permalink" href="#void_*_memory_backend_create_(void_)">void
   * memory_backend_create (void )</a></h2>
+<p class="Pp">Create memory backend instance.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Backend instance or NULL on failure</div>
 <p class="Pp">Definition at line <b>239</b> of file
     <b>network/rate_limit/memory.c</b>.</p>
 <pre>239                                   {
@@ -119,8 +124,9 @@
 256 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>memory_backend_t::lock</b>, and
-  <b>mutex_init()</b>.</p>
+<p class="Pp">References <b>memory_backend_t::lock</b>, <b>log_debug</b>,
+    <b>log_error</b>, <b>mutex_init()</b>, <b>SAFE_FREE</b>, and
+    <b>SAFE_MALLOC</b>.</p>
 <p class="Pp">Referenced by <b>rate_limiter_create_memory()</b>.</p>
 </section>
 </section>
@@ -128,8 +134,8 @@
 <h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="const_rate_limiter_backend_ops_t_memory_backend_ops"><a class="permalink" href="#const_rate_limiter_backend_ops_t_memory_backend_ops">const
-  rate_limiter_backend_ops_t memory_backend_ops</a></h2>
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>rate_limiter_backend_ops_t</b> memory_backend_ops</a></h2>
 <p class="Pp"><b>Initial value:</b></p>
 <pre>
 <br/>
@@ -145,6 +151,7 @@
 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">Memory backend operations vtable.</p>
 <p class="Pp">Definition at line <b>258</b> of file
     <b>network/rate_limit/memory.c</b>.</p>
 <pre>258                                                     {
@@ -165,7 +172,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

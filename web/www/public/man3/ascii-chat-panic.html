@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>panic(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">panic(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">panic(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">panic - Panic</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+<br/>
+<p class="Pp">file <b>instrument_log.h</b>
+  <br/>
+  &#x1F50D; Debug instrumentation logging runtime for ascii-chat line tracing
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>ASCII_INSTR_SOURCE_PRINT_SIGNAL_HANDLER</b>
+  <br/>
+  Attribute to mark signal handler functions.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>asciichat_instr_runtime</b>
+    <b>asciichat_instr_runtime_t</b>
+  <br/>
+  Per-thread instrumentation runtime state.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum { <b>ASCII_INSTR_SOURCE_PRINT_MACRO_NONE</b> = 0u,
+    <b>ASCII_INSTR_SOURCE_PRINT_MACRO_EXPANSION</b> = 1u,
+    <b>ASCII_INSTR_SOURCE_PRINT_MACRO_INVOCATION</b> = 2u }
+  <br/>
+  Macro expansion indicator values for <b>asciichat_instr_log_line()</b>.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_instr_runtime_t</b> *
+    <b>asciichat_instr_runtime_get</b> (void)
+  <br/>
+  Get or create the thread-local runtime context. void
+    <b>asciichat_instr_runtime_destroy</b> (<b>asciichat_instr_runtime_t</b>
+    *runtime)
+  <br/>
+  Destroy a runtime context and release resources. void
+    <b>asciichat_instr_runtime_global_destroy</b> (void)
+  <br/>
+  Global shutdown of the instrumentation system. void
+    <b>asciichat_instr_log_line</b> (const char *<b>file_path</b>,
+    <b>uint32_t</b> line_number, const char *function_name, const char *snippet,
+    <b>uint8_t</b> is_macro_expansion)
+  <br/>
+  Log a source line execution event. <b>bool</b>
+    <b>asciichat_instr_coverage_enabled</b> (void)
+  <br/>
+  Check if coverage logging is enabled. void <b>asciichat_instr_log_pc</b>
+    (uintptr_t program_counter)
+  <br/>
+  Log a program counter for coverage analysis.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">This module provides the runtime logging infrastructure for the
+    source-print instrumentation system. When code is instrumented with
+    ascii-instr-panic, calls to <b>asciichat_instr_log_line()</b> are inserted
+    at each statement to trace execution flow.</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="Features"><a class="permalink" href="#Features">Features</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Per-Thread Logging</b>: Each thread gets its own log file or runtime
+      context</li>
+  <li><b>Configurable Filtering</b>: Filter by file path, function name, thread
+      ID, or using regex patterns</li>
+  <li><b>Rate Limiting</b>: Sample every Nth log entry to reduce output
+    volume</li>
+  <li><b>Coverage Mode</b>: Log program counter addresses for coverage
+    analysis</li>
+  <li><b>Environment Configuration</b>: All settings controlled via environment
+      variables</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Environment_Variables"><a class="permalink" href="#Environment_Variables">Environment
+  Variables</a></h2>
+<ul class="Bl-bullet">
+  <li>ASCII_INSTR_SOURCE_PRINT_ENABLE: Enable/disable tracing (default:
+    enabled)</li>
+  <li>ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR: Directory for log files</li>
+  <li>ASCII_INSTR_SOURCE_PRINT_INCLUDE: Substring filter for file paths
+      (include)</li>
+  <li>ASCII_INSTR_SOURCE_PRINT_EXCLUDE: Substring filter for file paths
+      (exclude)</li>
+  <li>ASCII_INSTR_SOURCE_PRINT_FUNCTION_INCLUDE: Substring filter for
+    functions</li>
+  <li>ASCII_INSTR_SOURCE_PRINT_FUNCTION_EXCLUDE: Substring filter for
+    functions</li>
+  <li>ASCII_INSTR_SOURCE_PRINT_THREAD: Filter by thread ID(s)</li>
+  <li>ASCII_INSTR_SOURCE_PRINT_RATE: Log every Nth entry (rate limiting)</li>
+  <li>ASCII_INSTR_SOURCE_PRINT_ONLY: Comma-separated selector filters</li>
+  <li>ASCII_INSTR_SOURCE_PRINT_ENABLE_COVERAGE: Enable PC logging for
+    coverage</li>
+</ul>
+<p class="Pp">Regex variants (Unix only):</p>
+<ul class="Bl-bullet">
+  <li>ASCII_INSTR_SOURCE_PRINT_INCLUDE_REGEX</li>
+  <li>ASCII_INSTR_SOURCE_PRINT_EXCLUDE_REGEX</li>
+  <li>ASCII_INSTR_SOURCE_PRINT_FUNCTION_INCLUDE_REGEX</li>
+  <li>ASCII_INSTR_SOURCE_PRINT_FUNCTION_EXCLUDE_REGEX</li>
+</ul>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent">docs/tooling/panic-instrumentation.md for full
+  documentation</div>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_INSTR_SOURCE_PRINT_SIGNAL_HANDLER"><a class="permalink" href="#_define_ASCII_INSTR_SOURCE_PRINT_SIGNAL_HANDLER">#define
+  ASCII_INSTR_SOURCE_PRINT_SIGNAL_HANDLER</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/tooling/panic/instrument_log.h</b>&gt;<b></b></p>
+<p class="Pp">Attribute to mark signal handler functions. Functions marked with
+    this attribute are recognized by the instrumentation tool and may receive
+    special handling to avoid signal-unsafe operations.</p>
+<p class="Pp">Definition at line <b>76</b> of file <b>instrument_log.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
+  struct <b>asciichat_instr_runtime</b>
+  <b>asciichat_instr_runtime_t</b></a></h2>
+<p class="Pp">#include
+  &lt;<b>lib/tooling/panic/instrument_log.c</b>&gt;<b></b></p>
+<p class="Pp">Per-thread instrumentation runtime state. Opaque runtime context
+    for instrumentation logging.</p>
+<p class="Pp"></p>
+<p class="Pp">Tracks state for source code instrumentation logging, including
+    file descriptors, filter configuration, and rate limiting for the current
+    thread.</p>
+<p class="Pp"></p>
+<p class="Pp">Each thread has its own runtime context that tracks:</p>
+<ul class="Bl-bullet">
+  <li>File descriptor for the log file</li>
+  <li>Sequence numbers and call counters</li>
+  <li>Filter configuration (compiled regexes, substring patterns)</li>
+  <li>Rate limiting state</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="anonymous_enum"><a class="permalink" href="#anonymous_enum">anonymous
+  enum</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/tooling/panic/instrument_log.h</b>&gt;<b></b></p>
+<p class="Pp">Macro expansion indicator values for
+    <b>asciichat_instr_log_line()</b>. These values indicate whether a logged
+    line originates from a macro expansion, the macro invocation site, or
+    regular code.</p>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="ASCII_INSTR_SOURCE_PRINT_MACRO_NONE"><a class="permalink" href="#ASCII_INSTR_SOURCE_PRINT_MACRO_NONE"><b><i>ASCII_INSTR_SOURCE_PRINT_MACRO_NONE
+    </i></b></a></dt>
+  <dd>Regular code, not from a macro</dd>
+  <dt id="ASCII_INSTR_SOURCE_PRINT_MACRO_EXPANSION"><a class="permalink" href="#ASCII_INSTR_SOURCE_PRINT_MACRO_EXPANSION"><b><i>ASCII_INSTR_SOURCE_PRINT_MACRO_EXPANSION
+    </i></b></a></dt>
+  <dd>Inside macro expansion</dd>
+  <dt id="ASCII_INSTR_SOURCE_PRINT_MACRO_INVOCATION"><a class="permalink" href="#ASCII_INSTR_SOURCE_PRINT_MACRO_INVOCATION"><b><i>ASCII_INSTR_SOURCE_PRINT_MACRO_INVOCATION
+    </i></b></a></dt>
+  <dd>At macro invocation site</dd>
+</dl>
+<p class="Pp">Definition at line <b>61</b> of file <b>instrument_log.h</b>.</p>
+<pre>61      {
+62   ASCII_INSTR_SOURCE_PRINT_MACRO_NONE = 0u,      
+63   ASCII_INSTR_SOURCE_PRINT_MACRO_EXPANSION = 1u, 
+64   ASCII_INSTR_SOURCE_PRINT_MACRO_INVOCATION = 2u 
+65 };</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> asciichat_instr_coverage_enabled (void )</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/tooling/panic/instrument_log.h</b>&gt;<b></b></p>
+<p class="Pp">Check if coverage logging is enabled. Coverage mode logs program
+    counter addresses instead of full source info, useful for generating
+    coverage reports with lower overhead.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if ASCII_INSTR_SOURCE_PRINT_ENABLE_COVERAGE is
+  set</div>
+<p class="Pp">Definition at line <b>425</b> of file <b>instrument_log.c</b>.</p>
+<pre>425                                             {
+426   if (g_disable_write) {
+427     return false;
+428   }
+429 
+430   // Initialize runtime once using lock-free lifecycle API
+431   if (!lifecycle_is_initialized(&amp;g_runtime_lc)) {
+432     if (lifecycle_init_once(&amp;g_runtime_lc)) {
+433       asciichat_instr_runtime_init_once();
+434       lifecycle_init_commit(&amp;g_runtime_lc);
+435     }
+436   }
+437 
+438   return g_coverage_enabled;
+439 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_init_commit()</b>,
+    <b>lifecycle_init_once()</b>, and <b>lifecycle_is_initialized()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_instr_log_pc()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_instr_log_line_(const_char_*_file_path,_"><a class="permalink" href="#void_asciichat_instr_log_line_(const_char_*_file_path,_">void
+  asciichat_instr_log_line (const char * file_path, <b>uint32_t</b> line_number,
+  const char * function_name, const char * snippet, <b>uint8_t</b>
+  is_macro_expansion)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/tooling/panic/instrument_log.h</b>&gt;<b></b></p>
+<p class="Pp">Log a source line execution event. Called by instrumented code at
+    each statement to record execution trace. The log entry includes timestamp,
+    thread ID, sequence number, file location, function name, and source code
+    snippet.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>file_path</b><i></i><b> Source file path
+  (typically from </b><b>FILE</b><b>)</b>
+<br/>
+<i>line_number</i> Line number in the source file
+<br/>
+<i>function_name</i> Name of the containing function
+<br/>
+<i>snippet</i> Source code snippet for this line
+<br/>
+<i>is_macro_expansion</i> One of ASCII_INSTR_SOURCE_PRINT_MACRO_* values</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Filters are applied before logging; entry may be skipped
+<p class="Pp"></p>
+<p class="Pp">Thread-safe: uses per-thread runtime context</p>
+<p class="Pp"></p>
+<p class="Pp">Reentrant-safe: nested calls are detected and skipped</p>
+</div>
+<p class="Pp">Definition at line <b>275</b> of file <b>instrument_log.c</b>.</p>
+<pre>276                                                                                {
+277   // Instrumentation is enabled by default when the binary is built with Source Print.
+278   // Set ASCII_INSTR_SOURCE_PRINT_ENABLE=0 to disable tracing at runtime.
+279   if (!g_instrumentation_enabled_checked) {
+280     const char *enable_env = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_ENABLE&quot;);
+281     // Default to enabled (true) - only disable if explicitly set to &quot;0&quot;, &quot;false&quot;, &quot;off&quot;, or &quot;no&quot;
+282     if (enable_env != NULL &amp;&amp; enable_env[0] != '\0') {
+283       g_instrumentation_enabled = asciichat_instr_env_is_enabled(enable_env);
+284     } else {
+285       g_instrumentation_enabled = true; // Default to enabled when instrumented
+286     }
+287     g_instrumentation_enabled_checked = true;
+288   }
+289 
+290   if (!g_instrumentation_enabled) {
+291     return;
+292   }
+293 
+294   if (g_disable_write) {
+295     return;
+296   }
+297 
+298   if (g_logging_reentry_guard) {
+299     return;
+300   }
+301 
+302   g_logging_reentry_guard = true;
+303 
+304   asciichat_instr_runtime_t *runtime = asciichat_instr_runtime_get();
+305   if (runtime == NULL) {
+306     goto cleanup;
+307   }
+308 
+309   if (!asciichat_instr_should_log(runtime, file_path, line_number, function_name)) {
+310     goto cleanup;
+311   }
+312 
+313   runtime-&gt;call_counter++;
+314   if (runtime-&gt;rate_enabled) {
+315     const uint64_t counter = runtime-&gt;call_counter;
+316     if (((counter - 1U) % runtime-&gt;rate) != 0U) {
+317       goto cleanup;
+318     }
+319   }
+320 
+321   if (runtime-&gt;fd &lt; 0) {
+322     if (asciichat_instr_open_log_file(runtime) != 0) {
+323       runtime-&gt;stderr_fallback = true;
+324     }
+325   }
+326 
+327   const int fd = runtime-&gt;stderr_fallback ? STDERR_FILENO : runtime-&gt;fd;
+328   char buffer[ASCII_INSTR_SOURCE_PRINT_MAX_LINE];
+329   size_t pos = 0;
+330 
+331   uint64_t realtime_ns = time_get_realtime_ns();
+332   time_t sec = (time_t)(realtime_ns / NS_PER_SEC_INT);
+333   long nsec = (long)(realtime_ns % NS_PER_SEC_INT);
+334   struct tm tm_now;
+335   memset(&amp;tm_now, 0, sizeof(tm_now));
+336   if (platform_gtime(&amp;sec, &amp;tm_now) != ASCIICHAT_OK) {
+337     memset(&amp;tm_now, 0, sizeof(tm_now));
+338   }
+339 
+340   char timestamp[32];
+341   size_t ts_len = strftime(timestamp, sizeof(timestamp), &quot;%Y-%m-%dT%H:%M:%S&quot;, &amp;tm_now);
+342   if (ts_len == 0) {
+343     SAFE_STRNCPY(timestamp, &quot;1970-01-01T00:00:00&quot;, sizeof(timestamp));
+344     ts_len = strlen(timestamp);
+345   }
+346 
+347   char elapsed_buf[32];
+348   elapsed_buf[0] = '\0';
+349   if (g_ticks_initialized) {
+350     uint64_t now_ns = time_get_ns();
+351     uint64_t elapsed_ns = time_elapsed_ns(g_start_ns, now_ns);
+352     if (time_pretty((uint64_t)elapsed_ns, -1, elapsed_buf, sizeof(elapsed_buf)) &lt; 0) {
+353       elapsed_buf[0] = '\0';
+354     }
+355   }
+356 
+357   runtime-&gt;sequence++;
+358 
+359   const char *elapsed_field = (elapsed_buf[0] != '\0') ? elapsed_buf : &quot;-&quot;;
+360 
+361   const char *safe_file_path = (file_path != NULL) ? file_path : &quot;&lt;unknown&gt;&quot;;
+362   pos += safe_snprintf(buffer + pos, sizeof(buffer) - pos,
+363                        &quot;pid=%d tid=%llu seq=%llu ts=%.*s.%09ldZ elapsed=%s file=%s line=%u func=%s macro=%u snippet=&quot;,
+364                        runtime-&gt;pid, (unsigned long long)runtime-&gt;thread_id, (unsigned long long)runtime-&gt;sequence,
+365                        (int)ts_len, timestamp, nsec, elapsed_field, safe_file_path, line_number,
+366                        function_name ? function_name : &quot;&lt;unknown&gt;&quot;, (unsigned)is_macro_expansion);
+367 
+368   if (snippet != NULL) {
+369     size_t snippet_len = strnlen(snippet, ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET);
+370     for (size_t i = 0; i &lt; snippet_len &amp;&amp; pos &lt; sizeof(buffer) - 2; ++i) {
+371       const char ch = snippet[i];
+372       switch (ch) {
+373       case '\n':
+374         buffer[pos++] = '\\';
+375         buffer[pos++] = 'n';
+376         break;
+377       case '\r':
+378         buffer[pos++] = '\\';
+379         buffer[pos++] = 'r';
+380         break;
+381       case '\t':
+382         buffer[pos++] = '\\';
+383         buffer[pos++] = 't';
+384         break;
+385       default:
+386         buffer[pos++] = ch;
+387         break;
+388       }
+389     }
+390   }
+391 
+392   if (pos &gt;= sizeof(buffer) - 1) {
+393     pos = sizeof(buffer) - 2;
+394   }
+395 
+396   buffer[pos++] = '\n';
+397   buffer[pos] = '\0';
+398 
+399   asciichat_instr_write_full(fd, buffer, pos);
+400 
+401   // Also echo to stderr if requested via environment variable
+402   if (!g_echo_to_stderr_initialized) {
+403     const char *echo_env = SAFE_GETENV(&quot;ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_STDERR&quot;);
+404     g_echo_to_stderr = asciichat_instr_env_is_enabled(echo_env);
+405     g_echo_to_stderr_initialized = true;
+406   }
+407 
+408   if (g_echo_to_stderr &amp;&amp; !runtime-&gt;stderr_fallback) {
+409     // Write to stderr in addition to the log file
+410     // Suppress Windows deprecation warning for POSIX write function
+411 #ifdef _WIN32
+412 #pragma clang diagnostic push
+413 #pragma clang diagnostic ignored &quot;-Wdeprecated-declarations&quot;
+414 #endif
+415     (void)posix_write(STDERR_FILENO, buffer, pos);
+416 #ifdef _WIN32
+417 #pragma clang diagnostic pop
+418 #endif
+419   }
+420 
+421 cleanup:
+422   g_logging_reentry_guard = false;
+423 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCII_INSTR_SOURCE_PRINT_MAX_LINE</b>,
+    <b>ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET</b>,
+    <b>asciichat_instr_runtime_get()</b>, <b>ASCIICHAT_OK</b>,
+    <b>asciichat_instr_runtime::call_counter</b>,
+    <b>asciichat_instr_runtime::fd</b>, <b>file_path</b>, <b>NS_PER_SEC_INT</b>,
+    <b>asciichat_instr_runtime::pid</b>, <b>platform_gtime()</b>,
+    <b>posix_write</b>, <b>asciichat_instr_runtime::rate</b>,
+    <b>asciichat_instr_runtime::rate_enabled</b>, <b>SAFE_GETENV</b>,
+    <b>safe_snprintf()</b>, <b>SAFE_STRNCPY</b>,
+    <b>asciichat_instr_runtime::sequence</b>,
+    <b>asciichat_instr_runtime::stderr_fallback</b>,
+    <b>asciichat_instr_runtime::thread_id</b>, <b>time_elapsed_ns()</b>,
+    <b>time_get_ns()</b>, <b>time_get_realtime_ns()</b>, and
+    <b>time_pretty()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_instr_log_pc()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_instr_log_pc_(uintptr_t_program_counter)"><a class="permalink" href="#void_asciichat_instr_log_pc_(uintptr_t_program_counter)">void
+  asciichat_instr_log_pc (uintptr_t program_counter)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/tooling/panic/instrument_log.h</b>&gt;<b></b></p>
+<p class="Pp">Log a program counter for coverage analysis. Records just the PC
+    address with minimal metadata, intended for post-processing into coverage
+    reports.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>program_counter</i> The instruction address to
+  log</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Only logs if coverage mode is enabled</div>
+<p class="Pp">Definition at line <b>441</b> of file <b>instrument_log.c</b>.</p>
+<pre>441                                                        {
+442   if (!asciichat_instr_coverage_enabled()) {
+443     return;
+444   }
+445 
+446   char snippet[64];
+447   safe_snprintf(snippet, sizeof(snippet), &quot;pc=0x%zx&quot;, (size_t)program_counter);
+448   asciichat_instr_log_line(&quot;__coverage__&quot;, 0, &quot;&lt;coverage&gt;&quot;, snippet, ASCII_INSTR_SOURCE_PRINT_MACRO_NONE);
+449 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCII_INSTR_SOURCE_PRINT_MACRO_NONE</b>,
+    <b>asciichat_instr_coverage_enabled()</b>,
+    <b>asciichat_instr_log_line()</b>, and <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>__sanitizer_cov_trace_pc_guard()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_instr_runtime_destroy_("><a class="permalink" href="#void_asciichat_instr_runtime_destroy_(">void
+  asciichat_instr_runtime_destroy (<b>asciichat_instr_runtime_t</b> *
+  runtime)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/tooling/panic/instrument_log.h</b>&gt;<b></b></p>
+<p class="Pp">Destroy a runtime context and release resources. Closes the log
+    file descriptor, frees compiled regexes, and deallocates the runtime
+    structure. Called automatically by TLS destructor on thread exit.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>runtime</i> Context to destroy (safe to pass
+  NULL)</div>
+<p class="Pp">Definition at line <b>223</b> of file <b>instrument_log.c</b>.</p>
+<pre>223                                                                          {
+224   if (runtime == NULL) {
+225     return;
+226   }
+227 
+228   if (runtime-&gt;fd &gt;= 0) {
+229     platform_close(runtime-&gt;fd);
+230     runtime-&gt;fd = -1;
+231   }
+232 
+233 #if ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX
+234   if (runtime-&gt;include_regex_valid) {
+235     regfree(&amp;runtime-&gt;include_regex);
+236     runtime-&gt;include_regex_valid = false;
+237   }
+238   if (runtime-&gt;exclude_regex_valid) {
+239     regfree(&amp;runtime-&gt;exclude_regex);
+240     runtime-&gt;exclude_regex_valid = false;
+241   }
+242   if (runtime-&gt;function_include_regex_valid) {
+243     regfree(&amp;runtime-&gt;function_include_regex);
+244     runtime-&gt;function_include_regex_valid = false;
+245   }
+246   if (runtime-&gt;function_exclude_regex_valid) {
+247     regfree(&amp;runtime-&gt;function_exclude_regex);
+248     runtime-&gt;function_exclude_regex_valid = false;
+249   }
+250 #endif
+251 
+252   asciichat_instr_only_list_destroy(&amp;runtime-&gt;only_selectors);
+253   SAFE_FREE(runtime);
+254 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_instr_runtime::exclude_regex</b>,
+    <b>asciichat_instr_runtime::exclude_regex_valid</b>,
+    <b>asciichat_instr_runtime::fd</b>,
+    <b>asciichat_instr_runtime::function_exclude_regex</b>,
+    <b>asciichat_instr_runtime::function_exclude_regex_valid</b>,
+    <b>asciichat_instr_runtime::function_include_regex</b>,
+    <b>asciichat_instr_runtime::function_include_regex_valid</b>,
+    <b>asciichat_instr_runtime::include_regex</b>,
+    <b>asciichat_instr_runtime::include_regex_valid</b>,
+    <b>asciichat_instr_runtime::only_selectors</b>, <b>platform_close()</b>, and
+    <b>SAFE_FREE</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_instr_runtime_t</b> * asciichat_instr_runtime_get
+  (void )</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/tooling/panic/instrument_log.h</b>&gt;<b></b></p>
+<p class="Pp">Get or create the thread-local runtime context. Returns the
+    instrumentation runtime for the current thread, creating one if it doesn't
+    exist. The runtime is stored in thread-local storage and cleaned up
+    automatically when the thread exits.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Runtime context, or NULL if disabled or initialization
+  fails</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe: each thread gets its own context
+<p class="Pp"></p>
+<p class="Pp">Returns NULL if ASCII_INSTR_SOURCE_PRINT_ENABLE=0</p>
+</div>
+<p class="Pp">Definition at line <b>176</b> of file <b>instrument_log.c</b>.</p>
+<pre>176                                                              {
+177   if (g_disable_write) {
+178     return NULL;
+179   }
+180 
+181   // Initialize runtime once using lock-free lifecycle API
+182   if (!lifecycle_is_initialized(&amp;g_runtime_lc)) {
+183     if (lifecycle_init_once(&amp;g_runtime_lc)) {
+184       asciichat_instr_runtime_init_once();
+185       lifecycle_init_commit(&amp;g_runtime_lc);
+186     }
+187   }
+188 
+189   asciichat_instr_runtime_t *runtime = ascii_tls_get(g_runtime_key);
+190   if (runtime != NULL) {
+191     return runtime;
+192   }
+193 
+194   runtime = SAFE_CALLOC(1, sizeof(*runtime), asciichat_instr_runtime_t *);
+195   if (runtime == NULL) {
+196     return NULL;
+197   }
+198 
+199   runtime-&gt;pid = platform_get_pid();
+200   runtime-&gt;thread_id = asciichat_thread_current_id();
+201   runtime-&gt;sequence = 0;
+202   runtime-&gt;call_counter = 0;
+203   runtime-&gt;fd = -1;
+204   runtime-&gt;filter_include = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_INCLUDE&quot;);
+205   runtime-&gt;filter_exclude = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_EXCLUDE&quot;);
+206   runtime-&gt;filter_thread = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_THREAD&quot;);
+207   runtime-&gt;filter_function_include = NULL;
+208   runtime-&gt;filter_function_exclude = NULL;
+209   runtime-&gt;filters_enabled = false;
+210   runtime-&gt;rate = 1;
+211   runtime-&gt;rate_enabled = false;
+212 
+213   asciichat_instr_runtime_configure(runtime);
+214 
+215   if (ascii_tls_set(g_runtime_key, runtime) != 0) {
+216     SAFE_FREE(runtime);
+217     return NULL;
+218   }
+219 
+220   return runtime;
+221 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_tls_get()</b>, <b>ascii_tls_set()</b>,
+    <b>asciichat_thread_current_id()</b>,
+    <b>asciichat_instr_runtime::call_counter</b>,
+    <b>asciichat_instr_runtime::fd</b>,
+    <b>asciichat_instr_runtime::filter_exclude</b>,
+    <b>asciichat_instr_runtime::filter_function_exclude</b>,
+    <b>asciichat_instr_runtime::filter_function_include</b>,
+    <b>asciichat_instr_runtime::filter_include</b>,
+    <b>asciichat_instr_runtime::filter_thread</b>,
+    <b>asciichat_instr_runtime::filters_enabled</b>,
+    <b>lifecycle_init_commit()</b>, <b>lifecycle_init_once()</b>,
+    <b>lifecycle_is_initialized()</b>, <b>asciichat_instr_runtime::pid</b>,
+    <b>platform_get_pid()</b>, <b>asciichat_instr_runtime::rate</b>,
+    <b>asciichat_instr_runtime::rate_enabled</b>, <b>SAFE_CALLOC</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_GETENV</b>,
+    <b>asciichat_instr_runtime::sequence</b>, and
+    <b>asciichat_instr_runtime::thread_id</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_instr_runtime_global_destroy_(void_)"><a class="permalink" href="#void_asciichat_instr_runtime_global_destroy_(void_)">void
+  asciichat_instr_runtime_global_destroy (void )</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/tooling/panic/instrument_log.h</b>&gt;<b></b></p>
+<p class="Pp">Global shutdown of the instrumentation system. Disables all
+    logging, cleans up the TLS key, and resets global state. Should be called at
+    program exit to ensure clean shutdown.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">After calling this, logging can be re-enabled by
+  resetting env vars
+<p class="Pp"></p>
+<p class="Pp">Thread-safe: acquires global mutex during shutdown</p>
+</div>
+<p class="Pp">Definition at line <b>256</b> of file <b>instrument_log.c</b>.</p>
+<pre>256                                                   {
+257   if (lifecycle_shutdown(&amp;g_runtime_lc)) {
+258     g_disable_write = true;
+259     ascii_tls_key_delete(g_runtime_key);
+260     g_ticks_initialized = false;
+261     g_start_ns = 0;
+262     g_coverage_enabled = false;
+263     g_output_dir_set = false;
+264     g_output_dir[0] = '\0';
+265     g_instrumentation_enabled_checked = false;
+266     g_instrumentation_enabled = false;
+267     g_echo_to_stderr_initialized = false;
+268     g_echo_to_stderr = false;
+269   }
+270 
+271   // Reset g_disable_write so instrumentation can be re-enabled in subsequent tests
+272   g_disable_write = false;
+273 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_tls_key_delete()</b>, and
+    <b>lifecycle_shutdown()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

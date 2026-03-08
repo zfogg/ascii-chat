@@ -59,13 +59,14 @@
   <br/>
   void <b>h265_decoder_destroy</b> (<b>h265_decoder_t</b> *decoder)
   <br/>
-  asciichat_error_t <b>h265_decode</b> (<b>h265_decoder_t</b> *decoder, const
-    uint8_t *encoded_packet, size_t packet_size, uint16_t *output_width,
-    uint16_t *output_height, uint8_t *output_buf, size_t *output_size)
+  <b>asciichat_error_t</b> <b>h265_decode</b> (<b>h265_decoder_t</b> *decoder,
+    const <b>uint8_t</b> *encoded_packet, size_t packet_size, <b>uint16_t</b>
+    *output_width, <b>uint16_t</b> *output_height, <b>uint8_t</b> *output_buf,
+    size_t *output_size)
   <br/>
-  void <b>h265_decoder_get_stats</b> (<b>h265_decoder_t</b> *decoder, uint64_t
-    *total_frames, uint64_t *keyframes, uint16_t *last_width, uint16_t
-    *last_height)
+  void <b>h265_decoder_get_stats</b> (<b>h265_decoder_t</b> *decoder,
+    <b>uint64_t</b> *total_frames, <b>uint64_t</b> *keyframes, <b>uint16_t</b>
+    *last_width, <b>uint16_t</b> *last_height)
   <br/>
   <br/>
 </p>
@@ -91,10 +92,40 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_h265_decode_("><a class="permalink" href="#asciichat_error_t_h265_decode_(">asciichat_error_t
-  h265_decode (<b>h265_decoder_t</b> * decoder, const uint8_t * encoded_packet,
-  size_t packet_size, uint16_t * output_width, uint16_t * output_height, uint8_t
-  * output_buf, size_t * output_size)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> h265_decode (<b>h265_decoder_t</b> *
+  decoder, const <b>uint8_t</b> * encoded_packet, size_t packet_size,
+  <b>uint16_t</b> * output_width, <b>uint16_t</b> * output_height,
+  <b>uint8_t</b> * output_buf, size_t * output_size)</h2>
+<p class="Pp">Decode an x265-encoded ASCII frame</p>
+<p class="Pp"></p>
+<p class="Pp">The decoder reads width/height from the packet and automatically
+    reconfigures when frame dimensions change.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>decoder</i> Decoder handle
+<br/>
+<i>encoded_packet</i> Encoded packet (flags+width+height+x265_data)
+<br/>
+<i>packet_size</i> Size of encoded packet
+<br/>
+<i>output_width</i> Output: decoded frame width
+<br/>
+<i>output_height</i> Output: decoded frame height
+<br/>
+<i>output_buf</i> Buffer for decoded ASCII data (should be at least
+  width&#x00D7;height)
+<br/>
+<i>output_size</i> Input: buffer size, Output: actual decoded size</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Error code (ASCIICHAT_OK on success)</div>
+<p class="Pp">INPUT PACKET FORMAT: [flags: u8][width: u16][height:
+    u16][x265_data...]</p>
+<p class="Pp"></p>
+<p class="Pp">Call this as: <b>uint16_t</b> width, height; <b>uint8_t</b>
+    ascii_grid[256*64]; size_t decoded_size = sizeof(ascii_grid);
+    h265_decode(decoder, packet, packet_size, &amp;width, &amp;height,
+  <br/>
+   ascii_grid, &amp;decoded_size);</p>
 <p class="Pp">Definition at line <b>107</b> of file <b>decoder.c</b>.</p>
 <pre>115   {
 116     if (!decoder || !encoded_packet || !output_width || !output_height || !output_buf || !output_size) {
@@ -174,14 +205,22 @@
 190 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>h265_decoder::codec_ctx</b>,
-    <b>h265_decoder::frame</b>, <b>h265_decoder::keyframes</b>,
-    <b>h265_decoder::last_height</b>, <b>h265_decoder::last_width</b>,
-    <b>h265_decoder::packet</b>, and <b>h265_decoder::total_frames</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>h265_decoder::codec_ctx</b>,
+    <b>ERROR_INTERNAL</b>, <b>ERROR_MEDIA_DECODE</b>,
+    <b>ERROR_NETWORK_PROTOCOL</b>, <b>ERROR_NETWORK_SIZE</b>,
+    <b>h265_decoder::frame</b>, <b>H265_DECODER_FLAG_KEYFRAME</b>,
+    <b>h265_decoder::keyframes</b>, <b>h265_decoder::last_height</b>,
+    <b>h265_decoder::last_width</b>, <b>log_warn</b>,
+    <b>h265_decoder::packet</b>, <b>SET_ERRNO</b>, and
+    <b>h265_decoder::total_frames</b>.</p>
 <p class="Pp">Referenced by <b>h265_server_decode_and_convert()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>h265_decoder_t</b> * h265_decoder_create (void )</h2>
+<p class="Pp">Create a new x265 decoder for ASCII frames</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Decoder handle, or NULL on error</div>
 <p class="Pp">Definition at line <b>31</b> of file <b>decoder.c</b>.</p>
 <pre>31                                           {
 32     h265_decoder_t *dec = SAFE_CALLOC(1, sizeof(h265_decoder_t), h265_decoder_t *);
@@ -243,13 +282,19 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>h265_decoder::codec_ctx</b>,
-    <b>h265_decoder::frame</b>, <b>h265_decoder::packet</b>, and
-    <b>h265_decoder::parser</b>.</p>
+    <b>ERROR_MEDIA_INIT</b>, <b>ERROR_MEMORY</b>, <b>h265_decoder::frame</b>,
+    <b>log_info</b>, <b>LOG_IO</b>, <b>NAMED_REGISTER_H265_DECODER</b>,
+    <b>h265_decoder::packet</b>, <b>h265_decoder::parser</b>,
+    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>h265_server_get_client_decoder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_h265_decoder_destroy_("><a class="permalink" href="#void_h265_decoder_destroy_(">void
   h265_decoder_destroy (<b>h265_decoder_t</b> * decoder)</a></h2>
+<p class="Pp">Destroy an x265 decoder</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>decoder</i> Decoder to destroy (may be NULL)</div>
 <p class="Pp">Definition at line <b>89</b> of file <b>decoder.c</b>.</p>
 <pre>89                                                    {
 90     if (!decoder) return;
@@ -271,16 +316,28 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>h265_decoder::codec_ctx</b>,
-    <b>h265_decoder::frame</b>, <b>h265_decoder::packet</b>, and
-    <b>h265_decoder::parser</b>.</p>
+    <b>h265_decoder::frame</b>, <b>h265_decoder::packet</b>,
+    <b>h265_decoder::parser</b>, and <b>SAFE_FREE</b>.</p>
 <p class="Pp">Referenced by <b>h265_server_context_destroy()</b>, and
     <b>h265_server_remove_client()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_h265_decoder_get_stats_("><a class="permalink" href="#void_h265_decoder_get_stats_(">void
-  h265_decoder_get_stats (<b>h265_decoder_t</b> * decoder, uint64_t *
-  total_frames, uint64_t * keyframes, uint16_t * last_width, uint16_t *
-  last_height)</a></h2>
+  h265_decoder_get_stats (<b>h265_decoder_t</b> * decoder, <b>uint64_t</b> *
+  total_frames, <b>uint64_t</b> * keyframes, <b>uint16_t</b> * last_width,
+  <b>uint16_t</b> * last_height)</a></h2>
+<p class="Pp">Get decoder statistics</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>decoder</i> Decoder handle
+<br/>
+<i>total_frames</i> Output: total frames decoded
+<br/>
+<i>keyframes</i> Output: total keyframes decoded
+<br/>
+<i>last_width</i> Output: width of last decoded frame
+<br/>
+<i>last_height</i> Output: height of last decoded frame</div>
 <p class="Pp">Definition at line <b>192</b> of file <b>decoder.c</b>.</p>
 <pre>198   {
 199     if (!decoder) return;
@@ -305,7 +362,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

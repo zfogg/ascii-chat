@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>error_codes.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">error_codes.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">error_codes.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">error_codes.h - Error and exit codes - unified status values
+    (0-255).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>asciichat_error_t</b> { <b>ASCIICHAT_OK</b> = 0,
+    <b>ERROR_GENERAL</b> = 1, <b>ERROR_USAGE</b> = 2, <b>ERROR_MEMORY</b> = 3,
+    <b>ERROR_CONFIG</b> = 4, <b>ERROR_CRYPTO_INIT</b> = 5,
+    <b>ERROR_LOGGING_INIT</b> = 6, <b>ERROR_PLATFORM_INIT</b> = 7,
+    <b>ERROR_INIT</b> = 8, <b>ERROR_WEBCAM</b> = 20, <b>ERROR_WEBCAM_IN_USE</b>
+    = 21, <b>ERROR_WEBCAM_PERMISSION</b> = 22, <b>ERROR_AUDIO</b> = 23,
+    <b>ERROR_AUDIO_IN_USE</b> = 24, <b>ERROR_TERMINAL</b> = 25,
+    <b>ERROR_MEDIA_INIT</b> = 26, <b>ERROR_MEDIA_OPEN</b> = 27,
+    <b>ERROR_MEDIA_DECODE</b> = 28, <b>ERROR_MEDIA_SEEK</b> = 29,
+    <b>ERROR_NOT_SUPPORTED</b> = 30, <b>ERROR_NETWORK</b> = 40,
+    <b>ERROR_NETWORK_BIND</b> = 41, <b>ERROR_NETWORK_CONNECT</b> = 42,
+    <b>ERROR_NETWORK_TIMEOUT</b> = 43, <b>ERROR_NETWORK_PROTOCOL</b> = 44,
+    <b>ERROR_NETWORK_SIZE</b> = 45, <b>ERROR_RATE_LIMITED</b> = 46,
+    <b>ERROR_SESSION_NOT_FOUND</b> = 47, <b>ERROR_SESSION_FULL</b> = 48,
+    <b>ERROR_INVALID_PASSWORD</b> = 49, <b>ERROR_INVALID_SIGNATURE</b> = 50,
+    <b>ERROR_ACDS_STRING_TAKEN</b> = 51, <b>ERROR_ACDS_STRING_INVALID</b> = 52,
+    <b>ERROR_INTERNAL</b> = 53, <b>ERROR_UNKNOWN_PACKET</b> = 54,
+    <b>ERROR_CRYPTO</b> = 60, <b>ERROR_CRYPTO_KEY</b> = 61,
+    <b>ERROR_CRYPTO_AUTH</b> = 62, <b>ERROR_CRYPTO_HANDSHAKE</b> = 63,
+    <b>ERROR_CRYPTO_VERIFICATION</b> = 64, <b>ERROR_THREAD</b> = 80,
+    <b>ERROR_BUFFER</b> = 81, <b>ERROR_BUFFER_FULL</b> = 82,
+    <b>ERROR_BUFFER_OVERFLOW</b> = 83, <b>ERROR_DISPLAY</b> = 84,
+    <b>ERROR_INVALID_STATE</b> = 85, <b>ERROR_INVALID_PARAM</b> = 86,
+    <b>ERROR_INVALID_FRAME</b> = 87, <b>ERROR_RESOURCE_EXHAUSTED</b> = 88,
+    <b>ERROR_FORMAT</b> = 89, <b>ERROR_STRING</b> = 90, <b>ERROR_NOT_FOUND</b> =
+    91, <b>ERROR_SIGNAL_INTERRUPT</b> = 100, <b>ERROR_SIGNAL_CRASH</b> = 101,
+    <b>ERROR_ASSERTION_FAILED</b> = 102, <b>ERROR_COMPRESSION</b> = 103,
+    <b>ERROR_DECOMPRESSION</b> = 104, <b>ERROR_FILE_OPERATION</b> = 105,
+    <b>ERROR_FILE_NOT_FOUND</b> = 106, <b>ERROR_PROCESS_FAILED</b> = 110,
+    <b>ERROR_YOUTUBE_INVALID_URL</b> = 111, <b>ERROR_YOUTUBE_EXTRACT_FAILED</b>
+    = 112, <b>ERROR_YOUTUBE_UNPLAYABLE</b> = 113, <b>ERROR_YOUTUBE_NETWORK</b> =
+    114, <b>ERROR_YOUTUBE_NOT_SUPPORTED</b> = 115 }
+  <br/>
+  Error and exit codes - unified status values (0-255).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Error and exit codes - unified status values (0-255).</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>error_codes.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

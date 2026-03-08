@@ -40,11 +40,14 @@
 <p class="Pp">int <b>get_manpage_template</b> (FILE **out_file, const char
     **out_content, size_t *out_len)
   <br/>
-  int <b>get_manpage_content</b> (FILE **out_file, const char **out_content,
+  Get man page template source (embedded or filesystem). int
+    <b>get_manpage_content</b> (FILE **out_file, const char **out_content,
     size_t *out_len)
   <br/>
-  void <b>release_manpage_resources</b> (FILE *file)
+  Get man page content source (embedded or filesystem). void
+    <b>release_manpage_resources</b> (FILE *file)
   <br/>
+  Release resources obtained from get_manpage_*.
   <br/>
 </p>
 </section>
@@ -56,6 +59,20 @@
 <h2 class="Ss" id="int_get_manpage_content_(FILE_**_out_file,_const_char_**_out_content,_size_t_*_out_len)"><a class="permalink" href="#int_get_manpage_content_(FILE_**_out_file,_const_char_**_out_content,_size_t_*_out_len)">int
   get_manpage_content (FILE ** out_file, const char ** out_content, size_t *
   out_len)</a></h2>
+<p class="Pp">Get man page content source (embedded or filesystem). Same
+    behavior as <b>get_manpage_template()</b> but for the content file. See
+    <b>get_manpage_template()</b> documentation for usage details.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>out_file</i> Output pointer for FILE* (development) or
+  NULL (production)
+<br/>
+<i>out_content</i> Output pointer for const char* (production) or NULL (dev)
+<br/>
+<i>out_len</i> Output pointer for size_t (production) or NULL
+  (development)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, -1 on error</div>
 <p class="Pp">Definition at line <b>75</b> of file <b>embedded.c</b>.</p>
 <pre>75                                                                                     {
 76   // Content is now consolidated into the template - return empty
@@ -74,11 +91,42 @@
 89 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>log_debug</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_get_manpage_template_(FILE_**_out_file,_const_char_**_out_content,_size_t_*_out_len)"><a class="permalink" href="#int_get_manpage_template_(FILE_**_out_file,_const_char_**_out_content,_size_t_*_out_len)">int
   get_manpage_template (FILE ** out_file, const char ** out_content, size_t *
   out_len)</a></h2>
+<p class="Pp">Get man page template source (embedded or filesystem).
+    Automatically selects between embedded and filesystem resources based on
+    build type:</p>
+<ul class="Bl-bullet">
+  <li><b>Release builds</b> (NDEBUG defined): Returns embedded string</li>
+  <li><b>Debug builds</b> (NDEBUG undefined): Reads from filesystem</li>
+</ul>
+<p class="Pp"><b>Parameter Usage:</b></p>
+<ul class="Bl-bullet">
+  <li>In production: out_content and out_len are set, out_file is NULL</li>
+  <li>In development: out_file is set to open FILE*, others are NULL</li>
+  <li>Caller must check which one is non-NULL to determine source</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>out_file</i> Output pointer for FILE* (development) or
+  NULL (production)
+<br/>
+<i>out_content</i> Output pointer for const char* (production) or NULL (dev)
+<br/>
+<i>out_len</i> Output pointer for size_t (production) or NULL
+  (development)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, -1 on error</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller must call release_manpage_resources(out_file) when
+  done
+<p class="Pp"></p>
+<p class="Pp">Do NOT free out_content - it's either static or managed
+  elsewhere</p>
+</div>
 <p class="Pp">Definition at line <b>22</b> of file <b>embedded.c</b>.</p>
 <pre>22                                                                                      {
 23 #ifdef NDEBUG
@@ -134,13 +182,29 @@
 73 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_fopen()</b>, and
-  <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>embedded_manpage_template</b>,
+    <b>embedded_manpage_template_size</b>, <b>ERROR_CONFIG</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>, <b>platform_fopen()</b>,
+    <b>safe_snprintf()</b>, <b>SET_ERRNO</b>, and <b>SET_ERRNO_SYS</b>.</p>
 <p class="Pp">Referenced by <b>manpage_resources_load()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_release_manpage_resources_(FILE_*_file)"><a class="permalink" href="#void_release_manpage_resources_(FILE_*_file)">void
   release_manpage_resources (FILE * file)</a></h2>
+<p class="Pp">Release resources obtained from get_manpage_*. Properly cleans up
+    resources based on build type:</p>
+<ul class="Bl-bullet">
+  <li><b>Production</b>: No-op (embedded strings are static)</li>
+  <li><b>Development</b>: Closes FILE* if non-NULL</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>file</i> FILE* obtained from
+  get_manpage_template/content(), or NULL</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Safe to call with NULL
+<p class="Pp"></p>
+<p class="Pp">Only closes file, does NOT free content pointer</p>
+</div>
 <p class="Pp">Definition at line <b>91</b> of file <b>embedded.c</b>.</p>
 <pre>91                                            {
 92 #ifdef NDEBUG
@@ -164,7 +228,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

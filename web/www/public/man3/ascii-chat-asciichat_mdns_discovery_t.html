@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>asciichat_mdns_discovery_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">asciichat_mdns_discovery_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">asciichat_mdns_discovery_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">asciichat_mdns_discovery_t - Discovered service information.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/mdns/mdns.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">char <b>name</b> [256]
+  <br/>
+  char <b>type</b> [256]
+  <br/>
+  char <b>host</b> [256]
+  <br/>
+  <b>uint16_t</b> <b>port</b>
+  <br/>
+  char <b>ipv4</b> [16]
+  <br/>
+  char <b>ipv6</b> [46]
+  <br/>
+  char <b>txt</b> [512]
+  <br/>
+  <b>uint32_t</b> <b>ttl</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Discovered service information.</p>
+<p class="Pp">Definition at line <b>82</b> of file
+  <b>network/mdns/mdns.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char_asciichat_mdns_discovery_t::host_256_"><a class="permalink" href="#char_asciichat_mdns_discovery_t::host_256_">char
+  asciichat_mdns_discovery_t::host[256]</a></h2>
+<p class="Pp">Host name</p>
+<p class="Pp">Definition at line <b>88</b> of file
+  <b>network/mdns/mdns.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_asciichat_mdns_discovery_t::ipv4_16_"><a class="permalink" href="#char_asciichat_mdns_discovery_t::ipv4_16_">char
+  asciichat_mdns_discovery_t::ipv4[16]</a></h2>
+<p class="Pp">IPv4 address (dotted decimal, if available)</p>
+<p class="Pp">Definition at line <b>92</b> of file
+  <b>network/mdns/mdns.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_asciichat_mdns_discovery_t::ipv6_46_"><a class="permalink" href="#char_asciichat_mdns_discovery_t::ipv6_46_">char
+  asciichat_mdns_discovery_t::ipv6[46]</a></h2>
+<p class="Pp">IPv6 address (if available)</p>
+<p class="Pp">Definition at line <b>94</b> of file
+  <b>network/mdns/mdns.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_asciichat_mdns_discovery_t::name_256_"><a class="permalink" href="#char_asciichat_mdns_discovery_t::name_256_">char
+  asciichat_mdns_discovery_t::name[256]</a></h2>
+<p class="Pp">Service instance name</p>
+<p class="Pp">Definition at line <b>84</b> of file
+  <b>network/mdns/mdns.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> asciichat_mdns_discovery_t::port</h2>
+<p class="Pp">Port number</p>
+<p class="Pp">Definition at line <b>90</b> of file
+  <b>network/mdns/mdns.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> asciichat_mdns_discovery_t::ttl</h2>
+<p class="Pp">TTL remaining (seconds)</p>
+<p class="Pp">Definition at line <b>98</b> of file
+  <b>network/mdns/mdns.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_asciichat_mdns_discovery_t::txt_512_"><a class="permalink" href="#char_asciichat_mdns_discovery_t::txt_512_">char
+  asciichat_mdns_discovery_t::txt[512]</a></h2>
+<p class="Pp">TXT record data</p>
+<p class="Pp">Definition at line <b>96</b> of file
+  <b>network/mdns/mdns.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_asciichat_mdns_discovery_t::type_256_"><a class="permalink" href="#char_asciichat_mdns_discovery_t::type_256_">char
+  asciichat_mdns_discovery_t::type[256]</a></h2>
+<p class="Pp">Service type</p>
+<p class="Pp">Definition at line <b>86</b> of file
+  <b>network/mdns/mdns.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

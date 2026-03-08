@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>packet_header_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">packet_header_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">packet_header_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">packet_header_t - Network packet header structure.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/packet/packet.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint64_t</b> <b>magic</b>
+  <br/>
+  Magic number (PACKET_MAGIC = 0xA5C11C4A1
+    <i>ASCIICHAT&quot;</i>in<i>hex)</i>for<i>packet</i>validation.<i></i>
+    <b>uint16_t</b> <b>type</b>
+  <br/>
+  Packet type (<b>packet_type_t</b> enumeration). <b>uint32_t</b> <b>length</b>
+  <br/>
+  Payload data length in bytes (0 for header-only packets). <b>uint32_t</b>
+    <b>crc32</b>
+  <br/>
+  CRC32 checksum of payload data (0 if length == 0). <b>uint32_t</b>
+    <b>client_id</b>
+  <br/>
+  Client ID (0 = server, &gt;0 = client identifier).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Network packet header structure.</p>
+<p class="Pp">Standard header for all network packets. Contains magic number for
+    validation, packet type, payload length, CRC32 checksum, and client ID.</p>
+<p class="Pp"></p>
+<p class="Pp">PACKET HEADER FIELDS:</p>
+<ul class="Bl-bullet">
+  <li>magic: PACKET_MAGIC constant for packet detection/validation</li>
+  <li>type: Packet type enumeration (<b>packet_type_t</b>)</li>
+  <li>length: Payload data length in bytes (0 for header-only packets)</li>
+  <li>crc32: CRC32 checksum of payload data (0 if length == 0)</li>
+  <li>client_id: Client identifier (0 = server, &gt;0 = client ID)</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Structure is packed for wire format compatibility (no
+  padding).
+<p class="Pp"></p>
+<p class="Pp">Magic number must be PACKET_MAGIC or packet is considered
+  invalid.</p>
+<p class="Pp"></p>
+<p class="Pp">CRC32 is computed over payload data, not including header.</p>
+</div>
+<p class="Pp">Definition at line <b>598</b> of file <b>packet.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> packet_header_t::client_id</h2>
+<p class="Pp">Client ID (0 = server, &gt;0 = client identifier).</p>
+<p class="Pp">Definition at line <b>608</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_parse_packet()</b>,
+    <b>packet_queue_enqueue()</b>, <b>packet_send_via_transport()</b>,
+    <b>process_encrypted_packet()</b>, and <b>receive_packet_secure()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> packet_header_t::crc32</h2>
+<p class="Pp">CRC32 checksum of payload data (0 if length == 0).</p>
+<p class="Pp">Definition at line <b>606</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_parse_packet()</b>,
+    <b>packet_queue_enqueue()</b>, <b>packet_queue_try_dequeue()</b>,
+    <b>packet_queue_validate_packet()</b>, <b>packet_send_via_transport()</b>,
+    and <b>receive_packet_secure()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> packet_header_t::length</h2>
+<p class="Pp">Payload data length in bytes (0 for header-only packets).</p>
+<p class="Pp">Definition at line <b>604</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
+    <b>acip_server_receive_and_dispatch()</b>, <b>client_dispatch_thread()</b>,
+    <b>client_parse_packet()</b>, <b>client_receive_thread()</b>,
+    <b>packet_decrypt_envelope()</b>, <b>packet_queue_enqueue()</b>,
+    <b>packet_queue_validate_packet()</b>, <b>packet_send_via_transport()</b>,
+    and <b>receive_packet_secure()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> packet_header_t::magic</h2>
+<p class="Pp">Magic number (PACKET_MAGIC = 0xA5C11C4A1 &quot;ASCIICHAT&quot; in
+    hex) for packet validation.</p>
+<p class="Pp">Definition at line <b>600</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_parse_packet()</b>,
+    <b>packet_queue_enqueue()</b>, <b>packet_queue_free_packet()</b>,
+    <b>packet_queue_try_dequeue()</b>, <b>packet_queue_validate_packet()</b>,
+    <b>packet_send_via_transport()</b>, and <b>receive_packet_secure()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> packet_header_t::type</h2>
+<p class="Pp">Packet type (<b>packet_type_t</b> enumeration).</p>
+<p class="Pp">Definition at line <b>602</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
+    <b>acip_server_receive_and_dispatch()</b>, <b>client_dispatch_thread()</b>,
+    <b>client_handle_auth_challenge()</b>,
+    <b>client_handle_handshake_complete()</b>,
+    <b>client_handle_key_exchange_init()</b>, <b>client_parse_packet()</b>,
+    <b>client_receive_thread()</b>, <b>packet_decrypt_envelope()</b>,
+    <b>packet_queue_enqueue()</b>, <b>packet_queue_try_dequeue()</b>,
+    <b>packet_queue_validate_packet()</b>, <b>packet_send_via_transport()</b>,
+    <b>process_encrypted_packet()</b>, and <b>receive_packet_secure()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

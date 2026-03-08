@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>stream_header_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">stream_header_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">stream_header_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">stream_header_t - Stream header packet structure.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/packet/packet.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint32_t</b> <b>client_id</b>
+  <br/>
+  Client ID that this stream originates from (1-9). <b>uint32_t</b>
+    <b>stream_type</b>
+  <br/>
+  Stream type bitmask (STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO). <b>uint32_t</b>
+    <b>timestamp</b>
+  <br/>
+  Timestamp when frame/audio was captured (milliseconds since epoch).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Stream header packet structure.</p>
+<p class="Pp">Header prepended to media streams (video/audio) to identify source
+    client and stream characteristics. Used when multiple clients are
+  streaming.</p>
+<p class="Pp">Definition at line <b>672</b> of file <b>packet.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> stream_header_t::client_id</h2>
+<p class="Pp">Client ID that this stream originates from (1-9).</p>
+<p class="Pp">Definition at line <b>674</b> of file <b>packet.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> stream_header_t::stream_type</h2>
+<p class="Pp">Stream type bitmask (STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO).</p>
+<p class="Pp">Definition at line <b>676</b> of file <b>packet.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> stream_header_t::timestamp</h2>
+<p class="Pp">Timestamp when frame/audio was captured (milliseconds since
+    epoch).</p>
+<p class="Pp">Definition at line <b>678</b> of file <b>packet.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

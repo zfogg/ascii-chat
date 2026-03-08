@@ -37,307 +37,27 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">const color_filter_def_t * <b>color_filter_get_metadata</b>
-    (color_filter_t filter)
+<p class="Pp">const <b>color_filter_def_t</b> * <b>color_filter_get_metadata</b>
+    (<b>color_filter_t</b> filter)
   <br/>
-  color_filter_t <b>color_filter_from_cli_name</b> (const char *cli_name)
+  Get color filter metadata by enum value. <b>color_filter_t</b>
+    <b>color_filter_from_cli_name</b> (const char *cli_name)
   <br/>
-  void <b>color_filter_calculate_rainbow</b> (float time, uint8_t *r, uint8_t
-    *g, uint8_t *b)
+  Convert color filter CLI name to enum value. void
+    <b>color_filter_calculate_rainbow</b> (float time, <b>uint8_t</b> *r,
+    <b>uint8_t</b> *g, <b>uint8_t</b> *<b>b</b>)
   <br/>
-  int <b>apply_color_filter</b> (uint8_t *pixels, uint32_t width, uint32_t
-    height, uint32_t stride, color_filter_t filter, float time)
+  Calculate rainbow color from time (3.5s cycle). int <b>apply_color_filter</b>
+    (<b>uint8_t</b> *pixels, <b>uint32_t</b> width, <b>uint32_t</b> height,
+    <b>uint32_t</b> stride, <b>color_filter_t</b> filter, float time)
   <br/>
-  char * <b>rainbow_replace_ansi_colors</b> (const char *ansi_string, float
+  Apply color filter to entire image in-place. char *
+    <b>rainbow_replace_ansi_colors</b> (const char *ansi_string, float
     time_seconds)
   <br/>
+  Replace all RGB ANSI codes with rainbow color.
   <br/>
 </p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_apply_color_filter_(uint8_t_*_pixels,_uint32_t_width,_uint32_t_height,_uint32_t_stride,_color_filter_t_filter,_float_time)"><a class="permalink" href="#int_apply_color_filter_(uint8_t_*_pixels,_uint32_t_width,_uint32_t_height,_uint32_t_stride,_color_filter_t_filter,_float_time)">int
-  apply_color_filter (uint8_t * pixels, uint32_t width, uint32_t height,
-  uint32_t stride, color_filter_t filter, float time)</a></h2>
-<p class="Pp">Definition at line <b>274</b> of file <b>color_filter.c</b>.</p>
-<pre>275                                    {
-276   if (!pixels || width == 0 || height == 0 || stride == 0) {
-277     return -1;
-278   }
-279 
-280   if (filter == COLOR_FILTER_NONE) {
-281     return 0; // No-op for none filter
-282   }
-283 
-284   // Special handling for rainbow filter
-285   if (filter == COLOR_FILTER_RAINBOW) {
-286     uint8_t rainbow_r, rainbow_g, rainbow_b;
-287     color_filter_calculate_rainbow(time, &amp;rainbow_r, &amp;rainbow_g, &amp;rainbow_b);
-288 
-289     // Create temporary filter def with current rainbow color
-290     color_filter_def_t rainbow_filter = {
-291         .name = &quot;rainbow&quot;,
-292         .cli_name = &quot;rainbow&quot;,
-293         .r = rainbow_r,
-294         .g = rainbow_g,
-295         .b = rainbow_b,
-296         .foreground_on_bg = false,
-297     };
-298 
-299     // Process each pixel with minimum brightness to prevent black
-300     // Minimum brightness is 70% to ensure rainbow colors stay vibrant even for dark input
-301     const uint8_t min_brightness = 179; // 70% of 255
-302 
-303     for (uint32_t y = 0; y &lt; height; y++) {
-304       uint8_t *row = pixels + y * stride;
-305       for (uint32_t x = 0; x &lt; width; x++) {
-306         uint8_t *pixel = row + x * 3;
-307         uint8_t r = pixel[0];
-308         uint8_t g = pixel[1];
-309         uint8_t b = pixel[2];
-310         uint8_t gray = rgb_to_grayscale(r, g, b);
-311 
-312         // Boost grayscale to maintain minimum brightness for rainbow
-313         // Formula: adjusted = min + gray * (1 - min/255)
-314         // This ensures: black pixels -&gt; min_brightness, white pixels -&gt; 255
-315         uint8_t adjusted_gray = min_brightness + (uint8_t)((gray * (255U - min_brightness)) / 255U);
-316 
-317         colorize_grayscale_pixel(adjusted_gray, &amp;rainbow_filter, &amp;pixel[0], &amp;pixel[1], &amp;pixel[2]);
-318       }
-319     }
-320     return 0;
-321   }
-322 
-323   const color_filter_def_t *filter_def = color_filter_get_metadata(filter);
-324   if (!filter_def) {
-325     return -1; // Invalid filter
-326   }
-327 
-328   // Process each pixel in the image
-329   for (uint32_t y = 0; y &lt; height; y++) {
-330     uint8_t *row = pixels + y * stride;
-331     for (uint32_t x = 0; x &lt; width; x++) {
-332       uint8_t *pixel = row + x * 3; // Assume RGB24 (3 bytes per pixel)
-333       uint8_t r = pixel[0];
-334       uint8_t g = pixel[1];
-335       uint8_t b = pixel[2];
-336 
-337       // Convert RGB to grayscale using ITU-R BT.601
-338       uint8_t gray = rgb_to_grayscale(r, g, b);
-339 
-340       // Colorize the grayscale value
-341       colorize_grayscale_pixel(gray, filter_def, &amp;pixel[0], &amp;pixel[1], &amp;pixel[2]);
-342     }
-343   }
-344 
-345   return 0;
-346 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>color_filter_calculate_rainbow()</b>, and
-    <b>color_filter_get_metadata()</b>.</p>
-<p class="Pp">Referenced by <b>mirror_convert_frame()</b>, and
-    <b>session_display_convert_to_ascii()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_color_filter_calculate_rainbow_(float_time,_uint8_t_*_r,_uint8_t_*_g,_uint8_t_*_b)"><a class="permalink" href="#void_color_filter_calculate_rainbow_(float_time,_uint8_t_*_r,_uint8_t_*_g,_uint8_t_*_b)">void
-  color_filter_calculate_rainbow (float time, uint8_t * r, uint8_t * g, uint8_t
-  * b)</a></h2>
-<p class="Pp">Calculate rainbow color from time Cycles through full spectrum
-    over 3.5 seconds This is the centralized rainbow implementation used by both
-    matrix and color filter</p>
-<p class="Pp">Definition at line <b>169</b> of file <b>color_filter.c</b>.</p>
-<pre>169                                                                                     {
-170   // Cycle period: 3.5 seconds
-171   const float cycle_period = 3.5f;
-172 
-173   // Normalize time to [0, 1] range within cycle
-174   float phase = fmodf(time, cycle_period) / cycle_period;
-175 
-176   // Convert to hue angle [0, 360)
-177   float hue = phase * 360.0f;
-178 
-179   // HSV to RGB conversion (S=1, V=1 for full saturation and brightness)
-180   // Hue divided into 6 segments
-181   float h = hue / 60.0f;
-182   int i = (int)floorf(h);
-183   float f = h - (float)i;
-184 
-185   // Calculate RGB based on hue segment
-186   float q = 1.0f - f;
-187   float t = f;
-188 
-189   switch (i % 6) {
-190   case 0:
-191     *r = 255;
-192     *g = (uint8_t)(t * 255.0f + 0.5f);
-193     *b = 0;
-194     break; // Red to Yellow
-195   case 1:
-196     *r = (uint8_t)(q * 255.0f + 0.5f);
-197     *g = 255;
-198     *b = 0;
-199     break; // Yellow to Green
-200   case 2:
-201     *r = 0;
-202     *g = 255;
-203     *b = (uint8_t)(t * 255.0f + 0.5f);
-204     break; // Green to Cyan
-205   case 3:
-206     *r = 0;
-207     *g = (uint8_t)(q * 255.0f + 0.5f);
-208     *b = 255;
-209     break; // Cyan to Blue
-210   case 4:
-211     *r = (uint8_t)(t * 255.0f + 0.5f);
-212     *g = 0;
-213     *b = 255;
-214     break; // Blue to Magenta
-215   case 5:
-216     *r = 255;
-217     *g = 0;
-218     *b = (uint8_t)(q * 255.0f + 0.5f);
-219     break; // Magenta to Red
-220   default:
-221     *r = 255;
-222     *g = 0;
-223     *b = 0;
-224     break; // Fallback to red
-225   }
-226 
-227   // Ensure minimum perceived brightness by boosting luminance
-228   // Pure blue (0,0,255) has luminance ~18, which appears very dark
-229   // We need minimum luminance of ~120 for bright, vibrant colors
-230   const float min_luminance = 120.0f;
-231 
-232   // Calculate current luminance using ITU-R BT.709 coefficients
-233   float luminance = 0.2126f * *r + 0.7152f * *g + 0.0722f * *b;
-234 
-235   if (luminance &lt; min_luminance) {
-236     // Boost luminance by adding white (increasing all channels proportionally)
-237     // This desaturates the color but makes it much brighter
-238     float boost = (min_luminance - luminance) / 3.0f;
-239     *r = (uint8_t)fminf(255.0f, *r + boost);
-240     *g = (uint8_t)fminf(255.0f, *g + boost);
-241     *b = (uint8_t)fminf(255.0f, *b + boost);
-242   }
-243 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>apply_color_filter()</b>,
-    <b>digital_rain_apply()</b>, and <b>rainbow_replace_ansi_colors()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="color_filter_t_color_filter_from_cli_name_(const_char_*_cli_name)"><a class="permalink" href="#color_filter_t_color_filter_from_cli_name_(const_char_*_cli_name)">color_filter_t
-  color_filter_from_cli_name (const char * cli_name)</a></h2>
-<p class="Pp">Definition at line <b>150</b> of file <b>color_filter.c</b>.</p>
-<pre>150                                                                 {
-151   if (!cli_name) {
-152     return COLOR_FILTER_NONE;
-153   }
-154 
-155   for (int i = 0; i &lt; COLOR_FILTER_COUNT; i++) {
-156     if (platform_strcasecmp(color_filter_registry[i].cli_name, cli_name) == 0) {
-157       return (color_filter_t)i;
-158     }
-159   }
-160 
-161   return COLOR_FILTER_NONE;
-162 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>platform_strcasecmp()</b>.</p>
-<p class="Pp">Referenced by <b>parse_color_filter()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_color_filter_def_t_*_color_filter_get_metadata_(color_filter_t_filter)"><a class="permalink" href="#const_color_filter_def_t_*_color_filter_get_metadata_(color_filter_t_filter)">const
-  color_filter_def_t * color_filter_get_metadata (color_filter_t
-  filter)</a></h2>
-<p class="Pp">Definition at line <b>143</b> of file <b>color_filter.c</b>.</p>
-<pre>143                                                                            {
-144   if (filter &lt;= COLOR_FILTER_NONE || filter &gt;= COLOR_FILTER_COUNT) {
-145     return NULL;
-146   }
-147   return &amp;color_filter_registry[filter];
-148 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>apply_color_filter()</b>, and
-    <b>digital_rain_set_color_from_filter()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_rainbow_replace_ansi_colors_(const_char_*_ansi_string,_float_time_seconds)"><a class="permalink" href="#char_*_rainbow_replace_ansi_colors_(const_char_*_ansi_string,_float_time_seconds)">char
-  * rainbow_replace_ansi_colors (const char * ansi_string, float
-  time_seconds)</a></h2>
-<p class="Pp">Definition at line <b>348</b> of file <b>color_filter.c</b>.</p>
-<pre>348                                                                                {
-349   if (!ansi_string) {
-350     return NULL;
-351   }
-352 
-353   // Calculate rainbow color once for this frame
-354   uint8_t rainbow_r = 0, rainbow_g = 0, rainbow_b = 0;
-355   color_filter_calculate_rainbow(time_seconds, &amp;rainbow_r, &amp;rainbow_g, &amp;rainbow_b);
-356 
-357   // Build the replacement ANSI code string once
-358   char rainbow_code[32];
-359   snprintf(rainbow_code, sizeof(rainbow_code), &quot;\x1b[38;2;%d;%d;%dm&quot;, rainbow_r, rainbow_g, rainbow_b);
-360   size_t rainbow_code_len = strlen(rainbow_code);
-361 
-362   // Check if there are any ANSI codes to replace
-363   if (!strstr(ansi_string, &quot;\x1b[38;2;&quot;)) {
-364     return NULL; // No ANSI codes found, no replacement needed
-365   }
-366 
-367   // Allocate buffer for result (2x size for safety with many replacements)
-368   size_t input_len = strlen(ansi_string);
-369   char *new_result = SAFE_MALLOC(input_len * 2, char *);
-370   if (!new_result) {
-371     return NULL;
-372   }
-373 
-374   // Replace all RGB color codes with rainbow color
-375   const char *src = ansi_string;
-376   char *dst = new_result;
-377 
-378   while (*src) {
-379     const char *ansi_start = strstr(src, &quot;\x1b[38;2;&quot;);
-380     if (ansi_start) {
-381       // Copy everything before this ANSI code
-382       size_t before_len = (size_t)(ansi_start - src);
-383       memcpy(dst, src, before_len);
-384       dst += before_len;
-385 
-386       // Skip the old ANSI code (find the 'm' that ends it)
-387       const char *ansi_end = strchr(ansi_start + 7, 'm');
-388       if (ansi_end) {
-389         // Copy the rainbow replacement code
-390         memcpy(dst, rainbow_code, rainbow_code_len);
-391         dst += rainbow_code_len;
-392 
-393         // Move source past the old code
-394         src = ansi_end + 1;
-395       } else {
-396         // Malformed ANSI code, just copy it
-397         *dst++ = *src++;
-398       }
-399     } else {
-400       // No more ANSI codes, copy the rest
-401       memcpy(dst, src, strlen(src) + 1);
-402       break;
-403     }
-404   }
-405 
-406   return new_result;
-407 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>color_filter_calculate_rainbow()</b>.</p>
-<p class="Pp">Referenced by <b>mirror_convert_frame()</b>, and
-    <b>session_display_convert_to_ascii()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -347,7 +67,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -38,9 +38,9 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">asciichat_thread_t <b>capture_tid</b>
+<p class="Pp"><b>asciichat_thread_t</b> <b>capture_tid</b>
   <br/>
-  asciichat_thread_t <b>encode_tid</b>
+  <b>asciichat_thread_t</b> <b>encode_tid</b>
   <br/>
   <b>frame_queue_t</b> * <b>display_queue</b>
   <br/>
@@ -50,9 +50,9 @@
   <br/>
   <b>session_display_ctx_t</b> * <b>display</b>
   <br/>
-  atomic_t <b>stop</b>
+  <b>atomic_t</b> <b>stop</b>
   <br/>
-  atomic_t <b>first_frame_ns</b>
+  <b>atomic_t</b> <b>first_frame_ns</b>
   <br/>
   <b>bool</b> <b>has_render_file</b>
   <br/>
@@ -63,64 +63,60 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">Definition at line <b>181</b> of file <b>pipeline.c</b>.</p>
+<p class="Pp">Definition at line <b>182</b> of file <b>pipeline.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss"><b>session_capture_ctx_t</b>* session_pipeline_s::capture</h2>
-<p class="Pp">Definition at line <b>188</b> of file <b>pipeline.c</b>.</p>
+<p class="Pp">Definition at line <b>189</b> of file <b>pipeline.c</b>.</p>
 <p class="Pp">Referenced by <b>session_pipeline_create()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_thread_t_session_pipeline_s::capture_tid"><a class="permalink" href="#asciichat_thread_t_session_pipeline_s::capture_tid">asciichat_thread_t
-  session_pipeline_s::capture_tid</a></h2>
-<p class="Pp">Definition at line <b>182</b> of file <b>pipeline.c</b>.</p>
+<h2 class="Ss"><b>asciichat_thread_t</b> session_pipeline_s::capture_tid</h2>
+<p class="Pp">Definition at line <b>183</b> of file <b>pipeline.c</b>.</p>
 <p class="Pp">Referenced by <b>session_pipeline_create()</b>, and
     <b>session_pipeline_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>session_display_ctx_t</b>* session_pipeline_s::display</h2>
-<p class="Pp">Definition at line <b>189</b> of file <b>pipeline.c</b>.</p>
+<p class="Pp">Definition at line <b>190</b> of file <b>pipeline.c</b>.</p>
 <p class="Pp">Referenced by <b>session_pipeline_create()</b>, and
     <b>session_pipeline_run_main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>frame_queue_t</b>* session_pipeline_s::display_queue</h2>
-<p class="Pp">Definition at line <b>185</b> of file <b>pipeline.c</b>.</p>
+<p class="Pp">Definition at line <b>186</b> of file <b>pipeline.c</b>.</p>
 <p class="Pp">Referenced by <b>session_pipeline_create()</b>,
     <b>session_pipeline_destroy()</b>, and
   <b>session_pipeline_run_main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>frame_queue_t</b>* session_pipeline_s::encode_queue</h2>
-<p class="Pp">Definition at line <b>186</b> of file <b>pipeline.c</b>.</p>
+<p class="Pp">Definition at line <b>187</b> of file <b>pipeline.c</b>.</p>
 <p class="Pp">Referenced by <b>session_pipeline_create()</b>, and
     <b>session_pipeline_destroy()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_thread_t_session_pipeline_s::encode_tid"><a class="permalink" href="#asciichat_thread_t_session_pipeline_s::encode_tid">asciichat_thread_t
-  session_pipeline_s::encode_tid</a></h2>
-<p class="Pp">Definition at line <b>183</b> of file <b>pipeline.c</b>.</p>
+<h2 class="Ss"><b>asciichat_thread_t</b> session_pipeline_s::encode_tid</h2>
+<p class="Pp">Definition at line <b>184</b> of file <b>pipeline.c</b>.</p>
 <p class="Pp">Referenced by <b>session_pipeline_create()</b>, and
     <b>session_pipeline_destroy()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="atomic_t_session_pipeline_s::first_frame_ns"><a class="permalink" href="#atomic_t_session_pipeline_s::first_frame_ns">atomic_t
-  session_pipeline_s::first_frame_ns</a></h2>
-<p class="Pp">Definition at line <b>192</b> of file <b>pipeline.c</b>.</p>
-<p class="Pp">Referenced by <b>session_pipeline_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> session_pipeline_s::has_render_file</h2>
+<h2 class="Ss"><b>atomic_t</b> session_pipeline_s::first_frame_ns</h2>
 <p class="Pp">Definition at line <b>193</b> of file <b>pipeline.c</b>.</p>
 <p class="Pp">Referenced by <b>session_pipeline_create()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="atomic_t_session_pipeline_s::stop"><a class="permalink" href="#atomic_t_session_pipeline_s::stop">atomic_t
-  session_pipeline_s::stop</a></h2>
-<p class="Pp">Definition at line <b>191</b> of file <b>pipeline.c</b>.</p>
+<h2 class="Ss"><b>bool</b> session_pipeline_s::has_render_file</h2>
+<p class="Pp">Definition at line <b>194</b> of file <b>pipeline.c</b>.</p>
+<p class="Pp">Referenced by <b>session_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> session_pipeline_s::stop</h2>
+<p class="Pp">Definition at line <b>192</b> of file <b>pipeline.c</b>.</p>
 <p class="Pp">Referenced by <b>session_pipeline_create()</b>,
     <b>session_pipeline_destroy()</b>, and
   <b>session_pipeline_run_main()</b>.</p>
@@ -134,7 +130,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

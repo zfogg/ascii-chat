@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>websocket_client_context_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">websocket_client_context_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">websocket_client_context_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">websocket_client_context_t - Context passed to client handler
+    thread.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/websocket/server.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>acip_transport_t</b> * <b>transport</b>
+  <br/>
+  ACIP transport for this client. char <b>client_ip</b> [64]
+  <br/>
+  Client IP address (for logging/rate limiting). int <b>client_port</b>
+  <br/>
+  Client port. void * <b>user_data</b>
+  <br/>
+  User-provided data from server config.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Context passed to client handler thread.</p>
+<p class="Pp">Contains all information needed to handle a WebSocket client
+    connection.</p>
+<p class="Pp">Definition at line <b>81</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char_websocket_client_context_t::client_ip_64_"><a class="permalink" href="#char_websocket_client_context_t::client_ip_64_">char
+  websocket_client_context_t::client_ip[64]</a></h2>
+<p class="Pp">Client IP address (for logging/rate limiting).</p>
+<p class="Pp">Definition at line <b>83</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_websocket_client_context_t::client_port"><a class="permalink" href="#int_websocket_client_context_t::client_port">int
+  websocket_client_context_t::client_port</a></h2>
+<p class="Pp">Client port.</p>
+<p class="Pp">Definition at line <b>84</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>acip_transport_t</b>*
+  websocket_client_context_t::transport</h2>
+<p class="Pp">ACIP transport for this client.</p>
+<p class="Pp">Definition at line <b>82</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_websocket_client_context_t::user_data"><a class="permalink" href="#void*_websocket_client_context_t::user_data">void*
+  websocket_client_context_t::user_data</a></h2>
+<p class="Pp">User-provided data from server config.</p>
+<p class="Pp">Definition at line <b>85</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

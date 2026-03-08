@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>https_keys.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">https_keys.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">https_keys.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">https_keys.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<p class="Pp"><b>HTTPS Key Fetching</b>
+  <br/>
+  Fetch SSH/GPG keys from GitHub and GitLab using HTTPS (BearSSL). Requires
+    network connectivity and valid usernames.</p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>asciichat_error_t</b> <b>fetch_github_ssh_keys</b> (const char *username,
+    char ***keys_out, size_t *num_keys)
+  <br/>
+  Fetch SSH keys from GitHub using HTTPS. <b>asciichat_error_t</b>
+    <b>fetch_gitlab_ssh_keys</b> (const char *username, char ***keys_out, size_t
+    *num_keys)
+  <br/>
+  Fetch SSH keys from GitLab using HTTPS. <b>asciichat_error_t</b>
+    <b>fetch_github_gpg_keys</b> (const char *username, char ***keys_out, size_t
+    *num_keys)
+  <br/>
+  Fetch GPG keys from GitHub using HTTPS. <b>asciichat_error_t</b>
+    <b>fetch_gitlab_gpg_keys</b> (const char *username, char ***keys_out, size_t
+    *num_keys)
+  <br/>
+  Fetch GPG keys from GitLab using HTTPS.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Key Parsing from HTTPS Responses</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>asciichat_error_t</b> <b>parse_ssh_keys_from_response</b> (const char
+    *response_text, size_t response_len, char ***keys_out, size_t *num_keys,
+    size_t max_keys)
+  <br/>
+  Parse SSH keys from HTTPS response text. <b>asciichat_error_t</b>
+    <b>parse_gpg_keys_from_response</b> (const char *response_text, size_t
+    response_len, char ***keys_out, size_t *num_keys, size_t max_keys)
+  <br/>
+  Parse GPG keys from HTTPS response text.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>URL Construction</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>asciichat_error_t</b> <b>build_github_ssh_url</b> (const char *username,
+    char *url_out, size_t url_size)
+  <br/>
+  Construct GitHub SSH keys URL. <b>asciichat_error_t</b>
+    <b>build_gitlab_ssh_url</b> (const char *username, char *url_out, size_t
+    url_size)
+  <br/>
+  Construct GitLab SSH keys URL. <b>asciichat_error_t</b>
+    <b>build_github_gpg_url</b> (const char *username, char *url_out, size_t
+    url_size)
+  <br/>
+  Construct GitHub GPG keys URL. <b>asciichat_error_t</b>
+    <b>build_gitlab_gpg_url</b> (const char *username, char *url_out, size_t
+    url_size)
+  <br/>
+  Construct GitLab GPG keys URL.
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

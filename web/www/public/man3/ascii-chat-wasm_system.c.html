@@ -41,14 +41,17 @@
 <br/>
 <p class="Pp">const char * <b>platform_getenv</b> (const char *name)
   <br/>
-  const char * <b>platform_strerror</b> (int errnum)
+  Get an environment variable value. const char * <b>platform_strerror</b> (int
+    errnum)
   <br/>
-  int <b>platform_setenv</b> (const char *name, const char *value)
+  Get human-readable error message for a system error code. int
+    <b>platform_setenv</b> (const char *name, const char *value)
   <br/>
-  int <b>platform_unsetenv</b> (const char *name)
+  Set an environment variable. int <b>platform_unsetenv</b> (const char *name)
   <br/>
   pid_t <b>platform_get_pid</b> (void)
   <br/>
+  Get the current process ID.
   <br/>
 </p>
 </section>
@@ -72,62 +75,6 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="pid_t_platform_get_pid_(void_)"><a class="permalink" href="#pid_t_platform_get_pid_(void_)">pid_t
-  platform_get_pid (void )</a></h2>
-<p class="Pp">Definition at line <b>61</b> of file <b>wasm/system.c</b>.</p>
-<pre>61                              {
-62   return 1; // WASM runs in browser - no process ID concept
-63 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>asciichat_instr_runtime_get()</b>, and
-    <b>options_state_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_platform_getenv_(const_char_*_name)"><a class="permalink" href="#const_char_*_platform_getenv_(const_char_*_name)">const
-  char * platform_getenv (const char * name)</a></h2>
-<p class="Pp">Definition at line <b>39</b> of file <b>wasm/system.c</b>.</p>
-<pre>39                                               {
-40   (void)name;
-41   // Environment variables not supported in WASM browser context
-42   // Calling getenv() causes &quot;memory access out of bounds&quot; errors
-43   return NULL;
-44 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>client_audio_pipeline_process_duplex()</b>,
-    <b>client_crypto_handshake()</b>,
-    <b>crypto_handshake_client_key_exchange()</b>,
-    <b>ed25519_verify_signature()</b>, <b>get_discovery_database_dir()</b>,
-    <b>options_init()</b>, <b>parse_ssh_private_key()</b>,
-    <b>path_validate_user_path()</b>, and <b>prompt_unknown_host()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_platform_setenv_(const_char_*_name,_const_char_*_value)"><a class="permalink" href="#int_platform_setenv_(const_char_*_name,_const_char_*_value)">int
-  platform_setenv (const char * name, const char * value)</a></h2>
-<p class="Pp">Definition at line <b>50</b> of file <b>wasm/system.c</b>.</p>
-<pre>50                                                          {
-51   (void)name;
-52   (void)value;
-53   return -1; // Not supported in WASM
-54 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>__attribute__()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_platform_strerror_(int_errnum)"><a class="permalink" href="#const_char_*_platform_strerror_(int_errnum)">const
-  char * platform_strerror (int errnum)</a></h2>
-<p class="Pp">Definition at line <b>46</b> of file <b>wasm/system.c</b>.</p>
-<pre>46                                           {
-47   return strerror(errnum);
-48 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>file_read_error_message()</b>, and
-    <b>file_write_error_message()</b>.</p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="int_platform_unsetenv_(const_char_*_name)"><a class="permalink" href="#int_platform_unsetenv_(const_char_*_name)">int
   platform_unsetenv (const char * name)</a></h2>
 <p class="Pp">Definition at line <b>56</b> of file <b>wasm/system.c</b>.</p>
@@ -146,7 +93,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

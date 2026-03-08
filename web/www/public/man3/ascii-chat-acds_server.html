@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>acds_server(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">acds_server(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">acds_server(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">acds_server - Acds_server</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Server-side ACIP (ascii-chat IP Protocol) utilities for:</p>
+<ul class="Bl-bullet">
+  <li>Packet validation and parsing</li>
+  <li>Protocol compliance checking</li>
+  <li>Error response generation</li>
+  <li>Common server-side packet handling</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ACDS_Server_Protocol"><a class="permalink" href="#ACDS_Server_Protocol">ACDS
+  Server Protocol</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Server_Role_in_ACIP"><a class="permalink" href="#Server_Role_in_ACIP">Server
+  Role in ACIP</a></h2>
+<p class="Pp">The ACDS (ascii-chat Discovery Service) server orchestrates:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Session Management</b>: Creating, joining, leaving sessions</dd>
+  <dt>2.</dt>
+  <dd><b>Credential Verification</b>: Password/identity authentication</dd>
+  <dt>3.</dt>
+  <dd><b>Connection Brokerage</b>: Revealing host IP only to authenticated
+      clients</dd>
+  <dt>4.</dt>
+  <dd><b>WebRTC Coordination</b>: Relaying SDP and ICE candidates</dd>
+  <dt>5.</dt>
+  <dd><b>Participant Tracking</b>: Maintaining session roster and state</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Packet_Processing_Flow"><a class="permalink" href="#Packet_Processing_Flow">Packet
+  Processing Flow</a></h2>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Receive</b>: acip_transport_recv() reads packet from socket</dd>
+  <dt>2.</dt>
+  <dd><b>Validate</b>: Verify packet header (magic, CRC32, length)</dd>
+  <dt>3.</dt>
+  <dd><b>Dispatch</b>: Route to appropriate handler (session, webrtc, etc.)</dd>
+  <dt>4.</dt>
+  <dd><b>Process</b>: Handler executes business logic</dd>
+  <dt>5.</dt>
+  <dd><b>Respond</b>: Send response packet back to client</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Security_Features"><a class="permalink" href="#Security_Features">Security
+  Features</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Identity Verification</b>: Ed25519 digital signatures (replay-protected
+      with timestamps)</li>
+  <li><b>Password Auth</b>: Argon2id hashing (resistant to brute-force)</li>
+  <li><b>IP Privacy</b>: Host IP only revealed after authentication</li>
+  <li><b>CRC32 Validation</b>: Detect payload corruption</li>
+  <li><b>Timestamp Validation</b>: Prevent replay attacks (5-minute window)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Session_Database"><a class="permalink" href="#Session_Database">Session
+  Database</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Storage</b>: SQLite (persistent across restarts)</li>
+  <li><b>Schema</b>: session_id (UUID) &#x2192; session_info (metadata,
+      expiration)</li>
+  <li><b>Expiration</b>: Sessions expire after 24 hours</li>
+  <li><b>Cleanup</b>: Automatic garbage collection of expired sessions</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Packet_Type_Reference_(Server_Perspective)"><a class="permalink" href="#Packet_Type_Reference_(Server_Perspective)">Packet
+  Type Reference (Server Perspective)</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Inbound</b>: SESSION_CREATE, SESSION_LOOKUP, SESSION_JOIN,
+      SESSION_LEAVE, WEBRTC_SDP, WEBRTC_ICE</li>
+  <li><b>Outbound</b>: SESSION_CREATED, SESSION_INFO, SESSION_JOINED,
+      SESSION_END, PARTICIPANT_JOINED, PARTICIPANT_LEFT</li>
+  <li><b>Broadcast</b>: PARTICIPANT_* notifications to all session members</li>
+</ul>
+<p class="Pp"><b>ACIP Protocol Overview:</b></p>
+<ul class="Bl-bullet">
+  <li>Binary TCP protocol (not HTTP/JSON)</li>
+  <li>Packet-based with CRC32 validation</li>
+  <li>Ed25519 identity signatures for authentication</li>
+  <li>Session management and WebRTC signaling</li>
+</ul>
+<p class="Pp"><b>Primary Use Case:</b> Library functions for building ACIP
+    servers (like ACDS - ascii-chat Discovery Service). Provides reusable
+    validation and packet handling logic that any ACIP server implementation can
+    use.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Integration:</b></p>
+<ul class="Bl-bullet">
+  <li>Used by src/acds/ ACDS server implementation</li>
+  <li>Can be used by custom ACIP server implementations</li>
+  <li>Complements <b>network/acip/acds_client.h</b> (client-side protocol)</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This module provides library-level utilities. The ACDS
+  server application code is in src/acds/.</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>network/acip/acds_client.h</b> for client-side ACIP
+  library
+<p class="Pp"></p>
+<p class="Pp"><b>network/acip/acds.h</b> for ACDS message structures</p>
+<p class="Pp"></p>
+<p class="Pp"><b>network/acip/protocol.h</b> for ACIP packet types</p>
+<p class="Pp"></p>
+<p class="Pp"><b>network/acip/transport.h</b> for transport abstraction
+  layer</p>
+</div>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp"><b>Version</b></p>
+<div class="Bd-indent">1.0 (ACDS Server API)</div>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

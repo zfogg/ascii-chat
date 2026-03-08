@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>image_frame_packet_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">image_frame_packet_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">image_frame_packet_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">image_frame_packet_t - Image frame packet structure (Packet Type
+    3).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/packet/packet.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint32_t</b> <b>width</b>
+  <br/>
+  Image width in pixels. <b>uint32_t</b> <b>height</b>
+  <br/>
+  Image height in pixels. <b>uint32_t</b> <b>pixel_format</b>
+  <br/>
+  Pixel format enum (0=RGB24, 1=RGBA32, 2=BGR24, etc.). <b>uint32_t</b>
+    <b>compressed_size</b>
+  <br/>
+  Compressed data size (0 = not compressed, &gt;0 = compressed). <b>uint32_t</b>
+    <b>checksum</b>
+  <br/>
+  CRC32 checksum of pixel data. <b>uint32_t</b> <b>timestamp</b>
+  <br/>
+  Timestamp when frame was captured (milliseconds since epoch).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Image frame packet structure (Packet Type 3).</p>
+<p class="Pp">Contains raw RGB image with dimensions from camera/webcam. Used
+    when client sends camera frames to server for ASCII conversion.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Pixel data follows this header in the packet payload.
+<p class="Pp"></p>
+<p class="Pp">Format: rgb_pixel_t pixels[width * height] or compressed data</p>
+<p class="Pp"></p>
+<p class="Pp">Pixel formats are defined in common.h</p>
+</div>
+<p class="Pp">Definition at line <b>876</b> of file <b>packet.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> image_frame_packet_t::checksum</h2>
+<p class="Pp">CRC32 checksum of pixel data.</p>
+<p class="Pp">Definition at line <b>886</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_image_frame()</b>, and
+    <b>send_image_frame_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> image_frame_packet_t::compressed_size</h2>
+<p class="Pp">Compressed data size (0 = not compressed, &gt;0 = compressed).</p>
+<p class="Pp">Definition at line <b>884</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_image_frame()</b>, and
+    <b>send_image_frame_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> image_frame_packet_t::height</h2>
+<p class="Pp">Image height in pixels.</p>
+<p class="Pp">Definition at line <b>880</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_image_frame()</b>, and
+    <b>send_image_frame_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> image_frame_packet_t::pixel_format</h2>
+<p class="Pp">Pixel format enum (0=RGB24, 1=RGBA32, 2=BGR24, etc.).</p>
+<p class="Pp">Definition at line <b>882</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_image_frame()</b>, and
+    <b>send_image_frame_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> image_frame_packet_t::timestamp</h2>
+<p class="Pp">Timestamp when frame was captured (milliseconds since epoch).</p>
+<p class="Pp">Definition at line <b>888</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_image_frame()</b>, and
+    <b>send_image_frame_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> image_frame_packet_t::width</h2>
+<p class="Pp">Image width in pixels.</p>
+<p class="Pp">Definition at line <b>878</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_image_frame()</b>, and
+    <b>send_image_frame_packet()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

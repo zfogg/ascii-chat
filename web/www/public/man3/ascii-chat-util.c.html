@@ -41,42 +41,56 @@
 <br/>
 <p class="Pp">int <b>platform_backtrace</b> (void **buffer, int size)
   <br/>
-  char ** <b>platform_backtrace_symbols</b> (void *const *buffer, int size)
+  Get a backtrace of the current call stack. char **
+    <b>platform_backtrace_symbols</b> (void *const *buffer, int size)
   <br/>
-  void <b>platform_backtrace_symbols_destroy</b> (char **symbols)
+  Convert backtrace addresses to symbol names. void
+    <b>platform_backtrace_symbols_destroy</b> (char **symbols)
   <br/>
-  void <b>platform_print_backtrace_symbols</b> (const char *label, char
-    **symbols, int count, int skip_frames, int max_frames,
-    backtrace_frame_filter_t filter)
+  Free symbol array from <b>platform_backtrace_symbols()</b>. void
+    <b>platform_print_backtrace_symbols</b> (const char *label, char **symbols,
+    int count, int skip_frames, int max_frames, <b>backtrace_frame_filter_t</b>
+    filter)
   <br/>
   void <b>platform_print_backtrace</b> (int skip_frames)
   <br/>
-  asciichat_error_t <b>platform_localtime</b> (const time_t *timer, struct tm
-    *result)
+  <b>asciichat_error_t</b> <b>platform_localtime</b> (const time_t *timer,
+    struct tm *result)
   <br/>
-  int <b>platform_isatty</b> (int fd)
+  Platform-safe localtime wrapper. int <b>platform_isatty</b> (int fd)
   <br/>
-  void <b>platform_clear_error_state</b> (void)
+  Check if a file descriptor is a terminal. void
+    <b>platform_clear_error_state</b> (void)
   <br/>
-  <b>bool</b> <b>platform_get_temp_dir</b> (char *temp_dir, size_t path_size)
+  <b>bool</b> <b>platform_get_temp_dir</b> (char *temp_dir, size_t
+    <b>path_size</b>)
   <br/>
-  <b>bool</b> <b>platform_prompt_yes_no</b> (const char *question, <b>bool</b>
+  Get the system temporary directory path. <b>bool</b>
+    <b>platform_prompt_yes_no</b> (const char *question, <b>bool</b>
     default_yes)
   <br/>
-  int <b>platform_get_last_error</b> (void)
+  Prompt the user for a yes/no answer. int <b>platform_get_last_error</b> (void)
   <br/>
-  const char * <b>platform_get_home_dir</b> (void)
+  Get the last system error code. const char * <b>platform_get_home_dir</b>
+    (void)
   <br/>
-  void <b>platform_normalize_path_separators</b> (char *path)
+  Get the user's home directory. void <b>platform_normalize_path_separators</b>
+    (char *path)
   <br/>
-  char * <b>platform_get_config_dir</b> (void)
+  Normalize path separators for the current platform. char *
+    <b>platform_get_config_dir</b> (void)
   <br/>
-  <b>bool</b> <b>platform_get_cwd</b> (char *cwd, size_t path_size)
+  Get the application configuration directory. <b>bool</b>
+    <b>platform_get_cwd</b> (char *cwd, size_t <b>path_size</b>)
   <br/>
-  int <b>platform_path_strcasecmp</b> (const char *a, const char *b, size_t n)
+  Get the current working directory of the process. int
+    <b>platform_path_strcasecmp</b> (const char *a, const char *<b>b</b>, size_t
+    n)
   <br/>
-  int <b>platform_is_regular_file</b> (const char *path)
+  Platform-aware path string comparison. int <b>platform_is_regular_file</b>
+    (const char *path)
   <br/>
+  Check if a path is a regular file.
   <br/>
 </p>
 </section>
@@ -93,142 +107,13 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="int_platform_backtrace_(void_**_buffer,_int_size)"><a class="permalink" href="#int_platform_backtrace_(void_**_buffer,_int_size)">int
-  platform_backtrace (void ** buffer, int size)</a></h2>
-<p class="Pp">Definition at line <b>16</b> of file <b>util.c</b>.</p>
-<pre>16                                                 {
-17   (void)buffer;
-18   (void)size;
-19   return 0; // No backtrace support in WASM
-20 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>backtrace_capture()</b>, and
-    <b>backtrace_print_simple()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_**_platform_backtrace_symbols_(void_*const_*_buffer,_int_size)"><a class="permalink" href="#char_**_platform_backtrace_symbols_(void_*const_*_buffer,_int_size)">char
-  ** platform_backtrace_symbols (void *const * buffer, int size)</a></h2>
-<p class="Pp">Definition at line <b>22</b> of file <b>util.c</b>.</p>
-<pre>22                                                                  {
-23   (void)buffer;
-24   (void)size;
-25   return NULL; // No backtrace symbols in WASM
-26 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>backtrace_print_simple()</b>, and
-    <b>backtrace_symbolize()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_platform_backtrace_symbols_destroy_(char_**_symbols)"><a class="permalink" href="#void_platform_backtrace_symbols_destroy_(char_**_symbols)">void
-  platform_backtrace_symbols_destroy (char ** symbols)</a></h2>
-<p class="Pp">Definition at line <b>28</b> of file <b>util.c</b>.</p>
-<pre>28                                                         {
-29   (void)symbols;
-30   // No-op
-31 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>backtrace_print_simple()</b>, and
-    <b>backtrace_t_free()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_platform_clear_error_state_(void_)"><a class="permalink" href="#void_platform_clear_error_state_(void_)">void
-  platform_clear_error_state (void )</a></h2>
-<p class="Pp">Definition at line <b>69</b> of file <b>util.c</b>.</p>
-<pre>69                                       {
-70   // No-op - error state is thread-local, nothing to clear in WASM
-71 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>asciichat_clear_errno()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_platform_get_config_dir_(void_)"><a class="permalink" href="#char_*_platform_get_config_dir_(void_)">char
-  * platform_get_config_dir (void )</a></h2>
-<p class="Pp">Definition at line <b>104</b> of file <b>util.c</b>.</p>
-<pre>104                                     {
-105   static char config_dir[] = &quot;/config&quot;;
-106   return config_dir; // WASM virtual filesystem config directory
-107 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>acds_identity_default_path()</b>, and
-    <b>get_config_dir()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> platform_get_cwd (char * cwd, size_t path_size)</h2>
-<p class="Pp">Definition at line <b>110</b> of file <b>util.c</b>.</p>
-<pre>110                                                    {
-111   if (!cwd || path_size == 0) {
-112     return false;
-113   }
-114   platform_strlcpy(cwd, &quot;/&quot;, path_size);
-115   return true;
-116 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>platform_strlcpy()</b>.</p>
-<p class="Pp">Referenced by <b>get_log_dir()</b>, and
-    <b>path_validate_user_path()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_platform_get_home_dir_(void_)"><a class="permalink" href="#const_char_*_platform_get_home_dir_(void_)">const
-  char * platform_get_home_dir (void )</a></h2>
-<p class="Pp">Definition at line <b>94</b> of file <b>util.c</b>.</p>
-<pre>94                                         {
-95   return &quot;/home&quot;; // WASM virtual filesystem home
-96 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>expand_path()</b>, and
-    <b>path_validate_user_path()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_platform_get_last_error_(void_)"><a class="permalink" href="#int_platform_get_last_error_(void_)">int
-  platform_get_last_error (void )</a></h2>
-<p class="Pp">Definition at line <b>89</b> of file <b>util.c</b>.</p>
-<pre>89                                   {
-90   return 0; // No system error in WASM
-91 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> platform_get_temp_dir (char * temp_dir, size_t
-  path_size)</h2>
-<p class="Pp">Definition at line <b>74</b> of file <b>util.c</b>.</p>
-<pre>74                                                              {
-75   if (!temp_dir || path_size == 0) {
-76     return false;
-77   }
-78   platform_strlcpy(temp_dir, &quot;/tmp&quot;, path_size);
-79   return true;
-80 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>platform_strlcpy()</b>.</p>
-<p class="Pp">Referenced by <b>get_log_dir()</b>, and
-    <b>path_validate_user_path()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_platform_is_regular_file_(const_char_*_path)"><a class="permalink" href="#int_platform_is_regular_file_(const_char_*_path)">int
-  platform_is_regular_file (const char * path)</a></h2>
-<p class="Pp">Definition at line <b>124</b> of file <b>util.c</b>.</p>
-<pre>124                                                {
-125   (void)path;
-126   return 0; // No file system access in WASM mirror mode
-127 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>discovery_keys_clear_cache()</b>,
-    <b>discovery_keys_load_cached()</b>, and
-  <b>path_validate_user_path()</b>.</p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="int_platform_isatty_(int_fd)"><a class="permalink" href="#int_platform_isatty_(int_fd)">int
   platform_isatty (int fd)</a></h2>
+<p class="Pp">Check if a file descriptor is a terminal.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>fd</i> File descriptor to check</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Non-zero if fd is a terminal, 0 otherwise</div>
 <p class="Pp">Definition at line <b>63</b> of file <b>util.c</b>.</p>
 <pre>63                             {
 64   (void)fd;
@@ -244,50 +129,6 @@
     <b>ui_status_display()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_platform_localtime_(const_time_t_*_timer,_struct_tm_*_result)"><a class="permalink" href="#asciichat_error_t_platform_localtime_(const_time_t_*_timer,_struct_tm_*_result)">asciichat_error_t
-  platform_localtime (const time_t * timer, struct tm * result)</a></h2>
-<p class="Pp">Definition at line <b>50</b> of file <b>util.c</b>.</p>
-<pre>50                                                                              {
-51   if (!timer || !result) {
-52     return ERROR_INVALID_PARAM;
-53   }
-54   // Use thread-safe localtime_r for both WASM and native builds
-55   // IMPORTANT: localtime() is NOT thread-safe and causes deadlocks in threaded WASM builds
-56   if (localtime_r(timer, result) != NULL) {
-57     return ASCIICHAT_OK;
-58   }
-59   return ERROR_PLATFORM_INIT;
-60 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>asciichat_error_stats_print()</b>,
-    <b>asciichat_print_error_context()</b>, <b>get_current_time_formatted()</b>,
-    <b>manpage_fmt_write_title()</b>, and <b>time_format_now()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_platform_normalize_path_separators_(char_*_path)"><a class="permalink" href="#void_platform_normalize_path_separators_(char_*_path)">void
-  platform_normalize_path_separators (char * path)</a></h2>
-<p class="Pp">Definition at line <b>98</b> of file <b>util.c</b>.</p>
-<pre>98                                                     {
-99   // No-op - WASM uses forward slashes (Unix-style)
-100   (void)path;
-101 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>expand_path()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_platform_path_strcasecmp_(const_char_*_a,_const_char_*_b,_size_t_n)"><a class="permalink" href="#int_platform_path_strcasecmp_(const_char_*_a,_const_char_*_b,_size_t_n)">int
-  platform_path_strcasecmp (const char * a, const char * b, size_t n)</a></h2>
-<p class="Pp">Definition at line <b>119</b> of file <b>util.c</b>.</p>
-<pre>119                                                                      {
-120   return strncmp(a, b, n); // Case-sensitive on WASM
-121 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>path_is_within_base()</b>.</p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="void_platform_print_backtrace_(int_skip_frames)"><a class="permalink" href="#void_platform_print_backtrace_(int_skip_frames)">void
   platform_print_backtrace (int skip_frames)</a></h2>
 <p class="Pp">Definition at line <b>44</b> of file <b>util.c</b>.</p>
@@ -299,9 +140,9 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_platform_print_backtrace_symbols_(const_char_*_label,_char_**_symbols,_int_count,_int_skip_frames,_int_max_frames,_backtrace_frame_filter_t_filter)"><a class="permalink" href="#void_platform_print_backtrace_symbols_(const_char_*_label,_char_**_symbols,_int_count,_int_skip_frames,_int_max_frames,_backtrace_frame_filter_t_filter)">void
+<h2 class="Ss" id="void_platform_print_backtrace_symbols_(const_char_*_label,_char_**_symbols,_int_count,_int_skip_frames,_int_max_frames,_"><a class="permalink" href="#void_platform_print_backtrace_symbols_(const_char_*_label,_char_**_symbols,_int_count,_int_skip_frames,_int_max_frames,_">void
   platform_print_backtrace_symbols (const char * label, char ** symbols, int
-  count, int skip_frames, int max_frames, backtrace_frame_filter_t
+  count, int skip_frames, int max_frames, <b>backtrace_frame_filter_t</b>
   filter)</a></h2>
 <p class="Pp">Definition at line <b>33</b> of file <b>util.c</b>.</p>
 <pre>34                                                                        {
@@ -316,23 +157,6 @@
 <pre></pre>
 <p class="Pp"></p>
 </section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> platform_prompt_yes_no (const char * question,
-  <b>bool</b> default_yes)</h2>
-<p class="Pp">Definition at line <b>83</b> of file <b>util.c</b>.</p>
-<pre>83                                                                     {
-84   (void)question;
-85   return default_yes; // Always return default in WASM
-86 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>action_completions()</b>,
-    <b>client_crypto_handshake()</b>, <b>config_create_default()</b>,
-    <b>discovery_keys_verify_change()</b>,
-    <b>options_config_generate_manpage_merged()</b>,
-    <b>prompt_unknown_host()</b>, <b>prompt_unknown_host_no_identity()</b>, and
-    <b>server_main()</b>.</p>
-</section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
@@ -341,7 +165,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

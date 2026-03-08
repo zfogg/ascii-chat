@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>version.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">version.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">version.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">version.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>semantic_version_t</b>
+  <br/>
+  Parsed semantic version structure.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>ASCII_CHAT_VERSION_MAJOR</b> 0
+  <br/>
+  #define <b>ASCII_CHAT_VERSION_MINOR</b> 9
+  <br/>
+  #define <b>ASCII_CHAT_VERSION_PATCH</b> 2
+  <br/>
+  #define <b>ASCII_CHAT_VERSION_STRING</b> '0.9.2'
+  <br/>
+  #define <b>ASCII_CHAT_GIT_VERSION</b> 'dev-170+g731048a32-dirty'
+  <br/>
+  #define <b>ASCII_CHAT_GIT_COMMIT_HASH</b>
+    '731048a329d51ff9ffdbd935a1a04e852859206b'
+  <br/>
+  #define <b>ASCII_CHAT_GIT_IS_DIRTY</b> <b>true</b>
+  <br/>
+  #define <b>ASCII_CHAT_BUILD_TYPE</b> 'Release'
+  <br/>
+  #define <b>ASCII_CHAT_OS</b> 'Darwin'
+  <br/>
+  #define <b>ASCII_CHAT_BUILD_DATE</b> '2026-03-08'
+  <br/>
+  #define <b>ASCII_CHAT_REPO_HASH</b>
+    'bc930a2d557a67b5c8855f6ec6b80bfda3ca53c47517cc6639257f236503672f'
+  <br/>
+  #define <b>ASCII_CHAT_VERSION_FULL</b> 'v' <b>ASCII_CHAT_VERSION_STRING</b>
+    '-' <b>ASCII_CHAT_GIT_VERSION</b>
+  <br/>
+  #define <b>ASCII_CHAT_DESCRIPTION_EMOJI_L</b> '&#x1F4BB;&#x1F4F8;'
+  <br/>
+  #define <b>ASCII_CHAT_DESCRIPTION_EMOJI_R</b> '&#x1F521;&#x1F4AC;'
+  <br/>
+  #define <b>ASCII_CHAT_DESCRIPTION_TEXT</b> 'Video chat in your terminal'
+  <br/>
+  #define <b>ASCII_CHAT_DESCRIPTION</b> <b>ASCII_CHAT_DESCRIPTION_EMOJI_L</b> '
+    ' <b>ASCII_CHAT_DESCRIPTION_TEXT</b> ' '
+    <b>ASCII_CHAT_DESCRIPTION_EMOJI_R</b>
+  <br/>
+  #define <b>ASCII_CHAT_BUILD_INFO_STRING</b> 'ascii-chat '
+    ASCII_CHAT_VERSION_FULL ' built on ' ASCII_CHAT_OS ' ('
+    <b>ASCII_CHAT_BUILD_DATE</b> ', ' <b>ASCII_CHAT_BUILD_TYPE</b> ')'
+  <br/>
+  #define <b>ASCII_CHAT_DOT_COMMENT_STRING</b>
+    <b>ASCII_CHAT_BUILD_INFO_STRING</b> '0 <b>ASCII_CHAT_DESCRIPTION</b> '0
+    'https://github.com/zfogg/ascii-chat'
+  <br/>
+  #define <b>ASCII_CHAT_DOT_ASCII_CHAT_STRING</b>
+    <b>ASCII_CHAT_DOT_COMMENT_STRING</b> '0 'coded with &#x1F5A4; by Zachary
+    Fogg &lt;me@zfo.gg&gt;'
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">const char * <b>ascii_chat_get_version</b> (void)
+  <br/>
+  const char * <b>ascii_chat_get_comment</b> (void)
+  <br/>
+  const char * <b>ascii_chat_get_build_info</b> (void)
+  <br/>
+  <b>semantic_version_t</b> <b>version_parse</b> (const char *version_string)
+  <br/>
+  Parse a version string into semantic version components. int
+    <b>version_compare</b> (<b>semantic_version_t</b> a,
+    <b>semantic_version_t</b> <b>b</b>)
+  <br/>
+  Compare two semantic versions.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_BUILD_DATE___'2026"><a class="permalink" href="#_define_ASCII_CHAT_BUILD_DATE___'2026">#define
+  ASCII_CHAT_BUILD_DATE '2026-03-08'</a></h2>
+<p class="Pp">Definition at line <b>15</b> of file <b>version.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, and
+    <b>action_show_version()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_BUILD_INFO_STRING___'ascii"><a class="permalink" href="#_define_ASCII_CHAT_BUILD_INFO_STRING___'ascii">#define
+  ASCII_CHAT_BUILD_INFO_STRING 'ascii-chat ' ASCII_CHAT_VERSION_FULL ' built on
+  ' ASCII_CHAT_OS ' (' <b>ASCII_CHAT_BUILD_DATE</b> ', '
+  <b>ASCII_CHAT_BUILD_TYPE</b> ')'</a></h2>
+<p class="Pp">Definition at line <b>29</b> of file <b>version.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_BUILD_TYPE___'Release'"><a class="permalink" href="#_define_ASCII_CHAT_BUILD_TYPE___'Release'">#define
+  ASCII_CHAT_BUILD_TYPE 'Release'</a></h2>
+<p class="Pp">Definition at line <b>13</b> of file <b>version.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, <b>action_show_version()</b>,
+    and <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_DESCRIPTION___"><a class="permalink" href="#_define_ASCII_CHAT_DESCRIPTION___">#define
+  ASCII_CHAT_DESCRIPTION <b>ASCII_CHAT_DESCRIPTION_EMOJI_L</b> ' '
+  <b>ASCII_CHAT_DESCRIPTION_TEXT</b> ' '
+  <b>ASCII_CHAT_DESCRIPTION_EMOJI_R</b></a></h2>
+<p class="Pp">Definition at line <b>26</b> of file <b>version.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_DESCRIPTION_EMOJI_L___'"><a class="permalink" href="#_define_ASCII_CHAT_DESCRIPTION_EMOJI_L___'">#define
+  ASCII_CHAT_DESCRIPTION_EMOJI_L '&#x1F4BB;&#x1F4F8;'</a></h2>
+<p class="Pp">Definition at line <b>23</b> of file <b>version.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_DESCRIPTION_EMOJI_R___'"><a class="permalink" href="#_define_ASCII_CHAT_DESCRIPTION_EMOJI_R___'">#define
+  ASCII_CHAT_DESCRIPTION_EMOJI_R '&#x1F521;&#x1F4AC;'</a></h2>
+<p class="Pp">Definition at line <b>24</b> of file <b>version.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_DESCRIPTION_TEXT___'Video_chat_in_your_terminal'"><a class="permalink" href="#_define_ASCII_CHAT_DESCRIPTION_TEXT___'Video_chat_in_your_terminal'">#define
+  ASCII_CHAT_DESCRIPTION_TEXT 'Video chat in your terminal'</a></h2>
+<p class="Pp">Definition at line <b>25</b> of file <b>version.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_DOT_ASCII_CHAT_STRING___"><a class="permalink" href="#_define_ASCII_CHAT_DOT_ASCII_CHAT_STRING___">#define
+  ASCII_CHAT_DOT_ASCII_CHAT_STRING <b>ASCII_CHAT_DOT_COMMENT_STRING</b> '0
+  'coded with &#x1F5A4; by Zachary Fogg &lt;me@zfo.gg&gt;'</a></h2>
+<p class="Pp">Definition at line <b>33</b> of file <b>version.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_DOT_COMMENT_STRING___"><a class="permalink" href="#_define_ASCII_CHAT_DOT_COMMENT_STRING___">#define
+  ASCII_CHAT_DOT_COMMENT_STRING <b>ASCII_CHAT_BUILD_INFO_STRING</b> '0
+  <b>ASCII_CHAT_DESCRIPTION</b> '0
+  'https://github.com/zfogg/ascii-chat'</a></h2>
+<p class="Pp">Definition at line <b>31</b> of file <b>version.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_GIT_COMMIT_HASH___'731048a329d51ff9ffdbd935a1a04e852859206b'"><a class="permalink" href="#_define_ASCII_CHAT_GIT_COMMIT_HASH___'731048a329d51ff9ffdbd935a1a04e852859206b'">#define
+  ASCII_CHAT_GIT_COMMIT_HASH '731048a329d51ff9ffdbd935a1a04e852859206b'</a></h2>
+<p class="Pp">Definition at line <b>11</b> of file <b>version.h</b>.</p>
+<p class="Pp">Referenced by <b>update_check_load_cache()</b>, and
+    <b>update_check_perform()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_GIT_IS_DIRTY___"><a class="permalink" href="#_define_ASCII_CHAT_GIT_IS_DIRTY___">#define
+  ASCII_CHAT_GIT_IS_DIRTY <b>true</b></a></h2>
+<p class="Pp">Definition at line <b>12</b> of file <b>version.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_GIT_VERSION___'dev"><a class="permalink" href="#_define_ASCII_CHAT_GIT_VERSION___'dev">#define
+  ASCII_CHAT_GIT_VERSION 'dev-170+g731048a32-dirty'</a></h2>
+<p class="Pp">Definition at line <b>10</b> of file <b>version.h</b>.</p>
+<p class="Pp">Referenced by <b>config_create_default()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_OS___'Darwin'"><a class="permalink" href="#_define_ASCII_CHAT_OS___'Darwin'">#define
+  ASCII_CHAT_OS 'Darwin'</a></h2>
+<p class="Pp">Definition at line <b>14</b> of file <b>version.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_REPO_HASH___'bc930a2d557a67b5c8855f6ec6b80bfda3ca53c47517cc6639257f236503672f'"><a class="permalink" href="#_define_ASCII_CHAT_REPO_HASH___'bc930a2d557a67b5c8855f6ec6b80bfda3ca53c47517cc6639257f236503672f'">#define
+  ASCII_CHAT_REPO_HASH
+  'bc930a2d557a67b5c8855f6ec6b80bfda3ca53c47517cc6639257f236503672f'</a></h2>
+<p class="Pp">Definition at line <b>16</b> of file <b>version.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_VERSION_FULL___'v'_"><a class="permalink" href="#_define_ASCII_CHAT_VERSION_FULL___'v'_">#define
+  ASCII_CHAT_VERSION_FULL 'v' <b>ASCII_CHAT_VERSION_STRING</b> '-'
+  <b>ASCII_CHAT_GIT_VERSION</b></a></h2>
+<p class="Pp">Definition at line <b>20</b> of file <b>version.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, and
+    <b>action_show_version()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_VERSION_MAJOR___0"><a class="permalink" href="#_define_ASCII_CHAT_VERSION_MAJOR___0">#define
+  ASCII_CHAT_VERSION_MAJOR 0</a></h2>
+<p class="Pp">Definition at line <b>6</b> of file <b>version.h</b>.</p>
+<p class="Pp">Referenced by <b>config_create_default()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_VERSION_MINOR___9"><a class="permalink" href="#_define_ASCII_CHAT_VERSION_MINOR___9">#define
+  ASCII_CHAT_VERSION_MINOR 9</a></h2>
+<p class="Pp">Definition at line <b>7</b> of file <b>version.h</b>.</p>
+<p class="Pp">Referenced by <b>config_create_default()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_VERSION_PATCH___2"><a class="permalink" href="#_define_ASCII_CHAT_VERSION_PATCH___2">#define
+  ASCII_CHAT_VERSION_PATCH 2</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>version.h</b>.</p>
+<p class="Pp">Referenced by <b>config_create_default()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_CHAT_VERSION_STRING___'0"><a class="permalink" href="#_define_ASCII_CHAT_VERSION_STRING___'0">#define
+  ASCII_CHAT_VERSION_STRING '0.9.2'</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>version.h</b>.</p>
+<p class="Pp">Referenced by <b>https_get()</b>,
+    <b>update_check_load_cache()</b>, and <b>update_check_perform()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_ascii_chat_get_build_info_(void_)"><a class="permalink" href="#const_char_*_ascii_chat_get_build_info_(void_)">const
+  char * ascii_chat_get_build_info (void )</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_ascii_chat_get_comment_(void_)"><a class="permalink" href="#const_char_*_ascii_chat_get_comment_(void_)">const
+  char * ascii_chat_get_comment (void )</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_ascii_chat_get_version_(void_)"><a class="permalink" href="#const_char_*_ascii_chat_get_version_(void_)">const
+  char * ascii_chat_get_version (void )</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_version_compare_("><a class="permalink" href="#int_version_compare_(">int
+  version_compare (<b>semantic_version_t</b> a, <b>semantic_version_t</b>
+  b)</a></h2>
+<p class="Pp">Compare two semantic versions.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> First version
+<br/>
+<i></i><b>b</b><i></i><b> Second version</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">-1 if a &lt; b, 0 if a == b, 1 if a &gt; b</div>
+<p class="Pp">Definition at line <b>112</b> of file <b>version.c</b>.</p>
+<pre>112                                                                 {
+113   // Compare major version
+114   if (a.major &lt; b.major) {
+115     return -1;
+116   }
+117   if (a.major &gt; b.major) {
+118     return 1;
+119   }
+120 
+121   // Major versions equal, compare minor
+122   if (a.minor &lt; b.minor) {
+123     return -1;
+124   }
+125   if (a.minor &gt; b.minor) {
+126     return 1;
+127   }
+128 
+129   // Minor versions equal, compare patch
+130   if (a.patch &lt; b.patch) {
+131     return -1;
+132   }
+133   if (a.patch &gt; b.patch) {
+134     return 1;
+135   }
+136 
+137   // All components equal
+138   return 0;
+139 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>b</b>, <b>semantic_version_t::major</b>,
+    <b>semantic_version_t::minor</b>, and <b>semantic_version_t::patch</b>.</p>
+<p class="Pp">Referenced by <b>update_check_load_cache()</b>, and
+    <b>update_check_perform()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>semantic_version_t</b> version_parse (const char *
+  version_string)</h2>
+<p class="Pp">Parse a version string into semantic version components. Handles
+    both &quot;v1.2.3&quot; and &quot;1.2.3&quot; formats. Allows missing
+    components (e.g., &quot;1.2&quot; = 1.2.0, &quot;1&quot; = 1.0.0).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>version_string</i> Version string to parse (e.g.,
+  &quot;v0.8.1&quot;, &quot;1.2.3&quot;)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Parsed semantic version (check .valid field for
+  success)</div>
+<p class="Pp">Definition at line <b>49</b> of file <b>version.c</b>.</p>
+<pre>49                                                              {
+50   semantic_version_t result = {0, 0, 0, false};
+51 
+52   if (!version_string || version_string[0] == '\0') {
+53     return result;
+54   }
+55 
+56   const char *p = version_string;
+57 
+58   // Optionally skip 'v' prefix if present
+59   if (p[0] == 'v' || p[0] == 'V') {
+60     p++; // Skip 'v'
+61   }
+62 
+63   // Parse major version
+64   char *endptr = NULL;
+65   errno = 0; // Reset errno before strtol
+66   long major = strtol(p, &amp;endptr, 10);
+67   if (errno == ERANGE || endptr == p || major &lt; 0 || major &gt; INT_MAX) {
+68     return result; // Invalid major version or overflow
+69   }
+70   result.major = (int)major;
+71   p = endptr;
+72 
+73   // Version must have all three components (major.minor.patch)
+74   if (*p != '.') {
+75     return result; // Invalid: missing minor version
+76   }
+77   p++; // Skip dot
+78 
+79   // Parse minor version
+80   errno = 0; // Reset errno before strtol
+81   long minor = strtol(p, &amp;endptr, 10);
+82   if (errno == ERANGE || endptr == p || minor &lt; 0 || minor &gt; INT_MAX) {
+83     return result; // Invalid minor version or overflow
+84   }
+85   result.minor = (int)minor;
+86   p = endptr;
+87 
+88   // Version must have patch component
+89   if (*p != '.') {
+90     return result; // Invalid: missing patch version
+91   }
+92   p++; // Skip dot
+93 
+94   // Parse patch version
+95   errno = 0; // Reset errno before strtol
+96   long patch = strtol(p, &amp;endptr, 10);
+97   if (errno == ERANGE || endptr == p || patch &lt; 0 || patch &gt; INT_MAX) {
+98     return result; // Invalid patch version or overflow
+99   }
+100   result.patch = (int)patch;
+101   p = endptr;
+102 
+103   // Reject prerelease tags (e.g., &quot;v1.2.3-beta&quot;) - must end after patch number
+104   if (*p != '\0') {
+105     return result; // Invalid: has extra characters after version
+106   }
+107 
+108   result.valid = true;
+109   return result;
+110 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERANGE</b>, <b>errno</b>,
+    <b>semantic_version_t::major</b>, <b>semantic_version_t::minor</b>,
+    <b>semantic_version_t::patch</b>, and <b>semantic_version_t::valid</b>.</p>
+<p class="Pp">Referenced by <b>update_check_load_cache()</b>, and
+    <b>update_check_perform()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

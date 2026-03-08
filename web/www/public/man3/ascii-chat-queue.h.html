@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>queue.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">queue.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">queue.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">queue.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>queued_packet_t</b>
+  <br/>
+  Single packet ready to send (header already in network byte order). struct
+    <b>packet_node</b>
+  <br/>
+  Node in the packet queue linked list. struct <b>node_pool</b>
+  <br/>
+  Memory pool for packet nodes to reduce malloc/free overhead. struct
+    <b>packet_queue_t</b>
+  <br/>
+  Thread-safe packet queue for producer-consumer communication.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>packet_node</b> <b>packet_node_t</b>
+  <br/>
+  Forward declaration for packet queue node. typedef struct <b>node_pool</b>
+    <b>node_pool_t</b>
+  <br/>
+  Memory pool for packet nodes to reduce malloc/free overhead.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<p class="Pp"><b>Node Pool Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>node_pool_t</b> * <b>node_pool_create</b> (size_t pool_size)
+  <br/>
+  Create a memory pool for packet queue nodes. void <b>node_pool_destroy</b>
+    (<b>node_pool_t</b> *<b>pool</b>)
+  <br/>
+  Destroy a node pool and free all memory. <b>packet_node_t</b> *
+    <b>node_pool_get</b> (<b>node_pool_t</b> *<b>pool</b>)
+  <br/>
+  Get a free node from the pool. void <b>node_pool_put</b> (<b>node_pool_t</b>
+    *<b>pool</b>, <b>packet_node_t</b> *node)
+  <br/>
+  Return a node to the pool.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Queue Management Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>packet_queue_t</b> * <b>packet_queue_create</b> (size_t max_size)
+  <br/>
+  Create a new packet queue. <b>packet_queue_t</b> *
+    <b>packet_queue_create_with_pool</b> (size_t max_size, size_t pool_size)
+  <br/>
+  Create a packet queue with node pool. <b>packet_queue_t</b> *
+    <b>packet_queue_create_with_pools</b> (size_t max_size, size_t
+    node_pool_size, <b>bool</b> use_buffer_pool)
+  <br/>
+  Create a packet queue with both node and buffer pools. void
+    <b>packet_queue_stop</b> (<b>packet_queue_t</b> *queue)
+  <br/>
+  Destroy a packet queue and free all resources.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Queue Operations</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  int <b>packet_queue_enqueue</b> (<b>packet_queue_t</b> *queue,
+    <b>packet_type_t</b> type, const void *data, size_t data_len,
+    <b>uint32_t</b> client_id, <b>bool</b> copy_data)
+  <br/>
+  Enqueue a packet into the queue. int <b>packet_queue_enqueue_packet</b>
+    (<b>packet_queue_t</b> *queue, const <b>queued_packet_t</b> *packet)
+  <br/>
+  Enqueue a pre-built packet (for special cases like compressed frames).
+    <b>queued_packet_t</b> * <b>packet_queue_dequeue</b> (<b>packet_queue_t</b>
+    *queue)
+  <br/>
+  Dequeue a packet from the queue (non-blocking). <b>queued_packet_t</b> *
+    <b>packet_queue_try_dequeue</b> (<b>packet_queue_t</b> *queue)
+  <br/>
+  Try to dequeue a packet without blocking. void <b>packet_queue_free_packet</b>
+    (<b>queued_packet_t</b> *packet)
+  <br/>
+  Free a dequeued packet.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Queue Status Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  size_t <b>packet_queue_size</b> (<b>packet_queue_t</b> *queue)
+  <br/>
+  Get current number of packets in queue. <b>bool</b>
+    <b>packet_queue_is_empty</b> (<b>packet_queue_t</b> *queue)
+  <br/>
+  Check if queue is empty. <b>bool</b> <b>packet_queue_is_full</b>
+    (<b>packet_queue_t</b> *queue)
+  <br/>
+  Check if queue is full.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Queue Control Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  void <b>packet_queue_destroy</b> (<b>packet_queue_t</b> *queue)
+  <br/>
+  Signal queue shutdown (causes dequeue to return NULL). void
+    <b>packet_queue_clear</b> (<b>packet_queue_t</b> *queue)
+  <br/>
+  Clear all packets from queue.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Statistics Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  void <b>packet_queue_get_stats</b> (<b>packet_queue_t</b> *queue,
+    <b>uint64_t</b> *enqueued, <b>uint64_t</b> *dequeued, <b>uint64_t</b>
+    *dropped)
+  <br/>
+  Get queue statistics. <b>bool</b> <b>packet_queue_validate_packet</b> (const
+    <b>queued_packet_t</b> *packet)
+  <br/>
+  Validate packet integrity.
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

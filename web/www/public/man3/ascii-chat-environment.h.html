@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>environment.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">environment.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">environment.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">environment.h - ENVIRONMENT section generator for man pages.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">char * <b>manpage_content_generate_environment</b> (const
+    <b>options_config_t</b> *config)
+  <br/>
+  Generate ENVIRONMENT VARIABLES section content. char *
+    <b>manpage_content_generate_environment_with_manual</b> (const
+    <b>options_config_t</b> *config, const char **manual_vars, size_t
+    manual_count, const char **manual_descs)
+  <br/>
+  Generate ENVIRONMENT section with manual and auto variables. void
+    <b>manpage_content_free_environment</b> (char *content)
+  <br/>
+  Free generated environment content.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">ENVIRONMENT section generator for man pages.</p>
+<p class="Pp">Generates the ENVIRONMENT section from environment variable
+    metadata in option descriptors.</p>
+<p class="Pp">Definition in file <b>environment.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_manpage_content_free_environment_(char_*_content)"><a class="permalink" href="#void_manpage_content_free_environment_(char_*_content)">void
+  manpage_content_free_environment (char * content)</a></h2>
+<p class="Pp">Free generated environment content.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>content</i> Content to free (can be NULL)</div>
+<p class="Pp">Definition at line <b>151</b> of file <b>environment.c</b>.</p>
+<pre>151                                                      {
+152   if (content) {
+153     SAFE_FREE(content);
+154   }
+155 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>, and
+    <b>options_config_generate_manpage_template()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_manpage_content_generate_environment_(const_"><a class="permalink" href="#char_*_manpage_content_generate_environment_(const_">char
+  * manpage_content_generate_environment (const <b>options_config_t</b> *
+  config)</a></h2>
+<p class="Pp">Generate ENVIRONMENT VARIABLES section content. Extracts
+    environment variables from option descriptors and generates formatted
+    ENVIRONMENT section with sorted variable names.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options
+  configuration with descriptors</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Newly allocated content string (caller must free)</div>
+<p class="Pp">Definition at line <b>14</b> of file <b>environment.c</b>.</p>
+<pre>14                                                                            {
+15   if (!config || config-&gt;num_descriptors == 0) {
+16     char *buffer = SAFE_MALLOC(1, char *);
+17     buffer[0] = '\0';
+18     return buffer;
+19   }
+20 
+21   // Generate only ASCII_CHAT_* environment variables from config
+22   // Manual variables are preserved from the template
+23   size_t buffer_capacity = 32768;
+24   char *buffer = SAFE_MALLOC(buffer_capacity, char *);
+25   size_t offset = 0;
+26 
+27   // Iterate through all option descriptors
+28   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+29     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+30 
+31     // Only include descriptors that have environment variable names
+32     if (!desc-&gt;env_var_name) {
+33       continue;
+34     }
+35 
+36     // Ensure buffer is large enough
+37     if (offset + 512 &gt;= buffer_capacity) {
+38       buffer_capacity *= 2;
+39       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
+40     }
+41 
+42     log_debug(&quot;[ENVIRONMENT] env=%s, desc=%s&quot;, desc-&gt;env_var_name ? desc-&gt;env_var_name : &quot;NULL&quot;,
+43               desc-&gt;help_text ? desc-&gt;help_text : &quot;NULL&quot;);
+44 
+45     // Generate .TP tagged paragraph for this environment variable
+46     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.TP\n&quot;);
+47     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B %s\n&quot;, desc-&gt;env_var_name);
+48 
+49     if (desc-&gt;help_text) {
+50       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;%s\n&quot;, desc-&gt;help_text);
+51     }
+52   }
+53 
+54   log_debug(&quot;Generated ENVIRONMENT ASCII_CHAT_* section (%zu bytes)&quot;, offset);
+55   return buffer;
+56 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_config_t::descriptors</b>,
+    <b>option_descriptor_t::env_var_name</b>,
+    <b>option_descriptor_t::help_text</b>, <b>log_debug</b>,
+    <b>options_config_t::num_descriptors</b>, <b>SAFE_MALLOC</b>,
+    <b>SAFE_REALLOC</b>, and <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by
+  <b>options_config_generate_manpage_template()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_manpage_content_generate_environment_with_manual_(const_"><a class="permalink" href="#char_*_manpage_content_generate_environment_with_manual_(const_">char
+  * manpage_content_generate_environment_with_manual (const
+  <b>options_config_t</b> * config, const char ** manual_vars, size_t
+  manual_count, const char ** manual_descs)</a></h2>
+<p class="Pp">Generate ENVIRONMENT section with manual and auto variables.
+    Combines manual environment variables (from template) with ASCII_CHAT_*
+    variables from config, sorts them all alphabetically, and generates
+    formatted ENVIRONMENT section content.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options
+  configuration with descriptors</b>
+<br/>
+<i>manual_vars</i> Array of manual variable names (can be NULL)
+<br/>
+<i>manual_count</i> Number of manual variables
+<br/>
+<i>manual_descs</i> Array of manual variable descriptions (can be NULL)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Newly allocated content string (caller must free)</div>
+<p class="Pp">Definition at line <b>74</b> of file <b>environment.c</b>.</p>
+<pre>75                                                                                                        {
+76 
+77   if (!config) {
+78     char *buffer = SAFE_MALLOC(1, char *);
+79     buffer[0] = '\0';
+80     return buffer;
+81   }
+82 
+83   // Count how many ASCII_CHAT_* variables we have
+84   size_t num_auto_vars = 0;
+85   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+86     if (config-&gt;descriptors[i].env_var_name) {
+87       num_auto_vars++;
+88     }
+89   }
+90 
+91   // Allocate array for all variables
+92   size_t total_vars = num_auto_vars + manual_count;
+93   env_var_entry_t *all_vars = SAFE_MALLOC(total_vars * sizeof(env_var_entry_t), env_var_entry_t *);
+94   size_t var_idx = 0;
+95 
+96   // Copy auto-generated variables from config
+97   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+98     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+99     if (desc-&gt;env_var_name) {
+100       all_vars[var_idx].name = desc-&gt;env_var_name;
+101       all_vars[var_idx].description = desc-&gt;help_text ? desc-&gt;help_text : &quot;&quot;;
+102       all_vars[var_idx].option_long_name = desc-&gt;long_name; // Store for reference
+103       var_idx++;
+104     }
+105   }
+106 
+107   // Add manual variables
+108   for (size_t i = 0; i &lt; manual_count &amp;&amp; var_idx &lt; total_vars; i++) {
+109     all_vars[var_idx].name = manual_vars[i];
+110     all_vars[var_idx].description = (manual_descs &amp;&amp; manual_descs[i]) ? manual_descs[i] : &quot;&quot;;
+111     all_vars[var_idx].option_long_name = NULL; // Manual variables have no option reference
+112     var_idx++;
+113   }
+114 
+115   // Sort all variables alphabetically
+116   qsort(all_vars, total_vars, sizeof(env_var_entry_t), env_var_compare);
+117 
+118   // Generate output buffer with all environment variables
+119   size_t buffer_capacity = 32768;
+120   char *buffer = SAFE_MALLOC(buffer_capacity, char *);
+121   size_t offset = 0;
+122 
+123   // Write all environment variables in sorted order
+124   for (size_t i = 0; i &lt; total_vars; i++) {
+125     if (offset + 512 &gt;= buffer_capacity) {
+126       buffer_capacity *= 2;
+127       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
+128     }
+129 
+130     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.TP\n&quot;);
+131     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B %s\n&quot;, all_vars[i].name);
+132     if (*all_vars[i].description) {
+133       if (all_vars[i].option_long_name) {
+134         // For auto-generated variables, just reference the flag
+135         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;See: \\fB\\-\\-%s\\fR\n&quot;,
+136                                 all_vars[i].option_long_name);
+137       } else {
+138         // For manual variables, show full description
+139         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;%s\n&quot;, all_vars[i].description);
+140       }
+141     }
+142   }
+143 
+144   SAFE_FREE(all_vars);
+145 
+146   log_debug(&quot;Generated ENVIRONMENT section (%zu manual + %zu auto = %zu total, %zu bytes)&quot;, manual_count, num_auto_vars,
+147             total_vars, offset);
+148   return buffer;
+149 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>env_var_entry_t::description</b>,
+    <b>options_config_t::descriptors</b>,
+    <b>option_descriptor_t::env_var_name</b>,
+    <b>option_descriptor_t::help_text</b>, <b>log_debug</b>,
+    <b>option_descriptor_t::long_name</b>, <b>env_var_entry_t::name</b>,
+    <b>options_config_t::num_descriptors</b>,
+    <b>env_var_entry_t::option_long_name</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>SAFE_REALLOC</b>, and <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

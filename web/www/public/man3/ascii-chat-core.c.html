@@ -42,24 +42,24 @@
 <p class="Pp">void <b>registry_init_from_builders</b> (void)
   <br/>
   Initialize registry from category builders Populates g_options_registry by
-    concatenating all category arrays. asciichat_error_t
+    concatenating all category arrays. <b>asciichat_error_t</b>
     <b>registry_validate_unique_options</b> (void)
   <br/>
   Validate that no short or long options appear more than once in the registry.
     void <b>registry_init_size</b> (void)
   <br/>
-  Initialize registry size and metadata. const registry_entry_t *
+  Initialize registry size and metadata. const <b>registry_entry_t</b> *
     <b>registry_find_entry_by_name</b> (const char *long_name)
   <br/>
-  Get a registry entry by long name. const registry_entry_t *
+  Get a registry entry by long name. const <b>registry_entry_t</b> *
     <b>registry_find_entry_by_short</b> (char short_name)
   <br/>
-  Get a registry entry by short name. option_descriptor_t
-    <b>registry_entry_to_descriptor</b> (const registry_entry_t *entry)
+  Get a registry entry by short name. <b>option_descriptor_t</b>
+    <b>registry_entry_to_descriptor</b> (const <b>registry_entry_t</b> *entry)
   <br/>
   Convert registry entry to option descriptor. <b>bool</b>
-    <b>registry_entry_applies_to_mode</b> (const registry_entry_t *entry,
-    asciichat_mode_t mode, <b>bool</b> for_binary_help)
+    <b>registry_entry_applies_to_mode</b> (const <b>registry_entry_t</b> *entry,
+    <b>asciichat_mode_t</b> mode, <b>bool</b> for_binary_help)
   <br/>
   Check if an option applies to the given mode for display purposes.
   <br/>
@@ -85,7 +85,7 @@
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> registry_entry_applies_to_mode (const
-  registry_entry_t * entry, asciichat_mode_t mode, <b>bool</b>
+  <b>registry_entry_t</b> * entry, <b>asciichat_mode_t</b> mode, <b>bool</b>
   for_binary_help)</h2>
 <p class="Pp">Check if an option applies to the given mode for display purposes.
     This implements the same filtering logic as the help system's
@@ -144,11 +144,15 @@
 238 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
+    <b>registry_entry_t::long_name</b>, <b>registry_entry_t::mode_bitmask</b>,
+    <b>MODE_DISCOVERY</b>, <b>OPTION_MODE_ALL</b>, <b>OPTION_MODE_BINARY</b>,
+    and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>options_registry_get_for_display()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="option_descriptor_t_registry_entry_to_descriptor_(const_registry_entry_t_*_entry)"><a class="permalink" href="#option_descriptor_t_registry_entry_to_descriptor_(const_registry_entry_t_*_entry)">option_descriptor_t
-  registry_entry_to_descriptor (const registry_entry_t * entry)</a></h2>
+<h2 class="Ss"><b>option_descriptor_t</b> registry_entry_to_descriptor (const
+  <b>registry_entry_t</b> * entry)</h2>
 <p class="Pp">Convert registry entry to option descriptor.</p>
 <p class="Pp">Definition at line <b>161</b> of file <b>core.c</b>.</p>
 <pre>161                                                                                 {
@@ -180,14 +184,40 @@
 187 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>option_descriptor_t::action_fn</b>,
+    <b>option_descriptor_t::arg_placeholder</b>,
+    <b>registry_entry_t::arg_placeholder</b>,
+    <b>option_descriptor_t::default_value</b>,
+    <b>registry_entry_t::default_value</b>,
+    <b>option_descriptor_t::env_var_name</b>,
+    <b>registry_entry_t::env_var_name</b>, <b>option_descriptor_t::group</b>,
+    <b>registry_entry_t::group</b>, <b>option_descriptor_t::help_text</b>,
+    <b>registry_entry_t::help_text</b>,
+    <b>option_descriptor_t::hide_from_binary_help</b>,
+    <b>option_descriptor_t::hide_from_mode_help</b>,
+    <b>option_descriptor_t::long_name</b>, <b>registry_entry_t::long_name</b>,
+    <b>option_descriptor_t::metadata</b>, <b>registry_entry_t::metadata</b>,
+    <b>option_descriptor_t::mode_bitmask</b>,
+    <b>registry_entry_t::mode_bitmask</b>,
+    <b>option_descriptor_t::mode_default_getter</b>,
+    <b>registry_entry_t::mode_default_getter</b>,
+    <b>option_descriptor_t::offset</b>, <b>registry_entry_t::offset</b>,
+    <b>OPTION_MODE_DISCOVERY_SVC</b>, <b>option_descriptor_t::optional_arg</b>,
+    <b>registry_entry_t::optional_arg</b>,
+    <b>option_descriptor_t::owns_memory</b>,
+    <b>registry_entry_t::owns_memory</b>, <b>option_descriptor_t::parse_fn</b>,
+    <b>registry_entry_t::parse_fn</b>, <b>option_descriptor_t::required</b>,
+    <b>registry_entry_t::required</b>, <b>option_descriptor_t::short_name</b>,
+    <b>registry_entry_t::short_name</b>, <b>option_descriptor_t::type</b>,
+    <b>registry_entry_t::type</b>, <b>option_descriptor_t::validate</b>, and
+    <b>registry_entry_t::validate_fn</b>.</p>
 <p class="Pp">Referenced by <b>options_registry_get_binary_options()</b>,
     <b>options_registry_get_for_display()</b>, and
     <b>options_registry_get_for_mode()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_registry_entry_t_*_registry_find_entry_by_name_(const_char_*_long_name)"><a class="permalink" href="#const_registry_entry_t_*_registry_find_entry_by_name_(const_char_*_long_name)">const
-  registry_entry_t * registry_find_entry_by_name (const char *
-  long_name)</a></h2>
+<h2 class="Ss">const <b>registry_entry_t</b> * registry_find_entry_by_name
+  (const char * long_name)</h2>
 <p class="Pp">Get a registry entry by long name.</p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">This is used internally for option lookup</div>
@@ -207,12 +237,13 @@
 139 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>g_options_registry</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>g_options_registry</b>,
+    and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>options_registry_find_by_name()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_registry_entry_t_*_registry_find_entry_by_short_(char_short_name)"><a class="permalink" href="#const_registry_entry_t_*_registry_find_entry_by_short_(char_short_name)">const
-  registry_entry_t * registry_find_entry_by_short (char short_name)</a></h2>
+<h2 class="Ss">const <b>registry_entry_t</b> * registry_find_entry_by_short
+  (char short_name)</h2>
 <p class="Pp">Get a registry entry by short name.</p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">This is used internally for option lookup</div>
@@ -286,7 +317,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>g_category_builders</b>, <b>g_options_registry</b>,
-    and <b>initialized</b>.</p>
+    <b>initialized</b>, <b>OPTION_MODE_NONE</b>, and
+  <b>OPTION_TYPE_BOOL</b>.</p>
 <p class="Pp">Referenced by <b>registry_init_size()</b>.</p>
 </section>
 <section class="Ss">
@@ -325,8 +357,8 @@
     <b>options_registry_get_raw()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_registry_validate_unique_options_(void_)"><a class="permalink" href="#asciichat_error_t_registry_validate_unique_options_(void_)">asciichat_error_t
-  registry_validate_unique_options (void )</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> registry_validate_unique_options (void
+  )</h2>
 <p class="Pp">Validate that no short or long options appear more than once in
     the registry.</p>
 <p class="Pp"><b>Returns</b></p>
@@ -368,7 +400,8 @@
 103 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>g_options_registry</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>,
+    <b>g_options_registry</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>registry_init_size()</b>.</p>
 </section>
 </section>
@@ -379,7 +412,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -324,9 +324,10 @@ $ ascii-chat mirror --file movie.mp4
 <p class="Pp"></p>
 <p class="Pp"><b>session/display.h</b> - Terminal rendering</p>
 <p class="Pp"></p>
-<p class="Pp">lib/media/source.h - Media source types (webcam, file, etc.)</p>
+<p class="Pp">lib/media/source.h - Media source types (<b>Webcam Module</b>,
+    file, etc.)</p>
 <p class="Pp"></p>
-<p class="Pp">lib/video/palette.h - ASCII palette types</p>
+<p class="Pp">lib/video/palette.h - ASCII <b>Palette</b> types</p>
 </div>
 <p class="Pp">Definition in file <b>mirror/main.c</b>.</p>
 </section>
@@ -413,8 +414,9 @@ $ ascii-chat mirror --file movie.mp4
 431 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_create()</b>, <b>mutex_init()</b>,
-    and <b>session_client_like_run()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
+    <b>log_error</b>, <b>log_info</b>, <b>mutex_init()</b>, and
+    <b>session_client_like_run()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -424,7 +426,7 @@ $ ascii-chat mirror --file movie.mp4
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

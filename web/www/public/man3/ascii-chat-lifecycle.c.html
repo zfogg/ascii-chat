@@ -30,8 +30,8 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">lifecycle.c - TODO: Add Doxygen documentation for module lifecycle
-    management.</p>
+<p class="Pp">lifecycle.c - Lock-free module lifecycle state machine
+    implementation.</p>
 <p class="Pp"></p>
 </section>
 <section class="Sh">
@@ -39,28 +39,28 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp"><b>bool</b> <b>lifecycle_init</b> (lifecycle_t *lc, const char
-    *name)
+<p class="Pp"><b>bool</b> <b>lifecycle_init</b> (<b>lifecycle_t</b> *lc, const
+    char *name)
   <br/>
-  <b>bool</b> <b>lifecycle_init_once</b> (lifecycle_t *lc)
+  <b>bool</b> <b>lifecycle_init_once</b> (<b>lifecycle_t</b> *lc)
   <br/>
-  void <b>lifecycle_init_commit</b> (lifecycle_t *lc)
+  void <b>lifecycle_init_commit</b> (<b>lifecycle_t</b> *lc)
   <br/>
-  void <b>lifecycle_init_abort</b> (lifecycle_t *lc)
+  void <b>lifecycle_init_abort</b> (<b>lifecycle_t</b> *lc)
   <br/>
-  <b>bool</b> <b>lifecycle_shutdown</b> (lifecycle_t *lc)
+  <b>bool</b> <b>lifecycle_shutdown</b> (<b>lifecycle_t</b> *lc)
   <br/>
-  <b>bool</b> <b>lifecycle_shutdown_forever</b> (lifecycle_t *lc)
+  <b>bool</b> <b>lifecycle_shutdown_forever</b> (<b>lifecycle_t</b> *lc)
   <br/>
-  <b>bool</b> <b>lifecycle_is_initialized</b> (const lifecycle_t *lc)
+  <b>bool</b> <b>lifecycle_is_initialized</b> (const <b>lifecycle_t</b> *lc)
   <br/>
-  <b>bool</b> <b>lifecycle_is_dead</b> (const lifecycle_t *lc)
+  <b>bool</b> <b>lifecycle_is_dead</b> (const <b>lifecycle_t</b> *lc)
   <br/>
-  <b>bool</b> <b>lifecycle_reset</b> (lifecycle_t *lc)
+  <b>bool</b> <b>lifecycle_reset</b> (<b>lifecycle_t</b> *lc)
   <br/>
-  <b>bool</b> <b>lifecycle_destroy_once</b> (lifecycle_t *lc)
+  <b>bool</b> <b>lifecycle_destroy_once</b> (<b>lifecycle_t</b> *lc)
   <br/>
-  void <b>lifecycle_destroy_commit</b> (lifecycle_t *lc)
+  void <b>lifecycle_destroy_commit</b> (<b>lifecycle_t</b> *lc)
   <br/>
   <br/>
 </p>
@@ -69,114 +69,173 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">TODO: Add Doxygen documentation for module lifecycle
-  management.</p>
-<p class="Pp">Needs documentation for: Module initialization/cleanup, lifecycle
-    state tracking</p>
+<p class="Pp">Lock-free module lifecycle state machine implementation.</p>
+<p class="Pp">Implements concurrent init/shutdown synchronization using atomic
+    compare-and-swap. See <b>include/ascii-chat/util/lifecycle.h</b> for API
+    documentation and usage patterns.</p>
 <p class="Pp">Definition in file <b>lifecycle.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="void_lifecycle_destroy_commit_(lifecycle_t_*_lc)"><a class="permalink" href="#void_lifecycle_destroy_commit_(lifecycle_t_*_lc)">void
-  lifecycle_destroy_commit (lifecycle_t * lc)</a></h2>
-<p class="Pp">Definition at line <b>223</b> of file <b>lifecycle.c</b>.</p>
-<pre>223                                                {
-224   if (lc == NULL) {
-225     log_dev(&quot;[lifecycle] destroy_commit: NULL lifecycle pointer&quot;);
-226     return;
-227   }
-228   log_dev(&quot;[lifecycle] destroy_commit: transitioning DESTROYING &#x2192; UNINITIALIZED&quot;);
-229   atomic_store_u64(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
-230 }</pre>
+<h2 class="Ss" id="void_lifecycle_destroy_commit_("><a class="permalink" href="#void_lifecycle_destroy_commit_(">void
+  lifecycle_destroy_commit (<b>lifecycle_t</b> * lc)</a></h2>
+<p class="Pp">Commit successful destruction: DESTROYING &#x2192; UNINITIALIZED.
+    Call this after <b>lifecycle_destroy_once()</b> returns true and destroy
+    work completes.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state</div>
+<p class="Pp">Returns the module to UNINITIALIZED state, allowing future
+    re-initialization.</p>
+<p class="Pp">Definition at line <b>224</b> of file <b>lifecycle.c</b>.</p>
+<pre>224                                                {
+225   if (lc == NULL) {
+226     log_dev(&quot;[lifecycle] destroy_commit: NULL lifecycle pointer&quot;);
+227     return;
+228   }
+229   log_dev(&quot;[lifecycle] destroy_commit: transitioning DESTROYING &#x2192; UNINITIALIZED&quot;);
+230   atomic_store_u64(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
+231 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_u64()</b>.</p>
+<p class="Pp">References <b>atomic_store_u64()</b>,
+    <b>LIFECYCLE_UNINITIALIZED</b>, <b>log_dev</b>, and
+    <b>lifecycle_t::state</b>.</p>
 <p class="Pp">Referenced by <b>audio_stop_thread()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> lifecycle_destroy_once (lifecycle_t * lc)</h2>
-<p class="Pp">Definition at line <b>180</b> of file <b>lifecycle.c</b>.</p>
-<pre>180                                              {
-181   if (lc == NULL) {
-182     log_dev(&quot;[lifecycle] destroy_once: NULL lifecycle pointer&quot;);
-183     return false;
-184   }
-185 
-186   uint64_t expected = LIFECYCLE_INITIALIZED;
-187   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_DESTROYING)) {
-188     // If not initialized, nothing to destroy
-189     if (expected == LIFECYCLE_UNINITIALIZED) {
-190       log_dev(&quot;[lifecycle] destroy_once: already uninitialized, nothing to destroy&quot;);
-191       return false;
-192     }
-193 
-194     // If dead, never allow destruction (already permanently shut down)
-195     if (expected == LIFECYCLE_DEAD) {
-196       log_dev(&quot;[lifecycle] destroy_once: module is dead, no destruction allowed&quot;);
-197       return false;
-198     }
-199 
-200     // If already destroying, don't duplicate work (return false, let first destroyer finish)
-201     if (expected == LIFECYCLE_DESTROYING) {
-202       log_dev(&quot;[lifecycle] destroy_once: already destroying, skipping (first destroyer has priority)&quot;);
-203       return false;
-204     }
-205 
-206     // If initializing, skip destruction (init may still be in progress)
-207     if (expected == LIFECYCLE_INITIALIZING) {
-208       log_dev(&quot;[lifecycle] destroy_once: still initializing, skipping destruction&quot;);
-209       return false;
-210     }
-211 
-212     // Unexpected state
-213     log_dev(&quot;[lifecycle] destroy_once: unexpected state: %d&quot;, expected);
-214     return false;
-215   }
-216 
-217   // Winner: state is now LIFECYCLE_DESTROYING
-218   // Caller must call lifecycle_destroy_commit()
-219   log_dev(&quot;[lifecycle] destroy_once: won CAS, transitioned to DESTROYING&quot;);
-220   return true;
-221 }</pre>
+<h2 class="Ss"><b>bool</b> lifecycle_destroy_once (<b>lifecycle_t</b> * lc)</h2>
+<p class="Pp">Lock-free concurrent destruction: CAS INITIALIZED &#x2192;
+    DESTROYING.</p>
+<p class="Pp"></p>
+<p class="Pp">Winner receives true and must complete the two-phase sequence:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Do actual destroy work</dd>
+  <dt>2.</dt>
+  <dd>Call <b>lifecycle_destroy_commit()</b> on completion</dd>
+</dl>
+<p class="Pp">Losing callers return false and should skip cleanup work. Once
+    destruction begins, no further operations are possible until the winner
+    completes.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if THIS caller won the destroy race and should do
+  work
+<p class="Pp"></p>
+<p class="Pp">false if not INITIALIZED, already being destroyed, or in DEAD
+    state</p>
+</div>
+<p class="Pp">Safe for concurrent callers. Exactly one caller gets true (the CAS
+    winner). Prevents double-join and other double-cleanup issues when multiple
+    threads call cleanup functions concurrently.</p>
+<p class="Pp">Definition at line <b>181</b> of file <b>lifecycle.c</b>.</p>
+<pre>181                                              {
+182   if (lc == NULL) {
+183     log_dev(&quot;[lifecycle] destroy_once: NULL lifecycle pointer&quot;);
+184     return false;
+185   }
+186 
+187   uint64_t expected = LIFECYCLE_INITIALIZED;
+188   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_DESTROYING)) {
+189     // If not initialized, nothing to destroy
+190     if (expected == LIFECYCLE_UNINITIALIZED) {
+191       log_dev(&quot;[lifecycle] destroy_once: already uninitialized, nothing to destroy&quot;);
+192       return false;
+193     }
+194 
+195     // If dead, never allow destruction (already permanently shut down)
+196     if (expected == LIFECYCLE_DEAD) {
+197       log_dev(&quot;[lifecycle] destroy_once: module is dead, no destruction allowed&quot;);
+198       return false;
+199     }
+200 
+201     // If already destroying, don't duplicate work (return false, let first destroyer finish)
+202     if (expected == LIFECYCLE_DESTROYING) {
+203       log_dev(&quot;[lifecycle] destroy_once: already destroying, skipping (first destroyer has priority)&quot;);
+204       return false;
+205     }
+206 
+207     // If initializing, skip destruction (init may still be in progress)
+208     if (expected == LIFECYCLE_INITIALIZING) {
+209       log_dev(&quot;[lifecycle] destroy_once: still initializing, skipping destruction&quot;);
+210       return false;
+211     }
+212 
+213     // Unexpected state
+214     log_dev(&quot;[lifecycle] destroy_once: unexpected state: %d&quot;, expected);
+215     return false;
+216   }
+217 
+218   // Winner: state is now LIFECYCLE_DESTROYING
+219   // Caller must call lifecycle_destroy_commit()
+220   log_dev(&quot;[lifecycle] destroy_once: won CAS, transitioned to DESTROYING&quot;);
+221   return true;
+222 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_cas_u64()</b>.</p>
+<p class="Pp">References <b>atomic_cas_u64()</b>, <b>LIFECYCLE_DEAD</b>,
+    <b>LIFECYCLE_DESTROYING</b>, <b>LIFECYCLE_INITIALIZED</b>,
+    <b>LIFECYCLE_INITIALIZING</b>, <b>LIFECYCLE_UNINITIALIZED</b>,
+    <b>log_dev</b>, and <b>lifecycle_t::state</b>.</p>
 <p class="Pp">Referenced by <b>audio_stop_thread()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> lifecycle_init (lifecycle_t * lc, const char *
+<h2 class="Ss"><b>bool</b> lifecycle_init (<b>lifecycle_t</b> * lc, const char *
   name)</h2>
-<p class="Pp">Definition at line <b>14</b> of file <b>lifecycle.c</b>.</p>
-<pre>14                                                        {
-15   if (lc == NULL) {
-16     log_dev(&quot;[lifecycle] init: NULL lifecycle pointer&quot;);
-17     return false;
-18   }
-19   uint64_t expected = LIFECYCLE_UNINITIALIZED;
-20   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_INITIALIZED)) {
-21     log_dev(&quot;[lifecycle] init: %s already initialized (current state: %llu)&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;, expected);
-22     return false; // Already initialized or in INITIALIZING/DEAD state
-23   }
-24 
-25   /* Winner: initialize sync primitive if configured */
-26   if (lc-&gt;sync_type == LIFECYCLE_SYNC_MUTEX &amp;&amp; lc-&gt;sync.mutex != NULL) {
-27     log_dev(&quot;[lifecycle] init: %s initializing mutex&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;);
-28     mutex_init(lc-&gt;sync.mutex, name);
-29   } else if (lc-&gt;sync_type == LIFECYCLE_SYNC_RWLOCK &amp;&amp; lc-&gt;sync.rwlock != NULL) {
-30     log_dev(&quot;[lifecycle] init: %s initializing rwlock&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;);
-31     rwlock_init(lc-&gt;sync.rwlock, name);
-32   } else {
-33     log_dev(&quot;[lifecycle] init: %s initialized (no sync primitive)&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;);
-34   }
-35 
-36   return true;
-37 }</pre>
+<p class="Pp">CAS-based initialization: UNINIT &#x2192; INITIALIZED.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state (may include sync_type and sync
+  pointer)
+<br/>
+<i>name</i> name tag for any sync primitive (for debugging), or NULL if no
+  sync</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if THIS caller won the race and should do init work
+<p class="Pp"></p>
+<p class="Pp">false if already INITIALIZED, INITIALIZING, or DEAD</p>
+</div>
+<p class="Pp">Suitable for single-threaded startup or contexts where the caller
+    guarantees serialization. If lc-&gt;sync_type != SYNC_NONE, initializes the
+    sync primitive.</p>
+<p class="Pp">Definition at line <b>15</b> of file <b>lifecycle.c</b>.</p>
+<pre>15                                                        {
+16   if (lc == NULL) {
+17     log_dev(&quot;[lifecycle] init: NULL lifecycle pointer&quot;);
+18     return false;
+19   }
+20   uint64_t expected = LIFECYCLE_UNINITIALIZED;
+21   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_INITIALIZED)) {
+22     log_dev(&quot;[lifecycle] init: %s already initialized (current state: %llu)&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;, expected);
+23     return false; // Already initialized or in INITIALIZING/DEAD state
+24   }
+25 
+26   /* Winner: initialize sync primitive if configured */
+27   if (lc-&gt;sync_type == LIFECYCLE_SYNC_MUTEX &amp;&amp; lc-&gt;sync.mutex != NULL) {
+28     log_dev(&quot;[lifecycle] init: %s initializing mutex&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;);
+29     mutex_init(lc-&gt;sync.mutex, name);
+30   } else if (lc-&gt;sync_type == LIFECYCLE_SYNC_RWLOCK &amp;&amp; lc-&gt;sync.rwlock != NULL) {
+31     log_dev(&quot;[lifecycle] init: %s initializing rwlock&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;);
+32     rwlock_init(lc-&gt;sync.rwlock, name);
+33   } else {
+34     log_dev(&quot;[lifecycle] init: %s initialized (no sync primitive)&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;);
+35   }
+36 
+37   return true;
+38 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_cas_u64()</b>, <b>mutex_init()</b>, and
-    <b>rwlock_init()</b>.</p>
+<p class="Pp">References <b>atomic_cas_u64()</b>, <b>LIFECYCLE_INITIALIZED</b>,
+    <b>LIFECYCLE_SYNC_MUTEX</b>, <b>LIFECYCLE_SYNC_RWLOCK</b>,
+    <b>LIFECYCLE_UNINITIALIZED</b>, <b>log_dev</b>, <b>lifecycle_t::mutex</b>,
+    <b>mutex_init()</b>, <b>lifecycle_t::rwlock</b>, <b>rwlock_init()</b>,
+    <b>lifecycle_t::state</b>, <b>lifecycle_t::sync</b>, and
+    <b>lifecycle_t::sync_type</b>.</p>
 <p class="Pp">Referenced by <b>ansi_fast_init_16color()</b>,
     <b>ansi_fast_init_256color()</b>, <b>asciichat_error_stats_get()</b>,
     <b>asciichat_error_stats_init()</b>, <b>asciichat_error_stats_record()</b>,
@@ -190,38 +249,59 @@
     <b>timer_system_init()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_lifecycle_init_abort_(lifecycle_t_*_lc)"><a class="permalink" href="#void_lifecycle_init_abort_(lifecycle_t_*_lc)">void
-  lifecycle_init_abort (lifecycle_t * lc)</a></h2>
-<p class="Pp">Definition at line <b>86</b> of file <b>lifecycle.c</b>.</p>
-<pre>86                                            {
-87   if (lc == NULL) {
-88     log_dev(&quot;[lifecycle] init_abort: NULL lifecycle pointer&quot;);
-89     return;
-90   }
-91   log_dev(&quot;[lifecycle] init_abort: transitioning INITIALIZING &#x2192; UNINITIALIZED (retry allowed)&quot;);
-92   atomic_store_u64(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
-93 }</pre>
+<h2 class="Ss" id="void_lifecycle_init_abort_("><a class="permalink" href="#void_lifecycle_init_abort_(">void
+  lifecycle_init_abort (<b>lifecycle_t</b> * lc)</a></h2>
+<p class="Pp">Abort failed initialization: INITIALIZING &#x2192; UNINITIALIZED.
+    Call this if <b>lifecycle_init_once()</b> returns true but init work
+  fails.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state</div>
+<p class="Pp">Allows the next caller to retry initialization. Wakes
+  spinners.</p>
+<p class="Pp">Definition at line <b>87</b> of file <b>lifecycle.c</b>.</p>
+<pre>87                                            {
+88   if (lc == NULL) {
+89     log_dev(&quot;[lifecycle] init_abort: NULL lifecycle pointer&quot;);
+90     return;
+91   }
+92   log_dev(&quot;[lifecycle] init_abort: transitioning INITIALIZING &#x2192; UNINITIALIZED (retry allowed)&quot;);
+93   atomic_store_u64(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
+94 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_u64()</b>.</p>
+<p class="Pp">References <b>atomic_store_u64()</b>,
+    <b>LIFECYCLE_UNINITIALIZED</b>, <b>log_dev</b>, and
+    <b>lifecycle_t::state</b>.</p>
 <p class="Pp">Referenced by <b>audio_client_init()</b>, and
     <b>symbol_cache_init()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_lifecycle_init_commit_(lifecycle_t_*_lc)"><a class="permalink" href="#void_lifecycle_init_commit_(lifecycle_t_*_lc)">void
-  lifecycle_init_commit (lifecycle_t * lc)</a></h2>
-<p class="Pp">Definition at line <b>77</b> of file <b>lifecycle.c</b>.</p>
-<pre>77                                             {
-78   if (lc == NULL) {
-79     log_dev(&quot;[lifecycle] init_commit: NULL lifecycle pointer&quot;);
-80     return;
-81   }
-82   log_dev(&quot;[lifecycle] init_commit: transitioning INITIALIZING &#x2192; INITIALIZED&quot;);
-83   atomic_store_u64(&amp;lc-&gt;state, LIFECYCLE_INITIALIZED);
-84 }</pre>
+<h2 class="Ss" id="void_lifecycle_init_commit_("><a class="permalink" href="#void_lifecycle_init_commit_(">void
+  lifecycle_init_commit (<b>lifecycle_t</b> * lc)</a></h2>
+<p class="Pp">Commit successful initialization: INITIALIZING &#x2192;
+    INITIALIZED. Call this after <b>lifecycle_init_once()</b> returns true and
+    init work succeeds.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state</div>
+<p class="Pp">Wakes all spinners waiting in <b>lifecycle_init_once()</b>. Must
+    be called by the <b>lifecycle_init_once()</b> winner after successful init
+    work.</p>
+<p class="Pp">Definition at line <b>78</b> of file <b>lifecycle.c</b>.</p>
+<pre>78                                             {
+79   if (lc == NULL) {
+80     log_dev(&quot;[lifecycle] init_commit: NULL lifecycle pointer&quot;);
+81     return;
+82   }
+83   log_dev(&quot;[lifecycle] init_commit: transitioning INITIALIZING &#x2192; INITIALIZED&quot;);
+84   atomic_store_u64(&amp;lc-&gt;state, LIFECYCLE_INITIALIZED);
+85 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_u64()</b>.</p>
+<p class="Pp">References <b>atomic_store_u64()</b>,
+    <b>LIFECYCLE_INITIALIZED</b>, <b>log_dev</b>, and
+  <b>lifecycle_t::state</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_coverage_enabled()</b>,
     <b>asciichat_instr_runtime_get()</b>,
     <b>asciichat_pcre2_singleton_get_code()</b>, <b>audio_client_init()</b>,
@@ -229,76 +309,121 @@
     <b>splash_set_update_notification()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> lifecycle_init_once (lifecycle_t * lc)</h2>
-<p class="Pp">Definition at line <b>39</b> of file <b>lifecycle.c</b>.</p>
-<pre>39                                           {
-40   if (lc == NULL) {
-41     log_dev(&quot;[lifecycle] init_once: NULL lifecycle pointer&quot;);
-42     return false;
-43   }
-44 
-45   uint64_t expected = LIFECYCLE_UNINITIALIZED;
-46   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_INITIALIZING)) {
-47     // If already initialized, just return false (no work needed)
-48     if (expected == LIFECYCLE_INITIALIZED) {
-49       log_dev(&quot;[lifecycle] init_once: already initialized&quot;);
-50       return false;
-51     }
-52 
-53     // If dead, never allow re-init
-54     if (expected == LIFECYCLE_DEAD) {
-55       log_dev(&quot;[lifecycle] init_once: module is dead, no re-init allowed&quot;);
-56       return false;
-57     }
-58 
-59     // If initializing, don't spin (caller may be retrying or it may complete asynchronously)
-60     // Just return false to indicate this thread doesn't need to do init work
-61     if (expected == LIFECYCLE_INITIALIZING) {
-62       log_dev(&quot;[lifecycle] init_once: already initializing, skipping (will resolve asynchronously)&quot;);
-63       return false;
-64     }
-65 
-66     // Unexpected state
-67     log_dev(&quot;[lifecycle] init_once: unexpected state: %d&quot;, expected);
-68     return false;
-69   }
-70 
-71   // Winner: state is now LIFECYCLE_INITIALIZING
-72   // Caller must call lifecycle_init_commit() or lifecycle_init_abort()
-73   log_dev(&quot;[lifecycle] init_once: won CAS, transitioned to INITIALIZING&quot;);
-74   return true;
-75 }</pre>
+<h2 class="Ss"><b>bool</b> lifecycle_init_once (<b>lifecycle_t</b> * lc)</h2>
+<p class="Pp">Lock-free concurrent initialization: CAS UNINIT &#x2192;
+    INITIALIZING.</p>
+<p class="Pp"></p>
+<p class="Pp">Winner receives true and must complete the two-phase sequence:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Do actual init work</dd>
+  <dt>2.</dt>
+  <dd>Call <b>lifecycle_init_commit()</b> on success or
+      <b>lifecycle_init_abort()</b> on failure</dd>
+</dl>
+<p class="Pp">Losing callers spin on the transient INITIALIZING state until the
+    winner commits, then return false without doing work.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if THIS caller won the init race and should do work
+<p class="Pp"></p>
+<p class="Pp">false if init already happened (or is in progress) or module is
+    DEAD</p>
+</div>
+<p class="Pp">Safe for concurrent callers. Exactly one caller gets true (the CAS
+    winner). Other concurrent callers spin until the winner moves to INITIALIZED
+    or DEAD.</p>
+<p class="Pp">Definition at line <b>40</b> of file <b>lifecycle.c</b>.</p>
+<pre>40                                           {
+41   if (lc == NULL) {
+42     log_dev(&quot;[lifecycle] init_once: NULL lifecycle pointer&quot;);
+43     return false;
+44   }
+45 
+46   uint64_t expected = LIFECYCLE_UNINITIALIZED;
+47   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_INITIALIZING)) {
+48     // If already initialized, just return false (no work needed)
+49     if (expected == LIFECYCLE_INITIALIZED) {
+50       log_dev(&quot;[lifecycle] init_once: already initialized&quot;);
+51       return false;
+52     }
+53 
+54     // If dead, never allow re-init
+55     if (expected == LIFECYCLE_DEAD) {
+56       log_dev(&quot;[lifecycle] init_once: module is dead, no re-init allowed&quot;);
+57       return false;
+58     }
+59 
+60     // If initializing, don't spin (caller may be retrying or it may complete asynchronously)
+61     // Just return false to indicate this thread doesn't need to do init work
+62     if (expected == LIFECYCLE_INITIALIZING) {
+63       log_dev(&quot;[lifecycle] init_once: already initializing, skipping (will resolve asynchronously)&quot;);
+64       return false;
+65     }
+66 
+67     // Unexpected state
+68     log_dev(&quot;[lifecycle] init_once: unexpected state: %d&quot;, expected);
+69     return false;
+70   }
+71 
+72   // Winner: state is now LIFECYCLE_INITIALIZING
+73   // Caller must call lifecycle_init_commit() or lifecycle_init_abort()
+74   log_dev(&quot;[lifecycle] init_once: won CAS, transitioned to INITIALIZING&quot;);
+75   return true;
+76 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_cas_u64()</b>.</p>
+<p class="Pp">References <b>atomic_cas_u64()</b>, <b>LIFECYCLE_DEAD</b>,
+    <b>LIFECYCLE_INITIALIZED</b>, <b>LIFECYCLE_INITIALIZING</b>,
+    <b>LIFECYCLE_UNINITIALIZED</b>, <b>log_dev</b>, and
+    <b>lifecycle_t::state</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_coverage_enabled()</b>,
     <b>asciichat_instr_runtime_get()</b>, <b>audio_client_init()</b>,
     <b>log_search_init()</b>, and <b>splash_set_update_notification()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> lifecycle_is_dead (const lifecycle_t * lc)</h2>
-<p class="Pp">Definition at line <b>148</b> of file <b>lifecycle.c</b>.</p>
-<pre>148                                               {
-149   if (lc == NULL)
-150     return false;
-151   return atomic_load_u64(&amp;lc-&gt;state) == LIFECYCLE_DEAD;
-152 }</pre>
+<h2 class="Ss"><b>bool</b> lifecycle_is_dead (const <b>lifecycle_t</b> *
+  lc)</h2>
+<p class="Pp">Query: is module in DEAD state?</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if state == LIFECYCLE_DEAD</div>
+<p class="Pp">Load-only, no side effects. Safe to call from any thread.</p>
+<p class="Pp">Definition at line <b>149</b> of file <b>lifecycle.c</b>.</p>
+<pre>149                                               {
+150   if (lc == NULL)
+151     return false;
+152   return atomic_load_u64(&amp;lc-&gt;state) == LIFECYCLE_DEAD;
+153 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>.</p>
+<p class="Pp">References <b>atomic_load_u64()</b>, <b>LIFECYCLE_DEAD</b>, and
+    <b>lifecycle_t::state</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> lifecycle_is_initialized (const lifecycle_t *
+<h2 class="Ss"><b>bool</b> lifecycle_is_initialized (const <b>lifecycle_t</b> *
   lc)</h2>
-<p class="Pp">Definition at line <b>142</b> of file <b>lifecycle.c</b>.</p>
-<pre>142                                                      {
-143   if (lc == NULL)
-144     return false;
-145   return atomic_load_u64(&amp;lc-&gt;state) == LIFECYCLE_INITIALIZED;
-146 }</pre>
+<p class="Pp">Query: is module in INITIALIZED state?</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if state == LIFECYCLE_INITIALIZED</div>
+<p class="Pp">Load-only, no side effects. Safe to call from any thread.</p>
+<p class="Pp">Definition at line <b>143</b> of file <b>lifecycle.c</b>.</p>
+<pre>143                                                      {
+144   if (lc == NULL)
+145     return false;
+146   return atomic_load_u64(&amp;lc-&gt;state) == LIFECYCLE_INITIALIZED;
+147 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>.</p>
+<p class="Pp">References <b>atomic_load_u64()</b>, <b>LIFECYCLE_INITIALIZED</b>,
+    and <b>lifecycle_t::state</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_error_stats_get()</b>,
     <b>asciichat_error_stats_print()</b>, <b>asciichat_error_stats_record()</b>,
     <b>asciichat_error_stats_reset()</b>,
@@ -334,70 +459,104 @@
     <b>timer_system_init()</b>, and <b>webrtc_create_peer_connection()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> lifecycle_reset (lifecycle_t * lc)</h2>
-<p class="Pp">Definition at line <b>154</b> of file <b>lifecycle.c</b>.</p>
-<pre>154                                       {
-155   if (lc == NULL) {
-156     log_dev(&quot;[lifecycle] reset: NULL lifecycle pointer&quot;);
-157     return false;
-158   }
-159 
-160   uint64_t expected = LIFECYCLE_INITIALIZED;
-161   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_UNINITIALIZED)) {
-162     log_dev(&quot;[lifecycle] reset: not in INITIALIZED state (current: %d)&quot;, expected);
-163     return false; // Not in INITIALIZED state
-164   }
-165 
-166   /* Winner: destroy sync primitive if configured (reset keeps same primitive) */
-167   if (lc-&gt;sync_type == LIFECYCLE_SYNC_MUTEX &amp;&amp; lc-&gt;sync.mutex != NULL) {
-168     log_dev(&quot;[lifecycle] reset: destroying and resetting mutex&quot;);
-169     mutex_destroy(lc-&gt;sync.mutex);
-170   } else if (lc-&gt;sync_type == LIFECYCLE_SYNC_RWLOCK &amp;&amp; lc-&gt;sync.rwlock != NULL) {
-171     log_dev(&quot;[lifecycle] reset: destroying and resetting rwlock&quot;);
-172     rwlock_destroy(lc-&gt;sync.rwlock);
-173   } else {
-174     log_dev(&quot;[lifecycle] reset: completed (no sync primitive, allows reinit)&quot;);
-175   }
-176 
-177   return true;
-178 }</pre>
+<h2 class="Ss"><b>bool</b> lifecycle_reset (<b>lifecycle_t</b> * lc)</h2>
+<p class="Pp">Reset initialized module: INITIALIZED &#x2192; UNINITIALIZED.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state (may include sync_type and sync
+  pointer)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if THIS caller should do reset work
+<p class="Pp"></p>
+<p class="Pp">false if not INITIALIZED or in DEAD state</p>
+</div>
+<p class="Pp">Allows re-initialization after reset (like shutdown, but keeps
+    sync primitives). If lc-&gt;sync_type != SYNC_NONE, destroys the sync
+    primitive (will be recreated on next init). Used for modules that support
+    reset/reinit cycles (e.g., client crypto reconnect).</p>
+<p class="Pp">Definition at line <b>155</b> of file <b>lifecycle.c</b>.</p>
+<pre>155                                       {
+156   if (lc == NULL) {
+157     log_dev(&quot;[lifecycle] reset: NULL lifecycle pointer&quot;);
+158     return false;
+159   }
+160 
+161   uint64_t expected = LIFECYCLE_INITIALIZED;
+162   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_UNINITIALIZED)) {
+163     log_dev(&quot;[lifecycle] reset: not in INITIALIZED state (current: %d)&quot;, expected);
+164     return false; // Not in INITIALIZED state
+165   }
+166 
+167   /* Winner: destroy sync primitive if configured (reset keeps same primitive) */
+168   if (lc-&gt;sync_type == LIFECYCLE_SYNC_MUTEX &amp;&amp; lc-&gt;sync.mutex != NULL) {
+169     log_dev(&quot;[lifecycle] reset: destroying and resetting mutex&quot;);
+170     mutex_destroy(lc-&gt;sync.mutex);
+171   } else if (lc-&gt;sync_type == LIFECYCLE_SYNC_RWLOCK &amp;&amp; lc-&gt;sync.rwlock != NULL) {
+172     log_dev(&quot;[lifecycle] reset: destroying and resetting rwlock&quot;);
+173     rwlock_destroy(lc-&gt;sync.rwlock);
+174   } else {
+175     log_dev(&quot;[lifecycle] reset: completed (no sync primitive, allows reinit)&quot;);
+176   }
+177 
+178   return true;
+179 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_cas_u64()</b>, and
-  <b>mutex_destroy()</b>.</p>
+<p class="Pp">References <b>atomic_cas_u64()</b>, <b>LIFECYCLE_INITIALIZED</b>,
+    <b>LIFECYCLE_SYNC_MUTEX</b>, <b>LIFECYCLE_SYNC_RWLOCK</b>,
+    <b>LIFECYCLE_UNINITIALIZED</b>, <b>log_dev</b>, <b>lifecycle_t::mutex</b>,
+    <b>mutex_destroy()</b>, <b>lifecycle_t::rwlock</b>, <b>rwlock_destroy()</b>,
+    <b>lifecycle_t::state</b>, <b>lifecycle_t::sync</b>, and
+    <b>lifecycle_t::sync_type</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_init()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> lifecycle_shutdown (lifecycle_t * lc)</h2>
-<p class="Pp">Definition at line <b>95</b> of file <b>lifecycle.c</b>.</p>
-<pre>95                                          {
-96   if (lc == NULL) {
-97     log_dev(&quot;[lifecycle] shutdown: NULL lifecycle pointer&quot;);
-98     return false;
-99   }
-100   uint64_t expected = LIFECYCLE_INITIALIZED;
-101   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_UNINITIALIZED)) {
-102     log_dev(&quot;[lifecycle] shutdown: not in INITIALIZED state (current: %d)&quot;, expected);
-103     return false; // Not initialized or in unexpected state
-104   }
-105 
-106   /* Winner: destroy sync primitive if configured */
-107   if (lc-&gt;sync_type == LIFECYCLE_SYNC_MUTEX &amp;&amp; lc-&gt;sync.mutex != NULL) {
-108     log_dev(&quot;[lifecycle] shutdown: destroying mutex&quot;);
-109     mutex_destroy(lc-&gt;sync.mutex);
-110   } else if (lc-&gt;sync_type == LIFECYCLE_SYNC_RWLOCK &amp;&amp; lc-&gt;sync.rwlock != NULL) {
-111     log_dev(&quot;[lifecycle] shutdown: destroying rwlock&quot;);
-112     rwlock_destroy(lc-&gt;sync.rwlock);
-113   } else {
-114     log_dev(&quot;[lifecycle] shutdown: completed (no sync primitive)&quot;);
-115   }
-116 
-117   return true;
-118 }</pre>
+<h2 class="Ss"><b>bool</b> lifecycle_shutdown (<b>lifecycle_t</b> * lc)</h2>
+<p class="Pp">Regular shutdown: INITIALIZED &#x2192; UNINITIALIZED.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state (may include sync_type and sync
+  pointer)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if THIS caller should do shutdown work
+<p class="Pp"></p>
+<p class="Pp">false if already UNINITIALIZED or DEAD</p>
+</div>
+<p class="Pp">Allows re-initialization after shutdown (unlike shutdown_forever).
+    If lc-&gt;sync_type != SYNC_NONE, destroys the sync primitive.</p>
+<p class="Pp">Definition at line <b>96</b> of file <b>lifecycle.c</b>.</p>
+<pre>96                                          {
+97   if (lc == NULL) {
+98     log_dev(&quot;[lifecycle] shutdown: NULL lifecycle pointer&quot;);
+99     return false;
+100   }
+101   uint64_t expected = LIFECYCLE_INITIALIZED;
+102   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_UNINITIALIZED)) {
+103     log_dev(&quot;[lifecycle] shutdown: not in INITIALIZED state (current: %d)&quot;, expected);
+104     return false; // Not initialized or in unexpected state
+105   }
+106 
+107   /* Winner: destroy sync primitive if configured */
+108   if (lc-&gt;sync_type == LIFECYCLE_SYNC_MUTEX &amp;&amp; lc-&gt;sync.mutex != NULL) {
+109     log_dev(&quot;[lifecycle] shutdown: destroying mutex&quot;);
+110     mutex_destroy(lc-&gt;sync.mutex);
+111   } else if (lc-&gt;sync_type == LIFECYCLE_SYNC_RWLOCK &amp;&amp; lc-&gt;sync.rwlock != NULL) {
+112     log_dev(&quot;[lifecycle] shutdown: destroying rwlock&quot;);
+113     rwlock_destroy(lc-&gt;sync.rwlock);
+114   } else {
+115     log_dev(&quot;[lifecycle] shutdown: completed (no sync primitive)&quot;);
+116   }
+117 
+118   return true;
+119 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_cas_u64()</b>, and
-  <b>mutex_destroy()</b>.</p>
+<p class="Pp">References <b>atomic_cas_u64()</b>, <b>LIFECYCLE_INITIALIZED</b>,
+    <b>LIFECYCLE_SYNC_MUTEX</b>, <b>LIFECYCLE_SYNC_RWLOCK</b>,
+    <b>LIFECYCLE_UNINITIALIZED</b>, <b>log_dev</b>, <b>lifecycle_t::mutex</b>,
+    <b>mutex_destroy()</b>, <b>lifecycle_t::rwlock</b>, <b>rwlock_destroy()</b>,
+    <b>lifecycle_t::state</b>, <b>lifecycle_t::sync</b>, and
+    <b>lifecycle_t::sync_type</b>.</p>
 <p class="Pp">Referenced by <b>acds_strings_destroy()</b>,
     <b>asciichat_instr_runtime_global_destroy()</b>,
     <b>asciichat_pcre2_cleanup_all()</b>, <b>audio_sender_cleanup()</b>,
@@ -411,33 +570,49 @@
     <b>symbol_cache_destroy()</b>, and <b>timer_system_destroy()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> lifecycle_shutdown_forever (lifecycle_t * lc)</h2>
-<p class="Pp">Definition at line <b>120</b> of file <b>lifecycle.c</b>.</p>
-<pre>120                                                  {
-121   if (lc == NULL) {
-122     log_dev(&quot;[lifecycle] shutdown_forever: NULL lifecycle pointer&quot;);
-123     return false;
-124   }
-125 
-126   uint64_t current;
-127   do {
-128     current = atomic_load_u64(&amp;lc-&gt;state);
-129     if (current == LIFECYCLE_DEAD) {
-130       log_dev(&quot;[lifecycle] shutdown_forever: already DEAD&quot;);
-131       return false;
-132     }
-133     if (current == LIFECYCLE_INITIALIZING) {
-134       log_dev(&quot;[lifecycle] shutdown_forever: spinning on INITIALIZING&quot;);
-135     }
-136   } while (current == LIFECYCLE_INITIALIZING || !atomic_cas_u64(&amp;lc-&gt;state, &amp;current, LIFECYCLE_DEAD));
-137 
-138   log_dev(&quot;[lifecycle] shutdown_forever: transitioned to DEAD (was in state: %d)&quot;, current);
-139   return current == LIFECYCLE_INITIALIZED;
-140 }</pre>
+<h2 class="Ss"><b>bool</b> lifecycle_shutdown_forever (<b>lifecycle_t</b> *
+  lc)</h2>
+<p class="Pp">Permanent shutdown: any non-DEAD &#x2192; DEAD.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if module was INITIALIZED and caller should do
+  shutdown work
+<p class="Pp"></p>
+<p class="Pp">false if already DEAD</p>
+</div>
+<p class="Pp">Once DEAD, future init/init_once calls always return false. Spins
+    if called while init_once is in progress (INITIALIZING state). Used for
+    modules that must never be re-initialized.</p>
+<p class="Pp">Definition at line <b>121</b> of file <b>lifecycle.c</b>.</p>
+<pre>121                                                  {
+122   if (lc == NULL) {
+123     log_dev(&quot;[lifecycle] shutdown_forever: NULL lifecycle pointer&quot;);
+124     return false;
+125   }
+126 
+127   uint64_t current;
+128   do {
+129     current = atomic_load_u64(&amp;lc-&gt;state);
+130     if (current == LIFECYCLE_DEAD) {
+131       log_dev(&quot;[lifecycle] shutdown_forever: already DEAD&quot;);
+132       return false;
+133     }
+134     if (current == LIFECYCLE_INITIALIZING) {
+135       log_dev(&quot;[lifecycle] shutdown_forever: spinning on INITIALIZING&quot;);
+136     }
+137   } while (current == LIFECYCLE_INITIALIZING || !atomic_cas_u64(&amp;lc-&gt;state, &amp;current, LIFECYCLE_DEAD));
+138 
+139   log_dev(&quot;[lifecycle] shutdown_forever: transitioned to DEAD (was in state: %d)&quot;, current);
+140   return current == LIFECYCLE_INITIALIZED;
+141 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_cas_u64()</b>, and
-  <b>atomic_load_u64()</b>.</p>
+<p class="Pp">References <b>atomic_cas_u64()</b>, <b>atomic_load_u64()</b>,
+    <b>LIFECYCLE_DEAD</b>, <b>LIFECYCLE_INITIALIZED</b>,
+    <b>LIFECYCLE_INITIALIZING</b>, <b>log_dev</b>, and
+    <b>lifecycle_t::state</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -447,7 +622,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>simple_frame_swap_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">simple_frame_swap_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">simple_frame_swap_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">simple_frame_swap_t - Simple atomic frame swap structure.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/video/rgba/video_frame.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>atomic_t</b> <b>current_frame</b>
+  <br/>
+  Atomic pointer to current frame (stored as <b>uint64_t</b>).
+    <b>video_frame_t</b> <b>frame_a</b>
+  <br/>
+  First pre-allocated frame. <b>video_frame_t</b> <b>frame_b</b>
+  <br/>
+  Second pre-allocated frame. <b>atomic_t</b> <b>use_frame_a</b>
+  <br/>
+  Atomic flag: true = use frame_a next, false = use frame_b.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Simple atomic frame swap structure.</p>
+<p class="Pp">Simplified frame management for basic use cases that don't need
+    statistics. Uses atomic pointer swaps for lock-free frame updates. This is
+    the pattern used by many video streaming services for simple frame
+  delivery.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This is a lighter-weight alternative to
+  <b>video_frame_buffer_t</b> when statistics tracking is not needed.
+<p class="Pp"></p>
+<p class="Pp">Uses two pre-allocated frames that alternate on each update.</p>
+<p class="Pp"></p>
+<p class="Pp">Atomic pointer swap enables lock-free operation.</p>
+</div>
+<p class="Pp">Definition at line <b>262</b> of file <b>video_frame.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> simple_frame_swap_t::current_frame</h2>
+<p class="Pp">Atomic pointer to current frame (stored as <b>uint64_t</b>).</p>
+<p class="Pp">Definition at line <b>263</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>simple_frame_swap_create()</b>,
+    <b>simple_frame_swap_get()</b>, and <b>simple_frame_swap_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>video_frame_t</b> simple_frame_swap_t::frame_a</h2>
+<p class="Pp">First pre-allocated frame.</p>
+<p class="Pp">Definition at line <b>264</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>simple_frame_swap_create()</b>,
+    <b>simple_frame_swap_destroy()</b>, and
+  <b>simple_frame_swap_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>video_frame_t</b> simple_frame_swap_t::frame_b</h2>
+<p class="Pp">Second pre-allocated frame.</p>
+<p class="Pp">Definition at line <b>265</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>simple_frame_swap_create()</b>,
+    <b>simple_frame_swap_destroy()</b>, and
+  <b>simple_frame_swap_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> simple_frame_swap_t::use_frame_a</h2>
+<p class="Pp">Atomic flag: true = use frame_a next, false = use frame_b.</p>
+<p class="Pp">Definition at line <b>266</b> of file <b>video_frame.h</b>.</p>
+<p class="Pp">Referenced by <b>simple_frame_swap_create()</b>, and
+    <b>simple_frame_swap_update()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -53,41 +53,54 @@
 <p class="Pp">void <b>log_msg</b> (<b>log_level_t</b> level, const char *file,
     int line, const char *func, const char *fmt,...)
   <br/>
-  void <b>log_file_msg</b> (const char *format,...)
+  Log a message at a specific level. void <b>log_file_msg</b> (const char
+    *format,...)
   <br/>
-  void <b>log_plain_msg</b> (const char *format,...)
+  Log to file only, no stderr output. void <b>log_plain_msg</b> (const char
+    *format,...)
   <br/>
-  void <b>log_msg_internal</b> (const char *level, const char *file, int line,
-    const char *func, const char *format,...)
+  Plain logging without timestamps or levels. void <b>log_msg_internal</b>
+    (const char *level, const char *file, int line, const char *func, const char
+    *format,...)
   <br/>
   void <b>log_terminal_msg</b> (<b>log_level_t</b> level, const char *file, int
     line, const char *func, const char *fmt,...)
   <br/>
-  int <b>log_template_parse</b> (const char *template_str)
+  Log a message to terminal only (no file output). int <b>log_template_parse</b>
+    (const char *template_str)
   <br/>
   void <b>log_plain_stderr_msg</b> (const char *format,...)
   <br/>
-  char * <b>format_message</b> (const char *format, va_list <b>args</b>)
+  Plain logging to stderr with newline. char * <b>format_message</b> (const char
+    *format, va_list <b>args</b>)
   <br/>
-  <b>log_level_t</b> <b>log_get_level</b> (void)
+  Format a message using va_list. <b>log_level_t</b> <b>log_get_level</b> (void)
   <br/>
-  void <b>log_set_level</b> (<b>log_level_t</b> level)
+  Get the current minimum log level. void <b>log_set_level</b>
+    (<b>log_level_t</b> level)
   <br/>
-  void <b>log_set_color_scheme</b> (const <b>color_scheme_t</b> *scheme)
+  Set the minimum log level. void <b>log_set_color_scheme</b> (const
+    <b>color_scheme_t</b> *scheme)
   <br/>
-  void <b>log_set_terminal_output</b> (<b>bool</b> <b>enabled</b>)
+  Set the color scheme for logging output. void <b>log_set_terminal_output</b>
+    (<b>bool</b> <b>enabled</b>)
   <br/>
-  <b>bool</b> <b>log_get_terminal_output</b> (void)
+  Control stderr output to terminal. <b>bool</b> <b>log_get_terminal_output</b>
+    (void)
   <br/>
-  const char * <b>log_level_color</b> (<b>log_color_t</b> color)
+  Get current terminal output setting. const char * <b>log_level_color</b>
+    (<b>log_color_t</b> color)
   <br/>
-  void <b>log_init</b> (const char *filename, <b>log_level_t</b> level,
-    <b>bool</b> force_stderr, <b>bool</b> use_mmap)
+  Get color string for a given color enum. void <b>log_init</b> (const char
+    *filename, <b>log_level_t</b> level, <b>bool</b> force_stderr, <b>bool</b>
+    use_mmap)
   <br/>
-  void <b>log_init_colors</b> (void)
+  Initialize the logging system. void <b>log_init_colors</b> (void)
   <br/>
-  void <b>debug_sync_print_state</b> (void)
+  Initialize logging color system with current terminal capabilities. void
+    <b>debug_sync_print_state</b> (void)
   <br/>
+  Print all synchronization primitive states at once.
   <br/>
 </p>
 </section>
@@ -104,7 +117,8 @@
 <h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss">typedef int <b>color_scheme_t</b></h2>
+<h2 class="Ss" id="typedef_int_color_scheme_t"><a class="permalink" href="#typedef_int_color_scheme_t">typedef
+  int color_scheme_t</a></h2>
 <p class="Pp">Definition at line <b>13</b> of file
   <b>platform/wasm/log.c</b>.</p>
 </section>
@@ -123,114 +137,6 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="void_debug_sync_print_state_(void_)"><a class="permalink" href="#void_debug_sync_print_state_(void_)">void
-  debug_sync_print_state (void )</a></h2>
-<p class="Pp">Definition at line <b>98</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-<pre>98                                   {
-99 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_format_message_(const_char_*_format,_va_list_args)"><a class="permalink" href="#char_*_format_message_(const_char_*_format,_va_list_args)">char
-  * format_message (const char * format, va_list args)</a></h2>
-<p class="Pp">Definition at line <b>57</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-<pre>57                                                        {
-58   (void)format;
-59   (void)args;
-60   return NULL;
-61 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_file_msg_(const_char_*_format,__"><a class="permalink" href="#void_log_file_msg_(const_char_*_format,__">void
-  log_file_msg (const char * format, ...)</a></h2>
-<p class="Pp">Definition at line <b>24</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-<pre>24                                            {
-25   (void)format;
-26 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>log_level_t</b> log_get_level (void )</h2>
-<p class="Pp">Definition at line <b>63</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-<pre>63                                 {
-64   return 0;
-65 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> log_get_terminal_output (void )</h2>
-<p class="Pp">Definition at line <b>79</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-<pre>79                                    {
-80   return false;
-81 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_init_(const_char_*_filename,_"><a class="permalink" href="#void_log_init_(const_char_*_filename,_">void
-  log_init (const char * filename, <b>log_level_t</b> level, <b>bool</b>
-  force_stderr, <b>bool</b> use_mmap)</a></h2>
-<p class="Pp">Definition at line <b>88</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-<pre>88                                                                                          {
-89   (void)filename;
-90   (void)level;
-91   (void)force_stderr;
-92   (void)use_mmap;
-93 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_init_colors_(void_)"><a class="permalink" href="#void_log_init_colors_(void_)">void
-  log_init_colors (void )</a></h2>
-<p class="Pp">Definition at line <b>95</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-<pre>95                            {
-96 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_log_level_color_("><a class="permalink" href="#const_char_*_log_level_color_(">const
-  char * log_level_color (<b>log_color_t</b> color)</a></h2>
-<p class="Pp">Definition at line <b>83</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-<pre>83                                                {
-84   (void)color;
-85   return &quot;&quot;;
-86 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_msg_("><a class="permalink" href="#void_log_msg_(">void
-  log_msg (<b>log_level_t</b> level, const char * file, int line, const char *
-  func, const char * fmt, ...)</a></h2>
-<p class="Pp">Definition at line <b>16</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-<pre>16                                                                                                     {
-17   (void)level;
-18   (void)file;
-19   (void)line;
-20   (void)func;
-21   (void)fmt;
-22 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="void_log_msg_internal_(const_char_*_level,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_format,__"><a class="permalink" href="#void_log_msg_internal_(const_char_*_level,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_format,__">void
   log_msg_internal (const char * level, const char * file, int line, const char
   * func, const char * format, ...)</a></h2>
@@ -247,62 +153,6 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_log_plain_msg_(const_char_*_format,__"><a class="permalink" href="#void_log_plain_msg_(const_char_*_format,__">void
-  log_plain_msg (const char * format, ...)</a></h2>
-<p class="Pp">Definition at line <b>28</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-<pre>28                                             {
-29   (void)format;
-30 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_plain_stderr_msg_(const_char_*_format,__"><a class="permalink" href="#void_log_plain_stderr_msg_(const_char_*_format,__">void
-  log_plain_stderr_msg (const char * format, ...)</a></h2>
-<p class="Pp">Definition at line <b>53</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-<pre>53                                                    {
-54   (void)format;
-55 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_set_color_scheme_(const_"><a class="permalink" href="#void_log_set_color_scheme_(const_">void
-  log_set_color_scheme (const <b>color_scheme_t</b> * scheme)</a></h2>
-<p class="Pp">Definition at line <b>71</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-<pre>71                                                         {
-72   (void)scheme;
-73 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_set_level_("><a class="permalink" href="#void_log_set_level_(">void
-  log_set_level (<b>log_level_t</b> level)</a></h2>
-<p class="Pp">Definition at line <b>67</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-<pre>67                                       {
-68   (void)level;
-69 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_set_terminal_output_("><a class="permalink" href="#void_log_set_terminal_output_(">void
-  log_set_terminal_output (<b>bool</b> enabled)</a></h2>
-<p class="Pp">Definition at line <b>75</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-<pre>75                                            {
-76   (void)enabled;
-77 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>enabled</b>.</p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="int_log_template_parse_(const_char_*_template_str)"><a class="permalink" href="#int_log_template_parse_(const_char_*_template_str)">int
   log_template_parse (const char * template_str)</a></h2>
 <p class="Pp">Definition at line <b>48</b> of file
@@ -314,22 +164,6 @@
 <pre></pre>
 <p class="Pp"></p>
 </section>
-<section class="Ss">
-<h2 class="Ss" id="void_log_terminal_msg_("><a class="permalink" href="#void_log_terminal_msg_(">void
-  log_terminal_msg (<b>log_level_t</b> level, const char * file, int line, const
-  char * func, const char * fmt, ...)</a></h2>
-<p class="Pp">Definition at line <b>40</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-<pre>40                                                                                                              {
-41   (void)level;
-42   (void)file;
-43   (void)line;
-44   (void)func;
-45   (void)fmt;
-46 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
@@ -338,7 +172,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

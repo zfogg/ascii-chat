@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>fps_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">fps_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">fps_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">fps_t - FPS tracking state.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/util/fps.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint64_t</b> <b>frame_count</b>
+  <br/>
+  <b>uint64_t</b> <b>last_fps_report_ns</b>
+  <br/>
+  <b>uint64_t</b> <b>last_frame_time_ns</b>
+  <br/>
+  int <b>expected_fps</b>
+  <br/>
+  <b>uint64_t</b> <b>report_interval_ns</b>
+  <br/>
+  const char * <b>tracker_name</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">FPS tracking state.</p>
+<p class="Pp">Maintains timing information for FPS calculation and lag
+    detection. All timing fields use nanosecond precision (<b>uint64_t</b>).
+    Should be zero-initialized on creation.</p>
+<p class="Pp">Definition at line <b>52</b> of file <b>fps.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_fps_t::expected_fps"><a class="permalink" href="#int_fps_t::expected_fps">int
+  fps_t::expected_fps</a></h2>
+<p class="Pp">Definition at line <b>56</b> of file <b>fps.h</b>.</p>
+<p class="Pp">Referenced by <b>fps_frame_ns()</b>, and
+    <b>fps_init_with_interval()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> fps_t::frame_count</h2>
+<p class="Pp">Definition at line <b>53</b> of file <b>fps.h</b>.</p>
+<p class="Pp">Referenced by <b>fps_frame_ns()</b>, and
+    <b>fps_init_with_interval()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> fps_t::last_fps_report_ns</h2>
+<p class="Pp">Definition at line <b>54</b> of file <b>fps.h</b>.</p>
+<p class="Pp">Referenced by <b>fps_frame_ns()</b>, and
+    <b>fps_init_with_interval()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> fps_t::last_frame_time_ns</h2>
+<p class="Pp">Definition at line <b>55</b> of file <b>fps.h</b>.</p>
+<p class="Pp">Referenced by <b>fps_frame_ns()</b>, and
+    <b>fps_init_with_interval()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> fps_t::report_interval_ns</h2>
+<p class="Pp">Definition at line <b>57</b> of file <b>fps.h</b>.</p>
+<p class="Pp">Referenced by <b>fps_frame_ns()</b>, and
+    <b>fps_init_with_interval()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_fps_t::tracker_name"><a class="permalink" href="#const_char*_fps_t::tracker_name">const
+  char* fps_t::tracker_name</a></h2>
+<p class="Pp">Definition at line <b>58</b> of file <b>fps.h</b>.</p>
+<p class="Pp">Referenced by <b>fps_frame_ns()</b>,
+    <b>fps_init_with_interval()</b>, and <b>session_capture_destroy()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

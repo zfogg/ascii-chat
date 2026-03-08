@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>audio_analysis_stats_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">audio_analysis_stats_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">audio_analysis_stats_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">audio_analysis_stats_t - Audio analysis statistics for sent or
+    received audio.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/audio/analysis.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint64_t</b> <b>total_samples</b>
+  <br/>
+  float <b>peak_level</b>
+  <br/>
+  float <b>rms_level</b>
+  <br/>
+  <b>uint64_t</b> <b>clipping_count</b>
+  <br/>
+  <b>uint64_t</b> <b>silent_samples</b>
+  <br/>
+  float <b>dc_offset</b>
+  <br/>
+  <b>uint32_t</b> <b>packets_count</b>
+  <br/>
+  <b>uint32_t</b> <b>packets_dropped</b>
+  <br/>
+  int64_t <b>timestamp_start_ns</b>
+  <br/>
+  int64_t <b>timestamp_end_ns</b>
+  <br/>
+  <b>uint64_t</b> <b>jitter_count</b>
+  <br/>
+  <b>uint64_t</b> <b>discontinuity_count</b>
+  <br/>
+  <b>uint64_t</b> <b>avg_packet_spacing_ns</b>
+  <br/>
+  <b>uint64_t</b> <b>max_gap_ns</b>
+  <br/>
+  <b>uint64_t</b> <b>beep_events</b>
+  <br/>
+  <b>uint64_t</b> <b>tonal_samples</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Audio analysis statistics for sent or received audio.</p>
+<p class="Pp">Definition at line <b>26</b> of file <b>analysis.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b>
+  audio_analysis_stats_t::avg_packet_spacing_ns</h2>
+<p class="Pp">Definition at line <b>40</b> of file <b>analysis.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> audio_analysis_stats_t::beep_events</h2>
+<p class="Pp">Definition at line <b>43</b> of file <b>analysis.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> audio_analysis_stats_t::clipping_count</h2>
+<p class="Pp">Definition at line <b>30</b> of file <b>analysis.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_audio_analysis_stats_t::dc_offset"><a class="permalink" href="#float_audio_analysis_stats_t::dc_offset">float
+  audio_analysis_stats_t::dc_offset</a></h2>
+<p class="Pp">Definition at line <b>32</b> of file <b>analysis.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> audio_analysis_stats_t::discontinuity_count</h2>
+<p class="Pp">Definition at line <b>39</b> of file <b>analysis.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> audio_analysis_stats_t::jitter_count</h2>
+<p class="Pp">Definition at line <b>38</b> of file <b>analysis.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> audio_analysis_stats_t::max_gap_ns</h2>
+<p class="Pp">Definition at line <b>41</b> of file <b>analysis.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> audio_analysis_stats_t::packets_count</h2>
+<p class="Pp">Definition at line <b>33</b> of file <b>analysis.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> audio_analysis_stats_t::packets_dropped</h2>
+<p class="Pp">Definition at line <b>34</b> of file <b>analysis.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_audio_analysis_stats_t::peak_level"><a class="permalink" href="#float_audio_analysis_stats_t::peak_level">float
+  audio_analysis_stats_t::peak_level</a></h2>
+<p class="Pp">Definition at line <b>28</b> of file <b>analysis.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_audio_analysis_stats_t::rms_level"><a class="permalink" href="#float_audio_analysis_stats_t::rms_level">float
+  audio_analysis_stats_t::rms_level</a></h2>
+<p class="Pp">Definition at line <b>29</b> of file <b>analysis.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> audio_analysis_stats_t::silent_samples</h2>
+<p class="Pp">Definition at line <b>31</b> of file <b>analysis.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int64_t_audio_analysis_stats_t::timestamp_end_ns"><a class="permalink" href="#int64_t_audio_analysis_stats_t::timestamp_end_ns">int64_t
+  audio_analysis_stats_t::timestamp_end_ns</a></h2>
+<p class="Pp">Definition at line <b>36</b> of file <b>analysis.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_analysis_print_report()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int64_t_audio_analysis_stats_t::timestamp_start_ns"><a class="permalink" href="#int64_t_audio_analysis_stats_t::timestamp_start_ns">int64_t
+  audio_analysis_stats_t::timestamp_start_ns</a></h2>
+<p class="Pp">Definition at line <b>35</b> of file <b>analysis.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> audio_analysis_stats_t::tonal_samples</h2>
+<p class="Pp">Definition at line <b>44</b> of file <b>analysis.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> audio_analysis_stats_t::total_samples</h2>
+<p class="Pp">Definition at line <b>27</b> of file <b>analysis.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

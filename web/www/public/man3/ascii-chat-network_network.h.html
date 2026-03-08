@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>network.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">network.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">network.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">network.h - &#x1F310; Core network I/O operations with timeout
+    support</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<p class="Pp"><b>Network Timeout Constants</b>
+  <br/>
+  Timeout values tuned for real-time video streaming. All timeouts are specified
+    in seconds.</p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>CONNECT_TIMEOUT</b> 1
+  <br/>
+  Connection timeout in seconds (3 seconds). #define <b>SEND_TIMEOUT</b> 1
+  <br/>
+  Send timeout in seconds (5 seconds). #define <b>RECV_TIMEOUT</b> 30
+  <br/>
+  Receive timeout in seconds (30 seconds). #define <b>ACCEPT_TIMEOUT</b> 1
+  <br/>
+  Accept timeout in seconds (1 second).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Test Environment Detection</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>network_is_test_environment</b>()
+  <br/>
+  Check if we're in a test environment.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Socket Keepalive Settings</b>
+  <br/>
+  Keepalive settings to detect dead connections. TCP keepalive probes are sent
+    when connection is idle to detect broken connections.</p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>KEEPALIVE_IDLE</b> 60
+  <br/>
+  Keepalive idle time in seconds (60 seconds). #define <b>KEEPALIVE_INTERVAL</b>
+    10
+  <br/>
+  Keepalive interval in seconds (10 seconds). #define <b>KEEPALIVE_COUNT</b> 8
+  <br/>
+  Keepalive probe count (8 probes).
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<p class="Pp"><b>Socket I/O Operations</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  ssize_t <b>send_with_timeout</b> (<b>socket_t</b> sockfd, const void *data,
+    size_t len, <b>uint64_t</b> timeout_ns)
+  <br/>
+  Send data with timeout using chunked transmission. ssize_t
+    <b>recv_with_timeout</b> (<b>socket_t</b> sockfd, void *buf, size_t len,
+    <b>uint64_t</b> timeout_ns)
+  <br/>
+  Receive data with timeout. int <b>accept_with_timeout</b> (<b>socket_t</b>
+    listenfd, struct sockaddr *addr, socklen_t *addrlen, <b>uint64_t</b>
+    timeout_ns)
+  <br/>
+  Accept connection with timeout. <b>bool</b> <b>connect_with_timeout</b>
+    (<b>socket_t</b> sockfd, const struct sockaddr *addr, socklen_t addrlen, int
+    timeout_seconds)
+  <br/>
+  Connect to server with timeout.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Socket Configuration Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>asciichat_error_t</b> <b>set_socket_timeout</b> (<b>socket_t</b> sockfd,
+    <b>uint64_t</b> timeout_ns)
+  <br/>
+  Set socket timeout for send/receive operations. <b>asciichat_error_t</b>
+    <b>set_socket_keepalive</b> (<b>socket_t</b> sockfd)
+  <br/>
+  Enable TCP keepalive on socket. <b>asciichat_error_t</b>
+    <b>set_socket_nonblocking</b> (<b>socket_t</b> sockfd)
+  <br/>
+  Set socket to non-blocking mode. <b>asciichat_error_t</b>
+    <b>socket_configure_buffers</b> (<b>socket_t</b> sockfd)
+  <br/>
+  Configure socket buffers and TCP_NODELAY for optimal performance.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Error Reporting Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  const char * <b>network_error_string</b> ()
+  <br/>
+  Get human-readable error string for network errors.
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F310; Core network I/O operations with timeout support</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>network/network.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

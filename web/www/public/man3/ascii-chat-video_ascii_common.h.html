@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>common.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">common.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">common.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">common.h - SIMD-optimized ASCII conversion interface.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>dec3_t</b>
+  <br/>
+  Decimal conversion cache structure (1-3 digits). struct
+    <b>global_dec3_cache_t</b>
+  <br/>
+  Global decimal cache for digit conversion. struct <b>Str</b>
+  <br/>
+  Dynamic string buffer structure. struct <b>RLEState</b>
+  <br/>
+  Run-length encoding state for ANSI color optimization. struct <b>ImageRGB</b>
+  <br/>
+  <b>ImageRGB</b> structure for NEON renderers. struct <b>simd_benchmark_t</b>
+  <br/>
+  SIMD benchmark results structure. struct <b>utf8_char_t</b>
+  <br/>
+  struct <b>utf8_palette_cache</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>RAMP64_SIZE</b> 64
+  <br/>
+  UTF-8 character palette cache. #define <b>CACHE_FREQUENCY_DECAY_TIME</b> 10000
+  <br/>
+  #define <b>CACHE_RECENCY_SCALE</b> 100
+  <br/>
+  #define <b>CACHE_MAX_LIFETIME</b> 3600
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Luminance Calculation Constants</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>LUMA_RED</b> 77
+  <br/>
+  Luminance red coefficient (0.299 * 256 = 77). #define <b>LUMA_GREEN</b> 150
+  <br/>
+  Luminance green coefficient (0.587 * 256 = 150). #define <b>LUMA_BLUE</b> 29
+  <br/>
+  Luminance blue coefficient (0.114 * 256 = 29). #define <b>LUMA_THRESHOLD</b>
+    128
+  <br/>
+  Luminance threshold for rounding.
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>utf8_palette_cache</b>
+    <b>utf8_palette_cache_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>init_dec3</b> (void)
+  <br/>
+  Initialize decimal lookup table. void <b>ascii_simd_init</b> (void)
+  <br/>
+  Initialize SIMD subsystem. void <b>init_default_luminance_palette</b> (void)
+  <br/>
+  Initialize default luminance palette. void <b>str_init</b> (<b>Str</b> *s)
+  <br/>
+  Initialize string buffer. void <b>str_destroy</b> (<b>Str</b> *s)
+  <br/>
+  Free string buffer. void <b>str_reserve</b> (<b>Str</b> *s, size_t need)
+  <br/>
+  Reserve space in string buffer. void <b>str_append_bytes</b> (<b>Str</b> *s,
+    const void *src, size_t n)
+  <br/>
+  Append bytes to string buffer. void <b>str_append_c</b> (<b>Str</b> *s, char
+    c)
+  <br/>
+  Append character to string buffer. void <b>str_printf</b> (<b>Str</b> *s,
+    const char *fmt,...)
+  <br/>
+  Append formatted string to buffer. <b>ImageRGB</b> <b>alloc_image</b> (int w,
+    int h)
+  <br/>
+  Allocate a new <b>ImageRGB</b> (RGB8 format). void
+    <b>convert_pixels_scalar</b> (const rgb_pixel_t *pixels, char *ascii_chars,
+    int count, const char luminance_palette[256])
+  <br/>
+  Convert pixels to ASCII (scalar fallback). char *
+    <b>convert_pixels_scalar_with_newlines</b> (<b>image_t</b> *image, const
+    char luminance_palette[256])
+  <br/>
+  Convert image to ASCII with newlines (scalar fallback).
+    <b>simd_benchmark_t</b> <b>benchmark_simd_conversion</b> (int width, int
+    height, int iterations)
+  <br/>
+  Benchmark SIMD conversion methods (monochrome). <b>simd_benchmark_t</b>
+    <b>benchmark_simd_color_conversion</b> (int width, int height, int
+    iterations, <b>bool</b> background_mode)
+  <br/>
+  Benchmark SIMD color conversion methods. <b>simd_benchmark_t</b>
+    <b>benchmark_simd_conversion_with_source</b> (int width, int height, int
+    iterations, <b>bool</b> background_mode, const <b>image_t</b> *source_image,
+    <b>bool</b> use_256color)
+  <br/>
+  Benchmark SIMD conversion with source image. <b>simd_benchmark_t</b>
+    <b>benchmark_simd_color_conversion_with_source</b> (int width, int height,
+    int iterations, <b>bool</b> background_mode, const <b>image_t</b>
+    *source_image, <b>bool</b> use_256color)
+  <br/>
+  Benchmark SIMD color conversion with source image. void
+    <b>print_simd_capabilities</b> (void)
+  <br/>
+  Print detected SIMD capabilities. char * <b>image_print_color_simd</b>
+    (<b>image_t</b> *image, <b>bool</b> use_background_mode, <b>bool</b>
+    use_256color, const char *ascii_chars)
+  <br/>
+  Print image as ASCII with color using SIMD. void <b>set_color_quality_mode</b>
+    (<b>bool</b> high_quality)
+  <br/>
+  Set color quality mode. <b>bool</b> <b>get_256_color_fast_path</b> (void)
+  <br/>
+  Get 256-color fast path setting. void <b>prewarm_sgr256_fg_cache</b> (void)
+  <br/>
+  Prewarm 256-color foreground cache for benchmarks. void
+    <b>prewarm_sgr256_cache</b> (void)
+  <br/>
+  Prewarm 256-color foreground/background cache for benchmarks. char *
+    <b>get_sgr256_fg_string</b> (<b>uint8_t</b> fg, <b>uint8_t</b> *len_out)
+  <br/>
+  Get 256-color foreground ANSI sequence string. char *
+    <b>get_sgr256_bg_string</b> (<b>uint8_t</b> bg, <b>uint8_t</b> *len_out)
+  <br/>
+  Get 256-color background ANSI sequence string. char *
+    <b>get_sgr256_fg_bg_string</b> (<b>uint8_t</b> fg, <b>uint8_t</b> bg,
+    <b>uint8_t</b> *len_out)
+  <br/>
+  Get 256-color foreground/background ANSI sequence string. size_t
+    <b>write_row_rep_from_arrays_enhanced</b> (const <b>uint8_t</b> *fg_r, const
+    <b>uint8_t</b> *fg_g, const <b>uint8_t</b> *fg_b, const <b>uint8_t</b>
+    *bg_r, const <b>uint8_t</b> *bg_g, const <b>uint8_t</b> *bg_b, const
+    <b>uint8_t</b> *fg_idx, const <b>uint8_t</b> *bg_idx, const char
+    *ascii_chars, int width, char *dst, size_t cap, <b>bool</b> is_truecolor)
+  <br/>
+  Enhanced REP compression writer. void <b>build_utf8_luminance_cache</b> (const
+    char *ascii_chars, <b>utf8_char_t</b> cache[256])
+  <br/>
+  Build UTF-8 luminance cache for all 256 levels. void
+    <b>build_utf8_ramp64_cache</b> (const char *ascii_chars, <b>utf8_char_t</b>
+    cache64[64], <b>uint8_t</b> char_index_ramp[256])
+  <br/>
+  Build UTF-8 ramp64 cache and character index ramp. <b>utf8_palette_cache_t</b>
+    * <b>get_utf8_palette_cache</b> (const char *ascii_chars)
+  <br/>
+  Get UTF-8 palette cache for a character set. void
+    <b>simd_caches_destroy_all</b> (void)
+  <br/>
+  Destroy all SIMD caches (palette and other caches).
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp"><b>global_dec3_cache_t</b> <b>g_dec3_cache</b>
+  <br/>
+  Global decimal cache instance. char <b>g_default_luminance_palette</b> [256]
+  <br/>
+  Default luminance palette (256 characters).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">SIMD-optimized ASCII conversion interface.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>video/ascii/common.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

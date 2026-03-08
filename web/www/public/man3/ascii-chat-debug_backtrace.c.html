@@ -39,28 +39,38 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">void <b>backtrace_capture</b> (backtrace_t *bt)
+<p class="Pp">void <b>backtrace_capture</b> (<b>backtrace_t</b> *bt)
   <br/>
-  void <b>backtrace_symbolize</b> (backtrace_t *bt)
+  Capture current stack into bt. void <b>backtrace_symbolize</b>
+    (<b>backtrace_t</b> *bt)
   <br/>
-  void <b>backtrace_capture_and_symbolize</b> (backtrace_t *bt)
+  Symbolize bt-&gt;ptrs into bt-&gt;symbols. void
+    <b>backtrace_capture_and_symbolize</b> (<b>backtrace_t</b> *bt)
   <br/>
-  void <b>backtrace_t_free</b> (backtrace_t *bt)
+  Capture and symbolize in one call. void <b>backtrace_t_free</b>
+    (<b>backtrace_t</b> *bt)
   <br/>
-  void <b>backtrace_print_simple</b> (int skip_frames)
+  Free backtrace symbols. void <b>backtrace_print</b> (const char *label, const
+    <b>backtrace_t</b> *bt, int skip_frames, int max_frames,
+    <b>backtrace_frame_filter_t</b> filter)
   <br/>
-  void <b>backtrace_print</b> (const char *label, const backtrace_t *bt, int
-    skip_frames, int max_frames, backtrace_frame_filter_t filter)
+  Print backtrace with dual output: colored stderr + plain log file. void
+    <b>backtrace_print_many</b> (const char *label, const <b>backtrace_t</b>
+    *bts, int count)
   <br/>
-  void <b>backtrace_print_many</b> (const char *label, const backtrace_t *bts,
-    int count)
+  Print multiple backtraces. int <b>backtrace_format</b> (char *buf, size_t
+    buf_size, const char *label, const <b>backtrace_t</b> *bt, int skip_frames,
+    int max_frames, <b>backtrace_frame_filter_t</b> filter)
   <br/>
-  int <b>backtrace_format</b> (char *buf, size_t buf_size, const char *label,
-    const backtrace_t *bt, int skip_frames, int max_frames,
-    backtrace_frame_filter_t filter)
+  Format backtrace to buffer (plain ASCII, no colors). void
+    <b>backtrace_log_frames</b> (int num_frames, int skip_frames)
   <br/>
-  void <b>backtrace_log_frames</b> (int num_frames, int skip_frames)
+  Log N backtrace frames with function name, line number, and file. void
+    <b>backtrace_print_symbols</b> (const char *label, char **symbols, int
+    count, int skip_frames, int max_frames, <b>backtrace_frame_filter_t</b>
+    filter)
   <br/>
+  Print pre-resolved backtrace symbols with consistent formatting.
   <br/>
 </p>
 </section>
@@ -78,8 +88,15 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="void_backtrace_capture_(backtrace_t_*_bt)"><a class="permalink" href="#void_backtrace_capture_(backtrace_t_*_bt)">void
-  backtrace_capture (backtrace_t * bt)</a></h2>
+<h2 class="Ss" id="void_backtrace_capture_("><a class="permalink" href="#void_backtrace_capture_(">void
+  backtrace_capture (<b>backtrace_t</b> * bt)</a></h2>
+<p class="Pp">Capture current stack into bt. Calls <b>platform_backtrace()</b>
+    to capture raw return addresses. Does not symbolize (symbols remain
+  NULL).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>bt</i> Backtrace structure to fill (must not be
+  NULL)</div>
 <p class="Pp">Definition at line <b>17</b> of file <b>debug/backtrace.c</b>.</p>
 <pre>17                                         {
 18   if (!bt) {
@@ -90,12 +107,20 @@
 23 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_backtrace()</b>.</p>
+<p class="Pp">References <b>backtrace_t::count</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>platform_backtrace()</b>, <b>backtrace_t::ptrs</b>, and
+  <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>backtrace_capture_and_symbolize()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_backtrace_capture_and_symbolize_(backtrace_t_*_bt)"><a class="permalink" href="#void_backtrace_capture_and_symbolize_(backtrace_t_*_bt)">void
-  backtrace_capture_and_symbolize (backtrace_t * bt)</a></h2>
+<h2 class="Ss" id="void_backtrace_capture_and_symbolize_("><a class="permalink" href="#void_backtrace_capture_and_symbolize_(">void
+  backtrace_capture_and_symbolize (<b>backtrace_t</b> * bt)</a></h2>
+<p class="Pp">Capture and symbolize in one call. Convenience function combining
+    <b>backtrace_capture()</b> and <b>backtrace_symbolize()</b>.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>bt</i> Backtrace structure to fill and symbolize (must
+  not be NULL)</div>
 <p class="Pp">Definition at line <b>36</b> of file <b>debug/backtrace.c</b>.</p>
 <pre>36                                                       {
 37   if (!bt) {
@@ -107,424 +132,531 @@
 43 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>backtrace_capture()</b>, and
-    <b>backtrace_symbolize()</b>.</p>
+<p class="Pp">References <b>backtrace_capture()</b>,
+    <b>backtrace_symbolize()</b>, <b>ERROR_INVALID_PARAM</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_fatal_with_context()</b>, and
     <b>backtrace_log_frames()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_backtrace_format_(char_*_buf,_size_t_buf_size,_const_char_*_label,_const_backtrace_t_*_bt,_int_skip_frames,_int_max_frames,_backtrace_frame_filter_t_filter)"><a class="permalink" href="#int_backtrace_format_(char_*_buf,_size_t_buf_size,_const_char_*_label,_const_backtrace_t_*_bt,_int_skip_frames,_int_max_frames,_backtrace_frame_filter_t_filter)">int
+<h2 class="Ss" id="int_backtrace_format_(char_*_buf,_size_t_buf_size,_const_char_*_label,_const_"><a class="permalink" href="#int_backtrace_format_(char_*_buf,_size_t_buf_size,_const_char_*_label,_const_">int
   backtrace_format (char * buf, size_t buf_size, const char * label, const
-  backtrace_t * bt, int skip_frames, int max_frames, backtrace_frame_filter_t
-  filter)</a></h2>
-<p class="Pp">Definition at line <b>363</b> of file
+  <b>backtrace_t</b> * bt, int skip_frames, int max_frames,
+  <b>backtrace_frame_filter_t</b> filter)</a></h2>
+<p class="Pp">Format backtrace to buffer (plain ASCII, no colors). Formats a
+    backtrace into a plain ASCII buffer without ANSI color codes. This is the
+    safe choice for:</p>
+<ul class="Bl-bullet">
+  <li>Generating log file content</li>
+  <li>Embedding in error messages or email alerts</li>
+  <li>Storing in databases or structured logs</li>
+  <li>Sending over network protocols</li>
+</ul>
+<p class="Pp">The buffer must not be freed before use - the returned count is
+    the number of bytes written. The buffer is null-terminated if space
+  permits.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Output_Example"><a class="permalink" href="#Output_Example">Output
+  Example</a></h2>
+<pre>char buffer[2048];
+backtrace_t bt;
+backtrace_capture_and_symbolize(&amp;bt);
+int written = backtrace_format(buffer, sizeof(buffer),
+<br/>
+                               &quot;Crash&quot;, &amp;bt, 0, 10, NULL);
+if (written &gt; 0) {
+<br/>
+    // Safe to use with logging system
+<br/>
+    log_error(&quot;Program crashed:\n%s&quot;, buffer);
+<br/>
+    // Safe to include in structured fields
+<br/>
+    json_add_string(crash_report, &quot;backtrace&quot;, buffer);
+}</pre>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>buf</i> Output buffer (will be null-terminated if
+  space permits)
+<br/>
+<i>buf_size</i> Size of output buffer in bytes (must be at least 1)
+<br/>
+<i>label</i> Header label (e.g., &quot;Crash&quot;, &quot;Assertion&quot;)
+<br/>
+<i>bt</i> Backtrace to format (must not be NULL, must be symbolized)
+<br/>
+<i>skip_frames</i> Number of frames to skip from start (0 = all)
+<br/>
+<i>max_frames</i> Maximum frames to include (0 = unlimited)
+<br/>
+<i>filter</i> Optional filter callback (NULL = no filtering)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of bytes written (not including null terminator),
+  or -1 on error If buffer is too small, returns the bytes that would be written
+  if space allowed</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Buffer is always null-terminated on success (output &lt;
+  buf_size)
+<p class="Pp"></p>
+<p class="Pp">This is the preferred output method for integration with
+    structured logging</p>
+<p class="Pp"></p>
+<p class="Pp">No ANSI color codes are included, making output safe for any
+    destination</p>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>backtrace_print()</b> for dual (colored terminal +
+  plain log file) output</div>
+<p class="Pp">Definition at line <b>347</b> of file
   <b>debug/backtrace.c</b>.</p>
-<pre>364                                                                       {
-365   if (!buf || buf_size == 0 || !bt || !bt-&gt;symbols || bt-&gt;count &lt;= 0) {
-366     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
-367     return -1;
+<pre>348                                                                       {
+349   if (!buf || buf_size == 0 || !bt || !bt-&gt;symbols || bt-&gt;count &lt;= 0) {
+350     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+351     return -1;
+352   }
+353 
+354   // Capture count and symbols once to avoid TOCTOU race with other threads
+355   int count = bt-&gt;count;
+356   char **symbols = bt-&gt;symbols;
+357 
+358   int offset = 0;
+359 
+360   // Add label
+361   offset += safe_snprintf(buf + offset, buf_size - (size_t)offset, &quot;%s\n&quot;, label);
+362 
+363   // Calculate frame limits
+364   int start = skip_frames;
+365   int end = count;
+366   if (max_frames &gt; 0 &amp;&amp; (start + max_frames) &lt; end) {
+367     end = start + max_frames;
 368   }
 369 
-370   // Capture count and symbols once to avoid TOCTOU race with other threads
-371   int count = bt-&gt;count;
-372   char **symbols = bt-&gt;symbols;
-373 
-374   int offset = 0;
-375 
-376   // Add label
-377   offset += safe_snprintf(buf + offset, buf_size - (size_t)offset, &quot;%s\n&quot;, label);
-378 
-379   // Calculate frame limits
-380   int start = skip_frames;
-381   int end = count;
-382   if (max_frames &gt; 0 &amp;&amp; (start + max_frames) &lt; end) {
-383     end = start + max_frames;
-384   }
+370   // Add frames
+371   int frame_num = 0;
+372   for (int i = start; i &lt; end &amp;&amp; i &lt; count &amp;&amp; offset &lt; (int)buf_size - 128; i++) {
+373     // Safely access symbols[i] - symbols array might be smaller than count or have NULL entries
+374     const char *symbol = NULL;
+375     if (symbols &amp;&amp; symbols[i]) {
+376       symbol = symbols[i];
+377     } else {
+378       symbol = &quot;???&quot;;
+379     }
+380 
+381     // Skip frame if filter says to
+382     if (filter &amp;&amp; filter(symbol)) {
+383       continue;
+384     }
 385 
-386   // Add frames
-387   int frame_num = 0;
-388   for (int i = start; i &lt; end &amp;&amp; i &lt; count &amp;&amp; offset &lt; (int)buf_size - 128; i++) {
-389     // Safely access symbols[i] - symbols array might be smaller than count or have NULL entries
-390     const char *symbol = NULL;
-391     if (symbols &amp;&amp; symbols[i]) {
-392       symbol = symbols[i];
-393     } else {
-394       symbol = &quot;???&quot;;
-395     }
-396 
-397     // Skip frame if filter says to
-398     if (filter &amp;&amp; filter(symbol)) {
-399       continue;
-400     }
-401 
-402     offset += safe_snprintf(buf + offset, buf_size - (size_t)offset, &quot;  [%d] %s\n&quot;, frame_num, symbol);
-403     frame_num++;
-404   }
-405 
-406   return offset;
-407 }</pre>
+386     offset += safe_snprintf(buf + offset, buf_size - (size_t)offset, &quot;  [%d] %s\n&quot;, frame_num, symbol);
+387     frame_num++;
+388   }
+389 
+390   return offset;
+391 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>backtrace_t::count</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>safe_snprintf()</b>, <b>SET_ERRNO</b>, and
+  <b>backtrace_t::symbols</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_backtrace_log_frames_(int_num_frames,_int_skip_frames)"><a class="permalink" href="#void_backtrace_log_frames_(int_num_frames,_int_skip_frames)">void
-  backtrace_log_frames (int num_frames, int skip_frames)</a></h2>
-<p class="Pp">Definition at line <b>409</b> of file
-  <b>debug/backtrace.c</b>.</p>
-<pre>409                                                            {
-410   backtrace_t bt;
-411   backtrace_capture_and_symbolize(&amp;bt);
-412   backtrace_print(&quot;Backtrace&quot;, &amp;bt, skip_frames, num_frames, NULL);
-413   backtrace_t_free(&amp;bt);
-414 }</pre>
-<pre></pre>
+<h2 class="Ss" id="void_backtrace_print_(const_char_*_label,_const_"><a class="permalink" href="#void_backtrace_print_(const_char_*_label,_const_">void
+  backtrace_print (const char * label, const <b>backtrace_t</b> * bt, int
+  skip_frames, int max_frames, <b>backtrace_frame_filter_t</b> filter)</a></h2>
+<p class="Pp">Print backtrace with dual output: colored stderr + plain log file.
+    Intelligently formats and routes backtraces to multiple destinations:</p>
+<ul class="Bl-bullet">
+  <li><b>stderr</b>: Colored output with semantic highlighting (for interactive
+      debugging)</li>
+  <li><b>log file</b> (if logging): Plain ASCII without ANSI codes (for file
+      parsing)</li>
+</ul>
+<p class="Pp">This dual-output design ensures readable terminal output during
+    development while keeping log files clean and searchable in production.</p>
 <p class="Pp"></p>
-<p class="Pp">References <b>backtrace_capture_and_symbolize()</b>,
-    <b>backtrace_print()</b>, and <b>backtrace_t_free()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_backtrace_print_(const_char_*_label,_const_backtrace_t_*_bt,_int_skip_frames,_int_max_frames,_backtrace_frame_filter_t_filter)"><a class="permalink" href="#void_backtrace_print_(const_char_*_label,_const_backtrace_t_*_bt,_int_skip_frames,_int_max_frames,_backtrace_frame_filter_t_filter)">void
-  backtrace_print (const char * label, const backtrace_t * bt, int skip_frames,
-  int max_frames, backtrace_frame_filter_t filter)</a></h2>
-<p class="Pp">Definition at line <b>72</b> of file <b>debug/backtrace.c</b>.</p>
-<pre>73                                                       {
-74   if (!bt || !bt-&gt;symbols || bt-&gt;count &lt;= 0) {
-75     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid backtrace params&quot;);
-76     return;
-77   }
-78 
-79   // Capture count and symbols once to avoid TOCTOU race with other threads
-80   int count = bt-&gt;count;
-81   char **symbols = bt-&gt;symbols;
-82 
-83   // Calculate frame limits
-84   int start = skip_frames;
-85   int end = count;
-86   if (max_frames &gt; 0 &amp;&amp; (start + max_frames) &lt; end) {
-87     end = start + max_frames;
-88   }
+<h2 class="Ss" id="Output_Format"><a class="permalink" href="#Output_Format">Output
+  Format</a></h2>
+<p class="Pp">Terminal output example:</p>
+<p class="Pp"></p>
+<pre>=== Backtrace: Error ===
+[0] 0x7f1234567890 in main() [src/main.c:42]
+[1] 0x7f1234567800 in process_request() [src/network.c:128]
+[2] 0x7f1234567700 in send_data() [src/io.c:67]
+</pre>
+<p class="Pp">Log file (same content, no colors):</p>
+<p class="Pp"></p>
+<pre>=== Backtrace: Error ===
+[0] 0x7f1234567890 in main() [src/main.c:42]
+...
+</pre>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>label</i> Header label (e.g., &quot;Backtrace&quot;,
+  &quot;Leak trace&quot;, &quot;Assertion failure&quot;)
+<br/>
+<i>bt</i> Backtrace to print (must not be NULL, must be symbolized via
+  backtrace_capture_and_symbolize)
+<br/>
+<i>skip_frames</i> Number of frames to skip from start (0 = include all, 1 =
+  skip first frame, etc.)
+<br/>
+<i>max_frames</i> Maximum frames to print (0 = unlimited, 5 = first 5 frames
+  only)
+<br/>
+<i>filter</i> Optional callback to selectively skip frames (e.g., filter
+  internal frames) Return true to skip frame, false to include. NULL = no
+  filtering.</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Backtrace must be symbolized. Unsymbolized (raw hex)
+  traces are less useful.
+<p class="Pp"></p>
+<p class="Pp">Frame filtering is useful to focus on application code,
+  excluding:</p>
+<ul class="Bl-bullet">
+  <li>lib/platform internal calls</li>
+  <li>lib/log infrastructure</li>
+  <li>Exception handling wrappers</li>
+</ul>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>backtrace_format()</b> for buffer-based output (safe
+  for log system)</div>
+<p class="Pp">Definition at line <b>56</b> of file <b>debug/backtrace.c</b>.</p>
+<pre>57                                                       {
+58   if (!bt || !bt-&gt;symbols || bt-&gt;count &lt;= 0) {
+59     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid backtrace params&quot;);
+60     return;
+61   }
+62 
+63   // Capture count and symbols once to avoid TOCTOU race with other threads
+64   int count = bt-&gt;count;
+65   char **symbols = bt-&gt;symbols;
+66 
+67   // Calculate frame limits
+68   int start = skip_frames;
+69   int end = count;
+70   if (max_frames &gt; 0 &amp;&amp; (start + max_frames) &lt; end) {
+71     end = start + max_frames;
+72   }
+73 
+74   // Build backtrace in two versions: colored for terminal, plain for log file
+75   char colored_buffer[16384] = {0};
+76   char plain_buffer[16384] = {0};
+77   int colored_offset = 0;
+78   int plain_offset = 0;
+79 
+80   // Format log header using logging system's template
+81   char log_header_buf[512] = {0};
+82   time_t now = time(NULL);
+83   struct tm *tm_info = localtime(&amp;now);
+84   char timestamp[32];
+85   strftime(timestamp, sizeof(timestamp), &quot;%H:%M:%S&quot;, tm_info);
+86 
+87   thread_id_t tid = asciichat_thread_self();
+88   uint64_t tid_val = (uintptr_t)tid;
 89 
-90   // Build backtrace in two versions: colored for terminal, plain for log file
-91   char colored_buffer[16384] = {0};
-92   char plain_buffer[16384] = {0};
-93   int colored_offset = 0;
-94   int plain_offset = 0;
-95 
-96   // Format log header using logging system's template
-97   char log_header_buf[512] = {0};
-98   time_t now = time(NULL);
-99   struct tm *tm_info = localtime(&amp;now);
-100   char timestamp[32];
-101   strftime(timestamp, sizeof(timestamp), &quot;%H:%M:%S&quot;, tm_info);
-102 
-103   thread_id_t tid = asciichat_thread_self();
-104   uint64_t tid_val = (uintptr_t)tid;
-105 
-106   // Get current time in nanoseconds for template formatting
-107   uint64_t time_ns = platform_get_monotonic_time_us() * 1000ULL;
-108 
-109   // Try to format header using the logging system's template with color
-110   log_template_t *format = log_get_template();
-111   if (format) {
-112     // Color the label with WARN color for terminal output
-113     const char *colored_label_ptr = colored_string(LOG_COLOR_WARN, label);
-114     char colored_label_buf[256];
-115     strncpy(colored_label_buf, colored_label_ptr, sizeof(colored_label_buf) - 1);
-116     colored_label_buf[sizeof(colored_label_buf) - 1] = '\0';
-117 
-118     int len = log_template_apply(format, log_header_buf, sizeof(log_header_buf), LOG_WARN, timestamp, __FILE__,
-119                                  __LINE__, __func__, tid_val, colored_label_buf, true, time_ns);
-120     if (len &gt; 0) {
-121       // Successfully formatted with logging template
-122       colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
-123                                       &quot;%s\n&quot;, log_header_buf);
-124     } else {
-125       // Fallback: manual formatting if template fails
-126       safe_snprintf(log_header_buf, sizeof(log_header_buf), &quot;[%s] [WARN] [tid:%llu] %s: %s&quot;, timestamp, tid_val,
-127                     __func__, label);
-128       const char *colored_header_ptr = colored_string(LOG_COLOR_WARN, log_header_buf);
-129       char colored_header_buf[512];
-130       strncpy(colored_header_buf, colored_header_ptr, sizeof(colored_header_buf) - 1);
-131       colored_header_buf[sizeof(colored_header_buf) - 1] = '\0';
-132       colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
-133                                       &quot;%s\n&quot;, colored_header_buf);
-134     }
-135   } else {
-136     // Fallback: manual formatting if no template available
-137     safe_snprintf(log_header_buf, sizeof(log_header_buf), &quot;[%s] [WARN] [tid:%llu] %s: %s&quot;, timestamp, tid_val, __func__,
-138                   label);
-139     const char *colored_header_ptr = colored_string(LOG_COLOR_WARN, log_header_buf);
-140     char colored_header_buf[512];
-141     strncpy(colored_header_buf, colored_header_ptr, sizeof(colored_header_buf) - 1);
-142     colored_header_buf[sizeof(colored_header_buf) - 1] = '\0';
-143     colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
-144                                     &quot;%s\n&quot;, colored_header_buf);
-145   }
-146 
-147   // Add plain label header for log file
-148   plain_offset +=
-149       safe_snprintf(plain_buffer + plain_offset, sizeof(plain_buffer) - (size_t)plain_offset, &quot;%s\n&quot;, label);
+90   // Get current time in nanoseconds for template formatting
+91   uint64_t time_ns = platform_get_monotonic_time_us() * 1000ULL;
+92 
+93   // Try to format header using the logging system's template with color
+94   log_template_t *format = log_get_template();
+95   if (format) {
+96     // Color the label with WARN color for terminal output
+97     const char *colored_label_ptr = colored_string(LOG_COLOR_WARN, label);
+98     char colored_label_buf[256];
+99     strncpy(colored_label_buf, colored_label_ptr, sizeof(colored_label_buf) - 1);
+100     colored_label_buf[sizeof(colored_label_buf) - 1] = '\0';
+101 
+102     int len = log_template_apply(format, log_header_buf, sizeof(log_header_buf), LOG_WARN, timestamp, __FILE__,
+103                                  __LINE__, __func__, tid_val, colored_label_buf, true, time_ns);
+104     if (len &gt; 0) {
+105       // Successfully formatted with logging template
+106       colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
+107                                       &quot;%s\n&quot;, log_header_buf);
+108     } else {
+109       // Fallback: manual formatting if template fails
+110       safe_snprintf(log_header_buf, sizeof(log_header_buf), &quot;[%s] [WARN] [tid:%llu] %s: %s&quot;, timestamp, tid_val,
+111                     __func__, label);
+112       const char *colored_header_ptr = colored_string(LOG_COLOR_WARN, log_header_buf);
+113       char colored_header_buf[512];
+114       strncpy(colored_header_buf, colored_header_ptr, sizeof(colored_header_buf) - 1);
+115       colored_header_buf[sizeof(colored_header_buf) - 1] = '\0';
+116       colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
+117                                       &quot;%s\n&quot;, colored_header_buf);
+118     }
+119   } else {
+120     // Fallback: manual formatting if no template available
+121     safe_snprintf(log_header_buf, sizeof(log_header_buf), &quot;[%s] [WARN] [tid:%llu] %s: %s&quot;, timestamp, tid_val, __func__,
+122                   label);
+123     const char *colored_header_ptr = colored_string(LOG_COLOR_WARN, log_header_buf);
+124     char colored_header_buf[512];
+125     strncpy(colored_header_buf, colored_header_ptr, sizeof(colored_header_buf) - 1);
+126     colored_header_buf[sizeof(colored_header_buf) - 1] = '\0';
+127     colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
+128                                     &quot;%s\n&quot;, colored_header_buf);
+129   }
+130 
+131   // Add plain label header for log file
+132   plain_offset +=
+133       safe_snprintf(plain_buffer + plain_offset, sizeof(plain_buffer) - (size_t)plain_offset, &quot;%s\n&quot;, label);
+134 
+135   // Build backtrace frames with colored output for terminal, plain for log
+136   int frame_num = 0;
+137   for (int i = start; i &lt; end &amp;&amp; i &lt; count &amp;&amp; colored_offset &lt; (int)sizeof(colored_buffer) - 512; i++) {
+138     // Safely access symbols[i] - symbols array might be smaller than count or have NULL entries
+139     const char *symbol = NULL;
+140     if (symbols &amp;&amp; symbols[i]) {
+141       symbol = symbols[i];
+142     } else {
+143       symbol = &quot;???&quot;;
+144     }
+145 
+146     // Skip frame if filter says to
+147     if (filter &amp;&amp; filter(symbol)) {
+148       continue;
+149     }
 150 
-151   // Build backtrace frames with colored output for terminal, plain for log
-152   int frame_num = 0;
-153   for (int i = start; i &lt; end &amp;&amp; i &lt; count &amp;&amp; colored_offset &lt; (int)sizeof(colored_buffer) - 512; i++) {
-154     // Safely access symbols[i] - symbols array might be smaller than count or have NULL entries
-155     const char *symbol = NULL;
-156     if (symbols &amp;&amp; symbols[i]) {
-157       symbol = symbols[i];
-158     } else {
-159       symbol = &quot;???&quot;;
-160     }
-161 
-162     // Skip frame if filter says to
-163     if (filter &amp;&amp; filter(symbol)) {
-164       continue;
-165     }
+151     // Build frame number string
+152     char frame_num_str[16];
+153     safe_snprintf(frame_num_str, sizeof(frame_num_str), &quot;%d&quot;, frame_num);
+154 
+155     // Get colored frame number - copy to temp buffer to avoid rotating buffer issues
+156     const char *colored_num_ptr = colored_string(LOG_COLOR_GREY, frame_num_str);
+157     char colored_num_buf[256];
+158     strncpy(colored_num_buf, colored_num_ptr, sizeof(colored_num_buf) - 1);
+159     colored_num_buf[sizeof(colored_num_buf) - 1] = '\0';
+160 
+161     // Parse symbol to extract parts for selective coloring
+162     // Format: &quot;[binary_name] function_name() (file:line)&quot;
+163     char colored_symbol[2048] = {0};
+164     const char *s = symbol;
+165     int colored_sym_offset = 0;
 166 
-167     // Build frame number string
-168     char frame_num_str[16];
-169     safe_snprintf(frame_num_str, sizeof(frame_num_str), &quot;%d&quot;, frame_num);
-170 
-171     // Get colored frame number - copy to temp buffer to avoid rotating buffer issues
-172     const char *colored_num_ptr = colored_string(LOG_COLOR_GREY, frame_num_str);
-173     char colored_num_buf[256];
-174     strncpy(colored_num_buf, colored_num_ptr, sizeof(colored_num_buf) - 1);
-175     colored_num_buf[sizeof(colored_num_buf) - 1] = '\0';
-176 
-177     // Parse symbol to extract parts for selective coloring
-178     // Format: &quot;[binary_name] function_name() (file:line)&quot;
-179     char colored_symbol[2048] = {0};
-180     const char *s = symbol;
-181     int colored_sym_offset = 0;
-182 
-183     // Color binary name between brackets
-184     if (*s == '[') {
-185       colored_sym_offset +=
-186           safe_snprintf(colored_symbol + colored_sym_offset, sizeof(colored_symbol) - colored_sym_offset, &quot;[&quot;);
-187       s++;
-188       // Find closing bracket
-189       const char *bracket_end = strchr(s, ']');
-190       if (bracket_end) {
-191         int bin_len = bracket_end - s;
-192         char bin_name[512];
-193         strncpy(bin_name, s, bin_len);
-194         bin_name[bin_len] = '\0';
-195         const char *colored_bin_ptr = colored_string(LOG_COLOR_DEBUG, bin_name);
-196         char colored_bin_buf[512];
-197         strncpy(colored_bin_buf, colored_bin_ptr, sizeof(colored_bin_buf) - 1);
-198         colored_bin_buf[sizeof(colored_bin_buf) - 1] = '\0';
-199         colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
-200                                             sizeof(colored_symbol) - colored_sym_offset, &quot;%s&quot;, colored_bin_buf);
-201         colored_sym_offset +=
-202             safe_snprintf(colored_symbol + colored_sym_offset, sizeof(colored_symbol) - colored_sym_offset, &quot;] &quot;);
-203         s = bracket_end + 1;
-204       }
-205     }
-206 
-207     // Skip leading spaces after bracket
-208     while (*s &amp;&amp; *s == ' ')
-209       s++;
-210 
-211     // Parse: could be &quot;function() (file:line)&quot; or &quot;file:line (unresolved)&quot;
-212     const char *paren_start = strchr(s, '(');
-213 
-214     // Detect format: if there's a colon before the first paren, it's &quot;file:line (description)&quot;
-215     const char *colon_pos = strchr(s, ':');
-216     if (colon_pos &amp;&amp; paren_start &amp;&amp; colon_pos &lt; paren_start) {
-217       // Format: &quot;file:line (unresolved function)&quot; - rearrange to &quot;(unresolved) (file:line)&quot;
-218       // Extract file:line part (trim trailing spaces)
-219       int file_len = paren_start - s;
-220       while (file_len &gt; 0 &amp;&amp; s[file_len - 1] == ' ')
-221         file_len--;
-222       char file_part[512];
-223       strncpy(file_part, s, file_len);
-224       file_part[file_len] = '\0';
-225 
-226       // Extract description content (without parens)
-227       const char *paren_end = strchr(paren_start, ')');
-228       int desc_content_len = paren_end - paren_start - 1; // -1 to skip opening paren
-229       char desc_content[512];
-230       strncpy(desc_content, paren_start + 1, desc_content_len); // +1 to skip opening paren
-231       desc_content[desc_content_len] = '\0';
-232 
-233       const char *colored_desc_ptr = colored_string(LOG_COLOR_ERROR, desc_content);
-234       char colored_desc_buf[512];
-235       strncpy(colored_desc_buf, colored_desc_ptr, sizeof(colored_desc_buf) - 1);
-236       colored_desc_buf[sizeof(colored_desc_buf) - 1] = '\0';
-237       colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
-238                                           sizeof(colored_symbol) - colored_sym_offset, &quot;(%s)&quot;, colored_desc_buf);
-239 
-240       // Now color file:line in parens
-241       // Skip leading spaces in file_part
-242       const char *file_start = file_part;
-243       while (*file_start &amp;&amp; *file_start == ' ')
-244         file_start++;
-245 
-246       char *file_colon = strchr(file_start, ':');
-247       if (file_colon) {
-248         int filename_len = file_colon - file_start;
-249         char filename[512];
-250         strncpy(filename, file_start, filename_len);
-251         filename[filename_len] = '\0';
-252 
-253         const char *colored_file_ptr = colored_string(LOG_COLOR_DEBUG, filename);
-254         char colored_file_buf[512];
-255         strncpy(colored_file_buf, colored_file_ptr, sizeof(colored_file_buf) - 1);
-256         colored_file_buf[sizeof(colored_file_buf) - 1] = '\0';
-257 
-258         const char *line_num = file_colon + 1;
-259         const char *colored_line_ptr = colored_string(LOG_COLOR_GREY, line_num);
-260         char colored_line_buf[512];
-261         strncpy(colored_line_buf, colored_line_ptr, sizeof(colored_line_buf) - 1);
-262         colored_line_buf[sizeof(colored_line_buf) - 1] = '\0';
-263 
-264         colored_sym_offset +=
-265             safe_snprintf(colored_symbol + colored_sym_offset, sizeof(colored_symbol) - colored_sym_offset, &quot; (%s:%s)&quot;,
-266                           colored_file_buf, colored_line_buf);
-267       }
-268     } else if (paren_start) {
-269       // Format: &quot;function() (file:line)&quot;
-270       int func_len = paren_start - s;
-271       char func_name[512];
-272       strncpy(func_name, s, func_len);
-273       func_name[func_len] = '\0';
-274 
-275       const char *colored_func_ptr = colored_string(LOG_COLOR_DEV, func_name);
-276       char colored_func_buf[512];
-277       strncpy(colored_func_buf, colored_func_ptr, sizeof(colored_func_buf) - 1);
-278       colored_func_buf[sizeof(colored_func_buf) - 1] = '\0';
-279       colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
-280                                           sizeof(colored_symbol) - colored_sym_offset, &quot;%s()&quot;, colored_func_buf);
-281 
-282       // Find file:line in second set of parens
-283       s = paren_start + 1;
-284       while (*s &amp;&amp; *s != '(')
-285         s++;
-286 
-287       if (*s == '(') {
-288         const char *file_paren_end = strchr(s, ')');
-289         if (file_paren_end) {
-290           colored_sym_offset +=
-291               safe_snprintf(colored_symbol + colored_sym_offset, sizeof(colored_symbol) - colored_sym_offset, &quot; (&quot;);
-292           int file_len = file_paren_end - s - 1;
-293           char file_part[512];
-294           strncpy(file_part, s + 1, file_len);
-295           file_part[file_len] = '\0';
-296 
-297           // Skip leading spaces in file_part
-298           const char *file_start = file_part;
-299           while (*file_start &amp;&amp; *file_start == ' ')
-300             file_start++;
-301 
-302           char *colon_pos = strchr(file_start, ':');
-303           if (colon_pos) {
-304             int filename_len = colon_pos - file_start;
-305             char filename[512];
-306             strncpy(filename, file_start, filename_len);
-307             filename[filename_len] = '\0';
-308 
-309             const char *colored_file_ptr = colored_string(LOG_COLOR_DEBUG, filename);
-310             char colored_file_buf[512];
-311             strncpy(colored_file_buf, colored_file_ptr, sizeof(colored_file_buf) - 1);
-312             colored_file_buf[sizeof(colored_file_buf) - 1] = '\0';
-313 
-314             const char *line_num = colon_pos + 1;
-315             const char *colored_line_ptr = colored_string(LOG_COLOR_GREY, line_num);
-316             char colored_line_buf[512];
-317             strncpy(colored_line_buf, colored_line_ptr, sizeof(colored_line_buf) - 1);
-318             colored_line_buf[sizeof(colored_line_buf) - 1] = '\0';
-319 
-320             colored_sym_offset +=
-321                 safe_snprintf(colored_symbol + colored_sym_offset, sizeof(colored_symbol) - colored_sym_offset, &quot;%s:%s&quot;,
-322                               colored_file_buf, colored_line_buf);
-323           }
-324           colored_sym_offset +=
-325               safe_snprintf(colored_symbol + colored_sym_offset, sizeof(colored_symbol) - colored_sym_offset, &quot;)&quot;);
-326         }
-327       }
-328     } else {
-329       // No parens, likely a hex address - color with FATAL
-330       const char *colored_addr_ptr = colored_string(LOG_COLOR_FATAL, s);
-331       char colored_addr_buf[512];
-332       strncpy(colored_addr_buf, colored_addr_ptr, sizeof(colored_addr_buf) - 1);
-333       colored_addr_buf[sizeof(colored_addr_buf) - 1] = '\0';
-334       colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
-335                                           sizeof(colored_symbol) - colored_sym_offset, &quot;%s&quot;, colored_addr_buf);
-336     }
-337 
-338     // Format colored buffer: &quot;  [colored_num] colored_symbol\n&quot;
-339     colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
-340                                     &quot;  [%s] %s\n&quot;, colored_num_buf, colored_symbol);
-341 
-342     // Format plain buffer: &quot;  [num] symbol\n&quot;
-343     plain_offset += safe_snprintf(plain_buffer + plain_offset, sizeof(plain_buffer) - (size_t)plain_offset,
-344                                   &quot;  [%d] %s\n&quot;, frame_num, symbol);
-345     frame_num++;
-346   }
-347 
-348   // Output backtrace through logging system (no direct fprintf to avoid ANSI codes in captured output)
-349   log_warn(&quot;%s&quot;, plain_buffer);
-350   log_file_msg(&quot;%s&quot;, plain_buffer);
-351 }</pre>
+167     // Color binary name between brackets
+168     if (*s == '[') {
+169       colored_sym_offset +=
+170           safe_snprintf(colored_symbol + colored_sym_offset, sizeof(colored_symbol) - colored_sym_offset, &quot;[&quot;);
+171       s++;
+172       // Find closing bracket
+173       const char *bracket_end = strchr(s, ']');
+174       if (bracket_end) {
+175         int bin_len = bracket_end - s;
+176         char bin_name[512];
+177         strncpy(bin_name, s, bin_len);
+178         bin_name[bin_len] = '\0';
+179         const char *colored_bin_ptr = colored_string(LOG_COLOR_DEBUG, bin_name);
+180         char colored_bin_buf[512];
+181         strncpy(colored_bin_buf, colored_bin_ptr, sizeof(colored_bin_buf) - 1);
+182         colored_bin_buf[sizeof(colored_bin_buf) - 1] = '\0';
+183         colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
+184                                             sizeof(colored_symbol) - colored_sym_offset, &quot;%s&quot;, colored_bin_buf);
+185         colored_sym_offset +=
+186             safe_snprintf(colored_symbol + colored_sym_offset, sizeof(colored_symbol) - colored_sym_offset, &quot;] &quot;);
+187         s = bracket_end + 1;
+188       }
+189     }
+190 
+191     // Skip leading spaces after bracket
+192     while (*s &amp;&amp; *s == ' ')
+193       s++;
+194 
+195     // Parse: could be &quot;function() (file:line)&quot; or &quot;file:line (unresolved)&quot;
+196     const char *paren_start = strchr(s, '(');
+197 
+198     // Detect format: if there's a colon before the first paren, it's &quot;file:line (description)&quot;
+199     const char *colon_pos = strchr(s, ':');
+200     if (colon_pos &amp;&amp; paren_start &amp;&amp; colon_pos &lt; paren_start) {
+201       // Format: &quot;file:line (unresolved function)&quot; - rearrange to &quot;(unresolved) (file:line)&quot;
+202       // Extract file:line part (trim trailing spaces)
+203       int file_len = paren_start - s;
+204       while (file_len &gt; 0 &amp;&amp; s[file_len - 1] == ' ')
+205         file_len--;
+206       char file_part[512];
+207       strncpy(file_part, s, file_len);
+208       file_part[file_len] = '\0';
+209 
+210       // Extract description content (without parens)
+211       const char *paren_end = strchr(paren_start, ')');
+212       int desc_content_len = paren_end - paren_start - 1; // -1 to skip opening paren
+213       char desc_content[512];
+214       strncpy(desc_content, paren_start + 1, desc_content_len); // +1 to skip opening paren
+215       desc_content[desc_content_len] = '\0';
+216 
+217       const char *colored_desc_ptr = colored_string(LOG_COLOR_ERROR, desc_content);
+218       char colored_desc_buf[512];
+219       strncpy(colored_desc_buf, colored_desc_ptr, sizeof(colored_desc_buf) - 1);
+220       colored_desc_buf[sizeof(colored_desc_buf) - 1] = '\0';
+221       colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
+222                                           sizeof(colored_symbol) - colored_sym_offset, &quot;(%s)&quot;, colored_desc_buf);
+223 
+224       // Now color file:line in parens
+225       // Skip leading spaces in file_part
+226       const char *file_start = file_part;
+227       while (*file_start &amp;&amp; *file_start == ' ')
+228         file_start++;
+229 
+230       char *file_colon = strchr(file_start, ':');
+231       if (file_colon) {
+232         int filename_len = file_colon - file_start;
+233         char filename[512];
+234         strncpy(filename, file_start, filename_len);
+235         filename[filename_len] = '\0';
+236 
+237         const char *colored_file_ptr = colored_string(LOG_COLOR_DEBUG, filename);
+238         char colored_file_buf[512];
+239         strncpy(colored_file_buf, colored_file_ptr, sizeof(colored_file_buf) - 1);
+240         colored_file_buf[sizeof(colored_file_buf) - 1] = '\0';
+241 
+242         const char *line_num = file_colon + 1;
+243         const char *colored_line_ptr = colored_string(LOG_COLOR_GREY, line_num);
+244         char colored_line_buf[512];
+245         strncpy(colored_line_buf, colored_line_ptr, sizeof(colored_line_buf) - 1);
+246         colored_line_buf[sizeof(colored_line_buf) - 1] = '\0';
+247 
+248         colored_sym_offset +=
+249             safe_snprintf(colored_symbol + colored_sym_offset, sizeof(colored_symbol) - colored_sym_offset, &quot; (%s:%s)&quot;,
+250                           colored_file_buf, colored_line_buf);
+251       }
+252     } else if (paren_start) {
+253       // Format: &quot;function() (file:line)&quot;
+254       int func_len = paren_start - s;
+255       char func_name[512];
+256       strncpy(func_name, s, func_len);
+257       func_name[func_len] = '\0';
+258 
+259       const char *colored_func_ptr = colored_string(LOG_COLOR_DEV, func_name);
+260       char colored_func_buf[512];
+261       strncpy(colored_func_buf, colored_func_ptr, sizeof(colored_func_buf) - 1);
+262       colored_func_buf[sizeof(colored_func_buf) - 1] = '\0';
+263       colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
+264                                           sizeof(colored_symbol) - colored_sym_offset, &quot;%s()&quot;, colored_func_buf);
+265 
+266       // Find file:line in second set of parens
+267       s = paren_start + 1;
+268       while (*s &amp;&amp; *s != '(')
+269         s++;
+270 
+271       if (*s == '(') {
+272         const char *file_paren_end = strchr(s, ')');
+273         if (file_paren_end) {
+274           colored_sym_offset +=
+275               safe_snprintf(colored_symbol + colored_sym_offset, sizeof(colored_symbol) - colored_sym_offset, &quot; (&quot;);
+276           int file_len = file_paren_end - s - 1;
+277           char file_part[512];
+278           strncpy(file_part, s + 1, file_len);
+279           file_part[file_len] = '\0';
+280 
+281           // Skip leading spaces in file_part
+282           const char *file_start = file_part;
+283           while (*file_start &amp;&amp; *file_start == ' ')
+284             file_start++;
+285 
+286           char *colon_pos = strchr(file_start, ':');
+287           if (colon_pos) {
+288             int filename_len = colon_pos - file_start;
+289             char filename[512];
+290             strncpy(filename, file_start, filename_len);
+291             filename[filename_len] = '\0';
+292 
+293             const char *colored_file_ptr = colored_string(LOG_COLOR_DEBUG, filename);
+294             char colored_file_buf[512];
+295             strncpy(colored_file_buf, colored_file_ptr, sizeof(colored_file_buf) - 1);
+296             colored_file_buf[sizeof(colored_file_buf) - 1] = '\0';
+297 
+298             const char *line_num = colon_pos + 1;
+299             const char *colored_line_ptr = colored_string(LOG_COLOR_GREY, line_num);
+300             char colored_line_buf[512];
+301             strncpy(colored_line_buf, colored_line_ptr, sizeof(colored_line_buf) - 1);
+302             colored_line_buf[sizeof(colored_line_buf) - 1] = '\0';
+303 
+304             colored_sym_offset +=
+305                 safe_snprintf(colored_symbol + colored_sym_offset, sizeof(colored_symbol) - colored_sym_offset, &quot;%s:%s&quot;,
+306                               colored_file_buf, colored_line_buf);
+307           }
+308           colored_sym_offset +=
+309               safe_snprintf(colored_symbol + colored_sym_offset, sizeof(colored_symbol) - colored_sym_offset, &quot;)&quot;);
+310         }
+311       }
+312     } else {
+313       // No parens, likely a hex address - color with FATAL
+314       const char *colored_addr_ptr = colored_string(LOG_COLOR_FATAL, s);
+315       char colored_addr_buf[512];
+316       strncpy(colored_addr_buf, colored_addr_ptr, sizeof(colored_addr_buf) - 1);
+317       colored_addr_buf[sizeof(colored_addr_buf) - 1] = '\0';
+318       colored_sym_offset += safe_snprintf(colored_symbol + colored_sym_offset,
+319                                           sizeof(colored_symbol) - colored_sym_offset, &quot;%s&quot;, colored_addr_buf);
+320     }
+321 
+322     // Format colored buffer: &quot;  [colored_num] colored_symbol\n&quot;
+323     colored_offset += safe_snprintf(colored_buffer + colored_offset, sizeof(colored_buffer) - (size_t)colored_offset,
+324                                     &quot;  [%s] %s\n&quot;, colored_num_buf, colored_symbol);
+325 
+326     // Format plain buffer: &quot;  [num] symbol\n&quot;
+327     plain_offset += safe_snprintf(plain_buffer + plain_offset, sizeof(plain_buffer) - (size_t)plain_offset,
+328                                   &quot;  [%d] %s\n&quot;, frame_num, symbol);
+329     frame_num++;
+330   }
+331 
+332   // Output backtrace through logging system (no direct fprintf to avoid ANSI codes in captured output)
+333   log_warn(&quot;%s&quot;, plain_buffer);
+334   log_file_msg(&quot;%s&quot;, plain_buffer);
+335 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_thread_self()</b>,
-    <b>colored_string()</b>, <b>log_file_msg()</b>, <b>log_get_template()</b>,
-    <b>log_template_apply()</b>, <b>platform_get_monotonic_time_us()</b>, and
-    <b>safe_snprintf()</b>.</p>
+    <b>colored_string()</b>, <b>backtrace_t::count</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>LOG_COLOR_DEBUG</b>, <b>LOG_COLOR_DEV</b>,
+    <b>LOG_COLOR_ERROR</b>, <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_GREY</b>,
+    <b>LOG_COLOR_WARN</b>, <b>log_file_msg()</b>, <b>log_get_template()</b>,
+    <b>log_template_apply()</b>, <b>LOG_WARN</b>, <b>log_warn</b>,
+    <b>platform_get_monotonic_time_us()</b>, <b>safe_snprintf()</b>,
+    <b>SET_ERRNO</b>, and <b>backtrace_t::symbols</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_fatal_with_context()</b>,
-    <b>asciichat_print_error_context()</b>, <b>backtrace_log_frames()</b>, and
-    <b>backtrace_print_many()</b>.</p>
+    <b>asciichat_print_error_context()</b>, <b>backtrace_log_frames()</b>,
+    <b>backtrace_print_many()</b>, and <b>backtrace_print_symbols()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_backtrace_print_many_(const_char_*_label,_const_backtrace_t_*_bts,_int_count)"><a class="permalink" href="#void_backtrace_print_many_(const_char_*_label,_const_backtrace_t_*_bts,_int_count)">void
-  backtrace_print_many (const char * label, const backtrace_t * bts, int
+<h2 class="Ss" id="void_backtrace_print_many_(const_char_*_label,_const_"><a class="permalink" href="#void_backtrace_print_many_(const_char_*_label,_const_">void
+  backtrace_print_many (const char * label, const <b>backtrace_t</b> * bts, int
   count)</a></h2>
-<p class="Pp">Definition at line <b>353</b> of file
+<p class="Pp">Print multiple backtraces. Convenience function for iterating and
+    printing multiple <b>backtrace_t</b> entries.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>label</i> Header label for all backtraces
+<br/>
+<i>bts</i> Array of backtrace structures
+<br/>
+<i>count</i> Number of backtraces to print</div>
+<p class="Pp">Definition at line <b>337</b> of file
   <b>debug/backtrace.c</b>.</p>
-<pre>353                                                                                 {
-354   if (!bts || count &lt;= 0) {
-355     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: bts is NULL or count &lt;= 0&quot;);
-356     return;
-357   }
-358   for (int i = 0; i &lt; count; i++) {
-359     backtrace_print(label, &amp;bts[i], 0, 0, NULL);
-360   }
-361 }</pre>
+<pre>337                                                                                 {
+338   if (!bts || count &lt;= 0) {
+339     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: bts is NULL or count &lt;= 0&quot;);
+340     return;
+341   }
+342   for (int i = 0; i &lt; count; i++) {
+343     backtrace_print(label, &amp;bts[i], 0, 0, NULL);
+344   }
+345 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>backtrace_print()</b>.</p>
+<p class="Pp">References <b>backtrace_print()</b>, <b>ERROR_INVALID_PARAM</b>,
+    and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_backtrace_print_simple_(int_skip_frames)"><a class="permalink" href="#void_backtrace_print_simple_(int_skip_frames)">void
-  backtrace_print_simple (int skip_frames)</a></h2>
-<p class="Pp">Definition at line <b>56</b> of file <b>debug/backtrace.c</b>.</p>
-<pre>56                                              {
-57   void *buffer[32];
-58   int size = platform_backtrace(buffer, 32);
-59 
-60   if (size &gt; 0) {
-61     char **symbols = platform_backtrace_symbols(buffer, size);
-62 
-63     // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
-64     backtrace_print_symbols(&quot;Backtrace&quot;, symbols, size, 1 + skip_frames, 0, NULL);
-65 
-66     platform_backtrace_symbols_destroy(symbols);
-67   } else {
-68     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to capture backtrace&quot;);
-69   }
-70 }</pre>
-<pre></pre>
+<h2 class="Ss" id="void_backtrace_symbolize_("><a class="permalink" href="#void_backtrace_symbolize_(">void
+  backtrace_symbolize (<b>backtrace_t</b> * bt)</a></h2>
+<p class="Pp">Symbolize bt-&gt;ptrs into bt-&gt;symbols. Calls
+    <b>platform_backtrace_symbols()</b> to convert raw addresses to symbol
+    strings. This is a no-op if symbols are already set (already
+  symbolized).</p>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_backtrace()</b>,
-    <b>platform_backtrace_symbols()</b>, and
-    <b>platform_backtrace_symbols_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_backtrace_symbolize_(backtrace_t_*_bt)"><a class="permalink" href="#void_backtrace_symbolize_(backtrace_t_*_bt)">void
-  backtrace_symbolize (backtrace_t * bt)</a></h2>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>bt</i> Backtrace structure to symbolize (must not be
+  NULL)</div>
 <p class="Pp">Definition at line <b>27</b> of file <b>debug/backtrace.c</b>.</p>
 <pre>27                                           {
 28   if (!bt || bt-&gt;tried_symbolize) {
@@ -536,13 +668,22 @@
 34 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_backtrace_symbols()</b>.</p>
+<p class="Pp">References <b>backtrace_t::count</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>platform_backtrace_symbols()</b>, <b>backtrace_t::ptrs</b>,
+    <b>SET_ERRNO</b>, <b>backtrace_t::symbols</b>, and
+    <b>backtrace_t::tried_symbolize</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_print_error_context()</b>, and
     <b>backtrace_capture_and_symbolize()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_backtrace_t_free_(backtrace_t_*_bt)"><a class="permalink" href="#void_backtrace_t_free_(backtrace_t_*_bt)">void
-  backtrace_t_free (backtrace_t * bt)</a></h2>
+<h2 class="Ss" id="void_backtrace_t_free_("><a class="permalink" href="#void_backtrace_t_free_(">void
+  backtrace_t_free (<b>backtrace_t</b> * bt)</a></h2>
+<p class="Pp">Free backtrace symbols. Calls
+    <b>platform_backtrace_symbols_destroy()</b> to free the symbols array. Nulls
+    the symbols pointer after freeing.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>bt</i> Backtrace structure (must not be NULL)</div>
 <p class="Pp">Definition at line <b>45</b> of file <b>debug/backtrace.c</b>.</p>
 <pre>45                                        {
 46   if (!bt) {
@@ -556,7 +697,9 @@
 54 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_backtrace_symbols_destroy()</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
+    <b>platform_backtrace_symbols_destroy()</b>, <b>SET_ERRNO</b>, and
+    <b>backtrace_t::symbols</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_clear_errno()</b>,
     <b>asciichat_errno_destroy()</b>, <b>asciichat_fatal_with_context()</b>,
     <b>asciichat_set_errno()</b>, and <b>backtrace_log_frames()</b>.</p>
@@ -569,7 +712,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

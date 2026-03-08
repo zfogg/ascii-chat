@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>options_config_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">options_config_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">options_config_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">options_config_t - Options configuration.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/options/builder.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>option_descriptor_t</b> * <b>descriptors</b>
+  <br/>
+  Array of option descriptors. size_t <b>num_descriptors</b>
+  <br/>
+  Number of descriptors. <b>option_dependency_t</b> * <b>dependencies</b>
+  <br/>
+  Array of dependencies. size_t <b>num_dependencies</b>
+  <br/>
+  Number of dependencies. <b>positional_arg_descriptor_t</b> *
+    <b>positional_args</b>
+  <br/>
+  Array of positional argument descriptors. size_t <b>num_positional_args</b>
+  <br/>
+  Number of positional arguments. size_t <b>struct_size</b>
+  <br/>
+  sizeof(options_t) for bounds checking const char * <b>program_name</b>
+  <br/>
+  For usage header. const char * <b>description</b>
+  <br/>
+  For usage header. <b>usage_descriptor_t</b> * <b>usage_lines</b>
+  <br/>
+  Array of usage line descriptors. size_t <b>num_usage_lines</b>
+  <br/>
+  Number of usage lines. <b>example_descriptor_t</b> * <b>examples</b>
+  <br/>
+  Array of example descriptors. size_t <b>num_examples</b>
+  <br/>
+  Number of examples. <b>help_mode_descriptor_t</b> * <b>modes</b>
+  <br/>
+  Array of mode descriptors. size_t <b>num_modes</b>
+  <br/>
+  Number of modes. <b>custom_section_descriptor_t</b> * <b>custom_sections</b>
+  <br/>
+  Array of custom help sections. size_t <b>num_custom_sections</b>
+  <br/>
+  Number of custom sections. char ** <b>owned_strings</b>
+  <br/>
+  Strdup'd strings to free on cleanup. size_t <b>num_owned_strings</b>
+  <br/>
+  Number of owned strings. size_t <b>owned_strings_capacity</b>
+  <br/>
+  Allocated capacity.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Options configuration.</p>
+<p class="Pp">A complete, immutable configuration of options for a mode. Built
+    by <b>options_builder_t</b> and used for parsing.</p>
+<p class="Pp">Definition at line <b>401</b> of file <b>builder.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>custom_section_descriptor_t</b>*
+  options_config_t::custom_sections</h2>
+<p class="Pp">Array of custom help sections.</p>
+<p class="Pp">Definition at line <b>425</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>,
+    <b>options_config_destroy()</b>, and
+  <b>options_print_help_for_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>option_dependency_t</b>* options_config_t::dependencies</h2>
+<p class="Pp">Array of dependencies.</p>
+<p class="Pp">Definition at line <b>405</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>,
+    <b>options_builder_from_preset()</b>, <b>options_config_destroy()</b>, and
+    <b>options_config_validate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_options_config_t::description"><a class="permalink" href="#const_char*_options_config_t::description">const
+  char* options_config_t::description</a></h2>
+<p class="Pp">For usage header.</p>
+<p class="Pp">Definition at line <b>413</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>, and
+    <b>options_builder_from_preset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>option_descriptor_t</b>* options_config_t::descriptors</h2>
+<p class="Pp">Array of option descriptors.</p>
+<p class="Pp">Definition at line <b>402</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>,
+    <b>find_option()</b>, <b>find_option_descriptor()</b>,
+    <b>find_similar_option_with_mode()</b>,
+    <b>manpage_content_generate_environment()</b>,
+    <b>manpage_content_generate_environment_with_manual()</b>,
+    <b>manpage_content_generate_options()</b>, <b>options_builder_build()</b>,
+    <b>options_builder_from_preset()</b>,
+    <b>options_config_calculate_max_col_width()</b>,
+    <b>options_config_destroy()</b>,
+    <b>options_config_generate_manpage_template()</b>,
+    <b>options_config_print_options_sections_with_width()</b>,
+    <b>options_config_print_usage()</b>, <b>options_config_set_defaults()</b>,
+    <b>options_config_validate()</b>, and <b>options_struct_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>example_descriptor_t</b>* options_config_t::examples</h2>
+<p class="Pp">Array of example descriptors.</p>
+<p class="Pp">Definition at line <b>419</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_content_generate_examples()</b>,
+    <b>options_builder_build()</b>,
+    <b>options_config_calculate_max_col_width()</b>, and
+    <b>options_config_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>help_mode_descriptor_t</b>* options_config_t::modes</h2>
+<p class="Pp">Array of mode descriptors.</p>
+<p class="Pp">Definition at line <b>422</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>,
+    <b>options_config_calculate_max_col_width()</b>, and
+    <b>options_config_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_config_t::num_custom_sections"><a class="permalink" href="#size_t_options_config_t::num_custom_sections">size_t
+  options_config_t::num_custom_sections</a></h2>
+<p class="Pp">Number of custom sections.</p>
+<p class="Pp">Definition at line <b>426</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>, and
+    <b>options_print_help_for_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_config_t::num_dependencies"><a class="permalink" href="#size_t_options_config_t::num_dependencies">size_t
+  options_config_t::num_dependencies</a></h2>
+<p class="Pp">Number of dependencies.</p>
+<p class="Pp">Definition at line <b>406</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>,
+    <b>options_builder_from_preset()</b>, and
+  <b>options_config_validate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_config_t::num_descriptors"><a class="permalink" href="#size_t_options_config_t::num_descriptors">size_t
+  options_config_t::num_descriptors</a></h2>
+<p class="Pp">Number of descriptors.</p>
+<p class="Pp">Definition at line <b>403</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>,
+    <b>find_option()</b>, <b>find_option_descriptor()</b>,
+    <b>find_similar_option_with_mode()</b>,
+    <b>manpage_content_generate_environment()</b>,
+    <b>manpage_content_generate_environment_with_manual()</b>,
+    <b>manpage_content_generate_options()</b>, <b>options_builder_build()</b>,
+    <b>options_builder_from_preset()</b>,
+    <b>options_config_calculate_max_col_width()</b>,
+    <b>options_config_generate_manpage_merged()</b>,
+    <b>options_config_generate_manpage_template()</b>,
+    <b>options_config_print_options_sections_with_width()</b>,
+    <b>options_config_print_usage()</b>, <b>options_config_set_defaults()</b>,
+    <b>options_config_validate()</b>, and <b>options_struct_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_config_t::num_examples"><a class="permalink" href="#size_t_options_config_t::num_examples">size_t
+  options_config_t::num_examples</a></h2>
+<p class="Pp">Number of examples.</p>
+<p class="Pp">Definition at line <b>420</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_content_generate_examples()</b>,
+    <b>options_builder_build()</b>,
+    <b>options_config_calculate_max_col_width()</b>,
+    <b>options_config_generate_manpage_merged()</b>, and
+    <b>options_config_generate_manpage_template()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_config_t::num_modes"><a class="permalink" href="#size_t_options_config_t::num_modes">size_t
+  options_config_t::num_modes</a></h2>
+<p class="Pp">Number of modes.</p>
+<p class="Pp">Definition at line <b>423</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>,
+    <b>options_config_calculate_max_col_width()</b>, and
+    <b>options_print_help_for_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_config_t::num_owned_strings"><a class="permalink" href="#size_t_options_config_t::num_owned_strings">size_t
+  options_config_t::num_owned_strings</a></h2>
+<p class="Pp">Number of owned strings.</p>
+<p class="Pp">Definition at line <b>430</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>,
+    <b>options_config_destroy()</b>, and <b>options_struct_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_config_t::num_positional_args"><a class="permalink" href="#size_t_options_config_t::num_positional_args">size_t
+  options_config_t::num_positional_args</a></h2>
+<p class="Pp">Number of positional arguments.</p>
+<p class="Pp">Definition at line <b>409</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_content_generate_positional()</b>,
+    <b>options_builder_build()</b>, <b>options_builder_from_preset()</b>,
+    <b>options_config_generate_manpage_merged()</b>,
+    <b>options_config_generate_manpage_template()</b>,
+    <b>options_config_parse_positional()</b>, and
+    <b>options_print_help_for_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_config_t::num_usage_lines"><a class="permalink" href="#size_t_options_config_t::num_usage_lines">size_t
+  options_config_t::num_usage_lines</a></h2>
+<p class="Pp">Number of usage lines.</p>
+<p class="Pp">Definition at line <b>417</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_content_generate_usage()</b>,
+    <b>manpage_merger_generate_usage()</b>, <b>options_builder_build()</b>,
+    <b>options_config_calculate_max_col_width()</b>,
+    <b>options_config_generate_manpage_merged()</b>, and
+    <b>options_print_help_for_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char**_options_config_t::owned_strings"><a class="permalink" href="#char**_options_config_t::owned_strings">char**
+  options_config_t::owned_strings</a></h2>
+<p class="Pp">Strdup'd strings to free on cleanup.</p>
+<p class="Pp">Definition at line <b>429</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>,
+    <b>options_config_destroy()</b>, and <b>options_struct_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_config_t::owned_strings_capacity"><a class="permalink" href="#size_t_options_config_t::owned_strings_capacity">size_t
+  options_config_t::owned_strings_capacity</a></h2>
+<p class="Pp">Allocated capacity.</p>
+<p class="Pp">Definition at line <b>431</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>positional_arg_descriptor_t</b>*
+  options_config_t::positional_args</h2>
+<p class="Pp">Array of positional argument descriptors.</p>
+<p class="Pp">Definition at line <b>408</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_content_generate_positional()</b>,
+    <b>options_builder_build()</b>, <b>options_builder_from_preset()</b>,
+    <b>options_config_destroy()</b>, <b>options_config_parse_positional()</b>,
+    and <b>options_print_help_for_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_options_config_t::program_name"><a class="permalink" href="#const_char*_options_config_t::program_name">const
+  char* options_config_t::program_name</a></h2>
+<p class="Pp">For usage header.</p>
+<p class="Pp">Definition at line <b>412</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>, and
+    <b>options_builder_from_preset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_config_t::struct_size"><a class="permalink" href="#size_t_options_config_t::struct_size">size_t
+  options_config_t::struct_size</a></h2>
+<p class="Pp">sizeof(options_t) for bounds checking</p>
+<p class="Pp">Definition at line <b>411</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>, and
+    <b>options_builder_from_preset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>usage_descriptor_t</b>* options_config_t::usage_lines</h2>
+<p class="Pp">Array of usage line descriptors.</p>
+<p class="Pp">Definition at line <b>416</b> of file <b>builder.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_content_generate_usage()</b>,
+    <b>manpage_merger_generate_usage()</b>, <b>options_builder_build()</b>,
+    <b>options_config_calculate_max_col_width()</b>,
+    <b>options_config_destroy()</b>, and
+  <b>options_print_help_for_mode()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

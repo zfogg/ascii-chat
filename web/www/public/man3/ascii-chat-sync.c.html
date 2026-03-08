@@ -69,70 +69,78 @@
 <br/>
 <p class="Pp">void <b>debug_sync_print_state</b> (void)
   <br/>
-  void <b>debug_sync_final_cleanup</b> (void)
+  Print all synchronization primitive states at once. void
+    <b>debug_sync_final_cleanup</b> (void)
   <br/>
   Final cleanup of all debug allocations at shutdown. void
-    <b>debug_sync_print_state_delayed</b> (uint64_t delay_ns)
+    <b>debug_sync_print_state_delayed</b> (<b>uint64_t</b> delay_ns)
   <br/>
   Schedule delayed debug state printing on debug thread. void
-    <b>debug_sync_print_backtrace_delayed</b> (uint64_t delay_ns)
+    <b>debug_sync_print_backtrace_delayed</b> (<b>uint64_t</b> delay_ns)
   <br/>
   Schedule delayed backtrace printing on debug thread. void
-    <b>debug_sync_set_memory_report_interval</b> (uint64_t interval_ns)
+    <b>debug_sync_set_memory_report_interval</b> (<b>uint64_t</b> interval_ns)
   <br/>
   Set periodic memory report interval. void <b>debug_sync_set_main_thread_id</b>
     (void)
   <br/>
-  int <b>debug_sync_init</b> (void)
+  Initialize debug synchronization system. int <b>debug_sync_init</b> (void)
   <br/>
-  uint64_t <b>debug_sync_get_main_thread_id</b> (void)
+  <b>uint64_t</b> <b>debug_sync_get_main_thread_id</b> (void)
   <br/>
-  <b>bool</b> <b>debug_sync_is_cleanup_in_progress</b> (void)
+  Get the main thread ID for memory reporting. <b>bool</b>
+    <b>debug_sync_is_cleanup_in_progress</b> (void)
   <br/>
   int <b>debug_sync_start_thread</b> (void)
   <br/>
-  void <b>debug_sync_destroy</b> (void)
+  Start background debug thread for scheduled operations. void
+    <b>debug_sync_destroy</b> (void)
   <br/>
-  void <b>debug_sync_cleanup_thread</b> (void)
+  Destroy debug synchronization system. void <b>debug_sync_cleanup_thread</b>
+    (void)
   <br/>
-  void <b>debug_sync_trigger_print</b> (void)
+  Stop and clean up background debug thread. void
+    <b>debug_sync_trigger_print</b> (void)
   <br/>
-  void <b>debug_sync_get_stats</b> (uint64_t *total_acquired, uint64_t
-    *total_released, uint32_t *currently_held)
+  Trigger sync state print immediately (synchronous). void
+    <b>debug_sync_get_stats</b> (<b>uint64_t</b> *total_acquired,
+    <b>uint64_t</b> *total_released, <b>uint32_t</b> *currently_held)
   <br/>
-  int <b>debug_sync_mutex_lock</b> (mutex_t *<b>mutex</b>, const char
+  Get synchronization statistics. int <b>debug_sync_mutex_lock</b>
+    (<b>mutex_t</b> *<b>mutex</b>, const char *file_name, int line_number, const
+    char *function_name)
+  <br/>
+  int <b>debug_sync_mutex_trylock</b> (<b>mutex_t</b> *<b>mutex</b>, const char
     *file_name, int line_number, const char *function_name)
   <br/>
-  int <b>debug_sync_mutex_trylock</b> (mutex_t *<b>mutex</b>, const char
+  int <b>debug_sync_mutex_unlock</b> (<b>mutex_t</b> *<b>mutex</b>, const char
     *file_name, int line_number, const char *function_name)
   <br/>
-  int <b>debug_sync_mutex_unlock</b> (mutex_t *<b>mutex</b>, const char
+  int <b>debug_sync_rwlock_rdlock</b> (<b>rwlock_t</b> *lock, const char
     *file_name, int line_number, const char *function_name)
   <br/>
-  int <b>debug_sync_rwlock_rdlock</b> (rwlock_t *lock, const char *file_name,
-    int line_number, const char *function_name)
+  int <b>debug_sync_rwlock_rdunlock</b> (<b>rwlock_t</b> *lock, const char
+    *file_name, int line_number, const char *function_name)
   <br/>
-  int <b>debug_sync_rwlock_rdunlock</b> (rwlock_t *lock, const char *file_name,
-    int line_number, const char *function_name)
+  int <b>debug_sync_rwlock_wrlock</b> (<b>rwlock_t</b> *lock, const char
+    *file_name, int line_number, const char *function_name)
   <br/>
-  int <b>debug_sync_rwlock_wrlock</b> (rwlock_t *lock, const char *file_name,
-    int line_number, const char *function_name)
+  int <b>debug_sync_rwlock_wrunlock</b> (<b>rwlock_t</b> *lock, const char
+    *file_name, int line_number, const char *function_name)
   <br/>
-  int <b>debug_sync_rwlock_wrunlock</b> (rwlock_t *lock, const char *file_name,
-    int line_number, const char *function_name)
-  <br/>
-  int <b>debug_sync_cond_wait</b> (cond_t *cond, mutex_t *<b>mutex</b>, const
-    char *file_name, int line_number, const char *function_name)
-  <br/>
-  int <b>debug_sync_cond_timedwait</b> (cond_t *cond, mutex_t *<b>mutex</b>,
-    uint64_t timeout_ns, const char *file_name, int line_number, const char
+  int <b>debug_sync_cond_wait</b> (<b>cond_t</b> *cond, <b>mutex_t</b>
+    *<b>mutex</b>, const char *file_name, int line_number, const char
     *function_name)
   <br/>
-  int <b>debug_sync_cond_signal</b> (cond_t *cond, const char *file_name, int
+  int <b>debug_sync_cond_timedwait</b> (<b>cond_t</b> *cond, <b>mutex_t</b>
+    *<b>mutex</b>, <b>uint64_t</b> timeout_ns, const char *file_name, int
     line_number, const char *function_name)
   <br/>
-  int <b>debug_sync_cond_broadcast</b> (cond_t *cond, const char *file_name, int
-    line_number, const char *function_name)
+  int <b>debug_sync_cond_signal</b> (<b>cond_t</b> *cond, const char *file_name,
+    int line_number, const char *function_name)
+  <br/>
+  int <b>debug_sync_cond_broadcast</b> (<b>cond_t</b> *cond, const char
+    *file_name, int line_number, const char *function_name)
   <br/>
   <b>bool</b> <b>debug_sync_is_initialized</b> (void)
   <br/>
@@ -182,12 +190,12 @@
     </i></b></a></dt>
   <dd></dd>
 </dl>
-<p class="Pp">Definition at line <b>428</b> of file <b>sync.c</b>.</p>
-<pre>428              {
-429   DEBUG_REQUEST_STATE,         // Print sync state
-430   DEBUG_REQUEST_BACKTRACE,     // Print backtrace
-431   DEBUG_REQUEST_MEMORY_REPORT, // Print memory report
-432 } debug_request_type_t;</pre>
+<p class="Pp">Definition at line <b>436</b> of file <b>sync.c</b>.</p>
+<pre>436              {
+437   DEBUG_REQUEST_STATE,         // Print sync state
+438   DEBUG_REQUEST_BACKTRACE,     // Print backtrace
+439   DEBUG_REQUEST_MEMORY_REPORT, // Print memory report
+440 } debug_request_type_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -196,466 +204,57 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="void_debug_sync_cleanup_thread_(void_)"><a class="permalink" href="#void_debug_sync_cleanup_thread_(void_)">void
-  debug_sync_cleanup_thread (void )</a></h2>
-<p class="Pp">Definition at line <b>667</b> of file <b>sync.c</b>.</p>
-<pre>667                                      {
-668   log_debug(&quot;[DEBUG_SYNC_CLEANUP] Starting cleanup&quot;);
-669 
-670   // Only join if thread was actually created
-671   if (!g_debug_state_request.initialized) {
-672     log_debug(&quot;[DEBUG_SYNC_CLEANUP] Thread not initialized, returning&quot;);
-673     return;
-674   }
-675 
-676   // Set cleanup flag to prevent deadlock checks from accessing freed memory
-677   // Do this after checking initialization so we don't set it unnecessarily
-678   atomic_store_bool(&amp;g_cleanup_in_progress, true);
-679   log_debug(&quot;[DEBUG_SYNC_CLEANUP] Thread was initialized, proceeding with cleanup&quot;);
-680 
-681   log_debug(&quot;[DEBUG_SYNC_CLEANUP] Setting initialized to false&quot;);
-682   g_debug_state_request.initialized = false; // Prevent double-join
-683 
-684   // Signal the thread to wake up immediately instead of waiting for 100ms timeout
-685   log_debug(&quot;[DEBUG_SYNC_CLEANUP] Signaling thread to exit&quot;);
-686   atomic_store_bool(&amp;g_debug_state_request.should_exit, true);
-687   cond_signal(&amp;g_debug_state_request.cond);
-688   log_debug(&quot;[DEBUG_SYNC_CLEANUP] Signal sent, about to join thread&quot;);
-689 
-690   // Use a timeout join to ensure we don't deadlock, but still unregister the thread
-691   // The debug thread should exit quickly after should_exit is set above
-692   int join_result = asciichat_thread_join_timeout(&amp;g_debug_thread, NULL, 1000000000ULL); // 1 second timeout
-693   if (join_result == 0) {
-694     log_debug(&quot;[DEBUG_SYNC_CLEANUP] Thread joined successfully&quot;);
-695   } else if (join_result == -2) {
-696     log_debug(&quot;[DEBUG_SYNC_CLEANUP] Thread join timed out (thread may still be running)&quot;);
-697     // Don't unregister if timeout - thread is still alive
-698   } else {
-699     log_debug(&quot;[DEBUG_SYNC_CLEANUP] Thread join failed with error %d&quot;, join_result);
-700   }
-701 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
-    <b>debug_sync_destroy()</b>, and <b>session_client_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_debug_sync_cond_broadcast_(cond_t_*_cond,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)"><a class="permalink" href="#int_debug_sync_cond_broadcast_(cond_t_*_cond,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)">int
-  debug_sync_cond_broadcast (cond_t * cond, const char * file_name, int
+<h2 class="Ss" id="int_debug_sync_cond_broadcast_("><a class="permalink" href="#int_debug_sync_cond_broadcast_(">int
+  debug_sync_cond_broadcast (<b>cond_t</b> * cond, const char * file_name, int
   line_number, const char * function_name)</a></h2>
-<p class="Pp">Definition at line <b>806</b> of file <b>sync.c</b>.</p>
-<pre>806                                                                                                                {
-807   (void)file_name;
-808   (void)line_number;
-809   (void)function_name;
-810   return cond_broadcast(cond);
-811 }</pre>
+<p class="Pp">Definition at line <b>814</b> of file <b>sync.c</b>.</p>
+<pre>814                                                                                                                {
+815   (void)file_name;
+816   (void)line_number;
+817   (void)function_name;
+818   return cond_broadcast(cond);
+819 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>cond_broadcast()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_debug_sync_cond_signal_(cond_t_*_cond,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)"><a class="permalink" href="#int_debug_sync_cond_signal_(cond_t_*_cond,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)">int
-  debug_sync_cond_signal (cond_t * cond, const char * file_name, int
+<h2 class="Ss" id="int_debug_sync_cond_signal_("><a class="permalink" href="#int_debug_sync_cond_signal_(">int
+  debug_sync_cond_signal (<b>cond_t</b> * cond, const char * file_name, int
   line_number, const char * function_name)</a></h2>
-<p class="Pp">Definition at line <b>799</b> of file <b>sync.c</b>.</p>
-<pre>799                                                                                                             {
-800   (void)file_name;
-801   (void)line_number;
-802   (void)function_name;
-803   return cond_signal(cond);
-804 }</pre>
+<p class="Pp">Definition at line <b>807</b> of file <b>sync.c</b>.</p>
+<pre>807                                                                                                             {
+808   (void)file_name;
+809   (void)line_number;
+810   (void)function_name;
+811   return cond_signal(cond);
+812 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_debug_sync_cond_timedwait_(cond_t_*_cond,_mutex_t_*_mutex,_uint64_t_timeout_ns,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)"><a class="permalink" href="#int_debug_sync_cond_timedwait_(cond_t_*_cond,_mutex_t_*_mutex,_uint64_t_timeout_ns,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)">int
-  debug_sync_cond_timedwait (cond_t * cond, mutex_t * mutex, uint64_t
-  timeout_ns, const char * file_name, int line_number, const char *
-  function_name)</a></h2>
-<p class="Pp">Definition at line <b>790</b> of file <b>sync.c</b>.</p>
-<pre>791                                                          {
-792   // Same as debug_sync_cond_wait(): skip tracking the atomic unlock/relock.
-793   (void)file_name;
-794   (void)line_number;
-795   (void)function_name;
-796   return cond_timedwait_impl(cond, mutex, timeout_ns);
-797 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mutex</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_debug_sync_cond_wait_(cond_t_*_cond,_mutex_t_*_mutex,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)"><a class="permalink" href="#int_debug_sync_cond_wait_(cond_t_*_cond,_mutex_t_*_mutex,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)">int
-  debug_sync_cond_wait (cond_t * cond, mutex_t * mutex, const char * file_name,
-  int line_number, const char * function_name)</a></h2>
-<p class="Pp">Definition at line <b>779</b> of file <b>sync.c</b>.</p>
-<pre>780                                                     {
-781   // Note: pthread_cond_wait() atomically releases and re-acquires the mutex,
-782   // but this happens at the kernel level. Debug tracking can't monitor this atomic
-783   // operation properly, so we skip cond_on_wait() to avoid false deadlock reports.
-784   (void)file_name;
-785   (void)line_number;
-786   (void)function_name;
-787   return cond_wait_impl(cond, mutex);
-788 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mutex</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_destroy_(void_)"><a class="permalink" href="#void_debug_sync_destroy_(void_)">void
-  debug_sync_destroy (void )</a></h2>
-<p class="Pp">Definition at line <b>663</b> of file <b>sync.c</b>.</p>
-<pre>663                               {
-664   debug_sync_cleanup_thread();
-665 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>debug_sync_cleanup_thread()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>, and
-    <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_final_cleanup_(void_)"><a class="permalink" href="#void_debug_sync_final_cleanup_(void_)">void
-  debug_sync_final_cleanup (void )</a></h2>
-<p class="Pp">Final cleanup of all debug allocations at shutdown.</p>
-<p class="Pp">Definition at line <b>588</b> of file <b>sync.c</b>.</p>
-<pre>588                                     {
-589   // Clean up current thread's mutex stack explicitly
-590   mutex_stack_cleanup_current_thread();
-591 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mutex_stack_cleanup_current_thread()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="uint64_t_debug_sync_get_main_thread_id_(void_)"><a class="permalink" href="#uint64_t_debug_sync_get_main_thread_id_(void_)">uint64_t
-  debug_sync_get_main_thread_id (void )</a></h2>
-<p class="Pp">Definition at line <b>642</b> of file <b>sync.c</b>.</p>
-<pre>642                                              {
-643   return g_debug_main_thread_id;
-644 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_get_stats_(uint64_t_*_total_acquired,_uint64_t_*_total_released,_uint32_t_*_currently_held)"><a class="permalink" href="#void_debug_sync_get_stats_(uint64_t_*_total_acquired,_uint64_t_*_total_released,_uint32_t_*_currently_held)">void
-  debug_sync_get_stats (uint64_t * total_acquired, uint64_t * total_released,
-  uint32_t * currently_held)</a></h2>
-<p class="Pp">Definition at line <b>715</b> of file <b>sync.c</b>.</p>
-<pre>715                                                                                                         {
-716   if (total_acquired)
-717     *total_acquired = 0;
-718   if (total_released)
-719     *total_released = 0;
-720   if (currently_held)
-721     *currently_held = 0;
-722 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>stats_logger_thread()</b>.</p>
+<p class="Pp">References <b>cond_signal()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_debug_sync_init_(void_)"><a class="permalink" href="#int_debug_sync_init_(void_)">int
   debug_sync_init (void )</a></h2>
-<p class="Pp">Definition at line <b>637</b> of file <b>sync.c</b>.</p>
-<pre>637                           {
-638   // debug_sync_set_main_thread_id() should have already been called
-639   return 0;
-640 }</pre>
+<p class="Pp">Definition at line <b>645</b> of file <b>sync.c</b>.</p>
+<pre>645                           {
+646   // debug_sync_set_main_thread_id() should have already been called
+647   return 0;
+648 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> debug_sync_is_cleanup_in_progress (void )</h2>
-<p class="Pp">Definition at line <b>646</b> of file <b>sync.c</b>.</p>
-<pre>646                                              {
-647   return atomic_load_bool(&amp;g_cleanup_in_progress);
-648 }</pre>
+<p class="Pp">Definition at line <b>654</b> of file <b>sync.c</b>.</p>
+<pre>654                                              {
+655   return atomic_load_bool(&amp;g_cleanup_in_progress);
+656 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>.</p>
 <p class="Pp">Referenced by <b>debug_sync_check_cond_deadlocks()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> debug_sync_is_initialized (void )</h2>
-<p class="Pp">Definition at line <b>813</b> of file <b>sync.c</b>.</p>
-<pre>813                                      {
-814   return true;
-815 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>stats_logger_thread()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_debug_sync_mutex_lock_(mutex_t_*_mutex,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)"><a class="permalink" href="#int_debug_sync_mutex_lock_(mutex_t_*_mutex,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)">int
-  debug_sync_mutex_lock (mutex_t * mutex, const char * file_name, int
-  line_number, const char * function_name)</a></h2>
-<p class="Pp">Definition at line <b>730</b> of file <b>sync.c</b>.</p>
-<pre>730                                                                                                              {
-731   (void)file_name;
-732   (void)line_number;
-733   (void)function_name;
-734   return mutex_lock_impl(mutex);
-735 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mutex</b>, and <b>mutex_lock_impl()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_debug_sync_mutex_trylock_(mutex_t_*_mutex,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)"><a class="permalink" href="#int_debug_sync_mutex_trylock_(mutex_t_*_mutex,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)">int
-  debug_sync_mutex_trylock (mutex_t * mutex, const char * file_name, int
-  line_number, const char * function_name)</a></h2>
-<p class="Pp">Definition at line <b>737</b> of file <b>sync.c</b>.</p>
-<pre>737                                                                                                                 {
-738   (void)file_name;
-739   (void)line_number;
-740   (void)function_name;
-741   return mutex_trylock_impl(mutex);
-742 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mutex</b>, and <b>mutex_trylock_impl()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_debug_sync_mutex_unlock_(mutex_t_*_mutex,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)"><a class="permalink" href="#int_debug_sync_mutex_unlock_(mutex_t_*_mutex,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)">int
-  debug_sync_mutex_unlock (mutex_t * mutex, const char * file_name, int
-  line_number, const char * function_name)</a></h2>
-<p class="Pp">Definition at line <b>744</b> of file <b>sync.c</b>.</p>
-<pre>744                                                                                                                {
-745   (void)file_name;
-746   (void)line_number;
-747   (void)function_name;
-748   return mutex_unlock_impl(mutex);
-749 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>mutex</b>, and <b>mutex_unlock_impl()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_print_backtrace_delayed_(uint64_t_delay_ns)"><a class="permalink" href="#void_debug_sync_print_backtrace_delayed_(uint64_t_delay_ns)">void
-  debug_sync_print_backtrace_delayed (uint64_t delay_ns)</a></h2>
-<p class="Pp">Schedule delayed backtrace printing on debug thread.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>delay_ns</i> Nanoseconds to sleep before
-  printing</div>
-<p class="Pp">Definition at line <b>610</b> of file <b>sync.c</b>.</p>
-<pre>610                                                            {
-611   mutex_lock(&amp;g_debug_state_request.mutex);
-612   g_debug_state_request.request_type = DEBUG_REQUEST_BACKTRACE;
-613   g_debug_state_request.delay_ns = delay_ns;
-614   atomic_store_bool(&amp;g_debug_state_request.should_run, true);
-615   cond_signal(&amp;g_debug_state_request.cond);
-616   mutex_unlock(&amp;g_debug_state_request.mutex);
-617 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, and
-    <b>DEBUG_REQUEST_BACKTRACE</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_print_state_(void_)"><a class="permalink" href="#void_debug_sync_print_state_(void_)">void
-  debug_sync_print_state (void )</a></h2>
-<p class="Pp">Definition at line <b>380</b> of file <b>sync.c</b>.</p>
-<pre>380                                   {
-381 // Use a single large buffer for all sync state output
-382 #define SYNC_BUFFER_SIZE 65536  // Increased from 8192 to handle many syncs
-383   log_debug(&quot;[debug_sync_print_state] ENTRY&quot;);
-384 
-385   char *buffer = SAFE_MALLOC(SYNC_BUFFER_SIZE, char *);
-386   if (!buffer) {
-387     log_debug(&quot;[debug_sync_print_state] Failed to allocate buffer&quot;);
-388     return;
-389   }
-390 
-391   sync_buffer_t buf = {.buffer = buffer, .buffer_size = SYNC_BUFFER_SIZE, .offset = 0};
-392 
-393   // Iterate through all registered syncs
-394   log_debug(&quot;[debug_sync_print_state] Iterating mutexes&quot;);
-395   named_registry_for_each(mutex_iter_callback, &amp;buf);
-396   log_debug(&quot;[debug_sync_print_state] Iterating rwlocks&quot;);
-397   named_registry_for_each(rwlock_iter_callback, &amp;buf);
-398   log_debug(&quot;[debug_sync_print_state] Iterating conds&quot;);
-399   named_registry_for_each(cond_iter_callback, &amp;buf);
-400 
-401   named_registry_for_each(atomic_t_iter_callback, &amp;buf);
-402   named_registry_for_each(atomic_ptr_iter_callback, &amp;buf);
-403 
-404   // Print lock stacks for deadlock analysis
-405   log_debug(&quot;[debug_sync_print_state] Getting lock stacks&quot;);
-406   debug_sync_print_lock_stacks(buf.buffer, buf.buffer_size, &amp;buf.offset);
-407 
-408   // Log everything in one call
-409   log_debug(&quot;[debug_sync_print_state] Buffer size: %zu bytes&quot;, buf.offset);
-410   if (buf.offset &gt; 0) {
-411     log_info(&quot;SYNC_STATE:\n%s&quot;, buf.buffer);
-412   } else {
-413     log_info(&quot;SYNC_STATE: (empty)&quot;);
-414   }
-415 
-416   SAFE_FREE(buffer);
-417 #undef SYNC_BUFFER_SIZE
-418 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>sync_buffer_t::buffer</b>,
-    <b>sync_buffer_t::buffer_size</b>, <b>named_registry_for_each()</b>,
-    <b>sync_buffer_t::offset</b>, and <b>SYNC_BUFFER_SIZE</b>.</p>
-<p class="Pp">Referenced by <b>crypto_handshake_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_print_state_delayed_(uint64_t_delay_ns)"><a class="permalink" href="#void_debug_sync_print_state_delayed_(uint64_t_delay_ns)">void
-  debug_sync_print_state_delayed (uint64_t delay_ns)</a></h2>
-<p class="Pp">Schedule delayed debug state printing on debug thread.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>delay_ns</i> Nanoseconds to sleep before
-  printing</div>
-<p class="Pp">Definition at line <b>597</b> of file <b>sync.c</b>.</p>
-<pre>597                                                        {
-598   mutex_lock(&amp;g_debug_state_request.mutex);
-599   g_debug_state_request.request_type = DEBUG_REQUEST_STATE;
-600   g_debug_state_request.delay_ns = delay_ns;
-601   atomic_store_bool(&amp;g_debug_state_request.should_run, true);
-602   cond_signal(&amp;g_debug_state_request.cond);
-603   mutex_unlock(&amp;g_debug_state_request.mutex);
-604 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, and
-    <b>DEBUG_REQUEST_STATE</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_debug_sync_rwlock_rdlock_(rwlock_t_*_lock,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)"><a class="permalink" href="#int_debug_sync_rwlock_rdlock_(rwlock_t_*_lock,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)">int
-  debug_sync_rwlock_rdlock (rwlock_t * lock, const char * file_name, int
-  line_number, const char * function_name)</a></h2>
-<p class="Pp">Definition at line <b>751</b> of file <b>sync.c</b>.</p>
-<pre>751                                                                                                                 {
-752   (void)file_name;
-753   (void)line_number;
-754   (void)function_name;
-755   return rwlock_rdlock_impl(lock);
-756 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>rwlock_rdlock_impl()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_debug_sync_rwlock_rdunlock_(rwlock_t_*_lock,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)"><a class="permalink" href="#int_debug_sync_rwlock_rdunlock_(rwlock_t_*_lock,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)">int
-  debug_sync_rwlock_rdunlock (rwlock_t * lock, const char * file_name, int
-  line_number, const char * function_name)</a></h2>
-<p class="Pp">Definition at line <b>758</b> of file <b>sync.c</b>.</p>
-<pre>758                                                                                                                   {
-759   (void)file_name;
-760   (void)line_number;
-761   (void)function_name;
-762   return rwlock_rdunlock_impl(lock);
-763 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>rwlock_rdunlock_impl()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_debug_sync_rwlock_wrlock_(rwlock_t_*_lock,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)"><a class="permalink" href="#int_debug_sync_rwlock_wrlock_(rwlock_t_*_lock,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)">int
-  debug_sync_rwlock_wrlock (rwlock_t * lock, const char * file_name, int
-  line_number, const char * function_name)</a></h2>
-<p class="Pp">Definition at line <b>765</b> of file <b>sync.c</b>.</p>
-<pre>765                                                                                                                 {
-766   (void)file_name;
-767   (void)line_number;
-768   (void)function_name;
-769   return rwlock_wrlock_impl(lock);
-770 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>rwlock_wrlock_impl()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_debug_sync_rwlock_wrunlock_(rwlock_t_*_lock,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)"><a class="permalink" href="#int_debug_sync_rwlock_wrunlock_(rwlock_t_*_lock,_const_char_*_file_name,_int_line_number,_const_char_*_function_name)">int
-  debug_sync_rwlock_wrunlock (rwlock_t * lock, const char * file_name, int
-  line_number, const char * function_name)</a></h2>
-<p class="Pp">Definition at line <b>772</b> of file <b>sync.c</b>.</p>
-<pre>772                                                                                                                   {
-773   (void)file_name;
-774   (void)line_number;
-775   (void)function_name;
-776   return rwlock_wrunlock_impl(lock);
-777 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>rwlock_wrunlock_impl()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_set_main_thread_id_(void_)"><a class="permalink" href="#void_debug_sync_set_main_thread_id_(void_)">void
-  debug_sync_set_main_thread_id (void )</a></h2>
-<p class="Pp">Definition at line <b>632</b> of file <b>sync.c</b>.</p>
-<pre>632                                          {
-633   // Save main thread ID for memory reporting (call very early)
-634   g_debug_main_thread_id = asciichat_thread_current_id();
-635 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_current_id()</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_set_memory_report_interval_(uint64_t_interval_ns)"><a class="permalink" href="#void_debug_sync_set_memory_report_interval_(uint64_t_interval_ns)">void
-  debug_sync_set_memory_report_interval (uint64_t interval_ns)</a></h2>
-<p class="Pp">Set periodic memory report interval.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>interval_ns</i> Interval in nanoseconds (0 to
-  disable)</div>
-<p class="Pp">Definition at line <b>623</b> of file <b>sync.c</b>.</p>
-<pre>623                                                                  {
-624   g_debug_state_request.memory_report_interval_ns = interval_ns;
-625   g_debug_state_request.last_memory_report_time_ns = 0; // Reset timer
-626 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_debug_sync_start_thread_(void_)"><a class="permalink" href="#int_debug_sync_start_thread_(void_)">int
-  debug_sync_start_thread (void )</a></h2>
-<p class="Pp">Definition at line <b>650</b> of file <b>sync.c</b>.</p>
-<pre>650                                   {
-651   // Initialize mutex and condition variable for signal wakeup
-652   if (!g_debug_state_request.initialized) {
-653     mutex_init(&amp;g_debug_state_request.mutex, &quot;debug_sync_state&quot;);
-654     cond_init(&amp;g_debug_state_request.cond, &quot;debug_sync_signal&quot;);
-655     g_debug_state_request.initialized = true;
-656   }
-657 
-658   atomic_store_bool(&amp;g_debug_state_request.should_exit, false);
-659   int err = asciichat_thread_create(&amp;g_debug_thread, &quot;debug_sync&quot;, debug_print_thread_fn, NULL);
-660   return err;
-661 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_create()</b>,
-    <b>atomic_store_bool()</b>, and <b>mutex_init()</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_trigger_print_(void_)"><a class="permalink" href="#void_debug_sync_trigger_print_(void_)">void
-  debug_sync_trigger_print (void )</a></h2>
-<p class="Pp">Definition at line <b>703</b> of file <b>sync.c</b>.</p>
-<pre>703                                     {
-704   // Set flag to trigger printing on debug thread (from SIGUSR1 handler).
-705   // We don't call debug_sync_print_state() directly here to avoid logging
-706   // in signal handler context, which could deadlock with logging mutexes.
-707   // Uses atomic_store for thread-safe flag setting from signal handler.
-708   //
-709   // Signal the condition variable to wake up the debug thread immediately
-710   // (without waiting for the 100ms timeout).
-711   atomic_store_bool(&amp;g_debug_state_request.signal_triggered, true);
-712   cond_signal(&amp;g_debug_state_request.cond);
-713 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>.</p>
-<p class="Pp">Referenced by <b>session_handle_keyboard_input()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -665,7 +264,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

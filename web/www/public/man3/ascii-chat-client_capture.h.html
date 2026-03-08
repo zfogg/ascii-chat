@@ -76,7 +76,7 @@
 <h2 class="Ss" id="Media_Source_Types"><a class="permalink" href="#Media_Source_Types">Media
   Source Types</a></h2>
 <p class="Pp">The capture subsystem supports four media source types via the
-    <b>media_source_t</b> abstraction (see <b>media</b>):</p>
+    <b>media_source_t</b> abstraction (see <b>Media</b>):</p>
 <p class="Pp"></p>
 <dl class="Bl-tag">
   <dt>&#x2022;</dt>
@@ -292,7 +292,7 @@ image_t *frame = media_source_read_video(source);
 <div class="Bd-indent">topic_client_capture &quot;Video Capture
   Architecture&quot;
 <p class="Pp"></p>
-<p class="Pp">media/source.h &quot;Media Source Abstraction&quot;</p>
+<p class="Pp"><b>media/source.h</b> &quot;Media Source Abstraction&quot;</p>
 </div>
 <p class="Pp">Definition in file <b>client/capture.h</b>.</p>
 </section>
@@ -500,15 +500,18 @@ image_t *frame = media_source_read_video(source);
 464 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_capture_config_t::audio_fallback_to_mic</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>session_capture_config_t::audio_fallback_to_mic</b>,
     <b>audio_get_context()</b>, <b>CAPTURE_TARGET_FPS</b>,
-    <b>session_capture_config_t::enable_audio</b>,
-    <b>session_capture_config_t::initial_seek_timestamp</b>,
-    <b>session_capture_config_t::loop</b>,
-    <b>session_capture_config_t::mic_audio_ctx</b>,
+    <b>session_capture_config_t::enable_audio</b>, <b>ERROR_MEDIA_INIT</b>,
+    <b>GET_ERRNO</b>, <b>GET_OPTION</b>,
+    <b>session_capture_config_t::initial_seek_timestamp</b>, <b>log_debug</b>,
+    <b>session_capture_config_t::loop</b>, <b>MEDIA_SOURCE_FILE</b>,
+    <b>MEDIA_SOURCE_STDIN</b>, <b>MEDIA_SOURCE_TEST</b>,
+    <b>MEDIA_SOURCE_WEBCAM</b>, <b>session_capture_config_t::mic_audio_ctx</b>,
     <b>session_capture_config_t::path</b>,
     <b>session_capture_config_t::resize_for_network</b>, <b>safe_snprintf()</b>,
-    <b>session_capture_create()</b>,
+    <b>session_capture_create()</b>, <b>SET_ERRNO</b>,
     <b>session_capture_config_t::target_fps</b>, and
     <b>session_capture_config_t::type</b>.</p>
 </section>
@@ -652,8 +655,11 @@ image_t *frame = media_source_read_video(source);
 500 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>,
-    <b>g_client_worker_pool</b>, and <b>thread_pool_spawn()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
+    <b>ERROR_THREAD</b>, <b>g_client_worker_pool</b>, <b>log_debug</b>,
+    <b>LOG_ERRNO_IF_SET</b>, <b>log_warn</b>, <b>NAMED_REGISTER_ATOMIC</b>,
+    <b>SET_ERRNO</b>, <b>THREAD_IS_CREATED</b>, and
+  <b>thread_pool_spawn()</b>.</p>
 <p class="Pp">Referenced by <b>protocol_start_connection()</b>.</p>
 </section>
 <section class="Ss">
@@ -706,8 +712,9 @@ image_t *frame = media_source_read_video(source);
 527 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, and
-    <b>platform_sleep_us()</b>.</p>
+<p class="Pp">References <b>atomic_load_bool()</b>, <b>log_warn</b>,
+    <b>platform_sleep_us()</b>, <b>THREAD_IS_CREATED</b>, and
+    <b>US_PER_MS_INT</b>.</p>
 <p class="Pp">Referenced by <b>capture_cleanup()</b>, and
     <b>protocol_stop_connection()</b>.</p>
 </section>
@@ -745,7 +752,7 @@ image_t *frame = media_source_read_video(source);
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

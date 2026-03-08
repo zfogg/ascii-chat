@@ -58,7 +58,7 @@
   <br/>
   Reusable frame for decoding. AVPacket * <b>packet</b>
   <br/>
-  Reusable packet for reading. image_t * <b>current_image</b>
+  Reusable packet for reading. <b>image_t</b> * <b>current_image</b>
   <br/>
   Working buffer for decoding. float * <b>audio_buffer</b>
   <br/>
@@ -66,13 +66,14 @@
   <br/>
   Total size of audio buffer. size_t <b>audio_buffer_offset</b>
   <br/>
-  Current offset in audio buffer. asciichat_thread_t <b>prefetch_thread</b>
+  Current offset in audio buffer. <b>asciichat_thread_t</b>
+    <b>prefetch_thread</b>
   <br/>
-  Prefetch thread handle. image_t * <b>prefetch_image_a</b>
+  Prefetch thread handle. <b>image_t</b> * <b>prefetch_image_a</b>
   <br/>
-  First prefetch buffer. image_t * <b>prefetch_image_b</b>
+  First prefetch buffer. <b>image_t</b> * <b>prefetch_image_b</b>
   <br/>
-  Second prefetch buffer. image_t * <b>current_prefetch_image</b>
+  Second prefetch buffer. <b>image_t</b> * <b>current_prefetch_image</b>
   <br/>
   Currently available prefetched frame. <b>bool</b> <b>prefetch_frame_ready</b>
   <br/>
@@ -83,14 +84,16 @@
   <br/>
   Signal to stop prefetch thread. <b>bool</b> <b>seeking_in_progress</b>
   <br/>
-  Signal to pause prefetch thread during seek. cond_t <b>prefetch_cond</b>
+  Signal to pause prefetch thread during seek. <b>cond_t</b>
+    <b>prefetch_cond</b>
   <br/>
-  Condition variable for pausing during seek. mutex_t <b>prefetch_mutex</b>
+  Condition variable for pausing during seek. <b>mutex_t</b>
+    <b>prefetch_mutex</b>
   <br/>
-  Protect prefetch state and FFmpeg decoder access. mutex_t
+  Protect prefetch state and FFmpeg decoder access. <b>mutex_t</b>
     <b>read_frame_mutex</b>
   <br/>
-  Protect av_read_frame() calls from video and audio threads. image_t *
+  Protect av_read_frame() calls from video and audio threads. <b>image_t</b> *
     <b>current_read_buffer</b>
   <br/>
   Buffer main thread is currently reading/rendering. <b>bool</b>
@@ -112,7 +115,7 @@
   <br/>
   Last video presentation timestamp. double <b>last_audio_pts</b>
   <br/>
-  Last audio presentation timestamp. uint64_t <b>audio_samples_read</b>
+  Last audio presentation timestamp. <b>uint64_t</b> <b>audio_samples_read</b>
   <br/>
   Total audio samples decoded and output. int <b>audio_sample_rate</b>
   <br/>
@@ -185,8 +188,7 @@
     <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint64_t_ffmpeg_decoder_t::audio_samples_read"><a class="permalink" href="#uint64_t_ffmpeg_decoder_t::audio_samples_read">uint64_t
-  ffmpeg_decoder_t::audio_samples_read</a></h2>
+<h2 class="Ss"><b>uint64_t</b> ffmpeg_decoder_t::audio_samples_read</h2>
 <p class="Pp">Total audio samples decoded and output.</p>
 <p class="Pp">Definition at line <b>125</b> of file <b>ffmpeg_decoder.c</b>.</p>
 <p class="Pp">Referenced by <b>ffmpeg_decoder_get_position()</b>,
@@ -232,16 +234,14 @@
     <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="image_t*_ffmpeg_decoder_t::current_image"><a class="permalink" href="#image_t*_ffmpeg_decoder_t::current_image">image_t*
-  ffmpeg_decoder_t::current_image</a></h2>
+<h2 class="Ss"><b>image_t</b>* ffmpeg_decoder_t::current_image</h2>
 <p class="Pp">Working buffer for decoding.</p>
 <p class="Pp">Definition at line <b>87</b> of file <b>ffmpeg_decoder.c</b>.</p>
 <p class="Pp">Referenced by <b>ffmpeg_decoder_destroy()</b>, and
     <b>ffmpeg_decoder_read_video_frame()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="image_t*_ffmpeg_decoder_t::current_prefetch_image"><a class="permalink" href="#image_t*_ffmpeg_decoder_t::current_prefetch_image">image_t*
-  ffmpeg_decoder_t::current_prefetch_image</a></h2>
+<h2 class="Ss"><b>image_t</b>* ffmpeg_decoder_t::current_prefetch_image</h2>
 <p class="Pp">Currently available prefetched frame.</p>
 <p class="Pp">Definition at line <b>98</b> of file <b>ffmpeg_decoder.c</b>.</p>
 <p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
@@ -249,8 +249,7 @@
     <b>ffmpeg_decoder_read_video_frame()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="image_t*_ffmpeg_decoder_t::current_read_buffer"><a class="permalink" href="#image_t*_ffmpeg_decoder_t::current_read_buffer">image_t*
-  ffmpeg_decoder_t::current_read_buffer</a></h2>
+<h2 class="Ss"><b>image_t</b>* ffmpeg_decoder_t::current_read_buffer</h2>
 <p class="Pp">Buffer main thread is currently reading/rendering.</p>
 <p class="Pp">Definition at line <b>108</b> of file <b>ffmpeg_decoder.c</b>.</p>
 <p class="Pp">Referenced by <b>ffmpeg_decoder_read_video_frame()</b>, and
@@ -329,8 +328,7 @@
     <b>ffmpeg_decoder_read_audio_samples()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="cond_t_ffmpeg_decoder_t::prefetch_cond"><a class="permalink" href="#cond_t_ffmpeg_decoder_t::prefetch_cond">cond_t
-  ffmpeg_decoder_t::prefetch_cond</a></h2>
+<h2 class="Ss"><b>cond_t</b> ffmpeg_decoder_t::prefetch_cond</h2>
 <p class="Pp">Condition variable for pausing during seek.</p>
 <p class="Pp">Definition at line <b>103</b> of file <b>ffmpeg_decoder.c</b>.</p>
 <p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
@@ -347,8 +345,7 @@
     <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="image_t*_ffmpeg_decoder_t::prefetch_image_a"><a class="permalink" href="#image_t*_ffmpeg_decoder_t::prefetch_image_a">image_t*
-  ffmpeg_decoder_t::prefetch_image_a</a></h2>
+<h2 class="Ss"><b>image_t</b>* ffmpeg_decoder_t::prefetch_image_a</h2>
 <p class="Pp">First prefetch buffer.</p>
 <p class="Pp">Definition at line <b>96</b> of file <b>ffmpeg_decoder.c</b>.</p>
 <p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
@@ -357,8 +354,7 @@
     <b>ffmpeg_decoder_start_prefetch()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="image_t*_ffmpeg_decoder_t::prefetch_image_b"><a class="permalink" href="#image_t*_ffmpeg_decoder_t::prefetch_image_b">image_t*
-  ffmpeg_decoder_t::prefetch_image_b</a></h2>
+<h2 class="Ss"><b>image_t</b>* ffmpeg_decoder_t::prefetch_image_b</h2>
 <p class="Pp">Second prefetch buffer.</p>
 <p class="Pp">Definition at line <b>97</b> of file <b>ffmpeg_decoder.c</b>.</p>
 <p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
@@ -367,8 +363,7 @@
     <b>ffmpeg_decoder_start_prefetch()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="mutex_t_ffmpeg_decoder_t::prefetch_mutex"><a class="permalink" href="#mutex_t_ffmpeg_decoder_t::prefetch_mutex">mutex_t
-  ffmpeg_decoder_t::prefetch_mutex</a></h2>
+<h2 class="Ss"><b>mutex_t</b> ffmpeg_decoder_t::prefetch_mutex</h2>
 <p class="Pp">Protect prefetch state and FFmpeg decoder access.</p>
 <p class="Pp">Definition at line <b>104</b> of file <b>ffmpeg_decoder.c</b>.</p>
 <p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
@@ -385,8 +380,7 @@
     <b>ffmpeg_decoder_stop_prefetch()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_thread_t_ffmpeg_decoder_t::prefetch_thread"><a class="permalink" href="#asciichat_thread_t_ffmpeg_decoder_t::prefetch_thread">asciichat_thread_t
-  ffmpeg_decoder_t::prefetch_thread</a></h2>
+<h2 class="Ss"><b>asciichat_thread_t</b> ffmpeg_decoder_t::prefetch_thread</h2>
 <p class="Pp">Prefetch thread handle.</p>
 <p class="Pp">Definition at line <b>95</b> of file <b>ffmpeg_decoder.c</b>.</p>
 <p class="Pp">Referenced by <b>ffmpeg_decoder_destroy()</b>,
@@ -404,8 +398,7 @@
     <b>ffmpeg_decoder_stop_prefetch()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="mutex_t_ffmpeg_decoder_t::read_frame_mutex"><a class="permalink" href="#mutex_t_ffmpeg_decoder_t::read_frame_mutex">mutex_t
-  ffmpeg_decoder_t::read_frame_mutex</a></h2>
+<h2 class="Ss"><b>mutex_t</b> ffmpeg_decoder_t::read_frame_mutex</h2>
 <p class="Pp">Protect av_read_frame() calls from video and audio threads.</p>
 <p class="Pp">Definition at line <b>105</b> of file <b>ffmpeg_decoder.c</b>.</p>
 <p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
@@ -475,7 +468,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

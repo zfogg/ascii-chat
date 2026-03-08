@@ -42,11 +42,12 @@
 <br/>
 <p class="Pp">const char * <b>acds_address</b>
   <br/>
-  ACDS address (default: <i>127.0.0.1&quot;).</i> uint16_t <b>acds_port</b>
+  ACDS address (default: <i>127.0.0.1&quot;).</i> <b>uint16_t</b>
+    <b>acds_port</b>
   <br/>
   ACDS port (default: 27225). const char * <b>session_string</b>
   <br/>
-  Session string to join (or NULL to create). uint16_t <b>local_port</b>
+  Session string to join (or NULL to create). <b>uint16_t</b> <b>local_port</b>
   <br/>
   Local port for hosting (default: 27224). void(* <b>on_state_change</b>
     )(<b>discovery_state_t</b> new_state, void *user_data)
@@ -54,8 +55,8 @@
   void(* <b>on_session_ready</b> )(const char *<b>session_string</b>, void
     *user_data)
   <br/>
-  void(* <b>on_error</b> )(asciichat_error_t error, const char *message, void
-    *user_data)
+  void(* <b>on_error</b> )(<b>asciichat_error_t</b> error, const char *message,
+    void *user_data)
   <br/>
   void * <b>callback_user_data</b>
   <br/>
@@ -63,6 +64,28 @@
   <br/>
   void * <b>exit_callback_data</b>
   <br/>
+  const <b>uint8_t</b> * <b>expected_pubkey</b>
+  <br/>
+  Expected server pubkey (NULL = no verification). <b>bool</b>
+    <b>insecure_mode</b>
+  <br/>
+  Allow no verification (--acds-insecure flag). char <b>acds_server</b> [256]
+  <br/>
+  ACDS server address (e.g.,
+    <i>localhost&quot;</i>or<i>discovery.ascii-chat.com</i>).<i></i>
+    <b>uint32_t</b> <b>mdns_timeout_ms</b>
+  <br/>
+  mDNS search timeout (default: 2000ms) <b>uint32_t</b> <b>acds_timeout_ms</b>
+  <br/>
+  ACDS lookup timeout (default: 5000ms). const <b>uint8_t</b> *
+    <b>client_pubkey</b>
+  <br/>
+  Client's Ed25519 public key (can be NULL). const <b>uint8_t</b> *
+    <b>client_seckey</b>
+  <br/>
+  Client's Ed25519 secret key (can be NULL). const char * <b>password</b>
+  <br/>
+  Optional session password (NULL if none).
   <br/>
 </p>
 </section>
@@ -71,7 +94,9 @@
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
 <p class="Pp">Configuration for discovery session.</p>
-<p class="Pp">Definition at line <b>211</b> of file <b>session.h</b>.</p>
+<p class="Pp">Session discovery configuration.</p>
+<p class="Pp">Definition at line <b>211</b> of file
+    <b>src/discovery/session.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -80,67 +105,126 @@
 <h2 class="Ss" id="const_char*_discovery_config_t::acds_address"><a class="permalink" href="#const_char*_discovery_config_t::acds_address">const
   char* discovery_config_t::acds_address</a></h2>
 <p class="Pp">ACDS address (default: &quot;127.0.0.1&quot;).</p>
-<p class="Pp">Definition at line <b>213</b> of file <b>session.h</b>.</p>
+<p class="Pp">Definition at line <b>213</b> of file
+    <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint16_t_discovery_config_t::acds_port"><a class="permalink" href="#uint16_t_discovery_config_t::acds_port">uint16_t
-  discovery_config_t::acds_port</a></h2>
-<p class="Pp">ACDS port (default: 27225).</p>
-<p class="Pp">Definition at line <b>214</b> of file <b>session.h</b>.</p>
+<h2 class="Ss"><b>uint16_t</b> discovery_config_t::acds_port</h2>
+<p class="Pp">ACDS port (default: 27225). ACDS server port (default: 27225).</p>
+<p class="Pp">Definition at line <b>214</b> of file
+    <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_config_init_defaults()</b>, and
     <b>discovery_session_create()</b>.</p>
 </section>
 <section class="Ss">
+<h2 class="Ss" id="char_discovery_config_t::acds_server_256_"><a class="permalink" href="#char_discovery_config_t::acds_server_256_">char
+  discovery_config_t::acds_server[256]</a></h2>
+<p class="Pp">ACDS server address (e.g., &quot;localhost&quot; or
+    &quot;discovery.ascii-chat.com&quot;).</p>
+<p class="Pp">Definition at line <b>118</b> of file <b>discovery.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_config_init_defaults()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> discovery_config_t::acds_timeout_ms</h2>
+<p class="Pp">ACDS lookup timeout (default: 5000ms).</p>
+<p class="Pp">Definition at line <b>123</b> of file <b>discovery.h</b>.</p>
+<p class="Pp">Referenced by <b>discover_session_parallel()</b>, and
+    <b>discovery_config_init_defaults()</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="void*_discovery_config_t::callback_user_data"><a class="permalink" href="#void*_discovery_config_t::callback_user_data">void*
   discovery_config_t::callback_user_data</a></h2>
-<p class="Pp">Definition at line <b>226</b> of file <b>session.h</b>.</p>
+<p class="Pp">Definition at line <b>226</b> of file
+    <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">const <b>uint8_t</b>* discovery_config_t::client_pubkey</h2>
+<p class="Pp">Client's Ed25519 public key (can be NULL).</p>
+<p class="Pp">Definition at line <b>126</b> of file <b>discovery.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">const <b>uint8_t</b>* discovery_config_t::client_seckey</h2>
+<p class="Pp">Client's Ed25519 secret key (can be NULL).</p>
+<p class="Pp">Definition at line <b>127</b> of file <b>discovery.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void*_discovery_config_t::exit_callback_data"><a class="permalink" href="#void*_discovery_config_t::exit_callback_data">void*
   discovery_config_t::exit_callback_data</a></h2>
-<p class="Pp">Definition at line <b>230</b> of file <b>session.h</b>.</p>
+<p class="Pp">Definition at line <b>230</b> of file
+    <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint16_t_discovery_config_t::local_port"><a class="permalink" href="#uint16_t_discovery_config_t::local_port">uint16_t
-  discovery_config_t::local_port</a></h2>
-<p class="Pp">Local port for hosting (default: 27224).</p>
-<p class="Pp">Definition at line <b>220</b> of file <b>session.h</b>.</p>
+<h2 class="Ss">const <b>uint8_t</b>* discovery_config_t::expected_pubkey</h2>
+<p class="Pp">Expected server pubkey (NULL = no verification).</p>
+<p class="Pp">Definition at line <b>114</b> of file <b>discovery.h</b>.</p>
+<p class="Pp">Referenced by <b>discover_session_parallel()</b>, and
+    <b>discovery_config_init_defaults()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_discovery_config_t::on_error)_(asciichat_error_t_error,_const_char_*message,_void_*user_data)"><a class="permalink" href="#void(*_discovery_config_t::on_error)_(asciichat_error_t_error,_const_char_*message,_void_*user_data)">void(*
-  discovery_config_t::on_error) (asciichat_error_t error, const char *message,
-  void *user_data)</a></h2>
-<p class="Pp">Definition at line <b>225</b> of file <b>session.h</b>.</p>
+<h2 class="Ss"><b>bool</b> discovery_config_t::insecure_mode</h2>
+<p class="Pp">Allow no verification (--acds-insecure flag).</p>
+<p class="Pp">Definition at line <b>115</b> of file <b>discovery.h</b>.</p>
+<p class="Pp">Referenced by <b>discover_session_parallel()</b>, and
+    <b>discovery_config_init_defaults()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> discovery_config_t::local_port</h2>
+<p class="Pp">Local port for hosting (default: 27224).</p>
+<p class="Pp">Definition at line <b>220</b> of file
+    <b>src/discovery/session.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> discovery_config_t::mdns_timeout_ms</h2>
+<p class="Pp">mDNS search timeout (default: 2000ms)</p>
+<p class="Pp">Definition at line <b>122</b> of file <b>discovery.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_config_init_defaults()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_discovery_config_t::on_error)_("><a class="permalink" href="#void(*_discovery_config_t::on_error)_(">void(*
+  discovery_config_t::on_error) (<b>asciichat_error_t</b> error, const char
+  *message, void *user_data)</a></h2>
+<p class="Pp">Definition at line <b>225</b> of file
+    <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void(*_discovery_config_t::on_session_ready)_(const_char_*"><a class="permalink" href="#void(*_discovery_config_t::on_session_ready)_(const_char_*">void(*
   discovery_config_t::on_session_ready) (const char *<b>session_string</b>, void
   *user_data)</a></h2>
-<p class="Pp">Definition at line <b>224</b> of file <b>session.h</b>.</p>
+<p class="Pp">Definition at line <b>224</b> of file
+    <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void(*_discovery_config_t::on_state_change)_("><a class="permalink" href="#void(*_discovery_config_t::on_state_change)_(">void(*
   discovery_config_t::on_state_change) (<b>discovery_state_t</b> new_state, void
   *user_data)</a></h2>
-<p class="Pp">Definition at line <b>223</b> of file <b>session.h</b>.</p>
+<p class="Pp">Definition at line <b>223</b> of file
+    <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_discovery_config_t::password"><a class="permalink" href="#const_char*_discovery_config_t::password">const
+  char* discovery_config_t::password</a></h2>
+<p class="Pp">Optional session password (NULL if none).</p>
+<p class="Pp">Definition at line <b>128</b> of file <b>discovery.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char*_discovery_config_t::session_string"><a class="permalink" href="#const_char*_discovery_config_t::session_string">const
   char* discovery_config_t::session_string</a></h2>
 <p class="Pp">Session string to join (or NULL to create).</p>
-<p class="Pp">Definition at line <b>217</b> of file <b>session.h</b>.</p>
+<p class="Pp">Definition at line <b>217</b> of file
+    <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>discovery_should_exit_fn</b>
   discovery_config_t::should_exit_callback</h2>
-<p class="Pp">Definition at line <b>229</b> of file <b>session.h</b>.</p>
+<p class="Pp">Definition at line <b>229</b> of file
+    <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
 <p class="Pp"></p>
 </section>
@@ -152,7 +236,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

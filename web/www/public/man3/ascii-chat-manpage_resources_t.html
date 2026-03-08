@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>manpage_resources_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">manpage_resources_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">manpage_resources_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">manpage_resources_t - Man page resource container.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include
+  &lt;include/ascii-chat/options/manpage/resources.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">const char * <b>template_content</b>
+  <br/>
+  Template file content (.1.in). size_t <b>template_len</b>
+  <br/>
+  Length of template_content. const char * <b>content_sections</b>
+  <br/>
+  Content sections file (.1.content). size_t <b>content_len</b>
+  <br/>
+  Length of content_sections. <b>bool</b> <b>is_embedded</b>
+  <br/>
+  True if resources from embedded binary. <b>bool</b> <b>allocated</b>
+  <br/>
+  True if resources were allocated (need freeing).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Man page resource container.</p>
+<p class="Pp">Holds loaded man page resources with metadata about their origin
+    and lifecycle management.</p>
+<p class="Pp">Definition at line <b>22</b> of file <b>resources.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> manpage_resources_t::allocated</h2>
+<p class="Pp">True if resources were allocated (need freeing).</p>
+<p class="Pp">Definition at line <b>28</b> of file <b>resources.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_resources_destroy()</b>, and
+    <b>manpage_resources_load()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_manpage_resources_t::content_len"><a class="permalink" href="#size_t_manpage_resources_t::content_len">size_t
+  manpage_resources_t::content_len</a></h2>
+<p class="Pp">Length of content_sections.</p>
+<p class="Pp">Definition at line <b>26</b> of file <b>resources.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_resources_destroy()</b>, and
+    <b>manpage_resources_load()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_manpage_resources_t::content_sections"><a class="permalink" href="#const_char*_manpage_resources_t::content_sections">const
+  char* manpage_resources_t::content_sections</a></h2>
+<p class="Pp">Content sections file (.1.content).</p>
+<p class="Pp">Definition at line <b>25</b> of file <b>resources.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_resources_destroy()</b>, and
+    <b>manpage_resources_load()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> manpage_resources_t::is_embedded</h2>
+<p class="Pp">True if resources from embedded binary.</p>
+<p class="Pp">Definition at line <b>27</b> of file <b>resources.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_resources_destroy()</b>, and
+    <b>manpage_resources_load()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_manpage_resources_t::template_content"><a class="permalink" href="#const_char*_manpage_resources_t::template_content">const
+  char* manpage_resources_t::template_content</a></h2>
+<p class="Pp">Template file content (.1.in).</p>
+<p class="Pp">Definition at line <b>23</b> of file <b>resources.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_resources_destroy()</b>,
+    <b>manpage_resources_is_valid()</b>, <b>manpage_resources_load()</b>, and
+    <b>options_config_generate_manpage_merged()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_manpage_resources_t::template_len"><a class="permalink" href="#size_t_manpage_resources_t::template_len">size_t
+  manpage_resources_t::template_len</a></h2>
+<p class="Pp">Length of template_content.</p>
+<p class="Pp">Definition at line <b>24</b> of file <b>resources.h</b>.</p>
+<p class="Pp">Referenced by <b>manpage_resources_destroy()</b>,
+    <b>manpage_resources_is_valid()</b>, and
+  <b>manpage_resources_load()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

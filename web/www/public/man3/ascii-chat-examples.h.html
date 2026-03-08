@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>examples.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">examples.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">examples.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">examples.h - EXAMPLES section generator for man pages.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">char * <b>manpage_content_generate_examples</b> (const
+    <b>options_config_t</b> *config)
+  <br/>
+  Generate EXAMPLES section content. void <b>manpage_content_free_examples</b>
+    (char *content)
+  <br/>
+  Free generated examples content.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">EXAMPLES section generator for man pages.</p>
+<p class="Pp">Generates the EXAMPLES section from example descriptors showing
+    common usage patterns.</p>
+<p class="Pp">Definition in file <b>examples.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_manpage_content_free_examples_(char_*_content)"><a class="permalink" href="#void_manpage_content_free_examples_(char_*_content)">void
+  manpage_content_free_examples (char * content)</a></h2>
+<p class="Pp">Free generated examples content.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>content</i> Content to free (can be NULL)</div>
+<p class="Pp">Definition at line <b>148</b> of file <b>examples.c</b>.</p>
+<pre>148                                                   {
+149   if (content) {
+150     SAFE_FREE(content);
+151   }
+152 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>, and
+    <b>options_config_generate_manpage_template()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_manpage_content_generate_examples_(const_"><a class="permalink" href="#char_*_manpage_content_generate_examples_(const_">char
+  * manpage_content_generate_examples (const <b>options_config_t</b> *
+  config)</a></h2>
+<p class="Pp">Generate EXAMPLES section content. Creates EXAMPLES section from
+    example descriptors with proper code block and description formatting.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options
+  configuration with example descriptors</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Newly allocated content string (caller must free)</div>
+<p class="Pp">Definition at line <b>79</b> of file <b>examples.c</b>.</p>
+<pre>79                                                                         {
+80   if (!config) {
+81     char *buffer = SAFE_MALLOC(1, char *);
+82     buffer[0] = '\0';
+83     return buffer;
+84   }
+85 
+86   if (config-&gt;num_examples == 0) {
+87     // Generate fallback content when no examples are defined
+88     size_t buffer_capacity = 256;
+89     char *buffer = SAFE_MALLOC(buffer_capacity, char *);
+90     size_t offset = 0;
+91     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.PP\nNo examples available for this mode.\n&quot;);
+92     log_debug(&quot;Generated EXAMPLES section (fallback - no examples found)&quot;);
+93     return buffer;
+94   }
+95 
+96 
+97   // Allocate growing buffer for examples section
+98   size_t buffer_capacity = 8192;
+99   char *buffer = SAFE_MALLOC(buffer_capacity, char *);
+100   size_t offset = 0;
+101 
+102   for (size_t i = 0; i &lt; config-&gt;num_examples; i++) {
+103     const example_descriptor_t *example = &amp;config-&gt;examples[i];
+104 
+105     // Get all mode names from bitmask (examples can apply to multiple modes)
+106     // For man pages, we only show each example once, randomly selecting one mode
+107     size_t num_modes = 0;
+108     const char **mode_names = get_all_mode_names_from_bitmask(example-&gt;mode_bitmask, &amp;num_modes);
+109 
+110     // Ensure buffer is large enough
+111     if (offset + 512 &gt;= buffer_capacity) {
+112       buffer_capacity *= 2;
+113       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
+114     }
+115 
+116     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.TP\n&quot;);
+117     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B ascii-chat&quot;);
+118 
+119     // Add mode name if applicable (randomly select one mode for multi-mode examples)
+120     if (num_modes &gt; 0) {
+121       size_t selected_mode = randombytes_uniform((uint32_t)num_modes);
+122       if (mode_names[selected_mode]) {
+123         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot; %s&quot;, mode_names[selected_mode]);
+124       }
+125     }
+126 
+127     if (example-&gt;args) {
+128       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot; %s&quot;, example-&gt;args);
+129     }
+130     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;\n&quot;);
+131 
+132     if (example-&gt;description) {
+133       offset +=
+134           safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;%s\n&quot;, escape_groff_special(example-&gt;description));
+135     }
+136 
+137     // Free mode names array
+138     if (mode_names) {
+139       SAFE_FREE(mode_names);
+140     }
+141   }
+142 
+143   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;\n&quot;);
+144 
+145   return buffer;
+146 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>example_descriptor_t::args</b>,
+    <b>example_descriptor_t::description</b>, <b>escape_groff_special()</b>,
+    <b>options_config_t::examples</b>, <b>log_debug</b>,
+    <b>example_descriptor_t::mode_bitmask</b>,
+    <b>options_config_t::num_examples</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>SAFE_REALLOC</b>, and <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>, and
+    <b>options_config_generate_manpage_template()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

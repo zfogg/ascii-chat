@@ -49,8 +49,9 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">const enum_to_string_entry_t * <b>options_get_enum_entries</b>
-    (const char *option_name, size_t *entry_count)
+<p class="Pp">const <b>enum_to_string_entry_t</b> *
+    <b>options_get_enum_entries</b> (const char *option_name, size_t
+    *entry_count)
   <br/>
   Get all enum entries with descriptions for an option. const char **
     <b>options_get_enum_values</b> (const char *option_name, size_t
@@ -77,12 +78,15 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="const_enum_to_string_entry_t_*_options_get_enum_entries_(const_char_*_option_name,_size_t_*_entry_count)"><a class="permalink" href="#const_enum_to_string_entry_t_*_options_get_enum_entries_(const_char_*_option_name,_size_t_*_entry_count)">const
-  enum_to_string_entry_t * options_get_enum_entries (const char * option_name,
-  size_t * entry_count)</a></h2>
-<p class="Pp">Get all enum entries with descriptions for an option. Returns
-    entries containing both string values and descriptions for shell completion.
-    Used by zsh completion to show descriptions alongside values.</p>
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>enum_to_string_entry_t</b> * options_get_enum_entries (const char *
+  option_name, size_t * entry_count)</a></h2>
+<p class="Pp">Get all enum entries with descriptions for an option. Get enum
+    entries with descriptions for an option.</p>
+<p class="Pp"></p>
+<p class="Pp">Returns entries containing both string values and descriptions for
+    shell completion. Used by zsh completion to show descriptions alongside
+    values.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>option_name</i> Option long name (e.g.,
@@ -120,10 +124,12 @@
 <h2 class="Ss" id="const_char_**_options_get_enum_values_(const_char_*_option_name,_size_t_*_value_count)"><a class="permalink" href="#const_char_**_options_get_enum_values_(const_char_*_option_name,_size_t_*_value_count)">const
   char ** options_get_enum_values (const char * option_name, size_t *
   value_count)</a></h2>
-<p class="Pp">Get all unique string values for an option. Extracts the list of
-    valid string values for an enum option. For options with aliases (like
-    render-mode which has &quot;foreground&quot; and &quot;fg&quot;), both
-    values are included.</p>
+<p class="Pp">Get all unique string values for an option. Get enum values for an
+    option.</p>
+<p class="Pp"></p>
+<p class="Pp">Extracts the list of valid string values for an enum option. For
+    options with aliases (like render-mode which has &quot;foreground&quot; and
+    &quot;fg&quot;), both values are included.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>option_name</i> Option long name (e.g.,
@@ -185,7 +191,9 @@
 214 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>enum_map_descriptor_t::map</b>.</p>
+<p class="Pp">References <b>enum_to_string_entry_t::enum_value</b>,
+    <b>enum_map_descriptor_t::map</b>, <b>SAFE_MALLOC</b>, and
+    <b>enum_to_string_entry_t::string</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_suggest_enum_value()</b>.</p>
 </section>
 <section class="Ss">
@@ -221,7 +229,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

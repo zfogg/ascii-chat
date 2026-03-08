@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>options.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">options.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">options.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">options.h - OPTIONS section generator for man pages.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">char * <b>manpage_content_generate_options</b> (const
+    <b>options_config_t</b> *config)
+  <br/>
+  Generate OPTIONS section content. void <b>manpage_content_free_options</b>
+    (char *content)
+  <br/>
+  Free generated options content.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">OPTIONS section generator for man pages.</p>
+<p class="Pp">Generates the OPTIONS section from option descriptors in the
+    config.</p>
+<p class="Pp">Definition in file
+    <b>include/ascii-chat/options/manpage/content/options.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_manpage_content_free_options_(char_*_content)"><a class="permalink" href="#void_manpage_content_free_options_(char_*_content)">void
+  manpage_content_free_options (char * content)</a></h2>
+<p class="Pp">Free generated options content.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>content</i> Content to free (can be NULL)</div>
+<p class="Pp">Definition at line <b>202</b> of file
+    <b>lib/options/manpage/content/options.c</b>.</p>
+<pre>202                                                  {
+203   if (content) {
+204     SAFE_FREE(content);
+205   }
+206 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>, and
+    <b>options_config_generate_manpage_template()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_manpage_content_generate_options_(const_"><a class="permalink" href="#char_*_manpage_content_generate_options_(const_">char
+  * manpage_content_generate_options (const <b>options_config_t</b> *
+  config)</a></h2>
+<p class="Pp">Generate OPTIONS section content. Creates formatted OPTIONS
+    section from option descriptors, grouped by category with proper groff
+    formatting.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options
+  configuration with descriptors</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Newly allocated content string (caller must free)</div>
+<p class="Pp">Definition at line <b>17</b> of file
+    <b>lib/options/manpage/content/options.c</b>.</p>
+<pre>17                                                                        {
+18   if (!config) {
+19     char *buffer = SAFE_MALLOC(1, char *);
+20     buffer[0] = '\0';
+21     return buffer;
+22   }
+23 
+24   if (config-&gt;num_descriptors == 0) {
+25     // Generate fallback content when no options are defined
+26     size_t buffer_capacity = 512;
+27     char *buffer = SAFE_MALLOC(buffer_capacity, char *);
+28     size_t offset = 0;
+29     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.PP\nNo command-line options are available for this mode.\n&quot;);
+30     log_debug(&quot;Generated OPTIONS section (fallback - no options found)&quot;);
+31     return buffer;
+32   }
+33 
+34   // Use a growing buffer for dynamic content
+35   size_t buffer_capacity = 8192;
+36   char *buffer = SAFE_MALLOC(buffer_capacity, char *);
+37   size_t offset = 0;
+38 
+39   // Add introductory paragraph explaining mode flags, defaults, and env vars
+40   offset +=
+41       safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;Each option shows which modes it applies to with\n&quot;);
+42   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B (modes: ...)\n&quot;);
+43   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;notation. Default values are shown with\n&quot;);
+44   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B (default: ...).\n&quot;);
+45   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;See the\n&quot;);
+46   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B ENVIRONMENT\n&quot;);
+47   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;section for environment variable equivalents.\n&quot;);
+48   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.PP\n&quot;);
+49   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;Configuration precedence (lowest to highest):\n&quot;);
+50   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B config.toml\n&quot;);
+51   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;(see\n&quot;);
+52   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.BR ascii-chat (5))\n&quot;);
+53   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;&lt; environment variables &lt;\n&quot;);
+54   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B command-line flags.\n&quot;);
+55   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;Later values override earlier ones.\n&quot;);
+56   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.PP\n&quot;);
+57   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;Options marked\n&quot;);
+58   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B global\n&quot;);
+59   offset += safe_snprintf(buffer + offset, buffer_capacity - offset,
+60                           &quot;must be passed before any mode and apply to all modes.\n&quot;);
+61   offset += safe_snprintf(buffer + offset, buffer_capacity - offset,
+62                           &quot;Mode-specific options are passed after the mode name.\n&quot;);
+63   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.PP\n&quot;);
+64   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;The default mode (running\n&quot;);
+65   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B ascii-chat\n&quot;);
+66   offset += safe_snprintf(buffer + offset, buffer_capacity - offset,
+67                           &quot;with no mode) accepts both global and default mode options with no mode specified.\n&quot;);
+68   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.PP\n&quot;);
+69 
+70   // Build list of unique groups in order of first appearance
+71   const char **unique_groups = SAFE_MALLOC(config-&gt;num_descriptors * sizeof(const char *), const char **);
+72   size_t num_unique_groups = 0;
+73 
+74   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+75     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+76 
+77     // Skip hidden options
+78     if (desc-&gt;hide_from_mode_help || desc-&gt;hide_from_binary_help || !desc-&gt;group) {
+79       continue;
+80     }
+81 
+82     // Check if this group is already in the list
+83     bool group_exists = false;
+84     for (size_t j = 0; j &lt; num_unique_groups; j++) {
+85       if (unique_groups[j] &amp;&amp; strcmp(unique_groups[j], desc-&gt;group) == 0) {
+86         group_exists = true;
+87         break;
+88       }
+89     }
+90 
+91     // Add new group to list
+92     if (!group_exists &amp;&amp; num_unique_groups &lt; config-&gt;num_descriptors) {
+93       unique_groups[num_unique_groups++] = desc-&gt;group;
+94     }
+95   }
+96 
+97   // Print options grouped by category
+98   for (size_t g = 0; g &lt; num_unique_groups; g++) {
+99     const char *current_group = unique_groups[g];
+100 
+101     // Add section heading for each group
+102     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.SS %s\n&quot;, current_group);
+103 
+104     // Print all options in this group
+105     for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+106       const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+107 
+108       // Skip if not in current group or if hidden
+109       bool is_binary_option = (desc-&gt;mode_bitmask &amp; OPTION_MODE_BINARY) != 0;
+110       bool applies_to_mode = false;
+111       if (is_binary_option) {
+112         applies_to_mode = !desc-&gt;hide_from_binary_help;
+113       } else {
+114         applies_to_mode = !desc-&gt;hide_from_mode_help;
+115       }
+116       if (!applies_to_mode || !desc-&gt;group || strcmp(desc-&gt;group, current_group) != 0) {
+117         continue;
+118       }
+119 
+120       // Ensure buffer is large enough
+121       if (offset + 512 &gt;= buffer_capacity) {
+122         buffer_capacity *= 2;
+123         buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
+124       }
+125 
+126       // Start option item
+127       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.TP\n&quot;);
+128 
+129       // Write option flags
+130       if (desc-&gt;short_name &amp;&amp; desc-&gt;short_name != '\0') {
+131         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B \\-%c, \\-\\-%s&quot;, desc-&gt;short_name,
+132                                 desc-&gt;long_name);
+133       } else {
+134         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B \\-\\-%s&quot;, desc-&gt;long_name);
+135       }
+136 
+137       // Add argument placeholder for value-taking options
+138       if (desc-&gt;type != OPTION_TYPE_ACTION) {
+139         // Check for custom placeholder first, fall back to type-based placeholder
+140         const char *placeholder =
+141             desc-&gt;arg_placeholder ? desc-&gt;arg_placeholder : options_get_type_placeholder(desc-&gt;type);
+142         if (placeholder &amp;&amp; *placeholder) {
+143           offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot; \\fI%s\\fR&quot;, placeholder);
+144         }
+145       }
+146 
+147       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;\n&quot;);
+148 
+149       // Write help text
+150       if (desc-&gt;help_text) {
+151         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;%s&quot;, escape_groff_special(desc-&gt;help_text));
+152         if (!desc-&gt;default_value) {
+153           offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;\n&quot;);
+154         } else {
+155           offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot; &quot;);
+156         }
+157       } else if (desc-&gt;default_value) {
+158         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot; &quot;);
+159       }
+160 
+161       // Add default value if present
+162       if (desc-&gt;default_value) {
+163         char default_buf[256];
+164         memset(default_buf, 0, sizeof(default_buf)); // Initialize buffer to prevent garbage
+165         int n = options_format_default_value(desc-&gt;type, desc-&gt;default_value, default_buf, sizeof(default_buf));
+166         // Skip empty strings (like --grep's default of &quot;&quot;)
+167         if (n &gt; 0 &amp;&amp; default_buf[0] != '\0') {
+168           offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;(default: &quot;);
+169           if (desc-&gt;type == OPTION_TYPE_STRING) {
+170             offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;%s&quot;, escape_groff_special(default_buf));
+171           } else {
+172             offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;%s&quot;, default_buf);
+173           }
+174           offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;)\n&quot;);
+175         }
+176       }
+177 
+178       // Add mode information if applicable
+179       const char *mode_str = format_mode_names(desc-&gt;mode_bitmask);
+180       if (mode_str &amp;&amp; strcmp(mode_str, &quot;all modes&quot;) != 0) {
+181         if (strcmp(mode_str, &quot;global&quot;) == 0) {
+182           offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;(mode: %s)\n&quot;, mode_str);
+183         } else {
+184           offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;(modes: %s)\n&quot;, mode_str);
+185         }
+186       }
+187 
+188       // Add REQUIRED note if applicable
+189       if (desc-&gt;required) {
+190         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;[REQUIRED]\n&quot;);
+191       }
+192     }
+193   }
+194 
+195   SAFE_FREE(unique_groups);
+196   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;\n&quot;);
+197 
+198   log_debug(&quot;Generated OPTIONS section (%zu bytes)&quot;, offset);
+199   return buffer;
+200 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>option_descriptor_t::arg_placeholder</b>,
+    <b>option_descriptor_t::default_value</b>,
+    <b>options_config_t::descriptors</b>, <b>escape_groff_special()</b>,
+    <b>format_mode_names()</b>, <b>option_descriptor_t::group</b>,
+    <b>option_descriptor_t::help_text</b>,
+    <b>option_descriptor_t::hide_from_binary_help</b>,
+    <b>option_descriptor_t::hide_from_mode_help</b>, <b>log_debug</b>,
+    <b>option_descriptor_t::long_name</b>,
+    <b>option_descriptor_t::mode_bitmask</b>,
+    <b>options_config_t::num_descriptors</b>, <b>OPTION_MODE_BINARY</b>,
+    <b>OPTION_TYPE_ACTION</b>, <b>OPTION_TYPE_STRING</b>,
+    <b>options_format_default_value()</b>,
+    <b>options_get_type_placeholder()</b>, <b>option_descriptor_t::required</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SAFE_REALLOC</b>,
+    <b>safe_snprintf()</b>, <b>option_descriptor_t::short_name</b>, and
+    <b>option_descriptor_t::type</b>.</p>
+<p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>, and
+    <b>options_config_generate_manpage_template()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

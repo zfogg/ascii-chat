@@ -50,7 +50,8 @@
 <br/>
 <p class="Pp">void * <b>sqlite_backend_create</b> (const char *db_path)
   <br/>
-  void <b>sqlite_backend_set_db</b> (void *backend_data, sqlite3 *db)
+  Create SQLite backend instance. void <b>sqlite_backend_set_db</b> (void
+    *backend_data, sqlite3 *db)
   <br/>
   Set SQLite database handle for backend.
   <br/>
@@ -59,8 +60,9 @@
 <section class="Ss">
 <h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
 <br/>
-<p class="Pp">const rate_limiter_backend_ops_t <b>sqlite_backend_ops</b>
+<p class="Pp">const <b>rate_limiter_backend_ops_t</b> <b>sqlite_backend_ops</b>
   <br/>
+  SQLite backend operations vtable.
   <br/>
 </p>
 </section>
@@ -79,6 +81,12 @@
 <section class="Ss">
 <h2 class="Ss" id="void_*_sqlite_backend_create_(const_char_*_db_path)"><a class="permalink" href="#void_*_sqlite_backend_create_(const_char_*_db_path)">void
   * sqlite_backend_create (const char * db_path)</a></h2>
+<p class="Pp">Create SQLite backend instance.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db_path</i> Path to SQLite database (NULL =
+  in-memory)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Backend instance or NULL on failure</div>
 <p class="Pp">Definition at line <b>145</b> of file <b>sqlite.c</b>.</p>
 <pre>145                                                  {
 146   (void)db_path; // Database is provided externally, not created here
@@ -98,6 +106,7 @@
 160 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>log_debug</b>, and <b>log_error</b>.</p>
 <p class="Pp">Referenced by <b>rate_limiter_create_sqlite()</b>.</p>
 </section>
 <section class="Ss">
@@ -122,8 +131,8 @@
 <h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="const_rate_limiter_backend_ops_t_sqlite_backend_ops"><a class="permalink" href="#const_rate_limiter_backend_ops_t_sqlite_backend_ops">const
-  rate_limiter_backend_ops_t sqlite_backend_ops</a></h2>
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>rate_limiter_backend_ops_t</b> sqlite_backend_ops</a></h2>
 <p class="Pp"><b>Initial value:</b></p>
 <pre>
 <br/>
@@ -139,6 +148,7 @@
 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">SQLite backend operations vtable.</p>
 <p class="Pp">Definition at line <b>174</b> of file <b>sqlite.c</b>.</p>
 <pre>174                                                     {
 175     .check = sqlite_check,
@@ -158,7 +168,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

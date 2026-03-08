@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>renderer.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">renderer.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">renderer.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">renderer.h - Terminal-to-pixel renderer and render-file output
+    (audio + video).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>term_renderer_config_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>terminal_renderer_s</b>
+    <b>terminal_renderer_t</b>
+  <br/>
+  typedef struct <b>render_file_ctx_s</b> <b>render_file_ctx_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>term_renderer_theme_t</b> {
+    <b>TERM_RENDERER_THEME_DARK</b> = 0, <b>TERM_RENDERER_THEME_LIGHT</b> = 1,
+    <b>TERM_RENDERER_THEME_AUTO</b> = 2 }
+  <br/>
+  Terminal rendering theme.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>term_renderer_create</b> (const
+    <b>term_renderer_config_t</b> *cfg, <b>terminal_renderer_t</b> **out)
+  <br/>
+  <b>asciichat_error_t</b> <b>term_renderer_feed</b> (<b>terminal_renderer_t</b>
+    *r, const char *ansi_frame, size_t len)
+  <br/>
+  const <b>uint8_t</b> * <b>term_renderer_pixels</b> (<b>terminal_renderer_t</b>
+    *r)
+  <br/>
+  int <b>term_renderer_width_px</b> (<b>terminal_renderer_t</b> *r)
+  <br/>
+  int <b>term_renderer_height_px</b> (<b>terminal_renderer_t</b> *r)
+  <br/>
+  int <b>term_renderer_pitch</b> (<b>terminal_renderer_t</b> *r)
+  <br/>
+  void <b>term_renderer_destroy</b> (<b>terminal_renderer_t</b> *r)
+  <br/>
+  <b>asciichat_error_t</b> <b>render_file_create</b> (const char *output_path,
+    int cols, int rows, int fps, int theme, <b>render_file_ctx_t</b> **out)
+  <br/>
+  void <b>render_file_set_audio_source</b> (<b>render_file_ctx_t</b> *ctx, void
+    *audio_media_source, void *audio_capture_rb)
+  <br/>
+  <b>asciichat_error_t</b> <b>render_file_write_frame</b>
+    (<b>render_file_ctx_t</b> *ctx, const char *ansi_frame, <b>uint64_t</b>
+    captured_ns)
+  <br/>
+  void <b>render_file_set_snapshot_actual_duration</b> (<b>render_file_ctx_t</b>
+    *ctx, double actual_duration_sec)
+  <br/>
+  <b>asciichat_error_t</b> <b>render_file_destroy</b> (<b>render_file_ctx_t</b>
+    *ctx)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Terminal-to-pixel renderer and render-file output (audio +
+  video).</p>
+<p class="Pp">Platform-specific renderers (Linux: FreeType+ghostty_vt, macOS:
+    ghostty+Metal) implement the functions declared here. render_file_* is the
+    public orchestrator called from the session display layer.</p>
+<p class="Pp"></p>
+<p class="Pp">Supports theme-aware rendering that adapts colors based on the
+    terminal's background theme (dark or light) for optimal readability.</p>
+<p class="Pp">Definition in file <b>renderer.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">typedef struct <b>render_file_ctx_s</b>
+  <b>render_file_ctx_t</b></h2>
+<p class="Pp">Definition at line <b>59</b> of file <b>renderer.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef struct <b>terminal_renderer_s</b>
+  <b>terminal_renderer_t</b></h2>
+<p class="Pp">Definition at line <b>22</b> of file <b>renderer.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>term_renderer_theme_t</b></a></h2>
+<p class="Pp">Terminal rendering theme. Determines color palette for pixel-based
+    ANSI text rendering. When TERM_RENDERER_THEME_AUTO is used, theme is
+    detected from <b>terminal_has_dark_background()</b> to adapt colors to
+    user's theme.</p>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="TERM_RENDERER_THEME_DARK"><a class="permalink" href="#TERM_RENDERER_THEME_DARK"><b><i>TERM_RENDERER_THEME_DARK
+    </i></b></a></dt>
+  <dd>Dark theme: use light colors for dark background</dd>
+  <dt id="TERM_RENDERER_THEME_LIGHT"><a class="permalink" href="#TERM_RENDERER_THEME_LIGHT"><b><i>TERM_RENDERER_THEME_LIGHT
+    </i></b></a></dt>
+  <dd>Light theme: use dark colors for light background</dd>
+  <dt id="TERM_RENDERER_THEME_AUTO"><a class="permalink" href="#TERM_RENDERER_THEME_AUTO"><b><i>TERM_RENDERER_THEME_AUTO
+    </i></b></a></dt>
+  <dd>Auto-detect theme from terminal (default)</dd>
+</dl>
+<p class="Pp">Definition at line <b>31</b> of file <b>renderer.h</b>.</p>
+<pre>31              {
+32   TERM_RENDERER_THEME_DARK = 0,  
+33   TERM_RENDERER_THEME_LIGHT = 1, 
+34   TERM_RENDERER_THEME_AUTO = 2,  
+35 } term_renderer_theme_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> render_file_create (const char *
+  output_path, int cols, int rows, int fps, int theme, <b>render_file_ctx_t</b>
+  ** out)</h2>
+<p class="Pp">Definition at line <b>29</b> of file <b>renderer.c</b>.</p>
+<pre>30                                                               {
+31   log_info(&quot;[RENDER_FILE_CREATE] CALLED with output_path=%s, cols=%d, rows=%d, fps=%d, theme=%d, out=%p&quot;,
+32            output_path ? output_path : &quot;(null)&quot;, cols, rows, fps, theme, (void *)out);
+33   render_file_ctx_t *ctx = SAFE_CALLOC(1, sizeof(*ctx), render_file_ctx_t *);
+34 
+35   // Resolve font spec &#x2192; platform-appropriate file path, family name, or bundled data.
+36   char font_spec[512] = {0};
+37   bool font_is_path = false;
+38   const uint8_t *font_data = NULL;
+39   size_t font_data_size = 0;
+40   const char *raw_font = GET_OPTION(render_font);
+41 
+42   // Auto-select matrix font when --matrix flag is set, unless user explicitly overrides with --render-font
+43   if ((!raw_font || raw_font[0] == '\0') &amp;&amp; GET_OPTION(matrix_rain)) {
+44     raw_font = &quot;matrix&quot;;
+45     log_debug(&quot;render_file_create: [MATRIX] Using matrix font (enabled by --matrix flag)&quot;);
+46   }
+47 
+48   // BEFORE resolving fonts, check if matrix font and disable it for render-file (causes glyph height=0)
+49   if (raw_font &amp;&amp; strcmp(raw_font, &quot;matrix&quot;) == 0) {
+50     log_warn(&quot;render_file_create: [MATRIX] Matrix font not supported for render-file output, using system font instead&quot;);
+51     raw_font = NULL;  // Force fallback to system font
+52   }
+53 
+54   asciichat_error_t fe =
+55       platform_font_resolve(raw_font, font_spec, sizeof(font_spec), &amp;font_is_path, &amp;font_data, &amp;font_data_size);
+56   if (fe != ASCIICHAT_OK) {
+57     log_warn(&quot;renderer: font resolution failed for '%s' &#x2014; using system default&quot;, raw_font ? raw_font : &quot;(explicit system)&quot;);
+58   }
+59 
+60   log_debug(&quot;render_file_create: Font resolved: font_spec='%s', font_is_path=%d, font_data=%p (size=%zu)&quot;, font_spec,
+61             font_is_path, (void *)font_data, font_data_size);
+62 
+63   // Use reasonable default font size for render-file quality
+64   double font_size_pt = GET_OPTION(render_font_size);
+65 
+66   term_renderer_config_t tr_cfg = {
+67       .cols = cols,
+68       .rows = rows,
+69       .font_size_pt = font_size_pt,
+70       .theme = (term_renderer_theme_t)theme,
+71       .font_is_path = font_is_path,
+72       .font_data = font_data,
+73       .font_data_size = font_data_size,
+74   };
+75   strncpy(tr_cfg.font_spec, font_spec, sizeof(tr_cfg.font_spec) - 1);
+76 
+77   asciichat_error_t err = term_renderer_create(&amp;tr_cfg, &amp;ctx-&gt;renderer);
+78   if (err != ASCIICHAT_OK) {
+79     log_error(&quot;render_file_create: term_renderer_create failed: %s&quot;, asciichat_error_string(err));
+80     SAFE_FREE(ctx);
+81     return err;
+82   }
+83   int actual_width_px = term_renderer_width_px(ctx-&gt;renderer);
+84   int actual_height_px = term_renderer_height_px(ctx-&gt;renderer);
+85   log_info(&quot;render_file_create: GRID DIMENSIONS: %ux%u cells -&gt; PIXEL DIMENSIONS: %dx%d px&quot;, cols, rows,
+86            actual_width_px, actual_height_px);
+87   log_debug(&quot;render_file_create: term_renderer created (%dx%d cells, %dx%d px)&quot;, cols, rows, actual_width_px,
+88             actual_height_px);
+89 
+90   err = ffmpeg_encoder_create(output_path, actual_width_px, actual_height_px, fps, &amp;ctx-&gt;encoder);
+91   if (err != ASCIICHAT_OK) {
+92     log_error(&quot;render_file_create: ffmpeg_encoder_create failed: %s&quot;, asciichat_error_string(err));
+93     term_renderer_destroy(ctx-&gt;renderer);
+94     SAFE_FREE(ctx);
+95     return err;
+96   }
+97   log_debug(&quot;render_file_create: ffmpeg_encoder created successfully&quot;);
+98 
+99   // Initialize audio fields
+100   ctx-&gt;audio_sample_rate = 48000;  // Audio pipeline is 48kHz
+101   // Allocate large buffer for snapshot mode (5 seconds at 48kHz with ~14 FPS = 3,428 samples per frame)
+102   // Use 8192 to comfortably handle snapshot reads without excessive overhead
+103   ctx-&gt;audio_buf_size = 8192;      // Temporary buffer for reading audio (in floats)
+104   ctx-&gt;audio_read_buf = SAFE_MALLOC(ctx-&gt;audio_buf_size * sizeof(float), float *);
+105   ctx-&gt;audio_media_source = NULL;
+106   ctx-&gt;audio_capture_rb = NULL;
+107 
+108   log_info(&quot;renderer: initialized encoder for %s&quot;, output_path);
+109 
+110   // Register render file context for debugging
+111   NAMED_REGISTER_CONTEXT(ctx, &quot;render_file_ctx&quot;, output_path, NULL);
+112 
+113   *out = ctx;
+114   return ASCIICHAT_OK;
+115 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>render_file_ctx_s::audio_buf_size</b>,
+    <b>render_file_ctx_s::audio_capture_rb</b>,
+    <b>render_file_ctx_s::audio_media_source</b>,
+    <b>render_file_ctx_s::audio_read_buf</b>,
+    <b>render_file_ctx_s::audio_sample_rate</b>,
+    <b>render_file_ctx_s::encoder</b>, <b>ffmpeg_encoder_create()</b>,
+    <b>term_renderer_config_t::font_spec</b>, <b>GET_OPTION</b>,
+    <b>log_debug</b>, <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
+    <b>NAMED_REGISTER_CONTEXT</b>, <b>platform_font_resolve()</b>,
+    <b>render_file_ctx_s::renderer</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>term_renderer_create()</b>,
+    <b>term_renderer_destroy()</b>, <b>term_renderer_height_px()</b>, and
+    <b>term_renderer_width_px()</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> render_file_destroy
+  (<b>render_file_ctx_t</b> * ctx)</h2>
+<p class="Pp">Definition at line <b>311</b> of file <b>renderer.c</b>.</p>
+<pre>311                                                               {
+312   if (!ctx)
+313     return ASCIICHAT_OK;
+314   asciichat_error_t err = ffmpeg_encoder_destroy(ctx-&gt;encoder);
+315   term_renderer_destroy(ctx-&gt;renderer);
+316   SAFE_FREE(ctx-&gt;audio_read_buf);
+317   SAFE_FREE(ctx);
+318   return err;
+319 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>render_file_ctx_s::audio_read_buf</b>, <b>render_file_ctx_s::encoder</b>,
+    <b>ffmpeg_encoder_destroy()</b>, <b>render_file_ctx_s::renderer</b>,
+    <b>SAFE_FREE</b>, and <b>term_renderer_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>session_display_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_render_file_set_audio_source_("><a class="permalink" href="#void_render_file_set_audio_source_(">void
+  render_file_set_audio_source (<b>render_file_ctx_t</b> * ctx, void *
+  audio_media_source, void * audio_capture_rb)</a></h2>
+<p class="Pp">Definition at line <b>117</b> of file <b>renderer.c</b>.</p>
+<pre>117                                                                                                             {
+118   if (!ctx) return;
+119   ctx-&gt;audio_media_source = (media_source_t *)audio_media_source;
+120   ctx-&gt;audio_capture_rb = (audio_ring_buffer_t *)audio_capture_rb;
+121   log_debug(&quot;render_file_set_audio_source: media_source=%p, capture_rb=%p&quot;, audio_media_source, audio_capture_rb);
+122 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>render_file_ctx_s::audio_capture_rb</b>,
+    <b>render_file_ctx_s::audio_media_source</b>, and <b>log_debug</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>, and
+    <b>session_display_set_render_audio_source()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_render_file_set_snapshot_actual_duration_("><a class="permalink" href="#void_render_file_set_snapshot_actual_duration_(">void
+  render_file_set_snapshot_actual_duration (<b>render_file_ctx_t</b> * ctx,
+  double actual_duration_sec)</a></h2>
+<p class="Pp">Definition at line <b>305</b> of file <b>renderer.c</b>.</p>
+<pre>305                                                                                                   {
+306   if (!ctx || !ctx-&gt;encoder)
+307     return;
+308   ffmpeg_encoder_set_snapshot_actual_duration(ctx-&gt;encoder, actual_duration_sec);
+309 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>render_file_ctx_s::encoder</b>, and
+    <b>ffmpeg_encoder_set_snapshot_actual_duration()</b>.</p>
+<p class="Pp">Referenced by
+    <b>session_display_set_snapshot_actual_duration()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> render_file_write_frame
+  (<b>render_file_ctx_t</b> * ctx, const char * ansi_frame, <b>uint64_t</b>
+  captured_ns)</h2>
+<p class="Pp">Definition at line <b>124</b> of file <b>renderer.c</b>.</p>
+<pre>124                                                                                                                 {
+125   // Write to debug file directly to bypass logging system
+126   FILE *dbg = fopen(&quot;/tmp/render-debug.txt&quot;, &quot;a&quot;);
+127   if (dbg) {
+128     fprintf(dbg, &quot;[RENDER_WRITE_FRAME] Called with ctx=%p, frame_len=%zu, captured_ns=%llu\n&quot;, (void *)ctx,
+129             ansi_frame ? strlen(ansi_frame) : 0, (unsigned long long)captured_ns);
+130     fclose(dbg);
+131   }
+132   log_info(&quot;render_file_write_frame: CALLED - ctx=%p, captured_ns=%llu&quot;, (void *)ctx, (unsigned long long)captured_ns);
+133 
+134   if (!ctx) {
+135     log_warn(&quot;render_file_write_frame: ctx is NULL&quot;);
+136     return ASCIICHAT_OK;
+137   }
+138 
+139   if (!ansi_frame) {
+140     log_warn(&quot;render_file_write_frame: ansi_frame is NULL&quot;);
+141     return ASCIICHAT_OK;
+142   }
+143 
+144   size_t frame_len = strlen(ansi_frame);
+145   log_info(&quot;render_file_write_frame: processing frame (len=%zu)&quot;, frame_len);
+146   if (frame_len &gt; 0) {
+147     log_info(&quot;  first 100 chars: %.100s&quot;, ansi_frame);
+148   }
+149 
+150   asciichat_error_t err = term_renderer_feed(ctx-&gt;renderer, ansi_frame, frame_len);
+151   if (err != ASCIICHAT_OK) {
+152     log_warn(&quot;render_file_write_frame: term_renderer_feed failed: %s&quot;, asciichat_error_string(err));
+153     return err;
+154   }
+155 
+156   const uint8_t *pixels = term_renderer_pixels(ctx-&gt;renderer);
+157   int pitch = term_renderer_pitch(ctx-&gt;renderer);
+158   int width_px = term_renderer_width_px(ctx-&gt;renderer);
+159   int height_px = term_renderer_height_px(ctx-&gt;renderer);
+160 
+161   log_info(&quot;render_file_write_frame: pixels=%p pitch=%d dims=%dx%d&quot;, (void *)pixels, pitch, width_px, height_px);
+162 
+163   // Check pixels in multiple locations to verify content
+164   if (pixels) {
+165     // Check pixel at (0,0) - top left corner
+166     uint8_t sample_r = pixels[0], sample_g = pixels[1], sample_b = pixels[2];
+167 
+168     // Check pixel at (500, 100) where we injected a test red stripe
+169     size_t test_offset = 100 * pitch + 500 * 3;
+170     uint8_t test_r = pixels[test_offset], test_g = pixels[test_offset + 1], test_b = pixels[test_offset + 2];
+171 
+172     // Check pixel at middle of screen
+173     uint8_t sample_r_mid = pixels[(height_px / 2) * pitch], sample_g_mid = pixels[(height_px / 2) * pitch + 1],
+174             sample_b_mid = pixels[(height_px / 2) * pitch + 2];
+175 
+176     log_info(&quot;  pixel[0,0]: RGB(%u,%u,%u), test_stripe[500,100]: RGB(%u,%u,%u), pixel[0,%d]: RGB(%u,%u,%u)&quot;,
+177              sample_r, sample_g, sample_b, test_r, test_g, test_b, height_px/2, sample_r_mid, sample_g_mid, sample_b_mid);
+178   }
+179 
+180   // CRITICAL: Copy pixel buffer before encoding
+181   // term_renderer_pixels() returns a pointer to the renderer's internal buffer which gets
+182   // overwritten on the next frame. We must copy the data before passing to the encoder.
+183   uint8_t *pixels_copy = NULL;
+184   if (pixels) {
+185     size_t pixel_buffer_size = (size_t)pitch * (size_t)height_px;
+186     pixels_copy = SAFE_MALLOC(pixel_buffer_size, uint8_t *);
+187     memcpy(pixels_copy, pixels, pixel_buffer_size);
+188     log_info(&quot;render_file_write_frame: copied %zu bytes of pixel data (was at %p, now at %p)&quot;,
+189              pixel_buffer_size, (void *)pixels, (void *)pixels_copy);
+190 
+191     // DEBUG: Inject test red stripe to verify encoder is working
+192     static int frame_num = 0;
+193     if (frame_num++ &lt; 1) {
+194       log_info(&quot;DEBUG: Injecting test RED vertical stripe into pixel buffer for verification&quot;);
+195       // Fill a 100-pixel-wide vertical stripe with bright red at x=500
+196       for (int y = 0; y &lt; height_px; y++) {
+197         for (int x = 500; x &lt; 600 &amp;&amp; x &lt; width_px; x++) {
+198           uint8_t *pixel = pixels_copy + y * pitch + x * 3;
+199           pixel[0] = 255;  // R
+200           pixel[1] = 0;    // G
+201           pixel[2] = 0;    // B
+202         }
+203       }
+204     }
+205   }
+206 
+207   err = ffmpeg_encoder_write_frame(ctx-&gt;encoder, pixels_copy, pitch, captured_ns);
+208   if (err != ASCIICHAT_OK) {
+209     log_warn(&quot;render_file_write_frame: ffmpeg_encoder_write_frame failed: %s&quot;, asciichat_error_string(err));
+210   }
+211 
+212   // Free the pixel copy (ffmpeg_encoder_write_frame reads and converts it immediately)
+213   SAFE_FREE(pixels_copy);
+214 
+215   // Write synchronized audio for this frame if available
+216   // In snapshot mode, track actual FPS and calculate samples_per_frame dynamically
+217   if (ctx &amp;&amp; ctx-&gt;audio_read_buf &amp;&amp; ctx-&gt;encoder) {
+218     // Detect if we're in snapshot mode
+219     bool snapshot_mode = GET_OPTION(snapshot_mode);
+220     double snapshot_delay = GET_OPTION(snapshot_delay);
+221 
+222     int samples_per_frame;
+223 
+224     // Track frame timing for dynamic FPS calculation in snapshot mode
+225     static uint64_t first_frame_ns = 0;
+226     static int log_once = 0;
+227 
+228     if (first_frame_ns == 0) {
+229       first_frame_ns = captured_ns;
+230     }
+231 
+232     if (snapshot_mode &amp;&amp; snapshot_delay &gt; 0) {
+233       // Simple approach: distribute snapshot_delay * sample_rate evenly across expected ~70 frames
+234       // This ensures total audio duration = snapshot_delay seconds
+235       int total_target_samples = (int)(ctx-&gt;audio_sample_rate * snapshot_delay);
+236       int expected_frame_count = (int)(13.6 * snapshot_delay);  // 13.6 FPS is typical capture rate
+237       samples_per_frame = total_target_samples / expected_frame_count;
+238 
+239       // Ensure minimum to avoid rounding to 0
+240       if (samples_per_frame &lt; 100) {
+241         samples_per_frame = 100;
+242       }
+243 
+244     } else {
+245       // Normal/live mode: use 60 FPS baseline
+246       samples_per_frame = ctx-&gt;audio_sample_rate / 60;
+247       if (!log_once++) {
+248         log_info(&quot;[AUDIO_CALC] Normal mode: samples_per_frame=%d&quot;, samples_per_frame);
+249       }
+250     }
+251 
+252     if (samples_per_frame &gt; ctx-&gt;audio_buf_size) {
+253       samples_per_frame = ctx-&gt;audio_buf_size;
+254       if (!log_once++) {
+255         log_warn(&quot;[AUDIO_CALC] samples_per_frame clamped to buffer size %d&quot;, ctx-&gt;audio_buf_size);
+256       }
+257     }
+258     if (samples_per_frame &lt;= 0) {
+259       samples_per_frame = 800;  // Fallback minimum
+260     }
+261 
+262     int samples_read = 0;
+263     static int audio_eof_reached = 0;
+264 
+265     // Read from whichever audio source is available (prefer media source, fallback to capture)
+266     if (!audio_eof_reached &amp;&amp; ctx-&gt;audio_media_source) {
+267       // Read from media source (file/URL audio) - try to get samples
+268       samples_read = media_source_read_audio(ctx-&gt;audio_media_source, ctx-&gt;audio_read_buf, samples_per_frame);
+269 
+270       if (samples_read &lt;= 0) {
+271         // EOF reached or error - no more audio samples available from source
+272         audio_eof_reached = 1;
+273         samples_read = 0;
+274       }
+275     } else if (!audio_eof_reached &amp;&amp; ctx-&gt;audio_capture_rb) {
+276       // Read from ring buffer (live mic capture)
+277       samples_read =
+278           audio_ring_buffer_read(ctx-&gt;audio_capture_rb, ctx-&gt;audio_read_buf, samples_per_frame);
+279       if (samples_read &lt; 0) {
+280         samples_read = 0;  // On error, write silence
+281         audio_eof_reached = 1;
+282       } else if (samples_read == 0) {
+283         audio_eof_reached = 1;
+284       }
+285       log_debug(&quot;render_file_write_frame: reading audio from capture_rb (samples_per_frame=%d, read=%d)&quot;,
+286                 samples_per_frame, samples_read);
+287     }
+288 
+289     // Write audio: either from source or silence to fill remaining time
+290     if (samples_read &gt; 0) {
+291       // We got samples from the source - write them
+292       ffmpeg_encoder_write_audio(ctx-&gt;encoder, ctx-&gt;audio_read_buf, samples_read);
+293     } else {
+294       // No samples available (EOF reached or not available) - write silence to maintain sync
+295       // This ensures audio track duration matches video track duration
+296       memset(ctx-&gt;audio_read_buf, 0, samples_per_frame * sizeof(float));
+297       ffmpeg_encoder_write_audio(ctx-&gt;encoder, ctx-&gt;audio_read_buf, samples_per_frame);
+298     }
+299 
+300   }
+301 
+302   return err;
+303 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>render_file_ctx_s::audio_buf_size</b>,
+    <b>render_file_ctx_s::audio_capture_rb</b>,
+    <b>render_file_ctx_s::audio_media_source</b>,
+    <b>render_file_ctx_s::audio_read_buf</b>, <b>audio_ring_buffer_read()</b>,
+    <b>render_file_ctx_s::audio_sample_rate</b>,
+    <b>render_file_ctx_s::encoder</b>, <b>ffmpeg_encoder_write_audio()</b>,
+    <b>ffmpeg_encoder_write_frame()</b>, <b>GET_OPTION</b>, <b>log_debug</b>,
+    <b>log_info</b>, <b>log_once</b>, <b>log_warn</b>,
+    <b>media_source_read_audio()</b>, <b>render_file_ctx_s::renderer</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>term_renderer_feed()</b>,
+    <b>term_renderer_height_px()</b>, <b>term_renderer_pitch()</b>,
+    <b>term_renderer_pixels()</b>, and <b>term_renderer_width_px()</b>.</p>
+<p class="Pp">Referenced by <b>session_display_encode_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> term_renderer_create (const
+  <b>term_renderer_config_t</b> * cfg, <b>terminal_renderer_t</b> ** out)</h2>
+<p class="Pp">Definition at line <b>104</b> of file
+    <b>media/render/terminal.c</b>.</p>
+<pre>104                                                                                                      {
+105   terminal_renderer_t *r = SAFE_CALLOC(1, sizeof(*r), terminal_renderer_t *);
+106   r-&gt;cols = cfg-&gt;cols;
+107   r-&gt;rows = cfg-&gt;rows;
+108   r-&gt;theme = cfg-&gt;theme;
+109 
+110   log_debug_every(1000, &quot;term_renderer_create: Initializing FreeType&quot;);
+111   if (FT_Init_FreeType(&amp;r-&gt;ft_lib)) {
+112     SAFE_FREE(r);
+113     return SET_ERRNO(ERROR_INIT, &quot;FreeType init failed&quot;);
+114   }
+115 
+116   // Load font from either file path or memory
+117   if (cfg-&gt;font_data &amp;&amp; cfg-&gt;font_data_size &gt; 0) {
+118     log_debug_every(1000, &quot;term_renderer_create: Loading font from memory (%zu bytes)&quot;, cfg-&gt;font_data_size);
+119     if (FT_New_Memory_Face(r-&gt;ft_lib, cfg-&gt;font_data, (FT_Long)cfg-&gt;font_data_size, 0, &amp;r-&gt;ft_face)) {
+120       FT_Done_FreeType(r-&gt;ft_lib);
+121       SAFE_FREE(r);
+122       return SET_ERRNO(ERROR_INIT, &quot;FreeType: cannot load bundled font&quot;);
+123     }
+124   } else {
+125     log_debug_every(1000, &quot;term_renderer_create: Loading font from path '%s'&quot;, cfg-&gt;font_spec);
+126     if (FT_New_Face(r-&gt;ft_lib, cfg-&gt;font_spec, 0, &amp;r-&gt;ft_face)) {
+127       FT_Done_FreeType(r-&gt;ft_lib);
+128       SAFE_FREE(r);
+129       return SET_ERRNO(ERROR_NOT_FOUND, &quot;FreeType: cannot load font '%s'&quot;, cfg-&gt;font_spec);
+130     }
+131   }
+132 
+133   // Detect if this is the matrix font (needs character mapping to Private Use Area)
+134   r-&gt;is_matrix_font = (strstr(cfg-&gt;font_spec, &quot;matrix&quot;) != NULL || strstr(cfg-&gt;font_spec, &quot;Matrix&quot;) != NULL);
+135   if (r-&gt;is_matrix_font) {
+136     log_debug(&quot;term_renderer_create: Detected matrix font - will use Private Use Area character mapping&quot;);
+137   }
+138 
+139   // Handle scalable vs bitmap fonts differently
+140   // Bitmap fonts (like matrix) don't respond to FT_Set_Char_Size
+141   // Instead, we need to select the best available bitmap strike
+142   log_debug(&quot;term_renderer_create: font='%s' num_fixed_sizes=%d&quot;, cfg-&gt;font_spec, r-&gt;ft_face-&gt;num_fixed_sizes);
+143   if (r-&gt;ft_face-&gt;num_fixed_sizes &gt; 0) {
+144     // Bitmap font: select the best matching bitmap strike
+145     int err = FT_Select_Size(r-&gt;ft_face, 0); // Use first available strike
+146     log_debug(&quot;term_renderer_create: [BITMAP] FT_Select_Size(0) returned %d&quot;, err);
+147   } else {
+148     // Scalable font: use FT_Set_Char_Size
+149     // FT_Set_Char_Size takes 1/64pt units and DPI &#x2014; supports fractional point sizes.
+150     // 96 DPI is the standard screen DPI used here; the 64 factor is the 26.6 fixed-point scale.
+151     int err = FT_Set_Char_Size(r-&gt;ft_face, 0, (FT_F26Dot6)(cfg-&gt;font_size_pt * 64.0), 96, 96);
+152     log_debug(&quot;term_renderer_create: [SCALABLE] FT_Set_Char_Size(size_pt=%.1f &#x2192; %ld 1/64pt) returned %d&quot;,
+153               cfg-&gt;font_size_pt, (long)(cfg-&gt;font_size_pt * 64.0), err);
+154   }
+155 
+156   int load_err = FT_Load_Char(r-&gt;ft_face, 'M', FT_LOAD_RENDER);
+157   log_debug(&quot;DEBUG: FT_Load_Char('M', FT_LOAD_RENDER) returned %d&quot;, load_err);
+158   log_debug(&quot;DEBUG: glyph-&gt;bitmap.rows=%d, glyph-&gt;bitmap.width=%d, glyph-&gt;bitmap_top=%d&quot;,
+159             r-&gt;ft_face-&gt;glyph-&gt;bitmap.rows, r-&gt;ft_face-&gt;glyph-&gt;bitmap.width, r-&gt;ft_face-&gt;glyph-&gt;bitmap_top);
+160 
+161   // For monospace ASCII grid: use advance.x (proper character spacing) and rendered height
+162   FT_Pos advance_x_26_6 = r-&gt;ft_face-&gt;glyph-&gt;advance.x;
+163   log_debug(&quot;DEBUG: advance.x (26.6pt)=%ld&quot;, advance_x_26_6);
+164 
+165   // Calculate cell width from font metrics
+166   r-&gt;cell_w = (int)(advance_x_26_6 &gt;&gt; 6);
+167 
+168   // Only add spacing to fill entire frame if --stretch is specified
+169   bool stretch_mode = GET_OPTION(stretch);
+170   if (stretch_mode) {
+171     r-&gt;cell_w++;
+172     log_info(&quot;ADVANCE_X: value=%ld (26.6pt) &#x2192; cell_w=%d (advance + 1 for stretch), cols=%d &#x2192; width_px=%d&quot;,
+173              advance_x_26_6, r-&gt;cell_w, r-&gt;cols, r-&gt;cols * r-&gt;cell_w);
+174   } else {
+175     log_info(&quot;ADVANCE_X: value=%ld (26.6pt) &#x2192; cell_w=%d (preserve aspect ratio), cols=%d &#x2192; width_px=%d&quot;, advance_x_26_6,
+176              r-&gt;cell_w, r-&gt;cols, r-&gt;cols * r-&gt;cell_w);
+177   }
+178 
+179   // For both bitmap and scalable fonts, use the actual glyph bitmap height
+180   // This ensures text doesn't overflow cells. Using size-&gt;metrics.height (line spacing)
+181   // instead of bitmap.rows causes cells to be too large and text to overflow.
+182   r-&gt;cell_h = r-&gt;ft_face-&gt;glyph-&gt;bitmap.rows;
+183   int raw_bitmap_top = r-&gt;ft_face-&gt;glyph-&gt;bitmap_top;
+184   log_debug(&quot;DEBUG: cell_h=%d (from bitmap.rows), raw_bitmap_top=%d&quot;, r-&gt;cell_h, raw_bitmap_top);
+185 
+186   // Apply aspect ratio correction unless --stretch is specified
+187   // Terminal characters are typically 2:1 (height:width) to appear normal
+188   if (!stretch_mode) {
+189     int corrected_h = r-&gt;cell_w * 2;
+190     if (corrected_h != r-&gt;cell_h &amp;&amp; r-&gt;cell_h &gt; 0) {
+191       log_info(&quot;ASPECT_RATIO: Correcting cell_h from %d to %d (2x width=%d)&quot;, r-&gt;cell_h, corrected_h, r-&gt;cell_w);
+192       r-&gt;cell_h = corrected_h;
+193     }
+194   }
+195 
+196   // Position baseline vertically within the cell.
+197   // Baseline should be positioned at approximately 75% of cell height to allow proper
+198   // glyph rendering with space both above and below. This prevents glyphs from being
+199   // clipped at the cell boundaries.
+200   //
+201   // Baseline position: y_glyph = py + r-&gt;baseline - g-&gt;bitmap_top
+202   // We want: 0 &lt;= baseline - bitmap_top &lt; cell_h (glyph fits within cell)
+203   // Choose: baseline = (3 * cell_h) / 4 (positions at 75% height)
+204   r-&gt;baseline = (3 * r-&gt;cell_h) / 4;
+205   log_debug(&quot;DEBUG: baseline set to %d (75%% of cell_h=%d)&quot;, r-&gt;baseline, r-&gt;cell_h);
+206 
+207   r-&gt;width_px = r-&gt;cols * r-&gt;cell_w;
+208   r-&gt;height_px = r-&gt;rows * r-&gt;cell_h;
+209   log_debug(&quot;DEBUG: calculated dimensions: width_px=%d (cols=%d * cell_w=%d), height_px=%d (rows=%d * cell_h=%d)&quot;,
+210             r-&gt;width_px, r-&gt;cols, r-&gt;cell_w, r-&gt;height_px, r-&gt;rows, r-&gt;cell_h);
+211   // Pitch in bytes: align to 4-byte boundary for proper row alignment
+212   // Each pixel is 3 bytes (RGB), so we calculate base pitch and round up
+213   int base_pitch = r-&gt;width_px * 3;
+214   r-&gt;pitch = (base_pitch + 3) &amp; ~3; // Round up to next multiple of 4
+215   log_info(&quot;PITCH_CALC: width_px=%d, base_pitch=%d, final_pitch=%d (padded by %d bytes)&quot;, r-&gt;width_px, base_pitch,
+216            r-&gt;pitch, r-&gt;pitch - base_pitch);
+217   log_debug(&quot;DEBUG: Allocating framebuffer: %d bytes total (%d pitch * %d height)&quot;,
+218             (int)((size_t)r-&gt;pitch * r-&gt;height_px), r-&gt;pitch, r-&gt;height_px);
+219   r-&gt;framebuffer = SAFE_MALLOC((size_t)r-&gt;pitch * r-&gt;height_px, uint8_t *);
+220 
+221   r-&gt;vt = vterm_new(r-&gt;rows, r-&gt;cols);
+222   r-&gt;vts = vterm_obtain_screen(r-&gt;vt);
+223 
+224   // Set size BEFORE reset to ensure screen is allocated with correct dimensions
+225   vterm_set_size(r-&gt;vt, r-&gt;rows, r-&gt;cols);
+226   log_debug(&quot;DEBUG: vterm_set_size called with rows=%d cols=%d&quot;, r-&gt;rows, r-&gt;cols);
+227 
+228   vterm_screen_set_callbacks(r-&gt;vts, &amp;g_vterm_cbs, r);
+229   // Reset MUST come before any input writing to initialize state correctly
+230   vterm_screen_reset(r-&gt;vts, 1);
+231 
+232   // Verify the size was set correctly after reset
+233   int vt_rows, vt_cols;
+234   vterm_get_size(r-&gt;vt, &amp;vt_rows, &amp;vt_cols);
+235   log_info(&quot;DEBUG: vterm_get_size returned rows=%d cols=%d (expected %d,%d)&quot;, vt_rows, vt_cols, r-&gt;rows, r-&gt;cols);
+236 
+237   // CRITICAL: Set size AGAIN after reset, as reset may have affected it
+238   vterm_set_size(r-&gt;vt, r-&gt;rows, r-&gt;cols);
+239   log_debug(&quot;DEBUG: vterm_set_size called AGAIN after reset&quot;);
+240 
+241   *out = r;
+242   return ASCIICHAT_OK;
+243 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>terminal_renderer_s::baseline</b>, <b>terminal_renderer_s::cell_h</b>,
+    <b>terminal_renderer_s::cell_w</b>, <b>term_renderer_config_t::cols</b>,
+    <b>terminal_renderer_s::cols</b>, <b>ERROR_INIT</b>, <b>ERROR_NOT_FOUND</b>,
+    <b>term_renderer_config_t::font_data</b>,
+    <b>term_renderer_config_t::font_data_size</b>,
+    <b>term_renderer_config_t::font_size_pt</b>,
+    <b>term_renderer_config_t::font_spec</b>,
+    <b>terminal_renderer_s::framebuffer</b>,
+    <b>terminal_renderer_s::ft_face</b>, <b>terminal_renderer_s::ft_lib</b>,
+    <b>GET_OPTION</b>, <b>terminal_renderer_s::height_px</b>,
+    <b>terminal_renderer_s::is_matrix_font</b>, <b>log_debug</b>,
+    <b>log_debug_every</b>, <b>log_info</b>, <b>terminal_renderer_s::pitch</b>,
+    <b>term_renderer_config_t::rows</b>, <b>terminal_renderer_s::rows</b>,
+    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
+    <b>term_renderer_config_t::theme</b>, <b>terminal_renderer_s::theme</b>,
+    <b>terminal_renderer_s::vt</b>, <b>terminal_renderer_s::vts</b>, and
+    <b>terminal_renderer_s::width_px</b>.</p>
+<p class="Pp">Referenced by <b>render_file_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_term_renderer_destroy_("><a class="permalink" href="#void_term_renderer_destroy_(">void
+  term_renderer_destroy (<b>terminal_renderer_t</b> * r)</a></h2>
+<p class="Pp">Definition at line <b>522</b> of file
+    <b>media/render/terminal.c</b>.</p>
+<pre>522                                                    {
+523   if (!r)
+524     return;
+525   vterm_free(r-&gt;vt);
+526   FT_Done_Face(r-&gt;ft_face);
+527   FT_Done_FreeType(r-&gt;ft_lib);
+528   SAFE_FREE(r-&gt;framebuffer);
+529   SAFE_FREE(r);
+530 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>terminal_renderer_s::framebuffer</b>,
+    <b>terminal_renderer_s::ft_face</b>, <b>terminal_renderer_s::ft_lib</b>,
+    <b>SAFE_FREE</b>, and <b>terminal_renderer_s::vt</b>.</p>
+<p class="Pp">Referenced by <b>render_file_create()</b>, and
+    <b>render_file_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> term_renderer_feed
+  (<b>terminal_renderer_t</b> * r, const char * ansi_frame, size_t len)</h2>
+<p class="Pp">Definition at line <b>245</b> of file
+    <b>media/render/terminal.c</b>.</p>
+<pre>245                                                                                                  {
+246   // Clear framebuffer to ensure no leftover pixels from previous frames
+247   uint8_t def_bg = (r-&gt;theme == TERM_RENDERER_THEME_LIGHT) ? 255 : 0;
+248   memset(r-&gt;framebuffer, def_bg, (size_t)r-&gt;pitch * r-&gt;height_px);
+249 
+250   // DEBUG: Log cell dimensions and font info
+251   static int feed_count = 0;
+252   if (feed_count++ &lt; 2) {
+253     log_info(&quot;TERM_RENDERER_FEED[%d]: Grid=%dx%d, Cell=(%d,%d)px, Output=(%dx%d)px, Baseline=%d&quot;,
+254              feed_count, r-&gt;cols, r-&gt;rows, r-&gt;cell_w, r-&gt;cell_h, r-&gt;width_px, r-&gt;height_px, r-&gt;baseline);
+255   }
+256 
+257   static const char home[] = &quot;\033[H&quot;;
+258   vterm_input_write(r-&gt;vt, home, sizeof(home) - 1);
+259 
+260   // Count newlines to determine CRLF conversion size
+261   int newline_count = 0;
+262   for (size_t i = 0; i &lt; len; i++) {
+263     if (ansi_frame[i] == '\n')
+264       newline_count++;
+265   }
+266 
+267   // Convert LF-only line endings to CRLF (vterm expects CRLF)
+268   // This fixes cursor positioning on alternate rows
+269   char *fixed_frame = SAFE_MALLOC(len + newline_count, char *);
+270   if (!fixed_frame) {
+271     log_error(&quot;failed to allocate memory for CRLF conversion&quot;);
+272     return SET_ERRNO(ERROR_MEMORY, &quot;CRLF conversion allocation failed&quot;);
+273   }
+274 
+275   size_t fixed_pos = 0;
+276   for (size_t i = 0; i &lt; len; i++) {
+277     fixed_frame[fixed_pos++] = ansi_frame[i];
+278     if (ansi_frame[i] == '\n' &amp;&amp; (i == 0 || ansi_frame[i - 1] != '\r')) {
+279       // Insert carriage return before LF if not already preceded by CR
+280       fixed_frame[fixed_pos - 1] = '\r';
+281       fixed_frame[fixed_pos++] = '\n';
+282     }
+283   }
+284 
+285   vterm_input_write(r-&gt;vt, fixed_frame, fixed_pos);
+286   log_debug(&quot;DEBUG: fed ANSI frame to vterm with CRLF line endings (original_len=%zu, fixed_len=%zu)&quot;, len, fixed_pos);
+287   SAFE_FREE(fixed_frame);
+288 
+289   // Check ALL line lengths to see if there's an alternating pattern
+290   size_t line_num = 0;
+291   size_t pos = 0;
+292   size_t visible_chars = 0;
+293   bool in_ansi = false;
+294 
+295   while (pos &lt; len &amp;&amp; line_num &lt; 45) { // Check all 42 lines
+296     char c = ansi_frame[pos];
+297 
+298     if (c == '\033') {
+299       in_ansi = true;
+300     } else if (in_ansi &amp;&amp; c == 'm') {
+301       in_ansi = false;
+302     } else if (!in_ansi &amp;&amp; c == '\n') {
+303       if (line_num &lt; 10 || line_num &gt;= 40) {
+304         log_debug(&quot;DEBUG: ANSI line %zu has %zu visible chars&quot;, line_num, visible_chars);
+305       }
+306       visible_chars = 0;
+307       line_num++;
+308     } else if (!in_ansi) {
+309       visible_chars++;
+310     }
+311     pos++;
+312   }
+313 
+314   int cells_with_chars = 0, cells_rendered = 0;
+315   log_debug(&quot;DEBUG: RENDER_LOOP starting - grid is %d rows &#x00D7; %d cols, cell dimensions w=%d h=%d&quot;, r-&gt;rows, r-&gt;cols,
+316             r-&gt;cell_w, r-&gt;cell_h);
+317 
+318   for (int row = 0; row &lt; r-&gt;rows; row++) {
+319     for (int col = 0; col &lt; r-&gt;cols; col++) {
+320       VTermScreenCell cell;
+321       vterm_screen_get_cell(r-&gt;vts, (VTermPos){row, col}, &amp;cell);
+322 
+323       // Debug sample: first row, every 50th column
+324       if (row == 0 &amp;&amp; col % 50 == 0) {
+325         log_debug(&quot;DEBUG: ROW0 COL%d: char=0x%02x ('%c'), has_fg=%d has_bg=%d&quot;, col, cell.chars[0],
+326                   (cell.chars[0] &gt;= 32 &amp;&amp; cell.chars[0] &lt; 127) ? cell.chars[0] : '?', VTERM_COLOR_IS_RGB(&amp;cell.fg),
+327                   VTERM_COLOR_IS_RGB(&amp;cell.bg));
+328       }
+329 
+330       uint8_t fr, fg, fb, br, bg, bb;
+331       if (VTERM_COLOR_IS_RGB(&amp;cell.fg)) {
+332         fr = cell.fg.rgb.red;
+333         fg = cell.fg.rgb.green;
+334         fb = cell.fg.rgb.blue;
+335       } else {
+336         fr = fg = fb = 204;
+337       }
+338 
+339       if (VTERM_COLOR_IS_RGB(&amp;cell.bg)) {
+340         br = cell.bg.rgb.red;
+341         bg = cell.bg.rgb.green;
+342         bb = cell.bg.rgb.blue;
+343       } else {
+344         br = bg = bb = def_bg;
+345       }
+346 
+347       // DEBUG: Log color extraction for sample cells
+348       if ((row == 0 &amp;&amp; col % 50 == 0) || (row == 5 &amp;&amp; col % 50 == 0)) {
+349         log_info(&quot;COLORS_EXTRACTED: row=%d col=%d char=0x%02x FG=RGB(%u,%u,%u) BG=RGB(%u,%u,%u)&quot;,
+350                  row, col, cell.chars[0], fr, fg, fb, br, bg, bb);
+351       }
+352 
+353       int px = col * r-&gt;cell_w, py = row * r-&gt;cell_h;
+354       for (int dy = 0; dy &lt; r-&gt;cell_h; dy++) {
+355         int y = py + dy;
+356         if (y &lt; 0 || y &gt;= r-&gt;height_px)
+357           continue;
+358         uint8_t *line = r-&gt;framebuffer + y * r-&gt;pitch + px * 3;
+359         for (int dx = 0; dx &lt; r-&gt;cell_w; dx++) {
+360           int x = px + dx;
+361           if (x &lt; 0 || x &gt;= r-&gt;width_px)
+362             continue;
+363           line[dx * 3] = br;
+364           line[dx * 3 + 1] = bg;
+365           line[dx * 3 + 2] = bb;
+366         }
+367       }
+368 
+369       // Debug: log bounds for rightmost column
+370       if (col == r-&gt;cols - 1 &amp;&amp; row == 0) {
+371         log_debug(&quot;DEBUG: CELL_BG_FILL: col=%d px=%d cell_w=%d extends to px=%d (width_px=%d) cell would extend to &quot;
+372                   &quot;pixel %d%s&quot;,
+373                   col, px, r-&gt;cell_w, px + r-&gt;cell_w - 1, r-&gt;width_px, px + r-&gt;cell_w,
+374                   (px + r-&gt;cell_w &gt; r-&gt;width_px) ? &quot; [OVERFLOW!]&quot; : &quot;&quot;);
+375       }
+376 
+377       // Debug: log all characters in rightmost column
+378       if (col == r-&gt;cols - 1) {
+379         int char_code = (int)(unsigned char)cell.chars[0];
+380         char char_display = (char_code &gt;= 32 &amp;&amp; char_code &lt; 127) ? (char)char_code : '?';
+381         log_debug(&quot;DEBUG: RIGHTMOST_CHAR: row=%d col=%d char=0x%02x (dec %d '%c') space=%d&quot;, row, col,
+382                   (unsigned char)cell.chars[0], char_code, char_display, (cell.chars[0] == ' ' ? 1 : 0));
+383       }
+384 
+385       if (cell.chars[0] &amp;&amp; cell.chars[0] != ' ') {
+386         cells_with_chars++;
+387         // For matrix font, map ASCII characters to Private Use Area glyphs (U+E900-U+E91A)
+388         uint32_t char_to_render = r-&gt;is_matrix_font ? matrix_char_map(cell.chars[0]) : cell.chars[0];
+389         FT_UInt gi = FT_Get_Char_Index(r-&gt;ft_face, char_to_render);
+390 
+391         // Debug: sample cells (every 50 cols, every 5 rows) AND all cells in rightmost column
+392         int is_rightmost = (col == r-&gt;cols - 1);
+393         int is_sample = (col % 50 == 0 &amp;&amp; row % 5 == 0);
+394         if (is_sample || is_rightmost) {
+395           log_debug(&quot;DEBUG: GLYPH_LOOKUP: row=%d col=%d char=0x%02x ('%c') &#x2192; gi=%u%s&quot;, row, col, cell.chars[0],
+396                     (cell.chars[0] &gt;= 32 &amp;&amp; cell.chars[0] &lt; 127) ? cell.chars[0] : '?', gi,
+397                     is_rightmost ? &quot; [RIGHTMOST]&quot; : &quot;&quot;);
+398         }
+399 
+400         if (gi) {
+401           if (FT_Load_Glyph(r-&gt;ft_face, gi, FT_LOAD_RENDER) == 0) {
+402             FT_GlyphSlot g = r-&gt;ft_face-&gt;glyph;
+403 
+404             // Blit if we have content
+405             if (g-&gt;bitmap.width &gt; 0 &amp;&amp; g-&gt;bitmap.rows &gt; 0) {
+406               // Debug: sample rendered glyphs AND all rightmost column glyphs
+407               if (is_sample || is_rightmost) {
+408                 log_debug(&quot;DEBUG: GLYPH_RENDER: row=%d col=%d bitmap(%dx%d) &#x2192; px=%d py=%d blit_pos(x=%d,y=%d) &quot;
+409                           &quot;offset(bmp_left=%d, baseline=%d, bmp_top=%d)%s&quot;,
+410                           row, col, g-&gt;bitmap.width, g-&gt;bitmap.rows, px, py, px + g-&gt;bitmap_left,
+411                           py + r-&gt;baseline - g-&gt;bitmap_top, g-&gt;bitmap_left, r-&gt;baseline, g-&gt;bitmap_top,
+412                           is_rightmost ? &quot; [RIGHTMOST]&quot; : &quot;&quot;);
+413               }
+414               blit_glyph(r, &amp;g-&gt;bitmap, px + g-&gt;bitmap_left, py + r-&gt;baseline - g-&gt;bitmap_top, fr, fg, fb, br, bg, bb);
+415               cells_rendered++;
+416             } else if (is_sample || is_rightmost) {
+417               log_debug(&quot;DEBUG: GLYPH_EMPTY: row=%d col=%d gi=%u has empty bitmap (%dx%d)%s&quot;, row, col, gi,
+418                         g-&gt;bitmap.width, g-&gt;bitmap.rows, is_rightmost ? &quot; [RIGHTMOST]&quot; : &quot;&quot;);
+419             }
+420           } else if (is_sample || is_rightmost) {
+421             log_debug(&quot;DEBUG: GLYPH_LOAD_FAIL: row=%d col=%d gi=%u FT_Load_Glyph failed%s&quot;, row, col, gi,
+422                       is_rightmost ? &quot; [RIGHTMOST]&quot; : &quot;&quot;);
+423           }
+424         } else if (is_sample || is_rightmost) {
+425           log_debug(&quot;DEBUG: GLYPH_NOT_FOUND: row=%d col=%d char=0x%02x no glyph index%s&quot;, row, col, cell.chars[0],
+426                     is_rightmost ? &quot; [RIGHTMOST]&quot; : &quot;&quot;);
+427         }
+428       }
+429     }
+430   }
+431 
+432   log_info(&quot;DEBUG: RENDER_COMPLETE: cells_with_chars=%d cells_rendered=%d (grid capacity=%d)&quot;, cells_with_chars,
+433            cells_rendered, r-&gt;rows * r-&gt;cols);
+434   log_debug(&quot;DEBUG: render loop finished - processed %d cells total&quot;, r-&gt;rows * r-&gt;cols);
+435 
+436   // Sample pixels from framebuffer to verify content
+437   uint8_t *sample_top = r-&gt;framebuffer;
+438   uint8_t *sample_mid = r-&gt;framebuffer + (r-&gt;height_px / 2) * r-&gt;pitch;
+439   uint8_t *sample_bot = r-&gt;framebuffer + (r-&gt;height_px - 1) * r-&gt;pitch;
+440 
+441   // Enhanced pixel sampling
+442   log_debug(&quot;DEBUG: pixel samples:&quot;);
+443   log_debug(&quot;  top_left RGB(%d,%d,%d), top_mid RGB(%d,%d,%d), top_right RGB(%d,%d,%d)&quot;, sample_top[0], sample_top[1],
+444             sample_top[2], sample_top[r-&gt;pitch / 2], sample_top[r-&gt;pitch / 2 + 1], sample_top[r-&gt;pitch / 2 + 2],
+445             sample_top[(r-&gt;width_px - 1) * 3], sample_top[(r-&gt;width_px - 1) * 3 + 1],
+446             sample_top[(r-&gt;width_px - 1) * 3 + 2]);
+447   log_debug(&quot;  mid_left RGB(%d,%d,%d), mid_mid RGB(%d,%d,%d), mid_right RGB(%d,%d,%d)&quot;, sample_mid[0], sample_mid[1],
+448             sample_mid[2], sample_mid[r-&gt;pitch / 2], sample_mid[r-&gt;pitch / 2 + 1], sample_mid[r-&gt;pitch / 2 + 2],
+449             sample_mid[(r-&gt;width_px - 1) * 3], sample_mid[(r-&gt;width_px - 1) * 3 + 1],
+450             sample_mid[(r-&gt;width_px - 1) * 3 + 2]);
+451   log_debug(&quot;  bot_left RGB(%d,%d,%d), bot_mid RGB(%d,%d,%d), bot_right RGB(%d,%d,%d)&quot;, sample_bot[0], sample_bot[1],
+452             sample_bot[2], sample_bot[r-&gt;pitch / 2], sample_bot[r-&gt;pitch / 2 + 1], sample_bot[r-&gt;pitch / 2 + 2],
+453             sample_bot[(r-&gt;width_px - 1) * 3], sample_bot[(r-&gt;width_px - 1) * 3 + 1],
+454             sample_bot[(r-&gt;width_px - 1) * 3 + 2]);
+455 
+456   log_debug(&quot;term_renderer_feed: cells_with_chars=%d, cells_rendered=%d&quot;, cells_with_chars, cells_rendered);
+457 
+458   // Write ANSI frame size and sample bottom row characters to debug file
+459   FILE *dbg_dims = fopen(&quot;/tmp/render-dims.txt&quot;, &quot;a&quot;);
+460   if (dbg_dims) {
+461     fprintf(dbg_dims, &quot;[TERM_FEED] len=%zu, grid=%dx%d, pixels=%dx%d, cells_with_chars=%d, cells_rendered=%d\n&quot;, len,
+462             r-&gt;cols, r-&gt;rows, r-&gt;width_px, r-&gt;height_px, cells_with_chars, cells_rendered);
+463 
+464     // Sample bottom row to see what characters are there
+465     fprintf(dbg_dims, &quot;  Bottom row (41): &quot;);
+466     for (int col = 0; col &lt; 20; col++) { // First 20 chars
+467       VTermScreenCell cell;
+468       vterm_screen_get_cell(r-&gt;vts, (VTermPos){r-&gt;rows - 1, col}, &amp;cell);
+469       if (cell.chars[0]) {
+470         fprintf(dbg_dims, &quot;%c&quot;, (cell.chars[0] &gt;= 32 &amp;&amp; cell.chars[0] &lt; 127) ? cell.chars[0] : '?');
+471       } else {
+472         fprintf(dbg_dims, &quot; &quot;);
+473       }
+474     }
+475     fprintf(dbg_dims, &quot;\n&quot;);
+476 
+477     // Check color of first char in bottom row
+478     for (int col = 0; col &lt; r-&gt;cols; col++) {
+479       VTermScreenCell cell;
+480       vterm_screen_get_cell(r-&gt;vts, (VTermPos){r-&gt;rows - 1, col}, &amp;cell);
+481       if (cell.chars[0] &amp;&amp; cell.chars[0] != ' ') {
+482         int has_rgb_fg = VTERM_COLOR_IS_RGB(&amp;cell.fg);
+483         int has_rgb_bg = VTERM_COLOR_IS_RGB(&amp;cell.bg);
+484         fprintf(dbg_dims, &quot;  Colors - has_rgb_fg=%d has_rgb_bg=%d\n&quot;, has_rgb_fg, has_rgb_bg);
+485         if (has_rgb_fg) {
+486           fprintf(dbg_dims, &quot;    fg=RGB(%d,%d,%d)\n&quot;, cell.fg.rgb.red, cell.fg.rgb.green, cell.fg.rgb.blue);
+487         }
+488         if (has_rgb_bg) {
+489           fprintf(dbg_dims, &quot;    bg=RGB(%d,%d,%d)\n&quot;, cell.bg.rgb.red, cell.bg.rgb.green, cell.bg.rgb.blue);
+490         }
+491         break;
+492       }
+493     }
+494     fflush(dbg_dims);
+495     fclose(dbg_dims);
+496   }
+497 
+498   log_debug(&quot;term_renderer_feed: Grid dimensions: %d cols x %d rows, Pixel dimensions: %d x %d px&quot;, r-&gt;cols, r-&gt;rows,
+499             r-&gt;width_px, r-&gt;height_px);
+500 
+501   log_debug(
+502       &quot;term_renderer_feed: pixel samples - top_left RGB(%d,%d,%d), mid_left RGB(%d,%d,%d), bot_left RGB(%d,%d,%d)&quot;,
+503       sample_top[0], sample_top[1], sample_top[2], sample_mid[0], sample_mid[1], sample_mid[2], sample_bot[0],
+504       sample_bot[1], sample_bot[2]);
+505 
+506   return ASCIICHAT_OK;
+507 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>terminal_renderer_s::baseline</b>, <b>terminal_renderer_s::cell_h</b>,
+    <b>terminal_renderer_s::cell_w</b>, <b>terminal_renderer_s::cols</b>,
+    <b>ERROR_MEMORY</b>, <b>terminal_renderer_s::framebuffer</b>,
+    <b>terminal_renderer_s::ft_face</b>, <b>terminal_renderer_s::height_px</b>,
+    <b>terminal_renderer_s::is_matrix_font</b>, <b>log_debug</b>,
+    <b>log_error</b>, <b>log_info</b>, <b>terminal_renderer_s::pitch</b>,
+    <b>terminal_renderer_s::rows</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>SET_ERRNO</b>, <b>TERM_RENDERER_THEME_LIGHT</b>,
+    <b>terminal_renderer_s::theme</b>, <b>terminal_renderer_s::vt</b>,
+    <b>terminal_renderer_s::vts</b>, and
+  <b>terminal_renderer_s::width_px</b>.</p>
+<p class="Pp">Referenced by <b>render_file_write_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_term_renderer_height_px_("><a class="permalink" href="#int_term_renderer_height_px_(">int
+  term_renderer_height_px (<b>terminal_renderer_t</b> * r)</a></h2>
+<p class="Pp">Definition at line <b>515</b> of file
+    <b>media/render/terminal.c</b>.</p>
+<pre>515                                                     {
+516   return r-&gt;height_px;
+517 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>terminal_renderer_s::height_px</b>.</p>
+<p class="Pp">Referenced by <b>render_file_create()</b>, and
+    <b>render_file_write_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_term_renderer_pitch_("><a class="permalink" href="#int_term_renderer_pitch_(">int
+  term_renderer_pitch (<b>terminal_renderer_t</b> * r)</a></h2>
+<p class="Pp">Definition at line <b>518</b> of file
+    <b>media/render/terminal.c</b>.</p>
+<pre>518                                                 {
+519   return r-&gt;pitch;
+520 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>terminal_renderer_s::pitch</b>.</p>
+<p class="Pp">Referenced by <b>render_file_write_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>uint8_t</b> * term_renderer_pixels (<b>terminal_renderer_t</b> *
+  r)</a></h2>
+<p class="Pp">Definition at line <b>509</b> of file
+    <b>media/render/terminal.c</b>.</p>
+<pre>509                                                             {
+510   return r-&gt;framebuffer;
+511 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>terminal_renderer_s::framebuffer</b>.</p>
+<p class="Pp">Referenced by <b>render_file_write_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_term_renderer_width_px_("><a class="permalink" href="#int_term_renderer_width_px_(">int
+  term_renderer_width_px (<b>terminal_renderer_t</b> * r)</a></h2>
+<p class="Pp">Definition at line <b>512</b> of file
+    <b>media/render/terminal.c</b>.</p>
+<pre>512                                                    {
+513   return r-&gt;width_px;
+514 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>terminal_renderer_s::width_px</b>.</p>
+<p class="Pp">Referenced by <b>render_file_create()</b>, and
+    <b>render_file_write_frame()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

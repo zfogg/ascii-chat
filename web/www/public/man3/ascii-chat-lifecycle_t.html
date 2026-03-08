@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>lifecycle_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">lifecycle_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">lifecycle_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">lifecycle_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/util/lifecycle.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>atomic_t</b> <b>state</b>
+  <br/>
+  <b>lifecycle_state_t</b> enum value <b>lifecycle_sync_type_t</b>
+    <b>sync_type</b>
+  <br/>
+  Type of sync primitive (if any). union {
+  <br/>
+   <b>mutex_t</b> * <b>mutex</b>
+  <br/>
+  Pointer to mutex (if sync_type == LIFECYCLE_SYNC_MUTEX). <b>rwlock_t</b> *
+    <b>rwlock</b>
+  <br/>
+  Pointer to rwlock (if sync_type == LIFECYCLE_SYNC_RWLOCK). } <b>sync</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Lock-free module lifecycle state machine with optional sync
+    primitive. Combines init/shutdown state with mutex or rwlock
+  initialization.</p>
+<p class="Pp">Definition at line <b>58</b> of file <b>lifecycle.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>mutex_t</b>* lifecycle_t::mutex</h2>
+<p class="Pp">Pointer to mutex (if sync_type == LIFECYCLE_SYNC_MUTEX).</p>
+<p class="Pp">Definition at line <b>62</b> of file <b>lifecycle.h</b>.</p>
+<p class="Pp">Referenced by <b>lifecycle_init()</b>, <b>lifecycle_reset()</b>,
+    and <b>lifecycle_shutdown()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>rwlock_t</b>* lifecycle_t::rwlock</h2>
+<p class="Pp">Pointer to rwlock (if sync_type == LIFECYCLE_SYNC_RWLOCK).</p>
+<p class="Pp">Definition at line <b>63</b> of file <b>lifecycle.h</b>.</p>
+<p class="Pp">Referenced by <b>lifecycle_init()</b>, <b>lifecycle_reset()</b>,
+    and <b>lifecycle_shutdown()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> lifecycle_t::state</h2>
+<p class="Pp"><b>lifecycle_state_t</b> enum value</p>
+<p class="Pp">Definition at line <b>59</b> of file <b>lifecycle.h</b>.</p>
+<p class="Pp">Referenced by <b>lifecycle_destroy_commit()</b>,
+    <b>lifecycle_destroy_once()</b>, <b>lifecycle_init()</b>,
+    <b>lifecycle_init_abort()</b>, <b>lifecycle_init_commit()</b>,
+    <b>lifecycle_init_once()</b>, <b>lifecycle_is_dead()</b>,
+    <b>lifecycle_is_initialized()</b>, <b>lifecycle_reset()</b>,
+    <b>lifecycle_shutdown()</b>, and <b>lifecycle_shutdown_forever()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="union____"><a class="permalink" href="#union____">union { ...
+  } lifecycle_t::sync</a></h2>
+<p class="Pp">Referenced by <b>lifecycle_init()</b>, <b>lifecycle_reset()</b>,
+    and <b>lifecycle_shutdown()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>lifecycle_sync_type_t</b> lifecycle_t::sync_type</h2>
+<p class="Pp">Type of sync primitive (if any).</p>
+<p class="Pp">Definition at line <b>60</b> of file <b>lifecycle.h</b>.</p>
+<p class="Pp">Referenced by <b>lifecycle_init()</b>, <b>lifecycle_reset()</b>,
+    and <b>lifecycle_shutdown()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

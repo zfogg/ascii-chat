@@ -61,7 +61,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
-<p class="Pp">typedef grep_parse_result_t <b>parse_result_t</b>
+<p class="Pp">typedef <b>grep_parse_result_t</b> <b>parse_result_t</b>
   <br/>
   <br/>
 </p>
@@ -69,35 +69,46 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">grep_parse_result_t <b>grep_parse_pattern</b> (const char *input)
+<p class="Pp"><b>grep_parse_result_t</b> <b>grep_parse_pattern</b> (const char
+    *input)
   <br/>
-  Parse pattern in /pattern/flags or pattern/flags format. asciichat_error_t
-    <b>grep_init</b> (const char *pattern)
+  Parse pattern in /pattern/flags or pattern/flags format.
+    <b>asciichat_error_t</b> <b>grep_init</b> (const char *pattern)
   <br/>
-  <b>bool</b> <b>grep_should_output</b> (const char *log_line, size_t
-    *match_start, size_t *match_len)
+  Initialize log filtering with PCRE2 regex pattern. <b>bool</b>
+    <b>grep_should_output</b> (const char *log_line, size_t *match_start, size_t
+    *match_len)
   <br/>
-  char * <b>grep_highlight_colored_copy</b> (const char *colored_text, const
-    char *plain_text, size_t match_start, size_t match_len)
+  Check if log line should be output (matches filter). char *
+    <b>grep_highlight_colored_copy</b> (const char *colored_text, const char
+    *plain_text, size_t match_start, size_t match_len)
   <br/>
-  const char * <b>grep_highlight_colored</b> (const char *colored_text, const
-    char *plain_text, size_t match_start, size_t match_len)
+  Highlight matches in colored text, returning a new allocated copy. const char
+    * <b>grep_highlight_colored</b> (const char *colored_text, const char
+    *plain_text, size_t match_start, size_t match_len)
   <br/>
-  const char * <b>grep_highlight</b> (const char *log_line, size_t match_start,
-    size_t match_len)
+  Highlight matches in colored text while preserving original colors. const char
+    * <b>grep_highlight</b> (const char *log_line, size_t match_start, size_t
+    match_len)
   <br/>
-  void <b>grep_destroy</b> (void)
+  Highlight matched portion with background color. void <b>grep_destroy</b>
+    (void)
   <br/>
-  asciichat_error_t <b>grep_save_patterns</b> (void)
+  Clean up filter resources. <b>asciichat_error_t</b> <b>grep_save_patterns</b>
+    (void)
   <br/>
-  asciichat_error_t <b>grep_restore_patterns</b> (void)
+  Save current filter patterns for later restoration. <b>asciichat_error_t</b>
+    <b>grep_restore_patterns</b> (void)
   <br/>
-  void <b>grep_clear_patterns</b> (void)
+  Restore previously saved filter patterns. void <b>grep_clear_patterns</b>
+    (void)
   <br/>
-  int <b>grep_get_pattern_count</b> (void)
+  Clear all filter patterns. int <b>grep_get_pattern_count</b> (void)
   <br/>
-  const char * <b>grep_get_last_pattern</b> (void)
+  Get number of active filter patterns. const char *
+    <b>grep_get_last_pattern</b> (void)
   <br/>
+  Get the last (most recent) filter pattern string.
   <br/>
 </p>
 </section>
@@ -136,8 +147,8 @@
 <h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="typedef_grep_parse_result_t_"><a class="permalink" href="#typedef_grep_parse_result_t_">typedef
-  grep_parse_result_t <b>parse_result_t</b></a></h2>
+<h2 class="Ss" id="typedef_"><a class="permalink" href="#typedef_">typedef
+  <b>grep_parse_result_t</b> <b>parse_result_t</b></a></h2>
 <p class="Pp">Definition at line <b>308</b> of file <b>grep.c</b>.</p>
 </section>
 </section>
@@ -147,6 +158,9 @@
 <section class="Ss">
 <h2 class="Ss" id="void_grep_clear_patterns_(void_)"><a class="permalink" href="#void_grep_clear_patterns_(void_)">void
   grep_clear_patterns (void )</a></h2>
+<p class="Pp">Clear all filter patterns. Temporarily disables filtering by
+    setting pattern count to 0. Patterns remain allocated and can be restored
+    later. Used by interactive grep when user types first character.</p>
 <p class="Pp">Definition at line <b>1303</b> of file <b>grep.c</b>.</p>
 <pre>1303                                {
 1304   // Don't free patterns, just set count to 0
@@ -160,6 +174,8 @@
 <section class="Ss">
 <h2 class="Ss" id="void_grep_destroy_(void_)"><a class="permalink" href="#void_grep_destroy_(void_)">void
   grep_destroy (void )</a></h2>
+<p class="Pp">Clean up filter resources. Frees compiled regex. Thread-local
+    match_data is cleaned up via pthread_key destructor.</p>
 <p class="Pp">Definition at line <b>1165</b> of file <b>grep.c</b>.</p>
 <pre>1165                         {
 1166   // Free all patterns
@@ -197,13 +213,21 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>grep_pattern_t::original</b>,
-    <b>grep_pattern_t::parsed_pattern</b>, and
-  <b>grep_pattern_t::singleton</b>.</p>
+    <b>grep_pattern_t::parsed_pattern</b>, <b>SAFE_FREE</b>, and
+    <b>grep_pattern_t::singleton</b>.</p>
 <p class="Pp">Referenced by <b>log_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_grep_get_last_pattern_(void_)"><a class="permalink" href="#const_char_*_grep_get_last_pattern_(void_)">const
   char * grep_get_last_pattern (void )</a></h2>
+<p class="Pp">Get the last (most recent) filter pattern string. Returns the
+    original pattern string (with /pattern/flags syntax if provided) of the last
+    --grep argument. Used by interactive grep to populate its input buffer when
+    starting with CLI --grep patterns.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pattern string of last CLI --grep, or NULL if no
+  patterns</div>
 <p class="Pp">Definition at line <b>1314</b> of file <b>grep.c</b>.</p>
 <pre>1314                                         {
 1315   if (g_filter_state.pattern_count == 0) {
@@ -222,6 +246,9 @@
 <section class="Ss">
 <h2 class="Ss" id="int_grep_get_pattern_count_(void_)"><a class="permalink" href="#int_grep_get_pattern_count_(void_)">int
   grep_get_pattern_count (void )</a></h2>
+<p class="Pp">Get number of active filter patterns.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of currently active patterns</div>
 <p class="Pp">Definition at line <b>1310</b> of file <b>grep.c</b>.</p>
 <pre>1310                                  {
 1311   return g_filter_state.pattern_count;
@@ -233,6 +260,19 @@
 <h2 class="Ss" id="const_char_*_grep_highlight_(const_char_*_log_line,_size_t_match_start,_size_t_match_len)"><a class="permalink" href="#const_char_*_grep_highlight_(const_char_*_log_line,_size_t_match_start,_size_t_match_len)">const
   char * grep_highlight (const char * log_line, size_t match_start, size_t
   match_len)</a></h2>
+<p class="Pp">Highlight matched portion with background color. Inserts ANSI
+    escape codes for yellow background (255, 200, 0) with black foreground (0,
+    0, 0) around the matched text.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>log_line</i> Original log line
+<br/>
+<i>match_start</i> Start offset of match
+<br/>
+<i>match_len</i> Length of match</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Highlighted string (pointer to static thread-local
+  buffer)</div>
 <p class="Pp">Definition at line <b>1062</b> of file <b>grep.c</b>.</p>
 <pre>1062                                                                                        {
 1063   static __thread char highlight_buffer[16384];
@@ -339,13 +379,26 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>append_truecolor_bg()</b>,
-    <b>asciichat_pcre2_singleton_get_code()</b>, and
+    <b>asciichat_pcre2_singleton_get_code()</b>, <b>b</b>, and
     <b>grep_pattern_t::singleton</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_grep_highlight_colored_(const_char_*_colored_text,_const_char_*_plain_text,_size_t_match_start,_size_t_match_len)"><a class="permalink" href="#const_char_*_grep_highlight_colored_(const_char_*_colored_text,_const_char_*_plain_text,_size_t_match_start,_size_t_match_len)">const
   char * grep_highlight_colored (const char * colored_text, const char *
   plain_text, size_t match_start, size_t match_len)</a></h2>
+<p class="Pp">Highlight matches in colored text while preserving original
+    colors.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>colored_text</i> Original text with ANSI color codes
+<br/>
+<i>plain_text</i> Stripped plain text (for match positions)
+<br/>
+<i>match_start</i> Match start position in plain text
+<br/>
+<i>match_len</i> Match length in plain text</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Highlighted text with yellow background added to matches
+  (pointer to static thread-local buffer)</div>
 <p class="Pp">Definition at line <b>743</b> of file <b>grep.c</b>.</p>
 <pre>744                                                      {
 745   static __thread char highlight_buffer[16384];
@@ -667,12 +720,13 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>append_truecolor_bg()</b>,
-    <b>asciichat_pcre2_singleton_get_code()</b>,
+    <b>asciichat_pcre2_singleton_get_code()</b>, <b>b</b>,
     <b>log_search_get_case_insensitive()</b>,
     <b>log_search_get_global_highlight()</b>,
     <b>log_search_get_input_buffer()</b>, <b>log_search_get_input_len()</b>,
     <b>log_search_get_pattern_singleton()</b>, <b>log_search_is_active()</b>,
-    <b>grep_pattern_t::singleton</b>, and <b>utf8_strcasestr()</b>.</p>
+    <b>SAFE_STRNCPY</b>, <b>grep_pattern_t::singleton</b>, and
+    <b>utf8_strcasestr()</b>.</p>
 <p class="Pp">Referenced by <b>grep_highlight_colored_copy()</b>, and
     <b>terminal_screen_render()</b>.</p>
 </section>
@@ -680,6 +734,22 @@
 <h2 class="Ss" id="char_*_grep_highlight_colored_copy_(const_char_*_colored_text,_const_char_*_plain_text,_size_t_match_start,_size_t_match_len)"><a class="permalink" href="#char_*_grep_highlight_colored_copy_(const_char_*_colored_text,_const_char_*_plain_text,_size_t_match_start,_size_t_match_len)">char
   * grep_highlight_colored_copy (const char * colored_text, const char *
   plain_text, size_t match_start, size_t match_len)</a></h2>
+<p class="Pp">Highlight matches in colored text, returning a new allocated copy.
+    Like <b>grep_highlight_colored()</b> but returns a newly allocated string
+    instead of a static buffer. Caller must free the returned string with
+    <b>SAFE_FREE()</b>.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>colored_text</i> Original text with ANSI color codes
+<br/>
+<i>plain_text</i> Stripped plain text (for match positions)
+<br/>
+<i>match_start</i> Match start position in plain text
+<br/>
+<i>match_len</i> Match length in plain text</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Newly allocated highlighted text (caller must free), or
+  NULL on error</div>
 <p class="Pp">Definition at line <b>729</b> of file <b>grep.c</b>.</p>
 <pre>730                                                     {
 731   const char *result = grep_highlight_colored(colored_text, plain_text, match_start, match_len);
@@ -695,11 +765,21 @@
 741 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>grep_highlight_colored()</b>.</p>
+<p class="Pp">References <b>grep_highlight_colored()</b>, and
+    <b>SAFE_MALLOC</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_grep_init_(const_char_*_pattern)"><a class="permalink" href="#asciichat_error_t_grep_init_(const_char_*_pattern)">asciichat_error_t
-  grep_init (const char * pattern)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> grep_init (const char * pattern)</h2>
+<p class="Pp">Initialize log filtering with PCRE2 regex pattern. Compiles the
+    pattern eagerly at startup. If compilation fails, logs a warning and
+    disables filtering.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pattern</i> PCRE2 regex pattern (NULL or empty = no
+  filtering)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM on bad
+  regex</div>
 <p class="Pp">Definition at line <b>486</b> of file <b>grep.c</b>.</p>
 <pre>486                                                  {
 487   // Reject NULL or empty patterns
@@ -801,20 +881,33 @@
 583 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_singleton_compile()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>asciichat_pcre2_singleton_compile()</b>,
     <b>asciichat_pcre2_singleton_get_code()</b>,
+    <b>grep_parse_result_t::case_insensitive</b>,
     <b>grep_pattern_t::case_insensitive</b>,
-    <b>grep_pattern_t::context_after</b>, <b>grep_pattern_t::context_before</b>,
+    <b>grep_parse_result_t::context_after</b>,
+    <b>grep_pattern_t::context_after</b>,
+    <b>grep_parse_result_t::context_before</b>,
+    <b>grep_pattern_t::context_before</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_MEMORY</b>, <b>grep_parse_result_t::global_flag</b>,
     <b>grep_pattern_t::global_flag</b>, <b>grep_parse_pattern()</b>,
-    <b>grep_pattern_t::invert</b>, <b>grep_pattern_t::is_fixed_string</b>,
-    <b>grep_pattern_t::original</b>, <b>grep_pattern_t::parsed_pattern</b>, and
-    <b>grep_pattern_t::singleton</b>.</p>
+    <b>grep_parse_result_t::invert</b>, <b>grep_pattern_t::invert</b>,
+    <b>grep_parse_result_t::is_fixed_string</b>,
+    <b>grep_pattern_t::is_fixed_string</b>, <b>log_error</b>, <b>log_info</b>,
+    <b>grep_pattern_t::original</b>, <b>grep_pattern_t::parsed_pattern</b>,
+    <b>grep_parse_result_t::pattern</b>,
+    <b>grep_parse_result_t::pcre2_options</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>SAFE_REALLOC</b>, <b>SET_ERRNO</b>,
+    <b>grep_pattern_t::singleton</b>, and <b>grep_parse_result_t::valid</b>.</p>
 <p class="Pp">Referenced by <b>main()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="grep_parse_result_t_grep_parse_pattern_(const_char_*_input)"><a class="permalink" href="#grep_parse_result_t_grep_parse_pattern_(const_char_*_input)">grep_parse_result_t
-  grep_parse_pattern (const char * input)</a></h2>
-<p class="Pp">Parse pattern in /pattern/flags or pattern/flags format.</p>
+<h2 class="Ss"><b>grep_parse_result_t</b> grep_parse_pattern (const char *
+  input)</h2>
+<p class="Pp">Parse pattern in /pattern/flags or pattern/flags format. Parse
+    pattern in /pattern/flags format or plain regex format.</p>
+<p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>input</i> Input pattern string (either /pattern/flags,
   pattern/flags, or plain pattern)</div>
@@ -1001,14 +1094,27 @@
 484 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>grep_parse_result_t::case_insensitive</b>,
+    <b>grep_parse_result_t::context_after</b>,
+    <b>grep_parse_result_t::context_before</b>,
+    <b>grep_parse_result_t::global_flag</b>, <b>grep_parse_result_t::invert</b>,
+    <b>grep_parse_result_t::is_fixed_string</b>,
+    <b>grep_parse_result_t::pattern</b>,
+    <b>grep_parse_result_t::pcre2_options</b>, and
+    <b>grep_parse_result_t::valid</b>.</p>
 <p class="Pp">Referenced by <b>grep_init()</b>, <b>log_search_enter_mode()</b>,
     <b>log_search_exit_mode()</b>, <b>log_search_gather_and_filter_logs()</b>,
     <b>log_search_get_match_info()</b>, <b>log_search_handle_key()</b>, and
     <b>log_search_init()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_grep_restore_patterns_(void_)"><a class="permalink" href="#asciichat_error_t_grep_restore_patterns_(void_)">asciichat_error_t
-  grep_restore_patterns (void )</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> grep_restore_patterns (void )</h2>
+<p class="Pp">Restore previously saved filter patterns. Restores filter patterns
+    saved by <b>grep_save_patterns()</b>. Used by interactive grep when user
+    cancels (Escape) to restore CLI --grep patterns.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>1253</b> of file <b>grep.c</b>.</p>
 <pre>1253                                               {
 1254   // Clear current patterns (but don't free the array)
@@ -1061,13 +1167,21 @@
 1301 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>grep_pattern_t::parsed_pattern</b>, and
-    <b>grep_pattern_t::singleton</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_MEMORY</b>,
+    <b>grep_pattern_t::parsed_pattern</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>SAFE_REALLOC</b>, <b>SET_ERRNO</b>, and
+  <b>grep_pattern_t::singleton</b>.</p>
 <p class="Pp">Referenced by <b>log_search_exit_mode()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_grep_save_patterns_(void_)"><a class="permalink" href="#asciichat_error_t_grep_save_patterns_(void_)">asciichat_error_t
-  grep_save_patterns (void )</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> grep_save_patterns (void )</h2>
+<p class="Pp">Save current filter patterns for later restoration. Saves the
+    current state of CLI --grep patterns so they can be restored later. Used by
+    interactive grep to preserve initial filters when entering interactive
+  mode.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>1203</b> of file <b>grep.c</b>.</p>
 <pre>1203                                            {
 1204   // Free previous saved patterns if any
@@ -1120,13 +1234,26 @@
 1251 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>grep_pattern_t::parsed_pattern</b>, and
-    <b>grep_pattern_t::singleton</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_MEMORY</b>,
+    <b>grep_pattern_t::parsed_pattern</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>SET_ERRNO</b>, and <b>grep_pattern_t::singleton</b>.</p>
 <p class="Pp">Referenced by <b>log_search_enter_mode()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> grep_should_output (const char * log_line, size_t *
   match_start, size_t * match_len)</h2>
+<p class="Pp">Check if log line should be output (matches filter). Thread-safe:
+    Uses thread-local match_data storage. Non-allocating: Reuses pre-allocated
+    match_data.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>log_line</i> Formatted log line to check
+<br/>
+<i>match_start</i> Output: start offset of match
+<br/>
+<i>match_len</i> Output: length of match</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if line should be output, false to suppress</div>
 <p class="Pp">Definition at line <b>585</b> of file <b>grep.c</b>.</p>
 <pre>585                                                                                       {
 586   // Reject NULL lines
@@ -1277,8 +1404,8 @@
     <b>grep_pattern_t::case_insensitive</b>,
     <b>grep_pattern_t::context_after</b>, <b>grep_pattern_t::context_before</b>,
     <b>grep_pattern_t::invert</b>, <b>grep_pattern_t::is_fixed_string</b>,
-    <b>grep_pattern_t::parsed_pattern</b>, <b>grep_pattern_t::singleton</b>, and
-    <b>utf8_strcasestr()</b>.</p>
+    <b>grep_pattern_t::parsed_pattern</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>grep_pattern_t::singleton</b>, and <b>utf8_strcasestr()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -1301,7 +1428,8 @@
     <b>generate_client_name()</b>, <b>get_required_argument()</b>,
     <b>image_print_16color()</b>, <b>image_print_16color_dithered()</b>,
     <b>image_print_16color_dithered_with_background()</b>,
-    <b>manpage_merger_generate_synopsis()</b>, <b>safe_snprintf()</b>,
+    <b>manpage_merger_generate_synopsis()</b>,
+    <b>platform_stdio_redirect_to_null_permanent()</b>, <b>safe_snprintf()</b>,
     <b>safe_vsnprintf()</b>, <b>strip_equals_prefix()</b>,
     <b>time_human_readable()</b>, <b>time_human_readable_now()</b>,
     <b>time_human_readable_unsigned()</b>, <b>time_pretty()</b>,
@@ -1309,18 +1437,15 @@
     <b>update_check_get_upgrade_suggestion()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint8_t_cached_highlight_b"><a class="permalink" href="#uint8_t_cached_highlight_b">uint8_t
-  cached_highlight_b</a></h2>
+<h2 class="Ss"><b>uint8_t</b> cached_highlight_b</h2>
 <p class="Pp">Definition at line <b>102</b> of file <b>grep.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint8_t_cached_highlight_g"><a class="permalink" href="#uint8_t_cached_highlight_g">uint8_t
-  cached_highlight_g</a></h2>
+<h2 class="Ss"><b>uint8_t</b> cached_highlight_g</h2>
 <p class="Pp">Definition at line <b>102</b> of file <b>grep.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint8_t_cached_highlight_r"><a class="permalink" href="#uint8_t_cached_highlight_r">uint8_t
-  cached_highlight_r</a></h2>
+<h2 class="Ss"><b>uint8_t</b> cached_highlight_r</h2>
 <p class="Pp">Definition at line <b>102</b> of file <b>grep.c</b>.</p>
 </section>
 <section class="Ss">
@@ -1332,8 +1457,7 @@
     <b>set_matrix_rain()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint64_t_last_color_query_us"><a class="permalink" href="#uint64_t_last_color_query_us">uint64_t
-  last_color_query_us</a></h2>
+<h2 class="Ss"><b>uint64_t</b> last_color_query_us</h2>
 <p class="Pp">Definition at line <b>103</b> of file <b>grep.c</b>.</p>
 </section>
 <section class="Ss">
@@ -1350,14 +1474,12 @@
 <p class="Pp">Definition at line <b>92</b> of file <b>grep.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="tls_key_t_match_data_key"><a class="permalink" href="#tls_key_t_match_data_key">tls_key_t
-  match_data_key</a></h2>
+<h2 class="Ss"><b>tls_key_t</b> match_data_key</h2>
 <p class="Pp">Thread-local match_data key.</p>
 <p class="Pp">Definition at line <b>85</b> of file <b>grep.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="lifecycle_t_match_data_lifecycle"><a class="permalink" href="#lifecycle_t_match_data_lifecycle">lifecycle_t
-  match_data_lifecycle</a></h2>
+<h2 class="Ss"><b>lifecycle_t</b> match_data_lifecycle</h2>
 <p class="Pp">Lifecycle for TLS key initialization.</p>
 <p class="Pp">Definition at line <b>86</b> of file <b>grep.c</b>.</p>
 </section>
@@ -1415,7 +1537,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

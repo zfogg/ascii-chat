@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>completions.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">completions.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">completions.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">completions.h - Auto-generated shell completions from options
+    registry.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>completion_format_t</b> { <b>COMPLETION_FORMAT_BASH</b>,
+    <b>COMPLETION_FORMAT_FISH</b>, <b>COMPLETION_FORMAT_ZSH</b>,
+    <b>COMPLETION_FORMAT_POWERSHELL</b>, <b>COMPLETION_FORMAT_UNKNOWN</b> }
+  <br/>
+  Supported shell completion formats.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>completions_generate_for_shell</b>
+    (<b>completion_format_t</b> format, FILE *output)
+  <br/>
+  Generate shell completions and write to output stream. const char *
+    <b>completions_get_shell_name</b> (<b>completion_format_t</b> format)
+  <br/>
+  Get human-readable shell name for format. <b>completion_format_t</b>
+    <b>completions_parse_shell_name</b> (const char *shell_name)
+  <br/>
+  Parse shell name string to completion format. <b>option_descriptor_t</b> *
+    <b>completions_collect_all_modes_unique</b> (size_t *count)
+  <br/>
+  Collect options from all modes with deduplication.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Auto-generated shell completions from options registry.</p>
+<p class="Pp">This module provides auto-generated completion scripts for various
+    shells (bash, fish, zsh, powershell) by extracting option metadata from the
+    centralized options registry.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Usage</b>:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre># Generate bash completions
+eval &quot;$(ascii-chat --completions bash)&quot;
+# Generate fish completions
+ascii-chat --completions fish | source
+# Generate zsh completions
+eval &quot;$(ascii-chat --completions zsh)&quot;
+# Generate PowerShell completions
+ascii-chat --completions powershell | Out-String | Invoke-Expression</pre>
+<p class="Pp"><b>Architecture</b>:</p>
+<p class="Pp"></p>
+<p class="Pp">The completion system has three layers:</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Format Enum</b> (<b>completion_format_t</b><b>): Identifies target
+      shell</b></dd>
+  <dt>2.</dt>
+  <dd><b>Format Generators</b>: Shell-specific implementations (<b>bash.c</b>,
+      <b>fish.c</b>, etc.)</dd>
+  <dt>3.</dt>
+  <dd><b>Dispatcher</b>: Routes to appropriate generator based on format</dd>
+</dl>
+<p class="Pp">All generators extract metadata from the centralized options
+    registry via:</p>
+<ul class="Bl-bullet">
+  <li><b>options_registry_get_for_mode()</b><b> - Get options by mode</b></li>
+  <li><b>options_registry_find_by_name()</b><b> - Look up individual
+    options</b></li>
+  <li>Option descriptor fields (long_name, short_name, help_text,
+    mode_bitmask)</li>
+</ul>
+<p class="Pp"><b>Adding New Shells</b>:</p>
+<p class="Pp"></p>
+<p class="Pp">To add support for a new shell:</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Create lib/options/completions/SHELL_NAME.h and .c</dd>
+  <dt>2.</dt>
+  <dd>Implement completions_generate_SHELL_NAME() function</dd>
+  <dt>3.</dt>
+  <dd>Add case to <b>completions_generate_for_shell()</b><b> dispatcher</b></dd>
+  <dt>4.</dt>
+  <dd>Update completion_parse_shell_name() to recognize new shell</dd>
+</dl>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>completions.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>completion_format_t</b></a></h2>
+<p class="Pp">Supported shell completion formats.</p>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="COMPLETION_FORMAT_BASH"><a class="permalink" href="#COMPLETION_FORMAT_BASH"><b><i>COMPLETION_FORMAT_BASH
+    </i></b></a></dt>
+  <dd>Bash shell completion</dd>
+  <dt id="COMPLETION_FORMAT_FISH"><a class="permalink" href="#COMPLETION_FORMAT_FISH"><b><i>COMPLETION_FORMAT_FISH
+    </i></b></a></dt>
+  <dd>Fish shell completion</dd>
+  <dt id="COMPLETION_FORMAT_ZSH"><a class="permalink" href="#COMPLETION_FORMAT_ZSH"><b><i>COMPLETION_FORMAT_ZSH
+    </i></b></a></dt>
+  <dd>Zsh shell completion</dd>
+  <dt id="COMPLETION_FORMAT_POWERSHELL"><a class="permalink" href="#COMPLETION_FORMAT_POWERSHELL"><b><i>COMPLETION_FORMAT_POWERSHELL
+    </i></b></a></dt>
+  <dd>PowerShell completion</dd>
+  <dt id="COMPLETION_FORMAT_UNKNOWN"><a class="permalink" href="#COMPLETION_FORMAT_UNKNOWN"><b><i>COMPLETION_FORMAT_UNKNOWN
+    </i></b></a></dt>
+  <dd>Unknown/invalid format</dd>
+</dl>
+<p class="Pp">Definition at line <b>66</b> of file <b>completions.h</b>.</p>
+<pre>66              {
+67   COMPLETION_FORMAT_BASH,       
+68   COMPLETION_FORMAT_FISH,       
+69   COMPLETION_FORMAT_ZSH,        
+70   COMPLETION_FORMAT_POWERSHELL, 
+71   COMPLETION_FORMAT_UNKNOWN     
+72 } completion_format_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>option_descriptor_t</b> * completions_collect_all_modes_unique
+  (size_t * count)</h2>
+<p class="Pp">Collect options from all modes with deduplication. Iterates
+    through all completion modes (MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT,
+    MODE_MIRROR, MODE_DISCOVERY_SERVICE) and collects unique options by
+    long_name. Useful for generators that need to show completions for options
+    across multiple modes.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>count</i> Pointer to receive the count of unique
+  options</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Dynamically allocated array of
+  <b>option_descriptor_t</b>, must be freed by caller. Returns NULL if no
+  options found.</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">The caller must free the returned pointer with
+  <b>SAFE_FREE()</b></div>
+<p class="Pp">Definition at line <b>96</b> of file <b>completions.c</b>.</p>
+<pre>96                                                                          {
+97   if (!count) {
+98     return NULL;
+99   }
+100 
+101   option_descriptor_t *combined_opts = NULL;
+102   size_t combined_count = 0;
+103 
+104   /* All completion modes to iterate through */
+105   asciichat_mode_t modes[] = {MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE};
+106   const size_t modes_len = sizeof(modes) / sizeof(modes[0]);
+107 
+108   for (size_t m = 0; m &lt; modes_len; m++) {
+109     size_t mode_count = 0;
+110     const option_descriptor_t *mode_opts = options_registry_get_for_mode(modes[m], &amp;mode_count);
+111     if (mode_opts) {
+112       /* Collect unique options by long_name */
+113       for (size_t i = 0; i &lt; mode_count; i++) {
+114         bool already_has = false;
+115         for (size_t j = 0; j &lt; combined_count; j++) {
+116           if (strcmp(combined_opts[j].long_name, mode_opts[i].long_name) == 0) {
+117             already_has = true;
+118             break;
+119           }
+120         }
+121         if (!already_has) {
+122           combined_count++;
+123           option_descriptor_t *temp = (option_descriptor_t *)SAFE_REALLOC(
+124               combined_opts, combined_count * sizeof(option_descriptor_t), option_descriptor_t *);
+125           if (temp) {
+126             combined_opts = temp;
+127             combined_opts[combined_count - 1] = mode_opts[i];
+128           }
+129         }
+130       }
+131       SAFE_FREE(mode_opts);
+132     }
+133   }
+134 
+135   *count = combined_count;
+136   return combined_opts;
+137 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>MODE_CLIENT</b>, <b>MODE_DISCOVERY</b>,
+    <b>MODE_DISCOVERY_SERVICE</b>, <b>MODE_MIRROR</b>, <b>MODE_SERVER</b>,
+    <b>options_registry_get_for_mode()</b>, <b>SAFE_FREE</b>, and
+    <b>SAFE_REALLOC</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> completions_generate_for_shell
+  (<b>completion_format_t</b> format, FILE * output)</h2>
+<p class="Pp">Generate shell completions and write to output stream. Generates a
+    complete shell completion script for the specified shell format by
+    extracting option metadata from the centralized registry.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>format</i> Shell format to generate completions for
+<br/>
+<i>output</i> FILE stream to write completion script to (e.g., stdout)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>20</b> of file <b>completions.c</b>.</p>
+<pre>20                                                                                            {
+21   if (!output) {
+22     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output stream cannot be NULL&quot;);
+23   }
+24 
+25   switch (format) {
+26   case COMPLETION_FORMAT_BASH:
+27     return completions_generate_bash(output);
+28   case COMPLETION_FORMAT_FISH:
+29     return completions_generate_fish(output);
+30   case COMPLETION_FORMAT_ZSH:
+31     return completions_generate_zsh(output);
+32   case COMPLETION_FORMAT_POWERSHELL:
+33     return completions_generate_powershell(output);
+34   default:
+35     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown completion format: %d&quot;, format);
+36   }
+37 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>COMPLETION_FORMAT_BASH</b>,
+    <b>COMPLETION_FORMAT_FISH</b>, <b>COMPLETION_FORMAT_POWERSHELL</b>,
+    <b>COMPLETION_FORMAT_ZSH</b>, <b>completions_generate_bash()</b>,
+    <b>completions_generate_fish()</b>,
+    <b>completions_generate_powershell()</b>, <b>completions_generate_zsh()</b>,
+    <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>action_completions()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_completions_get_shell_name_("><a class="permalink" href="#const_char_*_completions_get_shell_name_(">const
+  char * completions_get_shell_name (<b>completion_format_t</b> format)</a></h2>
+<p class="Pp">Get human-readable shell name for format.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>format</i> Completion format</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Shell name string (e.g., &quot;bash&quot;,
+  &quot;fish&quot;), or &quot;unknown&quot; if invalid</div>
+<p class="Pp">Definition at line <b>39</b> of file <b>completions.c</b>.</p>
+<pre>39                                                                    {
+40   switch (format) {
+41   case COMPLETION_FORMAT_BASH:
+42     return &quot;bash&quot;;
+43   case COMPLETION_FORMAT_FISH:
+44     return &quot;fish&quot;;
+45   case COMPLETION_FORMAT_ZSH:
+46     return &quot;zsh&quot;;
+47   case COMPLETION_FORMAT_POWERSHELL:
+48     return &quot;powershell&quot;;
+49   default:
+50     return &quot;unknown&quot;;
+51   }
+52 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>COMPLETION_FORMAT_BASH</b>,
+    <b>COMPLETION_FORMAT_FISH</b>, <b>COMPLETION_FORMAT_POWERSHELL</b>, and
+    <b>COMPLETION_FORMAT_ZSH</b>.</p>
+<p class="Pp">Referenced by <b>action_completions()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>completion_format_t</b> completions_parse_shell_name (const
+  char * shell_name)</h2>
+<p class="Pp">Parse shell name string to completion format. Converts a shell
+    name (e.g., &quot;bash&quot;, &quot;fish&quot;) to the corresponding
+    completion format enum. Case-insensitive.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>shell_name</i> Shell name string (e.g.,
+  &quot;bash&quot;, &quot;fish&quot;, &quot;zsh&quot;)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Completion format, or COMPLETION_FORMAT_UNKNOWN if not
+  recognized</div>
+<p class="Pp">Definition at line <b>54</b> of file <b>completions.c</b>.</p>
+<pre>54                                                                          {
+55   if (!shell_name) {
+56     return COMPLETION_FORMAT_UNKNOWN;
+57   }
+58 
+59   /* Convert to lowercase for case-insensitive matching */
+60   char lower[32] = {0};
+61   size_t len = strlen(shell_name);
+62   if (len &gt;= sizeof(lower)) {
+63     return COMPLETION_FORMAT_UNKNOWN;
+64   }
+65 
+66   for (size_t i = 0; i &lt; len; i++) {
+67     lower[i] = tolower((unsigned char)shell_name[i]);
+68   }
+69 
+70   if (strcmp(lower, &quot;bash&quot;) == 0) {
+71     return COMPLETION_FORMAT_BASH;
+72   } else if (strcmp(lower, &quot;fish&quot;) == 0) {
+73     return COMPLETION_FORMAT_FISH;
+74   } else if (strcmp(lower, &quot;zsh&quot;) == 0) {
+75     return COMPLETION_FORMAT_ZSH;
+76   } else if (strcmp(lower, &quot;powershell&quot;) == 0 || strcmp(lower, &quot;ps&quot;) == 0) {
+77     return COMPLETION_FORMAT_POWERSHELL;
+78   }
+79 
+80   return COMPLETION_FORMAT_UNKNOWN;
+81 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>COMPLETION_FORMAT_BASH</b>,
+    <b>COMPLETION_FORMAT_FISH</b>, <b>COMPLETION_FORMAT_POWERSHELL</b>,
+    <b>COMPLETION_FORMAT_UNKNOWN</b>, and <b>COMPLETION_FORMAT_ZSH</b>.</p>
+<p class="Pp">Referenced by <b>action_completions()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

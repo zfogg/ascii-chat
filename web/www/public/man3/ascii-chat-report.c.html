@@ -30,8 +30,8 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">report.c - TODO: Add Doxygen documentation for panic/crash report
-    generation.</p>
+<p class="Pp">report.c - Command-line tool for crash report analysis and
+    summarization.</p>
 <p class="Pp"></p>
 </section>
 <section class="Sh">
@@ -75,7 +75,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">int <b>main</b> (int argc, char **argv)
+<p class="Pp">int <b>main</b> (int <b>argc</b>, char **<b>argv</b>)
   <br/>
   <br/>
 </p>
@@ -84,17 +84,10 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">TODO: Add Doxygen documentation for panic/crash report
-  generation.</p>
+<p class="Pp">Command-line tool for crash report analysis and summarization.</p>
 <p class="Pp">Generates and summarizes crash reports from instrumentation
-    runtime logs.</p>
-<p class="Pp"></p>
-<p class="Pp">Needs documentation for:</p>
-<ul class="Bl-bullet">
-  <li>Report format and content</li>
-  <li>Error aggregation and analysis</li>
-  <li>Integration with panic system</li>
-</ul>
+    runtime logs. Analyzes instrumentation traces to identify error patterns and
+    provide diagnostic information.</p>
 <p class="Pp">Definition in file <b>report.c</b>.</p>
 </section>
 <section class="Sh">
@@ -128,44 +121,45 @@
 <section class="Ss">
 <h2 class="Ss" id="int_main_(int_argc,_char_**_argv)"><a class="permalink" href="#int_main_(int_argc,_char_**_argv)">int
   main (int argc, char ** argv)</a></h2>
-<p class="Pp">Definition at line <b>645</b> of file <b>report.c</b>.</p>
-<pre>645                                 {
-646   report_config_t config = {
-647       .log_dir = NULL,
-648       .log_file = NULL,
-649       .include_filter = NULL,
-650       .exclude_filter = NULL,
-651       .threads = {.values = NULL, .count = 0, .capacity = 0},
-652       .emit_raw_line = false,
-653   };
-654 
-655   log_init(NULL, LOG_INFO, false, false);
-656 
-657   int exit_code = EXIT_SUCCESS;
-658   if (!parse_arguments(argc, argv, &amp;config)) {
-659     exit_code = ERROR_USAGE;
-660     goto cleanup;
-661   }
-662 
-663   thread_entry_t *entries = NULL;
-664   if (!collect_entries(&amp;config, &amp;entries)) {
-665     exit_code = ERROR_GENERAL;
-666     destroy_entries(&amp;entries);
-667     goto cleanup;
-668   }
+<p class="Pp">Definition at line <b>642</b> of file <b>report.c</b>.</p>
+<pre>642                                 {
+643   report_config_t config = {
+644       .log_dir = NULL,
+645       .log_file = NULL,
+646       .include_filter = NULL,
+647       .exclude_filter = NULL,
+648       .threads = {.values = NULL, .count = 0, .capacity = 0},
+649       .emit_raw_line = false,
+650   };
+651 
+652   log_init(NULL, LOG_INFO, false, false);
+653 
+654   int exit_code = EXIT_SUCCESS;
+655   if (!parse_arguments(argc, argv, &amp;config)) {
+656     exit_code = ERROR_USAGE;
+657     goto cleanup;
+658   }
+659 
+660   thread_entry_t *entries = NULL;
+661   if (!collect_entries(&amp;config, &amp;entries)) {
+662     exit_code = ERROR_GENERAL;
+663     destroy_entries(&amp;entries);
+664     goto cleanup;
+665   }
+666 
+667   print_summary(&amp;config, &amp;entries);
+668   destroy_entries(&amp;entries);
 669 
-670   print_summary(&amp;config, &amp;entries);
-671   destroy_entries(&amp;entries);
-672 
-673 cleanup:
-674   thread_filter_list_destroy(&amp;config.threads);
-675   log_destroy();
-676   return exit_code;
-677 }</pre>
+670 cleanup:
+671   thread_filter_list_destroy(&amp;config.threads);
+672   log_destroy();
+673   return exit_code;
+674 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>log_destroy()</b>, <b>log_init()</b>, and
-    <b>report_config::threads</b>.</p>
+<p class="Pp">References <b>argc</b>, <b>argv</b>, <b>ERROR_GENERAL</b>,
+    <b>ERROR_USAGE</b>, <b>log_destroy()</b>, <b>LOG_INFO</b>,
+    <b>log_init()</b>, and <b>report_config::threads</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -175,7 +169,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

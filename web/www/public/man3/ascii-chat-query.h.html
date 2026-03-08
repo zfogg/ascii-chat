@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>query.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">query.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">query.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">query.h - Runtime variable query tool API for debug builds.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<p class="Pp"><b>Convenience Macros</b>
+  <br/>
+  These macros provide a convenient interface that compiles out completely in
+    release builds. Use these instead of calling the functions directly.</p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>QUERY_INIT</b>(port)
+  <br/>
+  Initialize query tool (debug builds only). #define <b>QUERY_SHUTDOWN</b>()
+  <br/>
+  Shutdown query tool (debug builds only). #define <b>QUERY_ACTIVE</b>()
+  <br/>
+  Check if query tool is active (debug builds only). #define <b>QUERY_PORT</b>()
+  <br/>
+  Get query server port (debug builds only).
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>query_init</b> (int preferred_port)
+  <br/>
+  Initialize the query tool by spawning the controller process. void
+    <b>query_destroy</b> (void)
+  <br/>
+  Shutdown the query tool and terminate the controller process. <b>bool</b>
+    <b>query_is_active</b> (void)
+  <br/>
+  Check if the query tool controller is currently active. int
+    <b>query_get_port</b> (void)
+  <br/>
+  Get the port number of the active query server.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Runtime variable query tool API for debug builds.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>query.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

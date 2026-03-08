@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>platform_stat_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">platform_stat_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">platform_stat_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">platform_stat_t - File type information from stat().</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/platform/filesystem.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">size_t <b>size</b>
+  <br/>
+  File size in bytes. int <b>mode</b>
+  <br/>
+  File mode (permissions and type). int <b>is_regular_file</b>
+  <br/>
+  Non-zero if file is a regular file. int <b>is_directory</b>
+  <br/>
+  Non-zero if file is a directory. int <b>is_symlink</b>
+  <br/>
+  Non-zero if file is a symbolic link.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">File type information from stat().</p>
+<p class="Pp">Structure containing file metadata returned by
+    <b>platform_stat()</b>.</p>
+<p class="Pp">Definition at line <b>232</b> of file <b>filesystem.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_platform_stat_t::is_directory"><a class="permalink" href="#int_platform_stat_t::is_directory">int
+  platform_stat_t::is_directory</a></h2>
+<p class="Pp">Non-zero if file is a directory.</p>
+<p class="Pp">Definition at line <b>236</b> of file <b>filesystem.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_platform_stat_t::is_regular_file"><a class="permalink" href="#int_platform_stat_t::is_regular_file">int
+  platform_stat_t::is_regular_file</a></h2>
+<p class="Pp">Non-zero if file is a regular file.</p>
+<p class="Pp">Definition at line <b>235</b> of file <b>filesystem.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_platform_stat_t::is_symlink"><a class="permalink" href="#int_platform_stat_t::is_symlink">int
+  platform_stat_t::is_symlink</a></h2>
+<p class="Pp">Non-zero if file is a symbolic link.</p>
+<p class="Pp">Definition at line <b>237</b> of file <b>filesystem.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_platform_stat_t::mode"><a class="permalink" href="#int_platform_stat_t::mode">int
+  platform_stat_t::mode</a></h2>
+<p class="Pp">File mode (permissions and type).</p>
+<p class="Pp">Definition at line <b>234</b> of file <b>filesystem.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_platform_stat_t::size"><a class="permalink" href="#size_t_platform_stat_t::size">size_t
+  platform_stat_t::size</a></h2>
+<p class="Pp">File size in bytes.</p>
+<p class="Pp">Definition at line <b>233</b> of file <b>filesystem.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

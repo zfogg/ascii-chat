@@ -1,9 +1,825 @@
 [
   {
+    "name": "ALIGNED_ATTR",
+    "title": "ALIGNED_ATTR",
+    "file": "ascii-chat-ALIGNED_ATTR.html",
+    "sourcePath": null
+  },
+  {
+    "name": "ImageRGB",
+    "title": "ImageRGB",
+    "file": "ascii-chat-ImageRGB.html",
+    "sourcePath": null
+  },
+  {
+    "name": "PACKED_ATTR",
+    "title": "PACKED_ATTR",
+    "file": "ascii-chat-PACKED_ATTR.html",
+    "sourcePath": null
+  },
+  {
+    "name": "RLEState",
+    "title": "RLEState",
+    "file": "ascii-chat-RLEState.html",
+    "sourcePath": null
+  },
+  {
+    "name": "SHA1_CTX",
+    "title": "SHA1_CTX",
+    "file": "ascii-chat-SHA1_CTX.html",
+    "sourcePath": null
+  },
+  {
+    "name": "Str",
+    "title": "Str",
+    "file": "ascii-chat-Str.html",
+    "sourcePath": null
+  },
+  {
     "name": "WebRTCAec3Wrapper",
     "title": "WebRTCAec3Wrapper",
     "file": "ascii-chat-WebRTCAec3Wrapper.html",
-    "sourcePath": "lib/audio/client_pipeline.cpp"
+    "sourcePath": null
+  },
+  {
+    "name": "include Directory Reference",
+    "title": "include Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "ascii-chat Directory Reference",
+    "title": "ascii-chat Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "audio Directory Reference",
+    "title": "audio Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_audio_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "common Directory Reference",
+    "title": "common Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_common_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "crypto Directory Reference",
+    "title": "crypto Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_crypto_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "gpg Directory Reference",
+    "title": "gpg Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_crypto_gpg_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "handshake Directory Reference",
+    "title": "handshake Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_crypto_handshake_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "ssh Directory Reference",
+    "title": "ssh Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_crypto_ssh_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "debug Directory Reference",
+    "title": "debug Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_debug_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "discovery Directory Reference",
+    "title": "discovery Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_discovery_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "log Directory Reference",
+    "title": "log Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_log_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "media Directory Reference",
+    "title": "media Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_media_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "render Directory Reference",
+    "title": "render Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_media_render_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "network Directory Reference",
+    "title": "network Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_network_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "acip Directory Reference",
+    "title": "acip Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_network_acip_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "consensus Directory Reference",
+    "title": "consensus Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_network_consensus_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "mdns Directory Reference",
+    "title": "mdns Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_network_mdns_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "nat Directory Reference",
+    "title": "nat Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_network_nat_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "packet Directory Reference",
+    "title": "packet Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_network_packet_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "rate_limit Directory Reference",
+    "title": "rate_limit Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_network_rate_limit_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "tcp Directory Reference",
+    "title": "tcp Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_network_tcp_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "webrtc Directory Reference",
+    "title": "webrtc Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_network_webrtc_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "websocket Directory Reference",
+    "title": "websocket Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_network_websocket_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "options Directory Reference",
+    "title": "options Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_options_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "builder Directory Reference",
+    "title": "builder Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_options_builder_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "completions Directory Reference",
+    "title": "completions Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_options_completions_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "manpage Directory Reference",
+    "title": "manpage Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_options_manpage_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "content Directory Reference",
+    "title": "content Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_options_manpage_content_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "registry Directory Reference",
+    "title": "registry Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_options_registry_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "platform Directory Reference",
+    "title": "platform Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_platform_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "windows Directory Reference",
+    "title": "windows Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_platform_windows_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "session Directory Reference",
+    "title": "session Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_session_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "terminal Directory Reference",
+    "title": "terminal Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_terminal_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "fd Directory Reference",
+    "title": "fd Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_terminal_fd_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "tests Directory Reference",
+    "title": "tests Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_tests_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "tooling Directory Reference",
+    "title": "tooling Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_tooling_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "defer Directory Reference",
+    "title": "defer Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_tooling_defer_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "panic Directory Reference",
+    "title": "panic Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_tooling_panic_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "query Directory Reference",
+    "title": "query Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_tooling_query_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "ui Directory Reference",
+    "title": "ui Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_ui_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "util Directory Reference",
+    "title": "util Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_util_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "video Directory Reference",
+    "title": "video Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_video_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "anim Directory Reference",
+    "title": "anim Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_video_anim_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "ascii Directory Reference",
+    "title": "ascii Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_video_ascii_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "neon Directory Reference",
+    "title": "neon Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_video_ascii_neon_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "scalar Directory Reference",
+    "title": "scalar Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_video_ascii_scalar_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "h265 Directory Reference",
+    "title": "h265 Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_video_h265_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "rgba Directory Reference",
+    "title": "rgba Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_video_rgba_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "terminal Directory Reference",
+    "title": "terminal Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_video_terminal_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "webcam Directory Reference",
+    "title": "webcam Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_include_ascii-chat_video_webcam_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "lib Directory Reference",
+    "title": "lib Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "audio Directory Reference",
+    "title": "audio Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_audio_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "crypto Directory Reference",
+    "title": "crypto Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_crypto_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "gpg Directory Reference",
+    "title": "gpg Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_crypto_gpg_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "handshake Directory Reference",
+    "title": "handshake Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_crypto_handshake_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "ssh Directory Reference",
+    "title": "ssh Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_crypto_ssh_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "debug Directory Reference",
+    "title": "debug Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_debug_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "discovery Directory Reference",
+    "title": "discovery Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_discovery_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "log Directory Reference",
+    "title": "log Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_log_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "media Directory Reference",
+    "title": "media Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_media_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "render Directory Reference",
+    "title": "render Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_media_render_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "network Directory Reference",
+    "title": "network Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_network_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "acip Directory Reference",
+    "title": "acip Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_network_acip_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "consensus Directory Reference",
+    "title": "consensus Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_network_consensus_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "mdns Directory Reference",
+    "title": "mdns Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_network_mdns_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "nat Directory Reference",
+    "title": "nat Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_network_nat_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "packet Directory Reference",
+    "title": "packet Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_network_packet_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "rate_limit Directory Reference",
+    "title": "rate_limit Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_network_rate_limit_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "tcp Directory Reference",
+    "title": "tcp Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_network_tcp_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "webrtc Directory Reference",
+    "title": "webrtc Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_network_webrtc_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "websocket Directory Reference",
+    "title": "websocket Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_network_websocket_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "options Directory Reference",
+    "title": "options Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_options_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "builder Directory Reference",
+    "title": "builder Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_options_builder_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "completions Directory Reference",
+    "title": "completions Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_options_completions_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "config Directory Reference",
+    "title": "config Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_options_config_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "manpage Directory Reference",
+    "title": "manpage Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_options_manpage_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "content Directory Reference",
+    "title": "content Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_options_manpage_content_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "parsing Directory Reference",
+    "title": "parsing Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_options_parsing_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "registry Directory Reference",
+    "title": "registry Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_options_registry_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "platform Directory Reference",
+    "title": "platform Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_platform_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "linux Directory Reference",
+    "title": "linux Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_platform_linux_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "macos Directory Reference",
+    "title": "macos Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_platform_macos_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "wasm Directory Reference",
+    "title": "wasm Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_platform_wasm_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "stubs Directory Reference",
+    "title": "stubs Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_platform_wasm_stubs_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "terminal Directory Reference",
+    "title": "terminal Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_terminal_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "fd Directory Reference",
+    "title": "fd Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_terminal_fd_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "tests Directory Reference",
+    "title": "tests Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_tests_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "tooling Directory Reference",
+    "title": "tooling Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_tooling_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "panic Directory Reference",
+    "title": "panic Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_tooling_panic_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "query Directory Reference",
+    "title": "query Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_tooling_query_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "ui Directory Reference",
+    "title": "ui Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_ui_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "util Directory Reference",
+    "title": "util Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_util_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "video Directory Reference",
+    "title": "video Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_video_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "anim Directory Reference",
+    "title": "anim Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_video_anim_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "ascii Directory Reference",
+    "title": "ascii Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_video_ascii_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "avx2 Directory Reference",
+    "title": "avx2 Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_video_ascii_avx2_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "neon Directory Reference",
+    "title": "neon Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_video_ascii_neon_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "scalar Directory Reference",
+    "title": "scalar Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_video_ascii_scalar_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "sse2 Directory Reference",
+    "title": "sse2 Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_video_ascii_sse2_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "ssse3 Directory Reference",
+    "title": "ssse3 Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_video_ascii_ssse3_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "sve Directory Reference",
+    "title": "sve Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_video_ascii_sve_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "h265 Directory Reference",
+    "title": "h265 Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_video_h265_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "rgba Directory Reference",
+    "title": "rgba Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_video_rgba_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "terminal Directory Reference",
+    "title": "terminal Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_video_terminal_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "webcam Directory Reference",
+    "title": "webcam Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_video_webcam_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "linux Directory Reference",
+    "title": "linux Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_video_webcam_linux_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "macos Directory Reference",
+    "title": "macos Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_video_webcam_macos_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "windows Directory Reference",
+    "title": "windows Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_lib_video_webcam_windows_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "src Directory Reference",
+    "title": "src Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_src_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "client Directory Reference",
+    "title": "client Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_src_client_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "common Directory Reference",
+    "title": "common Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_src_common_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "session Directory Reference",
+    "title": "session Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_src_common_session_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "discovery-service Directory Reference",
+    "title": "discovery-service Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_src_discovery-service_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "discovery Directory Reference",
+    "title": "discovery Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_src_discovery_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "mirror Directory Reference",
+    "title": "mirror Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_src_mirror_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "server Directory Reference",
+    "title": "server Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_src_server_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "session Directory Reference",
+    "title": "session Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_src_session_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "h265 Directory Reference",
+    "title": "h265 Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_src_session_h265_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "strings Directory Reference",
+    "title": "strings Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_src_strings_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "tooling Directory Reference",
+    "title": "tooling Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_src_tooling_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "defer Directory Reference",
+    "title": "defer Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_src_tooling_defer_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "include Directory Reference",
+    "title": "include Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_src_tooling_defer_include_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "panic Directory Reference",
+    "title": "panic Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_src_tooling_panic_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "query Directory Reference",
+    "title": "query Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_src_tooling_query_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "web Directory Reference",
+    "title": "web Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_src_web_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "common Directory Reference",
+    "title": "common Directory Reference",
+    "file": "ascii-chat-_Users_zfogg_src_github.com_zfogg_ascii-chat_src_web_common_.html",
+    "sourcePath": null
+  },
+  {
+    "name": "__attribute__",
+    "title": "__attribute__",
+    "file": "ascii-chat-__attribute__.html",
+    "sourcePath": null
+  },
+  {
+    "name": "abstraction.h",
+    "title": "abstraction.h",
+    "file": "ascii-chat-abstraction.h.html",
+    "sourcePath": "include/ascii-chat/platform/abstraction.h"
+  },
+  {
+    "name": "acds.h",
+    "title": "acds.h",
+    "file": "ascii-chat-acds.h.html",
+    "sourcePath": "include/ascii-chat/network/acip/acds.h"
+  },
+  {
+    "name": "acds",
+    "title": "acds",
+    "file": "ascii-chat-acds.html",
+    "sourcePath": "include/ascii-chat/network/acip/acds.h"
   },
   {
     "name": "acds_client.c",
@@ -12,9 +828,33 @@
     "sourcePath": "lib/network/acip/acds_client.c"
   },
   {
+    "name": "acds_client.h",
+    "title": "acds_client.h",
+    "file": "ascii-chat-acds_client.h.html",
+    "sourcePath": "include/ascii-chat/network/acip/acds_client.h"
+  },
+  {
+    "name": "acds_client",
+    "title": "acds_client",
+    "file": "ascii-chat-acds_client.html",
+    "sourcePath": "lib/network/acip/acds_client.c"
+  },
+  {
+    "name": "acds_client_config_t",
+    "title": "acds_client_config_t",
+    "file": "ascii-chat-acds_client_config_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "acds_client_data_t",
     "title": "acds_client_data_t",
     "file": "ascii-chat-acds_client_data_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "acds_client_t",
+    "title": "acds_client_t",
+    "file": "ascii-chat-acds_client_t.html",
     "sourcePath": null
   },
   {
@@ -30,15 +870,33 @@
     "sourcePath": "lib/network/acip/acds_handlers.c"
   },
   {
+    "name": "acds_handlers.h",
+    "title": "acds_handlers.h",
+    "file": "ascii-chat-acds_handlers.h.html",
+    "sourcePath": "include/ascii-chat/network/acip/acds_handlers.h"
+  },
+  {
     "name": "acds_hash_entry_t",
     "title": "acds_hash_entry_t",
     "file": "ascii-chat-acds_hash_entry_t.html",
-    "sourcePath": "lib/network/acip/acds_handlers.c"
+    "sourcePath": null
   },
   {
     "name": "acds_server.c",
     "title": "acds_server.c",
     "file": "ascii-chat-acds_server.c.html",
+    "sourcePath": "lib/network/acip/acds_server.c"
+  },
+  {
+    "name": "acds_server.h",
+    "title": "acds_server.h",
+    "file": "ascii-chat-acds_server.h.html",
+    "sourcePath": "include/ascii-chat/network/acip/acds_server.h"
+  },
+  {
+    "name": "acds_server",
+    "title": "acds_server",
+    "file": "ascii-chat-acds_server.html",
     "sourcePath": "lib/network/acip/acds_server.c"
   },
   {
@@ -48,16 +906,112 @@
     "sourcePath": null
   },
   {
+    "name": "acds_session_create_params_t",
+    "title": "acds_session_create_params_t",
+    "file": "ascii-chat-acds_session_create_params_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "acds_session_create_result_t",
+    "title": "acds_session_create_result_t",
+    "file": "ascii-chat-acds_session_create_result_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "acds_session_join_params_t",
+    "title": "acds_session_join_params_t",
+    "file": "ascii-chat-acds_session_join_params_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "acds_session_join_result_t",
+    "title": "acds_session_join_result_t",
+    "file": "ascii-chat-acds_session_join_result_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "acds_session_lookup_result_t",
+    "title": "acds_session_lookup_result_t",
+    "file": "ascii-chat-acds_session_lookup_result_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "acds_thread_context_t",
     "title": "acds_thread_context_t",
     "file": "ascii-chat-acds_thread_context_t.html",
-    "sourcePath": "lib/network/mdns/discovery.c"
+    "sourcePath": null
+  },
+  {
+    "name": "acip",
+    "title": "acip",
+    "file": "ascii-chat-acip.html",
+    "sourcePath": null
+  },
+  {
+    "name": "acip_acds_callbacks_t",
+    "title": "acip_acds_callbacks_t",
+    "file": "ascii-chat-acip_acds_callbacks_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "acip_client_callbacks_t",
+    "title": "acip_client_callbacks_t",
+    "file": "ascii-chat-acip_client_callbacks_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "acip_server_callbacks_t",
+    "title": "acip_server_callbacks_t",
+    "file": "ascii-chat-acip_server_callbacks_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "acip_transport",
+    "title": "acip_transport",
+    "file": "ascii-chat-acip_transport.html",
+    "sourcePath": null
+  },
+  {
+    "name": "acip_transport_methods_t",
+    "title": "acip_transport_methods_t",
+    "file": "ascii-chat-acip_transport_methods_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "action_args_t",
+    "title": "action_args_t",
+    "file": "ascii-chat-action_args_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "actions.h",
+    "title": "actions.h",
+    "file": "ascii-chat-actions.h.html",
+    "sourcePath": "include/ascii-chat/options/actions.h"
+  },
+  {
+    "name": "adaptive_sleep_config_t",
+    "title": "adaptive_sleep_config_t",
+    "file": "ascii-chat-adaptive_sleep_config_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "adaptive_sleep_state_t",
+    "title": "adaptive_sleep_state_t",
+    "file": "ascii-chat-adaptive_sleep_state_t.html",
+    "sourcePath": null
   },
   {
     "name": "adjectives.c",
     "title": "adjectives.c",
     "file": "ascii-chat-adjectives.c.html",
     "sourcePath": "lib/discovery/adjectives.c"
+  },
+  {
+    "name": "adjectives.h",
+    "title": "adjectives.h",
+    "file": "ascii-chat-adjectives.h.html",
+    "sourcePath": "include/ascii-chat/discovery/adjectives.h"
   },
   {
     "name": "agent.c",
@@ -72,16 +1026,82 @@
     "sourcePath": "lib/audio/analysis.c"
   },
   {
+    "name": "analysis.h",
+    "title": "analysis.h",
+    "file": "ascii-chat-analysis.h.html",
+    "sourcePath": "include/ascii-chat/audio/analysis.h"
+  },
+  {
+    "name": "anchor_list",
+    "title": "anchor_list",
+    "file": "ascii-chat-anchor_list.html",
+    "sourcePath": null
+  },
+  {
     "name": "ansi.c",
     "title": "ansi.c",
     "file": "ascii-chat-ansi.c.html",
     "sourcePath": "lib/video/terminal/ansi.c"
   },
   {
+    "name": "ansi.h",
+    "title": "ansi.h",
+    "file": "ascii-chat-ansi.h.html",
+    "sourcePath": "include/ascii-chat/video/terminal/ansi.h"
+  },
+  {
+    "name": "ansi",
+    "title": "ansi",
+    "file": "ascii-chat-ansi.html",
+    "sourcePath": "lib/video/terminal/ansi.c"
+  },
+  {
+    "name": "ansi_rle_context_t",
+    "title": "ansi_rle_context_t",
+    "file": "ascii-chat-ansi_rle_context_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "ansi_timing_t",
+    "title": "ansi_timing_t",
+    "file": "ascii-chat-ansi_timing_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "api.h",
+    "title": "api.h",
+    "file": "ascii-chat-api.h.html",
+    "sourcePath": "include/ascii-chat/platform/api.h"
+  },
+  {
     "name": "app_callbacks.c",
     "title": "app_callbacks.c",
     "file": "ascii-chat-app_callbacks.c.html",
     "sourcePath": "lib/app_callbacks.c"
+  },
+  {
+    "name": "app_callbacks.h",
+    "title": "app_callbacks.h",
+    "file": "ascii-chat-app_callbacks.h.html",
+    "sourcePath": "include/ascii-chat/app_callbacks.h"
+  },
+  {
+    "name": "app_callbacks_t",
+    "title": "app_callbacks_t",
+    "file": "ascii-chat-app_callbacks_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "app_client",
+    "title": "app_client",
+    "file": "ascii-chat-app_client.html",
+    "sourcePath": null
+  },
+  {
+    "name": "app_client_audio_packet_t",
+    "title": "app_client_audio_packet_t",
+    "file": "ascii-chat-app_client_audio_packet_t.html",
+    "sourcePath": null
   },
   {
     "name": "asan.c",
@@ -96,82 +1116,100 @@
     "sourcePath": "lib/video/ascii/ascii.c"
   },
   {
+    "name": "ascii.h",
+    "title": "ascii.h",
+    "file": "ascii-chat-ascii.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/ascii.h"
+  },
+  {
+    "name": "ascii_frame_packet_t",
+    "title": "ascii_frame_packet_t",
+    "file": "ascii-chat-ascii_frame_packet_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "ascii_frame_source_t",
+    "title": "ascii_frame_source_t",
+    "file": "ascii-chat-ascii_frame_source_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "ascii_query",
     "title": "ascii_query",
     "file": "ascii-chat-ascii_query.html",
-    "sourcePath": "src/tooling/query/http_server.h"
+    "sourcePath": null
   },
   {
     "name": "ascii_query::BreakpointInfo",
     "title": "ascii_query::BreakpointInfo",
     "file": "ascii-chat-ascii_query_BreakpointInfo.html",
-    "sourcePath": "src/tooling/query/lldb_controller.h"
+    "sourcePath": null
   },
   {
     "name": "ascii_query::FrameInfo",
     "title": "ascii_query::FrameInfo",
     "file": "ascii-chat-ascii_query_FrameInfo.html",
-    "sourcePath": "src/tooling/query/lldb_controller.h"
+    "sourcePath": null
   },
   {
     "name": "ascii_query::HttpRequest",
     "title": "ascii_query::HttpRequest",
     "file": "ascii-chat-ascii_query_HttpRequest.html",
-    "sourcePath": "src/tooling/query/http_server.h"
+    "sourcePath": null
   },
   {
     "name": "ascii_query::HttpResponse",
     "title": "ascii_query::HttpResponse",
     "file": "ascii-chat-ascii_query_HttpResponse.html",
-    "sourcePath": "src/tooling/query/http_server.h"
+    "sourcePath": null
   },
   {
     "name": "ascii_query::HttpServer",
     "title": "ascii_query::HttpServer",
     "file": "ascii-chat-ascii_query_HttpServer.html",
-    "sourcePath": "src/tooling/query/http_server.h"
+    "sourcePath": null
   },
   {
     "name": "ascii_query::LLDBController",
     "title": "ascii_query::LLDBController",
     "file": "ascii-chat-ascii_query_LLDBController.html",
-    "sourcePath": "src/tooling/query/lldb_controller.h"
+    "sourcePath": null
   },
   {
     "name": "ascii_query::ThreadInfo",
     "title": "ascii_query::ThreadInfo",
     "file": "ascii-chat-ascii_query_ThreadInfo.html",
-    "sourcePath": "src/tooling/query/lldb_controller.h"
+    "sourcePath": null
   },
   {
     "name": "ascii_query::VariableInfo",
     "title": "ascii_query::VariableInfo",
     "file": "ascii-chat-ascii_query_VariableInfo.html",
-    "sourcePath": "src/tooling/query/lldb_controller.h"
+    "sourcePath": null
   },
   {
     "name": "ascii_query::json",
     "title": "ascii_query::json",
     "file": "ascii-chat-ascii_query_json.html",
-    "sourcePath": "src/tooling/query/json.h"
+    "sourcePath": null
   },
   {
     "name": "ascii_query::json::JsonArray",
     "title": "ascii_query::json::JsonArray",
     "file": "ascii-chat-ascii_query_json_JsonArray.html",
-    "sourcePath": "src/tooling/query/json.h"
+    "sourcePath": null
   },
   {
     "name": "ascii_query::json::JsonObject",
     "title": "ascii_query::json::JsonObject",
     "file": "ascii-chat-ascii_query_json_JsonObject.html",
-    "sourcePath": "src/tooling/query/json.h"
+    "sourcePath": null
   },
   {
     "name": "ascii_query::json::JsonValue",
     "title": "ascii_query::json::JsonValue",
     "file": "ascii-chat-ascii_query_json_JsonValue.html",
-    "sourcePath": "src/tooling/query/json.h"
+    "sourcePath": null
   },
   {
     "name": "asciichat_errno.c",
@@ -180,27 +1218,63 @@
     "sourcePath": "lib/asciichat_errno.c"
   },
   {
+    "name": "asciichat_errno.h",
+    "title": "asciichat_errno.h",
+    "file": "ascii-chat-asciichat_errno.h.html",
+    "sourcePath": "include/ascii-chat/asciichat_errno.h"
+  },
+  {
+    "name": "asciichat_error_context_t",
+    "title": "asciichat_error_context_t",
+    "file": "ascii-chat-asciichat_error_context_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "asciichat_error_stats_t",
+    "title": "asciichat_error_stats_t",
+    "file": "ascii-chat-asciichat_error_stats_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "asciichat_instr_only_list",
     "title": "asciichat_instr_only_list",
     "file": "ascii-chat-asciichat_instr_only_list.html",
-    "sourcePath": "lib/tooling/panic/instrument_log.c"
+    "sourcePath": null
   },
   {
     "name": "asciichat_instr_only_selector",
     "title": "asciichat_instr_only_selector",
     "file": "ascii-chat-asciichat_instr_only_selector.html",
-    "sourcePath": "lib/tooling/panic/instrument_log.c"
+    "sourcePath": null
   },
   {
     "name": "asciichat_instr_runtime",
     "title": "asciichat_instr_runtime",
     "file": "ascii-chat-asciichat_instr_runtime.html",
-    "sourcePath": "lib/tooling/panic/instrument_log.c"
+    "sourcePath": null
+  },
+  {
+    "name": "asciichat_mdns_discovery_t",
+    "title": "asciichat_mdns_discovery_t",
+    "file": "ascii-chat-asciichat_mdns_discovery_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "asciichat_mdns_service_t",
+    "title": "asciichat_mdns_service_t",
+    "file": "ascii-chat-asciichat_mdns_service_t.html",
+    "sourcePath": null
   },
   {
     "name": "asciichat_mdns_t",
     "title": "asciichat_mdns_t",
     "file": "ascii-chat-asciichat_mdns_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "asciichat_thread_wrapper_t",
+    "title": "asciichat_thread_wrapper_t",
+    "file": "ascii-chat-asciichat_thread_wrapper_t.html",
     "sourcePath": null
   },
   {
@@ -210,15 +1284,69 @@
     "sourcePath": "lib/util/aspect_ratio.c"
   },
   {
+    "name": "aspect_ratio.h",
+    "title": "aspect_ratio.h",
+    "file": "ascii-chat-aspect_ratio.h.html",
+    "sourcePath": "include/ascii-chat/util/aspect_ratio.h"
+  },
+  {
     "name": "atomic.c",
     "title": "atomic.c",
     "file": "ascii-chat-atomic.c.html",
     "sourcePath": "lib/debug/atomic.c"
   },
   {
+    "name": "atomic.h",
+    "title": "atomic.h",
+    "file": "ascii-chat-atomic.h.html",
+    "sourcePath": "include/ascii-chat/util/atomic.h"
+  },
+  {
+    "name": "atomic_ptr_t",
+    "title": "atomic_ptr_t",
+    "file": "ascii-chat-atomic_ptr_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "atomic_t",
+    "title": "atomic_t",
+    "file": "ascii-chat-atomic_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "audio",
+    "title": "audio",
+    "file": "ascii-chat-audio.html",
+    "sourcePath": "src/common/session/audio.c"
+  },
+  {
+    "name": "audio_analysis_stats_t",
+    "title": "audio_analysis_stats_t",
+    "file": "ascii-chat-audio_analysis_stats_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "audio_batch_info_t",
     "title": "audio_batch_info_t",
     "file": "ascii-chat-audio_batch_info_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "audio_batch_packet_t",
+    "title": "audio_batch_packet_t",
+    "file": "ascii-chat-audio_batch_packet_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "audio_context_t",
+    "title": "audio_context_t",
+    "file": "ascii-chat-audio_context_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "audio_device_info_t",
+    "title": "audio_device_info_t",
+    "file": "ascii-chat-audio_device_info_t.html",
     "sourcePath": null
   },
   {
@@ -228,19 +1356,37 @@
     "sourcePath": null
   },
   {
+    "name": "audio_ring_buffer",
+    "title": "audio_ring_buffer",
+    "file": "ascii-chat-audio_ring_buffer.html",
+    "sourcePath": null
+  },
+  {
     "name": "audio_send_packet_t",
     "title": "audio_send_packet_t",
     "file": "ascii-chat-audio_send_packet_t.html",
     "sourcePath": null
   },
   {
-    "name": "avx2_color.c",
+    "name": "auth_failure_packet_t",
+    "title": "auth_failure_packet_t",
+    "file": "ascii-chat-auth_failure_packet_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "avx2.h",
+    "title": "avx2.h",
+    "file": "ascii-chat-avx2.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/avx2.h"
+  },
+  {
+    "name": "color.c",
     "title": "color.c",
     "file": "ascii-chat-avx2_color.c.html",
     "sourcePath": "lib/video/ascii/sve/color.c"
   },
   {
-    "name": "avx2_mono.c",
+    "name": "mono.c",
     "title": "mono.c",
     "file": "ascii-chat-avx2_mono.c.html",
     "sourcePath": "lib/video/ascii/sve/mono.c"
@@ -252,16 +1398,34 @@
     "sourcePath": "lib/video/ascii/scalar/background.c"
   },
   {
+    "name": "background.h",
+    "title": "background.h",
+    "file": "ascii-chat-background.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/scalar/background.h"
+  },
+  {
+    "name": "backtrace_t",
+    "title": "backtrace_t",
+    "file": "ascii-chat-backtrace_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "bash.c",
     "title": "bash.c",
     "file": "ascii-chat-bash.c.html",
     "sourcePath": "lib/options/completions/bash.c"
   },
   {
+    "name": "bash.h",
+    "title": "bash.h",
+    "file": "ascii-chat-bash.h.html",
+    "sourcePath": "include/ascii-chat/options/completions/bash.h"
+  },
+  {
     "name": "bin_cache_entry_t",
     "title": "bin_cache_entry_t",
     "file": "ascii-chat-bin_cache_entry_t.html",
-    "sourcePath": "lib/platform/windows/filesystem.c"
+    "sourcePath": null
   },
   {
     "name": "binary_level_opts_t",
@@ -270,16 +1434,28 @@
     "sourcePath": null
   },
   {
+    "name": "bits.h",
+    "title": "bits.h",
+    "file": "ascii-chat-bits.h.html",
+    "sourcePath": "include/ascii-chat/util/bits.h"
+  },
+  {
     "name": "bool_field_ctx_t",
     "title": "bool_field_ctx_t",
     "file": "ascii-chat-bool_field_ctx_t.html",
-    "sourcePath": "lib/options/rcu.c"
+    "sourcePath": null
   },
   {
     "name": "broadcast_context_t",
     "title": "broadcast_context_t",
     "file": "ascii-chat-broadcast_context_t.html",
-    "sourcePath": "src/discovery-service/signaling.c"
+    "sourcePath": null
+  },
+  {
+    "name": "buffer_node",
+    "title": "buffer_node",
+    "file": "ascii-chat-buffer_node.html",
+    "sourcePath": null
   },
   {
     "name": "buffer_pool.c",
@@ -288,16 +1464,58 @@
     "sourcePath": "lib/buffer_pool.c"
   },
   {
+    "name": "buffer_pool.h",
+    "title": "buffer_pool.h",
+    "file": "ascii-chat-buffer_pool.h.html",
+    "sourcePath": "include/ascii-chat/buffer_pool.h"
+  },
+  {
+    "name": "buffer_pool",
+    "title": "buffer_pool",
+    "file": "ascii-chat-buffer_pool.html",
+    "sourcePath": "lib/buffer_pool.c"
+  },
+  {
+    "name": "buffer_sizes.h",
+    "title": "buffer_sizes.h",
+    "file": "ascii-chat-buffer_sizes.h.html",
+    "sourcePath": "include/ascii-chat/common/buffer_sizes.h"
+  },
+  {
+    "name": "buffer_sizes",
+    "title": "buffer_sizes",
+    "file": "ascii-chat-buffer_sizes.html",
+    "sourcePath": "include/ascii-chat/common/buffer_sizes.h"
+  },
+  {
     "name": "builder.c",
     "title": "builder.c",
     "file": "ascii-chat-builder.c.html",
     "sourcePath": "lib/options/builder/builder.c"
   },
   {
+    "name": "builder.h",
+    "title": "builder.h",
+    "file": "ascii-chat-builder.h.html",
+    "sourcePath": "include/ascii-chat/options/builder.h"
+  },
+  {
     "name": "bvector",
     "title": "bvector",
     "file": "ascii-chat-bvector.html",
-    "sourcePath": "lib/crypto/pem.c"
+    "sourcePath": null
+  },
+  {
+    "name": "bytes.h",
+    "title": "bytes.h",
+    "file": "ascii-chat-bytes.h.html",
+    "sourcePath": "include/ascii-chat/util/bytes.h"
+  },
+  {
+    "name": "callback_profiler.h",
+    "title": "callback_profiler.h",
+    "file": "ascii-chat-callback_profiler.h.html",
+    "sourcePath": "include/ascii-chat/network/websocket/callback_profiler.h"
   },
   {
     "name": "callback_timing.c",
@@ -306,22 +1524,52 @@
     "sourcePath": "lib/network/websocket/callback_timing.c"
   },
   {
-    "name": "client_capture.c",
+    "name": "callback_timing.h",
+    "title": "callback_timing.h",
+    "file": "ascii-chat-callback_timing.h.html",
+    "sourcePath": "include/ascii-chat/network/websocket/callback_timing.h"
+  },
+  {
+    "name": "categories.h",
+    "title": "categories.h",
+    "file": "ascii-chat-categories.h.html",
+    "sourcePath": "include/ascii-chat/options/registry/categories.h"
+  },
+  {
+    "name": "category_builder_t",
+    "title": "category_builder_t",
+    "file": "ascii-chat-category_builder_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "client_audio_pipeline_config_t",
+    "title": "client_audio_pipeline_config_t",
+    "file": "ascii-chat-client_audio_pipeline_config_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "client_audio_pipeline_flags_t",
+    "title": "client_audio_pipeline_flags_t",
+    "file": "ascii-chat-client_audio_pipeline_flags_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "client_audio_pipeline_t",
+    "title": "client_audio_pipeline_t",
+    "file": "ascii-chat-client_audio_pipeline_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "capture.c",
     "title": "capture.c",
     "file": "ascii-chat-client_capture.c.html",
     "sourcePath": "src/common/session/capture.c"
   },
   {
-    "name": "client_capture.h",
+    "name": "capture.h",
     "title": "capture.h",
     "file": "ascii-chat-client_capture.h.html",
     "sourcePath": "src/common/session/capture.h"
-  },
-  {
-    "name": "client_crypto.h",
-    "title": "crypto.h",
-    "file": "ascii-chat-client_crypto.h.html",
-    "sourcePath": "src/server/crypto.h"
   },
   {
     "name": "client_dispatch_entry_t",
@@ -330,10 +1578,16 @@
     "sourcePath": null
   },
   {
-    "name": "client_display.h",
-    "title": "display.h",
-    "file": "ascii-chat-client_display.h.html",
-    "sourcePath": "src/common/session/display.h"
+    "name": "client_info",
+    "title": "client_info",
+    "file": "ascii-chat-client_info.html",
+    "sourcePath": null
+  },
+  {
+    "name": "client_info_packet_t",
+    "title": "client_info_packet_t",
+    "file": "ascii-chat-client_info_packet_t.html",
+    "sourcePath": null
   },
   {
     "name": "client_like.c",
@@ -348,13 +1602,19 @@
     "sourcePath": "src/common/session/client_like.h"
   },
   {
-    "name": "client_main.c",
+    "name": "client_list_packet_t",
+    "title": "client_list_packet_t",
+    "file": "ascii-chat-client_list_packet_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "main.c",
     "title": "main.c",
     "file": "ascii-chat-client_main.c.html",
     "sourcePath": "src/strings/main.c"
   },
   {
-    "name": "client_main.h",
+    "name": "main.h",
     "title": "main.h",
     "file": "ascii-chat-client_main.h.html",
     "sourcePath": "src/server/main.h"
@@ -372,22 +1632,16 @@
     "sourcePath": "lib/audio/client_pipeline.cpp"
   },
   {
-    "name": "client_protocol.c",
+    "name": "client_pipeline.h",
+    "title": "client_pipeline.h",
+    "file": "ascii-chat-client_pipeline.h.html",
+    "sourcePath": "include/ascii-chat/audio/client_pipeline.h"
+  },
+  {
+    "name": "protocol.c",
     "title": "protocol.c",
     "file": "ascii-chat-client_protocol.c.html",
     "sourcePath": "src/server/protocol.c"
-  },
-  {
-    "name": "client_protocol.h",
-    "title": "protocol.h",
-    "file": "ascii-chat-client_protocol.h.html",
-    "sourcePath": "src/session/h265/protocol.h"
-  },
-  {
-    "name": "client_server.h",
-    "title": "server.h",
-    "file": "ascii-chat-client_server.h.html",
-    "sourcePath": "src/session/h265/server.h"
   },
   {
     "name": "client_session_state_t",
@@ -396,10 +1650,10 @@
     "sourcePath": null
   },
   {
-    "name": "client_webrtc.h",
-    "title": "webrtc.h",
-    "file": "ascii-chat-client_webrtc.h.html",
-    "sourcePath": "src/discovery/webrtc.h"
+    "name": "codecs.h",
+    "title": "codecs.h",
+    "file": "ascii-chat-codecs.h.html",
+    "sourcePath": "include/ascii-chat/media/codecs.h"
   },
   {
     "name": "color_filter.c",
@@ -408,10 +1662,34 @@
     "sourcePath": "lib/video/rgba/color_filter.c"
   },
   {
+    "name": "color_filter.h",
+    "title": "color_filter.h",
+    "file": "ascii-chat-color_filter.h.html",
+    "sourcePath": "include/ascii-chat/video/rgba/color_filter.h"
+  },
+  {
+    "name": "color_filter_def_t",
+    "title": "color_filter_def_t",
+    "file": "ascii-chat-color_filter_def_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "color_scheme_t",
+    "title": "color_scheme_t",
+    "file": "ascii-chat-color_scheme_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "colorize.c",
     "title": "colorize.c",
     "file": "ascii-chat-colorize.c.html",
     "sourcePath": "lib/log/colorize.c"
+  },
+  {
+    "name": "colorize.h",
+    "title": "colorize.h",
+    "file": "ascii-chat-colorize.h.html",
+    "sourcePath": "include/ascii-chat/log/colorize.h"
   },
   {
     "name": "colorscheme.c",
@@ -420,40 +1698,58 @@
     "sourcePath": "lib/options/colorscheme.c"
   },
   {
+    "name": "colorscheme.h",
+    "title": "colorscheme.h",
+    "file": "ascii-chat-colorscheme.h.html",
+    "sourcePath": "include/ascii-chat/options/colorscheme.h"
+  },
+  {
     "name": "common.c",
     "title": "common.c",
     "file": "ascii-chat-common.c.html",
     "sourcePath": "lib/video/ascii/neon/common.c"
   },
   {
-    "name": "common_session_capture.c",
+    "name": "common.h",
+    "title": "common.h",
+    "file": "ascii-chat-common.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/neon/common.h"
+  },
+  {
+    "name": "common",
+    "title": "common",
+    "file": "ascii-chat-common.html",
+    "sourcePath": "lib/video/ascii/neon/common.c"
+  },
+  {
+    "name": "capture.c",
     "title": "capture.c",
     "file": "ascii-chat-common_session_capture.c.html",
     "sourcePath": "src/common/session/capture.c"
   },
   {
-    "name": "common_session_capture.h",
+    "name": "capture.h",
     "title": "capture.h",
     "file": "ascii-chat-common_session_capture.h.html",
     "sourcePath": "src/common/session/capture.h"
   },
   {
-    "name": "common_session_display.h",
-    "title": "display.h",
-    "file": "ascii-chat-common_session_display.h.html",
-    "sourcePath": "src/common/session/display.h"
-  },
-  {
-    "name": "common_session_render.c",
+    "name": "render.c",
     "title": "render.c",
     "file": "ascii-chat-common_session_render.c.html",
     "sourcePath": "src/server/render.c"
   },
   {
-    "name": "common_session_render.h",
+    "name": "render.h",
     "title": "render.h",
     "file": "ascii-chat-common_session_render.h.html",
     "sourcePath": "src/server/render.h"
+  },
+  {
+    "name": "compiled_color_scheme_t",
+    "title": "compiled_color_scheme_t",
+    "file": "ascii-chat-compiled_color_scheme_t.html",
+    "sourcePath": null
   },
   {
     "name": "completions.c",
@@ -462,10 +1758,34 @@
     "sourcePath": "lib/options/completions/completions.c"
   },
   {
+    "name": "completions.h",
+    "title": "completions.h",
+    "file": "ascii-chat-completions.h.html",
+    "sourcePath": "include/ascii-chat/options/completions/completions.h"
+  },
+  {
     "name": "compression.c",
     "title": "compression.c",
     "file": "ascii-chat-compression.c.html",
     "sourcePath": "lib/network/compression.c"
+  },
+  {
+    "name": "compression.h",
+    "title": "compression.h",
+    "file": "ascii-chat-compression.h.html",
+    "sourcePath": "include/ascii-chat/network/compression.h"
+  },
+  {
+    "name": "compression",
+    "title": "compression",
+    "file": "ascii-chat-compression.html",
+    "sourcePath": "lib/network/compression.c"
+  },
+  {
+    "name": "compressor_t",
+    "title": "compressor_t",
+    "file": "ascii-chat-compressor_t.html",
+    "sourcePath": null
   },
   {
     "name": "cond.c",
@@ -474,16 +1794,58 @@
     "sourcePath": "lib/platform/windows/cond.c"
   },
   {
+    "name": "cond.h",
+    "title": "cond.h",
+    "file": "ascii-chat-cond.h.html",
+    "sourcePath": "include/ascii-chat/platform/cond.h"
+  },
+  {
+    "name": "cond_t",
+    "title": "cond_t",
+    "file": "ascii-chat-cond_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "config.c",
     "title": "config.c",
     "file": "ascii-chat-config.c.html",
     "sourcePath": "lib/options/config/config.c"
   },
   {
+    "name": "config.h",
+    "title": "config.h",
+    "file": "ascii-chat-config.h.html",
+    "sourcePath": "include/ascii-chat/options/config.h"
+  },
+  {
+    "name": "config",
+    "title": "config",
+    "file": "ascii-chat-config.html",
+    "sourcePath": "lib/options/config/config.c"
+  },
+  {
     "name": "config_builder_t",
     "title": "config_builder_t",
     "file": "ascii-chat-config_builder_t.html",
-    "sourcePath": "lib/options/config/config.c"
+    "sourcePath": null
+  },
+  {
+    "name": "config_file_list_t",
+    "title": "config_file_list_t",
+    "file": "ascii-chat-config_file_list_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "config_file_result_t",
+    "title": "config_file_result_t",
+    "file": "ascii-chat-config_file_result_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "config_option_metadata_t",
+    "title": "config_option_metadata_t",
+    "file": "ascii-chat-config_option_metadata_t.html",
+    "sourcePath": null
   },
   {
     "name": "configuration.c",
@@ -498,10 +1860,22 @@
     "sourcePath": "lib/network/connection_attempt.c"
   },
   {
+    "name": "connection_attempt.h",
+    "title": "connection_attempt.h",
+    "file": "ascii-chat-connection_attempt.h.html",
+    "sourcePath": "include/ascii-chat/network/connection_attempt.h"
+  },
+  {
+    "name": "connection_attempt_context_t",
+    "title": "connection_attempt_context_t",
+    "file": "ascii-chat-connection_attempt_context_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "connection_attempt_t",
     "title": "connection_attempt_t",
     "file": "ascii-chat-connection_attempt_t.html",
-    "sourcePath": "lib/network/parallel_connect.c"
+    "sourcePath": null
   },
   {
     "name": "connection_state.h",
@@ -525,7 +1899,7 @@
     "name": "consensus_coordinator",
     "title": "consensus_coordinator",
     "file": "ascii-chat-consensus_coordinator.html",
-    "sourcePath": "lib/network/consensus/coordinator.c"
+    "sourcePath": null
   },
   {
     "name": "consensus_integration.c",
@@ -543,19 +1917,19 @@
     "name": "consensus_metrics_collection",
     "title": "consensus_metrics_collection",
     "file": "ascii-chat-consensus_metrics_collection.html",
-    "sourcePath": "lib/network/consensus/metrics.c"
+    "sourcePath": null
   },
   {
     "name": "consensus_state",
     "title": "consensus_state",
     "file": "ascii-chat-consensus_state.html",
-    "sourcePath": "lib/network/consensus/state.c"
+    "sourcePath": null
   },
   {
     "name": "consensus_topology",
     "title": "consensus_topology",
     "file": "ascii-chat-consensus_topology.html",
-    "sourcePath": "lib/network/consensus/topology.c"
+    "sourcePath": null
   },
   {
     "name": "console.c",
@@ -570,10 +1944,22 @@
     "sourcePath": "lib/network/consensus/coordinator.c"
   },
   {
+    "name": "coordinator.h",
+    "title": "coordinator.h",
+    "file": "ascii-chat-coordinator.h.html",
+    "sourcePath": "include/ascii-chat/network/consensus/coordinator.h"
+  },
+  {
     "name": "core.c",
     "title": "core.c",
     "file": "ascii-chat-core.c.html",
     "sourcePath": "lib/options/registry/core.c"
+  },
+  {
+    "name": "core.h",
+    "title": "core.h",
+    "file": "ascii-chat-core.h.html",
+    "sourcePath": "include/ascii-chat/options/registry/core.h"
   },
   {
     "name": "crc32.c",
@@ -582,10 +1968,70 @@
     "sourcePath": "lib/network/crc32.c"
   },
   {
-    "name": "crypto_handshake_common.c",
+    "name": "crc32.h",
+    "title": "crc32.h",
+    "file": "ascii-chat-crc32.h.html",
+    "sourcePath": "include/ascii-chat/network/crc32.h"
+  },
+  {
+    "name": "crypto",
+    "title": "crypto",
+    "file": "ascii-chat-crypto.html",
+    "sourcePath": "src/server/crypto.c"
+  },
+  {
+    "name": "crypto_capabilities_packet_t",
+    "title": "crypto_capabilities_packet_t",
+    "file": "ascii-chat-crypto_capabilities_packet_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "crypto_context_t",
+    "title": "crypto_context_t",
+    "file": "ascii-chat-crypto_context_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "agent.h",
+    "title": "agent.h",
+    "file": "ascii-chat-crypto_gpg_agent.h.html",
+    "sourcePath": "include/ascii-chat/platform/agent.h"
+  },
+  {
+    "name": "common.c",
     "title": "common.c",
     "file": "ascii-chat-crypto_handshake_common.c.html",
     "sourcePath": "lib/video/ascii/neon/common.c"
+  },
+  {
+    "name": "common.h",
+    "title": "common.h",
+    "file": "ascii-chat-crypto_handshake_common.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/neon/common.h"
+  },
+  {
+    "name": "crypto_handshake_context_t",
+    "title": "crypto_handshake_context_t",
+    "file": "ascii-chat-crypto_handshake_context_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "crypto_parameters_packet_t",
+    "title": "crypto_parameters_packet_t",
+    "file": "ascii-chat-crypto_parameters_packet_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "custom_section_descriptor_t",
+    "title": "custom_section_descriptor_t",
+    "file": "ascii-chat-custom_section_descriptor_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "database.h",
+    "title": "database.h",
+    "file": "ascii-chat-database.h.html",
+    "sourcePath": "include/ascii-chat/discovery/database.h"
   },
   {
     "name": "deadlock_state_t",
@@ -600,40 +2046,100 @@
     "sourcePath": "lib/options/registry/debug.c"
   },
   {
-    "name": "debug_atomic.c",
+    "name": "debug",
+    "title": "debug",
+    "file": "ascii-chat-debug.html",
+    "sourcePath": "lib/options/registry/debug.c"
+  },
+  {
+    "name": "atomic.c",
     "title": "atomic.c",
     "file": "ascii-chat-debug_atomic.c.html",
     "sourcePath": "lib/debug/atomic.c"
   },
   {
-    "name": "debug_backtrace.c",
+    "name": "atomic.h",
+    "title": "atomic.h",
+    "file": "ascii-chat-debug_atomic.h.html",
+    "sourcePath": "include/ascii-chat/util/atomic.h"
+  },
+  {
+    "name": "backtrace.c",
     "title": "backtrace.c",
     "file": "ascii-chat-debug_backtrace.c.html",
     "sourcePath": "lib/platform/windows/backtrace.c"
   },
   {
-    "name": "debug_memory.c",
+    "name": "backtrace.h",
+    "title": "backtrace.h",
+    "file": "ascii-chat-debug_backtrace.h.html",
+    "sourcePath": "include/ascii-chat/platform/backtrace.h"
+  },
+  {
+    "name": "memory.c",
     "title": "memory.c",
     "file": "ascii-chat-debug_memory.c.html",
     "sourcePath": "lib/platform/windows/memory.c"
   },
   {
-    "name": "debug_mutex.c",
+    "name": "memory.h",
+    "title": "memory.h",
+    "file": "ascii-chat-debug_memory.h.html",
+    "sourcePath": "include/ascii-chat/platform/memory.h"
+  },
+  {
+    "name": "mutex.c",
     "title": "mutex.c",
     "file": "ascii-chat-debug_mutex.c.html",
     "sourcePath": "lib/platform/windows/mutex.c"
   },
   {
-    "name": "debug_named.c",
+    "name": "mutex.h",
+    "title": "mutex.h",
+    "file": "ascii-chat-debug_mutex.h.html",
+    "sourcePath": "include/ascii-chat/platform/mutex.h"
+  },
+  {
+    "name": "named.c",
     "title": "named.c",
     "file": "ascii-chat-debug_named.c.html",
     "sourcePath": "lib/log/named.c"
   },
   {
+    "name": "named.h",
+    "title": "named.h",
+    "file": "ascii-chat-debug_named.h.html",
+    "sourcePath": "include/ascii-chat/log/named.h"
+  },
+  {
+    "name": "debug_named",
+    "title": "debug_named",
+    "file": "ascii-chat-debug_named.html",
+    "sourcePath": null
+  },
+  {
     "name": "debug_state_request_t",
     "title": "debug_state_request_t",
     "file": "ascii-chat-debug_state_request_t.html",
-    "sourcePath": "lib/debug/sync.c"
+    "sourcePath": null
+  },
+  {
+    "name": "debug_sync",
+    "title": "debug_sync",
+    "file": "ascii-chat-debug_sync.html",
+    "sourcePath": null
+  },
+  {
+    "name": "debug_util",
+    "title": "debug_util",
+    "file": "ascii-chat-debug_util.html",
+    "sourcePath": null
+  },
+  {
+    "name": "dec3_t",
+    "title": "dec3_t",
+    "file": "ascii-chat-dec3_t.html",
+    "sourcePath": null
   },
   {
     "name": "decoder.c",
@@ -642,7 +2148,25 @@
     "sourcePath": "lib/video/h265/decoder.c"
   },
   {
-    "name": "defer_tool.cpp",
+    "name": "decoder.h",
+    "title": "decoder.h",
+    "file": "ascii-chat-decoder.h.html",
+    "sourcePath": "include/ascii-chat/video/h265/decoder.h"
+  },
+  {
+    "name": "defer.h",
+    "title": "defer.h",
+    "file": "ascii-chat-defer.h.html",
+    "sourcePath": "include/ascii-chat/tooling/defer/defer.h"
+  },
+  {
+    "name": "defer",
+    "title": "defer",
+    "file": "ascii-chat-defer.html",
+    "sourcePath": "include/ascii-chat/tooling/defer/defer.h"
+  },
+  {
+    "name": "tool.cpp",
     "title": "tool.cpp",
     "file": "ascii-chat-defer_tool.cpp.html",
     "sourcePath": "src/tooling/panic/tool.cpp"
@@ -660,22 +2184,34 @@
     "sourcePath": "lib/video/anim/digital_rain.c"
   },
   {
-    "name": "discovery-service_main.c",
+    "name": "digital_rain.h",
+    "title": "digital_rain.h",
+    "file": "ascii-chat-digital_rain.h.html",
+    "sourcePath": "include/ascii-chat/video/anim/digital_rain.h"
+  },
+  {
+    "name": "digital_rain_column_t",
+    "title": "digital_rain_column_t",
+    "file": "ascii-chat-digital_rain_column_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "digital_rain_t",
+    "title": "digital_rain_t",
+    "file": "ascii-chat-digital_rain_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "main.c",
     "title": "main.c",
     "file": "ascii-chat-discovery-service_main.c.html",
     "sourcePath": "src/strings/main.c"
   },
   {
-    "name": "discovery-service_main.h",
+    "name": "main.h",
     "title": "main.h",
     "file": "ascii-chat-discovery-service_main.h.html",
     "sourcePath": "src/server/main.h"
-  },
-  {
-    "name": "discovery-service_server.h",
-    "title": "server.h",
-    "file": "ascii-chat-discovery-service_server.h.html",
-    "sourcePath": "src/session/h265/server.h"
   },
   {
     "name": "discovery.c",
@@ -684,13 +2220,19 @@
     "sourcePath": "lib/network/mdns/discovery.c"
   },
   {
+    "name": "discovery.h",
+    "title": "discovery.h",
+    "file": "ascii-chat-discovery.h.html",
+    "sourcePath": "include/ascii-chat/network/mdns/discovery.h"
+  },
+  {
     "name": "discovery_config_t",
     "title": "discovery_config_t",
     "file": "ascii-chat-discovery_config_t.html",
-    "sourcePath": "src/discovery/session.h"
+    "sourcePath": null
   },
   {
-    "name": "discovery_database.c",
+    "name": "database.c",
     "title": "database.c",
     "file": "ascii-chat-discovery_database.c.html",
     "sourcePath": "lib/options/registry/database.c"
@@ -702,40 +2244,52 @@
     "sourcePath": "lib/crypto/discovery_keys.c"
   },
   {
-    "name": "discovery_main.c",
+    "name": "discovery_keys.h",
+    "title": "discovery_keys.h",
+    "file": "ascii-chat-discovery_keys.h.html",
+    "sourcePath": "include/ascii-chat/crypto/discovery_keys.h"
+  },
+  {
+    "name": "main.c",
     "title": "main.c",
     "file": "ascii-chat-discovery_main.c.html",
     "sourcePath": "src/strings/main.c"
   },
   {
-    "name": "discovery_main.h",
+    "name": "main.h",
     "title": "main.h",
     "file": "ascii-chat-discovery_main.h.html",
     "sourcePath": "src/server/main.h"
   },
   {
+    "name": "discovery_result_t",
+    "title": "discovery_result_t",
+    "file": "ascii-chat-discovery_result_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "discovery_session_t",
     "title": "discovery_session_t",
     "file": "ascii-chat-discovery_session_t.html",
-    "sourcePath": "src/discovery/session.h"
+    "sourcePath": null
   },
   {
-    "name": "discovery_strings.c",
+    "name": "strings.c",
     "title": "strings.c",
     "file": "ascii-chat-discovery_strings.c.html",
     "sourcePath": "lib/options/strings.c"
   },
   {
+    "name": "strings.h",
+    "title": "strings.h",
+    "file": "ascii-chat-discovery_strings.h.html",
+    "sourcePath": "include/ascii-chat/options/strings.h"
+  },
+  {
     "name": "discovery_thread_state_t",
     "title": "discovery_thread_state_t",
     "file": "ascii-chat-discovery_thread_state_t.html",
-    "sourcePath": "lib/network/mdns/discovery.c"
-  },
-  {
-    "name": "discovery_webrtc.h",
-    "title": "webrtc.h",
-    "file": "ascii-chat-discovery_webrtc.h.html",
-    "sourcePath": "src/discovery/webrtc.h"
+    "sourcePath": null
   },
   {
     "name": "dns.c",
@@ -744,10 +2298,22 @@
     "sourcePath": "lib/network/dns.c"
   },
   {
+    "name": "dns.h",
+    "title": "dns.h",
+    "file": "ascii-chat-dns.h.html",
+    "sourcePath": "include/ascii-chat/network/dns.h"
+  },
+  {
     "name": "double_field_ctx_t",
     "title": "double_field_ctx_t",
     "file": "ascii-chat-double_field_ctx_t.html",
-    "sourcePath": "lib/options/rcu.c"
+    "sourcePath": null
+  },
+  {
+    "name": "ducking_t",
+    "title": "ducking_t",
+    "file": "ascii-chat-ducking_t.html",
+    "sourcePath": null
   },
   {
     "name": "election.c",
@@ -756,10 +2322,16 @@
     "sourcePath": "lib/network/consensus/election.c"
   },
   {
+    "name": "election.h",
+    "title": "election.h",
+    "file": "ascii-chat-election.h.html",
+    "sourcePath": "include/ascii-chat/network/consensus/election.h"
+  },
+  {
     "name": "election_result_t",
     "title": "election_result_t",
     "file": "ascii-chat-election_result_t.html",
-    "sourcePath": "lib/network/consensus/state.c"
+    "sourcePath": null
   },
   {
     "name": "embedded.c",
@@ -768,16 +2340,46 @@
     "sourcePath": "lib/options/manpage/embedded.c"
   },
   {
+    "name": "embedded_resources.h",
+    "title": "embedded_resources.h",
+    "file": "ascii-chat-embedded_resources.h.html",
+    "sourcePath": "include/ascii-chat/embedded_resources.h"
+  },
+  {
     "name": "encoder.c",
     "title": "encoder.c",
     "file": "ascii-chat-encoder.c.html",
     "sourcePath": "lib/video/h265/encoder.c"
   },
   {
+    "name": "encoder.h",
+    "title": "encoder.h",
+    "file": "ascii-chat-encoder.h.html",
+    "sourcePath": "include/ascii-chat/video/h265/encoder.h"
+  },
+  {
+    "name": "endian.h",
+    "title": "endian.h",
+    "file": "ascii-chat-endian.h.html",
+    "sourcePath": "include/ascii-chat/util/endian.h"
+  },
+  {
+    "name": "enum_descriptor_t",
+    "title": "enum_descriptor_t",
+    "file": "ascii-chat-enum_descriptor_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "enum_map_descriptor_t",
     "title": "enum_map_descriptor_t",
     "file": "ascii-chat-enum_map_descriptor_t.html",
-    "sourcePath": "lib/options/enums.c"
+    "sourcePath": null
+  },
+  {
+    "name": "enum_to_string_entry_t",
+    "title": "enum_to_string_entry_t",
+    "file": "ascii-chat-enum_to_string_entry_t.html",
+    "sourcePath": null
   },
   {
     "name": "enums.c",
@@ -786,10 +2388,22 @@
     "sourcePath": "lib/options/enums.c"
   },
   {
+    "name": "enums.h",
+    "title": "enums.h",
+    "file": "ascii-chat-enums.h.html",
+    "sourcePath": "include/ascii-chat/options/enums.h"
+  },
+  {
     "name": "env.c",
     "title": "env.c",
     "file": "ascii-chat-env.c.html",
     "sourcePath": "lib/util/env.c"
+  },
+  {
+    "name": "env.h",
+    "title": "env.h",
+    "file": "ascii-chat-env.h.html",
+    "sourcePath": "include/ascii-chat/util/env.h"
   },
   {
     "name": "environment.c",
@@ -798,10 +2412,58 @@
     "sourcePath": "lib/options/manpage/content/environment.c"
   },
   {
+    "name": "environment.h",
+    "title": "environment.h",
+    "file": "ascii-chat-environment.h.html",
+    "sourcePath": "include/ascii-chat/options/manpage/content/environment.h"
+  },
+  {
+    "name": "errno.h",
+    "title": "errno.h",
+    "file": "ascii-chat-errno.h.html",
+    "sourcePath": "include/ascii-chat/platform/errno.h"
+  },
+  {
+    "name": "errno",
+    "title": "errno",
+    "file": "ascii-chat-errno.html",
+    "sourcePath": "lib/platform/windows/errno.c"
+  },
+  {
+    "name": "error_codes.h",
+    "title": "error_codes.h",
+    "file": "ascii-chat-error_codes.h.html",
+    "sourcePath": "include/ascii-chat/common/error_codes.h"
+  },
+  {
+    "name": "error_codes",
+    "title": "error_codes",
+    "file": "ascii-chat-error_codes.html",
+    "sourcePath": "include/ascii-chat/common/error_codes.h"
+  },
+  {
+    "name": "error_packet_t",
+    "title": "error_packet_t",
+    "file": "ascii-chat-error_packet_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "errors.c",
     "title": "errors.c",
     "file": "ascii-chat-errors.c.html",
     "sourcePath": "lib/network/errors.c"
+  },
+  {
+    "name": "errors.h",
+    "title": "errors.h",
+    "file": "ascii-chat-errors.h.html",
+    "sourcePath": "include/ascii-chat/network/errors.h"
+  },
+  {
+    "name": "example_descriptor_t",
+    "title": "example_descriptor_t",
+    "file": "ascii-chat-example_descriptor_t.html",
+    "sourcePath": null
   },
   {
     "name": "examples.c",
@@ -810,10 +2472,28 @@
     "sourcePath": "lib/options/manpage/content/examples.c"
   },
   {
+    "name": "examples.h",
+    "title": "examples.h",
+    "file": "ascii-chat-examples.h.html",
+    "sourcePath": "include/ascii-chat/options/manpage/content/examples.h"
+  },
+  {
+    "name": "explicit.h",
+    "title": "explicit.h",
+    "file": "ascii-chat-explicit.h.html",
+    "sourcePath": "include/ascii-chat/options/explicit.h"
+  },
+  {
     "name": "export.c",
     "title": "export.c",
     "file": "ascii-chat-export.c.html",
     "sourcePath": "lib/crypto/gpg/export.c"
+  },
+  {
+    "name": "export.h",
+    "title": "export.h",
+    "file": "ascii-chat-export.h.html",
+    "sourcePath": "include/ascii-chat/crypto/gpg/export.h"
   },
   {
     "name": "ffmpeg_decoder.c",
@@ -822,10 +2502,16 @@
     "sourcePath": "lib/media/ffmpeg_decoder.c"
   },
   {
+    "name": "ffmpeg_decoder.h",
+    "title": "ffmpeg_decoder.h",
+    "file": "ascii-chat-ffmpeg_decoder.h.html",
+    "sourcePath": "include/ascii-chat/media/ffmpeg_decoder.h"
+  },
+  {
     "name": "ffmpeg_decoder_t",
     "title": "ffmpeg_decoder_t",
     "file": "ascii-chat-ffmpeg_decoder_t.html",
-    "sourcePath": "lib/media/ffmpeg_decoder.c"
+    "sourcePath": null
   },
   {
     "name": "ffmpeg_encoder.c",
@@ -834,16 +2520,22 @@
     "sourcePath": "lib/media/ffmpeg_encoder.c"
   },
   {
+    "name": "ffmpeg_encoder.h",
+    "title": "ffmpeg_encoder.h",
+    "file": "ascii-chat-ffmpeg_encoder.h.html",
+    "sourcePath": "include/ascii-chat/media/ffmpeg_encoder.h"
+  },
+  {
     "name": "ffmpeg_encoder_s",
     "title": "ffmpeg_encoder_s",
     "file": "ascii-chat-ffmpeg_encoder_s.html",
-    "sourcePath": "lib/media/ffmpeg_encoder.c"
+    "sourcePath": null
   },
   {
     "name": "field_option_map_t",
     "title": "field_option_map_t",
     "file": "ascii-chat-field_option_map_t.html",
-    "sourcePath": "lib/options/rcu.c"
+    "sourcePath": null
   },
   {
     "name": "filesystem.c",
@@ -852,10 +2544,16 @@
     "sourcePath": "lib/platform/windows/filesystem.c"
   },
   {
+    "name": "filesystem.h",
+    "title": "filesystem.h",
+    "file": "ascii-chat-filesystem.h.html",
+    "sourcePath": "include/ascii-chat/platform/filesystem.h"
+  },
+  {
     "name": "find_client_context_t",
     "title": "find_client_context_t",
     "file": "ascii-chat-find_client_context_t.html",
-    "sourcePath": "src/discovery-service/signaling.c"
+    "sourcePath": null
   },
   {
     "name": "fish.c",
@@ -864,10 +2562,34 @@
     "sourcePath": "lib/options/completions/fish.c"
   },
   {
+    "name": "fish.h",
+    "title": "fish.h",
+    "file": "ascii-chat-fish.h.html",
+    "sourcePath": "include/ascii-chat/options/completions/fish.h"
+  },
+  {
+    "name": "fnv1a.h",
+    "title": "fnv1a.h",
+    "file": "ascii-chat-fnv1a.h.html",
+    "sourcePath": "include/ascii-chat/util/fnv1a.h"
+  },
+  {
+    "name": "font.h",
+    "title": "font.h",
+    "file": "ascii-chat-font.h.html",
+    "sourcePath": "include/ascii-chat/platform/font.h"
+  },
+  {
     "name": "foreground.c",
     "title": "foreground.c",
     "file": "ascii-chat-foreground.c.html",
     "sourcePath": "lib/video/ascii/scalar/foreground.c"
+  },
+  {
+    "name": "foreground.h",
+    "title": "foreground.h",
+    "file": "ascii-chat-foreground.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/scalar/foreground.h"
   },
   {
     "name": "formatter.c",
@@ -876,10 +2598,22 @@
     "sourcePath": "lib/options/manpage/formatter.c"
   },
   {
+    "name": "formatter.h",
+    "title": "formatter.h",
+    "file": "ascii-chat-formatter.h.html",
+    "sourcePath": "include/ascii-chat/options/manpage/formatter.h"
+  },
+  {
     "name": "fps.c",
     "title": "fps.c",
     "file": "ascii-chat-fps.c.html",
     "sourcePath": "lib/util/fps.c"
+  },
+  {
+    "name": "fps.h",
+    "title": "fps.h",
+    "file": "ascii-chat-fps.h.html",
+    "sourcePath": "include/ascii-chat/util/fps.h"
   },
   {
     "name": "fps_counter.c",
@@ -888,16 +2622,34 @@
     "sourcePath": "lib/ui/fps_counter.c"
   },
   {
+    "name": "fps_counter.h",
+    "title": "fps_counter.h",
+    "file": "ascii-chat-fps_counter.h.html",
+    "sourcePath": "include/ascii-chat/ui/fps_counter.h"
+  },
+  {
     "name": "fps_counter_s",
     "title": "fps_counter_s",
     "file": "ascii-chat-fps_counter_s.html",
-    "sourcePath": "lib/ui/fps_counter.c"
+    "sourcePath": null
+  },
+  {
+    "name": "fps_t",
+    "title": "fps_t",
+    "file": "ascii-chat-fps_t.html",
+    "sourcePath": null
   },
   {
     "name": "frame_buffer.c",
     "title": "frame_buffer.c",
     "file": "ascii-chat-frame_buffer.c.html",
     "sourcePath": "lib/ui/frame_buffer.c"
+  },
+  {
+    "name": "frame_buffer.h",
+    "title": "frame_buffer.h",
+    "file": "ascii-chat-frame_buffer.h.html",
+    "sourcePath": "include/ascii-chat/ui/frame_buffer.h"
   },
   {
     "name": "frame_buffer",
@@ -909,7 +2661,19 @@
     "name": "frame_queue_s",
     "title": "frame_queue_s",
     "file": "ascii-chat-frame_queue_s.html",
-    "sourcePath": "src/common/session/pipeline.c"
+    "sourcePath": null
+  },
+  {
+    "name": "frame_t",
+    "title": "frame_t",
+    "file": "ascii-chat-frame_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "framebuffer_t",
+    "title": "framebuffer_t",
+    "file": "ascii-chat-framebuffer_t.html",
+    "sourcePath": null
   },
   {
     "name": "general.c",
@@ -918,16 +2682,40 @@
     "sourcePath": "lib/options/registry/general.c"
   },
   {
+    "name": "getopt.h",
+    "title": "getopt.h",
+    "file": "ascii-chat-getopt.h.html",
+    "sourcePath": "include/ascii-chat/platform/windows/getopt.h"
+  },
+  {
+    "name": "global_dec3_cache_t",
+    "title": "global_dec3_cache_t",
+    "file": "ascii-chat-global_dec3_cache_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "globals.c",
     "title": "globals.c",
     "file": "ascii-chat-globals.c.html",
     "sourcePath": "lib/tests/globals.c"
   },
   {
+    "name": "gpg.h",
+    "title": "gpg.h",
+    "file": "ascii-chat-gpg.h.html",
+    "sourcePath": "include/ascii-chat/crypto/gpg/gpg.h"
+  },
+  {
     "name": "gpg_homedir",
     "title": "gpg_homedir",
     "file": "ascii-chat-gpg_homedir.html",
-    "sourcePath": "lib/crypto/gpg/homedir.c"
+    "sourcePath": null
+  },
+  {
+    "name": "gpg_homedir_t",
+    "title": "gpg_homedir_t",
+    "file": "ascii-chat-gpg_homedir_t.html",
+    "sourcePath": null
   },
   {
     "name": "gpg_keys.c",
@@ -936,16 +2724,40 @@
     "sourcePath": "lib/crypto/gpg/gpg_keys.c"
   },
   {
+    "name": "gpg_keys.h",
+    "title": "gpg_keys.h",
+    "file": "ascii-chat-gpg_keys.h.html",
+    "sourcePath": "include/ascii-chat/crypto/gpg/gpg_keys.h"
+  },
+  {
     "name": "grep.c",
     "title": "grep.c",
     "file": "ascii-chat-grep.c.html",
     "sourcePath": "lib/log/grep.c"
   },
   {
+    "name": "grep.h",
+    "title": "grep.h",
+    "file": "ascii-chat-grep.h.html",
+    "sourcePath": "include/ascii-chat/log/grep.h"
+  },
+  {
+    "name": "grep_parse_result_t",
+    "title": "grep_parse_result_t",
+    "file": "ascii-chat-grep_parse_result_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "grep_pattern_t",
     "title": "grep_pattern_t",
     "file": "ascii-chat-grep_pattern_t.html",
-    "sourcePath": "lib/log/grep.c"
+    "sourcePath": null
+  },
+  {
+    "name": "groups.h",
+    "title": "groups.h",
+    "file": "ascii-chat-groups.h.html",
+    "sourcePath": "include/ascii-chat/options/groups.h"
   },
   {
     "name": "h265_client_context",
@@ -963,13 +2775,13 @@
     "name": "h265_decoder",
     "title": "h265_decoder",
     "file": "ascii-chat-h265_decoder.html",
-    "sourcePath": "lib/video/h265/decoder.c"
+    "sourcePath": null
   },
   {
     "name": "h265_encoder",
     "title": "h265_encoder",
     "file": "ascii-chat-h265_encoder.html",
-    "sourcePath": "lib/video/h265/encoder.c"
+    "sourcePath": null
   },
   {
     "name": "h265_packet_header_t",
@@ -984,10 +2796,22 @@
     "sourcePath": null
   },
   {
+    "name": "halfblock.h",
+    "title": "halfblock.h",
+    "file": "ascii-chat-halfblock.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/scalar/halfblock.h"
+  },
+  {
     "name": "handler_hash_entry_t",
     "title": "handler_hash_entry_t",
     "file": "ascii-chat-handler_hash_entry_t.html",
     "sourcePath": null
+  },
+  {
+    "name": "handlers.h",
+    "title": "handlers.h",
+    "file": "ascii-chat-handlers.h.html",
+    "sourcePath": "include/ascii-chat/network/acip/handlers.h"
   },
   {
     "name": "help.c",
@@ -1002,10 +2826,28 @@
     "sourcePath": "lib/options/help_api.c"
   },
   {
+    "name": "help_mode_descriptor_t",
+    "title": "help_mode_descriptor_t",
+    "file": "ascii-chat-help_mode_descriptor_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "highpass_filter_t",
+    "title": "highpass_filter_t",
+    "file": "ascii-chat-highpass_filter_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "homedir.c",
     "title": "homedir.c",
     "file": "ascii-chat-homedir.c.html",
     "sourcePath": "lib/crypto/gpg/homedir.c"
+  },
+  {
+    "name": "homedir.h",
+    "title": "homedir.h",
+    "file": "ascii-chat-homedir.h.html",
+    "sourcePath": "include/ascii-chat/crypto/gpg/homedir.h"
   },
   {
     "name": "host.c",
@@ -1023,13 +2865,25 @@
     "name": "host_liveness_t",
     "title": "host_liveness_t",
     "file": "ascii-chat-host_liveness_t.html",
-    "sourcePath": "src/discovery/session.h"
+    "sourcePath": null
+  },
+  {
+    "name": "host_lost_candidate_t",
+    "title": "host_lost_candidate_t",
+    "file": "ascii-chat-host_lost_candidate_t.html",
+    "sourcePath": null
   },
   {
     "name": "http_client.c",
     "title": "http_client.c",
     "file": "ascii-chat-http_client.c.html",
     "sourcePath": "lib/network/http_client.c"
+  },
+  {
+    "name": "http_client.h",
+    "title": "http_client.h",
+    "file": "ascii-chat-http_client.h.html",
+    "sourcePath": "include/ascii-chat/network/http_client.h"
   },
   {
     "name": "http_server.cpp",
@@ -1050,10 +2904,34 @@
     "sourcePath": "lib/crypto/https_keys.c"
   },
   {
+    "name": "https_keys.h",
+    "title": "https_keys.h",
+    "file": "ascii-chat-https_keys.h.html",
+    "sourcePath": "include/ascii-chat/crypto/https_keys.h"
+  },
+  {
     "name": "ice.c",
     "title": "ice.c",
     "file": "ascii-chat-ice.c.html",
     "sourcePath": "lib/network/webrtc/ice.c"
+  },
+  {
+    "name": "ice.h",
+    "title": "ice.h",
+    "file": "ascii-chat-ice.h.html",
+    "sourcePath": "include/ascii-chat/network/webrtc/ice.h"
+  },
+  {
+    "name": "ice_candidate_t",
+    "title": "ice_candidate_t",
+    "file": "ascii-chat-ice_candidate_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "ice_config_t",
+    "title": "ice_config_t",
+    "file": "ascii-chat-ice_config_t.html",
+    "sourcePath": null
   },
   {
     "name": "ice_selected_pair.cpp",
@@ -1068,16 +2946,154 @@
     "sourcePath": "lib/discovery/identity.c"
   },
   {
+    "name": "identity.h",
+    "title": "identity.h",
+    "file": "ascii-chat-identity.h.html",
+    "sourcePath": "include/ascii-chat/discovery/identity.h"
+  },
+  {
+    "name": "image_frame_packet_t",
+    "title": "image_frame_packet_t",
+    "file": "ascii-chat-image_frame_packet_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "image_source_t",
     "title": "image_source_t",
     "file": "ascii-chat-image_source_t.html",
-    "sourcePath": "src/server/stream.c"
+    "sourcePath": null
+  },
+  {
+    "name": "image_t",
+    "title": "image_t",
+    "file": "ascii-chat-image_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "image_validation",
+    "title": "image_validation",
+    "file": "ascii-chat-image_validation.html",
+    "sourcePath": null
+  },
+  {
+    "name": "audio.h",
+    "title": "audio.h",
+    "file": "ascii-chat-include_ascii-chat_audio_audio.h.html",
+    "sourcePath": "src/common/session/audio.h"
+  },
+  {
+    "name": "crypto.h",
+    "title": "crypto.h",
+    "file": "ascii-chat-include_ascii-chat_crypto_crypto.h.html",
+    "sourcePath": "src/server/crypto.h"
+  },
+  {
+    "name": "client.h",
+    "title": "client.h",
+    "file": "ascii-chat-include_ascii-chat_crypto_handshake_client.h.html",
+    "sourcePath": "src/session/h265/client.h"
+  },
+  {
+    "name": "server.h",
+    "title": "server.h",
+    "file": "ascii-chat-include_ascii-chat_crypto_handshake_server.h.html",
+    "sourcePath": "src/session/h265/server.h"
+  },
+  {
+    "name": "session.h",
+    "title": "session.h",
+    "file": "ascii-chat-include_ascii-chat_discovery_session.h.html",
+    "sourcePath": "src/discovery/session.h"
+  },
+  {
+    "name": "json.h",
+    "title": "json.h",
+    "file": "ascii-chat-include_ascii-chat_log_json.h.html",
+    "sourcePath": "src/tooling/query/json.h"
+  },
+  {
+    "name": "client.h",
+    "title": "client.h",
+    "file": "ascii-chat-include_ascii-chat_network_acip_client.h.html",
+    "sourcePath": "src/session/h265/client.h"
+  },
+  {
+    "name": "protocol.h",
+    "title": "protocol.h",
+    "file": "ascii-chat-include_ascii-chat_network_acip_protocol.h.html",
+    "sourcePath": "src/session/h265/protocol.h"
+  },
+  {
+    "name": "server.h",
+    "title": "server.h",
+    "file": "ascii-chat-include_ascii-chat_network_acip_server.h.html",
+    "sourcePath": "src/session/h265/server.h"
+  },
+  {
+    "name": "client.h",
+    "title": "client.h",
+    "file": "ascii-chat-include_ascii-chat_network_client.h.html",
+    "sourcePath": "src/session/h265/client.h"
+  },
+  {
+    "name": "client.h",
+    "title": "client.h",
+    "file": "ascii-chat-include_ascii-chat_network_tcp_client.h.html",
+    "sourcePath": "src/session/h265/client.h"
+  },
+  {
+    "name": "server.h",
+    "title": "server.h",
+    "file": "ascii-chat-include_ascii-chat_network_tcp_server.h.html",
+    "sourcePath": "src/session/h265/server.h"
+  },
+  {
+    "name": "webrtc.h",
+    "title": "webrtc.h",
+    "file": "ascii-chat-include_ascii-chat_network_webrtc_webrtc.h.html",
+    "sourcePath": "src/discovery/webrtc.h"
+  },
+  {
+    "name": "client.h",
+    "title": "client.h",
+    "file": "ascii-chat-include_ascii-chat_network_websocket_client.h.html",
+    "sourcePath": "src/session/h265/client.h"
+  },
+  {
+    "name": "server.h",
+    "title": "server.h",
+    "file": "ascii-chat-include_ascii-chat_network_websocket_server.h.html",
+    "sourcePath": "src/session/h265/server.h"
+  },
+  {
+    "name": "options.h",
+    "title": "options.h",
+    "file": "ascii-chat-include_ascii-chat_options_manpage_content_options.h.html",
+    "sourcePath": "src/web/common/options.h"
+  },
+  {
+    "name": "options.h",
+    "title": "options.h",
+    "file": "ascii-chat-include_ascii-chat_options_options.h.html",
+    "sourcePath": "src/web/common/options.h"
   },
   {
     "name": "init.h",
     "title": "init.h",
-    "file": "ascii-chat-init.h.html",
+    "file": "ascii-chat-include_ascii-chat_platform_init.h.html",
     "sourcePath": "src/web/common/init.h"
+  },
+  {
+    "name": "session_log_buffer.h",
+    "title": "session_log_buffer.h",
+    "file": "ascii-chat-include_ascii-chat_session_session_log_buffer.h.html",
+    "sourcePath": "lib/platform/wasm/stubs/session_log_buffer.h"
+  },
+  {
+    "name": "display.h",
+    "title": "display.h",
+    "file": "ascii-chat-include_ascii-chat_util_display.h.html",
+    "sourcePath": "src/common/session/display.h"
   },
   {
     "name": "instrument_cov.c",
@@ -1092,10 +3108,16 @@
     "sourcePath": "lib/tooling/panic/instrument_log.c"
   },
   {
+    "name": "instrument_log.h",
+    "title": "instrument_log.h",
+    "file": "ascii-chat-instrument_log.h.html",
+    "sourcePath": "include/ascii-chat/tooling/panic/instrument_log.h"
+  },
+  {
     "name": "int_field_ctx_t",
     "title": "int_field_ctx_t",
     "file": "ascii-chat-int_field_ctx_t.html",
-    "sourcePath": "lib/options/rcu.c"
+    "sourcePath": null
   },
   {
     "name": "io.c",
@@ -1104,22 +3126,28 @@
     "sourcePath": "lib/log/io.c"
   },
   {
+    "name": "io.h",
+    "title": "io.h",
+    "file": "ascii-chat-io.h.html",
+    "sourcePath": "include/ascii-chat/log/io.h"
+  },
+  {
     "name": "ip.c",
     "title": "ip.c",
     "file": "ascii-chat-ip.c.html",
     "sourcePath": "lib/util/ip.c"
   },
   {
+    "name": "ip.h",
+    "title": "ip.h",
+    "file": "ascii-chat-ip.h.html",
+    "sourcePath": "include/ascii-chat/util/ip.h"
+  },
+  {
     "name": "json.c",
     "title": "json.c",
     "file": "ascii-chat-json.c.html",
     "sourcePath": "lib/log/json.c"
-  },
-  {
-    "name": "json.h",
-    "title": "json.h",
-    "file": "ascii-chat-json.h.html",
-    "sourcePath": "src/tooling/query/json.h"
   },
   {
     "name": "keepalive.c",
@@ -1132,6 +3160,18 @@
     "title": "keepalive.h",
     "file": "ascii-chat-keepalive.h.html",
     "sourcePath": "src/client/keepalive.h"
+  },
+  {
+    "name": "key_types.h",
+    "title": "key_types.h",
+    "file": "ascii-chat-key_types.h.html",
+    "sourcePath": "include/ascii-chat/crypto/key_types.h"
+  },
+  {
+    "name": "keyboard.h",
+    "title": "keyboard.h",
+    "file": "ascii-chat-keyboard.h.html",
+    "sourcePath": "include/ascii-chat/platform/keyboard.h"
   },
   {
     "name": "keyboard_handler.c",
@@ -1152,9 +3192,27 @@
     "sourcePath": "lib/ui/keyboard_help.c"
   },
   {
+    "name": "keyboard_help.h",
+    "title": "keyboard_help.h",
+    "file": "ascii-chat-keyboard_help.h.html",
+    "sourcePath": "include/ascii-chat/ui/keyboard_help.h"
+  },
+  {
     "name": "keys.c",
     "title": "keys.c",
     "file": "ascii-chat-keys.c.html",
+    "sourcePath": "lib/crypto/keys.c"
+  },
+  {
+    "name": "keys.h",
+    "title": "keys.h",
+    "file": "ascii-chat-keys.h.html",
+    "sourcePath": "include/ascii-chat/crypto/keys.h"
+  },
+  {
+    "name": "keys",
+    "title": "keys",
+    "file": "ascii-chat-keys.html",
     "sourcePath": "lib/crypto/keys.c"
   },
   {
@@ -1164,10 +3222,22 @@
     "sourcePath": "lib/crypto/keys_validation.c"
   },
   {
+    "name": "keys_validation.h",
+    "title": "keys_validation.h",
+    "file": "ascii-chat-keys_validation.h.html",
+    "sourcePath": "include/ascii-chat/crypto/keys_validation.h"
+  },
+  {
     "name": "known_hosts.c",
     "title": "known_hosts.c",
     "file": "ascii-chat-known_hosts.c.html",
     "sourcePath": "lib/crypto/known_hosts.c"
+  },
+  {
+    "name": "known_hosts.h",
+    "title": "known_hosts.h",
+    "file": "ascii-chat-known_hosts.h.html",
+    "sourcePath": "include/ascii-chat/crypto/known_hosts.h"
   },
   {
     "name": "layout.c",
@@ -1176,133 +3246,151 @@
     "sourcePath": "lib/options/layout.c"
   },
   {
+    "name": "layout.h",
+    "title": "layout.h",
+    "file": "ascii-chat-layout.h.html",
+    "sourcePath": "include/ascii-chat/options/layout.h"
+  },
+  {
     "name": "levenshtein.c",
     "title": "levenshtein.c",
     "file": "ascii-chat-levenshtein.c.html",
     "sourcePath": "lib/options/levenshtein.c"
   },
   {
-    "name": "lib_audio_audio.c",
+    "name": "levenshtein.h",
+    "title": "levenshtein.h",
+    "file": "ascii-chat-levenshtein.h.html",
+    "sourcePath": "include/ascii-chat/options/levenshtein.h"
+  },
+  {
+    "name": "audio.c",
     "title": "audio.c",
     "file": "ascii-chat-lib_audio_audio.c.html",
     "sourcePath": "src/common/session/audio.c"
   },
   {
-    "name": "lib_crypto_crypto.c",
+    "name": "crypto.c",
     "title": "crypto.c",
     "file": "ascii-chat-lib_crypto_crypto.c.html",
     "sourcePath": "src/server/crypto.c"
   },
   {
-    "name": "lib_crypto_handshake_client.c",
+    "name": "client.c",
     "title": "client.c",
     "file": "ascii-chat-lib_crypto_handshake_client.c.html",
     "sourcePath": "src/web/client.c"
   },
   {
-    "name": "lib_crypto_handshake_server.c",
+    "name": "server.c",
     "title": "server.c",
     "file": "ascii-chat-lib_crypto_handshake_server.c.html",
     "sourcePath": "src/session/h265/server.c"
   },
   {
-    "name": "lib_discovery_session.c",
+    "name": "session.c",
     "title": "session.c",
     "file": "ascii-chat-lib_discovery_session.c.html",
     "sourcePath": "src/discovery/session.c"
   },
   {
-    "name": "lib_network_acip_client.c",
+    "name": "client.c",
     "title": "client.c",
     "file": "ascii-chat-lib_network_acip_client.c.html",
     "sourcePath": "src/web/client.c"
   },
   {
-    "name": "lib_network_acip_server.c",
+    "name": "server.c",
     "title": "server.c",
     "file": "ascii-chat-lib_network_acip_server.c.html",
     "sourcePath": "src/session/h265/server.c"
   },
   {
-    "name": "lib_network_client.c",
+    "name": "client.c",
     "title": "client.c",
     "file": "ascii-chat-lib_network_client.c.html",
     "sourcePath": "src/web/client.c"
   },
   {
-    "name": "lib_network_tcp_client.c",
+    "name": "client.c",
     "title": "client.c",
     "file": "ascii-chat-lib_network_tcp_client.c.html",
     "sourcePath": "src/web/client.c"
   },
   {
-    "name": "lib_network_tcp_server.c",
+    "name": "server.c",
     "title": "server.c",
     "file": "ascii-chat-lib_network_tcp_server.c.html",
     "sourcePath": "src/session/h265/server.c"
   },
   {
-    "name": "lib_network_webrtc_webrtc.c",
+    "name": "webrtc.c",
     "title": "webrtc.c",
     "file": "ascii-chat-lib_network_webrtc_webrtc.c.html",
     "sourcePath": "src/discovery/webrtc.c"
   },
   {
-    "name": "lib_network_websocket_client.c",
+    "name": "client.c",
     "title": "client.c",
     "file": "ascii-chat-lib_network_websocket_client.c.html",
     "sourcePath": "src/web/client.c"
   },
   {
-    "name": "lib_network_websocket_server.c",
+    "name": "server.c",
     "title": "server.c",
     "file": "ascii-chat-lib_network_websocket_server.c.html",
     "sourcePath": "src/session/h265/server.c"
   },
   {
-    "name": "lib_options_manpage_content_options.c",
+    "name": "options.c",
     "title": "options.c",
     "file": "ascii-chat-lib_options_manpage_content_options.c.html",
     "sourcePath": "src/web/common/options.c"
   },
   {
-    "name": "lib_options_options.c",
+    "name": "options.c",
     "title": "options.c",
     "file": "ascii-chat-lib_options_options.c.html",
     "sourcePath": "src/web/common/options.c"
   },
   {
-    "name": "lib_options_registry_audio.c",
+    "name": "audio.c",
     "title": "audio.c",
     "file": "ascii-chat-lib_options_registry_audio.c.html",
     "sourcePath": "src/common/session/audio.c"
   },
   {
-    "name": "lib_options_registry_display.c",
+    "name": "display.c",
     "title": "display.c",
     "file": "ascii-chat-lib_options_registry_display.c.html",
     "sourcePath": "src/common/session/display.c"
   },
   {
-    "name": "lib_platform_wasm_init.c",
+    "name": "init.c",
     "title": "init.c",
     "file": "ascii-chat-lib_platform_wasm_init.c.html",
     "sourcePath": "src/web/common/init.c"
   },
   {
-    "name": "lib_platform_wasm_stubs_audio.h",
+    "name": "audio.h",
     "title": "audio.h",
     "file": "ascii-chat-lib_platform_wasm_stubs_audio.h.html",
     "sourcePath": "src/common/session/audio.h"
   },
   {
-    "name": "lib_platform_wasm_stubs_crypto.c",
+    "name": "crypto.c",
     "title": "crypto.c",
     "file": "ascii-chat-lib_platform_wasm_stubs_crypto.c.html",
     "sourcePath": "src/server/crypto.c"
   },
   {
-    "name": "lib_util_display.c",
+    "name": "session_log_buffer.h",
+    "title": "session_log_buffer.h",
+    "file": "ascii-chat-lib_platform_wasm_stubs_session_log_buffer.h.html",
+    "sourcePath": "lib/platform/wasm/stubs/session_log_buffer.h"
+  },
+  {
+    "name": "display.c",
     "title": "display.c",
     "file": "ascii-chat-lib_util_display.c.html",
     "sourcePath": "src/common/session/display.c"
@@ -1314,19 +3402,49 @@
     "sourcePath": "lib/platform/wasm/lifecycle.c"
   },
   {
-    "name": "linux_filesystem.c",
+    "name": "lifecycle.h",
+    "title": "lifecycle.h",
+    "file": "ascii-chat-lifecycle.h.html",
+    "sourcePath": "include/ascii-chat/util/lifecycle.h"
+  },
+  {
+    "name": "lifecycle_sync",
+    "title": "lifecycle_sync",
+    "file": "ascii-chat-lifecycle_sync.html",
+    "sourcePath": null
+  },
+  {
+    "name": "lifecycle_t",
+    "title": "lifecycle_t",
+    "file": "ascii-chat-lifecycle_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "limits.h",
+    "title": "limits.h",
+    "file": "ascii-chat-limits.h.html",
+    "sourcePath": "include/ascii-chat/common/limits.h"
+  },
+  {
+    "name": "limits",
+    "title": "limits",
+    "file": "ascii-chat-limits.html",
+    "sourcePath": "include/ascii-chat/common/limits.h"
+  },
+  {
+    "name": "filesystem.c",
     "title": "filesystem.c",
     "file": "ascii-chat-linux_filesystem.c.html",
     "sourcePath": "lib/platform/windows/filesystem.c"
   },
   {
-    "name": "linux_keepawake.c",
+    "name": "keepawake.c",
     "title": "keepawake.c",
     "file": "ascii-chat-linux_keepawake.c.html",
     "sourcePath": "lib/platform/windows/keepawake.c"
   },
   {
-    "name": "linux_system.c",
+    "name": "system.c",
     "title": "system.c",
     "file": "ascii-chat-linux_system.c.html",
     "sourcePath": "lib/platform/windows/system.c"
@@ -1344,52 +3462,148 @@
     "sourcePath": "src/tooling/query/lldb_controller.h"
   },
   {
-    "name": "log_format.c",
+    "name": "log_buffer_entry_t",
+    "title": "log_buffer_entry_t",
+    "file": "ascii-chat-log_buffer_entry_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "format.c",
     "title": "format.c",
     "file": "ascii-chat-log_format.c.html",
     "sourcePath": "lib/util/format.c"
   },
   {
-    "name": "log_log.c",
+    "name": "format.h",
+    "title": "format.h",
+    "file": "ascii-chat-log_format.h.html",
+    "sourcePath": "include/ascii-chat/util/format.h"
+  },
+  {
+    "name": "log_format_spec_t",
+    "title": "log_format_spec_t",
+    "file": "ascii-chat-log_format_spec_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "log_io_t",
+    "title": "log_io_t",
+    "file": "ascii-chat-log_io_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "log.c",
     "title": "log.c",
     "file": "ascii-chat-log_log.c.html",
     "sourcePath": "lib/platform/wasm/stubs/log.c"
   },
   {
-    "name": "log_named.c",
+    "name": "log.h",
+    "title": "log.h",
+    "file": "ascii-chat-log_log.h.html",
+    "sourcePath": "include/ascii-chat/network/log.h"
+  },
+  {
+    "name": "mmap.h",
+    "title": "mmap.h",
+    "file": "ascii-chat-log_mmap.h.html",
+    "sourcePath": "include/ascii-chat/platform/mmap.h"
+  },
+  {
+    "name": "log_mmap_config",
+    "title": "log_mmap_config",
+    "file": "ascii-chat-log_mmap_config.html",
+    "sourcePath": null
+  },
+  {
+    "name": "named.c",
     "title": "named.c",
     "file": "ascii-chat-log_named.c.html",
     "sourcePath": "lib/log/named.c"
   },
   {
+    "name": "named.h",
+    "title": "named.h",
+    "file": "ascii-chat-log_named.h.html",
+    "sourcePath": "include/ascii-chat/log/named.h"
+  },
+  {
+    "name": "log_rates.h",
+    "title": "log_rates.h",
+    "file": "ascii-chat-log_rates.h.html",
+    "sourcePath": "include/ascii-chat/common/log_rates.h"
+  },
+  {
+    "name": "log_rates",
+    "title": "log_rates",
+    "file": "ascii-chat-log_rates.html",
+    "sourcePath": "include/ascii-chat/common/log_rates.h"
+  },
+  {
     "name": "log_record",
     "title": "log_record",
     "file": "ascii-chat-log_record.html",
-    "sourcePath": "src/tooling/panic/report.c"
+    "sourcePath": null
   },
   {
     "name": "log_search_state_t",
     "title": "log_search_state_t",
     "file": "ascii-chat-log_search_state_t.html",
-    "sourcePath": "lib/log/search.c"
+    "sourcePath": null
   },
   {
-    "name": "macos_filesystem.c",
+    "name": "log_template_t",
+    "title": "log_template_t",
+    "file": "ascii-chat-log_template_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "logging.h",
+    "title": "logging.h",
+    "file": "ascii-chat-logging.h.html",
+    "sourcePath": "include/ascii-chat/tests/logging.h"
+  },
+  {
+    "name": "logging",
+    "title": "logging",
+    "file": "ascii-chat-logging.html",
+    "sourcePath": "lib/tests/logging.c"
+  },
+  {
+    "name": "lowpass_filter_t",
+    "title": "lowpass_filter_t",
+    "file": "ascii-chat-lowpass_filter_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "lws_callback_stats_t",
+    "title": "lws_callback_stats_t",
+    "file": "ascii-chat-lws_callback_stats_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "filesystem.c",
     "title": "filesystem.c",
     "file": "ascii-chat-macos_filesystem.c.html",
     "sourcePath": "lib/platform/windows/filesystem.c"
   },
   {
-    "name": "macos_keepawake.c",
+    "name": "keepawake.c",
     "title": "keepawake.c",
     "file": "ascii-chat-macos_keepawake.c.html",
     "sourcePath": "lib/platform/windows/keepawake.c"
   },
   {
-    "name": "macos_system.c",
+    "name": "system.c",
     "title": "system.c",
     "file": "ascii-chat-macos_system.c.html",
     "sourcePath": "lib/platform/windows/system.c"
+  },
+  {
+    "name": "magic.h",
+    "title": "magic.h",
+    "file": "ascii-chat-magic.h.html",
+    "sourcePath": "include/ascii-chat/util/magic.h"
   },
   {
     "name": "main.c",
@@ -1410,16 +3624,34 @@
     "sourcePath": "src/server/main.h"
   },
   {
+    "name": "manpage.h",
+    "title": "manpage.h",
+    "file": "ascii-chat-manpage.h.html",
+    "sourcePath": "include/ascii-chat/options/manpage.h"
+  },
+  {
+    "name": "manpage_resources_t",
+    "title": "manpage_resources_t",
+    "file": "ascii-chat-manpage_resources_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "math.h",
+    "title": "math.h",
+    "file": "ascii-chat-math.h.html",
+    "sourcePath": "include/ascii-chat/util/math.h"
+  },
+  {
     "name": "mdns_query_state_t",
     "title": "mdns_query_state_t",
     "file": "ascii-chat-mdns_query_state_t.html",
-    "sourcePath": "lib/network/mdns/discovery.c"
+    "sourcePath": null
   },
   {
     "name": "mdns_thread_context_t",
     "title": "mdns_thread_context_t",
     "file": "ascii-chat-mdns_thread_context_t.html",
-    "sourcePath": "lib/network/mdns/discovery.c"
+    "sourcePath": null
   },
   {
     "name": "media.c",
@@ -1428,13 +3660,19 @@
     "sourcePath": "lib/options/registry/media.c"
   },
   {
-    "name": "media_font.c",
+    "name": "media",
+    "title": "media",
+    "file": "ascii-chat-media.html",
+    "sourcePath": "lib/options/registry/media.c"
+  },
+  {
+    "name": "font.c",
     "title": "font.c",
     "file": "ascii-chat-media_font.c.html",
     "sourcePath": "lib/platform/windows/font.c"
   },
   {
-    "name": "media_render_terminal.c",
+    "name": "terminal.c",
     "title": "terminal.c",
     "file": "ascii-chat-media_render_terminal.c.html",
     "sourcePath": "lib/platform/windows/terminal.c"
@@ -1443,7 +3681,7 @@
     "name": "media_source_t",
     "title": "media_source_t",
     "file": "ascii-chat-media_source_t.html",
-    "sourcePath": "lib/media/source.c"
+    "sourcePath": null
   },
   {
     "name": "memory_backend_t",
@@ -1458,16 +3696,40 @@
     "sourcePath": "lib/options/manpage/merger.c"
   },
   {
+    "name": "merger.h",
+    "title": "merger.h",
+    "file": "ascii-chat-merger.h.html",
+    "sourcePath": "include/ascii-chat/options/manpage/merger.h"
+  },
+  {
+    "name": "messages.h",
+    "title": "messages.h",
+    "file": "ascii-chat-messages.h.html",
+    "sourcePath": "include/ascii-chat/network/acip/messages.h"
+  },
+  {
     "name": "metadata.c",
     "title": "metadata.c",
     "file": "ascii-chat-metadata.c.html",
     "sourcePath": "lib/options/registry/metadata.c"
   },
   {
+    "name": "metadata.h",
+    "title": "metadata.h",
+    "file": "ascii-chat-metadata.h.html",
+    "sourcePath": "include/ascii-chat/options/registry/metadata.h"
+  },
+  {
     "name": "metrics.c",
     "title": "metrics.c",
     "file": "ascii-chat-metrics.c.html",
     "sourcePath": "lib/network/consensus/metrics.c"
+  },
+  {
+    "name": "metrics.h",
+    "title": "metrics.h",
+    "file": "ascii-chat-metrics.h.html",
+    "sourcePath": "include/ascii-chat/network/consensus/metrics.h"
   },
   {
     "name": "migration_context_t",
@@ -1479,7 +3741,7 @@
     "name": "migration_ctx_t",
     "title": "migration_ctx_t",
     "file": "ascii-chat-migration_ctx_t.html",
-    "sourcePath": "src/discovery/session.h"
+    "sourcePath": null
   },
   {
     "name": "mirror.c",
@@ -1488,13 +3750,13 @@
     "sourcePath": "src/web/mirror.c"
   },
   {
-    "name": "mirror_main.c",
+    "name": "main.c",
     "title": "main.c",
     "file": "ascii-chat-mirror_main.c.html",
     "sourcePath": "src/strings/main.c"
   },
   {
-    "name": "mirror_main.h",
+    "name": "main.h",
     "title": "main.h",
     "file": "ascii-chat-mirror_main.h.html",
     "sourcePath": "src/server/main.h"
@@ -1506,6 +3768,18 @@
     "sourcePath": "lib/audio/mixer.c"
   },
   {
+    "name": "mixer.h",
+    "title": "mixer.h",
+    "file": "ascii-chat-mixer.h.html",
+    "sourcePath": "include/ascii-chat/audio/mixer.h"
+  },
+  {
+    "name": "mixer_t",
+    "title": "mixer_t",
+    "file": "ascii-chat-mixer_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "mmap.c",
     "title": "mmap.c",
     "file": "ascii-chat-mmap.c.html",
@@ -1515,7 +3789,13 @@
     "name": "mode_bit_name_t",
     "title": "mode_bit_name_t",
     "file": "ascii-chat-mode_bit_name_t.html",
-    "sourcePath": "lib/options/manpage/content/examples.c"
+    "sourcePath": null
+  },
+  {
+    "name": "mode_defaults.h",
+    "title": "mode_defaults.h",
+    "file": "ascii-chat-mode_defaults.h.html",
+    "sourcePath": "include/ascii-chat/options/registry/mode_defaults.h"
   },
   {
     "name": "mode_descriptor_t",
@@ -1530,10 +3810,40 @@
     "sourcePath": null
   },
   {
+    "name": "mode_string_mapping_t",
+    "title": "mode_string_mapping_t",
+    "file": "ascii-chat-mode_string_mapping_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "module_utilities",
+    "title": "module_utilities",
+    "file": "ascii-chat-module_utilities.html",
+    "sourcePath": null
+  },
+  {
+    "name": "multi_source_frame_t",
+    "title": "multi_source_frame_t",
+    "file": "ascii-chat-multi_source_frame_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "musl_c23_compat.c",
     "title": "musl_c23_compat.c",
     "file": "ascii-chat-musl_c23_compat.c.html",
     "sourcePath": "lib/musl_c23_compat.c"
+  },
+  {
+    "name": "mutex_stack_entry_t",
+    "title": "mutex_stack_entry_t",
+    "file": "ascii-chat-mutex_stack_entry_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "mutex_t",
+    "title": "mutex_t",
+    "file": "ascii-chat-mutex_t.html",
+    "sourcePath": null
   },
   {
     "name": "named_entry",
@@ -1569,7 +3879,13 @@
     "name": "nat_quality_t",
     "title": "nat_quality_t",
     "file": "ascii-chat-nat_quality_t.html",
-    "sourcePath": "src/discovery/nat.h"
+    "sourcePath": null
+  },
+  {
+    "name": "nat_upnp_context",
+    "title": "nat_upnp_context",
+    "file": "ascii-chat-nat_upnp_context.html",
+    "sourcePath": null
   },
   {
     "name": "negotiate.c",
@@ -1587,61 +3903,127 @@
     "name": "negotiate_ctx_t",
     "title": "negotiate_ctx_t",
     "file": "ascii-chat-negotiate_ctx_t.html",
-    "sourcePath": "src/discovery/negotiate.h"
+    "sourcePath": null
   },
   {
-    "name": "neon_color.c",
+    "name": "neon.h",
+    "title": "neon.h",
+    "file": "ascii-chat-neon.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/neon.h"
+  },
+  {
+    "name": "color.c",
     "title": "color.c",
     "file": "ascii-chat-neon_color.c.html",
     "sourcePath": "lib/video/ascii/sve/color.c"
   },
   {
-    "name": "neon_halfblock.c",
+    "name": "halfblock.c",
     "title": "halfblock.c",
     "file": "ascii-chat-neon_halfblock.c.html",
     "sourcePath": "lib/video/ascii/scalar/halfblock.c"
   },
   {
-    "name": "neon_mono.c",
+    "name": "mono.c",
     "title": "mono.c",
     "file": "ascii-chat-neon_mono.c.html",
     "sourcePath": "lib/video/ascii/sve/mono.c"
   },
   {
-    "name": "network_acip_handlers.c",
+    "name": "network",
+    "title": "network",
+    "file": "ascii-chat-network.html",
+    "sourcePath": "lib/options/registry/network.c"
+  },
+  {
+    "name": "handlers.c",
     "title": "handlers.c",
     "file": "ascii-chat-network_acip_handlers.c.html",
     "sourcePath": "lib/options/builder/handlers.c"
   },
   {
-    "name": "network_frame_validator.c",
+    "name": "frame_validator.c",
     "title": "frame_validator.c",
     "file": "ascii-chat-network_frame_validator.c.html",
     "sourcePath": "lib/video/ascii/frame_validator.c"
   },
   {
-    "name": "network_mdns_mdns.c",
+    "name": "frame_validator.h",
+    "title": "frame_validator.h",
+    "file": "ascii-chat-network_frame_validator.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/frame_validator.h"
+  },
+  {
+    "name": "log.h",
+    "title": "log.h",
+    "file": "ascii-chat-network_log.h.html",
+    "sourcePath": "include/ascii-chat/network/log.h"
+  },
+  {
+    "name": "mdns.c",
     "title": "mdns.c",
     "file": "ascii-chat-network_mdns_mdns.c.html",
     "sourcePath": "lib/ui/mdns.c"
   },
   {
-    "name": "network_network.c",
+    "name": "mdns.h",
+    "title": "mdns.h",
+    "file": "ascii-chat-network_mdns_mdns.h.html",
+    "sourcePath": "include/ascii-chat/ui/mdns.h"
+  },
+  {
+    "name": "network.c",
     "title": "network.c",
     "file": "ascii-chat-network_network.c.html",
     "sourcePath": "lib/options/registry/network.c"
   },
   {
-    "name": "network_packet_parsing.c",
+    "name": "network.h",
+    "title": "network.h",
+    "file": "ascii-chat-network_network.h.html",
+    "sourcePath": "include/ascii-chat/platform/network.h"
+  },
+  {
+    "name": "parsing.c",
     "title": "parsing.c",
     "file": "ascii-chat-network_packet_parsing.c.html",
     "sourcePath": "lib/util/parsing.c"
   },
   {
-    "name": "network_rate_limit_memory.c",
+    "name": "parsing.h",
+    "title": "parsing.h",
+    "file": "ascii-chat-network_packet_parsing.h.html",
+    "sourcePath": "include/ascii-chat/util/parsing.h"
+  },
+  {
+    "name": "memory.c",
     "title": "memory.c",
     "file": "ascii-chat-network_rate_limit_memory.c.html",
     "sourcePath": "lib/platform/windows/memory.c"
+  },
+  {
+    "name": "memory.h",
+    "title": "memory.h",
+    "file": "ascii-chat-network_rate_limit_memory.h.html",
+    "sourcePath": "include/ascii-chat/platform/memory.h"
+  },
+  {
+    "name": "internal.h",
+    "title": "internal.h",
+    "file": "ascii-chat-network_websocket_internal.h.html",
+    "sourcePath": "include/ascii-chat/platform/internal.h"
+  },
+  {
+    "name": "node_pool",
+    "title": "node_pool",
+    "file": "ascii-chat-node_pool.html",
+    "sourcePath": null
+  },
+  {
+    "name": "noise_gate_t",
+    "title": "noise_gate_t",
+    "file": "ascii-chat-noise_gate_t.html",
+    "sourcePath": null
   },
   {
     "name": "nouns.c",
@@ -1650,94 +4032,202 @@
     "sourcePath": "lib/discovery/nouns.c"
   },
   {
+    "name": "nouns.h",
+    "title": "nouns.h",
+    "file": "ascii-chat-nouns.h.html",
+    "sourcePath": "include/ascii-chat/discovery/nouns.h"
+  },
+  {
+    "name": "number.h",
+    "title": "number.h",
+    "file": "ascii-chat-number.h.html",
+    "sourcePath": "include/ascii-chat/util/number.h"
+  },
+  {
     "name": "openpgp.c",
     "title": "openpgp.c",
     "file": "ascii-chat-openpgp.c.html",
     "sourcePath": "lib/crypto/gpg/openpgp.c"
   },
   {
+    "name": "openpgp.h",
+    "title": "openpgp.h",
+    "file": "ascii-chat-openpgp.h.html",
+    "sourcePath": "include/ascii-chat/crypto/gpg/openpgp.h"
+  },
+  {
+    "name": "openpgp_packet_header_t",
+    "title": "openpgp_packet_header_t",
+    "file": "ascii-chat-openpgp_packet_header_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "openpgp_public_key_t",
+    "title": "openpgp_public_key_t",
+    "file": "ascii-chat-openpgp_public_key_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "openpgp_secret_key_t",
+    "title": "openpgp_secret_key_t",
+    "file": "ascii-chat-openpgp_secret_key_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "option_builder_handler_t",
+    "title": "option_builder_handler_t",
+    "file": "ascii-chat-option_builder_handler_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "option_dependency_t",
+    "title": "option_dependency_t",
+    "file": "ascii-chat-option_dependency_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "option_descriptor_t",
+    "title": "option_descriptor_t",
+    "file": "ascii-chat-option_descriptor_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "option_metadata_t",
+    "title": "option_metadata_t",
+    "file": "ascii-chat-option_metadata_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "option_parsed_value_t",
     "title": "option_parsed_value_t",
     "file": "ascii-chat-option_parsed_value_t.html",
-    "sourcePath": "lib/options/config/config.c"
+    "sourcePath": null
   },
   {
     "name": "option_type_handler_t",
     "title": "option_type_handler_t",
     "file": "ascii-chat-option_type_handler_t.html",
-    "sourcePath": "lib/options/config/config.c"
+    "sourcePath": null
   },
   {
-    "name": "options.h",
-    "title": "options.h",
-    "file": "ascii-chat-options.h.html",
-    "sourcePath": "src/web/common/options.h"
+    "name": "options",
+    "title": "options",
+    "file": "ascii-chat-options.html",
+    "sourcePath": "src/web/common/options.c"
   },
   {
-    "name": "options_builder_handlers.c",
+    "name": "handlers.c",
     "title": "handlers.c",
     "file": "ascii-chat-options_builder_handlers.c.html",
     "sourcePath": "lib/options/builder/handlers.c"
   },
   {
-    "name": "options_common.c",
+    "name": "internal.h",
+    "title": "internal.h",
+    "file": "ascii-chat-options_builder_internal.h.html",
+    "sourcePath": "include/ascii-chat/platform/internal.h"
+  },
+  {
+    "name": "options_builder_t",
+    "title": "options_builder_t",
+    "file": "ascii-chat-options_builder_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "common.c",
     "title": "common.c",
     "file": "ascii-chat-options_common.c.html",
     "sourcePath": "lib/video/ascii/neon/common.c"
   },
   {
-    "name": "options_manpage.c",
+    "name": "common.h",
+    "title": "common.h",
+    "file": "ascii-chat-options_common.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/neon/common.h"
+  },
+  {
+    "name": "options_config_t",
+    "title": "options_config_t",
+    "file": "ascii-chat-options_config_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "manpage.c",
     "title": "manpage.c",
     "file": "ascii-chat-options_manpage.c.html",
     "sourcePath": "lib/platform/wasm/stubs/manpage.c"
   },
   {
-    "name": "options_parsing_actions.c",
+    "name": "actions.c",
     "title": "actions.c",
     "file": "ascii-chat-options_parsing_actions.c.html",
     "sourcePath": "lib/platform/wasm/stubs/actions.c"
   },
   {
-    "name": "options_registry_database.c",
+    "name": "common.h",
+    "title": "common.h",
+    "file": "ascii-chat-options_registry_common.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/neon/common.h"
+  },
+  {
+    "name": "database.c",
     "title": "database.c",
     "file": "ascii-chat-options_registry_database.c.html",
     "sourcePath": "lib/options/registry/database.c"
   },
   {
-    "name": "options_registry_logging.c",
+    "name": "logging.c",
     "title": "logging.c",
     "file": "ascii-chat-options_registry_logging.c.html",
     "sourcePath": "lib/tests/logging.c"
   },
   {
-    "name": "options_registry_mode_defaults.c",
+    "name": "mode_defaults.c",
     "title": "mode_defaults.c",
     "file": "ascii-chat-options_registry_mode_defaults.c.html",
     "sourcePath": "lib/platform/wasm/stubs/mode_defaults.c"
   },
   {
-    "name": "options_registry_network.c",
+    "name": "network.c",
     "title": "network.c",
     "file": "ascii-chat-options_registry_network.c.html",
     "sourcePath": "lib/options/registry/network.c"
   },
   {
-    "name": "options_registry_terminal.c",
+    "name": "terminal.c",
     "title": "terminal.c",
     "file": "ascii-chat-options_registry_terminal.c.html",
     "sourcePath": "lib/platform/windows/terminal.c"
   },
   {
-    "name": "options_registry_webcam.c",
+    "name": "webcam.c",
     "title": "webcam.c",
     "file": "ascii-chat-options_registry_webcam.c.html",
     "sourcePath": "lib/video/webcam/webcam.c"
   },
   {
-    "name": "options_strings.c",
+    "name": "options_state",
+    "title": "options_state",
+    "file": "ascii-chat-options_state.html",
+    "sourcePath": null
+  },
+  {
+    "name": "strings.c",
     "title": "strings.c",
     "file": "ascii-chat-options_strings.c.html",
     "sourcePath": "lib/options/strings.c"
+  },
+  {
+    "name": "strings.h",
+    "title": "strings.h",
+    "file": "ascii-chat-options_strings.h.html",
+    "sourcePath": "include/ascii-chat/options/strings.h"
+  },
+  {
+    "name": "validation.h",
+    "title": "validation.h",
+    "file": "ascii-chat-options_validation.h.html",
+    "sourcePath": "include/ascii-chat/util/validation.h"
   },
   {
     "name": "opus.c",
@@ -1746,10 +4236,52 @@
     "sourcePath": "lib/audio/opus.c"
   },
   {
+    "name": "opus.h",
+    "title": "opus.h",
+    "file": "ascii-chat-opus.h.html",
+    "sourcePath": "include/ascii-chat/audio/opus.h"
+  },
+  {
+    "name": "opus_codec_t",
+    "title": "opus_codec_t",
+    "file": "ascii-chat-opus_codec_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "opus_config_t",
+    "title": "opus_config_t",
+    "file": "ascii-chat-opus_config_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "os",
+    "title": "os",
+    "file": "ascii-chat-os.html",
+    "sourcePath": null
+  },
+  {
+    "name": "outbuf_t",
+    "title": "outbuf_t",
+    "file": "ascii-chat-outbuf_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "output_buffer.c",
     "title": "output_buffer.c",
     "file": "ascii-chat-output_buffer.c.html",
     "sourcePath": "lib/video/ascii/output_buffer.c"
+  },
+  {
+    "name": "output_buffer.h",
+    "title": "output_buffer.h",
+    "file": "ascii-chat-output_buffer.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/output_buffer.h"
+  },
+  {
+    "name": "overflow.h",
+    "title": "overflow.h",
+    "file": "ascii-chat-overflow.h.html",
+    "sourcePath": "include/ascii-chat/util/overflow.h"
   },
   {
     "name": "packet.c",
@@ -1758,13 +4290,79 @@
     "sourcePath": "lib/network/packet/packet.c"
   },
   {
+    "name": "packet.h",
+    "title": "packet.h",
+    "file": "ascii-chat-packet.h.html",
+    "sourcePath": "include/ascii-chat/network/packet/packet.h"
+  },
+  {
+    "name": "packet_envelope_t",
+    "title": "packet_envelope_t",
+    "file": "ascii-chat-packet_envelope_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "packet_header_t",
+    "title": "packet_header_t",
+    "file": "ascii-chat-packet_header_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "packet_node",
+    "title": "packet_node",
+    "file": "ascii-chat-packet_node.html",
+    "sourcePath": null
+  },
+  {
+    "name": "packet_parsing",
+    "title": "packet_parsing",
+    "file": "ascii-chat-packet_parsing.html",
+    "sourcePath": null
+  },
+  {
+    "name": "packet_queue",
+    "title": "packet_queue",
+    "file": "ascii-chat-packet_queue.html",
+    "sourcePath": null
+  },
+  {
+    "name": "packet_queue_t",
+    "title": "packet_queue_t",
+    "file": "ascii-chat-packet_queue_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "palette.c",
     "title": "palette.c",
     "file": "ascii-chat-palette.c.html",
     "sourcePath": "lib/video/ascii/palette.c"
   },
   {
-    "name": "panic_tool.cpp",
+    "name": "palette.h",
+    "title": "palette.h",
+    "file": "ascii-chat-palette.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/palette.h"
+  },
+  {
+    "name": "palette",
+    "title": "palette",
+    "file": "ascii-chat-palette.html",
+    "sourcePath": "lib/video/ascii/palette.c"
+  },
+  {
+    "name": "palette_def_t",
+    "title": "palette_def_t",
+    "file": "ascii-chat-palette_def_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "panic",
+    "title": "panic",
+    "file": "ascii-chat-panic.html",
+    "sourcePath": null
+  },
+  {
+    "name": "tool.cpp",
     "title": "tool.cpp",
     "file": "ascii-chat-panic_tool.cpp.html",
     "sourcePath": "src/tooling/panic/tool.cpp"
@@ -1776,16 +4374,46 @@
     "sourcePath": "lib/network/parallel_connect.c"
   },
   {
+    "name": "parallel_connect.h",
+    "title": "parallel_connect.h",
+    "file": "ascii-chat-parallel_connect.h.html",
+    "sourcePath": "include/ascii-chat/network/parallel_connect.h"
+  },
+  {
+    "name": "parallel_connect_config_t",
+    "title": "parallel_connect_config_t",
+    "file": "ascii-chat-parallel_connect_config_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "parsed_section_t",
+    "title": "parsed_section_t",
+    "file": "ascii-chat-parsed_section_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "parser.c",
     "title": "parser.c",
     "file": "ascii-chat-parser.c.html",
     "sourcePath": "lib/options/manpage/parser.c"
   },
   {
+    "name": "parser.h",
+    "title": "parser.h",
+    "file": "ascii-chat-parser.h.html",
+    "sourcePath": "include/ascii-chat/options/manpage/parser.h"
+  },
+  {
     "name": "parsers.c",
     "title": "parsers.c",
     "file": "ascii-chat-parsers.c.html",
     "sourcePath": "lib/options/parsing/parsers.c"
+  },
+  {
+    "name": "parsers.h",
+    "title": "parsers.h",
+    "file": "ascii-chat-parsers.h.html",
+    "sourcePath": "include/ascii-chat/options/parsers.h"
   },
   {
     "name": "participant.c",
@@ -1800,10 +4428,22 @@
     "sourcePath": "src/common/session/participant.h"
   },
   {
+    "name": "participant_t",
+    "title": "participant_t",
+    "file": "ascii-chat-participant_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "password.c",
     "title": "password.c",
     "file": "ascii-chat-password.c.html",
     "sourcePath": "lib/util/password.c"
+  },
+  {
+    "name": "password.h",
+    "title": "password.h",
+    "file": "ascii-chat-password.h.html",
+    "sourcePath": "include/ascii-chat/util/password.h"
   },
   {
     "name": "path.c",
@@ -1812,22 +4452,40 @@
     "sourcePath": "lib/util/path.c"
   },
   {
+    "name": "path.h",
+    "title": "path.h",
+    "file": "ascii-chat-path.h.html",
+    "sourcePath": "include/ascii-chat/util/path.h"
+  },
+  {
+    "name": "paths.h",
+    "title": "paths.h",
+    "file": "ascii-chat-paths.h.html",
+    "sourcePath": "include/ascii-chat/paths.h"
+  },
+  {
     "name": "pcre2.c",
     "title": "pcre2.c",
     "file": "ascii-chat-pcre2.c.html",
     "sourcePath": "lib/util/pcre2.c"
   },
   {
+    "name": "pcre2.h",
+    "title": "pcre2.h",
+    "file": "ascii-chat-pcre2.h.html",
+    "sourcePath": "include/ascii-chat/util/pcre2.h"
+  },
+  {
     "name": "pcre2_singleton",
     "title": "pcre2_singleton",
     "file": "ascii-chat-pcre2_singleton.html",
-    "sourcePath": "lib/util/pcre2.c"
+    "sourcePath": null
   },
   {
     "name": "peer_entry_t",
     "title": "peer_entry_t",
     "file": "ascii-chat-peer_entry_t.html",
-    "sourcePath": "lib/network/webrtc/peer_manager.c"
+    "sourcePath": null
   },
   {
     "name": "peer_manager.c",
@@ -1836,16 +4494,40 @@
     "sourcePath": "lib/network/webrtc/peer_manager.c"
   },
   {
+    "name": "peer_manager.h",
+    "title": "peer_manager.h",
+    "file": "ascii-chat-peer_manager.h.html",
+    "sourcePath": "include/ascii-chat/network/webrtc/peer_manager.h"
+  },
+  {
     "name": "pem.c",
     "title": "pem.c",
     "file": "ascii-chat-pem.c.html",
     "sourcePath": "lib/crypto/pem.c"
   },
   {
+    "name": "pem.h",
+    "title": "pem.h",
+    "file": "ascii-chat-pem.h.html",
+    "sourcePath": "include/ascii-chat/crypto/pem.h"
+  },
+  {
     "name": "pem_object_t",
     "title": "pem_object_t",
     "file": "ascii-chat-pem_object_t.html",
-    "sourcePath": "lib/crypto/pem.c"
+    "sourcePath": null
+  },
+  {
+    "name": "pending_free_item_t",
+    "title": "pending_free_item_t",
+    "file": "ascii-chat-pending_free_item_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "pipe.h",
+    "title": "pipe.h",
+    "file": "ascii-chat-pipe.h.html",
+    "sourcePath": "include/ascii-chat/platform/pipe.h"
   },
   {
     "name": "pipeline.c",
@@ -1863,94 +4545,190 @@
     "name": "pipeline_frame_t",
     "title": "pipeline_frame_t",
     "file": "ascii-chat-pipeline_frame_t.html",
-    "sourcePath": "src/common/session/pipeline.c"
+    "sourcePath": null
   },
   {
-    "name": "platform_linux_font.c",
+    "name": "platform",
+    "title": "platform",
+    "file": "ascii-chat-platform.html",
+    "sourcePath": null
+  },
+  {
+    "name": "agent.h",
+    "title": "agent.h",
+    "file": "ascii-chat-platform_agent.h.html",
+    "sourcePath": "include/ascii-chat/platform/agent.h"
+  },
+  {
+    "name": "backtrace.h",
+    "title": "backtrace.h",
+    "file": "ascii-chat-platform_backtrace.h.html",
+    "sourcePath": "include/ascii-chat/platform/backtrace.h"
+  },
+  {
+    "name": "platform_binary_match_t",
+    "title": "platform_binary_match_t",
+    "file": "ascii-chat-platform_binary_match_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "font.h",
+    "title": "font.h",
+    "file": "ascii-chat-platform_font.h.html",
+    "sourcePath": "include/ascii-chat/platform/font.h"
+  },
+  {
+    "name": "internal.h",
+    "title": "internal.h",
+    "file": "ascii-chat-platform_internal.h.html",
+    "sourcePath": "include/ascii-chat/platform/internal.h"
+  },
+  {
+    "name": "font.c",
     "title": "font.c",
     "file": "ascii-chat-platform_linux_font.c.html",
     "sourcePath": "lib/platform/windows/font.c"
   },
   {
-    "name": "platform_macos_font.c",
+    "name": "font.c",
     "title": "font.c",
     "file": "ascii-chat-platform_macos_font.c.html",
     "sourcePath": "lib/platform/windows/font.c"
   },
   {
-    "name": "platform_mutex.c",
+    "name": "memory.h",
+    "title": "memory.h",
+    "file": "ascii-chat-platform_memory.h.html",
+    "sourcePath": "include/ascii-chat/platform/memory.h"
+  },
+  {
+    "name": "mmap.h",
+    "title": "mmap.h",
+    "file": "ascii-chat-platform_mmap.h.html",
+    "sourcePath": "include/ascii-chat/platform/mmap.h"
+  },
+  {
+    "name": "platform_mmap",
+    "title": "platform_mmap",
+    "file": "ascii-chat-platform_mmap.html",
+    "sourcePath": null
+  },
+  {
+    "name": "mutex.c",
     "title": "mutex.c",
     "file": "ascii-chat-platform_mutex.c.html",
     "sourcePath": "lib/platform/windows/mutex.c"
   },
   {
-    "name": "platform_terminal.c",
+    "name": "mutex.h",
+    "title": "mutex.h",
+    "file": "ascii-chat-platform_mutex.h.html",
+    "sourcePath": "include/ascii-chat/platform/mutex.h"
+  },
+  {
+    "name": "network.h",
+    "title": "network.h",
+    "file": "ascii-chat-platform_network.h.html",
+    "sourcePath": "include/ascii-chat/platform/network.h"
+  },
+  {
+    "name": "platform_signal_handler_t",
+    "title": "platform_signal_handler_t",
+    "file": "ascii-chat-platform_signal_handler_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "platform_stat_t",
+    "title": "platform_stat_t",
+    "file": "ascii-chat-platform_stat_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "platform_stderr_redirect_handle_t",
+    "title": "platform_stderr_redirect_handle_t",
+    "file": "ascii-chat-platform_stderr_redirect_handle_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "string.h",
+    "title": "string.h",
+    "file": "ascii-chat-platform_string.h.html",
+    "sourcePath": "include/ascii-chat/util/string.h"
+  },
+  {
+    "name": "terminal.c",
     "title": "terminal.c",
     "file": "ascii-chat-platform_terminal.c.html",
     "sourcePath": "lib/platform/windows/terminal.c"
   },
   {
-    "name": "platform_wasm_backtrace.c",
+    "name": "thread.h",
+    "title": "thread.h",
+    "file": "ascii-chat-platform_thread.h.html",
+    "sourcePath": "include/ascii-chat/util/thread.h"
+  },
+  {
+    "name": "backtrace.c",
     "title": "backtrace.c",
     "file": "ascii-chat-platform_wasm_backtrace.c.html",
     "sourcePath": "lib/platform/windows/backtrace.c"
   },
   {
-    "name": "platform_wasm_lifecycle.c",
+    "name": "lifecycle.c",
     "title": "lifecycle.c",
     "file": "ascii-chat-platform_wasm_lifecycle.c.html",
     "sourcePath": "lib/platform/wasm/lifecycle.c"
   },
   {
-    "name": "platform_wasm_log.c",
+    "name": "log.c",
     "title": "log.c",
     "file": "ascii-chat-platform_wasm_log.c.html",
     "sourcePath": "lib/platform/wasm/stubs/log.c"
   },
   {
-    "name": "platform_wasm_string.c",
+    "name": "string.c",
     "title": "string.c",
     "file": "ascii-chat-platform_wasm_string.c.html",
     "sourcePath": "lib/util/string.c"
   },
   {
-    "name": "platform_wasm_stubs_actions.c",
+    "name": "actions.c",
     "title": "actions.c",
     "file": "ascii-chat-platform_wasm_stubs_actions.c.html",
     "sourcePath": "lib/platform/wasm/stubs/actions.c"
   },
   {
-    "name": "platform_wasm_stubs_log.c",
+    "name": "log.c",
     "title": "log.c",
     "file": "ascii-chat-platform_wasm_stubs_log.c.html",
     "sourcePath": "lib/platform/wasm/stubs/log.c"
   },
   {
-    "name": "platform_wasm_stubs_manpage.c",
+    "name": "manpage.c",
     "title": "manpage.c",
     "file": "ascii-chat-platform_wasm_stubs_manpage.c.html",
     "sourcePath": "lib/platform/wasm/stubs/manpage.c"
   },
   {
-    "name": "platform_wasm_stubs_mode_defaults.c",
+    "name": "mode_defaults.c",
     "title": "mode_defaults.c",
     "file": "ascii-chat-platform_wasm_stubs_mode_defaults.c.html",
     "sourcePath": "lib/platform/wasm/stubs/mode_defaults.c"
   },
   {
-    "name": "platform_wasm_stubs_terminal.c",
+    "name": "terminal.c",
     "title": "terminal.c",
     "file": "ascii-chat-platform_wasm_stubs_terminal.c.html",
     "sourcePath": "lib/platform/windows/terminal.c"
   },
   {
-    "name": "platform_wasm_terminal.c",
+    "name": "terminal.c",
     "title": "terminal.c",
     "file": "ascii-chat-platform_wasm_terminal.c.html",
     "sourcePath": "lib/platform/windows/terminal.c"
   },
   {
-    "name": "platform_wasm_time.c",
+    "name": "time.c",
     "title": "time.c",
     "file": "ascii-chat-platform_wasm_time.c.html",
     "sourcePath": "lib/util/time.c"
@@ -1968,10 +4746,28 @@
     "sourcePath": "lib/options/manpage/content/positional.c"
   },
   {
+    "name": "positional.h",
+    "title": "positional.h",
+    "file": "ascii-chat-positional.h.html",
+    "sourcePath": "include/ascii-chat/options/manpage/content/positional.h"
+  },
+  {
+    "name": "positional_arg_descriptor_t",
+    "title": "positional_arg_descriptor_t",
+    "file": "ascii-chat-positional_arg_descriptor_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "powershell.c",
     "title": "powershell.c",
     "file": "ascii-chat-powershell.c.html",
     "sourcePath": "lib/options/completions/powershell.c"
+  },
+  {
+    "name": "powershell.h",
+    "title": "powershell.h",
+    "file": "ascii-chat-powershell.h.html",
+    "sourcePath": "include/ascii-chat/options/completions/powershell.h"
   },
   {
     "name": "presets.c",
@@ -1980,10 +4776,58 @@
     "sourcePath": "lib/options/config/presets.c"
   },
   {
+    "name": "presets.h",
+    "title": "presets.h",
+    "file": "ascii-chat-presets.h.html",
+    "sourcePath": "include/ascii-chat/options/presets.h"
+  },
+  {
+    "name": "private_key_t",
+    "title": "private_key_t",
+    "file": "ascii-chat-private_key_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "process.h",
+    "title": "process.h",
+    "file": "ascii-chat-process.h.html",
+    "sourcePath": "include/ascii-chat/platform/process.h"
+  },
+  {
+    "name": "prompt_opts_t",
+    "title": "prompt_opts_t",
+    "file": "ascii-chat-prompt_opts_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "protocol_constants.h",
+    "title": "protocol_constants.h",
+    "file": "ascii-chat-protocol_constants.h.html",
+    "sourcePath": "include/ascii-chat/common/protocol_constants.h"
+  },
+  {
+    "name": "protocol_constants",
+    "title": "protocol_constants",
+    "file": "ascii-chat-protocol_constants.html",
+    "sourcePath": "include/ascii-chat/common/protocol_constants.h"
+  },
+  {
+    "name": "protocol_version_packet_t",
+    "title": "protocol_version_packet_t",
+    "file": "ascii-chat-protocol_version_packet_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "public_api.c",
     "title": "public_api.c",
     "file": "ascii-chat-public_api.c.html",
     "sourcePath": "lib/options/registry/public_api.c"
+  },
+  {
+    "name": "public_key_t",
+    "title": "public_key_t",
+    "file": "ascii-chat-public_key_t.html",
+    "sourcePath": null
   },
   {
     "name": "query.c",
@@ -1992,10 +4836,40 @@
     "sourcePath": "lib/tooling/query/query.c"
   },
   {
+    "name": "query.h",
+    "title": "query.h",
+    "file": "ascii-chat-query.h.html",
+    "sourcePath": "include/ascii-chat/tooling/query/query.h"
+  },
+  {
+    "name": "query",
+    "title": "query",
+    "file": "ascii-chat-query.html",
+    "sourcePath": "lib/tooling/query/query.c"
+  },
+  {
+    "name": "question.h",
+    "title": "question.h",
+    "file": "ascii-chat-question.h.html",
+    "sourcePath": "include/ascii-chat/platform/question.h"
+  },
+  {
     "name": "queue.c",
     "title": "queue.c",
     "file": "ascii-chat-queue.c.html",
     "sourcePath": "lib/network/packet/queue.c"
+  },
+  {
+    "name": "queue.h",
+    "title": "queue.h",
+    "file": "ascii-chat-queue.h.html",
+    "sourcePath": "include/ascii-chat/network/packet/queue.h"
+  },
+  {
+    "name": "queued_packet_t",
+    "title": "queued_packet_t",
+    "file": "ascii-chat-queued_packet_t.html",
+    "sourcePath": null
   },
   {
     "name": "rate_event_s",
@@ -2010,10 +4884,28 @@
     "sourcePath": "lib/network/rate_limit/rate_limit.c"
   },
   {
+    "name": "rate_limit.h",
+    "title": "rate_limit.h",
+    "file": "ascii-chat-rate_limit.h.html",
+    "sourcePath": "include/ascii-chat/network/rate_limit/rate_limit.h"
+  },
+  {
+    "name": "rate_limit_config_t",
+    "title": "rate_limit_config_t",
+    "file": "ascii-chat-rate_limit_config_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "rate_limiter_backend_ops_t",
+    "title": "rate_limiter_backend_ops_t",
+    "file": "ascii-chat-rate_limiter_backend_ops_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "rate_limiter_s",
     "title": "rate_limiter_s",
     "file": "ascii-chat-rate_limiter_s.html",
-    "sourcePath": "lib/network/rate_limit/rate_limit.c"
+    "sourcePath": null
   },
   {
     "name": "rcu.c",
@@ -2022,10 +4914,22 @@
     "sourcePath": "lib/options/rcu.c"
   },
   {
+    "name": "rcu.h",
+    "title": "rcu.h",
+    "file": "ascii-chat-rcu.h.html",
+    "sourcePath": "include/ascii-chat/options/rcu.h"
+  },
+  {
     "name": "reader.c",
     "title": "reader.c",
     "file": "ascii-chat-reader.c.html",
     "sourcePath": "lib/terminal/fd/reader.c"
+  },
+  {
+    "name": "reader.h",
+    "title": "reader.h",
+    "file": "ascii-chat-reader.h.html",
+    "sourcePath": "include/ascii-chat/terminal/fd/reader.h"
   },
   {
     "name": "regex.c",
@@ -2034,10 +4938,28 @@
     "sourcePath": "lib/crypto/regex.c"
   },
   {
+    "name": "regex.h",
+    "title": "regex.h",
+    "file": "ascii-chat-regex.h.html",
+    "sourcePath": "include/ascii-chat/crypto/regex.h"
+  },
+  {
     "name": "registry.c",
     "title": "registry.c",
     "file": "ascii-chat-registry.c.html",
     "sourcePath": "lib/options/registry/registry.c"
+  },
+  {
+    "name": "registry.h",
+    "title": "registry.h",
+    "file": "ascii-chat-registry.h.html",
+    "sourcePath": "include/ascii-chat/options/registry.h"
+  },
+  {
+    "name": "registry_entry_t",
+    "title": "registry_entry_t",
+    "file": "ascii-chat-registry_entry_t.html",
+    "sourcePath": null
   },
   {
     "name": "remote_client_info_t",
@@ -2046,16 +4968,28 @@
     "sourcePath": null
   },
   {
+    "name": "remote_log_packet_t",
+    "title": "remote_log_packet_t",
+    "file": "ascii-chat-remote_log_packet_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "render_file_ctx_s",
     "title": "render_file_ctx_s",
     "file": "ascii-chat-render_file_ctx_s.html",
-    "sourcePath": "lib/media/render/renderer.c"
+    "sourcePath": null
   },
   {
     "name": "renderer.c",
     "title": "renderer.c",
     "file": "ascii-chat-renderer.c.html",
     "sourcePath": "lib/media/render/renderer.c"
+  },
+  {
+    "name": "renderer.h",
+    "title": "renderer.h",
+    "file": "ascii-chat-renderer.h.html",
+    "sourcePath": "include/ascii-chat/media/render/renderer.h"
   },
   {
     "name": "report.c",
@@ -2067,7 +5001,7 @@
     "name": "report_config",
     "title": "report_config",
     "file": "ascii-chat-report_config.html",
-    "sourcePath": "src/tooling/panic/report.c"
+    "sourcePath": null
   },
   {
     "name": "resources.c",
@@ -2076,10 +5010,22 @@
     "sourcePath": "lib/options/manpage/resources.c"
   },
   {
+    "name": "resources.h",
+    "title": "resources.h",
+    "file": "ascii-chat-resources.h.html",
+    "sourcePath": "include/ascii-chat/options/manpage/resources.h"
+  },
+  {
+    "name": "rgb_error_t",
+    "title": "rgb_error_t",
+    "file": "ascii-chat-rgb_error_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "ring_consensus_t",
     "title": "ring_consensus_t",
     "file": "ascii-chat-ring_consensus_t.html",
-    "sourcePath": "src/discovery/session.h"
+    "sourcePath": null
   },
   {
     "name": "ringbuffer.c",
@@ -2088,10 +5034,34 @@
     "sourcePath": "lib/ringbuffer.c"
   },
   {
+    "name": "ringbuffer.h",
+    "title": "ringbuffer.h",
+    "file": "ascii-chat-ringbuffer.h.html",
+    "sourcePath": "include/ascii-chat/ringbuffer.h"
+  },
+  {
+    "name": "ringbuffer",
+    "title": "ringbuffer",
+    "file": "ascii-chat-ringbuffer.html",
+    "sourcePath": "lib/ringbuffer.c"
+  },
+  {
+    "name": "ringbuffer_t",
+    "title": "ringbuffer_t",
+    "file": "ascii-chat-ringbuffer_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "rle.c",
     "title": "rle.c",
     "file": "ascii-chat-rle.c.html",
     "sourcePath": "lib/video/ascii/rle.c"
+  },
+  {
+    "name": "rle.h",
+    "title": "rle.h",
+    "file": "ascii-chat-rle.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/rle.h"
   },
   {
     "name": "rwlock.c",
@@ -2100,7 +5070,19 @@
     "sourcePath": "lib/platform/windows/rwlock.c"
   },
   {
-    "name": "scalar_halfblock.c",
+    "name": "rwlock.h",
+    "title": "rwlock.h",
+    "file": "ascii-chat-rwlock.h.html",
+    "sourcePath": "include/ascii-chat/platform/rwlock.h"
+  },
+  {
+    "name": "rwlock_t",
+    "title": "rwlock_t",
+    "file": "ascii-chat-rwlock_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "halfblock.c",
     "title": "halfblock.c",
     "file": "ascii-chat-scalar_halfblock.c.html",
     "sourcePath": "lib/video/ascii/scalar/halfblock.c"
@@ -2112,10 +5094,28 @@
     "sourcePath": "lib/options/config/schema.c"
   },
   {
+    "name": "schema.h",
+    "title": "schema.h",
+    "file": "ascii-chat-schema.h.html",
+    "sourcePath": "include/ascii-chat/options/schema.h"
+  },
+  {
     "name": "sdp.c",
     "title": "sdp.c",
     "file": "ascii-chat-sdp.c.html",
     "sourcePath": "lib/network/webrtc/sdp.c"
+  },
+  {
+    "name": "sdp.h",
+    "title": "sdp.h",
+    "file": "ascii-chat-sdp.h.html",
+    "sourcePath": "include/ascii-chat/network/webrtc/sdp.h"
+  },
+  {
+    "name": "sdp_session_t",
+    "title": "sdp_session_t",
+    "file": "ascii-chat-sdp_session_t.html",
+    "sourcePath": null
   },
   {
     "name": "search.c",
@@ -2124,10 +5124,22 @@
     "sourcePath": "lib/log/search.c"
   },
   {
+    "name": "search.h",
+    "title": "search.h",
+    "file": "ascii-chat-search.h.html",
+    "sourcePath": "include/ascii-chat/log/search.h"
+  },
+  {
     "name": "security.c",
     "title": "security.c",
     "file": "ascii-chat-security.c.html",
     "sourcePath": "lib/options/registry/security.c"
+  },
+  {
+    "name": "semantic_version_t",
+    "title": "semantic_version_t",
+    "file": "ascii-chat-semantic_version_t.html",
+    "sourcePath": null
   },
   {
     "name": "send.c",
@@ -2136,22 +5148,16 @@
     "sourcePath": "lib/network/acip/send.c"
   },
   {
-    "name": "server_client.h",
-    "title": "client.h",
-    "file": "ascii-chat-server_client.h.html",
-    "sourcePath": "src/session/h265/client.h"
+    "name": "send.h",
+    "title": "send.h",
+    "file": "ascii-chat-send.h.html",
+    "sourcePath": "include/ascii-chat/network/acip/send.h"
   },
   {
     "name": "server_context_t",
     "title": "server_context_t",
     "file": "ascii-chat-server_context_t.html",
     "sourcePath": null
-  },
-  {
-    "name": "server_crypto.h",
-    "title": "crypto.h",
-    "file": "ascii-chat-server_crypto.h.html",
-    "sourcePath": "src/server/crypto.h"
   },
   {
     "name": "server_like.c",
@@ -2166,52 +5172,46 @@
     "sourcePath": "src/common/session/server_like.h"
   },
   {
-    "name": "server_main.c",
+    "name": "main.c",
     "title": "main.c",
     "file": "ascii-chat-server_main.c.html",
     "sourcePath": "src/strings/main.c"
   },
   {
-    "name": "server_main.h",
+    "name": "main.h",
     "title": "main.h",
     "file": "ascii-chat-server_main.h.html",
     "sourcePath": "src/server/main.h"
   },
   {
-    "name": "server_protocol.c",
+    "name": "protocol.c",
     "title": "protocol.c",
     "file": "ascii-chat-server_protocol.c.html",
     "sourcePath": "src/server/protocol.c"
   },
   {
-    "name": "server_protocol.h",
-    "title": "protocol.h",
-    "file": "ascii-chat-server_protocol.h.html",
-    "sourcePath": "src/session/h265/protocol.h"
-  },
-  {
-    "name": "server_render.c",
+    "name": "render.c",
     "title": "render.c",
     "file": "ascii-chat-server_render.c.html",
     "sourcePath": "src/server/render.c"
   },
   {
-    "name": "server_render.h",
+    "name": "render.h",
     "title": "render.h",
     "file": "ascii-chat-server_render.h.html",
     "sourcePath": "src/server/render.h"
   },
   {
+    "name": "server_state_packet_t",
+    "title": "server_state_packet_t",
+    "file": "ascii-chat-server_state_packet_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "server_stats_t",
     "title": "server_stats_t",
     "file": "ascii-chat-server_stats_t.html",
-    "sourcePath": "src/server/stats.h"
-  },
-  {
-    "name": "session.h",
-    "title": "session.h",
-    "file": "ascii-chat-session.h.html",
-    "sourcePath": "src/discovery/session.h"
+    "sourcePath": null
   },
   {
     "name": "session",
@@ -2247,19 +5247,19 @@
     "name": "session_client_like_config",
     "title": "session_client_like_config",
     "file": "ascii-chat-session_client_like_config.html",
-    "sourcePath": "src/common/session/client_like.h"
+    "sourcePath": null
   },
   {
     "name": "session_consensus",
     "title": "session_consensus",
     "file": "ascii-chat-session_consensus.html",
-    "sourcePath": "src/common/session/consensus.c"
+    "sourcePath": null
   },
   {
     "name": "session_consensus_callbacks_t",
     "title": "session_consensus_callbacks_t",
     "file": "ascii-chat-session_consensus_callbacks_t.html",
-    "sourcePath": "src/common/session/consensus.h"
+    "sourcePath": null
   },
   {
     "name": "session_display_config_t",
@@ -2274,52 +5274,40 @@
     "sourcePath": null
   },
   {
-    "name": "session_h265_client.h",
-    "title": "client.h",
-    "file": "ascii-chat-session_h265_client.h.html",
-    "sourcePath": "src/session/h265/client.h"
-  },
-  {
-    "name": "session_h265_protocol.h",
-    "title": "protocol.h",
-    "file": "ascii-chat-session_h265_protocol.h.html",
-    "sourcePath": "src/session/h265/protocol.h"
-  },
-  {
-    "name": "session_h265_server.h",
-    "title": "server.h",
-    "file": "ascii-chat-session_h265_server.h.html",
-    "sourcePath": "src/session/h265/server.h"
+    "name": "session_entry",
+    "title": "session_entry",
+    "file": "ascii-chat-session_entry.html",
+    "sourcePath": null
   },
   {
     "name": "session_host",
     "title": "session_host",
     "file": "ascii-chat-session_host.html",
-    "sourcePath": "src/common/session/host.c"
+    "sourcePath": null
   },
   {
     "name": "session_host_callbacks_t",
     "title": "session_host_callbacks_t",
     "file": "ascii-chat-session_host_callbacks_t.html",
-    "sourcePath": "src/common/session/host.h"
+    "sourcePath": null
   },
   {
     "name": "session_host_client_info_t",
     "title": "session_host_client_info_t",
     "file": "ascii-chat-session_host_client_info_t.html",
-    "sourcePath": "src/common/session/host.h"
+    "sourcePath": null
   },
   {
     "name": "session_host_client_t",
     "title": "session_host_client_t",
     "file": "ascii-chat-session_host_client_t.html",
-    "sourcePath": "src/common/session/host.c"
+    "sourcePath": null
   },
   {
     "name": "session_host_config_t",
     "title": "session_host_config_t",
     "file": "ascii-chat-session_host_config_t.html",
-    "sourcePath": "src/common/session/host.h"
+    "sourcePath": null
   },
   {
     "name": "session_log_buffer.c",
@@ -2328,58 +5316,58 @@
     "sourcePath": "src/common/session/session_log_buffer.c"
   },
   {
-    "name": "session_log_buffer.h",
-    "title": "session_log_buffer.h",
-    "file": "ascii-chat-session_log_buffer.h.html",
-    "sourcePath": "lib/platform/wasm/stubs/session_log_buffer.h"
-  },
-  {
     "name": "session_log_buffer",
     "title": "session_log_buffer",
     "file": "ascii-chat-session_log_buffer.html",
     "sourcePath": "src/common/session/session_log_buffer.c"
   },
   {
+    "name": "session_log_entry_t",
+    "title": "session_log_entry_t",
+    "file": "ascii-chat-session_log_entry_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "session_participant",
     "title": "session_participant",
     "file": "ascii-chat-session_participant.html",
-    "sourcePath": "src/common/session/participant.c"
+    "sourcePath": null
   },
   {
     "name": "session_participant_callbacks_t",
     "title": "session_participant_callbacks_t",
     "file": "ascii-chat-session_participant_callbacks_t.html",
-    "sourcePath": "src/common/session/participant.h"
+    "sourcePath": null
   },
   {
     "name": "session_participant_config_t",
     "title": "session_participant_config_t",
     "file": "ascii-chat-session_participant_config_t.html",
-    "sourcePath": "src/common/session/participant.h"
+    "sourcePath": null
   },
   {
     "name": "session_pipeline_s",
     "title": "session_pipeline_s",
     "file": "ascii-chat-session_pipeline_s.html",
-    "sourcePath": "src/common/session/pipeline.c"
+    "sourcePath": null
   },
   {
     "name": "session_server_like_config",
     "title": "session_server_like_config",
     "file": "ascii-chat-session_server_like_config.html",
-    "sourcePath": "src/common/session/server_like.h"
+    "sourcePath": null
   },
   {
     "name": "session_settings_t",
     "title": "session_settings_t",
     "file": "ascii-chat-session_settings_t.html",
-    "sourcePath": "src/common/session/settings.h"
+    "sourcePath": null
   },
   {
     "name": "setting_map_entry_t",
     "title": "setting_map_entry_t",
     "file": "ascii-chat-setting_map_entry_t.html",
-    "sourcePath": "lib/options/parsing/parsers.c"
+    "sourcePath": null
   },
   {
     "name": "settings.c",
@@ -2400,16 +5388,46 @@
     "sourcePath": "lib/video/ascii/sgr.c"
   },
   {
+    "name": "sgr.h",
+    "title": "sgr.h",
+    "file": "ascii-chat-sgr.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/sgr.h"
+  },
+  {
     "name": "sgr256_seq_t",
     "title": "sgr256_seq_t",
     "file": "ascii-chat-sgr256_seq_t.html",
-    "sourcePath": "lib/video/ascii/sgr.c"
+    "sourcePath": null
   },
   {
     "name": "sha1.c",
     "title": "sha1.c",
     "file": "ascii-chat-sha1.c.html",
     "sourcePath": "lib/crypto/sha1.c"
+  },
+  {
+    "name": "sha1.h",
+    "title": "sha1.h",
+    "file": "ascii-chat-sha1.h.html",
+    "sourcePath": "include/ascii-chat/crypto/sha1.h"
+  },
+  {
+    "name": "shutdown.h",
+    "title": "shutdown.h",
+    "file": "ascii-chat-shutdown.h.html",
+    "sourcePath": "include/ascii-chat/common/shutdown.h"
+  },
+  {
+    "name": "shutdown",
+    "title": "shutdown",
+    "file": "ascii-chat-shutdown.html",
+    "sourcePath": "include/ascii-chat/common/shutdown.h"
+  },
+  {
+    "name": "signal.h",
+    "title": "signal.h",
+    "file": "ascii-chat-signal.h.html",
+    "sourcePath": "include/ascii-chat/platform/signal.h"
   },
   {
     "name": "signaling.c",
@@ -2430,10 +5448,40 @@
     "sourcePath": "lib/crypto/gpg/signing.c"
   },
   {
+    "name": "signing.h",
+    "title": "signing.h",
+    "file": "ascii-chat-signing.h.html",
+    "sourcePath": "include/ascii-chat/crypto/gpg/signing.h"
+  },
+  {
+    "name": "simd_benchmark_t",
+    "title": "simd_benchmark_t",
+    "file": "ascii-chat-simd_benchmark_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "simple_frame_swap_t",
+    "title": "simple_frame_swap_t",
+    "file": "ascii-chat-simple_frame_swap_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "size_packet_t",
+    "title": "size_packet_t",
+    "file": "ascii-chat-size_packet_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "socket.c",
     "title": "socket.c",
     "file": "ascii-chat-socket.c.html",
     "sourcePath": "lib/platform/windows/socket.c"
+  },
+  {
+    "name": "socket.h",
+    "title": "socket.h",
+    "file": "ascii-chat-socket.h.html",
+    "sourcePath": "include/ascii-chat/platform/socket.h"
   },
   {
     "name": "source.c",
@@ -2442,16 +5490,28 @@
     "sourcePath": "lib/media/source.c"
   },
   {
+    "name": "source.h",
+    "title": "source.h",
+    "file": "ascii-chat-source.h.html",
+    "sourcePath": "include/ascii-chat/media/source.h"
+  },
+  {
     "name": "splash.c",
     "title": "splash.c",
     "file": "ascii-chat-splash.c.html",
     "sourcePath": "lib/ui/splash.c"
   },
   {
+    "name": "splash.h",
+    "title": "splash.h",
+    "file": "ascii-chat-splash.h.html",
+    "sourcePath": "include/ascii-chat/ui/splash.h"
+  },
+  {
     "name": "splash_header_ctx_t",
     "title": "splash_header_ctx_t",
     "file": "ascii-chat-splash_header_ctx_t.html",
-    "sourcePath": "lib/ui/splash.c"
+    "sourcePath": null
   },
   {
     "name": "sqlite.c",
@@ -2460,133 +5520,253 @@
     "sourcePath": "lib/network/rate_limit/sqlite.c"
   },
   {
+    "name": "sqlite.h",
+    "title": "sqlite.h",
+    "file": "ascii-chat-sqlite.h.html",
+    "sourcePath": "include/ascii-chat/network/rate_limit/sqlite.h"
+  },
+  {
     "name": "sqlite_backend_t",
     "title": "sqlite_backend_t",
     "file": "ascii-chat-sqlite_backend_t.html",
-    "sourcePath": "lib/network/rate_limit/sqlite.c"
+    "sourcePath": null
   },
   {
-    "name": "src_client_audio.c",
+    "name": "audio.c",
     "title": "audio.c",
     "file": "ascii-chat-src_client_audio.c.html",
     "sourcePath": "src/common/session/audio.c"
   },
   {
-    "name": "src_client_audio.h",
+    "name": "audio.h",
     "title": "audio.h",
     "file": "ascii-chat-src_client_audio.h.html",
     "sourcePath": "src/common/session/audio.h"
   },
   {
-    "name": "src_client_crypto.c",
+    "name": "crypto.c",
     "title": "crypto.c",
     "file": "ascii-chat-src_client_crypto.c.html",
     "sourcePath": "src/server/crypto.c"
   },
   {
-    "name": "src_client_display.c",
+    "name": "crypto.h",
+    "title": "crypto.h",
+    "file": "ascii-chat-src_client_crypto.h.html",
+    "sourcePath": "src/server/crypto.h"
+  },
+  {
+    "name": "display.c",
     "title": "display.c",
     "file": "ascii-chat-src_client_display.c.html",
     "sourcePath": "src/common/session/display.c"
   },
   {
-    "name": "src_client_server.c",
+    "name": "display.h",
+    "title": "display.h",
+    "file": "ascii-chat-src_client_display.h.html",
+    "sourcePath": "src/common/session/display.h"
+  },
+  {
+    "name": "protocol.h",
+    "title": "protocol.h",
+    "file": "ascii-chat-src_client_protocol.h.html",
+    "sourcePath": "src/session/h265/protocol.h"
+  },
+  {
+    "name": "server.c",
     "title": "server.c",
     "file": "ascii-chat-src_client_server.c.html",
     "sourcePath": "src/session/h265/server.c"
   },
   {
-    "name": "src_client_webrtc.c",
+    "name": "server.h",
+    "title": "server.h",
+    "file": "ascii-chat-src_client_server.h.html",
+    "sourcePath": "src/session/h265/server.h"
+  },
+  {
+    "name": "webrtc.c",
     "title": "webrtc.c",
     "file": "ascii-chat-src_client_webrtc.c.html",
     "sourcePath": "src/discovery/webrtc.c"
   },
   {
-    "name": "src_common_session_audio.c",
+    "name": "webrtc.h",
+    "title": "webrtc.h",
+    "file": "ascii-chat-src_client_webrtc.h.html",
+    "sourcePath": "src/discovery/webrtc.h"
+  },
+  {
+    "name": "audio.c",
     "title": "audio.c",
     "file": "ascii-chat-src_common_session_audio.c.html",
     "sourcePath": "src/common/session/audio.c"
   },
   {
-    "name": "src_common_session_audio.h",
+    "name": "audio.h",
     "title": "audio.h",
     "file": "ascii-chat-src_common_session_audio.h.html",
     "sourcePath": "src/common/session/audio.h"
   },
   {
-    "name": "src_common_session_display.c",
+    "name": "display.c",
     "title": "display.c",
     "file": "ascii-chat-src_common_session_display.c.html",
     "sourcePath": "src/common/session/display.c"
   },
   {
-    "name": "src_discovery-service_server.c",
+    "name": "display.h",
+    "title": "display.h",
+    "file": "ascii-chat-src_common_session_display.h.html",
+    "sourcePath": "src/common/session/display.h"
+  },
+  {
+    "name": "server.c",
     "title": "server.c",
     "file": "ascii-chat-src_discovery-service_server.c.html",
     "sourcePath": "src/session/h265/server.c"
   },
   {
-    "name": "src_discovery_session.c",
+    "name": "server.h",
+    "title": "server.h",
+    "file": "ascii-chat-src_discovery-service_server.h.html",
+    "sourcePath": "src/session/h265/server.h"
+  },
+  {
+    "name": "session.c",
     "title": "session.c",
     "file": "ascii-chat-src_discovery_session.c.html",
     "sourcePath": "src/discovery/session.c"
   },
   {
-    "name": "src_discovery_webrtc.c",
+    "name": "session.h",
+    "title": "session.h",
+    "file": "ascii-chat-src_discovery_session.h.html",
+    "sourcePath": "src/discovery/session.h"
+  },
+  {
+    "name": "webrtc.c",
     "title": "webrtc.c",
     "file": "ascii-chat-src_discovery_webrtc.c.html",
     "sourcePath": "src/discovery/webrtc.c"
   },
   {
-    "name": "src_server_client.c",
+    "name": "webrtc.h",
+    "title": "webrtc.h",
+    "file": "ascii-chat-src_discovery_webrtc.h.html",
+    "sourcePath": "src/discovery/webrtc.h"
+  },
+  {
+    "name": "client.c",
     "title": "client.c",
     "file": "ascii-chat-src_server_client.c.html",
     "sourcePath": "src/web/client.c"
   },
   {
-    "name": "src_server_crypto.c",
+    "name": "client.h",
+    "title": "client.h",
+    "file": "ascii-chat-src_server_client.h.html",
+    "sourcePath": "src/session/h265/client.h"
+  },
+  {
+    "name": "crypto.c",
     "title": "crypto.c",
     "file": "ascii-chat-src_server_crypto.c.html",
     "sourcePath": "src/server/crypto.c"
   },
   {
-    "name": "src_session_h265_client.c",
+    "name": "crypto.h",
+    "title": "crypto.h",
+    "file": "ascii-chat-src_server_crypto.h.html",
+    "sourcePath": "src/server/crypto.h"
+  },
+  {
+    "name": "protocol.h",
+    "title": "protocol.h",
+    "file": "ascii-chat-src_server_protocol.h.html",
+    "sourcePath": "src/session/h265/protocol.h"
+  },
+  {
+    "name": "client.c",
     "title": "client.c",
     "file": "ascii-chat-src_session_h265_client.c.html",
     "sourcePath": "src/web/client.c"
   },
   {
-    "name": "src_session_h265_server.c",
+    "name": "client.h",
+    "title": "client.h",
+    "file": "ascii-chat-src_session_h265_client.h.html",
+    "sourcePath": "src/session/h265/client.h"
+  },
+  {
+    "name": "protocol.h",
+    "title": "protocol.h",
+    "file": "ascii-chat-src_session_h265_protocol.h.html",
+    "sourcePath": "src/session/h265/protocol.h"
+  },
+  {
+    "name": "server.c",
     "title": "server.c",
     "file": "ascii-chat-src_session_h265_server.c.html",
     "sourcePath": "src/session/h265/server.c"
   },
   {
-    "name": "src_web_client.c",
+    "name": "server.h",
+    "title": "server.h",
+    "file": "ascii-chat-src_session_h265_server.h.html",
+    "sourcePath": "src/session/h265/server.h"
+  },
+  {
+    "name": "json.h",
+    "title": "json.h",
+    "file": "ascii-chat-src_tooling_query_json.h.html",
+    "sourcePath": "src/tooling/query/json.h"
+  },
+  {
+    "name": "client.c",
     "title": "client.c",
     "file": "ascii-chat-src_web_client.c.html",
     "sourcePath": "src/web/client.c"
   },
   {
-    "name": "src_web_common_init.c",
+    "name": "init.c",
     "title": "init.c",
     "file": "ascii-chat-src_web_common_init.c.html",
     "sourcePath": "src/web/common/init.c"
   },
   {
-    "name": "src_web_common_options.c",
+    "name": "init.h",
+    "title": "init.h",
+    "file": "ascii-chat-src_web_common_init.h.html",
+    "sourcePath": "src/web/common/init.h"
+  },
+  {
+    "name": "options.c",
     "title": "options.c",
     "file": "ascii-chat-src_web_common_options.c.html",
     "sourcePath": "src/web/common/options.c"
   },
   {
-    "name": "sse2_color.c",
+    "name": "options.h",
+    "title": "options.h",
+    "file": "ascii-chat-src_web_common_options.h.html",
+    "sourcePath": "src/web/common/options.h"
+  },
+  {
+    "name": "sse2.h",
+    "title": "sse2.h",
+    "file": "ascii-chat-sse2.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/sse2.h"
+  },
+  {
+    "name": "color.c",
     "title": "color.c",
     "file": "ascii-chat-sse2_color.c.html",
     "sourcePath": "lib/video/ascii/sve/color.c"
   },
   {
-    "name": "sse2_mono.c",
+    "name": "mono.c",
     "title": "mono.c",
     "file": "ascii-chat-sse2_mono.c.html",
     "sourcePath": "lib/video/ascii/sve/mono.c"
@@ -2598,28 +5778,76 @@
     "sourcePath": "lib/crypto/ssh/ssh_agent.c"
   },
   {
+    "name": "ssh_agent.h",
+    "title": "ssh_agent.h",
+    "file": "ascii-chat-ssh_agent.h.html",
+    "sourcePath": "include/ascii-chat/crypto/ssh/ssh_agent.h"
+  },
+  {
     "name": "ssh_keys.c",
     "title": "ssh_keys.c",
     "file": "ascii-chat-ssh_keys.c.html",
     "sourcePath": "lib/crypto/ssh/ssh_keys.c"
   },
   {
-    "name": "ssse3_color.c",
+    "name": "ssh_keys.h",
+    "title": "ssh_keys.h",
+    "file": "ascii-chat-ssh_keys.h.html",
+    "sourcePath": "include/ascii-chat/crypto/ssh/ssh_keys.h"
+  },
+  {
+    "name": "ssse3.h",
+    "title": "ssse3.h",
+    "file": "ascii-chat-ssse3.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/ssse3.h"
+  },
+  {
+    "name": "color.c",
     "title": "color.c",
     "file": "ascii-chat-ssse3_color.c.html",
     "sourcePath": "lib/video/ascii/sve/color.c"
   },
   {
-    "name": "ssse3_mono.c",
+    "name": "mono.c",
     "title": "mono.c",
     "file": "ascii-chat-ssse3_mono.c.html",
     "sourcePath": "lib/video/ascii/sve/mono.c"
+  },
+  {
+    "name": "stat.h",
+    "title": "stat.h",
+    "file": "ascii-chat-stat.h.html",
+    "sourcePath": "include/ascii-chat/platform/stat.h"
   },
   {
     "name": "state.c",
     "title": "state.c",
     "file": "ascii-chat-state.c.html",
     "sourcePath": "lib/network/consensus/state.c"
+  },
+  {
+    "name": "state.h",
+    "title": "state.h",
+    "file": "ascii-chat-state.h.html",
+    "sourcePath": "include/ascii-chat/network/consensus/state.h"
+  },
+  {
+    "name": "static_cond_t",
+    "title": "static_cond_t",
+    "file": "ascii-chat-static_cond_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "static_mutex_t",
+    "title": "static_mutex_t",
+    "file": "ascii-chat-static_mutex_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "static_rwlock_t",
+    "title": "static_rwlock_t",
+    "file": "ascii-chat-static_rwlock_t.html",
+    "sourcePath": null
   },
   {
     "name": "stats.c",
@@ -2640,6 +5868,12 @@
     "sourcePath": "lib/ui/status.c"
   },
   {
+    "name": "status.h",
+    "title": "status.h",
+    "file": "ascii-chat-status.h.html",
+    "sourcePath": "include/ascii-chat/ui/status.h"
+  },
+  {
     "name": "stdbool.h",
     "title": "stdbool.h",
     "file": "ascii-chat-stdbool.h.html",
@@ -2649,13 +5883,13 @@
     "name": "stdin_buffer_reader_t",
     "title": "stdin_buffer_reader_t",
     "file": "ascii-chat-stdin_buffer_reader_t.html",
-    "sourcePath": "lib/media/ffmpeg_decoder.c"
+    "sourcePath": null
   },
   {
     "name": "stdin_buffer_t",
     "title": "stdin_buffer_t",
     "file": "ascii-chat-stdin_buffer_t.html",
-    "sourcePath": "lib/media/ffmpeg_decoder.c"
+    "sourcePath": null
   },
   {
     "name": "stream.c",
@@ -2670,13 +5904,31 @@
     "sourcePath": "src/server/stream.h"
   },
   {
+    "name": "stream_header_t",
+    "title": "stream_header_t",
+    "file": "ascii-chat-stream_header_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "string_constants.h",
+    "title": "string_constants.h",
+    "file": "ascii-chat-string_constants.h.html",
+    "sourcePath": "include/ascii-chat/common/string_constants.h"
+  },
+  {
+    "name": "string_constants",
+    "title": "string_constants",
+    "file": "ascii-chat-string_constants.html",
+    "sourcePath": "include/ascii-chat/common/string_constants.h"
+  },
+  {
     "name": "string_field_ctx_t",
     "title": "string_field_ctx_t",
     "file": "ascii-chat-string_field_ctx_t.html",
-    "sourcePath": "lib/options/rcu.c"
+    "sourcePath": null
   },
   {
-    "name": "strings_main.c",
+    "name": "main.c",
     "title": "main.c",
     "file": "ascii-chat-strings_main.c.html",
     "sourcePath": "src/strings/main.c"
@@ -2688,13 +5940,31 @@
     "sourcePath": "lib/network/webrtc/stun.c"
   },
   {
-    "name": "sve_color.c",
+    "name": "stun.h",
+    "title": "stun.h",
+    "file": "ascii-chat-stun.h.html",
+    "sourcePath": "include/ascii-chat/network/webrtc/stun.h"
+  },
+  {
+    "name": "stun",
+    "title": "stun",
+    "file": "ascii-chat-stun.html",
+    "sourcePath": "lib/network/webrtc/stun.c"
+  },
+  {
+    "name": "sve.h",
+    "title": "sve.h",
+    "file": "ascii-chat-sve.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/sve.h"
+  },
+  {
+    "name": "color.c",
     "title": "color.c",
     "file": "ascii-chat-sve_color.c.html",
     "sourcePath": "lib/video/ascii/sve/color.c"
   },
   {
-    "name": "sve_mono.c",
+    "name": "mono.c",
     "title": "mono.c",
     "file": "ascii-chat-sve_mono.c.html",
     "sourcePath": "lib/video/ascii/sve/mono.c"
@@ -2703,7 +5973,7 @@
     "name": "symbol_entry_t",
     "title": "symbol_entry_t",
     "file": "ascii-chat-symbol_entry_t.html",
-    "sourcePath": "lib/platform/windows/symbols.c"
+    "sourcePath": null
   },
   {
     "name": "symbols.c",
@@ -2712,16 +5982,28 @@
     "sourcePath": "lib/platform/windows/symbols.c"
   },
   {
+    "name": "symbols.h",
+    "title": "symbols.h",
+    "file": "ascii-chat-symbols.h.html",
+    "sourcePath": "include/ascii-chat/platform/symbols.h"
+  },
+  {
     "name": "sync.c",
     "title": "sync.c",
     "file": "ascii-chat-sync.c.html",
     "sourcePath": "lib/debug/sync.c"
   },
   {
+    "name": "sync.h",
+    "title": "sync.h",
+    "file": "ascii-chat-sync.h.html",
+    "sourcePath": "include/ascii-chat/debug/sync.h"
+  },
+  {
     "name": "sync_buffer_t",
     "title": "sync_buffer_t",
     "file": "ascii-chat-sync_buffer_t.html",
-    "sourcePath": "lib/debug/sync.c"
+    "sourcePath": null
   },
   {
     "name": "system.c",
@@ -2730,7 +6012,43 @@
     "sourcePath": "lib/platform/windows/system.c"
   },
   {
-    "name": "tcp_transport.c",
+    "name": "system.h",
+    "title": "system.h",
+    "file": "ascii-chat-system.h.html",
+    "sourcePath": "include/ascii-chat/platform/system.h"
+  },
+  {
+    "name": "tcp_client",
+    "title": "tcp_client",
+    "file": "ascii-chat-tcp_client.html",
+    "sourcePath": null
+  },
+  {
+    "name": "tcp_client_context_t",
+    "title": "tcp_client_context_t",
+    "file": "ascii-chat-tcp_client_context_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "tcp_client_entry",
+    "title": "tcp_client_entry",
+    "file": "ascii-chat-tcp_client_entry.html",
+    "sourcePath": null
+  },
+  {
+    "name": "tcp_server",
+    "title": "tcp_server",
+    "file": "ascii-chat-tcp_server.html",
+    "sourcePath": null
+  },
+  {
+    "name": "tcp_server_config_t",
+    "title": "tcp_server_config_t",
+    "file": "ascii-chat-tcp_server_config_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "transport.c",
     "title": "transport.c",
     "file": "ascii-chat-tcp_transport.c.html",
     "sourcePath": "lib/network/websocket/transport.c"
@@ -2742,16 +6060,52 @@
     "sourcePath": null
   },
   {
+    "name": "term_renderer_config_t",
+    "title": "term_renderer_config_t",
+    "file": "ascii-chat-term_renderer_config_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "terminal.h",
+    "title": "terminal.h",
+    "file": "ascii-chat-terminal.h.html",
+    "sourcePath": "include/ascii-chat/platform/terminal.h"
+  },
+  {
+    "name": "terminal_capabilities_packet_t",
+    "title": "terminal_capabilities_packet_t",
+    "file": "ascii-chat-terminal_capabilities_packet_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "terminal_capabilities_t",
+    "title": "terminal_capabilities_t",
+    "file": "ascii-chat-terminal_capabilities_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "terminal_capability_t",
+    "title": "terminal_capability_t",
+    "file": "ascii-chat-terminal_capability_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "terminal_fd_reader_s",
     "title": "terminal_fd_reader_s",
     "file": "ascii-chat-terminal_fd_reader_s.html",
-    "sourcePath": "lib/terminal/fd/reader.c"
+    "sourcePath": null
   },
   {
     "name": "terminal_fd_writer_s",
     "title": "terminal_fd_writer_s",
     "file": "ascii-chat-terminal_fd_writer_s.html",
-    "sourcePath": "lib/terminal/fd/writer.c"
+    "sourcePath": null
+  },
+  {
+    "name": "terminal_format_params_t",
+    "title": "terminal_format_params_t",
+    "file": "ascii-chat-terminal_format_params_t.html",
+    "sourcePath": null
   },
   {
     "name": "terminal_renderer_s",
@@ -2766,13 +6120,49 @@
     "sourcePath": "lib/ui/terminal_screen.c"
   },
   {
-    "name": "tests_common.c",
+    "name": "terminal_screen.h",
+    "title": "terminal_screen.h",
+    "file": "ascii-chat-terminal_screen.h.html",
+    "sourcePath": "include/ascii-chat/ui/terminal_screen.h"
+  },
+  {
+    "name": "terminal_screen_config_t",
+    "title": "terminal_screen_config_t",
+    "file": "ascii-chat-terminal_screen_config_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "terminal_size_t",
+    "title": "terminal_size_t",
+    "file": "ascii-chat-terminal_size_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "test_env.h",
+    "title": "test_env.h",
+    "file": "ascii-chat-test_env.h.html",
+    "sourcePath": "include/ascii-chat/tests/test_env.h"
+  },
+  {
+    "name": "testing",
+    "title": "testing",
+    "file": "ascii-chat-testing.html",
+    "sourcePath": null
+  },
+  {
+    "name": "common.c",
     "title": "common.c",
     "file": "ascii-chat-tests_common.c.html",
     "sourcePath": "lib/video/ascii/neon/common.c"
   },
   {
-    "name": "tests_logging.c",
+    "name": "common.h",
+    "title": "common.h",
+    "file": "ascii-chat-tests_common.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/neon/common.h"
+  },
+  {
+    "name": "logging.c",
     "title": "logging.c",
     "file": "ascii-chat-tests_logging.c.html",
     "sourcePath": "lib/tests/logging.c"
@@ -2787,13 +6177,13 @@
     "name": "thread_entry",
     "title": "thread_entry",
     "file": "ascii-chat-thread_entry.html",
-    "sourcePath": "src/tooling/panic/report.c"
+    "sourcePath": null
   },
   {
     "name": "thread_filter_list",
     "title": "thread_filter_list",
     "file": "ascii-chat-thread_filter_list.html",
-    "sourcePath": "src/tooling/panic/report.c"
+    "sourcePath": null
   },
   {
     "name": "thread_lock_stack_t",
@@ -2808,6 +6198,30 @@
     "sourcePath": "lib/thread_pool.c"
   },
   {
+    "name": "thread_pool.h",
+    "title": "thread_pool.h",
+    "file": "ascii-chat-thread_pool.h.html",
+    "sourcePath": "include/ascii-chat/thread_pool.h"
+  },
+  {
+    "name": "thread_pool",
+    "title": "thread_pool",
+    "file": "ascii-chat-thread_pool.html",
+    "sourcePath": "lib/thread_pool.c"
+  },
+  {
+    "name": "thread_pool_entry",
+    "title": "thread_pool_entry",
+    "file": "ascii-chat-thread_pool_entry.html",
+    "sourcePath": null
+  },
+  {
+    "name": "thread_pool_work_entry",
+    "title": "thread_pool_work_entry",
+    "file": "ascii-chat-thread_pool_work_entry.html",
+    "sourcePath": null
+  },
+  {
     "name": "thread_registry_entry_t",
     "title": "thread_registry_entry_t",
     "file": "ascii-chat-thread_registry_entry_t.html",
@@ -2818,6 +6232,18 @@
     "title": "threading.c",
     "file": "ascii-chat-threading.c.html",
     "sourcePath": "lib/platform/wasm/threading.c"
+  },
+  {
+    "name": "time.h",
+    "title": "time.h",
+    "file": "ascii-chat-time.h.html",
+    "sourcePath": "include/ascii-chat/util/time.h"
+  },
+  {
+    "name": "timer_record",
+    "title": "timer_record",
+    "file": "ascii-chat-timer_record.html",
+    "sourcePath": null
   },
   {
     "name": "todo",
@@ -2832,10 +6258,52 @@
     "sourcePath": "lib/network/consensus/topology.c"
   },
   {
+    "name": "topology.h",
+    "title": "topology.h",
+    "file": "ascii-chat-topology.h.html",
+    "sourcePath": "include/ascii-chat/network/consensus/topology.h"
+  },
+  {
+    "name": "transport.h",
+    "title": "transport.h",
+    "file": "ascii-chat-transport.h.html",
+    "sourcePath": "include/ascii-chat/network/acip/transport.h"
+  },
+  {
+    "name": "tty_info_t",
+    "title": "tty_info_t",
+    "file": "ascii-chat-tty_info_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "turn.h",
+    "title": "turn.h",
+    "file": "ascii-chat-turn.h.html",
+    "sourcePath": "include/ascii-chat/network/webrtc/turn.h"
+  },
+  {
+    "name": "turn",
+    "title": "turn",
+    "file": "ascii-chat-turn.html",
+    "sourcePath": "include/ascii-chat/network/webrtc/turn.h"
+  },
+  {
     "name": "turn_credentials.c",
     "title": "turn_credentials.c",
     "file": "ascii-chat-turn_credentials.c.html",
     "sourcePath": "lib/network/webrtc/turn_credentials.c"
+  },
+  {
+    "name": "turn_credentials.h",
+    "title": "turn_credentials.h",
+    "file": "ascii-chat-turn_credentials.h.html",
+    "sourcePath": "include/ascii-chat/network/webrtc/turn_credentials.h"
+  },
+  {
+    "name": "turn_credentials_t",
+    "title": "turn_credentials_t",
+    "file": "ascii-chat-turn_credentials_t.html",
+    "sourcePath": null
   },
   {
     "name": "type_check_context",
@@ -2844,10 +6312,46 @@
     "sourcePath": null
   },
   {
-    "name": "ui_mdns.c",
+    "name": "types.h",
+    "title": "types.h",
+    "file": "ascii-chat-types.h.html",
+    "sourcePath": "include/ascii-chat/log/types.h"
+  },
+  {
+    "name": "mdns.c",
     "title": "mdns.c",
     "file": "ascii-chat-ui_mdns.c.html",
     "sourcePath": "lib/ui/mdns.c"
+  },
+  {
+    "name": "mdns.h",
+    "title": "mdns.h",
+    "file": "ascii-chat-ui_mdns.h.html",
+    "sourcePath": "include/ascii-chat/ui/mdns.h"
+  },
+  {
+    "name": "ui_mdns_config_t",
+    "title": "ui_mdns_config_t",
+    "file": "ascii-chat-ui_mdns_config_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "ui_mdns_server_t",
+    "title": "ui_mdns_server_t",
+    "file": "ascii-chat-ui_mdns_server_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "ui_status_t",
+    "title": "ui_status_t",
+    "file": "ascii-chat-ui_status_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "update_check_result_t",
+    "title": "update_check_result_t",
+    "file": "ascii-chat-update_check_result_t.html",
+    "sourcePath": null
   },
   {
     "name": "update_checker.c",
@@ -2856,10 +6360,22 @@
     "sourcePath": "lib/network/update_checker.c"
   },
   {
+    "name": "update_checker.h",
+    "title": "update_checker.h",
+    "file": "ascii-chat-update_checker.h.html",
+    "sourcePath": "include/ascii-chat/network/update_checker.h"
+  },
+  {
     "name": "upnp.c",
     "title": "upnp.c",
     "file": "ascii-chat-upnp.c.html",
     "sourcePath": "lib/network/nat/upnp.c"
+  },
+  {
+    "name": "upnp.h",
+    "title": "upnp.h",
+    "file": "ascii-chat-upnp.h.html",
+    "sourcePath": "include/ascii-chat/network/nat/upnp.h"
   },
   {
     "name": "url.c",
@@ -2868,10 +6384,34 @@
     "sourcePath": "lib/util/url.c"
   },
   {
+    "name": "url.h",
+    "title": "url.h",
+    "file": "ascii-chat-url.h.html",
+    "sourcePath": "include/ascii-chat/util/url.h"
+  },
+  {
+    "name": "url_parts_t",
+    "title": "url_parts_t",
+    "file": "ascii-chat-url_parts_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "usage.c",
     "title": "usage.c",
     "file": "ascii-chat-usage.c.html",
     "sourcePath": "lib/options/manpage/content/usage.c"
+  },
+  {
+    "name": "usage.h",
+    "title": "usage.h",
+    "file": "ascii-chat-usage.h.html",
+    "sourcePath": "include/ascii-chat/options/manpage/content/usage.h"
+  },
+  {
+    "name": "usage_descriptor_t",
+    "title": "usage_descriptor_t",
+    "file": "ascii-chat-usage_descriptor_t.html",
+    "sourcePath": null
   },
   {
     "name": "utf8.c",
@@ -2880,45 +6420,147 @@
     "sourcePath": "lib/util/utf8.c"
   },
   {
+    "name": "utf8.h",
+    "title": "utf8.h",
+    "file": "ascii-chat-utf8.h.html",
+    "sourcePath": "include/ascii-chat/util/utf8.h"
+  },
+  {
+    "name": "utf8_capabilities_t",
+    "title": "utf8_capabilities_t",
+    "file": "ascii-chat-utf8_capabilities_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "utf8_char_info_t",
+    "title": "utf8_char_info_t",
+    "file": "ascii-chat-utf8_char_info_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "utf8_char_t",
+    "title": "utf8_char_t",
+    "file": "ascii-chat-utf8_char_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "utf8_palette_cache",
+    "title": "utf8_palette_cache",
+    "file": "ascii-chat-utf8_palette_cache.html",
+    "sourcePath": null
+  },
+  {
+    "name": "utf8_palette_t",
+    "title": "utf8_palette_t",
+    "file": "ascii-chat-utf8_palette_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "uthash.h",
+    "title": "uthash.h",
+    "file": "ascii-chat-uthash.h.html",
+    "sourcePath": "include/ascii-chat/uthash.h"
+  },
+  {
     "name": "util.c",
     "title": "util.c",
     "file": "ascii-chat-util.c.html",
     "sourcePath": "lib/platform/wasm/stubs/util.c"
   },
   {
-    "name": "util_format.c",
+    "name": "util.h",
+    "title": "util.h",
+    "file": "ascii-chat-util.h.html",
+    "sourcePath": "include/ascii-chat/util/util.h"
+  },
+  {
+    "name": "util",
+    "title": "util",
+    "file": "ascii-chat-util.html",
+    "sourcePath": "lib/platform/wasm/stubs/util.c"
+  },
+  {
+    "name": "atomic.h",
+    "title": "atomic.h",
+    "file": "ascii-chat-util_atomic.h.html",
+    "sourcePath": "include/ascii-chat/util/atomic.h"
+  },
+  {
+    "name": "format.c",
     "title": "format.c",
     "file": "ascii-chat-util_format.c.html",
     "sourcePath": "lib/util/format.c"
   },
   {
-    "name": "util_image.c",
+    "name": "format.h",
+    "title": "format.h",
+    "file": "ascii-chat-util_format.h.html",
+    "sourcePath": "include/ascii-chat/util/format.h"
+  },
+  {
+    "name": "image.c",
     "title": "image.c",
     "file": "ascii-chat-util_image.c.html",
     "sourcePath": "lib/video/rgba/image.c"
   },
   {
-    "name": "util_parsing.c",
+    "name": "image.h",
+    "title": "image.h",
+    "file": "ascii-chat-util_image.h.html",
+    "sourcePath": "include/ascii-chat/video/rgba/image.h"
+  },
+  {
+    "name": "parsing.c",
     "title": "parsing.c",
     "file": "ascii-chat-util_parsing.c.html",
     "sourcePath": "lib/util/parsing.c"
   },
   {
-    "name": "util_string.c",
+    "name": "parsing.h",
+    "title": "parsing.h",
+    "file": "ascii-chat-util_parsing.h.html",
+    "sourcePath": "include/ascii-chat/util/parsing.h"
+  },
+  {
+    "name": "string.c",
     "title": "string.c",
     "file": "ascii-chat-util_string.c.html",
     "sourcePath": "lib/util/string.c"
   },
   {
-    "name": "util_time.c",
+    "name": "string.h",
+    "title": "string.h",
+    "file": "ascii-chat-util_string.h.html",
+    "sourcePath": "include/ascii-chat/util/string.h"
+  },
+  {
+    "name": "thread.h",
+    "title": "thread.h",
+    "file": "ascii-chat-util_thread.h.html",
+    "sourcePath": "include/ascii-chat/util/thread.h"
+  },
+  {
+    "name": "time.c",
     "title": "time.c",
     "file": "ascii-chat-util_time.c.html",
     "sourcePath": "lib/util/time.c"
   },
   {
+    "name": "validation.h",
+    "title": "validation.h",
+    "file": "ascii-chat-util_validation.h.html",
+    "sourcePath": "include/ascii-chat/util/validation.h"
+  },
+  {
     "name": "validation.c",
     "title": "validation.c",
     "file": "ascii-chat-validation.c.html",
+    "sourcePath": "lib/options/parsing/validation.c"
+  },
+  {
+    "name": "validation",
+    "title": "validation",
+    "file": "ascii-chat-validation.html",
     "sourcePath": "lib/options/parsing/validation.c"
   },
   {
@@ -2928,10 +6570,22 @@
     "sourcePath": "lib/crypto/gpg/verification.c"
   },
   {
+    "name": "verification.h",
+    "title": "verification.h",
+    "file": "ascii-chat-verification.h.html",
+    "sourcePath": "include/ascii-chat/crypto/gpg/verification.h"
+  },
+  {
     "name": "version.c",
     "title": "version.c",
     "file": "ascii-chat-version.c.html",
     "sourcePath": "lib/version.c"
+  },
+  {
+    "name": "version.h",
+    "title": "version.h",
+    "file": "ascii-chat-version.h.html",
+    "sourcePath": null
   },
   {
     "name": "video.c",
@@ -2940,22 +6594,46 @@
     "sourcePath": "lib/platform/wasm/stubs/video.c"
   },
   {
-    "name": "video_ascii_common.c",
+    "name": "video",
+    "title": "video",
+    "file": "ascii-chat-video.html",
+    "sourcePath": "lib/platform/wasm/stubs/video.c"
+  },
+  {
+    "name": "common.c",
     "title": "common.c",
     "file": "ascii-chat-video_ascii_common.c.html",
     "sourcePath": "lib/video/ascii/neon/common.c"
   },
   {
-    "name": "video_ascii_frame_validator.c",
+    "name": "common.h",
+    "title": "common.h",
+    "file": "ascii-chat-video_ascii_common.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/neon/common.h"
+  },
+  {
+    "name": "frame_validator.c",
     "title": "frame_validator.c",
     "file": "ascii-chat-video_ascii_frame_validator.c.html",
     "sourcePath": "lib/video/ascii/frame_validator.c"
   },
   {
-    "name": "video_ascii_neon_common.c",
+    "name": "frame_validator.h",
+    "title": "frame_validator.h",
+    "file": "ascii-chat-video_ascii_frame_validator.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/frame_validator.h"
+  },
+  {
+    "name": "common.c",
     "title": "common.c",
     "file": "ascii-chat-video_ascii_neon_common.c.html",
     "sourcePath": "lib/video/ascii/neon/common.c"
+  },
+  {
+    "name": "common.h",
+    "title": "common.h",
+    "file": "ascii-chat-video_ascii_neon_common.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/neon/common.h"
   },
   {
     "name": "video_frame.c",
@@ -2964,16 +6642,58 @@
     "sourcePath": "lib/video/rgba/video_frame.c"
   },
   {
-    "name": "video_rgba_image.c",
+    "name": "video_frame.h",
+    "title": "video_frame.h",
+    "file": "ascii-chat-video_frame.h.html",
+    "sourcePath": "include/ascii-chat/video/rgba/video_frame.h"
+  },
+  {
+    "name": "video_frame",
+    "title": "video_frame",
+    "file": "ascii-chat-video_frame.html",
+    "sourcePath": "lib/video/rgba/video_frame.c"
+  },
+  {
+    "name": "video_frame_buffer_t",
+    "title": "video_frame_buffer_t",
+    "file": "ascii-chat-video_frame_buffer_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "video_frame_stats_t",
+    "title": "video_frame_stats_t",
+    "file": "ascii-chat-video_frame_stats_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "video_frame_t",
+    "title": "video_frame_t",
+    "file": "ascii-chat-video_frame_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "image.c",
     "title": "image.c",
     "file": "ascii-chat-video_rgba_image.c.html",
     "sourcePath": "lib/video/rgba/image.c"
   },
   {
-    "name": "video_webcam_webcam.c",
+    "name": "image.h",
+    "title": "image.h",
+    "file": "ascii-chat-video_rgba_image.h.html",
+    "sourcePath": "include/ascii-chat/video/rgba/image.h"
+  },
+  {
+    "name": "webcam.c",
     "title": "webcam.c",
     "file": "ascii-chat-video_webcam_webcam.c.html",
     "sourcePath": "lib/video/webcam/webcam.c"
+  },
+  {
+    "name": "wasm_console.h",
+    "title": "wasm_console.h",
+    "file": "ascii-chat-wasm_console.h.html",
+    "sourcePath": "include/ascii-chat/platform/wasm_console.h"
   },
   {
     "name": "wasm_log.h",
@@ -2982,13 +6702,13 @@
     "sourcePath": "src/web/common/wasm_log.h"
   },
   {
-    "name": "wasm_stubs_filesystem.c",
+    "name": "filesystem.c",
     "title": "filesystem.c",
     "file": "ascii-chat-wasm_stubs_filesystem.c.html",
     "sourcePath": "lib/platform/windows/filesystem.c"
   },
   {
-    "name": "wasm_system.c",
+    "name": "system.c",
     "title": "system.c",
     "file": "ascii-chat-wasm_system.c.html",
     "sourcePath": "lib/platform/windows/system.c"
@@ -2997,19 +6717,19 @@
     "name": "wav_data_header_t",
     "title": "wav_data_header_t",
     "file": "ascii-chat-wav_data_header_t.html",
-    "sourcePath": "lib/audio/wav_writer.c"
+    "sourcePath": null
   },
   {
     "name": "wav_fmt_chunk_t",
     "title": "wav_fmt_chunk_t",
     "file": "ascii-chat-wav_fmt_chunk_t.html",
-    "sourcePath": "lib/audio/wav_writer.c"
+    "sourcePath": null
   },
   {
     "name": "wav_riff_header_t",
     "title": "wav_riff_header_t",
     "file": "ascii-chat-wav_riff_header_t.html",
-    "sourcePath": "lib/audio/wav_writer.c"
+    "sourcePath": null
   },
   {
     "name": "wav_writer.c",
@@ -3018,9 +6738,39 @@
     "sourcePath": "lib/audio/wav_writer.c"
   },
   {
+    "name": "wav_writer.h",
+    "title": "wav_writer.h",
+    "file": "ascii-chat-wav_writer.h.html",
+    "sourcePath": "include/ascii-chat/audio/wav_writer.h"
+  },
+  {
+    "name": "wav_writer_t",
+    "title": "wav_writer_t",
+    "file": "ascii-chat-wav_writer_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "webcam.h",
+    "title": "webcam.h",
+    "file": "ascii-chat-webcam.h.html",
+    "sourcePath": "include/ascii-chat/video/webcam/webcam.h"
+  },
+  {
+    "name": "webcam",
+    "title": "webcam",
+    "file": "ascii-chat-webcam.html",
+    "sourcePath": "lib/video/webcam/webcam.c"
+  },
+  {
     "name": "webcam_avfoundation.m",
     "title": "webcam_avfoundation.m",
     "file": "ascii-chat-webcam_avfoundation.m.html",
+    "sourcePath": null
+  },
+  {
+    "name": "webcam_device_info_t",
+    "title": "webcam_device_info_t",
+    "file": "ascii-chat-webcam_device_info_t.html",
     "sourcePath": null
   },
   {
@@ -3036,9 +6786,27 @@
     "sourcePath": "lib/video/webcam/linux/webcam_v4l2.c"
   },
   {
+    "name": "webrtc",
+    "title": "webrtc",
+    "file": "ascii-chat-webrtc.html",
+    "sourcePath": "src/discovery/webrtc.c"
+  },
+  {
+    "name": "webrtc_config_t",
+    "title": "webrtc_config_t",
+    "file": "ascii-chat-webrtc_config_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "webrtc_data_channel",
     "title": "webrtc_data_channel",
     "file": "ascii-chat-webrtc_data_channel.html",
+    "sourcePath": null
+  },
+  {
+    "name": "webrtc_datachannel_callbacks_t",
+    "title": "webrtc_datachannel_callbacks_t",
+    "file": "ascii-chat-webrtc_datachannel_callbacks_t.html",
     "sourcePath": null
   },
   {
@@ -3051,7 +6819,13 @@
     "name": "webrtc_peer_manager",
     "title": "webrtc_peer_manager",
     "file": "ascii-chat-webrtc_peer_manager.html",
-    "sourcePath": "lib/network/webrtc/peer_manager.c"
+    "sourcePath": null
+  },
+  {
+    "name": "webrtc_peer_manager_config_t",
+    "title": "webrtc_peer_manager_config_t",
+    "file": "ascii-chat-webrtc_peer_manager_config_t.html",
+    "sourcePath": null
   },
   {
     "name": "webrtc_recv_msg_t",
@@ -3060,7 +6834,13 @@
     "sourcePath": null
   },
   {
-    "name": "webrtc_transport.c",
+    "name": "webrtc_signaling_callbacks_t",
+    "title": "webrtc_signaling_callbacks_t",
+    "file": "ascii-chat-webrtc_signaling_callbacks_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "transport.c",
     "title": "transport.c",
     "file": "ascii-chat-webrtc_transport.c.html",
     "sourcePath": "lib/network/websocket/transport.c"
@@ -3078,16 +6858,82 @@
     "sourcePath": "lib/log/websocket.c"
   },
   {
+    "name": "websocket.h",
+    "title": "websocket.h",
+    "file": "ascii-chat-websocket.h.html",
+    "sourcePath": "include/ascii-chat/log/websocket.h"
+  },
+  {
+    "name": "websocket_callback_stats_t",
+    "title": "websocket_callback_stats_t",
+    "file": "ascii-chat-websocket_callback_stats_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "websocket_callback_timing_t",
+    "title": "websocket_callback_timing_t",
+    "file": "ascii-chat-websocket_callback_timing_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "websocket_client",
+    "title": "websocket_client",
+    "file": "ascii-chat-websocket_client.html",
+    "sourcePath": null
+  },
+  {
+    "name": "websocket_client_context_t",
+    "title": "websocket_client_context_t",
+    "file": "ascii-chat-websocket_client_context_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "websocket_connection_data_t",
     "title": "websocket_connection_data_t",
     "file": "ascii-chat-websocket_connection_data_t.html",
     "sourcePath": null
   },
   {
-    "name": "websocket_transport.c",
+    "name": "websocket_msg_t",
+    "title": "websocket_msg_t",
+    "file": "ascii-chat-websocket_msg_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "websocket_server",
+    "title": "websocket_server",
+    "file": "ascii-chat-websocket_server.html",
+    "sourcePath": null
+  },
+  {
+    "name": "websocket_server_config_t",
+    "title": "websocket_server_config_t",
+    "file": "ascii-chat-websocket_server_config_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "transport.c",
     "title": "transport.c",
     "file": "ascii-chat-websocket_transport.c.html",
     "sourcePath": "lib/network/websocket/transport.c"
+  },
+  {
+    "name": "websocket_transport_data_t",
+    "title": "websocket_transport_data_t",
+    "file": "ascii-chat-websocket_transport_data_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "windows_compat.h",
+    "title": "windows_compat.h",
+    "file": "ascii-chat-windows_compat.h.html",
+    "sourcePath": "include/ascii-chat/platform/windows_compat.h"
+  },
+  {
+    "name": "windows_errno.h",
+    "title": "windows_errno.h",
+    "file": "ascii-chat-windows_errno.h.html",
+    "sourcePath": "include/ascii-chat/platform/windows_errno.h"
   },
   {
     "name": "word_cache_entry_t",
@@ -3102,21 +6948,39 @@
     "sourcePath": "lib/terminal/fd/writer.c"
   },
   {
+    "name": "writer.h",
+    "title": "writer.h",
+    "file": "ascii-chat-writer.h.html",
+    "sourcePath": "include/ascii-chat/terminal/fd/writer.h"
+  },
+  {
     "name": "yt_dlp.c",
     "title": "yt_dlp.c",
     "file": "ascii-chat-yt_dlp.c.html",
     "sourcePath": "lib/media/yt_dlp.c"
   },
   {
+    "name": "yt_dlp.h",
+    "title": "yt_dlp.h",
+    "file": "ascii-chat-yt_dlp.h.html",
+    "sourcePath": "include/ascii-chat/media/yt_dlp.h"
+  },
+  {
     "name": "yt_dlp_cache_entry_t",
     "title": "yt_dlp_cache_entry_t",
     "file": "ascii-chat-yt_dlp_cache_entry_t.html",
-    "sourcePath": "lib/media/yt_dlp.c"
+    "sourcePath": null
   },
   {
     "name": "zsh.c",
     "title": "zsh.c",
     "file": "ascii-chat-zsh.c.html",
     "sourcePath": "lib/options/completions/zsh.c"
+  },
+  {
+    "name": "zsh.h",
+    "title": "zsh.h",
+    "file": "ascii-chat-zsh.h.html",
+    "sourcePath": "include/ascii-chat/options/completions/zsh.h"
   }
 ]

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>openpgp_public_key_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">openpgp_public_key_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">openpgp_public_key_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">openpgp_public_key_t - OpenPGP public key packet data.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/crypto/gpg/openpgp.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint8_t</b> <b>version</b>
+  <br/>
+  Packet version (should be 4). <b>uint32_t</b> <b>created</b>
+  <br/>
+  Creation timestamp (Unix epoch). <b>uint8_t</b> <b>algorithm</b>
+  <br/>
+  Public key algorithm (22 = EdDSA). <b>uint8_t</b> <b>pubkey</b> [32]
+  <br/>
+  Ed25519 public key (32 bytes). <b>uint64_t</b> <b>keyid</b>
+  <br/>
+  OpenPGP Key ID (last 8 bytes of fingerprint).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">OpenPGP public key packet data.</p>
+<p class="Pp">Represents the parsed data from a Public Key Packet (tag 6),
+    containing algorithm, creation time, and key material.</p>
+<p class="Pp">Definition at line <b>91</b> of file <b>openpgp.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> openpgp_public_key_t::algorithm</h2>
+<p class="Pp">Public key algorithm (22 = EdDSA).</p>
+<p class="Pp">Definition at line <b>94</b> of file <b>openpgp.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> openpgp_public_key_t::created</h2>
+<p class="Pp">Creation timestamp (Unix epoch).</p>
+<p class="Pp">Definition at line <b>93</b> of file <b>openpgp.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> openpgp_public_key_t::keyid</h2>
+<p class="Pp">OpenPGP Key ID (last 8 bytes of fingerprint).</p>
+<p class="Pp">Definition at line <b>96</b> of file <b>openpgp.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> openpgp_public_key_t::pubkey[32]</h2>
+<p class="Pp">Ed25519 public key (32 bytes).</p>
+<p class="Pp">Definition at line <b>95</b> of file <b>openpgp.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> openpgp_public_key_t::version</h2>
+<p class="Pp">Packet version (should be 4).</p>
+<p class="Pp">Definition at line <b>92</b> of file <b>openpgp.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

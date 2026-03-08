@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>log_template_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">log_template_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">log_template_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">log_template_t - Compiled log format ready for use in
+    <b>log_template_apply()</b>.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/log/format.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>log_format_spec_t</b> * <b>specs</b>
+  <br/>
+  size_t <b>spec_count</b>
+  <br/>
+  char * <b>original</b>
+  <br/>
+  <b>bool</b> <b>console_only</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Compiled log format ready for use in
+  <b>log_template_apply()</b>.</p>
+<p class="Pp">Definition at line <b>66</b> of file <b>log/format.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> log_template_t::console_only</h2>
+<p class="Pp">Definition at line <b>70</b> of file <b>log/format.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char*_log_template_t::original"><a class="permalink" href="#char*_log_template_t::original">char*
+  log_template_t::original</a></h2>
+<p class="Pp">Definition at line <b>69</b> of file <b>log/format.h</b>.</p>
+<p class="Pp">Referenced by <b>log_template_free()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_log_template_t::spec_count"><a class="permalink" href="#size_t_log_template_t::spec_count">size_t
+  log_template_t::spec_count</a></h2>
+<p class="Pp">Definition at line <b>68</b> of file <b>log/format.h</b>.</p>
+<p class="Pp">Referenced by <b>log_template_apply()</b>, and
+    <b>log_template_free()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>log_format_spec_t</b>* log_template_t::specs</h2>
+<p class="Pp">Definition at line <b>67</b> of file <b>log/format.h</b>.</p>
+<p class="Pp">Referenced by <b>log_template_apply()</b>, and
+    <b>log_template_free()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

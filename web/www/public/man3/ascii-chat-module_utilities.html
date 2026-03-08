@@ -1,0 +1,2312 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>module_utilities(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">module_utilities(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">module_utilities(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">module_utilities - Module_utilities</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+<br/>
+<p class="Pp">file <b>time.c</b>
+  <br/>
+  &#x23F1;&#xFE0F; High-precision timing utilities implementation file
+    <b>time.h</b>
+  <br/>
+  &#x23F1;&#xFE0F; High-precision timing utilities using sokol_time.h and uthash
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>timer_record</b>
+  <br/>
+  Individual timer record for a named timing operation. struct
+    <b>adaptive_sleep_config_t</b>
+  <br/>
+  Configuration for adaptive sleep behavior. struct
+    <b>adaptive_sleep_state_t</b>
+  <br/>
+  Runtime state for adaptive sleep.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>TIME_ATOMIC_UINT64</b> <b>atomic_t</b>
+  <br/>
+  #define <b>TIME_ATOMIC_UINT64_INIT</b>(val)
+  <br/>
+  #define <b>NS_PER_US</b> 1000.0
+  <br/>
+  #define <b>NS_PER_MS</b> (1000.0 * <b>NS_PER_US</b>)
+  <br/>
+  #define <b>NS_PER_SEC</b> (1000.0 * <b>NS_PER_MS</b>)
+  <br/>
+  #define <b>NS_PER_MIN</b> (60.0 * <b>NS_PER_SEC</b>)
+  <br/>
+  #define <b>NS_PER_HOUR</b> (60.0 * <b>NS_PER_MIN</b>)
+  <br/>
+  #define <b>NS_PER_DAY</b> (24.0 * <b>NS_PER_HOUR</b>)
+  <br/>
+  #define <b>NS_PER_YEAR</b> (365.25 * <b>NS_PER_DAY</b>)
+  <br/>
+  #define <b>NS_PER_US_INT</b> 1000ULL
+  <br/>
+  #define <b>NS_PER_MS_INT</b> (1000ULL * <b>NS_PER_US_INT</b>)
+  <br/>
+  #define <b>NS_PER_SEC_INT</b> (1000ULL * <b>NS_PER_MS_INT</b>)
+  <br/>
+  #define <b>US_PER_MS_INT</b> 1000ULL
+  <br/>
+  #define <b>US_PER_SEC_INT</b> 1000000ULL
+  <br/>
+  #define <b>MS_PER_SEC_INT</b> 1000ULL
+  <br/>
+  #define <b>SEC_PER_MIN</b> 60ULL
+  <br/>
+  #define <b>SEC_PER_HOUR</b> (<b>SEC_PER_MIN</b> * <b>SEC_PER_MIN</b>)
+  <br/>
+  #define <b>SEC_PER_DAY</b> (24ULL * <b>SEC_PER_HOUR</b>)
+  <br/>
+  #define <b>NS_PER_MIN_INT</b> (<b>SEC_PER_MIN</b> * <b>NS_PER_SEC_INT</b>)
+  <br/>
+  #define <b>NS_PER_HOUR_INT</b> (<b>SEC_PER_HOUR</b> * <b>NS_PER_SEC_INT</b>)
+  <br/>
+  #define <b>NS_PER_DAY_INT</b> (<b>SEC_PER_DAY</b> * <b>NS_PER_SEC_INT</b>)
+  <br/>
+  #define <b>START_TIMER</b>(name_fmt, ...)
+  <br/>
+  Start a timer with formatted name. #define <b>START_TIMER_GLOBAL</b>(name_fmt,
+    ...)
+  <br/>
+  Start a timer without thread ID (for cross-thread timers). #define
+    <b>STOP_TIMER_GLOBAL</b>(name_fmt, ...)
+  <br/>
+  Stop a cross-thread timer and return elapsed time. #define
+    <b>STOP_TIMER</b>(name_fmt, ...)
+  <br/>
+  Stop a timer with formatted name and return elapsed time. #define
+    <b>STOP_TIMER_AND_LOG</b>(log_level, threshold_ns, timer_name, msg_fmt, ...)
+  <br/>
+  Stop a timer and log the result with a custom message. #define
+    <b>STOP_TIMER_AND_LOG_EVERY</b>(log_level, interval_ns, threshold_ns,
+    timer_name, msg_fmt, ...)
+  <br/>
+  Stop a timer and log the result with rate limiting.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>timer_record</b> <b>timer_record_t</b>
+  <br/>
+  Individual timer record for a named timing operation.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>uint64_t</b> <b>time_get_ns</b> (void)
+  <br/>
+  Get current monotonic time in nanoseconds. <b>uint64_t</b>
+    <b>time_get_realtime_ns</b> (void)
+  <br/>
+  Get current wall-clock (real) time in nanoseconds. void <b>time_sleep_ns</b>
+    (<b>uint64_t</b> ns)
+  <br/>
+  Sleep for specified nanoseconds. <b>uint64_t</b> <b>time_elapsed_ns</b>
+    (<b>uint64_t</b> start_ns, <b>uint64_t</b> end_ns)
+  <br/>
+  Calculate elapsed time with wraparound safety. <b>bool</b>
+    <b>timer_system_init</b> (void)
+  <br/>
+  Initialize the timing system. void <b>timer_system_destroy</b> (void)
+  <br/>
+  Cleanup the timing system. <b>bool</b> <b>timer_start</b> (const char *name)
+  <br/>
+  Start a named timer. double <b>timer_stop</b> (const char *name)
+  <br/>
+  Stop a named timer and return elapsed time. <b>bool</b>
+    <b>timer_is_initialized</b> (void)
+  <br/>
+  Check if timing system is initialized. int <b>time_pretty</b> (<b>uint64_t</b>
+    nanoseconds, int decimals, char *buffer, size_t <b>buffer_size</b>)
+  <br/>
+  Format nanoseconds as pretty duration with spaces and configurable precision.
+    int <b>time_pretty_now</b> (int decimals, char *buffer, size_t
+    <b>buffer_size</b>)
+  <br/>
+  Format current monotonic time as pretty duration. int
+    <b>time_human_readable</b> (int64_t nanoseconds, char *buffer, size_t
+    <b>buffer_size</b>)
+  <br/>
+  Format nanoseconds as human-readable relative duration (moment.js style). int
+    <b>time_human_readable_unsigned</b> (<b>uint64_t</b> nanoseconds, char
+    *buffer, size_t <b>buffer_size</b>)
+  <br/>
+  Format elapsed time as human-readable relative duration (unsigned version).
+    int <b>time_human_readable_now</b> (char *buffer, size_t <b>buffer_size</b>)
+  <br/>
+  Format current monotonic time as human-readable relative duration. int
+    <b>format_uptime_hms</b> (int hours, int minutes, int seconds, char *buffer,
+    size_t <b>buffer_size</b>)
+  <br/>
+  Format uptime as HH:MM:SS string. void <b>adaptive_sleep_init</b>
+    (<b>adaptive_sleep_state_t</b> *state, const <b>adaptive_sleep_config_t</b>
+    *config)
+  <br/>
+  Initialize adaptive sleep state with configuration. <b>uint64_t</b>
+    <b>adaptive_sleep_calculate</b> (<b>adaptive_sleep_state_t</b> *state,
+    size_t queue_depth, size_t target_depth)
+  <br/>
+  Calculate adaptive sleep time based on queue depth. void
+    <b>adaptive_sleep_do</b> (<b>adaptive_sleep_state_t</b> *state, size_t
+    queue_depth, size_t target_depth)
+  <br/>
+  Calculate sleep time and immediately sleep for that duration. <b>bool</b>
+    <b>time_format_is_valid_strftime</b> (const char *format_str)
+  <br/>
+  Validate strftime format string against known safe specifiers. int
+    <b>time_format_now</b> (const char *format_str, char *buf, size_t buf_size)
+  <br/>
+  Format current time using strftime format string. <b>asciichat_error_t</b>
+    <b>time_format_safe</b> (const char *format_str, char *buf, size_t buf_size)
+  <br/>
+  Safe wrapper for time formatting with validation and error codes.
+    <b>uint64_t</b> <b>time_timespec_to_ns</b> (const struct timespec *ts)
+  <br/>
+  Convert struct timespec to nanoseconds. void <b>time_ns_to_timespec</b>
+    (<b>uint64_t</b> ns, struct timespec *ts)
+  <br/>
+  Convert nanoseconds to struct timespec.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">This module provides a simple timing API for performance
+    measurement:</p>
+<ul class="Bl-bullet">
+  <li>START_TIMER(&quot;name&quot;, ...) - Begin timing with formatted
+    message</li>
+  <li>STOP_TIMER(&quot;name&quot;) - End timing, log result, return elapsed
+    time</li>
+</ul>
+<p class="Pp">Features:</p>
+<ul class="Bl-bullet">
+  <li>Cross-platform high-resolution timing (sokol_time.h)</li>
+  <li>Automatic hashtable management for named timers</li>
+  <li>Thread-safe operation with mutex protection</li>
+  <li>Formatted timer names with printf-style arguments</li>
+  <li>Zero overhead when timing is disabled</li>
+</ul>
+<p class="Pp">Example usage:</p>
+<p class="Pp"></p>
+<pre>START_TIMER(&quot;process_frame_%d&quot;, frame_num);
+// ... do work ...
+double elapsed_ns = STOP_TIMER(&quot;process_frame_%d&quot;, frame_num);
+// Use time_pretty() for human-readable formatted output
+char duration_str[32];
+time_pretty((uint64_t)elapsed_ns, -1, duration_str, sizeof(duration_str));
+log_info(&quot;Frame took %s&quot;, duration_str);
+</pre>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">September 2025</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_MS_PER_SEC_INT___1000ULL"><a class="permalink" href="#_define_MS_PER_SEC_INT___1000ULL">#define
+  MS_PER_SEC_INT 1000ULL</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>164</b> of file <b>time.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_config_init_defaults()</b>,
+    <b>client_crypto_init()</b>, <b>client_main()</b>,
+    <b>database_session_cleanup_expired()</b>,
+    <b>discovery_config_init_defaults()</b>, <b>discovery_mdns_query()</b>,
+    <b>discovery_session_create()</b>, <b>discovery_session_process()</b>, and
+    <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NS_PER_DAY___(24"><a class="permalink" href="#_define_NS_PER_DAY___(24">#define
+  NS_PER_DAY (24.0 * <b>NS_PER_HOUR</b>)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>151</b> of file <b>time.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NS_PER_DAY_INT___("><a class="permalink" href="#_define_NS_PER_DAY_INT___(">#define
+  NS_PER_DAY_INT (<b>SEC_PER_DAY</b> * <b>NS_PER_SEC_INT</b>)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>174</b> of file <b>time.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NS_PER_HOUR___(60"><a class="permalink" href="#_define_NS_PER_HOUR___(60">#define
+  NS_PER_HOUR (60.0 * <b>NS_PER_MIN</b>)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>150</b> of file <b>time.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NS_PER_HOUR_INT___("><a class="permalink" href="#_define_NS_PER_HOUR_INT___(">#define
+  NS_PER_HOUR_INT (<b>SEC_PER_HOUR</b> * <b>NS_PER_SEC_INT</b>)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>173</b> of file <b>time.h</b>.</p>
+<p class="Pp">Referenced by <b>time_pretty()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NS_PER_MIN___(60"><a class="permalink" href="#_define_NS_PER_MIN___(60">#define
+  NS_PER_MIN (60.0 * <b>NS_PER_SEC</b>)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>149</b> of file <b>time.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NS_PER_MIN_INT___("><a class="permalink" href="#_define_NS_PER_MIN_INT___(">#define
+  NS_PER_MIN_INT (<b>SEC_PER_MIN</b> * <b>NS_PER_SEC_INT</b>)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>172</b> of file <b>time.h</b>.</p>
+<p class="Pp">Referenced by <b>time_pretty()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NS_PER_MS___(1000"><a class="permalink" href="#_define_NS_PER_MS___(1000">#define
+  NS_PER_MS (1000.0 * <b>NS_PER_US</b>)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>147</b> of file <b>time.h</b>.</p>
+<p class="Pp">Referenced by <b>client_send_thread_func()</b>,
+    <b>consensus_election_compute_score()</b>,
+    <b>consensus_metrics_measure()</b>,
+    <b>create_mixed_ascii_frame_for_client()</b>,
+    <b>media_source_read_video()</b>, <b>session_capture_read_frame()</b>, and
+    <b>time_pretty()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NS_PER_MS_INT___(1000ULL_*_"><a class="permalink" href="#_define_NS_PER_MS_INT___(1000ULL_*_">#define
+  NS_PER_MS_INT (1000ULL * <b>NS_PER_US_INT</b>)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>156</b> of file <b>time.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert_with_capabilities()</b>,
+    <b>asciichat_error_stats_print()</b>,
+    <b>asciichat_print_error_context()</b>,
+    <b>audio_analysis_print_report()</b>,
+    <b>audio_process_received_samples()</b>, <b>audio_ring_buffer_read()</b>,
+    <b>audio_start_thread()</b>, <b>broadcast_server_state_to_all_clients()</b>,
+    <b>client_audio_pipeline_default_config()</b>,
+    <b>client_audio_render_thread()</b>, <b>client_crypto_handshake()</b>,
+    <b>client_video_render_thread()</b>, <b>compressor_init()</b>,
+    <b>create_mixed_ascii_frame_for_client()</b>,
+    <b>database_session_is_migration_ready()</b>,
+    <b>discover_session_parallel()</b>, <b>ducking_init()</b>,
+    <b>ffmpeg_decoder_stop_prefetch()</b>, <b>keepalive_stop_thread()</b>,
+    <b>mixer_process_excluding_source()</b>, <b>noise_gate_init()</b>,
+    <b>parallel_connect()</b>, <b>send_with_timeout()</b>,
+    <b>server_crypto_handshake()</b>, <b>server_main()</b>,
+    <b>session_display_convert_to_ascii()</b>,
+    <b>session_display_write_ascii()</b>, <b>session_host_inject_audio()</b>,
+    <b>session_pipeline_run_main()</b>, <b>session_render_loop()</b>,
+    <b>splash_wait_for_animation()</b>, and <b>time_pretty()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NS_PER_SEC___(1000"><a class="permalink" href="#_define_NS_PER_SEC___(1000">#define
+  NS_PER_SEC (1000.0 * <b>NS_PER_MS</b>)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>148</b> of file <b>time.h</b>.</p>
+<p class="Pp">Referenced by <b>compressor_set_params()</b>,
+    <b>consensus_metrics_measure()</b>, <b>ducking_init()</b>,
+    <b>noise_gate_set_params()</b>, <b>time_human_readable()</b>,
+    <b>time_human_readable_unsigned()</b>, and <b>time_pretty()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NS_PER_SEC_INT___(1000ULL_*_"><a class="permalink" href="#_define_NS_PER_SEC_INT___(1000ULL_*_">#define
+  NS_PER_SEC_INT (1000ULL * <b>NS_PER_MS_INT</b>)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>157</b> of file <b>time.h</b>.</p>
+<p class="Pp">Referenced by <b>add_client()</b>,
+    <b>ascii_convert_with_capabilities()</b>, <b>asciichat_instr_log_line()</b>,
+    <b>calculate_cache_eviction_score()</b>,
+    <b>client_audio_render_thread()</b>, <b>client_video_render_thread()</b>,
+    <b>consensus_coordinator_on_collection_start()</b>,
+    <b>crypto_handshake_process_rekey_request()</b>, <b>crypto_rekey_init()</b>,
+    <b>discovery_session_process()</b>, <b>ffmpeg_encoder_write_frame()</b>,
+    <b>fps_frame_ns()</b>, <b>fps_init()</b>,
+    <b>get_current_time_formatted()</b>, <b>handle_image_frame_packet()</b>,
+    <b>log_template_apply()</b>, <b>mixer_process_excluding_source()</b>,
+    <b>nat_measure_bandwidth()</b>, <b>packet_receive()</b>,
+    <b>receive_packet_secure()</b>, <b>server_main()</b>,
+    <b>session_capture_create()</b>, <b>session_display_convert_to_ascii()</b>,
+    <b>session_display_encode_frame()</b>, <b>session_display_write_ascii()</b>,
+    <b>session_network_capture_create()</b>, <b>session_pipeline_run_main()</b>,
+    <b>session_render_loop()</b>, <b>terminal_fd_reader_next()</b>,
+    <b>terminal_fd_writer_write()</b>, <b>terminal_screen_render()</b>,
+    <b>time_format_now()</b>, <b>time_ns_to_timespec()</b>,
+    <b>time_pretty()</b>, and <b>time_timespec_to_ns()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NS_PER_US___1000"><a class="permalink" href="#_define_NS_PER_US___1000">#define
+  NS_PER_US 1000.0</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>146</b> of file <b>time.h</b>.</p>
+<p class="Pp">Referenced by <b>time_pretty()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NS_PER_US_INT___1000ULL"><a class="permalink" href="#_define_NS_PER_US_INT___1000ULL">#define
+  NS_PER_US_INT 1000ULL</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>155</b> of file <b>time.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_default_config()</b>, and
+    <b>time_pretty()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NS_PER_YEAR___(365"><a class="permalink" href="#_define_NS_PER_YEAR___(365">#define
+  NS_PER_YEAR (365.25 * <b>NS_PER_DAY</b>)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>152</b> of file <b>time.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SEC_PER_DAY___(24ULL_*_"><a class="permalink" href="#_define_SEC_PER_DAY___(24ULL_*_">#define
+  SEC_PER_DAY (24ULL * <b>SEC_PER_HOUR</b>)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>169</b> of file <b>time.h</b>.</p>
+<p class="Pp">Referenced by <b>update_check_startup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SEC_PER_HOUR___("><a class="permalink" href="#_define_SEC_PER_HOUR___(">#define
+  SEC_PER_HOUR (<b>SEC_PER_MIN</b> * <b>SEC_PER_MIN</b>)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>168</b> of file <b>time.h</b>.</p>
+<p class="Pp">Referenced by <b>database_session_cleanup_expired()</b>, and
+    <b>parse_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SEC_PER_MIN___60ULL"><a class="permalink" href="#_define_SEC_PER_MIN___60ULL">#define
+  SEC_PER_MIN 60ULL</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>167</b> of file <b>time.h</b>.</p>
+<p class="Pp">Referenced by <b>parse_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_START_TIMER(_name_fmt,__"><a class="permalink" href="#_define_START_TIMER(_name_fmt,__">#define
+  START_TIMER( name_fmt, ...)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  if (timer_is_initialized()) {                                                                                      \
+<br/>
+    char _timer_name_buf[256];                                                                                       \
+<br/>
+    char _timer_name_with_tid[280];                                                                                  \
+<br/>
+    snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
+<br/>
+    snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), &quot;%s_tid%llu&quot;, _timer_name_buf,                      \
+<br/>
+             (unsigned long long)asciichat_thread_current_id());                                                     \
+<br/>
+    (void)timer_start(_timer_name_with_tid);                                                                         \
+<br/>
+  }                                                                                                                  \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Start a timer with formatted name. The timer name is created by
+    formatting the name_fmt string with the provided arguments. This complete
+    formatted string becomes the unique key in the hashtable.</p>
+<p class="Pp"></p>
+<p class="Pp">IMPORTANT: Timer names must be unique. If a timer with the same
+    formatted name already exists, <b>timer_start()</b> will return false and
+    log an error.</p>
+<p class="Pp"></p>
+<p class="Pp">Usage: START_TIMER(&quot;lock_%p&quot;, lock_ptr); // Unique per
+    lock address START_TIMER(&quot;process_frame_%d&quot;, frame_id); // Unique
+    per frame START_TIMER(&quot;client_%u_decode&quot;, client_id); // Unique
+    per client</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name_fmt</i> Printf-style format string for timer name
+<br/>
+<i>...</i> Format arguments to create unique key</div>
+<p class="Pp">Definition at line <b>333</b> of file <b>time.h</b>.</p>
+<pre>333 #define START_TIMER(name_fmt, ...)                                                                                     \
+334   do {                                                                                                                 \
+335     if (timer_is_initialized()) {                                                                                      \
+336       char _timer_name_buf[256];                                                                                       \
+337       char _timer_name_with_tid[280];                                                                                  \
+338       snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
+339       snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), &quot;%s_tid%llu&quot;, _timer_name_buf,                      \
+340                (unsigned long long)asciichat_thread_current_id());                                                     \
+341       (void)timer_start(_timer_name_with_tid);                                                                         \
+342     }                                                                                                                  \
+343   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>ascii_convert_with_capabilities()</b>,
+    <b>client_audio_render_thread()</b>, <b>client_crypto_handshake()</b>,
+    <b>client_video_render_thread()</b>,
+    <b>create_mixed_ascii_frame_for_client()</b>,
+    <b>mixer_process_excluding_source()</b>, <b>server_crypto_handshake()</b>,
+    <b>session_display_convert_to_ascii()</b>,
+    <b>session_display_write_ascii()</b>, and <b>session_render_loop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_START_TIMER_GLOBAL(_name_fmt,__"><a class="permalink" href="#_define_START_TIMER_GLOBAL(_name_fmt,__">#define
+  START_TIMER_GLOBAL( name_fmt, ...)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  if (timer_is_initialized()) {                                                                                      \
+<br/>
+    char _timer_name_buf[256];                                                                                       \
+<br/>
+    snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
+<br/>
+    (void)timer_start(_timer_name_buf);                                                                              \
+<br/>
+  }                                                                                                                  \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Start a timer without thread ID (for cross-thread timers). Use
+    this variant when a timer may be stopped on a different thread than it was
+    started. The timer name will NOT include thread ID, so it must be globally
+    unique through other means (e.g., including a unique identifier in the
+    format string).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name_fmt</i> Printf-style format string for timer name
+<br/>
+<i>...</i> Format arguments to create unique key</div>
+<p class="Pp">Definition at line <b>357</b> of file <b>time.h</b>.</p>
+<pre>357 #define START_TIMER_GLOBAL(name_fmt, ...)                                                                              \
+358   do {                                                                                                                 \
+359     if (timer_is_initialized()) {                                                                                      \
+360       char _timer_name_buf[256];                                                                                       \
+361       snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
+362       (void)timer_start(_timer_name_buf);                                                                              \
+363     }                                                                                                                  \
+364   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_STOP_TIMER(_name_fmt,__"><a class="permalink" href="#_define_STOP_TIMER(_name_fmt,__">#define
+  STOP_TIMER( name_fmt, ...)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>({                                                                                                                   \
+<br/>
+  double _elapsed = -1.0;                                                                                            \
+<br/>
+  if (timer_is_initialized()) {                                                                                      \
+<br/>
+    char _timer_name_buf[256];                                                                                       \
+<br/>
+    char _timer_name_with_tid[280];                                                                                  \
+<br/>
+    snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
+<br/>
+    snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), &quot;%s_tid%llu&quot;, _timer_name_buf,                      \
+<br/>
+             (unsigned long long)asciichat_thread_current_id());                                                     \
+<br/>
+    _elapsed = timer_stop(_timer_name_with_tid);                                                                     \
+<br/>
+  }                                                                                                                  \
+<br/>
+  _elapsed;                                                                                                          \
+})</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Stop a timer with formatted name and return elapsed time. The
+    timer name must match exactly (including all format arguments) with the name
+    used in <b>START_TIMER()</b>. The formatted string is used as the hashtable
+    key lookup.</p>
+<p class="Pp"></p>
+<p class="Pp">Usage: double ns = STOP_TIMER(&quot;lock_%p&quot;, lock_ptr);
+    double ns = STOP_TIMER(&quot;process_frame_%d&quot;, frame_id);</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name_fmt</i> Printf-style format string for timer name
+  (must match START_TIMER)
+<br/>
+<i>...</i> Format arguments (must match START_TIMER to create same key)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Elapsed time in nanoseconds, or -1.0 if timer not
+  found</div>
+<p class="Pp">Definition at line <b>403</b> of file <b>time.h</b>.</p>
+<pre>403 #define STOP_TIMER(name_fmt, ...)                                                                                      \
+404   ({                                                                                                                   \
+405     double _elapsed = -1.0;                                                                                            \
+406     if (timer_is_initialized()) {                                                                                      \
+407       char _timer_name_buf[256];                                                                                       \
+408       char _timer_name_with_tid[280];                                                                                  \
+409       snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
+410       snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), &quot;%s_tid%llu&quot;, _timer_name_buf,                      \
+411                (unsigned long long)asciichat_thread_current_id());                                                     \
+412       _elapsed = timer_stop(_timer_name_with_tid);                                                                     \
+413     }                                                                                                                  \
+414     _elapsed;                                                                                                          \
+415   })</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>mixer_process_excluding_source()</b>, <b>server_crypto_handshake()</b>,
+    and <b>session_render_loop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_STOP_TIMER_AND_LOG(_log_level,__threshold_ns,__timer_name,__msg_fmt,__"><a class="permalink" href="#_define_STOP_TIMER_AND_LOG(_log_level,__threshold_ns,__timer_name,__msg_fmt,__">#define
+  STOP_TIMER_AND_LOG( log_level, threshold_ns, timer_name, msg_fmt,
+  ...)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                        \
+<br/>
+  if (_elapsed_ns &gt;= 0.0 &amp;&amp; (threshold_ns == 0 || _elapsed_ns &gt;= (double)(threshold_ns))) {                          \
+<br/>
+    char _duration_str[32];                                                                                          \
+<br/>
+    time_pretty((uint64_t)_elapsed_ns, -1, _duration_str, sizeof(_duration_str));                                    \
+<br/>
+    log_##log_level(msg_fmt &quot; in %s&quot;, ##__VA_ARGS__, _duration_str);                                                 \
+<br/>
+  }                                                                                                                  \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Stop a timer and log the result with a custom message. Combines
+    <b>STOP_TIMER()</b> with logging. The timer is stopped, elapsed time is
+    retrieved, and a log message is generated with the elapsed time appended in
+    human-readable format. Optionally filters based on a minimum elapsed time
+    threshold.</p>
+<p class="Pp"></p>
+<p class="Pp">Usage: STOP_TIMER_AND_LOG(info, 0, &quot;client_handshake&quot;,
+    &quot;Crypto handshake completed successfully&quot;);
+    STOP_TIMER_AND_LOG(debug, 5000000, &quot;process_frame_%d&quot;, &quot;Frame
+    %d processed&quot;, frame_id, frame_id); STOP_TIMER_AND_LOG(dev,
+    NS_PER_MS_INT, &quot;render&quot;, &quot;Rendering complete&quot;);</p>
+<p class="Pp"></p>
+<p class="Pp">The macro will append &quot; in X.XXms&quot; (or appropriate unit)
+    to your message automatically. Supported log levels: dev, debug, info, warn,
+    error, fatal</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>log_level</i> Log level name (dev, debug, info, warn,
+  error, fatal - without log_ prefix)
+<br/>
+<i>threshold_ns</i> Minimum elapsed time in nanoseconds to trigger log (0 =
+  always log)
+<br/>
+<i>timer_name</i> Timer name (must match START_TIMER call)
+<br/>
+<i>msg_fmt</i> Printf-style format string for the message
+<br/>
+<i>...</i> Format arguments for both timer name and message</div>
+<p class="Pp">Definition at line <b>612</b> of file <b>time.h</b>.</p>
+<pre>612 #define STOP_TIMER_AND_LOG(log_level, threshold_ns, timer_name, msg_fmt, ...)                                          \
+613   do {                                                                                                                 \
+614     double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                        \
+615     if (_elapsed_ns &gt;= 0.0 &amp;&amp; (threshold_ns == 0 || _elapsed_ns &gt;= (double)(threshold_ns))) {                          \
+616       char _duration_str[32];                                                                                          \
+617       time_pretty((uint64_t)_elapsed_ns, -1, _duration_str, sizeof(_duration_str));                                    \
+618       log_##log_level(msg_fmt &quot; in %s&quot;, ##__VA_ARGS__, _duration_str);                                                 \
+619     }                                                                                                                  \
+620   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>client_video_render_thread()</b>,
+    <b>create_mixed_ascii_frame_for_client()</b>, and
+    <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_STOP_TIMER_AND_LOG_EVERY(_log_level,__interval_ns,__threshold_ns,__timer_name,__msg_fmt,__"><a class="permalink" href="#_define_STOP_TIMER_AND_LOG_EVERY(_log_level,__interval_ns,__threshold_ns,__timer_name,__msg_fmt,__">#define
+  STOP_TIMER_AND_LOG_EVERY( log_level, interval_ns, threshold_ns, timer_name,
+  msg_fmt, ...)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                        \
+<br/>
+  if (_elapsed_ns &gt;= 0.0 &amp;&amp; (threshold_ns == 0 || _elapsed_ns &gt;= (double)(threshold_ns))) {                          \
+<br/>
+    static atomic_t _log_every_last_time = {0};                                                                      \
+<br/>
+    uint64_t _log_every_now = time_get_ns();                                                                         \
+<br/>
+    uint64_t _log_every_last = atomic_load_u64(&amp;_log_every_last_time);                                               \
+<br/>
+    if (_log_every_now - _log_every_last &gt;= (uint64_t)(interval_ns)) {                                               \
+<br/>
+      if (atomic_cas_u64(&amp;_log_every_last_time, &amp;_log_every_last, _log_every_now)) {                                 \
+<br/>
+        char _duration_str[32];                                                                                      \
+<br/>
+        time_pretty((uint64_t)_elapsed_ns, -1, _duration_str, sizeof(_duration_str));                                \
+<br/>
+        log_##log_level(msg_fmt &quot; in %s&quot;, ##__VA_ARGS__, _duration_str);                                             \
+<br/>
+      }                                                                                                              \
+<br/>
+    }                                                                                                                \
+<br/>
+  }                                                                                                                  \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Stop a timer and log the result with rate limiting. Combines
+    <b>STOP_TIMER()</b> with rate-limited logging. The timer is stopped, elapsed
+    time is retrieved, and a log message is generated only if:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>The elapsed time exceeds the threshold (if non-zero), AND</dd>
+  <dt>2.</dt>
+  <dd>The specified time interval has passed since the last logged
+    occurrence</dd>
+</dl>
+<p class="Pp">This prevents log spam from frequent operations while also
+    filtering out fast operations.</p>
+<p class="Pp"></p>
+<p class="Pp">Usage: STOP_TIMER_AND_LOG_EVERY(dev, 1000000000, 0,
+    &quot;opus_encode&quot;, &quot;Opus encode completed&quot;);
+    STOP_TIMER_AND_LOG_EVERY(info, 5000000000, NS_PER_MS_INT,
+    &quot;process_frame_%d&quot;, &quot;Frame %d processed&quot;, frame_id);</p>
+<p class="Pp"></p>
+<p class="Pp">The macro will append &quot; in X.XXms&quot; (or appropriate unit)
+    to your message automatically. Supported log levels: dev, debug, info, warn,
+    error, fatal</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>log_level</i> Log level name (dev, debug, info, warn,
+  error, fatal - without log_ prefix)
+<br/>
+<i>interval_ns</i> Time interval in nanoseconds between log emissions (rate
+  limiting)
+<br/>
+<i>threshold_ns</i> Minimum elapsed time in nanoseconds to trigger log (0 = no
+  threshold)
+<br/>
+<i>timer_name</i> Timer name (must match START_TIMER call)
+<br/>
+<i>msg_fmt</i> Printf-style format string for the message
+<br/>
+<i>...</i> Format arguments for both timer name and message</div>
+<p class="Pp">Definition at line <b>647</b> of file <b>time.h</b>.</p>
+<pre>647 #define STOP_TIMER_AND_LOG_EVERY(log_level, interval_ns, threshold_ns, timer_name, msg_fmt, ...)                       \
+648   do {                                                                                                                 \
+649     double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                        \
+650     if (_elapsed_ns &gt;= 0.0 &amp;&amp; (threshold_ns == 0 || _elapsed_ns &gt;= (double)(threshold_ns))) {                          \
+651       static atomic_t _log_every_last_time = {0};                                                                      \
+652       uint64_t _log_every_now = time_get_ns();                                                                         \
+653       uint64_t _log_every_last = atomic_load_u64(&amp;_log_every_last_time);                                               \
+654       if (_log_every_now - _log_every_last &gt;= (uint64_t)(interval_ns)) {                                               \
+655         if (atomic_cas_u64(&amp;_log_every_last_time, &amp;_log_every_last, _log_every_now)) {                                 \
+656           char _duration_str[32];                                                                                      \
+657           time_pretty((uint64_t)_elapsed_ns, -1, _duration_str, sizeof(_duration_str));                                \
+658           log_##log_level(msg_fmt &quot; in %s&quot;, ##__VA_ARGS__, _duration_str);                                             \
+659         }                                                                                                              \
+660       }                                                                                                                \
+661     }                                                                                                                  \
+662   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>ascii_convert_with_capabilities()</b>,
+    <b>client_audio_render_thread()</b>,
+    <b>mixer_process_excluding_source()</b>,
+    <b>session_display_convert_to_ascii()</b>, and
+    <b>session_display_write_ascii()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_STOP_TIMER_GLOBAL(_name_fmt,__"><a class="permalink" href="#_define_STOP_TIMER_GLOBAL(_name_fmt,__">#define
+  STOP_TIMER_GLOBAL( name_fmt, ...)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>({                                                                                                                   \
+<br/>
+  double _elapsed = -1.0;                                                                                            \
+<br/>
+  if (timer_is_initialized()) {                                                                                      \
+<br/>
+    char _timer_name_buf[256];                                                                                       \
+<br/>
+    snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
+<br/>
+    _elapsed = timer_stop(_timer_name_buf);                                                                          \
+<br/>
+  }                                                                                                                  \
+<br/>
+  _elapsed;                                                                                                          \
+})</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Stop a cross-thread timer and return elapsed time. Use this
+    variant when stopping a timer started with START_TIMER_GLOBAL. The timer
+    name must match exactly (without thread ID appended).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name_fmt</i> Printf-style format string for timer name
+  (must match START_TIMER_GLOBAL)
+<br/>
+<i>...</i> Format arguments (must match START_TIMER_GLOBAL to create same
+  key)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Elapsed time in nanoseconds, or -1.0 if timer not
+  found</div>
+<p class="Pp">Definition at line <b>377</b> of file <b>time.h</b>.</p>
+<pre>377 #define STOP_TIMER_GLOBAL(name_fmt, ...)                                                                               \
+378   ({                                                                                                                   \
+379     double _elapsed = -1.0;                                                                                            \
+380     if (timer_is_initialized()) {                                                                                      \
+381       char _timer_name_buf[256];                                                                                       \
+382       snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
+383       _elapsed = timer_stop(_timer_name_buf);                                                                          \
+384     }                                                                                                                  \
+385     _elapsed;                                                                                                          \
+386   })</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TIME_ATOMIC_UINT64___"><a class="permalink" href="#_define_TIME_ATOMIC_UINT64___">#define
+  TIME_ATOMIC_UINT64 <b>atomic_t</b></a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>52</b> of file <b>time.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TIME_ATOMIC_UINT64_INIT(_val)"><a class="permalink" href="#_define_TIME_ATOMIC_UINT64_INIT(_val)">#define
+  TIME_ATOMIC_UINT64_INIT( val)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>{0}</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>53</b> of file <b>time.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_US_PER_MS_INT___1000ULL"><a class="permalink" href="#_define_US_PER_MS_INT___1000ULL">#define
+  US_PER_MS_INT 1000ULL</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>160</b> of file <b>time.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
+    <b>acip_server_receive_and_dispatch()</b>,
+    <b>audio_process_received_samples()</b>, <b>audio_stop_thread()</b>,
+    <b>broadcast_server_state_to_all_clients()</b>,
+    <b>capture_stop_thread()</b>, <b>client_audio_render_thread()</b>,
+    <b>client_dispatch_thread()</b>, <b>client_send_thread_func()</b>,
+    <b>create_mixed_ascii_frame_for_client()</b>,
+    <b>ffmpeg_decoder_read_audio_samples()</b>, <b>image_print_color_simd()</b>,
+    <b>media_source_read_audio()</b>, <b>mixer_process_excluding_source()</b>,
+    <b>packet_queue_enqueue()</b>, <b>protocol_stop_connection()</b>,
+    <b>query_destroy()</b>, <b>remove_client()</b>, <b>server_main()</b>,
+    <b>stats_logger_thread()</b>, <b>video_frame_commit()</b>, and
+    <b>websocket_server_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_US_PER_SEC_INT___1000000ULL"><a class="permalink" href="#_define_US_PER_SEC_INT___1000000ULL">#define
+  US_PER_SEC_INT 1000000ULL</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>161</b> of file <b>time.h</b>.</p>
+<p class="Pp">Referenced by <b>ansi_rle_add_pixel()</b>,
+    <b>ascii_convert_with_capabilities()</b>,
+    <b>ffmpeg_decoder_read_video_frame()</b>, <b>image_print_color_simd()</b>,
+    <b>media_source_read_video()</b>, <b>session_capture_create()</b>,
+    <b>session_capture_read_frame()</b>, <b>session_render_loop()</b>,
+    <b>socket_set_timeout()</b>, <b>tcp_server_run()</b>, and
+    <b>ui_status_update()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
+  struct <b>timer_record</b> <b>timer_record_t</b></a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Individual timer record for a named timing operation.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> adaptive_sleep_calculate
+  (<b>adaptive_sleep_state_t</b> * state, size_t queue_depth, size_t
+  target_depth)</h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Calculate adaptive sleep time based on queue depth. Evaluates
+    current queue depth against target and adjusts the speed multiplier:</p>
+<ul class="Bl-bullet">
+  <li>If queue_depth &gt; target_depth: speed up (reduce sleep, drain queue
+      faster)</li>
+  <li>If queue_depth &lt; target_depth: slow down (increase sleep back to
+      baseline)</li>
+  <li>Speed multiplier changes gradually based on
+    speedup_rate/slowdown_rate</li>
+</ul>
+<p class="Pp">The actual sleep time is calculated as: baseline_sleep_ns /
+    current_speed_multiplier</p>
+<p class="Pp"></p>
+<p class="Pp">Example usage:</p>
+<p class="Pp"></p>
+<pre>adaptive_sleep_state_t sleep_state;
+adaptive_sleep_config_t config = {
+<br/>
+  .baseline_sleep_ns = 16666667,  // ~60 FPS (16.67ms)
+<br/>
+  .min_speed_multiplier = 1.0,    // Never slower than baseline
+<br/>
+  .max_speed_multiplier = 4.0,    // Can process up to 4x faster (240 FPS)
+<br/>
+  .speedup_rate = 0.1,            // Ramp up 10% per frame
+<br/>
+  .slowdown_rate = 0.05           // Ramp down 5% per frame
+};
+adaptive_sleep_init(&amp;sleep_state, &amp;config);
+while (running) {
+<br/>
+  // Process one frame/packet/unit of work
+<br/>
+  process_data();
+<br/>
+  // Sleep adaptively based on queue depth
+<br/>
+  size_t queue_depth = get_queue_size();
+<br/>
+  uint64_t sleep_ns = adaptive_sleep_calculate(&amp;sleep_state, queue_depth, 10);
+<br/>
+  platform_sleep_us(sleep_ns / 1000);
+}
+</pre>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>state</i> Pointer to adaptive sleep state (will be
+  updated)
+<br/>
+<i>queue_depth</i> Current number of items in queue/buffer
+<br/>
+<i>target_depth</i> Desired queue depth (0 = empty queue target)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Sleep time in nanoseconds</div>
+<p class="Pp">Definition at line <b>622</b> of file <b>util/time.c</b>.</p>
+<pre>622                                                                                                           {
+623   if (!state) {
+624     return 0;
+625   }
+626 
+627   const adaptive_sleep_config_t *cfg = &amp;state-&gt;config;
+628 
+629   // Determine if we need to speed up or slow down
+630   double desired_multiplier;
+631 
+632   if (queue_depth &gt; target_depth) {
+633     // Queue is building up - speed up processing
+634     // The more items in queue, the faster we should process
+635     size_t backlog = queue_depth - target_depth;
+636 
+637     // Calculate desired speed based on backlog
+638     // Each item above target increases speed proportionally
+639     // This ensures we drain the queue faster the more backed up we are
+640     double backlog_factor = 1.0 + ((double)backlog / (double)(target_depth + 1));
+641     desired_multiplier = cfg-&gt;min_speed_multiplier * backlog_factor;
+642 
+643     // Clamp to max speed
+644     if (desired_multiplier &gt; cfg-&gt;max_speed_multiplier) {
+645       desired_multiplier = cfg-&gt;max_speed_multiplier;
+646     }
+647 
+648     // Ramp up gradually based on speedup_rate
+649     double delta = desired_multiplier - state-&gt;current_speed_multiplier;
+650     state-&gt;current_speed_multiplier += delta * cfg-&gt;speedup_rate;
+651 
+652   } else {
+653     // Queue is at or below target - slow down to baseline
+654     desired_multiplier = cfg-&gt;min_speed_multiplier;
+655 
+656     // Ramp down gradually based on slowdown_rate
+657     double delta = desired_multiplier - state-&gt;current_speed_multiplier;
+658     state-&gt;current_speed_multiplier += delta * cfg-&gt;slowdown_rate;
+659   }
+660 
+661   // Ensure we stay within configured bounds
+662   if (state-&gt;current_speed_multiplier &lt; cfg-&gt;min_speed_multiplier) {
+663     state-&gt;current_speed_multiplier = cfg-&gt;min_speed_multiplier;
+664   }
+665   if (state-&gt;current_speed_multiplier &gt; cfg-&gt;max_speed_multiplier) {
+666     state-&gt;current_speed_multiplier = cfg-&gt;max_speed_multiplier;
+667   }
+668 
+669   // Calculate actual sleep time: baseline / speed_multiplier
+670   // Higher multiplier = shorter sleep = faster processing
+671   uint64_t sleep_ns = (uint64_t)(cfg-&gt;baseline_sleep_ns / state-&gt;current_speed_multiplier);
+672 
+673   // Store for debugging
+674   state-&gt;last_sleep_ns = sleep_ns;
+675 
+676   return sleep_ns;
+677 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>adaptive_sleep_config_t::baseline_sleep_ns</b>,
+    <b>adaptive_sleep_state_t::config</b>,
+    <b>adaptive_sleep_state_t::current_speed_multiplier</b>,
+    <b>adaptive_sleep_state_t::last_sleep_ns</b>,
+    <b>adaptive_sleep_config_t::max_speed_multiplier</b>,
+    <b>adaptive_sleep_config_t::min_speed_multiplier</b>,
+    <b>adaptive_sleep_config_t::slowdown_rate</b>, and
+    <b>adaptive_sleep_config_t::speedup_rate</b>.</p>
+<p class="Pp">Referenced by <b>adaptive_sleep_do()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_adaptive_sleep_do_("><a class="permalink" href="#void_adaptive_sleep_do_(">void
+  adaptive_sleep_do (<b>adaptive_sleep_state_t</b> * state, size_t queue_depth,
+  size_t target_depth)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Calculate sleep time and immediately sleep for that duration.
+    Convenience wrapper that combines <b>adaptive_sleep_calculate()</b> with
+    <b>platform_sleep_us()</b>. Useful for simple loops that don't need to
+    inspect the calculated sleep time.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>state</i> Pointer to adaptive sleep state (will be
+  updated)
+<br/>
+<i>queue_depth</i> Current number of items in queue/buffer
+<br/>
+<i>target_depth</i> Desired queue depth (0 = empty queue target)</div>
+<p class="Pp">Definition at line <b>679</b> of file <b>util/time.c</b>.</p>
+<pre>679                                                                                                {
+680   uint64_t sleep_ns = adaptive_sleep_calculate(state, queue_depth, target_depth);
+681 
+682   if (sleep_ns &gt; 0) {
+683     platform_sleep_ns(sleep_ns);
+684   }
+685 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>adaptive_sleep_calculate()</b>, and
+    <b>platform_sleep_ns()</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_render_thread()</b>,
+    <b>client_video_render_thread()</b>, and
+    <b>session_capture_sleep_for_fps()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_adaptive_sleep_init_("><a class="permalink" href="#void_adaptive_sleep_init_(">void
+  adaptive_sleep_init (<b>adaptive_sleep_state_t</b> * state, const
+  <b>adaptive_sleep_config_t</b> * config)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Initialize adaptive sleep state with configuration. Sets up an
+    adaptive sleep state structure with the provided configuration. The
+    configuration is copied internally, so the caller doesn't need to keep the
+    config structure alive.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>state</i> Pointer to adaptive sleep state to
+  initialize
+<br/>
+<i></i><b>Config Module</b><i></i><b> Pointer to configuration (will be
+  copied)</b></div>
+<p class="Pp">Definition at line <b>607</b> of file <b>util/time.c</b>.</p>
+<pre>607                                                                                                {
+608   if (!state || !config) {
+609     return;
+610   }
+611 
+612   // Copy configuration
+613   state-&gt;config = *config;
+614 
+615   // Start at baseline speed (no speedup initially)
+616   state-&gt;current_speed_multiplier = config-&gt;min_speed_multiplier;
+617 
+618   // Initial sleep is the baseline
+619   state-&gt;last_sleep_ns = config-&gt;baseline_sleep_ns;
+620 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>adaptive_sleep_config_t::baseline_sleep_ns</b>,
+    <b>adaptive_sleep_state_t::config</b>,
+    <b>adaptive_sleep_state_t::current_speed_multiplier</b>,
+    <b>adaptive_sleep_state_t::last_sleep_ns</b>, and
+    <b>adaptive_sleep_config_t::min_speed_multiplier</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_render_thread()</b>,
+    <b>client_video_render_thread()</b>, <b>session_capture_create()</b>, and
+    <b>session_network_capture_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_format_uptime_hms_(int_hours,_int_minutes,_int_seconds,_char_*_buffer,_size_t_buffer_size)"><a class="permalink" href="#int_format_uptime_hms_(int_hours,_int_minutes,_int_seconds,_char_*_buffer,_size_t_buffer_size)">int
+  format_uptime_hms (int hours, int minutes, int seconds, char * buffer, size_t
+  buffer_size)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Format uptime as HH:MM:SS string.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>hours</i> Hours component (0-999)
+<br/>
+<i>minutes</i> Minutes component (0-59)
+<br/>
+<i>seconds</i> Seconds component (0-59)
+<br/>
+<i>buffer</i> Output buffer for formatted string
+<br/>
+<i></i><b>buffer_size</b><i></i><b> Size of output buffer</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of characters written (excluding null terminator),
+  or -1 on error</div>
+<p class="Pp">Formats an uptime duration as a fixed &quot;HH:MM:SS&quot; string
+    with zero-padding. Useful for status displays where consistent formatting is
+    preferred over adaptive human-readable formats.</p>
+<p class="Pp"></p>
+<p class="Pp">Examples:</p>
+<ul class="Bl-bullet">
+  <li>format_uptime_hms(0, 0, 5, buf, size) -&gt; &quot;00:00:05&quot;</li>
+  <li>format_uptime_hms(1, 30, 45, buf, size) -&gt; &quot;01:30:45&quot;</li>
+  <li>format_uptime_hms(123, 45, 6, buf, size) -&gt; &quot;123:45:06&quot;</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Buffer should be at least 12 bytes (HH:MM:SS + null
+  terminator)
+<p class="Pp"></p>
+<p class="Pp">Thread-safe (no global state)</p>
+<p class="Pp"></p>
+<p class="Pp">Hours component can exceed 99 (e.g., &quot;123:45:06&quot; for 123
+    hours)</p>
+</div>
+<p class="Pp">Definition at line <b>348</b> of file <b>util/time.c</b>.</p>
+<pre>348                                                                                              {
+349   if (!buffer || buffer_size == 0) {
+350     return -1;
+351   }
+352 
+353   // Validate components
+354   if (hours &lt; 0 || minutes &lt; 0 || minutes &gt;= 60 || seconds &lt; 0 || seconds &gt;= 60) {
+355     return -1;
+356   }
+357 
+358   // Format as HH:MM:SS with zero-padding
+359   int written = safe_snprintf(buffer, buffer_size, &quot;%02d:%02d:%02d&quot;, hours, minutes, seconds);
+360 
+361   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
+362     return -1;
+363   }
+364 
+365   return written;
+366 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_size</b>, and <b>safe_snprintf()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> time_elapsed_ns (<b>uint64_t</b> start_ns,
+  <b>uint64_t</b> end_ns)</h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Calculate elapsed time with wraparound safety. Computes the
+    difference between two time values, handling potential wraparound of
+    <b>uint64_t</b> (which won't happen in practice - <b>uint64_t</b> wraps
+    after ~584 years at nanosecond resolution, but this is defensive).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>start_ns</i> Start time in nanoseconds
+<br/>
+<i>end_ns</i> End time in nanoseconds</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Elapsed time in nanoseconds (end - start)</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>uint64_t start = time_get_ns();
+// ... do work ...
+uint64_t elapsed = time_elapsed_ns(start, time_get_ns());
+</pre>
+<p class="Pp">Definition at line <b>150</b> of file <b>util/time.c</b>.</p>
+<pre>150                                                              {
+151   // Handle wraparound (defensive - uint64_t won't wrap in practice at nanosecond resolution)
+152   // but this is safe and handles any theoretical edge cases
+153   if (end_ns &gt;= start_ns) {
+154     return end_ns - start_ns;
+155   }
+156   // Wraparound case (extremely unlikely)
+157   return (UINT64_MAX - start_ns) + end_ns + 1;
+158 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>ascii_convert_with_capabilities()</b>,
+    <b>asciichat_instr_log_line()</b>, <b>audio_analysis_print_report()</b>,
+    <b>broadcast_server_state_to_all_clients()</b>,
+    <b>client_send_thread_func()</b>, <b>fps_frame_ns()</b>,
+    <b>media_source_read_video()</b>, <b>media_source_seek()</b>,
+    <b>mixer_process_excluding_source()</b>,
+    <b>session_capture_get_current_fps()</b>,
+    <b>session_capture_read_frame()</b>, and
+  <b>session_client_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> time_format_is_valid_strftime (const char *
+  format_str)</h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Validate strftime format string against known safe specifiers.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>format_str</i> Format string to validate (e.g.,
+  &quot;%H:%M:%S&quot;)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if valid, false if contains invalid specifiers or
+  syntax</div>
+<p class="Pp">Validates format string by checking each % specifier against a
+    whitelist of known safe POSIX strftime specifiers. Returns false if:</p>
+<ul class="Bl-bullet">
+  <li>Contains unterminated % sequences</li>
+  <li>Contains invalid/unsupported specifiers</li>
+  <li>Contains malformed width/precision</li>
+  <li>Contains unsupported locale-dependent specifiers</li>
+</ul>
+<p class="Pp"><b>Supported specifiers:</b></p>
+<ul class="Bl-bullet">
+  <li>Date: Y (4-digit year), m (month), d (day), j (day of year)</li>
+  <li>Date (ISO): F (full date), G (ISO year), g (ISO year short), V (ISO
+    week)</li>
+  <li>Time: H (24-hour), M (minute), S (second), I (12-hour), p (AM/PM)</li>
+  <li>Time (combined): T (full time HH:MM:SS), s (seconds since epoch)</li>
+  <li>Locale: a (abbrev weekday), A (full weekday), b (abbrev month), B (full
+      month)</li>
+  <li>Locale: c (locale date/time), x (locale date), X (locale time)</li>
+  <li>Timezone: z (offset), Z (name)</li>
+  <li>Weekday: w (0-6), u (1-7)</li>
+</ul>
+<p class="Pp">Definition at line <b>697</b> of file <b>util/time.c</b>.</p>
+<pre>697                                                            {
+698   if (!format_str) {
+699     return false;
+700   }
+701 
+702   for (const char *p = format_str; *p; p++) {
+703     if (*p == '%') {
+704       p++;
+705       if (!*p) {
+706         /* Unterminated % at end of string */
+707         log_error(&quot;Invalid time format: unterminated %% at end&quot;);
+708         return false;
+709       }
+710 
+711       if (*p == '%') {
+712         /* Escaped %% - this is valid, just skip it */
+713         continue;
+714       }
+715 
+716       /* Optional: flag characters (-, 0, +, space) */
+717       if (*p == '-' || *p == '0' || *p == '+' || *p == ' ') {
+718         p++;
+719         if (!*p) {
+720           log_error(&quot;Invalid time format: flag character without specifier&quot;);
+721           return false;
+722         }
+723       }
+724 
+725       /* Optional: width specifier (digits or *) */
+726       if (*p == '*' || isdigit((unsigned char)*p)) {
+727         while (*p &amp;&amp; (isdigit((unsigned char)*p) || *p == '*')) {
+728           p++;
+729         }
+730         if (!*p) {
+731           log_error(&quot;Invalid time format: width specifier without specifier character&quot;);
+732           return false;
+733         }
+734       }
+735 
+736       /* Optional: precision specifier (.digits or .*) */
+737       if (*p == '.') {
+738         p++;
+739         if (!*p) {
+740           log_error(&quot;Invalid time format: precision specifier incomplete&quot;);
+741           return false;
+742         }
+743         while (*p &amp;&amp; (isdigit((unsigned char)*p) || *p == '*')) {
+744           p++;
+745         }
+746         if (!*p) {
+747           log_error(&quot;Invalid time format: precision specifier without specifier character&quot;);
+748           return false;
+749         }
+750       }
+751 
+752       /* Optional: modifier characters (E for %Ex, O for %Ox) */
+753       if (*p == 'E' || *p == 'O') {
+754         p++;
+755         if (!*p) {
+756           log_error(&quot;Invalid time format: modifier character without specifier&quot;);
+757           return false;
+758         }
+759       }
+760 
+761       /* Validate that the final character is a supported specifier */
+762       if (!strchr(SUPPORTED_SPECIFIERS, *p)) {
+763         log_error(&quot;Invalid time format: unsupported specifier %%%c (at position %ld)&quot;, *p, (p - format_str));
+764         return false;
+765       }
+766     }
+767   }
+768 
+769   return true;
+770 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_error</b>.</p>
+<p class="Pp">Referenced by <b>time_format_safe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_time_format_now_(const_char_*_format_str,_char_*_buf,_size_t_buf_size)"><a class="permalink" href="#int_time_format_now_(const_char_*_format_str,_char_*_buf,_size_t_buf_size)">int
+  time_format_now (const char * format_str, char * buf, size_t
+  buf_size)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Format current time using strftime format string.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>format_str</i> strftime format string (should be
+  validated with time_format_is_valid_strftime)
+<br/>
+<i>buf</i> Output buffer
+<br/>
+<i>buf_size</i> Output buffer size</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of characters written (excluding null terminator),
+  or 0 on error</div>
+<p class="Pp">Formats current wall-clock time (CLOCK_REALTIME) using the
+    provided strftime format. Handles nanosecond precision separately: if format
+    contains S and buffer has room, appends &quot;.NNNNNN&quot; for microseconds
+    (rounded from nanoseconds).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Example outputs:</b></p>
+<ul class="Bl-bullet">
+  <li>Format &quot;%H:%M:%S&quot; &#x2192; &quot;14:30:45.123456&quot;</li>
+  <li>Format &quot;%Y-%m-%d&quot; &#x2192; &quot;2026-02-16&quot;</li>
+  <li>Format &quot;%F %T&quot; &#x2192; &quot;2026-02-16
+    14:30:45.123456&quot;</li>
+</ul>
+<p class="Pp"><b>Notes:</b></p>
+<ul class="Bl-bullet">
+  <li>Buffer size should be at least 64 bytes</li>
+  <li>Automatic microsecond appending occurs only when S is in format</li>
+  <li>Output is locale-aware (UTF-8 safe from strftime)</li>
+  <li>Returns 0 on error (strftime failure or buffer overflow)</li>
+</ul>
+<p class="Pp">Definition at line <b>772</b> of file <b>util/time.c</b>.</p>
+<pre>772                                                                         {
+773   if (!format_str || !buf || buf_size &lt; 2) {
+774     SET_ERRNO(ERROR_INVALID_PARAM, &quot;time_format_now: invalid arguments - format_str=%p, buf=%p, buf_size=%zu&quot;,
+775               format_str, buf, buf_size);
+776     return 0;
+777   }
+778 
+779   /* Get current wall-clock time in nanoseconds */
+780   uint64_t ts_ns = time_get_realtime_ns();
+781 
+782   /* Extract seconds and nanoseconds */
+783   time_t seconds = (time_t)(ts_ns / NS_PER_SEC_INT);
+784 
+785   /* Convert seconds to struct tm */
+786   struct tm tm_info;
+787   platform_localtime(&amp;seconds, &amp;tm_info);
+788 
+789   /* Format using strftime */
+790   size_t len = strftime(buf, buf_size, format_str, &amp;tm_info);
+791 
+792   /* Check for strftime errors or buffer overflow */
+793   if (len == 0) {
+794     /* strftime returned 0 - either error or exact buffer fill */
+795     log_debug(&quot;strftime returned 0 for format: %s&quot;, format_str);
+796     return 0;
+797   }
+798 
+799   if (len &gt;= buf_size - 1) {
+800     /* Buffer would overflow - strftime filled entire buffer or hit exact size */
+801     log_error(&quot;time_format_now: buffer too small (need %zu, have %zu)&quot;, len + 1, buf_size);
+802     return 0;
+803   }
+804 
+805   return (int)len;
+806 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
+    <b>log_error</b>, <b>NS_PER_SEC_INT</b>, <b>platform_localtime()</b>,
+    <b>SET_ERRNO</b>, and <b>time_get_realtime_ns()</b>.</p>
+<p class="Pp">Referenced by <b>log_template_apply()</b>, and
+    <b>time_format_safe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> time_format_safe (const char *
+  format_str, char * buf, size_t buf_size)</h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Safe wrapper for time formatting with validation and error
+  codes.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>format_str</i> Format string to use
+<br/>
+<i>buf</i> Output buffer
+<br/>
+<i>buf_size</i> Output buffer size</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure (includes
+  error context)</div>
+<p class="Pp">Validates format string first, then formats time. Returns detailed
+    error if:</p>
+<ul class="Bl-bullet">
+  <li>format_str is NULL</li>
+  <li>buf is NULL</li>
+  <li>buf_size &lt; 64 (minimum safe size)</li>
+  <li>format_str contains invalid specifiers</li>
+  <li>strftime fails</li>
+</ul>
+<p class="Pp">All errors include context message via SET_ERRNO for
+  debugging.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Example:</b></p>
+<p class="Pp"></p>
+<pre>char timebuf[64];
+asciichat_error_t err = time_format_safe(&quot;%H:%M:%S&quot;, timebuf, sizeof(timebuf));
+if (err != ASCIICHAT_OK) {
+<br/>
+    log_error(&quot;Failed to format time&quot;);
+<br/>
+    return err;
+}
+log_info(&quot;Current time: %s&quot;, timebuf);
+</pre>
+<p class="Pp">Definition at line <b>808</b> of file <b>util/time.c</b>.</p>
+<pre>808                                                                                        {
+809   /* Check NULL pointers */
+810   if (!format_str) {
+811     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: format_str is NULL&quot;);
+812   }
+813 
+814   if (!buf) {
+815     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: buf is NULL&quot;);
+816   }
+817 
+818   /* Check minimum buffer size */
+819   if (buf_size &lt; 64) {
+820     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: buffer too small (minimum 64 bytes, got %zu)&quot;, buf_size);
+821   }
+822 
+823   /* Validate format string */
+824   if (!time_format_is_valid_strftime(format_str)) {
+825     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: invalid time format: %s&quot;, format_str);
+826   }
+827 
+828   /* Format the time */
+829   int result = time_format_now(format_str, buf, buf_size);
+830   if (result &lt;= 0) {
+831     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: strftime formatting failed&quot;);
+832   }
+833 
+834   return ASCIICHAT_OK;
+835 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>SET_ERRNO</b>, <b>time_format_is_valid_strftime()</b>, and
+    <b>time_format_now()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> time_get_ns (void )</h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Get current monotonic time in nanoseconds. Returns high-precision
+    monotonic time that never goes backwards. Suitable for measuring elapsed
+    time, FPS tracking, and performance metrics.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Current time in nanoseconds (monotonic, never
+  decreases)</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>uint64_t start = time_get_ns();
+// ... do work ...
+uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
+</pre>
+<p class="Pp">Definition at line <b>108</b> of file <b>util/time.c</b>.</p>
+<pre>108                            {
+109   // sokol_time provides monotonic clock that never goes backwards
+110   // stm_ns() converts ticks to nanoseconds
+111   // Ensure sokol_time is initialized before use (defensive programming)
+112   if (!g_sokol_time_initialized) {
+113     stm_setup();
+114     g_sokol_time_initialized = true;
+115   }
+116   return (uint64_t)stm_ns(stm_now());
+117 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>acip_server_receive_and_dispatch()</b>,
+    <b>ascii_convert_with_capabilities()</b>, <b>asciichat_instr_log_line()</b>,
+    <b>atomic_on_cas()</b>, <b>atomic_on_fetch()</b>, <b>atomic_on_load()</b>,
+    <b>atomic_on_store()</b>, <b>atomic_ptr_on_cas()</b>,
+    <b>atomic_ptr_on_exchange()</b>, <b>atomic_ptr_on_load()</b>,
+    <b>atomic_ptr_on_store()</b>, <b>audio_analysis_init()</b>,
+    <b>audio_analysis_print_report()</b>,
+    <b>audio_analysis_track_received_packet()</b>,
+    <b>audio_analysis_track_sent_packet()</b>,
+    <b>broadcast_server_state_to_all_clients()</b>, <b>buffer_pool_free()</b>,
+    <b>buffer_pool_shrink()</b>, <b>client_audio_render_thread()</b>,
+    <b>client_dispatch_thread()</b>, <b>client_send_thread_func()</b>,
+    <b>client_video_render_thread()</b>, <b>cond_format_state()</b>,
+    <b>cond_on_broadcast()</b>, <b>cond_on_signal()</b>, <b>cond_on_wait()</b>,
+    <b>consensus_coordinator_create()</b>,
+    <b>consensus_coordinator_on_collection_start()</b>,
+    <b>consensus_coordinator_process()</b>,
+    <b>consensus_coordinator_time_until_next_round()</b>,
+    <b>create_mixed_ascii_frame_for_client()</b>,
+    <b>debug_atomic_format_timing()</b>,
+    <b>debug_atomic_ptr_format_timing()</b>, <b>discovery_mdns_query()</b>,
+    <b>fps_counter_tick()</b>, <b>get_utf8_palette_cache()</b>,
+    <b>media_source_read_video()</b>, <b>media_source_seek()</b>,
+    <b>mixer_process_excluding_source()</b>, <b>mutex_format_state()</b>,
+    <b>mutex_on_lock()</b>, <b>mutex_on_trylock()</b>, <b>mutex_on_unlock()</b>,
+    <b>mutex_stack_mark_locked()</b>, <b>mutex_stack_push_pending()</b>,
+    <b>nat_measure_bandwidth()</b>, <b>rwlock_format_state()</b>,
+    <b>rwlock_on_rdlock()</b>, <b>rwlock_on_unlock()</b>,
+    <b>rwlock_on_wrlock()</b>, <b>session_capture_create()</b>,
+    <b>session_capture_get_current_fps()</b>,
+    <b>session_capture_read_frame()</b>, <b>session_client_like_run()</b>,
+    <b>session_display_convert_to_ascii()</b>, <b>session_display_create()</b>,
+    <b>session_display_write_ascii()</b>,
+    <b>session_network_capture_create()</b>, <b>session_pipeline_run_main()</b>,
+    <b>session_render_loop()</b>, <b>simple_frame_swap_update()</b>,
+    <b>splash_intro_done()</b>, <b>splash_intro_start()</b>,
+    <b>time_human_readable_now()</b>, <b>time_pretty_now()</b>, and
+    <b>websocket_server_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> time_get_realtime_ns (void )</h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Get current wall-clock (real) time in nanoseconds. Returns
+    high-precision wall-clock time that can jump forwards or backwards when
+    system time is adjusted. Use this for timestamps, database records, and
+    user-facing time displays.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Current wall-clock time in nanoseconds
+  (CLOCK_REALTIME)</div>
+<p class="Pp">Note: This time can jump backward if system clock is adjusted. For
+    measuring elapsed time, use <b>time_get_ns()</b> instead.</p>
+<p class="Pp">Definition at line <b>119</b> of file <b>util/time.c</b>.</p>
+<pre>119                                     {
+120 #ifdef _WIN32
+121   // Windows: Use GetSystemTimePreciseAsFileTime (Win8+) for high-precision wall clock
+122   // FILETIME is 100-nanosecond intervals since January 1, 1601
+123   FILETIME ft;
+124   GetSystemTimePreciseAsFileTime(&amp;ft);
+125   // Convert FILETIME to nanoseconds
+126   uint64_t filetime = ((uint64_t)ft.dwHighDateTime &lt;&lt; 32) | ft.dwLowDateTime;
+127   // Convert 100-nanosecond intervals to nanoseconds
+128   return filetime * 100;
+129 #else
+130   // Get wall-clock (real-time) timestamp
+131   struct timespec ts;
+132   if (clock_gettime(CLOCK_REALTIME, &amp;ts) != 0) {
+133     // Fallback on error (unlikely)
+134     return 0;
+135   }
+136   return time_timespec_to_ns(&amp;ts);
+137 #endif
+138 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>time_timespec_to_ns()</b>.</p>
+<p class="Pp">Referenced by <b>acds_validate_timestamp()</b>,
+    <b>asciichat_error_stats_record()</b>, <b>asciichat_instr_log_line()</b>,
+    <b>asciichat_set_errno()</b>, <b>connection_attempt_tcp()</b>,
+    <b>connection_attempt_websocket()</b>, <b>connection_check_timeout()</b>,
+    <b>connection_context_init()</b>, <b>consensus_metrics_measure()</b>,
+    <b>consensus_state_compute_election()</b>,
+    <b>database_session_is_migration_ready()</b>,
+    <b>database_session_start_migration()</b>,
+    <b>get_current_time_formatted()</b>,
+    <b>handle_image_frame_h265_packet()</b>, <b>log_json_async_safe()</b>,
+    <b>log_msg()</b>, <b>log_plain_msg()</b>, <b>log_terminal_msg()</b>, and
+    <b>time_format_now()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_time_human_readable_(int64_t_nanoseconds,_char_*_buffer,_size_t_buffer_size)"><a class="permalink" href="#int_time_human_readable_(int64_t_nanoseconds,_char_*_buffer,_size_t_buffer_size)">int
+  time_human_readable (int64_t nanoseconds, char * buffer, size_t
+  buffer_size)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Format nanoseconds as human-readable relative duration (moment.js
+    style).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>nanoseconds</i> Duration in nanoseconds
+<br/>
+<i>buffer</i> Output buffer for formatted string
+<br/>
+<i></i><b>buffer_size</b><i></i><b> Size of output buffer</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of characters written (excluding null terminator),
+  or -1 on error</div>
+<p class="Pp">Formats a duration using moment.js-compatible thresholds to
+    produce natural language relative time strings like &quot;a few seconds
+    ago&quot;, &quot;3 minutes ago&quot;, &quot;2 hours ago&quot;, etc.</p>
+<p class="Pp"></p>
+<p class="Pp">Threshold table (moment.js compatible):</p>
+<ul class="Bl-bullet">
+  <li>&lt; 45 s &#x2192; &quot;a few seconds ago&quot;</li>
+  <li>&lt; 90 s &#x2192; &quot;a minute ago&quot;</li>
+  <li>&lt; 45 min &#x2192; &quot;%d minutes ago&quot;</li>
+  <li>&lt; 90 min &#x2192; &quot;an hour ago&quot;</li>
+  <li>&lt; 22 h &#x2192; &quot;%d hours ago&quot;</li>
+  <li>&lt; 36 h &#x2192; &quot;a day ago&quot;</li>
+  <li>&lt; 25 d &#x2192; &quot;%d days ago&quot;</li>
+  <li>&lt; 45 d &#x2192; &quot;a month ago&quot;</li>
+  <li>&lt; 11 months &#x2192; &quot;%d months ago&quot;</li>
+  <li>&lt; 18 months &#x2192; &quot;a year ago&quot;</li>
+  <li>&#x2265; 18 months &#x2192; &quot;%d years ago&quot;</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Buffer should be at least 32 bytes for all possible
+  outputs
+<p class="Pp"></p>
+<p class="Pp">Thread-safe (no global state)</p>
+</div>
+<p class="Pp">Format elapsed time as human-readable relative duration with
+    past/future support</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>nanoseconds</i> Signed elapsed nanoseconds (negative
+  for future times)
+<br/>
+<i>buffer</i> Output buffer for formatted string
+<br/>
+<i></i><b>buffer_size</b><i></i><b> Size of output buffer</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of characters written (excluding null terminator),
+  or -1 on error</div>
+<p class="Pp">Formats a duration as a human-readable string with
+    moment.js-compatible thresholds. Supports both past times (&quot;3 hours
+    ago&quot;) and future times (&quot;in 5 minutes&quot;).</p>
+<p class="Pp"></p>
+<p class="Pp">Examples:</p>
+<ul class="Bl-bullet">
+  <li>Positive: 3600000000000 ns &#x2192; &quot;an hour ago&quot;</li>
+  <li>Negative: -300000000000 ns &#x2192; &quot;in 5 minutes&quot;</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Use positive values for elapsed time (past), negative for
+  countdown (future)
+<p class="Pp"></p>
+<p class="Pp">Buffer should be at least 32 bytes for all possible outputs</p>
+<p class="Pp"></p>
+<p class="Pp">Thread-safe (no global state)</p>
+</div>
+<p class="Pp">Definition at line <b>570</b> of file <b>util/time.c</b>.</p>
+<pre>570                                                                                {
+571   if (!buffer || buffer_size == 0) {
+572     return -1;
+573   }
+574 
+575   // Determine direction (past vs future)
+576   bool is_future = nanoseconds &lt; 0;
+577   uint64_t abs_ns = is_future ? (uint64_t)(-nanoseconds) : (uint64_t)nanoseconds;
+578 
+579   // Convert nanoseconds to seconds for threshold checking
+580   double total_seconds = (double)abs_ns / NS_PER_SEC;
+581   int minutes = (int)(total_seconds / 60);
+582   int hours = minutes / 60;
+583   int days = hours / 24;
+584   int months = days / 30; // Approximate
+585   int years = months / 12;
+586 
+587   const char *suffix = is_future ? &quot;from now&quot; : &quot;ago&quot;;
+588   int written =
+589       format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, suffix, buffer, buffer_size);
+590 
+591   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
+592     return -1;
+593   }
+594 
+595   return written;
+596 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_size</b>, and <b>NS_PER_SEC</b>.</p>
+<p class="Pp">Referenced by <b>time_human_readable_now()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_time_human_readable_now_(char_*_buffer,_size_t_buffer_size)"><a class="permalink" href="#int_time_human_readable_now_(char_*_buffer,_size_t_buffer_size)">int
+  time_human_readable_now (char * buffer, size_t buffer_size)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Format current monotonic time as human-readable relative
+  duration.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>buffer</i> Output buffer for formatted string
+<br/>
+<i></i><b>buffer_size</b><i></i><b> Size of output buffer</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of characters written (excluding null terminator),
+  or -1 on error</div>
+<p class="Pp">Convenience wrapper that calls <b>time_get_ns()</b> and delegates
+    to <b>time_human_readable()</b>. Useful for measuring time since program
+    start in a single call.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Buffer should be at least 32 bytes for all possible
+  outputs
+<p class="Pp"></p>
+<p class="Pp">Thread-safe (no global state)</p>
+</div>
+<p class="Pp">Definition at line <b>598</b> of file <b>util/time.c</b>.</p>
+<pre>598                                                               {
+599   int64_t ns = (int64_t)time_get_ns();
+600   return time_human_readable(ns, buffer, buffer_size);
+601 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_size</b>, <b>time_get_ns()</b>, and
+    <b>time_human_readable()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_time_human_readable_unsigned_("><a class="permalink" href="#int_time_human_readable_unsigned_(">int
+  time_human_readable_unsigned (<b>uint64_t</b> nanoseconds, char * buffer,
+  size_t buffer_size)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Format elapsed time as human-readable relative duration (unsigned
+    version).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>nanoseconds</i> Unsigned elapsed nanoseconds (always
+  past times)
+<br/>
+<i>buffer</i> Output buffer for formatted string
+<br/>
+<i></i><b>buffer_size</b><i></i><b> Size of output buffer</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of characters written (excluding null terminator),
+  or -1 on error</div>
+<p class="Pp">Formats unsigned nanosecond durations as human-readable past-time
+    strings. Uses moment.js-compatible thresholds. All values are interpreted as
+    elapsed time and formatted with &quot;ago&quot; suffix.</p>
+<p class="Pp"></p>
+<p class="Pp">Examples:</p>
+<ul class="Bl-bullet">
+  <li>3600000000000 ns &#x2192; &quot;an hour ago&quot;</li>
+  <li>300000000000 ns &#x2192; &quot;5 minutes ago&quot;</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Use this for values from <b>time_get_ns()</b> or other
+  unsigned sources
+<p class="Pp"></p>
+<p class="Pp">Buffer should be at least 32 bytes for all possible outputs</p>
+<p class="Pp"></p>
+<p class="Pp">Thread-safe (no global state)</p>
+</div>
+<p class="Pp">Definition at line <b>547</b> of file <b>util/time.c</b>.</p>
+<pre>547                                                                                          {
+548   if (!buffer || buffer_size == 0) {
+549     return -1;
+550   }
+551 
+552   // Convert nanoseconds to seconds for threshold checking
+553   double total_seconds = (double)nanoseconds / NS_PER_SEC;
+554   int minutes = (int)(total_seconds / 60);
+555   int hours = minutes / 60;
+556   int days = hours / 24;
+557   int months = days / 30; // Approximate
+558   int years = months / 12;
+559 
+560   int written =
+561       format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, &quot;ago&quot;, buffer, buffer_size);
+562 
+563   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
+564     return -1;
+565   }
+566 
+567   return written;
+568 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_size</b>, and <b>NS_PER_SEC</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_time_ns_to_timespec_("><a class="permalink" href="#void_time_ns_to_timespec_(">void
+  time_ns_to_timespec (<b>uint64_t</b> ns, struct timespec * ts)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Convert nanoseconds to struct timespec.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ns</i> Time in nanoseconds
+<br/>
+<i>ts</i> Pointer to timespec structure (output)</div>
+<p class="Pp">Useful for nanosleep() or other system calls that require struct
+    timespec.</p>
+<p class="Pp">Definition at line <b>172</b> of file <b>util/time.c</b>.</p>
+<pre>172                                                            {
+173   if (!ts) {
+174     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null ts&quot;);
+175     return;
+176   }
+177   ts-&gt;tv_sec = (time_t)(ns / NS_PER_SEC_INT);
+178   ts-&gt;tv_nsec = (long)(ns % NS_PER_SEC_INT);
+179 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>NS_PER_SEC_INT</b>, and
+    <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_time_pretty_("><a class="permalink" href="#int_time_pretty_(">int
+  time_pretty (<b>uint64_t</b> nanoseconds, int decimals, char * buffer, size_t
+  buffer_size)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Format nanoseconds as pretty duration with spaces and configurable
+    precision.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>nanoseconds</i> Duration in nanoseconds
+<br/>
+<i>decimals</i> Number of decimal places (0-9), or -1 for sensible defaults per
+  range
+<br/>
+<i>buffer</i> Output buffer for formatted string
+<br/>
+<i></i><b>buffer_size</b><i></i><b> Size of output buffer</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of characters written (excluding null terminator),
+  or -1 on error</div>
+<p class="Pp">Formats a duration with space-separated number and unit, with
+    configurable precision. Automatically strips trailing zeros and decimal
+    points.</p>
+<p class="Pp"></p>
+<p class="Pp">Examples (with decimals=-1):</p>
+<ul class="Bl-bullet">
+  <li>500 ns &#x2192; &quot;500 ns&quot;</li>
+  <li>3500 ns &#x2192; &quot;3.5 &#x00B5;s&quot;</li>
+  <li>1253000 ns &#x2192; &quot;1.253 ms&quot;</li>
+  <li>2500000000 ns &#x2192; &quot;2.5 s&quot;</li>
+  <li>83456000000000 ns &#x2192; &quot;1:23.456&quot; (minutes range,
+      MM:SS.fraction)</li>
+  <li>7530000000000 ns &#x2192; &quot;2:05:30&quot; (hours range, H:MM:SS)</li>
+</ul>
+<p class="Pp">Unit selection logic:</p>
+<ul class="Bl-bullet">
+  <li>[0, 1k) ns &#x2192; &quot;NNN ns&quot;</li>
+  <li>[1k, 1M) ns &#x2192; &quot;N.N &#x00B5;s&quot; (up to 3 decimals)</li>
+  <li>[1M, 1G) ns &#x2192; &quot;N.NNN ms&quot; (up to 3 decimals)</li>
+  <li>[1G, 60G) ns &#x2192; &quot;N.NN s&quot; (up to 2 decimals)</li>
+  <li>[60G, 3.6T) ns &#x2192; &quot;M:SS.fraction&quot; (colon notation, up to 3
+      decimals)</li>
+  <li>[3.6T+) ns &#x2192; &quot;H:MM:SS&quot; (colon notation)</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Buffer should be at least 32 bytes for all possible
+  outputs
+<p class="Pp"></p>
+<p class="Pp">Thread-safe (no global state)</p>
+<p class="Pp"></p>
+<p class="Pp">decimals=-1 uses appropriate defaults (3 for
+    ns/&#x00B5;s/ms/colon, 2 for s)</p>
+<p class="Pp"></p>
+<p class="Pp">decimals=0 produces no decimal point</p>
+</div>
+<p class="Pp">Definition at line <b>418</b> of file <b>util/time.c</b>.</p>
+<pre>418                                                                                       {
+419   if (!buffer || buffer_size == 0) {
+420     return -1;
+421   }
+422 
+423   // Handle zero
+424   if (nanoseconds == 0) {
+425     int written = safe_snprintf(buffer, buffer_size, &quot;0 ns&quot;);
+426     return (written &lt; 0 || (size_t)written &gt;= buffer_size) ? -1 : written;
+427   }
+428 
+429   // Determine decimals for this range if not explicitly set
+430   int actual_decimals = decimals;
+431   if (decimals == -1) {
+432     if (nanoseconds &lt; NS_PER_MS_INT) {
+433       actual_decimals = 3; // ns/&#x00B5;s
+434     } else if (nanoseconds &lt; NS_PER_SEC_INT) {
+435       actual_decimals = 3; // ms
+436     } else if (nanoseconds &lt; NS_PER_MIN_INT) {
+437       actual_decimals = 2; // seconds
+438     } else {
+439       actual_decimals = 3; // colon notation
+440     }
+441   }
+442 
+443   // Clamp decimals to valid range
+444   if (actual_decimals &lt; 0)
+445     actual_decimals = 0;
+446   if (actual_decimals &gt; 9)
+447     actual_decimals = 9;
+448 
+449   int written = 0;
+450 
+451   // Nanoseconds (&lt; 1&#x00B5;s)
+452   if (nanoseconds &lt; NS_PER_US_INT) {
+453     written = safe_snprintf(buffer, buffer_size, &quot;%llu ns&quot;, (unsigned long long)nanoseconds);
+454   }
+455   // Microseconds (&lt; 1ms)
+456   else if (nanoseconds &lt; NS_PER_MS_INT) {
+457     double us = (double)nanoseconds / NS_PER_US;
+458     char temp_buf[64];
+459     // Use a direct snprintf with large enough buffer first
+460     snprintf(temp_buf, sizeof(temp_buf), &quot;%.*f &#x00B5;s&quot;, actual_decimals, us);
+461     strip_trailing_zeros(temp_buf);
+462     written = (int)strlen(temp_buf);
+463     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
+464       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+465     } else {
+466       written = -1;
+467     }
+468   }
+469   // Milliseconds (&lt; 1s)
+470   else if (nanoseconds &lt; NS_PER_SEC_INT) {
+471     double ms = (double)nanoseconds / NS_PER_MS;
+472     char temp_buf[64];
+473     snprintf(temp_buf, sizeof(temp_buf), &quot;%.*f ms&quot;, actual_decimals, ms);
+474     strip_trailing_zeros(temp_buf);
+475     written = (int)strlen(temp_buf);
+476     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
+477       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+478     } else {
+479       written = -1;
+480     }
+481   }
+482   // Seconds (&lt; 1 minute)
+483   else if (nanoseconds &lt; NS_PER_MIN_INT) {
+484     double s = (double)nanoseconds / NS_PER_SEC;
+485     char temp_buf[64];
+486     snprintf(temp_buf, sizeof(temp_buf), &quot;%.*f s&quot;, actual_decimals, s);
+487     strip_trailing_zeros(temp_buf);
+488     written = (int)strlen(temp_buf);
+489     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
+490       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+491     } else {
+492       written = -1;
+493     }
+494   }
+495   // Minutes (&lt; 1 hour) - use colon notation: M:SS.frac
+496   else if (nanoseconds &lt; NS_PER_HOUR_INT) {
+497     uint64_t total_seconds = nanoseconds / NS_PER_SEC_INT;
+498     uint64_t minutes = total_seconds / 60;
+499     uint64_t seconds = total_seconds % 60;
+500     uint64_t remainder_ns = nanoseconds % NS_PER_SEC_INT;
+501     double fraction = (double)remainder_ns / NS_PER_SEC;
+502 
+503     char temp_buf[64];
+504     if (actual_decimals == 0) {
+505       snprintf(temp_buf, sizeof(temp_buf), &quot;%llu:%02llu&quot;, (unsigned long long)minutes, (unsigned long long)seconds);
+506     } else {
+507       snprintf(temp_buf, sizeof(temp_buf), &quot;%llu:%02llu.%.*f&quot;, (unsigned long long)minutes, (unsigned long long)seconds,
+508                actual_decimals, fraction);
+509       strip_trailing_zeros(temp_buf);
+510     }
+511 
+512     written = (int)strlen(temp_buf);
+513     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
+514       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+515     } else {
+516       written = -1;
+517     }
+518   }
+519   // Hours+ - use colon notation: H:MM:SS or HH:MM:SS
+520   else {
+521     uint64_t total_seconds = nanoseconds / NS_PER_SEC_INT;
+522     uint64_t hours = total_seconds / 3600;
+523     uint64_t remaining = total_seconds % 3600;
+524     uint64_t minutes = remaining / 60;
+525     uint64_t seconds = remaining % 60;
+526 
+527     written = safe_snprintf(buffer, buffer_size, &quot;%llu:%02llu:%02llu&quot;, (unsigned long long)hours,
+528                             (unsigned long long)minutes, (unsigned long long)seconds);
+529   }
+530 
+531   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
+532     return -1;
+533   }
+534 
+535   return written;
+536 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_size</b>, <b>NS_PER_HOUR_INT</b>,
+    <b>NS_PER_MIN_INT</b>, <b>NS_PER_MS</b>, <b>NS_PER_MS_INT</b>,
+    <b>NS_PER_SEC</b>, <b>NS_PER_SEC_INT</b>, <b>NS_PER_US</b>,
+    <b>NS_PER_US_INT</b>, <b>safe_snprintf()</b>, and <b>SAFE_STRNCPY</b>.</p>
+<p class="Pp">Referenced by <b>acip_server_receive_and_dispatch()</b>,
+    <b>ascii_convert_with_capabilities()</b>, <b>asciichat_instr_log_line()</b>,
+    <b>broadcast_server_state_to_all_clients()</b>,
+    <b>client_dispatch_thread()</b>, <b>client_send_thread_func()</b>,
+    <b>client_video_render_thread()</b>, <b>cond_format_state()</b>,
+    <b>connection_check_timeout()</b>,
+    <b>create_mixed_ascii_frame_for_client()</b>, <b>crypto_init()</b>,
+    <b>crypto_rekey_init()</b>, <b>debug_atomic_format_timing()</b>,
+    <b>debug_atomic_ptr_format_timing()</b>, <b>media_source_seek()</b>,
+    <b>mixer_process_excluding_source()</b>, <b>mutex_format_state()</b>,
+    <b>rwlock_format_state()</b>, <b>session_display_convert_to_ascii()</b>,
+    <b>session_display_write_ascii()</b>, <b>session_render_loop()</b>,
+    <b>time_pretty_now()</b>, and <b>timer_stop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_time_pretty_now_(int_decimals,_char_*_buffer,_size_t_buffer_size)"><a class="permalink" href="#int_time_pretty_now_(int_decimals,_char_*_buffer,_size_t_buffer_size)">int
+  time_pretty_now (int decimals, char * buffer, size_t buffer_size)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Format current monotonic time as pretty duration.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>decimals</i> Number of decimal places (0-9), or -1 for
+  sensible defaults per range
+<br/>
+<i>buffer</i> Output buffer for formatted string
+<br/>
+<i></i><b>buffer_size</b><i></i><b> Size of output buffer</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of characters written (excluding null terminator),
+  or -1 on error</div>
+<p class="Pp">Convenience wrapper that calls <b>time_get_ns()</b> and delegates
+    to <b>time_pretty()</b>. Useful for measuring elapsed time since program
+    start in a single call.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Buffer should be at least 32 bytes for all possible
+  outputs
+<p class="Pp"></p>
+<p class="Pp">Thread-safe (no global state)</p>
+</div>
+<p class="Pp">Definition at line <b>538</b> of file <b>util/time.c</b>.</p>
+<pre>538                                                                     {
+539   uint64_t ns = time_get_ns();
+540   return time_pretty(ns, decimals, buffer, buffer_size);
+541 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_size</b>, <b>time_get_ns()</b>, and
+    <b>time_pretty()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_time_sleep_ns_("><a class="permalink" href="#void_time_sleep_ns_(">void
+  time_sleep_ns (<b>uint64_t</b> ns)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Sleep for specified nanoseconds. Sleeps the current thread for at
+    least the specified number of nanoseconds. On some systems, actual sleep
+    time may be slightly longer due to scheduler granularity.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ns</i> Number of nanoseconds to sleep</div>
+<p class="Pp">Definition at line <b>140</b> of file <b>util/time.c</b>.</p>
+<pre>140                                 {
+141   // Use platform abstraction for cross-platform sleep
+142   // Convert nanoseconds to microseconds (1 us = 1000 ns)
+143   unsigned int usec = (unsigned int)(ns / 1000);
+144   if (usec == 0 &amp;&amp; ns &gt; 0) {
+145     usec = 1; // Minimum 1 microsecond
+146   }
+147   platform_sleep_us(usec);
+148 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_sleep_us()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> time_timespec_to_ns (const struct timespec *
+  ts)</h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Convert struct timespec to nanoseconds.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ts</i> Pointer to timespec structure</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Time in nanoseconds</div>
+<p class="Pp">Useful for converting CLOCK_MONOTONIC or CLOCK_REALTIME readings
+    to nanoseconds.</p>
+<p class="Pp">Definition at line <b>164</b> of file <b>util/time.c</b>.</p>
+<pre>164                                                         {
+165   if (!ts) {
+166     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null ts&quot;);
+167     return 0;
+168   }
+169   return (uint64_t)ts-&gt;tv_sec * NS_PER_SEC_INT + (uint64_t)ts-&gt;tv_nsec;
+170 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>NS_PER_SEC_INT</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>time_get_realtime_ns()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> timer_is_initialized (void )</h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Check if timing system is initialized.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if initialized, false otherwise</div>
+<p class="Pp">Definition at line <b>340</b> of file <b>util/time.c</b>.</p>
+<pre>340                                 {
+341   return lifecycle_is_initialized(&amp;g_timer_manager.lifecycle);
+342 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> timer_start (const char * name)</h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Start a named timer. Creates a new timer record and stores the
+    start time. If a timer with the same name exists, it will be
+  overwritten.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name</i> Timer name (must be unique, will be
+  copied)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true on success, false on failure</div>
+<p class="Pp">Definition at line <b>234</b> of file <b>util/time.c</b>.</p>
+<pre>234                                    {
+235   if (!lifecycle_is_initialized(&amp;g_timer_manager.lifecycle)) {
+236     SET_ERRNO(ERROR_INVALID_STATE, &quot;Timer system not initialized&quot;);
+237     return false;
+238   }
+239 
+240   if (!name) {
+241     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Timer name is NULL&quot;);
+242     return false;
+243   }
+244 
+245   rwlock_wrlock(&amp;g_timer_manager.rwlock);
+246 
+247   // Check if timer already exists - this is an error, timers must be unique
+248   timer_record_t *existing = NULL;
+249   HASH_FIND_STR(g_timer_manager.timers, name, existing);
+250 
+251   if (existing) {
+252     rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+253     SET_ERRNO(ERROR_INVALID_STATE, &quot;Timer '%s' already exists - timers must have unique names&quot;, name);
+254     return false;
+255   }
+256 
+257   // Create new timer record
+258   timer_record_t *timer = SAFE_MALLOC(sizeof(timer_record_t), timer_record_t *);
+259   if (!timer) {
+260     rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+261     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate timer record&quot;);
+262     return false;
+263   }
+264 
+265   // Use platform-safe string duplication
+266   size_t name_len = strlen(name) + 1;
+267   timer-&gt;name = SAFE_MALLOC(name_len, char *);
+268   if (!timer-&gt;name) {
+269     SAFE_FREE(timer);
+270     rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+271     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate timer name&quot;);
+272     return false;
+273   }
+274   SAFE_STRNCPY(timer-&gt;name, name, name_len);
+275 
+276   timer-&gt;start_ticks = stm_now();
+277 
+278   // Add to hashtable
+279   HASH_ADD_KEYPTR(hh, g_timer_manager.timers, timer-&gt;name, strlen(timer-&gt;name), timer);
+280 
+281   rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+282   return true;
+283 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>ERROR_MEMORY</b>, <b>lifecycle_is_initialized()</b>,
+    <b>timer_record::name</b>, <b>rwlock_wrlock</b>, <b>rwlock_wrunlock</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
+    and <b>timer_record::start_ticks</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_timer_stop_(const_char_*_name)"><a class="permalink" href="#double_timer_stop_(const_char_*_name)">double
+  timer_stop (const char * name)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Stop a named timer and return elapsed time. Looks up the timer by
+    name, calculates elapsed time, logs it, and removes the timer from the
+    hashtable.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name</i> Timer name to stop</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Elapsed time in nanoseconds, or -1.0 if timer not
+  found</div>
+<p class="Pp">Definition at line <b>285</b> of file <b>util/time.c</b>.</p>
+<pre>285                                     {
+286   if (!lifecycle_is_initialized(&amp;g_timer_manager.lifecycle)) {
+287     SET_ERRNO(ERROR_INVALID_STATE, &quot;Timer system not initialized&quot;);
+288     return -1.0;
+289   }
+290 
+291   if (!name) {
+292     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Timer name is NULL&quot;);
+293     return -1.0;
+294   }
+295 
+296   rwlock_wrlock(&amp;g_timer_manager.rwlock);
+297 
+298   // Find timer
+299   timer_record_t *timer = NULL;
+300   HASH_FIND_STR(g_timer_manager.timers, name, timer);
+301 
+302   if (!timer) {
+303     rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+304     log_dev(&quot;Timer '%s' not found (may have already been stopped)&quot;, name);
+305     return -1.0;
+306   }
+307 
+308   // Calculate elapsed time in nanoseconds for maximum precision
+309   uint64_t end_ticks = stm_now();
+310   uint64_t elapsed_ticks = stm_diff(end_ticks, timer-&gt;start_ticks);
+311   double elapsed_ns = stm_ns(elapsed_ticks);
+312 
+313   // Format duration for human-readable logging
+314   char duration_str[32];
+315   time_pretty((uint64_t)elapsed_ns, -1, duration_str, sizeof(duration_str));
+316 
+317   // Log the result (dev level - only shown with --verbose)
+318   log_dev(&quot;Timer '%s': %s&quot;, name, duration_str);
+319 
+320   // Save pointers to free BEFORE removing from hashtable
+321   char *timer_name = timer-&gt;name;
+322 
+323   // Remove from hashtable (HASH_DEL only removes from hash, doesn't free memory)
+324   HASH_DEL(g_timer_manager.timers, timer);
+325 
+326   // Free timer-&gt;name first (this was allocated separately)
+327   SAFE_FREE(timer_name);
+328 
+329   // Nullify the timer-&gt;name field so debug_free doesn't try to access it
+330   // when freeing the timer structure itself
+331   timer-&gt;name = NULL;
+332 
+333   // Free the timer record itself
+334   SAFE_FREE(timer);
+335 
+336   rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+337   return elapsed_ns; // Return nanoseconds
+338 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>lifecycle_is_initialized()</b>, <b>log_dev</b>,
+    <b>timer_record::name</b>, <b>rwlock_wrlock</b>, <b>rwlock_wrunlock</b>,
+    <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, <b>timer_record::start_ticks</b>, and
+    <b>time_pretty()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_timer_system_destroy_(void_)"><a class="permalink" href="#void_timer_system_destroy_(void_)">void
+  timer_system_destroy (void )</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Cleanup the timing system. Frees all timer records and destroys
+    mutex. Should be called at program exit.</p>
+<p class="Pp">Definition at line <b>207</b> of file <b>util/time.c</b>.</p>
+<pre>207                                 {
+208   if (!lifecycle_is_initialized(&amp;g_timer_manager.lifecycle)) {
+209     return;
+210   }
+211 
+212   rwlock_wrlock(&amp;g_timer_manager.rwlock);
+213 
+214   // Free all timer records
+215   int timer_count = 0;
+216   timer_record_t *current, *tmp;
+217   HASH_ITER(hh, g_timer_manager.timers, current, tmp) {
+218     HASH_DEL(g_timer_manager.timers, current);
+219     SAFE_FREE(current-&gt;name);
+220     SAFE_FREE(current);
+221     timer_count++;
+222   }
+223 
+224   g_timer_manager.timers = NULL;
+225 
+226   rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+227 
+228   /* Shutdown lifecycle and destroy rwlock together */
+229   lifecycle_shutdown(&amp;g_timer_manager.lifecycle);
+230 
+231   log_debug(&quot;Timer system cleaned up (freed %d timers)&quot;, timer_count);
+232 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>,
+    <b>lifecycle_shutdown()</b>, <b>log_debug</b>, <b>timer_record::name</b>,
+    <b>rwlock_wrlock</b>, <b>rwlock_wrunlock</b>, and <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> timer_system_init (void )</h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
+<p class="Pp">Initialize the timing system. Must be called before using any
+    timer functions. Automatically calls stm_setup() for sokol_time
+    initialization.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true on success, false on failure</div>
+<p class="Pp">Definition at line <b>185</b> of file <b>util/time.c</b>.</p>
+<pre>185                              {
+186   if (lifecycle_is_initialized(&amp;g_timer_manager.lifecycle)) {
+187     return true;
+188   }
+189 
+190   // Initialize sokol_time
+191   stm_setup();
+192 
+193   // Initialize rwlock and lifecycle together
+194   g_timer_manager.lifecycle.sync_type = LIFECYCLE_SYNC_RWLOCK;
+195   g_timer_manager.lifecycle.sync.rwlock = &amp;g_timer_manager.rwlock;
+196   if (!lifecycle_init(&amp;g_timer_manager.lifecycle, &quot;timer_manager&quot;)) {
+197     SET_ERRNO(ERROR_PLATFORM_INIT, &quot;Failed to initialize timer system (already initialized by another thread)&quot;);
+198     return true; // Another thread already initialized it
+199   }
+200 
+201   g_timer_manager.timers = NULL;
+202 
+203   log_dev(&quot;Timer system initialized&quot;);
+204   return true;
+205 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_PLATFORM_INIT</b>, <b>lifecycle_init()</b>,
+    <b>lifecycle_is_initialized()</b>, <b>LIFECYCLE_SYNC_RWLOCK</b>,
+    <b>log_dev</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_init()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

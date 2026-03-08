@@ -39,15 +39,18 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">void <b>fps_init</b> (fps_t *tracker, int expected_fps, const char
-    *name)
+<p class="Pp">void <b>fps_init</b> (<b>fps_t</b> *tracker, int expected_fps,
+    const char *name)
   <br/>
-  void <b>fps_init_with_interval</b> (fps_t *tracker, int expected_fps, const
-    char *name, uint64_t report_interval_ns)
+  Initialize FPS tracker. void <b>fps_init_with_interval</b> (<b>fps_t</b>
+    *tracker, int expected_fps, const char *name, <b>uint64_t</b>
+    report_interval_ns)
   <br/>
-  void <b>fps_frame_ns</b> (fps_t *tracker, uint64_t current_time_ns, const char
+  Initialize FPS tracker with custom report interval. void <b>fps_frame_ns</b>
+    (<b>fps_t</b> *tracker, <b>uint64_t</b> current_time_ns, const char
     *context)
   <br/>
+  Track a frame and detect lag conditions (nanosecond version - PRIMARY).
   <br/>
 </p>
 </section>
@@ -62,115 +65,13 @@
 <p class="Pp">Definition in file <b>fps.c</b>.</p>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_fps_frame_ns_(fps_t_*_tracker,_uint64_t_current_time_ns,_const_char_*_context)"><a class="permalink" href="#void_fps_frame_ns_(fps_t_*_tracker,_uint64_t_current_time_ns,_const_char_*_context)">void
-  fps_frame_ns (fps_t * tracker, uint64_t current_time_ns, const char *
-  context)</a></h2>
-<p class="Pp">Definition at line <b>52</b> of file <b>fps.c</b>.</p>
-<pre>52                                                                                  {
-53   if (!tracker) {
-54     return;
-55   }
-56 
-57   // Initialize on first frame
-58   if (tracker-&gt;last_fps_report_ns == 0) {
-59     tracker-&gt;last_fps_report_ns = current_time_ns;
-60     tracker-&gt;last_frame_time_ns = current_time_ns;
-61   }
-62 
-63   tracker-&gt;frame_count++;
-64 
-65   // Calculate time since last frame in nanoseconds
-66   uint64_t frame_interval_ns = time_elapsed_ns(tracker-&gt;last_frame_time_ns, current_time_ns);
-67   tracker-&gt;last_frame_time_ns = current_time_ns;
-68 
-69   // Expected frame interval in nanoseconds
-70   // For 60 FPS: 1 second / 60 = 16,666,666 ns per frame
-71   uint64_t expected_interval_ns = NS_PER_SEC_INT / (uint64_t)tracker-&gt;expected_fps;
-72   uint64_t lag_threshold_ns = expected_interval_ns + (expected_interval_ns / 2); // 50% over expected
-73 
-74   // Log error if frame arrived too late (only after first frame)
-75   if (tracker-&gt;frame_count &gt; 1 &amp;&amp; frame_interval_ns &gt; lag_threshold_ns) {
-76     const char *context_str = context ? context : &quot;Frame&quot;;
-77 
-78     // Convert to milliseconds for display (but calculations stay in nanoseconds)
-79     double late_ms = time_ns_to_us(frame_interval_ns - expected_interval_ns) / 1000.0;
-80     double expected_ms = time_ns_to_us(expected_interval_ns) / 1000.0;
-81     double actual_ms = time_ns_to_us(frame_interval_ns) / 1000.0;
-82     double actual_fps = 1e9 / (double)frame_interval_ns;
-83 
-84     log_lag_event(tracker-&gt;tracker_name, context_str, late_ms, expected_ms, actual_ms, actual_fps);
-85   }
-86 
-87   // Report FPS every report_interval_ns
-88   uint64_t elapsed_ns = time_elapsed_ns(tracker-&gt;last_fps_report_ns, current_time_ns);
-89 
-90   if (elapsed_ns &gt;= tracker-&gt;report_interval_ns) {
-91     double elapsed_seconds = time_ns_to_s(elapsed_ns);
-92     double actual_fps = (double)tracker-&gt;frame_count / elapsed_seconds;
-93     log_fps_report(tracker-&gt;tracker_name, actual_fps, tracker-&gt;frame_count, elapsed_seconds);
-94 
-95     // Reset counters for next interval
-96     tracker-&gt;frame_count = 0;
-97     tracker-&gt;last_fps_report_ns = current_time_ns;
-98   }
-99 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>time_elapsed_ns()</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_render_thread()</b>,
-    <b>client_video_render_thread()</b>, and
-    <b>session_capture_read_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_fps_init_(fps_t_*_tracker,_int_expected_fps,_const_char_*_name)"><a class="permalink" href="#void_fps_init_(fps_t_*_tracker,_int_expected_fps,_const_char_*_name)">void
-  fps_init (fps_t * tracker, int expected_fps, const char * name)</a></h2>
-<p class="Pp">Definition at line <b>32</b> of file <b>fps.c</b>.</p>
-<pre>32                                                                   {
-33   // Default report interval: 1 second
-34   fps_init_with_interval(tracker, expected_fps, name, 1 * NS_PER_SEC_INT);
-35 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>fps_init_with_interval()</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_render_thread()</b>,
-    <b>client_video_render_thread()</b>, <b>session_capture_create()</b>, and
-    <b>session_network_capture_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_fps_init_with_interval_(fps_t_*_tracker,_int_expected_fps,_const_char_*_name,_uint64_t_report_interval_ns)"><a class="permalink" href="#void_fps_init_with_interval_(fps_t_*_tracker,_int_expected_fps,_const_char_*_name,_uint64_t_report_interval_ns)">void
-  fps_init_with_interval (fps_t * tracker, int expected_fps, const char * name,
-  uint64_t report_interval_ns)</a></h2>
-<p class="Pp">Definition at line <b>37</b> of file <b>fps.c</b>.</p>
-<pre>37                                                                                                              {
-38   if (!tracker) {
-39     return;
-40   }
-41 
-42   tracker-&gt;frame_count = 0;
-43   tracker-&gt;expected_fps = expected_fps &gt; 0 ? expected_fps : 60;
-44   tracker-&gt;tracker_name = name ? name : &quot;FPS&quot;;
-45   tracker-&gt;report_interval_ns = report_interval_ns;
-46 
-47   // Initialize timestamps to zero (will be set on first frame)
-48   tracker-&gt;last_fps_report_ns = 0;
-49   tracker-&gt;last_frame_time_ns = 0;
-50 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>fps_init()</b>.</p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

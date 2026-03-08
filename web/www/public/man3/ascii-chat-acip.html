@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>acip(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">acip(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">acip(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">acip - Acip</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+<br/>
+<p class="Pp">file <b>client.c</b>
+  <br/>
+  ACIP client-side protocol implementation. file <b>server.c</b>
+  <br/>
+  ACIP server-side protocol implementation. file <b>acds.h</b>
+  <br/>
+  ascii-chat Discovery Service (ACDS) Protocol Message Formats file
+    <b>acds_client.h</b>
+  <br/>
+  ACIP client-side protocol library and ACDS client connection API. file
+    <b>acds_server.h</b>
+  <br/>
+  ACIP server-side protocol library and ACDS server utilities. file
+    <b>client.h</b>
+  <br/>
+  ACIP client-side protocol API. file <b>server.h</b>
+  <br/>
+  ACIP server-side protocol API.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">This module defines the ACIP protocol packet types used for
+    session management, WebRTC signaling, and discovery service communication.
+    ACIP is a binary protocol over TCP used by the ascii-chat Discovery Service
+    (ACDS) and clients.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ACIP_Binary_Protocol_Format"><a class="permalink" href="#ACIP_Binary_Protocol_Format">ACIP
+  Binary Protocol Format</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Protocol_Overview"><a class="permalink" href="#Protocol_Overview">Protocol
+  Overview</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Transport</b>: TCP (default port 27225 for ACDS)</li>
+  <li><b>Packet Format</b>: Binary, little-endian</li>
+  <li><b>Authentication</b>: Ed25519 digital signatures</li>
+  <li><b>Encryption</b>: Optional TLS or application-level encryption</li>
+  <li><b>Reliability</b>: CRC32 checksum per packet</li>
+  <li><b>Session Identifiers</b>: UUID (16 bytes) for sessions and
+    participants</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Packet_Structure"><a class="permalink" href="#Packet_Structure">Packet
+  Structure</a></h2>
+<p class="Pp">All ACIP packets follow the same <b>packet_header_t</b>
+  structure:</p>
+<p class="Pp"></p>
+<pre>Offset  Size  Field          Description
+------  ----  -----          -----------
+0       4     magic          Magic number (0x4C494341 = &quot;ACIL&quot; in little-endian)
+4       2     type           Packet type (PACKET_TYPE_ACIP_* enum, 100-199)
+6       2     reserved       Reserved (0)
+8       4     length         Payload length in bytes (0-2MB)
+12      4     crc32          CRC32 checksum of payload
+16      4     client_id      Client identifier (assigned by server)
+20      N     payload        Payload data (N = length)
+------
+Total: 20 + payload_length bytes
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Version_Information"><a class="permalink" href="#Version_Information">Version
+  Information</a></h2>
+<ul class="Bl-bullet">
+  <li><b>ACIP Version</b>: 1.0</li>
+  <li><b>Release Date</b>: January 2026</li>
+  <li><b>Status</b>: Production</li>
+  <li><b>Backward Compatibility</b>: ACIP 1.0 packets are version-locked to
+    1.0</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CORE_RESPONSIBILITIES:"><a class="permalink" href="#CORE_RESPONSIBILITIES:">CORE
+  RESPONSIBILITIES: </a></h1>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Session management packet type definitions (100-109)</dd>
+  <dt>2.</dt>
+  <dd>WebRTC signaling packet type definitions (110-119)</dd>
+  <dt>3.</dt>
+  <dd>String reservation packet type definitions (120-129)</dd>
+  <dt>4.</dt>
+  <dd>Discovery service control packet type definitions (150-198)</dd>
+  <dt>5.</dt>
+  <dd>Error handling packet type definitions</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="PACKET_RANGE_ALLOCATION:"><a class="permalink" href="#PACKET_RANGE_ALLOCATION:">PACKET
+  RANGE ALLOCATION: </a></h1>
+<p class="Pp">ACIP packets use range 100-199 to avoid conflicts with ascii-chat
+    protocol (1-99).</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>100-109: Session management (CREATE, JOIN, LEAVE, etc.)</li>
+  <li>110-119: WebRTC signaling (SDP offers/answers, ICE candidates)</li>
+  <li>120-129: String reservation (reserve, renew, release)</li>
+  <li>150-198: Control and utilities (PING, discovery)</li>
+  <li>199: Generic error response</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="INTEGRATION_WITH_OTHER_MODULES:"><a class="permalink" href="#INTEGRATION_WITH_OTHER_MODULES:">INTEGRATION
+  WITH OTHER MODULES: </a></h1>
+<ul class="Bl-bullet">
+  <li>network/packet.h: Defines <b>packet_header_t</b> and uses ACIP packet
+      types in <b>packet_type_t</b> enum</li>
+  <li><b>network/acip/acds.h</b>: ACDS-specific message structures and payload
+      definitions</li>
+  <li><b>network/acip/transport.h</b>: Transport abstraction layer for different
+      connection types</li>
+  <li>lib/network/acip/: Protocol implementation files (<b>send.c</b>,
+      handlers.c, etc.)</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">ACIP packets are defined in the same <b>packet_type_t</b>
+  enum as ascii-chat packets, but use a separate numeric range (100-199).
+<p class="Pp"></p>
+<p class="Pp">All ACIP packets use the same packet header structure as
+    ascii-chat (magic, type, length, CRC32, client_id).</p>
+<p class="Pp"></p>
+<p class="Pp">Payload CRC32 is computed over payload bytes only (not the
+    header).</p>
+</div>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp"><b>Version</b></p>
+<div class="Bd-indent">1.0 (ACIP Protocol Refactoring)</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>lws_callback_stats_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">lws_callback_stats_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">lws_callback_stats_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">lws_callback_stats_t - Callback profiling statistics for a single
+    LWS callback reason.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include
+    &lt;include/ascii-chat/network/websocket/callback_profiler.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint64_t</b> <b>invocation_count</b>
+  <br/>
+  Number of times callback was invoked. <b>uint64_t</b> <b>total_time_ns</b>
+  <br/>
+  Total accumulated execution time in nanoseconds. <b>uint64_t</b>
+    <b>min_time_ns</b>
+  <br/>
+  Minimum single callback execution time. <b>uint64_t</b> <b>max_time_ns</b>
+  <br/>
+  Maximum single callback execution time. <b>uint64_t</b> <b>bytes_processed</b>
+  <br/>
+  Total data processed by this callback. <b>uint64_t</b>
+    <b>last_invocation_ns</b>
+  <br/>
+  Timestamp of last invocation (wall clock).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Callback profiling statistics for a single LWS callback
+  reason.</p>
+<p class="Pp">Definition at line <b>27</b> of file
+  <b>callback_profiler.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> lws_callback_stats_t::bytes_processed</h2>
+<p class="Pp">Total data processed by this callback.</p>
+<p class="Pp">Definition at line <b>32</b> of file
+  <b>callback_profiler.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> lws_callback_stats_t::invocation_count</h2>
+<p class="Pp">Number of times callback was invoked.</p>
+<p class="Pp">Definition at line <b>28</b> of file
+  <b>callback_profiler.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> lws_callback_stats_t::last_invocation_ns</h2>
+<p class="Pp">Timestamp of last invocation (wall clock).</p>
+<p class="Pp">Definition at line <b>33</b> of file
+  <b>callback_profiler.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> lws_callback_stats_t::max_time_ns</h2>
+<p class="Pp">Maximum single callback execution time.</p>
+<p class="Pp">Definition at line <b>31</b> of file
+  <b>callback_profiler.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> lws_callback_stats_t::min_time_ns</h2>
+<p class="Pp">Minimum single callback execution time.</p>
+<p class="Pp">Definition at line <b>30</b> of file
+  <b>callback_profiler.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> lws_callback_stats_t::total_time_ns</h2>
+<p class="Pp">Total accumulated execution time in nanoseconds.</p>
+<p class="Pp">Definition at line <b>29</b> of file
+  <b>callback_profiler.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

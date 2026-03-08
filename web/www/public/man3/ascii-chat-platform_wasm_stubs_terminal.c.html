@@ -39,16 +39,21 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>terminal_get_size</b> (terminal_size_t *size)
+<p class="Pp"><b>asciichat_error_t</b> <b>terminal_get_size</b>
+    (<b>terminal_size_t</b> *size)
   <br/>
-  asciichat_error_t <b>terminal_cursor_hide</b> (void)
+  Get terminal size. <b>asciichat_error_t</b> <b>terminal_cursor_hide</b> (void)
   <br/>
-  asciichat_error_t <b>terminal_cursor_show</b> (void)
+  Hide terminal cursor. <b>asciichat_error_t</b> <b>terminal_cursor_show</b>
+    (void)
   <br/>
-  unsigned short int <b>terminal_get_effective_width</b> (void)
+  Show terminal cursor. unsigned short int <b>terminal_get_effective_width</b>
+    (void)
   <br/>
-  unsigned short int <b>terminal_get_effective_height</b> (void)
+  Get effective terminal width with fallback priority. unsigned short int
+    <b>terminal_get_effective_height</b> (void)
   <br/>
+  Get effective terminal height with fallback priority.
   <br/>
 </p>
 </section>
@@ -65,36 +70,69 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_terminal_cursor_hide_(void_)"><a class="permalink" href="#asciichat_error_t_terminal_cursor_hide_(void_)">asciichat_error_t
-  terminal_cursor_hide (void )</a></h2>
-<p class="Pp">Definition at line <b>16</b> of file
-    <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>16                                              {
-17   return ASCIICHAT_OK;
-18 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>ascii_write_init()</b>, and
-    <b>session_display_write_ascii()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_terminal_cursor_show_(void_)"><a class="permalink" href="#asciichat_error_t_terminal_cursor_show_(void_)">asciichat_error_t
-  terminal_cursor_show (void )</a></h2>
-<p class="Pp">Definition at line <b>20</b> of file
-    <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>20                                              {
-21   return ASCIICHAT_OK;
-22 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>ascii_write_destroy()</b>,
-    <b>log_search_enter_mode()</b>, <b>main()</b>,
-    <b>session_display_reset()</b>, <b>session_display_write_ascii()</b>,
-    <b>splash_intro_start()</b>, and <b>terminal_screen_render()</b>.</p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="unsigned_short_int_terminal_get_effective_height_(void_)"><a class="permalink" href="#unsigned_short_int_terminal_get_effective_height_(void_)">unsigned
   short int terminal_get_effective_height (void )</a></h2>
+<p class="Pp">Get effective terminal height with fallback priority.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Terminal height in characters with priority: option
+  &#x2192; detected &#x2192; default</div>
+<p class="Pp">Returns the effective terminal height to use, checking in priority
+    order:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Option value</b>: If --height was set to a non-zero value, return
+    it</dd>
+  <dt>2.</dt>
+  <dd><b>Detected size</b>: Try to detect actual terminal height via
+      <b>terminal_get_size()</b><b></b></dd>
+  <dt>3.</dt>
+  <dd><b>Default</b>: Return <b>OPT_HEIGHT_DEFAULT</b><b> (70) as final
+      fallback</b></dd>
+</dl>
+<p class="Pp">This function simplifies the common pattern of &quot;use option if
+    set, else detect,else use default&quot; that appears throughout the codebase
+    for terminal dimension handling.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Safe to call from any thread (uses lock-free option
+  access)
+<p class="Pp"></p>
+<p class="Pp">Detection may fail on non-TTY output (piped/redirected), falls
+    back gracefully</p>
+<p class="Pp"></p>
+<p class="Pp">Height option defaults to 0, so non-zero means it was explicitly
+    set</p>
+</div>
+<p class="Pp"><b>Usage Example:</b></p>
+<p class="Pp"></p>
+<pre>// Old pattern (scattered throughout code):
+unsigned short int height = GET_OPTION(height);
+if (height == 0) {
+<br/>
+    terminal_size_t size;
+<br/>
+    if (terminal_get_size(&amp;size) == ASCIICHAT_OK) {
+<br/>
+        height = size.rows;
+<br/>
+    } else {
+<br/>
+        height = OPT_HEIGHT_DEFAULT;
+<br/>
+    }
+}
+// New pattern (unified):
+unsigned short int height = terminal_get_effective_height();
+</pre>
+<p class="Pp">Returns height in priority order:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Option height if set to non-zero value</dd>
+  <dt>2.</dt>
+  <dd>Detected terminal height</dd>
+  <dt>3.</dt>
+  <dd>OPT_HEIGHT_DEFAULT fallback</dd>
+</dl>
 <p class="Pp">Definition at line <b>35</b> of file
     <b>platform/wasm/stubs/terminal.c</b>.</p>
 <pre>35                                                        {
@@ -107,10 +145,72 @@
 42 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>GET_OPTION</b>, and <b>OPT_HEIGHT_DEFAULT</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="unsigned_short_int_terminal_get_effective_width_(void_)"><a class="permalink" href="#unsigned_short_int_terminal_get_effective_width_(void_)">unsigned
   short int terminal_get_effective_width (void )</a></h2>
+<p class="Pp">Get effective terminal width with fallback priority.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Terminal width in characters with priority: option
+  &#x2192; detected &#x2192; default</div>
+<p class="Pp">Returns the effective terminal width to use, checking in priority
+    order:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Option value</b>: If --width was set to a non-zero value, return
+    it</dd>
+  <dt>2.</dt>
+  <dd><b>Detected size</b>: Try to detect actual terminal width via
+      <b>terminal_get_size()</b><b></b></dd>
+  <dt>3.</dt>
+  <dd><b>Default</b>: Return <b>OPT_WIDTH_DEFAULT</b><b> (110) as final
+      fallback</b></dd>
+</dl>
+<p class="Pp">This function simplifies the common pattern of &quot;use option if
+    set, else detect,else use default&quot; that appears throughout the codebase
+    for terminal dimension handling.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Safe to call from any thread (uses lock-free option
+  access)
+<p class="Pp"></p>
+<p class="Pp">Detection may fail on non-TTY output (piped/redirected), falls
+    back gracefully</p>
+<p class="Pp"></p>
+<p class="Pp">Width option defaults to 0, so non-zero means it was explicitly
+    set</p>
+</div>
+<p class="Pp"><b>Usage Example:</b></p>
+<p class="Pp"></p>
+<pre>// Old pattern (scattered throughout code):
+unsigned short int width = GET_OPTION(width);
+if (width == 0) {
+<br/>
+    terminal_size_t size;
+<br/>
+    if (terminal_get_size(&amp;size) == ASCIICHAT_OK) {
+<br/>
+        width = size.cols;
+<br/>
+    } else {
+<br/>
+        width = OPT_WIDTH_DEFAULT;
+<br/>
+    }
+}
+// New pattern (unified):
+unsigned short int width = terminal_get_effective_width();
+</pre>
+<p class="Pp">Returns width in priority order:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Option width if set to non-zero value</dd>
+  <dt>2.</dt>
+  <dd>Detected terminal width</dd>
+  <dt>3.</dt>
+  <dd>OPT_WIDTH_DEFAULT fallback</dd>
+</dl>
 <p class="Pp">Definition at line <b>25</b> of file
     <b>platform/wasm/stubs/terminal.c</b>.</p>
 <pre>25                                                       {
@@ -123,25 +223,7 @@
 32 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_terminal_get_size_(terminal_size_t_*_size)"><a class="permalink" href="#asciichat_error_t_terminal_get_size_(terminal_size_t_*_size)">asciichat_error_t
-  terminal_get_size (terminal_size_t * size)</a></h2>
-<p class="Pp">Definition at line <b>11</b> of file
-    <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>11                                                            {
-12   (void)size;
-13   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;Terminal operations not supported in WASM&quot;);
-14 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
-    <b>options_config_print_options_sections_with_width()</b>,
-    <b>options_print_help_for_mode()</b>,
-    <b>sdp_detect_terminal_capabilities()</b>,
-    <b>terminal_get_effective_height()</b>,
-    <b>terminal_get_effective_width()</b>, and
-  <b>terminal_screen_render()</b>.</p>
+<p class="Pp">References <b>GET_OPTION</b>, and <b>OPT_WIDTH_DEFAULT</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -151,7 +233,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

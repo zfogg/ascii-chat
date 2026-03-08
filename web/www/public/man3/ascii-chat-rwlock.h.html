@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>rwlock.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">rwlock.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">rwlock.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">rwlock.h - Cross-platform read-write lock interface for
+    ascii-chat.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>rwlock_t</b>
+  <br/>
+  Read-write lock type (POSIX: pthread_rwlock_t with debug tracking).
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>LOG_RWLOCK_STATE</b>(<b>rwlock</b>)
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Read-Write Lock Macros</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>rwlock_rdlock</b>(lock)
+  <br/>
+  Acquire a read lock (with debug tracking in debug builds). #define
+    <b>rwlock_wrlock</b>(lock)
+  <br/>
+  Acquire a write lock (with debug tracking in debug builds). #define
+    <b>rwlock_rdunlock</b>(lock)
+  <br/>
+  Release a read lock (with debug tracking in debug builds). #define
+    <b>rwlock_wrunlock</b>(lock)
+  <br/>
+  Release a write lock (with debug tracking in debug builds).
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>debug_sync_is_initialized</b> (void)
+  <br/>
+  int <b>debug_sync_rwlock_rdlock</b> (<b>rwlock_t</b> *<b>rwlock</b>, const
+    char *file_name, int line_number, const char *function_name)
+  <br/>
+  int <b>debug_sync_rwlock_wrlock</b> (<b>rwlock_t</b> *<b>rwlock</b>, const
+    char *file_name, int line_number, const char *function_name)
+  <br/>
+  int <b>debug_sync_rwlock_rdunlock</b> (<b>rwlock_t</b> *<b>rwlock</b>, const
+    char *file_name, int line_number, const char *function_name)
+  <br/>
+  int <b>debug_sync_rwlock_wrunlock</b> (<b>rwlock_t</b> *<b>rwlock</b>, const
+    char *file_name, int line_number, const char *function_name)
+  <br/>
+  int <b>rwlock_init</b> (<b>rwlock_t</b> *lock, const char *name)
+  <br/>
+  Initialize a read-write lock with a name. int <b>rwlock_destroy</b>
+    (<b>rwlock_t</b> *lock)
+  <br/>
+  Destroy a read-write lock. void <b>rwlock_on_rdlock</b> (<b>rwlock_t</b>
+    *<b>rwlock</b>)
+  <br/>
+  Hook called when a read lock is successfully acquired. void
+    <b>rwlock_on_wrlock</b> (<b>rwlock_t</b> *<b>rwlock</b>)
+  <br/>
+  Hook called when a write lock is successfully acquired. void
+    <b>rwlock_on_unlock</b> (<b>rwlock_t</b> *<b>rwlock</b>)
+  <br/>
+  Hook called when an rwlock is unlocked (read or write). void
+    <b>rwlock_log_state</b> (const <b>rwlock_t</b> *<b>rwlock</b>, const char
+    *file, int line, const char *func)
+  <br/>
+  Log the state of a read-write lock. int <b>rwlock_init_impl</b>
+    (<b>rwlock_t</b> *lock)
+  <br/>
+  Initialize a read-write lock (implementation function). int
+    <b>rwlock_destroy_impl</b> (<b>rwlock_t</b> *lock)
+  <br/>
+  Destroy a read-write lock (implementation function). int
+    <b>rwlock_rdlock_impl</b> (<b>rwlock_t</b> *lock)
+  <br/>
+  Acquire a read lock (implementation function). int <b>rwlock_wrlock_impl</b>
+    (<b>rwlock_t</b> *lock)
+  <br/>
+  Acquire a write lock (implementation function). int
+    <b>rwlock_rdunlock_impl</b> (<b>rwlock_t</b> *lock)
+  <br/>
+  Release a read lock (implementation function). int <b>rwlock_wrunlock_impl</b>
+    (<b>rwlock_t</b> *lock)
+  <br/>
+  Release a write lock (implementation function).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Cross-platform read-write lock interface for ascii-chat.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>rwlock.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

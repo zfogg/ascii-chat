@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>messages.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">messages.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">messages.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">messages.h - ACIP protocol message structures and helpers.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">const char * <b>acip_packet_type_name</b> (<b>uint16_t</b> type)
+  <br/>
+  Get human-readable name for packet type.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">ACIP protocol message structures and helpers.</p>
+<p class="Pp">This header provides a centralized location for all ACIP message
+    structures used in packets 1-199. It includes packet structures from
+    <b>packet.h</b> and adds ACIP-specific helpers and type definitions.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ACIP_PACKET_RANGES:"><a class="permalink" href="#ACIP_PACKET_RANGES:">ACIP
+  PACKET RANGES: </a></h1>
+<ul class="Bl-bullet">
+  <li>Packets 1-35: Core ascii-chat protocol (video, audio, control)</li>
+  <li>Packets 100-199: ACDS discovery service protocol</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESIGN_RATIONALE:"><a class="permalink" href="#DESIGN_RATIONALE:">DESIGN
+  RATIONALE: </a></h1>
+<p class="Pp">Rather than duplicating structures, we include <b>packet.h</b>
+    which already defines all core protocol structures
+    (<b>ascii_frame_packet_t</b>, etc.). This header adds convenience helpers
+    and ACIP-specific functionality.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>messages.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_acip_packet_type_name_("><a class="permalink" href="#const_char_*_acip_packet_type_name_(">const
+  char * acip_packet_type_name (<b>uint16_t</b> type)</a></h2>
+<p class="Pp">Get human-readable name for packet type.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>type</i> Packet type from <b>packet_type_t</b>
+  enum</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">String name or &quot;UNKNOWN&quot;</div>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -39,68 +39,90 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>crypto_handshake_init</b> (const char *name,
-    crypto_handshake_context_t *ctx, <b>bool</b> is_server)
+<p class="Pp"><b>asciichat_error_t</b> <b>crypto_handshake_init</b> (const char
+    *name, <b>crypto_handshake_context_t</b> *ctx, <b>bool</b> is_server)
   <br/>
-  asciichat_error_t <b>crypto_handshake_set_parameters</b>
-    (crypto_handshake_context_t *ctx, const crypto_parameters_packet_t *params)
+  Initialize named crypto handshake context. <b>asciichat_error_t</b>
+    <b>crypto_handshake_set_parameters</b> (<b>crypto_handshake_context_t</b>
+    *ctx, const <b>crypto_parameters_packet_t</b> *params)
   <br/>
-  asciichat_error_t <b>crypto_handshake_validate_packet_size</b> (const
-    crypto_handshake_context_t *ctx, uint16_t packet_type, size_t packet_size)
+  Set crypto parameters from <b>crypto_parameters_packet_t</b>.
+    <b>asciichat_error_t</b> <b>crypto_handshake_validate_packet_size</b> (const
+    <b>crypto_handshake_context_t</b> *ctx, <b>uint16_t</b> packet_type, size_t
+    packet_size)
   <br/>
-  asciichat_error_t <b>crypto_handshake_init_with_password</b> (const char
-    *name, crypto_handshake_context_t *ctx, <b>bool</b> is_server, const char
-    *password)
+  Validate crypto packet size based on session parameters.
+    <b>asciichat_error_t</b> <b>crypto_handshake_init_with_password</b> (const
+    char *name, <b>crypto_handshake_context_t</b> *ctx, <b>bool</b> is_server,
+    const char *password)
   <br/>
-  void <b>crypto_handshake_destroy</b> (crypto_handshake_context_t *ctx)
+  Initialize named crypto handshake context with password authentication. void
+    <b>crypto_handshake_destroy</b> (<b>crypto_handshake_context_t</b> *ctx)
   <br/>
-  <b>bool</b> <b>crypto_handshake_is_ready</b> (const crypto_handshake_context_t
+  Cleanup crypto handshake context with secure memory wiping. <b>bool</b>
+    <b>crypto_handshake_is_ready</b> (const <b>crypto_handshake_context_t</b>
     *ctx)
   <br/>
-  const crypto_context_t * <b>crypto_handshake_get_context</b> (const
-    crypto_handshake_context_t *ctx)
+  Check if handshake is complete and encryption is ready. const
+    <b>crypto_context_t</b> * <b>crypto_handshake_get_context</b> (const
+    <b>crypto_handshake_context_t</b> *ctx)
   <br/>
-  asciichat_error_t <b>crypto_handshake_encrypt_packet</b> (const
-    crypto_handshake_context_t *ctx, const uint8_t *plaintext, size_t
-    plaintext_len, uint8_t *ciphertext, size_t ciphertext_size, size_t
-    *ciphertext_len)
+  Get the crypto context for encryption/decryption. <b>asciichat_error_t</b>
+    <b>crypto_handshake_encrypt_packet</b> (const
+    <b>crypto_handshake_context_t</b> *ctx, const <b>uint8_t</b> *plaintext,
+    size_t plaintext_len, <b>uint8_t</b> *ciphertext, size_t ciphertext_size,
+    size_t *ciphertext_len)
   <br/>
-  asciichat_error_t <b>crypto_handshake_decrypt_packet</b> (const
-    crypto_handshake_context_t *ctx, const uint8_t *ciphertext, size_t
-    ciphertext_len, uint8_t *plaintext, size_t plaintext_size, size_t
-    *plaintext_len)
+  Encrypt a packet using the established crypto context.
+    <b>asciichat_error_t</b> <b>crypto_handshake_decrypt_packet</b> (const
+    <b>crypto_handshake_context_t</b> *ctx, const <b>uint8_t</b> *ciphertext,
+    size_t ciphertext_len, <b>uint8_t</b> *plaintext, size_t plaintext_size,
+    size_t *plaintext_len)
   <br/>
-  asciichat_error_t <b>crypto_encrypt_packet_or_passthrough</b> (const
-    crypto_handshake_context_t *ctx, <b>bool</b> crypto_ready, const uint8_t
-    *plaintext, size_t plaintext_len, uint8_t *ciphertext, size_t
-    ciphertext_size, size_t *ciphertext_len)
+  Decrypt a packet using the established crypto context.
+    <b>asciichat_error_t</b> <b>crypto_encrypt_packet_or_passthrough</b> (const
+    <b>crypto_handshake_context_t</b> *ctx, <b>bool</b> crypto_ready, const
+    <b>uint8_t</b> *plaintext, size_t plaintext_len, <b>uint8_t</b> *ciphertext,
+    size_t ciphertext_size, size_t *ciphertext_len)
   <br/>
-  asciichat_error_t <b>crypto_decrypt_packet_or_passthrough</b> (const
-    crypto_handshake_context_t *ctx, <b>bool</b> crypto_ready, const uint8_t
-    *ciphertext, size_t ciphertext_len, uint8_t *plaintext, size_t
-    plaintext_size, size_t *plaintext_len)
+  Encrypt with automatic passthrough if crypto not ready.
+    <b>asciichat_error_t</b> <b>crypto_decrypt_packet_or_passthrough</b> (const
+    <b>crypto_handshake_context_t</b> *ctx, <b>bool</b> crypto_ready, const
+    <b>uint8_t</b> *ciphertext, size_t ciphertext_len, <b>uint8_t</b>
+    *plaintext, size_t plaintext_size, size_t *plaintext_len)
   <br/>
-  asciichat_error_t <b>crypto_handshake_rekey_request</b>
-    (crypto_handshake_context_t *ctx, <b>socket_t</b> socket)
+  Decrypt with automatic passthrough if crypto not ready.
+    <b>asciichat_error_t</b> <b>crypto_handshake_rekey_request</b>
+    (<b>crypto_handshake_context_t</b> *ctx, <b>socket_t</b> socket)
   <br/>
-  asciichat_error_t <b>crypto_handshake_rekey_response</b>
-    (crypto_handshake_context_t *ctx, <b>socket_t</b> socket)
+  Send REKEY_REQUEST packet (initiator side). <b>asciichat_error_t</b>
+    <b>crypto_handshake_rekey_response</b> (<b>crypto_handshake_context_t</b>
+    *ctx, <b>socket_t</b> socket)
   <br/>
-  asciichat_error_t <b>crypto_handshake_rekey_complete</b>
-    (crypto_handshake_context_t *ctx, <b>socket_t</b> socket)
+  Send REKEY_RESPONSE packet (responder side). <b>asciichat_error_t</b>
+    <b>crypto_handshake_rekey_complete</b> (<b>crypto_handshake_context_t</b>
+    *ctx, <b>socket_t</b> socket)
   <br/>
-  asciichat_error_t <b>crypto_handshake_process_rekey_request</b>
-    (crypto_handshake_context_t *ctx, const uint8_t *packet, size_t packet_len)
+  Send REKEY_COMPLETE packet (initiator side). <b>asciichat_error_t</b>
+    <b>crypto_handshake_process_rekey_request</b>
+    (<b>crypto_handshake_context_t</b> *ctx, const <b>uint8_t</b> *packet,
+    size_t packet_len)
   <br/>
-  asciichat_error_t <b>crypto_handshake_process_rekey_response</b>
-    (crypto_handshake_context_t *ctx, const uint8_t *packet, size_t packet_len)
+  Process received REKEY_REQUEST packet (responder side).
+    <b>asciichat_error_t</b> <b>crypto_handshake_process_rekey_response</b>
+    (<b>crypto_handshake_context_t</b> *ctx, const <b>uint8_t</b> *packet,
+    size_t packet_len)
   <br/>
-  asciichat_error_t <b>crypto_handshake_process_rekey_complete</b>
-    (crypto_handshake_context_t *ctx, const uint8_t *packet, size_t packet_len)
+  Process received REKEY_RESPONSE packet (initiator side).
+    <b>asciichat_error_t</b> <b>crypto_handshake_process_rekey_complete</b>
+    (<b>crypto_handshake_context_t</b> *ctx, const <b>uint8_t</b> *packet,
+    size_t packet_len)
   <br/>
-  <b>bool</b> <b>crypto_handshake_should_rekey</b> (const
-    crypto_handshake_context_t *ctx)
+  Process received REKEY_COMPLETE packet (responder side). <b>bool</b>
+    <b>crypto_handshake_should_rekey</b> (const
+    <b>crypto_handshake_context_t</b> *ctx)
   <br/>
+  Check if rekeying should be triggered for this handshake context.
   <br/>
 </p>
 </section>
@@ -118,10 +140,27 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_crypto_decrypt_packet_or_passthrough_(const_crypto_handshake_context_t_*_ctx,_"><a class="permalink" href="#asciichat_error_t_crypto_decrypt_packet_or_passthrough_(const_crypto_handshake_context_t_*_ctx,_">asciichat_error_t
-  crypto_decrypt_packet_or_passthrough (const crypto_handshake_context_t * ctx,
-  <b>bool</b> crypto_ready, const uint8_t * ciphertext, size_t ciphertext_len,
-  uint8_t * plaintext, size_t plaintext_size, size_t * plaintext_len)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> crypto_decrypt_packet_or_passthrough
+  (const <b>crypto_handshake_context_t</b> * ctx, <b>bool</b> crypto_ready,
+  const <b>uint8_t</b> * ciphertext, size_t ciphertext_len, <b>uint8_t</b> *
+  plaintext, size_t plaintext_size, size_t * plaintext_len)</h2>
+<p class="Pp">Decrypt with automatic passthrough if crypto not ready.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Handshake context
+<br/>
+<i>crypto_ready</i> True if crypto is ready, false to passthrough
+<br/>
+<i>ciphertext</i> Ciphertext or plaintext data to decrypt
+<br/>
+<i>ciphertext_len</i> Length of ciphertext/plaintext data
+<br/>
+<i>plaintext</i> Output buffer for plaintext
+<br/>
+<i>plaintext_size</i> Size of output buffer
+<br/>
+<i>plaintext_len</i> Output parameter for actual plaintext length</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>363</b> of file
     <b>crypto/handshake/common.c</b>.</p>
 <pre>366                                                                               {
@@ -140,16 +179,34 @@
 379 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_handshake_decrypt_packet()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>crypto_handshake_decrypt_packet()</b>, <b>ERROR_BUFFER</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_client_decrypt_packet()</b>, and
     <b>crypto_server_decrypt_packet()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_crypto_encrypt_packet_or_passthrough_(const_crypto_handshake_context_t_*_ctx,_"><a class="permalink" href="#asciichat_error_t_crypto_encrypt_packet_or_passthrough_(const_crypto_handshake_context_t_*_ctx,_">asciichat_error_t
-  crypto_encrypt_packet_or_passthrough (const crypto_handshake_context_t * ctx,
-  <b>bool</b> crypto_ready, const uint8_t * plaintext, size_t plaintext_len,
-  uint8_t * ciphertext, size_t ciphertext_size, size_t *
-  ciphertext_len)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> crypto_encrypt_packet_or_passthrough
+  (const <b>crypto_handshake_context_t</b> * ctx, <b>bool</b> crypto_ready,
+  const <b>uint8_t</b> * plaintext, size_t plaintext_len, <b>uint8_t</b> *
+  ciphertext, size_t ciphertext_size, size_t * ciphertext_len)</h2>
+<p class="Pp">Encrypt with automatic passthrough if crypto not ready.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Handshake context
+<br/>
+<i>crypto_ready</i> True if crypto is ready, false to passthrough
+<br/>
+<i>plaintext</i> Plaintext data to encrypt
+<br/>
+<i>plaintext_len</i> Length of plaintext data
+<br/>
+<i>ciphertext</i> Output buffer for ciphertext or plaintext (if passthrough)
+<br/>
+<i>ciphertext_size</i> Size of output buffer
+<br/>
+<i>ciphertext_len</i> Output parameter for actual length</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>344</b> of file
     <b>crypto/handshake/common.c</b>.</p>
 <pre>347                                                                                {
@@ -168,15 +225,32 @@
 360 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_handshake_encrypt_packet()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>crypto_handshake_encrypt_packet()</b>, <b>ERROR_BUFFER</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_client_encrypt_packet()</b>, and
     <b>crypto_server_encrypt_packet()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_crypto_handshake_decrypt_packet_(const_crypto_handshake_context_t_*_ctx,_const_uint8_t_*_ciphertext,_size_t_ciphertext_len,_uint8_t_*_plaintext,_size_t_plaintext_size,_size_t_*_plaintext_len)"><a class="permalink" href="#asciichat_error_t_crypto_handshake_decrypt_packet_(const_crypto_handshake_context_t_*_ctx,_const_uint8_t_*_ciphertext,_size_t_ciphertext_len,_uint8_t_*_plaintext,_size_t_plaintext_size,_size_t_*_plaintext_len)">asciichat_error_t
-  crypto_handshake_decrypt_packet (const crypto_handshake_context_t * ctx, const
-  uint8_t * ciphertext, size_t ciphertext_len, uint8_t * plaintext, size_t
-  plaintext_size, size_t * plaintext_len)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_decrypt_packet (const
+  <b>crypto_handshake_context_t</b> * ctx, const <b>uint8_t</b> * ciphertext,
+  size_t ciphertext_len, <b>uint8_t</b> * plaintext, size_t plaintext_size,
+  size_t * plaintext_len)</h2>
+<p class="Pp">Decrypt a packet using the established crypto context.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Handshake context (must be ready)
+<br/>
+<i>ciphertext</i> Ciphertext data to decrypt
+<br/>
+<i>ciphertext_len</i> Length of ciphertext data
+<br/>
+<i>plaintext</i> Output buffer for plaintext
+<br/>
+<i>plaintext_size</i> Size of output buffer
+<br/>
+<i>plaintext_len</i> Output parameter for actual plaintext length</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>326</b> of file
     <b>crypto/handshake/common.c</b>.</p>
 <pre>328                                                                          {
@@ -195,14 +269,19 @@
 341 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_decrypt()</b>,
-    <b>crypto_handshake_is_ready()</b>, and
-  <b>crypto_result_to_string()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>crypto_handshake_context_t::crypto_ctx</b>, <b>crypto_decrypt()</b>,
+    <b>crypto_handshake_is_ready()</b>, <b>CRYPTO_OK</b>,
+    <b>crypto_result_to_string()</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>ERROR_NETWORK</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_decrypt_packet_or_passthrough()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_crypto_handshake_destroy_(crypto_handshake_context_t_*_ctx)"><a class="permalink" href="#void_crypto_handshake_destroy_(crypto_handshake_context_t_*_ctx)">void
-  crypto_handshake_destroy (crypto_handshake_context_t * ctx)</a></h2>
+<h2 class="Ss" id="void_crypto_handshake_destroy_("><a class="permalink" href="#void_crypto_handshake_destroy_(">void
+  crypto_handshake_destroy (<b>crypto_handshake_context_t</b> * ctx)</a></h2>
+<p class="Pp">Cleanup crypto handshake context with secure memory wiping.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Handshake context to cleanup</div>
 <p class="Pp">Definition at line <b>282</b> of file
     <b>crypto/handshake/common.c</b>.</p>
 <pre>282                                                                {
@@ -217,7 +296,8 @@
 291 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_destroy()</b>.</p>
+<p class="Pp">References <b>crypto_handshake_context_t::crypto_ctx</b>, and
+    <b>crypto_destroy()</b>.</p>
 <p class="Pp">Referenced by <b>client_cleanup()</b>,
     <b>client_crypto_init()</b>, <b>client_generate_keypair()</b>,
     <b>client_handle_key_exchange_init()</b>, <b>crypto_client_cleanup()</b>,
@@ -225,10 +305,25 @@
     <b>server_connection_close()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_crypto_handshake_encrypt_packet_(const_crypto_handshake_context_t_*_ctx,_const_uint8_t_*_plaintext,_size_t_plaintext_len,_uint8_t_*_ciphertext,_size_t_ciphertext_size,_size_t_*_ciphertext_len)"><a class="permalink" href="#asciichat_error_t_crypto_handshake_encrypt_packet_(const_crypto_handshake_context_t_*_ctx,_const_uint8_t_*_plaintext,_size_t_plaintext_len,_uint8_t_*_ciphertext,_size_t_ciphertext_size,_size_t_*_ciphertext_len)">asciichat_error_t
-  crypto_handshake_encrypt_packet (const crypto_handshake_context_t * ctx, const
-  uint8_t * plaintext, size_t plaintext_len, uint8_t * ciphertext, size_t
-  ciphertext_size, size_t * ciphertext_len)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_encrypt_packet (const
+  <b>crypto_handshake_context_t</b> * ctx, const <b>uint8_t</b> * plaintext,
+  size_t plaintext_len, <b>uint8_t</b> * ciphertext, size_t ciphertext_size,
+  size_t * ciphertext_len)</h2>
+<p class="Pp">Encrypt a packet using the established crypto context.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Handshake context (must be ready)
+<br/>
+<i>plaintext</i> Plaintext data to encrypt
+<br/>
+<i>plaintext_len</i> Length of plaintext data
+<br/>
+<i>ciphertext</i> Output buffer for ciphertext
+<br/>
+<i>ciphertext_size</i> Size of output buffer
+<br/>
+<i>ciphertext_len</i> Output parameter for actual ciphertext length</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>308</b> of file
     <b>crypto/handshake/common.c</b>.</p>
 <pre>310                                                                           {
@@ -247,15 +342,22 @@
 323 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_encrypt()</b>,
-    <b>crypto_handshake_is_ready()</b>, and
-  <b>crypto_result_to_string()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>crypto_handshake_context_t::crypto_ctx</b>, <b>crypto_encrypt()</b>,
+    <b>crypto_handshake_is_ready()</b>, <b>CRYPTO_OK</b>,
+    <b>crypto_result_to_string()</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>ERROR_NETWORK</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_encrypt_packet_or_passthrough()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_crypto_context_t_*_crypto_handshake_get_context_(const_crypto_handshake_context_t_*_ctx)"><a class="permalink" href="#const_crypto_context_t_*_crypto_handshake_get_context_(const_crypto_handshake_context_t_*_ctx)">const
-  crypto_context_t * crypto_handshake_get_context (const
-  crypto_handshake_context_t * ctx)</a></h2>
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>crypto_context_t</b> * crypto_handshake_get_context (const
+  <b>crypto_handshake_context_t</b> * ctx)</a></h2>
+<p class="Pp">Get the crypto context for encryption/decryption.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Handshake context</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to crypto context, or NULL if ctx is NULL</div>
 <p class="Pp">Definition at line <b>301</b> of file
     <b>crypto/handshake/common.c</b>.</p>
 <pre>301                                                                                             {
@@ -265,15 +367,27 @@
 305 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_handshake_is_ready()</b>.</p>
+<p class="Pp">References <b>crypto_handshake_context_t::crypto_ctx</b>, and
+    <b>crypto_handshake_is_ready()</b>.</p>
 <p class="Pp">Referenced by <b>broadcast_server_state_to_all_clients()</b>,
     <b>crypto_client_get_context()</b>, <b>crypto_server_get_context()</b>, and
     <b>disconnect_client_for_bad_data()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_crypto_handshake_init_(const_char_*_name,_crypto_handshake_context_t_*_ctx,_"><a class="permalink" href="#asciichat_error_t_crypto_handshake_init_(const_char_*_name,_crypto_handshake_context_t_*_ctx,_">asciichat_error_t
-  crypto_handshake_init (const char * name, crypto_handshake_context_t * ctx,
-  <b>bool</b> is_server)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_init (const char *
+  name, <b>crypto_handshake_context_t</b> * ctx, <b>bool</b> is_server)</h2>
+<p class="Pp">Initialize named crypto handshake context.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name</i> Debug name for the crypto context (typically
+  &quot;crypto_client_&lt;id&gt;&quot;)
+<br/>
+<i>ctx</i> Handshake context to initialize (must not be NULL)
+<br/>
+<i>is_server</i> True if this is the server side, false for client</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">The context is automatically registered with the debug naming
+    system.</p>
 <p class="Pp">Definition at line <b>18</b> of file
     <b>crypto/handshake/common.c</b>.</p>
 <pre>18                                                                                                            {
@@ -322,18 +436,41 @@
 61 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_init()</b>, <b>crypto_result_to_string()</b>,
-    and <b>debug_sync_print_state()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>crypto_handshake_context_t::crypto_ctx</b>, <b>CRYPTO_HANDSHAKE_INIT</b>,
+    <b>crypto_init()</b>, <b>CRYPTO_OK</b>, <b>crypto_result_to_string()</b>,
+    <b>debug_sync_print_state()</b>, <b>ERROR_CRYPTO</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>crypto_handshake_context_t::is_server</b>,
+    <b>log_dev</b>, <b>log_info</b>, <b>NAMED_REGISTER_CRYPTO_CONTEXT</b>,
+    <b>crypto_handshake_context_t::require_client_auth</b>,
+    <b>crypto_handshake_context_t::server_uses_client_auth</b>,
+    <b>SET_ERRNO</b>, <b>crypto_handshake_context_t::state</b>, and
+    <b>crypto_handshake_context_t::verify_server_key</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
     <b>client_crypto_init()</b>, <b>client_generate_keypair()</b>,
     <b>client_handle_key_exchange_init()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_crypto_handshake_init_with_password_(const_char_*_name,_crypto_handshake_context_t_*_ctx,_"><a class="permalink" href="#asciichat_error_t_crypto_handshake_init_with_password_(const_char_*_name,_crypto_handshake_context_t_*_ctx,_">asciichat_error_t
-  crypto_handshake_init_with_password (const char * name,
-  crypto_handshake_context_t * ctx, <b>bool</b> is_server, const char *
-  password)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_init_with_password
+  (const char * name, <b>crypto_handshake_context_t</b> * ctx, <b>bool</b>
+  is_server, const char * password)</h2>
+<p class="Pp">Initialize named crypto handshake context with password
+    authentication.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name</i> Debug name for the crypto context (typically
+  &quot;crypto_client_&lt;id&gt;&quot;)
+<br/>
+<i>ctx</i> Handshake context to initialize (must not be NULL)
+<br/>
+<i>is_server</i> True if this is the server side, false for client
+<br/>
+<i>password</i> Password for authentication (must meet length
+  requirements)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">The context is automatically registered with the debug naming
+    system.</p>
 <p class="Pp">Definition at line <b>245</b> of file
     <b>crypto/handshake/common.c</b>.</p>
 <pre>246                                                                             {
@@ -372,14 +509,30 @@
 279 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_init_with_password()</b>, and
-    <b>crypto_result_to_string()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>crypto_handshake_context_t::crypto_ctx</b>, <b>CRYPTO_HANDSHAKE_INIT</b>,
+    <b>crypto_init_with_password()</b>, <b>CRYPTO_OK</b>,
+    <b>crypto_result_to_string()</b>, <b>ERROR_CRYPTO</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>crypto_handshake_context_t::has_password</b>,
+    <b>crypto_handshake_context_t::is_server</b>,
+    <b>NAMED_REGISTER_CRYPTO_CONTEXT</b>,
+    <b>crypto_handshake_context_t::password</b>,
+    <b>crypto_handshake_context_t::require_client_auth</b>, <b>SAFE_STRNCPY</b>,
+    <b>crypto_handshake_context_t::server_uses_client_auth</b>,
+    <b>SET_ERRNO</b>, <b>crypto_handshake_context_t::state</b>, and
+    <b>crypto_handshake_context_t::verify_server_key</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_init()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> crypto_handshake_is_ready (const
-  crypto_handshake_context_t * ctx)</h2>
+  <b>crypto_handshake_context_t</b> * ctx)</h2>
+<p class="Pp">Check if handshake is complete and encryption is ready.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Handshake context</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if handshake is complete and encryption is ready,
+  false otherwise</div>
 <p class="Pp">Definition at line <b>294</b> of file
     <b>crypto/handshake/common.c</b>.</p>
 <pre>294                                                                       {
@@ -389,7 +542,9 @@
 298 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_is_ready()</b>.</p>
+<p class="Pp">References <b>crypto_handshake_context_t::crypto_ctx</b>,
+    <b>CRYPTO_HANDSHAKE_READY</b>, <b>crypto_is_ready()</b>, and
+    <b>crypto_handshake_context_t::state</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>,
     <b>client_send_thread_func()</b>, <b>crypto_client_is_ready()</b>,
     <b>crypto_handshake_decrypt_packet()</b>,
@@ -405,12 +560,13 @@
   <b>crypto_server_is_ready()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_crypto_handshake_process_rekey_complete_(crypto_handshake_context_t_*_ctx,_const_uint8_t_*_packet,_size_t_packet_len)"><a class="permalink" href="#asciichat_error_t_crypto_handshake_process_rekey_complete_(crypto_handshake_context_t_*_ctx,_const_uint8_t_*_packet,_size_t_packet_len)">asciichat_error_t
-  crypto_handshake_process_rekey_complete (crypto_handshake_context_t * ctx,
-  const uint8_t * packet, size_t packet_len)</a></h2>
-<p class="Pp">Process received REKEY_COMPLETE packet (responder side). Verifies
-    that the packet decrypts with the new shared secret. If successful, commits
-    to the new key.</p>
+<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_process_rekey_complete
+  (<b>crypto_handshake_context_t</b> * ctx, const <b>uint8_t</b> * packet,
+  size_t packet_len)</h2>
+<p class="Pp">Process received REKEY_COMPLETE packet (responder side). Process
+    received REKEY_COMPLETE packet (responder side). Verifies that the packet
+    decrypts with the new shared secret. If successful, commits to the new
+  key.</p>
 <p class="Pp">Definition at line <b>587</b> of file
     <b>crypto/handshake/common.c</b>.</p>
 <pre>588                                                                              {
@@ -459,16 +615,24 @@
 631 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_decrypt()</b>,
-    <b>crypto_handshake_is_ready()</b>, <b>crypto_rekey_abort()</b>,
-    <b>crypto_rekey_commit()</b>, and <b>crypto_result_to_string()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>crypto_handshake_context_t::crypto_ctx</b>, <b>crypto_decrypt()</b>,
+    <b>crypto_handshake_is_ready()</b>, <b>CRYPTO_OK</b>,
+    <b>crypto_rekey_abort()</b>, <b>crypto_rekey_commit()</b>,
+    <b>crypto_result_to_string()</b>, <b>CRYPTO_SHARED_KEY_SIZE</b>,
+    <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>crypto_context_t::has_temp_key</b>, <b>log_debug</b>,
+    <b>crypto_context_t::rekey_in_progress</b>, <b>SET_ERRNO</b>,
+    <b>crypto_context_t::shared_key</b>, and
+    <b>crypto_context_t::temp_shared_key</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_crypto_handshake_process_rekey_request_(crypto_handshake_context_t_*_ctx,_const_uint8_t_*_packet,_size_t_packet_len)"><a class="permalink" href="#asciichat_error_t_crypto_handshake_process_rekey_request_(crypto_handshake_context_t_*_ctx,_const_uint8_t_*_packet,_size_t_packet_len)">asciichat_error_t
-  crypto_handshake_process_rekey_request (crypto_handshake_context_t * ctx,
-  const uint8_t * packet, size_t packet_len)</a></h2>
-<p class="Pp">Process received REKEY_REQUEST packet (responder side). Extracts
-    peer's new ephemeral public key and computes new shared secret.</p>
+<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_process_rekey_request
+  (<b>crypto_handshake_context_t</b> * ctx, const <b>uint8_t</b> * packet,
+  size_t packet_len)</h2>
+<p class="Pp">Process received REKEY_REQUEST packet (responder side). Process
+    received REKEY_REQUEST packet (responder side). Extracts peer's new
+    ephemeral public key and computes new shared secret.</p>
 <p class="Pp">Definition at line <b>501</b> of file
     <b>crypto/handshake/common.c</b>.</p>
 <pre>502                                                                             {
@@ -518,18 +682,24 @@
 546 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_handshake_is_ready()</b>,
-    <b>crypto_rekey_abort()</b>, <b>crypto_rekey_init()</b>,
-    <b>crypto_rekey_process_request()</b>, and
-  <b>crypto_result_to_string()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>crypto_handshake_context_t::crypto_ctx</b>,
+    <b>crypto_handshake_is_ready()</b>, <b>CRYPTO_OK</b>,
+    <b>CRYPTO_PUBLIC_KEY_SIZE</b>, <b>crypto_rekey_abort()</b>,
+    <b>crypto_rekey_init()</b>, <b>crypto_rekey_process_request()</b>,
+    <b>crypto_result_to_string()</b>, <b>ERROR_CRYPTO</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>log_debug</b>,
+    <b>NS_PER_SEC_INT</b>, <b>crypto_context_t::rekey_last_request_time</b>,
+    <b>REKEY_MIN_REQUEST_INTERVAL</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_client_process_rekey_request()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_crypto_handshake_process_rekey_response_(crypto_handshake_context_t_*_ctx,_const_uint8_t_*_packet,_size_t_packet_len)"><a class="permalink" href="#asciichat_error_t_crypto_handshake_process_rekey_response_(crypto_handshake_context_t_*_ctx,_const_uint8_t_*_packet,_size_t_packet_len)">asciichat_error_t
-  crypto_handshake_process_rekey_response (crypto_handshake_context_t * ctx,
-  const uint8_t * packet, size_t packet_len)</a></h2>
-<p class="Pp">Process received REKEY_RESPONSE packet (initiator side). Extracts
-    peer's new ephemeral public key and computes new shared secret.</p>
+<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_process_rekey_response
+  (<b>crypto_handshake_context_t</b> * ctx, const <b>uint8_t</b> * packet,
+  size_t packet_len)</h2>
+<p class="Pp">Process received REKEY_RESPONSE packet (initiator side). Process
+    received REKEY_RESPONSE packet (initiator side). Extracts peer's new
+    ephemeral public key and computes new shared secret.</p>
 <p class="Pp">Definition at line <b>552</b> of file
     <b>crypto/handshake/common.c</b>.</p>
 <pre>553                                                                              {
@@ -562,18 +732,22 @@
 580 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_handshake_is_ready()</b>,
-    <b>crypto_rekey_abort()</b>, <b>crypto_rekey_process_response()</b>, and
-    <b>crypto_result_to_string()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>crypto_handshake_context_t::crypto_ctx</b>,
+    <b>crypto_handshake_is_ready()</b>, <b>CRYPTO_OK</b>,
+    <b>CRYPTO_PUBLIC_KEY_SIZE</b>, <b>crypto_rekey_abort()</b>,
+    <b>crypto_rekey_process_response()</b>, <b>crypto_result_to_string()</b>,
+    <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>crypto_context_t::has_temp_key</b>, <b>log_debug</b>,
+    <b>crypto_context_t::rekey_in_progress</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_client_process_rekey_response()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_crypto_handshake_rekey_complete_(crypto_handshake_context_t_*_ctx,_"><a class="permalink" href="#asciichat_error_t_crypto_handshake_rekey_complete_(crypto_handshake_context_t_*_ctx,_">asciichat_error_t
-  crypto_handshake_rekey_complete (crypto_handshake_context_t * ctx,
-  <b>socket_t</b> socket)</a></h2>
-<p class="Pp">Send REKEY_COMPLETE packet (initiator side). Note: This packet is
-    encrypted with the new shared secret. It proves that both sides have
-    computed the same shared secret.</p>
+<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_rekey_complete
+  (<b>crypto_handshake_context_t</b> * ctx, <b>socket_t</b> socket)</h2>
+<p class="Pp">Send REKEY_COMPLETE packet (initiator side). Send REKEY_COMPLETE
+    packet (initiator side). Note: This packet is encrypted with the new shared
+    secret. It proves that both sides have computed the same shared secret.</p>
 <p class="Pp">Definition at line <b>446</b> of file
     <b>crypto/handshake/common.c</b>.</p>
 <pre>446                                                                                                     {
@@ -628,18 +802,25 @@
 495 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_encrypt()</b>,
-    <b>crypto_handshake_is_ready()</b>, <b>crypto_rekey_abort()</b>,
-    <b>crypto_rekey_commit()</b>, <b>crypto_result_to_string()</b>, and
-    <b>send_packet()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>crypto_handshake_context_t::crypto_ctx</b>, <b>crypto_encrypt()</b>,
+    <b>crypto_handshake_is_ready()</b>, <b>CRYPTO_OK</b>,
+    <b>crypto_rekey_abort()</b>, <b>crypto_rekey_commit()</b>,
+    <b>crypto_result_to_string()</b>, <b>CRYPTO_SHARED_KEY_SIZE</b>,
+    <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>,
+    <b>crypto_context_t::has_temp_key</b>, <b>log_debug</b>,
+    <b>PACKET_TYPE_CRYPTO_REKEY_COMPLETE</b>,
+    <b>crypto_context_t::rekey_in_progress</b>, <b>send_packet()</b>,
+    <b>SET_ERRNO</b>, <b>crypto_context_t::shared_key</b>, and
+    <b>crypto_context_t::temp_shared_key</b>.</p>
 <p class="Pp">Referenced by <b>crypto_client_send_rekey_complete()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_crypto_handshake_rekey_request_(crypto_handshake_context_t_*_ctx,_"><a class="permalink" href="#asciichat_error_t_crypto_handshake_rekey_request_(crypto_handshake_context_t_*_ctx,_">asciichat_error_t
-  crypto_handshake_rekey_request (crypto_handshake_context_t * ctx,
-  <b>socket_t</b> socket)</a></h2>
-<p class="Pp">Send REKEY_REQUEST packet (initiator side). Sends the initiator's
-    new ephemeral public key to the peer.</p>
+<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_rekey_request
+  (<b>crypto_handshake_context_t</b> * ctx, <b>socket_t</b> socket)</h2>
+<p class="Pp">Send REKEY_REQUEST packet (initiator side). Send REKEY_REQUEST
+    packet (initiator side). Sends the initiator's new ephemeral public key to
+    the peer.</p>
 <p class="Pp">Definition at line <b>389</b> of file
     <b>crypto/handshake/common.c</b>.</p>
 <pre>389                                                                                                    {
@@ -668,18 +849,24 @@
 412 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_handshake_is_ready()</b>,
-    <b>crypto_rekey_abort()</b>, <b>crypto_rekey_init()</b>,
-    <b>crypto_result_to_string()</b>, and <b>send_packet()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>crypto_handshake_context_t::crypto_ctx</b>,
+    <b>crypto_handshake_is_ready()</b>, <b>CRYPTO_OK</b>,
+    <b>CRYPTO_PUBLIC_KEY_SIZE</b>, <b>crypto_rekey_abort()</b>,
+    <b>crypto_rekey_init()</b>, <b>crypto_result_to_string()</b>,
+    <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>,
+    <b>log_debug</b>, <b>PACKET_TYPE_CRYPTO_REKEY_REQUEST</b>,
+    <b>send_packet()</b>, <b>SET_ERRNO</b>, and
+    <b>crypto_context_t::temp_public_key</b>.</p>
 <p class="Pp">Referenced by <b>client_send_thread_func()</b>, and
     <b>crypto_client_initiate_rekey()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_crypto_handshake_rekey_response_(crypto_handshake_context_t_*_ctx,_"><a class="permalink" href="#asciichat_error_t_crypto_handshake_rekey_response_(crypto_handshake_context_t_*_ctx,_">asciichat_error_t
-  crypto_handshake_rekey_response (crypto_handshake_context_t * ctx,
-  <b>socket_t</b> socket)</a></h2>
-<p class="Pp">Send REKEY_RESPONSE packet (responder side). Sends the responder's
-    new ephemeral public key to the peer.</p>
+<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_rekey_response
+  (<b>crypto_handshake_context_t</b> * ctx, <b>socket_t</b> socket)</h2>
+<p class="Pp">Send REKEY_RESPONSE packet (responder side). Send REKEY_RESPONSE
+    packet (responder side). Sends the responder's new ephemeral public key to
+    the peer.</p>
 <p class="Pp">Definition at line <b>418</b> of file
     <b>crypto/handshake/common.c</b>.</p>
 <pre>418                                                                                                     {
@@ -706,14 +893,27 @@
 439 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_handshake_is_ready()</b>,
-    <b>crypto_rekey_abort()</b>, and <b>send_packet()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>crypto_handshake_context_t::crypto_ctx</b>,
+    <b>crypto_handshake_is_ready()</b>, <b>CRYPTO_PUBLIC_KEY_SIZE</b>,
+    <b>crypto_rekey_abort()</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>ERROR_NETWORK</b>, <b>crypto_context_t::has_temp_key</b>,
+    <b>log_debug</b>, <b>PACKET_TYPE_CRYPTO_REKEY_RESPONSE</b>,
+    <b>crypto_context_t::rekey_in_progress</b>, <b>send_packet()</b>,
+    <b>SET_ERRNO</b>, and <b>crypto_context_t::temp_public_key</b>.</p>
 <p class="Pp">Referenced by <b>crypto_client_send_rekey_response()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_crypto_handshake_set_parameters_(crypto_handshake_context_t_*_ctx,_const_crypto_parameters_packet_t_*_params)"><a class="permalink" href="#asciichat_error_t_crypto_handshake_set_parameters_(crypto_handshake_context_t_*_ctx,_const_crypto_parameters_packet_t_*_params)">asciichat_error_t
-  crypto_handshake_set_parameters (crypto_handshake_context_t * ctx, const
-  crypto_parameters_packet_t * params)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_set_parameters
+  (<b>crypto_handshake_context_t</b> * ctx, const
+  <b>crypto_parameters_packet_t</b> * params)</h2>
+<p class="Pp">Set crypto parameters from <b>crypto_parameters_packet_t</b>.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Handshake context
+<br/>
+<i>params</i> Negotiated crypto parameters (from capabilities negotiation)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>64</b> of file
     <b>crypto/handshake/common.c</b>.</p>
 <pre>65                                                                                             {
@@ -759,14 +959,36 @@
 105 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>ARGON2ID_SALT_SIZE</b>, <b>ASCIICHAT_OK</b>,
+    <b>AUTH_CHALLENGE_SIZE</b>, <b>crypto_context_t::auth_challenge_size</b>,
+    <b>crypto_context_t::auth_public_key_size</b>,
+    <b>crypto_parameters_packet_t::auth_public_key_size</b>,
+    <b>crypto_handshake_context_t::crypto_ctx</b>,
+    <b>crypto_context_t::encryption_key_size</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>crypto_context_t::hmac_size</b>,
+    <b>crypto_parameters_packet_t::hmac_size</b>,
+    <b>crypto_handshake_context_t::is_server</b>,
+    <b>crypto_parameters_packet_t::kex_public_key_size</b>, <b>log_debug</b>,
+    <b>crypto_context_t::mac_size</b>,
+    <b>crypto_parameters_packet_t::mac_size</b>, <b>NET_TO_HOST_U16</b>,
+    <b>crypto_context_t::nonce_size</b>,
+    <b>crypto_parameters_packet_t::nonce_size</b>,
+    <b>crypto_context_t::private_key_size</b>,
+    <b>crypto_context_t::public_key_size</b>,
+    <b>crypto_context_t::salt_size</b>, <b>SET_ERRNO</b>,
+    <b>crypto_context_t::shared_key_size</b>,
+    <b>crypto_parameters_packet_t::shared_secret_size</b>,
+    <b>crypto_context_t::signature_size</b>, and
+    <b>crypto_parameters_packet_t::signature_size</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> crypto_handshake_should_rekey (const
-  crypto_handshake_context_t * ctx)</h2>
+  <b>crypto_handshake_context_t</b> * ctx)</h2>
 <p class="Pp">Check if rekeying should be triggered for this handshake context.
-    Wrapper around <b>crypto_should_rekey()</b> for handshake context.</p>
+    Check if rekeying should be triggered for this handshake context. Wrapper
+    around <b>crypto_should_rekey()</b> for handshake context.</p>
 <p class="Pp">Definition at line <b>637</b> of file
     <b>crypto/handshake/common.c</b>.</p>
 <pre>637                                                                           {
@@ -777,15 +999,24 @@
 642 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_handshake_is_ready()</b>, and
-    <b>crypto_should_rekey()</b>.</p>
+<p class="Pp">References <b>crypto_handshake_context_t::crypto_ctx</b>,
+    <b>crypto_handshake_is_ready()</b>, and <b>crypto_should_rekey()</b>.</p>
 <p class="Pp">Referenced by <b>client_send_thread_func()</b>, and
     <b>crypto_client_should_rekey()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_crypto_handshake_validate_packet_size_(const_crypto_handshake_context_t_*_ctx,_uint16_t_packet_type,_size_t_packet_size)"><a class="permalink" href="#asciichat_error_t_crypto_handshake_validate_packet_size_(const_crypto_handshake_context_t_*_ctx,_uint16_t_packet_type,_size_t_packet_size)">asciichat_error_t
-  crypto_handshake_validate_packet_size (const crypto_handshake_context_t * ctx,
-  uint16_t packet_type, size_t packet_size)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_validate_packet_size
+  (const <b>crypto_handshake_context_t</b> * ctx, <b>uint16_t</b> packet_type,
+  size_t packet_size)</h2>
+<p class="Pp">Validate crypto packet size based on session parameters.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Handshake context (must have parameters set)
+<br/>
+<i>packet_type</i> Packet type to validate
+<br/>
+<i>packet_size</i> Actual packet size received</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK if valid, error code on failure</div>
 <p class="Pp">Definition at line <b>108</b> of file
     <b>crypto/handshake/common.c</b>.</p>
 <pre>109                                                                             {
@@ -924,6 +1155,25 @@
 242 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>AUTH_CHALLENGE_FLAGS_SIZE</b>,
+    <b>crypto_context_t::auth_challenge_size</b>,
+    <b>crypto_context_t::auth_public_key_size</b>,
+    <b>crypto_handshake_context_t::crypto_ctx</b>,
+    <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ED25519_SIGNATURE_SIZE</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
+    <b>crypto_context_t::hmac_size</b>, <b>MAX_AUTH_FAILED_PACKET_SIZE</b>,
+    <b>MAX_ENCRYPTED_PACKET_SIZE</b>, <b>PACKET_TYPE_CRYPTO_AUTH_CHALLENGE</b>,
+    <b>PACKET_TYPE_CRYPTO_AUTH_FAILED</b>,
+    <b>PACKET_TYPE_CRYPTO_AUTH_RESPONSE</b>,
+    <b>PACKET_TYPE_CRYPTO_CAPABILITIES</b>,
+    <b>PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE</b>,
+    <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT</b>,
+    <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP</b>,
+    <b>PACKET_TYPE_CRYPTO_NO_ENCRYPTION</b>,
+    <b>PACKET_TYPE_CRYPTO_PARAMETERS</b>,
+    <b>PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP</b>, <b>PACKET_TYPE_ENCRYPTED</b>,
+    <b>crypto_context_t::public_key_size</b>, <b>SET_ERRNO</b>, and
+    <b>crypto_context_t::signature_size</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_auth_response()</b>,
     <b>crypto_handshake_client_key_exchange()</b>,
     <b>crypto_handshake_server_auth_challenge()</b>, and
@@ -937,7 +1187,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

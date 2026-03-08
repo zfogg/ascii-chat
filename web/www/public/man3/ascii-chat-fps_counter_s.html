@@ -39,7 +39,7 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">uint64_t <b>frame_times</b> [30]
+<p class="Pp"><b>uint64_t</b> <b>frame_times</b> [30]
   <br/>
   Circular buffer of timestamps (ns). int <b>head</b>
   <br/>
@@ -66,18 +66,23 @@
   fps_counter_s::count</a></h2>
 <p class="Pp">Number of valid entries in buffer (0 to FPS_WINDOW_SIZE).</p>
 <p class="Pp">Definition at line <b>26</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Referenced by <b>fps_counter_create()</b>,
+    <b>fps_counter_get()</b>, and <b>fps_counter_tick()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint64_t_fps_counter_s::frame_times_30_"><a class="permalink" href="#uint64_t_fps_counter_s::frame_times_30_">uint64_t
-  fps_counter_s::frame_times[30]</a></h2>
+<h2 class="Ss"><b>uint64_t</b> fps_counter_s::frame_times[30]</h2>
 <p class="Pp">Circular buffer of timestamps (ns).</p>
 <p class="Pp">Definition at line <b>24</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Referenced by <b>fps_counter_create()</b>,
+    <b>fps_counter_get()</b>, and <b>fps_counter_tick()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_fps_counter_s::head"><a class="permalink" href="#int_fps_counter_s::head">int
   fps_counter_s::head</a></h2>
 <p class="Pp">Current write position (0 to FPS_WINDOW_SIZE-1).</p>
 <p class="Pp">Definition at line <b>25</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Referenced by <b>fps_counter_create()</b>,
+    <b>fps_counter_get()</b>, and <b>fps_counter_tick()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -88,7 +93,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

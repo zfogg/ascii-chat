@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ringbuffer_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ringbuffer_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ringbuffer_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ringbuffer_t - Lock-free ring buffer structure.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/ringbuffer.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">char * <b>buffer</b>
+  <br/>
+  The actual buffer memory. size_t <b>element_size</b>
+  <br/>
+  Size of each element in bytes. size_t <b>capacity</b>
+  <br/>
+  Number of elements that can be stored. <b>atomic_t</b> <b>head</b>
+  <br/>
+  Write position (producer) - atomic for lock-free operations. <b>atomic_t</b>
+    <b>tail</b>
+  <br/>
+  Read position (consumer) - atomic for lock-free operations. <b>atomic_t</b>
+    <b>size</b>
+  <br/>
+  Current number of elements - atomic for fast size checks. <b>bool</b>
+    <b>is_power_of_two</b>
+  <br/>
+  Whether capacity is power of 2 (enables bit masking optimization). size_t
+    <b>capacity_mask</b>
+  <br/>
+  Mask for fast modulo when capacity is power of 2.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Lock-free ring buffer structure.</p>
+<p class="Pp">Implements a lock-free circular buffer using atomic operations for
+    thread-safe producer-consumer data transfer without locking overhead.</p>
+<p class="Pp">Definition at line <b>93</b> of file <b>ringbuffer.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char*_ringbuffer_t::buffer"><a class="permalink" href="#char*_ringbuffer_t::buffer">char*
+  ringbuffer_t::buffer</a></h2>
+<p class="Pp">The actual buffer memory.</p>
+<p class="Pp">Definition at line <b>95</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Referenced by <b>framebuffer_clear()</b>,
+    <b>ringbuffer_create()</b>, <b>ringbuffer_destroy()</b>,
+    <b>ringbuffer_peek()</b>, <b>ringbuffer_read()</b>, and
+    <b>ringbuffer_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ringbuffer_t::capacity"><a class="permalink" href="#size_t_ringbuffer_t::capacity">size_t
+  ringbuffer_t::capacity</a></h2>
+<p class="Pp">Number of elements that can be stored.</p>
+<p class="Pp">Definition at line <b>99</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Referenced by <b>framebuffer_clear()</b>,
+    <b>framebuffer_write_frame()</b>, <b>ringbuffer_create()</b>,
+    <b>ringbuffer_is_full()</b>, and <b>ringbuffer_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ringbuffer_t::capacity_mask"><a class="permalink" href="#size_t_ringbuffer_t::capacity_mask">size_t
+  ringbuffer_t::capacity_mask</a></h2>
+<p class="Pp">Mask for fast modulo when capacity is power of 2.</p>
+<p class="Pp">Definition at line <b>109</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Referenced by <b>ringbuffer_create()</b>,
+    <b>ringbuffer_read()</b>, and <b>ringbuffer_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ringbuffer_t::element_size"><a class="permalink" href="#size_t_ringbuffer_t::element_size">size_t
+  ringbuffer_t::element_size</a></h2>
+<p class="Pp">Size of each element in bytes.</p>
+<p class="Pp">Definition at line <b>97</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Referenced by <b>framebuffer_clear()</b>,
+    <b>ringbuffer_create()</b>, <b>ringbuffer_peek()</b>,
+    <b>ringbuffer_read()</b>, and <b>ringbuffer_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> ringbuffer_t::head</h2>
+<p class="Pp">Write position (producer) - atomic for lock-free operations.</p>
+<p class="Pp">Definition at line <b>101</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Referenced by <b>ringbuffer_clear()</b>, and
+    <b>ringbuffer_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ringbuffer_t::is_power_of_two</h2>
+<p class="Pp">Whether capacity is power of 2 (enables bit masking
+  optimization).</p>
+<p class="Pp">Definition at line <b>107</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Referenced by <b>ringbuffer_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> ringbuffer_t::size</h2>
+<p class="Pp">Current number of elements - atomic for fast size checks.</p>
+<p class="Pp">Definition at line <b>105</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Referenced by <b>ringbuffer_clear()</b>, <b>ringbuffer_peek()</b>,
+    <b>ringbuffer_read()</b>, <b>ringbuffer_size()</b>, and
+    <b>ringbuffer_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> ringbuffer_t::tail</h2>
+<p class="Pp">Read position (consumer) - atomic for lock-free operations.</p>
+<p class="Pp">Definition at line <b>103</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Referenced by <b>ringbuffer_clear()</b>, <b>ringbuffer_peek()</b>,
+    and <b>ringbuffer_read()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

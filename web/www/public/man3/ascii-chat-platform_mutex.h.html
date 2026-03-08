@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>mutex.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">mutex.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">mutex.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">mutex.h - Cross-platform mutex interface for ascii-chat.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>mutex_t</b>
+  <br/>
+  Mutex type (POSIX: pthread_mutex_t with debug tracking).
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>LOG_MUTEX_STATE</b>(<b>mutex</b>)
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Mutex Locking Macros</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>mutex_lock</b>(<b>mutex</b>)
+  <br/>
+  Lock a mutex (with debug tracking in debug builds). #define
+    <b>mutex_trylock</b>(<b>mutex</b>)
+  <br/>
+  Try to lock a mutex without blocking (with debug tracking in debug builds).
+    #define <b>mutex_unlock</b>(<b>mutex</b>)
+  <br/>
+  Unlock a mutex (with debug tracking in debug builds).
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>debug_sync_mutex_lock</b> (<b>mutex_t</b> *<b>mutex</b>,
+    const char *file_name, int line_number, const char *function_name)
+  <br/>
+  int <b>debug_sync_mutex_trylock</b> (<b>mutex_t</b> *<b>mutex</b>, const char
+    *file_name, int line_number, const char *function_name)
+  <br/>
+  int <b>debug_sync_mutex_unlock</b> (<b>mutex_t</b> *<b>mutex</b>, const char
+    *file_name, int line_number, const char *function_name)
+  <br/>
+  <b>bool</b> <b>debug_sync_is_initialized</b> (void)
+  <br/>
+  int <b>mutex_init</b> (<b>mutex_t</b> *<b>mutex</b>, const char *name)
+  <br/>
+  Initialize a mutex with a name. int <b>mutex_destroy</b> (<b>mutex_t</b>
+    *<b>mutex</b>)
+  <br/>
+  Destroy a mutex. void <b>mutex_on_lock</b> (<b>mutex_t</b> *<b>mutex</b>)
+  <br/>
+  Hook called when a mutex is successfully locked. void <b>mutex_on_unlock</b>
+    (<b>mutex_t</b> *<b>mutex</b>)
+  <br/>
+  Hook called when a mutex is unlocked. void <b>mutex_on_trylock</b>
+    (<b>mutex_t</b> *<b>mutex</b>, <b>bool</b> success)
+  <br/>
+  Hook called when a mutex trylock is attempted. void <b>mutex_log_state</b>
+    (const <b>mutex_t</b> *<b>mutex</b>, const char *file, int line, const char
+    *func)
+  <br/>
+  Log the state of a mutex. int <b>mutex_lock_impl</b> (<b>mutex_t</b>
+    *<b>mutex</b>)
+  <br/>
+  Lock a mutex (implementation function). int <b>mutex_trylock_impl</b>
+    (<b>mutex_t</b> *<b>mutex</b>)
+  <br/>
+  Try to lock a mutex without blocking (implementation function). int
+    <b>mutex_unlock_impl</b> (<b>mutex_t</b> *<b>mutex</b>)
+  <br/>
+  Unlock a mutex (implementation function).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Cross-platform mutex interface for ascii-chat.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>platform/mutex.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

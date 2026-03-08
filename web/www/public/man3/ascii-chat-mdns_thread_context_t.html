@@ -43,9 +43,9 @@
   <br/>
   Session string to discover. <b>discovery_thread_state_t</b> * <b>state</b>
   <br/>
-  Shared discovery state. const uint8_t * <b>expected_pubkey</b>
+  Shared discovery state. const <b>uint8_t</b> * <b>expected_pubkey</b>
   <br/>
-  Expected server public key (optional). uint32_t <b>timeout_ms</b>
+  Expected server public key (optional). <b>uint32_t</b> <b>timeout_ms</b>
   <br/>
   Discovery timeout in milliseconds.
   <br/>
@@ -62,8 +62,8 @@
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="const_uint8_t*_mdns_thread_context_t::expected_pubkey"><a class="permalink" href="#const_uint8_t*_mdns_thread_context_t::expected_pubkey">const
-  uint8_t* mdns_thread_context_t::expected_pubkey</a></h2>
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>uint8_t</b>* mdns_thread_context_t::expected_pubkey</a></h2>
 <p class="Pp">Expected server public key (optional).</p>
 <p class="Pp">Definition at line <b>281</b> of file <b>discovery.c</b>.</p>
 <p class="Pp">Referenced by <b>discover_session_parallel()</b>.</p>
@@ -83,8 +83,7 @@
 <p class="Pp">Referenced by <b>discover_session_parallel()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint32_t_mdns_thread_context_t::timeout_ms"><a class="permalink" href="#uint32_t_mdns_thread_context_t::timeout_ms">uint32_t
-  mdns_thread_context_t::timeout_ms</a></h2>
+<h2 class="Ss"><b>uint32_t</b> mdns_thread_context_t::timeout_ms</h2>
 <p class="Pp">Discovery timeout in milliseconds.</p>
 <p class="Pp">Definition at line <b>282</b> of file <b>discovery.c</b>.</p>
 <p class="Pp"></p>
@@ -97,7 +96,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

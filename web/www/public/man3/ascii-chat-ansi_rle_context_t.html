@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ansi_rle_context_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ansi_rle_context_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ansi_rle_context_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ansi_rle_context_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/video/terminal/ansi.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">char * <b>buffer</b>
+  <br/>
+  size_t <b>capacity</b>
+  <br/>
+  size_t <b>length</b>
+  <br/>
+  <b>ansi_color_mode_t</b> <b>mode</b>
+  <br/>
+  <b>bool</b> <b>first_pixel</b>
+  <br/>
+  <b>uint8_t</b> <b>last_r</b>
+  <br/>
+  <b>uint8_t</b> <b>last_g</b>
+  <br/>
+  <b>uint8_t</b> <b>last_b</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>43</b> of file <b>ansi.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char*_ansi_rle_context_t::buffer"><a class="permalink" href="#char*_ansi_rle_context_t::buffer">char*
+  ansi_rle_context_t::buffer</a></h2>
+<p class="Pp">Definition at line <b>44</b> of file <b>ansi.h</b>.</p>
+<p class="Pp">Referenced by <b>ansi_rle_add_pixel()</b>,
+    <b>ansi_rle_finish()</b>, <b>ansi_rle_init()</b>, and
+    <b>image_print_color()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ansi_rle_context_t::capacity"><a class="permalink" href="#size_t_ansi_rle_context_t::capacity">size_t
+  ansi_rle_context_t::capacity</a></h2>
+<p class="Pp">Definition at line <b>45</b> of file <b>ansi.h</b>.</p>
+<p class="Pp">Referenced by <b>ansi_rle_add_pixel()</b>,
+    <b>ansi_rle_finish()</b>, <b>ansi_rle_init()</b>, and
+    <b>image_print_color()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ansi_rle_context_t::first_pixel</h2>
+<p class="Pp">Definition at line <b>48</b> of file <b>ansi.h</b>.</p>
+<p class="Pp">Referenced by <b>ansi_rle_add_pixel()</b>, and
+    <b>ansi_rle_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> ansi_rle_context_t::last_b</h2>
+<p class="Pp">Definition at line <b>51</b> of file <b>ansi.h</b>.</p>
+<p class="Pp">Referenced by <b>ansi_rle_add_pixel()</b>, and
+    <b>ansi_rle_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> ansi_rle_context_t::last_g</h2>
+<p class="Pp">Definition at line <b>50</b> of file <b>ansi.h</b>.</p>
+<p class="Pp">Referenced by <b>ansi_rle_add_pixel()</b>, and
+    <b>ansi_rle_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> ansi_rle_context_t::last_r</h2>
+<p class="Pp">Definition at line <b>49</b> of file <b>ansi.h</b>.</p>
+<p class="Pp">Referenced by <b>ansi_rle_add_pixel()</b>, and
+    <b>ansi_rle_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ansi_rle_context_t::length"><a class="permalink" href="#size_t_ansi_rle_context_t::length">size_t
+  ansi_rle_context_t::length</a></h2>
+<p class="Pp">Definition at line <b>46</b> of file <b>ansi.h</b>.</p>
+<p class="Pp">Referenced by <b>ansi_rle_add_pixel()</b>,
+    <b>ansi_rle_finish()</b>, <b>ansi_rle_init()</b>, and
+    <b>image_print_color()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>ansi_color_mode_t</b> ansi_rle_context_t::mode</h2>
+<p class="Pp">Definition at line <b>47</b> of file <b>ansi.h</b>.</p>
+<p class="Pp">Referenced by <b>ansi_rle_add_pixel()</b>, and
+    <b>ansi_rle_init()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

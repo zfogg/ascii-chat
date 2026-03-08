@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>embedded_resources.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">embedded_resources.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">embedded_resources.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">embedded_resources.h - Embedded resource management for production
+    builds.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>get_manpage_template</b> (FILE **out_file, const char
+    **out_content, size_t *out_len)
+  <br/>
+  Get man page template source (embedded or filesystem). int
+    <b>get_manpage_content</b> (FILE **out_file, const char **out_content,
+    size_t *out_len)
+  <br/>
+  Get man page content source (embedded or filesystem). void
+    <b>release_manpage_resources</b> (FILE *file)
+  <br/>
+  Release resources obtained from get_manpage_*.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">const char <b>embedded_manpage_template</b> []
+  <br/>
+  Behavior based on build type. const size_t
+    <b>embedded_manpage_template_size</b>
+  <br/>
+  Size of embedded_manpage_template (excluding null terminator).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Embedded resource management for production builds.</p>
+<p class="Pp">This module provides unified access to embedded documentation
+    resources in production builds while maintaining fast iteration in
+    development.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Build-Time Behavior:</b></p>
+<ul class="Bl-bullet">
+  <li><b>Production builds</b> (Release, RelWithDebInfo): Resources are embedded
+      at compile time using CMake scripts. The binary is self-contained.</li>
+  <li><b>Development builds</b> (Debug, Dev): Resources are read from filesystem
+      for fast iteration (edit &#x2192; rebuild &#x2192; test &#x2192; no
+    wait).</li>
+</ul>
+<p class="Pp"><b>Resource Types:</b></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Man page template (share/man/man1/ascii-chat.1.in)</dd>
+  <dt>2.</dt>
+  <dd>Man page content (share/man/man1/ascii-chat.1.content)</dd>
+</dl>
+<p class="Pp"><b>Example Usage:</b></p>
+<p class="Pp"></p>
+<pre>// Get man page template (works in both production and development)
+FILE *template_file = NULL;
+const char *template_str = NULL;
+size_t template_len = 0;
+int result = get_manpage_template(&amp;template_file, &amp;template_str, &amp;template_len);
+if (result != 0) {
+<br/>
+    log_error(&quot;Failed to load man page template&quot;);
+<br/>
+    return;
+}
+// Use template (either from FILE* or const char*)
+if (template_str) {
+<br/>
+    // Production: parse in-memory string
+<br/>
+    parse_from_memory(template_str, template_len);
+} else {
+<br/>
+    // Development: parse from file
+<br/>
+    parse_from_file(template_file);
+}
+// Always clean up
+release_manpage_resources(template_file);
+</pre>
+<p class="Pp">Definition in file <b>embedded_resources.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_get_manpage_content_(FILE_**_out_file,_const_char_**_out_content,_size_t_*_out_len)"><a class="permalink" href="#int_get_manpage_content_(FILE_**_out_file,_const_char_**_out_content,_size_t_*_out_len)">int
+  get_manpage_content (FILE ** out_file, const char ** out_content, size_t *
+  out_len)</a></h2>
+<p class="Pp">Get man page content source (embedded or filesystem). Same
+    behavior as <b>get_manpage_template()</b> but for the content file. See
+    <b>get_manpage_template()</b> documentation for usage details.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>out_file</i> Output pointer for FILE* (development) or
+  NULL (production)
+<br/>
+<i>out_content</i> Output pointer for const char* (production) or NULL (dev)
+<br/>
+<i>out_len</i> Output pointer for size_t (production) or NULL
+  (development)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, -1 on error</div>
+<p class="Pp">Definition at line <b>75</b> of file <b>embedded.c</b>.</p>
+<pre>75                                                                                     {
+76   // Content is now consolidated into the template - return empty
+77   if (out_content) {
+78     *out_content = &quot;&quot;;
+79   }
+80   if (out_len) {
+81     *out_len = 0;
+82   }
+83   if (out_file) {
+84     *out_file = NULL;
+85   }
+86 
+87   log_debug(&quot;Man page content is now consolidated into template (empty)&quot;);
+88   return 0;
+89 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_debug</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_get_manpage_template_(FILE_**_out_file,_const_char_**_out_content,_size_t_*_out_len)"><a class="permalink" href="#int_get_manpage_template_(FILE_**_out_file,_const_char_**_out_content,_size_t_*_out_len)">int
+  get_manpage_template (FILE ** out_file, const char ** out_content, size_t *
+  out_len)</a></h2>
+<p class="Pp">Get man page template source (embedded or filesystem).
+    Automatically selects between embedded and filesystem resources based on
+    build type:</p>
+<ul class="Bl-bullet">
+  <li><b>Release builds</b> (NDEBUG defined): Returns embedded string</li>
+  <li><b>Debug builds</b> (NDEBUG undefined): Reads from filesystem</li>
+</ul>
+<p class="Pp"><b>Parameter Usage:</b></p>
+<ul class="Bl-bullet">
+  <li>In production: out_content and out_len are set, out_file is NULL</li>
+  <li>In development: out_file is set to open FILE*, others are NULL</li>
+  <li>Caller must check which one is non-NULL to determine source</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>out_file</i> Output pointer for FILE* (development) or
+  NULL (production)
+<br/>
+<i>out_content</i> Output pointer for const char* (production) or NULL (dev)
+<br/>
+<i>out_len</i> Output pointer for size_t (production) or NULL
+  (development)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, -1 on error</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller must call release_manpage_resources(out_file) when
+  done
+<p class="Pp"></p>
+<p class="Pp">Do NOT free out_content - it's either static or managed
+  elsewhere</p>
+</div>
+<p class="Pp">Definition at line <b>22</b> of file <b>embedded.c</b>.</p>
+<pre>22                                                                                      {
+23 #ifdef NDEBUG
+24   // Release build: Return embedded data
+25   if (out_content) {
+26     *out_content = embedded_manpage_template;
+27   }
+28   if (out_len) {
+29     *out_len = embedded_manpage_template_size;
+30   }
+31   if (out_file) {
+32     *out_file = NULL;
+33   }
+34 
+35   log_debug(&quot;Using embedded man page template (%zu bytes)&quot;, embedded_manpage_template_size);
+36   return 0;
+37 #else
+38   // Debug build: Read from filesystem
+39   if (!out_file) {
+40     SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_file cannot be NULL in development mode&quot;);
+41     return -1;
+42   }
+43 
+44   // Construct absolute path using ASCIICHAT_RESOURCE_DIR (set at build time)
+45 #ifdef ASCIICHAT_RESOURCE_DIR
+46   static char path_buffer[PATH_MAX];
+47   safe_snprintf(path_buffer, sizeof(path_buffer), &quot;%s/share/man/man1/ascii-chat.1.in&quot;, ASCIICHAT_RESOURCE_DIR);
+48   const char *path = path_buffer;
+49 #else
+50   // Fallback: try relative path if ASCIICHAT_RESOURCE_DIR not defined
+51   const char *path = &quot;share/man/man1/ascii-chat.1.in&quot;;
+52 #endif
+53 
+54   // Use binary mode to ensure fread byte count matches ftell file size.
+55   // Text mode on Windows translates \r\n to \n, causing size mismatch.
+56   FILE *f = platform_fopen(&quot;file_stream&quot;, path, &quot;rb&quot;);
+57   if (!f) {
+58     SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to open man page template: %s&quot;, path);
+59     return -1;
+60   }
+61 
+62   *out_file = f;
+63   if (out_content) {
+64     *out_content = NULL;
+65   }
+66   if (out_len) {
+67     *out_len = 0;
+68   }
+69 
+70   log_debug(&quot;Using filesystem man page template: %s&quot;, path);
+71   return 0;
+72 #endif
+73 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>embedded_manpage_template</b>,
+    <b>embedded_manpage_template_size</b>, <b>ERROR_CONFIG</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>, <b>platform_fopen()</b>,
+    <b>safe_snprintf()</b>, <b>SET_ERRNO</b>, and <b>SET_ERRNO_SYS</b>.</p>
+<p class="Pp">Referenced by <b>manpage_resources_load()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_release_manpage_resources_(FILE_*_file)"><a class="permalink" href="#void_release_manpage_resources_(FILE_*_file)">void
+  release_manpage_resources (FILE * file)</a></h2>
+<p class="Pp">Release resources obtained from get_manpage_*. Properly cleans up
+    resources based on build type:</p>
+<ul class="Bl-bullet">
+  <li><b>Production</b>: No-op (embedded strings are static)</li>
+  <li><b>Development</b>: Closes FILE* if non-NULL</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>file</i> FILE* obtained from
+  get_manpage_template/content(), or NULL</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Safe to call with NULL
+<p class="Pp"></p>
+<p class="Pp">Only closes file, does NOT free content pointer</p>
+</div>
+<p class="Pp">Definition at line <b>91</b> of file <b>embedded.c</b>.</p>
+<pre>91                                            {
+92 #ifdef NDEBUG
+93   // Release build: No-op (embedded data is static, not heap-allocated)
+94   (void)file; // Suppress unused parameter warning
+95 #else
+96   // Debug build: Close file handle if present
+97   if (file) {
+98     fclose(file);
+99   }
+100 #endif
+101 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char_embedded_manpage_template__"><a class="permalink" href="#const_char_embedded_manpage_template__">const
+  char embedded_manpage_template[] [extern]</a></h2>
+<p class="Pp">Behavior based on build type. In CMake:</p>
+<ul class="Bl-bullet">
+  <li>NDEBUG is defined in Release/RelWithDebInfo builds &#x2192; use embedded
+      resources</li>
+  <li>NDEBUG is undefined in Debug/Dev builds &#x2192; use filesystem
+    resources</li>
+</ul>
+<p class="Pp">Embedded man page template content (auto-generated at build
+  time)</p>
+<p class="Pp">Referenced by <b>get_manpage_template()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_size_t_embedded_manpage_template_size"><a class="permalink" href="#const_size_t_embedded_manpage_template_size">const
+  size_t embedded_manpage_template_size [extern]</a></h2>
+<p class="Pp">Size of embedded_manpage_template (excluding null terminator).</p>
+<p class="Pp">Referenced by <b>get_manpage_template()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

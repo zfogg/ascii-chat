@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>system.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">system.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">system.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">system.h - Cross-platform system functions interface for
+    ascii-chat.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>platform_signal_handler_t</b>
+  <br/>
+  Signal handler descriptor for bulk registration. struct
+    <b>platform_stderr_redirect_handle_t</b>
+  <br/>
+  Handle for temporary stderr redirection. struct <b>platform_binary_match_t</b>
+  <br/>
+  Find which binary(ies) contain a given address.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>SAFE_IGNORE_PRINTF_RESULT</b>(expr)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef void(* <b>signal_handler_t</b>) (int)
+  <br/>
+  Signal handler function type.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>platform_install_crash_handler</b> (void)
+  <br/>
+  Install crash handlers for the application. <b>asciichat_error_t</b>
+    <b>platform_init</b> (void)
+  <br/>
+  Initialize platform-specific subsystems. void <b>platform_destroy</b> (void)
+  <br/>
+  Cleanup platform-specific subsystems. void <b>platform_force_exit</b> (int
+    exit_code)
+  <br/>
+  Forcefully terminate the process immediately without cleanup. void
+    <b>platform_sleep_ms</b> (unsigned int ms)
+  <br/>
+  Sleep for a specified number of milliseconds. <b>uint64_t</b>
+    <b>platform_get_monotonic_time_us</b> (void)
+  <br/>
+  Get monotonic time in microseconds. <b>asciichat_error_t</b>
+    <b>platform_request_timer_precision</b> (int precision)
+  <br/>
+  Request coarse (reduced resolution) timer precision. <b>asciichat_error_t</b>
+    <b>platform_restore_timer_resolution</b> (void)
+  <br/>
+  Restore default timer precision. <b>asciichat_error_t</b>
+    <b>platform_enable_keepawake</b> (void)
+  <br/>
+  Enable system sleep prevention (keepawake mode). void
+    <b>platform_disable_keepawake</b> (void)
+  <br/>
+  Disable system sleep prevention (allow OS to sleep). <b>asciichat_error_t</b>
+    <b>platform_localtime</b> (const time_t *timer, struct tm *result)
+  <br/>
+  Platform-safe localtime wrapper. <b>asciichat_error_t</b>
+    <b>platform_gtime</b> (const time_t *timer, struct tm *result)
+  <br/>
+  Platform-safe gmtime wrapper. const char * <b>platform_get_username</b> (void)
+  <br/>
+  Get the current username. <b>signal_handler_t</b> <b>platform_signal</b> (int
+    sig, <b>signal_handler_t</b> handler)
+  <br/>
+  Set a signal handler. <b>asciichat_error_t</b>
+    <b>platform_register_signal_handlers</b> (const
+    <b>platform_signal_handler_t</b> *handlers, int count)
+  <br/>
+  Register multiple signal handlers at once. const char * <b>platform_getenv</b>
+    (const char *name)
+  <br/>
+  Get an environment variable value. int <b>platform_setenv</b> (const char
+    *name, const char *value)
+  <br/>
+  Set an environment variable. <b>platform_stderr_redirect_handle_t</b>
+    <b>platform_stderr_redirect_to_null</b> (void)
+  <br/>
+  Redirect stderr to /dev/null temporarily. void <b>platform_stderr_restore</b>
+    (<b>platform_stderr_redirect_handle_t</b> handle)
+  <br/>
+  Restore stderr from a redirect handle.
+    <b>platform_stderr_redirect_handle_t</b>
+    <b>platform_stdout_stderr_redirect_to_null</b> (void)
+  <br/>
+  Redirect both stdout and stderr to /dev/null (restorable). void
+    <b>platform_stdout_stderr_restore</b>
+    (<b>platform_stderr_redirect_handle_t</b> handle)
+  <br/>
+  Restore stdout and stderr after
+    <b>platform_stdout_stderr_redirect_to_null()</b>. void
+    <b>platform_stdio_redirect_to_null_permanent</b> (void)
+  <br/>
+  Permanently redirect stderr and stdout to /dev/null. int <b>safe_snprintf</b>
+    (char *buffer, size_t <b>buffer_size</b>, const char *format,...)
+  <br/>
+  Platform-safe snprintf wrapper. int <b>safe_fprintf</b> (FILE *stream, const
+    char *format,...)
+  <br/>
+  Platform-safe fprintf wrapper. int <b>safe_vsnprintf</b> (char *buffer, size_t
+    <b>buffer_size</b>, const char *format, va_list ap)
+  <br/>
+  Platform-safe vsnprintf wrapper. <b>asciichat_error_t</b>
+    <b>platform_memcpy</b> (void *dest, size_t dest_size, const void *src,
+    size_t count)
+  <br/>
+  Platform-safe memcpy wrapper. <b>asciichat_error_t</b> <b>platform_memset</b>
+    (void *dest, size_t dest_size, int ch, size_t count)
+  <br/>
+  Platform-safe memset wrapper. <b>asciichat_error_t</b> <b>platform_memmove</b>
+    (void *dest, size_t dest_size, const void *src, size_t count)
+  <br/>
+  Platform-safe memmove wrapper. <b>asciichat_error_t</b> <b>platform_strcpy</b>
+    (char *dest, size_t dest_size, const char *src)
+  <br/>
+  Platform-safe strcpy wrapper. int <b>platform_get_last_error</b> (void)
+  <br/>
+  Get the last system error code. const char * <b>platform_strerror</b> (int
+    errnum)
+  <br/>
+  Get human-readable error message for a system error code.
+    <b>asciichat_error_t</b> <b>platform_resolve_hostname_to_ipv4</b> (const
+    char *hostname, char *ipv4_out, size_t ipv4_out_size)
+  <br/>
+  Resolve hostname to IPv4 address. <b>asciichat_error_t</b>
+    <b>platform_load_system_ca_certs</b> (char **pem_data_out, size_t
+    *pem_size_out)
+  <br/>
+  Load system CA certificates for TLS/HTTPS. size_t <b>platform_write_all</b>
+    (int fd, const void *buf, size_t count)
+  <br/>
+  Write all bytes to a file descriptor, handling partial writes. ssize_t
+    <b>platform_write</b> (int fd, const void *buf, size_t count)
+  <br/>
+  Safe file write (write replacement). int
+    <b>get_binary_file_address_offsets</b> (const void *addr,
+    <b>platform_binary_match_t</b> *matches, int max_matches)
+  <br/>
+  Get binary that contains address on Linux via /proc/self/maps.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Cross-platform system functions interface for ascii-chat.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>system.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

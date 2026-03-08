@@ -42,7 +42,7 @@
   Fields</a></h2>
 <br/>
 <p class="Pp">void(* <b>on_connected</b> )(<b>session_participant_t</b> *p,
-    uint32_t client_id, void *user_data)
+    <b>uint32_t</b> client_id, void *user_data)
   <br/>
   Called when successfully connected to session. void(* <b>on_disconnected</b>
     )(<b>session_participant_t</b> *p, void *user_data)
@@ -60,8 +60,8 @@
     <b>session_settings_t</b> *settings, void *user_data)
   <br/>
   Called when session settings change. void(* <b>on_error</b>
-    )(<b>session_participant_t</b> *p, asciichat_error_t error, const char
-    *message, void *user_data)
+    )(<b>session_participant_t</b> *p, <b>asciichat_error_t</b> error, const
+    char *message, void *user_data)
   <br/>
   Called when an error occurs.
   <br/>
@@ -96,7 +96,7 @@
 <section class="Ss">
 <h2 class="Ss" id="void(*_session_participant_callbacks_t::on_connected)_("><a class="permalink" href="#void(*_session_participant_callbacks_t::on_connected)_(">void(*
   session_participant_callbacks_t::on_connected) (<b>session_participant_t</b>
-  *p, uint32_t client_id, void *user_data)</a></h2>
+  *p, <b>uint32_t</b> client_id, void *user_data)</a></h2>
 <p class="Pp">Called when successfully connected to session.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>p</i> Participant handle
@@ -122,7 +122,7 @@
 <section class="Ss">
 <h2 class="Ss" id="void(*_session_participant_callbacks_t::on_error)_("><a class="permalink" href="#void(*_session_participant_callbacks_t::on_error)_(">void(*
   session_participant_callbacks_t::on_error) (<b>session_participant_t</b> *p,
-  asciichat_error_t error, const char *message, void *user_data)</a></h2>
+  <b>asciichat_error_t</b> error, const char *message, void *user_data)</a></h2>
 <p class="Pp">Called when an error occurs.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>p</i> Participant handle
@@ -172,7 +172,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

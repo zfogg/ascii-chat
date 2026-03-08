@@ -55,10 +55,10 @@
   <br/>
   Main audio rendering thread function for individual clients. int
     <b>create_client_render_threads</b> (<b>server_context_t</b> *server_ctx,
-    client_info_t *client)
+    <b>client_info_t</b> *client)
   <br/>
   Create and initialize per-client rendering threads. void
-    <b>stop_client_render_threads</b> (client_info_t *client)
+    <b>stop_client_render_threads</b> (<b>client_info_t</b> *client)
   <br/>
   Stop and cleanup per-client rendering threads.
   <br/>
@@ -214,7 +214,7 @@
   <li>Low-overhead packet queuing</li>
 </ul>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> Pointer to client_info_t for the target
+<div class="Bd-indent"><i>arg</i> Pointer to <b>client_info_t</b> for the target
   client</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">NULL on thread completion (always clean exit)</div>
@@ -232,10 +232,10 @@
 <p class="Pp">Thread must be joined properly to prevent resource leaks</p>
 </div>
 <p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>mixer_process_excluding_source()</b> For audio mixing
-  implementation
+<div class="Bd-indent"><b>mixer_process_excluding_source()</b> For <b>Audio</b>
+  mixing implementation
 <p class="Pp"></p>
-<p class="Pp">AUDIO_FRAMES_PER_BUFFER For buffer size constant</p>
+<p class="Pp"><b>AUDIO_FRAMES_PER_BUFFER</b> For buffer size constant</p>
 </div>
 <p class="Pp">Definition at line <b>763</b> of file <b>server/render.c</b>.</p>
 <pre>763                                             {
@@ -600,15 +600,28 @@
 1122 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>adaptive_sleep_do()</b>,
+<p class="Pp">References <b>client_info::active</b>, <b>adaptive_sleep_do()</b>,
     <b>adaptive_sleep_init()</b>, <b>asciichat_errno_destroy()</b>,
-    <b>atomic_load_bool()</b>, <b>AUDIO_RENDER_FPS</b>,
-    <b>audio_ring_buffer_read()</b>, <b>fps_frame_ns()</b>, <b>fps_init()</b>,
-    <b>g_audio_mixer</b>, <b>g_should_exit</b>,
-    <b>mixer_process_excluding_source()</b>, <b>opus_codec_create_encoder()</b>,
+    <b>atomic_load_bool()</b>, <b>client_info::audio_queue</b>,
+    <b>AUDIO_RENDER_FPS</b>, <b>client_info::audio_render_thread_running</b>,
+    <b>audio_ring_buffer_read()</b>, <b>client_info::client_id</b>,
+    <b>client_info::client_state_mutex</b>, <b>client_info::display_name</b>,
+    <b>fps_frame_ns()</b>, <b>fps_init()</b>, <b>g_audio_mixer</b>,
+    <b>g_should_exit</b>, <b>GET_OPTION</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>log_debug</b>, <b>log_debug_every</b>, <b>log_dev_every</b>,
+    <b>log_error</b>, <b>LOG_RATE_DEFAULT</b>, <b>LOG_RATE_SLOW</b>,
+    <b>log_warn_every</b>, <b>MAX_CLIENT_ID_LEN</b>,
+    <b>mixer_process_excluding_source()</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, <b>NS_PER_MS_INT</b>, <b>NS_PER_SEC_INT</b>,
+    <b>OPUS_APPLICATION_AUDIO</b>, <b>opus_codec_create_encoder()</b>,
     <b>opus_codec_destroy()</b>, <b>opus_codec_encode()</b>,
     <b>OPUS_FRAME_SAMPLES</b>, <b>packet_queue_enqueue()</b>,
-    <b>packet_queue_size()</b>, and <b>time_get_ns()</b>.</p>
+    <b>packet_queue_size()</b>, <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>,
+    <b>platform_sleep_ns()</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>SAFE_MEMCPY</b>, <b>SAFE_MEMSET</b>, <b>SAFE_STRNCPY</b>,
+    <b>client_info::shutting_down</b>, <b>client_info::socket</b>,
+    <b>START_TIMER</b>, <b>STOP_TIMER_AND_LOG_EVERY</b>, <b>time_get_ns()</b>,
+    and <b>US_PER_MS_INT</b>.</p>
 <p class="Pp">Referenced by <b>create_client_render_threads()</b>.</p>
 <section class="Ss">
 <h2 class="Ss" id="void_*_client_video_render_thread_(void_*_arg)"><a class="permalink" href="#void_*_client_video_render_thread_(void_*_arg)">void
@@ -673,7 +686,7 @@
 <div class="Bd-indent">Not suitable for precise timing (use for rate limiting
   only)</div>
 <p class="Pp"><b>See also</b></p>
-<div class="Bd-indent"><b>VIDEO_RENDER_FPS</b> For video thread timing
+<div class="Bd-indent"><b>VIDEO_RENDER_FPS</b> For <b>Video</b> thread timing
   requirements</div>
 <p class="Pp">Main video rendering thread function for individual clients</p>
 <p class="Pp"></p>
@@ -786,7 +799,7 @@
   <li>Debug information: Timing and queue status</li>
 </ul>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>arg</i> Pointer to client_info_t for the target
+<div class="Bd-indent"><i>arg</i> Pointer to <b>client_info_t</b> for the target
   client</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">NULL on thread completion (always clean exit)</div>
@@ -1126,19 +1139,33 @@
 650 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>adaptive_sleep_do()</b>,
-    <b>adaptive_sleep_init()</b>, <b>any_clients_sending_video()</b>,
-    <b>asciichat_errno_destroy()</b>, <b>atomic_load_bool()</b>,
-    <b>atomic_store_bool()</b>, <b>create_mixed_ascii_frame_for_client()</b>,
-    <b>fps_frame_ns()</b>, <b>fps_init()</b>, <b>g_should_exit</b>,
-    <b>platform_sleep_ms()</b>, <b>time_get_ns()</b>, <b>time_pretty()</b>,
-    <b>video_frame_begin_write()</b>, <b>video_frame_commit()</b>, and
-    <b>VIDEO_RENDER_FPS</b>.</p>
+<p class="Pp">References <b>client_info::active</b>, <b>adaptive_sleep_do()</b>,
+    <b>adaptive_sleep_init()</b>,
+    <b>video_frame_buffer_t::allocated_buffer_size</b>,
+    <b>any_clients_sending_video()</b>, <b>asciichat_errno_destroy()</b>,
+    <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
+    <b>video_frame_t::capture_timestamp_ns</b>, <b>client_info::client_id</b>,
+    <b>create_mixed_ascii_frame_for_client()</b>, <b>video_frame_t::data</b>,
+    <b>terminal_capabilities_t::desired_fps</b>, <b>fps_frame_ns()</b>,
+    <b>fps_init()</b>, <b>g_should_exit</b>,
+    <b>client_info::has_terminal_caps</b>, <b>client_info::height</b>,
+    <b>INVALID_SOCKET_VALUE</b>, <b>client_info::last_rendered_grid_sources</b>,
+    <b>log_debug</b>, <b>log_debug_every</b>, <b>log_dev_every</b>,
+    <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
+    <b>MAX_CLIENT_ID_LEN</b>, <b>NS_PER_MS_INT</b>, <b>NS_PER_SEC_INT</b>,
+    <b>client_info::outgoing_video_buffer</b>, <b>platform_sleep_ms()</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_STRNCPY</b>, <b>client_info::shutting_down</b>,
+    <b>video_frame_t::size</b>, <b>client_info::socket</b>, <b>START_TIMER</b>,
+    <b>STOP_TIMER_AND_LOG</b>, <b>client_info::terminal_caps</b>,
+    <b>time_get_ns()</b>, <b>time_pretty()</b>,
+    <b>video_frame_begin_write()</b>, <b>video_frame_commit()</b>,
+    <b>VIDEO_RENDER_FPS</b>, <b>client_info::video_render_thread_running</b>,
+    and <b>client_info::width</b>.</p>
 <p class="Pp">Referenced by <b>create_client_render_threads()</b>.</p>
 <section class="Ss">
 <h2 class="Ss" id="int_create_client_render_threads_("><a class="permalink" href="#int_create_client_render_threads_(">int
   create_client_render_threads (<b>server_context_t</b> * server_ctx,
-  client_info_t * client)</a></h2>
+  <b>client_info_t</b> * client)</a></h2>
 <p class="Pp">Create and initialize per-client rendering threads. Sets up the
     complete per-client threading infrastructure including both video and audio
     rendering threads plus all necessary synchronization primitives. This
@@ -1308,14 +1335,18 @@
 1269 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_create()</b>,
-    <b>atomic_store_bool()</b>, <b>client_audio_render_thread()</b>,
-    <b>client_video_render_thread()</b>, <b>safe_snprintf()</b>,
-    <b>server_context_t::tcp_server</b>, and
-  <b>tcp_server_spawn_thread()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
+    <b>atomic_store_bool()</b>, <b>client_info::audio_render_thread</b>,
+    <b>client_info::audio_render_thread_running</b>,
+    <b>client_audio_render_thread()</b>, <b>client_info::client_id</b>,
+    <b>client_video_render_thread()</b>, <b>client_info::is_tcp_client</b>,
+    <b>log_debug</b>, <b>log_error</b>, <b>log_info</b>, <b>safe_snprintf()</b>,
+    <b>client_info::socket</b>, <b>server_context_t::tcp_server</b>,
+    <b>tcp_server_spawn_thread()</b>, <b>client_info::video_render_thread</b>,
+    and <b>client_info::video_render_thread_running</b>.</p>
 <section class="Ss">
-<h2 class="Ss" id="void_stop_client_render_threads_(client_info_t_*_client)"><a class="permalink" href="#void_stop_client_render_threads_(client_info_t_*_client)">void
-  stop_client_render_threads (client_info_t * client)</a></h2>
+<h2 class="Ss" id="void_stop_client_render_threads_("><a class="permalink" href="#void_stop_client_render_threads_(">void
+  stop_client_render_threads (<b>client_info_t</b> * client)</a></h2>
 <p class="Pp">Stop and cleanup per-client rendering threads. Performs graceful
     shutdown of both video and audio rendering threads for a specific client,
     including proper thread joining and resource cleanup. This function ensures
@@ -1517,9 +1548,16 @@
 1439 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_join()</b>,
-    <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>, and
-    <b>g_should_exit</b>.</p>
+<p class="Pp">References <b>asciichat_thread_init()</b>,
+    <b>asciichat_thread_is_initialized()</b>, <b>asciichat_thread_join()</b>,
+    <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
+    <b>client_info::audio_render_thread</b>,
+    <b>client_info::audio_render_thread_running</b>,
+    <b>client_info::client_id</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>g_should_exit</b>, <b>log_debug</b>, <b>log_error</b>, <b>log_warn</b>,
+    <b>SAFE_STRERROR</b>, <b>SET_ERRNO</b>,
+    <b>client_info::video_render_thread</b>, and
+    <b>client_info::video_render_thread_running</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
@@ -1528,7 +1566,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

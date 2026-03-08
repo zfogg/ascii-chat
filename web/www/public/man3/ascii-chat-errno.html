@@ -1,0 +1,2067 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>errno(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">errno(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">errno(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">errno - Errno</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+<br/>
+<p class="Pp">file <b>asciichat_errno.c</b>
+  <br/>
+  &#x1F6A8; Custom error code system with formatted messages, thread-local
+    storage, and errno mapping file <b>asciichat_errno.h</b>
+  <br/>
+  &#x26A0;&#xFE0F;&#x203C;&#xFE0F; Comprehensive thread-local error context
+    system for ascii-chat
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>backtrace_t</b>
+  <br/>
+  struct <b>asciichat_error_context_t</b>
+  <br/>
+  Error context structure. struct <b>asciichat_error_stats_t</b>
+  <br/>
+  Error statistics structure.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>SET_ERRNO</b>(code, context_msg, ...)
+  <br/>
+  Set error code with custom context message and log it, returning the error
+    code. #define <b>SET_ERRNO_SYS</b>(code, context_msg, ...)
+  <br/>
+  Set error code with custom message and system error context, returning the
+    error code. #define <b>HAS_ERRNO</b>(var)
+  <br/>
+  Check if an error occurred and get full context. #define <b>CLEAR_ERRNO</b>()
+  <br/>
+  Clear the current error state. #define <b>GET_ERRNO</b>()
+  <br/>
+  Get current error code (0 if no error).
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>asciichat_set_errno</b> (<b>asciichat_error_t</b> code,
+    const char *file, int line, const char *function, const char
+    *context_message)
+  <br/>
+  Set error code with basic context. void
+    <b>asciichat_set_errno_with_message</b> (<b>asciichat_error_t</b> code,
+    const char *file, int line, const char *function, const char *format,...)
+  <br/>
+  Set error code with formatted message. void
+    <b>asciichat_set_errno_with_system_error</b> (<b>asciichat_error_t</b> code,
+    const char *file, int line, const char *function, int sys_errno)
+  <br/>
+  Set error code with system error (errno). void
+    <b>asciichat_set_errno_with_system_error_and_message</b>
+    (<b>asciichat_error_t</b> code, const char *file, int line, const char
+    *function, int sys_errno, const char *format,...)
+  <br/>
+  Set error code with system error and formatted message. void
+    <b>asciichat_set_errno_with_wsa_error</b> (<b>asciichat_error_t</b> code,
+    const char *file, int line, const char *function, int wsa_error)
+  <br/>
+  Set error code with Windows socket error (WSA error). <b>bool</b>
+    <b>asciichat_has_errno</b> (<b>asciichat_error_context_t</b> *context)
+  <br/>
+  Check if error occurred and get full context. <b>bool</b>
+    <b>asciichat_has_wsa_error</b> (void)
+  <br/>
+  Check if current error has WSA error code. void <b>asciichat_clear_errno</b>
+    (void)
+  <br/>
+  Clear the current error state. <b>asciichat_error_t</b>
+    <b>asciichat_get_errno</b> (void)
+  <br/>
+  Get current error code. void <b>asciichat_fatal_with_context</b>
+    (<b>asciichat_error_t</b> code, const char *file, int line, const char
+    *function, const char *format,...)
+  <br/>
+  Exit with error code and context (used by FATAL macro). void
+    <b>asciichat_print_error_context</b> (const <b>asciichat_error_context_t</b>
+    *context)
+  <br/>
+  Print full error context to stderr. void <b>asciichat_error_stats_init</b>
+    (void)
+  <br/>
+  Initialize error statistics system. void <b>asciichat_error_stats_record</b>
+    (<b>asciichat_error_t</b> code)
+  <br/>
+  Record an error in statistics. void <b>asciichat_error_stats_print</b> (void)
+  <br/>
+  Print error statistics to stderr. void <b>asciichat_error_stats_reset</b>
+    (void)
+  <br/>
+  Reset all error statistics to zero. <b>asciichat_error_stats_t</b>
+    <b>asciichat_error_stats_get</b> (void)
+  <br/>
+  Get current error statistics. <b>asciichat_error_t</b>
+    <b>asciichat_get_thread_error</b> (int <b>thread_id</b>)
+  <br/>
+  Get error code for a specific thread. void <b>asciichat_set_thread_error</b>
+    (int <b>thread_id</b>, <b>asciichat_error_t</b> code)
+  <br/>
+  Set error code for a specific thread. void <b>asciichat_clear_thread_error</b>
+    (int <b>thread_id</b>)
+  <br/>
+  Clear error code for a specific thread. void <b>asciichat_errno_suppress</b>
+    (<b>bool</b> suppress)
+  <br/>
+  Suppress error logging and reporting. void <b>asciichat_errno_destroy</b>
+    (void)
+  <br/>
+  Cleanup error system resources.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">__thread <b>asciichat_error_context_t</b>
+    <b>asciichat_errno_context</b>
+  <br/>
+  Thread-local error context storage. __thread <b>asciichat_error_t</b>
+    <b>asciichat_errno</b>
+  <br/>
+  Thread-local current error code.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Overview"><a class="permalink" href="#Overview">Overview</a></h2>
+<p class="Pp">This header defines ascii-chat's centralized error handling
+    system: a thread-local error number system with full context capture
+    including location information, stack traces (debug builds), and system
+    error integration. Rather than the limited errno semantics of standard C
+    (which loses context), this system captures the full error story: where it
+    happened, why it happened, and what the calling code was trying to do.</p>
+<p class="Pp"></p>
+<p class="Pp">This is NOT a cosmetic improvement. Error handling is one of the
+    most critical parts of ascii-chat. With 2,880+ SET_ERRNO calls throughout
+    250+ library files and 50+ source files, nearly every significant operation
+    in the codebase uses this system. The densest users are network (91 calls in
+    packet parsing alone), crypto (86+ in SSH key parsing, 86+ in crypto
+    context, 68+ in handshakes), and utilities (53+ in IP parsing).</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Why_This_Matters"><a class="permalink" href="#Why_This_Matters">Why
+  This Matters</a></h2>
+<p class="Pp">Good error messages save hours of debugging. Without context:</p>
+<ul class="Bl-bullet">
+  <li>Network packet parsing fails silently with &quot;invalid packet&quot;</li>
+  <li>Crypto handshakes break with &quot;key exchange failed&quot;</li>
+  <li>IP parsing rejects addresses with &quot;parse error&quot;</li>
+</ul>
+<p class="Pp">With this system:</p>
+<ul class="Bl-bullet">
+  <li>&quot;Invalid packet magic: 0xDEADBEEF (expected 0xCAFEBABE) [packet.c:247
+      in parse_packet_header]&quot;</li>
+  <li>&quot;Server signature verification FAILED - rejecting connection
+      [client.c:892 in handle_key_exchange_reply]&quot;</li>
+  <li>&quot;Failed to parse IP address: unexpected port specifier at position 15
+      [ip.c:184 in parse_ipv4_address]&quot;</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Core_Architecture"><a class="permalink" href="#Core_Architecture">Core
+  Architecture</a></h2>
+<p class="Pp"><b>Thread-Local Error Context</b>
+    (<b>asciichat_error_context_t</b>):</p>
+<ul class="Bl-bullet">
+  <li>Error code: One of 256 possible <b>asciichat_error_t</b> values</li>
+  <li>Location: File, line, function where error occurred (debug builds capture
+      all three)</li>
+  <li>Context message: Formatted printf-style explanation of what failed and
+    why</li>
+  <li>Stack trace: Full backtrace from error site (debug builds with
+      ENABLE_ERRNO_BACKTRACES)</li>
+  <li>System error: Integration with errno (POSIX) and WSA errors (Windows)</li>
+  <li>Timestamp: When the error occurred (microseconds since epoch)</li>
+</ul>
+<p class="Pp"><b>Library Interface (lib/ code)</b>:</p>
+<ul class="Bl-bullet">
+  <li>Use SET_ERRNO(code, &quot;format&quot;, ...) to set errors with
+    context</li>
+  <li>Use SET_ERRNO_SYS(code, &quot;format&quot;, ...) to capture system errno
+      alongside app error</li>
+  <li>Errors bubble up through the call stack (SET_ERRNO in deeper functions
+      sets context)</li>
+  <li>Higher-level code can CHECK errors and decide: propagate, recover, or
+    fail</li>
+</ul>
+<p class="Pp"><b>Application Interface (src/ code)</b>:</p>
+<ul class="Bl-bullet">
+  <li>Use <b>HAS_ERRNO(&amp;ctx)</b> to check if an error occurred and get full
+      context</li>
+  <li>Use <b>GET_ERRNO()</b> to check just the error code (returns ASCIICHAT_OK
+      if no error)</li>
+  <li>Use <b>CLEAR_ERRNO()</b> to reset error state after handling</li>
+  <li>Integrate with <b>FATAL()</b> to exit with full error details</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Usage_Patterns_(From_Real_Code)"><a class="permalink" href="#Usage_Patterns_(From_Real_Code)">Usage
+  Patterns (From Real Code)</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Pattern_1:_Input_Validation_(Network_Packet_Parsing)"><a class="permalink" href="#Pattern_1:_Input_Validation_(Network_Packet_Parsing)">Pattern
+  1: Input Validation (Network Packet Parsing)</a></h2>
+<p class="Pp">~1000+ locations - the most common pattern</p>
+<p class="Pp"></p>
+<pre>if (!header || !pkt_type) {
+<br/>
+  return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: header=%p, pkt_type=%p&quot;, header, pkt_type);
+}
+if (magic != PACKET_MAGIC) {
+<br/>
+  return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid packet magic: 0x%x (expected 0x%x)&quot;,
+<br/>
+                   magic, PACKET_MAGIC);
+}
+if (len &gt; MAX_PACKET_SIZE) {
+<br/>
+  return SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Packet too large: %u &gt; %d&quot;, len, MAX_PACKET_SIZE);
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Pattern_2:_Memory_Allocation_Failure_(Crypto_Operations)"><a class="permalink" href="#Pattern_2:_Memory_Allocation_Failure_(Crypto_Operations)">Pattern
+  2: Memory Allocation Failure (Crypto Operations)</a></h2>
+<p class="Pp">~400+ locations</p>
+<p class="Pp"></p>
+<pre>uint8_t *key = SAFE_MALLOC(key_size, uint8_t *);
+if (!key) {
+<br/>
+  return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate %zu bytes for ephemeral key&quot;, key_size);
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Pattern_3:_System_Call_Failure_with_errno_(File_I/O,_Networking)"><a class="permalink" href="#Pattern_3:_System_Call_Failure_with_errno_(File_I/O,_Networking)">Pattern
+  3: System Call Failure with errno (File I/O, Networking)</a></h2>
+<p class="Pp">~166 locations - use SET_ERRNO_SYS to capture both errno and
+    context</p>
+<p class="Pp"></p>
+<pre>int fd = open(path, O_RDONLY);
+if (fd &lt; 0) {
+<br/>
+  return SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to open config: %s&quot;, path);
+<br/>
+  // Logs: &quot;Failed to open config: /etc/ascii-chat.conf (errno: 2 - No such file)&quot;
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Pattern_4:_Error_Context_Propagation"><a class="permalink" href="#Pattern_4:_Error_Context_Propagation">Pattern
+  4: Error Context Propagation</a></h2>
+<p class="Pp">~50+ locations - deepest call checks error without overwriting</p>
+<p class="Pp"></p>
+<pre>// In crypto_perform_handshake() - deep function
+asciichat_error_t result = validate_server_signature(sig_data, server_key);
+if (result != ASCIICHAT_OK) {
+<br/>
+  return result;  // Propagates original error context up the call stack
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Pattern_5:_Application-Level_Error_Handling"><a class="permalink" href="#Pattern_5:_Application-Level_Error_Handling">Pattern
+  5: Application-Level Error Handling</a></h2>
+<p class="Pp">~30 locations - entry points check errors after library calls</p>
+<p class="Pp"></p>
+<pre>// In src/client/main.c
+asciichat_error_context_t err_ctx;
+if (HAS_ERRNO(&amp;err_ctx)) {
+<br/>
+  FATAL(err_ctx.code, &quot;Connection failed: %s at %s:%d&quot;,
+<br/>
+        err_ctx.context_message, err_ctx.file, err_ctx.line);
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Thread_Safety_Guarantee"><a class="permalink" href="#Thread_Safety_Guarantee">Thread
+  Safety Guarantee</a></h2>
+<p class="Pp">Each thread has completely independent error state via __thread
+    storage:</p>
+<ul class="Bl-bullet">
+  <li>Setting error in thread A doesn't affect thread B's error state</li>
+  <li>No mutex needed (no contention, no lock ordering issues)</li>
+  <li>Perfect for multi-threaded network servers with per-client threads</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Context_Capture_Details"><a class="permalink" href="#Context_Capture_Details">Context
+  Capture Details</a></h2>
+<p class="Pp"><b>In Release Builds (NDEBUG)</b>:</p>
+<ul class="Bl-bullet">
+  <li>File, line, function are NULL (stripped for performance)</li>
+  <li>Context message is captured (explains what went wrong)</li>
+  <li>System errno captured if SET_ERRNO_SYS used</li>
+  <li>No stack trace (compiler optimizations make backtraces unreliable)</li>
+  <li>Total overhead: one string allocation + context copy per error</li>
+</ul>
+<p class="Pp"><b>In Debug Builds</b>:</p>
+<ul class="Bl-bullet">
+  <li>File, line, function are captured (automatic via <b>FILE</b>, <b>LINE</b>,
+      <b>func</b>)</li>
+  <li>Context message is formatted with arguments</li>
+  <li>System errno and/or WSA error captured</li>
+  <li>Stack trace captured if ENABLE_ERRNO_BACKTRACES defined
+    (configurable)</li>
+  <li>Timestamp captured for performance analysis</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Error_Statistics_(Monitoring_&amp;_Diagnostics)"><a class="permalink" href="#Error_Statistics_(Monitoring_&amp;_Diagnostics)">Error
+  Statistics (Monitoring &amp; Diagnostics)</a></h2>
+<p class="Pp">The system tracks cumulative error counts per error code across
+    all threads:</p>
+<p class="Pp"></p>
+<pre>asciichat_error_stats_t stats = asciichat_error_stats_get();
+printf(&quot;Total errors seen: %llu\\n&quot;, stats.total_errors);
+printf(&quot;Network errors: %llu\\n&quot;, stats.error_counts[ERROR_NETWORK]);
+printf(&quot;Crypto errors: %llu\\n&quot;, stats.error_counts[ERROR_CRYPTO]);
+</pre>
+<p class="Pp">Useful for:</p>
+<ul class="Bl-bullet">
+  <li>Detecting error storms (too many of one error type = bug)</li>
+  <li>Performance monitoring (which errors consume resources?)</li>
+  <li>Testing validation (no errors in unit tests = good)</li>
+  <li>Production alerting (sudden spike in specific error = something
+    broke)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Common_Error_Codes_(From_"><a class="permalink" href="#Common_Error_Codes_(From_">Common
+  Error Codes (From <b>error_codes.h</b>)</a></h2>
+<ul class="Bl-bullet">
+  <li><b>ERROR_MEMORY</b><b>: Allocation failed (malloc/calloc)</b></li>
+  <li><b>ERROR_INVALID_PARAM</b><b>: Invalid function argument</b></li>
+  <li><b>ERROR_INVALID_STATE</b><b>: Operation invalid in current state</b></li>
+  <li>ERROR_NETWORK_*: Network-related errors (bind, listen, connect, etc.)</li>
+  <li><b>ERROR_CRYPTO</b><b>: Cryptographic operation failed</b></li>
+  <li><b>ERROR_CONFIG</b><b>: Configuration file or parsing error</b></li>
+  <li><b>ERROR_AUDIO</b><b>: Audio capture/playback error</b></li>
+  <li>See lib/common/error_codes.h for complete list</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Debugging_with_Error_Context"><a class="permalink" href="#Debugging_with_Error_Context">Debugging
+  with Error Context</a></h2>
+<p class="Pp"><b>In GDB</b>:</p>
+<p class="Pp"></p>
+<pre>(gdb) print asciichat_errno_context
+$1 = {code = ERROR_CRYPTO, file = &quot;lib/crypto/handshake/client.c&quot;, line = 892,
+<br/>
+      function = &quot;handle_key_exchange_reply&quot;, context_message = &quot;Signature verification failed&quot;,
+<br/>
+      timestamp = 1730851234567890, ...}
+</pre>
+<p class="Pp"><b>In Running Program</b> (if dumped by FATAL):</p>
+<p class="Pp"></p>
+<pre>[ERROR] ERROR_CRYPTO: Signature verification failed
+Location: lib/crypto/handshake/client.c:892 in handle_key_exchange_reply()
+Timestamp: 2025-10-06 14:07:14.567890 UTC
+System error: 0 (success)
+Stack trace (11 frames):
+<br/>
+  [0] handle_key_exchange_reply (lib/crypto/handshake/client.c:892)
+<br/>
+  [1] crypto_perform_handshake (lib/crypto/crypto.c:156)
+<br/>
+  [2] connection_authenticate (src/client/connection.c:289)
+<br/>
+  ... (8 more frames)
+</pre>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Use <b>SET_ERRNO()</b> in library code. Macros
+  auto-capture file/line/function.
+<p class="Pp"></p>
+<p class="Pp">Use <b>HAS_ERRNO()</b> in application code to check errors after
+    library calls.</p>
+<p class="Pp"></p>
+<p class="Pp">Stack traces are only captured in debug builds with
+    ENABLE_ERRNO_BACKTRACES.</p>
+<p class="Pp"></p>
+<p class="Pp">Thread-local storage ensures thread safety automatically (no
+    synchronization).</p>
+<p class="Pp"></p>
+<p class="Pp">This is the error handling backbone of ascii-chat. Understand it
+    well.</p>
+</div>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">October 2025</div>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_CLEAR_ERRNO()"><a class="permalink" href="#_define_CLEAR_ERRNO()">#define
+  CLEAR_ERRNO()</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>asciichat_clear_errno()</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Clear the current error state.</p>
+<p class="Pp">Definition at line <b>375</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>client_main()</b>, and
+    <b>config_load_system_and_user()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_GET_ERRNO()"><a class="permalink" href="#_define_GET_ERRNO()">#define
+  GET_ERRNO()</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>asciichat_get_errno()</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Get current error code (0 if no error).</p>
+<p class="Pp">Definition at line <b>380</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_handler()</b>, <b>capture_init()</b>,
+    <b>session_capture_create()</b>, <b>session_host_start()</b>, and
+    <b>session_participant_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_HAS_ERRNO(_var)"><a class="permalink" href="#_define_HAS_ERRNO(_var)">#define
+  HAS_ERRNO( var)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>asciichat_has_errno(var)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Check if an error occurred and get full context.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>var</i> Variable to store error context</div>
+<p class="Pp">Usage in src/ code: <b>asciichat_error_context_t</b> err_ctx; if
+    (<b>HAS_ERRNO(&amp;err_ctx)</b>) { FATAL(err_ctx.code, &quot;Library error
+    occurred&quot;); }</p>
+<p class="Pp">Definition at line <b>370</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_handler()</b>,
+    <b>action_create_config()</b>, <b>action_create_manpage()</b>,
+    <b>asciichat_fatal_with_context()</b>, <b>client_receive_thread()</b>,
+    <b>database_session_create()</b>, <b>main()</b>, <b>options_init()</b>, and
+    <b>parse_log_file()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SET_ERRNO(_code,__context_msg,__"><a class="permalink" href="#_define_SET_ERRNO(_code,__context_msg,__">#define
+  SET_ERRNO( code, context_msg, ...)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>(asciichat_set_errno_with_message(code, __FILE__, __LINE__, __func__, context_msg, ##__VA_ARGS__),                   \
+<br/>
+ log_error(&quot;SET_ERRNO: &quot; context_msg &quot; (code: %d, meaning: %s)&quot;, ##__VA_ARGS__, code, asciichat_error_string(code)), \
+<br/>
+ (code))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Set error code with custom context message and log it, returning
+    the error code.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>code</i> Error code to set
+<br/>
+<i>context_msg</i> Custom message explaining the error</div>
+<p class="Pp">Usage in lib/ code: if (bind(sockfd, ...) &lt; 0) { return
+    SET_ERRNO(ERROR_NETWORK_BIND, &quot;Cannot bind to port %d&quot;, port);
+  }</p>
+<p class="Pp">Definition at line <b>316</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<pre>316 #define SET_ERRNO(code, context_msg, ...)                                                                              \
+317   (asciichat_set_errno_with_message(code, __FILE__, __LINE__, __func__, context_msg, ##__VA_ARGS__),                   \
+318    log_error(&quot;SET_ERRNO: &quot; context_msg &quot; (code: %d, meaning: %s)&quot;, ##__VA_ARGS__, code, asciichat_error_string(code)), \
+319    (code))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>accept_with_timeout()</b>,
+    <b>acds_client_connect()</b>, <b>acds_identity_default_path()</b>,
+    <b>acds_identity_generate()</b>, <b>acds_identity_load()</b>,
+    <b>acds_identity_save()</b>, <b>acds_server_init()</b>,
+    <b>acds_server_run()</b>, <b>acds_session_create()</b>,
+    <b>acds_session_join()</b>, <b>acds_session_lookup()</b>,
+    <b>acds_sign_session_create()</b>, <b>acds_sign_session_join()</b>,
+    <b>acds_string_generate()</b>, <b>acds_verify_session_create()</b>,
+    <b>acds_verify_session_join()</b>,
+    <b>acip_client_receive_and_dispatch()</b>, <b>acip_handle_acds_packet()</b>,
+    <b>acip_handle_client_packet()</b>, <b>acip_handle_server_packet()</b>,
+    <b>acip_send_ascii_frame()</b>, <b>acip_send_audio_batch()</b>,
+    <b>acip_send_audio_opus()</b>, <b>acip_send_audio_opus_batch()</b>,
+    <b>acip_send_capabilities()</b>, <b>acip_send_clear_console()</b>,
+    <b>acip_send_client_join()</b>, <b>acip_send_client_leave()</b>,
+    <b>acip_send_error()</b>, <b>acip_send_image_frame()</b>,
+    <b>acip_send_image_frame_h265()</b>, <b>acip_send_ping()</b>,
+    <b>acip_send_pong()</b>, <b>acip_send_protocol_version()</b>,
+    <b>acip_send_remote_log()</b>, <b>acip_send_server_state()</b>,
+    <b>acip_send_session_created()</b>, <b>acip_send_session_info()</b>,
+    <b>acip_send_session_joined()</b>, <b>acip_send_stream_start()</b>,
+    <b>acip_send_stream_stop()</b>, <b>acip_server_receive_and_dispatch()</b>,
+    <b>acip_server_send_error()</b>,
+    <b>acip_server_validate_session_create()</b>,
+    <b>acip_server_validate_session_join()</b>,
+    <b>acip_tcp_transport_create()</b>, <b>acip_webrtc_transport_create()</b>,
+    <b>acip_websocket_client_transport_create()</b>,
+    <b>acip_websocket_server_transport_create()</b>, <b>add_client()</b>,
+    <b>add_known_host()</b>, <b>add_webrtc_client()</b>,
+    <b>apply_palette_config()</b>, <b>ascii_create_grid()</b>,
+    <b>ascii_pad_frame_width()</b>, <b>asciichat_mdns_advertise()</b>,
+    <b>asciichat_mdns_init()</b>, <b>asciichat_mdns_query()</b>,
+    <b>asciichat_mdns_unadvertise()</b>, <b>asciichat_mdns_update()</b>,
+    <b>asciichat_shared_init()</b>, <b>audio_dequantize_samples()</b>,
+    <b>audio_init()</b>, <b>audio_parse_batch_header()</b>,
+    <b>audio_process_received_samples()</b>, <b>audio_read_samples()</b>,
+    <b>audio_ring_buffer_available_write()</b>, <b>audio_ring_buffer_read()</b>,
+    <b>audio_ring_buffer_write()</b>, <b>audio_start_duplex()</b>,
+    <b>audio_stop_duplex()</b>, <b>audio_validate_batch_params()</b>,
+    <b>audio_write_samples()</b>, <b>av_send_audio_opus_batch()</b>,
+    <b>backtrace_capture()</b>, <b>backtrace_capture_and_symbolize()</b>,
+    <b>backtrace_format()</b>, <b>backtrace_print()</b>,
+    <b>backtrace_print_many()</b>, <b>backtrace_symbolize()</b>,
+    <b>backtrace_t_free()</b>, <b>broadcast_clear_console_to_all_clients()</b>,
+    <b>buffer_pool_create()</b>, <b>build_client_luminance_palette()</b>,
+    <b>build_github_gpg_url()</b>, <b>build_github_ssh_url()</b>,
+    <b>build_gitlab_gpg_url()</b>, <b>build_gitlab_ssh_url()</b>,
+    <b>canonicalize_ipv6()</b>, <b>capture_init()</b>,
+    <b>capture_start_thread()</b>, <b>check_gpg_key_expiry()</b>,
+    <b>check_key_expiry()</b>, <b>check_key_fingerprint()</b>,
+    <b>check_key_patterns()</b>, <b>check_key_strength()</b>,
+    <b>check_known_host()</b>, <b>check_known_host_no_identity()</b>,
+    <b>cleanup_client_media_buffers()</b>, <b>client_send_thread_func()</b>,
+    <b>colorscheme_compile_scheme()</b>, <b>colorscheme_export_scheme()</b>,
+    <b>colorscheme_init()</b>, <b>colorscheme_load_builtin()</b>,
+    <b>colorscheme_load_from_file()</b>, <b>colorscheme_set_active_scheme()</b>,
+    <b>compare_public_keys()</b>, <b>completions_generate_bash()</b>,
+    <b>completions_generate_fish()</b>, <b>completions_generate_for_shell()</b>,
+    <b>completions_generate_powershell()</b>, <b>completions_generate_zsh()</b>,
+    <b>compress_data()</b>, <b>config_create_default()</b>,
+    <b>config_load_and_apply()</b>, <b>config_schema_build_from_configs()</b>,
+    <b>config_schema_get_all()</b>, <b>config_schema_get_by_category()</b>,
+    <b>config_schema_get_by_toml_key()</b>, <b>connection_attempt_tcp()</b>,
+    <b>connection_attempt_websocket()</b>, <b>connection_context_init()</b>,
+    <b>connection_state_transition()</b>, <b>consensus_coordinator_create()</b>,
+    <b>consensus_coordinator_get_current_host()</b>,
+    <b>consensus_coordinator_on_collection_start()</b>,
+    <b>consensus_coordinator_on_election_result()</b>,
+    <b>consensus_coordinator_on_ring_members()</b>,
+    <b>consensus_coordinator_on_stats_update()</b>,
+    <b>consensus_coordinator_process()</b>,
+    <b>consensus_create_for_discovery()</b>,
+    <b>consensus_election_choose_hosts()</b>,
+    <b>consensus_election_verify()</b>,
+    <b>consensus_get_discovery_callbacks()</b>,
+    <b>consensus_metrics_collection_add()</b>,
+    <b>consensus_metrics_collection_create()</b>,
+    <b>consensus_metrics_collection_get()</b>,
+    <b>consensus_metrics_from_wire()</b>, <b>consensus_metrics_measure()</b>,
+    <b>consensus_metrics_to_wire()</b>, <b>consensus_state_add_metrics()</b>,
+    <b>consensus_state_collection_complete()</b>,
+    <b>consensus_state_compute_election()</b>, <b>consensus_state_create()</b>,
+    <b>consensus_state_get_elected_backup()</b>,
+    <b>consensus_state_get_elected_host()</b>,
+    <b>consensus_state_get_metric_at()</b>,
+    <b>consensus_state_reset_to_idle()</b>,
+    <b>consensus_state_start_collection()</b>,
+    <b>consensus_topology_create()</b>, <b>consensus_topology_get_all()</b>,
+    <b>consensus_topology_get_leader()</b>,
+    <b>consensus_topology_get_next()</b>, <b>consensus_topology_get_prev()</b>,
+    <b>create_mixed_ascii_frame_for_client()</b>,
+    <b>crypto_combine_auth_data()</b>, <b>crypto_compute_auth_response()</b>,
+    <b>crypto_compute_hmac()</b>, <b>crypto_compute_hmac_ex()</b>,
+    <b>crypto_compute_password_hmac()</b>,
+    <b>crypto_create_auth_challenge()</b>,
+    <b>crypto_create_encrypted_packet()</b>,
+    <b>crypto_create_public_key_packet()</b>, <b>crypto_decrypt()</b>,
+    <b>crypto_decrypt_packet_or_passthrough()</b>,
+    <b>crypto_derive_password_encryption_key()</b>,
+    <b>crypto_derive_password_key()</b>, <b>crypto_encrypt()</b>,
+    <b>crypto_encrypt_packet_or_passthrough()</b>,
+    <b>crypto_extract_auth_data()</b>, <b>crypto_generate_keypair()</b>,
+    <b>crypto_generate_nonce()</b>, <b>crypto_get_public_key()</b>,
+    <b>crypto_handshake_client_auth_response()</b>,
+    <b>crypto_handshake_client_auth_response_socket()</b>,
+    <b>crypto_handshake_client_complete()</b>,
+    <b>crypto_handshake_client_complete_socket()</b>,
+    <b>crypto_handshake_client_key_exchange()</b>,
+    <b>crypto_handshake_client_key_exchange_socket()</b>,
+    <b>crypto_handshake_decrypt_packet()</b>,
+    <b>crypto_handshake_encrypt_packet()</b>, <b>crypto_handshake_init()</b>,
+    <b>crypto_handshake_init_with_password()</b>,
+    <b>crypto_handshake_process_rekey_complete()</b>,
+    <b>crypto_handshake_process_rekey_request()</b>,
+    <b>crypto_handshake_process_rekey_response()</b>,
+    <b>crypto_handshake_rekey_complete()</b>,
+    <b>crypto_handshake_rekey_request()</b>,
+    <b>crypto_handshake_rekey_response()</b>,
+    <b>crypto_handshake_server_auth_challenge()</b>,
+    <b>crypto_handshake_server_auth_challenge_socket()</b>,
+    <b>crypto_handshake_server_complete()</b>,
+    <b>crypto_handshake_server_complete_socket()</b>,
+    <b>crypto_handshake_server_start()</b>,
+    <b>crypto_handshake_server_start_socket()</b>,
+    <b>crypto_handshake_set_parameters()</b>,
+    <b>crypto_handshake_validate_packet_size()</b>, <b>crypto_init()</b>,
+    <b>crypto_init_with_password()</b>, <b>crypto_process_auth_challenge()</b>,
+    <b>crypto_process_auth_response()</b>,
+    <b>crypto_process_encrypted_packet()</b>,
+    <b>crypto_process_public_key_packet()</b>, <b>crypto_random_bytes()</b>,
+    <b>crypto_regex_extract_gpg_keygrip()</b>,
+    <b>crypto_regex_extract_pem_base64()</b>,
+    <b>crypto_regex_match_known_hosts()</b>,
+    <b>crypto_regex_match_public_key()</b>, <b>crypto_rekey_commit()</b>,
+    <b>crypto_rekey_init()</b>, <b>crypto_rekey_process_request()</b>,
+    <b>crypto_rekey_process_response()</b>, <b>crypto_set_peer_public_key()</b>,
+    <b>crypto_sign_ephemeral_key()</b>, <b>crypto_validate_password()</b>,
+    <b>crypto_verify_auth_response()</b>, <b>crypto_verify_hmac()</b>,
+    <b>crypto_verify_hmac_ex()</b>, <b>crypto_verify_peer_signature()</b>,
+    <b>database_init()</b>, <b>database_session_add_key()</b>,
+    <b>database_session_clear_host()</b>, <b>database_session_create()</b>,
+    <b>database_session_get_keys()</b>, <b>database_session_join()</b>,
+    <b>database_session_leave()</b>, <b>database_session_lookup()</b>,
+    <b>database_session_revoke_key()</b>,
+    <b>database_session_start_migration()</b>,
+    <b>database_session_update_host()</b>, <b>decompress_data()</b>,
+    <b>detect_default_ssh_key()</b>, <b>discover_session_parallel()</b>,
+    <b>discovery_keys_clear_cache()</b>, <b>discovery_keys_download_https()</b>,
+    <b>discovery_keys_get_cache_path()</b>, <b>discovery_keys_load_cached()</b>,
+    <b>discovery_keys_load_file()</b>, <b>discovery_keys_save_cached()</b>,
+    <b>discovery_keys_verify()</b>, <b>discovery_keys_verify_change()</b>,
+    <b>discovery_mdns_query()</b>, <b>discovery_session_become_host()</b>,
+    <b>discovery_session_connect_to_future_host()</b>,
+    <b>discovery_session_create()</b>, <b>discovery_session_destroy()</b>,
+    <b>discovery_session_get_future_host()</b>,
+    <b>discovery_session_get_host()</b>,
+    <b>discovery_session_get_participant()</b>,
+    <b>discovery_session_get_state()</b>, <b>discovery_session_get_string()</b>,
+    <b>discovery_session_handle_host_disconnect()</b>,
+    <b>discovery_session_init_ring()</b>, <b>discovery_session_is_active()</b>,
+    <b>discovery_session_is_future_host()</b>,
+    <b>discovery_session_is_host()</b>, <b>discovery_session_process()</b>,
+    <b>discovery_session_start()</b>,
+    <b>discovery_session_start_ring_round()</b>,
+    <b>discovery_session_stop()</b>, <b>display_init()</b>,
+    <b>display_render_frame()</b>, <b>ducking_init()</b>,
+    <b>ed25519_sign_message()</b>, <b>ed25519_to_x25519_private()</b>,
+    <b>ed25519_to_x25519_public()</b>, <b>ed25519_verify_signature()</b>,
+    <b>escape_ascii()</b>, <b>escape_path_for_shell()</b>,
+    <b>escape_shell_double_quotes()</b>, <b>escape_shell_single_quotes()</b>,
+    <b>expand_ipv6()</b>, <b>extract_ed25519_from_gpg()</b>,
+    <b>extract_gpg_key_comment()</b>, <b>extract_ipv4_from_mapped_ipv6()</b>,
+    <b>extract_project_relative_path()</b>, <b>fetch_github_gpg_keys()</b>,
+    <b>fetch_github_keys()</b>, <b>fetch_github_ssh_keys()</b>,
+    <b>fetch_gitlab_gpg_keys()</b>, <b>fetch_gitlab_keys()</b>,
+    <b>fetch_gitlab_ssh_keys()</b>, <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_rewind()</b>,
+    <b>ffmpeg_decoder_seek_to_timestamp()</b>,
+    <b>ffmpeg_decoder_start_prefetch()</b>, <b>ffmpeg_encoder_create()</b>,
+    <b>ffmpeg_encoder_write_frame()</b>, <b>find_client_by_id()</b>,
+    <b>format_gpg_key_display()</b>, <b>format_ip_address()</b>,
+    <b>format_ip_with_port()</b>, <b>frame_check_size_overflow()</b>,
+    <b>frame_validate_legacy()</b>, <b>frame_validate_new()</b>,
+    <b>framebuffer_clear()</b>, <b>framebuffer_create()</b>,
+    <b>framebuffer_create_multi()</b>, <b>framebuffer_destroy()</b>,
+    <b>framebuffer_peek_latest_multi_frame()</b>,
+    <b>framebuffer_read_frame()</b>, <b>framebuffer_read_multi_frame()</b>,
+    <b>framebuffer_write_frame()</b>, <b>framebuffer_write_multi_frame()</b>,
+    <b>free_ta_contents()</b>, <b>generate_key_fingerprint()</b>,
+    <b>get_gpg_fingerprint()</b>, <b>get_gpg_key_id()</b>,
+    <b>get_manpage_template()</b>, <b>gpg_to_x25519_public()</b>,
+    <b>grep_init()</b>, <b>grep_restore_patterns()</b>,
+    <b>grep_save_patterns()</b>, <b>h265_client_capture_and_encode()</b>,
+    <b>h265_client_context_create()</b>, <b>h265_client_init_media_source()</b>,
+    <b>h265_decode()</b>, <b>h265_decoder_create()</b>, <b>h265_encode()</b>,
+    <b>h265_encoder_create()</b>, <b>h265_encoder_flush()</b>,
+    <b>h265_server_context_create()</b>,
+    <b>h265_server_decode_and_convert()</b>,
+    <b>h265_server_get_client_decoder()</b>, <b>handle_audio_batch_packet()</b>,
+    <b>handle_audio_opus_batch_packet()</b>,
+    <b>handle_client_capabilities_packet()</b>,
+    <b>handle_client_leave_packet()</b>, <b>handle_image_frame_packet()</b>,
+    <b>handle_ping_packet()</b>, <b>hex_decode()</b>, <b>hex_to_pubkey()</b>,
+    <b>ice_add_remote_candidate()</b>, <b>ice_format_candidate()</b>,
+    <b>ice_gather_candidates()</b>, <b>image_calc_pixel_buffer_size()</b>,
+    <b>image_calc_pixel_count()</b>, <b>image_calc_rgb_size()</b>,
+    <b>image_calc_total_allocation()</b>, <b>image_clear()</b>,
+    <b>image_destroy()</b>, <b>image_destroy_to_pool()</b>, <b>image_new()</b>,
+    <b>image_new_copy()</b>, <b>image_new_from_pool()</b>, <b>image_print()</b>,
+    <b>image_print_16color()</b>, <b>image_print_16color_dithered()</b>,
+    <b>image_print_16color_dithered_with_background()</b>,
+    <b>image_print_256color()</b>, <b>image_print_color()</b>,
+    <b>image_resize()</b>, <b>image_resize_interpolation()</b>,
+    <b>image_validate_buffer_size()</b>, <b>image_validate_dimensions()</b>,
+    <b>initialize_client_palette()</b>, <b>ipv4_to_ipv6_mapped()</b>,
+    <b>is_session_string()</b>, <b>is_valid_ipv4()</b>, <b>is_valid_ipv6()</b>,
+    <b>keyboard_help_is_active()</b>, <b>keyboard_help_toggle()</b>,
+    <b>log_enable_mmap_sized()</b>, <b>log_mmap_init()</b>,
+    <b>log_search_gather_and_filter_logs()</b>, <b>log_set_format()</b>,
+    <b>log_template_free()</b>, <b>main()</b>,
+    <b>manpage_merger_generate_synopsis()</b>,
+    <b>manpage_merger_generate_usage()</b>, <b>manpage_parser_parse_file()</b>,
+    <b>manpage_parser_parse_memory()</b>, <b>manpage_resources_load()</b>,
+    <b>media_source_create()</b>, <b>media_source_seek()</b>,
+    <b>mixer_create()</b>, <b>nat_detect_quality()</b>,
+    <b>nat_measure_bandwidth()</b>, <b>nat_upnp_get_address()</b>,
+    <b>nat_upnp_open()</b>, <b>nat_upnp_refresh()</b>,
+    <b>negotiate_determine_result()</b>, <b>negotiate_elect_future_host()</b>,
+    <b>negotiate_receive_peer_quality()</b>, <b>negotiate_start_detection()</b>,
+    <b>openpgp_base64_decode()</b>, <b>openpgp_extract_ed25519_from_mpi()</b>,
+    <b>openpgp_parse_armored_pubkey()</b>,
+    <b>openpgp_parse_armored_seckey()</b>, <b>openpgp_parse_packet_header()</b>,
+    <b>openpgp_parse_public_key_packet()</b>,
+    <b>openpgp_parse_secret_key_packet()</b>, <b>option_applies_to_mode()</b>,
+    <b>options_builder_add_descriptor()</b>, <b>options_builder_build()</b>,
+    <b>options_builder_create()</b>, <b>options_builder_from_preset()</b>,
+    <b>options_builder_generate_manpage_template()</b>,
+    <b>options_builder_mark_as_list()</b>,
+    <b>options_builder_set_arg_placeholder()</b>,
+    <b>options_builder_set_default_value_display()</b>,
+    <b>options_builder_set_enum_values()</b>,
+    <b>options_builder_set_examples()</b>,
+    <b>options_builder_set_input_type()</b>,
+    <b>options_builder_set_mode_bitmask()</b>,
+    <b>options_builder_set_numeric_range()</b>,
+    <b>options_collect_identity_keys()</b>,
+    <b>options_config_generate_final_manpage()</b>,
+    <b>options_config_generate_manpage_merged()</b>,
+    <b>options_config_generate_manpage_template()</b>,
+    <b>options_config_parse()</b>, <b>options_config_parse_positional()</b>,
+    <b>options_config_print_options_sections_with_width()</b>,
+    <b>options_config_set_defaults()</b>, <b>options_config_validate()</b>,
+    <b>options_init()</b>, <b>options_preset_unified()</b>,
+    <b>options_print_help_for_mode()</b>,
+    <b>options_registry_add_all_to_builder()</b>,
+    <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>,
+    <b>options_registry_get_binary_options()</b>,
+    <b>options_registry_get_enum_values()</b>,
+    <b>options_registry_get_examples()</b>,
+    <b>options_registry_get_for_display()</b>,
+    <b>options_registry_get_for_mode()</b>,
+    <b>options_registry_get_input_type()</b>,
+    <b>options_registry_get_metadata()</b>,
+    <b>options_registry_get_numeric_range()</b>, <b>options_set_bool()</b>,
+    <b>options_set_double()</b>, <b>options_set_int()</b>,
+    <b>options_set_string()</b>, <b>options_state_init()</b>,
+    <b>options_state_set()</b>, <b>opus_codec_create_decoder()</b>,
+    <b>opus_codec_create_encoder()</b>, <b>opus_codec_decode()</b>,
+    <b>opus_codec_encode()</b>, <b>opus_codec_get_bitrate()</b>,
+    <b>opus_codec_set_bitrate()</b>, <b>opus_codec_set_dtx()</b>,
+    <b>packet_decode_frame_data_buffer()</b>,
+    <b>packet_decode_frame_data_malloc()</b>, <b>packet_decrypt_envelope()</b>,
+    <b>packet_parse_error_message()</b>, <b>packet_parse_opus_batch()</b>,
+    <b>packet_parse_remote_log()</b>, <b>packet_queue_enqueue()</b>,
+    <b>packet_queue_enqueue_packet()</b>, <b>packet_queue_stop()</b>,
+    <b>packet_queue_try_dequeue()</b>, <b>packet_queue_validate_packet()</b>,
+    <b>packet_receive()</b>, <b>packet_send()</b>, <b>packet_send_error()</b>,
+    <b>packet_send_remote_log()</b>, <b>packet_send_via_transport()</b>,
+    <b>packet_validate_frame_dimensions()</b>, <b>parallel_connect()</b>,
+    <b>parse_address_with_optional_port()</b>, <b>parse_gpg_key()</b>,
+    <b>parse_gpg_key_binary()</b>, <b>parse_gpg_keys_from_response()</b>,
+    <b>parse_hex_color()</b>, <b>parse_int32()</b>, <b>parse_ip_with_port()</b>,
+    <b>parse_keys_from_file()</b>, <b>parse_long()</b>,
+    <b>parse_manpage_sections()</b>, <b>parse_port()</b>,
+    <b>parse_private_key()</b>, <b>parse_public_key()</b>,
+    <b>parse_public_keys()</b>, <b>parse_ssh_ed25519_line()</b>,
+    <b>parse_ssh_keys_from_response()</b>, <b>parse_ssh_private_key()</b>,
+    <b>parse_uint32()</b>, <b>parse_ulong()</b>, <b>parse_ulonglong()</b>,
+    <b>path_normalize_copy()</b>, <b>path_validate_user_path()</b>,
+    <b>platform_enable_keepawake()</b>, <b>platform_get_executable_path()</b>,
+    <b>platform_is_binary_in_path()</b>, <b>precalc_rgb_palettes()</b>,
+    <b>private_key_to_x25519()</b>, <b>process_encrypted_packet()</b>,
+    <b>prompt_password()</b>, <b>prompt_unknown_host()</b>,
+    <b>prompt_unknown_host_no_identity()</b>, <b>public_key_to_x25519()</b>,
+    <b>quantize_color()</b>, <b>rate_limiter_check()</b>,
+    <b>rate_limiter_prune()</b>, <b>rate_limiter_record()</b>,
+    <b>receive_packet_secure()</b>, <b>registry_entry_applies_to_mode()</b>,
+    <b>registry_find_entry_by_name()</b>,
+    <b>registry_validate_unique_options()</b>, <b>remove_client()</b>,
+    <b>remove_known_host()</b>, <b>rgb_to_ansi_8bit()</b>,
+    <b>ringbuffer_create()</b>, <b>safe_parse_audio_message()</b>,
+    <b>safe_parse_size_message()</b>, <b>sdp_detect_terminal_capabilities()</b>,
+    <b>sdp_generate_answer()</b>, <b>sdp_generate_offer()</b>,
+    <b>sdp_get_selected_video_codec()</b>, <b>sdp_parse()</b>,
+    <b>send_crypto_capabilities_packet()</b>,
+    <b>send_crypto_parameters_packet()</b>, <b>send_error_packet_message()</b>,
+    <b>send_image_frame_packet()</b>, <b>send_packet_secure()</b>,
+    <b>send_protocol_version_packet()</b>, <b>send_server_state_to_client()</b>,
+    <b>server_crypto_handshake()</b>, <b>session_audio_add_source()</b>,
+    <b>session_audio_start_capture()</b>, <b>session_audio_start_duplex()</b>,
+    <b>session_audio_start_playback()</b>,
+    <b>session_audio_write_playback()</b>, <b>session_audio_write_source()</b>,
+    <b>session_capture_create()</b>,
+    <b>session_capture_process_for_transmission()</b>,
+    <b>session_client_like_run()</b>, <b>session_consensus_create()</b>,
+    <b>session_consensus_get_elected_host()</b>,
+    <b>session_consensus_on_collection_start()</b>,
+    <b>session_consensus_on_election_result()</b>,
+    <b>session_consensus_on_stats_update()</b>,
+    <b>session_consensus_process()</b>, <b>session_consensus_set_topology()</b>,
+    <b>session_display_clear()</b>, <b>session_display_convert_to_ascii()</b>,
+    <b>session_display_cursor_home()</b>, <b>session_display_destroy()</b>,
+    <b>session_display_encode_frame()</b>, <b>session_display_get_caps()</b>,
+    <b>session_display_get_luminance_palette()</b>,
+    <b>session_display_get_palette_chars()</b>,
+    <b>session_display_get_palette_len()</b>,
+    <b>session_display_get_stdin_reader()</b>,
+    <b>session_display_get_tty_fd()</b>,
+    <b>session_display_has_audio_playback()</b>,
+    <b>session_display_has_tty()</b>, <b>session_display_render_frame()</b>,
+    <b>session_display_reset()</b>,
+    <b>session_display_set_snapshot_actual_duration()</b>,
+    <b>session_display_set_stdin_reader()</b>,
+    <b>session_display_write_ascii()</b>, <b>session_display_write_audio()</b>,
+    <b>session_display_write_raw()</b>, <b>session_host_add_client()</b>,
+    <b>session_host_add_memory_participant()</b>,
+    <b>session_host_broadcast_frame()</b>, <b>session_host_create()</b>,
+    <b>session_host_find_client()</b>, <b>session_host_inject_audio()</b>,
+    <b>session_host_inject_frame()</b>, <b>session_host_remove_client()</b>,
+    <b>session_host_send_frame()</b>,
+    <b>session_host_set_client_transport()</b>, <b>session_host_start()</b>,
+    <b>session_host_start_render()</b>, <b>session_mirror_capture_create()</b>,
+    <b>session_participant_connect()</b>, <b>session_participant_create()</b>,
+    <b>session_participant_get_settings()</b>,
+    <b>session_participant_request_settings()</b>,
+    <b>session_participant_set_transport()</b>,
+    <b>session_participant_start_audio()</b>,
+    <b>session_participant_start_audio_capture()</b>,
+    <b>session_participant_start_video()</b>,
+    <b>session_participant_start_video_capture()</b>,
+    <b>session_pipeline_create()</b>, <b>session_pipeline_run_main()</b>,
+    <b>session_render_loop()</b>, <b>session_server_like_run()</b>,
+    <b>session_settings_apply_to_options()</b>,
+    <b>session_settings_deserialize()</b>,
+    <b>session_settings_from_options()</b>, <b>session_settings_serialize()</b>,
+    <b>set_socket_keepalive()</b>, <b>set_socket_nonblocking()</b>,
+    <b>set_socket_timeout()</b>, <b>signaling_broadcast()</b>,
+    <b>signaling_relay_ice()</b>, <b>signaling_relay_sdp()</b>,
+    <b>simple_frame_swap_destroy()</b>, <b>simple_frame_swap_get()</b>,
+    <b>simple_frame_swap_update()</b>, <b>ssh_agent_add_key()</b>,
+    <b>ssh_agent_sign()</b>, <b>start_webrtc_client_threads()</b>,
+    <b>stop_client_render_threads()</b>, <b>stop_client_threads()</b>,
+    <b>symbol_cache_init()</b>, <b>tcp_client_connect()</b>,
+    <b>tcp_client_context_get_ip()</b>, <b>tcp_client_context_get_port()</b>,
+    <b>tcp_client_send_packet()</b>, <b>tcp_server_add_client()</b>,
+    <b>tcp_server_get_client()</b>, <b>tcp_server_get_thread_count()</b>,
+    <b>tcp_server_init()</b>, <b>tcp_server_reject_client()</b>,
+    <b>tcp_server_remove_client()</b>, <b>tcp_server_run()</b>,
+    <b>tcp_server_spawn_thread()</b>, <b>tcp_server_stop_client_threads()</b>,
+    <b>term_renderer_create()</b>, <b>term_renderer_feed()</b>,
+    <b>terminal_fd_reader_create()</b>, <b>terminal_fd_reader_next()</b>,
+    <b>terminal_fd_writer_create()</b>, <b>terminal_fd_writer_write()</b>,
+    <b>terminal_get_size()</b>, <b>thread_create_or_fail()</b>,
+    <b>thread_pool_create()</b>, <b>thread_pool_create_with_workers()</b>,
+    <b>thread_pool_interrupt_all()</b>, <b>thread_pool_queue_work()</b>,
+    <b>thread_pool_spawn()</b>, <b>thread_pool_stop_all()</b>,
+    <b>threaded_send_audio_opus()</b>, <b>threaded_send_audio_opus_batch()</b>,
+    <b>threaded_send_image_frame()</b>, <b>threaded_send_image_frame_h265()</b>,
+    <b>threaded_send_packet()</b>, <b>time_format_now()</b>,
+    <b>time_format_safe()</b>, <b>time_ns_to_timespec()</b>,
+    <b>time_timespec_to_ns()</b>, <b>timer_start()</b>, <b>timer_stop()</b>,
+    <b>timer_system_init()</b>, <b>turn_generate_credentials()</b>,
+    <b>ui_mdns_query()</b>, <b>ui_status_gather()</b>,
+    <b>update_check_load_cache()</b>, <b>update_check_perform()</b>,
+    <b>update_check_save_cache()</b>, <b>url_is_tcp()</b>,
+    <b>url_is_tcp_scheme()</b>, <b>url_is_valid()</b>,
+    <b>url_is_websocket()</b>, <b>url_is_websocket_scheme()</b>,
+    <b>url_looks_like_tcp()</b>, <b>url_looks_like_websocket()</b>,
+    <b>url_parse()</b>, <b>url_parts_destroy()</b>, <b>utf8_char_count()</b>,
+    <b>utf8_is_ascii_only()</b>, <b>utf8_is_valid()</b>,
+    <b>utf8_next_char_bytes()</b>, <b>utf8_palette_create()</b>,
+    <b>utf8_read_and_insert_continuation_bytes()</b>, <b>utf8_strcasestr()</b>,
+    <b>utf8_to_codepoints()</b>, <b>validate_gpg_key_format()</b>,
+    <b>validate_key_security()</b>, <b>validate_options_and_report()</b>,
+    <b>validate_palette_chars()</b>, <b>validate_private_key()</b>,
+    <b>validate_public_key()</b>, <b>validate_ssh_key_file()</b>,
+    <b>validate_ssh_key_format()</b>, <b>validate_x25519_key_format()</b>,
+    <b>video_frame_begin_write()</b>, <b>video_frame_buffer_create()</b>,
+    <b>video_frame_buffer_destroy()</b>, <b>video_frame_commit()</b>,
+    <b>video_frame_get_latest()</b>, <b>video_frame_get_stats()</b>,
+    <b>webcam_get_dimensions()</b>, <b>webcam_init()</b>,
+    <b>webcam_init_context()</b>, <b>webcam_list_devices()</b>,
+    <b>webcam_read()</b>, <b>webcam_read_context()</b>,
+    <b>webrtc_add_remote_candidate()</b>, <b>webrtc_close_datachannel()</b>,
+    <b>webrtc_close_peer_connection()</b>, <b>webrtc_create_datachannel()</b>,
+    <b>webrtc_create_offer()</b>, <b>webrtc_create_peer_connection()</b>,
+    <b>webrtc_datachannel_destroy()</b>, <b>webrtc_datachannel_get_label()</b>,
+    <b>webrtc_datachannel_is_open()</b>, <b>webrtc_datachannel_send()</b>,
+    <b>webrtc_datachannel_set_callbacks()</b>,
+    <b>webrtc_datachannel_set_open_state()</b>, <b>webrtc_get_rtc_id()</b>,
+    <b>webrtc_peer_connection_close()</b>,
+    <b>webrtc_peer_connection_destroy()</b>,
+    <b>webrtc_peer_manager_connect()</b>, <b>webrtc_peer_manager_create()</b>,
+    <b>webrtc_peer_manager_handle_ice()</b>,
+    <b>webrtc_peer_manager_handle_sdp()</b>,
+    <b>webrtc_set_remote_description()</b>,
+    <b>websocket_client_send_packet()</b>, <b>websocket_server_init()</b>,
+    <b>websocket_server_run()</b>, and <b>yt_dlp_extract_stream_url()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SET_ERRNO_SYS(_code,__context_msg,__"><a class="permalink" href="#_define_SET_ERRNO_SYS(_code,__context_msg,__">#define
+  SET_ERRNO_SYS( code, context_msg, ...)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>(asciichat_set_errno_with_system_error_and_message(code, __FILE__, __LINE__, __func__, platform_get_last_error(),    \
+<br/>
+                                                   context_msg, ##__VA_ARGS__),                                      \
+<br/>
+ log_error(&quot;SETERRNO_SYS: &quot; context_msg &quot; (code: %d - %s, system error: %d - %s)&quot;, ##__VA_ARGS__, code,              \
+<br/>
+           asciichat_error_string(code), platform_get_last_error(), platform_strerror(platform_get_last_error())),   \
+<br/>
+ (code))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Set error code with custom message and system error context,
+    returning the error code.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>code</i> Error code to set
+<br/>
+<i>context_msg</i> Custom message explaining the error</div>
+<p class="Pp">Usage in lib/ code: if (open(file, O_RDONLY) &lt; 0) { return
+    SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to open config file: %s&quot;,
+    path); }</p>
+<p class="Pp">Definition at line <b>340</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<pre>340 #define SET_ERRNO_SYS(code, context_msg, ...)                                                                          \
+341   (asciichat_set_errno_with_system_error_and_message(code, __FILE__, __LINE__, __func__, platform_get_last_error(),    \
+342                                                      context_msg, ##__VA_ARGS__),                                      \
+343    log_error(&quot;SETERRNO_SYS: &quot; context_msg &quot; (code: %d - %s, system error: %d - %s)&quot;, ##__VA_ARGS__, code,              \
+344              asciichat_error_string(code), platform_get_last_error(), platform_strerror(platform_get_last_error())),   \
+345    (code))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>accept_with_timeout()</b>,
+    <b>acds_identity_load()</b>, <b>acds_identity_save()</b>,
+    <b>add_known_host()</b>, <b>colorscheme_export_scheme()</b>,
+    <b>config_create_default()</b>, <b>discovery_keys_clear_cache()</b>,
+    <b>discovery_keys_save_cached()</b>, <b>get_manpage_template()</b>,
+    <b>manpage_parser_parse_memory()</b>,
+    <b>options_config_generate_manpage_merged()</b>,
+    <b>options_config_generate_manpage_template()</b>, <b>packet_receive()</b>,
+    <b>parse_manpage_sections()</b>, <b>platform_get_executable_path()</b>,
+    <b>recv_with_timeout()</b>, <b>remove_known_host()</b>,
+    <b>send_with_timeout()</b>, <b>set_socket_keepalive()</b>,
+    <b>set_socket_nonblocking()</b>, <b>set_socket_timeout()</b>,
+    <b>socket_configure_buffers()</b>, <b>ssh_agent_add_key()</b>,
+    <b>terminal_fd_reader_create()</b>, <b>terminal_fd_writer_create()</b>, and
+    <b>terminal_fd_writer_write()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_clear_errno_(void_)"><a class="permalink" href="#void_asciichat_clear_errno_(void_)">void
+  asciichat_clear_errno (void )</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Clear the current error state. Clears the thread-local error
+    state, resetting error code to ASCIICHAT_OK and freeing any associated
+    context message. This is the low-level function used by <b>CLEAR_ERRNO()</b>
+    macro.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Error context structure is reset to default state.
+<p class="Pp"></p>
+<p class="Pp">Any context message is freed automatically.</p>
+<p class="Pp"></p>
+<p class="Pp">Thread-safe: Uses thread-local storage.</p>
+</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">Use <b>CLEAR_ERRNO()</b> macro instead of calling this
+  directly.</div>
+<p class="Pp">Definition at line <b>233</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>233                                  {
+234   if (asciichat_errno_context.context_message) {
+235     SAFE_FREE(asciichat_errno_context.context_message);
+236     asciichat_errno_context.context_message = NULL;
+237   }
+238 
+239   backtrace_t_free(&amp;asciichat_errno_context.backtrace);
+240 
+241   memset(&amp;asciichat_errno_context, 0, sizeof(asciichat_errno_context));
+242   asciichat_errno_context.code = ASCIICHAT_OK;
+243   asciichat_errno_context.system_errno = 0;
+244   asciichat_errno_context.has_system_error = false;
+245   asciichat_errno_context.has_wsa_error = false;
+246   asciichat_errno_context.wsa_error = 0;
+247 
+248   /* Clear platform-specific error state */
+249   platform_clear_error_state();
+250 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_errno_context</b>, <b>ASCIICHAT_OK</b>,
+    <b>backtrace_t_free()</b>, <b>platform_clear_error_state()</b>, and
+    <b>SAFE_FREE</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_clear_thread_error_(int_thread_id)"><a class="permalink" href="#void_asciichat_clear_thread_error_(int_thread_id)">void
+  asciichat_clear_thread_error (int thread_id)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Clear error code for a specific thread.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>thread_id</b><i></i><b> Thread ID to clear
+  error for</b></div>
+<p class="Pp">Clears the error code for a specific thread, resetting it to
+    ASCIICHAT_OK.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread ID must be valid (positive integer).</div>
+<p class="Pp">Definition at line <b>477</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>477                                                  {
+478   for (int i = 0; i &lt; MAX_THREAD_ERRORS; i++) {
+479     if (thread_errors[i].valid &amp;&amp; thread_errors[i].thread_id == thread_id) {
+480       thread_errors[i].valid = false;
+481       break;
+482     }
+483   }
+484 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>MAX_THREAD_ERRORS</b>, <b>thread_id</b>, and
+    <b>valid</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_errno_destroy_(void_)"><a class="permalink" href="#void_asciichat_errno_destroy_(void_)">void
+  asciichat_errno_destroy (void )</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Cleanup error system resources. Cleans up error system resources
+    including statistics and thread error storage. Should be called at
+    application shutdown after all error handling is complete.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Safe to call multiple times (no-op after first call).
+<p class="Pp"></p>
+<p class="Pp">All error statistics and context messages are freed.</p>
+</div>
+<p class="Pp">Definition at line <b>495</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>495                                    {
+496   backtrace_t_free(&amp;asciichat_errno_context.backtrace);
+497 
+498   if (asciichat_errno_context.context_message != NULL) {
+499     SAFE_FREE(asciichat_errno_context.context_message);
+500   }
+501 
+502   // Reset the context to a clean state
+503   memset(&amp;asciichat_errno_context, 0, sizeof(asciichat_errno_context));
+504   asciichat_errno_context.code = ASCIICHAT_OK;
+505 
+506   // Suppress any further error context allocation to prevent cleanup-phase leaks
+507   // This prevents other atexit() functions from allocating new contexts after we've cleaned up
+508   g_suppress_error_context = true;
+509 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_errno_context</b>, <b>ASCIICHAT_OK</b>,
+    <b>backtrace_t_free()</b>, and <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
+    <b>client_audio_render_thread()</b>, <b>client_receive_thread()</b>,
+    <b>client_send_thread_func()</b>, <b>client_video_render_thread()</b>, and
+    <b>stats_logger_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_errno_suppress_("><a class="permalink" href="#void_asciichat_errno_suppress_(">void
+  asciichat_errno_suppress (<b>bool</b> suppress)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Suppress error logging and reporting.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>suppress</i> If true, suppress error logging; if
+  false, enable logging</div>
+<p class="Pp">Controls whether errors are automatically logged when set. When
+    suppressed, errors are still set in thread-local storage but logging is
+    disabled. Useful for testing or when error logging would be too verbose.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Suppression only affects automatic logging, not manual
+  error checking.
+<p class="Pp"></p>
+<p class="Pp">Errors can still be checked using <b>HAS_ERRNO()</b> and
+    <b>GET_ERRNO()</b>.</p>
+</div>
+<p class="Pp">Definition at line <b>491</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>491                                              {
+492   g_suppress_error_context = suppress;
+493 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_stats_t</b> asciichat_error_stats_get (void
+  )</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Get current error statistics.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Current error statistics structure (copy)</div>
+<p class="Pp">Retrieves a copy of the current error statistics. Returns all
+    statistics including per-error-code counts, total errors, and last error
+    information.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Returns a copy of statistics (caller can modify without
+  affecting internal state).
+<p class="Pp"></p>
+<p class="Pp">Thread-safe: Can be called from any thread.</p>
+</div>
+<p class="Pp">Definition at line <b>431</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>431                                                         {
+432   if (!lifecycle_is_initialized(&amp;g_error_stats.lifecycle)) {
+433     lifecycle_init(&amp;g_error_stats.lifecycle, &quot;error_stats&quot;);
+434   }
+435 
+436   mutex_lock(&amp;g_error_stats.mutex);
+437   asciichat_error_stats_t result = g_error_stats.stats;
+438   mutex_unlock(&amp;g_error_stats.mutex);
+439 
+440   return result;
+441 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_init()</b>,
+    <b>lifecycle_is_initialized()</b>, <b>mutex_lock</b>, and
+    <b>mutex_unlock</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_error_stats_init_(void_)"><a class="permalink" href="#void_asciichat_error_stats_init_(void_)">void
+  asciichat_error_stats_init (void )</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Initialize error statistics system. Initializes the error
+    statistics tracking system. Must be called before recording any error
+    statistics. Statistics are initialized to zero.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Idempotent: Safe to call multiple times (no-op after
+  first call).
+<p class="Pp"></p>
+<p class="Pp">Thread-safe: Can be called from any thread.</p>
+</div>
+<p class="Pp">Definition at line <b>359</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>359                                       {
+360   if (lifecycle_init(&amp;g_error_stats.lifecycle, &quot;error_stats&quot;)) {
+361     memset(&amp;g_error_stats.stats, 0, sizeof(g_error_stats.stats));
+362   }
+363 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_error_stats_print_(void_)"><a class="permalink" href="#void_asciichat_error_stats_print_(void_)">void
+  asciichat_error_stats_print (void )</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Print error statistics to stderr. Prints comprehensive error
+    statistics including per-error-code counts, total errors, and last error
+    information. Useful for periodic monitoring and debugging.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Statistics are formatted and printed at INFO level.
+<p class="Pp"></p>
+<p class="Pp">Requires statistics system to be initialized.</p>
+</div>
+<p class="Pp">Definition at line <b>382</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>382                                        {
+383   if (!lifecycle_is_initialized(&amp;g_error_stats.lifecycle)) {
+384     log_plain(&quot;No errors recorded.\n&quot;);
+385     return;
+386   }
+387 
+388   mutex_lock(&amp;g_error_stats.mutex);
+389 
+390   if (g_error_stats.stats.total_errors == 0) {
+391     mutex_unlock(&amp;g_error_stats.mutex);
+392     log_plain(&quot;No errors recorded.\n&quot;);
+393     return;
+394   }
+395 
+396   // Copy stats to local variable to minimize lock hold time
+397   asciichat_error_stats_t local_stats = g_error_stats.stats;
+398   mutex_unlock(&amp;g_error_stats.mutex);
+399 
+400   log_plain(&quot;\n=== ascii-chat Error Statistics ===\n&quot;);
+401   log_plain(&quot;Total errors: %llu\n&quot;, (unsigned long long)local_stats.total_errors);
+402 
+403   if (local_stats.last_error_time &gt; 0) {
+404     time_t sec = (time_t)(local_stats.last_error_time / NS_PER_MS_INT);
+405     struct tm tm_info;
+406     if (platform_localtime(&amp;sec, &amp;tm_info) == ASCIICHAT_OK) {
+407       char time_str[64];
+408       strftime(time_str, sizeof(time_str), &quot;%Y-%m-%d %H:%M:%S&quot;, &amp;tm_info);
+409       log_plain(&quot;Last error: %s (code %d)\n&quot;, time_str, (int)local_stats.last_error_code);
+410     }
+411   }
+412 
+413   log_plain(&quot;\nError breakdown:\n&quot;);
+414   for (int i = 0; i &lt; 256; i++) {
+415     if (local_stats.error_counts[i] &gt; 0) {
+416       log_plain(&quot;  %3d (%s): %llu\n&quot;, i, asciichat_error_string((asciichat_error_t)i),
+417                 (unsigned long long)local_stats.error_counts[i]);
+418     }
+419   }
+420   log_plain(&quot;\n&quot;);
+421 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>asciichat_error_stats_t::error_counts</b>,
+    <b>asciichat_error_stats_t::last_error_code</b>,
+    <b>asciichat_error_stats_t::last_error_time</b>,
+    <b>lifecycle_is_initialized()</b>, <b>log_plain</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, <b>NS_PER_MS_INT</b>, <b>platform_localtime()</b>, and
+    <b>asciichat_error_stats_t::total_errors</b>.</p>
+<p class="Pp">Referenced by <b>server_main()</b>, and
+    <b>stats_logger_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_error_stats_record_("><a class="permalink" href="#void_asciichat_error_stats_record_(">void
+  asciichat_error_stats_record (<b>asciichat_error_t</b> code)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Record an error in statistics.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>code</i> Error code to record
+  (<b>asciichat_error_t</b>)</div>
+<p class="Pp">Records an error occurrence in the statistics system. Updates
+    per-error-code count, total error count, and last error information.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe: Can be called from multiple threads
+  simultaneously.
+<p class="Pp"></p>
+<p class="Pp">Statistics counters are updated atomically.</p>
+</div>
+<p class="Pp">Definition at line <b>365</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>365                                                           {
+366   if (!lifecycle_is_initialized(&amp;g_error_stats.lifecycle)) {
+367     lifecycle_init(&amp;g_error_stats.lifecycle, &quot;error_stats&quot;);
+368   }
+369 
+370   mutex_lock(&amp;g_error_stats.mutex);
+371 
+372   if (code &gt;= 0 &amp;&amp; code &lt; 256) {
+373     g_error_stats.stats.error_counts[code]++;
+374   }
+375   g_error_stats.stats.total_errors++;
+376   g_error_stats.stats.last_error_time = time_ns_to_us(time_get_realtime_ns());
+377   g_error_stats.stats.last_error_code = code;
+378 
+379   mutex_unlock(&amp;g_error_stats.mutex);
+380 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_init()</b>,
+    <b>lifecycle_is_initialized()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    and <b>time_get_realtime_ns()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_set_errno()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_error_stats_reset_(void_)"><a class="permalink" href="#void_asciichat_error_stats_reset_(void_)">void
+  asciichat_error_stats_reset (void )</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Reset all error statistics to zero. Resets all error statistics
+    counters to zero. Useful for resetting statistics between test runs or
+    monitoring periods.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe: Can be called from any thread.
+<p class="Pp"></p>
+<p class="Pp">All counters are reset to zero (total_errors, error_counts,
+  etc.).</p>
+</div>
+<p class="Pp">Definition at line <b>423</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>423                                        {
+424   if (lifecycle_is_initialized(&amp;g_error_stats.lifecycle)) {
+425     mutex_lock(&amp;g_error_stats.mutex);
+426     memset(&amp;g_error_stats.stats, 0, sizeof(g_error_stats.stats));
+427     mutex_unlock(&amp;g_error_stats.mutex);
+428   }
+429 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>, <b>mutex_lock</b>,
+    and <b>mutex_unlock</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_fatal_with_context_("><a class="permalink" href="#void_asciichat_fatal_with_context_(">void
+  asciichat_fatal_with_context (<b>asciichat_error_t</b> code, const char *
+  file, int line, const char * function, const char * format, ...)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Exit with error code and context (used by FATAL macro).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>code</i> Error code (<b>asciichat_error_t</b>)
+<br/>
+<i>file</i> Source file name (can be NULL)
+<br/>
+<i>line</i> Line number (0 if not provided)
+<br/>
+<i>function</i> Function name (can be NULL)
+<br/>
+<i>format</i> Format string (printf-style)
+<br/>
+<i>...</i> Format arguments</div>
+<p class="Pp">Low-level function used by <b>FATAL()</b> macro. Sets error
+    context and exits the program with the specified error code. In debug
+    builds, prints stack trace before exiting.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This function never returns (terminates program).
+<p class="Pp"></p>
+<p class="Pp">In debug builds, prints full error context and stack trace.</p>
+<p class="Pp"></p>
+<p class="Pp">Thread-safe: Uses thread-local storage.</p>
+</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">This function terminates the program. Use <b>FATAL()</b>
+  macro instead of calling this directly.</div>
+<p class="Pp">Definition at line <b>261</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>262                                                            {
+263   (void)file;
+264   (void)line;
+265   (void)function;
+266 
+267   // Print library error context if available
+268   asciichat_error_context_t err_ctx;
+269   if (HAS_ERRNO(&amp;err_ctx)) {
+270     log_labeled(&quot;\nasciichat_errno: libary code error context&quot;, LOG_COLOR_ERROR, &quot;&quot;);
+271     asciichat_print_error_context(&amp;err_ctx);
+272   } else {
+273     log_plain(&quot;WARNING: No error context found (asciichat_errno_context.code=%d)&quot;, asciichat_errno_context.code);
+274   }
+275 
+276   safe_fprintf(stderr, &quot;\n&quot;);
+277   log_labeled(&quot;FATAL ERROR&quot;, LOG_COLOR_FATAL, &quot;exit code %d (%s)&quot;, (int)code, asciichat_error_string(code));
+278 #ifndef NDEBUG
+279   const char *relative_file = extract_project_relative_path(file);
+280   log_plain(&quot;  Location: %s:%d in %s()&quot;, relative_file, line, function);
+281 #endif
+282 
+283   if (format) {
+284     va_list args;
+285     va_start(args, format);
+286     char *formatted_message = format_message(format, args);
+287     log_plain(&quot;  Error message: %s&quot;, formatted_message);
+288     SAFE_FREE(formatted_message);
+289     va_end(args);
+290   }
+291 
+292 #ifndef NDEBUG
+293   // Always print platform backtrace in debug/dev builds
+294   backtrace_t bt = {0};
+295   backtrace_capture_and_symbolize(&amp;bt);
+296   if (bt.count &gt; 0) {
+297     backtrace_print(&quot;\nFATAL BACKTRACE&quot;, &amp;bt, 0, 0, skip_backtrace_frame);
+298     backtrace_t_free(&amp;bt);
+299   }
+300 #endif
+301 
+302   exit(code);
+303 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> asciichat_get_errno (void )</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Get current error code.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Current error code (ASCIICHAT_OK if no error)</div>
+<p class="Pp">Returns the current thread-local error code. Returns ASCIICHAT_OK
+    if no error has occurred. This is the low-level function used by
+    <b>GET_ERRNO()</b>.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe: Uses thread-local storage.
+<p class="Pp"></p>
+<p class="Pp">For full error context, use <b>HAS_ERRNO()</b> instead.</p>
+</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">Use <b>GET_ERRNO()</b> macro instead of calling this
+  directly.</div>
+<p class="Pp">Definition at line <b>252</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>252                                             {
+253   return asciichat_errno_context.code;
+254 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_errno_context</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> asciichat_get_thread_error (int
+  thread_id)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Get error code for a specific thread.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>thread_id</b><i></i><b> Thread ID to
+  query</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Error code for thread, or ASCIICHAT_OK if no error</div>
+<p class="Pp">Retrieves the error code for a specific thread. Useful for
+    checking errors from other threads or propagating errors across thread
+    boundaries.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread ID must be valid (positive integer).
+<p class="Pp"></p>
+<p class="Pp">Returns ASCIICHAT_OK if thread has no error or thread ID is
+    invalid.</p>
+</div>
+<p class="Pp">Definition at line <b>448</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>448                                                             {
+449   for (int i = 0; i &lt; MAX_THREAD_ERRORS; i++) {
+450     if (thread_errors[i].valid &amp;&amp; thread_errors[i].thread_id == thread_id) {
+451       return thread_errors[i].error_code;
+452     }
+453   }
+454   return ASCIICHAT_OK;
+455 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>MAX_THREAD_ERRORS</b>,
+    <b>thread_id</b>, and <b>valid</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> asciichat_has_errno (<b>asciichat_error_context_t</b>
+  * context)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Check if error occurred and get full context.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>context</i> Output structure for error context (must
+  not be NULL)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if error occurred, false if no error</div>
+<p class="Pp">Checks if an error has occurred and copies the full error context
+    into the provided structure. This is the low-level function used by
+    <b>HAS_ERRNO()</b>.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Returns false if no error has occurred (asciichat_errno
+  == ASCIICHAT_OK).
+<p class="Pp"></p>
+<p class="Pp">If error occurred, context structure is filled with all error
+    information.</p>
+<p class="Pp"></p>
+<p class="Pp">Thread-safe: Uses thread-local storage.</p>
+</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">Use <b>HAS_ERRNO()</b> macro instead of calling this
+  directly.</div>
+<p class="Pp">Definition at line <b>221</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>221                                                              {
+222   if (asciichat_errno_context.code == ASCIICHAT_OK) {
+223     return false;
+224   }
+225 
+226   if (context) {
+227     *context = asciichat_errno_context;
+228   }
+229 
+230   return true;
+231 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_errno_context</b>, and
+    <b>ASCIICHAT_OK</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> asciichat_has_wsa_error (void )</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Check if current error has WSA error code.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if error has WSA error code, false otherwise</div>
+<p class="Pp">Checks whether the current thread-local error context includes a
+    Windows socket error (WSA error) code. Useful for platform-specific error
+    handling.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Only meaningful on Windows platforms.
+<p class="Pp"></p>
+<p class="Pp">Returns false if no error occurred or error doesn't have WSA
+  code.</p>
+<p class="Pp"></p>
+<p class="Pp">Thread-safe: Uses thread-local storage.</p>
+</div>
+<p class="Pp">Definition at line <b>212</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>212                                    {
+213   return asciichat_errno_context.has_wsa_error;
+214 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_errno_context</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_print_error_context_(const_"><a class="permalink" href="#void_asciichat_print_error_context_(const_">void
+  asciichat_print_error_context (const <b>asciichat_error_context_t</b> *
+  context)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Print full error context to stderr.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>context</i> Error context to print (must not be
+  NULL)</div>
+<p class="Pp">Prints comprehensive error information including error code,
+    location, context message, system errors, and stack trace (if available) to
+    stderr. Useful for debugging and error reporting.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Stack trace is only printed in debug builds.
+<p class="Pp"></p>
+<p class="Pp">System errors (errno, WSA) are included if present.</p>
+<p class="Pp"></p>
+<p class="Pp">Timestamp and location information are included.</p>
+</div>
+<p class="Pp">Definition at line <b>310</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>310                                                                              {
+311   if (!context || context-&gt;code == ASCIICHAT_OK) {
+312     return;
+313   }
+314 
+315   if (context-&gt;file &amp;&amp; context-&gt;line &amp;&amp; context-&gt;function) {
+316     log_plain(&quot;  Location: %s:%d in %s()&quot;, extract_project_relative_path(context-&gt;file), context-&gt;line,
+317               context-&gt;function);
+318   } else {
+319     log_plain(&quot;  Location: unknown (set by system code)&quot;);
+320   }
+321 
+322   if (context-&gt;context_message) {
+323     safe_fprintf(stderr, &quot;  %s %s\n&quot;, colored_string(LOG_COLOR_WARN, &quot;Context:&quot;), context-&gt;context_message);
+324     log_file(&quot;  Context: %s&quot;, context-&gt;context_message);
+325   }
+326 
+327   if (context-&gt;has_system_error) {
+328     log_plain(&quot;  System error: %s (code: %d, meaning: %s)&quot;, SAFE_STRERROR(context-&gt;system_errno), context-&gt;system_errno,
+329               SAFE_STRERROR(context-&gt;system_errno));
+330   }
+331 
+332   // Print timestamp
+333   if (context-&gt;timestamp &gt; 0) {
+334     time_t sec = (time_t)(context-&gt;timestamp / NS_PER_MS_INT);
+335     long usec = (long)(context-&gt;timestamp % NS_PER_MS_INT);
+336     struct tm tm_info;
+337     if (platform_localtime(&amp;sec, &amp;tm_info) == ASCIICHAT_OK) {
+338       char time_str[64];
+339       (void)strftime(time_str, sizeof(time_str), &quot;%Y-%m-%d %H:%M:%S&quot;, &amp;tm_info);
+340       log_plain(&quot;  Timestamp: %s.%06ld&quot;, time_str, usec);
+341     }
+342   }
+343 
+344   // Print stack trace from library error
+345   if (context-&gt;backtrace.count &gt; 0) {
+346     // Symbolize backtrace only when actually printing it (not at capture time)
+347     backtrace_symbolize(&amp;context-&gt;backtrace);
+348     if (context-&gt;backtrace.symbols) {
+349       backtrace_print(&quot;\nBacktrace from library error&quot;, &amp;context-&gt;backtrace, 0, 0, skip_backtrace_frame);
+350     }
+351   }
+352 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>asciichat_error_context_t::backtrace</b>, <b>backtrace_print()</b>,
+    <b>backtrace_symbolize()</b>, <b>asciichat_error_context_t::code</b>,
+    <b>colored_string()</b>, <b>asciichat_error_context_t::context_message</b>,
+    <b>backtrace_t::count</b>, <b>extract_project_relative_path()</b>,
+    <b>asciichat_error_context_t::file</b>,
+    <b>asciichat_error_context_t::function</b>,
+    <b>asciichat_error_context_t::has_system_error</b>,
+    <b>asciichat_error_context_t::line</b>, <b>LOG_COLOR_WARN</b>,
+    <b>log_file</b>, <b>log_plain</b>, <b>NS_PER_MS_INT</b>,
+    <b>platform_localtime()</b>, <b>safe_fprintf()</b>, <b>SAFE_STRERROR</b>,
+    <b>backtrace_t::symbols</b>, <b>asciichat_error_context_t::system_errno</b>,
+    and <b>asciichat_error_context_t::timestamp</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_fatal_with_context()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_set_errno_("><a class="permalink" href="#void_asciichat_set_errno_(">void
+  asciichat_set_errno (<b>asciichat_error_t</b> code, const char * file, int
+  line, const char * function, const char * context_message)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Set error code with basic context.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>code</i> Error code to set (<b>asciichat_error_t</b>)
+<br/>
+<i>file</i> Source file name (can be NULL)
+<br/>
+<i>line</i> Line number (0 if not provided)
+<br/>
+<i>function</i> Function name (can be NULL)
+<br/>
+<i>context_message</i> Custom context message (can be NULL, will be
+  copied)</div>
+<p class="Pp">Sets the thread-local error code with basic context information.
+    This is the low-level function used by <b>SET_ERRNO()</b> macros.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">In debug builds, automatically captures stack trace if
+  enabled.
+<p class="Pp"></p>
+<p class="Pp">Context message is copied if provided (caller can free
+  original).</p>
+<p class="Pp"></p>
+<p class="Pp">Thread-safe: Uses thread-local storage (no synchronization
+    needed).</p>
+</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">Use <b>SET_ERRNO()</b> macros instead of calling this
+  directly.</div>
+<p class="Pp">Definition at line <b>113</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>114                                                       {
+115   // Suppress error context allocation during cleanup to prevent leaks
+116   if (g_suppress_error_context) {
+117     return;
+118   }
+119 
+120   // Clear any existing context message
+121   if (asciichat_errno_context.context_message) {
+122     SAFE_FREE(asciichat_errno_context.context_message);
+123     asciichat_errno_context.context_message = NULL;
+124   }
+125 
+126   // Set the error context
+127   asciichat_errno_context.code = code;
+128   asciichat_errno_context.file = file;
+129   asciichat_errno_context.line = line;
+130   asciichat_errno_context.function = function;
+131   asciichat_errno_context.timestamp = time_ns_to_us(time_get_realtime_ns());
+132   asciichat_errno_context.has_system_error = false;
+133 
+134   // Set the simple error code variable
+135   asciichat_errno = code;
+136 
+137   // Copy context message if provided
+138   if (context_message == NULL) {
+139     log_error(&quot;context_message is NULL&quot;);
+140     const char *fallback = &quot;No context message (this is invalid - set a context message)&quot;;
+141     size_t len = strlen(fallback) + 1;
+142     asciichat_errno_context.context_message = SAFE_MALLOC(len, char *);
+143     if (asciichat_errno_context.context_message) {
+144       SAFE_STRNCPY(asciichat_errno_context.context_message, fallback, len);
+145     } else {
+146       log_error(&quot;SAFE_MALLOC failed for fallback context_message&quot;);
+147     }
+148   } else {
+149     size_t len = strlen(context_message) + 1;
+150     asciichat_errno_context.context_message = SAFE_MALLOC(len, char *);
+151     if (asciichat_errno_context.context_message) {
+152       SAFE_STRNCPY(asciichat_errno_context.context_message, context_message, len);
+153     } else {
+154       log_error(&quot;SAFE_MALLOC failed for context_message&quot;);
+155     }
+156   }
+157 
+158   // Capture stack trace in debug builds
+159   backtrace_t_free(&amp;asciichat_errno_context.backtrace);
+160   capture_backtrace(&amp;asciichat_errno_context.backtrace);
+161 
+162   // Record in statistics
+163   asciichat_error_stats_record(code);
+164 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_errno</b>, <b>asciichat_errno_context</b>,
+    <b>asciichat_error_stats_record()</b>, <b>backtrace_t_free()</b>,
+    <b>log_error</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>,
+    and <b>time_get_realtime_ns()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_set_errno_with_message()</b>,
+    <b>asciichat_set_errno_with_system_error()</b>,
+    <b>asciichat_set_errno_with_system_error_and_message()</b>, and
+    <b>asciichat_set_errno_with_wsa_error()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_set_errno_with_message_("><a class="permalink" href="#void_asciichat_set_errno_with_message_(">void
+  asciichat_set_errno_with_message (<b>asciichat_error_t</b> code, const char *
+  file, int line, const char * function, const char * format, ...)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Set error code with formatted message.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>code</i> Error code to set (<b>asciichat_error_t</b>)
+<br/>
+<i>file</i> Source file name (can be NULL)
+<br/>
+<i>line</i> Line number (0 if not provided)
+<br/>
+<i>function</i> Function name (can be NULL)
+<br/>
+<i>format</i> Format string (printf-style)
+<br/>
+<i>...</i> Format arguments</div>
+<p class="Pp">Sets the thread-local error code with a formatted context message.
+    This is the low-level function used by <b>SET_ERRNO()</b> macros.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Message is formatted using vsnprintf and stored in error
+  context.
+<p class="Pp"></p>
+<p class="Pp">In debug builds, automatically captures stack trace if
+  enabled.</p>
+<p class="Pp"></p>
+<p class="Pp">Thread-safe: Uses thread-local storage.</p>
+</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">Use <b>SET_ERRNO()</b> macros instead of calling this
+  directly.</div>
+<p class="Pp">Definition at line <b>166</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>167                                                                {
+168   va_list args;
+169   va_start(args, format);
+170 
+171   char *context_message = format_message(format, args);
+172   asciichat_set_errno(code, file, line, function, context_message);
+173 
+174   if (context_message) {
+175     SAFE_FREE(context_message);
+176   }
+177 
+178   va_end(args);
+179 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>args</b>, <b>asciichat_set_errno()</b>,
+    <b>format_message()</b>, and <b>SAFE_FREE</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_set_errno_with_system_error_("><a class="permalink" href="#void_asciichat_set_errno_with_system_error_(">void
+  asciichat_set_errno_with_system_error (<b>asciichat_error_t</b> code, const
+  char * file, int line, const char * function, int sys_errno)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Set error code with system error (errno).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>code</i> Error code to set (<b>asciichat_error_t</b>)
+<br/>
+<i>file</i> Source file name (can be NULL)
+<br/>
+<i>line</i> Line number (0 if not provided)
+<br/>
+<i>function</i> Function name (can be NULL)
+<br/>
+<i>sys_errno</i> System errno value</div>
+<p class="Pp">Sets the thread-local error code with system error context.
+    Captures the system errno value for detailed error reporting.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">System errno is stored in error context for later
+  retrieval.
+<p class="Pp"></p>
+<p class="Pp">In debug builds, automatically captures stack trace if
+  enabled.</p>
+<p class="Pp"></p>
+<p class="Pp">Thread-safe: Uses thread-local storage.</p>
+</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">Use <b>SET_ERRNO_SYS()</b> macro instead of calling this
+  directly.</div>
+<p class="Pp">Definition at line <b>181</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>182                                                           {
+183   asciichat_set_errno(code, file, line, function, NULL);
+184   asciichat_errno_context.system_errno = sys_errno;
+185   asciichat_errno_context.has_system_error = true;
+186 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_errno_context</b>, and
+    <b>asciichat_set_errno()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_set_errno_with_system_error_and_message_("><a class="permalink" href="#void_asciichat_set_errno_with_system_error_and_message_(">void
+  asciichat_set_errno_with_system_error_and_message (<b>asciichat_error_t</b>
+  code, const char * file, int line, const char * function, int sys_errno, const
+  char * format, ...)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Set error code with system error and formatted message.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>code</i> Error code to set (<b>asciichat_error_t</b>)
+<br/>
+<i>file</i> Source file name (can be NULL)
+<br/>
+<i>line</i> Line number (0 if not provided)
+<br/>
+<i>function</i> Function name (can be NULL)
+<br/>
+<i>sys_errno</i> System errno value
+<br/>
+<i>format</i> Format string (printf-style)
+<br/>
+<i>...</i> Format arguments</div>
+<p class="Pp">Sets the thread-local error code with both system error context
+    and a formatted message. This is the low-level function used by
+    <b>SET_ERRNO_SYS()</b>.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Combines system error capture with formatted message.
+<p class="Pp"></p>
+<p class="Pp">In debug builds, automatically captures stack trace if
+  enabled.</p>
+<p class="Pp"></p>
+<p class="Pp">Thread-safe: Uses thread-local storage.</p>
+</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">Use <b>SET_ERRNO_SYS()</b> macro instead of calling this
+  directly.</div>
+<p class="Pp">Definition at line <b>188</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>189                                                                                                                      {
+190   va_list args;
+191   va_start(args, format);
+192 
+193   char *context_message = format_message(format, args);
+194   asciichat_set_errno(code, file, line, function, context_message);
+195   asciichat_errno_context.system_errno = sys_errno;
+196   asciichat_errno_context.has_system_error = true;
+197 
+198   if (context_message) {
+199     SAFE_FREE(context_message);
+200   }
+201 
+202   va_end(args);
+203 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>args</b>, <b>asciichat_errno_context</b>,
+    <b>asciichat_set_errno()</b>, <b>format_message()</b>, and
+  <b>SAFE_FREE</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_set_errno_with_wsa_error_("><a class="permalink" href="#void_asciichat_set_errno_with_wsa_error_(">void
+  asciichat_set_errno_with_wsa_error (<b>asciichat_error_t</b> code, const char
+  * file, int line, const char * function, int wsa_error)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Set error code with Windows socket error (WSA error).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>code</i> Error code to set (<b>asciichat_error_t</b>)
+<br/>
+<i>file</i> Source file name (can be NULL)
+<br/>
+<i>line</i> Line number (0 if not provided)
+<br/>
+<i>function</i> Function name (can be NULL)
+<br/>
+<i>wsa_error</i> Windows socket error code</div>
+<p class="Pp">Sets the thread-local error code with Windows-specific socket
+    error context. Used for Windows socket operations that fail with WSA error
+    codes.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">WSA error is stored in error context for later retrieval.
+<p class="Pp"></p>
+<p class="Pp">This function is only useful on Windows platforms.</p>
+<p class="Pp"></p>
+<p class="Pp">Thread-safe: Uses thread-local storage.</p>
+</div>
+<p class="Pp">Definition at line <b>205</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>206                                                        {
+207   asciichat_set_errno(code, file, line, function, NULL);
+208   asciichat_errno_context.wsa_error = wsa_error;
+209   asciichat_errno_context.has_wsa_error = true;
+210 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_errno_context</b>, and
+    <b>asciichat_set_errno()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_set_thread_error_(int_thread_id,_"><a class="permalink" href="#void_asciichat_set_thread_error_(int_thread_id,_">void
+  asciichat_set_thread_error (int thread_id, <b>asciichat_error_t</b>
+  code)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Set error code for a specific thread.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>thread_id</b><i></i><b> Thread ID to set error
+  for</b>
+<br/>
+<i>code</i> Error code to set (<b>asciichat_error_t</b>)</div>
+<p class="Pp">Sets the error code for a specific thread. Useful for propagating
+    errors from one thread to another or storing thread-specific error
+  states.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread ID must be valid (positive integer).
+<p class="Pp"></p>
+<p class="Pp">This is separate from thread-local error state
+  (asciichat_errno).</p>
+</div>
+<p class="Pp">Definition at line <b>457</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>457                                                                        {
+458   // Find existing entry or empty slot
+459   int slot = -1;
+460   for (int i = 0; i &lt; MAX_THREAD_ERRORS; i++) {
+461     if (thread_errors[i].valid &amp;&amp; thread_errors[i].thread_id == thread_id) {
+462       slot = i;
+463       break;
+464     }
+465     if (!thread_errors[i].valid &amp;&amp; slot == -1) {
+466       slot = i;
+467     }
+468   }
+469 
+470   if (slot &gt;= 0) {
+471     thread_errors[slot].thread_id = thread_id;
+472     thread_errors[slot].error_code = code;
+473     thread_errors[slot].valid = true;
+474   }
+475 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>MAX_THREAD_ERRORS</b>, <b>thread_id</b>, and
+    <b>valid</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">__thread <b>asciichat_error_t</b> asciichat_errno [extern]</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Thread-local current error code. Current error code for the
+    calling thread. Set to ASCIICHAT_OK when no error. Updated automatically
+    when errors are set via <b>SET_ERRNO()</b> macros.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Use <b>GET_ERRNO()</b> macro to read the current error
+  code.
+<p class="Pp"></p>
+<p class="Pp">Use <b>CLEAR_ERRNO()</b> macro to clear the error state.</p>
+</div>
+<p class="Pp">Definition at line <b>43</b> of file <b>asciichat_errno.c</b>.</p>
+<p class="Pp">Referenced by <b>accept_with_timeout()</b>, and
+    <b>asciichat_set_errno()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">__thread <b>asciichat_error_context_t</b> asciichat_errno_context
+  [extern]</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/asciichat_errno.h</b>&gt;<b></b></p>
+<p class="Pp">Thread-local error context storage. Each thread has its own
+    independent error context. This ensures thread-safe error handling without
+    synchronization overhead.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Use <b>HAS_ERRNO()</b> macro to check for errors and get
+  context.
+<p class="Pp"></p>
+<p class="Pp">Context is automatically updated when errors are set via
+    <b>SET_ERRNO()</b>.</p>
+</div>
+<p class="Pp">Definition at line <b>33</b> of file <b>asciichat_errno.c</b>.</p>
+<pre>33                                                            {.code = ASCIICHAT_OK,
+34                                                               .file = NULL,
+35                                                               .line = 0,
+36                                                               .function = NULL,
+37                                                               .context_message = NULL,
+38                                                               .timestamp = 0,
+39                                                               .system_errno = 0,
+40                                                               .backtrace = {.count = 0, .symbols = NULL},
+41                                                               .has_system_error = false};</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>accept_with_timeout()</b>,
+    <b>asciichat_clear_errno()</b>, <b>asciichat_errno_destroy()</b>,
+    <b>asciichat_fatal_with_context()</b>, <b>asciichat_get_errno()</b>,
+    <b>asciichat_has_errno()</b>, <b>asciichat_has_wsa_error()</b>,
+    <b>asciichat_set_errno()</b>,
+    <b>asciichat_set_errno_with_system_error()</b>,
+    <b>asciichat_set_errno_with_system_error_and_message()</b>, and
+    <b>asciichat_set_errno_with_wsa_error()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

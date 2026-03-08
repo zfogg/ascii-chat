@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>output_buffer.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">output_buffer.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">output_buffer.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">output_buffer.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>outbuf_t</b>
+  <br/>
+  Dynamic output buffer (auto-expanding).
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>ob_reserve</b> (<b>outbuf_t</b> *ob, size_t need)
+  <br/>
+  Reserve buffer space for upcoming writes. void <b>ob_putc</b> (<b>outbuf_t</b>
+    *ob, char c)
+  <br/>
+  Append a character to buffer. void <b>ob_write</b> (<b>outbuf_t</b> *ob, const
+    char *s, size_t n)
+  <br/>
+  Append a string to buffer. void <b>ob_term</b> (<b>outbuf_t</b> *ob)
+  <br/>
+  Append null terminator to buffer. void <b>ob_u8</b> (<b>outbuf_t</b> *ob,
+    <b>uint8_t</b> v)
+  <br/>
+  Append unsigned 8-bit integer as decimal string. void <b>ob_u32</b>
+    (<b>outbuf_t</b> *ob, <b>uint32_t</b> v)
+  <br/>
+  Append unsigned 32-bit integer as decimal string. void
+    <b>emit_set_truecolor_fg</b> (<b>outbuf_t</b> *ob, <b>uint8_t</b> r,
+    <b>uint8_t</b> g, <b>uint8_t</b> <b>b</b>)
+  <br/>
+  Emit truecolor foreground ANSI sequence. void <b>emit_set_truecolor_bg</b>
+    (<b>outbuf_t</b> *ob, <b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b>
+    <b>b</b>)
+  <br/>
+  Emit truecolor background ANSI sequence. void <b>emit_set_256_color_fg</b>
+    (<b>outbuf_t</b> *ob, <b>uint8_t</b> color_idx)
+  <br/>
+  Emit 256-color foreground ANSI sequence. void <b>emit_set_256_color_bg</b>
+    (<b>outbuf_t</b> *ob, <b>uint8_t</b> color_idx)
+  <br/>
+  Emit 256-color background ANSI sequence. void <b>emit_reset</b>
+    (<b>outbuf_t</b> *ob)
+  <br/>
+  Emit ANSI reset sequence. <b>bool</b> <b>rep_is_profitable</b>
+    (<b>uint32_t</b> runlen)
+  <br/>
+  Check if run-length encoding is profitable. void <b>emit_rep</b>
+    (<b>outbuf_t</b> *ob, <b>uint32_t</b> extra)
+  <br/>
+  Emit run-length encoded sequence. void <b>emit_set_fg</b> (<b>outbuf_t</b>
+    *ob, <b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b> <b>b</b>)
+  <br/>
+  Emit foreground color sequence (auto-select mode). void <b>emit_set_bg</b>
+    (<b>outbuf_t</b> *ob, <b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b>
+    <b>b</b>)
+  <br/>
+  Emit background color sequence (auto-select mode).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

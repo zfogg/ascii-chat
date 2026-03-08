@@ -47,16 +47,17 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>session_pipeline_create</b>
+<p class="Pp"><b>asciichat_error_t</b> <b>session_pipeline_create</b>
     (<b>session_capture_ctx_t</b> *capture, <b>session_display_ctx_t</b>
     *display, <b>session_pipeline_t</b> **out)
   <br/>
-  asciichat_error_t <b>session_pipeline_run_main</b> (<b>session_pipeline_t</b>
-    *pipeline, <b>session_should_exit_fn</b> <b>should_exit</b>,
-    <b>session_keyboard_handler_fn</b> keyboard_handler, void *user_data)
+  <b>asciichat_error_t</b> <b>session_pipeline_run_main</b>
+    (<b>session_pipeline_t</b> *pipeline, <b>session_should_exit_fn</b>
+    <b>should_exit</b>, <b>session_keyboard_handler_fn</b> keyboard_handler,
+    void *user_data)
   <br/>
-  asciichat_error_t <b>session_pipeline_destroy</b> (<b>session_pipeline_t</b>
-    *pipeline)
+  <b>asciichat_error_t</b> <b>session_pipeline_destroy</b>
+    (<b>session_pipeline_t</b> *pipeline)
   <br/>
   <br/>
 </p>
@@ -69,7 +70,7 @@
 <p class="Pp">Decouples capture, terminal display, and file encoding into
     separate threads:</p>
 <ul class="Bl-bullet">
-  <li>Capture thread: reads raw image_t frames from media source</li>
+  <li>Capture thread: reads raw <b>image_t</b> frames from media source</li>
   <li>Main thread: converts to ASCII, prints to terminal (fast)</li>
   <li>Encode thread: converts to ASCII, encodes to FFmpeg file (slow,
       non-blocking)</li>
@@ -89,10 +90,9 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_session_pipeline_create_("><a class="permalink" href="#asciichat_error_t_session_pipeline_create_(">asciichat_error_t
-  session_pipeline_create (<b>session_capture_ctx_t</b> * capture,
-  <b>session_display_ctx_t</b> * display, <b>session_pipeline_t</b> **
-  out)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> session_pipeline_create
+  (<b>session_capture_ctx_t</b> * capture, <b>session_display_ctx_t</b> *
+  display, <b>session_pipeline_t</b> ** out)</h2>
 <p class="Pp">Create and start the capture thread and (if --render-file) encode
     thread.</p>
 <p class="Pp"></p>
@@ -109,75 +109,76 @@
 <div class="Bd-indent">The pipeline does NOT own capture or display &#x2014;
   caller must keep them alive until <b>session_pipeline_destroy()</b>
   returns.</div>
-<p class="Pp">Definition at line <b>379</b> of file <b>pipeline.c</b>.</p>
-<pre>383 {
-384     if (!capture || !display || !out) {
-385         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_pipeline_create: NULL argument&quot;);
-386     }
-387 
-388     session_pipeline_t *p = SAFE_CALLOC(1, sizeof(*p), session_pipeline_t *);
-389     p-&gt;capture = capture;
-390     p-&gt;display = display;
-391     p-&gt;display_queue = frame_queue_create(4, &quot;display&quot;);
-392     p-&gt;encode_queue = frame_queue_create(256, &quot;encode&quot;);  // Large buffer for slow encoding
-393 
-394     // Check if display has render_file configured (will be checked in encode thread)
-395     // We store a flag to know whether to enqueue frames for encoding
-396     double render_fps = session_display_get_render_fps(display);
-397     bool has_file = session_display_has_render_file(display);
-398 
-399     // Enable encode thread if render_file is available
-400     // Note: has_file can be true even if render_file creation failed (ctx-&gt;render_file exists)
-401     // OR if render_fps is explicitly set for playback speed control
-402     p-&gt;has_render_file = render_fps &gt; 0 || has_file;
-403     log_info(&quot;[PIPELINE_CREATE] render_fps=%.1f, has_file=%d, has_render_file=%d&quot;,
-404              render_fps, has_file ? 1 : 0, p-&gt;has_render_file ? 1 : 0);
-405 
-406     atomic_store_bool(&amp;p-&gt;stop, false);
-407     atomic_store_u64(&amp;p-&gt;first_frame_ns, 0);
-408 
-409     // Start capture thread
-410     if (asciichat_thread_create(&amp;p-&gt;capture_tid, &quot;pipeline_capture&quot;, pipeline_capture_thread, p) != 0) {
-411         frame_queue_destroy(p-&gt;display_queue);
-412         frame_queue_destroy(p-&gt;encode_queue);
-413         SAFE_FREE(p);
-414         return SET_ERRNO(ERROR_INIT, &quot;session_pipeline_create: failed to start capture thread&quot;);
-415     }
-416 
-417     // Start encode thread only if render_file is active
-418     if (p-&gt;has_render_file) {
-419         if (asciichat_thread_create(&amp;p-&gt;encode_tid, &quot;pipeline_encode&quot;, pipeline_encode_thread, p) != 0) {
-420             atomic_store_bool(&amp;p-&gt;stop, true);
-421             asciichat_thread_join(&amp;p-&gt;capture_tid, NULL);
-422             frame_queue_destroy(p-&gt;display_queue);
-423             frame_queue_destroy(p-&gt;encode_queue);
-424             SAFE_FREE(p);
-425             return SET_ERRNO(ERROR_INIT, &quot;session_pipeline_create: failed to start encode thread&quot;);
-426         }
-427     }
-428 
-429     *out = p;
-430     return ASCIICHAT_OK;
-431 }</pre>
+<p class="Pp">Definition at line <b>380</b> of file <b>pipeline.c</b>.</p>
+<pre>384 {
+385     if (!capture || !display || !out) {
+386         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_pipeline_create: NULL argument&quot;);
+387     }
+388 
+389     session_pipeline_t *p = SAFE_CALLOC(1, sizeof(*p), session_pipeline_t *);
+390     p-&gt;capture = capture;
+391     p-&gt;display = display;
+392     p-&gt;display_queue = frame_queue_create(4, &quot;display&quot;);
+393     p-&gt;encode_queue = frame_queue_create(256, &quot;encode&quot;);  // Large buffer for slow encoding
+394 
+395     // Check if display has render_file configured (will be checked in encode thread)
+396     // We store a flag to know whether to enqueue frames for encoding
+397     double render_fps = session_display_get_render_fps(display);
+398     bool has_file = session_display_has_render_file(display);
+399 
+400     // Enable encode thread if render_file is available
+401     // Note: has_file can be true even if render_file creation failed (ctx-&gt;render_file exists)
+402     // OR if render_fps is explicitly set for playback speed control
+403     p-&gt;has_render_file = render_fps &gt; 0 || has_file;
+404     log_info(&quot;[PIPELINE_CREATE] render_fps=%.1f, has_file=%d, has_render_file=%d&quot;,
+405              render_fps, has_file ? 1 : 0, p-&gt;has_render_file ? 1 : 0);
+406 
+407     atomic_store_bool(&amp;p-&gt;stop, false);
+408     atomic_store_u64(&amp;p-&gt;first_frame_ns, 0);
+409 
+410     // Start capture thread
+411     if (asciichat_thread_create(&amp;p-&gt;capture_tid, &quot;pipeline_capture&quot;, pipeline_capture_thread, p) != 0) {
+412         frame_queue_destroy(p-&gt;display_queue);
+413         frame_queue_destroy(p-&gt;encode_queue);
+414         SAFE_FREE(p);
+415         return SET_ERRNO(ERROR_INIT, &quot;session_pipeline_create: failed to start capture thread&quot;);
+416     }
+417 
+418     // Start encode thread only if render_file is active
+419     if (p-&gt;has_render_file) {
+420         if (asciichat_thread_create(&amp;p-&gt;encode_tid, &quot;pipeline_encode&quot;, pipeline_encode_thread, p) != 0) {
+421             atomic_store_bool(&amp;p-&gt;stop, true);
+422             asciichat_thread_join(&amp;p-&gt;capture_tid, NULL);
+423             frame_queue_destroy(p-&gt;display_queue);
+424             frame_queue_destroy(p-&gt;encode_queue);
+425             SAFE_FREE(p);
+426             return SET_ERRNO(ERROR_INIT, &quot;session_pipeline_create: failed to start encode thread&quot;);
+427         }
+428     }
+429 
+430     *out = p;
+431     return ASCIICHAT_OK;
+432 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_create()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
     <b>asciichat_thread_join()</b>, <b>atomic_store_bool()</b>,
     <b>atomic_store_u64()</b>, <b>session_pipeline_s::capture</b>,
     <b>session_pipeline_s::capture_tid</b>, <b>session_pipeline_s::display</b>,
     <b>session_pipeline_s::display_queue</b>,
     <b>session_pipeline_s::encode_queue</b>,
-    <b>session_pipeline_s::encode_tid</b>,
-    <b>session_pipeline_s::first_frame_ns</b>,
-    <b>session_pipeline_s::has_render_file</b>,
+    <b>session_pipeline_s::encode_tid</b>, <b>ERROR_INIT</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>session_pipeline_s::first_frame_ns</b>,
+    <b>session_pipeline_s::has_render_file</b>, <b>log_info</b>,
+    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
     <b>session_display_get_render_fps()</b>,
-    <b>session_display_has_render_file()</b>, and
+    <b>session_display_has_render_file()</b>, <b>SET_ERRNO</b>, and
     <b>session_pipeline_s::stop</b>.</p>
 <p class="Pp">Referenced by <b>session_render_loop()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_session_pipeline_destroy_("><a class="permalink" href="#asciichat_error_t_session_pipeline_destroy_(">asciichat_error_t
-  session_pipeline_destroy (<b>session_pipeline_t</b> * pipeline)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> session_pipeline_destroy
+  (<b>session_pipeline_t</b> * pipeline)</h2>
 <p class="Pp">Stop threads and free pipeline.</p>
 <p class="Pp"></p>
 <p class="Pp">Waits for capture and encode threads to exit cleanly.</p>
@@ -187,51 +188,70 @@
   NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK</div>
-<p class="Pp">Definition at line <b>522</b> of file <b>pipeline.c</b>.</p>
-<pre>522                                                                          {
-523     if (!pipeline) return ASCIICHAT_OK;
-524 
-525     log_info(&quot;[PIPELINE] Destroying pipeline, waiting for threads...&quot;);
-526 
-527     // Signal threads to stop (may already be stopped)
-528     atomic_store_bool(&amp;pipeline-&gt;stop, true);
-529 
-530     // Drain and wait for capture thread
-531     if (asciichat_thread_is_initialized(&amp;pipeline-&gt;capture_tid)) {
-532         asciichat_thread_join(&amp;pipeline-&gt;capture_tid, NULL);
-533     }
-534 
-535     // Drain and wait for encode thread
-536     if (asciichat_thread_is_initialized(&amp;pipeline-&gt;encode_tid)) {
-537         asciichat_thread_join(&amp;pipeline-&gt;encode_tid, NULL);
-538     }
-539 
-540     // Flush queues
-541     frame_queue_flush(pipeline-&gt;display_queue, free_frame_generic);
-542     frame_queue_flush(pipeline-&gt;encode_queue, free_frame_generic);
+<p class="Pp">Definition at line <b>536</b> of file <b>pipeline.c</b>.</p>
+<pre>536                                                                          {
+537     if (!pipeline) return ASCIICHAT_OK;
+538 
+539     log_info(&quot;[PIPELINE] Destroying pipeline, waiting for threads...&quot;);
+540 
+541     // Signal threads to stop (may already be stopped)
+542     atomic_store_bool(&amp;pipeline-&gt;stop, true);
 543 
-544     frame_queue_destroy(pipeline-&gt;display_queue);
-545     frame_queue_destroy(pipeline-&gt;encode_queue);
-546     SAFE_FREE(pipeline);
-547 
-548     log_info(&quot;[PIPELINE] Pipeline destroyed&quot;);
-549     return ASCIICHAT_OK;
-550 }</pre>
+544     // Wake up any threads blocked on condition variable waits
+545     // so they can check the stop flag and exit immediately
+546     // instead of waiting for timeouts (e.g., 100ms frame_queue_pop timeout)
+547     if (pipeline-&gt;display_queue) {
+548         mutex_lock(&amp;pipeline-&gt;display_queue-&gt;mu);
+549         cond_broadcast(&amp;pipeline-&gt;display_queue-&gt;not_empty);
+550         cond_broadcast(&amp;pipeline-&gt;display_queue-&gt;not_full);
+551         mutex_unlock(&amp;pipeline-&gt;display_queue-&gt;mu);
+552     }
+553     if (pipeline-&gt;encode_queue) {
+554         mutex_lock(&amp;pipeline-&gt;encode_queue-&gt;mu);
+555         cond_broadcast(&amp;pipeline-&gt;encode_queue-&gt;not_empty);
+556         cond_broadcast(&amp;pipeline-&gt;encode_queue-&gt;not_full);
+557         mutex_unlock(&amp;pipeline-&gt;encode_queue-&gt;mu);
+558     }
+559 
+560     // Drain and wait for capture thread
+561     if (asciichat_thread_is_initialized(&amp;pipeline-&gt;capture_tid)) {
+562         asciichat_thread_join(&amp;pipeline-&gt;capture_tid, NULL);
+563     }
+564 
+565     // Drain and wait for encode thread
+566     if (asciichat_thread_is_initialized(&amp;pipeline-&gt;encode_tid)) {
+567         asciichat_thread_join(&amp;pipeline-&gt;encode_tid, NULL);
+568     }
+569 
+570     // Flush queues to free any remaining frames
+571     frame_queue_flush(pipeline-&gt;display_queue, free_frame_generic);
+572     frame_queue_flush(pipeline-&gt;encode_queue, free_frame_generic);
+573 
+574     // Don't free queue structures - debug_sync monitoring thread may still be accessing
+575     // the condition variables. Queues will be cleaned up with the pipeline structure.
+576     SAFE_FREE(pipeline);
+577 
+578     log_info(&quot;[PIPELINE] Pipeline destroyed&quot;);
+579     return ASCIICHAT_OK;
+580 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_join()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>asciichat_thread_is_initialized()</b>, <b>asciichat_thread_join()</b>,
     <b>atomic_store_bool()</b>, <b>session_pipeline_s::capture_tid</b>,
-    <b>session_pipeline_s::display_queue</b>,
+    <b>cond_broadcast()</b>, <b>session_pipeline_s::display_queue</b>,
     <b>session_pipeline_s::encode_queue</b>,
-    <b>session_pipeline_s::encode_tid</b>, and
-  <b>session_pipeline_s::stop</b>.</p>
+    <b>session_pipeline_s::encode_tid</b>, <b>log_info</b>,
+    <b>frame_queue_s::mu</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>frame_queue_s::not_empty</b>, <b>frame_queue_s::not_full</b>,
+    <b>SAFE_FREE</b>, and <b>session_pipeline_s::stop</b>.</p>
 <p class="Pp">Referenced by <b>session_render_loop()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_session_pipeline_run_main_("><a class="permalink" href="#asciichat_error_t_session_pipeline_run_main_(">asciichat_error_t
-  session_pipeline_run_main (<b>session_pipeline_t</b> * pipeline,
-  <b>session_should_exit_fn</b> should_exit, <b>session_keyboard_handler_fn</b>
-  keyboard_handler, void * user_data)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> session_pipeline_run_main
+  (<b>session_pipeline_t</b> * pipeline, <b>session_should_exit_fn</b>
+  should_exit, <b>session_keyboard_handler_fn</b> keyboard_handler, void *
+  user_data)</h2>
 <p class="Pp">Main thread loop: drives terminal output and keyboard
   handling.</p>
 <p class="Pp"></p>
@@ -254,100 +274,116 @@
 <div class="Bd-indent">This function blocks until <b>should_exit()</b> returns
   true or capture ends. Signals capture/encode threads to stop before
   returning.</div>
-<p class="Pp">Definition at line <b>433</b> of file <b>pipeline.c</b>.</p>
-<pre>438 {
-439     if (!pipeline || !should_exit) {
-440         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_pipeline_run_main: NULL argument&quot;);
-441     }
-442 
-443     log_info(&quot;[PIPELINE_MAIN] Starting main thread loop&quot;);
-444 
-445     bool snapshot_mode = GET_OPTION(snapshot_mode);
-446     bool snapshot_done = false;
-447 
-448     while (!should_exit(user_data) &amp;&amp; !atomic_load_bool(&amp;pipeline-&gt;stop) &amp;&amp; !snapshot_done) {
-449         pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline-&gt;display_queue, 100 * NS_PER_MS_INT);
-450 
-451         if (!frame) continue;  // timeout, check should_exit again
-452 
-453         // Log frame details IMMEDIATELY after popping
-454         log_debug(&quot;[PIPELINE_MAIN_POP] frame=%p, pixels=%p, w=%d, h=%d&quot;,
-455                   (void *)frame, (void *)frame-&gt;pixels, frame-&gt;w, frame-&gt;h);
-456 
-457         if (!frame-&gt;pixels) {
-458             // EOF sentinel
-459             log_info(&quot;[PIPELINE_MAIN_EOF] Received EOF sentinel, stopping&quot;);
-460             free_frame(frame);
-461             break;
-462         }
-463 
-464         // Validate frame before processing (catch memory corruption)
-465         if (!frame_is_valid(frame)) {
-466             log_error(&quot;Skipping frame with corrupted dimensions: w=%d, h=%d&quot;, frame-&gt;w, frame-&gt;h);
-467             free_frame(frame);
-468             continue;
+<p class="Pp">Definition at line <b>434</b> of file <b>pipeline.c</b>.</p>
+<pre>439 {
+440     if (!pipeline || !should_exit) {
+441         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_pipeline_run_main: NULL argument&quot;);
+442     }
+443 
+444     log_info(&quot;[PIPELINE_MAIN] Starting main thread loop&quot;);
+445 
+446     bool snapshot_mode = GET_OPTION(snapshot_mode);
+447     bool snapshot_done = false;
+448 
+449     while (!should_exit(user_data) &amp;&amp; !atomic_load_bool(&amp;pipeline-&gt;stop) &amp;&amp; !snapshot_done) {
+450         pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline-&gt;display_queue, 100 * NS_PER_MS_INT);
+451 
+452         if (!frame) continue;  // timeout, check should_exit again
+453 
+454         // Validate frame structure exists before accessing fields
+455         if (!frame_is_valid(frame)) {
+456             log_error(&quot;Received invalid frame: corrupted or NULL&quot;);
+457             free_frame(frame);
+458             frame = NULL;
+459             continue;
+460         }
+461 
+462         // Check for EOF sentinel (NULL pixels)
+463         if (!frame-&gt;pixels) {
+464             // EOF sentinel
+465             log_info(&quot;[PIPELINE_MAIN_EOF] Received EOF sentinel, stopping&quot;);
+466             free_frame(frame);
+467             frame = NULL;
+468             break;
 469         }
 470 
-471         log_info(&quot;[PIPELINE_MAIN_RENDER] Converting frame to ASCII: %dx%d&quot;, frame-&gt;w, frame-&gt;h);
-472         // Convert to ASCII
-473         image_t tmp = { .w = frame-&gt;w, .h = frame-&gt;h, .pixels = (rgb_pixel_t *)frame-&gt;pixels };
-474         char *ascii = session_display_convert_to_ascii(pipeline-&gt;display, &amp;tmp);
-475         free_frame(frame);
-476 
-477         if (ascii) {
-478             // Write ASCII to terminal
-479             session_display_write_ascii(pipeline-&gt;display, ascii);
-480             SAFE_FREE(ascii);
-481         }
-482 
-483         // Keyboard polling
-484         if (keyboard_handler) {
-485             keyboard_key_t key = keyboard_read_nonblocking();
-486             if (key &gt; 0) {
-487                 keyboard_handler(NULL, (int)key, user_data);  // NULL capture ctx
-488             }
-489         }
-490 
-491         // Snapshot mode: check if elapsed time has reached snapshot_delay duration
-492         // This check runs every iteration after first frame is rendered (when display.c sets g_snapshot_first_frame_rendered)
-493         if (snapshot_mode &amp;&amp; !snapshot_done) {
-494             if (g_snapshot_first_frame_rendered &amp;&amp; g_snapshot_first_frame_rendered_ns &gt; 0) {
-495                 double snapshot_delay = GET_OPTION(snapshot_delay);
-496                 uint64_t now_ns = time_get_ns();
-497                 uint64_t elapsed_ns = now_ns - g_snapshot_first_frame_rendered_ns;
-498                 double elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
-499 
-500                 if ((unsigned long)(elapsed_sec * 10) % 10 == 0 || elapsed_sec &lt; 0.2) {
-501                     log_info(&quot;[SNAPSHOT_PIPELINE] CHECK: elapsed=%.3f target=%.2f&quot;, elapsed_sec, snapshot_delay);
-502                 }
-503 
-504                 // snapshot_delay=0 means exit after first frame
-505                 // snapshot_delay&gt;0 means wait that many seconds before exiting
-506                 bool should_snapshot_exit = (snapshot_delay == 0.0) || (elapsed_sec &gt;= snapshot_delay);
-507 
-508                 if (should_snapshot_exit) {
-509                     log_info(&quot;[SNAPSHOT_PIPELINE] EXITING - elapsed=%.3f target=%.2f&quot;, elapsed_sec, snapshot_delay);
-510                     snapshot_done = true;
-511                 }
-512             }
-513         }
-514     }
-515 
-516     log_info(&quot;[PIPELINE_MAIN] Main loop exiting, signaling threads to stop&quot;);
-517     atomic_store_bool(&amp;pipeline-&gt;stop, true);
-518 
-519     return ASCIICHAT_OK;
-520 }</pre>
+471         // Log frame details after validation
+472         log_debug(&quot;[PIPELINE_MAIN_POP] frame=%p, pixels=%p, w=%d, h=%d&quot;,
+473                   (void *)frame, (void *)frame-&gt;pixels, frame-&gt;w, frame-&gt;h);
+474 
+475         // Check if help screen is active - if so, don't render ASCII frames
+476         bool help_is_active = pipeline-&gt;display &amp;&amp; keyboard_help_is_active(pipeline-&gt;display);
+477 
+478         if (!help_is_active) {
+479             log_info(&quot;[PIPELINE_MAIN_RENDER] Converting frame to ASCII: %dx%d&quot;, frame-&gt;w, frame-&gt;h);
+480             // Convert to ASCII
+481             image_t tmp = { .w = frame-&gt;w, .h = frame-&gt;h, .pixels = (rgb_pixel_t *)frame-&gt;pixels };
+482             char *ascii = session_display_convert_to_ascii(pipeline-&gt;display, &amp;tmp);
+483             free_frame(frame);
+484             frame = NULL;
+485 
+486             if (ascii) {
+487                 // Write ASCII to terminal
+488                 session_display_write_ascii(pipeline-&gt;display, ascii);
+489                 SAFE_FREE(ascii);
+490             }
+491         } else {
+492             free_frame(frame);
+493             frame = NULL;
+494         }
+495 
+496         // Keyboard polling
+497         if (keyboard_handler) {
+498             keyboard_key_t key = keyboard_read_nonblocking();
+499             if (key != KEY_NONE) {
+500                 log_debug(&quot;PIPELINE_KEYBOARD: Received key=%d&quot;, key);
+501                 keyboard_handler(NULL, (int)key, user_data);  // NULL capture ctx
+502             }
+503         }
+504 
+505         // Snapshot mode: check if elapsed time has reached snapshot_delay duration
+506         // This check runs every iteration after first frame is rendered (when display.c sets g_snapshot_first_frame_rendered)
+507         if (snapshot_mode &amp;&amp; !snapshot_done) {
+508             if (g_snapshot_first_frame_rendered &amp;&amp; g_snapshot_first_frame_rendered_ns &gt; 0) {
+509                 double snapshot_delay = GET_OPTION(snapshot_delay);
+510                 uint64_t now_ns = time_get_ns();
+511                 uint64_t elapsed_ns = now_ns - g_snapshot_first_frame_rendered_ns;
+512                 double elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
+513 
+514                 if ((unsigned long)(elapsed_sec * 10) % 10 == 0 || elapsed_sec &lt; 0.2) {
+515                     log_info(&quot;[SNAPSHOT_PIPELINE] CHECK: elapsed=%.3f target=%.2f&quot;, elapsed_sec, snapshot_delay);
+516                 }
+517 
+518                 // snapshot_delay=0 means exit after first frame
+519                 // snapshot_delay&gt;0 means wait that many seconds before exiting
+520                 bool should_snapshot_exit = (snapshot_delay == 0.0) || (elapsed_sec &gt;= snapshot_delay);
+521 
+522                 if (should_snapshot_exit) {
+523                     log_info(&quot;[SNAPSHOT_PIPELINE] EXITING - elapsed=%.3f target=%.2f&quot;, elapsed_sec, snapshot_delay);
+524                     snapshot_done = true;
+525                 }
+526             }
+527         }
+528     }
+529 
+530     log_info(&quot;[PIPELINE_MAIN] Main loop exiting, signaling threads to stop&quot;);
+531     atomic_store_bool(&amp;pipeline-&gt;stop, true);
+532 
+533     return ASCIICHAT_OK;
+534 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
-    <b>session_pipeline_s::display</b>,
-    <b>session_pipeline_s::display_queue</b>, <b>frame</b>,
-    <b>g_snapshot_first_frame_rendered</b>,
-    <b>g_snapshot_first_frame_rendered_ns</b>,
-    <b>session_display_convert_to_ascii()</b>,
-    <b>session_display_write_ascii()</b>, <b>should_exit()</b>,
-    <b>session_pipeline_s::stop</b>, and <b>time_get_ns()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
+    <b>atomic_store_bool()</b>, <b>session_pipeline_s::display</b>,
+    <b>session_pipeline_s::display_queue</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>frame</b>, <b>g_snapshot_first_frame_rendered</b>,
+    <b>g_snapshot_first_frame_rendered_ns</b>, <b>GET_OPTION</b>,
+    <b>keyboard_help_is_active()</b>, <b>log_debug</b>, <b>log_error</b>,
+    <b>log_info</b>, <b>NS_PER_MS_INT</b>, <b>NS_PER_SEC_INT</b>,
+    <b>SAFE_FREE</b>, <b>session_display_convert_to_ascii()</b>,
+    <b>session_display_write_ascii()</b>, <b>SET_ERRNO</b>,
+    <b>should_exit()</b>, <b>session_pipeline_s::stop</b>, and
+    <b>time_get_ns()</b>.</p>
 <p class="Pp">Referenced by <b>session_render_loop()</b>.</p>
 </section>
 </section>
@@ -358,7 +394,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

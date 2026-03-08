@@ -1,0 +1,1695 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>parsers.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">parsers.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">parsers.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">parsers.h - Custom option parsers for enum types.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>parse_color_setting</b> (const char *arg, void
+    *dest, char **<b>error_msg</b>)
+  <br/>
+  Parse color setting option (--color flag). <b>bool</b>
+    <b>parse_utf8_setting</b> (const char *arg, void *dest, char
+    **<b>error_msg</b>)
+  <br/>
+  Parse UTF-8 setting option (--utf8 flag). <b>bool</b> <b>parse_color_mode</b>
+    (const char *arg, void *dest, char **<b>error_msg</b>)
+  <br/>
+  Parse terminal color level option. <b>bool</b> <b>parse_color_filter</b>
+    (const char *arg, void *dest, char **<b>error_msg</b>)
+  <br/>
+  Parse color filter option. <b>bool</b> <b>parse_render_mode</b> (const char
+    *arg, void *dest, char **<b>error_msg</b>)
+  <br/>
+  Parse render mode option. <b>bool</b> <b>parse_render_theme</b> (const char
+    *arg, void *dest, char **<b>error_msg</b>)
+  <br/>
+  Parse render theme option for pixel rendering (macOS and Linux only).
+    <b>bool</b> <b>parse_palette_type</b> (const char *arg, void *dest, char
+    **<b>error_msg</b>)
+  <br/>
+  Parse palette type option. <b>bool</b> <b>parse_palette_chars</b> (const char
+    *arg, void *dest, char **<b>error_msg</b>)
+  <br/>
+  Parse custom palette characters option. <b>bool</b> <b>parse_log_level</b>
+    (const char *arg, void *dest, char **<b>error_msg</b>)
+  <br/>
+  Parse log level option. <b>bool</b> <b>parse_port_option</b> (const char *arg,
+    void *dest, char **<b>error_msg</b>)
+  <br/>
+  Parse and validate port option for CLI. int <b>parse_server_bind_address</b>
+    (const char *arg, void *config, char **remaining, int num_remaining, char
+    **<b>error_msg</b>)
+  <br/>
+  Parse server bind address positional argument. int <b>parse_client_address</b>
+    (const char *arg, void *config, char **remaining, int num_remaining, char
+    **<b>error_msg</b>)
+  <br/>
+  Parse client address positional argument. int <b>parse_mirror_media</b> (const
+    char *arg, void *config, char **remaining, int num_remaining, char
+    **<b>error_msg</b>)
+  <br/>
+  Parse mirror mode media positional argument. <b>bool</b>
+    <b>parse_verbose_flag</b> (const char *arg, void *dest, char
+    **<b>error_msg</b>)
+  <br/>
+  Custom parser for --verbose flag. <b>bool</b> <b>parse_timestamp</b> (const
+    char *arg, void *dest, char **<b>error_msg</b>)
+  <br/>
+  Custom parser for --timestamp flag. <b>bool</b> <b>parse_volume</b> (const
+    char *arg, void *dest, char **<b>error_msg</b>)
+  <br/>
+  Custom parser for volume options (--volume, --speakers-volume,
+    --microphone-volume). <b>bool</b> <b>parse_log_file</b> (const char *arg,
+    void *dest, char **<b>error_msg</b>)
+  <br/>
+  Custom parser for log file paths (--log-file, -L). <b>bool</b>
+    <b>parse_audio_source</b> (const char *arg, void *dest, char
+    **<b>error_msg</b>)
+  <br/>
+  Parse audio source option (--audio-source).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Custom option parsers for enum types.</p>
+<p class="Pp">This module provides custom callback parsers for enum-based
+    options used by the options builder system. Each parser converts a string
+    argument to the appropriate enum value.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">December 2025</div>
+<p class="Pp">Definition in file <b>parsers.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> parse_audio_source (const char * arg, void * dest,
+  char ** error_msg)</h2>
+<p class="Pp">Parse audio source option (--audio-source).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>arg</i> String argument (e.g., &quot;auto&quot;,
+  &quot;mic&quot;, &quot;media&quot;, &quot;both&quot;)
+<br/>
+<i>dest</i> Destination pointer (audio_source_t*)
+<br/>
+<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
+  failure)</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true on success, false on error</div>
+<p class="Pp">Valid values:</p>
+<ul class="Bl-bullet">
+  <li>&quot;auto&quot; - Smart selection (AUDIO_SOURCE_AUTO, default) When media
+      is playing (--file or --url): media only When no media: mic only</li>
+  <li>&quot;mic&quot; - Microphone only (AUDIO_SOURCE_MIC)</li>
+  <li>&quot;media&quot; - Media only (AUDIO_SOURCE_MEDIA)</li>
+  <li>&quot;both&quot; - Both microphone and media (AUDIO_SOURCE_BOTH)</li>
+</ul>
+<p class="Pp">Definition at line <b>1150</b> of file <b>parsers.c</b>.</p>
+<pre>1150                                                                        {
+1151   if (!arg || !dest) {
+1152     if (error_msg) {
+1153       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
+1154     }
+1155     return false;
+1156   }
+1157 
+1158   audio_source_t *audio_source = (audio_source_t *)dest;
+1159   char lower[32];
+1160   to_lower(arg, lower, sizeof(lower));
+1161 
+1162   // Auto (smart selection based on media state)
+1163   if (strcmp(lower, OPT_AUDIO_SOURCE_AUTO) == 0) {
+1164     *audio_source = AUDIO_SOURCE_AUTO;
+1165     return true;
+1166   }
+1167 
+1168   // Microphone only
+1169   if (strcmp(lower, OPT_AUDIO_SOURCE_MIC) == 0) {
+1170     *audio_source = AUDIO_SOURCE_MIC;
+1171     return true;
+1172   }
+1173 
+1174   // Media only
+1175   if (strcmp(lower, OPT_AUDIO_SOURCE_MEDIA) == 0) {
+1176     *audio_source = AUDIO_SOURCE_MEDIA;
+1177     return true;
+1178   }
+1179 
+1180   // Both microphone and media
+1181   if (strcmp(lower, OPT_AUDIO_SOURCE_BOTH) == 0) {
+1182     *audio_source = AUDIO_SOURCE_BOTH;
+1183     return true;
+1184   }
+1185 
+1186   if (error_msg) {
+1187     *error_msg = platform_strdup(&quot;Audio source must be 'auto', 'mic', 'media', or 'both'&quot;);
+1188   }
+1189   return false;
+1190 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>AUDIO_SOURCE_AUTO</b>, <b>AUDIO_SOURCE_BOTH</b>,
+    <b>AUDIO_SOURCE_MEDIA</b>, <b>AUDIO_SOURCE_MIC</b>, <b>error_msg</b>,
+    <b>OPT_AUDIO_SOURCE_AUTO</b>, <b>OPT_AUDIO_SOURCE_BOTH</b>,
+    <b>OPT_AUDIO_SOURCE_MEDIA</b>, <b>OPT_AUDIO_SOURCE_MIC</b>, and
+    <b>platform_strdup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_parse_client_address_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)"><a class="permalink" href="#int_parse_client_address_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)">int
+  parse_client_address (const char * arg, void * config, char ** remaining, int
+  num_remaining, char ** error_msg)</a></h2>
+<p class="Pp">Parse client address positional argument.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>arg</i> Address argument in format [address][:port]
+<br/>
+<i></i><b>Config Module</b><i></i><b> Pointer to options struct (must contain
+  address and port fields)</b>
+<br/>
+<i>remaining</i> Remaining positional args (unused for client)
+<br/>
+<i>num_remaining</i> Count of remaining args
+<br/>
+<i></i><b>error_msg</b><i></i><b> Error message output (set on
+  failure)</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of args consumed (always 1), or -1 on error</div>
+<p class="Pp">Client address parsing rules:</p>
+<ul class="Bl-bullet">
+  <li>Parses single argument: [address][:port]</li>
+  <li>IPv6 with brackets and port: [::1]:8080</li>
+  <li>IPv4/hostname with port: 192.168.1.1:8080 or example.com:8080</li>
+  <li>Bare IPv6: ::1 (detected by multiple colons)</li>
+  <li>Bare hostname/IPv4: 192.168.1.1 or example.com</li>
+  <li>IPv4 addresses starting with digit are validated strictly</li>
+  <li>Detects port conflict if --port flag was already used</li>
+</ul>
+<p class="Pp">This parser handles the complex logic of separating address from
+    optional port while correctly handling IPv6 addresses that contain
+  colons.</p>
+<p class="Pp"></p>
+<p class="Pp">Example usage with <b>options_builder_add_positional()</b>:</p>
+<p class="Pp"></p>
+<pre>options_builder_add_positional(
+<br/>
+    builder,
+<br/>
+    &quot;address&quot;,
+<br/>
+    &quot;[address][:port] - Server address (IPv4, IPv6, or hostname) with optional port&quot;,
+<br/>
+    false,  // Not required (defaults to localhost:27224)
+<br/>
+    parse_client_address
+);
+</pre>
+<p class="Pp">Implements the client address parsing logic from client.c. Parses
+    [address][:port] with complex IPv6 handling.</p>
+<p class="Pp">Definition at line <b>674</b> of file <b>parsers.c</b>.</p>
+<pre>674                                                                                                                {
+675   (void)remaining;
+676   (void)num_remaining;
+677 
+678   if (!arg || !config) {
+679     if (error_msg) {
+680       *error_msg = platform_strdup(&quot;Internal error: NULL argument or config&quot;);
+681     }
+682     return -1;
+683   }
+684 
+685   log_debug(&quot;parse_client_address: Processing argument: '%s'&quot;, arg);
+686 
+687   // Access address and port fields from options_state struct
+688   char *address = (char *)config + offsetof(struct options_state, address);
+689   int *port = (int *)((char *)config + offsetof(struct options_state, port));
+690 
+691   // Check for WebSocket URL (ws:// or wss://) FIRST before session string validation
+692   // WebSocket URLs are passed through without validation or port extraction
+693   if (strncmp(arg, &quot;ws://&quot;, 5) == 0 || strncmp(arg, &quot;wss://&quot;, 6) == 0) {
+694     log_debug(&quot;Detected WebSocket URL: %s&quot;, arg);
+695     SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%s&quot;, arg);
+696     // For wss://, TLS handles transport encryption - allow ACIP to handle auth independently
+697     // For ws://, default to ACIP encryption (no TLS)
+698     if (strncmp(arg, &quot;wss://&quot;, 6) == 0) {
+699       bool *no_encrypt = (bool *)config + offsetof(struct options_state, no_encrypt);
+700       *no_encrypt = true;
+701       log_debug(&quot;Auto-detected wss:// - setting no_encrypt=true (TLS handles transport encryption, ACIP handles auth)&quot;);
+702     }
+703     // Don't set port - WebSocket transport handles URL parsing internally
+704     return 1; // Consumed 1 argument
+705   }
+706 
+707   // Check for TCP URL (tcp://) - passed through directly to FFmpeg
+708   // TCP URLs are used for streaming media from custom TCP servers
+709   if (strncmp(arg, &quot;tcp://&quot;, 6) == 0) {
+710     log_debug(&quot;Detected TCP URL: %s&quot;, arg);
+711     SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%s&quot;, arg);
+712     // Don't set port - TCP transport handles URL parsing internally
+713     return 1; // Consumed 1 argument
+714   }
+715 
+716   // Check if this is a session string (format: adjective-noun-noun)
+717   // Session strings have exactly 2 hyphens, only lowercase letters, length 5-47
+718   bool is_session = is_session_string(arg);
+719   log_debug(&quot;parse_client_address: is_session_string('%s') = %s&quot;, arg, is_session ? &quot;true&quot; : &quot;false&quot;);
+720 
+721   if (is_session) {
+722     // This is a session string, not a server address
+723     char *session_string = (char *)config + offsetof(struct options_state, session_string);
+724     SAFE_SNPRINTF(session_string, SESSION_STRING_BUFFER_SIZE, &quot;%s&quot;, arg);
+725     log_debug(&quot;parse_client_address: Stored session string: %s&quot;, arg);
+726     return 1; // Consumed 1 arg
+727   }
+728 
+729   // Not a session string, parse as server address
+730   log_debug(&quot;parse_client_address: Parsing as server address (not a session string)&quot;);
+731 
+732   // Check for port in address (format: address:port or [ipv6]:port)
+733   const char *colon = strrchr(arg, ':');
+734 
+735   if (colon != NULL) {
+736     // Check if this is IPv6 with port [::1]:port or plain hostname:port
+737     if (arg[0] == '[') {
+738       // IPv6 with brackets: [address]:port
+739       const char *closing_bracket = strchr(arg, ']');
+740       if (closing_bracket &amp;&amp; closing_bracket &lt; colon) {
+741         // Extract address (remove brackets)
+742         size_t addr_len = (size_t)(closing_bracket - arg - 1);
+743         if (addr_len &gt;= OPTIONS_BUFF_SIZE) {
+744           if (error_msg) {
+745             *error_msg = platform_strdup(&quot;IPv6 address too long&quot;);
+746           }
+747           return -1;
+748         }
+749         SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%.*s&quot;, (int)addr_len, arg + 1);
+750 
+751         // Extract and validate port
+752         const char *port_str = colon + 1;
+753         char *endptr;
+754         long port_num = strtol(port_str, &amp;endptr, 10);
+755         if (*endptr != '\0' || port_num &lt; 1 || port_num &gt; 65535) {
+756           if (error_msg) {
+757             char msg[256];
+758             safe_snprintf(msg, sizeof(msg), &quot;Invalid port number '%s'. Must be 1-65535.&quot;, port_str);
+759             *error_msg = platform_strdup(msg);
+760           }
+761           return -1;
+762         }
+763         *port = (int)port_num;
+764       }
+765     } else {
+766       // Check if it's IPv6 without brackets (no port allowed)
+767       // or hostname/IPv4:port
+768       size_t colon_count = 0;
+769       for (const char *p = arg; *p; p++) {
+770         if (*p == ':')
+771           colon_count++;
+772       }
+773 
+774       if (colon_count == 1) {
+775         // Likely hostname:port or IPv4:port
+776         size_t addr_len = (size_t)(colon - arg);
+777         if (addr_len &gt;= OPTIONS_BUFF_SIZE) {
+778           if (error_msg) {
+779             *error_msg = platform_strdup(&quot;Address too long&quot;);
+780           }
+781           return -1;
+782         }
+783         SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%.*s&quot;, (int)addr_len, arg);
+784 
+785         // Extract and validate port
+786         const char *port_str = colon + 1;
+787         char *endptr;
+788         long port_num = strtol(port_str, &amp;endptr, 10);
+789         if (*endptr != '\0' || port_num &lt; 1 || port_num &gt; 65535) {
+790           if (error_msg) {
+791             char msg[256];
+792             safe_snprintf(msg, sizeof(msg), &quot;Invalid port number '%s'. Must be 1-65535.&quot;, port_str);
+793             *error_msg = platform_strdup(msg);
+794           }
+795           return -1;
+796         }
+797         *port = (int)port_num;
+798       } else {
+799         // Multiple colons - likely bare IPv6 address
+800         SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%s&quot;, arg);
+801       }
+802     }
+803   } else {
+804     // No colon - just an address
+805     SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%s&quot;, arg);
+806   }
+807 
+808   // Validate addresses using comprehensive IPv4/IPv6 detection
+809   bool has_dot = strchr(address, '.') != NULL;
+810   bool has_colon = strchr(address, ':') != NULL;
+811   bool starts_with_digit = address[0] &gt;= '0' &amp;&amp; address[0] &lt;= '9';
+812 
+813   // Potential IPv6 address (has colons) - validate as IPv6
+814   if (has_colon) {
+815     if (!is_valid_ipv6(address)) {
+816       if (error_msg) {
+817         char msg[512];
+818         safe_snprintf(msg, sizeof(msg),
+819                       &quot;Invalid IPv6 address '%s'.\n&quot;
+820                       &quot;IPv6 addresses must be valid hex notation with colons.\n&quot;
+821                       &quot;Examples: ::1, 2001:db8::1, fe80::1\n&quot;
+822                       &quot;Or use hostnames like example.com&quot;,
+823                       address);
+824         *error_msg = platform_strdup(msg);
+825       }
+826       return -1;
+827     }
+828   } else if (has_dot &amp;&amp; starts_with_digit) {
+829     // Potential IPv4 address (has dots and starts with digit) - validate strictly
+830     if (!is_valid_ipv4(address)) {
+831       if (error_msg) {
+832         char msg[512];
+833         safe_snprintf(msg, sizeof(msg),
+834                       &quot;Invalid IPv4 address '%s'.\n&quot;
+835                       &quot;IPv4 addresses must have exactly 4 octets (0-255) separated by dots.\n&quot;
+836                       &quot;Examples: 127.0.0.1, 192.168.1.1\n&quot;
+837                       &quot;For hostnames, use letters: example.com, localhost&quot;,
+838                       address);
+839         *error_msg = platform_strdup(msg);
+840       }
+841       return -1;
+842     }
+843   }
+844   // Otherwise treat as valid hostname (no validation needed)
+845 
+846   // Note: Port conflict checking would require additional state
+847   // (checking if --port flag was used). For now, this is a simplified version.
+848   // Full implementation would need to track whether port was set via flag.
+849 
+850   log_debug(&quot;parse_client_address: Set address='%s', port=%d&quot;, address[0] ? address : &quot;(empty)&quot;, *port);
+851 
+852   return 1; // Consumed 1 arg
+853 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>error_msg</b>, <b>is_session_string()</b>,
+    <b>is_valid_ipv4()</b>, <b>is_valid_ipv6()</b>, <b>log_debug</b>,
+    <b>OPTIONS_BUFF_SIZE</b>, <b>platform_strdup()</b>, <b>SAFE_SNPRINTF</b>,
+    <b>safe_snprintf()</b>, and <b>SESSION_STRING_BUFFER_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> parse_color_filter (const char * arg, void * dest,
+  char ** error_msg)</h2>
+<p class="Pp">Parse color filter option.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>arg</i> String argument (e.g., &quot;green&quot;,
+  &quot;cyan&quot;, &quot;pink&quot;)
+<br/>
+<i>dest</i> Destination pointer (color_filter_t*)
+<br/>
+<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
+  failure)</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true on success, false on error</div>
+<p class="Pp">Valid values: none, black, white, green, magenta, fuchsia, orange,
+    teal, cyan, pink, red, yellow</p>
+<p class="Pp">Definition at line <b>270</b> of file <b>parsers.c</b>.</p>
+<pre>270                                                                        {
+271   if (!arg || !dest) {
+272     if (error_msg) {
+273       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
+274     }
+275     return false;
+276   }
+277 
+278   color_filter_t *color_filter = (color_filter_t *)dest;
+279   char lower[32];
+280   to_lower(arg, lower, sizeof(lower));
+281 
+282   // Try to match against all known color filters
+283   *color_filter = color_filter_from_cli_name(lower);
+284   if (*color_filter != COLOR_FILTER_NONE || strcmp(lower, OPT_COLOR_FILTER_NONE) == 0) {
+285     return true;
+286   }
+287 
+288   // Invalid value
+289   if (error_msg) {
+290     char msg[256];
+291     safe_snprintf(msg, sizeof(msg),
+292                   &quot;Invalid color filter '%s'. Valid values: none, black, white, green, magenta, fuchsia, &quot;
+293                   &quot;orange, teal, cyan, pink, red, yellow&quot;,
+294                   arg);
+295     *error_msg = platform_strdup(msg);
+296   }
+297   return false;
+298 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>color_filter_from_cli_name()</b>,
+    <b>COLOR_FILTER_NONE</b>, <b>error_msg</b>, <b>OPT_COLOR_FILTER_NONE</b>,
+    <b>platform_strdup()</b>, and <b>safe_snprintf()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> parse_color_mode (const char * arg, void * dest, char
+  ** error_msg)</h2>
+<p class="Pp">Parse terminal color level option.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>arg</i> String argument (e.g., &quot;auto&quot;,
+  &quot;none&quot;, &quot;16&quot;, &quot;256&quot;, &quot;truecolor&quot;)
+<br/>
+<i>dest</i> Destination pointer (terminal_color_mode_t*)
+<br/>
+<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
+  failure)</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true on success, false on error</div>
+<p class="Pp">Valid values:</p>
+<ul class="Bl-bullet">
+  <li>&quot;auto&quot;, &quot;a&quot; - Auto-detect from terminal</li>
+  <li>&quot;none&quot;, &quot;mono&quot;, &quot;monochrome&quot;, &quot;0&quot;
+      - No color (TERM_COLOR_NONE)</li>
+  <li>&quot;16&quot;, &quot;16color&quot;, &quot;ansi&quot; - 16-color mode
+      (TERM_COLOR_16)</li>
+  <li>&quot;256&quot;, &quot;256color&quot; - 256-color mode
+    (TERM_COLOR_256)</li>
+  <li>&quot;truecolor&quot;, &quot;true&quot;, &quot;tc&quot;, &quot;rgb&quot;,
+      &quot;24bit&quot; - Truecolor mode (TERM_COLOR_TRUECOLOR)</li>
+</ul>
+<p class="Pp">Definition at line <b>211</b> of file <b>parsers.c</b>.</p>
+<pre>211                                                                      {
+212   if (!arg || !dest) {
+213     if (error_msg) {
+214       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
+215     }
+216     return false;
+217   }
+218 
+219   terminal_color_mode_t *color_mode = (terminal_color_mode_t *)dest;
+220   char lower[32];
+221   to_lower(arg, lower, sizeof(lower));
+222 
+223   // Auto-detect
+224   if (strcmp(lower, OPT_COLOR_MODE_AUTO) == 0 || strcmp(lower, &quot;a&quot;) == 0) {
+225     *color_mode = TERM_COLOR_AUTO;
+226     return true;
+227   }
+228 
+229   // Monochrome/None
+230   if (strcmp(lower, OPT_COLOR_MODE_NONE) == 0 || strcmp(lower, &quot;mono&quot;) == 0 || strcmp(lower, &quot;monochrome&quot;) == 0 ||
+231       strcmp(lower, &quot;0&quot;) == 0) {
+232     *color_mode = TERM_COLOR_NONE;
+233     return true;
+234   }
+235 
+236   // 16-color
+237   if (strcmp(lower, OPT_COLOR_MODE_16) == 0 || strcmp(lower, &quot;16color&quot;) == 0 || strcmp(lower, &quot;ansi&quot;) == 0 ||
+238       strcmp(lower, &quot;1&quot;) == 0) {
+239     *color_mode = TERM_COLOR_16;
+240     return true;
+241   }
+242 
+243   // 256-color
+244   if (strcmp(lower, OPT_COLOR_MODE_256) == 0 || strcmp(lower, &quot;256color&quot;) == 0 || strcmp(lower, &quot;2&quot;) == 0) {
+245     *color_mode = TERM_COLOR_256;
+246     return true;
+247   }
+248 
+249   // Truecolor
+250   if (strcmp(lower, OPT_COLOR_MODE_TRUECOLOR) == 0 || strcmp(lower, &quot;true&quot;) == 0 || strcmp(lower, &quot;tc&quot;) == 0 ||
+251       strcmp(lower, &quot;rgb&quot;) == 0 || strcmp(lower, &quot;24bit&quot;) == 0 || strcmp(lower, &quot;3&quot;) == 0) {
+252     *color_mode = TERM_COLOR_TRUECOLOR;
+253     return true;
+254   }
+255 
+256   // Invalid value - suggest closest match
+257   if (error_msg) {
+258     char msg[256];
+259     const char *suggestion = asciichat_suggest_enum_value(&quot;color-mode&quot;, arg);
+260     if (suggestion) {
+261       safe_snprintf(msg, sizeof(msg), &quot;Invalid color mode '%s'. Did you mean '%s'?&quot;, arg, suggestion);
+262     } else {
+263       safe_snprintf(msg, sizeof(msg), &quot;Invalid color mode '%s'. Valid values: auto, none, 16, 256, truecolor&quot;, arg);
+264     }
+265     *error_msg = platform_strdup(msg);
+266   }
+267   return false;
+268 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_suggest_enum_value()</b>,
+    <b>error_msg</b>, <b>OPT_COLOR_MODE_16</b>, <b>OPT_COLOR_MODE_256</b>,
+    <b>OPT_COLOR_MODE_AUTO</b>, <b>OPT_COLOR_MODE_NONE</b>,
+    <b>OPT_COLOR_MODE_TRUECOLOR</b>, <b>platform_strdup()</b>,
+    <b>safe_snprintf()</b>, <b>TERM_COLOR_16</b>, <b>TERM_COLOR_256</b>,
+    <b>TERM_COLOR_AUTO</b>, <b>TERM_COLOR_NONE</b>, and
+    <b>TERM_COLOR_TRUECOLOR</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> parse_color_setting (const char * arg, void * dest,
+  char ** error_msg)</h2>
+<p class="Pp">Parse color setting option (--color flag).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>arg</i> String argument (e.g., &quot;auto&quot;,
+  &quot;true&quot;, &quot;false&quot;)
+<br/>
+<i>dest</i> Destination pointer (int*, will store <b>color_setting_t</b> value)
+<br/>
+<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
+  failure)</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true on success, false on error</div>
+<p class="Pp">Valid values:</p>
+<ul class="Bl-bullet">
+  <li>&quot;auto&quot;, &quot;a&quot;, &quot;0&quot; - Smart detection
+      (COLOR_SETTING_AUTO, default)</li>
+  <li>&quot;true&quot;, &quot;yes&quot;, &quot;1&quot;, &quot;on&quot; - Force
+      colors ON (COLOR_SETTING_TRUE)</li>
+  <li>&quot;false&quot;, &quot;no&quot;, &quot;-1&quot;, &quot;off&quot; - Force
+      colors OFF (COLOR_SETTING_FALSE)</li>
+</ul>
+<p class="Pp">This controls whether colors are enabled (&quot;auto&quot;),
+    always on (&quot;true&quot;), or always off (&quot;false&quot;) regardless
+    of TTY detection or environment variables.</p>
+<p class="Pp">Definition at line <b>161</b> of file <b>parsers.c</b>.</p>
+<pre>161                                                                         {
+162   if (!dest) {
+163     if (error_msg) {
+164       *error_msg = platform_strdup(&quot;Internal error: NULL destination&quot;);
+165     }
+166     return false;
+167   }
+168 
+169   // Use generic parser with color setting lookup table
+170   // Default to TRUE if no arg provided
+171   if (!arg || arg[0] == '\0') {
+172     int *color_setting = (int *)dest;
+173     *color_setting = COLOR_SETTING_TRUE;
+174     return true;
+175   }
+176 
+177   return parse_setting_generic(arg, dest, g_color_setting_map, error_msg);
+178 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>COLOR_SETTING_TRUE</b>, <b>error_msg</b>, and
+    <b>platform_strdup()</b>.</p>
+<p class="Pp">Referenced by <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> parse_log_file (const char * arg, void * dest, char
+  ** error_msg)</h2>
+<p class="Pp">Custom parser for log file paths (--log-file, -L). Validates that
+    the log file path is safe:</p>
+<ul class="Bl-bullet">
+  <li>Rejects attempts to write to protected system directories (/etc, /System,
+      /Windows, etc.)</li>
+  <li>Allows overwriting existing ascii-chat log files</li>
+  <li>Allows paths in safe locations (/tmp, /var/log, home directory, cwd,
+    etc.)</li>
+  <li>Returns error message if validation fails</li>
+</ul>
+<p class="Pp">Definition at line <b>1116</b> of file <b>parsers.c</b>.</p>
+<pre>1116                                                                    {
+1117   if (!arg || !dest) {
+1118     if (error_msg) {
+1119       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
+1120     }
+1121     return false;
+1122   }
+1123 
+1124   // Validate and normalize the log file path
+1125   char *normalized = NULL;
+1126   asciichat_error_t result = path_validate_user_path(arg, PATH_ROLE_LOG_FILE, &amp;normalized);
+1127 
+1128   if (result != ASCIICHAT_OK) {
+1129     if (error_msg) {
+1130       asciichat_error_context_t err_ctx;
+1131       if (HAS_ERRNO(&amp;err_ctx)) {
+1132         *error_msg = platform_strdup(err_ctx.context_message);
+1133       } else {
+1134         *error_msg = platform_strdup(&quot;Log file path validation failed&quot;);
+1135       }
+1136     }
+1137     return false;
+1138   }
+1139 
+1140   // Copy validated path to destination
+1141   char *log_file_buf = (char *)dest;
+1142   const size_t max_size = 256;
+1143   SAFE_STRNCPY(log_file_buf, normalized, max_size - 1);
+1144   log_file_buf[max_size - 1] = '\0';
+1145 
+1146   SAFE_FREE(normalized);
+1147   return true;
+1148 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>asciichat_error_context_t::context_message</b>, <b>error_msg</b>,
+    <b>HAS_ERRNO</b>, <b>PATH_ROLE_LOG_FILE</b>,
+    <b>path_validate_user_path()</b>, <b>platform_strdup()</b>,
+    <b>SAFE_FREE</b>, and <b>SAFE_STRNCPY</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> parse_log_level (const char * arg, void * dest, char
+  ** error_msg)</h2>
+<p class="Pp">Parse log level option.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>arg</i> String argument (e.g., &quot;debug&quot;,
+  &quot;info&quot;, &quot;warn&quot;)
+<br/>
+<i>dest</i> Destination pointer (log_level_t*)
+<br/>
+<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
+  failure)</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true on success, false on error</div>
+<p class="Pp">Valid values:</p>
+<ul class="Bl-bullet">
+  <li>&quot;dev&quot;, &quot;development&quot;, &quot;0&quot; - Development
+      level (LOG_DEV)</li>
+  <li>&quot;debug&quot;, &quot;dbg&quot;, &quot;1&quot; - Debug level
+      (LOG_DEBUG)</li>
+  <li>&quot;info&quot;, &quot;information&quot;, &quot;2&quot; - Info level
+      (LOG_INFO)</li>
+  <li>&quot;warn&quot;, &quot;warning&quot;, &quot;3&quot; - Warning level
+      (LOG_WARN)</li>
+  <li>&quot;error&quot;, &quot;err&quot;, &quot;4&quot; - Error level
+      (LOG_ERROR)</li>
+  <li>&quot;fatal&quot;, &quot;5&quot; - Fatal level (LOG_FATAL)</li>
+</ul>
+<p class="Pp">Definition at line <b>447</b> of file <b>parsers.c</b>.</p>
+<pre>447                                                                     {
+448   if (!dest) {
+449     if (error_msg) {
+450       *error_msg = platform_strdup(&quot;Internal error: NULL destination&quot;);
+451     }
+452     return false;
+453   }
+454 
+455   log_level_t *log_level = (log_level_t *)dest;
+456 
+457   // If no argument provided, use the default log level (based on build type)
+458   if (!arg || arg[0] == '\0') {
+459     *log_level = DEFAULT_LOG_LEVEL;
+460     return true;
+461   }
+462 
+463   char lower[32];
+464   to_lower(arg, lower, sizeof(lower));
+465 
+466   // Development level
+467   if (strcmp(lower, OPT_LOG_LEVEL_DEV) == 0 || strcmp(lower, &quot;development&quot;) == 0 || strcmp(lower, &quot;0&quot;) == 0) {
+468     *log_level = LOG_DEV;
+469     return true;
+470   }
+471 
+472   // Debug level
+473   if (strcmp(lower, OPT_LOG_LEVEL_DEBUG) == 0 || strcmp(lower, &quot;dbg&quot;) == 0 || strcmp(lower, &quot;1&quot;) == 0) {
+474     *log_level = LOG_DEBUG;
+475     return true;
+476   }
+477 
+478   // Info level
+479   if (strcmp(lower, OPT_LOG_LEVEL_INFO) == 0 || strcmp(lower, &quot;information&quot;) == 0 || strcmp(lower, &quot;2&quot;) == 0) {
+480     *log_level = LOG_INFO;
+481     return true;
+482   }
+483 
+484   // Warning level
+485   if (strcmp(lower, OPT_LOG_LEVEL_WARN) == 0 || strcmp(lower, &quot;warning&quot;) == 0 || strcmp(lower, &quot;3&quot;) == 0) {
+486     *log_level = LOG_WARN;
+487     return true;
+488   }
+489 
+490   // Error level
+491   if (strcmp(lower, OPT_LOG_LEVEL_ERROR) == 0 || strcmp(lower, &quot;err&quot;) == 0 || strcmp(lower, &quot;4&quot;) == 0) {
+492     *log_level = LOG_ERROR;
+493     return true;
+494   }
+495 
+496   // Fatal level
+497   if (strcmp(lower, OPT_LOG_LEVEL_FATAL) == 0 || strcmp(lower, &quot;5&quot;) == 0) {
+498     *log_level = LOG_FATAL;
+499     return true;
+500   }
+501 
+502   // Invalid value
+503   if (error_msg) {
+504     char msg[256];
+505     safe_snprintf(msg, sizeof(msg), &quot;Invalid log level '%s'. Valid values: dev, debug, info, warn, error, fatal&quot;, arg);
+506     *error_msg = platform_strdup(msg);
+507   }
+508   return false;
+509 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>DEFAULT_LOG_LEVEL</b>, <b>error_msg</b>,
+    <b>LOG_DEBUG</b>, <b>LOG_DEV</b>, <b>LOG_ERROR</b>, <b>LOG_FATAL</b>,
+    <b>LOG_INFO</b>, <b>LOG_WARN</b>, <b>OPT_LOG_LEVEL_DEBUG</b>,
+    <b>OPT_LOG_LEVEL_DEV</b>, <b>OPT_LOG_LEVEL_ERROR</b>,
+    <b>OPT_LOG_LEVEL_FATAL</b>, <b>OPT_LOG_LEVEL_INFO</b>,
+    <b>OPT_LOG_LEVEL_WARN</b>, <b>platform_strdup()</b>, and
+    <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_parse_mirror_media_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)"><a class="permalink" href="#int_parse_mirror_media_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)">int
+  parse_mirror_media (const char * arg, void * config, char ** remaining, int
+  num_remaining, char ** error_msg)</a></h2>
+<p class="Pp">Parse mirror mode media positional argument.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>arg</i> File path or URL argument
+<br/>
+<i></i><b>Config Module</b><i></i><b> Pointer to options struct (must contain
+  media_file and media_url fields)</b>
+<br/>
+<i>remaining</i> Remaining positional args (unused)
+<br/>
+<i>num_remaining</i> Count of remaining args
+<br/>
+<i></i><b>error_msg</b><i></i><b> Error message output (set on failure, caller
+  must free)</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">1 if consumed the argument, -1 on error</div>
+<p class="Pp">Mirror mode media argument parsing rules:</p>
+<ul class="Bl-bullet">
+  <li>Cannot be used together with --file or --url flags (mutually
+    exclusive)</li>
+  <li>Attempts to access argument as a file path first (using
+    platform_access)</li>
+  <li>If file doesn't exist or isn't readable, treats as URL</li>
+  <li>Sets either media_file or media_url field depending on what's
+    detected</li>
+</ul>
+<p class="Pp">Example usage with <b>options_builder_add_positional()</b>:</p>
+<p class="Pp"></p>
+<pre>options_builder_add_positional(
+<br/>
+    builder,
+<br/>
+    &quot;file|url&quot;,
+<br/>
+    &quot;(optional) Media file path or URL to stream&quot;,
+<br/>
+    false,  // Not required (defaults to webcam)
+<br/>
+    parse_mirror_media
+);
+</pre>
+<p class="Pp">Parse mirror mode media positional argument.</p>
+<p class="Pp"></p>
+<p class="Pp">Logic:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Enforce mutual exclusion with --file and --url flags</dd>
+  <dt>2.</dt>
+  <dd>Check if argument is an accessible file path first</dd>
+  <dt>3.</dt>
+  <dd>If not a file, treat as URL (yt-dlp/ffmpeg will handle errors)</dd>
+  <dt>4.</dt>
+  <dd>Set media_file or media_url accordingly</dd>
+</dl>
+<p class="Pp">Definition at line <b>868</b> of file <b>parsers.c</b>.</p>
+<pre>868                                                                                                              {
+869   (void)remaining;
+870   (void)num_remaining;
+871 
+872   if (!arg || !config) {
+873     if (error_msg) {
+874       *error_msg = platform_strdup(&quot;Internal error: NULL argument or config&quot;);
+875     }
+876     return -1;
+877   }
+878 
+879   log_debug(&quot;parse_mirror_media: Processing argument: '%s'&quot;, arg);
+880 
+881   // Access media_file and media_url fields from options_state struct (same as other positional parsers)
+882   char *media_file = (char *)config + offsetof(struct options_state, media_file);
+883   char *media_url = (char *)config + offsetof(struct options_state, media_url);
+884 
+885   // Enforce mutual exclusion with --file flag
+886   if (media_file[0] != '\0') {
+887     if (error_msg) {
+888       *error_msg = platform_strdup(&quot;cannot use both --file and a positional argument&quot;);
+889     }
+890     return -1;
+891   }
+892 
+893   // Enforce mutual exclusion with --url flag
+894   if (media_url[0] != '\0') {
+895     if (error_msg) {
+896       *error_msg = platform_strdup(&quot;cannot use both --url and a positional argument&quot;);
+897     }
+898     return -1;
+899   }
+900 
+901   // Check if it's an accessible file path (priority 1)
+902   if (platform_access(arg, PLATFORM_ACCESS_READ) == 0) {
+903     log_debug(&quot;Argument '%s' is an accessible file&quot;, arg);
+904     SAFE_SNPRINTF(media_file, OPTIONS_BUFF_SIZE, &quot;%s&quot;, arg);
+905     return 1; // Consumed 1 argument
+906   }
+907 
+908   // Not a file; treat as URL (yt-dlp/ffmpeg will handle any errors)
+909   log_debug(&quot;Argument '%s' not found as file; treating as URL&quot;, arg);
+910   SAFE_SNPRINTF(media_url, OPTIONS_BUFF_SIZE, &quot;%s&quot;, arg);
+911   return 1; // Consumed 1 argument
+912 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>error_msg</b>, <b>log_debug</b>,
+    <b>OPTIONS_BUFF_SIZE</b>, <b>platform_access()</b>,
+    <b>PLATFORM_ACCESS_READ</b>, <b>platform_strdup()</b>, and
+    <b>SAFE_SNPRINTF</b>.</p>
+<p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> parse_palette_chars (const char * arg, void * dest,
+  char ** error_msg)</h2>
+<p class="Pp">Parse custom palette characters option.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>arg</i> String of characters ordered from darkest to
+  brightest
+<br/>
+<i>dest</i> Destination pointer (char[256])
+<br/>
+<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
+  failure)</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true on success, false on error</div>
+<p class="Pp">The characters should be ordered from darkest (leftmost) to
+    brightest (rightmost). Maximum length is 255 characters.</p>
+<p class="Pp"></p>
+<p class="Pp">Example: &quot; .:-=+*#%@&quot;</p>
+<p class="Pp">Definition at line <b>918</b> of file <b>parsers.c</b>.</p>
+<pre>918                                                                         {
+919   if (!arg || !dest) {
+920     if (error_msg) {
+921       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
+922     }
+923     return false;
+924   }
+925 
+926   // The dest pointer points to the palette_custom field in options_t
+927   // We need to get the full options_t struct to call parse_palette_chars_option
+928   // Since we only have the field pointer, we need to handle this directly
+929 
+930   char *palette_custom = (char *)dest;
+931 
+932   size_t len = strlen(arg);
+933   if (len == 0) {
+934     if (error_msg) {
+935       *error_msg = platform_strdup(&quot;Invalid palette-chars: value cannot be empty&quot;);
+936     }
+937     return false;
+938   }
+939 
+940   if (len &gt;= 256) {
+941     if (error_msg) {
+942       char msg[256];
+943       safe_snprintf(msg, sizeof(msg), &quot;Invalid palette-chars: too long (%zu chars, max 255)&quot;, len);
+944       *error_msg = platform_strdup(msg);
+945     }
+946     return false;
+947   }
+948 
+949   // Copy the palette characters
+950   SAFE_STRNCPY(palette_custom, arg, 256);
+951   palette_custom[255] = '\0';
+952 
+953   // Also set the palette type to custom by calculating back to options_t pointer
+954   // dest points to options_t.palette_custom, so we can get options_t* using offset arithmetic
+955   options_t *opts = (options_t *)((char *)dest - offsetof(options_t, palette_custom));
+956   opts-&gt;palette_type = PALETTE_CUSTOM;
+957 
+958   return true;
+959 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>error_msg</b>, <b>PALETTE_CUSTOM</b>,
+    <b>options_state::palette_type</b>, <b>platform_strdup()</b>,
+    <b>safe_snprintf()</b>, and <b>SAFE_STRNCPY</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> parse_palette_type (const char * arg, void * dest,
+  char ** error_msg)</h2>
+<p class="Pp">Parse palette type option.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>arg</i> String argument (e.g., &quot;standard&quot;,
+  &quot;blocks&quot;, &quot;custom&quot;)
+<br/>
+<i>dest</i> Destination pointer (palette_type_t*)
+<br/>
+<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
+  failure)</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true on success, false on error</div>
+<p class="Pp">Valid values:</p>
+<ul class="Bl-bullet">
+  <li>&quot;standard&quot;, &quot;std&quot;, &quot;0&quot; - Standard palette
+      (PALETTE_STANDARD)</li>
+  <li>&quot;blocks&quot;, &quot;block&quot;, &quot;1&quot; - Blocks palette
+      (PALETTE_BLOCKS)</li>
+  <li>&quot;digital&quot;, &quot;dig&quot;, &quot;2&quot; - Digital palette
+      (PALETTE_DIGITAL)</li>
+  <li>&quot;minimal&quot;, &quot;min&quot;, &quot;3&quot; - Minimal palette
+      (PALETTE_MINIMAL)</li>
+  <li>&quot;cool&quot;, &quot;4&quot; - Cool palette (PALETTE_COOL)</li>
+  <li>&quot;custom&quot;, &quot;5&quot; - Custom palette (PALETTE_CUSTOM)</li>
+</ul>
+<p class="Pp">Definition at line <b>384</b> of file <b>parsers.c</b>.</p>
+<pre>384                                                                        {
+385   if (!arg || !dest) {
+386     if (error_msg) {
+387       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
+388     }
+389     return false;
+390   }
+391 
+392   palette_type_t *palette_type = (palette_type_t *)dest;
+393   char lower[32];
+394   to_lower(arg, lower, sizeof(lower));
+395 
+396   // Standard palette
+397   if (strcmp(lower, OPT_PALETTE_STANDARD) == 0 || strcmp(lower, &quot;std&quot;) == 0 || strcmp(lower, &quot;0&quot;) == 0) {
+398     *palette_type = PALETTE_STANDARD;
+399     return true;
+400   }
+401 
+402   // Blocks palette
+403   if (strcmp(lower, OPT_PALETTE_BLOCKS) == 0 || strcmp(lower, &quot;block&quot;) == 0 || strcmp(lower, &quot;1&quot;) == 0) {
+404     *palette_type = PALETTE_BLOCKS;
+405     return true;
+406   }
+407 
+408   // Digital palette
+409   if (strcmp(lower, OPT_PALETTE_DIGITAL) == 0 || strcmp(lower, &quot;dig&quot;) == 0 || strcmp(lower, &quot;2&quot;) == 0) {
+410     *palette_type = PALETTE_DIGITAL;
+411     return true;
+412   }
+413 
+414   // Minimal palette
+415   if (strcmp(lower, OPT_PALETTE_MINIMAL) == 0 || strcmp(lower, &quot;min&quot;) == 0 || strcmp(lower, &quot;3&quot;) == 0) {
+416     *palette_type = PALETTE_MINIMAL;
+417     return true;
+418   }
+419 
+420   // Cool palette
+421   if (strcmp(lower, OPT_PALETTE_COOL) == 0 || strcmp(lower, &quot;4&quot;) == 0) {
+422     *palette_type = PALETTE_COOL;
+423     return true;
+424   }
+425 
+426   // Custom palette
+427   if (strcmp(lower, OPT_PALETTE_CUSTOM) == 0 || strcmp(lower, &quot;5&quot;) == 0) {
+428     *palette_type = PALETTE_CUSTOM;
+429     return true;
+430   }
+431 
+432   // Invalid value - suggest closest match
+433   if (error_msg) {
+434     char msg[256];
+435     const char *suggestion = asciichat_suggest_enum_value(&quot;palette&quot;, arg);
+436     if (suggestion) {
+437       safe_snprintf(msg, sizeof(msg), &quot;Invalid palette type '%s'. Did you mean '%s'?&quot;, arg, suggestion);
+438     } else {
+439       safe_snprintf(msg, sizeof(msg),
+440                     &quot;Invalid palette type '%s'. Valid values: standard, blocks, digital, minimal, cool, custom&quot;, arg);
+441     }
+442     *error_msg = platform_strdup(msg);
+443   }
+444   return false;
+445 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_suggest_enum_value()</b>,
+    <b>error_msg</b>, <b>OPT_PALETTE_BLOCKS</b>, <b>OPT_PALETTE_COOL</b>,
+    <b>OPT_PALETTE_CUSTOM</b>, <b>OPT_PALETTE_DIGITAL</b>,
+    <b>OPT_PALETTE_MINIMAL</b>, <b>OPT_PALETTE_STANDARD</b>,
+    <b>PALETTE_BLOCKS</b>, <b>PALETTE_COOL</b>, <b>PALETTE_CUSTOM</b>,
+    <b>PALETTE_DIGITAL</b>, <b>PALETTE_MINIMAL</b>, <b>PALETTE_STANDARD</b>,
+    <b>platform_strdup()</b>, and <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>set_palette()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> parse_port_option (const char * arg, void * dest,
+  char ** error_msg)</h2>
+<p class="Pp">Parse and validate port option for CLI.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>arg</i> Port string to parse
+<br/>
+<i>dest</i> Destination pointer (int* for port storage)
+<br/>
+<i></i><b>error_msg</b><i></i><b> Error message output (set on failure, caller
+  must free)</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true on success, false on error</div>
+<p class="Pp">Validates port is a number in the range 1-65535.</p>
+<p class="Pp">Definition at line <b>511</b> of file <b>parsers.c</b>.</p>
+<pre>511                                                                       {
+512   if (!arg || !dest) {
+513     if (error_msg) {
+514       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
+515     }
+516     return false;
+517   }
+518 
+519   int *port_value = (int *)dest;
+520   uint16_t port_num;
+521 
+522   // Use the existing parse_port function for validation
+523   asciichat_error_t err = parse_port(arg, &amp;port_num);
+524   if (err != ASCIICHAT_OK) {
+525     if (error_msg) {
+526       char msg[256];
+527       safe_snprintf(msg, sizeof(msg), &quot;Invalid port '%s'. Port must be a number between 0 and 65535 (0 = auto-assign).&quot;,
+528                     arg);
+529       *error_msg = platform_strdup(msg);
+530     }
+531     return false;
+532   }
+533 
+534   *port_value = (int)port_num;
+535   return true;
+536 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>error_msg</b>,
+    <b>parse_port()</b>, <b>platform_strdup()</b>, and
+  <b>safe_snprintf()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> parse_render_mode (const char * arg, void * dest,
+  char ** error_msg)</h2>
+<p class="Pp">Parse render mode option.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>arg</i> String argument (e.g., &quot;foreground&quot;,
+  &quot;background&quot;, &quot;half-block&quot;)
+<br/>
+<i>dest</i> Destination pointer (render_mode_t*)
+<br/>
+<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
+  failure)</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true on success, false on error</div>
+<p class="Pp">Valid values:</p>
+<ul class="Bl-bullet">
+  <li>&quot;foreground&quot;, &quot;fg&quot;, &quot;0&quot; - Foreground mode
+      (RENDER_MODE_FOREGROUND)</li>
+  <li>&quot;background&quot;, &quot;bg&quot;, &quot;1&quot; - Background mode
+      (RENDER_MODE_BACKGROUND)</li>
+  <li>&quot;half-block&quot;, &quot;half&quot;, &quot;hb&quot;, &quot;2&quot; -
+      Half-block mode (RENDER_MODE_HALF_BLOCK)</li>
+</ul>
+<p class="Pp">Definition at line <b>300</b> of file <b>parsers.c</b>.</p>
+<pre>300                                                                       {
+301   if (!arg || !dest) {
+302     if (error_msg) {
+303       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
+304     }
+305     return false;
+306   }
+307 
+308   render_mode_t *render_mode = (render_mode_t *)dest;
+309   char lower[32];
+310   to_lower(arg, lower, sizeof(lower));
+311 
+312   // Foreground mode
+313   if (strcmp(lower, OPT_RENDER_MODE_FOREGROUND) == 0 || strcmp(lower, OPT_RENDER_MODE_FG) == 0 || strcmp(lower, &quot;0&quot;) == 0) {
+314     *render_mode = RENDER_MODE_FOREGROUND;
+315     return true;
+316   }
+317 
+318   // Background mode
+319   if (strcmp(lower, OPT_RENDER_MODE_BACKGROUND) == 0 || strcmp(lower, OPT_RENDER_MODE_BG) == 0 || strcmp(lower, &quot;1&quot;) == 0) {
+320     *render_mode = RENDER_MODE_BACKGROUND;
+321     return true;
+322   }
+323 
+324   // Half-block mode
+325   if (strcmp(lower, OPT_RENDER_MODE_HALF_BLOCK) == 0 || strcmp(lower, &quot;hb&quot;) == 0 || strcmp(lower, &quot;2&quot;) == 0) {
+326     *render_mode = RENDER_MODE_HALF_BLOCK;
+327     return true;
+328   }
+329 
+330   // Invalid value - suggest closest match
+331   if (error_msg) {
+332     char msg[256];
+333     const char *suggestion = asciichat_suggest_enum_value(&quot;render-mode&quot;, arg);
+334     if (suggestion) {
+335       safe_snprintf(msg, sizeof(msg), &quot;Invalid render mode '%s'. Did you mean '%s'?&quot;, arg, suggestion);
+336     } else {
+337       safe_snprintf(msg, sizeof(msg), &quot;Invalid render mode '%s'. Valid values: foreground, background, half-block&quot;,
+338                     arg);
+339     }
+340     *error_msg = platform_strdup(msg);
+341   }
+342   return false;
+343 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_suggest_enum_value()</b>,
+    <b>error_msg</b>, <b>OPT_RENDER_MODE_BACKGROUND</b>,
+    <b>OPT_RENDER_MODE_BG</b>, <b>OPT_RENDER_MODE_FG</b>,
+    <b>OPT_RENDER_MODE_FOREGROUND</b>, <b>OPT_RENDER_MODE_HALF_BLOCK</b>,
+    <b>platform_strdup()</b>, <b>RENDER_MODE_BACKGROUND</b>,
+    <b>RENDER_MODE_FOREGROUND</b>, <b>RENDER_MODE_HALF_BLOCK</b>, and
+    <b>safe_snprintf()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> parse_render_theme (const char * arg, void * dest,
+  char ** error_msg)</h2>
+<p class="Pp">Parse render theme option for pixel rendering (macOS and Linux
+    only).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>arg</i> String argument (e.g., &quot;dark&quot;,
+  &quot;light&quot;, &quot;auto&quot;)
+<br/>
+<i>dest</i> Destination pointer (int*, will store <b>term_renderer_theme_t</b>
+  value)
+<br/>
+<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
+  failure)</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true on success, false on error</div>
+<p class="Pp">Controls the rendering theme when using pixel output (ghostty
+    renderer). The theme determines color palette for ANSI text rendering.</p>
+<p class="Pp"></p>
+<p class="Pp">Valid values:</p>
+<ul class="Bl-bullet">
+  <li>&quot;dark&quot;, &quot;0&quot; - Dark theme: dark background, light text
+      (TERM_RENDERER_THEME_DARK)</li>
+  <li>&quot;light&quot;, &quot;1&quot; - Light theme: light background, dark
+      text (TERM_RENDERER_THEME_LIGHT)</li>
+  <li>&quot;auto&quot;, &quot;2&quot; - Auto-detect theme from terminal
+      (TERM_RENDERER_THEME_AUTO, default)</li>
+</ul>
+<p class="Pp">Definition at line <b>345</b> of file <b>parsers.c</b>.</p>
+<pre>345                                                                        {
+346   if (!arg || !dest) {
+347     if (error_msg) {
+348       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
+349     }
+350     return false;
+351   }
+352 
+353   int *theme = (int *)dest;
+354   char lower[32];
+355   to_lower(arg, lower, sizeof(lower));
+356 
+357   // Dark theme
+358   if (strcmp(lower, &quot;dark&quot;) == 0 || strcmp(lower, &quot;0&quot;) == 0) {
+359     *theme = 0; // TERM_RENDERER_THEME_DARK
+360     return true;
+361   }
+362 
+363   // Light theme
+364   if (strcmp(lower, &quot;light&quot;) == 0 || strcmp(lower, &quot;1&quot;) == 0) {
+365     *theme = 1; // TERM_RENDERER_THEME_LIGHT
+366     return true;
+367   }
+368 
+369   // Auto theme
+370   if (strcmp(lower, &quot;auto&quot;) == 0 || strcmp(lower, &quot;2&quot;) == 0) {
+371     *theme = 2; // TERM_RENDERER_THEME_AUTO
+372     return true;
+373   }
+374 
+375   // Invalid value
+376   if (error_msg) {
+377     char msg[256];
+378     safe_snprintf(msg, sizeof(msg), &quot;Invalid render theme '%s'. Valid values: dark, light, auto&quot;, arg);
+379     *error_msg = platform_strdup(msg);
+380   }
+381   return false;
+382 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>error_msg</b>, <b>platform_strdup()</b>, and
+    <b>safe_snprintf()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_parse_server_bind_address_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)"><a class="permalink" href="#int_parse_server_bind_address_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)">int
+  parse_server_bind_address (const char * arg, void * config, char ** remaining,
+  int num_remaining, char ** error_msg)</a></h2>
+<p class="Pp">Parse server bind address positional argument.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>arg</i> Current bind address argument
+<br/>
+<i></i><b>Config Module</b><i></i><b> Pointer to options struct (must contain
+  address/address6 fields)</b>
+<br/>
+<i>remaining</i> Remaining positional args (for multi-arg parsing)
+<br/>
+<i>num_remaining</i> Count of remaining args
+<br/>
+<i></i><b>error_msg</b><i></i><b> Error message output (set on
+  failure)</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of args consumed (0-2), or -1 on error</div>
+<p class="Pp">Server bind address parsing rules:</p>
+<ul class="Bl-bullet">
+  <li>0 args total: Uses defaults (127.0.0.1 + ::1 for dual-stack
+    localhost)</li>
+  <li>1 arg: Single IPv4 OR IPv6 bind address</li>
+  <li>2 args: One IPv4 AND one IPv6 bind address (order-independent)</li>
+  <li>Cannot specify multiple addresses of the same type</li>
+  <li>IPv6 addresses can be wrapped in brackets (e.g., [::1])</li>
+</ul>
+<p class="Pp">This parser can consume 0-2 arguments depending on what's
+    provided. It tracks internal state to ensure only one IPv4 and one IPv6 are
+    specified.</p>
+<p class="Pp"></p>
+<p class="Pp">Example usage with <b>options_builder_add_positional()</b>:</p>
+<p class="Pp"></p>
+<pre>options_builder_add_positional(
+<br/>
+    builder,
+<br/>
+    &quot;bind-address&quot;,
+<br/>
+    &quot;IPv4 or IPv6 bind address (can specify 0-2 addresses)&quot;,
+<br/>
+    false,  // Not required (defaults to localhost)
+<br/>
+    parse_server_bind_address
+);
+</pre>
+<p class="Pp">Implements the server bind address parsing logic from server.c.
+    Can consume 1 argument per call, handling IPv4 or IPv6 bind addresses. The
+    positional arg system will call this multiple times for multiple args.</p>
+<p class="Pp">Definition at line <b>552</b> of file <b>parsers.c</b>.</p>
+<pre>552                                                                                                                     {
+553   if (!arg || !config) {
+554     if (error_msg) {
+555       *error_msg = platform_strdup(&quot;Internal error: NULL argument or config&quot;);
+556     }
+557     return -1;
+558   }
+559 
+560   // Assume config struct has address and address6 fields (OPTIONS_BUFF_SIZE each)
+561   // This is a simplified version that assumes standard options_state layout
+562   char *address = (char *)config + offsetof(struct options_state, address);
+563   char *address6 = (char *)config + offsetof(struct options_state, address6);
+564 
+565   int consumed = 0;
+566 
+567   // Parse first argument (IPv4 or IPv6)
+568   char parsed_addr[OPTIONS_BUFF_SIZE];
+569   const char *addr_to_check = arg;
+570   if (parse_ipv6_address(arg, parsed_addr, sizeof(parsed_addr)) == 0) {
+571     addr_to_check = parsed_addr;
+572   }
+573 
+574   // Check if it's IPv4 or IPv6
+575   if (is_valid_ipv4(addr_to_check)) {
+576     // Check if we already have a non-default IPv4 address
+577     // Allow overwriting defaults (localhost, 0.0.0.0)
+578     if (address[0] != '\0' &amp;&amp; !is_localhost_ipv4(address) &amp;&amp; strcmp(address, &quot;localhost&quot;) != 0 &amp;&amp;
+579         strcmp(address, &quot;0.0.0.0&quot;) != 0) {
+580       if (error_msg) {
+581         char msg[256];
+582         safe_snprintf(msg, sizeof(msg),
+583                       &quot;Cannot specify multiple IPv4 addresses.\n&quot;
+584                       &quot;Already have: %s\n&quot;
+585                       &quot;Cannot add: %s&quot;,
+586                       address, addr_to_check);
+587         *error_msg = platform_strdup(msg);
+588       }
+589       return -1;
+590     }
+591     SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%s&quot;, addr_to_check);
+592     consumed = 1;
+593   } else if (is_valid_ipv6(addr_to_check)) {
+594     // Check if we already have a non-default IPv6 address
+595     // Allow overwriting default (::1)
+596     if (address6[0] != '\0' &amp;&amp; !is_localhost_ipv6(address6)) {
+597       if (error_msg) {
+598         char msg[256];
+599         safe_snprintf(msg, sizeof(msg),
+600                       &quot;Cannot specify multiple IPv6 addresses.\n&quot;
+601                       &quot;Already have: %s\n&quot;
+602                       &quot;Cannot add: %s&quot;,
+603                       address6, addr_to_check);
+604         *error_msg = platform_strdup(msg);
+605       }
+606       return -1;
+607     }
+608     SAFE_SNPRINTF(address6, OPTIONS_BUFF_SIZE, &quot;%s&quot;, addr_to_check);
+609     consumed = 1;
+610   } else {
+611     if (error_msg) {
+612       char msg[512];
+613       safe_snprintf(msg, sizeof(msg),
+614                     &quot;Invalid IP address '%s'.\n&quot;
+615                     &quot;Server bind addresses must be valid IPv4 or IPv6 addresses.\n&quot;
+616                     &quot;Examples:\n&quot;
+617                     &quot;  ascii-chat server 0.0.0.0\n&quot;
+618                     &quot;  ascii-chat server ::1\n&quot;
+619                     &quot;  ascii-chat server 0.0.0.0 ::1&quot;,
+620                     arg);
+621       *error_msg = platform_strdup(msg);
+622     }
+623     return -1;
+624   }
+625 
+626   // Try to parse second address if available
+627   if (remaining &amp;&amp; num_remaining &gt; 0 &amp;&amp; remaining[0]) {
+628     const char *second_arg = remaining[0];
+629     memset(parsed_addr, 0, sizeof(parsed_addr));
+630     addr_to_check = second_arg;
+631     if (parse_ipv6_address(second_arg, parsed_addr, sizeof(parsed_addr)) == 0) {
+632       addr_to_check = parsed_addr;
+633     }
+634 
+635     if (is_valid_ipv4(addr_to_check)) {
+636       // Second is IPv4
+637       if (address[0] != '\0' &amp;&amp; !is_localhost_ipv4(address) &amp;&amp; strcmp(address, &quot;localhost&quot;) != 0 &amp;&amp;
+638           strcmp(address, &quot;0.0.0.0&quot;) != 0) {
+639         // Already have an IPv4, can't add another
+640         return consumed;
+641       }
+642       if (is_valid_ipv4(arg)) {
+643         // First was also IPv4, can't have two IPv4s
+644         return consumed;
+645       }
+646       // First was IPv6, second is IPv4 - accept both
+647       SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%s&quot;, addr_to_check);
+648       consumed = 2;
+649     } else if (is_valid_ipv6(addr_to_check)) {
+650       // Second is IPv6
+651       if (address6[0] != '\0' &amp;&amp; !is_localhost_ipv6(address6)) {
+652         // Already have an IPv6, can't add another
+653         return consumed;
+654       }
+655       if (is_valid_ipv6(arg)) {
+656         // First was also IPv6, can't have two IPv6s
+657         return consumed;
+658       }
+659       // First was IPv4, second is IPv6 - accept both
+660       SAFE_SNPRINTF(address6, OPTIONS_BUFF_SIZE, &quot;%s&quot;, addr_to_check);
+661       consumed = 2;
+662     }
+663   }
+664 
+665   return consumed;
+666 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>error_msg</b>, <b>is_localhost_ipv4()</b>,
+    <b>is_localhost_ipv6()</b>, <b>is_valid_ipv4()</b>, <b>is_valid_ipv6()</b>,
+    <b>OPTIONS_BUFF_SIZE</b>, <b>parse_ipv6_address()</b>,
+    <b>platform_strdup()</b>, <b>SAFE_SNPRINTF</b>, and
+  <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> parse_timestamp (const char * arg, void * dest, char
+  ** error_msg)</h2>
+<p class="Pp">Custom parser for --timestamp flag. Allows --timestamp to work
+    both as a flag with an argument. Sets media_seek_timestamp to the provided
+    timestamp in seconds.</p>
+<p class="Pp"></p>
+<p class="Pp">Custom parser for --timestamp flag.</p>
+<p class="Pp"></p>
+<p class="Pp">Accepts both &quot;hh:mm:ss.ms&quot; format and plain seconds
+    format. Examples:</p>
+<ul class="Bl-bullet">
+  <li>&quot;30&quot; = 30 seconds</li>
+  <li>&quot;30.5&quot; = 30.5 seconds</li>
+  <li>&quot;1:30&quot; = 1 minute 30 seconds (90 seconds)</li>
+  <li>&quot;1:30.5&quot; = 1 minute 30.5 seconds (90.5 seconds)</li>
+  <li>&quot;0:1:30.5&quot; = 1 minute 30.5 seconds (90.5 seconds)</li>
+  <li>&quot;1:2:30.5&quot; = 1 hour 2 minutes 30.5 seconds (3750.5 seconds)</li>
+</ul>
+<p class="Pp">Definition at line <b>999</b> of file <b>parsers.c</b>.</p>
+<pre>999                                                                     {
+1000   if (!arg || arg[0] == '\0') {
+1001     if (error_msg) {
+1002       *error_msg = platform_strdup(&quot;--seek requires a timestamp argument&quot;);
+1003     }
+1004     return false;
+1005   }
+1006 
+1007   double *timestamp = (double *)dest;
+1008   char *endptr;
+1009   long strtol_result;
+1010 
+1011   // Count colons to determine format
+1012   int colon_count = 0;
+1013   for (const char *p = arg; *p; p++) {
+1014     if (*p == ':')
+1015       colon_count++;
+1016   }
+1017 
+1018   if (colon_count == 0) {
+1019     // Plain seconds format: &quot;30&quot; or &quot;30.5&quot;
+1020     *timestamp = strtod(arg, &amp;endptr);
+1021     if (*endptr != '\0' || *timestamp &lt; 0.0) {
+1022       if (error_msg) {
+1023         *error_msg = platform_strdup(&quot;Invalid timestamp: expected non-negative seconds&quot;);
+1024       }
+1025       return false;
+1026     }
+1027     return true;
+1028   } else if (colon_count == 1) {
+1029     // MM:SS or MM:SS.ms format
+1030     strtol_result = strtol(arg, &amp;endptr, 10);
+1031     if (*endptr != ':' || strtol_result &lt; 0) {
+1032       if (error_msg) {
+1033         *error_msg = platform_strdup(&quot;Invalid timestamp: expected MM:SS or MM:SS.ms format&quot;);
+1034       }
+1035       return false;
+1036     }
+1037     long minutes = strtol_result;
+1038     double seconds = strtod(endptr + 1, &amp;endptr);
+1039     if (*endptr != '\0' &amp;&amp; *endptr != '.' &amp;&amp; *endptr != '\0') {
+1040       if (error_msg) {
+1041         *error_msg = platform_strdup(&quot;Invalid timestamp: expected MM:SS or MM:SS.ms format&quot;);
+1042       }
+1043       return false;
+1044     }
+1045     *timestamp = minutes * 60.0 + seconds;
+1046     return true;
+1047   } else if (colon_count == 2) {
+1048     // HH:MM:SS or HH:MM:SS.ms format
+1049     strtol_result = strtol(arg, &amp;endptr, 10);
+1050     if (*endptr != ':' || strtol_result &lt; 0) {
+1051       if (error_msg) {
+1052         *error_msg = platform_strdup(&quot;Invalid timestamp: expected HH:MM:SS or HH:MM:SS.ms format&quot;);
+1053       }
+1054       return false;
+1055     }
+1056     long hours = strtol_result;
+1057 
+1058     strtol_result = strtol(endptr + 1, &amp;endptr, 10);
+1059     if (*endptr != ':' || strtol_result &lt; 0 || strtol_result &gt;= 60) {
+1060       if (error_msg) {
+1061         *error_msg = platform_strdup(&quot;Invalid timestamp: minutes must be 0-59&quot;);
+1062       }
+1063       return false;
+1064     }
+1065     long minutes = strtol_result;
+1066 
+1067     double seconds = strtod(endptr + 1, &amp;endptr);
+1068     if (*endptr != '\0') {
+1069       if (error_msg) {
+1070         *error_msg = platform_strdup(&quot;Invalid timestamp: expected HH:MM:SS or HH:MM:SS.ms format&quot;);
+1071       }
+1072       return false;
+1073     }
+1074     *timestamp = hours * (double)SEC_PER_HOUR + minutes * (double)SEC_PER_MIN + seconds;
+1075     return true;
+1076   } else {
+1077     if (error_msg) {
+1078       *error_msg = platform_strdup(&quot;Invalid timestamp format: too many colons&quot;);
+1079     }
+1080     return false;
+1081   }
+1082 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>error_msg</b>, <b>platform_strdup()</b>,
+    <b>SEC_PER_HOUR</b>, and <b>SEC_PER_MIN</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> parse_utf8_setting (const char * arg, void * dest,
+  char ** error_msg)</h2>
+<p class="Pp">Parse UTF-8 setting option (--utf8 flag).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>arg</i> String argument (e.g., &quot;auto&quot;,
+  &quot;true&quot;, &quot;false&quot;), or NULL/empty for default
+<br/>
+<i>dest</i> Destination pointer (int*, will store <b>utf8_setting_t</b> value)
+<br/>
+<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
+  failure)</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true on success, false on error</div>
+<p class="Pp">Valid values:</p>
+<ul class="Bl-bullet">
+  <li>&quot;auto&quot;, &quot;a&quot;, &quot;0&quot; - Smart detection
+      (UTF8_SETTING_AUTO, default)</li>
+  <li>&quot;true&quot;, &quot;yes&quot;, &quot;1&quot;, &quot;on&quot; - Force
+      UTF-8 ON (UTF8_SETTING_TRUE)</li>
+  <li>&quot;false&quot;, &quot;no&quot;, &quot;-1&quot;, &quot;off&quot; - Force
+      UTF-8 OFF (UTF8_SETTING_FALSE)</li>
+</ul>
+<p class="Pp">When no argument is provided (--utf8 with no value), defaults to
+    UTF8_SETTING_TRUE. This controls whether UTF-8 is auto-detected
+    (&quot;auto&quot;), always on (&quot;true&quot;), or always off
+    (&quot;false&quot;) regardless of terminal capability detection.</p>
+<p class="Pp">Definition at line <b>192</b> of file <b>parsers.c</b>.</p>
+<pre>192                                                                        {
+193   if (!dest) {
+194     if (error_msg) {
+195       *error_msg = platform_strdup(&quot;Internal error: NULL destination&quot;);
+196     }
+197     return false;
+198   }
+199 
+200   // Use generic parser with UTF-8 setting lookup table
+201   // Default to TRUE if no arg provided
+202   if (!arg || arg[0] == '\0') {
+203     int *utf8_setting = (int *)dest;
+204     *utf8_setting = UTF8_SETTING_TRUE;
+205     return true;
+206   }
+207 
+208   return parse_setting_generic(arg, dest, g_utf8_setting_map, error_msg);
+209 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>error_msg</b>, <b>platform_strdup()</b>, and
+    <b>UTF8_SETTING_TRUE</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> parse_verbose_flag (const char * arg, void * dest,
+  char ** error_msg)</h2>
+<p class="Pp">Custom parser for --verbose flag. Allows --verbose to work both as
+    a flag (without argument) and with an optional count argument. Increments
+    verbose_level each time called.</p>
+<p class="Pp">Definition at line <b>961</b> of file <b>parsers.c</b>.</p>
+<pre>961                                                                        {
+962   (void)error_msg; // Unused but required by function signature
+963 
+964   // If arg is NULL or starts with a flag, just increment
+965   // Otherwise try to parse as integer count
+966   unsigned short int *verbose_level = (unsigned short int *)dest;
+967 
+968   if (!arg || arg[0] == '\0') {
+969     // No argument provided, just increment
+970     (*verbose_level)++;
+971     return true;
+972   }
+973 
+974   // Try to parse as integer count
+975   char *endptr;
+976   long value = strtol(arg, &amp;endptr, 10);
+977   if (*endptr == '\0' &amp;&amp; value &gt;= 0 &amp;&amp; value &lt;= 100) {
+978     *verbose_level = (unsigned short int)value;
+979     return true;
+980   }
+981 
+982   // If it didn't parse as int, treat as flag increment
+983   (*verbose_level)++;
+984   return true;
+985 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>error_msg</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> parse_volume (const char * arg, void * dest, char **
+  error_msg)</h2>
+<p class="Pp">Custom parser for volume options (--volume, --speakers-volume,
+    --microphone-volume). Validates that the volume is a float value between 0.0
+    and 1.0. Sets the destination float to the parsed volume value.</p>
+<p class="Pp">Definition at line <b>1084</b> of file <b>parsers.c</b>.</p>
+<pre>1084                                                                  {
+1085   if (!arg || !dest) {
+1086     if (error_msg) {
+1087       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
+1088     }
+1089     return false;
+1090   }
+1091 
+1092   float *volume = (float *)dest;
+1093   char *endptr;
+1094   float val = strtof(arg, &amp;endptr);
+1095 
+1096   if (*endptr != '\0' || arg == endptr) {
+1097     if (error_msg) {
+1098       *error_msg = platform_strdup(&quot;Invalid volume value. Must be a number between 0.0 and 1.0&quot;);
+1099     }
+1100     return false;
+1101   }
+1102 
+1103   if (val &lt; 0.0f || val &gt; 1.0f) {
+1104     if (error_msg) {
+1105       char buf[256];
+1106       SAFE_SNPRINTF(buf, sizeof(buf), &quot;Volume must be between 0.0 and 1.0 (got %.2f)&quot;, val);
+1107       *error_msg = platform_strdup(buf);
+1108     }
+1109     return false;
+1110   }
+1111 
+1112   *volume = val;
+1113   return true;
+1114 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>error_msg</b>, <b>platform_strdup()</b>, and
+    <b>SAFE_SNPRINTF</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

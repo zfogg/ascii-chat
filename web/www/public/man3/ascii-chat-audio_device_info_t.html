@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>audio_device_info_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">audio_device_info_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">audio_device_info_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">audio_device_info_t - Audio device information structure.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/audio/audio.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">int <b>index</b>
+  <br/>
+  PortAudio device index. char <b>name</b> [256]
+  <br/>
+  Human-readable device name. int <b>max_input_channels</b>
+  <br/>
+  Maximum input channels (0 if output only). int <b>max_output_channels</b>
+  <br/>
+  Maximum output channels (0 if input only). double <b>default_sample_rate</b>
+  <br/>
+  Default sample rate in Hz. <b>bool</b> <b>is_default_input</b>
+  <br/>
+  True if this is the default input device. <b>bool</b> <b>is_default_output</b>
+  <br/>
+  True if this is the default output device.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Audio device information structure.</p>
+<p class="Pp">Contains information about an audio device including its index,
+    name, and capabilities (input/output channel counts).</p>
+<p class="Pp">Definition at line <b>392</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="double_audio_device_info_t::default_sample_rate"><a class="permalink" href="#double_audio_device_info_t::default_sample_rate">double
+  audio_device_info_t::default_sample_rate</a></h2>
+<p class="Pp">Default sample rate in Hz.</p>
+<p class="Pp">Definition at line <b>397</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_audio_device_info_t::index"><a class="permalink" href="#int_audio_device_info_t::index">int
+  audio_device_info_t::index</a></h2>
+<p class="Pp">PortAudio device index.</p>
+<p class="Pp">Definition at line <b>393</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> audio_device_info_t::is_default_input</h2>
+<p class="Pp">True if this is the default input device.</p>
+<p class="Pp">Definition at line <b>398</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> audio_device_info_t::is_default_output</h2>
+<p class="Pp">True if this is the default output device.</p>
+<p class="Pp">Definition at line <b>399</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_audio_device_info_t::max_input_channels"><a class="permalink" href="#int_audio_device_info_t::max_input_channels">int
+  audio_device_info_t::max_input_channels</a></h2>
+<p class="Pp">Maximum input channels (0 if output only).</p>
+<p class="Pp">Definition at line <b>395</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_audio_device_info_t::max_output_channels"><a class="permalink" href="#int_audio_device_info_t::max_output_channels">int
+  audio_device_info_t::max_output_channels</a></h2>
+<p class="Pp">Maximum output channels (0 if input only).</p>
+<p class="Pp">Definition at line <b>396</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_audio_device_info_t::name_256_"><a class="permalink" href="#char_audio_device_info_t::name_256_">char
+  audio_device_info_t::name[256]</a></h2>
+<p class="Pp">Human-readable device name.</p>
+<p class="Pp">Definition at line <b>394</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

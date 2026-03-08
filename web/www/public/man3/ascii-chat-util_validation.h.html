@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>validation.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">validation.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">validation.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">validation.h - Common validation macros to reduce duplication in
+    protocol handlers.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>VALIDATE_NOTNULL_DATA</b>(client, data, packet_name)
+  <br/>
+  #define <b>VALIDATE_MIN_SIZE</b>(client, len, min_size, packet_name)
+  <br/>
+  #define <b>VALIDATE_EXACT_SIZE</b>(client, len, expected_size, packet_name)
+  <br/>
+  #define <b>VALIDATE_AUDIO_STREAM_ENABLED</b>(client, packet_name)
+  <br/>
+  #define <b>VALIDATE_AUDIO_SAMPLE_COUNT</b>(client, num_samples, max_samples,
+    packet_name)
+  <br/>
+  #define <b>VALIDATE_AUDIO_ALIGNMENT</b>(client, len, sample_size, packet_name)
+  <br/>
+  #define <b>VALIDATE_RESOURCE_INITIALIZED</b>(client, resource, resource_name)
+  <br/>
+  #define <b>VALIDATE_PACKET_SIZE</b>(client, data, len, expected_size,
+    packet_name)
+  <br/>
+  #define <b>VALIDATE_NONZERO</b>(client, value, value_name, packet_name)
+  <br/>
+  #define <b>VALIDATE_RANGE</b>(client, value, min_val, max_val, value_name,
+    packet_name)
+  <br/>
+  #define <b>VALIDATE_CAPABILITY_FLAGS</b>(client, flags, valid_mask,
+    packet_name)
+  <br/>
+  #define <b>VALIDATE_FLAGS_MASK</b>(client, flags, valid_mask, packet_name)
+  <br/>
+  #define <b>VALIDATE_PACKET_NOT_NULL</b>(client, data, packet_name)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>disconnect_client_for_bad_data</b> (<b>client_info_t</b>
+    *client, const char *format,...)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Common validation macros to reduce duplication in protocol
+    handlers.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>util/validation.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

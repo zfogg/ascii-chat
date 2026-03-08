@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>buffer_pool(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">buffer_pool(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">buffer_pool(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">buffer_pool - Unified buffer pool with lock-free fast path.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/buffer_pool.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>atomic_ptr_t</b> <b>free_list</b>
+  <br/>
+  Lock-free stack of available buffers (void* cast from buffer_node_t*).
+    <b>mutex_t</b> <b>shrink_mutex</b>
+  <br/>
+  Only used for shrinking. size_t <b>max_bytes</b>
+  <br/>
+  Maximum total bytes allowed. <b>uint64_t</b> <b>shrink_delay_ns</b>
+  <br/>
+  Time before unused buffers freed (nanoseconds).
+  <br/>
+</p>
+<p class="Pp"><b>Atomic counters @{</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>atomic_t</b> <b>current_bytes</b>
+  <br/>
+  Total bytes in pool (stored as <b>uint64_t</b>). <b>atomic_t</b>
+    <b>used_bytes</b>
+  <br/>
+  Bytes currently in use (stored as <b>uint64_t</b>). <b>atomic_t</b>
+    <b>peak_bytes</b>
+  <br/>
+  Peak bytes in use (stored as <b>uint64_t</b>). <b>atomic_t</b>
+    <b>peak_pool_bytes</b>
+  <br/>
+  Peak bytes in pool (stored as <b>uint64_t</b>). <b>atomic_t</b> <b>hits</b>
+  <br/>
+  Allocations from free list. <b>atomic_t</b> <b>allocs</b>
+  <br/>
+  New buffer allocations. <b>atomic_t</b> <b>returns</b>
+  <br/>
+  Buffers returned to free list. <b>atomic_t</b> <b>shrink_freed</b>
+  <br/>
+  Buffers freed by shrink. <b>atomic_t</b> <b>malloc_fallbacks</b>
+  <br/>
+  Allocations that bypassed pool.
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Unified buffer pool with lock-free fast path.</p>
+<p class="Pp">Definition at line <b>85</b> of file <b>buffer_pool.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> buffer_pool::allocs</h2>
+<p class="Pp">New buffer allocations.</p>
+<p class="Pp">Definition at line <b>99</b> of file <b>buffer_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> buffer_pool::current_bytes</h2>
+<p class="Pp">Total bytes in pool (stored as <b>uint64_t</b>).</p>
+<p class="Pp">Definition at line <b>93</b> of file <b>buffer_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_ptr_t</b> buffer_pool::free_list</h2>
+<p class="Pp">Lock-free stack of available buffers (void* cast from
+    buffer_node_t*).</p>
+<p class="Pp">Definition at line <b>86</b> of file <b>buffer_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> buffer_pool::hits</h2>
+<p class="Pp">Allocations from free list.</p>
+<p class="Pp">Definition at line <b>98</b> of file <b>buffer_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> buffer_pool::malloc_fallbacks</h2>
+<p class="Pp">Allocations that bypassed pool.</p>
+<p class="Pp">Definition at line <b>102</b> of file <b>buffer_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_buffer_pool::max_bytes"><a class="permalink" href="#size_t_buffer_pool::max_bytes">size_t
+  buffer_pool::max_bytes</a></h2>
+<p class="Pp">Maximum total bytes allowed.</p>
+<p class="Pp">Definition at line <b>89</b> of file <b>buffer_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> buffer_pool::peak_bytes</h2>
+<p class="Pp">Peak bytes in use (stored as <b>uint64_t</b>).</p>
+<p class="Pp">Definition at line <b>95</b> of file <b>buffer_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> buffer_pool::peak_pool_bytes</h2>
+<p class="Pp">Peak bytes in pool (stored as <b>uint64_t</b>).</p>
+<p class="Pp">Definition at line <b>96</b> of file <b>buffer_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> buffer_pool::returns</h2>
+<p class="Pp">Buffers returned to free list.</p>
+<p class="Pp">Definition at line <b>100</b> of file <b>buffer_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> buffer_pool::shrink_delay_ns</h2>
+<p class="Pp">Time before unused buffers freed (nanoseconds).</p>
+<p class="Pp">Definition at line <b>90</b> of file <b>buffer_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> buffer_pool::shrink_freed</h2>
+<p class="Pp">Buffers freed by shrink.</p>
+<p class="Pp">Definition at line <b>101</b> of file <b>buffer_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>mutex_t</b> buffer_pool::shrink_mutex</h2>
+<p class="Pp">Only used for shrinking.</p>
+<p class="Pp">Definition at line <b>87</b> of file <b>buffer_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> buffer_pool::used_bytes</h2>
+<p class="Pp">Bytes currently in use (stored as <b>uint64_t</b>).</p>
+<p class="Pp">Definition at line <b>94</b> of file <b>buffer_pool.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

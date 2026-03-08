@@ -77,9 +77,11 @@
 <br/>
 <p class="Pp">void <b>free_ta_contents</b> (br_x509_trust_anchor *ta)
   <br/>
-  size_t <b>read_trust_anchors_from_memory</b> (anchor_list *dst, const unsigned
-    char *pem_data, size_t pem_len)
+  Free the contents of a trust anchor. size_t
+    <b>read_trust_anchors_from_memory</b> (<b>anchor_list</b> *dst, const
+    unsigned char *pem_data, size_t pem_len)
   <br/>
+  Read trust anchors from PEM-encoded data in memory.
   <br/>
 </p>
 </section>
@@ -281,82 +283,13 @@
 </section>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_free_ta_contents_(br_x509_trust_anchor_*_ta)"><a class="permalink" href="#void_free_ta_contents_(br_x509_trust_anchor_*_ta)">void
-  free_ta_contents (br_x509_trust_anchor * ta)</a></h2>
-<p class="Pp">Definition at line <b>428</b> of file <b>pem.c</b>.</p>
-<pre>428                                                 {
-429   if (!ta) {
-430     return;
-431   }
-432   xfree(ta-&gt;dn.data);
-433   switch (ta-&gt;pkey.key_type) {
-434   case BR_KEYTYPE_RSA:
-435     xfree((void *)ta-&gt;pkey.key.rsa.n);
-436     xfree((void *)ta-&gt;pkey.key.rsa.e);
-437     break;
-438   case BR_KEYTYPE_EC:
-439     xfree((void *)ta-&gt;pkey.key.ec.q);
-440     break;
-441   default:
-442     SET_ERRNO(ERROR_CRYPTO, &quot;Unknown public key type in CA&quot;);
-443     break;
-444   }
-445 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>https_get()</b>, and
-    <b>read_trust_anchors_from_memory()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_read_trust_anchors_from_memory_(anchor_list_*_dst,_const_unsigned_char_*_pem_data,_size_t_pem_len)"><a class="permalink" href="#size_t_read_trust_anchors_from_memory_(anchor_list_*_dst,_const_unsigned_char_*_pem_data,_size_t_pem_len)">size_t
-  read_trust_anchors_from_memory (anchor_list * dst, const unsigned char *
-  pem_data, size_t pem_len)</a></h2>
-<p class="Pp">Definition at line <b>449</b> of file <b>pem.c</b>.</p>
-<pre>449                                                                                                        {
-450   br_x509_certificate *xcs;
-451   anchor_list tas = VEC_INIT;
-452   size_t u, num;
-453 
-454   xcs = read_certificates_from_memory(pem_data, pem_len, &amp;num);
-455   if (xcs == NULL) {
-456     return 0;
-457   }
-458 
-459   for (u = 0; u &lt; num; u++) {
-460     br_x509_trust_anchor ta;
-461 
-462     if (certificate_to_trust_anchor_inner(&amp;ta, &amp;xcs[u]) != ASCIICHAT_OK) {
-463       VEC_CLEAREXT(tas, free_ta_contents);
-464       free_certificates(xcs, num);
-465       return 0;
-466     }
-467     VEC_ADD(tas, ta);
-468   }
-469 
-470   VEC_ADDMANY(*dst, &amp;VEC_ELT(tas, 0), num);
-471   VEC_CLEAR(tas);
-472   free_certificates(xcs, num);
-473   return num;
-474 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>free_ta_contents()</b>, <b>VEC_ADD</b>,
-    <b>VEC_ADDMANY</b>, <b>VEC_CLEAR</b>, <b>VEC_CLEAREXT</b>, <b>VEC_ELT</b>,
-    and <b>VEC_INIT</b>.</p>
-<p class="Pp">Referenced by <b>https_get()</b>.</p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

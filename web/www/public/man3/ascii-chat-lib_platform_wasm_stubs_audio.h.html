@@ -42,7 +42,7 @@
 <br/>
 <p class="Pp">struct <b>audio_batch_info_t</b>
   <br/>
-  struct <b>audio_frame_t</b>
+  Parsed audio batch packet header information. struct <b>audio_frame_t</b>
   <br/>
   <br/>
 </p>
@@ -50,13 +50,14 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>audio_parse_batch_header</b> (const void
-    *data, size_t len, <b>audio_batch_info_t</b> *out_batch)
+<p class="Pp"><b>asciichat_error_t</b> <b>audio_parse_batch_header</b> (const
+    void *data, size_t len, <b>audio_batch_info_t</b> *out_batch)
   <br/>
-  asciichat_error_t <b>audio_validate_batch_params</b> (const
+  <b>asciichat_error_t</b> <b>audio_validate_batch_params</b> (const
     <b>audio_batch_info_t</b> *batch)
   <br/>
-  <b>bool</b> <b>audio_is_supported_sample_rate</b> (uint32_t sample_rate)
+  <b>bool</b> <b>audio_is_supported_sample_rate</b> (<b>uint32_t</b>
+    sample_rate)
   <br/>
   <br/>
 </p>
@@ -77,7 +78,7 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> audio_is_supported_sample_rate (uint32_t
+<h2 class="Ss"><b>bool</b> audio_is_supported_sample_rate (<b>uint32_t</b>
   sample_rate)</h2>
 <p class="Pp">Definition at line <b>2074</b> of file
   <b>lib/audio/audio.c</b>.</p>
@@ -105,12 +106,10 @@
 2095 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>audio_validate_batch_params()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_audio_parse_batch_header_(const_void_*_data,_size_t_len,_"><a class="permalink" href="#asciichat_error_t_audio_parse_batch_header_(const_void_*_data,_size_t_len,_">asciichat_error_t
-  audio_parse_batch_header (const void * data, size_t len,
-  <b>audio_batch_info_t</b> * out_batch)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> audio_parse_batch_header (const void *
+  data, size_t len, <b>audio_batch_info_t</b> * out_batch)</h2>
 <p class="Pp">Definition at line <b>2008</b> of file
   <b>lib/audio/audio.c</b>.</p>
 <pre>2008                                                                                                         {
@@ -139,14 +138,10 @@
 2031 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>audio_batch_info_t::batch_count</b>,
-    <b>audio_batch_info_t::channels</b>, <b>audio_batch_info_t::sample_rate</b>,
-    and <b>audio_batch_info_t::total_samples</b>.</p>
-<p class="Pp">Referenced by <b>handle_audio_batch_packet()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_audio_validate_batch_params_(const_"><a class="permalink" href="#asciichat_error_t_audio_validate_batch_params_(const_">asciichat_error_t
-  audio_validate_batch_params (const <b>audio_batch_info_t</b> * batch)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> audio_validate_batch_params (const
+  <b>audio_batch_info_t</b> * batch)</h2>
 <p class="Pp">Definition at line <b>2033</b> of file
   <b>lib/audio/audio.c</b>.</p>
 <pre>2033                                                                                {
@@ -191,10 +186,6 @@
 2072 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>audio_is_supported_sample_rate()</b>,
-    <b>audio_batch_info_t::batch_count</b>, <b>audio_batch_info_t::channels</b>,
-    <b>audio_batch_info_t::sample_rate</b>, and
-    <b>audio_batch_info_t::total_samples</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -204,7 +195,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

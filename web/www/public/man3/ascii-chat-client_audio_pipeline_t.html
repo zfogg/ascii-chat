@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>client_audio_pipeline_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">client_audio_pipeline_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">client_audio_pipeline_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">client_audio_pipeline_t - Client audio pipeline state.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/audio/client_pipeline.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>client_audio_pipeline_flags_t</b> <b>flags</b>
+  <br/>
+  void * <b>echo_canceller</b>
+  <br/>
+  <b>SpeexPreprocessState</b> * <b>preprocess</b>
+  <br/>
+  <b>JitterBuffer</b> * <b>jitter</b>
+  <br/>
+  <b>uint32_t</b> <b>jitter_timestamp</b>
+  <br/>
+  int <b>jitter_frame_span</b>
+  <br/>
+  <b>OpusEncoder</b> * <b>encoder</b>
+  <br/>
+  <b>OpusDecoder</b> * <b>decoder</b>
+  <br/>
+  <b>compressor_t</b> <b>compressor</b>
+  <br/>
+  <b>noise_gate_t</b> <b>noise_gate</b>
+  <br/>
+  <b>noise_gate_t</b> <b>playback_noise_gate</b>
+  <br/>
+  <b>highpass_filter_t</b> <b>highpass</b>
+  <br/>
+  <b>lowpass_filter_t</b> <b>lowpass</b>
+  <br/>
+  <b>client_audio_pipeline_config_t</b> <b>config</b>
+  <br/>
+  int <b>frame_size</b>
+  <br/>
+  int16_t * <b>work_i16</b>
+  <br/>
+  int16_t * <b>echo_i16</b>
+  <br/>
+  float * <b>work_float</b>
+  <br/>
+  <b>bool</b> <b>initialized</b>
+  <br/>
+  int <b>capture_fadein_remaining</b>
+  <br/>
+  void * <b>debug_wav_aec3_in</b>
+  <br/>
+  void * <b>debug_wav_aec3_out</b>
+  <br/>
+  void * <b>aec3_render_buffer</b>
+  <br/>
+  void * <b>aec3_capture_buffer</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Client audio pipeline state.</p>
+<p class="Pp">Owns all audio processing components and buffers. Created with
+    <b>client_audio_pipeline_create()</b>, destroyed with _destroy().</p>
+<p class="Pp">Definition at line <b>229</b> of file
+  <b>client_pipeline.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void*_client_audio_pipeline_t::aec3_capture_buffer"><a class="permalink" href="#void*_client_audio_pipeline_t::aec3_capture_buffer">void*
+  client_audio_pipeline_t::aec3_capture_buffer</a></h2>
+<p class="Pp">Definition at line <b>291</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>,
+    <b>client_audio_pipeline_destroy()</b>, and
+    <b>client_audio_pipeline_process_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_client_audio_pipeline_t::aec3_render_buffer"><a class="permalink" href="#void*_client_audio_pipeline_t::aec3_render_buffer">void*
+  client_audio_pipeline_t::aec3_render_buffer</a></h2>
+<p class="Pp">Persistent AudioBuffer instances for AEC3 (opaque C++ objects)
+    Note: AudioBuffer has internal filterbank state that must persist across
+    frames. Creating new buffers each frame causes discontinuities
+    (static/buzzing).</p>
+<p class="Pp">Definition at line <b>290</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>,
+    <b>client_audio_pipeline_destroy()</b>, and
+    <b>client_audio_pipeline_process_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_client_audio_pipeline_t::capture_fadein_remaining"><a class="permalink" href="#int_client_audio_pipeline_t::capture_fadein_remaining">int
+  client_audio_pipeline_t::capture_fadein_remaining</a></h2>
+<p class="Pp">Startup fade-in to prevent initial click (samples remaining)</p>
+<p class="Pp">Definition at line <b>280</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>, and
+    <b>client_audio_pipeline_process_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>compressor_t</b> client_audio_pipeline_t::compressor</h2>
+<p class="Pp">Dynamic range compressor</p>
+<p class="Pp">Definition at line <b>251</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>, and
+    <b>client_audio_pipeline_process_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>client_audio_pipeline_config_t</b>
+  client_audio_pipeline_t::config</h2>
+<p class="Pp">Configuration</p>
+<p class="Pp">Definition at line <b>262</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>,
+    <b>client_audio_pipeline_jitter_margin()</b>, and
+    <b>client_audio_pipeline_process_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_client_audio_pipeline_t::debug_wav_aec3_in"><a class="permalink" href="#void*_client_audio_pipeline_t::debug_wav_aec3_in">void*
+  client_audio_pipeline_t::debug_wav_aec3_in</a></h2>
+<p class="Pp">Debug WAV writers for AEC3 analysis</p>
+<p class="Pp">Definition at line <b>283</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>,
+    <b>client_audio_pipeline_destroy()</b>, and
+    <b>client_audio_pipeline_process_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_client_audio_pipeline_t::debug_wav_aec3_out"><a class="permalink" href="#void*_client_audio_pipeline_t::debug_wav_aec3_out">void*
+  client_audio_pipeline_t::debug_wav_aec3_out</a></h2>
+<p class="Pp">Definition at line <b>284</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>,
+    <b>client_audio_pipeline_destroy()</b>, and
+    <b>client_audio_pipeline_process_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>OpusDecoder</b>* client_audio_pipeline_t::decoder</h2>
+<p class="Pp">Opus decoder</p>
+<p class="Pp">Definition at line <b>248</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>,
+    <b>client_audio_pipeline_destroy()</b>, and
+    <b>client_audio_pipeline_playback()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_client_audio_pipeline_t::echo_canceller"><a class="permalink" href="#void*_client_audio_pipeline_t::echo_canceller">void*
+  client_audio_pipeline_t::echo_canceller</a></h2>
+<p class="Pp">WebRTC AEC3 echo cancellation (opaque pointer to
+    webrtc::EchoCanceller3)</p>
+<p class="Pp">Definition at line <b>234</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>,
+    <b>client_audio_pipeline_destroy()</b>, and
+    <b>client_audio_pipeline_process_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int16_t*_client_audio_pipeline_t::echo_i16"><a class="permalink" href="#int16_t*_client_audio_pipeline_t::echo_i16">int16_t*
+  client_audio_pipeline_t::echo_i16</a></h2>
+<p class="Pp">Work buffer for echo reference</p>
+<p class="Pp">Definition at line <b>270</b> of file
+  <b>client_pipeline.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>OpusEncoder</b>* client_audio_pipeline_t::encoder</h2>
+<p class="Pp">Opus encoder</p>
+<p class="Pp">Definition at line <b>246</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_capture()</b>,
+    <b>client_audio_pipeline_create()</b>, and
+    <b>client_audio_pipeline_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>client_audio_pipeline_flags_t</b>
+  client_audio_pipeline_t::flags</h2>
+<p class="Pp">Component enable flags</p>
+<p class="Pp">Definition at line <b>231</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>,
+    <b>client_audio_pipeline_get_flags()</b>,
+    <b>client_audio_pipeline_process_duplex()</b>, and
+    <b>client_audio_pipeline_set_flags()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_client_audio_pipeline_t::frame_size"><a class="permalink" href="#int_client_audio_pipeline_t::frame_size">int
+  client_audio_pipeline_t::frame_size</a></h2>
+<p class="Pp">Frame size in samples</p>
+<p class="Pp">Definition at line <b>265</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_capture()</b>, and
+    <b>client_audio_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>highpass_filter_t</b> client_audio_pipeline_t::highpass</h2>
+<p class="Pp">High-pass filter</p>
+<p class="Pp">Definition at line <b>257</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>, and
+    <b>client_audio_pipeline_process_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> client_audio_pipeline_t::initialized</h2>
+<p class="Pp">Initialization state</p>
+<p class="Pp">Definition at line <b>277</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>JitterBuffer</b>* client_audio_pipeline_t::jitter</h2>
+<p class="Pp">Speex jitter buffer for playback path</p>
+<p class="Pp">Definition at line <b>239</b> of file
+  <b>client_pipeline.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_client_audio_pipeline_t::jitter_frame_span"><a class="permalink" href="#int_client_audio_pipeline_t::jitter_frame_span">int
+  client_audio_pipeline_t::jitter_frame_span</a></h2>
+<p class="Pp">Frame span in timestamp units</p>
+<p class="Pp">Definition at line <b>243</b> of file
+  <b>client_pipeline.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> client_audio_pipeline_t::jitter_timestamp</h2>
+<p class="Pp">Jitter buffer timestamp counter</p>
+<p class="Pp">Definition at line <b>241</b> of file
+  <b>client_pipeline.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>lowpass_filter_t</b> client_audio_pipeline_t::lowpass</h2>
+<p class="Pp">Low-pass filter</p>
+<p class="Pp">Definition at line <b>259</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>, and
+    <b>client_audio_pipeline_process_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>noise_gate_t</b> client_audio_pipeline_t::noise_gate</h2>
+<p class="Pp">Noise gate for capture</p>
+<p class="Pp">Definition at line <b>253</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>, and
+    <b>client_audio_pipeline_process_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>noise_gate_t</b>
+  client_audio_pipeline_t::playback_noise_gate</h2>
+<p class="Pp">Noise gate for playback - cuts quiet received audio</p>
+<p class="Pp">Definition at line <b>255</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>, and
+    <b>client_audio_pipeline_playback()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>SpeexPreprocessState</b>*
+  client_audio_pipeline_t::preprocess</h2>
+<p class="Pp">Speex preprocessor state (noise/AGC/VAD)</p>
+<p class="Pp">Definition at line <b>236</b> of file
+  <b>client_pipeline.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float*_client_audio_pipeline_t::work_float"><a class="permalink" href="#float*_client_audio_pipeline_t::work_float">float*
+  client_audio_pipeline_t::work_float</a></h2>
+<p class="Pp">Work buffer for float processing</p>
+<p class="Pp">Definition at line <b>272</b> of file
+  <b>client_pipeline.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int16_t*_client_audio_pipeline_t::work_i16"><a class="permalink" href="#int16_t*_client_audio_pipeline_t::work_i16">int16_t*
+  client_audio_pipeline_t::work_i16</a></h2>
+<p class="Pp">Work buffer for int16 conversion (Speex uses int16)</p>
+<p class="Pp">Definition at line <b>268</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

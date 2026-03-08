@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>packet_parsing(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">packet_parsing(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">packet_parsing(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">packet_parsing - Shared Packet Parsing Utilities</p>
+<p class="Pp">
+  <br/>
+   - &#x1F4E1; Shared protocol parsing utilities for server and client packet
+    handlers</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>PACKET_MAX_FRAME_SIZE</b> (256 * 1024 * 1024)
+  <br/>
+  Maximum frame size (256MB) - prevents memory exhaustion attacks. #define
+    <b>PACKET_MAX_DIMENSION</b> 32768
+  <br/>
+  Maximum frame dimension (32768x32768) - prevents overflow.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Frame_Decoding_Functions"><a class="permalink" href="#Frame_Decoding_Functions">Frame
+  Decoding Functions</a></h2>
+<p class="Pp">Unified frame data decoding for both compressed and uncompressed
+    formats
+  <br/>
+  char * <b>packet_decode_frame_data_malloc</b> (const char *frame_data_ptr,
+    size_t frame_data_len, <b>bool</b> is_compressed, <b>uint32_t</b>
+    original_size, <b>uint32_t</b> compressed_size)
+  <br/>
+  Decode frame data (malloc version for client handlers).
+    <b>asciichat_error_t</b> <b>packet_decode_frame_data_buffer</b> (const char
+    *frame_data_ptr, size_t frame_data_len, <b>bool</b> is_compressed, void
+    *output_buffer, size_t output_size, <b>uint32_t</b> original_size,
+    <b>uint32_t</b> compressed_size)
+  <br/>
+  Decode frame data (fixed buffer version for server handlers).
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Frame_Dimension_Validation"><a class="permalink" href="#Frame_Dimension_Validation">Frame
+  Dimension Validation</a></h2>
+<p class="Pp">Validation helpers for frame dimensions with overflow checking
+  <br/>
+  <b>asciichat_error_t</b> <b>packet_validate_frame_dimensions</b>
+    (<b>uint32_t</b> width, <b>uint32_t</b> height, size_t *out_rgb_size)
+  <br/>
+  Validate frame dimensions and calculate RGB buffer size.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Opus_Audio_Batch_Parsing"><a class="permalink" href="#Opus_Audio_Batch_Parsing">Opus
+  Audio Batch Parsing</a></h2>
+<p class="Pp">Helpers for parsing Opus audio batch packets
+  <br/>
+  <b>asciichat_error_t</b> <b>packet_parse_opus_batch</b> (const void
+    *packet_data, size_t packet_len, const <b>uint8_t</b> **out_opus_data,
+    size_t *out_opus_size, const <b>uint16_t</b> **out_frame_sizes, int
+    *out_sample_rate, int *out_frame_duration, int *out_frame_count)
+  <br/>
+  Parse Opus audio batch packet header and extract frame data.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F4E1; Shared protocol parsing utilities for server and client
+    packet handlers</p>
+<p class="Pp">This module provides reusable utilities for parsing and validating
+    protocol packets, used by both server (<b>src/server/protocol.c</b>) and
+    client (<b>src/client/protocol.c</b>) handlers.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CORE_RESPONSIBILITIES:"><a class="permalink" href="#CORE_RESPONSIBILITIES:">CORE
+  RESPONSIBILITIES: </a></h1>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Frame data decoding (handles compressed and uncompressed formats)</dd>
+  <dt>2.</dt>
+  <dd>Network byte order conversions and validation</dd>
+  <dt>3.</dt>
+  <dd>Audio batch header parsing and validation</dd>
+  <dt>4.</dt>
+  <dd>Frame dimension validation with overflow checking</dd>
+  <dt>5.</dt>
+  <dd>Generic packet payload validation helpers</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="DESIGN_PRINCIPLES:"><a class="permalink" href="#DESIGN_PRINCIPLES:">DESIGN
+  PRINCIPLES: </a></h1>
+<ul class="Bl-bullet">
+  <li>Minimal dependencies on protocol-specific types</li>
+  <li>Clear error codes and messages</li>
+  <li>No assumptions about error handling (caller decides)</li>
+  <li>Support for both server and client usage patterns</li>
+  <li>Overflow-safe integer arithmetic throughout</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="USAGE_PATTERNS:"><a class="permalink" href="#USAGE_PATTERNS:">USAGE
+  PATTERNS: </a></h1>
+<p class="Pp">Server handlers use these for incoming client packets:</p>
+<p class="Pp"></p>
+<pre>// Decode compressed/uncompressed frame data
+frame_buffer_t *decoded = packet_decode_frame_data(
+<br/>
+    frame_data_ptr, frame_data_len, is_compressed,
+<br/>
+    expected_size, compressed_size);
+// Validate audio batch header
+audio_batch_info_t batch;
+result = packet_parse_audio_batch_header(data, len, &amp;batch);
+</pre>
+<p class="Pp">Client handlers use these for incoming server packets:</p>
+<p class="Pp"></p>
+<pre>// Same frame decoding for server-&gt;client frames
+char *decoded = packet_decode_frame_data_malloc(
+<br/>
+    frame_data, frame_data_len, is_compressed,
+<br/>
+    original_size, compressed_size);
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="INTEGRATION_POINTS:"><a class="permalink" href="#INTEGRATION_POINTS:">INTEGRATION
+  POINTS: </a></h1>
+<ul class="Bl-bullet">
+  <li><b>src/server/protocol.c</b>: IMAGE_FRAME, AUDIO_BATCH, AUDIO_OPUS_BATCH
+      packet handling</li>
+  <li><b>src/client/protocol.c</b>: ASCII_FRAME, AUDIO_BATCH, AUDIO_OPUS_BATCH
+      packet handling</li>
+  <li>lib/network/packet.h: Low-level packet structure definitions</li>
+  <li>lib/network/av.h: Audio/video packet serialization</li>
+  <li>lib/util/validation.h: High-level packet validation macros</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="OVERFLOW_SAFETY:"><a class="permalink" href="#OVERFLOW_SAFETY:">OVERFLOW
+  SAFETY: </a></h1>
+<p class="Pp">All integer calculations use <b>safe_size_mul()</b> and overflow
+    checking to prevent buffer overflows from malicious or malformed
+  packets.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">December 2025</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_PACKET_MAX_DIMENSION___32768"><a class="permalink" href="#_define_PACKET_MAX_DIMENSION___32768">#define
+  PACKET_MAX_DIMENSION 32768</a></h2>
+<p class="Pp">#include &lt;<b>lib/network/packet/parsing.c</b>&gt;<b></b></p>
+<p class="Pp">Maximum frame dimension (32768x32768) - prevents overflow.</p>
+<p class="Pp">Definition at line <b>31</b> of file
+    <b>network/packet/parsing.c</b>.</p>
+<p class="Pp">Referenced by <b>packet_validate_frame_dimensions()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_PACKET_MAX_FRAME_SIZE___(256_*_1024_*_1024)"><a class="permalink" href="#_define_PACKET_MAX_FRAME_SIZE___(256_*_1024_*_1024)">#define
+  PACKET_MAX_FRAME_SIZE (256 * 1024 * 1024)</a></h2>
+<p class="Pp">#include &lt;<b>lib/network/packet/parsing.c</b>&gt;<b></b></p>
+<p class="Pp">Maximum frame size (256MB) - prevents memory exhaustion
+  attacks.</p>
+<p class="Pp">Definition at line <b>25</b> of file
+    <b>network/packet/parsing.c</b>.</p>
+<p class="Pp">Referenced by <b>packet_decode_frame_data_malloc()</b>, and
+    <b>packet_validate_frame_dimensions()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> packet_decode_frame_data_buffer (const
+  char * frame_data_ptr, size_t frame_data_len, <b>bool</b> is_compressed, void
+  * output_buffer, size_t output_size, <b>uint32_t</b> original_size,
+  <b>uint32_t</b> compressed_size)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/parsing.h</b>&gt;<b></b></p>
+<p class="Pp">Decode frame data (fixed buffer version for server handlers).
+    Decodes frame data into a pre-allocated fixed-size buffer. Used when buffer
+    allocation is managed separately (e.g., ring buffers).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>frame_data_ptr</i> Pointer to frame data (compressed
+  or uncompressed)
+<br/>
+<i>frame_data_len</i> Actual size of frame_data_ptr buffer
+<br/>
+<i>is_compressed</i> True if data is zstd-compressed
+<br/>
+<i>output_buffer</i> Pre-allocated output buffer
+<br/>
+<i>output_size</i> Size of output_buffer in bytes
+<br/>
+<i>original_size</i> Expected decompressed/uncompressed size
+<br/>
+<i>compressed_size</i> Expected compressed size (if is_compressed=true)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure Errors set
+  asciichat_errno with context message</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Used by server handlers for client-&gt;server IMAGE_FRAME
+  packets</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>packet_decode_frame_data_malloc()</b> For malloc
+  version</div>
+<p class="Pp">Definition at line <b>89</b> of file
+    <b>network/packet/parsing.c</b>.</p>
+<pre>91                                                                             {
+92   if (!frame_data_ptr || !output_buffer) {
+93     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL pointer in frame decode&quot;);
+94   }
+95 
+96   if (output_size &lt; original_size) {
+97     return SET_ERRNO(ERROR_BUFFER_FULL, &quot;Output buffer too small: %zu &lt; %u&quot;, output_size, original_size);
+98   }
+99 
+100   if (is_compressed) {
+101     // Validate compressed frame size
+102     if (frame_data_len != compressed_size) {
+103       return SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Compressed frame size mismatch: expected %u, got %zu&quot;, compressed_size,
+104                        frame_data_len);
+105     }
+106 
+107     // Decompress using compression API
+108     asciichat_error_t decompress_result = decompress_data(frame_data_ptr, frame_data_len, output_buffer, original_size);
+109 
+110     if (decompress_result != ASCIICHAT_OK) {
+111       return SET_ERRNO(ERROR_COMPRESSION, &quot;Decompression failed for expected size %u: %s&quot;, original_size,
+112                        asciichat_error_string(decompress_result));
+113     }
+114 
+115     log_debug(&quot;Decompressed frame to buffer: %zu -&gt; %u bytes&quot;, frame_data_len, original_size);
+116   } else {
+117     // Uncompressed frame - validate size
+118     if (frame_data_len != original_size) {
+119       return SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Uncompressed frame size mismatch: expected %u, got %zu&quot;, original_size,
+120                        frame_data_len);
+121     }
+122 
+123     // Copy data to output buffer
+124     memcpy(output_buffer, frame_data_ptr, original_size);
+125   }
+126 
+127   return ASCIICHAT_OK;
+128 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>decompress_data()</b>,
+    <b>ERROR_BUFFER_FULL</b>, <b>ERROR_COMPRESSION</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK_SIZE</b>, <b>log_debug</b>, and
+    <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_packet_decode_frame_data_malloc_(const_char_*_frame_data_ptr,_size_t_frame_data_len,_"><a class="permalink" href="#char_*_packet_decode_frame_data_malloc_(const_char_*_frame_data_ptr,_size_t_frame_data_len,_">char
+  * packet_decode_frame_data_malloc (const char * frame_data_ptr, size_t
+  frame_data_len, <b>bool</b> is_compressed, <b>uint32_t</b> original_size,
+  <b>uint32_t</b> compressed_size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/parsing.h</b>&gt;<b></b></p>
+<p class="Pp">Decode frame data (malloc version for client handlers). Handles
+    both compressed (zstd) and uncompressed frame formats. Allocates buffer
+    using SAFE_MALLOC that caller must free. Validates sizes to prevent memory
+    exhaustion attacks.</p>
+<p class="Pp"></p>
+<p class="Pp">Frame formats supported:</p>
+<ul class="Bl-bullet">
+  <li>Uncompressed: Raw pixel/text data at expected_size bytes</li>
+  <li>Compressed: zstd-compressed data, decompresses to expected_size bytes</li>
+</ul>
+<p class="Pp">SIZE VALIDATION:</p>
+<ul class="Bl-bullet">
+  <li>Validates original_size &lt;= 100MB (prevents excessive allocation)</li>
+  <li>Validates expected_size == uncompressed size</li>
+  <li>Validates compressed_size &lt;= frame_data_len (if compressed)</li>
+</ul>
+<p class="Pp">ERROR HANDLING:</p>
+<ul class="Bl-bullet">
+  <li>Returns NULL on allocation failure</li>
+  <li>Returns NULL on decompression failure</li>
+  <li>Returns NULL on size validation failure</li>
+  <li>Sets asciichat_errno for detailed error reporting</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>frame_data_ptr</i> Pointer to frame data (compressed
+  or uncompressed)
+<br/>
+<i>frame_data_len</i> Actual size of frame_data_ptr buffer
+<br/>
+<i>is_compressed</i> True if data is zstd-compressed, false if raw
+<br/>
+<i>original_size</i> Expected decompressed/uncompressed size in bytes
+<br/>
+<i>compressed_size</i> Expected compressed size (validated only if
+  is_compressed=true)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Allocated buffer with decoded data (caller must
+  SAFE_FREE), or NULL on error</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller is responsible for freeing returned buffer with
+  <b>SAFE_FREE()</b>
+<p class="Pp"></p>
+<p class="Pp">Added null terminator to decoded data (buffer is original_size +
+    1)</p>
+<p class="Pp"></p>
+<p class="Pp">Used by client handlers for server-&gt;client frame packets</p>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>packet_decode_frame_data_buffer()</b> For fixed-size
+  buffer variant</div>
+<p class="Pp">Definition at line <b>33</b> of file
+    <b>network/packet/parsing.c</b>.</p>
+<pre>34                                                                                         {
+35   // Validate size before allocation to prevent excessive memory usage
+36   if (original_size &gt; PACKET_MAX_FRAME_SIZE) {
+37     char size_str[32];
+38     format_bytes_pretty(original_size, size_str, sizeof(size_str));
+39     SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Frame size exceeds maximum: %s (max %d MB)&quot;, size_str,
+40               PACKET_MAX_FRAME_SIZE / (1024 * 1024));
+41     return NULL;
+42   }
+43 
+44   // Allocate buffer with extra byte for null terminator
+45   char *frame_data = SAFE_MALLOC(original_size + 1, char *);
+46   if (!frame_data) {
+47     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate %u bytes for frame decode&quot;, original_size);
+48     return NULL;
+49   }
+50 
+51   if (is_compressed) {
+52     // Validate compressed frame size
+53     if (frame_data_len != compressed_size) {
+54       SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Compressed frame size mismatch: expected %u, got %zu&quot;, compressed_size,
+55                 frame_data_len);
+56       SAFE_FREE(frame_data);
+57       return NULL;
+58     }
+59 
+60     // Decompress using compression API
+61     asciichat_error_t decompress_result = decompress_data(frame_data_ptr, frame_data_len, frame_data, original_size);
+62 
+63     if (decompress_result != ASCIICHAT_OK) {
+64       SET_ERRNO(ERROR_COMPRESSION, &quot;Decompression failed for expected size %u: %s&quot;, original_size,
+65                 asciichat_error_string(decompress_result));
+66       SAFE_FREE(frame_data);
+67       return NULL;
+68     }
+69 
+70     log_debug(&quot;Decompressed frame: %zu -&gt; %u bytes&quot;, frame_data_len, original_size);
+71   } else {
+72     // Uncompressed frame - validate size
+73     if (frame_data_len != original_size) {
+74       log_error(&quot;Uncompressed frame size mismatch: expected %u, got %zu&quot;, original_size, frame_data_len);
+75       SAFE_FREE(frame_data);
+76       return NULL;
+77     }
+78 
+79     // Only copy the actual amount of data we received
+80     size_t copy_size = (frame_data_len &gt; original_size) ? original_size : frame_data_len;
+81     memcpy(frame_data, frame_data_ptr, copy_size);
+82   }
+83 
+84   // Null-terminate the frame data
+85   frame_data[original_size] = '\0';
+86   return frame_data;
+87 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>decompress_data()</b>,
+    <b>ERROR_COMPRESSION</b>, <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK_SIZE</b>,
+    <b>format_bytes_pretty()</b>, <b>log_debug</b>, <b>log_error</b>,
+    <b>PACKET_MAX_FRAME_SIZE</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and
+    <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> packet_parse_opus_batch (const void *
+  packet_data, size_t packet_len, const <b>uint8_t</b> ** out_opus_data, size_t
+  * out_opus_size, const <b>uint16_t</b> ** out_frame_sizes, int *
+  out_sample_rate, int * out_frame_duration, int * out_frame_count)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/parsing.h</b>&gt;<b></b></p>
+<p class="Pp">Parse Opus audio batch packet header and extract frame data.
+    Parses PACKET_TYPE_AUDIO_OPUS_BATCH packet and extracts metadata and Opus
+    data. The Opus data and frame_sizes pointers point into the packet_data
+    buffer (NOT copied), so packet_data must remain valid while using these
+    outputs.</p>
+<p class="Pp"></p>
+<p class="Pp">Packet format:</p>
+<ul class="Bl-bullet">
+  <li>Offset 0-3: sample_rate (<b>uint32_t</b>, network byte order)</li>
+  <li>Offset 4-7: frame_duration (<b>uint32_t</b>, network byte order)</li>
+  <li>Offset 8-11: frame_count (<b>uint32_t</b>, network byte order)</li>
+  <li>Offset 12-15: reserved (4 bytes, zeroed)</li>
+  <li>Offset 16+: frame_sizes array (<b>uint16_t</b>[], network byte order)</li>
+  <li>After sizes: Opus-encoded data (concatenated frames)</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>packet_data</i> Packet payload data
+<br/>
+<i>packet_len</i> Packet payload length
+<br/>
+<i>out_opus_data</i> Output: Pointer to Opus-encoded data within packet (NOT
+  copied)
+<br/>
+<i>out_opus_size</i> Output: Size of Opus-encoded data
+<br/>
+<i>out_frame_sizes</i> Output: Pointer to frame sizes array within packet (NOT
+  copied)
+<br/>
+<i>out_sample_rate</i> Output: Sample rate in Hz
+<br/>
+<i>out_frame_duration</i> Output: Frame duration in milliseconds
+<br/>
+<i>out_frame_count</i> Output: Number of frames in batch</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure:
+<ul class="Bl-bullet">
+  <li>ERROR_INVALID_PARAM: NULL pointers</li>
+  <li>ERROR_NETWORK_PROTOCOL: Packet too small or malformed</li>
+</ul>
+</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">out_opus_data and out_frame_sizes point into packet_data
+  - do not free separately
+<p class="Pp"></p>
+<p class="Pp">Frame sizes in out_frame_sizes are in NETWORK byte order - use
+    <b>NET_TO_HOST_U16()</b> when reading</p>
+</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">packet_data must remain valid while using out_opus_data
+  and out_frame_sizes</div>
+<p class="Pp">Definition at line <b>173</b> of file
+    <b>network/packet/parsing.c</b>.</p>
+<pre>175                                                                                          {
+176   if (!packet_data || !out_opus_data || !out_opus_size || !out_frame_sizes || !out_sample_rate || !out_frame_duration ||
+177       !out_frame_count) {
+178     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter in Opus batch parsing&quot;);
+179   }
+180 
+181   // Verify minimum packet size (16-byte header: sample_rate + frame_duration + frame_count + reserved)
+182   const size_t header_size = 16;
+183   if (packet_len &lt; header_size) {
+184     // DEBUG: Log first few bytes of corrupted packet to understand what's happening
+185     char hex_buf[256];
+186     size_t bytes_to_show = (packet_len &lt; 32) ? packet_len : 32;
+187     for (size_t i = 0; i &lt; bytes_to_show; i++) {
+188       snprintf(hex_buf + i * 2, 3, &quot;%02x&quot;, ((uint8_t *)packet_data)[i]);
+189     }
+190     hex_buf[bytes_to_show * 2] = '\0';
+191     log_error(&quot;&#x2605; OPUS_BATCH_RCV_DEBUG: packet_len=%zu, expected_min=%zu, first_bytes=%s&quot;, packet_len, header_size,
+192               hex_buf);
+193     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Opus batch packet too small: %zu &lt; %zu&quot;, packet_len, header_size);
+194   }
+195 
+196   // Parse header (convert from network byte order)
+197   const uint8_t *buf = (const uint8_t *)packet_data;
+198   uint32_t sr, fd, fc;
+199   memcpy(&amp;sr, buf, 4);
+200   memcpy(&amp;fd, buf + 4, 4);
+201   memcpy(&amp;fc, buf + 8, 4);
+202   *out_sample_rate = (int)NET_TO_HOST_U32(sr);
+203   *out_frame_duration = (int)NET_TO_HOST_U32(fd);
+204   int frame_count = (int)NET_TO_HOST_U32(fc);
+205   *out_frame_count = frame_count;
+206 
+207   // Validate frame count to prevent overflow
+208   if (frame_count &lt; 0 || frame_count &gt; 1000) {
+209     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid Opus frame count: %d (must be 0-1000)&quot;, frame_count);
+210   }
+211 
+212   // Extract frame sizes array (after 16-byte header)
+213   size_t frame_sizes_bytes = (size_t)frame_count * sizeof(uint16_t);
+214   if (packet_len &lt; header_size + frame_sizes_bytes) {
+215     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Opus batch packet too small for frame sizes: %zu &lt; %zu&quot;, packet_len,
+216                      header_size + frame_sizes_bytes);
+217   }
+218   // NOTE: Frame sizes are in network byte order - caller must use NET_TO_HOST_U16() when reading
+219   *out_frame_sizes = (const uint16_t *)(buf + header_size);
+220 
+221   // Extract Opus data (after header + frame sizes)
+222   *out_opus_data = buf + header_size + frame_sizes_bytes;
+223   *out_opus_size = packet_len - header_size - frame_sizes_bytes;
+224 
+225   return ASCIICHAT_OK;
+226 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_NETWORK_PROTOCOL</b>, <b>log_error</b>, <b>NET_TO_HOST_U32</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>handle_audio_opus_batch_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> packet_validate_frame_dimensions
+  (<b>uint32_t</b> width, <b>uint32_t</b> height, size_t * out_rgb_size)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/packet/parsing.h</b>&gt;<b></b></p>
+<p class="Pp">Validate frame dimensions and calculate RGB buffer size. Performs
+    comprehensive validation of frame dimensions:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Checks width and height are non-zero and reasonable (&lt; 32768)</dd>
+  <dt>2.</dt>
+  <dd>Calculates RGB buffer size (width * height * 3) with overflow
+    checking</dd>
+  <dt>3.</dt>
+  <dd>Validates result size doesn't exceed max image size (256MB)</dd>
+</dl>
+<p class="Pp">OVERFLOW PROTECTION:</p>
+<ul class="Bl-bullet">
+  <li>Uses <b>safe_size_mul()</b> for dimension multiplication</li>
+  <li>Checks for integer overflow at each step</li>
+  <li>Returns error instead of wrapping around</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>width</i> Frame width in pixels
+<br/>
+<i>height</i> Frame height in pixels
+<br/>
+<i>out_rgb_size</i> Output parameter: calculated RGB size (width*height*3)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure:
+<ul class="Bl-bullet">
+  <li>ERROR_INVALID_STATE: width or height is zero</li>
+  <li>ERROR_INVALID_STATE: dimensions exceed max (32768)</li>
+  <li>ERROR_MEMORY: Calculated size exceeds max (256MB)</li>
+  <li>ERROR_MEMORY: Integer overflow in multiplication</li>
+</ul>
+</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Critical for preventing integer overflow attacks
+<p class="Pp"></p>
+<p class="Pp">Used by both server and client frame handlers</p>
+</div>
+<p class="Pp">Definition at line <b>130</b> of file
+    <b>network/packet/parsing.c</b>.</p>
+<pre>130                                                                                                           {
+131   if (!out_rgb_size) {
+132     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_rgb_size pointer is NULL&quot;);
+133   }
+134 
+135   // Check dimensions are non-zero
+136   if (width == 0 || height == 0) {
+137     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Frame dimensions cannot be zero: %ux%u&quot;, width, height);
+138   }
+139 
+140   // Check dimensions are within reasonable bounds
+141   if (width &gt; PACKET_MAX_DIMENSION || height &gt; PACKET_MAX_DIMENSION) {
+142     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Frame dimensions exceed maximum: %ux%u (max %u)&quot;, width, height,
+143                      PACKET_MAX_DIMENSION);
+144   }
+145 
+146   // Calculate RGB buffer size with overflow checking (width * height * 3 bytes per pixel)
+147   size_t pixel_count = 0;
+148   if (safe_size_mul(width, height, &amp;pixel_count) != 0) {
+149     return SET_ERRNO(ERROR_MEMORY, &quot;Frame dimension multiplication overflow: %u * %u&quot;, width, height);
+150   }
+151 
+152   size_t rgb_size = 0;
+153   if (safe_size_mul(pixel_count, 3, &amp;rgb_size) != 0) {
+154     return SET_ERRNO(ERROR_MEMORY, &quot;RGB buffer size overflow: %zu * 3&quot;, pixel_count);
+155   }
+156 
+157   // Validate final buffer size against maximum
+158   if (rgb_size &gt; PACKET_MAX_FRAME_SIZE) {
+159     char size_str[32];
+160     format_bytes_pretty(rgb_size, size_str, sizeof(size_str));
+161     return SET_ERRNO(ERROR_MEMORY, &quot;Frame buffer size exceeds maximum: %s (max %d MB)&quot;, size_str,
+162                      PACKET_MAX_FRAME_SIZE / (1024 * 1024));
+163   }
+164 
+165   *out_rgb_size = rgb_size;
+166   return ASCIICHAT_OK;
+167 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
+    <b>format_bytes_pretty()</b>, <b>PACKET_MAX_DIMENSION</b>,
+    <b>PACKET_MAX_FRAME_SIZE</b>, <b>safe_size_mul</b>, and
+  <b>SET_ERRNO</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

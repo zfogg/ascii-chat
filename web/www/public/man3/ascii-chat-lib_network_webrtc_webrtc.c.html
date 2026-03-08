@@ -49,665 +49,81 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>webrtc_init</b> (void)
+<p class="Pp"><b>asciichat_error_t</b> <b>webrtc_init</b> (void)
   <br/>
-  void <b>webrtc_destroy</b> (void)
+  Initialize WebRTC library (libdatachannel). void <b>webrtc_destroy</b> (void)
   <br/>
-  asciichat_error_t <b>webrtc_create_peer_connection</b> (const webrtc_config_t
-    *config, webrtc_peer_connection_t **pc_out)
+  Cleanup WebRTC library resources. <b>asciichat_error_t</b>
+    <b>webrtc_create_peer_connection</b> (const <b>webrtc_config_t</b> *config,
+    <b>webrtc_peer_connection_t</b> **pc_out)
   <br/>
-  void <b>webrtc_close_peer_connection</b> (webrtc_peer_connection_t *pc)
+  Create a new WebRTC peer connection. void <b>webrtc_close_peer_connection</b>
+    (<b>webrtc_peer_connection_t</b> *pc)
   <br/>
-  webrtc_state_t <b>webrtc_get_state</b> (webrtc_peer_connection_t *pc)
+  Close and destroy a peer connection. <b>webrtc_state_t</b>
+    <b>webrtc_get_state</b> (<b>webrtc_peer_connection_t</b> *pc)
   <br/>
-  webrtc_gathering_state_t <b>webrtc_get_gathering_state</b>
-    (webrtc_peer_connection_t *pc)
+  Get current connection state. <b>webrtc_gathering_state_t</b>
+    <b>webrtc_get_gathering_state</b> (<b>webrtc_peer_connection_t</b> *pc)
   <br/>
-  <b>bool</b> <b>webrtc_is_gathering_timed_out</b> (webrtc_peer_connection_t
-    *pc, uint32_t timeout_ms)
+  Get current ICE gathering state. <b>bool</b>
+    <b>webrtc_is_gathering_timed_out</b> (<b>webrtc_peer_connection_t</b> *pc,
+    <b>uint32_t</b> timeout_ms)
   <br/>
-  void * <b>webrtc_get_user_data</b> (webrtc_peer_connection_t *pc)
+  Check if ICE gathering has timed out. void * <b>webrtc_get_user_data</b>
+    (<b>webrtc_peer_connection_t</b> *pc)
   <br/>
-  asciichat_error_t <b>webrtc_create_offer</b> (webrtc_peer_connection_t *pc)
+  Get user data pointer from connection. <b>asciichat_error_t</b>
+    <b>webrtc_create_offer</b> (<b>webrtc_peer_connection_t</b> *pc)
   <br/>
-  asciichat_error_t <b>webrtc_set_remote_description</b>
-    (webrtc_peer_connection_t *pc, const char *sdp, const char *type)
+  Create and set local SDP offer (for connection initiator).
+    <b>asciichat_error_t</b> <b>webrtc_set_remote_description</b>
+    (<b>webrtc_peer_connection_t</b> *pc, const char *sdp, const char *type)
   <br/>
-  asciichat_error_t <b>webrtc_add_remote_candidate</b> (webrtc_peer_connection_t
-    *pc, const char *candidate, const char *mid)
+  Set remote SDP offer/answer. <b>asciichat_error_t</b>
+    <b>webrtc_add_remote_candidate</b> (<b>webrtc_peer_connection_t</b> *pc,
+    const char *candidate, const char *mid)
   <br/>
-  asciichat_error_t <b>webrtc_create_datachannel</b> (webrtc_peer_connection_t
-    *pc, const char *label, webrtc_data_channel_t **dc_out)
+  Add remote ICE candidate. <b>asciichat_error_t</b>
+    <b>webrtc_create_datachannel</b> (<b>webrtc_peer_connection_t</b> *pc, const
+    char *label, <b>webrtc_data_channel_t</b> **dc_out)
   <br/>
-  asciichat_error_t <b>webrtc_datachannel_send</b> (webrtc_data_channel_t *dc,
-    const uint8_t *data, size_t size)
+  Create a DataChannel (for connection initiator). <b>asciichat_error_t</b>
+    <b>webrtc_datachannel_send</b> (<b>webrtc_data_channel_t</b> *dc, const
+    <b>uint8_t</b> *data, size_t size)
   <br/>
-  <b>bool</b> <b>webrtc_datachannel_is_open</b> (webrtc_data_channel_t *dc)
+  Send data over DataChannel. <b>bool</b> <b>webrtc_datachannel_is_open</b>
+    (<b>webrtc_data_channel_t</b> *dc)
   <br/>
-  void <b>webrtc_datachannel_set_open_state</b> (webrtc_data_channel_t *dc,
+  Check if DataChannel is open and ready. void
+    <b>webrtc_datachannel_set_open_state</b> (<b>webrtc_data_channel_t</b> *dc,
     <b>bool</b> is_open)
   <br/>
-  const char * <b>webrtc_datachannel_get_label</b> (webrtc_data_channel_t *dc)
+  Set DataChannel open state (internal use). const char *
+    <b>webrtc_datachannel_get_label</b> (<b>webrtc_data_channel_t</b> *dc)
   <br/>
-  void <b>webrtc_close_datachannel</b> (webrtc_data_channel_t *dc)
+  Get DataChannel label. void <b>webrtc_close_datachannel</b>
+    (<b>webrtc_data_channel_t</b> *dc)
   <br/>
-  asciichat_error_t <b>webrtc_datachannel_set_callbacks</b>
-    (webrtc_data_channel_t *dc, const webrtc_datachannel_callbacks_t *callbacks)
+  Close a DataChannel. <b>asciichat_error_t</b>
+    <b>webrtc_datachannel_set_callbacks</b> (<b>webrtc_data_channel_t</b> *dc,
+    const <b>webrtc_datachannel_callbacks_t</b> *callbacks)
   <br/>
-  void <b>webrtc_datachannel_destroy</b> (webrtc_data_channel_t *dc)
+  Set DataChannel callbacks. void <b>webrtc_datachannel_destroy</b>
+    (<b>webrtc_data_channel_t</b> *dc)
   <br/>
-  void <b>webrtc_peer_connection_close</b> (webrtc_peer_connection_t *pc)
+  Destroy a DataChannel and free resources. void
+    <b>webrtc_peer_connection_close</b> (<b>webrtc_peer_connection_t</b> *pc)
   <br/>
-  void <b>webrtc_peer_connection_destroy</b> (webrtc_peer_connection_t *pc)
+  Close a peer connection. void <b>webrtc_peer_connection_destroy</b>
+    (<b>webrtc_peer_connection_t</b> *pc)
   <br/>
-  int <b>webrtc_get_rtc_id</b> (webrtc_peer_connection_t *pc)
+  Destroy a peer connection and free resources. int <b>webrtc_get_rtc_id</b>
+    (<b>webrtc_peer_connection_t</b> *pc)
   <br/>
   Get the internal libdatachannel peer connection ID.
   <br/>
 </p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_webrtc_add_remote_candidate_(webrtc_peer_connection_t_*_pc,_const_char_*_candidate,_const_char_*_mid)"><a class="permalink" href="#asciichat_error_t_webrtc_add_remote_candidate_(webrtc_peer_connection_t_*_pc,_const_char_*_candidate,_const_char_*_mid)">asciichat_error_t
-  webrtc_add_remote_candidate (webrtc_peer_connection_t * pc, const char *
-  candidate, const char * mid)</a></h2>
-<p class="Pp">Definition at line <b>574</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>574                                                                                                                     {
-575   if (!pc || !candidate) {
-576     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
-577   }
-578 
-579   log_debug(&quot;  [4] Before libdatachannel - candidate: '%s' (len=%zu)&quot;, candidate, strlen(candidate));
-580   log_debug(&quot;  [4] Before libdatachannel - mid: '%s' (len=%zu)&quot;, mid ? mid : &quot;(null)&quot;, mid ? strlen(mid) : 0);
-581 
-582   int result = rtcAddRemoteCandidate(pc-&gt;rtc_id, candidate, mid);
-583   if (result != RTC_ERR_SUCCESS) {
-584     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to add remote ICE candidate (rtc error %d)&quot;, result);
-585   }
-586 
-587   log_debug(&quot;Added remote ICE candidate (pc_id=%d)&quot;, pc-&gt;rtc_id);
-588   return ASCIICHAT_OK;
-589 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>ice_add_remote_candidate()</b>, and
-    <b>webrtc_peer_manager_handle_ice()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webrtc_close_datachannel_(webrtc_data_channel_t_*_dc)"><a class="permalink" href="#void_webrtc_close_datachannel_(webrtc_data_channel_t_*_dc)">void
-  webrtc_close_datachannel (webrtc_data_channel_t * dc)</a></h2>
-<p class="Pp">Definition at line <b>699</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>699                                                          {
-700   if (!dc) {
-701     SET_ERRNO(ERROR_INVALID_PARAM, &quot;DataChannel is NULL&quot;);
-702     return;
-703   }
-704 
-705   // Save the ID before freeing (dc might be partially freed already)
-706   int dc_id = dc-&gt;rtc_id;
-707 
-708   rtcDeleteDataChannel(dc_id);
-709   log_debug(&quot;Closed DataChannel (dc_id=%d)&quot;, dc_id);
-710 
-711   SAFE_FREE(dc);
-712 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>webrtc_close_peer_connection()</b>, and
-    <b>webrtc_datachannel_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webrtc_close_peer_connection_(webrtc_peer_connection_t_*_pc)"><a class="permalink" href="#void_webrtc_close_peer_connection_(webrtc_peer_connection_t_*_pc)">void
-  webrtc_close_peer_connection (webrtc_peer_connection_t * pc)</a></h2>
-<p class="Pp">Definition at line <b>467</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>467                                                                 {
-468   if (!pc) {
-469     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid peer connection&quot;);
-470     return;
-471   }
-472 
-473   // Close data channel if exists
-474   if (pc-&gt;dc) {
-475     webrtc_close_datachannel(pc-&gt;dc);
-476     pc-&gt;dc = NULL;
-477   }
-478 
-479   // Close peer connection
-480   rtcDeletePeerConnection(pc-&gt;rtc_id);
-481   log_debug(&quot;Closed WebRTC peer connection (id=%d)&quot;, pc-&gt;rtc_id);
-482 
-483   SAFE_FREE(pc);
-484 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>webrtc_close_datachannel()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_webrtc_create_datachannel_(webrtc_peer_connection_t_*_pc,_const_char_*_label,_webrtc_data_channel_t_**_dc_out)"><a class="permalink" href="#asciichat_error_t_webrtc_create_datachannel_(webrtc_peer_connection_t_*_pc,_const_char_*_label,_webrtc_data_channel_t_**_dc_out)">asciichat_error_t
-  webrtc_create_datachannel (webrtc_peer_connection_t * pc, const char * label,
-  webrtc_data_channel_t ** dc_out)</a></h2>
-<p class="Pp">Definition at line <b>595</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>596                                                                             {
-597   if (!pc || !label || !dc_out) {
-598     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
-599   }
-600 
-601   // Create data channel
-602   int dc_id = rtcCreateDataChannel(pc-&gt;rtc_id, label);
-603   if (dc_id &lt; 0) {
-604     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create data channel (rtc error %d)&quot;, dc_id);
-605   }
-606 
-607   // Allocate wrapper
-608   webrtc_data_channel_t *dc = SAFE_MALLOC(sizeof(webrtc_data_channel_t), webrtc_data_channel_t *);
-609   if (!dc) {
-610     rtcDeleteDataChannel(dc_id);
-611     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate data channel wrapper&quot;);
-612   }
-613 
-614   dc-&gt;rtc_id = dc_id;
-615   dc-&gt;pc = pc;
-616   dc-&gt;is_open = false;
-617 
-618   // Set up callbacks
-619   rtcSetUserPointer(dc_id, dc);
-620   rtcSetOpenCallback(dc_id, on_datachannel_open_adapter);
-621   rtcSetMessageCallback(dc_id, on_datachannel_message_adapter);
-622   rtcSetErrorCallback(dc_id, on_datachannel_error_adapter);
-623 
-624   pc-&gt;dc = dc;
-625   *dc_out = dc;
-626 
-627   // Register data channel with debug naming system
-628   NAMED_REGISTER_DATACHANNEL(dc, label, NULL);
-629 
-630   log_debug(&quot;Created DataChannel '%s' (dc_id=%d, pc_id=%d)&quot;, label, dc_id, pc-&gt;rtc_id);
-631   return ASCIICHAT_OK;
-632 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_webrtc_create_offer_(webrtc_peer_connection_t_*_pc)"><a class="permalink" href="#asciichat_error_t_webrtc_create_offer_(webrtc_peer_connection_t_*_pc)">asciichat_error_t
-  webrtc_create_offer (webrtc_peer_connection_t * pc)</a></h2>
-<p class="Pp">Definition at line <b>541</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>541                                                                     {
-542   if (!pc) {
-543     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid peer connection&quot;);
-544   }
-545 
-546   // Set local description with NULL type to trigger offer generation
-547   int result = rtcSetLocalDescription(pc-&gt;rtc_id, NULL);
-548   if (result != RTC_ERR_SUCCESS) {
-549     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create SDP offer (rtc error %d)&quot;, result);
-550   }
-551 
-552   log_debug(&quot;Creating SDP offer (pc_id=%d)&quot;, pc-&gt;rtc_id);
-553   return ASCIICHAT_OK;
-554 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_webrtc_create_peer_connection_(const_webrtc_config_t_*_config,_webrtc_peer_connection_t_**_pc_out)"><a class="permalink" href="#asciichat_error_t_webrtc_create_peer_connection_(const_webrtc_config_t_*_config,_webrtc_peer_connection_t_**_pc_out)">asciichat_error_t
-  webrtc_create_peer_connection (const webrtc_config_t * config,
-  webrtc_peer_connection_t ** pc_out)</a></h2>
-<p class="Pp">Definition at line <b>381</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>381                                                                                                                   {
-382   if (!config || !pc_out) {
-383     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid config or output parameter&quot;);
-384   }
-385 
-386   if (!lifecycle_is_initialized(&amp;g_webrtc_lc)) {
-387     return SET_ERRNO(ERROR_INIT, &quot;WebRTC library not initialized&quot;);
-388   }
-389 
-390   // Allocate peer connection wrapper
-391   webrtc_peer_connection_t *pc = SAFE_MALLOC(sizeof(webrtc_peer_connection_t), webrtc_peer_connection_t *);
-392   if (!pc) {
-393     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate peer connection&quot;);
-394   }
-395 
-396   pc-&gt;config = *config; // Copy config
-397   pc-&gt;state = WEBRTC_STATE_NEW;
-398   pc-&gt;dc = NULL;
-399 
-400   // Build ICE server list for libdatachannel
-401   const char **ice_servers = NULL;
-402   size_t ice_count = 0;
-403 
-404   if (config-&gt;stun_count &gt; 0 || config-&gt;turn_count &gt; 0) {
-405     ice_count = config-&gt;stun_count + config-&gt;turn_count;
-406     ice_servers = SAFE_MALLOC(ice_count * sizeof(char *), const char **);
-407     if (!ice_servers) {
-408       SAFE_FREE(pc);
-409       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate ICE server list&quot;);
-410     }
-411 
-412     // Add STUN servers
-413     for (size_t i = 0; i &lt; config-&gt;stun_count; i++) {
-414       ice_servers[i] = config-&gt;stun_servers[i].host;
-415     }
-416 
-417     // Add TURN servers
-418     for (size_t i = 0; i &lt; config-&gt;turn_count; i++) {
-419       ice_servers[config-&gt;stun_count + i] = config-&gt;turn_servers[i].url;
-420     }
-421   }
-422 
-423   // Create libdatachannel configuration
-424   rtcConfiguration rtc_config;
-425   memset(&amp;rtc_config, 0, sizeof(rtc_config));
-426   rtc_config.iceServers = ice_servers;
-427   rtc_config.iceServersCount = (int)ice_count;
-428   rtc_config.iceTransportPolicy = RTC_TRANSPORT_POLICY_ALL;
-429 
-430   // Create peer connection
-431   int pc_id = rtcCreatePeerConnection(&amp;rtc_config);
-432 
-433   // Free ICE server list (libdatachannel makes a copy)
-434   if (ice_servers) {
-435     SAFE_FREE(ice_servers);
-436   }
-437 
-438   if (pc_id &lt; 0) {
-439     SAFE_FREE(pc);
-440     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create peer connection (rtc error %d)&quot;, pc_id);
-441   }
-442 
-443   pc-&gt;rtc_id = pc_id;
-444 
-445   // Initialize gathering state
-446   pc-&gt;gathering_state = WEBRTC_GATHERING_NEW;
-447   pc-&gt;gathering_start_time_ms = 0;
-448 
-449   // Set up callbacks
-450   rtcSetUserPointer(pc_id, pc);
-451   rtcSetStateChangeCallback(pc_id, on_state_change_adapter);
-452   rtcSetGatheringStateChangeCallback(pc_id, on_gathering_state_change_adapter);
-453   rtcSetLocalDescriptionCallback(pc_id, on_local_description_adapter);
-454   rtcSetLocalCandidateCallback(pc_id, on_local_candidate_adapter);
-455   rtcSetDataChannelCallback(pc_id, on_datachannel_adapter);
-456 
-457   /* Register peer connection with named registry */
-458   char pc_name[64];
-459   snprintf(pc_name, sizeof(pc_name), &quot;webrtc_peer_connection:%d&quot;, pc_id);
-460   NAMED_REGISTER(pc, pc_name, &quot;webrtc_peer_connection_t&quot;, &quot;0x%tx&quot;, NULL);
-461 
-462   *pc_out = pc;
-463   log_debug(&quot;Created WebRTC peer connection (id=%d)&quot;, pc_id);
-464   return ASCIICHAT_OK;
-465 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>lifecycle_is_initialized()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webrtc_datachannel_destroy_(webrtc_data_channel_t_*_dc)"><a class="permalink" href="#void_webrtc_datachannel_destroy_(webrtc_data_channel_t_*_dc)">void
-  webrtc_datachannel_destroy (webrtc_data_channel_t * dc)</a></h2>
-<p class="Pp">Definition at line <b>760</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>760                                                            {
-761   if (!dc) {
-762     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid null data channel&quot;);
-763     return;
-764   }
-765 
-766   // Close if still open, then free
-767   webrtc_close_datachannel(dc);
-768   // Note: webrtc_close_datachannel already calls SAFE_FREE(dc), so we're done
-769 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>webrtc_close_datachannel()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_webrtc_datachannel_get_label_(webrtc_data_channel_t_*_dc)"><a class="permalink" href="#const_char_*_webrtc_datachannel_get_label_(webrtc_data_channel_t_*_dc)">const
-  char * webrtc_datachannel_get_label (webrtc_data_channel_t * dc)</a></h2>
-<p class="Pp">Definition at line <b>684</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>684                                                                     {
-685   if (!dc) {
-686     SET_ERRNO(ERROR_INVALID_PARAM, &quot;DataChannel is NULL&quot;);
-687     return NULL;
-688   }
-689 
-690   static char label[256];
-691   int result = rtcGetDataChannelLabel(dc-&gt;rtc_id, label, sizeof(label));
-692   if (result &lt; 0) {
-693     return NULL;
-694   }
-695 
-696   return label;
-697 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> webrtc_datachannel_is_open (webrtc_data_channel_t *
-  dc)</h2>
-<p class="Pp">Definition at line <b>668</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>668                                                            {
-669   if (!dc) {
-670     SET_ERRNO(ERROR_INVALID_PARAM, &quot;DataChannel is NULL&quot;);
-671     return false;
-672   }
-673   return dc-&gt;is_open;
-674 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_webrtc_datachannel_send_(webrtc_data_channel_t_*_dc,_const_uint8_t_*_data,_size_t_size)"><a class="permalink" href="#asciichat_error_t_webrtc_datachannel_send_(webrtc_data_channel_t_*_dc,_const_uint8_t_*_data,_size_t_size)">asciichat_error_t
-  webrtc_datachannel_send (webrtc_data_channel_t * dc, const uint8_t * data,
-  size_t size)</a></h2>
-<p class="Pp">Definition at line <b>634</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>634                                                                                                        {
-635   if (!dc || !data) {
-636     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
-637   }
-638 
-639   if (!dc-&gt;is_open) {
-640     log_error(&quot;&#x2605; WEBRTC_DATACHANNEL_SEND: Channel not open! size=%zu, dc-&gt;rtc_id=%d&quot;, size, dc ? dc-&gt;rtc_id : -1);
-641     return SET_ERRNO(ERROR_NETWORK, &quot;DataChannel not open&quot;);
-642   }
-643 
-644   // Log packet details at network layer (debug level for normal operation)
-645   if (size &gt;= 20) {
-646     const uint8_t *pkt = (const uint8_t *)data;
-647     log_debug(&quot;&#x2605; RTCSENDMESSAGE_BEFORE: dc_id=%d, size=%zu, first_20_bytes: %02x%02x%02x%02x %02x%02x%02x%02x &quot;
-648               &quot;%02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x&quot;,
-649               dc-&gt;rtc_id, size, pkt[0], pkt[1], pkt[2], pkt[3], pkt[4], pkt[5], pkt[6], pkt[7], pkt[8], pkt[9], pkt[10],
-650               pkt[11], pkt[12], pkt[13], pkt[14], pkt[15], pkt[16], pkt[17], pkt[18], pkt[19]);
-651   } else {
-652     log_debug(&quot;&#x2605; RTCSENDMESSAGE_BEFORE: dc_id=%d, size=%zu (too small to log content)&quot;, dc-&gt;rtc_id, size);
-653   }
-654 
-655   int result = rtcSendMessage(dc-&gt;rtc_id, (const char *)data, (int)size);
-656 
-657   log_debug(&quot;&#x2605; RTCSENDMESSAGE_AFTER: dc_id=%d, rtcSendMessage returned %d for size=%zu&quot;, dc-&gt;rtc_id, result, size);
-658 
-659   if (result &lt; 0) {
-660     log_error(&quot;&#x2605; WEBRTC_DATACHANNEL_SEND: FAILED with error code %d&quot;, result);
-661     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send data (rtc error %d)&quot;, result);
-662   }
-663 
-664   log_debug(&quot;&#x2605; WEBRTC_DATACHANNEL_SEND: SUCCESS - sent %zu bytes&quot;, size);
-665   return ASCIICHAT_OK;
-666 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_webrtc_datachannel_set_callbacks_(webrtc_data_channel_t_*_dc,_const_webrtc_datachannel_callbacks_t_*_callbacks)"><a class="permalink" href="#asciichat_error_t_webrtc_datachannel_set_callbacks_(webrtc_data_channel_t_*_dc,_const_webrtc_datachannel_callbacks_t_*_callbacks)">asciichat_error_t
-  webrtc_datachannel_set_callbacks (webrtc_data_channel_t * dc, const
-  webrtc_datachannel_callbacks_t * callbacks)</a></h2>
-<p class="Pp">Definition at line <b>718</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>719                                                                                                     {
-720   if (!dc) {
-721     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;DataChannel is NULL&quot;);
-722   }
-723 
-724   if (!callbacks) {
-725     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Callbacks struct is NULL&quot;);
-726   }
-727 
-728   // Store user callbacks in the data channel struct
-729   dc-&gt;user_on_open = callbacks-&gt;on_open;
-730   dc-&gt;user_on_close = callbacks-&gt;on_close;
-731   dc-&gt;user_on_error = callbacks-&gt;on_error;
-732   dc-&gt;user_on_message = callbacks-&gt;on_message;
-733   dc-&gt;user_data = callbacks-&gt;user_data;
-734 
-735   // Register adapter functions with libdatachannel (adapters use correct signature)
-736   // The adapters will look up our stored callbacks and invoke them with proper types
-737   if (callbacks-&gt;on_open) {
-738     rtcSetOpenCallback(dc-&gt;rtc_id, on_datachannel_open_adapter);
-739   }
-740 
-741   if (callbacks-&gt;on_close) {
-742     rtcSetClosedCallback(dc-&gt;rtc_id, on_datachannel_closed_adapter);
-743   }
-744 
-745   if (callbacks-&gt;on_error) {
-746     rtcSetErrorCallback(dc-&gt;rtc_id, on_datachannel_error_adapter);
-747   }
-748 
-749   if (callbacks-&gt;on_message) {
-750     rtcSetMessageCallback(dc-&gt;rtc_id, on_datachannel_message_adapter);
-751   }
-752 
-753   // Set user pointer to the data channel so adapters can retrieve it
-754   rtcSetUserPointer(dc-&gt;rtc_id, dc);
-755 
-756   log_debug(&quot;Set DataChannel callbacks (dc_id=%d)&quot;, dc-&gt;rtc_id);
-757   return ASCIICHAT_OK;
-758 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webrtc_datachannel_set_open_state_(webrtc_data_channel_t_*_dc,_"><a class="permalink" href="#void_webrtc_datachannel_set_open_state_(webrtc_data_channel_t_*_dc,_">void
-  webrtc_datachannel_set_open_state (webrtc_data_channel_t * dc, <b>bool</b>
-  is_open)</a></h2>
-<p class="Pp">Definition at line <b>676</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>676                                                                                 {
-677   if (!dc) {
-678     SET_ERRNO(ERROR_INVALID_PARAM, &quot;DataChannel is NULL&quot;);
-679     return;
-680   }
-681   dc-&gt;is_open = is_open;
-682 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webrtc_destroy_(void_)"><a class="permalink" href="#void_webrtc_destroy_(void_)">void
-  webrtc_destroy (void )</a></h2>
-<p class="Pp">Definition at line <b>373</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>373                           {
-374   webrtc_release();
-375 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="webrtc_gathering_state_t_webrtc_get_gathering_state_(webrtc_peer_connection_t_*_pc)"><a class="permalink" href="#webrtc_gathering_state_t_webrtc_get_gathering_state_(webrtc_peer_connection_t_*_pc)">webrtc_gathering_state_t
-  webrtc_get_gathering_state (webrtc_peer_connection_t * pc)</a></h2>
-<p class="Pp">Definition at line <b>494</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>494                                                                                   {
-495   if (!pc) {
-496     log_warn(&quot;Peer connection is NULL&quot;);
-497     return WEBRTC_GATHERING_NEW;
-498   }
-499   return pc-&gt;gathering_state;
-500 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by
-    <b>webrtc_peer_manager_check_gathering_timeouts()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_webrtc_get_rtc_id_(webrtc_peer_connection_t_*_pc)"><a class="permalink" href="#int_webrtc_get_rtc_id_(webrtc_peer_connection_t_*_pc)">int
-  webrtc_get_rtc_id (webrtc_peer_connection_t * pc)</a></h2>
-<p class="Pp">Get the internal libdatachannel peer connection ID. Helper
-    function for C++ code that needs access to internal rtc_id without exposing
-    the full structure definition.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pc</i> Peer connection</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">libdatachannel peer connection ID, or -1 if pc is
-  NULL</div>
-<p class="Pp">Definition at line <b>807</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>807                                                     {
-808   if (!pc) {
-809     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid null peer connectiont&quot;);
-810     return -1;
-811   }
-812   return pc-&gt;rtc_id;
-813 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>ice_get_selected_pair_impl()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="webrtc_state_t_webrtc_get_state_(webrtc_peer_connection_t_*_pc)"><a class="permalink" href="#webrtc_state_t_webrtc_get_state_(webrtc_peer_connection_t_*_pc)">webrtc_state_t
-  webrtc_get_state (webrtc_peer_connection_t * pc)</a></h2>
-<p class="Pp">Definition at line <b>486</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>486                                                               {
-487   if (!pc) {
-488     log_warn(&quot;Peer connection is NULL&quot;);
-489     return WEBRTC_STATE_CLOSED;
-490   }
-491   return pc-&gt;state;
-492 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>ice_is_connected()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_*_webrtc_get_user_data_(webrtc_peer_connection_t_*_pc)"><a class="permalink" href="#void_*_webrtc_get_user_data_(webrtc_peer_connection_t_*_pc)">void
-  * webrtc_get_user_data (webrtc_peer_connection_t * pc)</a></h2>
-<p class="Pp">Definition at line <b>529</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>529                                                          {
-530   if (!pc) {
-531     log_warn(&quot;Peer connection is NULL&quot;);
-532     return NULL;
-533   }
-534   return pc-&gt;config.user_data;
-535 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_webrtc_init_(void_)"><a class="permalink" href="#asciichat_error_t_webrtc_init_(void_)">asciichat_error_t
-  webrtc_init (void )</a></h2>
-<p class="Pp">Definition at line <b>369</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>369                                     {
-370   return webrtc_ensure_initialized();
-371 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> webrtc_is_gathering_timed_out
-  (webrtc_peer_connection_t * pc, uint32_t timeout_ms)</h2>
-<p class="Pp">Definition at line <b>502</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>502                                                                                       {
-503   if (!pc) {
-504     return false;
-505   }
-506 
-507   // Only check timeout if we're actively gathering
-508   if (pc-&gt;gathering_state != WEBRTC_GATHERING_GATHERING) {
-509     return false;
-510   }
-511 
-512   // If gathering hasn't started yet (start_time == 0), no timeout
-513   if (pc-&gt;gathering_start_time_ms == 0) {
-514     return false;
-515   }
-516 
-517   // Check if elapsed time exceeds timeout
-518   uint64_t current_time_ms = platform_get_monotonic_time_us() / 1000;
-519   uint64_t elapsed_ms = current_time_ms - pc-&gt;gathering_start_time_ms;
-520 
-521   if (elapsed_ms &gt; timeout_ms) {
-522     log_warn(&quot;ICE gathering timeout: %llu ms elapsed (timeout: %u ms)&quot;, (unsigned long long)elapsed_ms, timeout_ms);
-523     return true;
-524   }
-525 
-526   return false;
-527 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>platform_get_monotonic_time_us()</b>.</p>
-<p class="Pp">Referenced by
-    <b>webrtc_peer_manager_check_gathering_timeouts()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webrtc_peer_connection_close_(webrtc_peer_connection_t_*_pc)"><a class="permalink" href="#void_webrtc_peer_connection_close_(webrtc_peer_connection_t_*_pc)">void
-  webrtc_peer_connection_close (webrtc_peer_connection_t * pc)</a></h2>
-<p class="Pp">Definition at line <b>775</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>775                                                                 {
-776   if (!pc) {
-777     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid null peer connectiont&quot;);
-778     return;
-779   }
-780 
-781   rtcClose(pc-&gt;rtc_id);
-782   log_debug(&quot;Closed peer connection (pc_id=%d)&quot;, pc-&gt;rtc_id);
-783 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webrtc_peer_connection_destroy_(webrtc_peer_connection_t_*_pc)"><a class="permalink" href="#void_webrtc_peer_connection_destroy_(webrtc_peer_connection_t_*_pc)">void
-  webrtc_peer_connection_destroy (webrtc_peer_connection_t * pc)</a></h2>
-<p class="Pp">Definition at line <b>785</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>785                                                                   {
-786   if (!pc) {
-787     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid null peer connectiont&quot;);
-788     return;
-789   }
-790 
-791   // Close and delete peer connection
-792   rtcDeletePeerConnection(pc-&gt;rtc_id);
-793   log_debug(&quot;Destroyed peer connection (pc_id=%d)&quot;, pc-&gt;rtc_id);
-794 
-795   SAFE_FREE(pc);
-796 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_webrtc_set_remote_description_(webrtc_peer_connection_t_*_pc,_const_char_*_sdp,_const_char_*_type)"><a class="permalink" href="#asciichat_error_t_webrtc_set_remote_description_(webrtc_peer_connection_t_*_pc,_const_char_*_sdp,_const_char_*_type)">asciichat_error_t
-  webrtc_set_remote_description (webrtc_peer_connection_t * pc, const char *
-  sdp, const char * type)</a></h2>
-<p class="Pp">Definition at line <b>556</b> of file
-    <b>lib/network/webrtc/webrtc.c</b>.</p>
-<pre>556                                                                                                                  {
-557   if (!pc || !sdp || !type) {
-558     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
-559   }
-560 
-561   int result = rtcSetRemoteDescription(pc-&gt;rtc_id, sdp, type);
-562   if (result != RTC_ERR_SUCCESS) {
-563     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to set remote SDP (rtc error %d)&quot;, result);
-564   }
-565 
-566   log_debug(&quot;Set remote SDP description (pc_id=%d, type=%s)&quot;, pc-&gt;rtc_id, type);
-567   return ASCIICHAT_OK;
-568 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>webrtc_peer_manager_handle_sdp()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -717,7 +133,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

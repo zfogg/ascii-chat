@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>asciichat_errno.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">asciichat_errno.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">asciichat_errno.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">asciichat_errno.h - &#x26A0;&#xFE0F;&#x203C;&#xFE0F; Comprehensive
+    thread-local error context system for ascii-chat</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>backtrace_t</b>
+  <br/>
+  struct <b>asciichat_error_context_t</b>
+  <br/>
+  Error context structure. struct <b>asciichat_error_stats_t</b>
+  <br/>
+  Error statistics structure.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>SET_ERRNO</b>(code, context_msg, ...)
+  <br/>
+  Set error code with custom context message and log it, returning the error
+    code. #define <b>SET_ERRNO_SYS</b>(code, context_msg, ...)
+  <br/>
+  Set error code with custom message and system error context, returning the
+    error code. #define <b>HAS_ERRNO</b>(var)
+  <br/>
+  Check if an error occurred and get full context. #define <b>CLEAR_ERRNO</b>()
+  <br/>
+  Clear the current error state. #define <b>GET_ERRNO</b>()
+  <br/>
+  Get current error code (0 if no error). #define
+    <b>PRINT_ERRNO_CONTEXT</b>(context)
+  <br/>
+  #define <b>ASSERT_NO_ERRNO</b>()
+  <br/>
+  #define <b>PRINT_ERRNO_IF_ERROR</b>()
+  <br/>
+  #define <b>LOG_ERRNO_IF_SET</b>(message)
+  <br/>
+  Check if any error occurred and log it if so. #define
+    <b>LOG_ERRNO_IF_CODE</b>(code, message)
+  <br/>
+  Check if a specific error occurred and log it if so.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>asciichat_set_errno</b> (<b>asciichat_error_t</b> code,
+    const char *file, int line, const char *function, const char
+    *context_message)
+  <br/>
+  Set error code with basic context. void
+    <b>asciichat_set_errno_with_message</b> (<b>asciichat_error_t</b> code,
+    const char *file, int line, const char *function, const char *format,...)
+  <br/>
+  Set error code with formatted message. void
+    <b>asciichat_set_errno_with_system_error</b> (<b>asciichat_error_t</b> code,
+    const char *file, int line, const char *function, int sys_errno)
+  <br/>
+  Set error code with system error (errno). void
+    <b>asciichat_set_errno_with_system_error_and_message</b>
+    (<b>asciichat_error_t</b> code, const char *file, int line, const char
+    *function, int sys_errno, const char *format,...)
+  <br/>
+  Set error code with system error and formatted message. void
+    <b>asciichat_set_errno_with_wsa_error</b> (<b>asciichat_error_t</b> code,
+    const char *file, int line, const char *function, int wsa_error)
+  <br/>
+  Set error code with Windows socket error (WSA error). <b>bool</b>
+    <b>asciichat_has_errno</b> (<b>asciichat_error_context_t</b> *context)
+  <br/>
+  Check if error occurred and get full context. <b>bool</b>
+    <b>asciichat_has_wsa_error</b> (void)
+  <br/>
+  Check if current error has WSA error code. void <b>asciichat_clear_errno</b>
+    (void)
+  <br/>
+  Clear the current error state. <b>asciichat_error_t</b>
+    <b>asciichat_get_errno</b> (void)
+  <br/>
+  Get current error code. void <b>asciichat_fatal_with_context</b>
+    (<b>asciichat_error_t</b> code, const char *file, int line, const char
+    *function, const char *format,...)
+  <br/>
+  Exit with error code and context (used by FATAL macro). void
+    <b>asciichat_print_error_context</b> (const <b>asciichat_error_context_t</b>
+    *context)
+  <br/>
+  Print full error context to stderr. void <b>asciichat_error_stats_init</b>
+    (void)
+  <br/>
+  Initialize error statistics system. void <b>asciichat_error_stats_record</b>
+    (<b>asciichat_error_t</b> code)
+  <br/>
+  Record an error in statistics. void <b>asciichat_error_stats_print</b> (void)
+  <br/>
+  Print error statistics to stderr. void <b>asciichat_error_stats_reset</b>
+    (void)
+  <br/>
+  Reset all error statistics to zero. <b>asciichat_error_stats_t</b>
+    <b>asciichat_error_stats_get</b> (void)
+  <br/>
+  Get current error statistics. <b>asciichat_error_t</b>
+    <b>asciichat_get_thread_error</b> (int <b>thread_id</b>)
+  <br/>
+  Get error code for a specific thread. void <b>asciichat_set_thread_error</b>
+    (int <b>thread_id</b>, <b>asciichat_error_t</b> code)
+  <br/>
+  Set error code for a specific thread. void <b>asciichat_clear_thread_error</b>
+    (int <b>thread_id</b>)
+  <br/>
+  Clear error code for a specific thread. void <b>asciichat_errno_suppress</b>
+    (<b>bool</b> suppress)
+  <br/>
+  Suppress error logging and reporting. void <b>asciichat_errno_destroy</b>
+    (void)
+  <br/>
+  Cleanup error system resources.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">__thread <b>asciichat_error_context_t</b>
+    <b>asciichat_errno_context</b>
+  <br/>
+  Thread-local error context storage. __thread <b>asciichat_error_t</b>
+    <b>asciichat_errno</b>
+  <br/>
+  Thread-local current error code.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x26A0;&#xFE0F;&#x203C;&#xFE0F; Comprehensive thread-local error
+    context system for ascii-chat</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>asciichat_errno.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASSERT_NO_ERRNO()"><a class="permalink" href="#_define_ASSERT_NO_ERRNO()">#define
+  ASSERT_NO_ERRNO()</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((void)0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>647</b> of file
+  <b>asciichat_errno.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_LOG_ERRNO_IF_CODE(_code,__message)"><a class="permalink" href="#_define_LOG_ERRNO_IF_CODE(_code,__message)">#define
+  LOG_ERRNO_IF_CODE( code, message)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  if (asciichat_errno == (code)) {                                                                                   \
+<br/>
+    asciichat_print_error_context(&amp;asciichat_errno_context);                                                         \
+<br/>
+  }                                                                                                                  \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Check if a specific error occurred and log it if so.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>code</i> Error code to check for
+<br/>
+<i>message</i> Custom message to log</div>
+<p class="Pp">Usage in src/ code: if (asciichat_errno == ERROR_NETWORK) {
+    LOG_ERRNO_IF_CODE(ERROR_NETWORK, &quot;Network operation failed&quot;);
+  }</p>
+<p class="Pp">Definition at line <b>871</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<pre>871 #define LOG_ERRNO_IF_CODE(code, message)                                                                               \
+872   do {                                                                                                                 \
+873     if (asciichat_errno == (code)) {                                                                                   \
+874       asciichat_print_error_context(&amp;asciichat_errno_context);                                                         \
+875     }                                                                                                                  \
+876   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_LOG_ERRNO_IF_SET(_message)"><a class="permalink" href="#_define_LOG_ERRNO_IF_SET(_message)">#define
+  LOG_ERRNO_IF_SET( message)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  if (asciichat_errno != ASCIICHAT_OK) {                                                                             \
+<br/>
+    asciichat_print_error_context(&amp;asciichat_errno_context);                                                         \
+<br/>
+  }                                                                                                                  \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Check if any error occurred and log it if so.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>message</i> Custom message to log</div>
+<p class="Pp">Usage in src/ code: if (asciichat_errno != ASCIICHAT_OK) {
+    LOG_ERRNO_IF_SET(&quot;Operation failed&quot;); }</p>
+<p class="Pp">Definition at line <b>854</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<pre>854 #define LOG_ERRNO_IF_SET(message)                                                                                      \
+855   do {                                                                                                                 \
+856     if (asciichat_errno != ASCIICHAT_OK) {                                                                             \
+857       asciichat_print_error_context(&amp;asciichat_errno_context);                                                         \
+858     }                                                                                                                  \
+859   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>acds_main()</b>, <b>add_client()</b>,
+    <b>add_webrtc_client()</b>, <b>audio_sender_init()</b>,
+    <b>audio_start_thread()</b>, <b>capture_start_thread()</b>,
+    <b>keepalive_start_thread()</b>, <b>main()</b>,
+    <b>protocol_start_connection()</b>, <b>protocol_stop_connection()</b>,
+    <b>server_crypto_handshake()</b>, and <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_PRINT_ERRNO_CONTEXT(_context)"><a class="permalink" href="#_define_PRINT_ERRNO_CONTEXT(_context)">#define
+  PRINT_ERRNO_CONTEXT( context)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((void)(context))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>646</b> of file
+  <b>asciichat_errno.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_PRINT_ERRNO_IF_ERROR()"><a class="permalink" href="#_define_PRINT_ERRNO_IF_ERROR()">#define
+  PRINT_ERRNO_IF_ERROR()</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((void)0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>648</b> of file
+  <b>asciichat_errno.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

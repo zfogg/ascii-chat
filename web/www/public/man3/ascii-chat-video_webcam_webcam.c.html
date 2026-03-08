@@ -37,412 +37,46 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>webcam_init</b> (unsigned short int
+<p class="Pp"><b>asciichat_error_t</b> <b>webcam_init</b> (unsigned short int
     webcam_index)
   <br/>
-  image_t * <b>webcam_read</b> (void)
+  Initialize global webcam interface. <b>image_t</b> * <b>webcam_read</b> (void)
   <br/>
-  void <b>webcam_destroy</b> (void)
+  Capture a frame from global webcam. void <b>webcam_destroy</b> (void)
   <br/>
-  void <b>webcam_flush</b> (void)
+  Clean up global webcam interface. void <b>webcam_flush</b> (void)
   <br/>
-  void <b>webcam_print_init_error_help</b> (asciichat_error_t <b>error_code</b>)
+  Flush/interrupt any pending webcam read operations. void
+    <b>webcam_print_init_error_help</b> (<b>asciichat_error_t</b>
+    <b>error_code</b>)
   <br/>
-  asciichat_error_t <b>webcam_init_context</b> (webcam_context_t **ctx, unsigned
-    short int device_index)
+  Print helpful error diagnostics for webcam initialization failures.
+    <b>asciichat_error_t</b> <b>webcam_init_context</b> (<b>webcam_context_t</b>
+    **ctx, unsigned short int device_index)
   <br/>
-  void <b>webcam_cleanup_context</b> (webcam_context_t *ctx)
+  Initialize webcam context for advanced operations. void
+    <b>webcam_cleanup_context</b> (<b>webcam_context_t</b> *ctx)
   <br/>
-  void <b>webcam_flush_context</b> (webcam_context_t *ctx)
+  Clean up webcam context and release resources. void
+    <b>webcam_flush_context</b> (<b>webcam_context_t</b> *ctx)
   <br/>
-  image_t * <b>webcam_read_context</b> (webcam_context_t *ctx)
+  Flush/interrupt pending read operations on webcam context. <b>image_t</b> *
+    <b>webcam_read_context</b> (<b>webcam_context_t</b> *ctx)
   <br/>
-  asciichat_error_t <b>webcam_get_dimensions</b> (webcam_context_t *ctx, int
-    *width, int *height)
+  Capture a frame from webcam context. <b>asciichat_error_t</b>
+    <b>webcam_get_dimensions</b> (<b>webcam_context_t</b> *ctx, int *width, int
+    *height)
   <br/>
-  asciichat_error_t <b>webcam_list_devices</b> (webcam_device_info_t
-    **out_devices, unsigned int *out_count)
+  Get webcam frame dimensions. <b>asciichat_error_t</b>
+    <b>webcam_list_devices</b> (<b>webcam_device_info_t</b> **out_devices,
+    unsigned int *out_count)
   <br/>
-  void <b>webcam_free_device_list</b> (webcam_device_info_t *devices)
+  Enumerate available webcam devices. void <b>webcam_free_device_list</b>
+    (<b>webcam_device_info_t</b> *devices)
   <br/>
+  Free device list returned by <b>webcam_list_devices()</b>.
   <br/>
 </p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_webcam_cleanup_context_(webcam_context_t_*_ctx)"><a class="permalink" href="#void_webcam_cleanup_context_(webcam_context_t_*_ctx)">void
-  webcam_cleanup_context (webcam_context_t * ctx)</a></h2>
-<p class="Pp">Definition at line <b>253</b> of file
-    <b>video/webcam/webcam.c</b>.</p>
-<pre>253                                                    {
-254   (void)ctx;
-255   log_warn(&quot;Webcam cleanup called on unsupported platform&quot;);
-256 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>media_source_destroy()</b>, and
-    <b>webcam_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webcam_destroy_(void_)"><a class="permalink" href="#void_webcam_destroy_(void_)">void
-  webcam_destroy (void )</a></h2>
-<p class="Pp">Definition at line <b>137</b> of file
-    <b>video/webcam/webcam.c</b>.</p>
-<pre>137                           {
-138   // Free cached webcam frame if it was allocated (from test pattern or real webcam)
-139   if (cached_webcam_frame) {
-140     image_destroy(cached_webcam_frame);
-141     cached_webcam_frame = NULL;
-142   }
-143 
-144   if (GET_OPTION(test_pattern)) {
-145     log_debug(&quot;Test pattern mode - webcam context cleanup skipped&quot;);
-146     return;
-147   }
-148 
-149   if (global_webcam_ctx) {
-150     NAMED_UNREGISTER(global_webcam_ctx);
-151     webcam_cleanup_context(global_webcam_ctx);
-152     global_webcam_ctx = NULL;
-153     // log_info(&quot;Webcam resources released&quot;);
-154   } else {
-155     log_dev(&quot;Webcam was not opened, nothing to release&quot;);
-156   }
-157 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>image_destroy()</b>, and
-    <b>webcam_cleanup_context()</b>.</p>
-<p class="Pp">Referenced by <b>ascii_read_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webcam_flush_(void_)"><a class="permalink" href="#void_webcam_flush_(void_)">void
-  webcam_flush (void )</a></h2>
-<p class="Pp">Definition at line <b>159</b> of file
-    <b>video/webcam/webcam.c</b>.</p>
-<pre>159                         {
-160   if (GET_OPTION(test_pattern)) {
-161     return; // Test pattern doesn't need flushing
-162   }
-163 
-164   if (global_webcam_ctx) {
-165     webcam_flush_context(global_webcam_ctx);
-166   }
-167 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>webcam_flush_context()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webcam_flush_context_(webcam_context_t_*_ctx)"><a class="permalink" href="#void_webcam_flush_context_(webcam_context_t_*_ctx)">void
-  webcam_flush_context (webcam_context_t * ctx)</a></h2>
-<p class="Pp">Definition at line <b>258</b> of file
-    <b>video/webcam/webcam.c</b>.</p>
-<pre>258                                                  {
-259   (void)ctx;
-260   // No-op on unsupported platforms
-261 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>webcam_flush()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webcam_free_device_list_(webcam_device_info_t_*_devices)"><a class="permalink" href="#void_webcam_free_device_list_(webcam_device_info_t_*_devices)">void
-  webcam_free_device_list (webcam_device_info_t * devices)</a></h2>
-<p class="Pp">Definition at line <b>284</b> of file
-    <b>video/webcam/webcam.c</b>.</p>
-<pre>284                                                             {
-285   (void)devices;
-286   // No-op on unsupported platforms
-287 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_webcam_get_dimensions_(webcam_context_t_*_ctx,_int_*_width,_int_*_height)"><a class="permalink" href="#asciichat_error_t_webcam_get_dimensions_(webcam_context_t_*_ctx,_int_*_width,_int_*_height)">asciichat_error_t
-  webcam_get_dimensions (webcam_context_t * ctx, int * width, int *
-  height)</a></h2>
-<p class="Pp">Definition at line <b>269</b> of file
-    <b>video/webcam/webcam.c</b>.</p>
-<pre>269                                                                                         {
-270   (void)ctx;
-271   (void)width;
-272   (void)height;
-273   return SET_ERRNO(ERROR_WEBCAM, &quot;Webcam get dimensions not supported on this platform&quot;);
-274 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>webcam_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_webcam_init_(unsigned_short_int_webcam_index)"><a class="permalink" href="#asciichat_error_t_webcam_init_(unsigned_short_int_webcam_index)">asciichat_error_t
-  webcam_init (unsigned short int webcam_index)</a></h2>
-<p class="Pp">Definition at line <b>21</b> of file
-  <b>video/webcam/webcam.c</b>.</p>
-<pre>21                                                                {
-22   // Check if test pattern mode is enabled
-23   if (GET_OPTION(test_pattern)) {
-24     log_info(&quot;Test pattern mode enabled - not opening real webcam&quot;);
-25     log_info(&quot;Test pattern resolution: 320x240&quot;);
-26     return ASCIICHAT_OK;
-27   }
-28 
-29 #ifdef __linux__
-30   log_info(&quot;Initializing webcam with V4L2 (Linux)&quot;);
-31   log_info(&quot;Attempting to open webcam with index %d using V4L2 (Linux)...&quot;, webcam_index);
-32 #elif defined(__APPLE__)
-33   log_info(&quot;Initializing webcam with AVFoundation (macOS)&quot;);
-34   log_info(&quot;Attempting to open webcam with index %d using AVFoundation (macOS)...&quot;, webcam_index);
-35 #elif defined(_WIN32)
-36   log_info(&quot;Initializing webcam with Media Foundation (Windows)&quot;);
-37   log_info(&quot;Attempting to open webcam with index %d using Media Foundation (Windows)...&quot;, webcam_index);
-38 #else
-39   log_info(&quot;Initializing webcam with Unknown platform&quot;);
-40   log_info(&quot;Attempting to open webcam with index %d using Unknown platform...&quot;, webcam_index);
-41 #endif
-42 
-43   asciichat_error_t result = webcam_init_context(&amp;global_webcam_ctx, webcam_index);
-44   if (result != ASCIICHAT_OK) {
-45     SET_ERRNO(result, &quot;Failed to connect to webcam (error code: %d)&quot;, result);
-46     return result;
-47   }
-48 
-49   /* Register global webcam context with named registry */
-50   char webcam_name[32];
-51   SAFE_SNPRINTF(webcam_name, sizeof(webcam_name), &quot;webcam:%u&quot;, webcam_index);
-52   NAMED_REGISTER(global_webcam_ctx, webcam_name, &quot;webcam&quot;, &quot;0x%tx&quot;, NULL);
-53 
-54   // Get image dimensions
-55   int width, height;
-56   if (webcam_get_dimensions(global_webcam_ctx, &amp;width, &amp;height) == ASCIICHAT_OK) {
-57     log_info(&quot;Webcam opened successfully! Resolution: %dx%d&quot;, width, height);
-58   } else {
-59     SET_ERRNO(ERROR_WEBCAM, &quot;Webcam opened but failed to get dimensions&quot;);
-60   }
-61 
-62   return result;
-63 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>webcam_get_dimensions()</b>, and
-    <b>webcam_init_context()</b>.</p>
-<p class="Pp">Referenced by <b>ascii_read_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_webcam_init_context_(webcam_context_t_**_ctx,_unsigned_short_int_device_index)"><a class="permalink" href="#asciichat_error_t_webcam_init_context_(webcam_context_t_**_ctx,_unsigned_short_int_device_index)">asciichat_error_t
-  webcam_init_context (webcam_context_t ** ctx, unsigned short int
-  device_index)</a></h2>
-<p class="Pp">Definition at line <b>246</b> of file
-    <b>video/webcam/webcam.c</b>.</p>
-<pre>246                                                                                                {
-247   (void)ctx;
-248   (void)device_index;
-249   SET_ERRNO(ERROR_WEBCAM, &quot;Webcam platform not supported on this system&quot;);
-250   return ERROR_WEBCAM;
-251 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>media_source_create()</b>, and
-    <b>webcam_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_webcam_list_devices_(webcam_device_info_t_**_out_devices,_unsigned_int_*_out_count)"><a class="permalink" href="#asciichat_error_t_webcam_list_devices_(webcam_device_info_t_**_out_devices,_unsigned_int_*_out_count)">asciichat_error_t
-  webcam_list_devices (webcam_device_info_t ** out_devices, unsigned int *
-  out_count)</a></h2>
-<p class="Pp">Definition at line <b>276</b> of file
-    <b>video/webcam/webcam.c</b>.</p>
-<pre>276                                                                                                    {
-277   if (out_devices)
-278     *out_devices = NULL;
-279   if (out_count)
-280     *out_count = 0;
-281   return SET_ERRNO(ERROR_WEBCAM, &quot;Webcam device enumeration not supported on this platform&quot;);
-282 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_webcam_print_init_error_help_(asciichat_error_t_error_code)"><a class="permalink" href="#void_webcam_print_init_error_help_(asciichat_error_t_error_code)">void
-  webcam_print_init_error_help (asciichat_error_t error_code)</a></h2>
-<p class="Pp">Definition at line <b>169</b> of file
-    <b>video/webcam/webcam.c</b>.</p>
-<pre>169                                                                 {
-170   // Platform-specific error messages and troubleshooting help
-171 #ifdef __linux__
-172   safe_fprintf(stderr, &quot;\n&quot;);
-173 
-174   if (error_code == ERROR_WEBCAM) {
-175     safe_fprintf(stderr, &quot;Webcam initialization failed on Linux.\n\n&quot;);
-176     safe_fprintf(stderr, &quot;Common solutions:\n&quot;);
-177     safe_fprintf(stderr, &quot;  1. Check if a camera is connected:\n&quot;);
-178     safe_fprintf(stderr, &quot;       ls /dev/video*\n\n&quot;);
-179     safe_fprintf(stderr, &quot;  2. If no camera is available, use test pattern mode:\n&quot;);
-180     safe_fprintf(stderr, &quot;       ascii-chat client --test-pattern\n\n&quot;);
-181     safe_fprintf(stderr, &quot;  3. Install V4L2 drivers if needed:\n&quot;);
-182     safe_fprintf(stderr, &quot;       sudo apt-get install v4l-utils\n&quot;);
-183   } else if (error_code == ERROR_WEBCAM_PERMISSION) {
-184     safe_fprintf(stderr, &quot;Camera permission denied.\n\n&quot;);
-185     safe_fprintf(stderr, &quot;Fix permissions with:\n&quot;);
-186     safe_fprintf(stderr, &quot;  sudo usermod -a -G video $USER\n&quot;);
-187     safe_fprintf(stderr, &quot;Then log out and log back in for changes to take effect.\n&quot;);
-188   } else if (error_code == ERROR_WEBCAM_IN_USE) {
-189     safe_fprintf(stderr, &quot;Camera is already in use by another application.\n\n&quot;);
-190     safe_fprintf(stderr, &quot;Try closing other camera apps or use test pattern mode:\n&quot;);
-191     safe_fprintf(stderr, &quot;  ascii-chat client --test-pattern\n&quot;);
-192   } else {
-193     safe_fprintf(stderr, &quot;Webcam error on Linux.\n\n&quot;);
-194     safe_fprintf(stderr, &quot;General troubleshooting:\n&quot;);
-195     safe_fprintf(stderr, &quot;* Check camera: ls /dev/video*\n&quot;);
-196     safe_fprintf(stderr, &quot;* Check permissions: groups | grep video\n&quot;);
-197     safe_fprintf(stderr, &quot;* Use test pattern: ascii-chat client --test-pattern\n&quot;);
-198   }
-199   (void)fflush(stderr);
-200 #elif defined(__APPLE__)
-201   (void)error_code;
-202   safe_fprintf(stderr, &quot;\n&quot;);
-203   safe_fprintf(stderr, &quot;On macOS, you may need to grant camera permissions:\n&quot;);
-204   safe_fprintf(stderr,
-205                &quot;* Say \&quot;yes\&quot; to the popup about system camera access that you see when running this program for the &quot;
-206                &quot;first time.\n&quot;);
-207   safe_fprintf(
-208       stderr, &quot;* If you said \&quot;no\&quot; to the popup, go to System Preferences &gt; Security &amp; Privacy &gt; Privacy &gt; Camera.\n&quot;);
-209   safe_fprintf(stderr,
-210                &quot;   Now flip the switch next to your terminal application in that privacy list to allow ascii-chat to &quot;
-211                &quot;access your camera.\n&quot;);
-212   safe_fprintf(stderr, &quot;   Then just run this program again.\n&quot;);
-213   (void)fflush(stderr);
-214 #elif defined(_WIN32)
-215   if (error_code == ERROR_WEBCAM_IN_USE) {
-216     // Device is in use by another application - this is a fatal error on Windows
-217     safe_fprintf(stderr, &quot;\n&quot;);
-218     safe_fprintf(stderr, &quot;Webcam is already in use by another application.\n&quot;);
-219     safe_fprintf(stderr, &quot;Windows allows only one application to access the webcam at a time.\n&quot;);
-220     safe_fprintf(stderr, &quot;\n&quot;);
-221     safe_fprintf(stderr, &quot;To use ascii-chat with multiple clients, try these alternatives:\n&quot;);
-222     safe_fprintf(stderr, &quot;  --test-pattern    Generate a colorful test pattern instead of using webcam\n&quot;);
-223     safe_fprintf(stderr, &quot;  --file VIDEO.mp4  Use a video file as input (to be implemented)\n&quot;);
-224     safe_fprintf(stderr, &quot;\n&quot;);
-225     safe_fprintf(stderr, &quot;Example: ascii-chat client --test-pattern\n&quot;);
-226     (void)fflush(stderr);
-227   } else {
-228     // Other webcam errors - general failure
-229     safe_fprintf(stderr, &quot;\n&quot;);
-230     safe_fprintf(stderr, &quot;On Windows, this might be because:\n&quot;);
-231     safe_fprintf(stderr, &quot;* Camera permissions are not granted\n&quot;);
-232     safe_fprintf(stderr, &quot;* Camera driver issues\n&quot;);
-233     safe_fprintf(stderr, &quot;* No webcam device found\n&quot;);
-234     (void)fflush(stderr);
-235   }
-236 #else
-237   // Unknown platform
-238   (void)error_code;
-239   safe_fprintf(stderr, &quot;\nWebcam initialization failed on unsupported platform.\n&quot;);
-240   (void)fflush(stderr);
-241 #endif
-242 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>error_code</b>, and <b>safe_fprintf()</b>.</p>
-<p class="Pp">Referenced by <b>client_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="image_t_*_webcam_read_(void_)"><a class="permalink" href="#image_t_*_webcam_read_(void_)">image_t
-  * webcam_read (void )</a></h2>
-<p class="Pp">Definition at line <b>65</b> of file
-  <b>video/webcam/webcam.c</b>.</p>
-<pre>65                            {
-66   // Check if test pattern mode is enabled
-67   if (GET_OPTION(test_pattern)) {
-68     // Allocate cached frame once (like FFmpeg's current_image)
-69     // Reuse same buffer for each call to avoid repeated allocations
-70     if (!cached_webcam_frame) {
-71       cached_webcam_frame = image_new(320, 240);
-72       if (!cached_webcam_frame) {
-73         SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate test pattern frame&quot;);
-74         return NULL;
-75       }
-76     }
-77 
-78     // Generate animated test pattern each frame
-79     // Animation is based on frame counter, respects FPS setting
-80     unsigned int animation_phase = frame_counter / 2; // Slow down animation
-81     frame_counter++;
-82 
-83     for (int y = 0; y &lt; cached_webcam_frame-&gt;h; y++) {
-84       for (int x = 0; x &lt; cached_webcam_frame-&gt;w; x++) {
-85         rgb_pixel_t *pixel = &amp;cached_webcam_frame-&gt;pixels[y * cached_webcam_frame-&gt;w + x];
-86 
-87         // Animated color bars that shift based on frame counter
-88         int animated_x = (x + animation_phase) % cached_webcam_frame-&gt;w;
-89         int grid_x = animated_x / 40;
-90 
-91         // Base pattern: color bars that animate horizontally
-92         switch (grid_x % 3) {
-93         case 0: // Red
-94           pixel-&gt;r = 255;
-95           pixel-&gt;g = 0;
-96           pixel-&gt;b = 0;
-97           break;
-98         case 1: // Green
-99           pixel-&gt;r = 0;
-100           pixel-&gt;g = 255;
-101           pixel-&gt;b = 0;
-102           break;
-103         case 2: // Blue
-104         default:
-105           pixel-&gt;r = 0;
-106           pixel-&gt;g = 0;
-107           pixel-&gt;b = 255;
-108           break;
-109         }
-110 
-111         // Add animated grid lines
-112         if (animated_x % 40 == 0 || y % 30 == 0) {
-113           pixel-&gt;r = 0;
-114           pixel-&gt;g = 0;
-115           pixel-&gt;b = 0;
-116         }
-117       }
-118     }
-119 
-120     return cached_webcam_frame;
-121   }
-122 
-123   if (!global_webcam_ctx) {
-124     SET_ERRNO(ERROR_WEBCAM, &quot;Webcam not initialized - global_webcam_ctx is NULL&quot;);
-125     return NULL;
-126   }
-127 
-128   image_t *frame = webcam_read_context(global_webcam_ctx);
-129 
-130   if (!frame) {
-131     return NULL;
-132   }
-133 
-134   return frame;
-135 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>frame</b>, <b>image_new()</b>, and
-    <b>webcam_read_context()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="image_t_*_webcam_read_context_(webcam_context_t_*_ctx)"><a class="permalink" href="#image_t_*_webcam_read_context_(webcam_context_t_*_ctx)">image_t
-  * webcam_read_context (webcam_context_t * ctx)</a></h2>
-<p class="Pp">Definition at line <b>263</b> of file
-    <b>video/webcam/webcam.c</b>.</p>
-<pre>263                                                     {
-264   (void)ctx;
-265   SET_ERRNO(ERROR_WEBCAM, &quot;Webcam read not supported on this platform&quot;);
-266   return NULL;
-267 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>media_source_read_video()</b>, and
-    <b>webcam_read()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -452,7 +86,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

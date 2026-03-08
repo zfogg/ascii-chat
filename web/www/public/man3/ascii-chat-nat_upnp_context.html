@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>nat_upnp_context(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">nat_upnp_context(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">nat_upnp_context(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">nat_upnp_context - Handle to UPnP context.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/nat/upnp.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">char <b>external_ip</b> [16]
+  <br/>
+  Detected external/public IP (e.g., <i>203.0.113.42&quot;).</i> <b>uint16_t</b>
+    <b>mapped_port</b>
+  <br/>
+  External port that was mapped (may differ from internal). <b>uint16_t</b>
+    <b>internal_port</b>
+  <br/>
+  Internal port we're binding to. char <b>device_description</b> [256]
+  <br/>
+  Device name for logging (e.g., <i>TP-Link</i>Archer<i>C7&quot;).</i>
+    <b>bool</b> <b>is_natpmp</b>
+  <br/>
+  true if NAT-PMP was used, false if UPnP <b>bool</b> <b>is_mapped</b>
+  <br/>
+  true if port mapping is currently active
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Handle to UPnP context.</p>
+<p class="Pp">Definition at line <b>25</b> of file <b>upnp.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char_nat_upnp_context::device_description_256_"><a class="permalink" href="#char_nat_upnp_context::device_description_256_">char
+  nat_upnp_context::device_description[256]</a></h2>
+<p class="Pp">Device name for logging (e.g., &quot;TP-Link Archer C7&quot;).</p>
+<p class="Pp">Definition at line <b>29</b> of file <b>upnp.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_nat_upnp_context::external_ip_16_"><a class="permalink" href="#char_nat_upnp_context::external_ip_16_">char
+  nat_upnp_context::external_ip[16]</a></h2>
+<p class="Pp">Detected external/public IP (e.g., &quot;203.0.113.42&quot;).</p>
+<p class="Pp">Definition at line <b>26</b> of file <b>upnp.h</b>.</p>
+<p class="Pp">Referenced by <b>nat_upnp_get_address()</b>, and
+    <b>nat_upnp_is_active()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> nat_upnp_context::internal_port</h2>
+<p class="Pp">Internal port we're binding to.</p>
+<p class="Pp">Definition at line <b>28</b> of file <b>upnp.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> nat_upnp_context::is_mapped</h2>
+<p class="Pp">true if port mapping is currently active</p>
+<p class="Pp">Definition at line <b>31</b> of file <b>upnp.h</b>.</p>
+<p class="Pp">Referenced by <b>nat_upnp_get_address()</b>,
+    <b>nat_upnp_is_active()</b>, and <b>nat_upnp_refresh()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> nat_upnp_context::is_natpmp</h2>
+<p class="Pp">true if NAT-PMP was used, false if UPnP</p>
+<p class="Pp">Definition at line <b>30</b> of file <b>upnp.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> nat_upnp_context::mapped_port</h2>
+<p class="Pp">External port that was mapped (may differ from internal).</p>
+<p class="Pp">Definition at line <b>27</b> of file <b>upnp.h</b>.</p>
+<p class="Pp">Referenced by <b>nat_detect_quality()</b>, and
+    <b>nat_upnp_get_address()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

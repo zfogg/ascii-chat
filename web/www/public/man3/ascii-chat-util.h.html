@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>util.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">util.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">util.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">util.h - &#x1F6E0;&#xFE0F; Master Utility Header</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F6E0;&#xFE0F; Master Utility Header</p>
+<p class="Pp">This is a convenience header that includes all utility modules.
+    Including this header provides access to all utility functions in a single
+    include.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="INCLUDED_MODULES:"><a class="permalink" href="#INCLUDED_MODULES:">INCLUDED
+  MODULES: </a></h1>
+<p class="Pp">This header includes:</p>
+<ul class="Bl-bullet">
+  <li><b>aspect_ratio.h</b>: Aspect ratio calculation functions</li>
+  <li><b>bytes.h</b>: Byte-level access and safe arithmetic utilities</li>
+  <li>format.h: String formatting utilities</li>
+  <li><b>ip.h</b>: IP address parsing and formatting</li>
+  <li><b>math.h</b>: Mathematical utilities (rounding, clamping,
+    power-of-two)</li>
+  <li>parsing.h: Protocol message parsing utilities</li>
+  <li><b>path.h</b>: Path manipulation utilities</li>
+  <li>string.h: String manipulation and shell escaping</li>
+  <li><b>utf8.h</b>: UTF-8 encoding and decoding utilities</li>
+  <li><b>fnv1a.h</b>: FNV-1a hash function implementation</li>
+  <li>thread.h: Thread management helper macros</li>
+  <li>atomic.h: Atomic operations convenience macros</li>
+  <li><b>endian.h</b>: Network byte order conversion helpers</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="USAGE:"><a class="permalink" href="#USAGE:">USAGE: </a></h1>
+<p class="Pp">Instead of including individual utility headers:</p>
+<p class="Pp"></p>
+<pre>#include &quot;util/path.h&quot;
+#include &quot;util/ip.h&quot;
+#include &quot;util/format.h&quot;
+</pre>
+<p class="Pp">Include this master header:</p>
+<p class="Pp"></p>
+<pre>#include &quot;util/util.h&quot;
+</pre>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This header includes all utility modules, so it may bring
+  in more dependencies than needed. For fine-grained control, include individual
+  headers instead.
+<p class="Pp"></p>
+<p class="Pp">All included headers are in the <b>Util</b> group.</p>
+</div>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">October 2025</div>
+<p class="Pp">Definition in file <b>util.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

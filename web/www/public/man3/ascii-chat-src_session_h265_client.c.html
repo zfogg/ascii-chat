@@ -58,22 +58,23 @@
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp"><b>h265_client_context_t</b> * <b>h265_client_context_create</b>
-    (uint16_t width, uint16_t height)
+    (<b>uint16_t</b> width, <b>uint16_t</b> height)
   <br/>
   void <b>h265_client_context_destroy</b> (<b>h265_client_context_t</b> *ctx)
   <br/>
-  asciichat_error_t <b>h265_client_init_media_source</b>
+  <b>asciichat_error_t</b> <b>h265_client_init_media_source</b>
     (<b>h265_client_context_t</b> *ctx, <b>h265_media_source_t</b> source_type,
     const char *source_location)
   <br/>
-  asciichat_error_t <b>h265_client_capture_and_encode</b>
-    (<b>h265_client_context_t</b> *ctx, uint8_t *output_buf, size_t
+  <b>asciichat_error_t</b> <b>h265_client_capture_and_encode</b>
+    (<b>h265_client_context_t</b> *ctx, <b>uint8_t</b> *output_buf, size_t
     *output_size)
   <br/>
   void <b>h265_client_request_keyframe</b> (<b>h265_client_context_t</b> *ctx)
   <br/>
-  void <b>h265_client_get_stats</b> (<b>h265_client_context_t</b> *ctx, uint64_t
-    *total_frames, uint64_t *keyframes, uint32_t *avg_bitrate)
+  void <b>h265_client_get_stats</b> (<b>h265_client_context_t</b> *ctx,
+    <b>uint64_t</b> *total_frames, <b>uint64_t</b> *keyframes, <b>uint32_t</b>
+    *avg_bitrate)
   <br/>
   <br/>
 </p>
@@ -99,9 +100,9 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_h265_client_capture_and_encode_("><a class="permalink" href="#asciichat_error_t_h265_client_capture_and_encode_(">asciichat_error_t
-  h265_client_capture_and_encode (<b>h265_client_context_t</b> * ctx, uint8_t *
-  output_buf, size_t * output_size)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> h265_client_capture_and_encode
+  (<b>h265_client_context_t</b> * ctx, <b>uint8_t</b> * output_buf, size_t *
+  output_size)</h2>
 <p class="Pp">Capture and encode the next frame Reads from the media source,
     converts to ASCII, and encodes to H.265</p>
 <p class="Pp"></p>
@@ -143,12 +144,14 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>h265_client_context::current_height</b>,
     <b>h265_client_context::current_width</b>,
-    <b>h265_client_context::encoder</b>, <b>h265_client_context::frame_buf</b>,
-    <b>h265_client_context::frame_buf_size</b>, and <b>h265_encode()</b>.</p>
+    <b>h265_client_context::encoder</b>, <b>ERROR_INTERNAL</b>,
+    <b>h265_client_context::frame_buf</b>,
+    <b>h265_client_context::frame_buf_size</b>, <b>h265_encode()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>h265_client_context_t</b> * h265_client_context_create
-  (uint16_t width, uint16_t height)</h2>
+  (<b>uint16_t</b> width, <b>uint16_t</b> height)</h2>
 <p class="Pp">Create a client H.265 encoding context Initializes the encoder and
     media pipeline</p>
 <p class="Pp"></p>
@@ -197,9 +200,11 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>h265_client_context::current_height</b>,
     <b>h265_client_context::current_width</b>,
-    <b>h265_client_context::encoder</b>, <b>h265_client_context::frame_buf</b>,
+    <b>h265_client_context::encoder</b>, <b>ERROR_MEDIA_INIT</b>,
+    <b>ERROR_MEMORY</b>, <b>h265_client_context::frame_buf</b>,
     <b>h265_client_context::frame_buf_size</b>, <b>h265_encoder_create()</b>,
-    and <b>h265_encoder_destroy()</b>.</p>
+    <b>h265_encoder_destroy()</b>, <b>log_info</b>, <b>SAFE_CALLOC</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_h265_client_context_destroy_("><a class="permalink" href="#void_h265_client_context_destroy_(">void
@@ -227,13 +232,14 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>h265_client_context::encoder</b>,
-    <b>h265_client_context::frame_buf</b>, <b>h265_encoder_destroy()</b>, and
-    <b>h265_client_context::source_location</b>.</p>
+    <b>h265_client_context::frame_buf</b>, <b>h265_encoder_destroy()</b>,
+    <b>SAFE_FREE</b>, and <b>h265_client_context::source_location</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_h265_client_get_stats_("><a class="permalink" href="#void_h265_client_get_stats_(">void
-  h265_client_get_stats (<b>h265_client_context_t</b> * ctx, uint64_t *
-  total_frames, uint64_t * keyframes, uint32_t * avg_bitrate)</a></h2>
+  h265_client_get_stats (<b>h265_client_context_t</b> * ctx, <b>uint64_t</b> *
+  total_frames, <b>uint64_t</b> * keyframes, <b>uint32_t</b> *
+  avg_bitrate)</a></h2>
 <p class="Pp">Get encoder statistics</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
@@ -257,9 +263,9 @@
     <b>h265_encoder_get_stats()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_h265_client_init_media_source_("><a class="permalink" href="#asciichat_error_t_h265_client_init_media_source_(">asciichat_error_t
-  h265_client_init_media_source (<b>h265_client_context_t</b> * ctx,
-  <b>h265_media_source_t</b> source_type, const char * source_location)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> h265_client_init_media_source
+  (<b>h265_client_context_t</b> * ctx, <b>h265_media_source_t</b> source_type,
+  const char * source_location)</h2>
 <p class="Pp">Initialize media source for the client encoder This prepares the
     media pipeline (opens file, connects to stream, etc.)</p>
 <p class="Pp"></p>
@@ -314,9 +320,11 @@
 111 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>H265_SOURCE_FILE</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INTERNAL</b>,
+    <b>ERROR_MEMORY</b>, <b>H265_SOURCE_FILE</b>,
     <b>H265_SOURCE_TEST_PATTERN</b>, <b>H265_SOURCE_URL</b>,
-    <b>H265_SOURCE_WEBCAM</b>, <b>h265_client_context::source_location</b>, and
+    <b>H265_SOURCE_WEBCAM</b>, <b>log_info</b>, <b>SAFE_MALLOC</b>,
+    <b>SET_ERRNO</b>, <b>h265_client_context::source_location</b>, and
     <b>h265_client_context::source_type</b>.</p>
 </section>
 <section class="Ss">
@@ -347,7 +355,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

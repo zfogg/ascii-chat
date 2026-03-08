@@ -35,19 +35,21 @@
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include
+    &lt;include/ascii-chat/options/registry/mode_defaults.h&gt;</p>
 <section class="Ss">
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">asciichat_mode_t <b>mode</b>
-  <br/>
-  const char * <b>name</b>
+<p class="Pp">const char * <b>name</b>
   <br/>
   const char * <b>description</b>
   <br/>
-  const char * <b>group</b>
-  <br/>
   <b>mode_entry_point_t</b> <b>entry_point</b>
+  <br/>
+  <b>asciichat_mode_t</b> <b>mode</b>
+  <br/>
+  const char * <b>group</b>
   <br/>
   <br/>
 </p>
@@ -57,9 +59,9 @@
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
 <p class="Pp">Metadata for a mode.</p>
-<p class="Pp">Mode descriptor for string conversion.</p>
-<p class="Pp">Definition at line <b>26</b> of file
-    <b>options/registry/mode_defaults.c</b>.</p>
+<p class="Pp">Describes a mode including its name, user-friendly description,
+    and category grouping (server-like or client-like).</p>
+<p class="Pp">Definition at line <b>357</b> of file <b>main.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -67,34 +69,29 @@
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_mode_descriptor_t::description"><a class="permalink" href="#const_char_*_mode_descriptor_t::description">const
   char * mode_descriptor_t::description</a></h2>
-<p class="Pp">Definition at line <b>29</b> of file
-    <b>options/registry/mode_defaults.c</b>.</p>
+<p class="Pp">Definition at line <b>359</b> of file <b>main.c</b>.</p>
 <p class="Pp">Referenced by <b>get_modes_by_group()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>mode_entry_point_t</b> mode_descriptor_t::entry_point</h2>
-<p class="Pp">Definition at line <b>339</b> of file <b>main.c</b>.</p>
+<p class="Pp">Definition at line <b>360</b> of file <b>main.c</b>.</p>
 <p class="Pp">Referenced by <b>main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char*_mode_descriptor_t::group"><a class="permalink" href="#const_char*_mode_descriptor_t::group">const
   char* mode_descriptor_t::group</a></h2>
-<p class="Pp">Definition at line <b>30</b> of file
-    <b>options/registry/mode_defaults.c</b>.</p>
+<p class="Pp">Definition at line <b>32</b> of file <b>mode_defaults.h</b>.</p>
 <p class="Pp">Referenced by <b>get_modes_by_group()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_mode_t_mode_descriptor_t::mode"><a class="permalink" href="#asciichat_mode_t_mode_descriptor_t::mode">asciichat_mode_t
-  mode_descriptor_t::mode</a></h2>
-<p class="Pp">Definition at line <b>27</b> of file
-    <b>options/registry/mode_defaults.c</b>.</p>
+<h2 class="Ss"><b>asciichat_mode_t</b> mode_descriptor_t::mode</h2>
+<p class="Pp">Definition at line <b>29</b> of file <b>mode_defaults.h</b>.</p>
 <p class="Pp">Referenced by <b>get_modes_by_group()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_mode_descriptor_t::name"><a class="permalink" href="#const_char_*_mode_descriptor_t::name">const
   char * mode_descriptor_t::name</a></h2>
-<p class="Pp">Definition at line <b>28</b> of file
-    <b>options/registry/mode_defaults.c</b>.</p>
+<p class="Pp">Definition at line <b>358</b> of file <b>main.c</b>.</p>
 <p class="Pp">Referenced by <b>get_modes_by_group()</b>.</p>
 <p class="Pp"></p>
 </section>
@@ -106,7 +103,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

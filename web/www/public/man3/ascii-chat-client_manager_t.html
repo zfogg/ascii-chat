@@ -41,15 +41,15 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">client_info_t <b>clients</b> [MAX_CLIENTS]
+<p class="Pp"><b>client_info_t</b> <b>clients</b> [<b>MAX_CLIENTS</b>]
   <br/>
-  Array of client_info_t structures (backing storage). client_info_t *
-    <b>clients_by_id</b>
+  Array of <b>client_info_t</b> structures (backing storage).
+    <b>client_info_t</b> * <b>clients_by_id</b>
   <br/>
   uthash head pointer for O(1) client_id -&gt; client_info_t* lookups int
     <b>client_count</b>
   <br/>
-  Current number of active clients. mutex_t <b>mutex</b>
+  Current number of active clients. <b>mutex_t</b> <b>mutex</b>
   <br/>
   Legacy mutex (mostly replaced by rwlock).
   <br/>
@@ -101,7 +101,7 @@
 <h1 class="Sh" id="STRUCTURE_FIELDS:"><a class="permalink" href="#STRUCTURE_FIELDS:">STRUCTURE
   FIELDS: </a></h1>
 <ul class="Bl-bullet">
-  <li>clients[]: Array of client_info_t structures (backing storage)</li>
+  <li>clients[]: Array of <b>client_info_t</b> structures (backing storage)</li>
   <li>client_hashtable: Hashtable for O(1) client_id -&gt; client_info_t*
       lookups</li>
   <li>client_count: Current number of active clients</li>
@@ -117,7 +117,8 @@
 <p class="Pp">All client access should go through <b>find_client_by_id()</b> or
     <b>find_client_by_socket()</b> to ensure proper locking.</p>
 </div>
-<p class="Pp">Definition at line <b>63</b> of file <b>server/client.h</b>.</p>
+<p class="Pp">Definition at line <b>63</b> of file
+  <b>src/server/client.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -126,26 +127,28 @@
 <h2 class="Ss" id="int_client_manager_t::client_count"><a class="permalink" href="#int_client_manager_t::client_count">int
   client_manager_t::client_count</a></h2>
 <p class="Pp">Current number of active clients.</p>
-<p class="Pp">Definition at line <b>69</b> of file <b>server/client.h</b>.</p>
+<p class="Pp">Definition at line <b>69</b> of file
+  <b>src/server/client.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="client_info_t_client_manager_t::clients_MAX_CLIENTS_"><a class="permalink" href="#client_info_t_client_manager_t::clients_MAX_CLIENTS_">client_info_t
-  client_manager_t::clients[MAX_CLIENTS]</a></h2>
-<p class="Pp">Array of client_info_t structures (backing storage).</p>
-<p class="Pp">Definition at line <b>65</b> of file <b>server/client.h</b>.</p>
+<h2 class="Ss"><b>client_info_t</b>
+  client_manager_t::clients[<b>MAX_CLIENTS</b>]</h2>
+<p class="Pp">Array of <b>client_info_t</b> structures (backing storage).</p>
+<p class="Pp">Definition at line <b>65</b> of file
+  <b>src/server/client.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="client_info_t*_client_manager_t::clients_by_id"><a class="permalink" href="#client_info_t*_client_manager_t::clients_by_id">client_info_t*
-  client_manager_t::clients_by_id</a></h2>
+<h2 class="Ss"><b>client_info_t</b>* client_manager_t::clients_by_id</h2>
 <p class="Pp">uthash head pointer for O(1) client_id -&gt; client_info_t*
     lookups</p>
-<p class="Pp">Definition at line <b>67</b> of file <b>server/client.h</b>.</p>
+<p class="Pp">Definition at line <b>67</b> of file
+  <b>src/server/client.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="mutex_t_client_manager_t::mutex"><a class="permalink" href="#mutex_t_client_manager_t::mutex">mutex_t
-  client_manager_t::mutex</a></h2>
+<h2 class="Ss"><b>mutex_t</b> client_manager_t::mutex</h2>
 <p class="Pp">Legacy mutex (mostly replaced by rwlock).</p>
-<p class="Pp">Definition at line <b>71</b> of file <b>server/client.h</b>.</p>
+<p class="Pp">Definition at line <b>71</b> of file
+  <b>src/server/client.h</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -156,7 +159,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

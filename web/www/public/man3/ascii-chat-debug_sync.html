@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>debug_sync(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">debug_sync(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">debug_sync(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">debug_sync - Debug_sync</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+<br/>
+<p class="Pp">file <b>mutex.c</b>
+  <br/>
+  Per-thread mutex lock stack for deadlock detection. file <b>sync.c</b>
+  <br/>
+  &#x1F512; Synchronization primitive debugging with dynamic state inspection
+    file <b>mutex.h</b>
+  <br/>
+  Per-thread mutex lock stack for deadlock detection. file <b>sync.h</b>
+  <br/>
+  &#x1F512; Synchronization primitive debugging (mutexes, rwlocks, condition
+    variables)
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>debug_sync_check_cond_deadlocks</b> (void)
+  <br/>
+  Check all condition variables for deadlocks. void
+    <b>debug_sync_print_mutex_state</b> (void)
+  <br/>
+  Print timing state for all named mutexes to stdout/log. void
+    <b>debug_sync_print_rwlock_state</b> (void)
+  <br/>
+  Print timing state for all named read-write locks to stdout/log. void
+    <b>debug_sync_print_cond_state</b> (void)
+  <br/>
+  Print timing state for all named condition variables to stdout/log. void
+    <b>debug_sync_print_state</b> (void)
+  <br/>
+  Print all synchronization primitive states at once. void
+    <b>debug_sync_print_state_delayed</b> (<b>uint64_t</b> delay_ns)
+  <br/>
+  Schedule delayed sync state printing on debug thread. void
+    <b>debug_sync_print_backtrace_delayed</b> (<b>uint64_t</b> delay_ns)
+  <br/>
+  Schedule delayed backtrace printing on debug thread. void
+    <b>debug_sync_set_memory_report_interval</b> (<b>uint64_t</b> interval_ns)
+  <br/>
+  Set periodic memory report interval. void <b>debug_sync_set_main_thread_id</b>
+    (void)
+  <br/>
+  Initialize debug synchronization system. <b>uint64_t</b>
+    <b>debug_sync_get_main_thread_id</b> (void)
+  <br/>
+  Get the main thread ID for memory reporting. int
+    <b>debug_sync_start_thread</b> (void)
+  <br/>
+  Start background debug thread for scheduled operations. void
+    <b>debug_sync_destroy</b> (void)
+  <br/>
+  Destroy debug synchronization system. void <b>debug_sync_cleanup_thread</b>
+    (void)
+  <br/>
+  Stop and clean up background debug thread. void
+    <b>debug_sync_final_cleanup</b> (void)
+  <br/>
+  Final cleanup of debug allocations at shutdown. void
+    <b>debug_sync_trigger_print</b> (void)
+  <br/>
+  Trigger sync state print immediately (synchronous). void
+    <b>debug_sync_get_stats</b> (<b>uint64_t</b> *total_acquired,
+    <b>uint64_t</b> *total_released, <b>uint32_t</b> *currently_held)
+  <br/>
+  Get synchronization statistics.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">This module provides comprehensive synchronization state
+    inspection and debugging:</p>
+<ul class="Bl-bullet">
+  <li>Dynamic state inspection using named.c registry (see
+    <b>debug/named.h</b>)</li>
+  <li>Timing information for all lock operations (last lock/unlock times)</li>
+  <li>Zero-copy iteration through all registered primitives</li>
+  <li>Scheduled delayed printing for capture during critical sections</li>
+</ul>
+<p class="Pp">No internal collection overhead - queries named.c directly for
+    live state, making it safe to call even in tight loops without performance
+    penalty.</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="Purpose"><a class="permalink" href="#Purpose">Purpose</a></h2>
+<p class="Pp">Synchronization debugging answers critical questions:</p>
+<ul class="Bl-bullet">
+  <li><b>Development</b>: Which locks are blocking? Which have stale
+    holders?</li>
+  <li><b>Production</b>: Is a deadlock happening? How long are acquisitions
+      taking?</li>
+  <li><b>Testing</b>: Are multiple threads contending properly? What's the lock
+      order?</li>
+</ul>
+<p class="Pp">Useful for:</p>
+<ul class="Bl-bullet">
+  <li>Detecting deadlocks and lock inversions</li>
+  <li>Identifying contention bottlenecks</li>
+  <li>Validating thread safety assumptions</li>
+  <li>Production debugging with minimal overhead</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Key_Features"><a class="permalink" href="#Key_Features">Key
+  Features</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Zero-overhead queries</b>: No collection threads, direct state
+      inspection</li>
+  <li><b>Named primitive support</b>: Works with any primitive registered via
+      named.h</li>
+  <li><b>Timing snapshots</b>: Last lock/unlock times for contention
+    analysis</li>
+  <li><b>Comprehensive views</b>: Print all mutexes, rwlocks, and condition
+      variables</li>
+  <li><b>Delayed reporting</b>: Schedule state capture during specific execution
+      phases</li>
+  <li><b>Thread-safe printing</b>: Can be called from signal handlers or debug
+      threads</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Integration_with_Named_Registry"><a class="permalink" href="#Integration_with_Named_Registry">Integration
+  with Named Registry</a></h2>
+<p class="Pp">Synchronization primitives are identified by their names in the
+    named.c registry:</p>
+<p class="Pp"></p>
+<pre>// In your code:
+mutex_t recv_lock;
+mutex_init(&amp;recv_lock);
+NAMED_REGISTER(&amp;recv_lock, &quot;recv&quot;, &quot;mutex&quot;);  // See debug/named.h
+// Later, in debug output:
+debug_sync_print_state();  // Prints &quot;recv.1 (mutex)&quot; with timing
+</pre>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>debug/named.h</b> - The registry that backs this
+  module</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Usage_Examples"><a class="permalink" href="#Usage_Examples">Usage
+  Examples</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Development:_Print_Current_Lock_State"><a class="permalink" href="#Development:_Print_Current_Lock_State">Development:
+  Print Current Lock State</a></h2>
+<pre>// When you suspect a deadlock or lock contention:
+debug_sync_print_state();  // Prints all mutexes, rwlocks, conds with timing</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Production:_Periodic_State_Dumps"><a class="permalink" href="#Production:_Periodic_State_Dumps">Production:
+  Periodic State Dumps</a></h2>
+<pre>// In a signal handler (e.g., SIGUSR2):
+void handle_debug_signal(int sig) {
+<br/>
+    debug_sync_trigger_print();  // Schedules print on debug thread
+}
+// In main:
+debug_sync_init();
+debug_sync_start_thread();
+signal(SIGUSR2, handle_debug_signal);  // SIGUSR2 is mapped to sync state printing
+// Now: kill -USR2 &lt;pid&gt; triggers state dump in logs</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Testing:_Capture_State_at_Specific_Moments"><a class="permalink" href="#Testing:_Capture_State_at_Specific_Moments">Testing:
+  Capture State at Specific Moments</a></h2>
+<pre>// Schedule a state dump after 100ms (during critical section):
+debug_sync_print_state_delayed(100 * 1000000);  // 100ms in nanoseconds
+// State will print automatically on debug thread</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Backtrace_on_Lock_Contention"><a class="permalink" href="#Backtrace_on_Lock_Contention">Backtrace
+  on Lock Contention</a></h2>
+<pre>// Combined with backtrace:
+debug_sync_print_state();         // See which locks are held
+debug_sync_print_backtrace_delayed(50 * 1000000);  // Get stacks after 50ms</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Output_Format"><a class="permalink" href="#Output_Format">Output
+  Format</a></h2>
+<p class="Pp">Typical output:</p>
+<p class="Pp"></p>
+<pre>=== Mutex State ===
+recv.1 (mutex) @ lib/network/socket.c:42:socket_create()
+<br/>
+  Last lock:   2026-02-23T17:45:23.123456789Z (123ms ago)
+<br/>
+  Last unlock: 2026-02-23T17:45:23.200000000Z (45ms ago)
+<br/>
+  Status: free
+send.2 (mutex) @ lib/network/socket.c:89:socket_send()
+<br/>
+  Last lock:   2026-02-23T17:45:23.195000000Z (50ms ago)
+<br/>
+  Last unlock: (never)
+<br/>
+  Status: HELD (potential deadlock!)
+</pre>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">February 2026</div>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_sync_check_cond_deadlocks_(void_)"><a class="permalink" href="#void_debug_sync_check_cond_deadlocks_(void_)">void
+  debug_sync_check_cond_deadlocks (void )</a></h2>
+<p class="Pp">#include &lt;<b>lib/debug/mutex.c</b>&gt;<b></b></p>
+<p class="Pp">Check all condition variables for deadlocks. Check all condition
+    variables for potential deadlocks.</p>
+<p class="Pp"></p>
+<p class="Pp">Scans all registered condition variables and logs warnings for any
+    that have been waiting without signal for longer than
+    COND_DEADLOCK_THRESHOLD_NS. Called periodically by the debug thread (every
+    100ms).</p>
+<p class="Pp"></p>
+<p class="Pp">Skips checks during shutdown to avoid accessing freed memory.</p>
+<p class="Pp"></p>
+<p class="Pp">Scans all registered condition variables and logs warnings for any
+    that have threads waiting without being signaled for longer than 5
+  seconds.</p>
+<p class="Pp"></p>
+<p class="Pp">For each stuck condition variable, logs:</p>
+<ul class="Bl-bullet">
+  <li>Number of waiting threads and elapsed wait time</li>
+  <li>Callsite where wait was entered (file, line, function)</li>
+  <li>Associated mutex status (held by whom, or free)</li>
+</ul>
+<p class="Pp">Called periodically by the debug thread (every 100ms), so
+    detection latency is at most 5 seconds + 100ms for stuck conditions.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Output_Example"><a class="permalink" href="#Output_Example">Output
+  Example</a></h2>
+<pre>[WARN] Stuck cond 'audio_send_queue_cond.0': 1 thread(s) waiting 66s with no signal (most recent waiter:
+audio_sender.0) [WARN]   wait entered at src/client/audio.c:291 audio_sender_thread_func() [WARN]   associated mutex
+is FREE &#x2014; producer is not calling cond_signal</pre>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe: can be called from any thread
+<p class="Pp"></p>
+<p class="Pp">No blocking: reads only, doesn't acquire locks</p>
+<p class="Pp"></p>
+<p class="Pp">Called automatically by debug thread; only call manually for
+    immediate checks</p>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>debug_sync_start_thread()</b> to ensure periodic
+  checking</div>
+<p class="Pp">Definition at line <b>693</b> of file <b>debug/mutex.c</b>.</p>
+<pre>693                                            {
+694   if (debug_sync_is_cleanup_in_progress()) {
+695     return;
+696   }
+697   named_registry_for_each(cond_deadlock_check_callback, NULL);
+698 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>debug_sync_is_cleanup_in_progress()</b>, and
+    <b>named_registry_for_each()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_sync_cleanup_thread_(void_)"><a class="permalink" href="#void_debug_sync_cleanup_thread_(void_)">void
+  debug_sync_cleanup_thread (void )</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
+<p class="Pp">Stop and clean up background debug thread. Gracefully shuts down
+    the background debug thread that was started by
+    <b>debug_sync_start_thread()</b>. Processes any remaining queued jobs before
+    exit.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typical_Shutdown_Sequence"><a class="permalink" href="#Typical_Shutdown_Sequence">Typical
+  Shutdown Sequence</a></h2>
+<pre>// At program shutdown:
+debug_sync_cleanup_thread();  // Stop background thread
+debug_sync_destroy();         // Destroy system</pre>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Must be called before <b>debug_sync_destroy()</b>
+<p class="Pp"></p>
+<p class="Pp">Safe to call multiple times</p>
+</div>
+<p class="Pp">Definition at line <b>675</b> of file <b>sync.c</b>.</p>
+<pre>675                                      {
+676   log_debug(&quot;[DEBUG_SYNC_CLEANUP] Starting cleanup&quot;);
+677 
+678   // Only join if thread was actually created
+679   if (!g_debug_state_request.initialized) {
+680     log_debug(&quot;[DEBUG_SYNC_CLEANUP] Thread not initialized, returning&quot;);
+681     return;
+682   }
+683 
+684   // Set cleanup flag to prevent deadlock checks from accessing freed memory
+685   // Do this after checking initialization so we don't set it unnecessarily
+686   atomic_store_bool(&amp;g_cleanup_in_progress, true);
+687   log_debug(&quot;[DEBUG_SYNC_CLEANUP] Thread was initialized, proceeding with cleanup&quot;);
+688 
+689   log_debug(&quot;[DEBUG_SYNC_CLEANUP] Setting initialized to false&quot;);
+690   g_debug_state_request.initialized = false; // Prevent double-join
+691 
+692   // Signal the thread to wake up immediately instead of waiting for 100ms timeout
+693   log_debug(&quot;[DEBUG_SYNC_CLEANUP] Signaling thread to exit&quot;);
+694   atomic_store_bool(&amp;g_debug_state_request.should_exit, true);
+695   cond_signal(&amp;g_debug_state_request.cond);
+696   log_debug(&quot;[DEBUG_SYNC_CLEANUP] Signal sent, about to join thread&quot;);
+697 
+698   // Use a timeout join to ensure we don't deadlock, but still unregister the thread
+699   // The debug thread should exit quickly after should_exit is set above
+700   int join_result = asciichat_thread_join_timeout(&amp;g_debug_thread, NULL, 1000000000ULL); // 1 second timeout
+701   if (join_result == 0) {
+702     log_debug(&quot;[DEBUG_SYNC_CLEANUP] Thread joined successfully&quot;);
+703   } else if (join_result == -2) {
+704     log_debug(&quot;[DEBUG_SYNC_CLEANUP] Thread join timed out (thread may still be running)&quot;);
+705     // Don't unregister if timeout - thread is still alive
+706   } else {
+707     log_debug(&quot;[DEBUG_SYNC_CLEANUP] Thread join failed with error %d&quot;, join_result);
+708   }
+709 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_join_timeout()</b>,
+    <b>atomic_store_bool()</b>, <b>cond_signal()</b>, and <b>log_debug</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
+    <b>debug_sync_destroy()</b>, and <b>session_client_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_sync_destroy_(void_)"><a class="permalink" href="#void_debug_sync_destroy_(void_)">void
+  debug_sync_destroy (void )</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
+<p class="Pp">Destroy debug synchronization system. Cleans up internal
+    structures. Should be called during shutdown, after
+    <b>debug_sync_cleanup_thread()</b>.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>debug_sync_cleanup_thread()</b> should be called
+  first</div>
+<p class="Pp">Definition at line <b>671</b> of file <b>sync.c</b>.</p>
+<pre>671                               {
+672   debug_sync_cleanup_thread();
+673 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>debug_sync_cleanup_thread()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>, and
+    <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_sync_final_cleanup_(void_)"><a class="permalink" href="#void_debug_sync_final_cleanup_(void_)">void
+  debug_sync_final_cleanup (void )</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
+<p class="Pp">Final cleanup of debug allocations at shutdown. Cleans up any
+    remaining thread-local allocations (mutex stacks, etc) from the current
+    thread. Must be called before <b>debug_sync_destroy()</b>.</p>
+<p class="Pp"></p>
+<p class="Pp">Final cleanup of debug allocations at shutdown.</p>
+<p class="Pp">Definition at line <b>596</b> of file <b>sync.c</b>.</p>
+<pre>596                                     {
+597   // Clean up current thread's mutex stack explicitly
+598   mutex_stack_cleanup_current_thread();
+599 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>mutex_stack_cleanup_current_thread()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> debug_sync_get_main_thread_id (void )</h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
+<p class="Pp">Get the main thread ID for memory reporting.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Main thread ID as <b>uint64_t</b>, or 0 if not
+  initialized</div>
+<p class="Pp">Definition at line <b>650</b> of file <b>sync.c</b>.</p>
+<pre>650                                              {
+651   return g_debug_main_thread_id;
+652 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_sync_get_stats_("><a class="permalink" href="#void_debug_sync_get_stats_(">void
+  debug_sync_get_stats (<b>uint64_t</b> * total_acquired, <b>uint64_t</b> *
+  total_released, <b>uint32_t</b> * currently_held)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
+<p class="Pp">Get synchronization statistics.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>total_acquired</i> Pointer to store total lock
+  acquisitions (can be NULL)
+<br/>
+<i>total_released</i> Pointer to store total lock releases (can be NULL)
+<br/>
+<i>currently_held</i> Pointer to store currently held locks (can be NULL)</div>
+<p class="Pp">Retrieves global statistics about synchronization primitive usage.
+    Any parameter can be NULL if that statistic isn't needed.</p>
+<p class="Pp"></p>
+<p class="Pp">Useful for:</p>
+<ul class="Bl-bullet">
+  <li>Monitoring lock contention trends</li>
+  <li>Validating symmetric lock/unlock behavior</li>
+  <li>Detecting lock leaks (acquired != released)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Example_Usage"><a class="permalink" href="#Example_Usage">Example
+  Usage</a></h2>
+<pre>uint64_t acquired, released;
+uint32_t held;
+debug_sync_get_stats(&amp;acquired, &amp;released, &amp;held);
+if (acquired == released &amp;&amp; held == 0) {
+<br/>
+    log_info(&quot;No lock leaks: %lu acquisitions, all released&quot;, acquired);
+} else if (held &gt; 0) {
+<br/>
+    log_warn(&quot;Possible deadlock: %u locks currently held&quot;, held);
+}</pre>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Atomically reads global counters, no locking required
+<p class="Pp"></p>
+<p class="Pp">Statistics accumulate over program lifetime</p>
+<p class="Pp"></p>
+<p class="Pp">Useful for periodic health checks or monitoring</p>
+</div>
+<p class="Pp">Definition at line <b>723</b> of file <b>sync.c</b>.</p>
+<pre>723                                                                                                         {
+724   if (total_acquired)
+725     *total_acquired = 0;
+726   if (total_released)
+727     *total_released = 0;
+728   if (currently_held)
+729     *currently_held = 0;
+730 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>stats_logger_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_sync_print_backtrace_delayed_("><a class="permalink" href="#void_debug_sync_print_backtrace_delayed_(">void
+  debug_sync_print_backtrace_delayed (<b>uint64_t</b> delay_ns)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
+<p class="Pp">Schedule delayed backtrace printing on debug thread.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>delay_ns</i> Delay in nanoseconds before
+  printing</div>
+<p class="Pp">Schedules a full backtrace capture and print on the debug thread
+    after the specified delay. Complements
+    <b>debug_sync_print_state_delayed()</b> to capture both lock state AND stack
+    traces at a specific moment.</p>
+<p class="Pp"></p>
+<p class="Pp">The debug thread must be running (started via
+    <b>debug_sync_start_thread()</b>).</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Combined_Usage"><a class="permalink" href="#Combined_Usage">Combined
+  Usage</a></h2>
+<pre>void suspect_deadlock_region(void) {
+<br/>
+    // Capture both state and stacks after 100ms
+<br/>
+    debug_sync_print_state_delayed(100 * 1000000);
+<br/>
+    debug_sync_print_backtrace_delayed(100 * 1000000);
+<br/>
+    // Execute potentially problematic code
+<br/>
+    // After 100ms, both state and stacks will be printed
+}</pre>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Non-blocking: returns immediately
+<p class="Pp"></p>
+<p class="Pp">Useful with delayed state printing for comprehensive debugging</p>
+<p class="Pp"></p>
+<p class="Pp">Complements <b>backtrace_capture_and_symbolize()</b> for manual
+    backtraces</p>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>debug_sync_print_state_delayed()</b>
+<p class="Pp"></p>
+<p class="Pp">backtrace.h for manual backtrace capture</p>
+</div>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>delay_ns</i> Nanoseconds to sleep before
+  printing</div>
+<p class="Pp">Definition at line <b>618</b> of file <b>sync.c</b>.</p>
+<pre>618                                                            {
+619   mutex_lock(&amp;g_debug_state_request.mutex);
+620   g_debug_state_request.request_type = DEBUG_REQUEST_BACKTRACE;
+621   g_debug_state_request.delay_ns = delay_ns;
+622   atomic_store_bool(&amp;g_debug_state_request.should_run, true);
+623   cond_signal(&amp;g_debug_state_request.cond);
+624   mutex_unlock(&amp;g_debug_state_request.mutex);
+625 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool()</b>, <b>cond_signal()</b>,
+    <b>DEBUG_REQUEST_BACKTRACE</b>, <b>mutex_lock</b>, and
+  <b>mutex_unlock</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_sync_print_cond_state_(void_)"><a class="permalink" href="#void_debug_sync_print_cond_state_(void_)">void
+  debug_sync_print_cond_state (void )</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
+<p class="Pp">Print timing state for all named condition variables to
+    stdout/log. Queries the named.c registry and prints a table of all
+    registered condition variables with their timing information:</p>
+<ul class="Bl-bullet">
+  <li>Name and registration location</li>
+  <li>Last wait time (with elapsed time)</li>
+  <li>Last signal time (with elapsed time)</li>
+  <li>Last broadcast time (with elapsed time)</li>
+</ul>
+<p class="Pp">Useful for detecting:</p>
+<ul class="Bl-bullet">
+  <li>Condition variable deadlocks (waiters never signaled)</li>
+  <li>Signal storms (excessive signaling)</li>
+  <li>Lost wakeups (signals without corresponding waiters)</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe: can be called from any thread or signal
+  handler
+<p class="Pp"></p>
+<p class="Pp">No blocking: reads only, doesn't acquire locks</p>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>NAMED_REGISTER()</b> in <b>debug/named.h</b> to
+  register condition variables</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_sync_print_mutex_state_(void_)"><a class="permalink" href="#void_debug_sync_print_mutex_state_(void_)">void
+  debug_sync_print_mutex_state (void )</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
+<p class="Pp">Print timing state for all named mutexes to stdout/log. Queries
+    the named.c registry and prints a table of all registered mutexes with their
+    timing information:</p>
+<ul class="Bl-bullet">
+  <li>Name and registration location</li>
+  <li>Last lock time (with elapsed time)</li>
+  <li>Last unlock time (with elapsed time)</li>
+  <li>Current status (held/free)</li>
+</ul>
+<p class="Pp">Useful for detecting:</p>
+<ul class="Bl-bullet">
+  <li>Mutex deadlocks (HELD locks that should be released)</li>
+  <li>Lock starvation (locks never acquired)</li>
+  <li>Excessive lock contention (very frequent lock/unlock cycles)</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe: can be called from any thread or signal
+  handler
+<p class="Pp"></p>
+<p class="Pp">No blocking: reads only, doesn't acquire locks</p>
+<p class="Pp"></p>
+<p class="Pp">Zero overhead in release builds if no mutexes are named</p>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>NAMED_REGISTER()</b> in <b>debug/named.h</b> to
+  register mutexes for tracking</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_sync_print_rwlock_state_(void_)"><a class="permalink" href="#void_debug_sync_print_rwlock_state_(void_)">void
+  debug_sync_print_rwlock_state (void )</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
+<p class="Pp">Print timing state for all named read-write locks to stdout/log.
+    Queries the named.c registry and prints a table of all registered rwlocks
+    with their timing information:</p>
+<ul class="Bl-bullet">
+  <li>Name and registration location</li>
+  <li>Last read-lock time (with elapsed time)</li>
+  <li>Last write-lock time (with elapsed time)</li>
+  <li>Last unlock time (with elapsed time)</li>
+  <li>Current status (read-held/write-held/free)</li>
+</ul>
+<p class="Pp">Useful for detecting:</p>
+<ul class="Bl-bullet">
+  <li>RWlock writer starvation (reads blocking writers)</li>
+  <li>Asymmetric lock patterns (only readers or only writers)</li>
+  <li>Writer lock deadlocks (HELD write locks)</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe: can be called from any thread or signal
+  handler
+<p class="Pp"></p>
+<p class="Pp">No blocking: reads only, doesn't acquire locks</p>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>NAMED_REGISTER()</b> in <b>debug/named.h</b> to
+  register rwlocks for tracking</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_sync_print_state_(void_)"><a class="permalink" href="#void_debug_sync_print_state_(void_)">void
+  debug_sync_print_state (void )</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
+<p class="Pp">Print all synchronization primitive states at once. Comprehensive
+    debugging view that combines output from:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>debug_sync_print_mutex_state()</b></dd>
+  <dt>2.</dt>
+  <dd><b>debug_sync_print_rwlock_state()</b></dd>
+  <dt>3.</dt>
+  <dd><b>debug_sync_print_cond_state()</b></dd>
+</dl>
+<p class="Pp">This is the starting point for understanding overall lock
+    contention and state. Use individual <i>print</i>*_state() functions if you
+    only need specific primitive types.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typical_Workflow"><a class="permalink" href="#Typical_Workflow">Typical
+  Workflow</a></h2>
+<pre>// In debugger or signal handler:
+debug_sync_print_state();  // See all sync primitives at once
+// Then examine the output for:
+// - Any HELD locks that should be free
+// - Asymmetric patterns (locks acquired but never released)
+// - Timestamps that suggest contention or deadlock</pre>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe: can be called from any thread or signal
+  handler
+<p class="Pp"></p>
+<p class="Pp">Useful in production with signal handlers for &quot;give me the
+    state now&quot;</p>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>debug_sync_print_mutex_state()</b>
+<p class="Pp"></p>
+<p class="Pp"><b>debug_sync_print_rwlock_state()</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>debug_sync_print_cond_state()</b></p>
+</div>
+<p class="Pp">Definition at line <b>388</b> of file <b>sync.c</b>.</p>
+<pre>388                                   {
+389 // Use a single large buffer for all sync state output
+390 #define SYNC_BUFFER_SIZE 65536  // Increased from 8192 to handle many syncs
+391   log_debug(&quot;[debug_sync_print_state] ENTRY&quot;);
+392 
+393   char *buffer = SAFE_MALLOC(SYNC_BUFFER_SIZE, char *);
+394   if (!buffer) {
+395     log_debug(&quot;[debug_sync_print_state] Failed to allocate buffer&quot;);
+396     return;
+397   }
+398 
+399   sync_buffer_t buf = {.buffer = buffer, .buffer_size = SYNC_BUFFER_SIZE, .offset = 0};
+400 
+401   // Iterate through all registered syncs
+402   log_debug(&quot;[debug_sync_print_state] Iterating mutexes&quot;);
+403   named_registry_for_each(mutex_iter_callback, &amp;buf);
+404   log_debug(&quot;[debug_sync_print_state] Iterating rwlocks&quot;);
+405   named_registry_for_each(rwlock_iter_callback, &amp;buf);
+406   log_debug(&quot;[debug_sync_print_state] Iterating conds&quot;);
+407   named_registry_for_each(cond_iter_callback, &amp;buf);
+408 
+409   named_registry_for_each(atomic_t_iter_callback, &amp;buf);
+410   named_registry_for_each(atomic_ptr_iter_callback, &amp;buf);
+411 
+412   // Print lock stacks for deadlock analysis
+413   log_debug(&quot;[debug_sync_print_state] Getting lock stacks&quot;);
+414   debug_sync_print_lock_stacks(buf.buffer, buf.buffer_size, &amp;buf.offset);
+415 
+416   // Log everything in one call
+417   log_debug(&quot;[debug_sync_print_state] Buffer size: %zu bytes&quot;, buf.offset);
+418   if (buf.offset &gt; 0) {
+419     log_info(&quot;SYNC_STATE:\n%s&quot;, buf.buffer);
+420   } else {
+421     log_info(&quot;SYNC_STATE: (empty)&quot;);
+422   }
+423 
+424   SAFE_FREE(buffer);
+425 #undef SYNC_BUFFER_SIZE
+426 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>sync_buffer_t::buffer</b>,
+    <b>sync_buffer_t::buffer_size</b>, <b>log_debug</b>, <b>log_info</b>,
+    <b>named_registry_for_each()</b>, <b>sync_buffer_t::offset</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and <b>SYNC_BUFFER_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_sync_print_state_delayed_("><a class="permalink" href="#void_debug_sync_print_state_delayed_(">void
+  debug_sync_print_state_delayed (<b>uint64_t</b> delay_ns)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
+<p class="Pp">Schedule delayed sync state printing on debug thread.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>delay_ns</i> Delay in nanoseconds before printing
+  (e.g., 100 * 1000000 for 100ms)</div>
+<p class="Pp">Schedules <b>debug_sync_print_state()</b> to execute on the debug
+    thread after the specified delay. Useful for capturing state snapshots at
+    specific moments in execution (e.g., &quot;print state 50ms from now, during
+    this critical section&quot;).</p>
+<p class="Pp"></p>
+<p class="Pp">The debug thread must be running (started via
+    <b>debug_sync_start_thread()</b>).</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Use_Cases"><a class="permalink" href="#Use_Cases">Use
+  Cases</a></h2>
+<pre>// Capture state during a suspected deadlock region
+void critical_section(void) {
+<br/>
+    // Schedule state dump 50ms from now (during execution)
+<br/>
+    debug_sync_print_state_delayed(50 * 1000000);
+<br/>
+    // Do work...
+<br/>
+    work_that_might_deadlock();
+<br/>
+    // By the time this returns, state was dumped if deadlock happened
+}</pre>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Non-blocking: returns immediately, print happens on debug
+  thread
+<p class="Pp"></p>
+<p class="Pp">Useful for production debugging with minimal impact</p>
+<p class="Pp"></p>
+<p class="Pp">If multiple calls are made, they queue and execute
+  sequentially</p>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>debug_sync_start_thread()</b> to ensure <b>Debug</b>
+  thread is running</div>
+<p class="Pp">Schedule delayed sync state printing on debug thread.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>delay_ns</i> Nanoseconds to sleep before
+  printing</div>
+<p class="Pp">Definition at line <b>605</b> of file <b>sync.c</b>.</p>
+<pre>605                                                        {
+606   mutex_lock(&amp;g_debug_state_request.mutex);
+607   g_debug_state_request.request_type = DEBUG_REQUEST_STATE;
+608   g_debug_state_request.delay_ns = delay_ns;
+609   atomic_store_bool(&amp;g_debug_state_request.should_run, true);
+610   cond_signal(&amp;g_debug_state_request.cond);
+611   mutex_unlock(&amp;g_debug_state_request.mutex);
+612 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool()</b>, <b>cond_signal()</b>,
+    <b>DEBUG_REQUEST_STATE</b>, <b>mutex_lock</b>, and <b>mutex_unlock</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_sync_set_main_thread_id_(void_)"><a class="permalink" href="#void_debug_sync_set_main_thread_id_(void_)">void
+  debug_sync_set_main_thread_id (void )</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
+<p class="Pp">Initialize debug synchronization system.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, non-zero on error</div>
+<p class="Pp">Called at startup to initialize internal structures for sync
+    debugging. Must be called before <b>debug_sync_start_thread()</b>.</p>
+<p class="Pp"></p>
+<p class="Pp">Safe to call multiple times (idempotent).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>debug_sync_start_thread()</b> to start the background
+  <b>Debug</b> thread</div>
+<p class="Pp">Definition at line <b>640</b> of file <b>sync.c</b>.</p>
+<pre>640                                          {
+641   // Save main thread ID for memory reporting (call very early)
+642   g_debug_main_thread_id = asciichat_thread_current_id();
+643 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_current_id()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_sync_set_memory_report_interval_("><a class="permalink" href="#void_debug_sync_set_memory_report_interval_(">void
+  debug_sync_set_memory_report_interval (<b>uint64_t</b> interval_ns)</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
+<p class="Pp">Set periodic memory report interval.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>interval_ns</i> Interval in nanoseconds (0 to
+  disable)</div>
+<p class="Pp">Configures the debug sync thread to print memory reports at the
+    specified interval. The first report will be printed after interval_ns
+    nanoseconds, subsequent reports will follow at that interval.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>interval_ns</i> Nanoseconds between reports (0
+  disables periodic reporting)</div>
+<p class="Pp">Example:</p>
+<p class="Pp"></p>
+<pre>// Print memory report every 5 seconds
+debug_sync_set_memory_report_interval(5 * 1000000000ULL);
+</pre>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>debug_memory_report()</b> for the memory report
+  function being called</div>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>interval_ns</i> Interval in nanoseconds (0 to
+  disable)</div>
+<p class="Pp">Definition at line <b>631</b> of file <b>sync.c</b>.</p>
+<pre>631                                                                  {
+632   g_debug_state_request.memory_report_interval_ns = interval_ns;
+633   g_debug_state_request.last_memory_report_time_ns = 0; // Reset timer
+634 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_debug_sync_start_thread_(void_)"><a class="permalink" href="#int_debug_sync_start_thread_(void_)">int
+  debug_sync_start_thread (void )</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
+<p class="Pp">Start background debug thread for scheduled operations.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, non-zero on error</div>
+<p class="Pp">Spawns a background thread that handles scheduled delayed printing
+    operations from <b>debug_sync_print_state_delayed()</b> and
+    <b>debug_sync_print_backtrace_delayed()</b>.</p>
+<p class="Pp"></p>
+<p class="Pp">Must call <b>debug_sync_init()</b> first.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typical_Initialization"><a class="permalink" href="#Typical_Initialization">Typical
+  Initialization</a></h2>
+<pre>// In main():
+debug_sync_init();
+debug_sync_start_thread();
+// Now safe to use delayed printing:
+debug_sync_print_state_delayed(100 * 1000000);
+// At shutdown:
+debug_sync_cleanup_thread();
+debug_sync_destroy();</pre>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread will block until first scheduled job arrives
+<p class="Pp"></p>
+<p class="Pp">No overhead if no delayed jobs are scheduled</p>
+<p class="Pp"></p>
+<p class="Pp">Call <b>debug_sync_cleanup_thread()</b> during shutdown</p>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>debug_sync_cleanup_thread()</b> for <b>Shutdown
+  System</b></div>
+<p class="Pp">Definition at line <b>658</b> of file <b>sync.c</b>.</p>
+<pre>658                                   {
+659   // Initialize mutex and condition variable for signal wakeup
+660   if (!g_debug_state_request.initialized) {
+661     mutex_init(&amp;g_debug_state_request.mutex, &quot;debug_sync_state&quot;);
+662     cond_init(&amp;g_debug_state_request.cond, &quot;debug_sync_signal&quot;);
+663     g_debug_state_request.initialized = true;
+664   }
+665 
+666   atomic_store_bool(&amp;g_debug_state_request.should_exit, false);
+667   int err = asciichat_thread_create(&amp;g_debug_thread, &quot;debug_sync&quot;, debug_print_thread_fn, NULL);
+668   return err;
+669 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_create()</b>,
+    <b>atomic_store_bool()</b>, <b>cond_init()</b>, and <b>mutex_init()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_sync_trigger_print_(void_)"><a class="permalink" href="#void_debug_sync_trigger_print_(void_)">void
+  debug_sync_trigger_print (void )</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/debug/sync.h</b>&gt;<b></b></p>
+<p class="Pp">Trigger sync state print immediately (synchronous). Immediately
+    calls <b>debug_sync_print_state()</b> on the current thread. Unlike
+    <b>debug_sync_print_state_delayed()</b>, this is synchronous and
+  blocking.</p>
+<p class="Pp"></p>
+<p class="Pp">Useful for:</p>
+<ul class="Bl-bullet">
+  <li>Debugging code (breakpoint followed by print)</li>
+  <li>Signal handlers that need instant output</li>
+  <li>Testing and validation</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Example:_Signal_Handler"><a class="permalink" href="#Example:_Signal_Handler">Example:
+  Signal Handler</a></h2>
+<pre>void handle_debug_signal(int sig) {
+<br/>
+    // Print state immediately in signal handler
+<br/>
+    debug_sync_trigger_print();
+}
+signal(SIGUSR2, handle_debug_signal);  // SIGUSR2 is mapped to sync state printing
+// Now: kill -USR2 &lt;pid&gt; triggers immediate state print</pre>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Blocks until print is complete
+<p class="Pp"></p>
+<p class="Pp">Can be called from signal handlers safely</p>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>debug_sync_print_state()</b> for the underlying
+  function
+<p class="Pp"></p>
+<p class="Pp"><b>debug_sync_print_state_delayed()</b> for scheduled printing</p>
+</div>
+<p class="Pp">Definition at line <b>711</b> of file <b>sync.c</b>.</p>
+<pre>711                                     {
+712   // Set flag to trigger printing on debug thread (from SIGUSR1 handler).
+713   // We don't call debug_sync_print_state() directly here to avoid logging
+714   // in signal handler context, which could deadlock with logging mutexes.
+715   // Uses atomic_store for thread-safe flag setting from signal handler.
+716   //
+717   // Signal the condition variable to wake up the debug thread immediately
+718   // (without waiting for the 100ms timeout).
+719   atomic_store_bool(&amp;g_debug_state_request.signal_triggered, true);
+720   cond_signal(&amp;g_debug_state_request.cond);
+721 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool()</b>, and
+  <b>cond_signal()</b>.</p>
+<p class="Pp">Referenced by <b>session_handle_keyboard_input()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

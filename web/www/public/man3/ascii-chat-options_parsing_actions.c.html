@@ -38,50 +38,62 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">void <b>actions_defer</b> (deferred_action_t <b>action</b>, const
-    action_args_t *<b>args</b>)
+<p class="Pp">void <b>actions_defer</b> (<b>deferred_action_t</b> <b>action</b>,
+    const <b>action_args_t</b> *<b>args</b>)
   <br/>
-  deferred_action_t <b>actions_get_deferred</b> (void)
+  Set which action to defer until options are fully initialized.
+    <b>deferred_action_t</b> <b>actions_get_deferred</b> (void)
   <br/>
-  const action_args_t * <b>actions_get_args</b> (void)
+  Get the deferred action (if any) that was set. const <b>action_args_t</b> *
+    <b>actions_get_args</b> (void)
   <br/>
-  void <b>action_list_webcams</b> (void)
+  Get the arguments for the deferred action. void <b>action_list_webcams</b>
+    (void)
   <br/>
-  void <b>action_list_microphones</b> (void)
+  List available webcam devices and exit. void <b>action_list_microphones</b>
+    (void)
   <br/>
-  void <b>action_list_speakers</b> (void)
+  List available microphone devices and exit. void <b>action_list_speakers</b>
+    (void)
   <br/>
-  void <b>action_show_capabilities_immediate</b> (void)
+  List available speaker devices and exit. void
+    <b>action_show_capabilities_immediate</b> (void)
   <br/>
   Execute show capabilities immediately (for early binary-level execution). void
     <b>action_show_capabilities</b> (void)
   <br/>
-  void <b>action_check_update_immediate</b> (void)
+  Show terminal capabilities and exit. void <b>action_check_update_immediate</b>
+    (void)
   <br/>
   Execute update check immediately (for early binary-level execution). void
     <b>action_check_update</b> (void)
   <br/>
-  void <b>action_show_version</b> (void)
+  Check for updates and display results. void <b>action_show_version</b> (void)
   <br/>
-  void <b>action_help_server</b> (void)
+  Show version information and exit. void <b>action_help_server</b> (void)
   <br/>
-  void <b>action_help_client</b> (void)
+  Show server mode help and exit. void <b>action_help_client</b> (void)
   <br/>
-  void <b>action_help_mirror</b> (void)
+  Show client mode help and exit. void <b>action_help_mirror</b> (void)
   <br/>
-  void <b>action_help_acds</b> (void)
+  Show mirror mode help and exit. void <b>action_help_acds</b> (void)
   <br/>
-  void <b>action_help_discovery</b> (void)
+  Show discovery-service mode help and exit. void <b>action_help_discovery</b>
+    (void)
   <br/>
-  void <b>action_create_manpage</b> (const char *output_path)
+  Show discovery mode help and exit. void <b>action_create_manpage</b> (const
+    char *output_path)
   <br/>
-  void <b>action_create_config</b> (const char *output_path)
+  Generate man page template from options builder. void
+    <b>action_create_config</b> (const char *output_path)
   <br/>
-  void <b>action_completions</b> (const char *shell_name, const char
-    *output_path)
+  Create default configuration file and exit. void <b>action_completions</b>
+    (const char *shell_name, const char *output_path)
   <br/>
-  void <b>actions_execute_deferred</b> (void)
+  Generate shell completions and output to stdout or file. void
+    <b>actions_execute_deferred</b> (void)
   <br/>
+  Execute the deferred action (if any).
   <br/>
 </p>
 </section>
@@ -105,6 +117,9 @@
 <section class="Ss">
 <h2 class="Ss" id="void_action_check_update_(void_)"><a class="permalink" href="#void_action_check_update_(void_)">void
   action_check_update (void )</a></h2>
+<p class="Pp">Check for updates and display results. Performs update check
+    against GitHub releases API and displays results. Exits with code 0 on
+    success, 1 on error.</p>
 <p class="Pp">Definition at line <b>329</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>329                                {
@@ -113,14 +128,16 @@
 332 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>actions_defer()</b>.</p>
+<p class="Pp">References <b>ACTION_CHECK_UPDATE</b>, and
+  <b>actions_defer()</b>.</p>
 <p class="Pp">Referenced by <b>options_registry_add_all_to_builder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_action_check_update_immediate_(void_)"><a class="permalink" href="#void_action_check_update_immediate_(void_)">void
   action_check_update_immediate (void )</a></h2>
 <p class="Pp">Execute update check immediately (for early binary-level
-    execution).</p>
+    execution). Execute update check immediately (for binary-level
+  execution).</p>
 <p class="Pp">Definition at line <b>311</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>311                                          {
@@ -142,7 +159,11 @@
 327 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>update_check_format_notification()</b>, and
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>update_check_result_t::current_sha</b>,
+    <b>update_check_result_t::current_version</b>,
+    <b>update_check_result_t::update_available</b>,
+    <b>update_check_format_notification()</b>, and
     <b>update_check_perform()</b>.</p>
 <p class="Pp">Referenced by <b>options_init()</b>.</p>
 </section>
@@ -150,6 +171,20 @@
 <h2 class="Ss" id="void_action_completions_(const_char_*_shell_name,_const_char_*_output_path)"><a class="permalink" href="#void_action_completions_(const_char_*_shell_name,_const_char_*_output_path)">void
   action_completions (const char * shell_name, const char *
   output_path)</a></h2>
+<p class="Pp">Generate shell completions and output to stdout or file. Generates
+    shell completion script for the specified shell (bash, fish, zsh,
+    powershell). Output is dynamically generated from the options registry,
+    ensuring completions are always in sync with current options. Outputs to
+    stdout by default, or to specified file path if provided. Prompts for
+    overwrite confirmation if file already exists. Exits with code 0 on success,
+    1 on error.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>shell_name</i> Shell name: &quot;bash&quot;,
+  &quot;fish&quot;, &quot;zsh&quot;, or &quot;powershell&quot;
+<br/>
+<i>output_path</i> Optional file path to write completions to. NULL or empty
+  string = stdout.</div>
 <p class="Pp">Definition at line <b>571</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>571                                                                          {
@@ -208,14 +243,25 @@
 624 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>completions_generate_for_shell()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>COMPLETION_FORMAT_UNKNOWN</b>,
+    <b>completions_generate_for_shell()</b>,
     <b>completions_get_shell_name()</b>, <b>completions_parse_shell_name()</b>,
-    <b>platform_fopen()</b>, and <b>platform_prompt_yes_no()</b>.</p>
+    <b>ERROR_FILE_OPERATION</b>, <b>ERROR_USAGE</b>, <b>log_error</b>,
+    <b>log_plain</b>, <b>platform_fopen()</b>, and
+    <b>platform_prompt_yes_no()</b>.</p>
 <p class="Pp">Referenced by <b>options_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_action_create_config_(const_char_*_output_path)"><a class="permalink" href="#void_action_create_config_(const_char_*_output_path)">void
   action_create_config (const char * output_path)</a></h2>
+<p class="Pp">Create default configuration file and exit. Creates a default
+    configuration file. Outputs to stdout by default, or to specified file path
+    if provided. Prompts for overwrite confirmation if file already exists.
+    Exits with code 0 on success, 1 on error.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>output_path</i> Optional file path to write config to.
+  NULL or empty string = stdout.</div>
 <p class="Pp">Definition at line <b>524</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>524                                                    {
@@ -262,14 +308,25 @@
 565 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>config_create_default()</b>,
-    <b>config_schema_build_from_configs()</b>, and
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>config_create_default()</b>,
+    <b>config_schema_build_from_configs()</b>,
+    <b>asciichat_error_context_t::context_message</b>, <b>ERROR_CONFIG</b>,
+    <b>HAS_ERRNO</b>, <b>log_error</b>, <b>log_info</b>, and
     <b>options_preset_unified()</b>.</p>
 <p class="Pp">Referenced by <b>options_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_action_create_manpage_(const_char_*_output_path)"><a class="permalink" href="#void_action_create_manpage_(const_char_*_output_path)">void
   action_create_manpage (const char * output_path)</a></h2>
+<p class="Pp">Generate man page template from options builder. Generates a
+    merged man page template preserving manual content. Outputs to stdout by
+    default, or to specified file path if provided. Prompts for overwrite
+    confirmation if file already exists. Exits with code 0 on success, 1 on
+    error.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>output_path</i> Optional file path to write man page
+  to. NULL or empty string = stdout.</div>
 <p class="Pp">Definition at line <b>475</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>475                                                     {
@@ -318,13 +375,18 @@
 518 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>options_config_generate_manpage_merged()</b>, and
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>asciichat_error_context_t::context_message</b>,
+    <b>ERROR_FILE_OPERATION</b>, <b>HAS_ERRNO</b>, <b>log_error</b>,
+    <b>log_info</b>, <b>options_config_generate_manpage_merged()</b>, and
     <b>options_preset_unified()</b>.</p>
 <p class="Pp">Referenced by <b>options_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_action_help_acds_(void_)"><a class="permalink" href="#void_action_help_acds_(void_)">void
   action_help_acds (void )</a></h2>
+<p class="Pp">Show discovery-service mode help and exit. Displays
+    discovery-service mode usage and options. Exits with code 0.</p>
 <p class="Pp">Definition at line <b>461</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>461                             {
@@ -333,11 +395,13 @@
 464 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>usage()</b>.</p>
+<p class="Pp">References <b>MODE_DISCOVERY_SERVICE</b>, and <b>usage()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_action_help_client_(void_)"><a class="permalink" href="#void_action_help_client_(void_)">void
   action_help_client (void )</a></h2>
+<p class="Pp">Show client mode help and exit. Displays client mode usage and
+    options. Exits with code 0.</p>
 <p class="Pp">Definition at line <b>451</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>451                               {
@@ -346,11 +410,13 @@
 454 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>usage()</b>.</p>
+<p class="Pp">References <b>MODE_CLIENT</b>, and <b>usage()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_action_help_discovery_(void_)"><a class="permalink" href="#void_action_help_discovery_(void_)">void
   action_help_discovery (void )</a></h2>
+<p class="Pp">Show discovery mode help and exit. Displays discovery mode usage
+    and options. Exits with code 0.</p>
 <p class="Pp">Definition at line <b>466</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>466                                  {
@@ -359,11 +425,13 @@
 469 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>usage()</b>.</p>
+<p class="Pp">References <b>MODE_DISCOVERY</b>, and <b>usage()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_action_help_mirror_(void_)"><a class="permalink" href="#void_action_help_mirror_(void_)">void
   action_help_mirror (void )</a></h2>
+<p class="Pp">Show mirror mode help and exit. Displays mirror mode usage and
+    options. Exits with code 0.</p>
 <p class="Pp">Definition at line <b>456</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>456                               {
@@ -372,11 +440,13 @@
 459 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>usage()</b>.</p>
+<p class="Pp">References <b>MODE_MIRROR</b>, and <b>usage()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_action_help_server_(void_)"><a class="permalink" href="#void_action_help_server_(void_)">void
   action_help_server (void )</a></h2>
+<p class="Pp">Show server mode help and exit. Displays server mode usage and
+    options. Exits with code 0.</p>
 <p class="Pp">Definition at line <b>446</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>446                               {
@@ -385,11 +455,14 @@
 449 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>usage()</b>.</p>
+<p class="Pp">References <b>MODE_SERVER</b>, and <b>usage()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_action_list_microphones_(void_)"><a class="permalink" href="#void_action_list_microphones_(void_)">void
   action_list_microphones (void )</a></h2>
+<p class="Pp">List available microphone devices and exit. Enumerates all audio
+    input devices and prints them to stdout. Exits with code 0 on success, 1 on
+    error.</p>
 <p class="Pp">Definition at line <b>145</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>145                                    {
@@ -398,13 +471,17 @@
 148 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>actions_defer()</b>.</p>
+<p class="Pp">References <b>ACTION_LIST_MICROPHONES</b>, and
+    <b>actions_defer()</b>.</p>
 <p class="Pp">Referenced by <b>options_init()</b>, and
     <b>options_registry_add_all_to_builder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_action_list_speakers_(void_)"><a class="permalink" href="#void_action_list_speakers_(void_)">void
   action_list_speakers (void )</a></h2>
+<p class="Pp">List available speaker devices and exit. Enumerates all audio
+    output devices and prints them to stdout. Exits with code 0 on success, 1 on
+    error.</p>
 <p class="Pp">Definition at line <b>183</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>183                                 {
@@ -413,13 +490,17 @@
 186 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>actions_defer()</b>.</p>
+<p class="Pp">References <b>ACTION_LIST_SPEAKERS</b>, and
+    <b>actions_defer()</b>.</p>
 <p class="Pp">Referenced by <b>options_init()</b>, and
     <b>options_registry_add_all_to_builder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_action_list_webcams_(void_)"><a class="permalink" href="#void_action_list_webcams_(void_)">void
   action_list_webcams (void )</a></h2>
+<p class="Pp">List available webcam devices and exit. Enumerates all webcam
+    devices and prints them to stdout. Exits with code 0 on success, 1 on
+  error.</p>
 <p class="Pp">Definition at line <b>107</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>107                                {
@@ -428,13 +509,21 @@
 110 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>actions_defer()</b>.</p>
+<p class="Pp">References <b>ACTION_LIST_WEBCAMS</b>, and
+  <b>actions_defer()</b>.</p>
 <p class="Pp">Referenced by <b>options_init()</b>, and
     <b>options_registry_add_all_to_builder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_action_show_capabilities_(void_)"><a class="permalink" href="#void_action_show_capabilities_(void_)">void
   action_show_capabilities (void )</a></h2>
+<p class="Pp">Show terminal capabilities and exit. Detects and displays terminal
+    color support, UTF-8 support, dimensions, and terminal program name. Exits
+    with code 0.</p>
+<p class="Pp"></p>
+<p class="Pp">Note: This action is deferred until after all options are parsed
+    and dimensions are calculated, so that --width and --height flags are
+    properly reflected in the output.</p>
 <p class="Pp">Definition at line <b>298</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>298                                     {
@@ -444,13 +533,15 @@
 302 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>actions_defer()</b>.</p>
+<p class="Pp">References <b>ACTION_SHOW_CAPABILITIES</b>, and
+    <b>actions_defer()</b>.</p>
 <p class="Pp">Referenced by <b>options_registry_add_all_to_builder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_action_show_capabilities_immediate_(void_)"><a class="permalink" href="#void_action_show_capabilities_immediate_(void_)">void
   action_show_capabilities_immediate (void )</a></h2>
 <p class="Pp">Execute show capabilities immediately (for early binary-level
+    execution). Execute show capabilities immediately (for binary-level
     execution).</p>
 <p class="Pp">Definition at line <b>228</b> of file
     <b>options/parsing/actions.c</b>.</p>
@@ -525,14 +616,29 @@
 296 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>colored_string()</b>,
-    <b>detect_terminal_capabilities()</b>, <b>terminal_get_size()</b>, and
-    <b>terminal_should_color_output()</b>.</p>
+<p class="Pp">References <b>terminal_capabilities_t::capabilities</b>,
+    <b>terminal_capabilities_t::color_count</b>,
+    <b>terminal_capabilities_t::color_level</b>, <b>colored_string()</b>,
+    <b>terminal_capabilities_t::colorterm</b>, <b>terminal_size_t::cols</b>,
+    <b>detect_terminal_capabilities()</b>,
+    <b>terminal_capabilities_t::detection_reliable</b>, <b>LOG_COLOR_DEBUG</b>,
+    <b>LOG_COLOR_ERROR</b>, <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_GREY</b>,
+    <b>LOG_COLOR_INFO</b>, <b>LOG_COLOR_WARN</b>,
+    <b>terminal_capabilities_t::render_mode</b>, <b>RENDER_MODE_BACKGROUND</b>,
+    <b>RENDER_MODE_FOREGROUND</b>, <b>RENDER_MODE_HALF_BLOCK</b>,
+    <b>terminal_size_t::rows</b>, <b>TERM_CAP_COLOR_16</b>,
+    <b>TERM_CAP_COLOR_256</b>, <b>TERM_CAP_COLOR_TRUE</b>,
+    <b>TERM_COLOR_NONE</b>, <b>terminal_capabilities_t::term_type</b>,
+    <b>terminal_color_level_name()</b>, <b>terminal_get_size()</b>,
+    <b>terminal_should_color_output()</b>, and
+    <b>terminal_capabilities_t::utf8_support</b>.</p>
 <p class="Pp">Referenced by <b>options_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_action_show_version_(void_)"><a class="permalink" href="#void_action_show_version_(void_)">void
   action_show_version (void )</a></h2>
+<p class="Pp">Show version information and exit. Displays ascii-chat version,
+    build type, build date, and compiler information. Exits with code 0.</p>
 <p class="Pp">Definition at line <b>428</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>428                                {
@@ -550,13 +656,26 @@
 440 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>colored_string()</b>, and
+<p class="Pp">References <b>ASCII_CHAT_BUILD_DATE</b>,
+    <b>ASCII_CHAT_BUILD_TYPE</b>, <b>ASCII_CHAT_VERSION_FULL</b>,
+    <b>colored_string()</b>, <b>LOG_COLOR_DEBUG</b>, <b>LOG_COLOR_GREY</b>,
+    <b>LOG_COLOR_INFO</b>, <b>LOG_COLOR_WARN</b>, and
     <b>terminal_should_color_output()</b>.</p>
 <p class="Pp">Referenced by <b>main()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_actions_defer_(deferred_action_t_action,_const_action_args_t_*_args)"><a class="permalink" href="#void_actions_defer_(deferred_action_t_action,_const_action_args_t_*_args)">void
-  actions_defer (deferred_action_t action, const action_args_t * args)</a></h2>
+<h2 class="Ss" id="void_actions_defer_("><a class="permalink" href="#void_actions_defer_(">void
+  actions_defer (<b>deferred_action_t</b> action, const <b>action_args_t</b> *
+  args)</a></h2>
+<p class="Pp">Set which action to defer until options are fully initialized.
+    Only the first action found is remembered. If multiple actions are
+    specified, only the first one will be executed.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>action</b><i></i><b> The action type to
+  defer</b>
+<br/>
+<i></i><b>args</b><i></i><b> Optional action arguments (can be NULL)</b></div>
 <p class="Pp">Definition at line <b>75</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>75                                                                         {
@@ -585,6 +704,9 @@
 <section class="Ss">
 <h2 class="Ss" id="void_actions_execute_deferred_(void_)"><a class="permalink" href="#void_actions_execute_deferred_(void_)">void
   actions_execute_deferred (void )</a></h2>
+<p class="Pp">Execute the deferred action (if any). This function should be
+    called during STAGE 8 of <b>options_init()</b> after all options are fully
+    parsed and dimensions are calculated.</p>
 <p class="Pp">Definition at line <b>662</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>662                                     {
@@ -622,12 +744,20 @@
 694 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>action</b>, and <b>actions_get_deferred()</b>.</p>
+<p class="Pp">References <b>action</b>, <b>ACTION_CHECK_UPDATE</b>,
+    <b>ACTION_LIST_MICROPHONES</b>, <b>ACTION_LIST_SPEAKERS</b>,
+    <b>ACTION_LIST_WEBCAMS</b>, <b>ACTION_NONE</b>,
+    <b>ACTION_SHOW_CAPABILITIES</b>, <b>actions_get_deferred()</b>, and
+    <b>log_warn</b>.</p>
 <p class="Pp">Referenced by <b>options_init()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_action_args_t_*_actions_get_args_(void_)"><a class="permalink" href="#const_action_args_t_*_actions_get_args_(void_)">const
-  action_args_t * actions_get_args (void )</a></h2>
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>action_args_t</b> * actions_get_args (void )</a></h2>
+<p class="Pp">Get the arguments for the deferred action.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to action arguments, or NULL if no arguments were
+  set</div>
 <p class="Pp">Definition at line <b>96</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>96                                             {
@@ -640,8 +770,11 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="deferred_action_t_actions_get_deferred_(void_)"><a class="permalink" href="#deferred_action_t_actions_get_deferred_(void_)">deferred_action_t
-  actions_get_deferred (void )</a></h2>
+<h2 class="Ss"><b>deferred_action_t</b> actions_get_deferred (void )</h2>
+<p class="Pp">Get the deferred action (if any) that was set.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">The deferred action type, or ACTION_NONE if no action was
+  deferred</div>
 <p class="Pp">Definition at line <b>92</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <pre>92                                              {
@@ -656,16 +789,14 @@
 <h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="deferred_action_t_action"><a class="permalink" href="#deferred_action_t_action">deferred_action_t
-  action</a></h2>
+<h2 class="Ss"><b>deferred_action_t</b> action</h2>
 <p class="Pp">Definition at line <b>66</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <p class="Pp">Referenced by <b>actions_defer()</b>, and
     <b>actions_execute_deferred()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="action_args_t_args"><a class="permalink" href="#action_args_t_args">action_args_t
-  args</a></h2>
+<h2 class="Ss"><b>action_args_t</b> args</h2>
 <p class="Pp">Definition at line <b>67</b> of file
     <b>options/parsing/actions.c</b>.</p>
 <p class="Pp">Referenced by <b>__isoc23_fscanf()</b>, <b>__isoc23_fwscanf()</b>,
@@ -702,7 +833,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

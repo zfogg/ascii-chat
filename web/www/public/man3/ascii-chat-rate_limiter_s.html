@@ -39,7 +39,7 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">const rate_limiter_backend_ops_t * <b>ops</b>
+<p class="Pp">const <b>rate_limiter_backend_ops_t</b> * <b>ops</b>
   <br/>
   Backend operations. void * <b>backend_data</b>
   <br/>
@@ -62,12 +62,20 @@
   rate_limiter_s::backend_data</a></h2>
 <p class="Pp">Backend-specific data.</p>
 <p class="Pp">Definition at line <b>66</b> of file <b>rate_limit.c</b>.</p>
+<p class="Pp">Referenced by <b>rate_limiter_check()</b>,
+    <b>rate_limiter_create_memory()</b>, <b>rate_limiter_create_sqlite()</b>,
+    <b>rate_limiter_destroy()</b>, <b>rate_limiter_prune()</b>,
+    <b>rate_limiter_record()</b>, and <b>rate_limiter_set_sqlite_db()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_rate_limiter_backend_ops_t*_rate_limiter_s::ops"><a class="permalink" href="#const_rate_limiter_backend_ops_t*_rate_limiter_s::ops">const
-  rate_limiter_backend_ops_t* rate_limiter_s::ops</a></h2>
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>rate_limiter_backend_ops_t</b>* rate_limiter_s::ops</a></h2>
 <p class="Pp">Backend operations.</p>
 <p class="Pp">Definition at line <b>65</b> of file <b>rate_limit.c</b>.</p>
+<p class="Pp">Referenced by <b>rate_limiter_check()</b>,
+    <b>rate_limiter_create_memory()</b>, <b>rate_limiter_create_sqlite()</b>,
+    <b>rate_limiter_destroy()</b>, <b>rate_limiter_prune()</b>, and
+    <b>rate_limiter_record()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -78,7 +86,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

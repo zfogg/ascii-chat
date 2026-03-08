@@ -55,27 +55,34 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>update_check_load_cache</b>
-    (update_check_result_t *result)
+<p class="Pp"><b>asciichat_error_t</b> <b>update_check_load_cache</b>
+    (<b>update_check_result_t</b> *result)
   <br/>
-  asciichat_error_t <b>update_check_save_cache</b> (const update_check_result_t
+  Load cached update check result. <b>asciichat_error_t</b>
+    <b>update_check_save_cache</b> (const <b>update_check_result_t</b> *result)
+  <br/>
+  Save update check result to cache. <b>bool</b>
+    <b>update_check_is_cache_fresh</b> (const <b>update_check_result_t</b>
     *result)
   <br/>
-  <b>bool</b> <b>update_check_is_cache_fresh</b> (const update_check_result_t
-    *result)
+  Check if cache is fresh (&lt; 7 days old). <b>asciichat_error_t</b>
+    <b>update_check_perform</b> (<b>update_check_result_t</b> *result)
   <br/>
-  asciichat_error_t <b>update_check_perform</b> (update_check_result_t *result)
+  Check for updates from GitHub releases API. <b>install_method_t</b>
+    <b>update_check_detect_install_method</b> (void)
   <br/>
-  install_method_t <b>update_check_detect_install_method</b> (void)
+  Detect installation method. void <b>update_check_get_upgrade_suggestion</b>
+    (<b>install_method_t</b> method, const char *latest_version, char *buffer,
+    size_t <b>buffer_size</b>)
   <br/>
-  void <b>update_check_get_upgrade_suggestion</b> (install_method_t method,
-    const char *latest_version, char *buffer, size_t <b>buffer_size</b>)
+  Get upgrade suggestion string. void <b>update_check_format_notification</b>
+    (const <b>update_check_result_t</b> *result, char *buffer, size_t
+    <b>buffer_size</b>)
   <br/>
-  void <b>update_check_format_notification</b> (const update_check_result_t
-    *result, char *buffer, size_t <b>buffer_size</b>)
+  Format update notification message. <b>asciichat_error_t</b>
+    <b>update_check_startup</b> (<b>update_check_result_t</b> *result)
   <br/>
-  asciichat_error_t <b>update_check_startup</b> (update_check_result_t *result)
-  <br/>
+  Perform startup update check with caching.
   <br/>
 </p>
 </section>
@@ -122,375 +129,13 @@
 </section>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="install_method_t_update_check_detect_install_method_(void_)"><a class="permalink" href="#install_method_t_update_check_detect_install_method_(void_)">install_method_t
-  update_check_detect_install_method (void )</a></h2>
-<p class="Pp">Definition at line <b>386</b> of file <b>update_checker.c</b>.</p>
-<pre>386                                                           {
-387   if (is_homebrew_install()) {
-388     return INSTALL_METHOD_HOMEBREW;
-389   }
-390 
-391   if (is_arch_linux()) {
-392     return INSTALL_METHOD_ARCH_AUR;
-393   }
-394 
-395   // Default to GitHub releases
-396   return INSTALL_METHOD_GITHUB;
-397 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>update_check_format_notification()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_update_check_format_notification_(const_update_check_result_t_*_result,_char_*_buffer,_size_t_buffer_size)"><a class="permalink" href="#void_update_check_format_notification_(const_update_check_result_t_*_result,_char_*_buffer,_size_t_buffer_size)">void
-  update_check_format_notification (const update_check_result_t * result, char *
-  buffer, size_t buffer_size)</a></h2>
-<p class="Pp">Definition at line <b>428</b> of file <b>update_checker.c</b>.</p>
-<pre>428                                                                                                              {
-429   if (!result || !buffer || buffer_size == 0) {
-430     return;
-431   }
-432 
-433   // Get upgrade suggestion
-434   install_method_t method = update_check_detect_install_method();
-435   char suggestion[512];
-436   update_check_get_upgrade_suggestion(method, result-&gt;latest_version, suggestion, sizeof(suggestion));
-437 
-438   // Format: &quot;Update available: v0.8.1 (f8dc35e1) &#x2192; v0.9.0 (a1b2c3d4). Run: brew upgrade ascii-chat&quot;
-439   snprintf(buffer, buffer_size, &quot;Update available: %s (%.8s) &#x2192; %s (%.8s). %s%s&quot;, result-&gt;current_version,
-440            result-&gt;current_sha, result-&gt;latest_version, result-&gt;latest_sha,
-441            (method == INSTALL_METHOD_GITHUB || method == INSTALL_METHOD_UNKNOWN) ? &quot;Download: &quot; : &quot;Run: &quot;, suggestion);
-442 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_size</b>,
-    <b>update_check_detect_install_method()</b>, and
-    <b>update_check_get_upgrade_suggestion()</b>.</p>
-<p class="Pp">Referenced by <b>action_check_update_immediate()</b>, and
-    <b>main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_update_check_get_upgrade_suggestion_(install_method_t_method,_const_char_*_latest_version,_char_*_buffer,_size_t_buffer_size)"><a class="permalink" href="#void_update_check_get_upgrade_suggestion_(install_method_t_method,_const_char_*_latest_version,_char_*_buffer,_size_t_buffer_size)">void
-  update_check_get_upgrade_suggestion (install_method_t method, const char *
-  latest_version, char * buffer, size_t buffer_size)</a></h2>
-<p class="Pp">Definition at line <b>399</b> of file <b>update_checker.c</b>.</p>
-<pre>400                                                              {
-401   if (!buffer || buffer_size == 0) {
-402     return;
-403   }
-404 
-405   switch (method) {
-406   case INSTALL_METHOD_HOMEBREW:
-407     snprintf(buffer, buffer_size, &quot;brew upgrade ascii-chat&quot;);
-408     break;
-409 
-410   case INSTALL_METHOD_ARCH_AUR:
-411     // Check if paru is available, otherwise suggest yay
-412     if (system(&quot;command -v paru &gt;/dev/null 2&gt;&amp;1&quot;) == 0) {
-413       snprintf(buffer, buffer_size, &quot;paru -S ascii-chat&quot;);
-414     } else {
-415       snprintf(buffer, buffer_size, &quot;yay -S ascii-chat&quot;);
-416     }
-417     break;
-418 
-419   case INSTALL_METHOD_GITHUB:
-420   case INSTALL_METHOD_UNKNOWN:
-421   default:
-422     snprintf(buffer, buffer_size, &quot;https://github.com/zfogg/ascii-chat/releases/tag/%s&quot;,
-423              latest_version ? latest_version : &quot;latest&quot;);
-424     break;
-425   }
-426 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>buffer_size</b>.</p>
-<p class="Pp">Referenced by <b>update_check_format_notification()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> update_check_is_cache_fresh (const
-  update_check_result_t * result)</h2>
-<p class="Pp">Definition at line <b>171</b> of file <b>update_checker.c</b>.</p>
-<pre>171                                                                       {
-172   if (!result || result-&gt;last_check_time == 0) {
-173     return false;
-174   }
-175 
-176   time_t now = time(NULL);
-177   time_t age = now - result-&gt;last_check_time;
-178 
-179   return (age &lt; UPDATE_CHECK_CACHE_MAX_AGE_SECONDS);
-180 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>UPDATE_CHECK_CACHE_MAX_AGE_SECONDS</b>.</p>
-<p class="Pp">Referenced by <b>update_check_startup()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_update_check_load_cache_(update_check_result_t_*_result)"><a class="permalink" href="#asciichat_error_t_update_check_load_cache_(update_check_result_t_*_result)">asciichat_error_t
-  update_check_load_cache (update_check_result_t * result)</a></h2>
-<p class="Pp">Definition at line <b>60</b> of file <b>update_checker.c</b>.</p>
-<pre>60                                                                          {
-61   if (!result) {
-62     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL result pointer&quot;);
-63   }
-64 
-65   memset(result, 0, sizeof(*result));
-66 
-67   char *cache_path = get_cache_file_path();
-68   if (!cache_path) {
-69     return SET_ERRNO(ERROR_FILE_OPERATION, &quot;Could not determine cache file path&quot;);
-70   }
-71 
-72   FILE *f = platform_fopen(&quot;file_stream&quot;, cache_path, &quot;r&quot;);
-73   if (!f) {
-74     const char *error_msg = file_read_error_message(cache_path);
-75     SAFE_FREE(cache_path);
-76     return SET_ERRNO(ERROR_FILE_OPERATION, &quot;%s&quot;, error_msg);
-77   }
-78 
-79   // Read line 1: timestamp
-80   char line[512];
-81   if (!fgets(line, sizeof(line), f)) {
-82     fclose(f);
-83     SAFE_FREE(cache_path);
-84     return SET_ERRNO(ERROR_FILE_OPERATION, &quot;Failed to read timestamp from cache&quot;);
-85   }
-86   result-&gt;last_check_time = (time_t)atoll(line);
-87 
-88   // Read line 2: latest version (may be empty if check failed)
-89   if (fgets(line, sizeof(line), f)) {
-90     // Remove newline
-91     size_t len = strlen(line);
-92     if (len &gt; 0 &amp;&amp; line[len - 1] == '\n') {
-93       line[len - 1] = '\0';
-94     }
-95     SAFE_STRNCPY(result-&gt;latest_version, line, sizeof(result-&gt;latest_version));
-96   }
-97 
-98   // Read line 3: latest SHA (may be empty if check failed)
-99   if (fgets(line, sizeof(line), f)) {
-100     // Remove newline
-101     size_t len = strlen(line);
-102     if (len &gt; 0 &amp;&amp; line[len - 1] == '\n') {
-103       line[len - 1] = '\0';
-104     }
-105     SAFE_STRNCPY(result-&gt;latest_sha, line, sizeof(result-&gt;latest_sha));
-106   }
-107 
-108   fclose(f);
-109 
-110   // Fill in current version/SHA
-111   SAFE_STRNCPY(result-&gt;current_version, ASCII_CHAT_VERSION_STRING, sizeof(result-&gt;current_version));
-112   SAFE_STRNCPY(result-&gt;current_sha, ASCII_CHAT_GIT_COMMIT_HASH, sizeof(result-&gt;current_sha));
-113 
-114   // Determine if update is available using version comparison (if we have cached data)
-115   if (result-&gt;latest_version[0] != '\0') {
-116     semantic_version_t current_ver = version_parse(result-&gt;current_version);
-117     semantic_version_t latest_ver = version_parse(result-&gt;latest_version);
-118 
-119     if (current_ver.valid &amp;&amp; latest_ver.valid) {
-120       int cmp = version_compare(latest_ver, current_ver);
-121       result-&gt;update_available = (cmp &gt; 0); // Update available if latest &gt; current
-122       result-&gt;check_succeeded = true;
-123     } else {
-124       // Cache contains invalid version data - delete it
-125       log_warn(&quot;Update cache contains invalid version data (current:%s, latest:%s) - deleting corrupted cache&quot;,
-126                result-&gt;current_version, result-&gt;latest_version);
-127       if (remove(cache_path) != 0) {
-128         log_warn(&quot;Failed to delete corrupted cache file: %s&quot;, cache_path);
-129       }
-130       SAFE_FREE(cache_path);
-131       return SET_ERRNO(ERROR_FORMAT, &quot;Corrupted cache file deleted&quot;);
-132     }
-133   }
-134 
-135   SAFE_FREE(cache_path);
-136   return ASCIICHAT_OK;
-137 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>file_read_error_message()</b>,
-    <b>platform_fopen()</b>, <b>version_compare()</b>, and
-    <b>version_parse()</b>.</p>
-<p class="Pp">Referenced by <b>update_check_startup()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_update_check_perform_(update_check_result_t_*_result)"><a class="permalink" href="#asciichat_error_t_update_check_perform_(update_check_result_t_*_result)">asciichat_error_t
-  update_check_perform (update_check_result_t * result)</a></h2>
-<p class="Pp">Definition at line <b>267</b> of file <b>update_checker.c</b>.</p>
-<pre>267                                                                       {
-268   if (!result) {
-269     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL result pointer&quot;);
-270   }
-271 
-272   memset(result, 0, sizeof(*result));
-273 
-274   // Fill in current version and SHA
-275   SAFE_STRNCPY(result-&gt;current_version, ASCII_CHAT_VERSION_STRING, sizeof(result-&gt;current_version));
-276   SAFE_STRNCPY(result-&gt;current_sha, ASCII_CHAT_GIT_COMMIT_HASH, sizeof(result-&gt;current_sha));
-277   result-&gt;last_check_time = time(NULL);
-278 
-279   // Test DNS connectivity first
-280   if (!dns_test_connectivity(GITHUB_API_HOSTNAME)) {
-281     log_warn(&quot;No internet connectivity detected, skipping update check&quot;);
-282     // Don't update cache - we'll retry when online
-283     return SET_ERRNO(ERROR_NETWORK, &quot;DNS connectivity test failed&quot;);
-284   }
-285 
-286   // Fetch latest release from GitHub API
-287   log_info(&quot;Checking for updates from GitHub releases...&quot;);
-288   char *response = https_get(GITHUB_API_HOSTNAME, GITHUB_RELEASES_PATH);
-289   if (!response) {
-290     log_warn(&quot;Failed to fetch GitHub releases API (timeout or network error)&quot;);
-291     // Mark as checked even though it failed (prevents repeated offline attempts)
-292     result-&gt;check_succeeded = false;
-293     update_check_save_cache(result);
-294     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to fetch GitHub releases&quot;);
-295   }
-296 
-297   // Parse JSON response
-298   char latest_tag[64] = {0};
-299   char latest_sha[41] = {0};
-300   char release_url[512] = {0};
-301 
-302   if (!parse_github_release_json(response, latest_tag, sizeof(latest_tag), latest_sha, sizeof(latest_sha), release_url,
-303                                  sizeof(release_url))) {
-304     log_error(&quot;Failed to parse GitHub API response&quot;);
-305     SAFE_FREE(response);
-306     result-&gt;check_succeeded = false;
-307     update_check_save_cache(result);
-308     return SET_ERRNO(ERROR_FORMAT, &quot;Failed to parse GitHub API JSON&quot;);
-309   }
-310 
-311   SAFE_FREE(response);
-312 
-313   // Fill in result
-314   SAFE_STRNCPY(result-&gt;latest_version, latest_tag, sizeof(result-&gt;latest_version));
-315   SAFE_STRNCPY(result-&gt;latest_sha, latest_sha, sizeof(result-&gt;latest_sha));
-316   SAFE_STRNCPY(result-&gt;release_url, release_url, sizeof(result-&gt;release_url));
-317   result-&gt;check_succeeded = true;
-318 
-319   // Compare versions semantically
-320   semantic_version_t current_ver = version_parse(result-&gt;current_version);
-321   semantic_version_t latest_ver = version_parse(result-&gt;latest_version);
-322 
-323   if (!current_ver.valid || !latest_ver.valid) {
-324     log_warn(&quot;Failed to parse version strings for comparison (current: %s, latest: %s)&quot;, result-&gt;current_version,
-325              result-&gt;latest_version);
-326     result-&gt;update_available = false;
-327   } else {
-328     int cmp = version_compare(latest_ver, current_ver);
-329     result-&gt;update_available = (cmp &gt; 0); // Update available if latest &gt; current
-330   }
-331 
-332   if (result-&gt;update_available) {
-333     log_info(&quot;Update available: %s (%.*s) &#x2192; %s (%.*s)&quot;, result-&gt;current_version, 8, result-&gt;current_sha,
-334              result-&gt;latest_version, 8, result-&gt;latest_sha);
-335   } else {
-336     log_info(&quot;Already on latest version: %s (%.*s)&quot;, result-&gt;current_version, 8, result-&gt;current_sha);
-337   }
-338 
-339   // Save to cache
-340   update_check_save_cache(result);
-341 
-342   return ASCIICHAT_OK;
-343 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>dns_test_connectivity()</b>,
-    <b>GITHUB_API_HOSTNAME</b>, <b>GITHUB_RELEASES_PATH</b>, <b>https_get()</b>,
-    <b>update_check_save_cache()</b>, <b>version_compare()</b>, and
-    <b>version_parse()</b>.</p>
-<p class="Pp">Referenced by <b>action_check_update_immediate()</b>, and
-    <b>update_check_startup()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_update_check_save_cache_(const_update_check_result_t_*_result)"><a class="permalink" href="#asciichat_error_t_update_check_save_cache_(const_update_check_result_t_*_result)">asciichat_error_t
-  update_check_save_cache (const update_check_result_t * result)</a></h2>
-<p class="Pp">Definition at line <b>139</b> of file <b>update_checker.c</b>.</p>
-<pre>139                                                                                {
-140   if (!result) {
-141     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL result pointer&quot;);
-142   }
-143 
-144   char *cache_path = get_cache_file_path();
-145   if (!cache_path) {
-146     return SET_ERRNO(ERROR_FILE_OPERATION, &quot;Could not determine cache file path&quot;);
-147   }
-148 
-149   FILE *f = platform_fopen(&quot;file_stream&quot;, cache_path, &quot;w&quot;);
-150   if (!f) {
-151     const char *error_msg = file_write_error_message(cache_path);
-152     SAFE_FREE(cache_path);
-153     return SET_ERRNO(ERROR_FILE_OPERATION, &quot;%s&quot;, error_msg);
-154   }
-155 
-156   // Write timestamp
-157   fprintf(f, &quot;%lld\n&quot;, (long long)result-&gt;last_check_time);
-158 
-159   // Write version (may be empty if check failed)
-160   fprintf(f, &quot;%s\n&quot;, result-&gt;latest_version);
-161 
-162   // Write SHA (may be empty if check failed)
-163   fprintf(f, &quot;%s\n&quot;, result-&gt;latest_sha);
-164 
-165   fclose(f);
-166   SAFE_FREE(cache_path);
-167 
-168   return ASCIICHAT_OK;
-169 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>file_write_error_message()</b>, and
-    <b>platform_fopen()</b>.</p>
-<p class="Pp">Referenced by <b>update_check_perform()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_update_check_startup_(update_check_result_t_*_result)"><a class="permalink" href="#asciichat_error_t_update_check_startup_(update_check_result_t_*_result)">asciichat_error_t
-  update_check_startup (update_check_result_t * result)</a></h2>
-<p class="Pp">Definition at line <b>444</b> of file <b>update_checker.c</b>.</p>
-<pre>444                                                                       {
-445   update_check_result_t local_result;
-446   update_check_result_t *target = result ? result : &amp;local_result;
-447 
-448   // Try to load from cache first
-449   asciichat_error_t cache_err = update_check_load_cache(target);
-450   if (cache_err == ASCIICHAT_OK &amp;&amp; update_check_is_cache_fresh(target)) {
-451     // Cache is fresh, use it
-452     log_debug(&quot;Using cached update check result (age: %.1f days)&quot;,
-453               (time(NULL) - target-&gt;last_check_time) / (double)SEC_PER_DAY);
-454     return ASCIICHAT_OK;
-455   }
-456 
-457   // Cache is stale or missing, perform fresh check
-458   log_debug(&quot;Performing automatic update check (cache %s)&quot;, cache_err == ASCIICHAT_OK ? &quot;stale&quot; : &quot;missing&quot;);
-459   asciichat_error_t check_err = update_check_perform(target);
-460   if (check_err != ASCIICHAT_OK) {
-461     // Check failed, but don't fail startup
-462     log_debug(&quot;Automatic update check failed (continuing startup)&quot;);
-463     return check_err;
-464   }
-465 
-466   return ASCIICHAT_OK;
-467 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>update_check_is_cache_fresh()</b>,
-    <b>update_check_load_cache()</b>, and <b>update_check_perform()</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>.</p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

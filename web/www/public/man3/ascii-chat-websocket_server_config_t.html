@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>websocket_server_config_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">websocket_server_config_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">websocket_server_config_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">websocket_server_config_t - WebSocket server configuration.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/websocket/server.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">int <b>port</b>
+  <br/>
+  Port to listen on. <b>websocket_client_handler_fn</b> <b>client_handler</b>
+  <br/>
+  Handler for new connections. void * <b>user_data</b>
+  <br/>
+  User data passed to handlers. const char * <b>tls_cert_path</b>
+  <br/>
+  TLS certificate file path (optional, for wss://). const char *
+    <b>tls_key_path</b>
+  <br/>
+  TLS private key file path (optional, for wss://).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">WebSocket server configuration.</p>
+<p class="Pp">Definition at line <b>91</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>websocket_client_handler_fn</b>
+  websocket_server_config_t::client_handler</h2>
+<p class="Pp">Handler for new connections.</p>
+<p class="Pp">Definition at line <b>93</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+<p class="Pp">Referenced by <b>websocket_server_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_websocket_server_config_t::port"><a class="permalink" href="#int_websocket_server_config_t::port">int
+  websocket_server_config_t::port</a></h2>
+<p class="Pp">Port to listen on.</p>
+<p class="Pp">Definition at line <b>92</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+<p class="Pp">Referenced by <b>websocket_server_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_websocket_server_config_t::tls_cert_path"><a class="permalink" href="#const_char*_websocket_server_config_t::tls_cert_path">const
+  char* websocket_server_config_t::tls_cert_path</a></h2>
+<p class="Pp">TLS certificate file path (optional, for wss://).</p>
+<p class="Pp">Definition at line <b>95</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+<p class="Pp">Referenced by <b>server_main()</b>, and
+    <b>websocket_server_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_websocket_server_config_t::tls_key_path"><a class="permalink" href="#const_char*_websocket_server_config_t::tls_key_path">const
+  char* websocket_server_config_t::tls_key_path</a></h2>
+<p class="Pp">TLS private key file path (optional, for wss://).</p>
+<p class="Pp">Definition at line <b>96</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+<p class="Pp">Referenced by <b>server_main()</b>, and
+    <b>websocket_server_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_websocket_server_config_t::user_data"><a class="permalink" href="#void*_websocket_server_config_t::user_data">void*
+  websocket_server_config_t::user_data</a></h2>
+<p class="Pp">User data passed to handlers.</p>
+<p class="Pp">Definition at line <b>94</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+<p class="Pp">Referenced by <b>websocket_server_init()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

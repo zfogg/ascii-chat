@@ -41,26 +41,32 @@
 <br/>
 <p class="Pp">void <b>ui_status_log_init</b> (void)
   <br/>
-  void <b>ui_status_log_destroy</b> (void)
+  Initialize status screen log capture system. void <b>ui_status_log_destroy</b>
+    (void)
   <br/>
-  void <b>ui_status_log_clear</b> (void)
+  Cleanup status screen log capture system. void <b>ui_status_log_clear</b>
+    (void)
   <br/>
-  asciichat_error_t <b>ui_status_gather</b> (tcp_server_t *server, const char
+  Clear all log messages from status screen buffer. <b>asciichat_error_t</b>
+    <b>ui_status_gather</b> (<b>tcp_server_t</b> *server, const char
     *session_string, const char *ipv4_address, const char *ipv6_address,
-    uint16_t port, time_t start_time, const char *mode_name, <b>bool</b>
-    session_is_mdns_only, ui_status_t *out_status)
+    <b>uint16_t</b> port, time_t start_time, const char *mode_name, <b>bool</b>
+    session_is_mdns_only, <b>ui_status_t</b> *out_status)
   <br/>
-  void <b>ui_status_display</b> (const ui_status_t *status)
+  Gather current status information. void <b>ui_status_display</b> (const
+    <b>ui_status_t</b> *status)
   <br/>
-  <b>bool</b> <b>ui_status_display_interactive</b> (const ui_status_t *status)
+  Display status screen. <b>bool</b> <b>ui_status_display_interactive</b> (const
+    <b>ui_status_t</b> *status)
   <br/>
   Display status screen with keyboard input support Returns true if status
     screen should continue, false if Escape was pressed to exit. void
-    <b>ui_status_update</b> (tcp_server_t *server, const char *session_string,
-    const char *ipv4_address, const char *ipv6_address, uint16_t port, time_t
-    start_time, const char *mode_name, <b>bool</b> session_is_mdns_only,
-    uint64_t *last_update_ns)
+    <b>ui_status_update</b> (<b>tcp_server_t</b> *server, const char
+    *session_string, const char *ipv4_address, const char *ipv6_address,
+    <b>uint16_t</b> port, time_t start_time, const char *mode_name, <b>bool</b>
+    session_is_mdns_only, <b>uint64_t</b> *last_update_ns)
   <br/>
+  Periodically update status display with live logs at FPS rate.
   <br/>
 </p>
 </section>
@@ -77,8 +83,14 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="void_ui_status_display_(const_ui_status_t_*_status)"><a class="permalink" href="#void_ui_status_display_(const_ui_status_t_*_status)">void
-  ui_status_display (const ui_status_t * status)</a></h2>
+<h2 class="Ss" id="void_ui_status_display_(const_"><a class="permalink" href="#void_ui_status_display_(const_">void
+  ui_status_display (const <b>ui_status_t</b> * status)</a></h2>
+<p class="Pp">Display status screen. Outputs formatted status to stdout. Uses
+    ANSI escape codes for clean display that doesn't interfere with logging
+    output.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>status</i> Status information</div>
 <p class="Pp">Definition at line <b>194</b> of file <b>status.c</b>.</p>
 <pre>194                                                   {
 195   if (!status) {
@@ -120,17 +132,18 @@
 231 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>grep_get_last_pattern()</b>,
+<p class="Pp">References <b>GET_OPTION</b>, <b>grep_get_last_pattern()</b>,
     <b>log_search_enter_mode()</b>, <b>platform_isatty()</b>,
     <b>terminal_is_interactive()</b>, <b>terminal_screen_render()</b>, and
     <b>terminal_screen_set_output_fd()</b>.</p>
 <p class="Pp">Referenced by <b>ui_status_update()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> ui_status_display_interactive (const ui_status_t *
-  status)</h2>
+<h2 class="Ss"><b>bool</b> ui_status_display_interactive (const
+  <b>ui_status_t</b> * status)</h2>
 <p class="Pp">Display status screen with keyboard input support Returns true if
-    status screen should continue, false if Escape was pressed to exit.</p>
+    status screen should continue, false if Escape was pressed to exit. Display
+    status screen with interactive keyboard support.</p>
 <p class="Pp">Definition at line <b>237</b> of file <b>status.c</b>.</p>
 <pre>237                                                               {
 238   if (!status) {
@@ -193,18 +206,41 @@
 295 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>grep_get_last_pattern()</b>,
-    <b>log_search_enter_mode()</b>, <b>log_search_exit_mode()</b>,
-    <b>log_search_handle_key()</b>, <b>log_search_is_active()</b>,
-    <b>log_search_should_handle()</b>, <b>terminal_is_interactive()</b>, and
-    <b>terminal_screen_render()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>GET_OPTION</b>,
+    <b>grep_get_last_pattern()</b>, <b>log_search_enter_mode()</b>,
+    <b>log_search_exit_mode()</b>, <b>log_search_handle_key()</b>,
+    <b>log_search_is_active()</b>, <b>log_search_should_handle()</b>,
+    <b>terminal_is_interactive()</b>, and <b>terminal_screen_render()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_ui_status_gather_(tcp_server_t_*_server,_const_char_*_session_string,_const_char_*_ipv4_address,_const_char_*_ipv6_address,_uint16_t_port,_time_t_start_time,_const_char_*_mode_name,_"><a class="permalink" href="#asciichat_error_t_ui_status_gather_(tcp_server_t_*_server,_const_char_*_session_string,_const_char_*_ipv4_address,_const_char_*_ipv6_address,_uint16_t_port,_time_t_start_time,_const_char_*_mode_name,_">asciichat_error_t
-  ui_status_gather (tcp_server_t * server, const char * session_string, const
-  char * ipv4_address, const char * ipv6_address, uint16_t port, time_t
-  start_time, const char * mode_name, <b>bool</b> session_is_mdns_only,
-  ui_status_t * out_status)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> ui_status_gather (<b>tcp_server_t</b> *
+  server, const char * session_string, const char * ipv4_address, const char *
+  ipv6_address, <b>uint16_t</b> port, time_t start_time, const char * mode_name,
+  <b>bool</b> session_is_mdns_only, <b>ui_status_t</b> * out_status)</h2>
+<p class="Pp">Gather current status information. Collects current status
+    information including connected count, bind addresses, and session
+  string.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>server</i> Initialized TCP server structure
+<br/>
+<i>session_string</i> Memorable session string
+<br/>
+<i>ipv4_address</i> IPv4 bind address (can be NULL or empty)
+<br/>
+<i>ipv6_address</i> IPv6 bind address (can be NULL or empty)
+<br/>
+<i>port</i> TCP listen port
+<br/>
+<i>start_time</i> Server start time
+<br/>
+<i>mode_name</i> Mode name for display (e.g., &quot;Server&quot;)
+<br/>
+<i>session_is_mdns_only</i> Whether session is mDNS-only or ACDS
+<br/>
+<i>out_status</i> Output status structure</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success</div>
 <p class="Pp">Definition at line <b>52</b> of file <b>status.c</b>.</p>
 <pre>54                                                                                                                   {
 55   if (!server || !out_status || !mode_name) {
@@ -240,12 +276,23 @@
 85 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>tcp_server_get_client_count()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>ui_status_t::connected_count</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ui_status_t::ipv4_address</b>, <b>ui_status_t::ipv4_bound</b>,
+    <b>ui_status_t::ipv6_address</b>, <b>ui_status_t::ipv6_bound</b>,
+    <b>ui_status_t::mode_name</b>, <b>ui_status_t::port</b>,
+    <b>SAFE_STRNCPY</b>, <b>ui_status_t::session_is_mdns_only</b>,
+    <b>ui_status_t::session_string</b>, <b>SET_ERRNO</b>,
+    <b>ui_status_t::start_time</b>, and
+  <b>tcp_server_get_client_count()</b>.</p>
 <p class="Pp">Referenced by <b>ui_status_update()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_ui_status_log_clear_(void_)"><a class="permalink" href="#void_ui_status_log_clear_(void_)">void
   ui_status_log_clear (void )</a></h2>
+<p class="Pp">Clear all log messages from status screen buffer. Thread-safe.
+    Resets buffer to empty state, discarding all captured logs. Used to clear
+    initialization logs before status screen starts rendering.</p>
 <p class="Pp">Definition at line <b>43</b> of file <b>status.c</b>.</p>
 <pre>43                                {
 44   // Delegate to terminal_screen log abstraction
@@ -259,6 +306,8 @@
 <section class="Ss">
 <h2 class="Ss" id="void_ui_status_log_destroy_(void_)"><a class="permalink" href="#void_ui_status_log_destroy_(void_)">void
   ui_status_log_destroy (void )</a></h2>
+<p class="Pp">Cleanup status screen log capture system. Call when shutting down.
+    Frees internal log buffer.</p>
 <p class="Pp">Definition at line <b>36</b> of file <b>status.c</b>.</p>
 <pre>36                                  {
 37   // Unregister from logger before destroying
@@ -275,6 +324,8 @@
 <section class="Ss">
 <h2 class="Ss" id="void_ui_status_log_init_(void_)"><a class="permalink" href="#void_ui_status_log_init_(void_)">void
   ui_status_log_init (void )</a></h2>
+<p class="Pp">Initialize status screen log capture system. Must be called before
+    using status screen. Creates internal log buffer.</p>
 <p class="Pp">Definition at line <b>28</b> of file <b>status.c</b>.</p>
 <pre>28                               {
 29   // Initialize the shared terminal screen log buffer
@@ -290,11 +341,35 @@
 <p class="Pp">Referenced by <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_ui_status_update_(tcp_server_t_*_server,_const_char_*_session_string,_const_char_*_ipv4_address,_const_char_*_ipv6_address,_uint16_t_port,_time_t_start_time,_const_char_*_mode_name,_"><a class="permalink" href="#void_ui_status_update_(tcp_server_t_*_server,_const_char_*_session_string,_const_char_*_ipv4_address,_const_char_*_ipv6_address,_uint16_t_port,_time_t_start_time,_const_char_*_mode_name,_">void
-  ui_status_update (tcp_server_t * server, const char * session_string, const
-  char * ipv4_address, const char * ipv6_address, uint16_t port, time_t
-  start_time, const char * mode_name, <b>bool</b> session_is_mdns_only, uint64_t
-  * last_update_ns)</a></h2>
+<h2 class="Ss" id="void_ui_status_update_("><a class="permalink" href="#void_ui_status_update_(">void
+  ui_status_update (<b>tcp_server_t</b> * server, const char * session_string,
+  const char * ipv4_address, const char * ipv6_address, <b>uint16_t</b> port,
+  time_t start_time, const char * mode_name, <b>bool</b> session_is_mdns_only,
+  <b>uint64_t</b> * last_update_ns)</a></h2>
+<p class="Pp">Periodically update status display with live logs at FPS rate.
+    Gathers and displays status with live log feed if enough time has passed
+    since last update (based on <b>GET_OPTION(fps)</b>). Updates at 60 Hz by
+    default.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>server</i> Initialized TCP server structure
+<br/>
+<i>session_string</i> Memorable session string
+<br/>
+<i>ipv4_address</i> IPv4 bind address (can be NULL or empty)
+<br/>
+<i>ipv6_address</i> IPv6 bind address (can be NULL or empty)
+<br/>
+<i>port</i> TCP listen port
+<br/>
+<i>start_time</i> Server start time
+<br/>
+<i>mode_name</i> Mode name for display (e.g., &quot;Server&quot;)
+<br/>
+<i>session_is_mdns_only</i> Whether session is mDNS-only or ACDS
+<br/>
+<i>last_update_ns</i> Last update time in microseconds (from
+  platform_get_monotonic_time_us)</div>
 <p class="Pp">Definition at line <b>297</b> of file <b>status.c</b>.</p>
 <pre>299                                                                                {
 300   if (!server || !last_update_ns) {
@@ -327,8 +402,9 @@
 327 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_get_monotonic_time_us()</b>,
-    <b>ui_status_display()</b>, and <b>ui_status_gather()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>GET_OPTION</b>,
+    <b>platform_get_monotonic_time_us()</b>, <b>ui_status_display()</b>,
+    <b>ui_status_gather()</b>, and <b>US_PER_SEC_INT</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -338,7 +414,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

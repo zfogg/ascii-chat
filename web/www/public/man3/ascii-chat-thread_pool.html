@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>thread_pool(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">thread_pool(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">thread_pool(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">thread_pool - Thread pool structure.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/thread_pool.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">char <b>name</b> [64]
+  <br/>
+  Pool name for debugging. <b>thread_pool_entry_t</b> * <b>threads</b>
+  <br/>
+  Linked list of threads (sorted by stop_id). <b>mutex_t</b>
+    <b>threads_mutex</b>
+  <br/>
+  Mutex protecting thread list. size_t <b>thread_count</b>
+  <br/>
+  Number of threads in pool. <b>bool</b> <b>is_work_queue_mode</b>
+  <br/>
+  True if using work queue mode. size_t <b>num_workers</b>
+  <br/>
+  Number of pre-created worker threads. <b>thread_pool_work_entry_t</b> *
+    <b>work_queue</b>
+  <br/>
+  Queue of pending work. <b>mutex_t</b> <b>work_queue_mutex</b>
+  <br/>
+  Mutex protecting work queue. <b>cond_t</b> <b>work_available</b>
+  <br/>
+  Condition variable for workers to wait on. <b>bool</b>
+    <b>shutdown_requested</b>
+  <br/>
+  Signal workers to exit.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Thread pool structure.</p>
+<p class="Pp">Manages a collection of worker threads with ordered cleanup
+    support. Thread-safe for concurrent spawn/stop operations.</p>
+<p class="Pp"></p>
+<p class="Pp">Can operate in two modes:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Long-lived threads mode (original): spawn() creates permanent threads</dd>
+  <dt>2.</dt>
+  <dd>Work queue mode (new): pre-created workers pull tasks from a queue</dd>
+</dl>
+<p class="Pp">Definition at line <b>118</b> of file <b>thread_pool.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> thread_pool::is_work_queue_mode</h2>
+<p class="Pp">True if using work queue mode.</p>
+<p class="Pp">Definition at line <b>125</b> of file <b>thread_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_thread_pool::name_64_"><a class="permalink" href="#char_thread_pool::name_64_">char
+  thread_pool::name[64]</a></h2>
+<p class="Pp">Pool name for debugging.</p>
+<p class="Pp">Definition at line <b>119</b> of file <b>thread_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_thread_pool::num_workers"><a class="permalink" href="#size_t_thread_pool::num_workers">size_t
+  thread_pool::num_workers</a></h2>
+<p class="Pp">Number of pre-created worker threads.</p>
+<p class="Pp">Definition at line <b>126</b> of file <b>thread_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> thread_pool::shutdown_requested</h2>
+<p class="Pp">Signal workers to exit.</p>
+<p class="Pp">Definition at line <b>130</b> of file <b>thread_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_thread_pool::thread_count"><a class="permalink" href="#size_t_thread_pool::thread_count">size_t
+  thread_pool::thread_count</a></h2>
+<p class="Pp">Number of threads in pool.</p>
+<p class="Pp">Definition at line <b>122</b> of file <b>thread_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>thread_pool_entry_t</b>* thread_pool::threads</h2>
+<p class="Pp">Linked list of threads (sorted by stop_id).</p>
+<p class="Pp">Definition at line <b>120</b> of file <b>thread_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>mutex_t</b> thread_pool::threads_mutex</h2>
+<p class="Pp">Mutex protecting thread list.</p>
+<p class="Pp">Definition at line <b>121</b> of file <b>thread_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>cond_t</b> thread_pool::work_available</h2>
+<p class="Pp">Condition variable for workers to wait on.</p>
+<p class="Pp">Definition at line <b>129</b> of file <b>thread_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>thread_pool_work_entry_t</b>* thread_pool::work_queue</h2>
+<p class="Pp">Queue of pending work.</p>
+<p class="Pp">Definition at line <b>127</b> of file <b>thread_pool.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>mutex_t</b> thread_pool::work_queue_mutex</h2>
+<p class="Pp">Mutex protecting work queue.</p>
+<p class="Pp">Definition at line <b>128</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

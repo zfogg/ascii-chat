@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>digital_rain_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">digital_rain_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">digital_rain_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">digital_rain_t - Digital rain effect context.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/video/anim/digital_rain.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>digital_rain_column_t</b> * <b>columns</b>
+  <br/>
+  Per-column state array. int <b>num_columns</b>
+  <br/>
+  Number of columns in grid. int <b>num_rows</b>
+  <br/>
+  Number of rows in grid. float <b>time</b>
+  <br/>
+  Current simulation time (accumulated). float <b>fall_speed</b>
+  <br/>
+  Base fall speed multiplier. float <b>raindrop_length</b>
+  <br/>
+  Length of each raindrop (in cells). float <b>brightness_decay</b>
+  <br/>
+  Brightness smoothing factor (0-1). float <b>animation_speed</b>
+  <br/>
+  Overall animation speed multiplier. <b>uint8_t</b> <b>color_r</b>
+  <br/>
+  Matrix green R component. <b>uint8_t</b> <b>color_g</b>
+  <br/>
+  Matrix green G component. <b>uint8_t</b> <b>color_b</b>
+  <br/>
+  Matrix green B component. float <b>cursor_brightness</b>
+  <br/>
+  Cursor brightness multiplier. <b>bool</b> <b>rainbow_mode</b>
+  <br/>
+  True if rainbow color cycling is enabled. <b>bool</b> <b>first_frame</b>
+  <br/>
+  True if this is the first frame. float * <b>previous_brightness</b>
+  <br/>
+  Previous frame brightness (for smoothing).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Digital rain effect context.</p>
+<p class="Pp">Maintains state for the entire digital rain effect across frames.
+    Tracks column states and effect parameters.</p>
+<p class="Pp">Definition at line <b>71</b> of file <b>digital_rain.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="float_digital_rain_t::animation_speed"><a class="permalink" href="#float_digital_rain_t::animation_speed">float
+  digital_rain_t::animation_speed</a></h2>
+<p class="Pp">Overall animation speed multiplier.</p>
+<p class="Pp">Definition at line <b>81</b> of file <b>digital_rain.h</b>.</p>
+<p class="Pp">Referenced by <b>digital_rain_apply()</b>, and
+    <b>digital_rain_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_digital_rain_t::brightness_decay"><a class="permalink" href="#float_digital_rain_t::brightness_decay">float
+  digital_rain_t::brightness_decay</a></h2>
+<p class="Pp">Brightness smoothing factor (0-1).</p>
+<p class="Pp">Definition at line <b>80</b> of file <b>digital_rain.h</b>.</p>
+<p class="Pp">Referenced by <b>digital_rain_apply()</b>, and
+    <b>digital_rain_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> digital_rain_t::color_b</h2>
+<p class="Pp">Matrix green B component.</p>
+<p class="Pp">Definition at line <b>86</b> of file <b>digital_rain.h</b>.</p>
+<p class="Pp">Referenced by <b>digital_rain_apply()</b>,
+    <b>digital_rain_init()</b>, and <b>digital_rain_set_color()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> digital_rain_t::color_g</h2>
+<p class="Pp">Matrix green G component.</p>
+<p class="Pp">Definition at line <b>85</b> of file <b>digital_rain.h</b>.</p>
+<p class="Pp">Referenced by <b>digital_rain_apply()</b>,
+    <b>digital_rain_init()</b>, and <b>digital_rain_set_color()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> digital_rain_t::color_r</h2>
+<p class="Pp">Matrix green R component.</p>
+<p class="Pp">Definition at line <b>84</b> of file <b>digital_rain.h</b>.</p>
+<p class="Pp">Referenced by <b>digital_rain_apply()</b>,
+    <b>digital_rain_init()</b>, and <b>digital_rain_set_color()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>digital_rain_column_t</b>* digital_rain_t::columns</h2>
+<p class="Pp">Per-column state array.</p>
+<p class="Pp">Definition at line <b>72</b> of file <b>digital_rain.h</b>.</p>
+<p class="Pp">Referenced by <b>digital_rain_destroy()</b>, and
+    <b>digital_rain_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_digital_rain_t::cursor_brightness"><a class="permalink" href="#float_digital_rain_t::cursor_brightness">float
+  digital_rain_t::cursor_brightness</a></h2>
+<p class="Pp">Cursor brightness multiplier.</p>
+<p class="Pp">Definition at line <b>87</b> of file <b>digital_rain.h</b>.</p>
+<p class="Pp">Referenced by <b>digital_rain_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_digital_rain_t::fall_speed"><a class="permalink" href="#float_digital_rain_t::fall_speed">float
+  digital_rain_t::fall_speed</a></h2>
+<p class="Pp">Base fall speed multiplier.</p>
+<p class="Pp">Definition at line <b>78</b> of file <b>digital_rain.h</b>.</p>
+<p class="Pp">Referenced by <b>digital_rain_init()</b>, and
+    <b>digital_rain_set_fall_speed()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> digital_rain_t::first_frame</h2>
+<p class="Pp">True if this is the first frame.</p>
+<p class="Pp">Definition at line <b>91</b> of file <b>digital_rain.h</b>.</p>
+<p class="Pp">Referenced by <b>digital_rain_apply()</b>,
+    <b>digital_rain_init()</b>, and <b>digital_rain_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_digital_rain_t::num_columns"><a class="permalink" href="#int_digital_rain_t::num_columns">int
+  digital_rain_t::num_columns</a></h2>
+<p class="Pp">Number of columns in grid.</p>
+<p class="Pp">Definition at line <b>73</b> of file <b>digital_rain.h</b>.</p>
+<p class="Pp">Referenced by <b>digital_rain_apply()</b>,
+    <b>digital_rain_init()</b>, and <b>digital_rain_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_digital_rain_t::num_rows"><a class="permalink" href="#int_digital_rain_t::num_rows">int
+  digital_rain_t::num_rows</a></h2>
+<p class="Pp">Number of rows in grid.</p>
+<p class="Pp">Definition at line <b>74</b> of file <b>digital_rain.h</b>.</p>
+<p class="Pp">Referenced by <b>digital_rain_init()</b>, and
+    <b>digital_rain_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float*_digital_rain_t::previous_brightness"><a class="permalink" href="#float*_digital_rain_t::previous_brightness">float*
+  digital_rain_t::previous_brightness</a></h2>
+<p class="Pp">Previous frame brightness (for smoothing).</p>
+<p class="Pp">Definition at line <b>92</b> of file <b>digital_rain.h</b>.</p>
+<p class="Pp">Referenced by <b>digital_rain_apply()</b>,
+    <b>digital_rain_destroy()</b>, <b>digital_rain_init()</b>, and
+    <b>digital_rain_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> digital_rain_t::rainbow_mode</h2>
+<p class="Pp">True if rainbow color cycling is enabled.</p>
+<p class="Pp">Definition at line <b>88</b> of file <b>digital_rain.h</b>.</p>
+<p class="Pp">Referenced by <b>digital_rain_apply()</b>,
+    <b>digital_rain_init()</b>, and
+  <b>digital_rain_set_color_from_filter()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_digital_rain_t::raindrop_length"><a class="permalink" href="#float_digital_rain_t::raindrop_length">float
+  digital_rain_t::raindrop_length</a></h2>
+<p class="Pp">Length of each raindrop (in cells).</p>
+<p class="Pp">Definition at line <b>79</b> of file <b>digital_rain.h</b>.</p>
+<p class="Pp">Referenced by <b>digital_rain_init()</b>, and
+    <b>digital_rain_set_raindrop_length()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_digital_rain_t::time"><a class="permalink" href="#float_digital_rain_t::time">float
+  digital_rain_t::time</a></h2>
+<p class="Pp">Current simulation time (accumulated).</p>
+<p class="Pp">Definition at line <b>77</b> of file <b>digital_rain.h</b>.</p>
+<p class="Pp">Referenced by <b>digital_rain_apply()</b>,
+    <b>digital_rain_init()</b>, and <b>digital_rain_reset()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

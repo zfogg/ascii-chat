@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ansi.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ansi.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ansi.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ansi.h - ANSI escape sequence utilities and fast color code
+    generation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>ansi_rle_context_t</b>
+  <br/>
+  struct <b>ansi_timing_t</b>
+  <br/>
+  struct <b>rgb_error_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>ansi_color_mode_t</b> { <b>ANSI_MODE_FOREGROUND</b> = 0,
+    <b>ANSI_MODE_BACKGROUND</b>, <b>ANSI_MODE_FOREGROUND_BACKGROUND</b> }
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">char * <b>ansi_strip_escapes</b> (const char *input, size_t
+    input_len)
+  <br/>
+  Strip all ANSI escape sequences from a string. <b>bool</b>
+    <b>ansi_is_already_colorized</b> (const char *message, size_t pos)
+  <br/>
+  Check if a position in text is already colored. char *
+    <b>append_truecolor_fg</b> (char *dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
+    <b>uint8_t</b> <b>b</b>)
+  <br/>
+  char * <b>append_truecolor_bg</b> (char *dst, <b>uint8_t</b> r, <b>uint8_t</b>
+    g, <b>uint8_t</b> <b>b</b>)
+  <br/>
+  char * <b>append_truecolor_fg_bg</b> (char *dst, <b>uint8_t</b> fg_r,
+    <b>uint8_t</b> fg_g, <b>uint8_t</b> fg_b, <b>uint8_t</b> bg_r,
+    <b>uint8_t</b> bg_g, <b>uint8_t</b> bg_b)
+  <br/>
+  void <b>ansi_rle_init</b> (<b>ansi_rle_context_t</b> *ctx, char *buffer,
+    size_t capacity, <b>ansi_color_mode_t</b> mode)
+  <br/>
+  void <b>ansi_rle_add_pixel</b> (<b>ansi_rle_context_t</b> *ctx, <b>uint8_t</b>
+    r, <b>uint8_t</b> g, <b>uint8_t</b> <b>b</b>, char ascii_char)
+  <br/>
+  void <b>ansi_rle_finish</b> (<b>ansi_rle_context_t</b> *ctx)
+  <br/>
+  void <b>ansi_fast_init</b> (void)
+  <br/>
+  void <b>ansi_fast_init_256color</b> (void)
+  <br/>
+  void <b>ansi_fast_init_16color</b> (void)
+  <br/>
+  char * <b>append_256color_fg</b> (char *dst, <b>uint8_t</b> color_index)
+  <br/>
+  char * <b>append_256color_bg</b> (char *dst, <b>uint8_t</b> color_index)
+  <br/>
+  <b>uint8_t</b> <b>rgb_to_256color</b> (<b>uint8_t</b> r, <b>uint8_t</b> g,
+    <b>uint8_t</b> <b>b</b>)
+  <br/>
+  char * <b>append_16color_fg</b> (char *dst, <b>uint8_t</b> color_index)
+  <br/>
+  char * <b>append_16color_bg</b> (char *dst, <b>uint8_t</b> color_index)
+  <br/>
+  <b>uint8_t</b> <b>rgb_to_16color</b> (<b>uint8_t</b> r, <b>uint8_t</b> g,
+    <b>uint8_t</b> <b>b</b>)
+  <br/>
+  void <b>get_16color_rgb</b> (<b>uint8_t</b> color_index, <b>uint8_t</b> *r,
+    <b>uint8_t</b> *g, <b>uint8_t</b> *<b>b</b>)
+  <br/>
+  <b>uint8_t</b> <b>rgb_to_16color_dithered</b> (int r, int g, int <b>b</b>, int
+    x, int y, int width, int height, <b>rgb_error_t</b> *error_buffer)
+  <br/>
+  char * <b>append_color_fg_for_mode</b> (char *dst, <b>uint8_t</b> r,
+    <b>uint8_t</b> g, <b>uint8_t</b> <b>b</b>, <b>terminal_color_mode_t</b>
+    mode)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">ANSI escape sequence utilities and fast color code generation.</p>
+<p class="Pp">Provides functions for:</p>
+<ul class="Bl-bullet">
+  <li>Stripping and detecting ANSI escape sequences</li>
+  <li>Fast ANSI color code generation with SIMD-accelerated terminal output</li>
+  <li>Support for truecolor, 256-color, and 16-color modes</li>
+  <li>Run-length encoding for efficient terminal output</li>
+</ul>
+<p class="Pp">Definition in file <b>ansi.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

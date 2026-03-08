@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>acds_session_lookup_result_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">acds_session_lookup_result_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">acds_session_lookup_result_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">acds_session_lookup_result_t - Session lookup result.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/acip/acds_client.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>found</b>
+  <br/>
+  Session exists. <b>uint8_t</b> <b>session_id</b> [16]
+  <br/>
+  Session UUID (if found). <b>uint8_t</b> <b>host_pubkey</b> [32]
+  <br/>
+  Host's Ed25519 public key. <b>uint8_t</b> <b>capabilities</b>
+  <br/>
+  Session capabilities. <b>uint8_t</b> <b>max_participants</b>
+  <br/>
+  Maximum participants. <b>uint8_t</b> <b>current_participants</b>
+  <br/>
+  Current participant count. <b>bool</b> <b>has_password</b>
+  <br/>
+  Password required to join. <b>uint64_t</b> <b>created_at</b>
+  <br/>
+  Creation timestamp (Unix ms). <b>uint64_t</b> <b>expires_at</b>
+  <br/>
+  Expiration timestamp (Unix ms). <b>bool</b> <b>require_server_verify</b>
+  <br/>
+  ACDS policy: server must verify client identity. <b>bool</b>
+    <b>require_client_verify</b>
+  <br/>
+  ACDS policy: client must verify server identity.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Session lookup result.</p>
+<p class="Pp">NOTE: Does NOT include server connection information (IP/port).
+    Server address is only revealed after successful authentication via
+    <b>acds_session_join()</b>.</p>
+<p class="Pp">Definition at line <b>201</b> of file <b>acds_client.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> acds_session_lookup_result_t::capabilities</h2>
+<p class="Pp">Session capabilities.</p>
+<p class="Pp">Definition at line <b>205</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_session_lookup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> acds_session_lookup_result_t::created_at</h2>
+<p class="Pp">Creation timestamp (Unix ms).</p>
+<p class="Pp">Definition at line <b>209</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_session_lookup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>
+  acds_session_lookup_result_t::current_participants</h2>
+<p class="Pp">Current participant count.</p>
+<p class="Pp">Definition at line <b>207</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_session_lookup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> acds_session_lookup_result_t::expires_at</h2>
+<p class="Pp">Expiration timestamp (Unix ms).</p>
+<p class="Pp">Definition at line <b>210</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_session_lookup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> acds_session_lookup_result_t::found</h2>
+<p class="Pp">Session exists.</p>
+<p class="Pp">Definition at line <b>202</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_session_lookup()</b>, and
+    <b>client_crypto_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> acds_session_lookup_result_t::has_password</h2>
+<p class="Pp">Password required to join.</p>
+<p class="Pp">Definition at line <b>208</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_session_lookup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> acds_session_lookup_result_t::host_pubkey[32]</h2>
+<p class="Pp">Host's Ed25519 public key.</p>
+<p class="Pp">Definition at line <b>204</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_session_lookup()</b>, and
+    <b>client_crypto_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>
+  acds_session_lookup_result_t::max_participants</h2>
+<p class="Pp">Maximum participants.</p>
+<p class="Pp">Definition at line <b>206</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_session_lookup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b>
+  acds_session_lookup_result_t::require_client_verify</h2>
+<p class="Pp">ACDS policy: client must verify server identity.</p>
+<p class="Pp">Definition at line <b>212</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_session_lookup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b>
+  acds_session_lookup_result_t::require_server_verify</h2>
+<p class="Pp">ACDS policy: server must verify client identity.</p>
+<p class="Pp">Definition at line <b>211</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_session_lookup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> acds_session_lookup_result_t::session_id[16]</h2>
+<p class="Pp">Session UUID (if found).</p>
+<p class="Pp">Definition at line <b>203</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_session_lookup()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

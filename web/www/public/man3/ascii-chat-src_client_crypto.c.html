@@ -39,7 +39,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">void <b>client_crypto_set_mode</b> (uint8_t mode)
+<p class="Pp">void <b>client_crypto_set_mode</b> (<b>uint8_t</b> mode)
   <br/>
   Set crypto mode for handshake (encryption + authentication). int
     <b>client_crypto_init</b> (void)
@@ -50,17 +50,17 @@
   Perform crypto handshake with server. <b>bool</b>
     <b>crypto_client_is_ready</b> (void)
   <br/>
-  Check if crypto handshake is ready. const crypto_context_t *
+  Check if crypto handshake is ready. const <b>crypto_context_t</b> *
     <b>crypto_client_get_context</b> (void)
   <br/>
   Get crypto context for encryption/decryption. int
-    <b>crypto_client_encrypt_packet</b> (const uint8_t *plaintext, size_t
-    plaintext_len, uint8_t *ciphertext, size_t ciphertext_size, size_t
+    <b>crypto_client_encrypt_packet</b> (const <b>uint8_t</b> *plaintext, size_t
+    plaintext_len, <b>uint8_t</b> *ciphertext, size_t ciphertext_size, size_t
     *ciphertext_len)
   <br/>
   Encrypt a packet for transmission. int <b>crypto_client_decrypt_packet</b>
-    (const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext,
-    size_t plaintext_size, size_t *plaintext_len)
+    (const <b>uint8_t</b> *ciphertext, size_t ciphertext_len, <b>uint8_t</b>
+    *plaintext, size_t plaintext_size, size_t *plaintext_len)
   <br/>
   Decrypt a received packet. void <b>crypto_client_cleanup</b> (void)
   <br/>
@@ -71,15 +71,15 @@
     <b>crypto_client_initiate_rekey</b> (void)
   <br/>
   Initiate session rekeying (client-initiated). int
-    <b>crypto_client_process_rekey_request</b> (const uint8_t *packet, size_t
-    packet_len)
+    <b>crypto_client_process_rekey_request</b> (const <b>uint8_t</b> *packet,
+    size_t packet_len)
   <br/>
   Process received REKEY_REQUEST packet from server. int
     <b>crypto_client_send_rekey_response</b> (void)
   <br/>
   Send REKEY_RESPONSE packet to server. int
-    <b>crypto_client_process_rekey_response</b> (const uint8_t *packet, size_t
-    packet_len)
+    <b>crypto_client_process_rekey_response</b> (const <b>uint8_t</b> *packet,
+    size_t packet_len)
   <br/>
   Process received REKEY_RESPONSE packet from server. int
     <b>crypto_client_send_rekey_complete</b> (void)
@@ -280,7 +280,7 @@
   <li>protocol.c: Uses encryption functions for secure packet transmission</li>
   <li>crypto/handshake.h: Core handshake protocol implementation</li>
   <li>crypto/keys/keys.h: Key parsing and management functions</li>
-  <li>crypto/known_hosts.h: Server identity verification</li>
+  <li><b>crypto/known_hosts.h</b>: Server identity verification</li>
 </ul>
 </section>
 <section class="Sh">
@@ -302,14 +302,14 @@
 <p class="Pp"><b>Version</b></p>
 <div class="Bd-indent">2.0</div>
 <p class="Pp"><b>See also</b></p>
-<div class="Bd-indent">server.c For connection establishment and crypto
-  handshake timing
+<div class="Bd-indent">server.c For connection establishment and <b>Crypto
+  Module</b> handshake timing
 <p class="Pp"></p>
 <p class="Pp">crypto/handshake.h For handshake protocol implementation</p>
 <p class="Pp"></p>
 <p class="Pp">crypto/keys/keys.h For key parsing and management</p>
 <p class="Pp"></p>
-<p class="Pp">crypto/known_hosts.h For server identity verification</p>
+<p class="Pp"><b>crypto/known_hosts.h</b> For server identity verification</p>
 </div>
 <p class="Pp">Definition in file <b>src/client/crypto.c</b>.</p>
 </section>
@@ -632,18 +632,51 @@
 734 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>buffer_pool_free()</b>, <b>capture_cleanup()</b>,
+<p class="Pp">References <b>ACIP_CRYPTO_HAS_AUTH</b>,
+    <b>ACIP_CRYPTO_HAS_ENCRYPT</b>, <b>ASCIICHAT_OK</b>,
+    <b>AUTH_ALGO_ED25519</b>, <b>AUTH_ALGO_NONE</b>,
+    <b>crypto_parameters_packet_t::auth_public_key_size</b>,
+    <b>buffer_pool_free()</b>, <b>capture_cleanup()</b>,
+    <b>CIPHER_ALGO_NONE</b>, <b>CIPHER_ALGO_XSALSA20_POLY1305</b>,
+    <b>protocol_version_packet_t::compression_algorithms</b>,
+    <b>protocol_version_packet_t::compression_threshold</b>,
     <b>CONNECTION_ERROR_AUTH_FAILED</b>,
     <b>crypto_handshake_client_auth_response_socket()</b>,
     <b>crypto_handshake_client_complete_socket()</b>,
     <b>crypto_handshake_client_key_exchange_socket()</b>,
-    <b>crypto_handshake_set_parameters()</b>, <b>g_crypto_ctx</b>,
-    <b>lifecycle_is_initialized()</b>, <b>log_lock_terminal()</b>,
-    <b>log_unlock_terminal()</b>, <b>parse_public_keys()</b>,
-    <b>platform_getenv()</b>, <b>platform_prompt_yes_no()</b>,
-    <b>pubkey_to_hex()</b>, <b>receive_packet()</b>,
-    <b>send_crypto_capabilities_packet()</b>, <b>send_packet()</b>, and
-    <b>send_protocol_version_packet()</b>.</p>
+    <b>CRYPTO_HANDSHAKE_READY</b>, <b>crypto_handshake_set_parameters()</b>,
+    <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>FATAL</b>,
+    <b>protocol_version_packet_t::feature_flags</b>, <b>g_crypto_ctx</b>,
+    <b>GET_OPTION</b>, <b>HOST_TO_NET_U16</b>, <b>KEX_ALGO_X25519</b>,
+    <b>crypto_parameters_packet_t::kex_public_key_size</b>,
+    <b>KEY_TYPE_ED25519</b>, <b>lifecycle_is_initialized()</b>,
+    <b>log_debug</b>, <b>log_error</b>, <b>log_info</b>,
+    <b>log_lock_terminal()</b>, <b>log_plain</b>, <b>log_unlock_terminal()</b>,
+    <b>log_warn</b>, <b>MAX_CLIENTS</b>, <b>NET_TO_HOST_U16</b>,
+    <b>NS_PER_MS_INT</b>, <b>PACKET_TYPE_CRYPTO_CLIENT_HELLO</b>,
+    <b>PACKET_TYPE_CRYPTO_PARAMETERS</b>, <b>PACKET_TYPE_PROTOCOL_VERSION</b>,
+    <b>parse_public_keys()</b>, <b>platform_getenv()</b>,
+    <b>platform_is_interactive()</b>, <b>platform_prompt_yes_no()</b>,
+    <b>crypto_capabilities_packet_t::preferred_auth</b>,
+    <b>crypto_capabilities_packet_t::preferred_cipher</b>,
+    <b>crypto_capabilities_packet_t::preferred_kex</b>,
+    <b>protocol_version_packet_t::protocol_revision</b>,
+    <b>protocol_version_packet_t::protocol_version</b>, <b>pubkey_to_hex()</b>,
+    <b>receive_packet()</b>,
+    <b>crypto_capabilities_packet_t::requires_verification</b>,
+    <b>crypto_parameters_packet_t::selected_auth</b>,
+    <b>crypto_parameters_packet_t::selected_cipher</b>,
+    <b>crypto_parameters_packet_t::selected_kex</b>,
+    <b>send_crypto_capabilities_packet()</b>, <b>send_packet()</b>,
+    <b>send_protocol_version_packet()</b>,
+    <b>crypto_parameters_packet_t::shared_secret_size</b>,
+    <b>crypto_parameters_packet_t::signature_size</b>, <b>START_TIMER</b>,
+    <b>STOP_TIMER</b>, <b>STOP_TIMER_AND_LOG</b>,
+    <b>crypto_capabilities_packet_t::supported_auth_algorithms</b>,
+    <b>crypto_capabilities_packet_t::supported_cipher_algorithms</b>,
+    <b>crypto_capabilities_packet_t::supported_kex_algorithms</b>,
+    <b>protocol_version_packet_t::supports_encryption</b>, and
+    <b>crypto_parameters_packet_t::verification_enabled</b>.</p>
 <p class="Pp">Referenced by <b>client_main()</b>,
     <b>connection_attempt_tcp()</b>, and
   <b>server_connection_establish()</b>.</p>
@@ -878,21 +911,34 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>acds_client_config_init_defaults()</b>,
     <b>acds_client_connect()</b>, <b>acds_client_disconnect()</b>,
-    <b>acds_session_lookup()</b>, <b>crypto_derive_password_key()</b>,
+    <b>acds_session_lookup()</b>, <b>options_state::address</b>,
+    <b>ASCIICHAT_OK</b>, <b>crypto_derive_password_key()</b>,
     <b>crypto_handshake_destroy()</b>, <b>crypto_handshake_init()</b>,
-    <b>crypto_handshake_init_with_password()</b>,
+    <b>crypto_handshake_init_with_password()</b>, <b>CRYPTO_OK</b>,
     <b>crypto_result_to_string()</b>, <b>discovery_keys_verify()</b>,
-    <b>g_crypto_ctx</b>, <b>lifecycle_init()</b>, <b>lifecycle_reset()</b>,
-    <b>options_get()</b>, <b>parse_private_key()</b>,
-    <b>server_connection_get_ip()</b>, <b>server_connection_get_port()</b>, and
+    <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>options_state::encrypt_key</b>,
+    <b>FATAL</b>, <b>acds_session_lookup_result_t::found</b>,
+    <b>g_crypto_ctx</b>, <b>GET_OPTION</b>,
+    <b>acds_session_lookup_result_t::host_pubkey</b>,
+    <b>private_key_t::key_comment</b>, <b>KEY_TYPE_ED25519</b>,
+    <b>lifecycle_init()</b>, <b>lifecycle_reset()</b>, <b>log_debug</b>,
+    <b>log_error</b>, <b>log_warn</b>, <b>MS_PER_SEC_INT</b>,
+    <b>OPT_PORT_INT_DEFAULT</b>, <b>options_get()</b>,
+    <b>parse_private_key()</b>, <b>options_state::password</b>,
+    <b>options_state::port</b>, <b>private_key_t::public_key</b>,
+    <b>SAFE_SNPRINTF</b>, <b>SAFE_STRNCPY</b>,
+    <b>acds_client_config_t::server_address</b>,
+    <b>server_connection_get_ip()</b>, <b>server_connection_get_port()</b>,
+    <b>options_state::server_key</b>, <b>acds_client_config_t::server_port</b>,
+    <b>acds_client_config_t::timeout_ms</b>, <b>private_key_t::type</b>, and
     <b>validate_ssh_key_file()</b>.</p>
 <p class="Pp">Referenced by <b>client_main()</b>,
     <b>connection_attempt_tcp()</b>, <b>connection_attempt_websocket()</b>, and
     <b>server_connection_establish()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_client_crypto_set_mode_(uint8_t_mode)"><a class="permalink" href="#void_client_crypto_set_mode_(uint8_t_mode)">void
-  client_crypto_set_mode (uint8_t mode)</a></h2>
+<h2 class="Ss" id="void_client_crypto_set_mode_("><a class="permalink" href="#void_client_crypto_set_mode_(">void
+  client_crypto_set_mode (<b>uint8_t</b> mode)</a></h2>
 <p class="Pp">Set crypto mode for handshake (encryption + authentication). Set
     crypto mode for handshake (encryption + authentication)</p>
 <p class="Pp"></p>
@@ -906,6 +952,7 @@
 199 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>log_debug</b>.</p>
 <p class="Pp">Referenced by <b>client_main()</b>, and
     <b>connection_attempt_tcp()</b>.</p>
 </section>
@@ -926,12 +973,12 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_handshake_destroy()</b>, <b>g_crypto_ctx</b>,
-    and <b>lifecycle_shutdown()</b>.</p>
+    <b>lifecycle_shutdown()</b>, and <b>log_debug</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_crypto_client_decrypt_packet_(const_uint8_t_*_ciphertext,_size_t_ciphertext_len,_uint8_t_*_plaintext,_size_t_plaintext_size,_size_t_*_plaintext_len)"><a class="permalink" href="#int_crypto_client_decrypt_packet_(const_uint8_t_*_ciphertext,_size_t_ciphertext_len,_uint8_t_*_plaintext,_size_t_plaintext_size,_size_t_*_plaintext_len)">int
-  crypto_client_decrypt_packet (const uint8_t * ciphertext, size_t
-  ciphertext_len, uint8_t * plaintext, size_t plaintext_size, size_t *
+<h2 class="Ss" id="int_crypto_client_decrypt_packet_(const_"><a class="permalink" href="#int_crypto_client_decrypt_packet_(const_">int
+  crypto_client_decrypt_packet (const <b>uint8_t</b> * ciphertext, size_t
+  ciphertext_len, <b>uint8_t</b> * plaintext, size_t plaintext_size, size_t *
   plaintext_len)</a></h2>
 <p class="Pp">Decrypt a received packet. Decrypt a received packet</p>
 <p class="Pp"></p>
@@ -959,9 +1006,9 @@
     <b>crypto_decrypt_packet_or_passthrough()</b>, and <b>g_crypto_ctx</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_crypto_client_encrypt_packet_(const_uint8_t_*_plaintext,_size_t_plaintext_len,_uint8_t_*_ciphertext,_size_t_ciphertext_size,_size_t_*_ciphertext_len)"><a class="permalink" href="#int_crypto_client_encrypt_packet_(const_uint8_t_*_plaintext,_size_t_plaintext_len,_uint8_t_*_ciphertext,_size_t_ciphertext_size,_size_t_*_ciphertext_len)">int
-  crypto_client_encrypt_packet (const uint8_t * plaintext, size_t plaintext_len,
-  uint8_t * ciphertext, size_t ciphertext_size, size_t *
+<h2 class="Ss" id="int_crypto_client_encrypt_packet_(const_"><a class="permalink" href="#int_crypto_client_encrypt_packet_(const_">int
+  crypto_client_encrypt_packet (const <b>uint8_t</b> * plaintext, size_t
+  plaintext_len, <b>uint8_t</b> * ciphertext, size_t ciphertext_size, size_t *
   ciphertext_len)</a></h2>
 <p class="Pp">Encrypt a packet for transmission. Encrypt a packet for
     transmission</p>
@@ -990,8 +1037,8 @@
     <b>crypto_encrypt_packet_or_passthrough()</b>, and <b>g_crypto_ctx</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_crypto_context_t_*_crypto_client_get_context_(void_)"><a class="permalink" href="#const_crypto_context_t_*_crypto_client_get_context_(void_)">const
-  crypto_context_t * crypto_client_get_context (void )</a></h2>
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>crypto_context_t</b> * crypto_client_get_context (void )</a></h2>
 <p class="Pp">Get crypto context for encryption/decryption. Get crypto context
     for encryption/decryption</p>
 <p class="Pp"></p>
@@ -1047,10 +1094,10 @@
 859 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_client_is_ready()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>crypto_client_is_ready()</b>,
     <b>crypto_handshake_rekey_request()</b>, <b>g_crypto_ctx</b>,
-    <b>lifecycle_is_initialized()</b>, and
-    <b>server_connection_get_socket()</b>.</p>
+    <b>INVALID_SOCKET_VALUE</b>, <b>lifecycle_is_initialized()</b>,
+    <b>log_error</b>, and <b>server_connection_get_socket()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> crypto_client_is_ready (void )</h2>
@@ -1071,7 +1118,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_handshake_is_ready()</b>,
-    <b>g_crypto_ctx</b>, and <b>lifecycle_is_initialized()</b>.</p>
+    <b>g_crypto_ctx</b>, <b>GET_OPTION</b>, and
+    <b>lifecycle_is_initialized()</b>.</p>
 <p class="Pp">Referenced by <b>client_main()</b>,
     <b>connection_attempt_tcp()</b>, <b>connection_attempt_websocket()</b>,
     <b>crypto_client_decrypt_packet()</b>,
@@ -1085,8 +1133,8 @@
     and <b>threaded_send_client_join_packet()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_crypto_client_process_rekey_request_(const_uint8_t_*_packet,_size_t_packet_len)"><a class="permalink" href="#int_crypto_client_process_rekey_request_(const_uint8_t_*_packet,_size_t_packet_len)">int
-  crypto_client_process_rekey_request (const uint8_t * packet, size_t
+<h2 class="Ss" id="int_crypto_client_process_rekey_request_(const_"><a class="permalink" href="#int_crypto_client_process_rekey_request_(const_">int
+  crypto_client_process_rekey_request (const <b>uint8_t</b> * packet, size_t
   packet_len)</a></h2>
 <p class="Pp">Process received REKEY_REQUEST packet from server. Process
     received REKEY_REQUEST packet from server</p>
@@ -1115,13 +1163,13 @@
 883 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_client_is_ready()</b>,
-    <b>crypto_handshake_process_rekey_request()</b>, <b>g_crypto_ctx</b>, and
-    <b>lifecycle_is_initialized()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>crypto_client_is_ready()</b>,
+    <b>crypto_handshake_process_rekey_request()</b>, <b>g_crypto_ctx</b>,
+    <b>lifecycle_is_initialized()</b>, and <b>log_error</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_crypto_client_process_rekey_response_(const_uint8_t_*_packet,_size_t_packet_len)"><a class="permalink" href="#int_crypto_client_process_rekey_response_(const_uint8_t_*_packet,_size_t_packet_len)">int
-  crypto_client_process_rekey_response (const uint8_t * packet, size_t
+<h2 class="Ss" id="int_crypto_client_process_rekey_response_(const_"><a class="permalink" href="#int_crypto_client_process_rekey_response_(const_">int
+  crypto_client_process_rekey_response (const <b>uint8_t</b> * packet, size_t
   packet_len)</a></h2>
 <p class="Pp">Process received REKEY_RESPONSE packet from server. Process
     received REKEY_RESPONSE packet from server</p>
@@ -1150,9 +1198,9 @@
 935 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_client_is_ready()</b>,
-    <b>crypto_handshake_process_rekey_response()</b>, <b>g_crypto_ctx</b>, and
-    <b>lifecycle_is_initialized()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>crypto_client_is_ready()</b>,
+    <b>crypto_handshake_process_rekey_response()</b>, <b>g_crypto_ctx</b>,
+    <b>lifecycle_is_initialized()</b>, and <b>log_error</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_crypto_client_send_rekey_complete_(void_)"><a class="permalink" href="#int_crypto_client_send_rekey_complete_(void_)">int
@@ -1186,10 +1234,10 @@
 963 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_client_is_ready()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>crypto_client_is_ready()</b>,
     <b>crypto_handshake_rekey_complete()</b>, <b>g_crypto_ctx</b>,
-    <b>lifecycle_is_initialized()</b>, and
-    <b>server_connection_get_socket()</b>.</p>
+    <b>INVALID_SOCKET_VALUE</b>, <b>lifecycle_is_initialized()</b>,
+    <b>log_error</b>, and <b>server_connection_get_socket()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_crypto_client_send_rekey_response_(void_)"><a class="permalink" href="#int_crypto_client_send_rekey_response_(void_)">int
@@ -1223,10 +1271,10 @@
 911 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_client_is_ready()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>crypto_client_is_ready()</b>,
     <b>crypto_handshake_rekey_response()</b>, <b>g_crypto_ctx</b>,
-    <b>lifecycle_is_initialized()</b>, and
-    <b>server_connection_get_socket()</b>.</p>
+    <b>INVALID_SOCKET_VALUE</b>, <b>lifecycle_is_initialized()</b>,
+    <b>log_error</b>, and <b>server_connection_get_socket()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> crypto_client_should_rekey (void )</h2>
@@ -1257,7 +1305,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>options.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">options.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">options.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">options.h - &#x2699;&#xFE0F; Unified options parsing system for
+    ascii-chat with builder pattern and lock-free access</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>options_state</b>
+  <br/>
+  Consolidated options structure.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>COLOR_MODE_AUTO</b> <b>TERM_COLOR_AUTO</b>
+  <br/>
+  Backward compatibility aliases for color mode enum values. #define
+    <b>COLOR_MODE_NONE</b> <b>TERM_COLOR_NONE</b>
+  <br/>
+  Monochrome mode. #define <b>COLOR_MODE_16</b> <b>TERM_COLOR_16</b>
+  <br/>
+  16-color mode (alias) #define <b>COLOR_MODE_16_COLOR</b> <b>TERM_COLOR_16</b>
+  <br/>
+  16-color mode (full name) #define <b>COLOR_MODE_256</b> <b>TERM_COLOR_256</b>
+  <br/>
+  256-color mode (alias) #define <b>COLOR_MODE_256_COLOR</b>
+    <b>TERM_COLOR_256</b>
+  <br/>
+  256-color mode (full name) #define <b>COLOR_MODE_TRUECOLOR</b>
+    <b>TERM_COLOR_TRUECOLOR</b>
+  <br/>
+  24-bit truecolor mode #define <b>OPT_WEBRTC_DEFAULT</b> <b>true</b>
+  <br/>
+  Default WebRTC mode flag (true = P2P WebRTC, false = direct TCP). #define
+    <b>OPT_PREFER_WEBRTC_DEFAULT</b> <b>false</b>
+  <br/>
+  Default prefer WebRTC flag (false = try direct TCP first). #define
+    <b>OPT_NO_WEBRTC_DEFAULT</b> <b>false</b>
+  <br/>
+  Default no WebRTC flag (false = WebRTC enabled). #define
+    <b>OPT_WEBRTC_SKIP_STUN_DEFAULT</b> <b>false</b>
+  <br/>
+  Default WebRTC skip STUN flag (false = use STUN). #define
+    <b>OPT_WEBRTC_DISABLE_TURN_DEFAULT</b> <b>false</b>
+  <br/>
+  Default WebRTC disable TURN flag (false = use TURN). #define
+    <b>OPT_WEBRTC_SKIP_HOST_DEFAULT</b> <b>false</b>
+  <br/>
+  Default WebRTC skip host candidates flag (false = use host candidates).
+    #define <b>OPT_WEBRTC_ICE_TIMEOUT_MS_DEFAULT</b> 10000
+  <br/>
+  Default WebRTC ICE gathering timeout in milliseconds (10 seconds). #define
+    <b>OPT_WEBRTC_RECONNECT_ATTEMPTS_DEFAULT</b> 3
+  <br/>
+  Default WebRTC reconnection attempts (3 = try initial + 3 retries). #define
+    <b>OPT_TURN_USERNAME_DEFAULT</b> 'ascii'
+  <br/>
+  Default TURN server username. #define <b>OPT_TURN_CREDENTIAL_DEFAULT</b>
+    '0aa9917b4dad1b01631e87a32b875e09'
+  <br/>
+  Default TURN server credential. #define <b>OPT_AUDIO_ENABLED_DEFAULT</b>
+    <b>true</b>
+  <br/>
+  Default audio enabled flag (true = audio enabled by default). #define
+    <b>OPT_AUDIO_SOURCE_DEFAULT</b> <b>AUDIO_SOURCE_AUTO</b>
+  <br/>
+  Default audio source (AUDIO_SOURCE_AUTO = smart selection). #define
+    <b>OPT_MICROPHONE_INDEX_DEFAULT</b> (-1)
+  <br/>
+  Default microphone device index (-1 means system default). #define
+    <b>OPT_SPEAKERS_INDEX_DEFAULT</b> (-1)
+  <br/>
+  Default speakers device index (-1 means system default). #define
+    <b>OPT_MICROPHONE_SENSITIVITY_DEFAULT</b> 1.0
+  <br/>
+  Default microphone sensitivity (1.0 = normal volume). #define
+    <b>OPT_SPEAKERS_VOLUME_DEFAULT</b> 1.0
+  <br/>
+  Default speakers volume (1.0 = normal volume). #define
+    <b>OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT</b> <b>false</b>
+  <br/>
+  Default audio analysis enabled flag. #define
+    <b>OPT_AUDIO_NO_PLAYBACK_DEFAULT</b> <b>false</b>
+  <br/>
+  Default audio playback flag (false = enable playback). #define
+    <b>OPT_ENCODE_AUDIO_DEFAULT</b> <b>true</b>
+  <br/>
+  Default audio encoding state (true = Opus encoding enabled). #define
+    <b>OPT_ENCRYPT_ENABLED_DEFAULT</b> <b>true</b>
+  <br/>
+  Default encrypt enabled flag (true = encryption required). #define
+    <b>OPT_NO_ENCRYPT_DEFAULT</b> <b>false</b>
+  <br/>
+  Default no encrypt flag (false = allow encryption). #define
+    <b>OPT_NO_AUTH_DEFAULT</b> <b>false</b>
+  <br/>
+  Default no auth flag (false = allow authentication). #define
+    <b>OPT_REQUIRE_SERVER_VERIFY_DEFAULT</b> <b>false</b>
+  <br/>
+  Default require server verify flag (false = not required). #define
+    <b>OPT_REQUIRE_CLIENT_VERIFY_DEFAULT</b> <b>false</b>
+  <br/>
+  Default require client verify flag (false = not required). #define
+    <b>OPT_STRING_EMPTY_DEFAULT</b> ''
+  <br/>
+  Default empty string for string option fields that have no configured value.
+    #define <b>OPT_RENDER_FILE_DEFAULT</b> ''
+  <br/>
+  #define <b>OPT_RENDER_THEME_DEFAULT</b> 0
+  <br/>
+  #define <b>OPT_RENDER_FONT_DEFAULT</b> ''
+  <br/>
+  #define <b>OPT_RENDER_FONT_SIZE_DEFAULT</b> 12.0
+  <br/>
+  #define <b>OPTION_MODE_SERVER_LIKE</b> (<b>OPTION_MODE_SERVER</b> |
+    <b>OPTION_MODE_DISCOVERY_SVC</b>)
+  <br/>
+  Mode group macros for examples. #define <b>OPTION_MODE_CLIENT_LIKE</b>
+    (<b>OPTION_MODE_CLIENT</b> | <b>OPTION_MODE_MIRROR</b> |
+    <b>OPTION_MODE_DISCOVERY</b>)
+  <br/>
+  #define <b>OPTION_MODE_NETWORKED</b> (<b>OPTION_MODE_SERVER</b> |
+    <b>OPTION_MODE_CLIENT</b> | <b>OPTION_MODE_DISCOVERY_SVC</b> |
+    <b>OPTION_MODE_DISCOVERY</b>)
+  <br/>
+  #define <b>GET_OPTION</b>(field)
+  <br/>
+  Safely get a specific option field (lock-free read).
+  <br/>
+</p>
+<p class="Pp"><b>Configuration Constants</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>OPTIONS_BUFF_SIZE</b> 256
+  <br/>
+  Buffer size for option string values. #define <b>MAX_IDENTITY_KEYS</b> 32
+  <br/>
+  Maximum number of identity keys that can be loaded (for multi-key support).
+    #define <b>OPT_HELP_DEFAULT</b> <b>false</b>
+  <br/>
+  Default help flag (false = don't show help). #define
+    <b>OPT_VERSION_DEFAULT</b> <b>false</b>
+  <br/>
+  Default version flag (false = don't show version). #define
+    <b>OPT_SPLASH_DEFAULT</b> <b>true</b>
+  <br/>
+  Default splash screen flag (true = show splash, false = hide splash). #define
+    <b>OPT_SPLASH_SCREEN_EXPLICITLY_SET_DEFAULT</b> <b>false</b>
+  <br/>
+  Default splash screen explicitly set flag (false = use default splash
+    setting). #define <b>OPT_STATUS_SCREEN_DEFAULT</b> <b>true</b>
+  <br/>
+  Default status screen flag (true = show status, false = hide status). #define
+    <b>OPT_STATUS_SCREEN_EXPLICITLY_SET_DEFAULT</b> <b>false</b>
+  <br/>
+  Default status screen explicitly set flag (false = use default status screen
+    setting). #define <b>OPT_ENABLE_KEEPAWAKE_DEFAULT</b> <b>false</b>
+  <br/>
+  Default keep-awake (prevent system sleep) flag (false = normal system sleep).
+    #define <b>OPT_DISABLE_KEEPAWAKE_DEFAULT</b> <b>false</b>
+  <br/>
+  Default disable keep-awake flag (false = allow system sleep prevention).
+    #define <b>OPT_NO_CHECK_UPDATE_DEFAULT</b> <b>false</b>
+  <br/>
+  Default no-check-update flag (false = check for updates enabled). #define
+    <b>OPT_QUIET_DEFAULT</b> <b>false</b>
+  <br/>
+  Default quiet mode flag (false = logging enabled). #define
+    <b>OPT_VERBOSE_LEVEL_DEFAULT</b> 0
+  <br/>
+  Default verbose level (0 = not verbose). #define <b>OPT_LOG_LEVEL_DEFAULT</b>
+    <b>LOG_INFO</b>
+  <br/>
+  Default log level (LOG_INFO). #define <b>OPT_GREP_PATTERN_DEFAULT</b> ''
+  <br/>
+  Default grep pattern (empty = no filtering). #define <b>OPT_JSON_DEFAULT</b>
+    <b>false</b>
+  <br/>
+  Default JSON logging flag (false = text output). #define
+    <b>OPT_COLOR_SCHEME_NAME_DEFAULT</b> 'pastel'
+  <br/>
+  Default color scheme name (pastel). #define
+    <b>OPT_LOG_TEMPLATE_DEFAULT_RELEASE</b>
+  <br/>
+  Default log format string - release mode (simple format with timestamp, level,
+    and message). #define <b>OPT_LOG_TEMPLATE_DEFAULT_DEBUG</b>
+  <br/>
+  Default log format string - debug mode (verbose with thread name, file
+    relative path, line, and function). #define <b>OPT_LOG_TEMPLATE_DEFAULT</b>
+    <b>OPT_LOG_TEMPLATE_DEFAULT_DEBUG</b>
+  <br/>
+  Default log template string (selected based on build mode). #define
+    <b>OPT_LOG_FORMAT_OUTPUT_DEFAULT</b> LOG_OUTPUT_TEXT
+  <br/>
+  Default log format output type (TEXT = human-readable, JSON = structured).
+    #define <b>OPT_LOG_FORMAT_CONSOLE_DEFAULT</b> <b>false</b>
+  <br/>
+  Default log format console only flag (false = use default format everywhere).
+    #define <b>OPT_WIDTH_DEFAULT</b> 110
+  <br/>
+  Default terminal width in characters. #define <b>OPT_HEIGHT_DEFAULT</b> 70
+  <br/>
+  Default terminal height in characters. #define <b>OPT_AUTO_WIDTH_DEFAULT</b>
+    <b>true</b>
+  <br/>
+  Default auto-detect width flag (true = auto-detect from terminal). #define
+    <b>OPT_AUTO_HEIGHT_DEFAULT</b> <b>true</b>
+  <br/>
+  Default auto-detect height flag (true = auto-detect from terminal). #define
+    <b>OPT_COLOR_MODE_DEFAULT</b> <b>COLOR_MODE_AUTO</b>
+  <br/>
+  Default color mode (auto-detect terminal capabilities). #define
+    <b>OPT_LIST_WEBCAMS_DEFAULT</b> <b>false</b>
+  <br/>
+  Default list webcams flag (false = don't list and exit). #define
+    <b>OPT_LIST_MICROPHONES_DEFAULT</b> <b>false</b>
+  <br/>
+  Default list microphones flag (false = don't list and exit). #define
+    <b>OPT_LIST_SPEAKERS_DEFAULT</b> <b>false</b>
+  <br/>
+  Default list speakers flag (false = don't list and exit). #define
+    <b>OPT_SHOW_CAPABILITIES_DEFAULT</b> <b>false</b>
+  <br/>
+  Default show terminal capabilities flag. #define <b>OPT_FORCE_UTF8_DEFAULT</b>
+    <b>UTF8_SETTING_AUTO</b>
+  <br/>
+  Default force UTF-8 support setting (auto-detect). #define
+    <b>OPT_STRIP_ANSI_DEFAULT</b> <b>false</b>
+  <br/>
+  Default strip ANSI escape sequences flag. #define <b>OPT_COLOR_DEFAULT</b>
+    <b>COLOR_SETTING_AUTO</b>
+  <br/>
+  Default color setting (COLOR_SETTING_AUTO = smart detection). #define
+    <b>OPT_COLOR_FILTER_DEFAULT</b> <b>COLOR_FILTER_NONE</b>
+  <br/>
+  Default color filter (none - no filtering). #define
+    <b>OPT_RENDER_MODE_DEFAULT</b> <b>RENDER_MODE_FOREGROUND</b>
+  <br/>
+  Default render mode (foreground characters only). #define
+    <b>OPT_PALETTE_TYPE_DEFAULT</b> <b>PALETTE_STANDARD</b>
+  <br/>
+  Default palette type (standard ASCII art). #define
+    <b>OPT_PALETTE_CUSTOM_SET_DEFAULT</b> <b>false</b>
+  <br/>
+  Default custom palette set flag (false = not set). #define
+    <b>OPT_STRETCH_DEFAULT</b> <b>false</b>
+  <br/>
+  Default allow aspect ratio distortion flag. #define <b>OPT_FPS_DEFAULT</b> 60
+  <br/>
+  Default FPS (frames per second). #define <b>OPT_SNAPSHOT_MODE_DEFAULT</b>
+    <b>false</b>
+  <br/>
+  Default snapshot mode flag (false = continuous). #define
+    <b>OPT_SNAPSHOT_DELAY_DEFAULT</b> 3.0f
+  <br/>
+  Default snapshot delay in seconds. #define <b>OPT_MATRIX_RAIN_DEFAULT</b>
+    <b>false</b>
+  <br/>
+  Default Matrix rain effect flag (false = disabled). #define
+    <b>OPT_FPS_COUNTER_DEFAULT</b> <b>false</b>
+  <br/>
+  Default FPS counter overlay flag (false = disabled). #define
+    <b>OPT_FLIP_X_DEFAULT</b> <b>false</b>
+  <br/>
+  Default horizontal flip state (true = horizontally flipped) macOS webcams
+    default to flipped (mirrored), other platforms default to normal. #define
+    <b>OPT_FLIP_Y_DEFAULT</b> <b>false</b>
+  <br/>
+  Default vertical flip state (false = no vertical flip). #define
+    <b>OPT_WEBCAM_INDEX_DEFAULT</b> 0
+  <br/>
+  Default webcam device index. #define <b>OPT_TEST_PATTERN_DEFAULT</b>
+    <b>false</b>
+  <br/>
+  Default test pattern mode (false = use actual webcam). #define
+    <b>OPT_NO_AUDIO_MIXER_DEFAULT</b> <b>false</b>
+  <br/>
+  Default no audio mixer flag (false = enable mixer). #define
+    <b>OPT_MEDIA_LOOP_DEFAULT</b> <b>false</b>
+  <br/>
+  Default loop media flag (false = play once). #define
+    <b>OPT_MEDIA_FROM_STDIN_DEFAULT</b> <b>false</b>
+  <br/>
+  Default media from stdin flag (false = not reading from stdin). #define
+    <b>OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT</b> 0.0
+  <br/>
+  Default media seek timestamp (start from beginning). #define
+    <b>OPT_PAUSE_DEFAULT</b> <b>false</b>
+  <br/>
+  Default pause media flag (false = play immediately). #define
+    <b>OPT_ADDRESS_DEFAULT</b> 'localhost'
+  <br/>
+  Default server address for client connections. #define
+    <b>OPT_ADDRESS6_DEFAULT</b> '::1'
+  <br/>
+  Default IPv6 server address. #define <b>OPT_ENDPOINT_DISCOVERY_SERVICE</b>
+    'localhost'
+  <br/>
+  Default discovery service endpoint. #define <b>OPT_PORT_DEFAULT</b> '27224'
+  <br/>
+  Default TCP port for client/server communication (string). #define
+    <b>OPT_PORT_INT_DEFAULT</b> 27224
+  <br/>
+  Default TCP port for client/server communication (integer). #define
+    <b>OPT_WEBSOCKET_PORT_SERVER_DEFAULT</b> 27226
+  <br/>
+  Default WebSocket port for server mode (integer). #define
+    <b>OPT_WEBSOCKET_PORT_ACDS_DEFAULT</b> 27227
+  <br/>
+  Default WebSocket port for discovery-service mode (integer). #define
+    <b>OPT_MAX_CLIENTS_DEFAULT</b> 9
+  <br/>
+  Default maximum concurrent clients (server only). #define
+    <b>OPT_RECONNECT_ATTEMPTS_DEFAULT</b> (-1)
+  <br/>
+  Default reconnect attempts (-1 means auto/infinite). #define
+    <b>OPT_COMPRESSION_LEVEL_DEFAULT</b> 3
+  <br/>
+  Default compression level (1-9). #define <b>OPT_NO_COMPRESS_DEFAULT</b>
+    <b>false</b>
+  <br/>
+  Default no compression flag (false = enable compression). #define
+    <b>OPT_ACDS_DEFAULT</b> <b>false</b>
+  <br/>
+  Default ACDS registration flag (false = disabled). #define
+    <b>OPT_ACDS_PORT_INT_DEFAULT</b> 27225
+  <br/>
+  Default ACDS discovery service port (integer). #define
+    <b>OPT_ACDS_PORT_DEFAULT</b> '27225'
+  <br/>
+  Default ACDS discovery service port (string). #define
+    <b>OPT_ACDS_EXPOSE_IP_DEFAULT</b> <b>false</b>
+  <br/>
+  Default ACDS expose IP flag (false = private by default). #define
+    <b>OPT_ACDS_INSECURE_DEFAULT</b> <b>false</b>
+  <br/>
+  Default ACDS insecure mode flag (false = verify server). #define
+    <b>OPT_REQUIRE_SERVER_IDENTITY_DEFAULT</b> <b>false</b>
+  <br/>
+  Default require-server-identity setting for ACDS. #define
+    <b>OPT_REQUIRE_CLIENT_IDENTITY_DEFAULT</b> <b>false</b>
+  <br/>
+  Default require-client-identity setting for ACDS. #define
+    <b>OPT_LAN_DISCOVERY_DEFAULT</b> <b>false</b>
+  <br/>
+  Default LAN discovery flag (false = discovery disabled). #define
+    <b>OPT_NO_MDNS_ADVERTISE_DEFAULT</b> <b>false</b>
+  <br/>
+  Default no mDNS advertise flag (false = advertise enabled). #define
+    <b>OPT_ENABLE_UPNP_DEFAULT</b> <b>false</b>
+  <br/>
+  Default enable UPnP flag (false = UPnP disabled).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Network Endpoint Defaults (WebRTC)</b>
+  <br/>
+  Centralized definitions for STUN/TURN servers</p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>OPT_ENDPOINT_STUN_PRIMARY</b> 'stun:stun.ascii-chat.com:3478'
+  <br/>
+  Primary STUN server (ascii-chat hosted). #define
+    <b>OPT_ENDPOINT_STUN_FALLBACK</b> 'stun:stun.l.google.com:19302'
+  <br/>
+  Fallback STUN server (Google public STUN). #define
+    <b>OPT_ENDPOINT_STUN_SERVERS_DEFAULT</b> <b>OPT_ENDPOINT_STUN_PRIMARY</b>
+    ',' <b>OPT_ENDPOINT_STUN_FALLBACK</b>
+  <br/>
+  Default STUN servers (comma-separated list). #define
+    <b>OPT_ENDPOINT_TURN_PRIMARY</b> 'turn:turn.ascii-chat.com:3478'
+  <br/>
+  Primary TURN server (ascii-chat hosted). #define
+    <b>OPT_ENDPOINT_TURN_SERVERS_DEFAULT</b> <b>OPT_ENDPOINT_TURN_PRIMARY</b>
+  <br/>
+  Default TURN servers (comma-separated list). #define
+    <b>OPT_STUN_SERVER_HOST_PRIMARY</b> 'stun.ascii-chat.com'
+  <br/>
+  STUN server hostname only (without protocol/port). #define
+    <b>OPT_STUN_SERVER_PORT_PRIMARY</b> 3478
+  <br/>
+  STUN server port for primary server. #define
+    <b>OPT_STUN_SERVER_HOST_FALLBACK</b> 'stun.l.google.com'
+  <br/>
+  Fallback STUN server hostname only. #define
+    <b>OPT_STUN_SERVER_PORT_FALLBACK</b> 19302
+  <br/>
+  Fallback STUN server port. #define <b>OPT_TURN_SERVER_HOST</b>
+    'turn.ascii-chat.com'
+  <br/>
+  TURN server hostname only. #define <b>OPT_TURN_SERVER_PORT</b> 3478
+  <br/>
+  TURN server port. #define <b>OPT_STUN_SERVERS_DEFAULT</b>
+    <b>OPT_ENDPOINT_STUN_SERVERS_DEFAULT</b>
+  <br/>
+  Default STUN server URLs (comma-separated). #define
+    <b>OPT_TURN_SERVERS_DEFAULT</b> <b>OPT_ENDPOINT_TURN_SERVERS_DEFAULT</b>
+  <br/>
+  Default TURN server URLs (comma-separated).
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>options_state</b> <b>options_t</b>
+  <br/>
+  Consolidated options structure.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>color_setting_t</b> { <b>COLOR_SETTING_AUTO</b> = 0,
+    <b>COLOR_SETTING_TRUE</b> = 1, <b>COLOR_SETTING_FALSE</b> = -1 }
+  <br/>
+  Color output setting (--color flag values). enum <b>utf8_setting_t</b> {
+    <b>UTF8_SETTING_AUTO</b> = 0, <b>UTF8_SETTING_TRUE</b> = 1,
+    <b>UTF8_SETTING_FALSE</b> = -1 }
+  <br/>
+  UTF-8 support setting (--utf8 flag values). enum <b>audio_source_t</b> {
+    <b>AUDIO_SOURCE_AUTO</b> = 0, <b>AUDIO_SOURCE_MIC</b> = 1,
+    <b>AUDIO_SOURCE_MEDIA</b> = 2, <b>AUDIO_SOURCE_BOTH</b> = 3 }
+  <br/>
+  Audio source selection for playback and capture. enum <b>asciichat_mode_t</b>
+    { <b>MODE_SERVER</b>, <b>MODE_CLIENT</b>, <b>MODE_MIRROR</b>,
+    <b>MODE_DISCOVERY_SERVICE</b>, <b>MODE_DISCOVERY</b>, <b>MODE_INVALID</b> }
+  <br/>
+  Mode type for options parsing. enum <b>option_mode_bitmask_t</b> {
+    <b>OPTION_MODE_NONE</b> = 0, <b>OPTION_MODE_SERVER</b> = (1 &lt;&lt;
+    MODE_SERVER), <b>OPTION_MODE_CLIENT</b> = (1 &lt;&lt; MODE_CLIENT),
+    <b>OPTION_MODE_MIRROR</b> = (1 &lt;&lt; MODE_MIRROR),
+    <b>OPTION_MODE_DISCOVERY_SVC</b> = (1 &lt;&lt; MODE_DISCOVERY_SERVICE),
+    <b>OPTION_MODE_DISCOVERY</b> = (1 &lt;&lt; MODE_DISCOVERY),
+    <b>OPTION_MODE_BINARY</b> = 0x100, <b>OPTION_MODE_ALL</b> = 0x1F | 0x100 }
+  <br/>
+  Option mode bitmask.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">const <b>options_t</b> * <b>options_get</b> (void)
+  <br/>
+  Get current options (lock-free read). <b>asciichat_error_t</b>
+    <b>options_set_int</b> (const char *field_name, int value)
+  <br/>
+  Check if an option was explicitly set via command-line.
+    <b>asciichat_error_t</b> <b>options_set_bool</b> (const char *field_name,
+    <b>bool</b> value)
+  <br/>
+  <b>asciichat_error_t</b> <b>options_set_string</b> (const char *field_name,
+    const char *value)
+  <br/>
+  <b>asciichat_error_t</b> <b>options_set_double</b> (const char *field_name,
+    double value)
+  <br/>
+  const char * <b>options_get_help_text</b> (<b>asciichat_mode_t</b> mode, const
+    char *option_name)
+  <br/>
+  Get help text for an option in a specific mode. <b>bool</b>
+    <b>has_action_flag</b> (void)
+  <br/>
+  Check if an action flag was detected.
+  <br/>
+</p>
+<p class="Pp"><b>Utility Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  int <b>strtoint_safe</b> (const char *str)
+  <br/>
+  Safely parse string to integer with validation.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Option Parsing Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>options_t</b> <b>options_t_new</b> (void)
+  <br/>
+  Initialize options by parsing command-line arguments. <b>asciichat_error_t</b>
+    <b>options_init</b> (int <b>argc</b>, char **<b>argv</b>)
+  <br/>
+  Initialize options by parsing command-line arguments with unified mode
+    detection. void <b>usage</b> (FILE *stream, <b>asciichat_mode_t</b> mode)
+  <br/>
+  Print usage information for a specific mode.
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">const float <b>weight_red</b>
+  <br/>
+  Red weight for luminance calculation. const float <b>weight_green</b>
+  <br/>
+  Green weight for luminance calculation. const float <b>weight_blue</b>
+  <br/>
+  Blue weight for luminance calculation. unsigned short int <b>RED</b> []
+  <br/>
+  Red channel lookup table. unsigned short int <b>GREEN</b> []
+  <br/>
+  Green channel lookup table. unsigned short int <b>BLUE</b> []
+  <br/>
+  Blue channel lookup table. unsigned short int <b>GRAY</b> []
+  <br/>
+  Grayscale lookup table.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Dimension_Update_Functions"><a class="permalink" href="#Dimension_Update_Functions">Dimension
+  Update Functions</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>g_snapshot_first_frame_rendered</b>
+  <br/>
+  Snapshot mode global timing variables Used to track actual duration when
+    snapshot mode is active. <b>uint64_t</b>
+    <b>g_snapshot_first_frame_rendered_ns</b>
+  <br/>
+  <b>uint64_t</b> <b>g_snapshot_first_capture_ns</b>
+  <br/>
+  <b>uint64_t</b> <b>g_snapshot_actual_duration_ms</b>
+  <br/>
+  void <b>update_dimensions_to_terminal_size</b> (<b>options_t</b> *opts)
+  <br/>
+  Update dimensions to match current terminal size. void
+    <b>update_dimensions_for_full_height</b> (<b>options_t</b> *opts)
+  <br/>
+  Update dimensions to use full terminal height while maintaining aspect ratio.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x2699;&#xFE0F; Unified options parsing system for ascii-chat
+    with builder pattern and lock-free access</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file
+  <b>include/ascii-chat/options/options.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> g_snapshot_actual_duration_ms [extern]</h2>
+<p class="Pp">Definition at line <b>52</b> of file
+    <b>common/session/render.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_encoder_destroy()</b>, and
+    <b>ffmpeg_encoder_write_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> g_snapshot_first_capture_ns [extern]</h2>
+<p class="Pp">Definition at line <b>51</b> of file
+    <b>common/session/render.c</b>.</p>
+<p class="Pp">Referenced by <b>session_render_loop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> g_snapshot_first_frame_rendered [extern]</h2>
+<p class="Pp">Snapshot mode global timing variables Used to track actual
+    duration when snapshot mode is active.</p>
+<p class="Pp">Definition at line <b>49</b> of file
+    <b>common/session/render.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> g_snapshot_first_frame_rendered_ns [extern]</h2>
+<p class="Pp">Definition at line <b>50</b> of file
+    <b>common/session/render.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_write_ascii()</b>,
+    <b>session_pipeline_run_main()</b>, and <b>session_render_loop()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

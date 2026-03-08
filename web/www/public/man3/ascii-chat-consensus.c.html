@@ -58,42 +58,44 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>session_consensus_create</b> (const uint8_t
-    my_id[16], <b>bool</b> is_leader, const uint8_t participant_ids[64][16], int
-    num_participants, const <b>session_consensus_callbacks_t</b> *callbacks,
-    <b>session_consensus_t</b> **out_consensus)
+<p class="Pp"><b>asciichat_error_t</b> <b>session_consensus_create</b> (const
+    <b>uint8_t</b> my_id[16], <b>bool</b> is_leader, const <b>uint8_t</b>
+    participant_ids[64][16], int num_participants, const
+    <b>session_consensus_callbacks_t</b> *callbacks, <b>session_consensus_t</b>
+    **out_consensus)
   <br/>
   Create a new session consensus instance. void <b>session_consensus_destroy</b>
     (<b>session_consensus_t</b> *consensus)
   <br/>
-  Destroy consensus instance and free all resources. asciichat_error_t
+  Destroy consensus instance and free all resources. <b>asciichat_error_t</b>
     <b>session_consensus_process</b> (<b>session_consensus_t</b> *consensus,
-    uint32_t timeout_ms)
+    <b>uint32_t</b> timeout_ms)
   <br/>
-  Main consensus processing loop - call periodically. asciichat_error_t
+  Main consensus processing loop - call periodically. <b>asciichat_error_t</b>
     <b>session_consensus_set_topology</b> (<b>session_consensus_t</b>
-    *consensus, const uint8_t participant_ids[64][16], int num_participants)
+    *consensus, const <b>uint8_t</b> participant_ids[64][16], int
+    num_participants)
   <br/>
-  Update ring topology when participants change. asciichat_error_t
+  Update ring topology when participants change. <b>asciichat_error_t</b>
     <b>session_consensus_on_collection_start</b> (<b>session_consensus_t</b>
-    *consensus, uint32_t round_id, uint64_t deadline_ns)
+    *consensus, <b>uint32_t</b> round_id, <b>uint64_t</b> deadline_ns)
   <br/>
-  Handle incoming STATS_COLLECTION_START packet. asciichat_error_t
+  Handle incoming STATS_COLLECTION_START packet. <b>asciichat_error_t</b>
     <b>session_consensus_on_stats_update</b> (<b>session_consensus_t</b>
-    *consensus, const uint8_t sender_id[16], const participant_metrics_t
-    *metrics, uint8_t num_metrics)
+    *consensus, const <b>uint8_t</b> sender_id[16], const participant_metrics_t
+    *metrics, <b>uint8_t</b> num_metrics)
   <br/>
   Handle incoming STATS_UPDATE packet (metrics relayed around ring).
-    asciichat_error_t <b>session_consensus_on_election_result</b>
-    (<b>session_consensus_t</b> *consensus, const uint8_t host_id[16], const
-    char host_address[64], uint16_t host_port, const uint8_t backup_id[16],
-    const char backup_address[64], uint16_t backup_port)
+    <b>asciichat_error_t</b> <b>session_consensus_on_election_result</b>
+    (<b>session_consensus_t</b> *consensus, const <b>uint8_t</b> host_id[16],
+    const char host_address[64], <b>uint16_t</b> host_port, const <b>uint8_t</b>
+    backup_id[16], const char backup_address[64], <b>uint16_t</b> backup_port)
   <br/>
-  Handle incoming ELECTION_RESULT packet from leader. asciichat_error_t
+  Handle incoming ELECTION_RESULT packet from leader. <b>asciichat_error_t</b>
     <b>session_consensus_get_elected_host</b> (<b>session_consensus_t</b>
-    *consensus, uint8_t out_host_id[16], char out_host_address[64], uint16_t
-    *out_host_port, uint8_t out_backup_id[16], char out_backup_address[64],
-    uint16_t *out_backup_port)
+    *consensus, <b>uint8_t</b> out_host_id[16], char out_host_address[64],
+    <b>uint16_t</b> *out_host_port, <b>uint8_t</b> out_backup_id[16], char
+    out_backup_address[64], <b>uint16_t</b> *out_backup_port)
   <br/>
   Get the currently elected host. <b>bool</b> <b>session_consensus_is_ready</b>
     (<b>session_consensus_t</b> *consensus)
@@ -101,7 +103,7 @@
   Check if consensus has completed at least one round. int
     <b>session_consensus_get_state</b> (<b>session_consensus_t</b> *consensus)
   <br/>
-  Get current consensus state. uint64_t
+  Get current consensus state. <b>uint64_t</b>
     <b>session_consensus_time_until_next_round</b> (<b>session_consensus_t</b>
     *consensus)
   <br/>
@@ -136,11 +138,11 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_session_consensus_create_(const_uint8_t_my_id_16_,_"><a class="permalink" href="#asciichat_error_t_session_consensus_create_(const_uint8_t_my_id_16_,_">asciichat_error_t
-  session_consensus_create (const uint8_t my_id[16], <b>bool</b> is_leader,
-  const uint8_t participant_ids[64][16], int num_participants, const
+<h2 class="Ss"><b>asciichat_error_t</b> session_consensus_create (const
+  <b>uint8_t</b> my_id[16], <b>bool</b> is_leader, const <b>uint8_t</b>
+  participant_ids[64][16], int num_participants, const
   <b>session_consensus_callbacks_t</b> * callbacks, <b>session_consensus_t</b>
-  ** out_consensus)</a></h2>
+  ** out_consensus)</h2>
 <p class="Pp">Create a new session consensus instance. Initializes consensus for
     a participant in a session. The consensus will manage ring topology, metrics
     collection, and host election according to the configured ring
@@ -218,19 +220,19 @@
 164 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_create()</b>,
-    <b>consensus_topology_create()</b>, <b>consensus_topology_destroy()</b>,
-    <b>session_consensus::context</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>consensus_coordinator_create()</b>, <b>consensus_topology_create()</b>,
+    <b>consensus_topology_destroy()</b>, <b>session_consensus::context</b>,
     <b>session_consensus_callbacks_t::context</b>,
     <b>session_consensus::coordinator</b>, <b>session_consensus::election</b>,
-    <b>session_consensus_callbacks_t::election</b>,
-    <b>session_consensus::get_metrics</b>,
+    <b>session_consensus_callbacks_t::election</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_MEMORY</b>, <b>session_consensus::get_metrics</b>,
     <b>session_consensus_callbacks_t::get_metrics</b>,
-    <b>session_consensus::is_leader</b>, <b>session_consensus::my_id</b>,
-    <b>session_consensus::on_election</b>,
-    <b>session_consensus_callbacks_t::on_election</b>,
-    <b>session_consensus::send_packet</b>,
-    <b>session_consensus_callbacks_t::send_packet</b>, and
+    <b>session_consensus::is_leader</b>, <b>log_debug</b>,
+    <b>session_consensus::my_id</b>, <b>session_consensus::on_election</b>,
+    <b>session_consensus_callbacks_t::on_election</b>, <b>SAFE_CALLOC</b>,
+    <b>SAFE_FREE</b>, <b>session_consensus::send_packet</b>,
+    <b>session_consensus_callbacks_t::send_packet</b>, <b>SET_ERRNO</b>, and
     <b>session_consensus::topology</b>.</p>
 <p class="Pp">Referenced by <b>consensus_create_for_discovery()</b>.</p>
 </section>
@@ -261,14 +263,14 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>consensus_coordinator_destroy()</b>,
     <b>consensus_topology_destroy()</b>, <b>session_consensus::coordinator</b>,
-    and <b>session_consensus::topology</b>.</p>
+    <b>SAFE_FREE</b>, and <b>session_consensus::topology</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_session_consensus_get_elected_host_("><a class="permalink" href="#asciichat_error_t_session_consensus_get_elected_host_(">asciichat_error_t
-  session_consensus_get_elected_host (<b>session_consensus_t</b> * consensus,
-  uint8_t out_host_id[16], char out_host_address[64], uint16_t * out_host_port,
-  uint8_t out_backup_id[16], char out_backup_address[64], uint16_t *
-  out_backup_port)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> session_consensus_get_elected_host
+  (<b>session_consensus_t</b> * consensus, <b>uint8_t</b> out_host_id[16], char
+  out_host_address[64], <b>uint16_t</b> * out_host_port, <b>uint8_t</b>
+  out_backup_id[16], char out_backup_address[64], <b>uint16_t</b> *
+  out_backup_port)</h2>
 <p class="Pp">Get the currently elected host. Returns the most recently elected
     host and backup. If no election has completed yet, returns the previous
     stored result if available, or error.</p>
@@ -315,8 +317,10 @@
 283 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_get_current_host()</b>, and
-    <b>session_consensus::coordinator</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>consensus_coordinator_get_current_host()</b>,
+    <b>session_consensus::coordinator</b>, <b>ERROR_INVALID_PARAM</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_session_consensus_get_metrics_count_("><a class="permalink" href="#int_session_consensus_get_metrics_count_(">int
@@ -389,13 +393,14 @@
 296 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_get_current_host()</b>, and
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>consensus_coordinator_get_current_host()</b>, and
     <b>session_consensus::coordinator</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_session_consensus_on_collection_start_("><a class="permalink" href="#asciichat_error_t_session_consensus_on_collection_start_(">asciichat_error_t
-  session_consensus_on_collection_start (<b>session_consensus_t</b> * consensus,
-  uint32_t round_id, uint64_t deadline_ns)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> session_consensus_on_collection_start
+  (<b>session_consensus_t</b> * consensus, <b>uint32_t</b> round_id,
+  <b>uint64_t</b> deadline_ns)</h2>
 <p class="Pp">Handle incoming STATS_COLLECTION_START packet. Consensus calls
     this when it receives a collection start from the previous ring participant.
     Should be called from packet handler in mode.</p>
@@ -418,15 +423,16 @@
 225 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_on_collection_start()</b>, and
-    <b>session_consensus::coordinator</b>.</p>
+<p class="Pp">References <b>consensus_coordinator_on_collection_start()</b>,
+    <b>session_consensus::coordinator</b>, <b>ERROR_INVALID_PARAM</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_session_consensus_on_election_result_("><a class="permalink" href="#asciichat_error_t_session_consensus_on_election_result_(">asciichat_error_t
-  session_consensus_on_election_result (<b>session_consensus_t</b> * consensus,
-  const uint8_t host_id[16], const char host_address[64], uint16_t host_port,
-  const uint8_t backup_id[16], const char backup_address[64], uint16_t
-  backup_port)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> session_consensus_on_election_result
+  (<b>session_consensus_t</b> * consensus, const <b>uint8_t</b> host_id[16],
+  const char host_address[64], <b>uint16_t</b> host_port, const <b>uint8_t</b>
+  backup_id[16], const char backup_address[64], <b>uint16_t</b>
+  backup_port)</h2>
 <p class="Pp">Handle incoming ELECTION_RESULT packet from leader. Consensus
     calls this when leader announces the elected host. Should be called from
     packet handler in mode.</p>
@@ -469,15 +475,16 @@
 257 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_on_election_result()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>consensus_coordinator_on_election_result()</b>,
     <b>session_consensus::context</b>, <b>session_consensus::coordinator</b>,
-    and <b>session_consensus::on_election</b>.</p>
+    <b>ERROR_INVALID_PARAM</b>, <b>session_consensus::on_election</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_session_consensus_on_stats_update_("><a class="permalink" href="#asciichat_error_t_session_consensus_on_stats_update_(">asciichat_error_t
-  session_consensus_on_stats_update (<b>session_consensus_t</b> * consensus,
-  const uint8_t sender_id[16], const participant_metrics_t * metrics, uint8_t
-  num_metrics)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> session_consensus_on_stats_update
+  (<b>session_consensus_t</b> * consensus, const <b>uint8_t</b> sender_id[16],
+  const participant_metrics_t * metrics, <b>uint8_t</b> num_metrics)</h2>
 <p class="Pp">Handle incoming STATS_UPDATE packet (metrics relayed around ring).
     Consensus calls this when it receives metrics from the previous participant.
     Should be called from packet handler in mode.</p>
@@ -502,13 +509,13 @@
 234 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_on_stats_update()</b>, and
-    <b>session_consensus::coordinator</b>.</p>
+<p class="Pp">References <b>consensus_coordinator_on_stats_update()</b>,
+    <b>session_consensus::coordinator</b>, <b>ERROR_INVALID_PARAM</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_session_consensus_process_("><a class="permalink" href="#asciichat_error_t_session_consensus_process_(">asciichat_error_t
-  session_consensus_process (<b>session_consensus_t</b> * consensus, uint32_t
-  timeout_ms)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> session_consensus_process
+  (<b>session_consensus_t</b> * consensus, <b>uint32_t</b> timeout_ms)</h2>
 <p class="Pp">Main consensus processing loop - call periodically. Handles:</p>
 <ul class="Bl-bullet">
   <li>Round scheduling (every 5 minutes)</li>
@@ -538,13 +545,14 @@
 189 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_process()</b>, and
-    <b>session_consensus::coordinator</b>.</p>
+<p class="Pp">References <b>consensus_coordinator_process()</b>,
+    <b>session_consensus::coordinator</b>, <b>ERROR_INVALID_PARAM</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_session_consensus_set_topology_("><a class="permalink" href="#asciichat_error_t_session_consensus_set_topology_(">asciichat_error_t
-  session_consensus_set_topology (<b>session_consensus_t</b> * consensus, const
-  uint8_t participant_ids[64][16], int num_participants)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> session_consensus_set_topology
+  (<b>session_consensus_t</b> * consensus, const <b>uint8_t</b>
+  participant_ids[64][16], int num_participants)</h2>
 <p class="Pp">Update ring topology when participants change. Called when the
     ring topology changes (participants join/leave). Updates the consensus
     topology and resets any in-progress round.</p>
@@ -585,15 +593,16 @@
 216 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_on_ring_members()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>consensus_coordinator_on_ring_members()</b>,
     <b>consensus_topology_create()</b>, <b>consensus_topology_destroy()</b>,
-    <b>session_consensus::coordinator</b>, <b>session_consensus::my_id</b>, and
+    <b>session_consensus::coordinator</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>session_consensus::my_id</b>, <b>SET_ERRNO</b>, and
     <b>session_consensus::topology</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint64_t_session_consensus_time_until_next_round_("><a class="permalink" href="#uint64_t_session_consensus_time_until_next_round_(">uint64_t
-  session_consensus_time_until_next_round (<b>session_consensus_t</b> *
-  consensus)</a></h2>
+<h2 class="Ss"><b>uint64_t</b> session_consensus_time_until_next_round
+  (<b>session_consensus_t</b> * consensus)</h2>
 <p class="Pp">Get time until next consensus round in nanoseconds. Useful for
     scheduling when to call process() next.</p>
 <p class="Pp"></p>
@@ -624,7 +633,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

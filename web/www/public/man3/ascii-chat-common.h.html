@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>common.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">common.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">common.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">common.h - &#x2699;&#xFE0F; Common definitions, error codes,
+    macros, and types shared throughout the application</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>ASCII_CHAT_APP_NAME</b> 'ascii-chat'
+  <br/>
+  Application name for key comments (<i>ascii-chat&quot;).</i> #define
+    <b>PLATFORM_MAX_PATH_LENGTH</b> 4096
+  <br/>
+  #define <b>FATAL</b>(code, ...)
+  <br/>
+  Exit with error code and custom message, with stack trace in debug builds.
+    #define <b>RUN_BURST_AND_THROTTLE</b>(burst_ns, throttle_ns, code_block)
+  <br/>
+  Return the minimum of two values. #define <b>ALLOC_MALLOC</b>(size)
+  <br/>
+  #define <b>ALLOC_CALLOC</b>(count, size)
+  <br/>
+  #define <b>ALLOC_REALLOC</b>(ptr, size)
+  <br/>
+  #define <b>ALLOC_FREE</b>(ptr)
+  <br/>
+  #define <b>ASCIICHAT_CHECK_AND_LOG</b>(expr, ok_value, msg, ...)
+  <br/>
+  Check result and log error if operation failed.
+  <br/>
+</p>
+<p class="Pp"><b>Memory Debugging Macros</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>SAFE_MALLOC</b>(size, cast)
+  <br/>
+  #define <b>SAFE_CALLOC</b>(count, size, cast)
+  <br/>
+  #define <b>SAFE_REALLOC</b>(ptr, size, cast)
+  <br/>
+  #define <b>TRACK_ALIGNED_ALLOC</b>(ptr, size, file, line)
+  <br/>
+  #define <b>SAFE_MALLOC_ALIGNED</b>(size, alignment, cast)
+  <br/>
+  #define <b>SAFE_MALLOC_SIMD</b>(size, cast)
+  <br/>
+  #define <b>SAFE_CALLOC_SIMD</b>(count, size, cast)
+  <br/>
+  #define <b>SAFE_FREE</b>(ptr)
+  <br/>
+  #define <b>SAFE_FCLOSE</b>(fp)
+  <br/>
+  #define <b>UNTRACKED_MALLOC</b>(size, cast)
+  <br/>
+  #define <b>UNTRACKED_FREE</b>(ptr)
+  <br/>
+  #define <b>SAFE_STRNCPY</b>(dst, src, size)
+  <br/>
+  #define <b>SAFE_STRDUP</b>(dst, src)
+  <br/>
+  #define <b>SAFE_GETENV</b>(name)
+  <br/>
+  #define <b>SAFE_SSCANF</b>(str, format, ...)
+  <br/>
+  #define <b>SAFE_STRERROR</b>(errnum)
+  <br/>
+  #define <b>SAFE_MEMCPY</b>(dest, dest_size, src, count)
+  <br/>
+  #define <b>SAFE_MEMSET</b>(dest, dest_size, ch, count)
+  <br/>
+  #define <b>SAFE_MEMMOVE</b>(dest, dest_size, src, count)
+  <br/>
+  #define <b>SAFE_STRCPY</b>(dest, dest_size, src)
+  <br/>
+  #define <b>read_u16_unaligned</b> bytes_read_u16_unaligned
+  <br/>
+  #define <b>read_u32_unaligned</b> bytes_read_u32_unaligned
+  <br/>
+  #define <b>write_u16_unaligned</b> bytes_write_u16_unaligned
+  <br/>
+  #define <b>write_u32_unaligned</b> bytes_write_u32_unaligned
+  <br/>
+  #define <b>safe_size_mul</b> bytes_safe_size_mul
+  <br/>
+  #define <b>SAFE_SNPRINTF</b>(buffer, <b>buffer_size</b>, ...)
+  <br/>
+  #define <b>SAFE_BUFFER_SIZE</b>(<b>buffer_size</b>, offset)
+  <br/>
+  Safe buffer size calculation for snprintf. #define
+    <b>THREAD_CREATE_OR_RETURN</b>(thread, func, arg)
+  <br/>
+  Create a thread or log error and return. #define
+    <b>MUTEX_INIT_OR_RETURN</b>(m)
+  <br/>
+  Initialize a mutex or log error and return.
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef unsigned char <b>uint8_t</b>
+  <br/>
+  typedef unsigned short <b>uint16_t</b>
+  <br/>
+  typedef unsigned int <b>uint32_t</b>
+  <br/>
+  typedef unsigned long long <b>uint64_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>asciichat_fatal_with_context</b> (<b>asciichat_error_t</b>
+    code, const char *file, int line, const char *function, const char
+    *format,...)
+  <br/>
+  Exit with error code and context (used by FATAL macro).
+    <b>asciichat_error_t</b> <b>asciichat_shared_init</b> (const char
+    *<b>log_file</b>, <b>bool</b> <b>is_client</b>)
+  <br/>
+  Initialize common subsystems shared by client and server. void
+    <b>asciichat_shared_destroy</b> (void)
+  <br/>
+  Clean up shared library subsystems. <b>__attribute__</b>
+    ((visibility('default'))) int g_argc
+  <br/>
+  Global argc for early argument inspection (e.g., --color flag detection) Set
+    by <b>main()</b> for access from <b>lib/platform/terminal.c</b> during early
+    execution.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x2699;&#xFE0F; Common definitions, error codes, macros, and
+    types shared throughout the application</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>common.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

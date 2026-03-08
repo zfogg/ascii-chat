@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>prompt_opts_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">prompt_opts_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">prompt_opts_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">prompt_opts_t - Options for text prompts.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/platform/question.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>echo</b>
+  <br/>
+  <b>bool</b> <b>same_line</b>
+  <br/>
+  char <b>mask_char</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Options for text prompts.</p>
+<p class="Pp">Definition at line <b>31</b> of file <b>question.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> prompt_opts_t::echo</h2>
+<p class="Pp">Whether to echo input (false for passwords)</p>
+<p class="Pp">Definition at line <b>32</b> of file <b>question.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_prompt_opts_t::mask_char"><a class="permalink" href="#char_prompt_opts_t::mask_char">char
+  prompt_opts_t::mask_char</a></h2>
+<p class="Pp">Character to display instead of input when echo=false (0 for no
+    mask, '*' typical)</p>
+<p class="Pp">Definition at line <b>34</b> of file <b>question.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> prompt_opts_t::same_line</h2>
+<p class="Pp">If true, answer on same line after prompt; if false, answer on
+    next line</p>
+<p class="Pp">Definition at line <b>33</b> of file <b>question.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

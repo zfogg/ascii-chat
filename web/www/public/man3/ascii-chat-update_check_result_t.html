@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>update_check_result_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">update_check_result_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">update_check_result_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">update_check_result_t - Update check result data.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/update_checker.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>update_available</b>
+  <br/>
+  True if newer version exists. char <b>latest_version</b> [64]
+  <br/>
+  Latest version tag (e.g., <i>v0.9.0&quot;).</i> char <b>latest_sha</b> [41]
+  <br/>
+  Latest release commit SHA (full 40 chars + null). char <b>current_version</b>
+    [64]
+  <br/>
+  Current version string. char <b>current_sha</b> [41]
+  <br/>
+  Current commit SHA. char <b>release_url</b> [512]
+  <br/>
+  GitHub release page URL. time_t <b>last_check_time</b>
+  <br/>
+  Timestamp of last check. <b>bool</b> <b>check_succeeded</b>
+  <br/>
+  True if check completed (even if no update).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Update check result data.</p>
+<p class="Pp">Definition at line <b>30</b> of file <b>update_checker.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> update_check_result_t::check_succeeded</h2>
+<p class="Pp">True if check completed (even if no update).</p>
+<p class="Pp">Definition at line <b>38</b> of file <b>update_checker.h</b>.</p>
+<p class="Pp">Referenced by <b>update_check_load_cache()</b>, and
+    <b>update_check_perform()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_update_check_result_t::current_sha_41_"><a class="permalink" href="#char_update_check_result_t::current_sha_41_">char
+  update_check_result_t::current_sha[41]</a></h2>
+<p class="Pp">Current commit SHA.</p>
+<p class="Pp">Definition at line <b>35</b> of file <b>update_checker.h</b>.</p>
+<p class="Pp">Referenced by <b>action_check_update_immediate()</b>,
+    <b>update_check_format_notification()</b>, <b>update_check_load_cache()</b>,
+    and <b>update_check_perform()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_update_check_result_t::current_version_64_"><a class="permalink" href="#char_update_check_result_t::current_version_64_">char
+  update_check_result_t::current_version[64]</a></h2>
+<p class="Pp">Current version string.</p>
+<p class="Pp">Definition at line <b>34</b> of file <b>update_checker.h</b>.</p>
+<p class="Pp">Referenced by <b>action_check_update_immediate()</b>,
+    <b>update_check_format_notification()</b>, <b>update_check_load_cache()</b>,
+    and <b>update_check_perform()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="time_t_update_check_result_t::last_check_time"><a class="permalink" href="#time_t_update_check_result_t::last_check_time">time_t
+  update_check_result_t::last_check_time</a></h2>
+<p class="Pp">Timestamp of last check.</p>
+<p class="Pp">Definition at line <b>37</b> of file <b>update_checker.h</b>.</p>
+<p class="Pp">Referenced by <b>update_check_is_cache_fresh()</b>,
+    <b>update_check_load_cache()</b>, <b>update_check_perform()</b>,
+    <b>update_check_save_cache()</b>, and <b>update_check_startup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_update_check_result_t::latest_sha_41_"><a class="permalink" href="#char_update_check_result_t::latest_sha_41_">char
+  update_check_result_t::latest_sha[41]</a></h2>
+<p class="Pp">Latest release commit SHA (full 40 chars + null).</p>
+<p class="Pp">Definition at line <b>33</b> of file <b>update_checker.h</b>.</p>
+<p class="Pp">Referenced by <b>update_check_format_notification()</b>,
+    <b>update_check_load_cache()</b>, <b>update_check_perform()</b>, and
+    <b>update_check_save_cache()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_update_check_result_t::latest_version_64_"><a class="permalink" href="#char_update_check_result_t::latest_version_64_">char
+  update_check_result_t::latest_version[64]</a></h2>
+<p class="Pp">Latest version tag (e.g., &quot;v0.9.0&quot;).</p>
+<p class="Pp">Definition at line <b>32</b> of file <b>update_checker.h</b>.</p>
+<p class="Pp">Referenced by <b>update_check_format_notification()</b>,
+    <b>update_check_load_cache()</b>, <b>update_check_perform()</b>, and
+    <b>update_check_save_cache()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_update_check_result_t::release_url_512_"><a class="permalink" href="#char_update_check_result_t::release_url_512_">char
+  update_check_result_t::release_url[512]</a></h2>
+<p class="Pp">GitHub release page URL.</p>
+<p class="Pp">Definition at line <b>36</b> of file <b>update_checker.h</b>.</p>
+<p class="Pp">Referenced by <b>update_check_perform()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> update_check_result_t::update_available</h2>
+<p class="Pp">True if newer version exists.</p>
+<p class="Pp">Definition at line <b>31</b> of file <b>update_checker.h</b>.</p>
+<p class="Pp">Referenced by <b>action_check_update_immediate()</b>,
+    <b>main()</b>, <b>update_check_load_cache()</b>, and
+    <b>update_check_perform()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

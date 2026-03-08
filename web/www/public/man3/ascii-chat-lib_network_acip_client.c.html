@@ -38,37 +38,46 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>acip_client_receive_and_dispatch</b>
-    (<b>acip_transport_t</b> *transport, const acip_client_callbacks_t
+<p class="Pp"><b>asciichat_error_t</b> <b>acip_client_receive_and_dispatch</b>
+    (<b>acip_transport_t</b> *transport, const <b>acip_client_callbacks_t</b>
     *callbacks)
   <br/>
-  asciichat_error_t <b>acip_send_image_frame</b> (<b>acip_transport_t</b>
-    *transport, const void *pixel_data, uint32_t width, uint32_t height,
-    uint32_t pixel_format)
+  Receive packet from server and dispatch to callbacks. <b>asciichat_error_t</b>
+    <b>acip_send_image_frame</b> (<b>acip_transport_t</b> *transport, const void
+    *pixel_data, <b>uint32_t</b> width, <b>uint32_t</b> height, <b>uint32_t</b>
+    pixel_format)
   <br/>
-  asciichat_error_t <b>acip_send_image_frame_h265</b> (<b>acip_transport_t</b>
-    *transport, <b>h265_encoder_t</b> *encoder, const void *pixel_data, uint32_t
-    width, uint32_t height)
+  Send image frame to server (client &#x2192; server). <b>asciichat_error_t</b>
+    <b>acip_send_image_frame_h265</b> (<b>acip_transport_t</b> *transport,
+    <b>h265_encoder_t</b> *encoder, const void *pixel_data, <b>uint32_t</b>
+    width, <b>uint32_t</b> height)
   <br/>
-  Send H.265-encoded video frame to server. asciichat_error_t
-    <b>acip_send_client_join</b> (<b>acip_transport_t</b> *transport, uint8_t
-    capabilities)
+  Send H.265-encoded video frame to server. <b>asciichat_error_t</b>
+    <b>acip_send_client_join</b> (<b>acip_transport_t</b> *transport,
+    <b>uint8_t</b> capabilities)
   <br/>
-  asciichat_error_t <b>acip_send_client_leave</b> (<b>acip_transport_t</b>
-    *transport)
+  Announce client join to server (client &#x2192; server).
+    <b>asciichat_error_t</b> <b>acip_send_client_leave</b>
+    (<b>acip_transport_t</b> *transport)
   <br/>
-  asciichat_error_t <b>acip_send_stream_start</b> (<b>acip_transport_t</b>
-    *transport, uint8_t stream_types)
+  Notify server of client leaving (client &#x2192; server).
+    <b>asciichat_error_t</b> <b>acip_send_stream_start</b>
+    (<b>acip_transport_t</b> *transport, <b>uint8_t</b> stream_types)
   <br/>
-  asciichat_error_t <b>acip_send_stream_stop</b> (<b>acip_transport_t</b>
-    *transport, uint8_t stream_types)
+  Request to start media streaming (client &#x2192; server).
+    <b>asciichat_error_t</b> <b>acip_send_stream_stop</b>
+    (<b>acip_transport_t</b> *transport, <b>uint8_t</b> stream_types)
   <br/>
-  asciichat_error_t <b>acip_send_capabilities</b> (<b>acip_transport_t</b>
-    *transport, const void *cap_data, size_t cap_len)
+  Request to stop media streaming (client &#x2192; server).
+    <b>asciichat_error_t</b> <b>acip_send_capabilities</b>
+    (<b>acip_transport_t</b> *transport, const void *cap_data, size_t cap_len)
   <br/>
-  asciichat_error_t <b>acip_send_protocol_version</b> (<b>acip_transport_t</b>
-    *transport, const protocol_version_packet_t *version)
+  Send terminal capabilities to server (client &#x2192; server).
+    <b>asciichat_error_t</b> <b>acip_send_protocol_version</b>
+    (<b>acip_transport_t</b> *transport, const <b>protocol_version_packet_t</b>
+    *version)
   <br/>
+  Send protocol version to server (client &#x2192; server).
   <br/>
 </p>
 </section>
@@ -101,9 +110,20 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_acip_client_receive_and_dispatch_("><a class="permalink" href="#asciichat_error_t_acip_client_receive_and_dispatch_(">asciichat_error_t
-  acip_client_receive_and_dispatch (<b>acip_transport_t</b> * transport, const
-  acip_client_callbacks_t * callbacks)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> acip_client_receive_and_dispatch
+  (<b>acip_transport_t</b> * transport, const <b>acip_client_callbacks_t</b> *
+  callbacks)</h2>
+<p class="Pp">Receive packet from server and dispatch to callbacks. High-level
+    receive function for client side. Receives a single packet from the
+    transport, handles decryption, and dispatches to appropriate callback
+    handler.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>callbacks</i> Callback structure for handling received packets</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>30</b> of file
     <b>lib/network/acip/client.c</b>.</p>
 <pre>31                                                                                              {
@@ -241,13 +261,39 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_handle_client_packet()</b>,
-    <b>buffer_pool_free()</b>, <b>packet_decrypt_envelope()</b>, and
-    <b>receive_packet_secure()</b>.</p>
+    <b>packet_envelope_t::allocated_buffer</b>,
+    <b>packet_envelope_t::allocated_size</b>, <b>ASCIICHAT_OK</b>,
+    <b>buffer_pool_free()</b>, <b>acip_transport::crypto_ctx</b>,
+    <b>packet_envelope_t::data</b>, <b>ERROR_CRYPTO</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>,
+    <b>acip_transport_methods_t::get_socket</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>acip_transport_methods_t::is_connected</b>,
+    <b>packet_envelope_t::len</b>, <b>packet_header_t::length</b>,
+    <b>log_debug</b>, <b>log_dev_every</b>, <b>log_error</b>, <b>log_info</b>,
+    <b>log_warn</b>, <b>acip_transport::methods</b>, <b>NET_TO_HOST_U16</b>,
+    <b>NET_TO_HOST_U32</b>, <b>packet_decrypt_envelope()</b>,
+    <b>PACKET_RECV_EOF</b>, <b>PACKET_RECV_SECURITY_VIOLATION</b>,
+    <b>PACKET_RECV_SUCCESS</b>, <b>PACKET_TYPE_ENCRYPTED</b>,
+    <b>receive_packet_secure()</b>, <b>acip_transport_methods_t::recv</b>,
+    <b>SET_ERRNO</b>, <b>packet_envelope_t::type</b>,
+    <b>packet_header_t::type</b>, <b>US_PER_MS_INT</b>, and
+    <b>packet_envelope_t::was_encrypted</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_acip_send_capabilities_("><a class="permalink" href="#asciichat_error_t_acip_send_capabilities_(">asciichat_error_t
-  acip_send_capabilities (<b>acip_transport_t</b> * transport, const void *
-  cap_data, size_t cap_len)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_capabilities
+  (<b>acip_transport_t</b> * transport, const void * cap_data, size_t
+  cap_len)</h2>
+<p class="Pp">Send terminal capabilities to server (client &#x2192; server).
+    Reports client's terminal capabilities (color support, dimensions, etc.)</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>cap_data</i> Capability data buffer
+<br/>
+<i>cap_len</i> Capability data length</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>319</b> of file
     <b>lib/network/acip/client.c</b>.</p>
 <pre>319                                                                                                             {
@@ -259,12 +305,22 @@
 325 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
+    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_CLIENT_CAPABILITIES</b>,
+    and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_acip_send_client_join_("><a class="permalink" href="#asciichat_error_t_acip_send_client_join_(">asciichat_error_t
-  acip_send_client_join (<b>acip_transport_t</b> * transport, uint8_t
-  capabilities)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_client_join
+  (<b>acip_transport_t</b> * transport, <b>uint8_t</b> capabilities)</h2>
+<p class="Pp">Announce client join to server (client &#x2192; server). Notifies
+    server that client is ready to participate in session.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>capabilities</i> Client capability bitmask (video, audio, etc.)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>281</b> of file
     <b>lib/network/acip/client.c</b>.</p>
 <pre>281                                                                                            {
@@ -277,11 +333,20 @@
 288 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
+    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_CLIENT_JOIN</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_acip_send_client_leave_("><a class="permalink" href="#asciichat_error_t_acip_send_client_leave_(">asciichat_error_t
-  acip_send_client_leave (<b>acip_transport_t</b> * transport)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_client_leave
+  (<b>acip_transport_t</b> * transport)</h2>
+<p class="Pp">Notify server of client leaving (client &#x2192; server). Clean
+    disconnect notification to server.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>290</b> of file
     <b>lib/network/acip/client.c</b>.</p>
 <pre>290                                                                       {
@@ -294,12 +359,29 @@
 297 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
+    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_CLIENT_LEAVE</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_acip_send_image_frame_("><a class="permalink" href="#asciichat_error_t_acip_send_image_frame_(">asciichat_error_t
-  acip_send_image_frame (<b>acip_transport_t</b> * transport, const void *
-  pixel_data, uint32_t width, uint32_t height, uint32_t pixel_format)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_image_frame
+  (<b>acip_transport_t</b> * transport, const void * pixel_data, <b>uint32_t</b>
+  width, <b>uint32_t</b> height, <b>uint32_t</b> pixel_format)</h2>
+<p class="Pp">Send image frame to server (client &#x2192; server). Sends webcam
+    video frame as RGB24 pixel data.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>pixel_data</i> RGB24 pixel data (width * height * 3 bytes)
+<br/>
+<i>width</i> Frame width in pixels
+<br/>
+<i>height</i> Frame height in pixels
+<br/>
+<i>pixel_format</i> Pixel format (e.g., RGB24)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>168</b> of file
     <b>lib/network/acip/client.c</b>.</p>
 <pre>169                                                                                 {
@@ -355,17 +437,26 @@
 219 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    and <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
+    <b>buffer_pool_free()</b>, <b>image_frame_packet_t::checksum</b>,
+    <b>image_frame_packet_t::compressed_size</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_MEMORY</b>, <b>image_frame_packet_t::height</b>,
+    <b>HOST_TO_NET_U32</b>, <b>log_debug</b>,
+    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_IMAGE_FRAME</b>,
+    <b>image_frame_packet_t::pixel_format</b>, <b>SET_ERRNO</b>,
+    <b>image_frame_packet_t::timestamp</b>, and
+    <b>image_frame_packet_t::width</b>.</p>
 <p class="Pp">Referenced by <b>threaded_send_image_frame()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_acip_send_image_frame_h265_("><a class="permalink" href="#asciichat_error_t_acip_send_image_frame_h265_(">asciichat_error_t
-  acip_send_image_frame_h265 (<b>acip_transport_t</b> * transport,
-  <b>h265_encoder_t</b> * encoder, const void * pixel_data, uint32_t width,
-  uint32_t height)</a></h2>
-<p class="Pp">Send H.265-encoded video frame to server. Encodes frame using
-    H.265 codec and sends as PACKET_TYPE_IMAGE_FRAME_H265. Packet format:
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_image_frame_h265
+  (<b>acip_transport_t</b> * transport, <b>h265_encoder_t</b> * encoder, const
+  void * pixel_data, <b>uint32_t</b> width, <b>uint32_t</b> height)</h2>
+<p class="Pp">Send H.265-encoded video frame to server. Send H.265-encoded video
+    frame to server (client &#x2192; server).</p>
+<p class="Pp"></p>
+<p class="Pp">Encodes frame using H.265 codec and sends as
+    PACKET_TYPE_IMAGE_FRAME_H265. Packet format:
     [flags:u8][width:u16][height:u16][h265_encoded_data...]</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
@@ -429,14 +520,26 @@
 279 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    <b>h265_encode()</b>, and <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
+    <b>buffer_pool_free()</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+    <b>h265_encode()</b>, <b>log_debug</b>, <b>log_error</b>,
+    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_IMAGE_FRAME_H265</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>threaded_send_image_frame_h265()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_acip_send_protocol_version_("><a class="permalink" href="#asciichat_error_t_acip_send_protocol_version_(">asciichat_error_t
-  acip_send_protocol_version (<b>acip_transport_t</b> * transport, const
-  protocol_version_packet_t * version)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_protocol_version
+  (<b>acip_transport_t</b> * transport, const <b>protocol_version_packet_t</b> *
+  version)</h2>
+<p class="Pp">Send protocol version to server (client &#x2192; server).
+    Negotiates protocol version with server.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>version</i> Protocol version structure</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>327</b> of file
     <b>lib/network/acip/client.c</b>.</p>
 <pre>327                                                                                                                     {
@@ -448,12 +551,22 @@
 333 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
+    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_PROTOCOL_VERSION</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_acip_send_stream_start_("><a class="permalink" href="#asciichat_error_t_acip_send_stream_start_(">asciichat_error_t
-  acip_send_stream_start (<b>acip_transport_t</b> * transport, uint8_t
-  stream_types)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_stream_start
+  (<b>acip_transport_t</b> * transport, <b>uint8_t</b> stream_types)</h2>
+<p class="Pp">Request to start media streaming (client &#x2192; server).
+    Notifies server that client wants to start sending video/audio.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>stream_types</i> Stream type bitmask (video, audio, etc.)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>299</b> of file
     <b>lib/network/acip/client.c</b>.</p>
 <pre>299                                                                                             {
@@ -467,12 +580,22 @@
 307 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>HOST_TO_NET_U32</b>,
+    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_STREAM_START</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_acip_send_stream_stop_("><a class="permalink" href="#asciichat_error_t_acip_send_stream_stop_(">asciichat_error_t
-  acip_send_stream_stop (<b>acip_transport_t</b> * transport, uint8_t
-  stream_types)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_stream_stop
+  (<b>acip_transport_t</b> * transport, <b>uint8_t</b> stream_types)</h2>
+<p class="Pp">Request to stop media streaming (client &#x2192; server). Notifies
+    server that client wants to stop sending video/audio.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>stream_types</i> Stream type bitmask (video, audio, etc.)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>309</b> of file
     <b>lib/network/acip/client.c</b>.</p>
 <pre>309                                                                                            {
@@ -486,7 +609,9 @@
 317 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>HOST_TO_NET_U32</b>,
+    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_STREAM_STOP</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -496,7 +621,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

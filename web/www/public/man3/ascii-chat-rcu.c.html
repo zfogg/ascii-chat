@@ -69,27 +69,32 @@
 <br/>
 <p class="Pp"><b>__attribute__</b> ((constructor))
   <br/>
-  Constructor to initialize fork handlers at startup. asciichat_error_t
+  Constructor to initialize fork handlers at startup. <b>asciichat_error_t</b>
     <b>options_state_init</b> (void)
   <br/>
-  asciichat_error_t <b>options_state_set</b> (const options_t *opts)
+  Initialize RCU options system. <b>asciichat_error_t</b>
+    <b>options_state_set</b> (const <b>options_t</b> *opts)
   <br/>
-  void <b>options_state_destroy</b> (void)
+  Set options from a parsed options struct. void <b>options_state_destroy</b>
+    (void)
   <br/>
-  void <b>options_cleanup_schema</b> (void)
+  Shutdown RCU options system. void <b>options_cleanup_schema</b> (void)
   <br/>
-  const options_t * <b>options_get</b> (void)
+  Clean up schema resources. const <b>options_t</b> * <b>options_get</b> (void)
   <br/>
-  asciichat_error_t <b>options_set_int</b> (const char *field_name, int value)
-  <br/>
-  asciichat_error_t <b>options_set_bool</b> (const char *field_name, <b>bool</b>
+  Get pointer to current options struct (lock-free, thread-safe).
+    <b>asciichat_error_t</b> <b>options_set_int</b> (const char *field_name, int
     value)
   <br/>
-  asciichat_error_t <b>options_set_string</b> (const char *field_name, const
-    char *value)
+  Check if an option was explicitly set via command-line.
+    <b>asciichat_error_t</b> <b>options_set_bool</b> (const char *field_name,
+    <b>bool</b> value)
   <br/>
-  asciichat_error_t <b>options_set_double</b> (const char *field_name, double
-    value)
+  <b>asciichat_error_t</b> <b>options_set_string</b> (const char *field_name,
+    const char *value)
+  <br/>
+  <b>asciichat_error_t</b> <b>options_set_double</b> (const char *field_name,
+    double value)
   <br/>
   <br/>
 </p>
@@ -136,6 +141,10 @@
 <section class="Ss">
 <h2 class="Ss" id="void_options_cleanup_schema_(void_)"><a class="permalink" href="#void_options_cleanup_schema_(void_)">void
   options_cleanup_schema (void )</a></h2>
+<p class="Pp">Clean up schema resources. Frees the dynamically allocated options
+    schema array and all associated strings. Should be called at program
+    shutdown after <b>options_state_destroy()</b>. Safe to call multiple times
+    or if schema was never built.</p>
 <p class="Pp">Definition at line <b>478</b> of file <b>rcu.c</b>.</p>
 <pre>478                                   {
 479   config_schema_destroy();
@@ -146,389 +155,11 @@
 <p class="Pp">Referenced by <b>main()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_options_t_*_options_get_(void_)"><a class="permalink" href="#const_options_t_*_options_get_(void_)">const
-  options_t * options_get (void )</a></h2>
-<p class="Pp">Definition at line <b>482</b> of file <b>rcu.c</b>.</p>
-<pre>482                                    {
-483   // Lock-free read with acquire semantics
-484   // Guarantees we see all writes made before the pointer was published
-485   options_t *current = atomic_ptr_load(&amp;g_options);
-486 
-487   // If options not yet published or after destruction, return safe static default.
-488   // This is a critical fallback that:
-489   // 1. Allows early startup code (before options_state_init) to work safely
-490   // 2. Allows atexit handlers and cleanup code to call GET_OPTION() safely
-491   // 3. Never crashes due to NULL pointer access
-492   // 4. Provides sensible defaults for all option fields
-493   //
-494   // The static default options are:
-495   // - Allocated once at startup (static storage)
-496   // - Never freed (outlives all dynamically allocated options)
-497   // - Thread-safe to read (immutable const data)
-498   // - Complete with all OPT_*_DEFAULT values matching options_t_new()
-499   if (!current) {
-500     return (const options_t *)&amp;g_default_options;
-501   }
-502 
-503   return current;
-504 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_ptr_load()</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, <b>client_crypto_init()</b>,
-    <b>client_main()</b>, <b>discovery_session_process()</b>,
-    <b>log_set_terminal_output()</b>, <b>main()</b>,
-    <b>nat_detect_quality()</b>, <b>options_set_bool()</b>,
-    <b>options_set_double()</b>, <b>options_set_int()</b>,
-    <b>options_set_string()</b>, <b>server_crypto_handshake()</b>,
-    <b>session_settings_from_options()</b>, <b>terminal_screen_render()</b>, and
-    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_options_set_bool_(const_char_*_field_name,_"><a class="permalink" href="#asciichat_error_t_options_set_bool_(const_char_*_field_name,_">asciichat_error_t
-  options_set_bool (const char * field_name, <b>bool</b> value)</a></h2>
-<p class="Pp">Definition at line <b>857</b> of file <b>rcu.c</b>.</p>
-<pre>857                                                                        {
-858   if (!field_name) {
-859     SET_ERRNO(ERROR_INVALID_PARAM, &quot;field_name is NULL&quot;);
-860     return ERROR_INVALID_PARAM;
-861   }
-862 
-863   // Validate field exists
-864   if (strcmp(field_name, &quot;no_compress&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;encode_audio&quot;) != 0 &amp;&amp;
-865       strcmp(field_name, &quot;flip_x&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;flip_y&quot;) != 0 &amp;&amp;
-866       strcmp(field_name, &quot;test_pattern&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;no_audio_mixer&quot;) != 0 &amp;&amp;
-867       strcmp(field_name, &quot;show_capabilities&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;force_utf8&quot;) != 0 &amp;&amp;
-868       strcmp(field_name, &quot;audio_enabled&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;audio_analysis_enabled&quot;) != 0 &amp;&amp;
-869       strcmp(field_name, &quot;audio_no_playback&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;stretch&quot;) != 0 &amp;&amp;
-870       strcmp(field_name, &quot;snapshot_mode&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;strip_ansi&quot;) != 0 &amp;&amp;
-871       strcmp(field_name, &quot;quiet&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;encrypt_enabled&quot;) != 0 &amp;&amp;
-872       strcmp(field_name, &quot;no_encrypt&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;discovery&quot;) != 0 &amp;&amp;
-873       strcmp(field_name, &quot;discovery_expose_ip&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;discovery_insecure&quot;) != 0 &amp;&amp;
-874       strcmp(field_name, &quot;webrtc&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;lan_discovery&quot;) != 0 &amp;&amp;
-875       strcmp(field_name, &quot;no_mdns_advertise&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;prefer_webrtc&quot;) != 0 &amp;&amp;
-876       strcmp(field_name, &quot;no_webrtc&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;webrtc_skip_stun&quot;) != 0 &amp;&amp;
-877       strcmp(field_name, &quot;webrtc_disable_turn&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;enable_upnp&quot;) != 0 &amp;&amp;
-878       strcmp(field_name, &quot;require_server_identity&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;require_client_identity&quot;) != 0 &amp;&amp;
-879       strcmp(field_name, &quot;require_server_verify&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;require_client_verify&quot;) != 0 &amp;&amp;
-880       strcmp(field_name, &quot;palette_custom_set&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;media_loop&quot;) != 0 &amp;&amp;
-881       strcmp(field_name, &quot;media_from_stdin&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;auto_width&quot;) != 0 &amp;&amp;
-882       strcmp(field_name, &quot;auto_height&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;splash_screen&quot;) != 0 &amp;&amp;
-883       strcmp(field_name, &quot;status_screen&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;matrix_rain&quot;) != 0) {
-884     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown boolean field: %s&quot;, field_name);
-885     return ERROR_INVALID_PARAM;
-886   }
-887 
-888   // Pre-validate against registry metadata (for cross-field validators)
-889   {
-890     const options_t *cur = options_get();
-891     options_t temp = *cur;
-892     // Manually set the field in temp to validate
-893     if (strcmp(field_name, &quot;no_compress&quot;) == 0)
-894       temp.no_compress = value;
-895     else if (strcmp(field_name, &quot;encode_audio&quot;) == 0)
-896       temp.encode_audio = value;
-897     else if (strcmp(field_name, &quot;flip_x&quot;) == 0)
-898       temp.flip_x = value;
-899     else if (strcmp(field_name, &quot;flip_y&quot;) == 0)
-900       temp.flip_y = value;
-901     else if (strcmp(field_name, &quot;test_pattern&quot;) == 0)
-902       temp.test_pattern = value;
-903     else if (strcmp(field_name, &quot;no_audio_mixer&quot;) == 0)
-904       temp.no_audio_mixer = value;
-905     else if (strcmp(field_name, &quot;show_capabilities&quot;) == 0)
-906       temp.show_capabilities = value;
-907     else if (strcmp(field_name, &quot;force_utf8&quot;) == 0)
-908       temp.force_utf8 = value;
-909     else if (strcmp(field_name, &quot;audio_enabled&quot;) == 0)
-910       temp.audio_enabled = value;
-911     else if (strcmp(field_name, &quot;audio_analysis_enabled&quot;) == 0)
-912       temp.audio_analysis_enabled = value;
-913     else if (strcmp(field_name, &quot;audio_no_playback&quot;) == 0)
-914       temp.audio_no_playback = value;
-915     else if (strcmp(field_name, &quot;stretch&quot;) == 0)
-916       temp.stretch = value;
-917     else if (strcmp(field_name, &quot;snapshot_mode&quot;) == 0)
-918       temp.snapshot_mode = value;
-919     else if (strcmp(field_name, &quot;strip_ansi&quot;) == 0)
-920       temp.strip_ansi = value;
-921     else if (strcmp(field_name, &quot;quiet&quot;) == 0)
-922       temp.quiet = value;
-923     else if (strcmp(field_name, &quot;encrypt_enabled&quot;) == 0)
-924       temp.encrypt_enabled = value;
-925     else if (strcmp(field_name, &quot;no_encrypt&quot;) == 0)
-926       temp.no_encrypt = value;
-927     else if (strcmp(field_name, &quot;discovery&quot;) == 0)
-928       temp.discovery = value;
-929     else if (strcmp(field_name, &quot;discovery_expose_ip&quot;) == 0)
-930       temp.discovery_expose_ip = value;
-931     else if (strcmp(field_name, &quot;discovery_insecure&quot;) == 0)
-932       temp.discovery_insecure = value;
-933     else if (strcmp(field_name, &quot;webrtc&quot;) == 0)
-934       temp.webrtc = value;
-935     else if (strcmp(field_name, &quot;lan_discovery&quot;) == 0)
-936       temp.lan_discovery = value;
-937     else if (strcmp(field_name, &quot;no_mdns_advertise&quot;) == 0)
-938       temp.no_mdns_advertise = value;
-939     else if (strcmp(field_name, &quot;prefer_webrtc&quot;) == 0)
-940       temp.prefer_webrtc = value;
-941     else if (strcmp(field_name, &quot;no_webrtc&quot;) == 0)
-942       temp.no_webrtc = value;
-943     else if (strcmp(field_name, &quot;webrtc_skip_stun&quot;) == 0)
-944       temp.webrtc_skip_stun = value;
-945     else if (strcmp(field_name, &quot;webrtc_disable_turn&quot;) == 0)
-946       temp.webrtc_disable_turn = value;
-947     else if (strcmp(field_name, &quot;enable_upnp&quot;) == 0)
-948       temp.enable_upnp = value;
-949     else if (strcmp(field_name, &quot;require_server_identity&quot;) == 0)
-950       temp.require_server_identity = value;
-951     else if (strcmp(field_name, &quot;require_client_identity&quot;) == 0)
-952       temp.require_client_identity = value;
-953     else if (strcmp(field_name, &quot;require_server_verify&quot;) == 0)
-954       temp.require_server_verify = value;
-955     else if (strcmp(field_name, &quot;require_client_verify&quot;) == 0)
-956       temp.require_client_verify = value;
-957     else if (strcmp(field_name, &quot;palette_custom_set&quot;) == 0)
-958       temp.palette_custom_set = value;
-959     else if (strcmp(field_name, &quot;media_loop&quot;) == 0)
-960       temp.media_loop = value;
-961     else if (strcmp(field_name, &quot;media_from_stdin&quot;) == 0)
-962       temp.media_from_stdin = value;
-963     else if (strcmp(field_name, &quot;auto_width&quot;) == 0)
-964       temp.auto_width = value;
-965     else if (strcmp(field_name, &quot;auto_height&quot;) == 0)
-966       temp.auto_height = value;
-967     else if (strcmp(field_name, &quot;splash_screen&quot;) == 0)
-968       temp.splash_screen = value;
-969     else if (strcmp(field_name, &quot;status_screen&quot;) == 0)
-970       temp.status_screen = value;
-971     else if (strcmp(field_name, &quot;matrix_rain&quot;) == 0)
-972       temp.matrix_rain = value;
-973 
-974     asciichat_error_t err = rcu_validate_field(field_name, &amp;temp);
-975     if (err != ASCIICHAT_OK) return err;
-976   }
-977 
-978   bool_field_ctx_t ctx = {.field_name = field_name, .value = value};
-979   return options_update(bool_field_updater, &amp;ctx);
-980 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>options_get()</b>.</p>
-<p class="Pp">Referenced by <b>client_main()</b>,
-    <b>session_handle_keyboard_input()</b>, <b>set_flip_x()</b>, and
-    <b>set_matrix_rain()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_options_set_double_(const_char_*_field_name,_double_value)"><a class="permalink" href="#asciichat_error_t_options_set_double_(const_char_*_field_name,_double_value)">asciichat_error_t
-  options_set_double (const char * field_name, double value)</a></h2>
-<p class="Pp">Definition at line <b>1128</b> of file <b>rcu.c</b>.</p>
-<pre>1128                                                                            {
-1129   if (!field_name) {
-1130     SET_ERRNO(ERROR_INVALID_PARAM, &quot;field_name is NULL&quot;);
-1131     return ERROR_INVALID_PARAM;
-1132   }
-1133 
-1134   // Normalize option names to internal field names
-1135   const char *internal_name = field_name;
-1136   if (strcmp(field_name, &quot;microphone-volume&quot;) == 0 || strcmp(field_name, &quot;ivolume&quot;) == 0) {
-1137     internal_name = &quot;microphone_sensitivity&quot;;
-1138   } else if (strcmp(field_name, &quot;speakers-volume&quot;) == 0 || strcmp(field_name, &quot;volume&quot;) == 0) {
-1139     internal_name = &quot;speakers_volume&quot;;
-1140   }
-1141 
-1142   if (strcmp(internal_name, &quot;snapshot_delay&quot;) != 0 &amp;&amp; strcmp(internal_name, &quot;microphone_sensitivity&quot;) != 0 &amp;&amp;
-1143       strcmp(internal_name, &quot;speakers_volume&quot;) != 0) {
-1144     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown double field: %s&quot;, field_name);
-1145     return ERROR_INVALID_PARAM;
-1146   }
-1147 
-1148   // Pre-validate against registry metadata (if available)
-1149   {
-1150     const options_t *cur = options_get();
-1151     options_t temp = *cur;
-1152     // Manually set the field in temp to validate
-1153     if (strcmp(internal_name, &quot;snapshot_delay&quot;) == 0)
-1154       temp.snapshot_delay = value;
-1155     else if (strcmp(internal_name, &quot;microphone_sensitivity&quot;) == 0)
-1156       temp.microphone_sensitivity = value;
-1157     else if (strcmp(internal_name, &quot;speakers_volume&quot;) == 0)
-1158       temp.speakers_volume = value;
-1159 
-1160     asciichat_error_t err = rcu_validate_field(internal_name, &amp;temp);
-1161     if (err != ASCIICHAT_OK) return err;
-1162   }
-1163 
-1164   double_field_ctx_t ctx = {.field_name = internal_name, .value = value};
-1165   return options_update(double_field_updater, &amp;ctx);
-1166 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>options_get()</b>.</p>
-<p class="Pp">Referenced by <b>session_handle_keyboard_input()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_options_set_int_(const_char_*_field_name,_int_value)"><a class="permalink" href="#asciichat_error_t_options_set_int_(const_char_*_field_name,_int_value)">asciichat_error_t
-  options_set_int (const char * field_name, int value)</a></h2>
-<p class="Pp">Definition at line <b>704</b> of file <b>rcu.c</b>.</p>
-<pre>704                                                                      {
-705   if (!field_name) {
-706     SET_ERRNO(ERROR_INVALID_PARAM, &quot;field_name is NULL&quot;);
-707     return ERROR_INVALID_PARAM;
-708   }
-709 
-710   if (strcmp(field_name, &quot;width&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;height&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;max_clients&quot;) != 0 &amp;&amp;
-711       strcmp(field_name, &quot;compression_level&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;reconnect_attempts&quot;) != 0 &amp;&amp;
-712       strcmp(field_name, &quot;microphone_index&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;speakers_index&quot;) != 0 &amp;&amp;
-713       strcmp(field_name, &quot;discovery_port&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;port&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;fps&quot;) != 0 &amp;&amp;
-714       strcmp(field_name, &quot;color_mode&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;color_filter&quot;) != 0 &amp;&amp;
-715       strcmp(field_name, &quot;render_mode&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;log_level&quot;) != 0 &amp;&amp;
-716       strcmp(field_name, &quot;palette_type&quot;) != 0) {
-717     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown integer field: %s&quot;, field_name);
-718     return ERROR_INVALID_PARAM;
-719   }
-720 
-721   // Pre-validate against registry metadata
-722   {
-723     const options_t *cur = options_get();
-724     options_t temp = *cur;
-725     // Manually set the field in temp to validate
-726     if (strcmp(field_name, &quot;width&quot;) == 0)
-727       temp.width = value;
-728     else if (strcmp(field_name, &quot;height&quot;) == 0)
-729       temp.height = value;
-730     else if (strcmp(field_name, &quot;max_clients&quot;) == 0)
-731       temp.max_clients = value;
-732     else if (strcmp(field_name, &quot;compression_level&quot;) == 0)
-733       temp.compression_level = value;
-734     else if (strcmp(field_name, &quot;reconnect_attempts&quot;) == 0)
-735       temp.reconnect_attempts = value;
-736     else if (strcmp(field_name, &quot;microphone_index&quot;) == 0)
-737       temp.microphone_index = value;
-738     else if (strcmp(field_name, &quot;speakers_index&quot;) == 0)
-739       temp.speakers_index = value;
-740     else if (strcmp(field_name, &quot;discovery_port&quot;) == 0)
-741       temp.discovery_port = value;
-742     else if (strcmp(field_name, &quot;port&quot;) == 0)
-743       temp.port = value;
-744     else if (strcmp(field_name, &quot;fps&quot;) == 0)
-745       temp.fps = value;
-746     else if (strcmp(field_name, &quot;color_mode&quot;) == 0)
-747       temp.color_mode = (terminal_color_mode_t)value;
-748     else if (strcmp(field_name, &quot;color_filter&quot;) == 0)
-749       temp.color_filter = (color_filter_t)value;
-750     else if (strcmp(field_name, &quot;render_mode&quot;) == 0)
-751       temp.render_mode = (render_mode_t)value;
-752     else if (strcmp(field_name, &quot;log_level&quot;) == 0)
-753       temp.log_level = (log_level_t)value;
-754     else if (strcmp(field_name, &quot;palette_type&quot;) == 0)
-755       temp.palette_type = (palette_type_t)value;
-756 
-757     asciichat_error_t err = rcu_validate_field(field_name, &amp;temp);
-758     if (err != ASCIICHAT_OK) return err;
-759   }
-760 
-761   int_field_ctx_t ctx = {.field_name = field_name, .value = value};
-762   return options_update(int_field_updater, &amp;ctx);
-763 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>options_get()</b>.</p>
-<p class="Pp">Referenced by <b>session_handle_keyboard_input()</b>,
-    <b>session_render_loop()</b>, <b>session_settings_apply_to_options()</b>,
-    <b>set_color_filter()</b>, <b>set_color_mode()</b>, <b>set_height()</b>,
-    <b>set_palette()</b>, <b>set_render_mode()</b>, <b>set_target_fps()</b>, and
-    <b>set_width()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_options_set_string_(const_char_*_field_name,_const_char_*_value)"><a class="permalink" href="#asciichat_error_t_options_set_string_(const_char_*_field_name,_const_char_*_value)">asciichat_error_t
-  options_set_string (const char * field_name, const char * value)</a></h2>
-<p class="Pp">Definition at line <b>1032</b> of file <b>rcu.c</b>.</p>
-<pre>1032                                                                                 {
-1033   if (!field_name) {
-1034     SET_ERRNO(ERROR_INVALID_PARAM, &quot;field_name is NULL&quot;);
-1035     return ERROR_INVALID_PARAM;
-1036   }
-1037 
-1038   if (!value) {
-1039     SET_ERRNO(ERROR_INVALID_PARAM, &quot;value is NULL&quot;);
-1040     return ERROR_INVALID_PARAM;
-1041   }
-1042 
-1043   // Validate field exists
-1044   if (strcmp(field_name, &quot;address&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;address6&quot;) != 0 &amp;&amp;
-1045       strcmp(field_name, &quot;encrypt_key&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;password&quot;) != 0 &amp;&amp;
-1046       strcmp(field_name, &quot;encrypt_keyfile&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;server_key&quot;) != 0 &amp;&amp;
-1047       strcmp(field_name, &quot;client_keys&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;discovery_server&quot;) != 0 &amp;&amp;
-1048       strcmp(field_name, &quot;discovery_service_key&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;discovery_database_path&quot;) != 0 &amp;&amp;
-1049       strcmp(field_name, &quot;log_file&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;media_file&quot;) != 0 &amp;&amp;
-1050       strcmp(field_name, &quot;palette_custom&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;stun_servers&quot;) != 0 &amp;&amp;
-1051       strcmp(field_name, &quot;turn_servers&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;turn_username&quot;) != 0 &amp;&amp;
-1052       strcmp(field_name, &quot;turn_credential&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;turn_secret&quot;) != 0 &amp;&amp;
-1053       strcmp(field_name, &quot;session_string&quot;) != 0) {
-1054     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown string field: %s&quot;, field_name);
-1055     return ERROR_INVALID_PARAM;
-1056   }
-1057 
-1058   // Pre-validate against registry metadata (for cross-field validators)
-1059   {
-1060     const options_t *cur = options_get();
-1061     options_t temp = *cur;
-1062     // Manually set the field in temp to validate
-1063     if (strcmp(field_name, &quot;address&quot;) == 0)
-1064       SAFE_STRNCPY(temp.address, value, sizeof(temp.address));
-1065     else if (strcmp(field_name, &quot;address6&quot;) == 0)
-1066       SAFE_STRNCPY(temp.address6, value, sizeof(temp.address6));
-1067     else if (strcmp(field_name, &quot;encrypt_key&quot;) == 0)
-1068       SAFE_STRNCPY(temp.encrypt_key, value, sizeof(temp.encrypt_key));
-1069     else if (strcmp(field_name, &quot;password&quot;) == 0)
-1070       SAFE_STRNCPY(temp.password, value, sizeof(temp.password));
-1071     else if (strcmp(field_name, &quot;encrypt_keyfile&quot;) == 0)
-1072       SAFE_STRNCPY(temp.encrypt_keyfile, value, sizeof(temp.encrypt_keyfile));
-1073     else if (strcmp(field_name, &quot;server_key&quot;) == 0)
-1074       SAFE_STRNCPY(temp.server_key, value, sizeof(temp.server_key));
-1075     else if (strcmp(field_name, &quot;client_keys&quot;) == 0)
-1076       SAFE_STRNCPY(temp.client_keys, value, sizeof(temp.client_keys));
-1077     else if (strcmp(field_name, &quot;discovery_server&quot;) == 0)
-1078       SAFE_STRNCPY(temp.discovery_server, value, sizeof(temp.discovery_server));
-1079     else if (strcmp(field_name, &quot;discovery_service_key&quot;) == 0)
-1080       SAFE_STRNCPY(temp.discovery_service_key, value, sizeof(temp.discovery_service_key));
-1081     else if (strcmp(field_name, &quot;discovery_database_path&quot;) == 0)
-1082       SAFE_STRNCPY(temp.discovery_database_path, value, sizeof(temp.discovery_database_path));
-1083     else if (strcmp(field_name, &quot;log_file&quot;) == 0)
-1084       SAFE_STRNCPY(temp.log_file, value, sizeof(temp.log_file));
-1085     else if (strcmp(field_name, &quot;media_file&quot;) == 0)
-1086       SAFE_STRNCPY(temp.media_file, value, sizeof(temp.media_file));
-1087     else if (strcmp(field_name, &quot;palette_custom&quot;) == 0)
-1088       SAFE_STRNCPY(temp.palette_custom, value, sizeof(temp.palette_custom));
-1089     else if (strcmp(field_name, &quot;stun_servers&quot;) == 0)
-1090       SAFE_STRNCPY(temp.stun_servers, value, sizeof(temp.stun_servers));
-1091     else if (strcmp(field_name, &quot;turn_servers&quot;) == 0)
-1092       SAFE_STRNCPY(temp.turn_servers, value, sizeof(temp.turn_servers));
-1093     else if (strcmp(field_name, &quot;turn_username&quot;) == 0)
-1094       SAFE_STRNCPY(temp.turn_username, value, sizeof(temp.turn_username));
-1095     else if (strcmp(field_name, &quot;turn_credential&quot;) == 0)
-1096       SAFE_STRNCPY(temp.turn_credential, value, sizeof(temp.turn_credential));
-1097     else if (strcmp(field_name, &quot;turn_secret&quot;) == 0)
-1098       SAFE_STRNCPY(temp.turn_secret, value, sizeof(temp.turn_secret));
-1099     else if (strcmp(field_name, &quot;session_string&quot;) == 0)
-1100       SAFE_STRNCPY(temp.session_string, value, sizeof(temp.session_string));
-1101 
-1102     asciichat_error_t err = rcu_validate_field(field_name, &amp;temp);
-1103     if (err != ASCIICHAT_OK) return err;
-1104   }
-1105 
-1106   string_field_ctx_t ctx = {.field_name = field_name, .value = value};
-1107   return options_update(string_field_updater, &amp;ctx);
-1108 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>options_get()</b>.</p>
-<p class="Pp">Referenced by <b>set_palette_chars()</b>.</p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="void_options_state_destroy_(void_)"><a class="permalink" href="#void_options_state_destroy_(void_)">void
   options_state_destroy (void )</a></h2>
+<p class="Pp">Shutdown RCU options system. Frees the current options struct and
+    cleans up resources. Should be called at program shutdown after all threads
+    have exited.</p>
 <p class="Pp">Definition at line <b>447</b> of file <b>rcu.c</b>.</p>
 <pre>447                                  {
 448   // Check if initialized using lifecycle
@@ -564,13 +195,19 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_ptr_load()</b>, <b>atomic_ptr_store()</b>,
     <b>config_schema_destroy()</b>, <b>lifecycle_is_initialized()</b>,
-    <b>lifecycle_shutdown()</b>, and <b>mutex_destroy()</b>.</p>
+    <b>lifecycle_shutdown()</b>, <b>log_debug</b>, <b>mutex_destroy()</b>, and
+    <b>SAFE_FREE</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
     <b>client_cleanup()</b>, <b>main()</b>, and <b>mirror_cleanup()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_options_state_init_(void_)"><a class="permalink" href="#asciichat_error_t_options_state_init_(void_)">asciichat_error_t
-  options_state_init (void )</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> options_state_init (void )</h2>
+<p class="Pp">Initialize RCU options system. Must be called once at program
+    startup before any threads access options. Allocates initial options struct
+    and sets up atomic pointer.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>365</b> of file <b>rcu.c</b>.</p>
 <pre>365                                            {
 366   // Detect fork: after fork(), child process must reinitialize
@@ -633,16 +270,28 @@
 423 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_ptr_store()</b>, <b>lifecycle_init()</b>,
-    <b>lifecycle_is_initialized()</b>, <b>lifecycle_shutdown()</b>,
-    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>options_t_new()</b>, and
-    <b>platform_get_pid()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_ptr_store()</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>,
+    <b>lifecycle_init()</b>, <b>lifecycle_is_initialized()</b>,
+    <b>lifecycle_shutdown()</b>, <b>log_debug</b>, <b>log_dev</b>,
+    <b>log_warn</b>, <b>mutex_destroy()</b>, <b>mutex_init()</b>,
+    <b>options_t_new()</b>, <b>platform_get_pid()</b>, <b>SAFE_MALLOC</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>__attribute__()</b>, and
   <b>options_init()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_options_state_set_(const_options_t_*_opts)"><a class="permalink" href="#asciichat_error_t_options_state_set_(const_options_t_*_opts)">asciichat_error_t
-  options_state_set (const options_t * opts)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> options_state_set (const
+  <b>options_t</b> * opts)</h2>
+<p class="Pp">Set options from a parsed options struct. Called by
+    <b>options_init()</b> after parsing to publish the options struct to RCU.
+    This atomically replaces the current options with the provided struct.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>opts</i> Pointer to options struct to publish (will be
+  copied)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>425</b> of file <b>rcu.c</b>.</p>
 <pre>425                                                            {
 426   if (!opts) {
@@ -667,8 +316,10 @@
 445 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_ptr_load()</b>, and
-    <b>lifecycle_is_initialized()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_ptr_load()</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>lifecycle_is_initialized()</b>, <b>log_debug</b>, and
+  <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>config_load_and_apply()</b>, and
     <b>options_init()</b>.</p>
 </section>
@@ -680,7 +331,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

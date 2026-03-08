@@ -41,28 +41,29 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">tcp_server_t * <b>tcp_server</b>
+<p class="Pp"><b>tcp_server_t</b> * <b>tcp_server</b>
   <br/>
-  TCP server managing connections. rate_limiter_t * <b>rate_limiter</b>
+  TCP server managing connections. <b>rate_limiter_t</b> * <b>rate_limiter</b>
   <br/>
   Connection and packet rate limiter. <b>client_manager_t</b> *
     <b>client_manager</b>
   <br/>
-  Client registry and state. rwlock_t * <b>client_manager_rwlock</b>
+  Client registry and state. <b>rwlock_t</b> * <b>client_manager_rwlock</b>
   <br/>
-  RW lock protecting client manager. atomic_t * <b>server_should_exit</b>
+  RW lock protecting client manager. <b>atomic_t</b> * <b>server_should_exit</b>
   <br/>
-  Shutdown flag. mixer_t * <b>audio_mixer</b>
+  Shutdown flag. <b>mixer_t</b> * <b>audio_mixer</b>
   <br/>
   Multi-client audio mixer. <b>server_stats_t</b> * <b>stats</b>
   <br/>
-  Server statistics. mutex_t * <b>stats_mutex</b>
+  Server statistics. <b>mutex_t</b> * <b>stats_mutex</b>
   <br/>
   Mutex protecting stats. <b>bool</b> <b>encryption_enabled</b>
   <br/>
-  Whether encryption is enabled. private_key_t * <b>server_private_key</b>
+  Whether encryption is enabled. <b>private_key_t</b> *
+    <b>server_private_key</b>
   <br/>
-  Server's private key. public_key_t * <b>client_whitelist</b>
+  Server's private key. <b>public_key_t</b> * <b>client_whitelist</b>
   <br/>
   Whitelisted client public keys. size_t <b>num_whitelisted_clients</b>
   <br/>
@@ -81,8 +82,9 @@
   Description</a></h1>
 <p class="Pp">Server context - encapsulates all server state.</p>
 <p class="Pp">This structure holds all server-wide state that was previously
-    stored in global variables. It's passed to client handlers via tcp_server
-    user_data, reducing global state and improving modularity.</p>
+    stored in global variables. It's passed to client handlers via
+    <b>tcp_server</b> user_data, reducing global state and improving
+  modularity.</p>
 <p class="Pp"></p>
 </section>
 <section class="Sh">
@@ -101,8 +103,9 @@
   </a></h1>
 <ul class="Bl-bullet">
   <li>Created in <b>server_main()</b> before <b>tcp_server_init()</b></li>
-  <li>Passed to tcp_server via config.user_data</li>
-  <li>Available to client handlers via tcp_client_context_t.user_data</li>
+  <li>Passed to <b>tcp_server</b> via config.user_data</li>
+  <li>Available to client handlers via
+    <b>tcp_client_context_t.user_data</b></li>
   <li>Destroyed in <b>server_main()</b> after <b>tcp_server_destroy()</b></li>
 </ul>
 <p class="Pp">Definition at line <b>174</b> of file <b>server/main.h</b>.</p>
@@ -111,8 +114,7 @@
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="mixer_t*_server_context_t::audio_mixer"><a class="permalink" href="#mixer_t*_server_context_t::audio_mixer">mixer_t*
-  server_context_t::audio_mixer</a></h2>
+<h2 class="Ss"><b>mixer_t</b>* server_context_t::audio_mixer</h2>
 <p class="Pp">Multi-client audio mixer.</p>
 <p class="Pp">Definition at line <b>189</b> of file <b>server/main.h</b>.</p>
 </section>
@@ -122,14 +124,12 @@
 <p class="Pp">Definition at line <b>182</b> of file <b>server/main.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="rwlock_t*_server_context_t::client_manager_rwlock"><a class="permalink" href="#rwlock_t*_server_context_t::client_manager_rwlock">rwlock_t*
-  server_context_t::client_manager_rwlock</a></h2>
+<h2 class="Ss"><b>rwlock_t</b>* server_context_t::client_manager_rwlock</h2>
 <p class="Pp">RW lock protecting client manager.</p>
 <p class="Pp">Definition at line <b>183</b> of file <b>server/main.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="public_key_t*_server_context_t::client_whitelist"><a class="permalink" href="#public_key_t*_server_context_t::client_whitelist">public_key_t*
-  server_context_t::client_whitelist</a></h2>
+<h2 class="Ss"><b>public_key_t</b>* server_context_t::client_whitelist</h2>
 <p class="Pp">Whitelisted client public keys.</p>
 <p class="Pp">Definition at line <b>198</b> of file <b>server/main.h</b>.</p>
 </section>
@@ -151,20 +151,17 @@
 <p class="Pp">Definition at line <b>199</b> of file <b>server/main.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="rate_limiter_t*_server_context_t::rate_limiter"><a class="permalink" href="#rate_limiter_t*_server_context_t::rate_limiter">rate_limiter_t*
-  server_context_t::rate_limiter</a></h2>
+<h2 class="Ss"><b>rate_limiter_t</b>* server_context_t::rate_limiter</h2>
 <p class="Pp">Connection and packet rate limiter.</p>
 <p class="Pp">Definition at line <b>179</b> of file <b>server/main.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="private_key_t*_server_context_t::server_private_key"><a class="permalink" href="#private_key_t*_server_context_t::server_private_key">private_key_t*
-  server_context_t::server_private_key</a></h2>
+<h2 class="Ss"><b>private_key_t</b>* server_context_t::server_private_key</h2>
 <p class="Pp">Server's private key.</p>
 <p class="Pp">Definition at line <b>197</b> of file <b>server/main.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="atomic_t*_server_context_t::server_should_exit"><a class="permalink" href="#atomic_t*_server_context_t::server_should_exit">atomic_t*
-  server_context_t::server_should_exit</a></h2>
+<h2 class="Ss"><b>atomic_t</b>* server_context_t::server_should_exit</h2>
 <p class="Pp">Shutdown flag.</p>
 <p class="Pp">Definition at line <b>186</b> of file <b>server/main.h</b>.</p>
 </section>
@@ -181,14 +178,12 @@
 <p class="Pp">Definition at line <b>192</b> of file <b>server/main.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="mutex_t*_server_context_t::stats_mutex"><a class="permalink" href="#mutex_t*_server_context_t::stats_mutex">mutex_t*
-  server_context_t::stats_mutex</a></h2>
+<h2 class="Ss"><b>mutex_t</b>* server_context_t::stats_mutex</h2>
 <p class="Pp">Mutex protecting stats.</p>
 <p class="Pp">Definition at line <b>193</b> of file <b>server/main.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="tcp_server_t*_server_context_t::tcp_server"><a class="permalink" href="#tcp_server_t*_server_context_t::tcp_server">tcp_server_t*
-  server_context_t::tcp_server</a></h2>
+<h2 class="Ss"><b>tcp_server_t</b>* server_context_t::tcp_server</h2>
 <p class="Pp">TCP server managing connections.</p>
 <p class="Pp">Definition at line <b>176</b> of file <b>server/main.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>,
@@ -203,7 +198,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

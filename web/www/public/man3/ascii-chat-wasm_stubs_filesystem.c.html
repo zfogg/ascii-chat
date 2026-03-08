@@ -41,28 +41,37 @@
 <p class="Pp">FILE * <b>platform_fopen</b> (const char *name, const char
     *filename, const char *mode)
   <br/>
-  FILE * <b>platform_tmpfile</b> (void)
+  Safe file open stream (fopen replacement). FILE * <b>platform_tmpfile</b>
+    (void)
   <br/>
-  asciichat_error_t <b>platform_mkdir_recursive</b> (const char *path, int mode)
+  Create a temporary file (tmpfile replacement). <b>asciichat_error_t</b>
+    <b>platform_mkdir_recursive</b> (const char *path, int mode)
   <br/>
-  asciichat_error_t <b>platform_find_config_file</b> (const char *filename,
-    config_file_list_t *list_out)
+  Create directories recursively (mkdir -p equivalent). <b>asciichat_error_t</b>
+    <b>platform_find_config_file</b> (const char *filename,
+    <b>config_file_list_t</b> *list_out)
   <br/>
-  void <b>config_file_list_destroy</b> (config_file_list_t *list)
+  Find config file across multiple standard locations. void
+    <b>config_file_list_destroy</b> (<b>config_file_list_t</b> *list)
   <br/>
-  ssize_t <b>platform_write</b> (int fd, const void *buf, size_t count)
+  Free config file list resources. ssize_t <b>platform_write</b> (int fd, const
+    void *buf, size_t count)
   <br/>
-  ssize_t <b>platform_read</b> (int fd, void *buf, size_t count)
+  Platform-safe write function. ssize_t <b>platform_read</b> (int fd, void *buf,
+    size_t count)
   <br/>
-  int <b>platform_open</b> (const char *name, const char *pathname, int
-    flags,...)
+  Safe file read (read replacement). int <b>platform_open</b> (const char *name,
+    const char *pathname, int flags,...)
   <br/>
-  int <b>platform_close</b> (int fd)
+  Safe file open (open replacement). int <b>platform_close</b> (int fd)
   <br/>
-  int <b>platform_access</b> (const char *pathname, int mode)
+  Safe file close (close replacement). int <b>platform_access</b> (const char
+    *pathname, int mode)
   <br/>
-  char * <b>platform_get_data_dir</b> (void)
+  Check file/directory access permissions. char * <b>platform_get_data_dir</b>
+    (void)
   <br/>
+  Get the application data directory.
   <br/>
 </p>
 </section>
@@ -76,224 +85,13 @@
 <p class="Pp">Definition in file <b>wasm/stubs/filesystem.c</b>.</p>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_config_file_list_destroy_(config_file_list_t_*_list)"><a class="permalink" href="#void_config_file_list_destroy_(config_file_list_t_*_list)">void
-  config_file_list_destroy (config_file_list_t * list)</a></h2>
-<p class="Pp">Definition at line <b>54</b> of file
-    <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>54                                                         {
-55   (void)list;
-56   // No-op
-57 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>check_known_host()</b>, and
-    <b>config_load_system_and_user()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_platform_access_(const_char_*_pathname,_int_mode)"><a class="permalink" href="#int_platform_access_(const_char_*_pathname,_int_mode)">int
-  platform_access (const char * pathname, int mode)</a></h2>
-<p class="Pp">Definition at line <b>105</b> of file
-    <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>105                                                     {
-106   (void)pathname;
-107   (void)mode;
-108   return -1; // Not accessible in WASM
-109 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>get_discovery_database_dir()</b>,
-    <b>get_log_dir()</b>, and <b>parse_mirror_media()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_platform_close_(int_fd)"><a class="permalink" href="#int_platform_close_(int_fd)">int
-  platform_close (int fd)</a></h2>
-<p class="Pp">Definition at line <b>101</b> of file
-    <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>101                            {
-102   return close(fd);
-103 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>asciichat_instr_runtime_destroy()</b>,
-    <b>check_known_host()</b>, <b>check_known_host_no_identity()</b>,
-    <b>log_destroy()</b>, <b>log_disable_file_output()</b>, <b>log_init()</b>,
-    <b>remove_known_host()</b>, and <b>session_display_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_platform_find_config_file_(const_char_*_filename,_config_file_list_t_*_list_out)"><a class="permalink" href="#asciichat_error_t_platform_find_config_file_(const_char_*_filename,_config_file_list_t_*_list_out)">asciichat_error_t
-  platform_find_config_file (const char * filename, config_file_list_t *
-  list_out)</a></h2>
-<p class="Pp">Definition at line <b>44</b> of file
-    <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>44                                                                                                 {
-45   (void)filename;
-46   if (list_out) {
-47     list_out-&gt;files = NULL;
-48     list_out-&gt;count = 0;
-49     list_out-&gt;capacity = 0;
-50   }
-51   return ASCIICHAT_OK; // No config files in WASM
-52 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>check_known_host()</b>, and
-    <b>config_load_system_and_user()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="FILE_*_platform_fopen_(const_char_*_name,_const_char_*_filename,_const_char_*_mode)"><a class="permalink" href="#FILE_*_platform_fopen_(const_char_*_name,_const_char_*_filename,_const_char_*_mode)">FILE
-  * platform_fopen (const char * name, const char * filename, const char *
-  mode)</a></h2>
-<p class="Pp">Definition at line <b>20</b> of file
-    <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>20                                                                                {
-21   if (!name) {
-22     return NULL;
-23   }
-24   FILE *stream = fopen(filename, mode); // Use standard fopen
-25   if (stream) {
-26     int fd = fileno(stream);
-27     if (fd &gt;= 0) {
-28       NAMED_REGISTER_FD(fd, name);
-29     }
-30   }
-31   return stream;
-32 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>acds_identity_load()</b>,
-    <b>action_completions()</b>, <b>add_known_host()</b>,
-    <b>colorscheme_export_scheme()</b>, <b>config_create_default()</b>,
-    <b>discovery_keys_save_cached()</b>, <b>get_manpage_template()</b>,
-    <b>gpg_sign_with_key()</b>, <b>options_config_generate_manpage_merged()</b>,
-    <b>options_config_generate_manpage_template()</b>,
-    <b>parse_keys_from_file()</b>, <b>parse_manpage_sections()</b>,
-    <b>parse_private_key()</b>, <b>parse_public_key()</b>,
-    <b>parse_ssh_private_key()</b>, <b>update_check_load_cache()</b>,
-    <b>update_check_save_cache()</b>, <b>validate_ssh_key_file()</b>, and
-    <b>wav_writer_open()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_platform_get_data_dir_(void_)"><a class="permalink" href="#char_*_platform_get_data_dir_(void_)">char
-  * platform_get_data_dir (void )</a></h2>
-<p class="Pp">Definition at line <b>111</b> of file
-    <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>111                                   {
-112   return NULL; // No data directory in WASM
-113 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>get_data_dir()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_platform_mkdir_recursive_(const_char_*_path,_int_mode)"><a class="permalink" href="#asciichat_error_t_platform_mkdir_recursive_(const_char_*_path,_int_mode)">asciichat_error_t
-  platform_mkdir_recursive (const char * path, int mode)</a></h2>
-<p class="Pp">Definition at line <b>38</b> of file
-    <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>38                                                                        {
-39   (void)path;
-40   (void)mode;
-41   return ERROR_PLATFORM_INIT; // Not implemented for WASM
-42 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>acds_identity_save()</b>,
-    <b>config_create_default()</b>, and <b>get_discovery_database_dir()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_platform_open_(const_char_*_name,_const_char_*_pathname,_int_flags,__"><a class="permalink" href="#int_platform_open_(const_char_*_name,_const_char_*_pathname,_int_flags,__">int
-  platform_open (const char * name, const char * pathname, int flags,
-  ...)</a></h2>
-<p class="Pp">Definition at line <b>75</b> of file
-    <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>75                                                                           {
-76   if (!name) {
-77     return -1;
-78   }
-79 
-80   // Handle optional mode parameter for O_CREAT
-81   int fd = -1;
-82   int mode = 0;
-83   if (flags &amp; 0x0200) { // O_CREAT flag value
-84     va_list args;
-85     va_start(args, flags);
-86     mode = va_arg(args, int);
-87     va_end(args);
-88     fd = open(pathname, flags, mode);
-89   } else {
-90     fd = open(pathname, flags);
-91   }
-92 
-93   if (fd &gt;= 0) {
-94     NAMED_REGISTER_FD(fd, name);
-95     log_dev(&quot;Opened file descriptor %d for %s at path %s&quot;, fd, name, pathname);
-96   }
-97 
-98   return fd;
-99 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
-<p class="Pp">Referenced by <b>acds_identity_save()</b>,
-    <b>check_known_host()</b>, <b>check_known_host_no_identity()</b>,
-    <b>log_init()</b>, <b>main()</b>, <b>parse_gpg_keys_from_response()</b>,
-    <b>remove_known_host()</b>, and <b>test_logging_disable()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="ssize_t_platform_read_(int_fd,_void_*_buf,_size_t_count)"><a class="permalink" href="#ssize_t_platform_read_(int_fd,_void_*_buf,_size_t_count)">ssize_t
-  platform_read (int fd, void * buf, size_t count)</a></h2>
-<p class="Pp">Definition at line <b>71</b> of file
-    <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>71                                                        {
-72   return read(fd, buf, count);
-73 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="FILE_*_platform_tmpfile_(void_)"><a class="permalink" href="#FILE_*_platform_tmpfile_(void_)">FILE
-  * platform_tmpfile (void )</a></h2>
-<p class="Pp">Definition at line <b>34</b> of file
-    <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>34                              {
-35   return tmpfile();
-36 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>manpage_parser_parse_memory()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="ssize_t_platform_write_(int_fd,_const_void_*_buf,_size_t_count)"><a class="permalink" href="#ssize_t_platform_write_(int_fd,_const_void_*_buf,_size_t_count)">ssize_t
-  platform_write (int fd, const void * buf, size_t count)</a></h2>
-<p class="Pp">Definition at line <b>60</b> of file
-    <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>60                                                               {
-61   // For WASM, route stdout/stderr to browser console
-62   if ((fd == 1 || fd == 2) &amp;&amp; buf &amp;&amp; count &gt; 0) {
-63     wasm_log_to_console(fd, (const uint8_t *)buf, count);
-64     return (ssize_t)count; // Report all bytes as written
-65   }
-66 
-67   // Fallback: use standard write for other fds
-68   return write(fd, buf, count);
-69 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>wasm_log_to_console()</b>.</p>
-<p class="Pp">Referenced by <b>log_json_write()</b>, and
-    <b>platform_write_all()</b>.</p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

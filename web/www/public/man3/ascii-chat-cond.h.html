@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>cond.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">cond.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">cond.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">cond.h - Cross-platform condition variable interface for
+    ascii-chat.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>cond_t</b>
+  <br/>
+  Condition variable type (POSIX: pthread_cond_t with debug tracking).
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>LOG_COND_STATE</b>(cond)
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Condition Variable Wait Macros</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>cond_wait</b>(cond, <b>mutex</b>)
+  <br/>
+  Wait on a condition variable (with debug tracking in debug builds). #define
+    <b>cond_timedwait</b>(cond, <b>mutex</b>, timeout_ns)
+  <br/>
+  Wait on a condition variable with timeout (with debug tracking in debug
+    builds).
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>cond_init</b> (<b>cond_t</b> *cond, const char *name)
+  <br/>
+  Initialize a condition variable with a name. int <b>cond_destroy</b>
+    (<b>cond_t</b> *cond)
+  <br/>
+  Destroy a condition variable. int <b>cond_wait_impl</b> (<b>cond_t</b> *cond,
+    <b>mutex_t</b> *<b>mutex</b>)
+  <br/>
+  Wait on a condition variable (blocking) - implementation function. int
+    <b>cond_timedwait_impl</b> (<b>cond_t</b> *cond, <b>mutex_t</b>
+    *<b>mutex</b>, <b>uint64_t</b> timeout_ns)
+  <br/>
+  Wait on a condition variable with timeout - implementation function. int
+    <b>cond_signal</b> (<b>cond_t</b> *cond)
+  <br/>
+  Signal a condition variable (wake one waiting thread). int
+    <b>cond_broadcast</b> (<b>cond_t</b> *cond)
+  <br/>
+  Broadcast to a condition variable (wake all waiting threads). void
+    <b>cond_on_wait</b> (<b>cond_t</b> *cond, <b>mutex_t</b> *<b>mutex</b>,
+    const char *file, int line, const char *func)
+  <br/>
+  Hook called when a thread waits on a condition variable. int
+    <b>debug_sync_cond_wait</b> (<b>cond_t</b> *cond, <b>mutex_t</b>
+    *<b>mutex</b>, const char *file, int line, const char *func)
+  <br/>
+  int <b>debug_sync_cond_timedwait</b> (<b>cond_t</b> *cond, <b>mutex_t</b>
+    *<b>mutex</b>, <b>uint64_t</b> timeout_ns, const char *file, int line, const
+    char *func)
+  <br/>
+  <b>bool</b> <b>debug_sync_is_initialized</b> (void)
+  <br/>
+  void <b>cond_on_signal</b> (<b>cond_t</b> *cond)
+  <br/>
+  Hook called when a condition variable is signaled. void
+    <b>cond_on_broadcast</b> (<b>cond_t</b> *cond)
+  <br/>
+  Hook called when a condition variable is broadcast. void <b>cond_log_state</b>
+    (const <b>cond_t</b> *cond, const char *file, int line, const char *func)
+  <br/>
+  Log the state of a condition variable.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Cross-platform condition variable interface for ascii-chat.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>cond.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

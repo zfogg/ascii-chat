@@ -48,21 +48,22 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>term_renderer_create</b> (const
-    term_renderer_config_t *cfg, terminal_renderer_t **out)
+<p class="Pp"><b>asciichat_error_t</b> <b>term_renderer_create</b> (const
+    <b>term_renderer_config_t</b> *cfg, <b>terminal_renderer_t</b> **out)
   <br/>
-  asciichat_error_t <b>term_renderer_feed</b> (terminal_renderer_t *r, const
-    char *ansi_frame, size_t len)
+  <b>asciichat_error_t</b> <b>term_renderer_feed</b> (<b>terminal_renderer_t</b>
+    *r, const char *ansi_frame, size_t len)
   <br/>
-  const uint8_t * <b>term_renderer_pixels</b> (terminal_renderer_t *r)
+  const <b>uint8_t</b> * <b>term_renderer_pixels</b> (<b>terminal_renderer_t</b>
+    *r)
   <br/>
-  int <b>term_renderer_width_px</b> (terminal_renderer_t *r)
+  int <b>term_renderer_width_px</b> (<b>terminal_renderer_t</b> *r)
   <br/>
-  int <b>term_renderer_height_px</b> (terminal_renderer_t *r)
+  int <b>term_renderer_height_px</b> (<b>terminal_renderer_t</b> *r)
   <br/>
-  int <b>term_renderer_pitch</b> (terminal_renderer_t *r)
+  int <b>term_renderer_pitch</b> (<b>terminal_renderer_t</b> *r)
   <br/>
-  void <b>term_renderer_destroy</b> (terminal_renderer_t *r)
+  void <b>term_renderer_destroy</b> (<b>terminal_renderer_t</b> *r)
   <br/>
   <br/>
 </p>
@@ -87,9 +88,8 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_term_renderer_create_(const_term_renderer_config_t_*_cfg,_terminal_renderer_t_**_out)"><a class="permalink" href="#asciichat_error_t_term_renderer_create_(const_term_renderer_config_t_*_cfg,_terminal_renderer_t_**_out)">asciichat_error_t
-  term_renderer_create (const term_renderer_config_t * cfg, terminal_renderer_t
-  ** out)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> term_renderer_create (const
+  <b>term_renderer_config_t</b> * cfg, <b>terminal_renderer_t</b> ** out)</h2>
 <p class="Pp">Definition at line <b>104</b> of file
     <b>media/render/terminal.c</b>.</p>
 <pre>104                                                                                                      {
@@ -234,11 +234,29 @@
 243 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>terminal_renderer_s::baseline</b>, <b>terminal_renderer_s::cell_h</b>,
+    <b>terminal_renderer_s::cell_w</b>, <b>term_renderer_config_t::cols</b>,
+    <b>terminal_renderer_s::cols</b>, <b>ERROR_INIT</b>, <b>ERROR_NOT_FOUND</b>,
+    <b>term_renderer_config_t::font_data</b>,
+    <b>term_renderer_config_t::font_data_size</b>,
+    <b>term_renderer_config_t::font_size_pt</b>,
+    <b>term_renderer_config_t::font_spec</b>,
+    <b>terminal_renderer_s::framebuffer</b>,
+    <b>terminal_renderer_s::ft_face</b>, <b>terminal_renderer_s::ft_lib</b>,
+    <b>GET_OPTION</b>, <b>terminal_renderer_s::height_px</b>,
+    <b>terminal_renderer_s::is_matrix_font</b>, <b>log_debug</b>,
+    <b>log_debug_every</b>, <b>log_info</b>, <b>terminal_renderer_s::pitch</b>,
+    <b>term_renderer_config_t::rows</b>, <b>terminal_renderer_s::rows</b>,
+    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
+    <b>term_renderer_config_t::theme</b>, <b>terminal_renderer_s::theme</b>,
+    <b>terminal_renderer_s::vt</b>, <b>terminal_renderer_s::vts</b>, and
+    <b>terminal_renderer_s::width_px</b>.</p>
 <p class="Pp">Referenced by <b>render_file_create()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_term_renderer_destroy_(terminal_renderer_t_*_r)"><a class="permalink" href="#void_term_renderer_destroy_(terminal_renderer_t_*_r)">void
-  term_renderer_destroy (terminal_renderer_t * r)</a></h2>
+<h2 class="Ss" id="void_term_renderer_destroy_("><a class="permalink" href="#void_term_renderer_destroy_(">void
+  term_renderer_destroy (<b>terminal_renderer_t</b> * r)</a></h2>
 <p class="Pp">Definition at line <b>522</b> of file
     <b>media/render/terminal.c</b>.</p>
 <pre>522                                                    {
@@ -252,13 +270,15 @@
 530 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>terminal_renderer_s::framebuffer</b>,
+    <b>terminal_renderer_s::ft_face</b>, <b>terminal_renderer_s::ft_lib</b>,
+    <b>SAFE_FREE</b>, and <b>terminal_renderer_s::vt</b>.</p>
 <p class="Pp">Referenced by <b>render_file_create()</b>, and
     <b>render_file_destroy()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_term_renderer_feed_(terminal_renderer_t_*_r,_const_char_*_ansi_frame,_size_t_len)"><a class="permalink" href="#asciichat_error_t_term_renderer_feed_(terminal_renderer_t_*_r,_const_char_*_ansi_frame,_size_t_len)">asciichat_error_t
-  term_renderer_feed (terminal_renderer_t * r, const char * ansi_frame, size_t
-  len)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> term_renderer_feed
+  (<b>terminal_renderer_t</b> * r, const char * ansi_frame, size_t len)</h2>
 <p class="Pp">Definition at line <b>245</b> of file
     <b>media/render/terminal.c</b>.</p>
 <pre>245                                                                                                  {
@@ -526,11 +546,23 @@
 507 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>terminal_renderer_s::baseline</b>, <b>terminal_renderer_s::cell_h</b>,
+    <b>terminal_renderer_s::cell_w</b>, <b>terminal_renderer_s::cols</b>,
+    <b>ERROR_MEMORY</b>, <b>terminal_renderer_s::framebuffer</b>,
+    <b>terminal_renderer_s::ft_face</b>, <b>terminal_renderer_s::height_px</b>,
+    <b>terminal_renderer_s::is_matrix_font</b>, <b>log_debug</b>,
+    <b>log_error</b>, <b>log_info</b>, <b>terminal_renderer_s::pitch</b>,
+    <b>terminal_renderer_s::rows</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>SET_ERRNO</b>, <b>TERM_RENDERER_THEME_LIGHT</b>,
+    <b>terminal_renderer_s::theme</b>, <b>terminal_renderer_s::vt</b>,
+    <b>terminal_renderer_s::vts</b>, and
+  <b>terminal_renderer_s::width_px</b>.</p>
 <p class="Pp">Referenced by <b>render_file_write_frame()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_term_renderer_height_px_(terminal_renderer_t_*_r)"><a class="permalink" href="#int_term_renderer_height_px_(terminal_renderer_t_*_r)">int
-  term_renderer_height_px (terminal_renderer_t * r)</a></h2>
+<h2 class="Ss" id="int_term_renderer_height_px_("><a class="permalink" href="#int_term_renderer_height_px_(">int
+  term_renderer_height_px (<b>terminal_renderer_t</b> * r)</a></h2>
 <p class="Pp">Definition at line <b>515</b> of file
     <b>media/render/terminal.c</b>.</p>
 <pre>515                                                     {
@@ -538,12 +570,13 @@
 517 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>terminal_renderer_s::height_px</b>.</p>
 <p class="Pp">Referenced by <b>render_file_create()</b>, and
     <b>render_file_write_frame()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_term_renderer_pitch_(terminal_renderer_t_*_r)"><a class="permalink" href="#int_term_renderer_pitch_(terminal_renderer_t_*_r)">int
-  term_renderer_pitch (terminal_renderer_t * r)</a></h2>
+<h2 class="Ss" id="int_term_renderer_pitch_("><a class="permalink" href="#int_term_renderer_pitch_(">int
+  term_renderer_pitch (<b>terminal_renderer_t</b> * r)</a></h2>
 <p class="Pp">Definition at line <b>518</b> of file
     <b>media/render/terminal.c</b>.</p>
 <pre>518                                                 {
@@ -551,11 +584,13 @@
 520 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>terminal_renderer_s::pitch</b>.</p>
 <p class="Pp">Referenced by <b>render_file_write_frame()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_uint8_t_*_term_renderer_pixels_(terminal_renderer_t_*_r)"><a class="permalink" href="#const_uint8_t_*_term_renderer_pixels_(terminal_renderer_t_*_r)">const
-  uint8_t * term_renderer_pixels (terminal_renderer_t * r)</a></h2>
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>uint8_t</b> * term_renderer_pixels (<b>terminal_renderer_t</b> *
+  r)</a></h2>
 <p class="Pp">Definition at line <b>509</b> of file
     <b>media/render/terminal.c</b>.</p>
 <pre>509                                                             {
@@ -563,11 +598,12 @@
 511 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>terminal_renderer_s::framebuffer</b>.</p>
 <p class="Pp">Referenced by <b>render_file_write_frame()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_term_renderer_width_px_(terminal_renderer_t_*_r)"><a class="permalink" href="#int_term_renderer_width_px_(terminal_renderer_t_*_r)">int
-  term_renderer_width_px (terminal_renderer_t * r)</a></h2>
+<h2 class="Ss" id="int_term_renderer_width_px_("><a class="permalink" href="#int_term_renderer_width_px_(">int
+  term_renderer_width_px (<b>terminal_renderer_t</b> * r)</a></h2>
 <p class="Pp">Definition at line <b>512</b> of file
     <b>media/render/terminal.c</b>.</p>
 <pre>512                                                    {
@@ -575,6 +611,7 @@
 514 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>terminal_renderer_s::width_px</b>.</p>
 <p class="Pp">Referenced by <b>render_file_create()</b>, and
     <b>render_file_write_frame()</b>.</p>
 </section>
@@ -586,7 +623,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

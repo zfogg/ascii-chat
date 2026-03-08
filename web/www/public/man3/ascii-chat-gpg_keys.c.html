@@ -37,415 +37,51 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>parse_gpg_key</b> (const char *gpg_key_id,
-    public_key_t *key_out)
+<p class="Pp"><b>asciichat_error_t</b> <b>parse_gpg_key_binary</b> (const
+    <b>uint8_t</b> *gpg_key_binary, size_t key_size, <b>public_key_t</b>
+    *key_out)
   <br/>
-  asciichat_error_t <b>parse_gpg_key_binary</b> (const uint8_t *gpg_key_binary,
-    size_t key_size, public_key_t *key_out)
+  Parse GPG key from binary format. <b>asciichat_error_t</b>
+    <b>extract_ed25519_from_gpg</b> (const char *gpg_key_id, <b>uint8_t</b>
+    ed25519_pk[32])
   <br/>
-  asciichat_error_t <b>extract_ed25519_from_gpg</b> (const char *gpg_key_id,
-    uint8_t ed25519_pk[32])
+  Extract Ed25519 public key from GPG key. <b>asciichat_error_t</b>
+    <b>gpg_to_x25519_public</b> (const char *gpg_key_text, <b>uint8_t</b>
+    x25519_pk[32])
   <br/>
-  asciichat_error_t <b>gpg_to_x25519_public</b> (const char *gpg_key_text,
-    uint8_t x25519_pk[32])
+  Convert GPG key to X25519 for key exchange. <b>asciichat_error_t</b>
+    <b>get_gpg_fingerprint</b> (const char *gpg_key_text, <b>uint8_t</b>
+    fingerprint_out[20])
   <br/>
-  asciichat_error_t <b>get_gpg_fingerprint</b> (const char *gpg_key_text,
-    uint8_t fingerprint_out[20])
+  Get GPG key fingerprint. <b>asciichat_error_t</b> <b>get_gpg_key_id</b> (const
+    char *gpg_key_text, <b>uint8_t</b> key_id_out[8])
   <br/>
-  asciichat_error_t <b>get_gpg_key_id</b> (const char *gpg_key_text, uint8_t
-    key_id_out[8])
+  Get GPG key ID (short fingerprint). <b>asciichat_error_t</b>
+    <b>check_gpg_key_expiry</b> (const char *gpg_key_text, <b>bool</b>
+    *is_expired)
   <br/>
-  asciichat_error_t <b>check_gpg_key_expiry</b> (const char *gpg_key_text,
-    <b>bool</b> *is_expired)
+  Check if GPG key is expired. <b>asciichat_error_t</b>
+    <b>format_gpg_key_display</b> (const char *gpg_key_text, char *output,
+    size_t output_size)
   <br/>
-  asciichat_error_t <b>format_gpg_key_display</b> (const char *gpg_key_text,
-    char *output, size_t output_size)
+  Format GPG key for display. <b>asciichat_error_t</b>
+    <b>extract_gpg_key_comment</b> (const char *gpg_key_text, char *comment_out,
+    size_t comment_size)
   <br/>
-  asciichat_error_t <b>extract_gpg_key_comment</b> (const char *gpg_key_text,
-    char *comment_out, size_t comment_size)
+  Extract key comment/email from GPG key.
+  <br/>
+</p>
+<p class="Pp"><b>Key Parsing</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>asciichat_error_t</b> <b>parse_gpg_key</b> (const char *gpg_key_id,
+    <b>public_key_t</b> *key_out)
+  <br/>
+  Parse Ed25519 public key from PGP armored format.
   <br/>
   <br/>
 </p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_check_gpg_key_expiry_(const_char_*_gpg_key_text,_"><a class="permalink" href="#asciichat_error_t_check_gpg_key_expiry_(const_char_*_gpg_key_text,_">asciichat_error_t
-  check_gpg_key_expiry (const char * gpg_key_text, <b>bool</b> *
-  is_expired)</a></h2>
-<p class="Pp">Definition at line <b>176</b> of file <b>gpg_keys.c</b>.</p>
-<pre>176                                                                                    {
-177   if (!gpg_key_text || !is_expired) {
-178     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: gpg_key_text=%p, is_expired=%p&quot;, gpg_key_text, is_expired);
-179     return ERROR_INVALID_PARAM;
-180   }
-181 
-182   // For GPG key expiry checking, we need a key ID
-183   // If gpg_key_text is a key ID (8, 16, or 40 hex chars), use it directly
-184   // Otherwise, we'd need to parse the GPG armored text (complex)
-185   size_t key_len = strlen(gpg_key_text);
-186   const char *key_id = gpg_key_text;
-187 
-188   // Check if it looks like a key ID (hex characters only)
-189   bool is_hex = true;
-190   for (size_t i = 0; i &lt; key_len; i++) {
-191     if (!((gpg_key_text[i] &gt;= '0' &amp;&amp; gpg_key_text[i] &lt;= '9') || (gpg_key_text[i] &gt;= 'A' &amp;&amp; gpg_key_text[i] &lt;= 'F') ||
-192           (gpg_key_text[i] &gt;= 'a' &amp;&amp; gpg_key_text[i] &lt;= 'f'))) {
-193       is_hex = false;
-194       break;
-195     }
-196   }
-197 
-198   // Only support key ID format (8, 16, or 40 hex chars)
-199   if (!is_hex || (key_len != 8 &amp;&amp; key_len != 16 &amp;&amp; key_len != 40)) {
-200     log_warn(&quot;check_gpg_key_expiry: Input is not a key ID format (expected 8/16/40 hex chars)&quot;);
-201     *is_expired = false; // Assume not expired if we can't check
-202     return ASCIICHAT_OK;
-203   }
-204 
-205   // Use gpg --list-keys with colon-separated output to check expiry
-206   char cmd[BUFFER_SIZE_MEDIUM];
-207   safe_snprintf(cmd, sizeof(cmd), &quot;gpg --list-keys --with-colons %s &quot; PLATFORM_SHELL_NULL_REDIRECT, key_id);
-208 
-209   FILE *fp = NULL;
-210   if (platform_popen(&quot;gpg_keys&quot;, cmd, &quot;r&quot;, &amp;fp) != ASCIICHAT_OK || !fp) {
-211     log_error(&quot;Failed to run gpg --list-keys for key %s&quot;, key_id);
-212     *is_expired = false; // Assume not expired if we can't check
-213     return ASCIICHAT_OK;
-214   }
-215 
-216   char line[BUFFER_SIZE_LARGE];
-217   bool found_pub = false;
-218   *is_expired = false;
-219 
-220   // Parse colon-separated output
-221   // Format: pub:trust:keylen:algo:keyid:creation:expiry:...
-222   // Field 6 is expiry timestamp (seconds since epoch), or empty if no expiry
-223   while (fgets(line, sizeof(line), fp)) {
-224     if (strncmp(line, &quot;pub:&quot;, 4) == 0) {
-225       found_pub = true;
-226 
-227       // Split line by colons
-228       char *fields[12];
-229       int field_count = 0;
-230       char *ptr = line;
-231       char *field_start = ptr;
-232 
-233       while (*ptr &amp;&amp; field_count &lt; 12) {
-234         if (*ptr == ':' || *ptr == '\n') {
-235           *ptr = '\0';
-236           fields[field_count++] = field_start;
-237           field_start = ptr + 1;
-238         }
-239         ptr++;
-240       }
-241 
-242       // Field 6 is expiry date (index 6)
-243       if (field_count &gt;= 7 &amp;&amp; strlen(fields[6]) &gt; 0) {
-244         // Parse expiry timestamp
-245         long expiry_timestamp = strtol(fields[6], NULL, 10);
-246         time_t now = time(NULL);
-247 
-248         if (expiry_timestamp &gt; 0 &amp;&amp; expiry_timestamp &lt;= now) {
-249           *is_expired = true;
-250           log_warn(&quot;GPG key %s has expired (expiry: %ld, now: %ld)&quot;, key_id, expiry_timestamp, (long)now);
-251         } else if (expiry_timestamp &gt; 0) {
-252           log_debug(&quot;GPG key %s expires at timestamp %ld (valid)&quot;, key_id, expiry_timestamp);
-253         } else {
-254           log_debug(&quot;GPG key %s has no expiration date&quot;, key_id);
-255         }
-256       } else {
-257         log_debug(&quot;GPG key %s has no expiration date (field empty)&quot;, key_id);
-258       }
-259 
-260       break; // Found the pub line, stop parsing
-261     }
-262   }
-263 
-264   platform_pclose(&amp;fp);
-265 
-266   if (!found_pub) {
-267     log_warn(&quot;Could not find GPG key %s in keyring&quot;, key_id);
-268     *is_expired = false; // Assume not expired if key not found
-269   }
-270 
-271   return ASCIICHAT_OK;
-272 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>safe_snprintf()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_extract_ed25519_from_gpg_(const_char_*_gpg_key_id,_uint8_t_ed25519_pk_32_)"><a class="permalink" href="#asciichat_error_t_extract_ed25519_from_gpg_(const_char_*_gpg_key_id,_uint8_t_ed25519_pk_32_)">asciichat_error_t
-  extract_ed25519_from_gpg (const char * gpg_key_id, uint8_t
-  ed25519_pk[32])</a></h2>
-<p class="Pp">Definition at line <b>107</b> of file <b>gpg_keys.c</b>.</p>
-<pre>107                                                                                            {
-108   if (!gpg_key_id || !ed25519_pk) {
-109     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: gpg_key_id=%p, ed25519_pk=%p&quot;, gpg_key_id, ed25519_pk);
-110     return ERROR_INVALID_PARAM;
-111   }
-112 
-113   // Use gpg_get_public_key() to extract Ed25519 public key from GPG keyring
-114   // Note: gpg_key_id should be the key ID (e.g., &quot;7FE90A79F2E80ED3&quot;)
-115   char keygrip[64];
-116   if (gpg_get_public_key(gpg_key_id, ed25519_pk, keygrip) != 0) {
-117     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Failed to extract Ed25519 public key from GPG for key ID: %s&quot;, gpg_key_id);
-118   }
-119 
-120   return ASCIICHAT_OK;
-121 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>gpg_get_public_key()</b>.</p>
-<p class="Pp">Referenced by <b>gpg_to_x25519_public()</b>, and
-    <b>parse_gpg_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_extract_gpg_key_comment_(const_char_*_gpg_key_text,_char_*_comment_out,_size_t_comment_size)"><a class="permalink" href="#asciichat_error_t_extract_gpg_key_comment_(const_char_*_gpg_key_text,_char_*_comment_out,_size_t_comment_size)">asciichat_error_t
-  extract_gpg_key_comment (const char * gpg_key_text, char * comment_out, size_t
-  comment_size)</a></h2>
-<p class="Pp">Definition at line <b>315</b> of file <b>gpg_keys.c</b>.</p>
-<pre>315                                                                                                             {
-316   if (!gpg_key_text || !comment_out) {
-317     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: gpg_key_text=%p, comment_out=%p&quot;, gpg_key_text, comment_out);
-318     return ERROR_INVALID_PARAM;
-319   }
-320 
-321   if (comment_size == 0) {
-322     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid comment size: %zu&quot;, comment_size);
-323     return ERROR_INVALID_PARAM;
-324   }
-325 
-326   // TODO: Implement GPG key comment extraction
-327   // This requires parsing the OpenPGP packet structure and extracting user ID packets
-328 
-329   // For now, use a generic comment
-330   SAFE_STRNCPY(comment_out, &quot;GPG key&quot;, comment_size - 1);
-331   return ASCIICHAT_OK;
-332 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_format_gpg_key_display_(const_char_*_gpg_key_text,_char_*_output,_size_t_output_size)"><a class="permalink" href="#asciichat_error_t_format_gpg_key_display_(const_char_*_gpg_key_text,_char_*_output,_size_t_output_size)">asciichat_error_t
-  format_gpg_key_display (const char * gpg_key_text, char * output, size_t
-  output_size)</a></h2>
-<p class="Pp">Definition at line <b>278</b> of file <b>gpg_keys.c</b>.</p>
-<pre>278                                                                                                      {
-279   if (!gpg_key_text || !output) {
-280     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: gpg_key_text=%p, output=%p&quot;, gpg_key_text, output);
-281     return ERROR_INVALID_PARAM;
-282   }
-283 
-284   if (output_size &lt; 64) {
-285     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output buffer too small: %zu (minimum 64)&quot;, output_size);
-286     return ERROR_INVALID_PARAM;
-287   }
-288 
-289   // Extract key ID for display
-290   uint8_t key_id[8];
-291   asciichat_error_t key_id_result = get_gpg_key_id(gpg_key_text, key_id);
-292   if (key_id_result != ASCIICHAT_OK) {
-293     // Fallback to generic GPG key display
-294     SAFE_STRNCPY(output, &quot;GPG key (key ID extraction failed)&quot;, output_size - 1);
-295     return ASCIICHAT_OK;
-296   }
-297 
-298   // Format as hex key ID
-299   char hex_key_id[17];
-300   for (int i = 0; i &lt; 8; i++) {
-301     safe_snprintf(hex_key_id + i * 2, 3, &quot;%02x&quot;, key_id[i]);
-302   }
-303   hex_key_id[16] = '\0';
-304 
-305   // Create display string
-306   int result = safe_snprintf(output, output_size, &quot;GPG key ID: %s&quot;, hex_key_id);
-307   if (result &lt; 0 || result &gt;= (int)output_size) {
-308     SET_ERRNO(ERROR_STRING, &quot;Failed to format GPG key display&quot;);
-309     return ERROR_STRING;
-310   }
-311 
-312   return ASCIICHAT_OK;
-313 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>get_gpg_key_id()</b>, and
-  <b>safe_snprintf()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_get_gpg_fingerprint_(const_char_*_gpg_key_text,_uint8_t_fingerprint_out_20_)"><a class="permalink" href="#asciichat_error_t_get_gpg_fingerprint_(const_char_*_gpg_key_text,_uint8_t_fingerprint_out_20_)">asciichat_error_t
-  get_gpg_fingerprint (const char * gpg_key_text, uint8_t
-  fingerprint_out[20])</a></h2>
-<p class="Pp">Definition at line <b>149</b> of file <b>gpg_keys.c</b>.</p>
-<pre>149                                                                                              {
-150   if (!gpg_key_text || !fingerprint_out) {
-151     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: gpg_key_text=%p, fingerprint_out=%p&quot;, gpg_key_text,
-152               fingerprint_out);
-153     return ERROR_INVALID_PARAM;
-154   }
-155 
-156   // TODO: Implement GPG fingerprint extraction
-157   // This requires parsing the OpenPGP packet structure and computing SHA-1
-158 
-159   SET_ERRNO(ERROR_CRYPTO_KEY, &quot;GPG fingerprint extraction not yet implemented&quot;);
-160   return ERROR_CRYPTO_KEY;
-161 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_get_gpg_key_id_(const_char_*_gpg_key_text,_uint8_t_key_id_out_8_)"><a class="permalink" href="#asciichat_error_t_get_gpg_key_id_(const_char_*_gpg_key_text,_uint8_t_key_id_out_8_)">asciichat_error_t
-  get_gpg_key_id (const char * gpg_key_text, uint8_t key_id_out[8])</a></h2>
-<p class="Pp">Definition at line <b>163</b> of file <b>gpg_keys.c</b>.</p>
-<pre>163                                                                                   {
-164   if (!gpg_key_text || !key_id_out) {
-165     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: gpg_key_text=%p, key_id_out=%p&quot;, gpg_key_text, key_id_out);
-166     return ERROR_INVALID_PARAM;
-167   }
-168 
-169   // TODO: Implement GPG key ID extraction
-170   // This is typically the last 8 bytes of the fingerprint
-171 
-172   SET_ERRNO(ERROR_CRYPTO_KEY, &quot;GPG key ID extraction not yet implemented&quot;);
-173   return ERROR_CRYPTO_KEY;
-174 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>format_gpg_key_display()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_gpg_to_x25519_public_(const_char_*_gpg_key_text,_uint8_t_x25519_pk_32_)"><a class="permalink" href="#asciichat_error_t_gpg_to_x25519_public_(const_char_*_gpg_key_text,_uint8_t_x25519_pk_32_)">asciichat_error_t
-  gpg_to_x25519_public (const char * gpg_key_text, uint8_t
-  x25519_pk[32])</a></h2>
-<p class="Pp">Definition at line <b>123</b> of file <b>gpg_keys.c</b>.</p>
-<pre>123                                                                                         {
-124   if (!gpg_key_text || !x25519_pk) {
-125     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: gpg_key_text=%p, x25519_pk=%p&quot;, gpg_key_text, x25519_pk);
-126     return ERROR_INVALID_PARAM;
-127   }
-128 
-129   // First extract the Ed25519 public key from the GPG key
-130   uint8_t ed25519_pk[32];
-131   asciichat_error_t extract_result = extract_ed25519_from_gpg(gpg_key_text, ed25519_pk);
-132   if (extract_result != ASCIICHAT_OK) {
-133     return extract_result;
-134   }
-135 
-136   // Convert Ed25519 to X25519
-137   if (crypto_sign_ed25519_pk_to_curve25519(x25519_pk, ed25519_pk) != 0) {
-138     SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Failed to convert Ed25519 to X25519&quot;);
-139     return ERROR_CRYPTO_KEY;
-140   }
-141 
-142   return ASCIICHAT_OK;
-143 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>extract_ed25519_from_gpg()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_parse_gpg_key_(const_char_*_gpg_key_id,_public_key_t_*_key_out)"><a class="permalink" href="#asciichat_error_t_parse_gpg_key_(const_char_*_gpg_key_id,_public_key_t_*_key_out)">asciichat_error_t
-  parse_gpg_key (const char * gpg_key_id, public_key_t * key_out)</a></h2>
-<p class="Pp">Definition at line <b>25</b> of file <b>gpg_keys.c</b>.</p>
-<pre>25                                                                                {
-26   if (!gpg_key_id || !key_out) {
-27     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: gpg_key_id=%p, key_out=%p&quot;, gpg_key_id, key_out);
-28     return ERROR_INVALID_PARAM;
-29   }
-30 
-31   // Validate key ID format (must be 8, 16, or 40 hex characters, optionally with 0x prefix)
-32   // - 8 chars: short key ID (last 8 chars of fingerprint)
-33   // - 16 chars: long key ID (last 16 chars of fingerprint)
-34   // - 40 chars: full fingerprint
-35   const char *key_id = gpg_key_id;
-36   if (strncmp(key_id, &quot;0x&quot;, 2) == 0 || strncmp(key_id, &quot;0X&quot;, 2) == 0) {
-37     key_id += 2; // Skip 0x prefix
-38   }
-39 
-40   size_t key_id_len = strlen(key_id);
-41   if (key_id_len != 8 &amp;&amp; key_id_len != 16 &amp;&amp; key_id_len != 40) {
-42     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Invalid GPG key ID length: %zu (expected 8, 16, or 40 hex chars)&quot;, key_id_len);
-43   }
-44 
-45   // Validate hex characters
-46   for (size_t i = 0; i &lt; key_id_len; i++) {
-47     char c = key_id[i];
-48     if (!((c &gt;= '0' &amp;&amp; c &lt;= '9') || (c &gt;= 'a' &amp;&amp; c &lt;= 'f') || (c &gt;= 'A' &amp;&amp; c &lt;= 'F'))) {
-49       return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Invalid GPG key ID: contains non-hex character '%c'&quot;, c);
-50     }
-51   }
-52 
-53   // Extract Ed25519 public key from GPG keyring using gpg --list-keys
-54   uint8_t ed25519_pk[32];
-55   asciichat_error_t extract_result = extract_ed25519_from_gpg(key_id, ed25519_pk);
-56   if (extract_result != ASCIICHAT_OK) {
-57     return extract_result;
-58   }
-59 
-60   // Initialize the public key structure
-61   memset(key_out, 0, sizeof(public_key_t));
-62   key_out-&gt;type = KEY_TYPE_GPG;
-63   memcpy(key_out-&gt;key, ed25519_pk, 32);
-64 
-65   // Set comment for display
-66   safe_snprintf(key_out-&gt;comment, sizeof(key_out-&gt;comment), &quot;GPG key %s&quot;, key_id);
-67 
-68   return ASCIICHAT_OK;
-69 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>extract_ed25519_from_gpg()</b>, and
-    <b>safe_snprintf()</b>.</p>
-<p class="Pp">Referenced by <b>parse_public_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_parse_gpg_key_binary_(const_uint8_t_*_gpg_key_binary,_size_t_key_size,_public_key_t_*_key_out)"><a class="permalink" href="#asciichat_error_t_parse_gpg_key_binary_(const_uint8_t_*_gpg_key_binary,_size_t_key_size,_public_key_t_*_key_out)">asciichat_error_t
-  parse_gpg_key_binary (const uint8_t * gpg_key_binary, size_t key_size,
-  public_key_t * key_out)</a></h2>
-<p class="Pp">Definition at line <b>71</b> of file <b>gpg_keys.c</b>.</p>
-<pre>71                                                                                                               {
-72   if (!gpg_key_binary || !key_out) {
-73     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: gpg_key_binary=%p, key_out=%p&quot;, gpg_key_binary, key_out);
-74     return ERROR_INVALID_PARAM;
-75   }
-76 
-77   if (key_size == 0) {
-78     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid key size: %zu&quot;, key_size);
-79     return ERROR_INVALID_PARAM;
-80   }
-81 
-82   // Treat as PGP armored text - null-terminate for string operations
-83   char *armored_text = SAFE_MALLOC(key_size + 1, char *);
-84   memcpy(armored_text, gpg_key_binary, key_size);
-85   armored_text[key_size] = '\0';
-86 
-87   // Parse OpenPGP armored format and extract Ed25519 public key
-88   uint8_t ed25519_pk[32];
-89   asciichat_error_t result = openpgp_parse_armored_pubkey(armored_text, ed25519_pk);
-90   SAFE_FREE(armored_text);
-91 
-92   if (result != ASCIICHAT_OK) {
-93     return result;
-94   }
-95 
-96   // Initialize the public key structure
-97   memset(key_out, 0, sizeof(public_key_t));
-98   key_out-&gt;type = KEY_TYPE_GPG;
-99   memcpy(key_out-&gt;key, ed25519_pk, 32);
-100 
-101   // Set comment for display
-102   safe_snprintf(key_out-&gt;comment, sizeof(key_out-&gt;comment), &quot;GPG Ed25519 key&quot;);
-103 
-104   return ASCIICHAT_OK;
-105 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>openpgp_parse_armored_pubkey()</b>, and
-    <b>safe_snprintf()</b>.</p>
-<p class="Pp">Referenced by <b>parse_public_key()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -455,7 +91,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

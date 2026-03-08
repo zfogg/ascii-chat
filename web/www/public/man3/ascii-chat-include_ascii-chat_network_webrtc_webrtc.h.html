@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>webrtc.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">webrtc.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">webrtc.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">webrtc.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>webrtc_config_t</b>
+  <br/>
+  WebRTC configuration. struct <b>webrtc_datachannel_callbacks_t</b>
+  <br/>
+  DataChannel callback structure.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>webrtc_peer_connection</b>
+    <b>webrtc_peer_connection_t</b>
+  <br/>
+  typedef struct <b>webrtc_data_channel</b> <b>webrtc_data_channel_t</b>
+  <br/>
+  typedef void(* <b>webrtc_state_callback_t</b>)
+    (<b>webrtc_peer_connection_t</b> *pc, <b>webrtc_state_t</b> state, void
+    *user_data)
+  <br/>
+  Callback for state changes. typedef void(*
+    <b>webrtc_local_description_callback_t</b>) (<b>webrtc_peer_connection_t</b>
+    *pc, const char *sdp, const char *type, void *user_data)
+  <br/>
+  Callback for local SDP offer/answer generation. typedef void(*
+    <b>webrtc_local_candidate_callback_t</b>) (<b>webrtc_peer_connection_t</b>
+    *pc, const char *candidate, const char *mid, void *user_data)
+  <br/>
+  Callback for local ICE candidate discovery. typedef void(*
+    <b>webrtc_gathering_state_callback_t</b>) (<b>webrtc_peer_connection_t</b>
+    *pc, <b>webrtc_gathering_state_t</b> state, void *user_data)
+  <br/>
+  Callback for ICE gathering state changes. typedef void(*
+    <b>webrtc_datachannel_open_callback_t</b>) (<b>webrtc_data_channel_t</b>
+    *dc, void *user_data)
+  <br/>
+  Callback for DataChannel open event. typedef void(*
+    <b>webrtc_datachannel_message_callback_t</b>) (<b>webrtc_data_channel_t</b>
+    *dc, const <b>uint8_t</b> *data, size_t size, void *user_data)
+  <br/>
+  Callback for DataChannel message received. typedef void(*
+    <b>webrtc_datachannel_error_callback_t</b>) (<b>webrtc_data_channel_t</b>
+    *dc, const char *error, void *user_data)
+  <br/>
+  Callback for DataChannel error.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>webrtc_state_t</b> { <b>WEBRTC_STATE_NEW</b> = 0,
+    <b>WEBRTC_STATE_CONNECTING</b>, <b>WEBRTC_STATE_CONNECTED</b>,
+    <b>WEBRTC_STATE_DISCONNECTED</b>, <b>WEBRTC_STATE_FAILED</b>,
+    <b>WEBRTC_STATE_CLOSED</b> }
+  <br/>
+  WebRTC connection state. enum <b>webrtc_gathering_state_t</b> {
+    <b>WEBRTC_GATHERING_NEW</b> = 0, <b>WEBRTC_GATHERING_GATHERING</b>,
+    <b>WEBRTC_GATHERING_COMPLETE</b> }
+  <br/>
+  ICE gathering state.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>webrtc_init</b> (void)
+  <br/>
+  Initialize WebRTC library (libdatachannel). void <b>webrtc_destroy</b> (void)
+  <br/>
+  Cleanup WebRTC library resources. <b>asciichat_error_t</b>
+    <b>webrtc_create_peer_connection</b> (const <b>webrtc_config_t</b> *config,
+    <b>webrtc_peer_connection_t</b> **pc_out)
+  <br/>
+  Create a new WebRTC peer connection. void <b>webrtc_close_peer_connection</b>
+    (<b>webrtc_peer_connection_t</b> *pc)
+  <br/>
+  Close and destroy a peer connection. <b>webrtc_state_t</b>
+    <b>webrtc_get_state</b> (<b>webrtc_peer_connection_t</b> *pc)
+  <br/>
+  Get current connection state. <b>webrtc_gathering_state_t</b>
+    <b>webrtc_get_gathering_state</b> (<b>webrtc_peer_connection_t</b> *pc)
+  <br/>
+  Get current ICE gathering state. <b>bool</b>
+    <b>webrtc_is_gathering_timed_out</b> (<b>webrtc_peer_connection_t</b> *pc,
+    <b>uint32_t</b> timeout_ms)
+  <br/>
+  Check if ICE gathering has timed out. void * <b>webrtc_get_user_data</b>
+    (<b>webrtc_peer_connection_t</b> *pc)
+  <br/>
+  Get user data pointer from connection. <b>asciichat_error_t</b>
+    <b>webrtc_create_offer</b> (<b>webrtc_peer_connection_t</b> *pc)
+  <br/>
+  Create and set local SDP offer (for connection initiator).
+    <b>asciichat_error_t</b> <b>webrtc_set_remote_description</b>
+    (<b>webrtc_peer_connection_t</b> *pc, const char *sdp, const char *type)
+  <br/>
+  Set remote SDP offer/answer. <b>asciichat_error_t</b>
+    <b>webrtc_add_remote_candidate</b> (<b>webrtc_peer_connection_t</b> *pc,
+    const char *candidate, const char *mid)
+  <br/>
+  Add remote ICE candidate. <b>asciichat_error_t</b>
+    <b>webrtc_create_datachannel</b> (<b>webrtc_peer_connection_t</b> *pc, const
+    char *label, <b>webrtc_data_channel_t</b> **dc_out)
+  <br/>
+  Create a DataChannel (for connection initiator). <b>asciichat_error_t</b>
+    <b>webrtc_datachannel_send</b> (<b>webrtc_data_channel_t</b> *dc, const
+    <b>uint8_t</b> *data, size_t size)
+  <br/>
+  Send data over DataChannel. <b>bool</b> <b>webrtc_datachannel_is_open</b>
+    (<b>webrtc_data_channel_t</b> *dc)
+  <br/>
+  Check if DataChannel is open and ready. void
+    <b>webrtc_datachannel_set_open_state</b> (<b>webrtc_data_channel_t</b> *dc,
+    <b>bool</b> is_open)
+  <br/>
+  Set DataChannel open state (internal use). const char *
+    <b>webrtc_datachannel_get_label</b> (<b>webrtc_data_channel_t</b> *dc)
+  <br/>
+  Get DataChannel label. <b>asciichat_error_t</b>
+    <b>webrtc_datachannel_set_callbacks</b> (<b>webrtc_data_channel_t</b> *dc,
+    const <b>webrtc_datachannel_callbacks_t</b> *callbacks)
+  <br/>
+  Set DataChannel callbacks. void <b>webrtc_close_datachannel</b>
+    (<b>webrtc_data_channel_t</b> *dc)
+  <br/>
+  Close a DataChannel. void <b>webrtc_datachannel_destroy</b>
+    (<b>webrtc_data_channel_t</b> *dc)
+  <br/>
+  Destroy a DataChannel and free resources. void
+    <b>webrtc_peer_connection_close</b> (<b>webrtc_peer_connection_t</b> *pc)
+  <br/>
+  Close a peer connection. void <b>webrtc_peer_connection_destroy</b>
+    (<b>webrtc_peer_connection_t</b> *pc)
+  <br/>
+  Destroy a peer connection and free resources. int <b>webrtc_get_rtc_id</b>
+    (<b>webrtc_peer_connection_t</b> *pc)
+  <br/>
+  Get the internal libdatachannel peer connection ID.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

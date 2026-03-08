@@ -37,15 +37,19 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>acip_server_validate_session_create</b>
-    (const acip_session_create_t *req)
+<p class="Pp"><b>asciichat_error_t</b>
+    <b>acip_server_validate_session_create</b> (const
+    <b>acip_session_create_t</b> *req)
   <br/>
-  asciichat_error_t <b>acip_server_validate_session_join</b> (const
-    acip_session_join_t *req)
+  Validate ACIP session create request. <b>asciichat_error_t</b>
+    <b>acip_server_validate_session_join</b> (const <b>acip_session_join_t</b>
+    *req)
   <br/>
-  asciichat_error_t <b>acip_server_send_error</b> (<b>socket_t</b> sockfd,
-    acip_error_code_t <b>error_code</b>, const char *error_message)
+  Validate ACIP session join request. <b>asciichat_error_t</b>
+    <b>acip_server_send_error</b> (<b>socket_t</b> sockfd,
+    <b>acip_error_code_t</b> <b>error_code</b>, const char *error_message)
   <br/>
+  Send ACIP error response to client.
   <br/>
 </p>
 </section>
@@ -54,9 +58,20 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_acip_server_send_error_("><a class="permalink" href="#asciichat_error_t_acip_server_send_error_(">asciichat_error_t
-  acip_server_send_error (<b>socket_t</b> sockfd, acip_error_code_t error_code,
-  const char * error_message)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> acip_server_send_error (<b>socket_t</b>
+  sockfd, <b>acip_error_code_t</b> error_code, const char * error_message)</h2>
+<p class="Pp">Send ACIP error response to client.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>sockfd</i> Client socket
+<br/>
+<i></i><b>error_code</b><i></i><b> ACIP error code</b>
+<br/>
+<i>error_message</i> Human-readable error message (max 255 chars)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Sends PACKET_TYPE_ACIP_ERROR response to client with specified
+    error code and message. Message will be truncated if longer than 255
+    characters.</p>
 <p class="Pp">Definition at line <b>74</b> of file <b>acds_server.c</b>.</p>
 <pre>74                                                                                                                    {
 75   if (sockfd == INVALID_SOCKET_VALUE) {
@@ -89,12 +104,21 @@
 102 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>error_code</b>, and <b>send_packet()</b>.</p>
+<p class="Pp">References <b>acip_error_t</b>, <b>ASCIICHAT_OK</b>,
+    <b>error_code</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>,
+    <b>INVALID_SOCKET_VALUE</b>, <b>PACKET_TYPE_ACIP_ERROR</b>,
+    <b>send_packet()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_acip_server_validate_session_create_(const_acip_session_create_t_*_req)"><a class="permalink" href="#asciichat_error_t_acip_server_validate_session_create_(const_acip_session_create_t_*_req)">asciichat_error_t
-  acip_server_validate_session_create (const acip_session_create_t *
-  req)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> acip_server_validate_session_create
+  (const <b>acip_session_create_t</b> * req)</h2>
+<p class="Pp">Validate ACIP session create request.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>req</i> Session create request packet</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK if valid, error code if invalid</div>
+<p class="Pp">Validates that a SESSION_CREATE request has all required fields
+    populated correctly (identity, signature, capabilities, etc.).</p>
 <p class="Pp">Definition at line <b>27</b> of file <b>acds_server.c</b>.</p>
 <pre>27                                                                                         {
 28   if (!req) {
@@ -122,10 +146,19 @@
 50 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>acip_session_create_t</b>, <b>ASCIICHAT_OK</b>,
+    <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_acip_server_validate_session_join_(const_acip_session_join_t_*_req)"><a class="permalink" href="#asciichat_error_t_acip_server_validate_session_join_(const_acip_session_join_t_*_req)">asciichat_error_t
-  acip_server_validate_session_join (const acip_session_join_t * req)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> acip_server_validate_session_join (const
+  <b>acip_session_join_t</b> * req)</h2>
+<p class="Pp">Validate ACIP session join request.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>req</i> Session join request packet</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK if valid, error code if invalid</div>
+<p class="Pp">Validates that a SESSION_JOIN request has all required fields
+    populated correctly (session string, identity, signature, etc.).</p>
 <p class="Pp">Definition at line <b>52</b> of file <b>acds_server.c</b>.</p>
 <pre>52                                                                                     {
 53   if (!req) {
@@ -146,6 +179,9 @@
 68 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>ACIP_MAX_SESSION_STRING_LEN</b>,
+    <b>acip_session_join_t</b>, <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    and <b>SET_ERRNO</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -155,7 +191,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

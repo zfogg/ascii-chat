@@ -60,7 +60,7 @@
 <br/>
 <p class="Pp"><b>server_stats_t</b> <b>g_stats</b> = {0}
   <br/>
-  Global server statistics structure. mutex_t <b>g_stats_mutex</b> = {0}
+  Global server statistics structure. <b>mutex_t</b> <b>g_stats_mutex</b> = {0}
   <br/>
   Mutex protecting global server statistics.
   <br/>
@@ -314,8 +314,9 @@
 570 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>g_stats</b>, <b>g_stats_mutex</b>, and
-    <b>lifecycle_is_initialized()</b>.</p>
+<p class="Pp">References <b>g_stats</b>, <b>g_stats_mutex</b>,
+    <b>lifecycle_is_initialized()</b>, <b>log_info</b>, <b>mutex_lock</b>, and
+    <b>mutex_unlock</b>.</p>
 <p class="Pp">Referenced by <b>stats_logger_thread()</b>.</p>
 <section class="Ss">
 <h2 class="Ss" id="void_stats_cleanup_(void_)"><a class="permalink" href="#void_stats_cleanup_(void_)">void
@@ -630,14 +631,18 @@
 443 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_errno_destroy()</b>,
-    <b>asciichat_error_stats_print()</b>, <b>atomic_load_bool()</b>,
-    <b>debug_sync_get_stats()</b>, <b>debug_sync_is_initialized()</b>,
-    <b>g_client_manager</b>, <b>g_client_manager_rwlock</b>,
-    <b>g_should_exit</b>, <b>log_server_stats()</b>,
-    <b>packet_queue_get_stats()</b>, <b>platform_sleep_us()</b>,
-    <b>safe_snprintf()</b>, <b>stats</b>, and
-  <b>video_frame_get_stats()</b>.</p>
+<p class="Pp">References <b>client_info::active</b>,
+    <b>asciichat_errno_destroy()</b>, <b>asciichat_error_stats_print()</b>,
+    <b>atomic_load_bool()</b>, <b>client_info::audio_queue</b>,
+    <b>BUFFER_SIZE_MEDIUM</b>, <b>BUFFER_SIZE_XLARGE</b>,
+    <b>client_info::client_id</b>, <b>debug_sync_get_stats()</b>,
+    <b>debug_sync_is_initialized()</b>, <b>g_client_manager</b>,
+    <b>g_client_manager_rwlock</b>, <b>g_should_exit</b>, <b>log_info</b>,
+    <b>log_server_stats()</b>, <b>MAX_CLIENTS</b>,
+    <b>client_info::outgoing_video_buffer</b>, <b>packet_queue_get_stats()</b>,
+    <b>platform_sleep_us()</b>, <b>rwlock_rdlock</b>, <b>rwlock_rdunlock</b>,
+    <b>safe_snprintf()</b>, <b>stats</b>, <b>US_PER_MS_INT</b>, and
+    <b>video_frame_get_stats()</b>.</p>
 <p class="Pp">Referenced by <b>server_main()</b>.</p>
 <section class="Ss">
 <h2 class="Ss" id="void_update_server_stats_(void_)"><a class="permalink" href="#void_update_server_stats_(void_)">void
@@ -719,9 +724,13 @@
 510 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, <b>g_client_manager</b>,
-    <b>g_client_manager_rwlock</b>, <b>g_stats</b>, <b>g_stats_mutex</b>,
-    <b>stats</b>, and <b>video_frame_get_stats()</b>.</p>
+<p class="Pp">References <b>client_info::active</b>, <b>atomic_load_bool()</b>,
+    <b>client_info::client_id</b>, <b>client_info::frames_sent</b>,
+    <b>g_client_manager</b>, <b>g_client_manager_rwlock</b>, <b>g_stats</b>,
+    <b>g_stats_mutex</b>, <b>MAX_CLIENTS</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, <b>client_info::outgoing_video_buffer</b>,
+    <b>rwlock_rdlock</b>, <b>rwlock_rdunlock</b>, <b>stats</b>, and
+    <b>video_frame_get_stats()</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
@@ -750,8 +759,7 @@
     <b>update_server_stats()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="mutex_t_g_stats_mutex_=__0_"><a class="permalink" href="#mutex_t_g_stats_mutex_=__0_">mutex_t
-  g_stats_mutex = {0}</a></h2>
+<h2 class="Ss"><b>mutex_t</b> g_stats_mutex = {0}</h2>
 <p class="Pp">Mutex protecting global server statistics. Ensures thread-safe
     access to g_stats structure from both the statistics collection thread and
     any operational threads that update counters. Uses standard mutex (not
@@ -771,7 +779,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -52,26 +52,33 @@
 <p class="Pp">void <b>escape_ascii</b> (const char *str, const char
     *escape_char, char *out_buffer, size_t out_buffer_size)
   <br/>
-  <b>bool</b> <b>validate_shell_safe</b> (const char *str, const char
-    *allowed_chars)
+  Escape ASCII characters in a string. <b>bool</b> <b>validate_shell_safe</b>
+    (const char *str, const char *allowed_chars)
   <br/>
   <b>bool</b> <b>escape_shell_single_quotes</b> (const char *str, char
     *out_buffer, size_t out_buffer_size)
   <br/>
-  <b>bool</b> <b>escape_shell_double_quotes</b> (const char *str, char
+  Validate that a string contains only safe characters for shell commands.
+    <b>bool</b> <b>escape_shell_double_quotes</b> (const char *str, char
     *out_buffer, size_t out_buffer_size)
   <br/>
-  <b>bool</b> <b>string_needs_shell_quoting</b> (const char *str)
+  Escape a string for safe use in shell commands (double quotes,
+    Windows-compatible). <b>bool</b> <b>string_needs_shell_quoting</b> (const
+    char *str)
   <br/>
   <b>bool</b> <b>escape_path_for_shell</b> (const char *path, char *out_buffer,
     size_t out_buffer_size)
   <br/>
-  const char * <b>colored_string</b> (<b>log_color_t</b> color, const char
+  Check if a string needs shell quoting (contains spaces or special chars).
+    const char * <b>colored_string</b> (<b>log_color_t</b> color, const char
     *text)
   <br/>
-  void <b>truncate_utf8_with_ellipsis</b> (const char *input, char *output,
-    size_t output_size, int max_width)
+  Build a colored string for terminal output. void
+    <b>truncate_utf8_with_ellipsis</b> (const char *input, char *output, size_t
+    output_size, int max_width)
   <br/>
+  Truncate UTF-8 string to fit within max display width, adding ellipsis if
+    truncated.
   <br/>
 </p>
 </section>
@@ -103,261 +110,6 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="const_char_*_colored_string_("><a class="permalink" href="#const_char_*_colored_string_(">const
-  char * colored_string (<b>log_color_t</b> color, const char * text)</a></h2>
-<p class="Pp">Definition at line <b>271</b> of file <b>util/string.c</b>.</p>
-<pre>271                                                                 {
-272 #define COLORED_BUFFERS 4
-273 #define COLORED_BUFFER_SIZE 256
-274   static char buffers[COLORED_BUFFERS][COLORED_BUFFER_SIZE];
-275   static int buffer_idx = 0;
-276 
-277   if (!text) {
-278     return &quot;&quot;;
-279   }
-280 
-281   // Check if we should use colors
-282   // Use global flag that persists even after options cleanup
-283   bool use_colors = false;
-284 
-285   // Priority 1: If --color was explicitly passed, force colors
-286   if (g_color_flag_passed &amp;&amp; g_color_flag_value) {
-287     use_colors = true;
-288   }
-289   // Priority 2: If --color NOT explicitly passed, use terminal detection
-290   else if (!g_color_flag_passed) {
-291     use_colors = terminal_should_color_output(STDOUT_FILENO);
-292   }
-293   // Priority 3: If --color=false was explicitly passed, disable colors
-294   // (use_colors stays false)
-295 
-296   if (!use_colors) {
-297     // No colors, just return the text directly
-298     return text;
-299   }
-300 
-301   // Use rotating buffer to handle multiple calls in same fprintf
-302   char *current_buf = buffers[buffer_idx];
-303   buffer_idx = (buffer_idx + 1) % COLORED_BUFFERS;
-304 
-305   const char *color_code = log_level_color(color);
-306   const char *reset_code = log_level_color(LOG_COLOR_RESET);
-307 
-308   // Ensure we never pass NULL to snprintf (handle uninitialized color system)
-309   if (!color_code)
-310     color_code = &quot;&quot;;
-311   if (!reset_code)
-312     reset_code = &quot;&quot;;
-313 
-314   // Format into rotating static buffer: color_code + text + reset_code
-315   safe_snprintf(current_buf, COLORED_BUFFER_SIZE, &quot;%s%s%s&quot;, color_code, text, reset_code);
-316   return current_buf;
-317 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>COLORED_BUFFER_SIZE</b>, <b>COLORED_BUFFERS</b>,
-    <b>g_color_flag_passed</b>, <b>g_color_flag_value</b>,
-    <b>log_level_color()</b>, <b>safe_snprintf()</b>, and
-    <b>terminal_should_color_output()</b>.</p>
-<p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
-    <b>action_show_version()</b>, <b>asciichat_print_error_context()</b>,
-    <b>backtrace_print()</b>, <b>colorize_log_message()</b>,
-    <b>colorize_named_string()</b>, <b>log_labeled()</b>,
-    <b>log_template_apply()</b>, <b>mutex_stack_detect_deadlocks()</b>,
-    <b>options_config_calculate_max_col_width()</b>,
-    <b>options_config_print_options_sections_with_width()</b>,
-    <b>options_config_print_usage()</b>, <b>options_print_help_for_mode()</b>,
-    <b>platform_is_binary_in_path()</b>, and <b>print_project_links()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_escape_ascii_(const_char_*_str,_const_char_*_escape_char,_char_*_out_buffer,_size_t_out_buffer_size)"><a class="permalink" href="#void_escape_ascii_(const_char_*_str,_const_char_*_escape_char,_char_*_out_buffer,_size_t_out_buffer_size)">void
-  escape_ascii (const char * str, const char * escape_char, char * out_buffer,
-  size_t out_buffer_size)</a></h2>
-<p class="Pp">Definition at line <b>17</b> of file <b>util/string.c</b>.</p>
-<pre>17                                                                                                       {
-18   if (escape_char == NULL || str == NULL || !out_buffer || out_buffer_size == 0) {
-19     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid string or escape character or output buffer&quot;);
-20     return;
-21   }
-22 
-23   // Count how many characters need escaping
-24   size_t escape_count = 0;
-25   for (size_t i = 0; i &lt; strlen(str); i++) {
-26     for (size_t j = 0; j &lt; strlen(escape_char); j++) {
-27       if (str[i] == escape_char[j]) {
-28         escape_count++;
-29         break;
-30       }
-31     }
-32   }
-33 
-34   size_t total_len = strlen(str) + escape_count;
-35   if (out_buffer_size &lt; total_len) {
-36     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output buffer is too small&quot;);
-37     return;
-38   }
-39 
-40   size_t out_pos = 0;
-41   for (size_t i = 0; i &lt; strlen(str); i++) {
-42     bool needs_escape = false;
-43     for (size_t j = 0; j &lt; strlen(escape_char); j++) {
-44       if (str[i] == escape_char[j]) {
-45         needs_escape = true;
-46         break;
-47       }
-48     }
-49 
-50     if (needs_escape) {
-51       out_buffer[out_pos++] = '\\';
-52     }
-53     out_buffer[out_pos++] = str[i];
-54   }
-55 
-56   out_buffer[out_pos] = '\0';
-57 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>display_mitm_warning()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> escape_path_for_shell (const char * path, char *
-  out_buffer, size_t out_buffer_size)</h2>
-<p class="Pp">Definition at line <b>241</b> of file <b>util/string.c</b>.</p>
-<pre>241                                                                                        {
-242   if (!path || !out_buffer || out_buffer_size == 0) {
-243     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid path or output buffer&quot;);
-244     return false;
-245   }
-246 
-247   // Check if quoting is needed
-248   if (!string_needs_shell_quoting(path)) {
-249     // No quoting needed, just copy the path
-250     size_t path_len = strlen(path);
-251     if (out_buffer_size &lt;= path_len) {
-252       SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Output buffer too small for path&quot;);
-253       return false;
-254     }
-255     SAFE_STRNCPY(out_buffer, path, out_buffer_size);
-256     return true;
-257   }
-258 
-259   // Quoting is needed, use platform-specific escaping
-260 #ifdef _WIN32
-261   return escape_shell_double_quotes(path, out_buffer, out_buffer_size);
-262 #else
-263   return escape_shell_single_quotes(path, out_buffer, out_buffer_size);
-264 #endif
-265 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>escape_shell_double_quotes()</b>,
-    <b>escape_shell_single_quotes()</b>, and
-    <b>string_needs_shell_quoting()</b>.</p>
-<p class="Pp">Referenced by <b>gpg_sign_with_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> escape_shell_double_quotes (const char * str, char *
-  out_buffer, size_t out_buffer_size)</h2>
-<p class="Pp">Definition at line <b>171</b> of file <b>util/string.c</b>.</p>
-<pre>171                                                                                            {
-172   if (!str || !out_buffer || out_buffer_size == 0) {
-173     return false;
-174   }
-175 
-176   // Calculate required size: each &quot; becomes \&quot; (2 chars) instead of 1
-177   // Each \ also needs escaping, so \\ becomes \\\\
-178   // Worst case: all chars are quotes/backslashes, so we need strlen(str) * 2 + 2 (for surrounding quotes)
-179   size_t required_size = 2; // Start and end quotes
-180   for (size_t i = 0; str[i] != '\0'; i++) {
-181     if (str[i] == '&quot;' || str[i] == '\\') {
-182       required_size += 2; // \&quot; or '\\'
-183     } else {
-184       required_size += 1;
-185     }
-186   }
-187 
-188   if (out_buffer_size &lt; required_size) {
-189     SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Output buffer too small for shell escaping&quot;);
-190     return false;
-191   }
-192 
-193   size_t out_pos = 0;
-194   out_buffer[out_pos++] = '&quot;'; // Opening quote
-195 
-196   for (size_t i = 0; str[i] != '\0'; i++) {
-197     if (str[i] == '&quot;') {
-198       // Escape double quote: &quot; becomes \&quot;
-199       out_buffer[out_pos++] = '\\';
-200       out_buffer[out_pos++] = '&quot;';
-201     } else if (str[i] == '\\') {
-202       // Escape backslash: \ becomes '\\'
-203       out_buffer[out_pos++] = '\\';
-204       out_buffer[out_pos++] = '\\';
-205     } else {
-206       out_buffer[out_pos++] = str[i];
-207     }
-208   }
-209 
-210   out_buffer[out_pos++] = '&quot;'; // Closing quote
-211   out_buffer[out_pos] = '\0';
-212 
-213   return true;
-214 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>escape_path_for_shell()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> escape_shell_single_quotes (const char * str, char *
-  out_buffer, size_t out_buffer_size)</h2>
-<p class="Pp">Definition at line <b>129</b> of file <b>util/string.c</b>.</p>
-<pre>129                                                                                            {
-130   if (!str || !out_buffer || out_buffer_size == 0) {
-131     return false;
-132   }
-133 
-134   // Calculate required size: each ' becomes '\'' (4 chars) instead of 1
-135   // Worst case: all chars are quotes, so we need strlen(str) * 4 + 2 (for surrounding quotes)
-136   size_t required_size = 2; // Start and end quotes
-137   for (size_t i = 0; str[i] != '\0'; i++) {
-138     if (str[i] == '\'') {
-139       required_size += 4; // '\''
-140     } else {
-141       required_size += 1;
-142     }
-143   }
-144 
-145   if (out_buffer_size &lt; required_size) {
-146     SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Output buffer too small for shell escaping&quot;);
-147     return false;
-148   }
-149 
-150   size_t out_pos = 0;
-151   out_buffer[out_pos++] = '\''; // Opening quote
-152 
-153   for (size_t i = 0; str[i] != '\0'; i++) {
-154     if (str[i] == '\'') {
-155       // Replace ' with '\'' (close quote, escaped quote, open quote)
-156       out_buffer[out_pos++] = '\'';
-157       out_buffer[out_pos++] = '\\';
-158       out_buffer[out_pos++] = '\'';
-159       out_buffer[out_pos++] = '\'';
-160     } else {
-161       out_buffer[out_pos++] = str[i];
-162     }
-163   }
-164 
-165   out_buffer[out_pos++] = '\''; // Closing quote
-166   out_buffer[out_pos] = '\0';
-167 
-168   return true;
-169 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>escape_path_for_shell()</b>, and
-    <b>gpg_get_public_key()</b>.</p>
-</section>
-<section class="Ss">
 <h2 class="Ss"><b>bool</b> string_needs_shell_quoting (const char * str)</h2>
 <p class="Pp">Definition at line <b>216</b> of file <b>util/string.c</b>.</p>
 <pre>216                                                  {
@@ -387,66 +139,6 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>escape_path_for_shell()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_truncate_utf8_with_ellipsis_(const_char_*_input,_char_*_output,_size_t_output_size,_int_max_width)"><a class="permalink" href="#void_truncate_utf8_with_ellipsis_(const_char_*_input,_char_*_output,_size_t_output_size,_int_max_width)">void
-  truncate_utf8_with_ellipsis (const char * input, char * output, size_t
-  output_size, int max_width)</a></h2>
-<p class="Pp">Definition at line <b>319</b> of file <b>util/string.c</b>.</p>
-<pre>319                                                                                                      {
-320   if (!input || !output || output_size &lt; 2) {
-321     if (output &amp;&amp; output_size &gt; 0)
-322       output[0] = '\0';
-323     return;
-324   }
-325 
-326   // Copy input to output first
-327   int input_len = strlen(input);
-328   if (input_len &gt;= (int)output_size) {
-329     input_len = output_size - 1;
-330   }
-331   memcpy(output, input, input_len);
-332   output[input_len] = '\0';
-333 
-334   // Get display width of current string
-335   int current_width = utf8_display_width(output);
-336 
-337   // If it fits, we're done
-338   if (current_width &lt;= max_width) {
-339     return;
-340   }
-341 
-342   // Need to truncate - reserve space for &quot;...&quot; (3 chars, 3 width)
-343   int available_width = max_width - 3;
-344   if (available_width &lt;= 0) {
-345     // No room for ellipsis, just show &quot;...&quot;
-346     output[0] = '.';
-347     output[1] = '.';
-348     output[2] = '.';
-349     output[3] = '\0';
-350     return;
-351   }
-352 
-353   // Truncate byte by byte until we fit in available_width
-354   for (int i = input_len - 1; i &gt; 0; i--) {
-355     output[i] = '\0';
-356     current_width = utf8_display_width(output);
-357     if (current_width &lt;= available_width) {
-358       // Found the right length - add ellipsis
-359       strcat(output, &quot;...&quot;);
-360       return;
-361     }
-362   }
-363 
-364   // Fallback: just &quot;...&quot;
-365   output[0] = '.';
-366   output[1] = '.';
-367   output[2] = '.';
-368   output[3] = '\0';
-369 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>utf8_display_width()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> validate_shell_safe (const char * str, const char *
@@ -534,7 +226,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

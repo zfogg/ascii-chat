@@ -1,0 +1,2754 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>debug_named(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">debug_named(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">debug_named(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">debug_named - Debug_named</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+<br/>
+<p class="Pp">file <b>named.c</b>
+  <br/>
+  Named object registry for debugging. file <b>named.h</b>
+  <br/>
+  Named object registry for debugging &#x2014; log identifiable resource names.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>NAMED_REGISTER</b>(ptr, name, type, fmt, parent_ptr)
+  <br/>
+  Register any pointer with base name, type, format spec, and location
+    (auto-suffix). #define <b>NAMED_REGISTER_FMT</b>(ptr, type, fmt_spec, fmt,
+    ...)
+  <br/>
+  Register with a formatted name, type, and format spec. #define
+    <b>NAMED_UNREGISTER</b>(ptr)
+  <br/>
+  Unregister a pointer. #define <b>NAMED_GET</b>(ptr)
+  <br/>
+  Look up registered name for a pointer. #define <b>NAMED_DESCRIBE</b>(ptr,
+    hint)
+  <br/>
+  Describe a pointer in log format. #define <b>NAMED_REGISTER_ID</b>(id, name,
+    type, fmt, parent_ptr)
+  <br/>
+  Register an integer handle (fd, socket, etc.) with type. #define
+    <b>NAMED_UNREGISTER_ID</b>(id)
+  <br/>
+  Unregister an integer handle. #define <b>NAMED_DESCRIBE_ID</b>(id, hint)
+  <br/>
+  Describe an integer handle in log format. #define
+    <b>NAMED_REGISTER_MUTEX</b>(<b>mutex</b>, name, parent_ptr)
+  <br/>
+  Register a mutex with automatic format specifier. #define
+    <b>NAMED_REGISTER_RWLOCK</b>(lock, name, parent_ptr)
+  <br/>
+  Register an rwlock with automatic format specifier. #define
+    <b>NAMED_REGISTER_COND</b>(cond, name, parent_ptr)
+  <br/>
+  Register a condition variable with automatic format specifier. #define
+    <b>NAMED_REGISTER_SOCKET</b>(socket, name, parent_ptr)
+  <br/>
+  Register a socket with automatic format specifier. #define
+    <b>NAMED_UNREGISTER_SOCKET</b>(socket)
+  <br/>
+  #define <b>NAMED_REGISTER_WEBSOCKET</b>(websocket, name, parent_ptr)
+  <br/>
+  Register a WebSocket connection with automatic format specifier. #define
+    <b>NAMED_REGISTER_DATACHANNEL</b>(datachannel, name, parent_ptr)
+  <br/>
+  Register a data channel with automatic format specifier. #define
+    <b>NAMED_REGISTER_THREADPOOL_WORK</b>(work, name, parent_ptr)
+  <br/>
+  Register a thread pool work item with automatic format specifier. #define
+    <b>NAMED_REGISTER_CLIENT</b>(client, name, parent_ptr)
+  <br/>
+  Register a client connection with automatic format specifier. #define
+    <b>NAMED_REGISTER_CRYPTO_CONTEXT</b>(ctx, name, parent_ptr)
+  <br/>
+  Register a crypto context with automatic format specifier. #define
+    <b>NAMED_REGISTER_TRANSPORT</b>(transport, name, parent_ptr)
+  <br/>
+  Register a transport with automatic format specifier. #define
+    <b>NAMED_REGISTER_FRAME_BUFFER</b>(buf, name, parent_ptr)
+  <br/>
+  Register a frame buffer with automatic format specifier. #define
+    <b>NAMED_REGISTER_PACKET_QUEUE</b>(queue, name, parent_ptr)
+  <br/>
+  Register a packet queue with automatic format specifier. #define
+    <b>NAMED_REGISTER_AUDIO_RINGBUF</b>(buf, name, parent_ptr)
+  <br/>
+  Register an audio ring buffer with automatic format specifier. #define
+    <b>NAMED_REGISTER_MIXER</b>(mixer, name, parent_ptr)
+  <br/>
+  Register an audio mixer with automatic format specifier. #define
+    <b>NAMED_REGISTER_AUDIO_CODEC</b>(codec, name, parent_ptr)
+  <br/>
+  Register an audio codec with automatic format specifier. #define
+    <b>NAMED_REGISTER_VIDEO_ENCODER</b>(encoder, name, parent_ptr)
+  <br/>
+  Register a video encoder with automatic format specifier. #define
+    <b>NAMED_REGISTER_BUFFER_POOL</b>(<b>pool</b>, name, parent_ptr)
+  <br/>
+  Register a buffer pool with automatic format specifier. #define
+    <b>NAMED_REGISTER_FFMPEG_DECODER</b>(decoder, name, parent_ptr)
+  <br/>
+  Register an FFmpeg decoder with automatic format specifier. #define
+    <b>NAMED_REGISTER_FFMPEG_ENCODER</b>(encoder, name, parent_ptr)
+  <br/>
+  Register an FFmpeg encoder with automatic format specifier. #define
+    <b>NAMED_REGISTER_H265_ENCODER</b>(encoder, name, parent_ptr)
+  <br/>
+  Register an H.265 encoder with automatic format specifier. #define
+    <b>NAMED_REGISTER_H265_DECODER</b>(decoder, name, parent_ptr)
+  <br/>
+  Register an H.265 decoder with automatic format specifier. #define
+    <b>NAMED_REGISTER_AUDIO_CONTEXT</b>(ctx, name, parent_ptr)
+  <br/>
+  Register an audio context with automatic format specifier. #define
+    <b>NAMED_REGISTER_RATE_LIMITER</b>(limiter, name, parent_ptr)
+  <br/>
+  Register a rate limiter with automatic format specifier. #define
+    <b>NAMED_REGISTER_WAV_WRITER</b>(writer, name, parent_ptr)
+  <br/>
+  Register a WAV writer with automatic format specifier. #define
+    <b>NAMED_REGISTER_MEDIA_SOURCE</b>(source, name, parent_ptr)
+  <br/>
+  Register a media source with automatic format specifier. #define
+    <b>NAMED_OPEN</b>(pathname, name, flags, ...)
+  <br/>
+  Open a file and register the file descriptor. #define
+    <b>NAMED_UNREGISTER_FD</b>(fd)
+  <br/>
+  Unregister a file descriptor. #define <b>NAMED_REGISTER_FD</b>(fd, name)
+  <br/>
+  Register an existing file descriptor. #define <b>NAMED_REGISTER_ATOMIC</b>(a,
+    name, parent_ptr)
+  <br/>
+  Register an <b>atomic_t</b> with automatic format specifier. #define
+    <b>NAMED_REGISTER_ATOMIC_PTR</b>(a, name, parent_ptr)
+  <br/>
+  Register an _Atomic(void *) with automatic format specifier. #define
+    <b>NAMED_REGISTER_THREAD</b>(thread, name, parent_ptr)
+  <br/>
+  Register a thread handle with name and automatic format specifier. #define
+    <b>NAMED_UNREGISTER_THREAD</b>(thread)
+  <br/>
+  Unregister a thread handle. #define <b>NAMED_REGISTER_TCP_CLIENT</b>(client,
+    name, parent_ptr)
+  <br/>
+  Register a TCP client with automatic format specifier. #define
+    <b>NAMED_REGISTER_WEBSOCKET_CLIENT</b>(client, name, parent_ptr)
+  <br/>
+  Register a WebSocket client with automatic format specifier. #define
+    <b>NAMED_REGISTER_APP_CLIENT</b>(client, name, parent_ptr)
+  <br/>
+  Register an app client with automatic format specifier. #define
+    <b>NAMED_REGISTER_VIDEO_FRAME_BUFFER</b>(buf, name, parent_ptr)
+  <br/>
+  Register a video frame buffer with automatic format specifier. #define
+    <b>NAMED_REGISTER_NODE_POOL</b>(<b>pool</b>, name, parent_ptr)
+  <br/>
+  Register a node pool with automatic format specifier. #define
+    <b>NAMED_REGISTER_THREAD_POOL</b>(<b>pool</b>, name, parent_ptr)
+  <br/>
+  Register a thread pool with automatic format specifier. #define
+    <b>NAMED_REGISTER_OPTIONS_BUILDER</b>(builder, name, parent_ptr)
+  <br/>
+  Register an options builder with automatic format specifier. #define
+    <b>NAMED_REGISTER_SIMPLE_FRAME_SWAP</b>(swap, name, parent_ptr)
+  <br/>
+  Register a simple frame swap with automatic format specifier. #define
+    <b>NAMED_REGISTER_CLIENT_AUDIO_PIPELINE</b>(pipeline, name, parent_ptr)
+  <br/>
+  Register a client audio pipeline with automatic format specifier. #define
+    <b>NAMED_REGISTER_WEBSOCKET_IMPL</b>(data, name, parent_ptr)
+  <br/>
+  #define <b>NAMED_REGISTER_LWS_CONTEXT</b>(context, name, parent_ptr)
+  <br/>
+  Register a libwebsockets context with automatic format specifier. #define
+    <b>NAMED_REGISTER_FFMPEG_CONTEXT</b>(context, name, parent_ptr)
+  <br/>
+  Register an FFmpeg decoder context with automatic format specifier. #define
+    <b>NAMED_REGISTER_CONTEXT</b>(context, context_type, name, parent_ptr)
+  <br/>
+  Register a generic context with automatic format specifier. #define
+    <b>NAMED_GET_BY_PTR</b>(key, buffer, size)
+  <br/>
+  Get name of a pointer/key or format as address fallback. #define
+    <b>NAMED_GET_BY_INT</b>(id, buffer, size)
+  <br/>
+  Get name of an integer ID or format as hex fallback. #define
+    <b>NAMED_GET_BY_STR</b>(str, buffer, size)
+  <br/>
+  Copy a string to buffer, with bounds checking.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef void(* <b>named_iter_callback_t</b>) (uintptr_t key, const
+    char *name, void *user_data)
+  <br/>
+  Callback function for iterating registered entries.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>named_init</b> (void)
+  <br/>
+  Initialize the named object registry. void <b>named_destroy</b> (void)
+  <br/>
+  Destroy the named object registry. const char * <b>named_register</b>
+    (uintptr_t key, const char *base_name, const char *type, const char
+    *format_spec, const char *file, int line, const char *func, uintptr_t
+    parent_key)
+  <br/>
+  Register a resource with an auto-suffixed name, type, and location info. const
+    char * <b>named_register_fmt</b> (uintptr_t key, const char *type, const
+    char *format_spec, const char *file, int line, const char *func, const char
+    *fmt,...)
+  <br/>
+  Register a resource with a formatted name, type, and location info (no
+    auto-suffix). void <b>named_unregister</b> (uintptr_t key)
+  <br/>
+  Unregister a resource by key. const char * <b>named_update_name</b> (uintptr_t
+    key, const char *new_base_name)
+  <br/>
+  Update the registered name for a resource with a new base name. const char *
+    <b>named_get</b> (uintptr_t key)
+  <br/>
+  Look up the registered name for a resource. const char * <b>named_get_type</b>
+    (uintptr_t key)
+  <br/>
+  Look up the registered type for a resource. const char *
+    <b>named_get_format_spec</b> (uintptr_t key)
+  <br/>
+  Get the format specifier for a registered named object. const char *
+    <b>named_register_fd</b> (int fd, const char *file, int line, const char
+    *func)
+  <br/>
+  Register a file descriptor with namespace encoding. const char *
+    <b>named_get_fd</b> (int fd)
+  <br/>
+  Look up a registered file descriptor. const char *
+    <b>named_get_fd_format_spec</b> (int fd)
+  <br/>
+  Get the format specifier for a registered file descriptor. const char *
+    <b>named_register_packet_type</b> (int pkt_type, const char *file, int line,
+    const char *func)
+  <br/>
+  Register a packet type with namespace encoding. const char *
+    <b>named_get_packet_type</b> (int pkt_type)
+  <br/>
+  Look up a registered packet type. const char *
+    <b>named_get_packet_type_format_spec</b> (int pkt_type)
+  <br/>
+  Get the format specifier for a registered packet type. const char *
+    <b>named_get_by_type_and_id</b> (const char *type_name, size_t type_len, int
+    id)
+  <br/>
+  Look up an integer ID by type name and value. const char *
+    <b>named_describe</b> (uintptr_t key, const char *type_hint)
+  <br/>
+  Format a description string for logging. uintptr_t
+    <b>asciichat_thread_to_key</b> (<b>asciichat_thread_t</b> thread)
+  <br/>
+  Convert a thread handle to a registry key. const char *
+    <b>named_describe_thread</b> (void *thread)
+  <br/>
+  Describe a thread for logging (function wrapper). void
+    <b>named_registry_register_packet_types</b> (void)
+  <br/>
+  Register all packet types from <b>packet_type_t</b> enum. void
+    <b>named_registry_for_each</b> (<b>named_iter_callback_t</b> callback, void
+    *user_data)
+  <br/>
+  Iterate through all registered entries.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Type-Specific_Description_Macros"><a class="permalink" href="#Type-Specific_Description_Macros">Type-Specific
+  Description Macros</a></h2>
+<p class="Pp">These macros encapsulate the proper casting and type hint for
+    common types. Use these instead of NAMED_DESCRIBE for better readability and
+    consistency.
+  <br/>
+  #define <b>NAME_DESCRIBE_MUTEX</b>(m)
+  <br/>
+  Describe a <b>mutex_t</b> for logging. #define <b>NAME_DESCRIBE_RWLOCK</b>(l)
+  <br/>
+  Describe an <b>rwlock_t</b> for logging. #define <b>NAME_DESCRIBE_COND</b>(c)
+  <br/>
+  Describe a <b>cond_t</b> for logging. #define <b>NAME_DESCRIBE_THREAD</b>(t)
+  <br/>
+  Describe a thread for logging. #define <b>NAME_DESCRIBE_TRANSPORT</b>(tr)
+  <br/>
+  Describe a transport for logging. #define <b>NAME_DESCRIBE_SOCKET</b>(fd)
+  <br/>
+  Describe a socket for logging. #define <b>NAME_DESCRIBE_RINGBUF</b>(rb)
+  <br/>
+  Describe a ring buffer for logging.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">This module provides a centralized registry for naming any
+    addressable resource: mutexes, threads, sockets, ring buffers, network
+    connections, etc.</p>
+<p class="Pp"></p>
+<p class="Pp">Any value that fits in a uintptr_t can be registered with a
+    human-readable name. Names are auto-suffixed with a unique ID (e.g.,
+    &quot;recv_mutex.7&quot;) to distinguish multiple instances of the same
+    conceptual resource.</p>
+<p class="Pp"></p>
+<p class="Pp">The registry is thread-safe and zero-overhead in release builds
+    (NDEBUG).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Registry is not thread-safe for unregistration during
+  unwind. Always unregister resources before they become invalid (e.g., in
+  destroy/cleanup).</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="USAGE_EXAMPLES:"><a class="permalink" href="#USAGE_EXAMPLES:">USAGE
+  EXAMPLES: </a></h1>
+<p class="Pp">// Pointer-based (for heap objects, structs) <b>ringbuffer_t</b>
+    *rb = ringbuffer_create(...); NAMED_REGISTER(rb, &quot;recv_audio&quot;); //
+    auto name: &quot;recv_audio.3&quot; // ... use rb ...
+    <b>NAMED_UNREGISTER(rb)</b>; ringbuffer_destroy(rb);</p>
+<p class="Pp"></p>
+<p class="Pp">// Integer handle-based (for fd, socket, etc.) int client_fd =
+    accept(server_fd, ...); NAMED_REGISTER_ID(client_fd,
+    &quot;client_socket&quot;); // ... use client_fd ...
+    <b>NAMED_UNREGISTER_ID(client_fd)</b>; close(client_fd);</p>
+<p class="Pp"></p>
+<p class="Pp">// Describing in logs log_info(&quot;Data received on %s&quot;,
+    <b>NAME_DESCRIBE_SOCKET(fd)</b>); // Output: &quot;socket: client_socket.2
+    (0x8)&quot;</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">February 2026</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAME_DESCRIBE_COND(_c)"><a class="permalink" href="#_define_NAME_DESCRIBE_COND(_c)">#define
+  NAME_DESCRIBE_COND( c)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_describe((uintptr_t)(const void *)(c), &quot;cond&quot;)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Describe a <b>cond_t</b> for logging.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>c</i> Pointer to <b>cond_t</b></div>
+<p class="Pp">Definition at line <b>804</b> of file <b>debug/named.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAME_DESCRIBE_MUTEX(_m)"><a class="permalink" href="#_define_NAME_DESCRIBE_MUTEX(_m)">#define
+  NAME_DESCRIBE_MUTEX( m)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_describe((uintptr_t)(const void *)(m), &quot;mutex&quot;)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Describe a <b>mutex_t</b> for logging.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>m</i> Pointer to <b>mutex_t</b></div>
+<p class="Pp">Definition at line <b>790</b> of file <b>debug/named.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAME_DESCRIBE_RINGBUF(_rb)"><a class="permalink" href="#_define_NAME_DESCRIBE_RINGBUF(_rb)">#define
+  NAME_DESCRIBE_RINGBUF( rb)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_describe((uintptr_t)(const void *)(rb), &quot;ringbuf&quot;)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Describe a ring buffer for logging.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>rb</i> Pointer to <b>ringbuffer_t</b></div>
+<p class="Pp">Definition at line <b>834</b> of file <b>debug/named.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAME_DESCRIBE_RWLOCK(_l)"><a class="permalink" href="#_define_NAME_DESCRIBE_RWLOCK(_l)">#define
+  NAME_DESCRIBE_RWLOCK( l)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_describe((uintptr_t)(const void *)(l), &quot;rwlock&quot;)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Describe an <b>rwlock_t</b> for logging.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>l</i> Pointer to <b>rwlock_t</b></div>
+<p class="Pp">Definition at line <b>797</b> of file <b>debug/named.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAME_DESCRIBE_SOCKET(_fd)"><a class="permalink" href="#_define_NAME_DESCRIBE_SOCKET(_fd)">#define
+  NAME_DESCRIBE_SOCKET( fd)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_describe((uintptr_t)(intptr_t)(fd), &quot;socket&quot;)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Describe a socket for logging.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>fd</i> <b>socket_t</b> file descriptor</div>
+<p class="Pp">Definition at line <b>827</b> of file <b>debug/named.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAME_DESCRIBE_THREAD(_t)"><a class="permalink" href="#_define_NAME_DESCRIBE_THREAD(_t)">#define
+  NAME_DESCRIBE_THREAD( t)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_describe_thread(t)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Describe a thread for logging.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>t</i> <b>asciichat_thread_t</b> handle</div>
+<p class="Pp">Uses <b>named_describe_thread()</b> function to handle
+    platform-specific conversion.</p>
+<p class="Pp">Definition at line <b>813</b> of file <b>debug/named.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAME_DESCRIBE_TRANSPORT(_tr)"><a class="permalink" href="#_define_NAME_DESCRIBE_TRANSPORT(_tr)">#define
+  NAME_DESCRIBE_TRANSPORT( tr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_describe((uintptr_t)(const void *)(tr), &quot;transport&quot;)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Describe a transport for logging.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>tr</i> Pointer to <b>acip_transport_t</b></div>
+<p class="Pp">Definition at line <b>820</b> of file <b>debug/named.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_DESCRIBE(_ptr,__hint)"><a class="permalink" href="#_define_NAMED_DESCRIBE(_ptr,__hint)">#define
+  NAMED_DESCRIBE( ptr, hint)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_describe((uintptr_t)(const void *)(ptr), (hint))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Describe a pointer in log format.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ptr</i> Object pointer
+<br/>
+<i>hint</i> Type hint string (e.g., &quot;mutex&quot;)</div>
+<p class="Pp">Definition at line <b>355</b> of file <b>debug/named.h</b>.</p>
+<p class="Pp">Referenced by <b>websocket_server_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_DESCRIBE_ID(_id,__hint)"><a class="permalink" href="#_define_NAMED_DESCRIBE_ID(_id,__hint)">#define
+  NAMED_DESCRIBE_ID( id, hint)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_describe((uintptr_t)(intptr_t)(id), (hint))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Describe an integer handle in log format.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>id</i> Integer handle
+<br/>
+<i>hint</i> Type hint string (e.g., &quot;socket&quot;)</div>
+<p class="Pp">Definition at line <b>387</b> of file <b>debug/named.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_GET(_ptr)"><a class="permalink" href="#_define_NAMED_GET(_ptr)">#define
+  NAMED_GET( ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_get((uintptr_t)(const void *)(ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Look up registered name for a pointer.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ptr</i> Object pointer</div>
+<p class="Pp">Definition at line <b>347</b> of file <b>debug/named.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_GET_BY_INT(_id,__buffer,__size)"><a class="permalink" href="#_define_NAMED_GET_BY_INT(_id,__buffer,__size)">#define
+  NAMED_GET_BY_INT( id, buffer, size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  const char *_name = named_get((uintptr_t)(id));                                                                   \
+<br/>
+  if (_name) {                                                                                                       \
+<br/>
+    strncpy((buffer), (_name), (size) - 1);                                                                         \
+<br/>
+    (buffer)[(size) - 1] = '\0';                                                                                    \
+<br/>
+  } else {                                                                                                           \
+<br/>
+    snprintf((buffer), (size), &quot;0x%lx&quot;, (unsigned long)(id));                                                       \
+<br/>
+  }                                                                                                                  \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Get name of an integer ID or format as hex fallback.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>id</i> The integer ID to look up (e.g., thread ID, FD,
+  packet type)
+<br/>
+<i>buffer</i> Output buffer for the result
+<br/>
+<i>size</i> Size of the output buffer</div>
+<p class="Pp">Tries to look up the registered name for an integer ID. If found,
+    copies it to buffer. If not found, formats the ID as &quot;0x%lx&quot;
+    (hexadecimal).</p>
+<p class="Pp"></p>
+<p class="Pp">Use this for thread IDs and other small integer identifiers. In
+    release builds (NDEBUG), always formats as hex.</p>
+<p class="Pp">Definition at line <b>1057</b> of file <b>debug/named.h</b>.</p>
+<pre>1057 #define NAMED_GET_BY_INT(id, buffer, size)                                                                             \
+1058   do {                                                                                                                 \
+1059     const char *_name = named_get((uintptr_t)(id));                                                                   \
+1060     if (_name) {                                                                                                       \
+1061       strncpy((buffer), (_name), (size) - 1);                                                                         \
+1062       (buffer)[(size) - 1] = '\0';                                                                                    \
+1063     } else {                                                                                                           \
+1064       snprintf((buffer), (size), &quot;0x%lx&quot;, (unsigned long)(id));                                                       \
+1065     }                                                                                                                  \
+1066   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_GET_BY_PTR(_key,__buffer,__size)"><a class="permalink" href="#_define_NAMED_GET_BY_PTR(_key,__buffer,__size)">#define
+  NAMED_GET_BY_PTR( key, buffer, size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  const char *_name = named_get(key);                                                                               \
+<br/>
+  if (_name) {                                                                                                       \
+<br/>
+    strncpy((buffer), (_name), (size) - 1);                                                                         \
+<br/>
+    (buffer)[(size) - 1] = '\0';                                                                                    \
+<br/>
+  } else {                                                                                                           \
+<br/>
+    snprintf((buffer), (size), &quot;0x%tx&quot;, (ptrdiff_t)(key));                                                          \
+<br/>
+  }                                                                                                                  \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Get name of a pointer/key or format as address fallback.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>key</i> The uintptr_t key to look up
+<br/>
+<i>buffer</i> Output buffer for the result
+<br/>
+<i>size</i> Size of the output buffer</div>
+<p class="Pp">Tries to look up the registered name for the key. If found, copies
+    it to buffer. If not found, formats the key as &quot;0x%tx&quot;
+    (hexadecimal address).</p>
+<p class="Pp"></p>
+<p class="Pp">Useful in hot paths like logging where you want the name if
+    available, but need a reasonable fallback for unregistered keys.</p>
+<p class="Pp"></p>
+<p class="Pp">In release builds (NDEBUG), always formats as address.</p>
+<p class="Pp">Definition at line <b>1033</b> of file <b>debug/named.h</b>.</p>
+<pre>1033 #define NAMED_GET_BY_PTR(key, buffer, size)                                                                            \
+1034   do {                                                                                                                 \
+1035     const char *_name = named_get(key);                                                                               \
+1036     if (_name) {                                                                                                       \
+1037       strncpy((buffer), (_name), (size) - 1);                                                                         \
+1038       (buffer)[(size) - 1] = '\0';                                                                                    \
+1039     } else {                                                                                                           \
+1040       snprintf((buffer), (size), &quot;0x%tx&quot;, (ptrdiff_t)(key));                                                          \
+1041     }                                                                                                                  \
+1042   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>mutex_stack_detect_deadlocks()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_GET_BY_STR(_str,__buffer,__size)"><a class="permalink" href="#_define_NAMED_GET_BY_STR(_str,__buffer,__size)">#define
+  NAMED_GET_BY_STR( str, buffer, size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  if ((str)) {                                                                                                       \
+<br/>
+    strncpy((buffer), (str), (size) - 1);                                                                           \
+<br/>
+    (buffer)[(size) - 1] = '\0';                                                                                    \
+<br/>
+  } else {                                                                                                           \
+<br/>
+    (buffer)[0] = '\0';                                                                                              \
+<br/>
+  }                                                                                                                  \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Copy a string to buffer, with bounds checking.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>str</i> The string to copy (may be NULL)
+<br/>
+<i>buffer</i> Output buffer
+<br/>
+<i>size</i> Size of the output buffer</div>
+<p class="Pp">Safe string copy that handles NULL inputs and ensures null
+    termination. Useful for formatting optional or variable string fields.</p>
+<p class="Pp"></p>
+<p class="Pp">In release builds (NDEBUG), copies the string as-is.</p>
+<p class="Pp">Definition at line <b>1080</b> of file <b>debug/named.h</b>.</p>
+<pre>1080 #define NAMED_GET_BY_STR(str, buffer, size)                                                                            \
+1081   do {                                                                                                                 \
+1082     if ((str)) {                                                                                                       \
+1083       strncpy((buffer), (str), (size) - 1);                                                                           \
+1084       (buffer)[(size) - 1] = '\0';                                                                                    \
+1085     } else {                                                                                                           \
+1086       (buffer)[0] = '\0';                                                                                              \
+1087     }                                                                                                                  \
+1088   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_OPEN(_pathname,__name,__flags,__"><a class="permalink" href="#_define_NAMED_OPEN(_pathname,__name,__flags,__">#define
+  NAMED_OPEN( pathname, name, flags, ...)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>({                                                                                                                   \
+<br/>
+  int _fd;                                                                                                           \
+<br/>
+  if ((flags) &amp; O_CREAT) {                                                                                           \
+<br/>
+    _fd = platform_open((pathname), (flags), __VA_ARGS__);                                                           \
+<br/>
+  } else {                                                                                                           \
+<br/>
+    _fd = platform_open((pathname), (flags));                                                                        \
+<br/>
+  }                                                                                                                  \
+<br/>
+  if (_fd &gt;= 0) {                                                                                                    \
+<br/>
+    named_register_fd(_fd, __FILE__, __LINE__, __func__);                                                            \
+<br/>
+  }                                                                                                                  \
+<br/>
+  _fd;                                                                                                               \
+})</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Open a file and register the file descriptor.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pathname</i> File path to open
+<br/>
+<i>name</i> Debug name for the file descriptor
+<br/>
+<i>flags</i> Open flags (O_RDONLY, O_WRONLY, etc.)
+<br/>
+<i>...</i> Optional mode argument for O_CREAT</div>
+<p class="Pp">Convenience macro that opens a file and registers the returned FD.
+    Automatically uses &quot;%d&quot; format specifier for file descriptor
+    integers.</p>
+<p class="Pp"></p>
+<p class="Pp">Usage: int fd = NAMED_OPEN(&quot;/path/to/file&quot;,
+    &quot;myfile&quot;, O_RDONLY); int fd =
+    NAMED_OPEN(&quot;/path/to/file&quot;, &quot;myfile&quot;, O_CREAT |
+    O_WRONLY, 0644);</p>
+<p class="Pp">Definition at line <b>691</b> of file <b>debug/named.h</b>.</p>
+<pre>691 #define NAMED_OPEN(pathname, name, flags, ...)                                                                         \
+692   ({                                                                                                                   \
+693     int _fd;                                                                                                           \
+694     if ((flags) &amp; O_CREAT) {                                                                                           \
+695       _fd = platform_open((pathname), (flags), __VA_ARGS__);                                                           \
+696     } else {                                                                                                           \
+697       _fd = platform_open((pathname), (flags));                                                                        \
+698     }                                                                                                                  \
+699     if (_fd &gt;= 0) {                                                                                                    \
+700       named_register_fd(_fd, __FILE__, __LINE__, __func__);                                                            \
+701     }                                                                                                                  \
+702     _fd;                                                                                                               \
+703   })</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER(_ptr,__name,__type,__fmt,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER(_ptr,__name,__type,__fmt,__parent_ptr)">#define
+  NAMED_REGISTER( ptr, name, type, fmt, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(ptr), (name), (type), (fmt), __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register any pointer with base name, type, format spec, and
+    location (auto-suffix).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ptr</i> Object pointer (void* or typed pointer)
+<br/>
+<i>name</i> Base name string
+<br/>
+<i>type</i> Data type label (e.g., &quot;mutex&quot;, &quot;socket&quot;)
+<br/>
+<i>fmt</i> Format specifier for printing (e.g., &quot;0x%tx&quot;)</div>
+<p class="Pp">In debug builds, automatically captures <b>FILE</b>, <b>LINE</b>,
+    and <b>func</b> for location info. In release builds (NDEBUG), this is a
+    no-op.</p>
+<p class="Pp">Definition at line <b>316</b> of file <b>debug/named.h</b>.</p>
+<pre>316 #define NAMED_REGISTER(ptr, name, type, fmt, parent_ptr)                                                                 \
+317   named_register((uintptr_t)(const void *)(ptr), (name), (type), (fmt), __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>acds_client_connect()</b>,
+    <b>acip_tcp_transport_create()</b>, <b>acip_webrtc_transport_create()</b>,
+    <b>audio_init()</b>, <b>consensus_coordinator_create()</b>,
+    <b>media_source_create()</b>, <b>tcp_server_init()</b>,
+    <b>webcam_init()</b>, <b>webrtc_create_peer_connection()</b>, and
+    <b>websocket_server_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_APP_CLIENT(_client,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_APP_CLIENT(_client,__name,__parent_ptr)">#define
+  NAMED_REGISTER_APP_CLIENT( client, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(client), (name), &quot;app_client&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register an app client with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>client</i> App client pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Definition at line <b>893</b> of file <b>debug/named.h</b>.</p>
+<pre>893 #define NAMED_REGISTER_APP_CLIENT(client, name, parent_ptr)                                                                        \
+894   named_register((uintptr_t)(const void *)(client), (name), &quot;app_client&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_ATOMIC(_a,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_ATOMIC(_a,__name,__parent_ptr)">#define
+  NAMED_REGISTER_ATOMIC( a, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(a), (name), &quot;atomic&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register an <b>atomic_t</b> with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_t</b>
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for atomic addresses.</p>
+<p class="Pp">Definition at line <b>734</b> of file <b>debug/named.h</b>.</p>
+<pre>734 #define NAMED_REGISTER_ATOMIC(a, name, parent_ptr)                                                                                     \
+735   named_register((uintptr_t)(const void *)(a), (name), &quot;atomic&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>app_client_create()</b>, <b>audio_init()</b>,
+    <b>audio_ring_buffer_register_atomics()</b>, <b>audio_start_thread()</b>,
+    <b>buffer_pool_create()</b>, <b>capture_start_thread()</b>,
+    <b>create_mixed_ascii_frame_for_client()</b>, <b>display_init()</b>,
+    <b>keepalive_start_thread()</b>, <b>packet_queue_create_with_pools()</b>,
+    <b>protocol_start_connection()</b>, <b>server_connection_init()</b>,
+    <b>tcp_client_create()</b>, <b>tcp_server_init()</b>,
+    <b>video_frame_buffer_create()</b>, <b>websocket_client_create()</b>, and
+    <b>websocket_server_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_ATOMIC_PTR(_a,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_ATOMIC_PTR(_a,__name,__parent_ptr)">#define
+  NAMED_REGISTER_ATOMIC_PTR( a, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(a), (name), &quot;atomic_ptr&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register an _Atomic(void *) with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to _Atomic(void *)
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for atomic_ptr addresses.</p>
+<p class="Pp">Definition at line <b>745</b> of file <b>debug/named.h</b>.</p>
+<pre>745 #define NAMED_REGISTER_ATOMIC_PTR(a, name, parent_ptr)                                                                                 \
+746   named_register((uintptr_t)(const void *)(a), (name), &quot;atomic_ptr&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>buffer_pool_create()</b>, and
+    <b>packet_queue_create_with_pools()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_AUDIO_CODEC(_codec,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_AUDIO_CODEC(_codec,__name,__parent_ptr)">#define
+  NAMED_REGISTER_AUDIO_CODEC( codec, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(codec), (name), &quot;audio_codec&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register an audio codec with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>codec</i> Audio codec pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for audio codec addresses.</p>
+<p class="Pp">Definition at line <b>560</b> of file <b>debug/named.h</b>.</p>
+<pre>560 #define NAMED_REGISTER_AUDIO_CODEC(codec, name, parent_ptr)                                                                        \
+561   named_register((uintptr_t)(const void *)(codec), (name), &quot;audio_codec&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_AUDIO_CONTEXT(_ctx,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_AUDIO_CONTEXT(_ctx,__name,__parent_ptr)">#define
+  NAMED_REGISTER_AUDIO_CONTEXT( ctx, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(ctx), (name), &quot;audio_context&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register an audio context with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Audio context pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for audio context addresses.</p>
+<p class="Pp">Definition at line <b>640</b> of file <b>debug/named.h</b>.</p>
+<pre>640 #define NAMED_REGISTER_AUDIO_CONTEXT(ctx, name, parent_ptr)                                                                        \
+641   named_register((uintptr_t)(const void *)(ctx), (name), &quot;audio_context&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_AUDIO_RINGBUF(_buf,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_AUDIO_RINGBUF(_buf,__name,__parent_ptr)">#define
+  NAMED_REGISTER_AUDIO_RINGBUF( buf, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(buf), (name), &quot;audio_ringbuf&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register an audio ring buffer with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>buf</i> Audio ring buffer pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for ring buffer addresses.</p>
+<p class="Pp">Definition at line <b>538</b> of file <b>debug/named.h</b>.</p>
+<pre>538 #define NAMED_REGISTER_AUDIO_RINGBUF(buf, name, parent_ptr)                                                                        \
+539   named_register((uintptr_t)(const void *)(buf), (name), &quot;audio_ringbuf&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>audio_init()</b>, and
+    <b>audio_ring_buffer_register_atomics()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_BUFFER_POOL(_"><a class="permalink" href="#_define_NAMED_REGISTER_BUFFER_POOL(_">#define
+  NAMED_REGISTER_BUFFER_POOL( <b>pool</b>, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(pool), (name), &quot;buffer_pool&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a buffer pool with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>pool</b><i></i><b> Buffer pool pointer</b>
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for buffer pool addresses.</p>
+<p class="Pp">Definition at line <b>582</b> of file <b>debug/named.h</b>.</p>
+<pre>582 #define NAMED_REGISTER_BUFFER_POOL(pool, name, parent_ptr)                                                                         \
+583   named_register((uintptr_t)(const void *)(pool), (name), &quot;buffer_pool&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_CLIENT(_client,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_CLIENT(_client,__name,__parent_ptr)">#define
+  NAMED_REGISTER_CLIENT( client, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(client), (name), &quot;client&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a client connection with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>client</i> Client pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for client addresses.</p>
+<p class="Pp">Definition at line <b>483</b> of file <b>debug/named.h</b>.</p>
+<pre>483 #define NAMED_REGISTER_CLIENT(client, name, parent_ptr)                                                                 \
+484   named_register((uintptr_t)(const void *)(client), (name), &quot;client&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>add_client()</b>, and
+  <b>tcp_client_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(_pipeline,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(_pipeline,__name,__parent_ptr)">#define
+  NAMED_REGISTER_CLIENT_AUDIO_PIPELINE( pipeline, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(pipeline), (name), &quot;client_audio_pipeline&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__,    \
+<br/>
+               __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a client audio pipeline with automatic format
+  specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pipeline</i> Client audio pipeline pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Definition at line <b>947</b> of file <b>debug/named.h</b>.</p>
+<pre>947 #define NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(pipeline, name, parent_ptr)                                                           \
+948   named_register((uintptr_t)(const void *)(pipeline), (name), &quot;client_audio_pipeline&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__,    \
+949                  __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_COND(_cond,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_COND(_cond,__name,__parent_ptr)">#define
+  NAMED_REGISTER_COND( cond, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(cond), (name), &quot;cond&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a condition variable with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>cond</i> Condition variable pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for cond addresses.</p>
+<p class="Pp">Definition at line <b>427</b> of file <b>debug/named.h</b>.</p>
+<pre>427 #define NAMED_REGISTER_COND(cond, name, parent_ptr)                                                                     \
+428   named_register((uintptr_t)(const void *)(cond), (name), &quot;cond&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>audio_init()</b>, and
+    <b>thread_pool_create_with_workers()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_CONTEXT(_context,__context_type,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_CONTEXT(_context,__context_type,__name,__parent_ptr)">#define
+  NAMED_REGISTER_CONTEXT( context, context_type, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(context), (name), (context_type), &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a generic context with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>context</i> Any context pointer
+<br/>
+<i>context_type</i> Type string (e.g., &quot;ssl_context&quot;,
+  &quot;decoder_context&quot;)
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro for naming any opaque context. Automatically
+    uses &quot;0x%tx&quot; format. Usage: NAMED_REGISTER_CONTEXT(ctx,
+    &quot;ssl_context&quot;, &quot;tls_server&quot;);</p>
+<p class="Pp">Definition at line <b>1015</b> of file <b>debug/named.h</b>.</p>
+<pre>1015 #define NAMED_REGISTER_CONTEXT(context, context_type, name, parent_ptr)                                                 \
+1016   named_register((uintptr_t)(const void *)(context), (name), (context_type), &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>asciichat_mdns_init()</b>,
+    <b>opus_codec_create_decoder()</b>, <b>opus_codec_create_encoder()</b>, and
+    <b>render_file_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_CRYPTO_CONTEXT(_ctx,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_CRYPTO_CONTEXT(_ctx,__name,__parent_ptr)">#define
+  NAMED_REGISTER_CRYPTO_CONTEXT( ctx, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(ctx), (name), &quot;crypto&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a crypto context with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Crypto context pointer
+<br/>
+<i>name</i> Base name string (typically
+  &quot;crypto_client_&lt;id&gt;&quot;)</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for crypto context addresses.</p>
+<p class="Pp">Definition at line <b>494</b> of file <b>debug/named.h</b>.</p>
+<pre>494 #define NAMED_REGISTER_CRYPTO_CONTEXT(ctx, name, parent_ptr)                                                           \
+495   named_register((uintptr_t)(const void *)(ctx), (name), &quot;crypto&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>crypto_handshake_init()</b>, and
+    <b>crypto_handshake_init_with_password()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_DATACHANNEL(_datachannel,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_DATACHANNEL(_datachannel,__name,__parent_ptr)">#define
+  NAMED_REGISTER_DATACHANNEL( datachannel, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(datachannel), (name), &quot;datachannel&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a data channel with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>datachannel</i> Data channel pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for datachannel addresses.</p>
+<p class="Pp">Definition at line <b>461</b> of file <b>debug/named.h</b>.</p>
+<pre>461 #define NAMED_REGISTER_DATACHANNEL(datachannel, name, parent_ptr)                                                        \
+462   named_register((uintptr_t)(const void *)(datachannel), (name), &quot;datachannel&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>webrtc_create_datachannel()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_FD(_fd,__name)"><a class="permalink" href="#_define_NAMED_REGISTER_FD(_fd,__name)">#define
+  NAMED_REGISTER_FD( fd, name)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register_fd((fd), __FILE__, __LINE__, __func__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register an existing file descriptor.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>fd</i> File descriptor (must be &gt;= 0)
+<br/>
+<i>name</i> Ignored - kept for API compatibility</div>
+<p class="Pp">Convenience macro for registering file descriptors that are
+    already open. Automatically uses &quot;fd=%d&quot; format specifier and type
+    namespace to avoid collisions. In release builds (NDEBUG), this is a
+  no-op.</p>
+<p class="Pp">Definition at line <b>724</b> of file <b>debug/named.h</b>.</p>
+<p class="Pp">Referenced by <b>platform_enable_keepawake()</b>,
+    <b>platform_fopen()</b>, and <b>platform_open()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_FFMPEG_CONTEXT(_context,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_FFMPEG_CONTEXT(_context,__name,__parent_ptr)">#define
+  NAMED_REGISTER_FFMPEG_CONTEXT( context, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(context), (name), &quot;ffmpeg_context&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register an FFmpeg decoder context with automatic format
+    specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>context</i> FFmpeg context pointer (AVFormatContext *
+  or similar)
+<br/>
+<i>name</i> Base name string (e.g., &quot;ffmpeg_decoder&quot;)</div>
+<p class="Pp">Convenience macro for naming FFmpeg contexts. Automatically uses
+    &quot;0x%tx&quot; format. Usage: NAMED_REGISTER_FFMPEG_CONTEXT(avctx,
+    &quot;ffmpeg_input&quot;);</p>
+<p class="Pp">Definition at line <b>1002</b> of file <b>debug/named.h</b>.</p>
+<pre>1002 #define NAMED_REGISTER_FFMPEG_CONTEXT(context, name, parent_ptr)                                                                   \
+1003   named_register((uintptr_t)(const void *)(context), (name), &quot;ffmpeg_context&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_FFMPEG_DECODER(_decoder,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_FFMPEG_DECODER(_decoder,__name,__parent_ptr)">#define
+  NAMED_REGISTER_FFMPEG_DECODER( decoder, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(decoder), (name), &quot;ffmpeg_decoder&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register an FFmpeg decoder with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>decoder</i> FFmpeg decoder pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for decoder addresses.</p>
+<p class="Pp">Definition at line <b>593</b> of file <b>debug/named.h</b>.</p>
+<pre>593 #define NAMED_REGISTER_FFMPEG_DECODER(decoder, name, parent_ptr)                                                                   \
+594   named_register((uintptr_t)(const void *)(decoder), (name), &quot;ffmpeg_decoder&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>, and
+    <b>ffmpeg_decoder_create_stdin()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_FFMPEG_ENCODER(_encoder,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_FFMPEG_ENCODER(_encoder,__name,__parent_ptr)">#define
+  NAMED_REGISTER_FFMPEG_ENCODER( encoder, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(encoder), (name), &quot;ffmpeg_encoder&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register an FFmpeg encoder with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>encoder</i> FFmpeg encoder pointer
+<br/>
+<i>name</i> Base name string
+<br/>
+<i>parent_ptr</i> Parent context pointer (uintptr_t cast)</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for encoder addresses.</p>
+<p class="Pp">Definition at line <b>605</b> of file <b>debug/named.h</b>.</p>
+<pre>605 #define NAMED_REGISTER_FFMPEG_ENCODER(encoder, name, parent_ptr)                                                                   \
+606   named_register((uintptr_t)(const void *)(encoder), (name), &quot;ffmpeg_encoder&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>ffmpeg_encoder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_FMT(_ptr,__type,__fmt_spec,__fmt,__"><a class="permalink" href="#_define_NAMED_REGISTER_FMT(_ptr,__type,__fmt_spec,__fmt,__">#define
+  NAMED_REGISTER_FMT( ptr, type, fmt_spec, fmt, ...)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register_fmt((uintptr_t)(const void *)(ptr), (type), (fmt_spec), __FILE__, __LINE__, __func__, (fmt),          \
+<br/>
+                   __VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register with a formatted name, type, and format spec.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ptr</i> Object pointer
+<br/>
+<i>type</i> Data type label
+<br/>
+<i>fmt_spec</i> Format specifier for printing (e.g., &quot;0x%tx&quot;)
+<br/>
+<i>fmt</i> Printf-style format string for name
+<br/>
+<i>...</i> Format arguments</div>
+<p class="Pp">In debug builds, automatically captures <b>FILE</b>, <b>LINE</b>,
+    and <b>func</b> for location info. In release builds (NDEBUG), this is a
+    no-op.</p>
+<p class="Pp">Definition at line <b>331</b> of file <b>debug/named.h</b>.</p>
+<pre>331 #define NAMED_REGISTER_FMT(ptr, type, fmt_spec, fmt, ...)                                                              \
+332   named_register_fmt((uintptr_t)(const void *)(ptr), (type), (fmt_spec), __FILE__, __LINE__, __func__, (fmt),          \
+333                      __VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_FRAME_BUFFER(_buf,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_FRAME_BUFFER(_buf,__name,__parent_ptr)">#define
+  NAMED_REGISTER_FRAME_BUFFER( buf, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(buf), (name), &quot;frame_buffer&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a frame buffer with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>buf</i> Frame buffer pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for frame buffer addresses.</p>
+<p class="Pp">Definition at line <b>516</b> of file <b>debug/named.h</b>.</p>
+<pre>516 #define NAMED_REGISTER_FRAME_BUFFER(buf, name, parent_ptr)                                                                         \
+517   named_register((uintptr_t)(const void *)(buf), (name), &quot;frame_buffer&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_H265_DECODER(_decoder,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_H265_DECODER(_decoder,__name,__parent_ptr)">#define
+  NAMED_REGISTER_H265_DECODER( decoder, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(decoder), (name), &quot;h265_decoder&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register an H.265 decoder with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>decoder</i> H.265 decoder pointer
+<br/>
+<i>name</i> Base name string
+<br/>
+<i>parent_ptr</i> Parent context pointer (uintptr_t cast)</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for H.265 decoder addresses.</p>
+<p class="Pp">Definition at line <b>629</b> of file <b>debug/named.h</b>.</p>
+<pre>629 #define NAMED_REGISTER_H265_DECODER(decoder, name, parent_ptr)                                                                     \
+630   named_register((uintptr_t)(const void *)(decoder), (name), &quot;h265_decoder&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>h265_decoder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_H265_ENCODER(_encoder,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_H265_ENCODER(_encoder,__name,__parent_ptr)">#define
+  NAMED_REGISTER_H265_ENCODER( encoder, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(encoder), (name), &quot;h265_encoder&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register an H.265 encoder with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>encoder</i> H.265 encoder pointer
+<br/>
+<i>name</i> Base name string
+<br/>
+<i>parent_ptr</i> Parent context pointer (uintptr_t cast)</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for H.265 encoder addresses.</p>
+<p class="Pp">Definition at line <b>617</b> of file <b>debug/named.h</b>.</p>
+<pre>617 #define NAMED_REGISTER_H265_ENCODER(encoder, name, parent_ptr)                                                                     \
+618   named_register((uintptr_t)(const void *)(encoder), (name), &quot;h265_encoder&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>h265_encoder_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_ID(_id,__name,__type,__fmt,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_ID(_id,__name,__type,__fmt,__parent_ptr)">#define
+  NAMED_REGISTER_ID( id, name, type, fmt, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(intptr_t)(id), (name), (type), (fmt), __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register an integer handle (fd, socket, etc.) with type.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>id</i> Integer handle (<b>socket_t</b>, int, etc.)
+<br/>
+<i>name</i> Base name string
+<br/>
+<i>type</i> Data type label (e.g., &quot;socket&quot;, &quot;fd&quot;)</div>
+<p class="Pp">In debug builds, automatically captures <b>FILE</b>, <b>LINE</b>,
+    and <b>func</b> for location info. In release builds (NDEBUG), this is a
+    no-op.</p>
+<p class="Pp">Definition at line <b>371</b> of file <b>debug/named.h</b>.</p>
+<pre>371 #define NAMED_REGISTER_ID(id, name, type, fmt, parent_ptr)                                                             \
+372   named_register((uintptr_t)(intptr_t)(id), (name), (type), (fmt), __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_LWS_CONTEXT(_context,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_LWS_CONTEXT(_context,__name,__parent_ptr)">#define
+  NAMED_REGISTER_LWS_CONTEXT( context, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(context), (name), &quot;lws_context&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a libwebsockets context with automatic format
+  specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>context</i> LWS context pointer (struct lws_context *)
+<br/>
+<i>name</i> Base name string (e.g., &quot;ws_server&quot; or
+  &quot;ws_client&quot;)</div>
+<p class="Pp">Convenience macro for naming libwebsockets contexts. Automatically
+    uses &quot;0x%tx&quot; format. Usage: NAMED_REGISTER_LWS_CONTEXT(lws_ctx,
+    &quot;ws_server&quot;);</p>
+<p class="Pp">Definition at line <b>990</b> of file <b>debug/named.h</b>.</p>
+<pre>990 #define NAMED_REGISTER_LWS_CONTEXT(context, name, parent_ptr)                                                                      \
+991   named_register((uintptr_t)(const void *)(context), (name), &quot;lws_context&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_MEDIA_SOURCE(_source,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_MEDIA_SOURCE(_source,__name,__parent_ptr)">#define
+  NAMED_REGISTER_MEDIA_SOURCE( source, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(source), (name), &quot;media_source&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a media source with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>source</i> Media source pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for media source addresses.</p>
+<p class="Pp">Definition at line <b>673</b> of file <b>debug/named.h</b>.</p>
+<pre>673 #define NAMED_REGISTER_MEDIA_SOURCE(source, name, parent_ptr)                                                                      \
+674   named_register((uintptr_t)(const void *)(source), (name), &quot;media_source&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_MIXER(_mixer,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_MIXER(_mixer,__name,__parent_ptr)">#define
+  NAMED_REGISTER_MIXER( mixer, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(mixer), (name), &quot;mixer&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register an audio mixer with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>mixer</i> Mixer pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for mixer addresses.</p>
+<p class="Pp">Definition at line <b>549</b> of file <b>debug/named.h</b>.</p>
+<pre>549 #define NAMED_REGISTER_MIXER(mixer, name, parent_ptr)                                                                              \
+550   named_register((uintptr_t)(const void *)(mixer), (name), &quot;mixer&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>mixer_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_MUTEX(_"><a class="permalink" href="#_define_NAMED_REGISTER_MUTEX(_">#define
+  NAMED_REGISTER_MUTEX( <b>mutex</b>, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(mutex), (name), &quot;mutex&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a mutex with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>mutex</b><i></i><b> Mutex pointer</b>
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for mutex addresses.</p>
+<p class="Pp">Definition at line <b>401</b> of file <b>debug/named.h</b>.</p>
+<pre>401 #define NAMED_REGISTER_MUTEX(mutex, name, parent_ptr)                                                                   \
+402   named_register((uintptr_t)(const void *)(mutex), (name), &quot;mutex&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>audio_init()</b>, <b>buffer_pool_create()</b>,
+    <b>media_source_create()</b>, <b>thread_pool_create()</b>, and
+    <b>thread_pool_create_with_workers()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_NODE_POOL(_"><a class="permalink" href="#_define_NAMED_REGISTER_NODE_POOL(_">#define
+  NAMED_REGISTER_NODE_POOL( <b>pool</b>, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(pool), (name), &quot;node_pool&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a node pool with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>pool</b><i></i><b> Node pool pointer</b>
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Definition at line <b>911</b> of file <b>debug/named.h</b>.</p>
+<pre>911 #define NAMED_REGISTER_NODE_POOL(pool, name, parent_ptr)                                                                           \
+912   named_register((uintptr_t)(const void *)(pool), (name), &quot;node_pool&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>node_pool_create()</b>, and
+    <b>packet_queue_create_with_pools()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_OPTIONS_BUILDER(_builder,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_OPTIONS_BUILDER(_builder,__name,__parent_ptr)">#define
+  NAMED_REGISTER_OPTIONS_BUILDER( builder, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(builder), (name), &quot;options_builder&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register an options builder with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>builder</i> Options builder pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Definition at line <b>929</b> of file <b>debug/named.h</b>.</p>
+<pre>929 #define NAMED_REGISTER_OPTIONS_BUILDER(builder, name, parent_ptr)                                                                  \
+930   named_register((uintptr_t)(const void *)(builder), (name), &quot;options_builder&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_PACKET_QUEUE(_queue,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_PACKET_QUEUE(_queue,__name,__parent_ptr)">#define
+  NAMED_REGISTER_PACKET_QUEUE( queue, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(queue), (name), &quot;packet_queue&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a packet queue with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>queue</i> Packet queue pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for packet queue addresses.</p>
+<p class="Pp">Definition at line <b>527</b> of file <b>debug/named.h</b>.</p>
+<pre>527 #define NAMED_REGISTER_PACKET_QUEUE(queue, name, parent_ptr)                                                                       \
+528   named_register((uintptr_t)(const void *)(queue), (name), &quot;packet_queue&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>packet_queue_create_with_pools()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_RATE_LIMITER(_limiter,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_RATE_LIMITER(_limiter,__name,__parent_ptr)">#define
+  NAMED_REGISTER_RATE_LIMITER( limiter, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(limiter), (name), &quot;rate_limiter&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a rate limiter with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>limiter</i> Rate limiter pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for rate limiter addresses.</p>
+<p class="Pp">Definition at line <b>651</b> of file <b>debug/named.h</b>.</p>
+<pre>651 #define NAMED_REGISTER_RATE_LIMITER(limiter, name, parent_ptr)                                                                     \
+652   named_register((uintptr_t)(const void *)(limiter), (name), &quot;rate_limiter&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_RWLOCK(_lock,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_RWLOCK(_lock,__name,__parent_ptr)">#define
+  NAMED_REGISTER_RWLOCK( lock, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(lock), (name), &quot;rwlock&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register an rwlock with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lock</i> RWLock pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for rwlock addresses.</p>
+<p class="Pp">Definition at line <b>413</b> of file <b>debug/named.h</b>.</p>
+<pre>413 #define NAMED_REGISTER_RWLOCK(lock, name, parent_ptr)                                                                   \
+414   named_register((uintptr_t)(const void *)(lock), (name), &quot;rwlock&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>mixer_create()</b>, <b>server_main()</b>, and
+    <b>tcp_server_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_SIMPLE_FRAME_SWAP(_swap,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_SIMPLE_FRAME_SWAP(_swap,__name,__parent_ptr)">#define
+  NAMED_REGISTER_SIMPLE_FRAME_SWAP( swap, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(swap), (name), &quot;simple_frame_swap&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a simple frame swap with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>swap</i> Simple frame swap pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Definition at line <b>938</b> of file <b>debug/named.h</b>.</p>
+<pre>938 #define NAMED_REGISTER_SIMPLE_FRAME_SWAP(swap, name, parent_ptr)                                                                   \
+939   named_register((uintptr_t)(const void *)(swap), (name), &quot;simple_frame_swap&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_SOCKET(_socket,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_SOCKET(_socket,__name,__parent_ptr)">#define
+  NAMED_REGISTER_SOCKET( socket, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(intptr_t)(socket), (name), &quot;socket&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a socket with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>socket</i> Socket pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for socket addresses.</p>
+<p class="Pp">Definition at line <b>438</b> of file <b>debug/named.h</b>.</p>
+<pre>438 #define NAMED_REGISTER_SOCKET(socket, name, parent_ptr)                                                                 \
+439   named_register((uintptr_t)(intptr_t)(socket), (name), &quot;socket&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_TCP_CLIENT(_client,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_TCP_CLIENT(_client,__name,__parent_ptr)">#define
+  NAMED_REGISTER_TCP_CLIENT( client, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(client), (name), &quot;tcp_client&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a TCP client with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>client</i> TCP client pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Definition at line <b>875</b> of file <b>debug/named.h</b>.</p>
+<pre>875 #define NAMED_REGISTER_TCP_CLIENT(client, name, parent_ptr)                                                                        \
+876   named_register((uintptr_t)(const void *)(client), (name), &quot;tcp_client&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_THREAD(_thread,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_THREAD(_thread,__name,__parent_ptr)">#define
+  NAMED_REGISTER_THREAD( thread, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register(asciichat_thread_to_key((thread)), (name), &quot;thread&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a thread handle with name and automatic format
+  specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>thread</i> <b>asciichat_thread_t</b> handle (NOT a
+  pointer)
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for thread addresses. In debug builds, automatically captures
+    <b>FILE</b>, <b>LINE</b>, and <b>func</b> for location info. The thread
+    handle itself (not a pointer) is used as the registry key. In release builds
+    (NDEBUG), this is a no-op.</p>
+<p class="Pp">Definition at line <b>763</b> of file <b>debug/named.h</b>.</p>
+<pre>763 #define NAMED_REGISTER_THREAD(thread, name, parent_ptr)                                                                 \
+764   named_register(asciichat_thread_to_key((thread)), (name), &quot;thread&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_THREAD_POOL(_"><a class="permalink" href="#_define_NAMED_REGISTER_THREAD_POOL(_">#define
+  NAMED_REGISTER_THREAD_POOL( <b>pool</b>, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(pool), (name), &quot;thread_pool&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a thread pool with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>pool</b><i></i><b> Thread pool pointer</b>
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Definition at line <b>920</b> of file <b>debug/named.h</b>.</p>
+<pre>920 #define NAMED_REGISTER_THREAD_POOL(pool, name, parent_ptr)                                                                         \
+921   named_register((uintptr_t)(const void *)(pool), (name), &quot;thread_pool&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>thread_pool_create()</b>, and
+    <b>thread_pool_create_with_workers()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_THREADPOOL_WORK(_work,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_THREADPOOL_WORK(_work,__name,__parent_ptr)">#define
+  NAMED_REGISTER_THREADPOOL_WORK( work, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(work), (name), &quot;work&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a thread pool work item with automatic format
+  specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>work</i> Work item pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for work item addresses.</p>
+<p class="Pp">Definition at line <b>472</b> of file <b>debug/named.h</b>.</p>
+<pre>472 #define NAMED_REGISTER_THREADPOOL_WORK(work, name, parent_ptr)                                                          \
+473   named_register((uintptr_t)(const void *)(work), (name), &quot;work&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>thread_pool_queue_work()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_TRANSPORT(_transport,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_TRANSPORT(_transport,__name,__parent_ptr)">#define
+  NAMED_REGISTER_TRANSPORT( transport, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(transport), (name), &quot;transport&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a transport with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport pointer
+<br/>
+<i>name</i> Base name string (typically &quot;transport_client_&lt;id&gt;&quot;
+  or &quot;transport_tcp_&lt;id&gt;&quot;)</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for transport addresses.</p>
+<p class="Pp">Definition at line <b>505</b> of file <b>debug/named.h</b>.</p>
+<pre>505 #define NAMED_REGISTER_TRANSPORT(transport, name, parent_ptr)                                                                      \
+506   named_register((uintptr_t)(const void *)(transport), (name), &quot;transport&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>acip_tcp_transport_create()</b>,
+    <b>acip_websocket_client_transport_create()</b>, and
+    <b>acip_websocket_server_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_VIDEO_ENCODER(_encoder,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_VIDEO_ENCODER(_encoder,__name,__parent_ptr)">#define
+  NAMED_REGISTER_VIDEO_ENCODER( encoder, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(encoder), (name), &quot;video_encoder&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a video encoder with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>encoder</i> Video encoder pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for video encoder addresses.</p>
+<p class="Pp">Definition at line <b>571</b> of file <b>debug/named.h</b>.</p>
+<pre>571 #define NAMED_REGISTER_VIDEO_ENCODER(encoder, name, parent_ptr)                                                                    \
+572   named_register((uintptr_t)(const void *)(encoder), (name), &quot;video_encoder&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_VIDEO_FRAME_BUFFER(_buf,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_VIDEO_FRAME_BUFFER(_buf,__name,__parent_ptr)">#define
+  NAMED_REGISTER_VIDEO_FRAME_BUFFER( buf, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(buf), (name), &quot;video_frame_buffer&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a video frame buffer with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>buf</i> Video frame buffer pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Definition at line <b>902</b> of file <b>debug/named.h</b>.</p>
+<pre>902 #define NAMED_REGISTER_VIDEO_FRAME_BUFFER(buf, name, parent_ptr)                                                                   \
+903   named_register((uintptr_t)(const void *)(buf), (name), &quot;video_frame_buffer&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>video_frame_buffer_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_WAV_WRITER(_writer,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_WAV_WRITER(_writer,__name,__parent_ptr)">#define
+  NAMED_REGISTER_WAV_WRITER( writer, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(writer), (name), &quot;wav_writer&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a WAV writer with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>writer</i> WAV writer pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for WAV writer addresses.</p>
+<p class="Pp">Definition at line <b>662</b> of file <b>debug/named.h</b>.</p>
+<pre>662 #define NAMED_REGISTER_WAV_WRITER(writer, name, parent_ptr)                                                                        \
+663   named_register((uintptr_t)(const void *)(writer), (name), &quot;wav_writer&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_WEBSOCKET(_websocket,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_WEBSOCKET(_websocket,__name,__parent_ptr)">#define
+  NAMED_REGISTER_WEBSOCKET( websocket, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(websocket), (name), &quot;websocket&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a WebSocket connection with automatic format
+  specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>websocket</i> WebSocket pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Convenience macro that automatically uses &quot;0x%tx&quot; format
+    specifier for websocket addresses.</p>
+<p class="Pp">Definition at line <b>450</b> of file <b>debug/named.h</b>.</p>
+<pre>450 #define NAMED_REGISTER_WEBSOCKET(websocket, name, parent_ptr)                                                           \
+451   named_register((uintptr_t)(const void *)(websocket), (name), &quot;websocket&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>websocket_client_create()</b>, and
+    <b>websocket_server_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_WEBSOCKET_CLIENT(_client,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_WEBSOCKET_CLIENT(_client,__name,__parent_ptr)">#define
+  NAMED_REGISTER_WEBSOCKET_CLIENT( client, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_register((uintptr_t)(const void *)(client), (name), &quot;websocket_client&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Register a WebSocket client with automatic format specifier.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>client</i> WebSocket client pointer
+<br/>
+<i>name</i> Base name string</div>
+<p class="Pp">Definition at line <b>884</b> of file <b>debug/named.h</b>.</p>
+<pre>884 #define NAMED_REGISTER_WEBSOCKET_CLIENT(client, name, parent_ptr)                                                                  \
+885   named_register((uintptr_t)(const void *)(client), (name), &quot;websocket_client&quot;, &quot;0x%tx&quot;, __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_REGISTER_WEBSOCKET_IMPL(_data,__name,__parent_ptr)"><a class="permalink" href="#_define_NAMED_REGISTER_WEBSOCKET_IMPL(_data,__name,__parent_ptr)">#define
+  NAMED_REGISTER_WEBSOCKET_IMPL( data, name, parent_ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>(name)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>955</b> of file <b>debug/named.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>, and
+    <b>acip_websocket_server_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_UNREGISTER(_ptr)"><a class="permalink" href="#_define_NAMED_UNREGISTER(_ptr)">#define
+  NAMED_UNREGISTER( ptr)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_unregister((uintptr_t)(const void *)(ptr))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Unregister a pointer.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ptr</i> Object pointer</div>
+<p class="Pp">Definition at line <b>340</b> of file <b>debug/named.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_transport_destroy()</b>,
+    <b>app_client_destroy()</b>, <b>audio_ring_buffer_destroy()</b>,
+    <b>audio_ring_buffer_unregister_atomics()</b>, <b>buffer_pool_destroy()</b>,
+    <b>client_audio_pipeline_destroy()</b>, <b>ffmpeg_decoder_destroy()</b>,
+    <b>ffmpeg_encoder_destroy()</b>, <b>mixer_destroy()</b>,
+    <b>node_pool_destroy()</b>, <b>opus_codec_destroy()</b>,
+    <b>packet_queue_destroy()</b>, <b>tcp_client_destroy()</b>,
+    <b>thread_pool_destroy()</b>, <b>video_frame_buffer_destroy()</b>,
+    <b>webcam_destroy()</b>, <b>websocket_client_destroy()</b>, and
+    <b>websocket_server_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_UNREGISTER_FD(_fd)"><a class="permalink" href="#_define_NAMED_UNREGISTER_FD(_fd)">#define
+  NAMED_UNREGISTER_FD( fd)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>NAMED_UNREGISTER_ID((fd))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Unregister a file descriptor.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>fd</i> File descriptor to unregister</div>
+<p class="Pp">Call this before closing a named file descriptor.</p>
+<p class="Pp">Definition at line <b>712</b> of file <b>debug/named.h</b>.</p>
+<p class="Pp">Referenced by <b>platform_disable_keepawake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_UNREGISTER_ID(_id)"><a class="permalink" href="#_define_NAMED_UNREGISTER_ID(_id)">#define
+  NAMED_UNREGISTER_ID( id)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_unregister((uintptr_t)(intptr_t)(id))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Unregister an integer handle.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>id</i> Integer handle</div>
+<p class="Pp">Definition at line <b>379</b> of file <b>debug/named.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_UNREGISTER_SOCKET(_socket)"><a class="permalink" href="#_define_NAMED_UNREGISTER_SOCKET(_socket)">#define
+  NAMED_UNREGISTER_SOCKET( socket)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>NAMED_UNREGISTER_ID((socket))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>440</b> of file <b>debug/named.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_UNREGISTER_THREAD(_thread)"><a class="permalink" href="#_define_NAMED_UNREGISTER_THREAD(_thread)">#define
+  NAMED_UNREGISTER_THREAD( thread)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b><b>Value:</b><b></b></p>
+<pre>named_unregister(asciichat_thread_to_key((thread)))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Unregister a thread handle.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>thread</i> <b>asciichat_thread_t</b> handle (NOT a
+  pointer)</div>
+<p class="Pp">Definition at line <b>771</b> of file <b>debug/named.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_void(*_named_iter_callback_t)_(uintptr_t_key,_const_char_*name,_void_*user_data)"><a class="permalink" href="#typedef_void(*_named_iter_callback_t)_(uintptr_t_key,_const_char_*name,_void_*user_data)">typedef
+  void(* named_iter_callback_t) (uintptr_t key, const char *name, void
+  *user_data)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Callback function for iterating registered entries.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>key</i> The registered key (uintptr_t)
+<br/>
+<i>name</i> The registered name string
+<br/>
+<i>user_data</i> User-provided context pointer</div>
+<p class="Pp">Called for each entry in the registry. The callback should not
+    modify the registry during iteration.</p>
+<p class="Pp">Definition at line <b>867</b> of file <b>debug/named.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="uintptr_t_asciichat_thread_to_key_("><a class="permalink" href="#uintptr_t_asciichat_thread_to_key_(">uintptr_t
+  asciichat_thread_to_key (<b>asciichat_thread_t</b> thread)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Convert a thread handle to a registry key.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>thread</i> Thread handle
+  (<b>asciichat_thread_t</b>)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">uintptr_t suitable for registry lookups</div>
+<p class="Pp">Platform-specific conversion. On POSIX, pthread_t is cast
+    directly. On Windows, HANDLE is cast directly.</p>
+<p class="Pp"></p>
+<p class="Pp">This function is defined in lib/platform/posix/thread.c or
+    lib/platform/windows/thread.c</p>
+<p class="Pp">Referenced by <b>cond_on_wait()</b>, <b>log_template_apply()</b>,
+    <b>mutex_on_lock()</b>, <b>mutex_on_trylock()</b>,
+    <b>named_describe_thread()</b>, <b>rwlock_on_unlock()</b>, and
+    <b>rwlock_on_wrlock()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_describe_(uintptr_t_key,_const_char_*_type_hint)"><a class="permalink" href="#const_char_*_named_describe_(uintptr_t_key,_const_char_*_type_hint)">const
+  char * named_describe (uintptr_t key, const char * type_hint)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Format a description string for logging.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>key</i> The resource key
+<br/>
+<i>type_hint</i> A type label (e.g., &quot;mutex&quot;, &quot;socket&quot;,
+  &quot;thread&quot;)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Description string in format &quot;type_hint: name
+  (0xKEY)&quot; or type_hint if not registered</div>
+<p class="Pp">Returns a per-thread static buffer suitable for a single log call.
+    The buffer is overwritten on the next call to this function within the same
+    thread. Do not store or free the returned pointer.</p>
+<p class="Pp"></p>
+<p class="Pp">If the key is not registered, returns just the type_hint. In
+    release builds (NDEBUG), this always returns &quot;?&quot;.</p>
+<p class="Pp">Definition at line <b>341</b> of file <b>debug/named.c</b>.</p>
+<pre>341                                                                  {
+342   if (!type_hint) type_hint = &quot;object&quot;;
+343 
+344   static _Thread_local char buffer[DESCRIBE_BUFFER_SIZE];
+345 
+346   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+347     snprintf(buffer, sizeof(buffer), &quot;%s (0x%tx)&quot;, type_hint, (ptrdiff_t)key);
+348     return buffer;
+349   }
+350 
+351   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+352   named_entry_t *entry = NULL;
+353   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+354   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+355 
+356   if (entry) {
+357     const char *type = entry-&gt;type ? entry-&gt;type : type_hint;
+358     const char *name = entry-&gt;name ? entry-&gt;name : &quot;unknown&quot;;
+359     if (entry-&gt;file &amp;&amp; entry-&gt;func &amp;&amp; entry-&gt;line &gt; 0) {
+360       snprintf(buffer, sizeof(buffer), &quot;%s/%s (0x%tx) @ %s:%d:%s()&quot;, type, name, (ptrdiff_t)key,
+361                entry-&gt;file, entry-&gt;line, entry-&gt;func);
+362     } else {
+363       snprintf(buffer, sizeof(buffer), &quot;%s/%s (0x%tx)&quot;, type, name, (ptrdiff_t)key);
+364     }
+365   } else {
+366     snprintf(buffer, sizeof(buffer), &quot;%s (0x%tx)&quot;, type_hint ? type_hint : &quot;unknown&quot;, (ptrdiff_t)key);
+367   }
+368 
+369   return buffer;
+370 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>DESCRIBE_BUFFER_SIZE</b>, <b>named_entry::file</b>,
+    <b>named_entry::func</b>, <b>lifecycle_is_initialized()</b>,
+    <b>named_entry::line</b>, <b>named_entry::name</b>, <b>rwlock_rdlock</b>,
+    <b>rwlock_rdunlock</b>, and <b>named_entry::type</b>.</p>
+<p class="Pp">Referenced by <b>named_describe_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_describe_thread_(void_*_thread)"><a class="permalink" href="#const_char_*_named_describe_thread_(void_*_thread)">const
+  char * named_describe_thread (void * thread)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Describe a thread for logging (function wrapper).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>thread</i> <b>asciichat_thread_t</b> handle</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Description string &quot;thread: name (0xID)&quot;</div>
+<p class="Pp">This is a function (not a macro) to handle the opaque
+    <b>asciichat_thread_t</b> type properly, converting it through
+    <b>asciichat_thread_to_key()</b>.</p>
+<p class="Pp">Definition at line <b>372</b> of file <b>debug/named.c</b>.</p>
+<pre>372                                                 {
+373   uintptr_t key = asciichat_thread_to_key((asciichat_thread_t)thread);
+374   return named_describe(key, &quot;thread&quot;);
+375 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_to_key()</b>, and
+    <b>named_describe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_named_destroy_(void_)"><a class="permalink" href="#void_named_destroy_(void_)">void
+  named_destroy (void )</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Destroy the named object registry. Cleans up all registered names
+    and internal structures. Typically called from lock_debug_destroy().</p>
+<p class="Pp">Definition at line <b>93</b> of file <b>debug/named.c</b>.</p>
+<pre>93                          {
+94   // Always attempt to shut down the lifecycle, but always cleanup entries
+95   lifecycle_shutdown(&amp;g_named_registry.lifecycle);
+96 
+97   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+98 
+99   // Find the registry's own rwlock entry (allocated during named_init bootstrap)
+100   // This entry will be unregistered by rwlock_destroy, so we must not free it here
+101   uintptr_t registry_lock_key = (uintptr_t)(const void *)&amp;g_named_registry.entries_lock;
+102   named_entry_t *registry_lock_entry = NULL;
+103   HASH_FIND(hh, g_named_registry.entries, &amp;registry_lock_key, sizeof(uintptr_t), registry_lock_entry);
+104 
+105   for (named_entry_t *e = g_named_registry.entries; e != NULL;) {
+106     named_entry_t *next = e-&gt;hh.next;
+107 
+108     // Skip the registry lock entry - it will be cleaned up by rwlock_destroy
+109     // which calls NAMED_UNREGISTER after we release the lock
+110     if (e == registry_lock_entry) {
+111       e = next;
+112       continue;
+113     }
+114 
+115     // Free all other entries
+116     free(e-&gt;name);
+117     if (e-&gt;type) free(e-&gt;type);
+118     if (e-&gt;format_spec) free(e-&gt;format_spec);
+119     if (e-&gt;file) free(e-&gt;file);
+120     if (e-&gt;func) free(e-&gt;func);
+121     free(e);
+122     e = next;
+123   }
+124 
+125   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+126 
+127   // rwlock_destroy will call NAMED_UNREGISTER on the lock entry, which will:
+128   // 1. Acquire the lock (now safe since we released it)
+129   // 2. Find and remove the lock entry from the hash
+130   // 3. Free the lock entry's fields
+131   rwlock_destroy(&amp;g_named_registry.entries_lock);
+132 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_shutdown()</b>, <b>rwlock_destroy()</b>,
+    <b>rwlock_wrlock</b>, and <b>rwlock_wrunlock</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_get_(uintptr_t_key)"><a class="permalink" href="#const_char_*_named_get_(uintptr_t_key)">const
+  char * named_get (uintptr_t key)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Look up the registered name for a resource.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>key</i> The resource key</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Registered name string, or NULL if not registered</div>
+<p class="Pp">Returns the name string registered with <b>named_register()</b> or
+    <b>named_register_fmt()</b>, or NULL if the key is not in the registry.</p>
+<p class="Pp"></p>
+<p class="Pp">In release builds (NDEBUG), this always returns NULL.</p>
+<p class="Pp">Definition at line <b>302</b> of file <b>debug/named.c</b>.</p>
+<pre>302                                      {
+303   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+304     return NULL;
+305   }
+306 
+307   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+308   named_entry_t *entry = NULL;
+309   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+310   const char *result = entry ? entry-&gt;name : NULL;
+311   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+312   return result;
+313 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>,
+    <b>named_entry::name</b>, <b>rwlock_rdlock</b>, and
+  <b>rwlock_rdunlock</b>.</p>
+<p class="Pp">Referenced by <b>log_template_apply()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_get_by_type_and_id_(const_char_*_type_name,_size_t_type_len,_int_id)"><a class="permalink" href="#const_char_*_named_get_by_type_and_id_(const_char_*_type_name,_size_t_type_len,_int_id)">const
+  char * named_get_by_type_and_id (const char * type_name, size_t type_len, int
+  id)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Look up an integer ID by type name and value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>type_name</i> Type string (e.g., &quot;socket&quot;,
+  &quot;client&quot;, &quot;connection&quot;)
+<br/>
+<i>type_len</i> Length of type name
+<br/>
+<i>id</i> Integer ID value to look up</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Registered name string, or NULL if not found</div>
+<p class="Pp">Searches the registry for entries matching the given type and
+    integer ID. Enables formatting of patterns like &quot;socket 12&quot;
+    &#x2192; &quot;socket/server_listener (socket=12)&quot;. In release builds
+    (NDEBUG), this always returns NULL.</p>
+<p class="Pp">Referenced by <b>log_named_format_message()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_get_fd_(int_fd)"><a class="permalink" href="#const_char_*_named_get_fd_(int_fd)">const
+  char * named_get_fd (int fd)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Look up a registered file descriptor.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>fd</i> File descriptor value</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Registered name string, or NULL if not registered</div>
+<p class="Pp">Looks up an FD using the same namespace encoding as
+    <b>named_register_fd()</b>. In release builds (NDEBUG), this always returns
+    NULL.</p>
+<p class="Pp">Definition at line <b>455</b> of file <b>debug/named.c</b>.</p>
+<pre>455                                  {
+456   if (fd &lt; 0) return NULL;
+457 
+458   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+459     return NULL;
+460   }
+461 
+462   uintptr_t key = encode_fd_key(fd);
+463   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+464   named_entry_t *entry = NULL;
+465   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+466   const char *result = entry ? entry-&gt;name : NULL;
+467   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+468   return result;
+469 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>,
+    <b>named_entry::name</b>, <b>rwlock_rdlock</b>, and
+  <b>rwlock_rdunlock</b>.</p>
+<p class="Pp">Referenced by <b>log_named_format_message()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_get_fd_format_spec_(int_fd)"><a class="permalink" href="#const_char_*_named_get_fd_format_spec_(int_fd)">const
+  char * named_get_fd_format_spec (int fd)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Get the format specifier for a registered file descriptor.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>fd</i> File descriptor value</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Format specifier string (e.g., &quot;%d&quot;), or NULL
+  if not registered</div>
+<p class="Pp">Definition at line <b>471</b> of file <b>debug/named.c</b>.</p>
+<pre>471                                              {
+472   if (fd &lt; 0) return NULL;
+473 
+474   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+475     return NULL;
+476   }
+477 
+478   uintptr_t key = encode_fd_key(fd);
+479   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+480   named_entry_t *entry = NULL;
+481   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+482   const char *result = entry ? entry-&gt;format_spec : NULL;
+483   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+484   return result;
+485 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>named_entry::format_spec</b>,
+    <b>lifecycle_is_initialized()</b>, <b>rwlock_rdlock</b>, and
+    <b>rwlock_rdunlock</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_get_format_spec_(uintptr_t_key)"><a class="permalink" href="#const_char_*_named_get_format_spec_(uintptr_t_key)">const
+  char * named_get_format_spec (uintptr_t key)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Get the format specifier for a registered named object.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>key</i> The resource key</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Format specifier string (e.g., &quot;0x%tx&quot;), or
+  NULL if not registered</div>
+<p class="Pp">Returns the format specifier registered with
+    <b>named_register()</b>, or NULL if the key is not in the registry.</p>
+<p class="Pp"></p>
+<p class="Pp">In release builds (NDEBUG), this always returns NULL.</p>
+<p class="Pp">Definition at line <b>328</b> of file <b>debug/named.c</b>.</p>
+<pre>328                                                  {
+329   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+330     return NULL;
+331   }
+332 
+333   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+334   named_entry_t *entry = NULL;
+335   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+336   const char *result = entry ? entry-&gt;format_spec : NULL;
+337   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+338   return result;
+339 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>named_entry::format_spec</b>,
+    <b>lifecycle_is_initialized()</b>, <b>rwlock_rdlock</b>, and
+    <b>rwlock_rdunlock</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_get_packet_type_(int_pkt_type)"><a class="permalink" href="#const_char_*_named_get_packet_type_(int_pkt_type)">const
+  char * named_get_packet_type (int pkt_type)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Look up a registered packet type.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pkt_type</i> Packet type value</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Registered name string, or NULL if not registered</div>
+<p class="Pp">Looks up a packet type using the same namespace encoding as
+    <b>named_register_packet_type()</b>. In release builds (NDEBUG), this always
+    returns NULL.</p>
+<p class="Pp">Definition at line <b>516</b> of file <b>debug/named.c</b>.</p>
+<pre>516                                                 {
+517   if (pkt_type &lt; 0) return NULL;
+518 
+519   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+520     return NULL;
+521   }
+522 
+523   uintptr_t key = encode_pkt_type_key(pkt_type);
+524   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+525   named_entry_t *entry = NULL;
+526   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+527   const char *result = entry ? entry-&gt;name : NULL;
+528   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+529   return result;
+530 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>,
+    <b>named_entry::name</b>, <b>rwlock_rdlock</b>, and
+  <b>rwlock_rdunlock</b>.</p>
+<p class="Pp">Referenced by <b>log_named_format_message()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_get_packet_type_format_spec_(int_pkt_type)"><a class="permalink" href="#const_char_*_named_get_packet_type_format_spec_(int_pkt_type)">const
+  char * named_get_packet_type_format_spec (int pkt_type)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Get the format specifier for a registered packet type.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pkt_type</i> Packet type value</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Format specifier string (e.g., &quot;%d&quot;), or NULL
+  if not registered</div>
+<p class="Pp">Definition at line <b>532</b> of file <b>debug/named.c</b>.</p>
+<pre>532                                                             {
+533   if (pkt_type &lt; 0) return NULL;
+534 
+535   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+536     return NULL;
+537   }
+538 
+539   uintptr_t key = encode_pkt_type_key(pkt_type);
+540   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+541   named_entry_t *entry = NULL;
+542   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+543   const char *result = entry ? entry-&gt;format_spec : NULL;
+544   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+545   return result;
+546 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>named_entry::format_spec</b>,
+    <b>lifecycle_is_initialized()</b>, <b>rwlock_rdlock</b>, and
+    <b>rwlock_rdunlock</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_get_type_(uintptr_t_key)"><a class="permalink" href="#const_char_*_named_get_type_(uintptr_t_key)">const
+  char * named_get_type (uintptr_t key)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Look up the registered type for a resource.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>key</i> The resource key</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Registered type string, or NULL if not registered</div>
+<p class="Pp">Returns the type string registered with <b>named_register()</b> or
+    <b>named_register_fmt()</b>, or NULL if the key is not in the registry.</p>
+<p class="Pp"></p>
+<p class="Pp">In release builds (NDEBUG), this always returns NULL.</p>
+<p class="Pp">Definition at line <b>315</b> of file <b>debug/named.c</b>.</p>
+<pre>315                                           {
+316   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+317     return NULL;
+318   }
+319 
+320   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+321   named_entry_t *entry = NULL;
+322   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+323   const char *result = entry ? entry-&gt;type : NULL;
+324   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+325   return result;
+326 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>,
+    <b>rwlock_rdlock</b>, <b>rwlock_rdunlock</b>, and
+  <b>named_entry::type</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> named_init (void )</h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Initialize the named object registry.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, non-zero on error</div>
+<p class="Pp">Must be called once at startup before any <b>named_register()</b>
+    calls. Typically called from lock_debug_init().</p>
+<p class="Pp">Definition at line <b>74</b> of file <b>debug/named.c</b>.</p>
+<pre>74                                    {
+75   // Idempotent: if already initialized, return success
+76   if (lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+77     return ASCIICHAT_OK;
+78   }
+79 
+80   if (!lifecycle_init(&amp;g_named_registry.lifecycle, &quot;named_registry&quot;)) {
+81     return ASCIICHAT_OK;
+82   }
+83 
+84   if (rwlock_init(&amp;g_named_registry.entries_lock, &quot;named_registry_lock&quot;) != 0) {
+85     lifecycle_shutdown(&amp;g_named_registry.lifecycle);
+86     return ASCIICHAT_OK;  // Continue even if rwlock init fails
+87   }
+88 
+89   lifecycle_init_commit(&amp;g_named_registry.lifecycle);
+90   return ASCIICHAT_OK;
+91 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>lifecycle_init()</b>,
+    <b>lifecycle_init_commit()</b>, <b>lifecycle_is_initialized()</b>,
+    <b>lifecycle_shutdown()</b>, and <b>rwlock_init()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_init()</b>, and
+  <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_register_(uintptr_t_key,_const_char_*_base_name,_const_char_*_type,_const_char_*_format_spec,_const_char_*_file,_int_line,_const_char_*_func,_uintptr_t_parent_key)"><a class="permalink" href="#const_char_*_named_register_(uintptr_t_key,_const_char_*_base_name,_const_char_*_type,_const_char_*_format_spec,_const_char_*_file,_int_line,_const_char_*_func,_uintptr_t_parent_key)">const
+  char * named_register (uintptr_t key, const char * base_name, const char *
+  type, const char * format_spec, const char * file, int line, const char *
+  func, uintptr_t parent_key)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Register a resource with an auto-suffixed name, type, and location
+    info.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>key</i> A uintptr_t representing the resource (pointer
+  or integer handle)
+<br/>
+<i>base_name</i> The base name (e.g., &quot;recv&quot;); suffix auto-generated
+<br/>
+<i>type</i> Data type label (e.g., &quot;mutex&quot;, &quot;rwlock&quot;,
+  &quot;socket&quot;); stored and printed
+<br/>
+<i>file</i> Source file where registration occurred (typically <b>FILE</b>)
+<br/>
+<i>line</i> Source line where registration occurred (typically <b>LINE</b>)
+<br/>
+<i>func</i> Function where registration occurred (typically <b>func</b>)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to the full registered name (e.g.,
+  &quot;recv.7&quot;), valid until unregister</div>
+<p class="Pp">The returned name string is stored in the registry and remains
+    valid until named_unregister(key) is called. Do not modify or free the
+    returned pointer.</p>
+<p class="Pp"></p>
+<p class="Pp">The type parameter is stored in the registry and used by
+    <b>named_describe()</b> to format output as &quot;type: name (0xKEY) @
+    file:line:func()&quot; automatically, without needing a type_hint
+  parameter.</p>
+<p class="Pp"></p>
+<p class="Pp">Multiple registrations of the same key will overwrite the previous
+    entry. In release builds (NDEBUG), this is a no-op and returns
+  base_name.</p>
+<p class="Pp">Definition at line <b>168</b> of file <b>debug/named.c</b>.</p>
+<pre>169                                                                                                {
+170 #ifdef NDEBUG
+171   // In release builds, skip debug registry and return the base name
+172   return base_name ? base_name : &quot;?&quot;;
+173 #endif
+174 
+175   if (!base_name || !type || !format_spec) {
+176     return &quot;?&quot;;
+177   }
+178 
+179   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+180     return base_name;
+181   }
+182 
+183   // If parent_key provided, look up parent name and create hierarchical name
+184   char final_base_name[256];
+185   if (parent_key != 0) {
+186     rwlock_rdlock(&amp;g_named_registry.entries_lock);
+187     const char *parent_name = named_lookup_name_unlocked(parent_key);
+188     rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+189 
+190     if (parent_name) {
+191       snprintf(final_base_name, sizeof(final_base_name), &quot;%s#%s&quot;, parent_name, base_name);
+192     } else {
+193       // Parent not found, fall back to base name
+194       snprintf(final_base_name, sizeof(final_base_name), &quot;%s&quot;, base_name);
+195     }
+196   } else {
+197     snprintf(final_base_name, sizeof(final_base_name), &quot;%s&quot;, base_name);
+198   }
+199 
+200   // Generate unique name using atomic counters (only for non-hierarchical names)
+201   char name_buffer[256];
+202   if (parent_key == 0) {
+203     uint64_t counter = 0;
+204     if (strcmp(type, &quot;mutex&quot;) == 0) {
+205       counter = __sync_fetch_and_add(&amp;mutex_counter, 1);
+206     } else if (strcmp(type, &quot;rwlock&quot;) == 0) {
+207       counter = __sync_fetch_and_add(&amp;rwlock_counter, 1);
+208     } else if (strcmp(type, &quot;cond&quot;) == 0) {
+209       counter = __sync_fetch_and_add(&amp;cond_counter, 1);
+210     } else if (strcmp(type, &quot;atomic&quot;) == 0) {
+211       counter = __sync_fetch_and_add(&amp;atomic_counter, 1);
+212     }
+213     snprintf(name_buffer, sizeof(name_buffer), &quot;%s.%&quot;PRIu64, final_base_name, counter);
+214   } else {
+215     // Hierarchical names don't get counters - parent already has one
+216     snprintf(name_buffer, sizeof(name_buffer), &quot;%s&quot;, final_base_name);
+217   }
+218 
+219   // Allocate entry BEFORE acquiring lock (avoid long critical section)
+220   named_entry_t *entry = malloc(sizeof(named_entry_t));
+221   if (!entry) return base_name;
+222 
+223   entry-&gt;key = key;
+224   entry-&gt;name = entry_strdup(name_buffer);
+225   named_entry_init(entry, type, format_spec, file, line, func);
+226 
+227   // Only hold lock for the hash table operation
+228   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+229   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+230   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+231 
+232   return entry-&gt;name;
+233 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>named_entry::key</b>,
+    <b>lifecycle_is_initialized()</b>, <b>named_entry::name</b>,
+    <b>rwlock_rdlock</b>, <b>rwlock_rdunlock</b>, <b>rwlock_wrlock</b>, and
+    <b>rwlock_wrunlock</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_register_fd_(int_fd,_const_char_*_file,_int_line,_const_char_*_func)"><a class="permalink" href="#const_char_*_named_register_fd_(int_fd,_const_char_*_file,_int_line,_const_char_*_func)">const
+  char * named_register_fd (int fd, const char * file, int line, const char *
+  func)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Register a file descriptor with namespace encoding.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>fd</i> File descriptor value
+<br/>
+<i>file</i> Source file where registration occurred
+<br/>
+<i>line</i> Source line where registration occurred
+<br/>
+<i>func</i> Function where registration occurred</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Registered name string</div>
+<p class="Pp">Registers an FD with a key that includes type namespace to avoid
+    collisions with packet types or other numeric values. Name is auto-generated
+    as &quot;fd=%d&quot;. In release builds (NDEBUG), this is a no-op and
+    returns &quot;fd=%d&quot; string.</p>
+<p class="Pp">Definition at line <b>426</b> of file <b>debug/named.c</b>.</p>
+<pre>426                                                                                     {
+427   if (fd &lt; 0) {
+428     return &quot;?&quot;;
+429   }
+430 
+431   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+432     return &quot;?&quot;;
+433   }
+434 
+435   char name_buffer[256];
+436   snprintf(name_buffer, sizeof(name_buffer), &quot;fd=%d&quot;, fd);
+437 
+438   // Allocate entry BEFORE acquiring lock
+439   named_entry_t *entry = malloc(sizeof(named_entry_t));
+440   if (!entry) return &quot;?&quot;;
+441 
+442   uintptr_t key = encode_fd_key(fd);
+443   entry-&gt;key = key;
+444   entry-&gt;name = entry_strdup(name_buffer);
+445   named_entry_init(entry, &quot;fd&quot;, &quot;%d&quot;, file, line, func);
+446 
+447   // Only hold lock for the hash table operation
+448   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+449   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+450   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+451 
+452   return entry-&gt;name;
+453 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>named_entry::key</b>,
+    <b>lifecycle_is_initialized()</b>, <b>named_entry::name</b>,
+    <b>rwlock_wrlock</b>, and <b>rwlock_wrunlock</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_register_fmt_(uintptr_t_key,_const_char_*_type,_const_char_*_format_spec,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_fmt,__"><a class="permalink" href="#const_char_*_named_register_fmt_(uintptr_t_key,_const_char_*_type,_const_char_*_format_spec,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_fmt,__">const
+  char * named_register_fmt (uintptr_t key, const char * type, const char *
+  format_spec, const char * file, int line, const char * func, const char * fmt,
+  ...)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Register a resource with a formatted name, type, and location info
+    (no auto-suffix).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>key</i> A uintptr_t representing the resource
+<br/>
+<i>type</i> Data type label (e.g., &quot;mutex&quot;, &quot;socket&quot;);
+  stored and printed
+<br/>
+<i>file</i> Source file where registration occurred
+<br/>
+<i>line</i> Source line where registration occurred
+<br/>
+<i>func</i> Function where registration occurred
+<br/>
+<i>fmt</i> Printf-style format string
+<br/>
+<i>...</i> Format arguments</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to the full registered name</div>
+<p class="Pp">Allows full control over the registered name. The format string
+    and arguments are printed to create the name (e.g., &quot;client.%u&quot;
+    with args &quot;17&quot; &#x2192; &quot;client.17&quot;). No auto-suffix
+    counter is applied.</p>
+<p class="Pp"></p>
+<p class="Pp">The type parameter is stored in the registry and used by
+    <b>named_describe()</b> for automatic formatting without needing
+  type_hint.</p>
+<p class="Pp"></p>
+<p class="Pp">In release builds (NDEBUG), this is a no-op and returns
+    &quot;?&quot;.</p>
+<p class="Pp">Definition at line <b>235</b> of file <b>debug/named.c</b>.</p>
+<pre>236                                                                        {
+237   if (!type || !format_spec || !fmt) {
+238     return &quot;?&quot;;
+239   }
+240 
+241   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+242     return fmt;
+243   }
+244 
+245   // Format the name BEFORE acquiring lock
+246   va_list args;
+247   va_start(args, fmt);
+248   char *full_name = NULL;
+249   int ret = vasprintf(&amp;full_name, fmt, args);
+250   va_end(args);
+251 
+252   if (ret &lt; 0) {
+253     return &quot;?&quot;;
+254   }
+255 
+256   // Allocate entry BEFORE acquiring lock
+257   named_entry_t *entry = malloc(sizeof(named_entry_t));
+258   if (!entry) {
+259     free(full_name);
+260     return &quot;?&quot;;
+261   }
+262 
+263   // Initialize entry (name is pre-allocated as full_name)
+264   entry-&gt;key = key;
+265   entry-&gt;name = full_name;
+266   named_entry_init(entry, type, format_spec, file, line, func);
+267 
+268   // Only hold lock for the hash table operation
+269   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+270   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+271   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+272 
+273   return entry-&gt;name;
+274 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>args</b>, <b>named_entry::key</b>,
+    <b>lifecycle_is_initialized()</b>, <b>named_entry::name</b>,
+    <b>rwlock_wrlock</b>, and <b>rwlock_wrunlock</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_register_packet_type_(int_pkt_type,_const_char_*_file,_int_line,_const_char_*_func)"><a class="permalink" href="#const_char_*_named_register_packet_type_(int_pkt_type,_const_char_*_file,_int_line,_const_char_*_func)">const
+  char * named_register_packet_type (int pkt_type, const char * file, int line,
+  const char * func)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Register a packet type with namespace encoding.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pkt_type</i> Packet type value
+<br/>
+<i>file</i> Source file where registration occurred
+<br/>
+<i>line</i> Source line where registration occurred
+<br/>
+<i>func</i> Function where registration occurred</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Registered name string</div>
+<p class="Pp">Registers a packet type with a key that includes type namespace to
+    avoid collisions with FDs or other numeric values. Name is auto-generated as
+    &quot;PACKET_TYPE=%d&quot;. In release builds (NDEBUG), this is a no-op and
+    returns &quot;PACKET_TYPE=%d&quot; string.</p>
+<p class="Pp">Definition at line <b>487</b> of file <b>debug/named.c</b>.</p>
+<pre>487                                                                                                    {
+488   if (pkt_type &lt; 0) {
+489     return &quot;?&quot;;
+490   }
+491 
+492   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+493     return &quot;?&quot;;
+494   }
+495 
+496   char name_buffer[256];
+497   snprintf(name_buffer, sizeof(name_buffer), &quot;PACKET_TYPE=%d&quot;, pkt_type);
+498 
+499   // Allocate entry BEFORE acquiring lock
+500   named_entry_t *entry = malloc(sizeof(named_entry_t));
+501   if (!entry) return &quot;?&quot;;
+502 
+503   uintptr_t key = encode_pkt_type_key(pkt_type);
+504   entry-&gt;key = key;
+505   entry-&gt;name = entry_strdup(name_buffer);
+506   named_entry_init(entry, &quot;packet_type&quot;, &quot;%d&quot;, file, line, func);
+507 
+508   // Only hold lock for the hash table operation
+509   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+510   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+511   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+512 
+513   return entry-&gt;name;
+514 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>named_entry::key</b>,
+    <b>lifecycle_is_initialized()</b>, <b>named_entry::name</b>,
+    <b>rwlock_wrlock</b>, and <b>rwlock_wrunlock</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_named_registry_for_each_("><a class="permalink" href="#void_named_registry_for_each_(">void
+  named_registry_for_each (<b>named_iter_callback_t</b> callback, void *
+  user_data)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Iterate through all registered entries.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>callback</i> Function to call for each entry
+<br/>
+<i>user_data</i> Opaque context passed to callback</div>
+<p class="Pp">Safely iterates through all registered entries without holding the
+    lock for the entire iteration (entries are copied). Callback is invoked for
+    each entry. In release builds (NDEBUG), this is a no-op.</p>
+<p class="Pp">Definition at line <b>382</b> of file <b>debug/named.c</b>.</p>
+<pre>382                                                                               {
+383   if (!callback || !lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+384     return;
+385   }
+386 
+387   // Snapshot entries while holding read lock
+388   named_iter_entry_t entries[256];
+389   int count = 0;
+390 
+391   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+392   for (named_entry_t *e = g_named_registry.entries; e != NULL &amp;&amp; count &lt; 256; e = e-&gt;hh.next) {
+393     entries[count].key = e-&gt;key;
+394     strncpy(entries[count].name, e-&gt;name ? e-&gt;name : &quot;?&quot;, MAX_NAME_LEN - 1);
+395     entries[count].name[MAX_NAME_LEN - 1] = '\0';
+396     count++;
+397   }
+398   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+399 
+400   // Call callback outside the lock
+401   for (int i = 0; i &lt; count; i++) {
+402     callback(entries[i].key, entries[i].name, user_data);
+403   }
+404 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>named_iter_entry_t::key</b>,
+    <b>lifecycle_is_initialized()</b>, <b>MAX_NAME_LEN</b>,
+    <b>named_iter_entry_t::name</b>, <b>rwlock_rdlock</b>, and
+    <b>rwlock_rdunlock</b>.</p>
+<p class="Pp">Referenced by <b>debug_sync_check_cond_deadlocks()</b>, and
+    <b>debug_sync_print_state()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_named_registry_register_packet_types_(void_)"><a class="permalink" href="#void_named_registry_register_packet_types_(void_)">void
+  named_registry_register_packet_types (void )</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Register all packet types from <b>packet_type_t</b> enum.
+    Registers all packet type enum values in the named registry using keys in
+    the format &quot;PACKET_TYPE=%d&quot; where d is the enum value. This should
+    be called once during initialization to enable packet type identification in
+    log message formatting.</p>
+<p class="Pp">Definition at line <b>548</b> of file <b>debug/named.c</b>.</p>
+<pre>548                                                 {
+549   // No-op
+550 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_named_unregister_(uintptr_t_key)"><a class="permalink" href="#void_named_unregister_(uintptr_t_key)">void
+  named_unregister (uintptr_t key)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Unregister a resource by key.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>key</i> The same uintptr_t passed to
+  named_register</div>
+<p class="Pp">Removes the resource from the registry. Safe to call multiple
+    times for the same key (idempotent).</p>
+<p class="Pp">Definition at line <b>276</b> of file <b>debug/named.c</b>.</p>
+<pre>276                                      {
+277   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+278     return;
+279   }
+280 
+281   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+282   named_entry_t *entry = NULL;
+283   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+284   if (entry) {
+285     HASH_DEL(g_named_registry.entries, entry);
+286     free(entry-&gt;name);
+287     if (entry-&gt;type) free(entry-&gt;type);
+288     if (entry-&gt;format_spec) free(entry-&gt;format_spec);
+289     if (entry-&gt;file) free(entry-&gt;file);
+290     if (entry-&gt;func) free(entry-&gt;func);
+291     free(entry);
+292   }
+293   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+294 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>named_entry::file</b>,
+    <b>named_entry::format_spec</b>, <b>named_entry::func</b>,
+    <b>lifecycle_is_initialized()</b>, <b>named_entry::name</b>,
+    <b>rwlock_wrlock</b>, <b>rwlock_wrunlock</b>, and
+  <b>named_entry::type</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_update_name_(uintptr_t_key,_const_char_*_new_base_name)"><a class="permalink" href="#const_char_*_named_update_name_(uintptr_t_key,_const_char_*_new_base_name)">const
+  char * named_update_name (uintptr_t key, const char * new_base_name)</a></h2>
+<p class="Pp">#include
+  &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
+<p class="Pp">Update the registered name for a resource with a new base
+  name.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>key</i> The resource key
+<br/>
+<i>new_base_name</i> New base name (will be auto-suffixed with counter)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Updated name string, or NULL if key not found</div>
+<p class="Pp">Updates an existing registration with a new base name. The new
+    name will be auto-suffixed with a counter to make it unique (e.g.,
+    &quot;client_123.0&quot;). Useful when a resource gets an ID assigned after
+    creation (e.g., client_id).</p>
+<p class="Pp"></p>
+<p class="Pp">In release builds (NDEBUG), this is a no-op and returns NULL.</p>
+<p class="Pp">Definition at line <b>296</b> of file <b>debug/named.c</b>.</p>
+<pre>296                                                                         {
+297   (void)key;
+298   (void)new_base_name;
+299   return NULL;
+300 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>tcp_client_connect()</b>, and
+    <b>websocket_client_connect()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

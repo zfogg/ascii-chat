@@ -41,10 +41,12 @@
 <p class="Pp">void <b>layout_print_wrapped_description</b> (FILE *stream, const
     char *text, int indent_width, int term_width, int continuation_indent_extra)
   <br/>
-  void <b>layout_print_two_column_row</b> (FILE *stream, const char
-    *first_column, const char *second_column, int first_col_len, int term_width,
-    int continuation_indent_extra)
+  Print text with wrapping and proper indentation. void
+    <b>layout_print_two_column_row</b> (FILE *stream, const char *first_column,
+    const char *second_column, int first_col_len, int term_width, int
+    continuation_indent_extra)
   <br/>
+  Print two-column row with automatic wrapping.
   <br/>
 </p>
 </section>
@@ -66,6 +68,24 @@
   layout_print_two_column_row (FILE * stream, const char * first_column, const
   char * second_column, int first_col_len, int term_width, int
   continuation_indent_extra)</a></h2>
+<p class="Pp">Print two-column row with automatic wrapping. Prints first column
+    text, then second column description with proper alignment. If first column
+    is too long (&gt;45 chars), description moves to next line. Second column
+    wraps at description start column.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>stream</i> Output file stream
+<br/>
+<i>first_column</i> Text for first column
+<br/>
+<i>second_column</i> Description for second column
+<br/>
+<i>first_col_len</i> Length of first column text (excluding ANSI codes)
+<br/>
+<i>term_width</i> Terminal width
+<br/>
+<i>continuation_indent_extra</i> Extra spaces for continuation lines (0 for
+  none, 2 for options)</div>
 <p class="Pp">Definition at line <b>224</b> of file <b>layout.c</b>.</p>
 <pre>225                                                                                 {
 226   if (!stream || !first_column || !second_column)
@@ -153,8 +173,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_strip_escapes()</b>, <b>display_width()</b>,
-    <b>layout_print_wrapped_description()</b>, and
-  <b>utf8_display_width()</b>.</p>
+    <b>layout_print_wrapped_description()</b>, <b>SAFE_FREE</b>, and
+    <b>utf8_display_width()</b>.</p>
 <p class="Pp">Referenced by
     <b>options_config_print_options_sections_with_width()</b>,
     <b>options_config_print_usage()</b>, and
@@ -164,6 +184,21 @@
 <h2 class="Ss" id="void_layout_print_wrapped_description_(FILE_*_stream,_const_char_*_text,_int_indent_width,_int_term_width,_int_continuation_indent_extra)"><a class="permalink" href="#void_layout_print_wrapped_description_(FILE_*_stream,_const_char_*_text,_int_indent_width,_int_term_width,_int_continuation_indent_extra)">void
   layout_print_wrapped_description (FILE * stream, const char * text, int
   indent_width, int term_width, int continuation_indent_extra)</a></h2>
+<p class="Pp">Print text with wrapping and proper indentation. Wraps text to fit
+    within terminal width, maintaining specified indentation for wrapped lines.
+    Applies color formatting to metadata labels.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>stream</i> Output file stream
+<br/>
+<i>text</i> Plain text to print (may contain wrapping markers)
+<br/>
+<i>indent_width</i> Number of spaces to indent wrapped lines
+<br/>
+<i>term_width</i> Terminal width (0 for default 80)
+<br/>
+<i>continuation_indent_extra</i> Extra spaces to add to continuation lines (0
+  for none, 2 for options)</div>
 <p class="Pp">Definition at line <b>98</b> of file <b>layout.c</b>.</p>
 <pre>99                                                                      {
 100   if (!text || !stream)
@@ -287,7 +322,8 @@
 218 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>utf8_next_char_bytes()</b>.</p>
+<p class="Pp">References <b>BUFFER_SIZE_MEDIUM</b>, <b>SAFE_STRNCPY</b>, and
+    <b>utf8_next_char_bytes()</b>.</p>
 <p class="Pp">Referenced by <b>layout_print_two_column_row()</b>, and
     <b>options_print_help_for_mode()</b>.</p>
 </section>
@@ -299,7 +335,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

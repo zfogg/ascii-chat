@@ -64,19 +64,19 @@
   void <b>h265_server_context_destroy</b> (<b>h265_server_context_t</b> *ctx)
   <br/>
   <b>h265_server_client_t</b> * <b>h265_server_get_client_decoder</b>
-    (<b>h265_server_context_t</b> *ctx, uint32_t client_id)
+    (<b>h265_server_context_t</b> *ctx, <b>uint32_t</b> client_id)
   <br/>
-  asciichat_error_t <b>h265_server_decode_and_convert</b>
-    (<b>h265_server_client_t</b> *client, const uint8_t *h265_packet, size_t
-    packet_size, uint8_t *output_rgba, uint16_t *output_width, uint16_t
-    *output_height, size_t *output_size)
+  <b>asciichat_error_t</b> <b>h265_server_decode_and_convert</b>
+    (<b>h265_server_client_t</b> *client, const <b>uint8_t</b> *h265_packet,
+    size_t packet_size, <b>uint8_t</b> *output_rgba, <b>uint16_t</b>
+    *output_width, <b>uint16_t</b> *output_height, size_t *output_size)
   <br/>
   void <b>h265_server_remove_client</b> (<b>h265_server_context_t</b> *ctx,
-    uint32_t client_id)
+    <b>uint32_t</b> client_id)
   <br/>
   void <b>h265_server_client_get_stats</b> (<b>h265_server_client_t</b> *client,
-    uint64_t *total_frames, uint64_t *keyframes, uint16_t *last_width, uint16_t
-    *last_height)
+    <b>uint64_t</b> *total_frames, <b>uint64_t</b> *keyframes, <b>uint16_t</b>
+    *last_width, <b>uint16_t</b> *last_height)
   <br/>
   <br/>
 </p>
@@ -103,9 +103,9 @@
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss" id="void_h265_server_client_get_stats_("><a class="permalink" href="#void_h265_server_client_get_stats_(">void
-  h265_server_client_get_stats (<b>h265_server_client_t</b> * client, uint64_t *
-  total_frames, uint64_t * keyframes, uint16_t * last_width, uint16_t *
-  last_height)</a></h2>
+  h265_server_client_get_stats (<b>h265_server_client_t</b> * client,
+  <b>uint64_t</b> * total_frames, <b>uint64_t</b> * keyframes, <b>uint16_t</b> *
+  last_width, <b>uint16_t</b> * last_height)</a></h2>
 <p class="Pp">Get statistics for a client's decoder</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
@@ -161,8 +161,9 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>h265_server_context::active_client_count</b>,
-    <b>h265_server_context::clients</b>, and
-    <b>h265_client_decoder_t::in_use</b>.</p>
+    <b>h265_server_context::clients</b>, <b>ERROR_MEMORY</b>,
+    <b>h265_client_decoder_t::in_use</b>, <b>log_info</b>, <b>MAX_CLIENTS</b>,
+    <b>SAFE_CALLOC</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
@@ -187,15 +188,16 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>h265_server_context::clients</b>,
-    <b>h265_client_decoder_t::decoder</b>, <b>h265_decoder_destroy()</b>, and
-    <b>h265_client_decoder_t::in_use</b>.</p>
+    <b>h265_client_decoder_t::decoder</b>, <b>h265_decoder_destroy()</b>,
+    <b>h265_client_decoder_t::in_use</b>, <b>MAX_CLIENTS</b>, and
+    <b>SAFE_FREE</b>.</p>
 <p class="Pp">Referenced by <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_h265_server_decode_and_convert_("><a class="permalink" href="#asciichat_error_t_h265_server_decode_and_convert_(">asciichat_error_t
-  h265_server_decode_and_convert (<b>h265_server_client_t</b> * client, const
-  uint8_t * h265_packet, size_t packet_size, uint8_t * output_rgba, uint16_t *
-  output_width, uint16_t * output_height, size_t * output_size)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> h265_server_decode_and_convert
+  (<b>h265_server_client_t</b> * client, const <b>uint8_t</b> * h265_packet,
+  size_t packet_size, <b>uint8_t</b> * output_rgba, <b>uint16_t</b> *
+  output_width, <b>uint16_t</b> * output_height, size_t * output_size)</h2>
 <p class="Pp">Decode an H.265 frame from a client and convert to RGBA</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
@@ -269,15 +271,17 @@
 148 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>h265_client_decoder_t::decoder</b>,
-    <b>h265_decode()</b>, <b>h265_client_decoder_t::in_use</b>,
-    <b>h265_client_decoder_t::last_height</b>, and
-    <b>h265_client_decoder_t::last_width</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>h265_client_decoder_t::decoder</b>, <b>ERROR_INTERNAL</b>,
+    <b>ERROR_NETWORK_SIZE</b>, <b>h265_decode()</b>,
+    <b>h265_client_decoder_t::in_use</b>,
+    <b>h265_client_decoder_t::last_height</b>,
+    <b>h265_client_decoder_t::last_width</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>handle_image_frame_h265_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>h265_server_client_t</b> * h265_server_get_client_decoder
-  (<b>h265_server_context_t</b> * ctx, uint32_t client_id)</h2>
+  (<b>h265_server_context_t</b> * ctx, <b>uint32_t</b> client_id)</h2>
 <p class="Pp">Get or create a client decoder within the server context Each
     client gets its own H.265 decoder instance</p>
 <p class="Pp"></p>
@@ -329,14 +333,16 @@
 <p class="Pp">References <b>h265_server_context::active_client_count</b>,
     <b>h265_client_decoder_t::client_id</b>,
     <b>h265_server_context::clients</b>, <b>h265_client_decoder_t::decoder</b>,
+    <b>ERROR_INTERNAL</b>, <b>ERROR_MEDIA_INIT</b>,
     <b>h265_decoder_create()</b>, <b>h265_client_decoder_t::in_use</b>,
-    <b>h265_client_decoder_t::last_height</b>, and
-    <b>h265_client_decoder_t::last_width</b>.</p>
+    <b>h265_client_decoder_t::last_height</b>,
+    <b>h265_client_decoder_t::last_width</b>, <b>log_debug</b>,
+    <b>MAX_CLIENTS</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>handle_image_frame_h265_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_h265_server_remove_client_("><a class="permalink" href="#void_h265_server_remove_client_(">void
-  h265_server_remove_client (<b>h265_server_context_t</b> * ctx, uint32_t
+  h265_server_remove_client (<b>h265_server_context_t</b> * ctx, <b>uint32_t</b>
   client_id)</a></h2>
 <p class="Pp">Remove a client decoder (when client disconnects)</p>
 <p class="Pp"></p>
@@ -367,7 +373,8 @@
 <p class="Pp">References <b>h265_server_context::active_client_count</b>,
     <b>h265_client_decoder_t::client_id</b>,
     <b>h265_server_context::clients</b>, <b>h265_client_decoder_t::decoder</b>,
-    <b>h265_decoder_destroy()</b>, and <b>h265_client_decoder_t::in_use</b>.</p>
+    <b>h265_decoder_destroy()</b>, <b>h265_client_decoder_t::in_use</b>,
+    <b>log_debug</b>, and <b>MAX_CLIENTS</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -377,7 +384,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

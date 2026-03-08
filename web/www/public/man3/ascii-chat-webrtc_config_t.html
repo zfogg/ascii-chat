@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>webrtc_config_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">webrtc_config_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">webrtc_config_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">webrtc_config_t - WebRTC configuration.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/webrtc/webrtc.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>stun_server_t</b> * <b>stun_servers</b>
+  <br/>
+  Array of STUN servers. size_t <b>stun_count</b>
+  <br/>
+  Number of STUN servers. <b>turn_server_t</b> * <b>turn_servers</b>
+  <br/>
+  Array of TURN servers. size_t <b>turn_count</b>
+  <br/>
+  Number of TURN servers. <b>webrtc_state_callback_t</b> <b>on_state_change</b>
+  <br/>
+  <b>webrtc_gathering_state_callback_t</b> <b>on_gathering_state_change</b>
+  <br/>
+  <b>webrtc_local_description_callback_t</b> <b>on_local_description</b>
+  <br/>
+  <b>webrtc_local_candidate_callback_t</b> <b>on_local_candidate</b>
+  <br/>
+  <b>webrtc_datachannel_open_callback_t</b> <b>on_datachannel_open</b>
+  <br/>
+  <b>webrtc_datachannel_message_callback_t</b> <b>on_datachannel_message</b>
+  <br/>
+  <b>webrtc_datachannel_error_callback_t</b> <b>on_datachannel_error</b>
+  <br/>
+  void * <b>user_data</b>
+  <br/>
+  Passed to all callbacks.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">WebRTC configuration.</p>
+<p class="Pp">Definition at line <b>128</b> of file
+    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>webrtc_datachannel_error_callback_t</b>
+  webrtc_config_t::on_datachannel_error</h2>
+<p class="Pp">Definition at line <b>141</b> of file
+    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>webrtc_datachannel_message_callback_t</b>
+  webrtc_config_t::on_datachannel_message</h2>
+<p class="Pp">Definition at line <b>140</b> of file
+    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>webrtc_datachannel_open_callback_t</b>
+  webrtc_config_t::on_datachannel_open</h2>
+<p class="Pp">Definition at line <b>139</b> of file
+    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>webrtc_gathering_state_callback_t</b>
+  webrtc_config_t::on_gathering_state_change</h2>
+<p class="Pp">Definition at line <b>136</b> of file
+    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>webrtc_local_candidate_callback_t</b>
+  webrtc_config_t::on_local_candidate</h2>
+<p class="Pp">Definition at line <b>138</b> of file
+    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>webrtc_local_description_callback_t</b>
+  webrtc_config_t::on_local_description</h2>
+<p class="Pp">Definition at line <b>137</b> of file
+    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>webrtc_state_callback_t</b>
+  webrtc_config_t::on_state_change</h2>
+<p class="Pp">Definition at line <b>135</b> of file
+    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_webrtc_config_t::stun_count"><a class="permalink" href="#size_t_webrtc_config_t::stun_count">size_t
+  webrtc_config_t::stun_count</a></h2>
+<p class="Pp">Number of STUN servers.</p>
+<p class="Pp">Definition at line <b>130</b> of file
+    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_create_peer_connection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>stun_server_t</b>* webrtc_config_t::stun_servers</h2>
+<p class="Pp">Array of STUN servers.</p>
+<p class="Pp">Definition at line <b>129</b> of file
+    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_create_peer_connection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_webrtc_config_t::turn_count"><a class="permalink" href="#size_t_webrtc_config_t::turn_count">size_t
+  webrtc_config_t::turn_count</a></h2>
+<p class="Pp">Number of TURN servers.</p>
+<p class="Pp">Definition at line <b>132</b> of file
+    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_create_peer_connection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>turn_server_t</b>* webrtc_config_t::turn_servers</h2>
+<p class="Pp">Array of TURN servers.</p>
+<p class="Pp">Definition at line <b>131</b> of file
+    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_create_peer_connection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_webrtc_config_t::user_data"><a class="permalink" href="#void*_webrtc_config_t::user_data">void*
+  webrtc_config_t::user_data</a></h2>
+<p class="Pp">Passed to all callbacks.</p>
+<p class="Pp">Definition at line <b>143</b> of file
+    <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_get_user_data()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

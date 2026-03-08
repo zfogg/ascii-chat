@@ -39,14 +39,14 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">media_source_type_t <b>type</b>
+<p class="Pp"><b>media_source_type_t</b> <b>type</b>
   <br/>
   Type of media source (webcam, file, stdin, test). <b>bool</b>
     <b>loop_enabled</b>
   <br/>
   Whether to loop playback (for files). <b>bool</b> <b>is_paused</b>
   <br/>
-  Whether playback is paused. webcam_context_t * <b>webcam_ctx</b>
+  Whether playback is paused. <b>webcam_context_t</b> * <b>webcam_ctx</b>
   <br/>
   Webcam context (NULL for non-webcam types). unsigned short int
     <b>webcam_index</b>
@@ -59,13 +59,13 @@
   Audio decoder (separate or shared with video). <b>bool</b>
     <b>is_shared_decoder</b>
   <br/>
-  True if both streams share same decoder (YouTube URLs). mutex_t
+  True if both streams share same decoder (YouTube URLs). <b>mutex_t</b>
     <b>decoder_mutex</b>
   <br/>
-  Protects shared decoder access (YouTube URLs). mutex_t
+  Protects shared decoder access (YouTube URLs). <b>mutex_t</b>
     <b>seek_access_mutex</b>
   <br/>
-  Protects decoder access during seeks. mutex_t <b>pause_mutex</b>
+  Protects decoder access during seeks. <b>mutex_t</b> <b>pause_mutex</b>
   <br/>
   Protects pause state. char * <b>file_path</b>
   <br/>
@@ -73,7 +73,7 @@
   <br/>
   Original YouTube URL for re-extraction. void * <b>audio_ctx</b>
   <br/>
-  Audio context for clearing buffers on seek (opaque). image_t *
+  Audio context for clearing buffers on seek (opaque). <b>image_t</b> *
     <b>test_pattern_frame</b>
   <br/>
   Reusable 320x240 frame buffer for test pattern. unsigned int
@@ -113,8 +113,7 @@
     <b>media_source_seek()</b>, and <b>media_source_set_exit_callback()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="mutex_t_media_source_t::decoder_mutex"><a class="permalink" href="#mutex_t_media_source_t::decoder_mutex">mutex_t
-  media_source_t::decoder_mutex</a></h2>
+<h2 class="Ss"><b>mutex_t</b> media_source_t::decoder_mutex</h2>
 <p class="Pp">Protects shared decoder access (YouTube URLs).</p>
 <p class="Pp">Definition at line <b>47</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_create()</b>,
@@ -164,8 +163,7 @@
     <b>media_source_destroy()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="mutex_t_media_source_t::pause_mutex"><a class="permalink" href="#mutex_t_media_source_t::pause_mutex">mutex_t
-  media_source_t::pause_mutex</a></h2>
+<h2 class="Ss"><b>mutex_t</b> media_source_t::pause_mutex</h2>
 <p class="Pp">Protects pause state.</p>
 <p class="Pp">Definition at line <b>49</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_create()</b>,
@@ -175,8 +173,7 @@
     <b>media_source_toggle_pause()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="mutex_t_media_source_t::seek_access_mutex"><a class="permalink" href="#mutex_t_media_source_t::seek_access_mutex">mutex_t
-  media_source_t::seek_access_mutex</a></h2>
+<h2 class="Ss"><b>mutex_t</b> media_source_t::seek_access_mutex</h2>
 <p class="Pp">Protects decoder access during seeks.</p>
 <p class="Pp">Definition at line <b>48</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_create()</b>,
@@ -191,16 +188,14 @@
     <b>media_source_read_video()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="image_t*_media_source_t::test_pattern_frame"><a class="permalink" href="#image_t*_media_source_t::test_pattern_frame">image_t*
-  media_source_t::test_pattern_frame</a></h2>
+<h2 class="Ss"><b>image_t</b>* media_source_t::test_pattern_frame</h2>
 <p class="Pp">Reusable 320x240 frame buffer for test pattern.</p>
 <p class="Pp">Definition at line <b>59</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_create()</b>,
     <b>media_source_destroy()</b>, and <b>media_source_read_video()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="media_source_type_t_media_source_t::type"><a class="permalink" href="#media_source_type_t_media_source_t::type">media_source_type_t
-  media_source_t::type</a></h2>
+<h2 class="Ss"><b>media_source_type_t</b> media_source_t::type</h2>
 <p class="Pp">Type of media source (webcam, file, stdin, test).</p>
 <p class="Pp">Definition at line <b>33</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_at_end()</b>,
@@ -223,8 +218,7 @@
     <b>media_source_seek()</b>, and <b>media_source_set_exit_callback()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="webcam_context_t*_media_source_t::webcam_ctx"><a class="permalink" href="#webcam_context_t*_media_source_t::webcam_ctx">webcam_context_t*
-  media_source_t::webcam_ctx</a></h2>
+<h2 class="Ss"><b>webcam_context_t</b>* media_source_t::webcam_ctx</h2>
 <p class="Pp">Webcam context (NULL for non-webcam types).</p>
 <p class="Pp">Definition at line <b>38</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_create()</b>,
@@ -246,7 +240,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

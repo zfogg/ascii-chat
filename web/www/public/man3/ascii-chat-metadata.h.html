@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>metadata.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">metadata.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">metadata.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">metadata.h - Extern declarations for shared metadata arrays.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">const char * <b>g_log_level_values</b> []
+  <br/>
+  const int <b>g_log_level_integers</b> []
+  <br/>
+  const char * <b>g_log_level_descs</b> []
+  <br/>
+  const char * <b>g_color_setting_values</b> []
+  <br/>
+  const int <b>g_color_setting_integers</b> []
+  <br/>
+  const char * <b>g_color_setting_descs</b> []
+  <br/>
+  const char * <b>g_utf8_setting_values</b> []
+  <br/>
+  const int <b>g_utf8_setting_integers</b> []
+  <br/>
+  const char * <b>g_utf8_setting_descs</b> []
+  <br/>
+  const char * <b>g_color_mode_values</b> []
+  <br/>
+  const int <b>g_color_mode_integers</b> []
+  <br/>
+  const char * <b>g_color_mode_descs</b> []
+  <br/>
+  const char * <b>g_color_filter_values</b> []
+  <br/>
+  const int <b>g_color_filter_integers</b> []
+  <br/>
+  const char * <b>g_color_filter_descs</b> []
+  <br/>
+  const char * <b>g_palette_values</b> []
+  <br/>
+  const int <b>g_palette_integers</b> []
+  <br/>
+  const char * <b>g_palette_descs</b> []
+  <br/>
+  const char * <b>g_render_values</b> []
+  <br/>
+  const int <b>g_render_integers</b> []
+  <br/>
+  const char * <b>g_render_descs</b> []
+  <br/>
+  const char * <b>g_render_theme_values</b> []
+  <br/>
+  const int <b>g_render_theme_integers</b> []
+  <br/>
+  const char * <b>g_render_theme_descs</b> []
+  <br/>
+  const char * <b>g_audio_source_values</b> []
+  <br/>
+  const int <b>g_audio_source_integers</b> []
+  <br/>
+  const char * <b>g_audio_source_descs</b> []
+  <br/>
+  const char * <b>g_compression_examples</b> []
+  <br/>
+  const char * <b>g_fps_examples</b> []
+  <br/>
+  const char * <b>g_width_examples</b> []
+  <br/>
+  const char * <b>g_height_examples</b> []
+  <br/>
+  const char * <b>g_maxclients_examples</b> []
+  <br/>
+  const char * <b>g_reconnect_examples</b> []
+  <br/>
+  const char * <b>g_webcam_examples</b> []
+  <br/>
+  const char * <b>g_mic_examples</b> []
+  <br/>
+  const char * <b>g_speakers_examples</b> []
+  <br/>
+  const char * <b>g_seek_examples</b> []
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Extern declarations for shared metadata arrays.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>metadata.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_audio_source_descs__"><a class="permalink" href="#const_char*_g_audio_source_descs__">const
+  char* g_audio_source_descs[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>136</b> of file <b>metadata.c</b>.</p>
+<pre>136                                    {&quot;Smart selection (media-only when playing files, mic-only otherwise)&quot;,
+137                                       &quot;Microphone only (no media audio)&quot;, &quot;Media audio only (no microphone)&quot;,
+138                                       &quot;Both microphone and media audio simultaneously&quot;, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_int_g_audio_source_integers__"><a class="permalink" href="#const_int_g_audio_source_integers__">const
+  int g_audio_source_integers[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>135</b> of file <b>metadata.c</b>.</p>
+<pre>135 {AUDIO_SOURCE_AUTO, AUDIO_SOURCE_MIC, AUDIO_SOURCE_MEDIA, AUDIO_SOURCE_BOTH};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_audio_source_values__"><a class="permalink" href="#const_char*_g_audio_source_values__">const
+  char* g_audio_source_values[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>134</b> of file <b>metadata.c</b>.</p>
+<pre>134 {OPT_AUDIO_SOURCE_AUTO, OPT_AUDIO_SOURCE_MIC, OPT_AUDIO_SOURCE_MEDIA, OPT_AUDIO_SOURCE_BOTH, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_color_filter_descs__"><a class="permalink" href="#const_char*_g_color_filter_descs__">const
+  char* g_color_filter_descs[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>77</b> of file <b>metadata.c</b>.</p>
+<pre>77                                    {&quot;No filtering (default)&quot;,
+78                                       &quot;Dark content on white background&quot;,
+79                                       &quot;White content on black background&quot;,
+80                                       &quot;Green color tint (#00FF41)&quot;,
+81                                       &quot;Magenta color tint (#FF00FF)&quot;,
+82                                       &quot;Fuchsia color tint (#FF00AA)&quot;,
+83                                       &quot;Orange color tint (#FF8800)&quot;,
+84                                       &quot;Teal color tint (#00DDDD)&quot;,
+85                                       &quot;Cyan color tint (#00FFFF)&quot;,
+86                                       &quot;Pink color tint (#FFB6C1)&quot;,
+87                                       &quot;Red color tint (#FF3333)&quot;,
+88                                       &quot;Yellow color tint (#FFEB99)&quot;,
+89                                       NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_int_g_color_filter_integers__"><a class="permalink" href="#const_int_g_color_filter_integers__">const
+  int g_color_filter_integers[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>73</b> of file <b>metadata.c</b>.</p>
+<pre>73                                     {COLOR_FILTER_NONE,   COLOR_FILTER_BLACK,   COLOR_FILTER_WHITE,
+74                                        COLOR_FILTER_GREEN,  COLOR_FILTER_MAGENTA, COLOR_FILTER_FUCHSIA,
+75                                        COLOR_FILTER_ORANGE, COLOR_FILTER_TEAL,    COLOR_FILTER_CYAN,
+76                                        COLOR_FILTER_PINK,   COLOR_FILTER_RED,     COLOR_FILTER_YELLOW,    COLOR_FILTER_RAINBOW};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_color_filter_values__"><a class="permalink" href="#const_char*_g_color_filter_values__">const
+  char* g_color_filter_values[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>71</b> of file <b>metadata.c</b>.</p>
+<pre>71                                     {OPT_COLOR_FILTER_NONE, OPT_COLOR_FILTER_BLACK, OPT_COLOR_FILTER_WHITE, OPT_COLOR_FILTER_GREEN, OPT_COLOR_FILTER_MAGENTA, OPT_COLOR_FILTER_FUCHSIA, OPT_COLOR_FILTER_ORANGE,
+72                                        OPT_COLOR_FILTER_TEAL, OPT_COLOR_FILTER_CYAN,  OPT_COLOR_FILTER_PINK,  OPT_COLOR_FILTER_RED,   OPT_COLOR_FILTER_YELLOW,  OPT_COLOR_FILTER_RAINBOW, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_color_mode_descs__"><a class="permalink" href="#const_char*_g_color_mode_descs__">const
+  char* g_color_mode_descs[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>60</b> of file <b>metadata.c</b>.</p>
+<pre>60                                  {&quot;Auto-detect from terminal&quot;,
+61                                     &quot;Monochrome only&quot;,
+62                                     &quot;16 colors (ANSI)&quot;,
+63                                     &quot;256 colors (xterm)&quot;,
+64                                     &quot;24-bit truecolor (modern terminals)&quot;,
+65                                     NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_int_g_color_mode_integers__"><a class="permalink" href="#const_int_g_color_mode_integers__">const
+  int g_color_mode_integers[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>58</b> of file <b>metadata.c</b>.</p>
+<pre>58                                   {TERM_COLOR_AUTO, TERM_COLOR_NONE, TERM_COLOR_16, TERM_COLOR_256,
+59                                      TERM_COLOR_TRUECOLOR};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_color_mode_values__"><a class="permalink" href="#const_char*_g_color_mode_values__">const
+  char* g_color_mode_values[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>57</b> of file <b>metadata.c</b>.</p>
+<pre>57 {OPT_COLOR_MODE_AUTO, OPT_COLOR_MODE_NONE, OPT_COLOR_MODE_16, OPT_COLOR_MODE_256, OPT_COLOR_MODE_TRUECOLOR, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_color_setting_descs__"><a class="permalink" href="#const_char*_g_color_setting_descs__">const
+  char* g_color_setting_descs[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>39</b> of file <b>metadata.c</b>.</p>
+<pre>39                                     {&quot;Smart detection (colors if TTY and not piping/CLAUDECODE)&quot;,
+40                                        &quot;Force colors ON (override TTY/pipe/CLAUDECODE)&quot;,
+41                                        &quot;Force colors OFF (disable all colors)&quot;, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_int_g_color_setting_integers__"><a class="permalink" href="#const_int_g_color_setting_integers__">const
+  int g_color_setting_integers[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>38</b> of file <b>metadata.c</b>.</p>
+<pre>38 {COLOR_SETTING_AUTO, COLOR_SETTING_TRUE, COLOR_SETTING_FALSE};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_color_setting_values__"><a class="permalink" href="#const_char*_g_color_setting_values__">const
+  char* g_color_setting_values[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>37</b> of file <b>metadata.c</b>.</p>
+<pre>37 {&quot;auto&quot;, &quot;true&quot;, &quot;false&quot;, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_compression_examples__"><a class="permalink" href="#const_char*_g_compression_examples__">const
+  char* g_compression_examples[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>148</b> of file <b>metadata.c</b>.</p>
+<pre>148 {&quot;1&quot;, &quot;3&quot;, &quot;9&quot;, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_fps_examples__"><a class="permalink" href="#const_char*_g_fps_examples__">const
+  char* g_fps_examples[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>149</b> of file <b>metadata.c</b>.</p>
+<pre>149 {&quot;30&quot;, &quot;60&quot;, &quot;144&quot;, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_height_examples__"><a class="permalink" href="#const_char*_g_height_examples__">const
+  char* g_height_examples[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>151</b> of file <b>metadata.c</b>.</p>
+<pre>151 {&quot;24&quot;, &quot;40&quot;, &quot;60&quot;, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_log_level_descs__"><a class="permalink" href="#const_char*_g_log_level_descs__">const
+  char* g_log_level_descs[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>25</b> of file <b>metadata.c</b>.</p>
+<pre>25                                 {&quot;Development (most verbose, includes function traces)&quot;,
+26                                    &quot;Debug (includes internal state tracking)&quot;,
+27                                    &quot;Informational (key lifecycle events)&quot;,
+28                                    &quot;Warnings (unusual conditions)&quot;,
+29                                    &quot;Errors only&quot;,
+30                                    &quot;Fatal errors only&quot;,
+31                                    NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_int_g_log_level_integers__"><a class="permalink" href="#const_int_g_log_level_integers__">const
+  int g_log_level_integers[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>24</b> of file <b>metadata.c</b>.</p>
+<pre>24 {LOG_DEV, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_log_level_values__"><a class="permalink" href="#const_char*_g_log_level_values__">const
+  char* g_log_level_values[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>23</b> of file <b>metadata.c</b>.</p>
+<pre>23 {OPT_LOG_LEVEL_DEV, OPT_LOG_LEVEL_DEBUG, OPT_LOG_LEVEL_INFO, OPT_LOG_LEVEL_WARN, OPT_LOG_LEVEL_ERROR, OPT_LOG_LEVEL_FATAL, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_maxclients_examples__"><a class="permalink" href="#const_char*_g_maxclients_examples__">const
+  char* g_maxclients_examples[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>152</b> of file <b>metadata.c</b>.</p>
+<pre>152 {&quot;2&quot;, &quot;4&quot;, &quot;8&quot;, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_mic_examples__"><a class="permalink" href="#const_char*_g_mic_examples__">const
+  char* g_mic_examples[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>155</b> of file <b>metadata.c</b>.</p>
+<pre>155 {&quot;-1&quot;, &quot;0&quot;, &quot;1&quot;, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_palette_descs__"><a class="permalink" href="#const_char*_g_palette_descs__">const
+  char* g_palette_descs[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>98</b> of file <b>metadata.c</b>.</p>
+<pre>98                               {&quot;Standard ASCII palette&quot;,
+99                                  &quot;Block characters (full/half/quarter blocks)&quot;,
+100                                  &quot;Digital/computer style&quot;,
+101                                  &quot;Minimal palette (light aesthetic)&quot;,
+102                                  &quot;Cool/modern style&quot;,
+103                                  &quot;Custom user-defined characters&quot;,
+104                                  NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_int_g_palette_integers__"><a class="permalink" href="#const_int_g_palette_integers__">const
+  int g_palette_integers[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>96</b> of file <b>metadata.c</b>.</p>
+<pre>96                                {PALETTE_STANDARD, PALETTE_BLOCKS, PALETTE_DIGITAL,
+97                                   PALETTE_MINIMAL,  PALETTE_COOL,   PALETTE_CUSTOM};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_palette_values__"><a class="permalink" href="#const_char*_g_palette_values__">const
+  char* g_palette_values[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>95</b> of file <b>metadata.c</b>.</p>
+<pre>95 {OPT_PALETTE_STANDARD, OPT_PALETTE_BLOCKS, OPT_PALETTE_DIGITAL, OPT_PALETTE_MINIMAL, OPT_PALETTE_COOL, OPT_PALETTE_CUSTOM, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_reconnect_examples__"><a class="permalink" href="#const_char*_g_reconnect_examples__">const
+  char* g_reconnect_examples[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>153</b> of file <b>metadata.c</b>.</p>
+<pre>153 {&quot;0&quot;, &quot;5&quot;, &quot;10&quot;, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_render_descs__"><a class="permalink" href="#const_char*_g_render_descs__">const
+  char* g_render_descs[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>114</b> of file <b>metadata.c</b>.</p>
+<pre>114                              {&quot;Render using foreground characters only&quot;,
+115                                 &quot;Render using foreground characters only (alias)&quot;,
+116                                 &quot;Render using background colors only&quot;,
+117                                 &quot;Render using background colors only (alias)&quot;,
+118                                 &quot;Use half-block characters for 2x vertical resolution&quot;,
+119                                 NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_int_g_render_integers__"><a class="permalink" href="#const_int_g_render_integers__">const
+  int g_render_integers[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>111</b> of file <b>metadata.c</b>.</p>
+<pre>111                               {RENDER_MODE_FOREGROUND, RENDER_MODE_FOREGROUND, // fg is alias for foreground
+112                                  RENDER_MODE_BACKGROUND, RENDER_MODE_BACKGROUND, // bg is alias for background
+113                                  RENDER_MODE_HALF_BLOCK};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_render_theme_descs__"><a class="permalink" href="#const_char*_g_render_theme_descs__">const
+  char* g_render_theme_descs[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>127</b> of file <b>metadata.c</b>.</p>
+<pre>127                                    {&quot;Dark background (black), light text&quot;, &quot;Light background (white), dark text&quot;,
+128                                       &quot;Auto-detect based on system (macOS) or terminal setting (Linux)&quot;, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_int_g_render_theme_integers__"><a class="permalink" href="#const_int_g_render_theme_integers__">const
+  int g_render_theme_integers[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>126</b> of file <b>metadata.c</b>.</p>
+<pre>126 {0, 1, 2}; // 0=dark, 1=light, 2=auto</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_render_theme_values__"><a class="permalink" href="#const_char*_g_render_theme_values__">const
+  char* g_render_theme_values[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>125</b> of file <b>metadata.c</b>.</p>
+<pre>125 {&quot;dark&quot;, &quot;light&quot;, &quot;auto&quot;, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_render_values__"><a class="permalink" href="#const_char*_g_render_values__">const
+  char* g_render_values[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>110</b> of file <b>metadata.c</b>.</p>
+<pre>110 {OPT_RENDER_MODE_FOREGROUND, OPT_RENDER_MODE_FG, OPT_RENDER_MODE_BACKGROUND, OPT_RENDER_MODE_BG, OPT_RENDER_MODE_HALF_BLOCK, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_seek_examples__"><a class="permalink" href="#const_char*_g_seek_examples__">const
+  char* g_seek_examples[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>157</b> of file <b>metadata.c</b>.</p>
+<pre>157 {&quot;0&quot;, &quot;60&quot;, &quot;3:45&quot;, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_speakers_examples__"><a class="permalink" href="#const_char*_g_speakers_examples__">const
+  char* g_speakers_examples[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>156</b> of file <b>metadata.c</b>.</p>
+<pre>156 {&quot;-1&quot;, &quot;0&quot;, &quot;1&quot;, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_utf8_setting_descs__"><a class="permalink" href="#const_char*_g_utf8_setting_descs__">const
+  char* g_utf8_setting_descs[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>49</b> of file <b>metadata.c</b>.</p>
+<pre>49                                    {&quot;Auto-detect UTF-8 support from terminal capabilities&quot;,
+50                                       &quot;Force UTF-8 ON (always use UTF-8 regardless of terminal)&quot;,
+51                                       &quot;Force UTF-8 OFF (disable UTF-8 support)&quot;, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_int_g_utf8_setting_integers__"><a class="permalink" href="#const_int_g_utf8_setting_integers__">const
+  int g_utf8_setting_integers[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>48</b> of file <b>metadata.c</b>.</p>
+<pre>48 {UTF8_SETTING_AUTO, UTF8_SETTING_TRUE, UTF8_SETTING_FALSE};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_utf8_setting_values__"><a class="permalink" href="#const_char*_g_utf8_setting_values__">const
+  char* g_utf8_setting_values[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>47</b> of file <b>metadata.c</b>.</p>
+<pre>47 {&quot;auto&quot;, &quot;true&quot;, &quot;false&quot;, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_webcam_examples__"><a class="permalink" href="#const_char*_g_webcam_examples__">const
+  char* g_webcam_examples[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>154</b> of file <b>metadata.c</b>.</p>
+<pre>154 {&quot;0&quot;, &quot;1&quot;, &quot;2&quot;, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_g_width_examples__"><a class="permalink" href="#const_char*_g_width_examples__">const
+  char* g_width_examples[] [extern]</a></h2>
+<p class="Pp">Definition at line <b>150</b> of file <b>metadata.c</b>.</p>
+<pre>150 {&quot;80&quot;, &quot;120&quot;, &quot;160&quot;, NULL};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

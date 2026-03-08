@@ -39,18 +39,19 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">websocket_server_t * <b>server</b>
+<p class="Pp"><b>websocket_server_t</b> * <b>server</b>
   <br/>
   Back-reference to server. <b>acip_transport_t</b> * <b>transport</b>
   <br/>
-  ACIP transport for this connection. asciichat_thread_t <b>handler_thread</b>
+  ACIP transport for this connection. <b>asciichat_thread_t</b>
+    <b>handler_thread</b>
   <br/>
   Client handler thread. <b>bool</b> <b>handler_started</b>
   <br/>
   True if handler thread was started. <b>bool</b> <b>cleaning_up</b>
   <br/>
-  True if cleanup is in progress (prevents race with remove_client). uint8_t *
-    <b>pending_send_data</b>
+  True if cleanup is in progress (prevents race with remove_client).
+    <b>uint8_t</b> * <b>pending_send_data</b>
   <br/>
   Current message being sent. size_t <b>pending_send_len</b>
   <br/>
@@ -90,8 +91,8 @@
     <b>lib/network/websocket/server.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_thread_t_websocket_connection_data_t::handler_thread"><a class="permalink" href="#asciichat_thread_t_websocket_connection_data_t::handler_thread">asciichat_thread_t
-  websocket_connection_data_t::handler_thread</a></h2>
+<h2 class="Ss"><b>asciichat_thread_t</b>
+  websocket_connection_data_t::handler_thread</h2>
 <p class="Pp">Client handler thread.</p>
 <p class="Pp">Definition at line <b>45</b> of file
     <b>lib/network/websocket/server.c</b>.</p>
@@ -103,8 +104,8 @@
     <b>lib/network/websocket/server.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint8_t*_websocket_connection_data_t::pending_send_data"><a class="permalink" href="#uint8_t*_websocket_connection_data_t::pending_send_data">uint8_t*
-  websocket_connection_data_t::pending_send_data</a></h2>
+<h2 class="Ss"><b>uint8_t</b>*
+  websocket_connection_data_t::pending_send_data</h2>
 <p class="Pp">Current message being sent.</p>
 <p class="Pp">Definition at line <b>50</b> of file
     <b>lib/network/websocket/server.c</b>.</p>
@@ -124,8 +125,8 @@
     <b>lib/network/websocket/server.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="websocket_server_t*_websocket_connection_data_t::server"><a class="permalink" href="#websocket_server_t*_websocket_connection_data_t::server">websocket_server_t*
-  websocket_connection_data_t::server</a></h2>
+<h2 class="Ss"><b>websocket_server_t</b>*
+  websocket_connection_data_t::server</h2>
 <p class="Pp">Back-reference to server.</p>
 <p class="Pp">Definition at line <b>43</b> of file
     <b>lib/network/websocket/server.c</b>.</p>
@@ -146,7 +147,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

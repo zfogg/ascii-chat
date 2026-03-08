@@ -65,7 +65,8 @@
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
 <p class="Pp">JSON object builder.</p>
-<p class="Pp">Definition at line <b>189</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>189</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Constructor_&amp;_Destructor_Documentation"><a class="permalink" href="#Constructor_&amp;_Destructor_Documentation">Constructor
@@ -82,7 +83,8 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> ascii_query::json::JsonObject::empty () const
   [inline], [nodiscard]</h2>
-<p class="Pp">Definition at line <b>222</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>222</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>222                                    {
 223     return keys_.empty();
 224   }</pre>
@@ -92,7 +94,8 @@
 <section class="Ss">
 <h2 class="Ss"><b>JsonObject</b> &amp; ascii_query::json::JsonObject::set (const
   std::string &amp; key, const <b>JsonArray</b> &amp; arr) [inline]</h2>
-<p class="Pp">Definition at line <b>199</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>199</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>199                                                               {
 200     keys_.push_back(key);
 201     values_.push_back(JsonValue::fromArray(arr.toString()));
@@ -107,7 +110,8 @@
 <section class="Ss">
 <h2 class="Ss"><b>JsonObject</b> &amp; ascii_query::json::JsonObject::set (const
   std::string &amp; key, const <b>JsonObject</b> &amp; obj) [inline]</h2>
-<p class="Pp">Definition at line <b>205</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>205</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>205                                                                {
 206     keys_.push_back(key);
 207     values_.push_back(JsonValue::fromObject(obj.toString()));
@@ -121,7 +125,8 @@
 <section class="Ss">
 <h2 class="Ss"><b>JsonObject</b> &amp; ascii_query::json::JsonObject::set (const
   std::string &amp; key, const <b>JsonValue</b> &amp; value) [inline]</h2>
-<p class="Pp">Definition at line <b>193</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>193</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>193                                                                 {
 194     keys_.push_back(key);
 195     values_.push_back(value);
@@ -134,7 +139,8 @@
 <section class="Ss">
 <h2 class="Ss" id="size_t_ascii_query::json::JsonObject::size_()_const"><a class="permalink" href="#size_t_ascii_query::json::JsonObject::size_()_const">size_t
   ascii_query::json::JsonObject::size () const [inline], [nodiscard]</a></h2>
-<p class="Pp">Definition at line <b>225</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>225</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>225                                     {
 226     return keys_.size();
 227   }</pre>
@@ -145,7 +151,8 @@
 <h2 class="Ss" id="std::string_ascii_query::json::JsonObject::toString_()_const"><a class="permalink" href="#std::string_ascii_query::json::JsonObject::toString_()_const">std::string
   ascii_query::json::JsonObject::toString () const [inline],
   [nodiscard]</a></h2>
-<p class="Pp">Definition at line <b>211</b> of file <b>json.h</b>.</p>
+<p class="Pp">Definition at line <b>211</b> of file
+    <b>src/tooling/query/json.h</b>.</p>
 <pre>211                                            {
 212     std::string result = &quot;{&quot;;
 213     for (size_t i = 0; i &lt; keys_.size(); i++) {
@@ -171,7 +178,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

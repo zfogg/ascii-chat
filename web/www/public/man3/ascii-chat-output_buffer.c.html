@@ -37,385 +37,56 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">void <b>ob_reserve</b> (outbuf_t *ob, size_t need)
+<p class="Pp">void <b>ob_reserve</b> (<b>outbuf_t</b> *ob, size_t need)
   <br/>
-  void <b>ob_putc</b> (outbuf_t *ob, char c)
+  Reserve buffer space for upcoming writes. void <b>ob_putc</b> (<b>outbuf_t</b>
+    *ob, char c)
   <br/>
-  void <b>ob_write</b> (outbuf_t *ob, const char *s, size_t n)
+  Append a character to buffer. void <b>ob_write</b> (<b>outbuf_t</b> *ob, const
+    char *s, size_t n)
   <br/>
-  void <b>ob_term</b> (outbuf_t *ob)
+  Append a string to buffer. void <b>ob_term</b> (<b>outbuf_t</b> *ob)
   <br/>
-  void <b>ob_u8</b> (outbuf_t *ob, uint8_t v)
+  Append null terminator to buffer. void <b>ob_u8</b> (<b>outbuf_t</b> *ob,
+    <b>uint8_t</b> v)
   <br/>
-  void <b>ob_u32</b> (outbuf_t *ob, uint32_t v)
+  Append unsigned 8-bit integer as decimal string. void <b>ob_u32</b>
+    (<b>outbuf_t</b> *ob, <b>uint32_t</b> v)
   <br/>
-  void <b>emit_set_truecolor_fg</b> (outbuf_t *ob, uint8_t r, uint8_t g, uint8_t
-    b)
+  Append unsigned 32-bit integer as decimal string. void
+    <b>emit_set_truecolor_fg</b> (<b>outbuf_t</b> *ob, <b>uint8_t</b> r,
+    <b>uint8_t</b> g, <b>uint8_t</b> <b>b</b>)
   <br/>
-  void <b>emit_set_truecolor_bg</b> (outbuf_t *ob, uint8_t r, uint8_t g, uint8_t
-    b)
+  Emit truecolor foreground ANSI sequence. void <b>emit_set_truecolor_bg</b>
+    (<b>outbuf_t</b> *ob, <b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b>
+    <b>b</b>)
   <br/>
-  void <b>emit_reset</b> (outbuf_t *ob)
+  Emit truecolor background ANSI sequence. void <b>emit_reset</b>
+    (<b>outbuf_t</b> *ob)
   <br/>
-  <b>bool</b> <b>rep_is_profitable</b> (uint32_t runlen)
+  Emit ANSI reset sequence. <b>bool</b> <b>rep_is_profitable</b>
+    (<b>uint32_t</b> runlen)
   <br/>
-  void <b>emit_rep</b> (outbuf_t *ob, uint32_t extra)
+  Check if run-length encoding is profitable. void <b>emit_rep</b>
+    (<b>outbuf_t</b> *ob, <b>uint32_t</b> extra)
   <br/>
-  void <b>emit_set_256_color_fg</b> (outbuf_t *ob, uint8_t color_idx)
+  Emit run-length encoded sequence. void <b>emit_set_256_color_fg</b>
+    (<b>outbuf_t</b> *ob, <b>uint8_t</b> color_idx)
   <br/>
-  void <b>emit_set_256_color_bg</b> (outbuf_t *ob, uint8_t color_idx)
+  Emit 256-color foreground ANSI sequence. void <b>emit_set_256_color_bg</b>
+    (<b>outbuf_t</b> *ob, <b>uint8_t</b> color_idx)
   <br/>
-  void <b>emit_set_fg</b> (outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b)
+  Emit 256-color background ANSI sequence. void <b>emit_set_fg</b>
+    (<b>outbuf_t</b> *ob, <b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b>
+    <b>b</b>)
   <br/>
-  void <b>emit_set_bg</b> (outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b)
+  Emit foreground color sequence (auto-select mode). void <b>emit_set_bg</b>
+    (<b>outbuf_t</b> *ob, <b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b>
+    <b>b</b>)
   <br/>
+  Emit background color sequence (auto-select mode).
   <br/>
 </p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_emit_rep_(outbuf_t_*_ob,_uint32_t_extra)"><a class="permalink" href="#void_emit_rep_(outbuf_t_*_ob,_uint32_t_extra)">void
-  emit_rep (outbuf_t * ob, uint32_t extra)</a></h2>
-<p class="Pp">Definition at line <b>156</b> of file <b>output_buffer.c</b>.</p>
-<pre>156                                             {
-157   if (!ob)
-158     return;
-159   // ESC [ extra b
-160   ob_putc(ob, 0x1b);
-161   ob_putc(ob, '[');
-162   ob_u32(ob, extra);
-163   ob_putc(ob, 'b');
-164 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ob_putc()</b>, and <b>ob_u32()</b>.</p>
-<p class="Pp">Referenced by <b>ansi_compress_rle()</b>, <b>image_print()</b>,
-    <b>rgb_to_16color_halfblocks_scalar()</b>,
-    <b>rgb_to_256color_halfblocks_scalar()</b>,
-    <b>rgb_to_halfblocks_scalar()</b>, and
-    <b>rgb_to_truecolor_halfblocks_scalar()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_emit_reset_(outbuf_t_*_ob)"><a class="permalink" href="#void_emit_reset_(outbuf_t_*_ob)">void
-  emit_reset (outbuf_t * ob)</a></h2>
-<p class="Pp">Definition at line <b>138</b> of file <b>output_buffer.c</b>.</p>
-<pre>138                               {
-139   if (!ob)
-140     return;
-141   ob_putc(ob, 0x1b);
-142   ob_putc(ob, '[');
-143   ob_putc(ob, '0');
-144   ob_putc(ob, 'm');
-145 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ob_putc()</b>.</p>
-<p class="Pp">Referenced by <b>rgb_to_16color_halfblocks_scalar()</b>,
-    <b>rgb_to_256color_halfblocks_scalar()</b>, and
-    <b>rgb_to_truecolor_halfblocks_scalar()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_emit_set_256_color_bg_(outbuf_t_*_ob,_uint8_t_color_idx)"><a class="permalink" href="#void_emit_set_256_color_bg_(outbuf_t_*_ob,_uint8_t_color_idx)">void
-  emit_set_256_color_bg (outbuf_t * ob, uint8_t color_idx)</a></h2>
-<p class="Pp">Definition at line <b>177</b> of file <b>output_buffer.c</b>.</p>
-<pre>177                                                             {
-178   if (!ob)
-179     return;
-180   // Use pre-cached color sequence instead of building on-demand
-181   uint8_t seq_len;
-182   const char *seq = get_sgr256_bg_string(color_idx, &amp;seq_len);
-183   ob_write(ob, seq, seq_len);
-184 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>get_sgr256_bg_string()</b>, and
-  <b>ob_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_emit_set_256_color_fg_(outbuf_t_*_ob,_uint8_t_color_idx)"><a class="permalink" href="#void_emit_set_256_color_fg_(outbuf_t_*_ob,_uint8_t_color_idx)">void
-  emit_set_256_color_fg (outbuf_t * ob, uint8_t color_idx)</a></h2>
-<p class="Pp">Definition at line <b>167</b> of file <b>output_buffer.c</b>.</p>
-<pre>167                                                             {
-168   if (!ob)
-169     return;
-170   // Use pre-cached color sequence instead of building on-demand
-171   uint8_t seq_len;
-172   const char *seq = get_sgr256_fg_string(color_idx, &amp;seq_len);
-173   ob_write(ob, seq, seq_len);
-174 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>get_sgr256_fg_string()</b>, and
-  <b>ob_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_emit_set_bg_(outbuf_t_*_ob,_uint8_t_r,_uint8_t_g,_uint8_t_b)"><a class="permalink" href="#void_emit_set_bg_(outbuf_t_*_ob,_uint8_t_r,_uint8_t_g,_uint8_t_b)">void
-  emit_set_bg (outbuf_t * ob, uint8_t r, uint8_t g, uint8_t b)</a></h2>
-<p class="Pp">Definition at line <b>201</b> of file <b>output_buffer.c</b>.</p>
-<pre>201                                                                 {
-202   if (!ob)
-203     return;
-204   // ESC[48;2;R;G;Bm
-205   ob_putc(ob, 0x1b);
-206   ob_putc(ob, '[');
-207   ob_write(ob, &quot;48;2;&quot;, 5);
-208   ob_u8(ob, r);
-209   ob_putc(ob, ';');
-210   ob_u8(ob, g);
-211   ob_putc(ob, ';');
-212   ob_u8(ob, b);
-213   ob_putc(ob, 'm');
-214 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ob_putc()</b>, <b>ob_u8()</b>, and
-    <b>ob_write()</b>.</p>
-<p class="Pp">Referenced by <b>rgb_to_truecolor_halfblocks_scalar()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_emit_set_fg_(outbuf_t_*_ob,_uint8_t_r,_uint8_t_g,_uint8_t_b)"><a class="permalink" href="#void_emit_set_fg_(outbuf_t_*_ob,_uint8_t_r,_uint8_t_g,_uint8_t_b)">void
-  emit_set_fg (outbuf_t * ob, uint8_t r, uint8_t g, uint8_t b)</a></h2>
-<p class="Pp">Definition at line <b>186</b> of file <b>output_buffer.c</b>.</p>
-<pre>186                                                                 {
-187   if (!ob)
-188     return;
-189   // ESC[38;2;R;G;Bm
-190   ob_putc(ob, 0x1b);
-191   ob_putc(ob, '[');
-192   ob_write(ob, &quot;38;2;&quot;, 5);
-193   ob_u8(ob, r);
-194   ob_putc(ob, ';');
-195   ob_u8(ob, g);
-196   ob_putc(ob, ';');
-197   ob_u8(ob, b);
-198   ob_putc(ob, 'm');
-199 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ob_putc()</b>, <b>ob_u8()</b>, and
-    <b>ob_write()</b>.</p>
-<p class="Pp">Referenced by <b>rgb_to_truecolor_halfblocks_scalar()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_emit_set_truecolor_bg_(outbuf_t_*_ob,_uint8_t_r,_uint8_t_g,_uint8_t_b)"><a class="permalink" href="#void_emit_set_truecolor_bg_(outbuf_t_*_ob,_uint8_t_r,_uint8_t_g,_uint8_t_b)">void
-  emit_set_truecolor_bg (outbuf_t * ob, uint8_t r, uint8_t g, uint8_t
-  b)</a></h2>
-<p class="Pp">Definition at line <b>123</b> of file <b>output_buffer.c</b>.</p>
-<pre>123                                                                           {
-124   if (!ob)
-125     return;
-126   // ESC[48;2;R;G;Bm
-127   ob_putc(ob, 0x1b);
-128   ob_putc(ob, '[');
-129   ob_write(ob, &quot;48;2;&quot;, 5);
-130   ob_u8(ob, r);
-131   ob_putc(ob, ';');
-132   ob_u8(ob, g);
-133   ob_putc(ob, ';');
-134   ob_u8(ob, b);
-135   ob_putc(ob, 'm');
-136 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ob_putc()</b>, <b>ob_u8()</b>, and
-    <b>ob_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_emit_set_truecolor_fg_(outbuf_t_*_ob,_uint8_t_r,_uint8_t_g,_uint8_t_b)"><a class="permalink" href="#void_emit_set_truecolor_fg_(outbuf_t_*_ob,_uint8_t_r,_uint8_t_g,_uint8_t_b)">void
-  emit_set_truecolor_fg (outbuf_t * ob, uint8_t r, uint8_t g, uint8_t
-  b)</a></h2>
-<p class="Pp">Definition at line <b>107</b> of file <b>output_buffer.c</b>.</p>
-<pre>107                                                                           {
-108   if (!ob)
-109     return;
-110   // ESC[38;2;R;G;Bm
-111   ob_putc(ob, 0x1b);
-112   ob_putc(ob, '[');
-113   ob_write(ob, &quot;38;2;&quot;, 5);
-114   ob_u8(ob, r);
-115   ob_putc(ob, ';');
-116   ob_u8(ob, g);
-117   ob_putc(ob, ';');
-118   ob_u8(ob, b);
-119   ob_putc(ob, 'm');
-120 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ob_putc()</b>, <b>ob_u8()</b>, and
-    <b>ob_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ob_putc_(outbuf_t_*_ob,_char_c)"><a class="permalink" href="#void_ob_putc_(outbuf_t_*_ob,_char_c)">void
-  ob_putc (outbuf_t * ob, char c)</a></h2>
-<p class="Pp">Definition at line <b>43</b> of file <b>output_buffer.c</b>.</p>
-<pre>43                                    {
-44   if (!ob)
-45     return;
-46   ob_reserve(ob, 1);
-47   ob-&gt;buf[ob-&gt;len++] = c;
-48 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ob_reserve()</b>.</p>
-<p class="Pp">Referenced by <b>ansi_compress_rle()</b>, <b>emit_rep()</b>,
-    <b>emit_reset()</b>, <b>emit_set_bg()</b>, <b>emit_set_fg()</b>,
-    <b>emit_set_truecolor_bg()</b>, <b>emit_set_truecolor_fg()</b>,
-    <b>image_print()</b>, <b>ob_u8()</b>,
-    <b>rgb_to_16color_halfblocks_scalar()</b>,
-    <b>rgb_to_256color_halfblocks_scalar()</b>,
-    <b>rgb_to_halfblocks_scalar()</b>, and
-    <b>rgb_to_truecolor_halfblocks_scalar()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ob_reserve_(outbuf_t_*_ob,_size_t_need)"><a class="permalink" href="#void_ob_reserve_(outbuf_t_*_ob,_size_t_need)">void
-  ob_reserve (outbuf_t * ob, size_t need)</a></h2>
-<p class="Pp">Definition at line <b>22</b> of file <b>output_buffer.c</b>.</p>
-<pre>22                                            {
-23   if (!ob)
-24     return;
-25   if (ob-&gt;cap == 0) {
-26     // Always allocate at least default capacity on first call
-27     size_t ncap = 4096;
-28     while (ncap &lt; ob-&gt;len + need)
-29       ncap = (ncap * 3) / 2;
-30     // SAFE_REALLOC handles NULL ptr as malloc - this is safe
-31     ob-&gt;buf = SAFE_REALLOC(ob-&gt;buf, ncap, char *);
-32     ob-&gt;cap = ncap;
-33   } else if (ob-&gt;len + need &gt; ob-&gt;cap) {
-34     // Expand existing buffer
-35     size_t ncap = ob-&gt;cap;
-36     while (ncap &lt; ob-&gt;len + need)
-37       ncap = (ncap * 3) / 2;
-38     ob-&gt;buf = SAFE_REALLOC(ob-&gt;buf, ncap, char *);
-39     ob-&gt;cap = ncap;
-40   }
-41 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>ansi_compress_rle()</b>,
-    <b>ansi_expand_rle()</b>, <b>ob_putc()</b>, <b>ob_term()</b>,
-    <b>ob_u32()</b>, and <b>ob_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ob_term_(outbuf_t_*_ob)"><a class="permalink" href="#void_ob_term_(outbuf_t_*_ob)">void
-  ob_term (outbuf_t * ob)</a></h2>
-<p class="Pp">Definition at line <b>58</b> of file <b>output_buffer.c</b>.</p>
-<pre>58                            {
-59   if (!ob)
-60     return;
-61   // Reserve space for null terminator if needed
-62   if (ob-&gt;len &gt;= ob-&gt;cap) {
-63     ob_reserve(ob, 1);
-64   }
-65   // Append null terminator WITHOUT incrementing length
-66   // (null terminator is not part of the string length)
-67   ob-&gt;buf[ob-&gt;len] = '\0';
-68 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ob_reserve()</b>.</p>
-<p class="Pp">Referenced by <b>ansi_compress_rle()</b>,
-    <b>ansi_expand_rle()</b>, <b>image_print()</b>,
-    <b>rgb_to_16color_halfblocks_scalar()</b>,
-    <b>rgb_to_256color_halfblocks_scalar()</b>,
-    <b>rgb_to_halfblocks_scalar()</b>, and
-    <b>rgb_to_truecolor_halfblocks_scalar()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ob_u32_(outbuf_t_*_ob,_uint32_t_v)"><a class="permalink" href="#void_ob_u32_(outbuf_t_*_ob,_uint32_t_v)">void
-  ob_u32 (outbuf_t * ob, uint32_t v)</a></h2>
-<p class="Pp">Definition at line <b>92</b> of file <b>output_buffer.c</b>.</p>
-<pre>92                                       {
-93   if (!ob)
-94     return;
-95   char tmp[10];
-96   int i = 0;
-97   do {
-98     tmp[i++] = '0' + (v % 10u);
-99     v /= 10u;
-100   } while (v);
-101   ob_reserve(ob, (size_t)i);
-102   while (i--)
-103     ob-&gt;buf[ob-&gt;len++] = tmp[i];
-104 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ob_reserve()</b>.</p>
-<p class="Pp">Referenced by <b>emit_rep()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ob_u8_(outbuf_t_*_ob,_uint8_t_v)"><a class="permalink" href="#void_ob_u8_(outbuf_t_*_ob,_uint8_t_v)">void
-  ob_u8 (outbuf_t * ob, uint8_t v)</a></h2>
-<p class="Pp">Definition at line <b>71</b> of file <b>output_buffer.c</b>.</p>
-<pre>71                                     {
-72   if (!ob)
-73     return;
-74   if (v &gt;= 100) {
-75     uint8_t d0 = v / 100;
-76     uint8_t r = v % 100;
-77     uint8_t d1 = r / 10;
-78     uint8_t d2 = r % 10;
-79     ob_putc(ob, '0' + d0);
-80     ob_putc(ob, '0' + d1);
-81     ob_putc(ob, '0' + d2);
-82   } else if (v &gt;= 10) {
-83     uint8_t d1 = v / 10;
-84     uint8_t d2 = v % 10;
-85     ob_putc(ob, '0' + d1);
-86     ob_putc(ob, '0' + d2);
-87   } else {
-88     ob_putc(ob, '0' + v);
-89   }
-90 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ob_putc()</b>.</p>
-<p class="Pp">Referenced by <b>emit_set_bg()</b>, <b>emit_set_fg()</b>,
-    <b>emit_set_truecolor_bg()</b>, and <b>emit_set_truecolor_fg()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ob_write_(outbuf_t_*_ob,_const_char_*_s,_size_t_n)"><a class="permalink" href="#void_ob_write_(outbuf_t_*_ob,_const_char_*_s,_size_t_n)">void
-  ob_write (outbuf_t * ob, const char * s, size_t n)</a></h2>
-<p class="Pp">Definition at line <b>50</b> of file <b>output_buffer.c</b>.</p>
-<pre>50                                                      {
-51   if (!ob || n == 0)
-52     return;
-53   ob_reserve(ob, n);
-54   SAFE_MEMCPY(ob-&gt;buf + ob-&gt;len, ob-&gt;cap - ob-&gt;len, s, n);
-55   ob-&gt;len += n;
-56 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ob_reserve()</b>.</p>
-<p class="Pp">Referenced by <b>ansi_compress_rle()</b>,
-    <b>ansi_expand_rle()</b>, <b>emit_set_256_color_bg()</b>,
-    <b>emit_set_256_color_fg()</b>, <b>emit_set_bg()</b>, <b>emit_set_fg()</b>,
-    <b>emit_set_truecolor_bg()</b>, <b>emit_set_truecolor_fg()</b>,
-    <b>image_print()</b>, <b>rgb_to_16color_halfblocks_scalar()</b>,
-    <b>rgb_to_256color_halfblocks_scalar()</b>,
-    <b>rgb_to_halfblocks_scalar()</b>, and
-    <b>rgb_to_truecolor_halfblocks_scalar()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> rep_is_profitable (uint32_t runlen)</h2>
-<p class="Pp">Definition at line <b>148</b> of file <b>output_buffer.c</b>.</p>
-<pre>148                                         {
-149   if (runlen &lt;= 2)
-150     return false;
-151   uint32_t k = runlen - 1;                           // Extra repetitions beyond the first character
-152   uint32_t rep_cost = (uint32_t)(digits_u32(k) + 3); // ESC [ digits b
-153   return k &gt; rep_cost;                               // Manual repetition cost vs REP cost
-154 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>ansi_compress_rle()</b>, <b>image_print()</b>,
-    <b>rgb_to_16color_halfblocks_scalar()</b>,
-    <b>rgb_to_256color_halfblocks_scalar()</b>,
-    <b>rgb_to_halfblocks_scalar()</b>, and
-    <b>rgb_to_truecolor_halfblocks_scalar()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -425,7 +96,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

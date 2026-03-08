@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>path.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">path.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">path.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">path.h - &#x1F4C2; Path Manipulation Utilities</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>PATH_COMPONENT_DOT</b> '.'
+  <br/>
+  Path component: current directory (single dot). #define
+    <b>PATH_COMPONENT_DOTDOT</b> '..'
+  <br/>
+  Path component: parent directory (double dot). #define <b>PATH_TILDE</b> '~'
+  <br/>
+  Path component: home directory tilde. #define <b>PATH_DRIVE_SEPARATOR</b> ':'
+  <br/>
+  Path component: Windows drive separator (colon). #define <b>MAX_PATH_BASES</b>
+    16
+  <br/>
+  Maximum number of path base directories.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>path_role_t</b> { <b>PATH_ROLE_CONFIG_FILE</b>,
+    <b>PATH_ROLE_LOG_FILE</b>, <b>PATH_ROLE_KEY_PRIVATE</b>,
+    <b>PATH_ROLE_KEY_PUBLIC</b>, <b>PATH_ROLE_CLIENT_KEYS</b> }
+  <br/>
+  Classification for user-supplied filesystem paths.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">const char * <b>extract_project_relative_path</b> (const char
+    *file)
+  <br/>
+  Extract relative path from an absolute path. char * <b>expand_path</b> (const
+    char *path)
+  <br/>
+  Expand path with tilde (~) support. char * <b>get_config_dir</b> (void)
+  <br/>
+  Get configuration directory path with XDG_CONFIG_HOME support. char *
+    <b>get_data_dir</b> (void)
+  <br/>
+  Get application data directory path. char * <b>get_log_dir</b> (void)
+  <br/>
+  Get log directory path appropriate for current build type. char *
+    <b>get_discovery_database_dir</b> (void)
+  <br/>
+  Get discovery service database directory with Homebrew-aware system-wide
+    fallback. <b>bool</b> <b>path_normalize_copy</b> (const char *path, char
+    *out, size_t out_len)
+  <br/>
+  Normalize a path and copy it into the provided buffer. <b>bool</b>
+    <b>path_is_absolute</b> (const char *path)
+  <br/>
+  Determine whether a path is absolute on the current platform. <b>bool</b>
+    <b>path_is_within_base</b> (const char *path, const char *base)
+  <br/>
+  Check whether a path resides within a specified base directory. <b>bool</b>
+    <b>path_is_within_any_base</b> (const char *path, const char *const *bases,
+    size_t base_count)
+  <br/>
+  Check whether a path resides within any of several base directories.
+    <b>bool</b> <b>path_looks_like_path</b> (const char *value)
+  <br/>
+  Determine if a string is likely intended to reference the filesystem.
+    <b>asciichat_error_t</b> <b>path_validate_user_path</b> (const char *input,
+    <b>path_role_t</b> role, char **normalized_out)
+  <br/>
+  Validate and canonicalize a user-supplied filesystem path. void
+    <b>path_cleanup_thread_locals</b> (void)
+  <br/>
+  Cleanup thread-local path resources.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F4C2; Path Manipulation Utilities</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>path.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

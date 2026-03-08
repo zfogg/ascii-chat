@@ -51,14 +51,18 @@
 <br/>
 <p class="Pp">const char * <b>file_read_error_message</b> (const char *path)
   <br/>
-  const char * <b>file_write_error_message</b> (const char *path)
+  Get human-readable error message for file read failure. const char *
+    <b>file_write_error_message</b> (const char *path)
   <br/>
-  void <b>platform_cleanup_binary_path_cache</b> (void)
+  Get human-readable error message for file write failure. void
+    <b>platform_cleanup_binary_path_cache</b> (void)
   <br/>
-  <b>bool</b> <b>platform_is_binary_in_path</b> (const char *bin_name)
+  Cleanup the binary PATH cache. <b>bool</b> <b>platform_is_binary_in_path</b>
+    (const char *bin_name)
   <br/>
-  <b>bool</b> <b>platform_get_executable_path</b> (char *exe_path, size_t
-    path_size)
+  Check if a binary is available in the system PATH. <b>bool</b>
+    <b>platform_get_executable_path</b> (char *exe_path, size_t
+    <b>path_size</b>)
   <br/>
   Get the path to the current executable.
   <br/>
@@ -74,229 +78,13 @@
 <p class="Pp">Definition in file <b>filesystem.c</b>.</p>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_file_read_error_message_(const_char_*_path)"><a class="permalink" href="#const_char_*_file_read_error_message_(const_char_*_path)">const
-  char * file_read_error_message (const char * path)</a></h2>
-<p class="Pp">Definition at line <b>20</b> of file <b>filesystem.c</b>.</p>
-<pre>20                                                       {
-21   switch (errno) {
-22   case ENOENT:
-23     snprintf(error_msg_buffer, sizeof(error_msg_buffer), &quot;File does not exist: %s&quot;, path);
-24     break;
-25   case EACCES:
-26     snprintf(error_msg_buffer, sizeof(error_msg_buffer), &quot;Permission denied (cannot read): %s&quot;, path);
-27     break;
-28   case EISDIR:
-29     snprintf(error_msg_buffer, sizeof(error_msg_buffer), &quot;Is a directory, not a file: %s&quot;, path);
-30     break;
-31   default:
-32     snprintf(error_msg_buffer, sizeof(error_msg_buffer), &quot;Failed to open for reading: %s (%s)&quot;, path,
-33              platform_strerror(errno));
-34     break;
-35   }
-36   return error_msg_buffer;
-37 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>platform_strerror()</b>.</p>
-<p class="Pp">Referenced by <b>update_check_load_cache()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char_*_file_write_error_message_(const_char_*_path)"><a class="permalink" href="#const_char_*_file_write_error_message_(const_char_*_path)">const
-  char * file_write_error_message (const char * path)</a></h2>
-<p class="Pp">Definition at line <b>39</b> of file <b>filesystem.c</b>.</p>
-<pre>39                                                        {
-40   switch (errno) {
-41   case ENOENT:
-42     snprintf(error_msg_buffer, sizeof(error_msg_buffer), &quot;Directory does not exist: %s&quot;, path);
-43     break;
-44   case EACCES:
-45     snprintf(error_msg_buffer, sizeof(error_msg_buffer), &quot;Permission denied (cannot write): %s&quot;, path);
-46     break;
-47   case EROFS:
-48     snprintf(error_msg_buffer, sizeof(error_msg_buffer), &quot;Read-only filesystem: %s&quot;, path);
-49     break;
-50   case ENOSPC:
-51     snprintf(error_msg_buffer, sizeof(error_msg_buffer), &quot;No space left on device: %s&quot;, path);
-52     break;
-53   case EISDIR:
-54     snprintf(error_msg_buffer, sizeof(error_msg_buffer), &quot;Is a directory, not a file: %s&quot;, path);
-55     break;
-56   default:
-57     snprintf(error_msg_buffer, sizeof(error_msg_buffer), &quot;Failed to open for writing: %s (%s)&quot;, path,
-58              platform_strerror(errno));
-59     break;
-60   }
-61   return error_msg_buffer;
-62 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>platform_strerror()</b>.</p>
-<p class="Pp">Referenced by <b>update_check_save_cache()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_platform_cleanup_binary_path_cache_(void_)"><a class="permalink" href="#void_platform_cleanup_binary_path_cache_(void_)">void
-  platform_cleanup_binary_path_cache (void )</a></h2>
-<p class="Pp">Definition at line <b>109</b> of file <b>filesystem.c</b>.</p>
-<pre>109                                               {
-110   if (!lifecycle_shutdown(&amp;g_cache_lc)) {
-111     return;
-112   }
-113 
-114   if (g_bin_path_cache) {
-115     rwlock_wrlock(&amp;g_cache_rwlock);
-116 
-117     bin_cache_entry_t *entry, *tmp;
-118     HASH_ITER(hh, g_bin_path_cache, entry, tmp) {
-119       HASH_DELETE(hh, g_bin_path_cache, entry);
-120       free_cache_entry(entry);
-121     }
-122 
-123     rwlock_wrunlock(&amp;g_cache_rwlock);
-124     rwlock_destroy(&amp;g_cache_rwlock);
-125     g_bin_path_cache = NULL;
-126   }
-127 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>lifecycle_shutdown()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> platform_get_executable_path (char * exe_path, size_t
-  path_size)</h2>
-<p class="Pp">Get the path to the current executable.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>exe_path</i> Buffer to store the executable path
-<br/>
-<i>path_size</i> Size of the buffer</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true on success, false on failure</div>
-<p class="Pp">Definition at line <b>185</b> of file <b>filesystem.c</b>.</p>
-<pre>185                                                                     {
-186   if (!exe_path || path_size == 0) {
-187     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: exe_path=%p, path_size=%zu&quot;, (void *)exe_path, path_size);
-188     return false;
-189   }
-190 
-191 #ifdef _WIN32
-192   DWORD len = GetModuleFileNameA(NULL, exe_path, (DWORD)path_size);
-193   if (len == 0) {
-194     SET_ERRNO_SYS(ERROR_INVALID_STATE, &quot;GetModuleFileNameA failed: error code %lu&quot;, GetLastError());
-195     return false;
-196   }
-197   if (len &gt;= path_size) {
-198     SET_ERRNO(ERROR_BUFFER_OVERFLOW,
-199               &quot;Executable path exceeds buffer size (path length &gt;= %zu bytes, buffer size = %zu bytes)&quot;, (size_t)len,
-200               path_size);
-201     return false;
-202   }
-203   return true;
-204 
-205 #elif defined(__linux__)
-206   ssize_t len = readlink(&quot;/proc/self/exe&quot;, exe_path, path_size - 1);
-207   if (len &lt; 0) {
-208     SET_ERRNO_SYS(ERROR_INVALID_STATE, &quot;readlink(\&quot;/proc/self/exe\&quot;) failed: %s&quot;, SAFE_STRERROR(errno));
-209     return false;
-210   }
-211   if ((size_t)len &gt;= path_size - 1) {
-212     SET_ERRNO(ERROR_BUFFER_OVERFLOW,
-213               &quot;Executable path exceeds buffer size (path length &gt;= %zu bytes, buffer size = %zu bytes)&quot;, (size_t)len,
-214               path_size);
-215     return false;
-216   }
-217   exe_path[len] = '\0';
-218   return true;
-219 
-220 #elif defined(__APPLE__)
-221   uint32_t bufsize = (uint32_t)path_size;
-222   int result = _NSGetExecutablePath(exe_path, &amp;bufsize);
-223   if (result != 0) {
-224     SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;_NSGetExecutablePath failed: path requires %u bytes, buffer size = %zu bytes&quot;,
-225               bufsize, path_size);
-226     return false;
-227   }
-228   return true;
-229 
-230 #else
-231   SET_ERRNO(ERROR_GENERAL, &quot;Unsupported platform - cannot get executable path&quot;);
-232   return false;
-233 #endif
-234 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> platform_is_binary_in_path (const char *
-  bin_name)</h2>
-<p class="Pp">Definition at line <b>129</b> of file <b>filesystem.c</b>.</p>
-<pre>129                                                       {
-130   if (!bin_name || bin_name[0] == '\0') {
-131     return false;
-132   }
-133 
-134   init_cache_once();
-135   if (!lifecycle_is_initialized(&amp;g_cache_lc)) {
-136     SET_ERRNO(ERROR_INVALID_STATE, &quot;Binary PATH cache not initialized, checking directly (this should never happen)&quot;);
-137     return check_binary_in_path_uncached(bin_name);
-138   }
-139 
-140   rwlock_rdlock(&amp;g_cache_rwlock);
-141   bin_cache_entry_t *entry = NULL;
-142   HASH_FIND_STR(g_bin_path_cache, bin_name, entry);
-143   rwlock_rdunlock(&amp;g_cache_rwlock);
-144 
-145   if (entry) {
-146     log_dev(&quot;Binary '%s' %s in PATH (%s)&quot;, bin_name, colored_string(LOG_COLOR_INFO, &quot;found&quot;),
-147             colored_string(LOG_COLOR_WARN, &quot;cached&quot;));
-148     return entry-&gt;in_path;
-149   }
-150 
-151   bool found = check_binary_in_path_uncached(bin_name);
-152 
-153   entry = SAFE_MALLOC(sizeof(bin_cache_entry_t), bin_cache_entry_t *);
-154   if (!entry) {
-155     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate cache entry&quot;);
-156     return found;
-157   }
-158 
-159   entry-&gt;bin_name = platform_strdup(bin_name);
-160   if (!entry-&gt;bin_name) {
-161     SET_ERRNO(ERROR_MEMORY, &quot;Failed to duplicate binary name&quot;);
-162     SAFE_FREE(entry);
-163     return found;
-164   }
-165 
-166   entry-&gt;in_path = found;
-167 
-168   rwlock_wrlock(&amp;g_cache_rwlock);
-169   HASH_ADD_KEYPTR(hh, g_bin_path_cache, entry-&gt;bin_name, strlen(entry-&gt;bin_name), entry);
-170   rwlock_wrunlock(&amp;g_cache_rwlock);
-171 
-172   char *found_notfound_str =
-173       found ? colored_string(LOG_COLOR_INFO, &quot;found&quot;) : colored_string(LOG_COLOR_ERROR, &quot;NOT found&quot;);
-174   log_dev(&quot;Binary '%s' %s in PATH&quot;, bin_name, found_notfound_str);
-175 
-176   return found;
-177 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>bin_cache_entry_t::bin_name</b>,
-    <b>check_binary_in_path_uncached()</b>, <b>colored_string()</b>,
-    <b>bin_cache_entry_t::in_path</b>, <b>lifecycle_is_initialized()</b>, and
-    <b>platform_strdup()</b>.</p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>private_key_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">private_key_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">private_key_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">private_key_t - Private key structure (for server --ssh-key).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/crypto/key_types.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>key_type_t</b> <b>type</b>
+  <br/>
+  union {
+  <br/>
+   <b>uint8_t</b> <b>private_key_t::ed25519</b> [64]
+  <br/>
+   <b>uint8_t</b> <b>private_key_t::x25519</b> [32]
+  <br/>
+  } <b>key</b>
+  <br/>
+  <b>bool</b> <b>use_ssh_agent</b>
+  <br/>
+  <b>bool</b> <b>use_gpg_agent</b>
+  <br/>
+  <b>uint8_t</b> <b>public_key</b> [32]
+  <br/>
+  char <b>key_comment</b> [256]
+  <br/>
+  char <b>gpg_keygrip</b> [64]
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Private key structure (for server --ssh-key).</p>
+<p class="Pp">Private key structure supporting both Ed25519 and X25519 keys.
+    Includes agent support flags and metadata for signing operations.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Ed25519 keys: 64 bytes (32-byte seed + 32-byte public
+  key)
+<p class="Pp"></p>
+<p class="Pp">X25519 keys: 32 bytes (private scalar)</p>
+<p class="Pp"></p>
+<p class="Pp">Agent support: Can use SSH agent or GPG agent for signing (keys
+    stay in agent)</p>
+<p class="Pp"></p>
+<p class="Pp">GPG support: use_gpg_agent flag exists but GPG agent support is
+    currently disabled</p>
+</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">GPG agent: use_gpg_agent flag exists but functionality is
+  currently disabled. Setting use_gpg_agent=true will not work until GPG support
+  is re-enabled.</div>
+<p class="Pp">Definition at line <b>91</b> of file <b>key_types.h</b>.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>endian.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">endian.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">endian.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">endian.h - &#x1F504; Network byte order conversion helpers</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>HOST_TO_NET_U32</b>(val)
+  <br/>
+  #define <b>NET_TO_HOST_U32</b>(val)
+  <br/>
+  #define <b>HOST_TO_NET_U16</b>(val)
+  <br/>
+  #define <b>NET_TO_HOST_U16</b>(val)
+  <br/>
+  #define <b>CONVERT_ARRAY_HOST_TO_NET_U32</b>(arr, count)
+  <br/>
+  #define <b>CONVERT_ARRAY_NET_TO_HOST_U32</b>(arr, count)
+  <br/>
+  #define <b>HOST_TO_NET_U64</b>(val)
+  <br/>
+  #define <b>NET_TO_HOST_U64</b>(val)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F504; Network byte order conversion helpers</p>
+<p class="Pp">Provides convenient macros for converting between host and network
+    byte order. Reduces repetitive htonl/ntohl calls and makes intent
+  clearer.</p>
+<p class="Pp"></p>
+<p class="Pp">Common Pattern: Throughout the protocol handlers, we convert
+    numeric values between host and network byte order for transmission. This
+    creates repetitive patterns like:</p>
+<p class="Pp"></p>
+<p class="Pp">Bad (repetitive):</p>
+<p class="Pp"></p>
+<pre>uint32_t width_net = htonl(img_width);
+uint32_t height_net = htonl(img_height);
+uint32_t channels_net = htonl(img_channels);
+</pre>
+<p class="Pp">Good (using these helpers):</p>
+<p class="Pp"></p>
+<pre>uint32_t width_net = HOST_TO_NET_U32(img_width);
+uint32_t height_net = HOST_TO_NET_U32(img_height);
+uint32_t channels_net = HOST_TO_NET_U32(img_channels);
+</pre>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>// Sending frame header
+uint32_t width = frame-&gt;width;
+uint32_t height = frame-&gt;height;
+uint32_t size = frame-&gt;data_size;
+frame_header_t hdr = {
+<br/>
+    .width = HOST_TO_NET_U32(width),
+<br/>
+    .height = HOST_TO_NET_U32(height),
+<br/>
+    .data_size = HOST_TO_NET_U32(size),
+};
+// Receiving and unpacking
+const frame_header_t *hdr = (const frame_header_t *)packet_data;
+uint32_t width = NET_TO_HOST_U32(hdr-&gt;width);
+uint32_t height = NET_TO_HOST_U32(hdr-&gt;height);
+uint32_t size = NET_TO_HOST_U32(hdr-&gt;data_size);
+</pre>
+<p class="Pp">Definition in file <b>endian.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_CONVERT_ARRAY_HOST_TO_NET_U32(_arr,__count)"><a class="permalink" href="#_define_CONVERT_ARRAY_HOST_TO_NET_U32(_arr,__count)">#define
+  CONVERT_ARRAY_HOST_TO_NET_U32( arr, count)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  for (size_t i = 0; i &lt; (count); i++) {                                                                             \
+<br/>
+    (arr)[i] = htonl((arr)[i]);                                                                                      \
+<br/>
+  }                                                                                                                  \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp">Convert an array of 32-bit values from host to network byte order
+    in-place. Modifies the array directly.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>arr</i> Pointer to array of <b>uint32_t</b> values
+<br/>
+<i>count</i> Number of elements to convert</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>uint32_t data[10] = {...};
+CONVERT_ARRAY_HOST_TO_NET_U32(data, 10);
+// Now all values in 'data' are in network byte order
+</pre>
+<p class="Pp">Definition at line <b>127</b> of file <b>endian.h</b>.</p>
+<pre>127 #define CONVERT_ARRAY_HOST_TO_NET_U32(arr, count)                                                                      \
+128   do {                                                                                                                 \
+129     for (size_t i = 0; i &lt; (count); i++) {                                                                             \
+130       (arr)[i] = htonl((arr)[i]);                                                                                      \
+131     }                                                                                                                  \
+132   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_CONVERT_ARRAY_NET_TO_HOST_U32(_arr,__count)"><a class="permalink" href="#_define_CONVERT_ARRAY_NET_TO_HOST_U32(_arr,__count)">#define
+  CONVERT_ARRAY_NET_TO_HOST_U32( arr, count)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  for (size_t i = 0; i &lt; (count); i++) {                                                                             \
+<br/>
+    (arr)[i] = ntohl((arr)[i]);                                                                                      \
+<br/>
+  }                                                                                                                  \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp">Convert an array of 32-bit values from network to host byte order
+    in-place. Modifies the array directly.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>arr</i> Pointer to array of <b>uint32_t</b> values
+<br/>
+<i>count</i> Number of elements to convert</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>uint32_t data[10];
+memcpy(data, packet_data, sizeof(data));
+CONVERT_ARRAY_NET_TO_HOST_U32(data, 10);
+// Now all values in 'data' are in host byte order
+</pre>
+<p class="Pp">Definition at line <b>149</b> of file <b>endian.h</b>.</p>
+<pre>149 #define CONVERT_ARRAY_NET_TO_HOST_U32(arr, count)                                                                      \
+150   do {                                                                                                                 \
+151     for (size_t i = 0; i &lt; (count); i++) {                                                                             \
+152       (arr)[i] = ntohl((arr)[i]);                                                                                      \
+153     }                                                                                                                  \
+154   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_HOST_TO_NET_U16(_val)"><a class="permalink" href="#_define_HOST_TO_NET_U16(_val)">#define
+  HOST_TO_NET_U16( val)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>htons((val))</pre>
+<pre></pre>
+<p class="Pp">Convert a 16-bit value from host byte order to network byte order.
+    Typically used for port numbers and other 16-bit fields.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>val</i> 16-bit unsigned integer in host byte
+  order</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Same value in network byte order (big-endian)</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>uint16_t port = 27224;
+addr.sin_port = HOST_TO_NET_U16(port);
+</pre>
+<p class="Pp">Definition at line <b>96</b> of file <b>endian.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_audio_opus_batch()</b>,
+    <b>av_send_audio_opus_batch()</b>, <b>client_crypto_handshake()</b>,
+    <b>client_serialize_packet()</b>, <b>discovery_session_process()</b>,
+    <b>packet_queue_enqueue()</b>, <b>packet_send()</b>,
+    <b>packet_send_remote_log()</b>, <b>packet_send_via_transport()</b>,
+    <b>send_crypto_parameters_packet()</b>, <b>send_packet_secure()</b>,
+    <b>server_crypto_handshake()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_HOST_TO_NET_U32(_val)"><a class="permalink" href="#_define_HOST_TO_NET_U32(_val)">#define
+  HOST_TO_NET_U32( val)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>htonl((val))</pre>
+<pre></pre>
+<p class="Pp">Convert a 32-bit value from host byte order to network byte order.
+    Typically used when preparing data for transmission.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>val</i> 32-bit unsigned integer in host byte
+  order</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Same value in network byte order (big-endian)</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>uint32_t count = 42;
+packet.count = HOST_TO_NET_U32(count);
+</pre>
+<p class="Pp">Definition at line <b>66</b> of file <b>endian.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_ascii_frame()</b>,
+    <b>acip_send_audio_opus_batch()</b>, <b>acip_send_error()</b>,
+    <b>acip_send_image_frame()</b>, <b>acip_send_remote_log()</b>,
+    <b>acip_send_stream_start()</b>, <b>acip_send_stream_stop()</b>,
+    <b>add_webrtc_client()</b>, <b>av_send_audio_opus_batch()</b>,
+    <b>broadcast_server_state_to_all_clients()</b>,
+    <b>client_serialize_packet()</b>, <b>handle_image_frame_packet()</b>,
+    <b>packet_queue_enqueue()</b>, <b>packet_send()</b>,
+    <b>packet_send_error()</b>, <b>packet_send_remote_log()</b>,
+    <b>packet_send_via_transport()</b>, <b>send_packet_secure()</b>,
+    <b>send_server_state_to_client()</b>, <b>threaded_send_audio_opus()</b>,
+    <b>threaded_send_client_join_packet()</b>,
+    <b>threaded_send_stream_start_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_HOST_TO_NET_U64(_val)"><a class="permalink" href="#_define_HOST_TO_NET_U64(_val)">#define
+  HOST_TO_NET_U64( val)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>htonll((val))</pre>
+<pre></pre>
+<p class="Pp">Convert a 64-bit value from host byte order to network byte order.
+    Typically used when preparing data for transmission.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>val</i> 64-bit unsigned integer in host byte
+  order</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Same value in network byte order (big-endian)</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>uint64_t magic = 0xA5C11C4A1;
+packet.magic = HOST_TO_NET_U64(magic);
+</pre>
+<p class="Pp">Definition at line <b>213</b> of file <b>endian.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_sign_session_create()</b>,
+    <b>acds_sign_session_join()</b>, <b>acds_verify_session_create()</b>,
+    <b>acds_verify_session_join()</b>, <b>client_serialize_packet()</b>,
+    <b>packet_queue_enqueue()</b>, <b>packet_queue_free_packet()</b>,
+    <b>packet_send()</b>, <b>packet_send_via_transport()</b>, and
+    <b>send_packet_secure()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NET_TO_HOST_U16(_val)"><a class="permalink" href="#_define_NET_TO_HOST_U16(_val)">#define
+  NET_TO_HOST_U16( val)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>ntohs((val))</pre>
+<pre></pre>
+<p class="Pp">Convert a 16-bit value from network byte order to host byte order.
+    Typically used for port numbers and other 16-bit fields.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>val</i> 16-bit unsigned integer in network byte
+  order</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Same value in host byte order</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>const addr_t *addr = ...;
+uint16_t port = NET_TO_HOST_U16(addr-&gt;sin_port);
+</pre>
+<p class="Pp">Definition at line <b>111</b> of file <b>endian.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
+    <b>acip_server_receive_and_dispatch()</b>, <b>client_crypto_handshake()</b>,
+    <b>client_dispatch_thread()</b>, <b>client_parse_packet()</b>,
+    <b>client_receive_thread()</b>, <b>client_send_thread_func()</b>,
+    <b>crypto_handshake_set_parameters()</b>,
+    <b>discovery_session_process()</b>, <b>handle_audio_opus_batch_packet()</b>,
+    <b>handle_client_capabilities_packet()</b>,
+    <b>handle_protocol_version_packet()</b>, <b>handle_size_packet()</b>,
+    <b>packet_decrypt_envelope()</b>, <b>packet_parse_remote_log()</b>,
+    <b>packet_queue_try_dequeue()</b>, <b>packet_queue_validate_packet()</b>,
+    <b>process_encrypted_packet()</b>, <b>receive_packet_secure()</b>,
+    <b>server_connection_establish()</b>, <b>server_crypto_handshake()</b>,
+    <b>tcp_client_connect()</b>, <b>webrtc_peer_manager_handle_ice()</b>, and
+    <b>webrtc_peer_manager_handle_sdp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NET_TO_HOST_U32(_val)"><a class="permalink" href="#_define_NET_TO_HOST_U32(_val)">#define
+  NET_TO_HOST_U32( val)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>ntohl((val))</pre>
+<pre></pre>
+<p class="Pp">Convert a 32-bit value from network byte order to host byte order.
+    Typically used when receiving data from the network.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>val</i> 32-bit unsigned integer in network byte
+  order</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Same value in host byte order</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>const packet_t *pkt = (const packet_t *)data;
+uint32_t count = NET_TO_HOST_U32(pkt-&gt;count);
+</pre>
+<p class="Pp">Definition at line <b>81</b> of file <b>endian.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
+    <b>acip_server_receive_and_dispatch()</b>,
+    <b>audio_dequantize_samples()</b>, <b>client_dispatch_thread()</b>,
+    <b>client_parse_packet()</b>, <b>client_receive_thread()</b>,
+    <b>frame_extract_dimensions()</b>, <b>frame_extract_new_header()</b>,
+    <b>handle_audio_batch_packet()</b>, <b>handle_audio_opus_packet()</b>,
+    <b>handle_client_capabilities_packet()</b>,
+    <b>handle_client_join_packet()</b>, <b>handle_image_frame_packet()</b>,
+    <b>handle_stream_start_packet()</b>, <b>handle_stream_stop_packet()</b>,
+    <b>packet_decrypt_envelope()</b>, <b>packet_parse_error_message()</b>,
+    <b>packet_parse_opus_batch()</b>, <b>packet_parse_remote_log()</b>,
+    <b>packet_queue_try_dequeue()</b>, <b>packet_queue_validate_packet()</b>,
+    <b>process_encrypted_packet()</b>, and <b>receive_packet_secure()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NET_TO_HOST_U64(_val)"><a class="permalink" href="#_define_NET_TO_HOST_U64(_val)">#define
+  NET_TO_HOST_U64( val)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>ntohll((val))</pre>
+<pre></pre>
+<p class="Pp">Convert a 64-bit value from network byte order to host byte order.
+    Typically used when receiving data from the network.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>val</i> 64-bit unsigned integer in network byte
+  order</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Same value in host byte order</div>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>const packet_t *pkt = (const packet_t *)data;
+uint64_t magic = NET_TO_HOST_U64(pkt-&gt;magic);
+</pre>
+<p class="Pp">Definition at line <b>228</b> of file <b>endian.h</b>.</p>
+<p class="Pp">Referenced by <b>client_parse_packet()</b>,
+    <b>packet_queue_free_packet()</b>, <b>packet_queue_try_dequeue()</b>,
+    <b>packet_queue_validate_packet()</b>, and
+  <b>receive_packet_secure()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

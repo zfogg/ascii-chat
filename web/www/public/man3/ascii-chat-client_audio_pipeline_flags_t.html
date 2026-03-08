@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>client_audio_pipeline_flags_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">client_audio_pipeline_flags_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">client_audio_pipeline_flags_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">client_audio_pipeline_flags_t - Component enable/disable
+  flags.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/audio/client_pipeline.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>echo_cancel</b>
+  <br/>
+  <b>bool</b> <b>noise_suppress</b>
+  <br/>
+  <b>bool</b> <b>agc</b>
+  <br/>
+  <b>bool</b> <b>vad</b>
+  <br/>
+  <b>bool</b> <b>jitter_buffer</b>
+  <br/>
+  <b>bool</b> <b>compressor</b>
+  <br/>
+  <b>bool</b> <b>noise_gate</b>
+  <br/>
+  <b>bool</b> <b>highpass</b>
+  <br/>
+  <b>bool</b> <b>lowpass</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Component enable/disable flags.</p>
+<p class="Pp">Each flag controls whether a specific processing component is
+    active. Disabling components can help with debugging or reduce CPU
+  usage.</p>
+<p class="Pp">Definition at line <b>109</b> of file
+  <b>client_pipeline.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> client_audio_pipeline_flags_t::agc</h2>
+<p class="Pp">Enable Speex automatic gain control</p>
+<p class="Pp">Definition at line <b>115</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_client_init()</b>, and
+    <b>client_audio_pipeline_process_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> client_audio_pipeline_flags_t::compressor</h2>
+<p class="Pp">Enable dynamic range compressor</p>
+<p class="Pp">Definition at line <b>121</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_client_init()</b>, and
+    <b>client_audio_pipeline_process_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> client_audio_pipeline_flags_t::echo_cancel</h2>
+<p class="Pp">Enable Speex acoustic echo cancellation</p>
+<p class="Pp">Definition at line <b>111</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_client_init()</b>,
+    <b>client_audio_pipeline_create()</b>, and
+    <b>client_audio_pipeline_process_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> client_audio_pipeline_flags_t::highpass</h2>
+<p class="Pp">Enable high-pass filter (removes low-frequency rumble)</p>
+<p class="Pp">Definition at line <b>125</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_client_init()</b>, and
+    <b>client_audio_pipeline_process_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> client_audio_pipeline_flags_t::jitter_buffer</h2>
+<p class="Pp">Enable Speex jitter buffer for playback</p>
+<p class="Pp">Definition at line <b>119</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_client_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> client_audio_pipeline_flags_t::lowpass</h2>
+<p class="Pp">Enable low-pass filter (removes high-frequency hiss)</p>
+<p class="Pp">Definition at line <b>127</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_client_init()</b>, and
+    <b>client_audio_pipeline_process_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> client_audio_pipeline_flags_t::noise_gate</h2>
+<p class="Pp">Enable noise gate</p>
+<p class="Pp">Definition at line <b>123</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_client_init()</b>, and
+    <b>client_audio_pipeline_process_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> client_audio_pipeline_flags_t::noise_suppress</h2>
+<p class="Pp">Enable Speex noise suppression</p>
+<p class="Pp">Definition at line <b>113</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_client_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> client_audio_pipeline_flags_t::vad</h2>
+<p class="Pp">Enable Speex voice activity detection</p>
+<p class="Pp">Definition at line <b>117</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_client_init()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

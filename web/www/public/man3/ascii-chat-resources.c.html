@@ -38,14 +38,17 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>manpage_resources_load</b>
-    (manpage_resources_t *resources)
+<p class="Pp"><b>asciichat_error_t</b> <b>manpage_resources_load</b>
+    (<b>manpage_resources_t</b> *resources)
   <br/>
-  void <b>manpage_resources_destroy</b> (manpage_resources_t *resources)
+  Load man page resources from embedded or filesystem sources. void
+    <b>manpage_resources_destroy</b> (<b>manpage_resources_t</b> *resources)
   <br/>
-  <b>bool</b> <b>manpage_resources_is_valid</b> (const manpage_resources_t
+  Cleanup allocated man page resources. <b>bool</b>
+    <b>manpage_resources_is_valid</b> (const <b>manpage_resources_t</b>
     *resources)
   <br/>
+  Check if resources are available.
   <br/>
 </p>
 </section>
@@ -63,8 +66,14 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="void_manpage_resources_destroy_(manpage_resources_t_*_resources)"><a class="permalink" href="#void_manpage_resources_destroy_(manpage_resources_t_*_resources)">void
-  manpage_resources_destroy (manpage_resources_t * resources)</a></h2>
+<h2 class="Ss" id="void_manpage_resources_destroy_("><a class="permalink" href="#void_manpage_resources_destroy_(">void
+  manpage_resources_destroy (<b>manpage_resources_t</b> * resources)</a></h2>
+<p class="Pp">Cleanup allocated man page resources. Frees any dynamically
+    allocated resources. Safe to call even if <b>manpage_resources_load()</b>
+    failed or resources were from embedded binary.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>resources</i> Resources to cleanup (can be NULL)</div>
 <p class="Pp">Definition at line <b>151</b> of file <b>resources.c</b>.</p>
 <pre>151                                                                {
 152   if (!resources) {
@@ -96,11 +105,24 @@
 178 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>manpage_resources_t::allocated</b>,
+    <b>manpage_resources_t::content_len</b>,
+    <b>manpage_resources_t::content_sections</b>,
+    <b>manpage_resources_t::is_embedded</b>, <b>SAFE_FREE</b>,
+    <b>manpage_resources_t::template_content</b>, and
+    <b>manpage_resources_t::template_len</b>.</p>
 <p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> manpage_resources_is_valid (const manpage_resources_t
-  * resources)</h2>
+<h2 class="Ss"><b>bool</b> manpage_resources_is_valid (const
+  <b>manpage_resources_t</b> * resources)</h2>
+<p class="Pp">Check if resources are available. Returns true only if both
+    template and content resources are loaded.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>resources</i> Resources to check (can be NULL)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if resources are complete and valid</div>
 <p class="Pp">Definition at line <b>180</b> of file <b>resources.c</b>.</p>
 <pre>180                                                                       {
 181   if (!resources) {
@@ -112,11 +134,42 @@
 187 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>manpage_resources_t::template_content</b>, and
+    <b>manpage_resources_t::template_len</b>.</p>
 <p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_manpage_resources_load_(manpage_resources_t_*_resources)"><a class="permalink" href="#asciichat_error_t_manpage_resources_load_(manpage_resources_t_*_resources)">asciichat_error_t
-  manpage_resources_load (manpage_resources_t * resources)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> manpage_resources_load
+  (<b>manpage_resources_t</b> * resources)</h2>
+<p class="Pp">Load man page resources from embedded or filesystem sources.
+    Automatically selects resource source based on build type:</p>
+<ul class="Bl-bullet">
+  <li>Debug builds: Load from filesystem (share/man/man1/)</li>
+  <li>Release builds: Load from embedded resources in binary</li>
+</ul>
+<p class="Pp">The caller should call <b>manpage_resources_destroy()</b> when
+    done.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>resources</i> Populated with loaded resource
+  pointers</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success
+<p class="Pp"></p>
+<p class="Pp">ERROR_CONFIG if resources cannot be loaded</p>
+<p class="Pp"></p>
+<p class="Pp">ERROR_INVALID_PARAM if resources is NULL</p>
+</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">On success, caller must call
+  <b>manpage_resources_destroy()</b>
+<p class="Pp"></p>
+<p class="Pp">For embedded resources, no cleanup needed (pointers to static
+    data)</p>
+<p class="Pp"></p>
+<p class="Pp">For filesystem resources, content is allocated and must be
+  freed</p>
+</div>
 <p class="Pp">Definition at line <b>107</b> of file <b>resources.c</b>.</p>
 <pre>107                                                                          {
 108   if (!resources) {
@@ -163,7 +216,13 @@
 149 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>get_manpage_template()</b>.</p>
+<p class="Pp">References <b>manpage_resources_t::allocated</b>,
+    <b>ASCIICHAT_OK</b>, <b>manpage_resources_t::content_len</b>,
+    <b>manpage_resources_t::content_sections</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>get_manpage_template()</b>, <b>manpage_resources_t::is_embedded</b>,
+    <b>log_debug</b>, <b>SET_ERRNO</b>,
+    <b>manpage_resources_t::template_content</b>, and
+    <b>manpage_resources_t::template_len</b>.</p>
 <p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>.</p>
 </section>
 </section>
@@ -174,7 +233,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -66,13 +66,15 @@
     <b>bool</b> <b>require_client_verify</b>
   <br/>
   ACDS policy: require clients to verify server identity during handshake.
-    uint8_t <b>stun_count</b>
+    <b>uint8_t</b> <b>stun_count</b>
   <br/>
-  Number of configured STUN servers (0-4). stun_server_t <b>stun_servers</b> [4]
+  Number of configured STUN servers (0-4). <b>stun_server_t</b>
+    <b>stun_servers</b> [4]
   <br/>
-  STUN server configurations. uint8_t <b>turn_count</b>
+  STUN server configurations. <b>uint8_t</b> <b>turn_count</b>
   <br/>
-  Number of configured TURN servers (0-4). turn_server_t <b>turn_servers</b> [4]
+  Number of configured TURN servers (0-4). <b>turn_server_t</b>
+    <b>turn_servers</b> [4]
   <br/>
   TURN server configurations. char <b>turn_secret</b> [256]
   <br/>
@@ -185,8 +187,7 @@
 <p class="Pp">Referenced by <b>database_session_lookup()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint8_t_acds_config_t::stun_count"><a class="permalink" href="#uint8_t_acds_config_t::stun_count">uint8_t
-  acds_config_t::stun_count</a></h2>
+<h2 class="Ss"><b>uint8_t</b> acds_config_t::stun_count</h2>
 <p class="Pp">Number of configured STUN servers (0-4).</p>
 <p class="Pp">Definition at line <b>85</b> of file
     <b>discovery-service/main.h</b>.</p>
@@ -194,16 +195,14 @@
     <b>database_session_create()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="stun_server_t_acds_config_t::stun_servers_4_"><a class="permalink" href="#stun_server_t_acds_config_t::stun_servers_4_">stun_server_t
-  acds_config_t::stun_servers[4]</a></h2>
+<h2 class="Ss"><b>stun_server_t</b> acds_config_t::stun_servers[4]</h2>
 <p class="Pp">STUN server configurations.</p>
 <p class="Pp">Definition at line <b>86</b> of file
     <b>discovery-service/main.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_main()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint8_t_acds_config_t::turn_count"><a class="permalink" href="#uint8_t_acds_config_t::turn_count">uint8_t
-  acds_config_t::turn_count</a></h2>
+<h2 class="Ss"><b>uint8_t</b> acds_config_t::turn_count</h2>
 <p class="Pp">Number of configured TURN servers (0-4).</p>
 <p class="Pp">Definition at line <b>87</b> of file
     <b>discovery-service/main.h</b>.</p>
@@ -220,8 +219,7 @@
     <b>database_session_join()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="turn_server_t_acds_config_t::turn_servers_4_"><a class="permalink" href="#turn_server_t_acds_config_t::turn_servers_4_">turn_server_t
-  acds_config_t::turn_servers[4]</a></h2>
+<h2 class="Ss"><b>turn_server_t</b> acds_config_t::turn_servers[4]</h2>
 <p class="Pp">TURN server configurations.</p>
 <p class="Pp">Definition at line <b>88</b> of file
     <b>discovery-service/main.h</b>.</p>
@@ -236,7 +234,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

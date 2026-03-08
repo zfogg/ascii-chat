@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>parsed_section_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">parsed_section_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">parsed_section_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">parsed_section_t - Parsed section information.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/options/manpage.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">char * <b>section_name</b>
+  <br/>
+  Section name (e.g., <i>ENVIRONMENT&quot;,</i>OPTIONS<i>).</i>
+    <b>section_type_t</b> <b>type</b>
+  <br/>
+  Section type (AUTO/MANUAL/MERGE/UNMARKED). char * <b>content</b>
+  <br/>
+  Full section content (including .SH header). size_t <b>content_len</b>
+  <br/>
+  Length of content. size_t <b>start_line</b>
+  <br/>
+  Line number where section starts (1-based). size_t <b>end_line</b>
+  <br/>
+  Line number where section ends (1-based). <b>bool</b> <b>has_markers</b>
+  <br/>
+  True if marked with AUTO/MANUAL/MERGE markers.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Parsed section information.</p>
+<p class="Pp">Definition at line <b>38</b> of file <b>manpage.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char*_parsed_section_t::content"><a class="permalink" href="#char*_parsed_section_t::content">char*
+  parsed_section_t::content</a></h2>
+<p class="Pp">Full section content (including .SH header).</p>
+<p class="Pp">Definition at line <b>41</b> of file <b>manpage.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_parsed_section_t::content_len"><a class="permalink" href="#size_t_parsed_section_t::content_len">size_t
+  parsed_section_t::content_len</a></h2>
+<p class="Pp">Length of content.</p>
+<p class="Pp">Definition at line <b>42</b> of file <b>manpage.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_parsed_section_t::end_line"><a class="permalink" href="#size_t_parsed_section_t::end_line">size_t
+  parsed_section_t::end_line</a></h2>
+<p class="Pp">Line number where section ends (1-based).</p>
+<p class="Pp">Definition at line <b>44</b> of file <b>manpage.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> parsed_section_t::has_markers</h2>
+<p class="Pp">True if marked with AUTO/MANUAL/MERGE markers.</p>
+<p class="Pp">Definition at line <b>45</b> of file <b>manpage.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char*_parsed_section_t::section_name"><a class="permalink" href="#char*_parsed_section_t::section_name">char*
+  parsed_section_t::section_name</a></h2>
+<p class="Pp">Section name (e.g., &quot;ENVIRONMENT&quot;,
+  &quot;OPTIONS&quot;).</p>
+<p class="Pp">Definition at line <b>39</b> of file <b>manpage.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_parsed_section_t::start_line"><a class="permalink" href="#size_t_parsed_section_t::start_line">size_t
+  parsed_section_t::start_line</a></h2>
+<p class="Pp">Line number where section starts (1-based).</p>
+<p class="Pp">Definition at line <b>43</b> of file <b>manpage.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>section_type_t</b> parsed_section_t::type</h2>
+<p class="Pp">Section type (AUTO/MANUAL/MERGE/UNMARKED).</p>
+<p class="Pp">Definition at line <b>40</b> of file <b>manpage.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

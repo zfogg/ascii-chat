@@ -64,28 +64,28 @@
 <p class="Pp">void <b>session_settings_init</b> (<b>session_settings_t</b>
     *settings)
   <br/>
-  Initialize session settings to defaults. asciichat_error_t
+  Initialize session settings to defaults. <b>asciichat_error_t</b>
     <b>session_settings_serialize</b> (const <b>session_settings_t</b>
-    *settings, uint8_t *buffer, size_t *len)
+    *settings, <b>uint8_t</b> *buffer, size_t *len)
   <br/>
-  Serialize session settings to binary buffer. asciichat_error_t
-    <b>session_settings_deserialize</b> (const uint8_t *buffer, size_t len,
-    <b>session_settings_t</b> *settings)
+  Serialize session settings to binary buffer. <b>asciichat_error_t</b>
+    <b>session_settings_deserialize</b> (const <b>uint8_t</b> *buffer, size_t
+    len, <b>session_settings_t</b> *settings)
   <br/>
-  Deserialize session settings from binary buffer. asciichat_error_t
+  Deserialize session settings from binary buffer. <b>asciichat_error_t</b>
     <b>session_settings_from_options</b> (<b>session_settings_t</b> *settings)
   <br/>
-  Populate settings from current global options. asciichat_error_t
+  Populate settings from current global options. <b>asciichat_error_t</b>
     <b>session_settings_apply_to_options</b> (const <b>session_settings_t</b>
     *settings)
   <br/>
   Apply settings to global options. <b>bool</b>
-    <b>session_settings_needs_update</b> (uint32_t local_version, uint32_t
-    remote_version)
+    <b>session_settings_needs_update</b> (<b>uint32_t</b> local_version,
+    <b>uint32_t</b> remote_version)
   <br/>
   Check if settings need update based on versions. <b>bool</b>
     <b>session_settings_equal</b> (const <b>session_settings_t</b> *a, const
-    <b>session_settings_t</b> *b)
+    <b>session_settings_t</b> *<b>b</b>)
   <br/>
   Compare two settings structures for equality.
   <br/>
@@ -108,7 +108,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

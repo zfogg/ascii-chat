@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>platform_binary_match_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">platform_binary_match_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">platform_binary_match_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">platform_binary_match_t - Find which binary(ies) contain a given
+    address.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/platform/system.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">char <b>path</b> [4096]
+  <br/>
+  uintptr_t <b>file_offset</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Find which binary(ies) contain a given address.</p>
+<p class="Pp">Platform-independent interface to scan the runtime memory map and
+    find which loaded binary owns a given address. Used by backtrace symbol
+    resolution to map runtime addresses to binaries, which are then passed to
+    llvm-symbolizer or addr2line for function name lookup.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Implementations:</b></p>
+<ul class="Bl-bullet">
+  <li>Linux: Scans /proc/self/maps to find executable segments</li>
+  <li>macOS: Iterates dyld-loaded images</li>
+  <li>Windows: Enumerates process modules via EnumProcessModules()</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>addr</i> Runtime address to look up
+<br/>
+<i>matches</i> Output array to populate with matches (can be NULL)
+<br/>
+<i>max_matches</i> Maximum number of matches to return</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of matches found (0, 1, or rarely 2)</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Multiple matches are possible but rare (would indicate
+  overlapping mapped regions, a configuration error).</div>
+<p class="Pp">Definition at line <b>706</b> of file <b>system.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="uintptr_t_platform_binary_match_t::file_offset"><a class="permalink" href="#uintptr_t_platform_binary_match_t::file_offset">uintptr_t
+  platform_binary_match_t::file_offset</a></h2>
+<p class="Pp">File offset within the binary (for symbolizer)</p>
+<p class="Pp">Definition at line <b>710</b> of file <b>system.h</b>.</p>
+<p class="Pp">Referenced by <b>get_binary_file_address_offsets()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_platform_binary_match_t::path_4096_"><a class="permalink" href="#char_platform_binary_match_t::path_4096_">char
+  platform_binary_match_t::path[4096]</a></h2>
+<p class="Pp">Path to the binary (exe, .so, dylib, DLL, etc.)</p>
+<p class="Pp">Definition at line <b>708</b> of file <b>system.h</b>.</p>
+<p class="Pp">Referenced by <b>get_binary_file_address_offsets()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

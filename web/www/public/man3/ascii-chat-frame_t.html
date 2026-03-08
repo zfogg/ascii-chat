@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>frame_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">frame_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">frame_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">frame_t - Frame structure that stores both data and actual
+  size.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/ringbuffer.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint64_t</b> <b>magic</b>
+  <br/>
+  Magic number to detect corruption (FRAME_MAGIC when valid). size_t <b>size</b>
+  <br/>
+  Actual size of frame data in bytes. char * <b>data</b>
+  <br/>
+  Pointer to frame data (not owned by this struct).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Frame structure that stores both data and actual size.</p>
+<p class="Pp">Stores frame data along with its actual size, eliminating the need
+    for fixed-size buffers and null-terminator scanning. Uses magic number
+    validation for corruption detection.</p>
+<p class="Pp">Definition at line <b>384</b> of file <b>ringbuffer.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char*_frame_t::data"><a class="permalink" href="#char*_frame_t::data">char*
+  frame_t::data</a></h2>
+<p class="Pp">Pointer to frame data (not owned by this struct).</p>
+<p class="Pp">Definition at line <b>390</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Referenced by <b>framebuffer_clear()</b>, and
+    <b>framebuffer_write_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> frame_t::magic</h2>
+<p class="Pp">Magic number to detect corruption (FRAME_MAGIC when valid).</p>
+<p class="Pp">Definition at line <b>386</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Referenced by <b>framebuffer_clear()</b>, and
+    <b>framebuffer_write_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_frame_t::size"><a class="permalink" href="#size_t_frame_t::size">size_t
+  frame_t::size</a></h2>
+<p class="Pp">Actual size of frame data in bytes.</p>
+<p class="Pp">Definition at line <b>388</b> of file <b>ringbuffer.h</b>.</p>
+<p class="Pp">Referenced by <b>framebuffer_clear()</b>, and
+    <b>framebuffer_write_frame()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

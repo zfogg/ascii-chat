@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>asciichat_error_stats_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">asciichat_error_stats_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">asciichat_error_stats_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">asciichat_error_stats_t - Error statistics structure.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/asciichat_errno.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint64_t</b> <b>error_counts</b> [256]
+  <br/>
+  Count for each error code (256 possible error codes). <b>uint64_t</b>
+    <b>total_errors</b>
+  <br/>
+  Total number of errors recorded (sum of all error_counts). <b>uint64_t</b>
+    <b>last_error_time</b>
+  <br/>
+  Timestamp of last error (microseconds since epoch). <b>asciichat_error_t</b>
+    <b>last_error_code</b>
+  <br/>
+  Error code of last error recorded.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Error statistics structure.</p>
+<p class="Pp">Tracks cumulative error statistics across all threads for
+    monitoring and analysis. Statistics include per-error-code counts and
+    aggregate information.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Statistics are aggregated across all threads.
+<p class="Pp"></p>
+<p class="Pp">Counts are cumulative since initialization.</p>
+</div>
+<p class="Pp">Definition at line <b>668</b> of file
+  <b>asciichat_errno.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> asciichat_error_stats_t::error_counts[256]</h2>
+<p class="Pp">Count for each error code (256 possible error codes).</p>
+<p class="Pp">Definition at line <b>670</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_error_stats_print()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b>
+  asciichat_error_stats_t::last_error_code</h2>
+<p class="Pp">Error code of last error recorded.</p>
+<p class="Pp">Definition at line <b>676</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_error_stats_print()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> asciichat_error_stats_t::last_error_time</h2>
+<p class="Pp">Timestamp of last error (microseconds since epoch).</p>
+<p class="Pp">Definition at line <b>674</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_error_stats_print()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> asciichat_error_stats_t::total_errors</h2>
+<p class="Pp">Total number of errors recorded (sum of all error_counts).</p>
+<p class="Pp">Definition at line <b>672</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_error_stats_print()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

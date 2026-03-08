@@ -56,14 +56,14 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp"><b>EM_JS</b> (void, js_send_raw_packet,(const uint8_t
+<p class="Pp"><b>EM_JS</b> (void, js_send_raw_packet,(const <b>uint8_t</b>
     *packet_data, size_t packet_len), { if(!Module.sendPacketCallback) {
     console.error('[WASM] sendPacketCallback not registered - cannot send
     packet');return;} const packetArray=new Uint8Array(HEAPU8.buffer,
     packet_data, packet_len);const packetCopy=new Uint8Array(packetArray);var
-    pktType=packetCopy.length &gt;=10 ?((packetCopy[8]&lt;&lt; 8)|packetCopy[9])
-    :-1;console.error('[WASM-&gt;JS] Sending raw packet:', packetCopy.length,
-    'bytes,
+    pktType=<b>packetCopy.length</b> &gt;=10 ?((packetCopy[8]&lt;&lt;
+    8)|packetCopy[9]) :-1;console.error('[WASM-&gt;JS] Sending raw packet:',
+    <b>packetCopy.length</b>, 'bytes,
     type=0x'+pktType.toString(16));Module.sendPacketCallback(packetCopy);})
   <br/>
   EMSCRIPTEN_KEEPALIVE int <b>client_init_with_args</b> (const char *args_json)
@@ -77,31 +77,31 @@
   <br/>
   EMSCRIPTEN_KEEPALIVE char * <b>client_get_public_key_hex</b> (void)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_handle_key_exchange_init</b> (const uint8_t
-    *packet, size_t packet_len)
+  EMSCRIPTEN_KEEPALIVE int <b>client_handle_key_exchange_init</b> (const
+    <b>uint8_t</b> *packet, size_t packet_len)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_handle_auth_challenge</b> (const uint8_t
-    *packet, size_t packet_len)
+  EMSCRIPTEN_KEEPALIVE int <b>client_handle_auth_challenge</b> (const
+    <b>uint8_t</b> *packet, size_t packet_len)
   <br/>
   EMSCRIPTEN_KEEPALIVE int <b>client_handle_handshake_complete</b> (const
-    uint8_t *packet, size_t packet_len)
+    <b>uint8_t</b> *packet, size_t packet_len)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_encrypt_packet</b> (const uint8_t
-    *plaintext, size_t plaintext_len, uint8_t *ciphertext, size_t
+  EMSCRIPTEN_KEEPALIVE int <b>client_encrypt_packet</b> (const <b>uint8_t</b>
+    *plaintext, size_t plaintext_len, <b>uint8_t</b> *ciphertext, size_t
     ciphertext_size, size_t *out_len)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_decrypt_packet</b> (const uint8_t
-    *ciphertext, size_t ciphertext_len, uint8_t *plaintext, size_t
+  EMSCRIPTEN_KEEPALIVE int <b>client_decrypt_packet</b> (const <b>uint8_t</b>
+    *ciphertext, size_t ciphertext_len, <b>uint8_t</b> *plaintext, size_t
     plaintext_size, size_t *out_len)
   <br/>
-  EMSCRIPTEN_KEEPALIVE char * <b>client_parse_packet</b> (const uint8_t
+  EMSCRIPTEN_KEEPALIVE char * <b>client_parse_packet</b> (const <b>uint8_t</b>
     *raw_packet, size_t packet_len)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_serialize_packet</b> (uint16_t packet_type,
-    const uint8_t *payload, size_t payload_len, uint32_t client_id, uint8_t
-    *output, size_t *out_len)
+  EMSCRIPTEN_KEEPALIVE int <b>client_serialize_packet</b> (<b>uint16_t</b>
+    packet_type, const <b>uint8_t</b> *payload, size_t payload_len,
+    <b>uint32_t</b> client_id, <b>uint8_t</b> *output, size_t *out_len)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_send_video_frame</b> (const uint8_t
+  EMSCRIPTEN_KEEPALIVE int <b>client_send_video_frame</b> (const <b>uint8_t</b>
     *rgba_data, int width, int height)
   <br/>
   EMSCRIPTEN_KEEPALIVE int <b>client_get_connection_state</b> (void)
@@ -115,10 +115,11 @@
     channels)
   <br/>
   EMSCRIPTEN_KEEPALIVE int <b>client_opus_encode</b> (const int16_t *pcm_data,
-    int frame_size, uint8_t *opus_data, int max_opus_bytes)
+    int frame_size, <b>uint8_t</b> *opus_data, int max_opus_bytes)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_opus_decode</b> (const uint8_t *opus_data,
-    int opus_bytes, int16_t *pcm_data, int frame_size, int decode_fec)
+  EMSCRIPTEN_KEEPALIVE int <b>client_opus_decode</b> (const <b>uint8_t</b>
+    *opus_data, int opus_bytes, int16_t *pcm_data, int frame_size, int
+    decode_fec)
   <br/>
   EMSCRIPTEN_KEEPALIVE void <b>client_opus_encoder_cleanup</b> (void)
   <br/>
@@ -207,9 +208,10 @@
     <b>platform_destroy()</b>, <b>WASM_LOG</b>, and <b>WASM_LOG_INT</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_decrypt_packet_(const_uint8_t_*_ciphertext,_size_t_ciphertext_len,_uint8_t_*_plaintext,_size_t_plaintext_size,_size_t_*_out_len)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_decrypt_packet_(const_uint8_t_*_ciphertext,_size_t_ciphertext_len,_uint8_t_*_plaintext,_size_t_plaintext_size,_size_t_*_out_len)">EMSCRIPTEN_KEEPALIVE
-  int client_decrypt_packet (const uint8_t * ciphertext, size_t ciphertext_len,
-  uint8_t * plaintext, size_t plaintext_size, size_t * out_len)</a></h2>
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_decrypt_packet_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_decrypt_packet_(const_">EMSCRIPTEN_KEEPALIVE
+  int client_decrypt_packet (const <b>uint8_t</b> * ciphertext, size_t
+  ciphertext_len, <b>uint8_t</b> * plaintext, size_t plaintext_size, size_t *
+  out_len)</a></h2>
 <p class="Pp">Decrypt a ciphertext packet</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>ciphertext</i> Input ciphertext data
@@ -245,12 +247,14 @@
 597 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_decrypt()</b>, and <b>WASM_ERROR</b>.</p>
+<p class="Pp">References <b>crypto_decrypt()</b>, <b>CRYPTO_OK</b>, and
+    <b>WASM_ERROR</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_encrypt_packet_(const_uint8_t_*_plaintext,_size_t_plaintext_len,_uint8_t_*_ciphertext,_size_t_ciphertext_size,_size_t_*_out_len)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_encrypt_packet_(const_uint8_t_*_plaintext,_size_t_plaintext_len,_uint8_t_*_ciphertext,_size_t_ciphertext_size,_size_t_*_out_len)">EMSCRIPTEN_KEEPALIVE
-  int client_encrypt_packet (const uint8_t * plaintext, size_t plaintext_len,
-  uint8_t * ciphertext, size_t ciphertext_size, size_t * out_len)</a></h2>
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_encrypt_packet_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_encrypt_packet_(const_">EMSCRIPTEN_KEEPALIVE
+  int client_encrypt_packet (const <b>uint8_t</b> * plaintext, size_t
+  plaintext_len, <b>uint8_t</b> * ciphertext, size_t ciphertext_size, size_t *
+  out_len)</a></h2>
 <p class="Pp">Encrypt a plaintext packet</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>plaintext</i> Input plaintext data
@@ -286,7 +290,8 @@
 567 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_encrypt()</b>, and <b>WASM_ERROR</b>.</p>
+<p class="Pp">References <b>crypto_encrypt()</b>, <b>CRYPTO_OK</b>, and
+    <b>WASM_ERROR</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_void_client_free_string_(char_*_ptr)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_void_client_free_string_(char_*_ptr)">EMSCRIPTEN_KEEPALIVE
@@ -297,6 +302,7 @@
 724 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SAFE_FREE</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_generate_keypair_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_generate_keypair_(void_)">EMSCRIPTEN_KEEPALIVE
@@ -343,8 +349,9 @@
 262 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>CONNECTION_STATE_DISCONNECTED</b>,
-    <b>crypto_handshake_destroy()</b>, <b>crypto_handshake_init()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>CONNECTION_STATE_DISCONNECTED</b>, <b>crypto_handshake_destroy()</b>,
+    <b>CRYPTO_HANDSHAKE_DISABLED</b>, <b>crypto_handshake_init()</b>,
     <b>WASM_ERROR</b>, <b>WASM_LOG</b>, and <b>WASM_LOG_INT</b>.</p>
 </section>
 <section class="Ss">
@@ -398,11 +405,12 @@
 322 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>WASM_ERROR</b>.</p>
+<p class="Pp">References <b>CRYPTO_HANDSHAKE_DISABLED</b>, <b>pubkey</b>,
+    <b>SAFE_MALLOC</b>, and <b>WASM_ERROR</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_handle_auth_challenge_(const_uint8_t_*_packet,_size_t_packet_len)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_handle_auth_challenge_(const_uint8_t_*_packet,_size_t_packet_len)">EMSCRIPTEN_KEEPALIVE
-  int client_handle_auth_challenge (const uint8_t * packet, size_t
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_handle_auth_challenge_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_handle_auth_challenge_(const_">EMSCRIPTEN_KEEPALIVE
+  int client_handle_auth_challenge (const <b>uint8_t</b> * packet, size_t
   packet_len)</a></h2>
 <p class="Pp">Handle CRYPTO_AUTH_CHALLENGE packet from server</p>
 <p class="Pp"><b>Parameters</b></p>
@@ -465,14 +473,15 @@
 469 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>buffer_pool_alloc()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
     <b>CONNECTION_STATE_ERROR</b>,
-    <b>crypto_handshake_client_auth_response()</b>, <b>WASM_ERROR</b>,
-    <b>WASM_LOG</b>, and <b>WASM_LOG_INT</b>.</p>
+    <b>crypto_handshake_client_auth_response()</b>,
+    <b>packet_header_t::type</b>, <b>WASM_ERROR</b>, <b>WASM_LOG</b>, and
+    <b>WASM_LOG_INT</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_handle_handshake_complete_(const_uint8_t_*_packet,_size_t_packet_len)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_handle_handshake_complete_(const_uint8_t_*_packet,_size_t_packet_len)">EMSCRIPTEN_KEEPALIVE
-  int client_handle_handshake_complete (const uint8_t * packet, size_t
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_handle_handshake_complete_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_handle_handshake_complete_(const_">EMSCRIPTEN_KEEPALIVE
+  int client_handle_handshake_complete (const <b>uint8_t</b> * packet, size_t
   packet_len)</a></h2>
 <p class="Pp">Handle CRYPTO_HANDSHAKE_COMPLETE packet from server</p>
 <p class="Pp"><b>Parameters</b></p>
@@ -540,14 +549,14 @@
 533 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>buffer_pool_alloc()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
     <b>CONNECTION_STATE_CONNECTED</b>, <b>CONNECTION_STATE_ERROR</b>,
-    <b>crypto_handshake_client_complete()</b>, <b>WASM_ERROR</b>,
-    <b>WASM_LOG</b>, and <b>WASM_LOG_INT</b>.</p>
+    <b>crypto_handshake_client_complete()</b>, <b>packet_header_t::type</b>,
+    <b>WASM_ERROR</b>, <b>WASM_LOG</b>, and <b>WASM_LOG_INT</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_handle_key_exchange_init_(const_uint8_t_*_packet,_size_t_packet_len)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_handle_key_exchange_init_(const_uint8_t_*_packet,_size_t_packet_len)">EMSCRIPTEN_KEEPALIVE
-  int client_handle_key_exchange_init (const uint8_t * packet, size_t
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_handle_key_exchange_init_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_handle_key_exchange_init_(const_">EMSCRIPTEN_KEEPALIVE
+  int client_handle_key_exchange_init (const <b>uint8_t</b> * packet, size_t
   packet_len)</a></h2>
 <p class="Pp">Handle CRYPTO_KEY_EXCHANGE_INIT packet from server This is the
     first step of the crypto handshake</p>
@@ -639,11 +648,13 @@
 410 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>buffer_pool_alloc()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
     <b>CONNECTION_STATE_ERROR</b>, <b>CONNECTION_STATE_HANDSHAKE</b>,
     <b>crypto_handshake_client_key_exchange()</b>,
-    <b>crypto_handshake_destroy()</b>, <b>crypto_handshake_init()</b>,
-    <b>WASM_ERROR</b>, <b>WASM_LOG</b>, and <b>WASM_LOG_INT</b>.</p>
+    <b>crypto_handshake_destroy()</b>, <b>CRYPTO_HANDSHAKE_DISABLED</b>,
+    <b>CRYPTO_HANDSHAKE_INIT</b>, <b>crypto_handshake_init()</b>,
+    <b>packet_header_t::type</b>, <b>WASM_ERROR</b>, <b>WASM_LOG</b>, and
+    <b>WASM_LOG_INT</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_init_with_args_(const_char_*_args_json)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_init_with_args_(const_char_*_args_json)">EMSCRIPTEN_KEEPALIVE
@@ -713,15 +724,16 @@
 196 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ansi_fast_init()</b>,
-    <b>CONNECTION_STATE_DISCONNECTED</b>, <b>log_init()</b>,
-    <b>options_init()</b>, <b>platform_init()</b>, <b>WASM_ERROR</b>,
-    <b>WASM_LOG</b>, <b>WASM_LOG_INT</b>, and <b>wasm_parse_args()</b>.</p>
+<p class="Pp">References <b>ansi_fast_init()</b>, <b>argc</b>, <b>argv</b>,
+    <b>ASCIICHAT_OK</b>, <b>CONNECTION_STATE_DISCONNECTED</b>, <b>LOG_DEBUG</b>,
+    <b>log_info</b>, <b>log_init()</b>, <b>options_init()</b>,
+    <b>platform_init()</b>, <b>WASM_ERROR</b>, <b>WASM_LOG</b>,
+    <b>WASM_LOG_INT</b>, and <b>wasm_parse_args()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_opus_decode_(const_uint8_t_*_opus_data,_int_opus_bytes,_int16_t_*_pcm_data,_int_frame_size,_int_decode_fec)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_opus_decode_(const_uint8_t_*_opus_data,_int_opus_bytes,_int16_t_*_pcm_data,_int_frame_size,_int_decode_fec)">EMSCRIPTEN_KEEPALIVE
-  int client_opus_decode (const uint8_t * opus_data, int opus_bytes, int16_t *
-  pcm_data, int frame_size, int decode_fec)</a></h2>
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_opus_decode_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_opus_decode_(const_">EMSCRIPTEN_KEEPALIVE
+  int client_opus_decode (const <b>uint8_t</b> * opus_data, int opus_bytes,
+  int16_t * pcm_data, int frame_size, int decode_fec)</a></h2>
 <p class="Pp">Decode Opus audio to PCM</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>opus_data</i> Input Opus data
@@ -804,9 +816,9 @@
 <p class="Pp">References <b>WASM_ERROR</b>, and <b>WASM_LOG</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_opus_encode_(const_int16_t_*_pcm_data,_int_frame_size,_uint8_t_*_opus_data,_int_max_opus_bytes)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_opus_encode_(const_int16_t_*_pcm_data,_int_frame_size,_uint8_t_*_opus_data,_int_max_opus_bytes)">EMSCRIPTEN_KEEPALIVE
-  int client_opus_encode (const int16_t * pcm_data, int frame_size, uint8_t *
-  opus_data, int max_opus_bytes)</a></h2>
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_opus_encode_(const_int16_t_*_pcm_data,_int_frame_size,_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_opus_encode_(const_int16_t_*_pcm_data,_int_frame_size,_">EMSCRIPTEN_KEEPALIVE
+  int client_opus_encode (const int16_t * pcm_data, int frame_size,
+  <b>uint8_t</b> * opus_data, int max_opus_bytes)</a></h2>
 <p class="Pp">Encode PCM audio to Opus</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>pcm_data</i> Input PCM data (Int16 samples)
@@ -889,11 +901,12 @@
 756 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>WASM_ERROR</b>, and <b>WASM_LOG</b>.</p>
+<p class="Pp">References <b>OPUS_APPLICATION_VOIP</b>, <b>WASM_ERROR</b>, and
+    <b>WASM_LOG</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_char_*_client_parse_packet_(const_uint8_t_*_raw_packet,_size_t_packet_len)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_char_*_client_parse_packet_(const_uint8_t_*_raw_packet,_size_t_packet_len)">EMSCRIPTEN_KEEPALIVE
-  char * client_parse_packet (const uint8_t * raw_packet, size_t
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_char_*_client_parse_packet_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_char_*_client_parse_packet_(const_">EMSCRIPTEN_KEEPALIVE
+  char * client_parse_packet (const <b>uint8_t</b> * raw_packet, size_t
   packet_len)</a></h2>
 <p class="Pp">Parse a raw packet and return JSON metadata</p>
 <p class="Pp"><b>Parameters</b></p>
@@ -939,11 +952,16 @@
 638 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>WASM_ERROR</b>.</p>
+<p class="Pp">References <b>packet_header_t::client_id</b>,
+    <b>packet_header_t::crc32</b>, <b>length</b>,
+    <b>packet_header_t::length</b>, <b>packet_header_t::magic</b>,
+    <b>NET_TO_HOST_U16</b>, <b>NET_TO_HOST_U32</b>, <b>NET_TO_HOST_U64</b>,
+    <b>PACKET_MAGIC</b>, <b>SAFE_MALLOC</b>, <b>packet_header_t::type</b>, and
+    <b>WASM_ERROR</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_send_video_frame_(const_uint8_t_*_rgba_data,_int_width,_int_height)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_send_video_frame_(const_uint8_t_*_rgba_data,_int_width,_int_height)">EMSCRIPTEN_KEEPALIVE
-  int client_send_video_frame (const uint8_t * rgba_data, int width, int
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_send_video_frame_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_send_video_frame_(const_">EMSCRIPTEN_KEEPALIVE
+  int client_send_video_frame (const <b>uint8_t</b> * rgba_data, int width, int
   height)</a></h2>
 <p class="Pp">Process a video frame and prepare it for sending</p>
 <p class="Pp"><b>Parameters</b></p>
@@ -975,10 +993,10 @@
 <p class="Pp">References <b>WASM_ERROR</b>, and <b>WASM_LOG</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_serialize_packet_(uint16_t_packet_type,_const_uint8_t_*_payload,_size_t_payload_len,_uint32_t_client_id,_uint8_t_*_output,_size_t_*_out_len)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_serialize_packet_(uint16_t_packet_type,_const_uint8_t_*_payload,_size_t_payload_len,_uint32_t_client_id,_uint8_t_*_output,_size_t_*_out_len)">EMSCRIPTEN_KEEPALIVE
-  int client_serialize_packet (uint16_t packet_type, const uint8_t * payload,
-  size_t payload_len, uint32_t client_id, uint8_t * output, size_t *
-  out_len)</a></h2>
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_serialize_packet_("><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_serialize_packet_(">EMSCRIPTEN_KEEPALIVE
+  int client_serialize_packet (<b>uint16_t</b> packet_type, const <b>uint8_t</b>
+  * payload, size_t payload_len, <b>uint32_t</b> client_id, <b>uint8_t</b> *
+  output, size_t * out_len)</a></h2>
 <p class="Pp">Serialize a packet structure to raw bytes</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>packet_type</i> Type of packet
@@ -1024,7 +1042,9 @@
 678 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_crc32_sw()</b>, and <b>WASM_ERROR</b>.</p>
+<p class="Pp">References <b>asciichat_crc32_sw()</b>, <b>HOST_TO_NET_U16</b>,
+    <b>HOST_TO_NET_U32</b>, <b>HOST_TO_NET_U64</b>, <b>PACKET_MAGIC</b>, and
+    <b>WASM_ERROR</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_set_server_address_(const_char_*_server_host,_int_server_port)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_set_server_address_(const_char_*_server_host,_int_server_port)">EMSCRIPTEN_KEEPALIVE
@@ -1058,17 +1078,19 @@
 288 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>WASM_ERROR</b>, and <b>WASM_LOG</b>.</p>
+<p class="Pp">References <b>SAFE_STRNCPY</b>, <b>WASM_ERROR</b>, and
+    <b>WASM_LOG</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EM_JS_(void_,_js_send_raw_packet_,_(const_uint8_t_*packet_data,_size_t_packet_len)_,___if(!Module"><a class="permalink" href="#EM_JS_(void_,_js_send_raw_packet_,_(const_uint8_t_*packet_data,_size_t_packet_len)_,___if(!Module">EM_JS
-  (void , js_send_raw_packet , (const uint8_t *packet_data, size_t packet_len) ,
-  { if(!Module.sendPacketCallback) { console.error('[WASM] sendPacketCallback
-  not registered - cannot send packet');return;} const packetArray=new
-  Uint8Array(HEAPU8.buffer, packet_data, packet_len);const packetCopy=new
-  Uint8Array(packetArray);var pktType=packetCopy.length &gt;=10
-  ?((packetCopy[8]&lt;&lt; 8)|packetCopy[9]) :-1;console.error('[WASM-&gt;JS]
-  Sending raw packet:', packetCopy.length, 'bytes,
+<h2 class="Ss" id="EM_JS_(void_,_js_send_raw_packet_,_(const_"><a class="permalink" href="#EM_JS_(void_,_js_send_raw_packet_,_(const_">EM_JS
+  (void , js_send_raw_packet , (const <b>uint8_t</b> *packet_data, size_t
+  packet_len) , { if(!Module.sendPacketCallback) { console.error('[WASM]
+  sendPacketCallback not registered - cannot send packet');return;} const
+  packetArray=new Uint8Array(HEAPU8.buffer, packet_data, packet_len);const
+  packetCopy=new Uint8Array(packetArray);var pktType=<b>packetCopy.length</b>
+  &gt;=10 ?((packetCopy[8]&lt;&lt; 8)|packetCopy[9])
+  :-1;console.error('[WASM-&gt;JS] Sending raw packet:',
+  <b>packetCopy.length</b>, 'bytes,
   type=0x'+pktType.toString(16));Module.sendPacketCallback(packetCopy);}
   )</a></h2>
 </section>
@@ -1080,7 +1102,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

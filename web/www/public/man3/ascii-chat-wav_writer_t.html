@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>wav_writer_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">wav_writer_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">wav_writer_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">wav_writer_t - WAV file writer context.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/audio/wav_writer.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">FILE * <b>file</b>
+  <br/>
+  size_t <b>samples_written</b>
+  <br/>
+  int <b>sample_rate</b>
+  <br/>
+  int <b>channels</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">WAV file writer context.</p>
+<p class="Pp">Definition at line <b>23</b> of file <b>wav_writer.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_wav_writer_t::channels"><a class="permalink" href="#int_wav_writer_t::channels">int
+  wav_writer_t::channels</a></h2>
+<p class="Pp">Definition at line <b>27</b> of file <b>wav_writer.h</b>.</p>
+<p class="Pp">Referenced by <b>wav_writer_open()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="FILE*_wav_writer_t::file"><a class="permalink" href="#FILE*_wav_writer_t::file">FILE*
+  wav_writer_t::file</a></h2>
+<p class="Pp">Definition at line <b>24</b> of file <b>wav_writer.h</b>.</p>
+<p class="Pp">Referenced by <b>wav_writer_close()</b>, <b>wav_writer_open()</b>,
+    and <b>wav_writer_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_wav_writer_t::sample_rate"><a class="permalink" href="#int_wav_writer_t::sample_rate">int
+  wav_writer_t::sample_rate</a></h2>
+<p class="Pp">Definition at line <b>26</b> of file <b>wav_writer.h</b>.</p>
+<p class="Pp">Referenced by <b>wav_writer_open()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_wav_writer_t::samples_written"><a class="permalink" href="#size_t_wav_writer_t::samples_written">size_t
+  wav_writer_t::samples_written</a></h2>
+<p class="Pp">Definition at line <b>25</b> of file <b>wav_writer.h</b>.</p>
+<p class="Pp">Referenced by <b>wav_writer_close()</b>, <b>wav_writer_open()</b>,
+    and <b>wav_writer_write()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

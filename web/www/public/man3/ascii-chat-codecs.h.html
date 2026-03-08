@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>codecs.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">codecs.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">codecs.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">codecs.h - Video and audio codec definitions and capability
+    bitmasks.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<p class="Pp"><b>Video Codec Bitmask Constants</b>
+  <br/>
+  Bitmasks for video codec capabilities</p>
+<p class="Pp"></p>
+<p class="Pp">Each codec is represented by a single bit, allowing multiple
+    codecs to be advertised simultaneously in the codec_capabilities_video
+    field.</p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>VIDEO_CODEC_CAP_RGBA</b> ((<b>uint32_t</b>)(1 &lt;&lt;
+    <b>VIDEO_CODEC_RGBA</b>))
+  <br/>
+  Bit 0: RGBA support. #define <b>VIDEO_CODEC_CAP_H265</b> ((<b>uint32_t</b>)(1
+    &lt;&lt; <b>VIDEO_CODEC_H265</b>))
+  <br/>
+  Bit 1: H.265 support. #define <b>VIDEO_CODEC_CAP_JPEG</b> ((<b>uint32_t</b>)(1
+    &lt;&lt; <b>VIDEO_CODEC_JPEG</b>))
+  <br/>
+  Bit 2: JPEG support. #define <b>VIDEO_CODEC_CAP_ALL</b>
+    (<b>VIDEO_CODEC_CAP_RGBA</b> | <b>VIDEO_CODEC_CAP_H265</b> |
+    <b>VIDEO_CODEC_CAP_JPEG</b>)
+  <br/>
+  Default video codec capabilities (all codecs supported).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Audio Codec Bitmask Constants</b>
+  <br/>
+  Bitmasks for audio codec capabilities</p>
+<p class="Pp"></p>
+<p class="Pp">Each codec is represented by a single bit, allowing multiple
+    codecs to be advertised simultaneously in the codec_capabilities_audio
+    field.</p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>AUDIO_CODEC_CAP_RAW</b> ((<b>uint32_t</b>)(1 &lt;&lt;
+    <b>AUDIO_CODEC_RAW</b>))
+  <br/>
+  Bit 0: Raw PCM support. #define <b>AUDIO_CODEC_CAP_OPUS</b>
+    ((<b>uint32_t</b>)(1 &lt;&lt; <b>AUDIO_CODEC_OPUS</b>))
+  <br/>
+  Bit 1: Opus support. #define <b>AUDIO_CODEC_CAP_ALL</b>
+    (<b>AUDIO_CODEC_CAP_RAW</b> | <b>AUDIO_CODEC_CAP_OPUS</b>)
+  <br/>
+  Default audio codec capabilities (all codecs supported). #define
+    <b>VIDEO_CODEC_SUPPORTED</b>(cap, codec)
+  <br/>
+  Check if a video codec is supported in capabilities bitmask. #define
+    <b>AUDIO_CODEC_SUPPORTED</b>(cap, codec)
+  <br/>
+  Check if an audio codec is supported in capabilities bitmask.
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<p class="Pp"><b>Video Codec Types</b>
+  <br/>
+  Enumeration of supported video codecs</p>
+<p class="Pp">
+  <br/>
+  <br/>
+  enum <b>video_codec_t</b> { <b>VIDEO_CODEC_RGBA</b> = 0,
+    <b>VIDEO_CODEC_H265</b> = 1, <b>VIDEO_CODEC_JPEG</b> = 2 }
+  <br/>
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Audio Codec Types</b>
+  <br/>
+  Enumeration of supported audio codecs</p>
+<p class="Pp">
+  <br/>
+  <br/>
+  enum <b>audio_codec_t</b> { <b>AUDIO_CODEC_RAW</b> = 0,
+    <b>AUDIO_CODEC_OPUS</b> = 1 }
+  <br/>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Video and audio codec definitions and capability bitmasks.</p>
+<p class="Pp">Defines codec types and capability bitmasks for video and audio
+    streams. Used in CLIENT_CAPABILITIES packet to negotiate supported codecs
+    between client and server.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">March 2026</div>
+<p class="Pp"><b>Version</b></p>
+<div class="Bd-indent">1.0</div>
+<p class="Pp">Definition in file <b>codecs.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_AUDIO_CODEC_CAP_OPUS___(("><a class="permalink" href="#_define_AUDIO_CODEC_CAP_OPUS___((">#define
+  AUDIO_CODEC_CAP_OPUS ((<b>uint32_t</b>)(1 &lt;&lt;
+  <b>AUDIO_CODEC_OPUS</b>))</a></h2>
+<p class="Pp">Bit 1: Opus support.</p>
+<p class="Pp">Definition at line <b>71</b> of file <b>codecs.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_AUDIO_CODEC_CAP_RAW___(("><a class="permalink" href="#_define_AUDIO_CODEC_CAP_RAW___((">#define
+  AUDIO_CODEC_CAP_RAW ((<b>uint32_t</b>)(1 &lt;&lt;
+  <b>AUDIO_CODEC_RAW</b>))</a></h2>
+<p class="Pp">Bit 0: Raw PCM support.</p>
+<p class="Pp">Definition at line <b>70</b> of file <b>codecs.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_VIDEO_CODEC_CAP_H265___(("><a class="permalink" href="#_define_VIDEO_CODEC_CAP_H265___((">#define
+  VIDEO_CODEC_CAP_H265 ((<b>uint32_t</b>)(1 &lt;&lt;
+  <b>VIDEO_CODEC_H265</b>))</a></h2>
+<p class="Pp">Bit 1: H.265 support.</p>
+<p class="Pp">Definition at line <b>43</b> of file <b>codecs.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_VIDEO_CODEC_CAP_JPEG___(("><a class="permalink" href="#_define_VIDEO_CODEC_CAP_JPEG___((">#define
+  VIDEO_CODEC_CAP_JPEG ((<b>uint32_t</b>)(1 &lt;&lt;
+  <b>VIDEO_CODEC_JPEG</b>))</a></h2>
+<p class="Pp">Bit 2: JPEG support.</p>
+<p class="Pp">Definition at line <b>44</b> of file <b>codecs.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_VIDEO_CODEC_CAP_RGBA___(("><a class="permalink" href="#_define_VIDEO_CODEC_CAP_RGBA___((">#define
+  VIDEO_CODEC_CAP_RGBA ((<b>uint32_t</b>)(1 &lt;&lt;
+  <b>VIDEO_CODEC_RGBA</b>))</a></h2>
+<p class="Pp">Bit 0: RGBA support.</p>
+<p class="Pp">Definition at line <b>42</b> of file <b>codecs.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">enum <b>audio_codec_t</b></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="AUDIO_CODEC_RAW"><a class="permalink" href="#AUDIO_CODEC_RAW"><b><i>AUDIO_CODEC_RAW
+    </i></b></a></dt>
+  <dd>Raw PCM audio (uncompressed).</dd>
+  <dt id="AUDIO_CODEC_OPUS"><a class="permalink" href="#AUDIO_CODEC_OPUS"><b><i>AUDIO_CODEC_OPUS
+    </i></b></a></dt>
+  <dd>Opus audio codec.</dd>
+</dl>
+<p class="Pp">Definition at line <b>57</b> of file <b>codecs.h</b>.</p>
+<pre>57              {
+58   AUDIO_CODEC_RAW = 0,   
+59   AUDIO_CODEC_OPUS = 1,  
+60 } audio_codec_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">enum <b>video_codec_t</b></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="VIDEO_CODEC_RGBA"><a class="permalink" href="#VIDEO_CODEC_RGBA"><b><i>VIDEO_CODEC_RGBA
+    </i></b></a></dt>
+  <dd>Raw RGBA (4 bytes per pixel, uncompressed).</dd>
+  <dt id="VIDEO_CODEC_H265"><a class="permalink" href="#VIDEO_CODEC_H265"><b><i>VIDEO_CODEC_H265
+    </i></b></a></dt>
+  <dd>H.265 (HEVC) video codec.</dd>
+  <dt id="VIDEO_CODEC_JPEG"><a class="permalink" href="#VIDEO_CODEC_JPEG"><b><i>VIDEO_CODEC_JPEG
+    </i></b></a></dt>
+  <dd>JPEG still frame codec.</dd>
+</dl>
+<p class="Pp">Definition at line <b>28</b> of file <b>codecs.h</b>.</p>
+<pre>28              {
+29   VIDEO_CODEC_RGBA = 0,   
+30   VIDEO_CODEC_H265 = 1,   
+31   VIDEO_CODEC_JPEG = 2,   
+32 } video_codec_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -39,39 +39,50 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>ed25519_verify_signature</b> (const uint8_t
-    public_key[32], const uint8_t *message, size_t message_len, const uint8_t
-    signature[64], const char *gpg_key_id)
+<p class="Pp"><b>asciichat_error_t</b> <b>ed25519_verify_signature</b> (const
+    <b>uint8_t</b> public_key[32], const <b>uint8_t</b> *message, size_t
+    message_len, const <b>uint8_t</b> signature[64], const char *gpg_key_id)
   <br/>
-  asciichat_error_t <b>ed25519_sign_message</b> (const private_key_t *key, const
-    uint8_t *message, size_t message_len, uint8_t signature[64])
+  Verify an Ed25519 signature. <b>asciichat_error_t</b>
+    <b>ed25519_sign_message</b> (const <b>private_key_t</b> *key, const
+    <b>uint8_t</b> *message, size_t message_len, <b>uint8_t</b> signature[64])
   <br/>
-  asciichat_error_t <b>parse_public_keys</b> (const char *input, public_key_t
-    *keys_out, size_t *num_keys, size_t max_keys)
+  Sign a message with Ed25519 (uses SSH agent if available, otherwise in-memory
+    key). <b>asciichat_error_t</b> <b>parse_public_keys</b> (const char *input,
+    <b>public_key_t</b> *keys_out, size_t *num_keys, size_t max_keys)
   <br/>
-  asciichat_error_t <b>check_known_host</b> (const char *server_ip, uint16_t
-    port, const uint8_t server_key[32])
+  Parse all SSH/GPG public keys from any format (returns all keys).
+    <b>asciichat_error_t</b> <b>check_known_host</b> (const char *server_ip,
+    <b>uint16_t</b> port, const <b>uint8_t</b> server_key[32])
   <br/>
-  asciichat_error_t <b>check_known_host_no_identity</b> (const char *server_ip,
-    uint16_t port)
+  Check if server key is in known_hosts. <b>asciichat_error_t</b>
+    <b>check_known_host_no_identity</b> (const char *server_ip, <b>uint16_t</b>
+    port)
   <br/>
-  <b>bool</b> <b>display_mitm_warning</b> (const char *server_ip, uint16_t port,
-    const uint8_t expected_key[32], const uint8_t received_key[32])
+  Check known_hosts for servers without identity key (no-identity entries).
+    <b>bool</b> <b>display_mitm_warning</b> (const char *server_ip,
+    <b>uint16_t</b> port, const <b>uint8_t</b> expected_key[32], const
+    <b>uint8_t</b> received_key[32])
   <br/>
-  <b>bool</b> <b>prompt_unknown_host</b> (const char *server_ip, uint16_t port,
-    const uint8_t server_key[32])
+  Display MITM warning with key comparison and prompt user for confirmation.
+    <b>bool</b> <b>prompt_unknown_host</b> (const char *server_ip,
+    <b>uint16_t</b> port, const <b>uint8_t</b> server_key[32])
   <br/>
-  <b>bool</b> <b>prompt_unknown_host_no_identity</b> (const char *server_ip,
-    uint16_t port)
+  Interactive prompt for unknown host - returns true if user wants to add, false
+    to abort. <b>bool</b> <b>prompt_unknown_host_no_identity</b> (const char
+    *server_ip, <b>uint16_t</b> port)
   <br/>
-  asciichat_error_t <b>add_known_host</b> (const char *server_ip, uint16_t port,
-    const uint8_t server_key[32])
+  Interactive prompt for unknown host without identity key - returns true if
+    user wants to continue, false to abort. <b>asciichat_error_t</b>
+    <b>add_known_host</b> (const char *server_ip, <b>uint16_t</b> port, const
+    <b>uint8_t</b> server_key[32])
   <br/>
-  const char * <b>get_known_hosts_path</b> (void)
+  Add server to known_hosts. const char * <b>get_known_hosts_path</b> (void)
   <br/>
-  asciichat_error_t <b>prompt_password</b> (const char *prompt_text, char
+  <b>asciichat_error_t</b> <b>prompt_password</b> (const char *prompt_text, char
     *password_out, size_t password_max_len)
   <br/>
+  Prompt the user for a password with secure input.
   <br/>
 </p>
 </section>
@@ -89,84 +100,6 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_add_known_host_(const_char_*_server_ip,_uint16_t_port,_const_uint8_t_server_key_32_)"><a class="permalink" href="#asciichat_error_t_add_known_host_(const_char_*_server_ip,_uint16_t_port,_const_uint8_t_server_key_32_)">asciichat_error_t
-  add_known_host (const char * server_ip, uint16_t port, const uint8_t
-  server_key[32])</a></h2>
-<p class="Pp">Definition at line <b>61</b> of file
-    <b>lib/platform/wasm/stubs/crypto.c</b>.</p>
-<pre>61                                                                                                      {
-62   // Known hosts file updates not supported in WASM
-63   return ASCIICHAT_OK;
-64 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_check_known_host_(const_char_*_server_ip,_uint16_t_port,_const_uint8_t_server_key_32_)"><a class="permalink" href="#asciichat_error_t_check_known_host_(const_char_*_server_ip,_uint16_t_port,_const_uint8_t_server_key_32_)">asciichat_error_t
-  check_known_host (const char * server_ip, uint16_t port, const uint8_t
-  server_key[32])</a></h2>
-<p class="Pp">Definition at line <b>35</b> of file
-    <b>lib/platform/wasm/stubs/crypto.c</b>.</p>
-<pre>35                                                                                                        {
-36   // Known hosts checking not supported in WASM
-37   return ASCIICHAT_OK;
-38 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_check_known_host_no_identity_(const_char_*_server_ip,_uint16_t_port)"><a class="permalink" href="#asciichat_error_t_check_known_host_no_identity_(const_char_*_server_ip,_uint16_t_port)">asciichat_error_t
-  check_known_host_no_identity (const char * server_ip, uint16_t port)</a></h2>
-<p class="Pp">Definition at line <b>40</b> of file
-    <b>lib/platform/wasm/stubs/crypto.c</b>.</p>
-<pre>40                                                                                      {
-41   // Known hosts checking not supported in WASM
-42   return ASCIICHAT_OK;
-43 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> display_mitm_warning (const char * server_ip,
-  uint16_t port, const uint8_t expected_key[32], const uint8_t
-  received_key[32])</h2>
-<p class="Pp">Definition at line <b>45</b> of file
-    <b>lib/platform/wasm/stubs/crypto.c</b>.</p>
-<pre>46                                                           {
-47   // MITM warnings not displayed in WASM (browser console log instead)
-48   return false;
-49 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_ed25519_sign_message_(const_private_key_t_*_key,_const_uint8_t_*_message,_size_t_message_len,_uint8_t_signature_64_)"><a class="permalink" href="#asciichat_error_t_ed25519_sign_message_(const_private_key_t_*_key,_const_uint8_t_*_message,_size_t_message_len,_uint8_t_signature_64_)">asciichat_error_t
-  ed25519_sign_message (const private_key_t * key, const uint8_t * message,
-  size_t message_len, uint8_t signature[64])</a></h2>
-<p class="Pp">Definition at line <b>22</b> of file
-    <b>lib/platform/wasm/stubs/crypto.c</b>.</p>
-<pre>23                                                               {
-24   // Client authentication not supported in WASM (no client keys)
-25   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;Ed25519 signing not supported in WASM&quot;);
-26 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_ed25519_verify_signature_(const_uint8_t_public_key_32_,_const_uint8_t_*_message,_size_t_message_len,_const_uint8_t_signature_64_,_const_char_*_gpg_key_id)"><a class="permalink" href="#asciichat_error_t_ed25519_verify_signature_(const_uint8_t_public_key_32_,_const_uint8_t_*_message,_size_t_message_len,_const_uint8_t_signature_64_,_const_char_*_gpg_key_id)">asciichat_error_t
-  ed25519_verify_signature (const uint8_t public_key[32], const uint8_t *
-  message, size_t message_len, const uint8_t signature[64], const char *
-  gpg_key_id)</a></h2>
-<p class="Pp">Definition at line <b>16</b> of file
-    <b>lib/platform/wasm/stubs/crypto.c</b>.</p>
-<pre>17                                                                                                 {
-18   // Server identity verification not supported in WASM (no known_hosts file)
-19   return ASCIICHAT_OK;
-20 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="const_char_*_get_known_hosts_path_(void_)"><a class="permalink" href="#const_char_*_get_known_hosts_path_(void_)">const
   char * get_known_hosts_path (void )</a></h2>
 <p class="Pp">Definition at line <b>66</b> of file
@@ -178,57 +111,6 @@
 <pre></pre>
 <p class="Pp"></p>
 </section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_parse_public_keys_(const_char_*_input,_public_key_t_*_keys_out,_size_t_*_num_keys,_size_t_max_keys)"><a class="permalink" href="#asciichat_error_t_parse_public_keys_(const_char_*_input,_public_key_t_*_keys_out,_size_t_*_num_keys,_size_t_max_keys)">asciichat_error_t
-  parse_public_keys (const char * input, public_key_t * keys_out, size_t *
-  num_keys, size_t max_keys)</a></h2>
-<p class="Pp">Definition at line <b>29</b> of file
-    <b>lib/platform/wasm/stubs/crypto.c</b>.</p>
-<pre>29                                                                                                                   {
-30   // Key file parsing not supported in WASM
-31   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;Public key file parsing not supported in WASM&quot;);
-32 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_prompt_password_(const_char_*_prompt_text,_char_*_password_out,_size_t_password_max_len)"><a class="permalink" href="#asciichat_error_t_prompt_password_(const_char_*_prompt_text,_char_*_password_out,_size_t_password_max_len)">asciichat_error_t
-  prompt_password (const char * prompt_text, char * password_out, size_t
-  password_max_len)</a></h2>
-<p class="Pp">Definition at line <b>72</b> of file
-    <b>lib/platform/wasm/stubs/crypto.c</b>.</p>
-<pre>72                                                                                                         {
-73   // Password prompts not supported in WASM
-74   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;Password prompts not supported in WASM&quot;);
-75 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>crypto_handshake_client_auth_response()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> prompt_unknown_host (const char * server_ip, uint16_t
-  port, const uint8_t server_key[32])</h2>
-<p class="Pp">Definition at line <b>51</b> of file
-    <b>lib/platform/wasm/stubs/crypto.c</b>.</p>
-<pre>51                                                                                              {
-52   // No interactive prompts in WASM - auto-accept
-53   return true;
-54 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> prompt_unknown_host_no_identity (const char *
-  server_ip, uint16_t port)</h2>
-<p class="Pp">Definition at line <b>56</b> of file
-    <b>lib/platform/wasm/stubs/crypto.c</b>.</p>
-<pre>56                                                                            {
-57   // No interactive prompts in WASM - auto-accept
-58   return true;
-59 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
@@ -237,7 +119,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

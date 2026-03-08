@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>gpg_keys.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">gpg_keys.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">gpg_keys.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">gpg_keys.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<p class="Pp"><b>GPG Key Parsing</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>asciichat_error_t</b> <b>parse_gpg_key</b> (const char *gpg_key_text,
+    <b>public_key_t</b> *key_out)
+  <br/>
+  Parse GPG key from armored text format. <b>asciichat_error_t</b>
+    <b>parse_gpg_key_binary</b> (const <b>uint8_t</b> *gpg_key_binary, size_t
+    key_size, <b>public_key_t</b> *key_out)
+  <br/>
+  Parse GPG key from binary format. <b>asciichat_error_t</b>
+    <b>validate_gpg_key_format</b> (const char *gpg_key_text)
+  <br/>
+  Validate GPG key format and structure. <b>asciichat_error_t</b>
+    <b>extract_ed25519_from_gpg</b> (const char *gpg_key_text, <b>uint8_t</b>
+    ed25519_pk[32])
+  <br/>
+  Extract Ed25519 public key from GPG key. <b>asciichat_error_t</b>
+    <b>gpg_to_x25519_public</b> (const char *gpg_key_text, <b>uint8_t</b>
+    x25519_pk[32])
+  <br/>
+  Convert GPG key to X25519 for key exchange.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>GPG Key Operations</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>asciichat_error_t</b> <b>get_gpg_fingerprint</b> (const char *gpg_key_text,
+    <b>uint8_t</b> fingerprint_out[20])
+  <br/>
+  Get GPG key fingerprint. <b>asciichat_error_t</b> <b>get_gpg_key_id</b> (const
+    char *gpg_key_text, <b>uint8_t</b> key_id_out[8])
+  <br/>
+  Get GPG key ID (short fingerprint). <b>asciichat_error_t</b>
+    <b>check_gpg_key_expiry</b> (const char *gpg_key_text, <b>bool</b>
+    *is_expired)
+  <br/>
+  Check if GPG key is expired.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>GPG Key Formatting</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>asciichat_error_t</b> <b>format_gpg_key_display</b> (const char
+    *gpg_key_text, char *output, size_t output_size)
+  <br/>
+  Format GPG key for display. <b>asciichat_error_t</b>
+    <b>extract_gpg_key_comment</b> (const char *gpg_key_text, char *comment_out,
+    size_t comment_size)
+  <br/>
+  Extract key comment/email from GPG key.
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

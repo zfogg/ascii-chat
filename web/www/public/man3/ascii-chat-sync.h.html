@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>sync.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">sync.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">sync.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">sync.h - &#x1F512; Synchronization primitive debugging (mutexes,
+    rwlocks, condition variables)</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>debug_sync_print_mutex_state</b> (void)
+  <br/>
+  Print timing state for all named mutexes to stdout/log. void
+    <b>debug_sync_print_rwlock_state</b> (void)
+  <br/>
+  Print timing state for all named read-write locks to stdout/log. void
+    <b>debug_sync_print_cond_state</b> (void)
+  <br/>
+  Print timing state for all named condition variables to stdout/log. void
+    <b>debug_sync_print_state</b> (void)
+  <br/>
+  Print all synchronization primitive states at once. void
+    <b>debug_sync_print_state_delayed</b> (<b>uint64_t</b> delay_ns)
+  <br/>
+  Schedule delayed sync state printing on debug thread. void
+    <b>debug_sync_print_backtrace_delayed</b> (<b>uint64_t</b> delay_ns)
+  <br/>
+  Schedule delayed backtrace printing on debug thread. void
+    <b>debug_sync_set_memory_report_interval</b> (<b>uint64_t</b> interval_ns)
+  <br/>
+  Set periodic memory report interval. void <b>debug_sync_set_main_thread_id</b>
+    (void)
+  <br/>
+  Initialize debug synchronization system. int <b>debug_sync_init</b> (void)
+  <br/>
+  <b>uint64_t</b> <b>debug_sync_get_main_thread_id</b> (void)
+  <br/>
+  Get the main thread ID for memory reporting. int
+    <b>debug_sync_start_thread</b> (void)
+  <br/>
+  Start background debug thread for scheduled operations. void
+    <b>debug_sync_destroy</b> (void)
+  <br/>
+  Destroy debug synchronization system. void <b>debug_sync_cleanup_thread</b>
+    (void)
+  <br/>
+  Stop and clean up background debug thread. void
+    <b>debug_sync_final_cleanup</b> (void)
+  <br/>
+  Final cleanup of debug allocations at shutdown. void
+    <b>debug_sync_trigger_print</b> (void)
+  <br/>
+  Trigger sync state print immediately (synchronous). void
+    <b>debug_sync_get_stats</b> (<b>uint64_t</b> *total_acquired,
+    <b>uint64_t</b> *total_released, <b>uint32_t</b> *currently_held)
+  <br/>
+  Get synchronization statistics. void <b>debug_sync_check_cond_deadlocks</b>
+    (void)
+  <br/>
+  Check all condition variables for deadlocks.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F512; Synchronization primitive debugging (mutexes, rwlocks,
+    condition variables)</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>sync.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_debug_sync_init_(void_)"><a class="permalink" href="#int_debug_sync_init_(void_)">int
+  debug_sync_init (void )</a></h2>
+<p class="Pp">Definition at line <b>645</b> of file <b>sync.c</b>.</p>
+<pre>645                           {
+646   // debug_sync_set_main_thread_id() should have already been called
+647   return 0;
+648 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

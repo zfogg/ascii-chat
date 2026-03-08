@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>named.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">named.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">named.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">named.h - Named object registry for debugging &#x2014; log
+    identifiable resource names.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>NAMED_REGISTER</b>(ptr, name, type, fmt, parent_ptr)
+  <br/>
+  Register any pointer with base name, type, format spec, and location
+    (auto-suffix). #define <b>NAMED_REGISTER_FMT</b>(ptr, type, fmt_spec, fmt,
+    ...)
+  <br/>
+  Register with a formatted name, type, and format spec. #define
+    <b>NAMED_UNREGISTER</b>(ptr)
+  <br/>
+  Unregister a pointer. #define <b>NAMED_GET</b>(ptr)
+  <br/>
+  Look up registered name for a pointer. #define <b>NAMED_DESCRIBE</b>(ptr,
+    hint)
+  <br/>
+  Describe a pointer in log format. #define <b>NAMED_REGISTER_ID</b>(id, name,
+    type, fmt, parent_ptr)
+  <br/>
+  Register an integer handle (fd, socket, etc.) with type. #define
+    <b>NAMED_UNREGISTER_ID</b>(id)
+  <br/>
+  Unregister an integer handle. #define <b>NAMED_DESCRIBE_ID</b>(id, hint)
+  <br/>
+  Describe an integer handle in log format. #define
+    <b>NAMED_REGISTER_MUTEX</b>(<b>mutex</b>, name, parent_ptr)
+  <br/>
+  Register a mutex with automatic format specifier. #define
+    <b>NAMED_REGISTER_RWLOCK</b>(lock, name, parent_ptr)
+  <br/>
+  Register an rwlock with automatic format specifier. #define
+    <b>NAMED_REGISTER_COND</b>(cond, name, parent_ptr)
+  <br/>
+  Register a condition variable with automatic format specifier. #define
+    <b>NAMED_REGISTER_SOCKET</b>(socket, name, parent_ptr)
+  <br/>
+  Register a socket with automatic format specifier. #define
+    <b>NAMED_UNREGISTER_SOCKET</b>(socket)
+  <br/>
+  #define <b>NAMED_REGISTER_WEBSOCKET</b>(websocket, name, parent_ptr)
+  <br/>
+  Register a WebSocket connection with automatic format specifier. #define
+    <b>NAMED_REGISTER_DATACHANNEL</b>(datachannel, name, parent_ptr)
+  <br/>
+  Register a data channel with automatic format specifier. #define
+    <b>NAMED_REGISTER_THREADPOOL_WORK</b>(work, name, parent_ptr)
+  <br/>
+  Register a thread pool work item with automatic format specifier. #define
+    <b>NAMED_REGISTER_CLIENT</b>(client, name, parent_ptr)
+  <br/>
+  Register a client connection with automatic format specifier. #define
+    <b>NAMED_REGISTER_CRYPTO_CONTEXT</b>(ctx, name, parent_ptr)
+  <br/>
+  Register a crypto context with automatic format specifier. #define
+    <b>NAMED_REGISTER_TRANSPORT</b>(transport, name, parent_ptr)
+  <br/>
+  Register a transport with automatic format specifier. #define
+    <b>NAMED_REGISTER_FRAME_BUFFER</b>(buf, name, parent_ptr)
+  <br/>
+  Register a frame buffer with automatic format specifier. #define
+    <b>NAMED_REGISTER_PACKET_QUEUE</b>(queue, name, parent_ptr)
+  <br/>
+  Register a packet queue with automatic format specifier. #define
+    <b>NAMED_REGISTER_AUDIO_RINGBUF</b>(buf, name, parent_ptr)
+  <br/>
+  Register an audio ring buffer with automatic format specifier. #define
+    <b>NAMED_REGISTER_MIXER</b>(mixer, name, parent_ptr)
+  <br/>
+  Register an audio mixer with automatic format specifier. #define
+    <b>NAMED_REGISTER_AUDIO_CODEC</b>(codec, name, parent_ptr)
+  <br/>
+  Register an audio codec with automatic format specifier. #define
+    <b>NAMED_REGISTER_VIDEO_ENCODER</b>(encoder, name, parent_ptr)
+  <br/>
+  Register a video encoder with automatic format specifier. #define
+    <b>NAMED_REGISTER_BUFFER_POOL</b>(<b>pool</b>, name, parent_ptr)
+  <br/>
+  Register a buffer pool with automatic format specifier. #define
+    <b>NAMED_REGISTER_FFMPEG_DECODER</b>(decoder, name, parent_ptr)
+  <br/>
+  Register an FFmpeg decoder with automatic format specifier. #define
+    <b>NAMED_REGISTER_FFMPEG_ENCODER</b>(encoder, name, parent_ptr)
+  <br/>
+  Register an FFmpeg encoder with automatic format specifier. #define
+    <b>NAMED_REGISTER_H265_ENCODER</b>(encoder, name, parent_ptr)
+  <br/>
+  Register an H.265 encoder with automatic format specifier. #define
+    <b>NAMED_REGISTER_H265_DECODER</b>(decoder, name, parent_ptr)
+  <br/>
+  Register an H.265 decoder with automatic format specifier. #define
+    <b>NAMED_REGISTER_AUDIO_CONTEXT</b>(ctx, name, parent_ptr)
+  <br/>
+  Register an audio context with automatic format specifier. #define
+    <b>NAMED_REGISTER_RATE_LIMITER</b>(limiter, name, parent_ptr)
+  <br/>
+  Register a rate limiter with automatic format specifier. #define
+    <b>NAMED_REGISTER_WAV_WRITER</b>(writer, name, parent_ptr)
+  <br/>
+  Register a WAV writer with automatic format specifier. #define
+    <b>NAMED_REGISTER_MEDIA_SOURCE</b>(source, name, parent_ptr)
+  <br/>
+  Register a media source with automatic format specifier. #define
+    <b>NAMED_OPEN</b>(pathname, name, flags, ...)
+  <br/>
+  Open a file and register the file descriptor. #define
+    <b>NAMED_UNREGISTER_FD</b>(fd)
+  <br/>
+  Unregister a file descriptor. #define <b>NAMED_REGISTER_FD</b>(fd, name)
+  <br/>
+  Register an existing file descriptor. #define <b>NAMED_REGISTER_ATOMIC</b>(a,
+    name, parent_ptr)
+  <br/>
+  Register an <b>atomic_t</b> with automatic format specifier. #define
+    <b>NAMED_REGISTER_ATOMIC_PTR</b>(a, name, parent_ptr)
+  <br/>
+  Register an _Atomic(void *) with automatic format specifier. #define
+    <b>NAMED_REGISTER_THREAD</b>(thread, name, parent_ptr)
+  <br/>
+  Register a thread handle with name and automatic format specifier. #define
+    <b>NAMED_UNREGISTER_THREAD</b>(thread)
+  <br/>
+  Unregister a thread handle. #define <b>NAMED_REGISTER_TCP_CLIENT</b>(client,
+    name, parent_ptr)
+  <br/>
+  Register a TCP client with automatic format specifier. #define
+    <b>NAMED_REGISTER_WEBSOCKET_CLIENT</b>(client, name, parent_ptr)
+  <br/>
+  Register a WebSocket client with automatic format specifier. #define
+    <b>NAMED_REGISTER_APP_CLIENT</b>(client, name, parent_ptr)
+  <br/>
+  Register an app client with automatic format specifier. #define
+    <b>NAMED_REGISTER_VIDEO_FRAME_BUFFER</b>(buf, name, parent_ptr)
+  <br/>
+  Register a video frame buffer with automatic format specifier. #define
+    <b>NAMED_REGISTER_NODE_POOL</b>(<b>pool</b>, name, parent_ptr)
+  <br/>
+  Register a node pool with automatic format specifier. #define
+    <b>NAMED_REGISTER_THREAD_POOL</b>(<b>pool</b>, name, parent_ptr)
+  <br/>
+  Register a thread pool with automatic format specifier. #define
+    <b>NAMED_REGISTER_OPTIONS_BUILDER</b>(builder, name, parent_ptr)
+  <br/>
+  Register an options builder with automatic format specifier. #define
+    <b>NAMED_REGISTER_SIMPLE_FRAME_SWAP</b>(swap, name, parent_ptr)
+  <br/>
+  Register a simple frame swap with automatic format specifier. #define
+    <b>NAMED_REGISTER_CLIENT_AUDIO_PIPELINE</b>(pipeline, name, parent_ptr)
+  <br/>
+  Register a client audio pipeline with automatic format specifier. #define
+    <b>NAMED_REGISTER_WEBSOCKET_IMPL</b>(data, name, parent_ptr)
+  <br/>
+  #define <b>NAMED_REGISTER_LWS_CONTEXT</b>(context, name, parent_ptr)
+  <br/>
+  Register a libwebsockets context with automatic format specifier. #define
+    <b>NAMED_REGISTER_FFMPEG_CONTEXT</b>(context, name, parent_ptr)
+  <br/>
+  Register an FFmpeg decoder context with automatic format specifier. #define
+    <b>NAMED_REGISTER_CONTEXT</b>(context, context_type, name, parent_ptr)
+  <br/>
+  Register a generic context with automatic format specifier. #define
+    <b>NAMED_GET_BY_PTR</b>(key, buffer, size)
+  <br/>
+  Get name of a pointer/key or format as address fallback. #define
+    <b>NAMED_GET_BY_INT</b>(id, buffer, size)
+  <br/>
+  Get name of an integer ID or format as hex fallback. #define
+    <b>NAMED_GET_BY_STR</b>(str, buffer, size)
+  <br/>
+  Copy a string to buffer, with bounds checking.
+  <br/>
+</p>
+<p class="Pp"><b>Type-Specific Description Macros</b>
+  <br/>
+  These macros encapsulate the proper casting and type hint for common types.
+    Use these instead of NAMED_DESCRIBE for better readability and
+  consistency.</p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>NAME_DESCRIBE_MUTEX</b>(m)
+  <br/>
+  Describe a <b>mutex_t</b> for logging. #define <b>NAME_DESCRIBE_RWLOCK</b>(l)
+  <br/>
+  Describe an <b>rwlock_t</b> for logging. #define <b>NAME_DESCRIBE_COND</b>(c)
+  <br/>
+  Describe a <b>cond_t</b> for logging. #define <b>NAME_DESCRIBE_THREAD</b>(t)
+  <br/>
+  Describe a thread for logging. #define <b>NAME_DESCRIBE_TRANSPORT</b>(tr)
+  <br/>
+  Describe a transport for logging. #define <b>NAME_DESCRIBE_SOCKET</b>(fd)
+  <br/>
+  Describe a socket for logging. #define <b>NAME_DESCRIBE_RINGBUF</b>(rb)
+  <br/>
+  Describe a ring buffer for logging.
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef void(* <b>named_iter_callback_t</b>) (uintptr_t key, const
+    char *name, void *user_data)
+  <br/>
+  Callback function for iterating registered entries.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>named_init</b> (void)
+  <br/>
+  Initialize the named object registry. void <b>named_destroy</b> (void)
+  <br/>
+  Destroy the named object registry. const char * <b>named_register</b>
+    (uintptr_t key, const char *base_name, const char *type, const char
+    *format_spec, const char *file, int line, const char *func, uintptr_t
+    parent_key)
+  <br/>
+  Register a resource with an auto-suffixed name, type, and location info. const
+    char * <b>named_register_fmt</b> (uintptr_t key, const char *type, const
+    char *format_spec, const char *file, int line, const char *func, const char
+    *fmt,...)
+  <br/>
+  Register a resource with a formatted name, type, and location info (no
+    auto-suffix). void <b>named_unregister</b> (uintptr_t key)
+  <br/>
+  Unregister a resource by key. const char * <b>named_update_name</b> (uintptr_t
+    key, const char *new_base_name)
+  <br/>
+  Update the registered name for a resource with a new base name. const char *
+    <b>named_get</b> (uintptr_t key)
+  <br/>
+  Look up the registered name for a resource. const char * <b>named_get_type</b>
+    (uintptr_t key)
+  <br/>
+  Look up the registered type for a resource. const char *
+    <b>named_get_format_spec</b> (uintptr_t key)
+  <br/>
+  Get the format specifier for a registered named object. const char *
+    <b>named_register_fd</b> (int fd, const char *file, int line, const char
+    *func)
+  <br/>
+  Register a file descriptor with namespace encoding. const char *
+    <b>named_get_fd</b> (int fd)
+  <br/>
+  Look up a registered file descriptor. const char *
+    <b>named_get_fd_format_spec</b> (int fd)
+  <br/>
+  Get the format specifier for a registered file descriptor. const char *
+    <b>named_register_packet_type</b> (int pkt_type, const char *file, int line,
+    const char *func)
+  <br/>
+  Register a packet type with namespace encoding. const char *
+    <b>named_get_packet_type</b> (int pkt_type)
+  <br/>
+  Look up a registered packet type. const char *
+    <b>named_get_packet_type_format_spec</b> (int pkt_type)
+  <br/>
+  Get the format specifier for a registered packet type. const char *
+    <b>named_get_by_type_and_id</b> (const char *type_name, size_t type_len, int
+    id)
+  <br/>
+  Look up an integer ID by type name and value. const char *
+    <b>named_describe</b> (uintptr_t key, const char *type_hint)
+  <br/>
+  Format a description string for logging. uintptr_t
+    <b>asciichat_thread_to_key</b> (<b>asciichat_thread_t</b> thread)
+  <br/>
+  Convert a thread handle to a registry key. const char *
+    <b>named_describe_thread</b> (void *thread)
+  <br/>
+  Describe a thread for logging (function wrapper). void
+    <b>named_registry_register_packet_types</b> (void)
+  <br/>
+  Register all packet types from <b>packet_type_t</b> enum. void
+    <b>named_registry_for_each</b> (<b>named_iter_callback_t</b> callback, void
+    *user_data)
+  <br/>
+  Iterate through all registered entries.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Named object registry for debugging &#x2014; log identifiable
+    resource names.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>debug/named.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -42,20 +42,20 @@
 <br/>
 <p class="Pp">char <b>fmt</b> [4]
   <br/>
-  <i>fmt</i> chunk identifier uint32_t <b>chunk_size</b>
+  <i>fmt</i> chunk identifier <b>uint32_t</b> <b>chunk_size</b>
   <br/>
-  Chunk size (16 for PCM). uint16_t <b>audio_format</b>
+  Chunk size (16 for PCM). <b>uint16_t</b> <b>audio_format</b>
   <br/>
-  Audio format (3 = IEEE float). uint16_t <b>num_channels</b>
+  Audio format (3 = IEEE float). <b>uint16_t</b> <b>num_channels</b>
   <br/>
-  Number of channels (1 = mono, 2 = stereo). uint32_t <b>sample_rate</b>
+  Number of channels (1 = mono, 2 = stereo). <b>uint32_t</b> <b>sample_rate</b>
   <br/>
-  Sample rate in Hz (e.g., 44100). uint32_t <b>byte_rate</b>
+  Sample rate in Hz (e.g., 44100). <b>uint32_t</b> <b>byte_rate</b>
   <br/>
-  Bytes per second (sample_rate * num_channels * bytes_per_sample). uint16_t
-    <b>block_align</b>
+  Bytes per second (sample_rate * num_channels * bytes_per_sample).
+    <b>uint16_t</b> <b>block_align</b>
   <br/>
-  Block alignment (num_channels * bytes_per_sample). uint16_t
+  Block alignment (num_channels * bytes_per_sample). <b>uint16_t</b>
     <b>bits_per_sample</b>
   <br/>
   Bits per sample (32 for float).
@@ -73,33 +73,28 @@
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="uint16_t_wav_fmt_chunk_t::audio_format"><a class="permalink" href="#uint16_t_wav_fmt_chunk_t::audio_format">uint16_t
-  wav_fmt_chunk_t::audio_format</a></h2>
+<h2 class="Ss"><b>uint16_t</b> wav_fmt_chunk_t::audio_format</h2>
 <p class="Pp">Audio format (3 = IEEE float).</p>
 <p class="Pp">Definition at line <b>31</b> of file <b>wav_writer.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint16_t_wav_fmt_chunk_t::bits_per_sample"><a class="permalink" href="#uint16_t_wav_fmt_chunk_t::bits_per_sample">uint16_t
-  wav_fmt_chunk_t::bits_per_sample</a></h2>
+<h2 class="Ss"><b>uint16_t</b> wav_fmt_chunk_t::bits_per_sample</h2>
 <p class="Pp">Bits per sample (32 for float).</p>
 <p class="Pp">Definition at line <b>36</b> of file <b>wav_writer.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint16_t_wav_fmt_chunk_t::block_align"><a class="permalink" href="#uint16_t_wav_fmt_chunk_t::block_align">uint16_t
-  wav_fmt_chunk_t::block_align</a></h2>
+<h2 class="Ss"><b>uint16_t</b> wav_fmt_chunk_t::block_align</h2>
 <p class="Pp">Block alignment (num_channels * bytes_per_sample).</p>
 <p class="Pp">Definition at line <b>35</b> of file <b>wav_writer.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint32_t_wav_fmt_chunk_t::byte_rate"><a class="permalink" href="#uint32_t_wav_fmt_chunk_t::byte_rate">uint32_t
-  wav_fmt_chunk_t::byte_rate</a></h2>
+<h2 class="Ss"><b>uint32_t</b> wav_fmt_chunk_t::byte_rate</h2>
 <p class="Pp">Bytes per second (sample_rate * num_channels *
   bytes_per_sample).</p>
 <p class="Pp">Definition at line <b>34</b> of file <b>wav_writer.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint32_t_wav_fmt_chunk_t::chunk_size"><a class="permalink" href="#uint32_t_wav_fmt_chunk_t::chunk_size">uint32_t
-  wav_fmt_chunk_t::chunk_size</a></h2>
+<h2 class="Ss"><b>uint32_t</b> wav_fmt_chunk_t::chunk_size</h2>
 <p class="Pp">Chunk size (16 for PCM).</p>
 <p class="Pp">Definition at line <b>30</b> of file <b>wav_writer.c</b>.</p>
 </section>
@@ -110,14 +105,12 @@
 <p class="Pp">Definition at line <b>29</b> of file <b>wav_writer.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint16_t_wav_fmt_chunk_t::num_channels"><a class="permalink" href="#uint16_t_wav_fmt_chunk_t::num_channels">uint16_t
-  wav_fmt_chunk_t::num_channels</a></h2>
+<h2 class="Ss"><b>uint16_t</b> wav_fmt_chunk_t::num_channels</h2>
 <p class="Pp">Number of channels (1 = mono, 2 = stereo).</p>
 <p class="Pp">Definition at line <b>32</b> of file <b>wav_writer.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint32_t_wav_fmt_chunk_t::sample_rate"><a class="permalink" href="#uint32_t_wav_fmt_chunk_t::sample_rate">uint32_t
-  wav_fmt_chunk_t::sample_rate</a></h2>
+<h2 class="Ss"><b>uint32_t</b> wav_fmt_chunk_t::sample_rate</h2>
 <p class="Pp">Sample rate in Hz (e.g., 44100).</p>
 <p class="Pp">Definition at line <b>33</b> of file <b>wav_writer.c</b>.</p>
 <p class="Pp"></p>
@@ -130,7 +123,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

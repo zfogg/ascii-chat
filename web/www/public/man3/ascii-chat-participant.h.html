@@ -52,7 +52,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
-<p class="Pp">typedef struct acip_transport <b>acip_transport_t</b>
+<p class="Pp">typedef struct <b>acip_transport</b> <b>acip_transport_t</b>
   <br/>
   Forward declaration of ACIP transport.
   <br/>
@@ -67,7 +67,7 @@
   Create a new session participant. void <b>session_participant_destroy</b>
     (<b>session_participant_t</b> *p)
   <br/>
-  Destroy session participant and free resources. asciichat_error_t
+  Destroy session participant and free resources. <b>asciichat_error_t</b>
     <b>session_participant_connect</b> (<b>session_participant_t</b> *p)
   <br/>
   Connect to session server. void <b>session_participant_disconnect</b>
@@ -76,10 +76,10 @@
   Disconnect from session server. <b>bool</b>
     <b>session_participant_is_connected</b> (<b>session_participant_t</b> *p)
   <br/>
-  Check if participant is connected. uint32_t
+  Check if participant is connected. <b>uint32_t</b>
     <b>session_participant_get_client_id</b> (<b>session_participant_t</b> *p)
   <br/>
-  Get assigned client ID. asciichat_error_t
+  Get assigned client ID. <b>asciichat_error_t</b>
     <b>session_participant_start_video</b> (<b>session_participant_t</b> *p)
   <br/>
   Start video capture and streaming. void <b>session_participant_stop_video</b>
@@ -88,7 +88,7 @@
   Stop video capture and streaming. <b>bool</b>
     <b>session_participant_is_video_active</b> (<b>session_participant_t</b> *p)
   <br/>
-  Check if video is streaming. asciichat_error_t
+  Check if video is streaming. <b>asciichat_error_t</b>
     <b>session_participant_start_audio</b> (<b>session_participant_t</b> *p)
   <br/>
   Start audio capture and streaming. void <b>session_participant_stop_audio</b>
@@ -97,15 +97,15 @@
   Stop audio capture and streaming. <b>bool</b>
     <b>session_participant_is_audio_active</b> (<b>session_participant_t</b> *p)
   <br/>
-  Check if audio is streaming. asciichat_error_t
+  Check if audio is streaming. <b>asciichat_error_t</b>
     <b>session_participant_get_settings</b> (<b>session_participant_t</b> *p,
     <b>session_settings_t</b> *settings)
   <br/>
-  Get current session settings. asciichat_error_t
+  Get current session settings. <b>asciichat_error_t</b>
     <b>session_participant_request_settings</b> (<b>session_participant_t</b>
     *p, const <b>session_settings_t</b> *settings)
   <br/>
-  Request session settings update (if permitted). asciichat_error_t
+  Request session settings update (if permitted). <b>asciichat_error_t</b>
     <b>session_participant_start_video_capture</b> (<b>session_participant_t</b>
     *p)
   <br/>
@@ -113,7 +113,7 @@
     <b>session_participant_stop_video_capture</b> (<b>session_participant_t</b>
     *p)
   <br/>
-  Stop video capture and transmission. asciichat_error_t
+  Stop video capture and transmission. <b>asciichat_error_t</b>
     <b>session_participant_start_audio_capture</b> (<b>session_participant_t</b>
     *p)
   <br/>
@@ -124,7 +124,7 @@
   Stop audio capture and transmission. <b>socket_t</b>
     <b>session_participant_get_socket</b> (<b>session_participant_t</b> *p)
   <br/>
-  Get the socket from a participant context. asciichat_error_t
+  Get the socket from a participant context. <b>asciichat_error_t</b>
     <b>session_participant_set_transport</b> (<b>session_participant_t</b> *p,
     <b>acip_transport_t</b> *transport)
   <br/>
@@ -154,7 +154,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -37,48 +37,59 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>tcp_server_init</b> (tcp_server_t *server,
-    const tcp_server_config_t *config)
+<p class="Pp"><b>asciichat_error_t</b> <b>tcp_server_init</b>
+    (<b>tcp_server_t</b> *server, const <b>tcp_server_config_t</b> *config)
   <br/>
-  asciichat_error_t <b>tcp_server_run</b> (tcp_server_t *server)
+  Initialize TCP server. <b>asciichat_error_t</b> <b>tcp_server_run</b>
+    (<b>tcp_server_t</b> *server)
   <br/>
-  void <b>tcp_server_destroy</b> (tcp_server_t *server)
+  Run TCP server accept loop. void <b>tcp_server_destroy</b>
+    (<b>tcp_server_t</b> *server)
   <br/>
-  void <b>tcp_server_set_cleanup_callback</b> (tcp_server_t *server,
-    tcp_client_cleanup_fn cleanup_fn)
+  Shutdown TCP server. void <b>tcp_server_set_cleanup_callback</b>
+    (<b>tcp_server_t</b> *server, <b>tcp_client_cleanup_fn</b> cleanup_fn)
   <br/>
-  asciichat_error_t <b>tcp_server_add_client</b> (tcp_server_t *server,
-    <b>socket_t</b> socket, void *client_data)
+  Set client cleanup callback. <b>asciichat_error_t</b>
+    <b>tcp_server_add_client</b> (<b>tcp_server_t</b> *server, <b>socket_t</b>
+    socket, void *client_data)
   <br/>
-  asciichat_error_t <b>tcp_server_remove_client</b> (tcp_server_t *server,
+  Add client to registry. <b>asciichat_error_t</b>
+    <b>tcp_server_remove_client</b> (<b>tcp_server_t</b> *server,
     <b>socket_t</b> socket)
   <br/>
-  asciichat_error_t <b>tcp_server_get_client</b> (tcp_server_t *server,
-    <b>socket_t</b> socket, void **out_data)
+  Remove client from registry. <b>asciichat_error_t</b>
+    <b>tcp_server_get_client</b> (<b>tcp_server_t</b> *server, <b>socket_t</b>
+    socket, void **out_data)
   <br/>
-  void <b>tcp_server_foreach_client</b> (tcp_server_t *server,
-    tcp_client_foreach_fn callback, void *user_arg)
+  Get client data. void <b>tcp_server_foreach_client</b> (<b>tcp_server_t</b>
+    *server, <b>tcp_client_foreach_fn</b> callback, void *user_arg)
   <br/>
-  size_t <b>tcp_server_get_client_count</b> (tcp_server_t *server)
+  Iterate over all clients. size_t <b>tcp_server_get_client_count</b>
+    (<b>tcp_server_t</b> *server)
   <br/>
-  const char * <b>tcp_client_context_get_ip</b> (const tcp_client_context_t
-    *ctx, char *buf, size_t len)
+  Get client count. const char * <b>tcp_client_context_get_ip</b> (const
+    <b>tcp_client_context_t</b> *ctx, char *buf, size_t len)
   <br/>
-  int <b>tcp_client_context_get_port</b> (const tcp_client_context_t *ctx)
+  Get formatted IP address from client context. int
+    <b>tcp_client_context_get_port</b> (const <b>tcp_client_context_t</b> *ctx)
   <br/>
-  void <b>tcp_server_reject_client</b> (<b>socket_t</b> socket, const char
-    *reason)
+  Get port number from client context. void <b>tcp_server_reject_client</b>
+    (<b>socket_t</b> socket, const char *reason)
   <br/>
-  asciichat_error_t <b>tcp_server_spawn_thread</b> (tcp_server_t *server,
-    <b>socket_t</b> client_socket, void *(*thread_func)(void *), void
-    *thread_arg, int stop_id, const char *thread_name)
+  Reject client connection with reason. <b>asciichat_error_t</b>
+    <b>tcp_server_spawn_thread</b> (<b>tcp_server_t</b> *server, <b>socket_t</b>
+    client_socket, void *(*thread_func)(void *), void *thread_arg, int stop_id,
+    const char *thread_name)
   <br/>
-  asciichat_error_t <b>tcp_server_stop_client_threads</b> (tcp_server_t *server,
+  Spawn a worker thread for a client. <b>asciichat_error_t</b>
+    <b>tcp_server_stop_client_threads</b> (<b>tcp_server_t</b> *server,
     <b>socket_t</b> client_socket)
   <br/>
-  asciichat_error_t <b>tcp_server_get_thread_count</b> (tcp_server_t *server,
+  Stop all threads for a client in stop_id order. <b>asciichat_error_t</b>
+    <b>tcp_server_get_thread_count</b> (<b>tcp_server_t</b> *server,
     <b>socket_t</b> client_socket, size_t *count)
   <br/>
+  Get thread count for a client.
   <br/>
 </p>
 </section>
@@ -87,9 +98,21 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="const_char_*_tcp_client_context_get_ip_(const_tcp_client_context_t_*_ctx,_char_*_buf,_size_t_len)"><a class="permalink" href="#const_char_*_tcp_client_context_get_ip_(const_tcp_client_context_t_*_ctx,_char_*_buf,_size_t_len)">const
-  char * tcp_client_context_get_ip (const tcp_client_context_t * ctx, char *
-  buf, size_t len)</a></h2>
+<h2 class="Ss" id="const_char_*_tcp_client_context_get_ip_(const_"><a class="permalink" href="#const_char_*_tcp_client_context_get_ip_(const_">const
+  char * tcp_client_context_get_ip (const <b>tcp_client_context_t</b> * ctx,
+  char * buf, size_t len)</a></h2>
+<p class="Pp">Get formatted IP address from client context. Extracts and formats
+    the client IP address from the connection context. Works for both IPv4 and
+    IPv6 addresses.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Client context structure
+<br/>
+<i>buf</i> Output buffer for formatted IP string
+<br/>
+<i>len</i> Buffer size (recommend INET6_ADDRSTRLEN = 46 bytes)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to buf on success, NULL on error</div>
 <p class="Pp">Definition at line <b>487</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
 <pre>487                                                                                               {
@@ -118,12 +141,22 @@
 510 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>format_ip_address()</b>.</p>
+<p class="Pp">References <b>tcp_client_context_t::addr</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>format_ip_address()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_tcp_client_context_get_port_(const_tcp_client_context_t_*_ctx)"><a class="permalink" href="#int_tcp_client_context_get_port_(const_tcp_client_context_t_*_ctx)">int
-  tcp_client_context_get_port (const tcp_client_context_t * ctx)</a></h2>
+<h2 class="Ss" id="int_tcp_client_context_get_port_(const_"><a class="permalink" href="#int_tcp_client_context_get_port_(const_">int
+  tcp_client_context_get_port (const <b>tcp_client_context_t</b> * ctx)</a></h2>
+<p class="Pp">Get port number from client context. Extracts the client port
+    number from the connection context. Works for both IPv4 and IPv6
+  addresses.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Client context structure</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Port number (host byte order), or -1 on error</div>
 <p class="Pp">Definition at line <b>512</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
 <pre>512                                                                  {
@@ -146,11 +179,26 @@
 529 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>tcp_client_context_t::addr</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_tcp_server_add_client_(tcp_server_t_*_server,_"><a class="permalink" href="#asciichat_error_t_tcp_server_add_client_(tcp_server_t_*_server,_">asciichat_error_t
-  tcp_server_add_client (tcp_server_t * server, <b>socket_t</b> socket, void *
-  client_data)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> tcp_server_add_client
+  (<b>tcp_server_t</b> * server, <b>socket_t</b> socket, void *
+  client_data)</h2>
+<p class="Pp">Add client to registry. Thread-safe registration of a connected
+    client with arbitrary user data. The client_data pointer is stored as-is
+    (caller retains ownership).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>server</i> Server structure
+<br/>
+<i>socket</i> Client socket (used as lookup key)
+<br/>
+<i>client_data</i> User-provided client data (can be NULL)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>361</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
 <pre>361                                                                                                   {
@@ -190,13 +238,26 @@
 395 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>thread_pool_create()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>tcp_client_entry::client_data</b>, <b>tcp_server::clients</b>,
+    <b>tcp_server::clients_rwlock</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_MEMORY</b>, <b>INVALID_SOCKET_VALUE</b>, <b>log_debug</b>,
+    <b>rwlock_wrlock</b>, <b>rwlock_wrunlock</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>SAFE_SNPRINTF</b>, <b>SET_ERRNO</b>,
+    <b>tcp_client_entry::socket</b>, <b>thread_pool_create()</b>, and
+    <b>tcp_client_entry::threads</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>, and
     <b>add_client()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_tcp_server_destroy_(tcp_server_t_*_server)"><a class="permalink" href="#void_tcp_server_destroy_(tcp_server_t_*_server)">void
-  tcp_server_destroy (tcp_server_t * server)</a></h2>
+<h2 class="Ss" id="void_tcp_server_destroy_("><a class="permalink" href="#void_tcp_server_destroy_(">void
+  tcp_server_destroy (<b>tcp_server_t</b> * server)</a></h2>
+<p class="Pp">Shutdown TCP server. Closes listen sockets and cleans up
+    resources. Does NOT wait for client threads to exit (caller's
+    responsibility).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>server</i> Server structure to clean up</div>
 <p class="Pp">Definition at line <b>297</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
 <pre>297                                               {
@@ -253,15 +314,31 @@
 348 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, and
-    <b>thread_pool_destroy()</b>.</p>
+<p class="Pp">References <b>atomic_store_bool()</b>,
+    <b>tcp_server::cleanup_fn</b>, <b>tcp_client_entry::client_data</b>,
+    <b>tcp_server::clients</b>, <b>tcp_server::clients_rwlock</b>,
+    <b>INVALID_SOCKET_VALUE</b>, <b>tcp_server::listen_socket</b>,
+    <b>tcp_server::listen_socket6</b>, <b>log_debug</b>,
+    <b>tcp_server::running</b>, <b>rwlock_destroy()</b>, <b>rwlock_wrlock</b>,
+    <b>rwlock_wrunlock</b>, <b>SAFE_FREE</b>, <b>socket_close()</b>,
+    <b>thread_pool_destroy()</b>, and <b>tcp_client_entry::threads</b>.</p>
 <p class="Pp">Referenced by <b>acds_server_init()</b>,
     <b>acds_server_shutdown()</b>, and <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_tcp_server_foreach_client_(tcp_server_t_*_server,_tcp_client_foreach_fn_callback,_void_*_user_arg)"><a class="permalink" href="#void_tcp_server_foreach_client_(tcp_server_t_*_server,_tcp_client_foreach_fn_callback,_void_*_user_arg)">void
-  tcp_server_foreach_client (tcp_server_t * server, tcp_client_foreach_fn
-  callback, void * user_arg)</a></h2>
+<h2 class="Ss" id="void_tcp_server_foreach_client_("><a class="permalink" href="#void_tcp_server_foreach_client_(">void
+  tcp_server_foreach_client (<b>tcp_server_t</b> * server,
+  <b>tcp_client_foreach_fn</b> callback, void * user_arg)</a></h2>
+<p class="Pp">Iterate over all clients. Thread-safe iteration over all connected
+    clients. The callback is called once per client while holding the clients
+    mutex.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>server</i> Server structure
+<br/>
+<i>callback</i> Function to call for each client
+<br/>
+<i>user_arg</i> User argument passed to callback</div>
 <p class="Pp">Definition at line <b>456</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
 <pre>456                                                                                                      {
@@ -280,13 +357,27 @@
 469 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>tcp_client_entry::client_data</b>,
+    <b>tcp_server::clients</b>, <b>tcp_server::clients_rwlock</b>,
+    <b>rwlock_rdlock</b>, <b>rwlock_rdunlock</b>, and
+    <b>tcp_client_entry::socket</b>.</p>
 <p class="Pp">Referenced by <b>signaling_broadcast()</b>,
     <b>signaling_relay_ice()</b>, and <b>signaling_relay_sdp()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_tcp_server_get_client_(tcp_server_t_*_server,_"><a class="permalink" href="#asciichat_error_t_tcp_server_get_client_(tcp_server_t_*_server,_">asciichat_error_t
-  tcp_server_get_client (tcp_server_t * server, <b>socket_t</b> socket, void **
-  out_data)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> tcp_server_get_client
+  (<b>tcp_server_t</b> * server, <b>socket_t</b> socket, void ** out_data)</h2>
+<p class="Pp">Get client data. Thread-safe lookup of client data by socket.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>server</i> Server structure
+<br/>
+<i>socket</i> Client socket to look up
+<br/>
+<i>out_data</i> Output pointer for client data (set to NULL if not found)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK if found, ERROR_NOT_FOUND if not in
+  registry</div>
 <p class="Pp">Definition at line <b>434</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
 <pre>434                                                                                                 {
@@ -312,10 +403,21 @@
 454 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>tcp_client_entry::client_data</b>, <b>tcp_server::clients</b>,
+    <b>tcp_server::clients_rwlock</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>rwlock_rdlock</b>, <b>rwlock_rdunlock</b>,
+    and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="size_t_tcp_server_get_client_count_(tcp_server_t_*_server)"><a class="permalink" href="#size_t_tcp_server_get_client_count_(tcp_server_t_*_server)">size_t
-  tcp_server_get_client_count (tcp_server_t * server)</a></h2>
+<h2 class="Ss" id="size_t_tcp_server_get_client_count_("><a class="permalink" href="#size_t_tcp_server_get_client_count_(">size_t
+  tcp_server_get_client_count (<b>tcp_server_t</b> * server)</a></h2>
+<p class="Pp">Get client count. Thread-safe count of connected clients.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>server</i> Server structure</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of clients in registry</div>
 <p class="Pp">Definition at line <b>471</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
 <pre>471                                                          {
@@ -331,13 +433,29 @@
 481 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>tcp_server::clients</b>,
+    <b>tcp_server::clients_rwlock</b>, <b>rwlock_rdlock</b>, and
+    <b>rwlock_rdunlock</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
     <b>acds_server_shutdown()</b>, and <b>ui_status_gather()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_tcp_server_get_thread_count_(tcp_server_t_*_server,_"><a class="permalink" href="#asciichat_error_t_tcp_server_get_thread_count_(tcp_server_t_*_server,_">asciichat_error_t
-  tcp_server_get_thread_count (tcp_server_t * server, <b>socket_t</b>
-  client_socket, size_t * count)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> tcp_server_get_thread_count
+  (<b>tcp_server_t</b> * server, <b>socket_t</b> client_socket, size_t *
+  count)</h2>
+<p class="Pp">Get thread count for a client. Thread-safe count of worker threads
+    spawned for a client.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>server</i> Server structure
+<br/>
+<i>client_socket</i> Client socket to query
+<br/>
+<i>count</i> Output pointer for thread count (set to 0 if client not
+  found)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_NOT_FOUND if client not in
+  registry</div>
 <p class="Pp">Definition at line <b>632</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
 <pre>632                                                                                                            {
@@ -372,12 +490,24 @@
 661 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>thread_pool_get_count()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>tcp_server::clients</b>,
+    <b>tcp_server::clients_rwlock</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_NOT_FOUND</b>, <b>INVALID_SOCKET_VALUE</b>, <b>rwlock_rdlock</b>,
+    <b>rwlock_rdunlock</b>, <b>SET_ERRNO</b>, <b>thread_pool_get_count()</b>,
+    and <b>tcp_client_entry::threads</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_tcp_server_init_(tcp_server_t_*_server,_const_tcp_server_config_t_*_config)"><a class="permalink" href="#asciichat_error_t_tcp_server_init_(tcp_server_t_*_server,_const_tcp_server_config_t_*_config)">asciichat_error_t
-  tcp_server_init (tcp_server_t * server, const tcp_server_config_t *
-  config)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> tcp_server_init (<b>tcp_server_t</b> *
+  server, const <b>tcp_server_config_t</b> * config)</h2>
+<p class="Pp">Initialize TCP server. Creates and binds TCP sockets according to
+    configuration. At least one of IPv4 or IPv6 must be successfully bound.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>server</i> Server structure to initialize
+<br/>
+<i></i><b>Config Module</b><i></i><b> Server configuration</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>105</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
 <pre>105                                                                                            {
@@ -444,8 +574,18 @@
 166 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, and
-  <b>rwlock_init()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
+    <b>tcp_server_config_t::bind_ipv4</b>,
+    <b>tcp_server_config_t::bind_ipv6</b>, <b>tcp_server::cleanup_fn</b>,
+    <b>tcp_server::clients</b>, <b>tcp_server::clients_rwlock</b>,
+    <b>tcp_server::config</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_NETWORK_BIND</b>, <b>ERROR_THREAD</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>tcp_server_config_t::ipv4_address</b>,
+    <b>tcp_server_config_t::ipv6_address</b>, <b>tcp_server::listen_socket</b>,
+    <b>tcp_server::listen_socket6</b>, <b>log_warn</b>, <b>NAMED_REGISTER</b>,
+    <b>NAMED_REGISTER_ATOMIC</b>, <b>NAMED_REGISTER_RWLOCK</b>,
+    <b>tcp_server_config_t::port</b>, <b>tcp_server::running</b>,
+    <b>rwlock_init()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acds_server_init()</b>, and
   <b>server_main()</b>.</p>
 </section>
@@ -453,6 +593,14 @@
 <h2 class="Ss" id="void_tcp_server_reject_client_("><a class="permalink" href="#void_tcp_server_reject_client_(">void
   tcp_server_reject_client (<b>socket_t</b> socket, const char *
   reason)</a></h2>
+<p class="Pp">Reject client connection with reason. Helper for rejecting clients
+    due to rate limits, capacity limits, etc. Logs the rejection reason and
+    closes the socket.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>socket</i> Client socket to close
+<br/>
+<i>reason</i> Human-readable rejection reason (for logging)</div>
 <p class="Pp">Definition at line <b>531</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
 <pre>531                                                                    {
@@ -466,12 +614,25 @@
 539 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
+    <b>INVALID_SOCKET_VALUE</b>, <b>log_warn</b>, <b>SET_ERRNO</b>, and
+    <b>socket_close()</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_tcp_server_remove_client_(tcp_server_t_*_server,_"><a class="permalink" href="#asciichat_error_t_tcp_server_remove_client_(tcp_server_t_*_server,_">asciichat_error_t
-  tcp_server_remove_client (tcp_server_t * server, <b>socket_t</b>
-  socket)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> tcp_server_remove_client
+  (<b>tcp_server_t</b> * server, <b>socket_t</b> socket)</h2>
+<p class="Pp">Remove client from registry. Thread-safe removal of a client. If a
+    cleanup callback is set, it will be called with the client_data before
+    removal.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>server</i> Server structure
+<br/>
+<i>socket</i> Client socket to remove</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK if removed, ERROR_NOT_FOUND if not in
+  registry</div>
 <p class="Pp">Definition at line <b>397</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
 <pre>397                                                                                   {
@@ -512,12 +673,28 @@
 432 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>thread_pool_destroy()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>tcp_server::cleanup_fn</b>,
+    <b>tcp_client_entry::client_data</b>, <b>tcp_server::clients</b>,
+    <b>tcp_server::clients_rwlock</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>log_debug</b>, <b>rwlock_wrlock</b>, <b>rwlock_wrunlock</b>,
+    <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, <b>thread_pool_destroy()</b>, and
+    <b>tcp_client_entry::threads</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_tcp_server_run_(tcp_server_t_*_server)"><a class="permalink" href="#asciichat_error_t_tcp_server_run_(tcp_server_t_*_server)">asciichat_error_t
-  tcp_server_run (tcp_server_t * server)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> tcp_server_run (<b>tcp_server_t</b> *
+  server)</h2>
+<p class="Pp">Run TCP server accept loop. Accepts client connections and spawns
+    handler threads. Blocks until server-&gt;running is set to false.</p>
+<p class="Pp"></p>
+<p class="Pp">Uses select() with timeout to handle dual-stack sockets and allow
+    responsive shutdown. If a status_update_fn is configured, it will be called
+    periodically on each select() timeout.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>server</i> Initialized server structure</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>168</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
 <pre>168                                                        {
@@ -650,15 +827,38 @@
 295 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_create()</b>,
-    <b>atomic_load_bool()</b>, and <b>format_ip_address()</b>.</p>
+<p class="Pp">References <b>tcp_server_config_t::accept_timeout_sec</b>,
+    <b>tcp_client_context_t::addr</b>, <b>tcp_client_context_t::addr_len</b>,
+    <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
+    <b>atomic_load_bool()</b>, <b>tcp_server_config_t::client_handler</b>,
+    <b>tcp_client_context_t::client_socket</b>, <b>tcp_server::config</b>,
+    <b>EINTR</b>, <b>ERROR_INVALID_PARAM</b>, <b>format_ip_address()</b>,
+    <b>INVALID_SOCKET_VALUE</b>, <b>tcp_server::listen_socket</b>,
+    <b>tcp_server::listen_socket6</b>, <b>log_debug</b>, <b>log_error</b>,
+    <b>log_warn</b>, <b>tcp_server::running</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
+    <b>socket_close()</b>, <b>socket_fd_isset()</b>, <b>socket_fd_set()</b>,
+    <b>socket_fd_zero()</b>, <b>socket_get_error_string()</b>,
+    <b>socket_get_last_error()</b>, <b>socket_select()</b>,
+    <b>tcp_server_config_t::status_update_data</b>,
+    <b>tcp_server_config_t::status_update_fn</b>, <b>US_PER_SEC_INT</b>,
+    <b>tcp_client_context_t::user_data</b>, and
+    <b>tcp_server_config_t::user_data</b>.</p>
 <p class="Pp">Referenced by <b>acds_server_run()</b>, and
   <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_tcp_server_set_cleanup_callback_(tcp_server_t_*_server,_tcp_client_cleanup_fn_cleanup_fn)"><a class="permalink" href="#void_tcp_server_set_cleanup_callback_(tcp_server_t_*_server,_tcp_client_cleanup_fn_cleanup_fn)">void
-  tcp_server_set_cleanup_callback (tcp_server_t * server, tcp_client_cleanup_fn
-  cleanup_fn)</a></h2>
+<h2 class="Ss" id="void_tcp_server_set_cleanup_callback_("><a class="permalink" href="#void_tcp_server_set_cleanup_callback_(">void
+  tcp_server_set_cleanup_callback (<b>tcp_server_t</b> * server,
+  <b>tcp_client_cleanup_fn</b> cleanup_fn)</a></h2>
+<p class="Pp">Set client cleanup callback. Sets the callback function that will
+    be called when a client is removed from the registry. Use this to free any
+    allocated client_data.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>server</i> Server structure
+<br/>
+<i>cleanup_fn</i> Cleanup callback (or NULL to disable)</div>
 <p class="Pp">Definition at line <b>354</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
 <pre>354                                                                                              {
@@ -669,12 +869,38 @@
 359 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>tcp_server::cleanup_fn</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_tcp_server_spawn_thread_(tcp_server_t_*_server,_"><a class="permalink" href="#asciichat_error_t_tcp_server_spawn_thread_(tcp_server_t_*_server,_">asciichat_error_t
-  tcp_server_spawn_thread (tcp_server_t * server, <b>socket_t</b> client_socket,
-  void *(* thread_func )(void *), void * thread_arg, int stop_id, const char *
-  thread_name)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> tcp_server_spawn_thread
+  (<b>tcp_server_t</b> * server, <b>socket_t</b> client_socket, void *(*
+  thread_func )(void *), void * thread_arg, int stop_id, const char *
+  thread_name)</h2>
+<p class="Pp">Spawn a worker thread for a client. Creates and tracks a new
+    worker thread for the specified client. Threads are identified by stop_id
+    for ordered cleanup - lower stop_id values are stopped first when the client
+    disconnects.</p>
+<p class="Pp"></p>
+<p class="Pp">Example stop_id ordering:</p>
+<ul class="Bl-bullet">
+  <li>stop_id=1: Receive thread (stop first to prevent new data)</li>
+  <li>stop_id=2: Render threads (stop after receive)</li>
+  <li>stop_id=3: Send thread (stop last after all processing done)</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>server</i> Server structure
+<br/>
+<i>client_socket</i> Client socket to spawn thread for
+<br/>
+<i>thread_func</i> Thread function to execute
+<br/>
+<i>thread_arg</i> Argument passed to thread function
+<br/>
+<i>stop_id</i> Cleanup order (lower = stop first)
+<br/>
+<i>thread_name</i> Thread name for debugging (max 63 chars)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>545</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
 <pre>546                                                                                                   {
@@ -733,14 +959,28 @@
 599 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_create()</b>,
-    <b>thread_pool_get_count()</b>, and <b>thread_pool_spawn()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
+    <b>tcp_server::clients</b>, <b>tcp_server::clients_rwlock</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_FOUND</b>,
+    <b>INVALID_SOCKET_VALUE</b>, <b>log_debug</b>, <b>rwlock_rdlock</b>,
+    <b>rwlock_rdunlock</b>, <b>SET_ERRNO</b>, <b>thread_pool_get_count()</b>,
+    <b>thread_pool_spawn()</b>, and <b>tcp_client_entry::threads</b>.</p>
 <p class="Pp">Referenced by <b>create_client_render_threads()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_tcp_server_stop_client_threads_(tcp_server_t_*_server,_"><a class="permalink" href="#asciichat_error_t_tcp_server_stop_client_threads_(tcp_server_t_*_server,_">asciichat_error_t
-  tcp_server_stop_client_threads (tcp_server_t * server, <b>socket_t</b>
-  client_socket)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> tcp_server_stop_client_threads
+  (<b>tcp_server_t</b> * server, <b>socket_t</b> client_socket)</h2>
+<p class="Pp">Stop all threads for a client in stop_id order. Stops all worker
+    threads spawned for the specified client. Threads are stopped in ascending
+    stop_id order (lower values first). Joins each thread to ensure it has fully
+    exited before proceeding.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>server</i> Server structure
+<br/>
+<i>client_socket</i> Client socket whose threads to stop</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>601</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
 <pre>601                                                                                                {
@@ -775,7 +1015,11 @@
 630 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>thread_pool_stop_all()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>tcp_server::clients</b>,
+    <b>tcp_server::clients_rwlock</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_NOT_FOUND</b>, <b>INVALID_SOCKET_VALUE</b>, <b>log_debug</b>,
+    <b>rwlock_rdlock</b>, <b>rwlock_rdunlock</b>, <b>SET_ERRNO</b>,
+    <b>thread_pool_stop_all()</b>, and <b>tcp_client_entry::threads</b>.</p>
 <p class="Pp">Referenced by <b>remove_client()</b>.</p>
 </section>
 </section>
@@ -786,7 +1030,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

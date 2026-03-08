@@ -51,27 +51,32 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">digital_rain_t * <b>digital_rain_init</b> (int num_columns, int
-    num_rows)
+<p class="Pp"><b>digital_rain_t</b> * <b>digital_rain_init</b> (int num_columns,
+    int num_rows)
   <br/>
-  void <b>digital_rain_destroy</b> (digital_rain_t *rain)
+  Initialize digital rain effect context. void <b>digital_rain_destroy</b>
+    (<b>digital_rain_t</b> *rain)
   <br/>
-  void <b>digital_rain_reset</b> (digital_rain_t *rain)
+  Destroy digital rain effect context. void <b>digital_rain_reset</b>
+    (<b>digital_rain_t</b> *rain)
   <br/>
-  void <b>digital_rain_set_fall_speed</b> (digital_rain_t *rain, float speed)
+  Reset digital rain effect state. void <b>digital_rain_set_fall_speed</b>
+    (<b>digital_rain_t</b> *rain, float speed)
   <br/>
-  void <b>digital_rain_set_raindrop_length</b> (digital_rain_t *rain, float
-    length)
+  Set digital rain fall speed. void <b>digital_rain_set_raindrop_length</b>
+    (<b>digital_rain_t</b> *rain, float <b>length</b>)
   <br/>
-  void <b>digital_rain_set_color</b> (digital_rain_t *rain, uint8_t r, uint8_t
-    g, uint8_t b)
+  Set digital rain raindrop length. void <b>digital_rain_set_color</b>
+    (<b>digital_rain_t</b> *rain, <b>uint8_t</b> r, <b>uint8_t</b> g,
+    <b>uint8_t</b> <b>b</b>)
   <br/>
-  void <b>digital_rain_set_color_from_filter</b> (digital_rain_t *rain,
-    color_filter_t filter)
+  Set digital rain color. void <b>digital_rain_set_color_from_filter</b>
+    (<b>digital_rain_t</b> *rain, <b>color_filter_t</b> filter)
   <br/>
-  char * <b>digital_rain_apply</b> (digital_rain_t *rain, const char
-    *<b>frame</b>, float delta_time)
+  Set digital rain color from color filter. char * <b>digital_rain_apply</b>
+    (<b>digital_rain_t</b> *rain, const char *<b>frame</b>, float delta_time)
   <br/>
+  Apply digital rain effect to ASCII frame.
   <br/>
 </p>
 </section>
@@ -104,372 +109,13 @@
 </section>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="char_*_digital_rain_apply_(digital_rain_t_*_rain,_const_char_*_frame,_float_delta_time)"><a class="permalink" href="#char_*_digital_rain_apply_(digital_rain_t_*_rain,_const_char_*_frame,_float_delta_time)">char
-  * digital_rain_apply (digital_rain_t * rain, const char * frame, float
-  delta_time)</a></h2>
-<p class="Pp">Definition at line <b>369</b> of file <b>digital_rain.c</b>.</p>
-<pre>369                                                                                     {
-370   if (!rain || !frame) {
-371     log_error(&quot;digital_rain_apply: NULL parameter&quot;);
-372     return NULL;
-373   }
-374 
-375   // Update time
-376   rain-&gt;time += delta_time * rain-&gt;animation_speed;
-377   float sim_time = rain-&gt;time;
-378 
-379   // Update rainbow color if rainbow mode is enabled
-380   if (rain-&gt;rainbow_mode) {
-381     color_filter_calculate_rainbow(sim_time, &amp;rain-&gt;color_r, &amp;rain-&gt;color_g, &amp;rain-&gt;color_b);
-382   }
-383 
-384   // Allocate output buffer (input size + overhead for ANSI codes)
-385   // Estimate: each character might need up to 20 bytes for ANSI codes
-386   size_t input_len = strlen(frame);
-387   size_t output_capacity = input_len * 20 + 1024;
-388   char *output = SAFE_MALLOC(output_capacity, char *);
-389   if (!output) {
-390     log_error(&quot;digital_rain_apply: failed to allocate output buffer&quot;);
-391     return NULL;
-392   }
-393 
-394   const char *src = frame;
-395   char *dst = output;
-396   size_t remaining = output_capacity;
-397 
-398   int col = 0;
-399   int row = 0;
-400 
-401   while (*src &amp;&amp; remaining &gt; 100) {
-402     // Try to parse and modify ANSI color sequences
-403     if (*src == '\033') {
-404       int r, g, b;
-405       bool is_foreground;
-406       const char *after = parse_ansi_color(src, &amp;r, &amp;g, &amp;b, &amp;is_foreground);
-407 
-408       if (after) {
-409         // Found a color sequence - calculate brightness for this position
-410         float brightness = get_rain_brightness(rain, col, row, sim_time);
-411         float brightness_below = get_rain_brightness(rain, col, row + 1, sim_time);
-412         bool is_cursor = brightness &gt; brightness_below;
-413 
-414         // Blend with previous brightness for smooth transitions
-415         if (!rain-&gt;first_frame &amp;&amp; row &lt; rain-&gt;num_rows &amp;&amp; col &lt; rain-&gt;num_columns) {
-416           size_t idx = (size_t)row * (size_t)rain-&gt;num_columns + (size_t)col;
-417           float prev_brightness = rain-&gt;previous_brightness[idx];
-418           brightness = prev_brightness + (brightness - prev_brightness) * rain-&gt;brightness_decay;
-419           rain-&gt;previous_brightness[idx] = brightness;
-420         } else if (row &lt; rain-&gt;num_rows &amp;&amp; col &lt; rain-&gt;num_columns) {
-421           size_t idx = (size_t)row * (size_t)rain-&gt;num_columns + (size_t)col;
-422           rain-&gt;previous_brightness[idx] = brightness;
-423         }
-424 
-425         // Generate modulated color
-426         char ansi_buf[32];
-427         int ansi_len =
-428             generate_modulated_color(ansi_buf, sizeof(ansi_buf), r, g, b, brightness, is_foreground, is_cursor);
-429 
-430         if ((size_t)ansi_len &lt; remaining) {
-431           memcpy(dst, ansi_buf, (size_t)ansi_len);
-432           dst += ansi_len;
-433           remaining -= (size_t)ansi_len;
-434         }
-435 
-436         src = after;
-437         continue;
-438       } else {
-439         // Not a color sequence - copy as-is
-440         const char *after_skip = skip_ansi_sequence(src);
-441         size_t ansi_len = (size_t)(after_skip - src);
-442         if (ansi_len &lt; remaining) {
-443           memcpy(dst, src, ansi_len);
-444           dst += ansi_len;
-445           remaining -= ansi_len;
-446           src = after_skip;
-447         } else {
-448           break;
-449         }
-450         continue;
-451       }
-452     }
-453 
-454     // Handle newline
-455     if (*src == '\n') {
-456       *dst++ = *src++;
-457       remaining--;
-458       row++;
-459       col = 0;
-460       continue;
-461     }
-462 
-463     // Copy regular characters - inject color for non-colored characters
-464     if (remaining &gt; 0) {
-465       // Calculate brightness for this position
-466       float brightness = get_rain_brightness(rain, col, row, sim_time);
-467       float brightness_below = get_rain_brightness(rain, col, row + 1, sim_time);
-468       bool is_cursor = brightness &gt; brightness_below;
-469 
-470       // Blend with previous brightness
-471       if (!rain-&gt;first_frame &amp;&amp; row &lt; rain-&gt;num_rows &amp;&amp; col &lt; rain-&gt;num_columns) {
-472         size_t idx = (size_t)row * (size_t)rain-&gt;num_columns + (size_t)col;
-473         float prev_brightness = rain-&gt;previous_brightness[idx];
-474         brightness = prev_brightness + (brightness - prev_brightness) * rain-&gt;brightness_decay;
-475         rain-&gt;previous_brightness[idx] = brightness;
-476       } else if (row &lt; rain-&gt;num_rows &amp;&amp; col &lt; rain-&gt;num_columns) {
-477         size_t idx = (size_t)row * (size_t)rain-&gt;num_columns + (size_t)col;
-478         rain-&gt;previous_brightness[idx] = brightness;
-479       }
-480 
-481       // For characters without explicit color codes, use the rain's default color
-482       char ansi_buf[32];
-483       int ansi_len = generate_modulated_color(ansi_buf, sizeof(ansi_buf), rain-&gt;color_r, rain-&gt;color_g, rain-&gt;color_b,
-484                                               brightness, true, is_cursor);
-485 
-486       if ((size_t)ansi_len &lt; remaining) {
-487         memcpy(dst, ansi_buf, (size_t)ansi_len);
-488         dst += ansi_len;
-489         remaining -= (size_t)ansi_len;
-490       }
-491 
-492       // Decode UTF-8 character to get byte length
-493       uint32_t codepoint;
-494       int utf8_len = utf8_decode((const uint8_t *)src, &amp;codepoint);
-495       if (utf8_len &lt; 0) {
-496         // Invalid UTF-8, treat as single byte
-497         utf8_len = 1;
-498       }
-499 
-500       // Copy all bytes of the UTF-8 character
-501       for (int i = 0; i &lt; utf8_len &amp;&amp; *src &amp;&amp; remaining &gt; 0; i++) {
-502         *dst++ = *src++;
-503         remaining--;
-504       }
-505 
-506       // Only increment column once per character (not per byte)
-507       col++;
-508     } else {
-509       break;
-510     }
-511   }
-512 
-513   // Null-terminate
-514   if (remaining &gt; 0) {
-515     *dst = '\0';
-516   } else {
-517     output[output_capacity - 1] = '\0';
-518   }
-519 
-520   rain-&gt;first_frame = false;
-521   return output;
-522 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>color_filter_calculate_rainbow()</b>, <b>frame</b>,
-    and <b>utf8_decode()</b>.</p>
-<p class="Pp">Referenced by <b>mirror_convert_frame()</b>,
-    <b>session_display_convert_to_ascii()</b>, and
-    <b>session_display_write_ascii()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_digital_rain_destroy_(digital_rain_t_*_rain)"><a class="permalink" href="#void_digital_rain_destroy_(digital_rain_t_*_rain)">void
-  digital_rain_destroy (digital_rain_t * rain)</a></h2>
-<p class="Pp">Definition at line <b>154</b> of file <b>digital_rain.c</b>.</p>
-<pre>154                                                 {
-155   if (!rain) {
-156     return;
-157   }
-158 
-159   SAFE_FREE(rain-&gt;columns);
-160   SAFE_FREE(rain-&gt;previous_brightness);
-161   SAFE_FREE(rain);
-162 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>mirror_cleanup()</b>,
-    <b>mirror_convert_frame()</b>, <b>session_display_convert_to_ascii()</b>,
-    and <b>session_display_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="digital_rain_t_*_digital_rain_init_(int_num_columns,_int_num_rows)"><a class="permalink" href="#digital_rain_t_*_digital_rain_init_(int_num_columns,_int_num_rows)">digital_rain_t
-  * digital_rain_init (int num_columns, int num_rows)</a></h2>
-<p class="Pp">Definition at line <b>96</b> of file <b>digital_rain.c</b>.</p>
-<pre>96                                                                  {
-97   if (num_columns &lt;= 0 || num_rows &lt;= 0) {
-98     log_error(&quot;digital_rain_init: invalid dimensions %dx%d&quot;, num_columns, num_rows);
-99     return NULL;
-100   }
-101 
-102   digital_rain_t *rain = SAFE_CALLOC(1, sizeof(digital_rain_t), digital_rain_t *);
-103   if (!rain) {
-104     log_error(&quot;digital_rain_init: failed to allocate context&quot;);
-105     return NULL;
-106   }
-107 
-108   rain-&gt;num_columns = num_columns;
-109   rain-&gt;num_rows = num_rows;
-110 
-111   // Allocate column state array
-112   rain-&gt;columns = SAFE_CALLOC((size_t)num_columns, sizeof(digital_rain_column_t), digital_rain_column_t *);
-113   if (!rain-&gt;columns) {
-114     log_error(&quot;digital_rain_init: failed to allocate column array&quot;);
-115     SAFE_FREE(rain);
-116     return NULL;
-117   }
-118 
-119   // Allocate previous brightness array
-120   size_t grid_size = (size_t)num_columns * (size_t)num_rows;
-121   rain-&gt;previous_brightness = SAFE_CALLOC(grid_size, sizeof(float), float *);
-122   if (!rain-&gt;previous_brightness) {
-123     log_error(&quot;digital_rain_init: failed to allocate brightness array&quot;);
-124     SAFE_FREE(rain-&gt;columns);
-125     SAFE_FREE(rain);
-126     return NULL;
-127   }
-128 
-129   // Initialize per-column random offsets
-130   for (int col = 0; col &lt; num_columns; col++) {
-131     digital_rain_column_t *column = &amp;rain-&gt;columns[col];
-132     column-&gt;time_offset = random_float((float)col, 0.0f) * 1000.0f;
-133     column-&gt;speed_multiplier = random_float((float)col + 0.1f, 0.0f) * 0.5f + 0.5f;
-134     column-&gt;phase_offset = random_float((float)col + 0.2f, 0.0f) * (float)M_PI * 2.0f;
-135   }
-136 
-137   // Set default parameters
-138   rain-&gt;fall_speed = DIGITAL_RAIN_DEFAULT_FALL_SPEED;
-139   rain-&gt;raindrop_length = DIGITAL_RAIN_DEFAULT_RAINDROP_LENGTH;
-140   rain-&gt;brightness_decay = DIGITAL_RAIN_DEFAULT_BRIGHTNESS_DECAY;
-141   rain-&gt;animation_speed = DIGITAL_RAIN_DEFAULT_ANIMATION_SPEED;
-142   rain-&gt;color_r = DIGITAL_RAIN_DEFAULT_COLOR_R;
-143   rain-&gt;color_g = DIGITAL_RAIN_DEFAULT_COLOR_G;
-144   rain-&gt;color_b = DIGITAL_RAIN_DEFAULT_COLOR_B;
-145   rain-&gt;cursor_brightness = DIGITAL_RAIN_DEFAULT_CURSOR_BRIGHTNESS;
-146   rain-&gt;rainbow_mode = false;
-147   rain-&gt;first_frame = true;
-148   rain-&gt;time = 0.0f;
-149 
-150   log_info(&quot;Digital rain initialized: %dx%d grid&quot;, num_columns, num_rows);
-151   return rain;
-152 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>M_PI</b>.</p>
-<p class="Pp">Referenced by <b>mirror_convert_frame()</b>,
-    <b>session_display_convert_to_ascii()</b>, and
-    <b>session_display_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_digital_rain_reset_(digital_rain_t_*_rain)"><a class="permalink" href="#void_digital_rain_reset_(digital_rain_t_*_rain)">void
-  digital_rain_reset (digital_rain_t * rain)</a></h2>
-<p class="Pp">Definition at line <b>164</b> of file <b>digital_rain.c</b>.</p>
-<pre>164                                               {
-165   if (!rain) {
-166     return;
-167   }
-168 
-169   rain-&gt;time = 0.0f;
-170   rain-&gt;first_frame = true;
-171 
-172   // Clear previous brightness
-173   size_t grid_size = (size_t)rain-&gt;num_columns * (size_t)rain-&gt;num_rows;
-174   memset(rain-&gt;previous_brightness, 0, grid_size * sizeof(float));
-175 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_digital_rain_set_color_(digital_rain_t_*_rain,_uint8_t_r,_uint8_t_g,_uint8_t_b)"><a class="permalink" href="#void_digital_rain_set_color_(digital_rain_t_*_rain,_uint8_t_r,_uint8_t_g,_uint8_t_b)">void
-  digital_rain_set_color (digital_rain_t * rain, uint8_t r, uint8_t g, uint8_t
-  b)</a></h2>
-<p class="Pp">Definition at line <b>193</b> of file <b>digital_rain.c</b>.</p>
-<pre>193                                                                                    {
-194   if (rain) {
-195     rain-&gt;color_r = r;
-196     rain-&gt;color_g = g;
-197     rain-&gt;color_b = b;
-198   }
-199 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>digital_rain_set_color_from_filter()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_digital_rain_set_color_from_filter_(digital_rain_t_*_rain,_color_filter_t_filter)"><a class="permalink" href="#void_digital_rain_set_color_from_filter_(digital_rain_t_*_rain,_color_filter_t_filter)">void
-  digital_rain_set_color_from_filter (digital_rain_t * rain, color_filter_t
-  filter)</a></h2>
-<p class="Pp">Definition at line <b>201</b> of file <b>digital_rain.c</b>.</p>
-<pre>201                                                                                      {
-202   if (!rain) {
-203     return;
-204   }
-205 
-206   // If no filter is set, use default Matrix green
-207   if (filter == COLOR_FILTER_NONE) {
-208     rain-&gt;rainbow_mode = false;
-209     digital_rain_set_color(rain, DIGITAL_RAIN_DEFAULT_COLOR_R, DIGITAL_RAIN_DEFAULT_COLOR_G,
-210                            DIGITAL_RAIN_DEFAULT_COLOR_B);
-211     return;
-212   }
-213 
-214   // Rainbow mode: enable dynamic color cycling
-215   if (filter == COLOR_FILTER_RAINBOW) {
-216     rain-&gt;rainbow_mode = true;
-217     // Set initial color to red (will be overridden during rendering)
-218     digital_rain_set_color(rain, 255, 0, 0);
-219     return;
-220   }
-221 
-222   // Get color from filter metadata
-223   rain-&gt;rainbow_mode = false;
-224   const color_filter_def_t *filter_def = color_filter_get_metadata(filter);
-225   if (filter_def) {
-226     digital_rain_set_color(rain, filter_def-&gt;r, filter_def-&gt;g, filter_def-&gt;b);
-227   }
-228 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>color_filter_get_metadata()</b>, and
-    <b>digital_rain_set_color()</b>.</p>
-<p class="Pp">Referenced by <b>mirror_convert_frame()</b>,
-    <b>session_display_convert_to_ascii()</b>, <b>session_display_create()</b>,
-    and <b>session_display_write_ascii()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_digital_rain_set_fall_speed_(digital_rain_t_*_rain,_float_speed)"><a class="permalink" href="#void_digital_rain_set_fall_speed_(digital_rain_t_*_rain,_float_speed)">void
-  digital_rain_set_fall_speed (digital_rain_t * rain, float speed)</a></h2>
-<p class="Pp">Definition at line <b>181</b> of file <b>digital_rain.c</b>.</p>
-<pre>181                                                                     {
-182   if (rain) {
-183     rain-&gt;fall_speed = speed;
-184   }
-185 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_digital_rain_set_raindrop_length_(digital_rain_t_*_rain,_float_length)"><a class="permalink" href="#void_digital_rain_set_raindrop_length_(digital_rain_t_*_rain,_float_length)">void
-  digital_rain_set_raindrop_length (digital_rain_t * rain, float
-  length)</a></h2>
-<p class="Pp">Definition at line <b>187</b> of file <b>digital_rain.c</b>.</p>
-<pre>187                                                                           {
-188   if (rain) {
-189     rain-&gt;raindrop_length = length;
-190   }
-191 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

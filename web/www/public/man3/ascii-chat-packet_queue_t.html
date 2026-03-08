@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>packet_queue_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">packet_queue_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">packet_queue_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">packet_queue_t - Thread-safe packet queue for producer-consumer
+    communication.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/packet/queue.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>atomic_ptr_t</b> <b>head</b>
+  <br/>
+  Front of queue (dequeue from here) - atomic for lock-free access.
+    <b>atomic_ptr_t</b> <b>tail</b>
+  <br/>
+  Back of queue (enqueue here) - atomic for lock-free access. <b>atomic_t</b>
+    <b>count</b>
+  <br/>
+  Number of packets currently in queue - atomic for lock-free access. size_t
+    <b>max_size</b>
+  <br/>
+  Maximum queue size (0 = unlimited). <b>atomic_t</b> <b>bytes_queued</b>
+  <br/>
+  Total bytes of data queued (for monitoring) - atomic for lock-free access.
+    <b>node_pool_t</b> * <b>node_pool</b>
+  <br/>
+  Optional memory pool for nodes (NULL = use malloc/free). <b>buffer_pool_t</b>
+    * <b>buffer_pool</b>
+  <br/>
+  Optional memory pool for data buffers (NULL = use malloc/free).
+    <b>atomic_t</b> <b>packets_enqueued</b>
+  <br/>
+  Total packets enqueued (statistics) - atomic for lock-free access.
+    <b>atomic_t</b> <b>packets_dequeued</b>
+  <br/>
+  Total packets dequeued (statistics) - atomic for lock-free access.
+    <b>atomic_t</b> <b>packets_dropped</b>
+  <br/>
+  Total packets dropped due to queue full (statistics) - atomic for lock-free
+    access. <b>atomic_t</b> <b>shutdown</b>
+  <br/>
+  Shutdown flag (true = dequeue returns NULL) - atomic for lock-free access.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Thread-safe packet queue for producer-consumer communication.</p>
+<p class="Pp">Implements a FIFO queue with blocking operations for efficient
+    thread coordination. Producers (audio mixer, video render) enqueue packets
+    asynchronously, while consumers (per-client send threads) dequeue packets
+    for transmission.</p>
+<p class="Pp"></p>
+<p class="Pp">QUEUE OPERATIONS:</p>
+<ul class="Bl-bullet">
+  <li>Enqueue: Add packet to tail of queue (non-blocking, drops oldest if
+    full)</li>
+  <li>Dequeue: Remove packet from head of queue (non-blocking, returns NULL if
+      empty)</li>
+  <li>Try-dequeue: Non-blocking dequeue (returns NULL if empty) - same as
+      dequeue</li>
+</ul>
+<p class="Pp">MEMORY POOLS:</p>
+<ul class="Bl-bullet">
+  <li><b>node_pool</b>: Optional pool for queue nodes (reduces malloc
+    overhead)</li>
+  <li><b>buffer_pool</b>: Optional pool for packet data (enables
+      zero-allocation)</li>
+</ul>
+<p class="Pp">SYNCHRONIZATION:</p>
+<ul class="Bl-bullet">
+  <li>Atomic head/tail pointers: Lock-free queue state management</li>
+  <li>Atomic count: Fast size checks without locking</li>
+  <li>Atomic statistics: Lock-free performance monitoring</li>
+  <li>Atomic shutdown flag: Graceful shutdown without blocking</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">When max_size is 0, queue is unlimited (may grow without
+  bound). When max_size &gt; 0, full queues drop oldest packets automatically.
+<p class="Pp"></p>
+<p class="Pp">Statistics track enqueue/dequeue/drop counts for performance
+    monitoring.</p>
+</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">Queue destruction does NOT free packets still in queue.
+  Clear queue first or ensure all packets are dequeued before destruction.</div>
+<p class="Pp">Definition at line <b>211</b> of file <b>queue.h</b>.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

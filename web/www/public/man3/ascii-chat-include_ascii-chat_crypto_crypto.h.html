@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>crypto.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">crypto.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">crypto.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">crypto.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>crypto_context_t</b>
+  <br/>
+  Cryptographic context structure.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>SERVER_AUTH_RESPONSE_SIZE</b> <b>AUTH_HMAC_SIZE</b>
+  <br/>
+  Server authentication response size (32 bytes). #define
+    <b>SSH_KEY_TYPE_LENGTH_SIZE</b> 4
+  <br/>
+  #define <b>SSH_KEY_TYPE_STRING_SIZE</b> 11
+  <br/>
+  #define <b>SSH_KEY_PUBLIC_KEY_LENGTH_SIZE</b> 4
+  <br/>
+  #define <b>SSH_KEY_PUBLIC_KEY_SIZE</b> 32
+  <br/>
+  #define <b>SSH_KEY_HEADER_SIZE</b> (<b>SSH_KEY_TYPE_LENGTH_SIZE</b> +
+    <b>SSH_KEY_TYPE_STRING_SIZE</b> + <b>SSH_KEY_PUBLIC_KEY_LENGTH_SIZE</b> +
+    <b>SSH_KEY_PUBLIC_KEY_SIZE</b>)
+  <br/>
+  #define <b>CRYPTO_KEY_SIZE</b> 32
+  <br/>
+  Ed25519 key size in bytes. #define <b>CRYPTO_FINGERPRINT_SIZE</b> 32
+  <br/>
+  Ed25519 key fingerprint size in bytes. #define <b>SSH_KEY_PERMISSIONS_MASK</b>
+    (S_IRWXG | S_IRWXO)
+  <br/>
+  #define <b>SSH_KEY_RECOMMENDED_PERMISSIONS</b> 0600
+  <br/>
+  #define <b>MAX_COMMENT_LEN</b> 256
+  <br/>
+  #define <b>MAX_GPG_KEYGRIP_LEN</b> 64
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Password Requirements</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>MIN_PASSWORD_LENGTH</b> 8
+  <br/>
+  Minimum password length (8 characters). #define <b>MAX_PASSWORD_LENGTH</b> 256
+  <br/>
+  Maximum password length (256 characters).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Algorithm-Specific Key Sizes</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>X25519_KEY_SIZE</b> 32
+  <br/>
+  X25519 key size in bytes. #define <b>ED25519_PUBLIC_KEY_SIZE</b> 32
+  <br/>
+  Ed25519 public key size in bytes. #define <b>ED25519_PRIVATE_KEY_SIZE</b> 64
+  <br/>
+  Ed25519 private key size (seed + public) in bytes. #define
+    <b>ED25519_SIGNATURE_SIZE</b> 64
+  <br/>
+  Ed25519 signature size in bytes. #define <b>XSALSA20_NONCE_SIZE</b> 24
+  <br/>
+  XSalsa20 nonce size in bytes. #define <b>POLY1305_MAC_SIZE</b> 16
+  <br/>
+  Poly1305 MAC size in bytes. #define <b>HMAC_SHA256_SIZE</b> 32
+  <br/>
+  HMAC-SHA256 output size in bytes. #define <b>ARGON2ID_SALT_SIZE</b> 32
+  <br/>
+  Argon2id salt size in bytes. #define <b>SECRETBOX_KEY_SIZE</b> 32
+  <br/>
+  Secretbox key size in bytes. #define <b>AES256_KEY_SIZE</b> 32
+  <br/>
+  AES-256 key size in bytes. #define <b>AES_IV_SIZE</b> 16
+  <br/>
+  AES initialization vector (IV) size in bytes. #define
+    <b>AES256_DERIVED_SIZE</b> (<b>AES256_KEY_SIZE</b> + <b>AES_IV_SIZE</b>)
+  <br/>
+  AES-256 key + IV derived size in bytes (for bcrypt_pbkdf). #define
+    <b>SESSION_ID_SIZE</b> 16
+  <br/>
+  Session ID size in bytes.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Abstracted Cryptographic Constants</b>
+  <br/>
+  These constants abstract the underlying algorithms to allow future
+  changes.</p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>CRYPTO_PUBLIC_KEY_SIZE</b> <b>X25519_KEY_SIZE</b>
+  <br/>
+  Public key size (X25519). #define <b>CRYPTO_PRIVATE_KEY_SIZE</b>
+    <b>X25519_KEY_SIZE</b>
+  <br/>
+  Private key size (X25519). #define <b>CRYPTO_SHARED_KEY_SIZE</b>
+    <b>X25519_KEY_SIZE</b>
+  <br/>
+  Shared key size (X25519). #define <b>CRYPTO_ED25519_PUBLIC_KEY_SIZE</b>
+    <b>ED25519_PUBLIC_KEY_SIZE</b>
+  <br/>
+  Ed25519 public key size. #define <b>CRYPTO_ED25519_PRIVATE_KEY_SIZE</b>
+    <b>ED25519_PRIVATE_KEY_SIZE</b>
+  <br/>
+  Ed25519 private key size. #define <b>CRYPTO_ED25519_SIGNATURE_SIZE</b>
+    <b>ED25519_SIGNATURE_SIZE</b>
+  <br/>
+  Ed25519 signature size. #define <b>CRYPTO_NONCE_SIZE</b>
+    <b>XSALSA20_NONCE_SIZE</b>
+  <br/>
+  Nonce size (XSalsa20). #define <b>CRYPTO_SALT_SIZE</b>
+    <b>ARGON2ID_SALT_SIZE</b>
+  <br/>
+  Salt size (Argon2id). #define <b>CRYPTO_ENCRYPTION_KEY_SIZE</b>
+    <b>SECRETBOX_KEY_SIZE</b>
+  <br/>
+  Encryption key size (XSalsa20-Poly1305). #define <b>CRYPTO_MAC_SIZE</b>
+    <b>POLY1305_MAC_SIZE</b>
+  <br/>
+  MAC size (Poly1305). #define <b>CRYPTO_HMAC_SIZE</b> <b>HMAC_SHA256_SIZE</b>
+  <br/>
+  HMAC size (HMAC-SHA256).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Authentication Packet Sizes</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>AUTH_HMAC_SIZE</b> 32
+  <br/>
+  HMAC size in authentication packets (32 bytes). #define
+    <b>AUTH_CHALLENGE_SIZE</b> 32
+  <br/>
+  Challenge nonce size (32 bytes). #define <b>AUTH_COMBINED_SIZE</b>
+    (<b>AUTH_HMAC_SIZE</b> + <b>AUTH_CHALLENGE_SIZE</b>)
+  <br/>
+  Combined authentication data size (HMAC + challenge, 64 bytes). #define
+    <b>AUTH_SIGNATURE_SIZE</b> 64
+  <br/>
+  Ed25519 signature size (64 bytes). #define <b>AUTH_SIGNATURE_COMBINED_SIZE</b>
+    (<b>AUTH_SIGNATURE_SIZE</b> + <b>AUTH_CHALLENGE_SIZE</b>)
+  <br/>
+  Combined signature + challenge size (96 bytes).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Authentication Challenge Packet Structure</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>AUTH_CHALLENGE_FLAGS_SIZE</b> 1
+  <br/>
+  Authentication flags size (1 byte). #define <b>AUTH_CHALLENGE_PACKET_SIZE</b>
+    (<b>AUTH_CHALLENGE_FLAGS_SIZE</b> + <b>AUTH_CHALLENGE_SIZE</b>)
+  <br/>
+  Complete authentication challenge packet size (1 + 32 = 33 bytes).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Authentication Response Packet Sizes</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>AUTH_RESPONSE_PASSWORD_SIZE</b> (<b>AUTH_HMAC_SIZE</b> +
+    <b>AUTH_CHALLENGE_SIZE</b>)
+  <br/>
+  Password-based authentication response size (HMAC + challenge, 64 bytes).
+    #define <b>AUTH_RESPONSE_SIGNATURE_SIZE</b> (<b>AUTH_SIGNATURE_SIZE</b> +
+    <b>AUTH_CHALLENGE_SIZE</b>)
+  <br/>
+  Signature-based authentication response size (signature + challenge, 96
+    bytes).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Packet Size Limits</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>MAX_AUTH_FAILED_PACKET_SIZE</b> 256
+  <br/>
+  Maximum AUTH_FAILED packet size (256 bytes). #define
+    <b>MAX_ENCRYPTED_PACKET_SIZE</b> 65536
+  <br/>
+  Maximum encrypted packet size (64KB).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Buffer Sizes</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>HEX_STRING_SIZE_32</b> (32 * 2 + 1)
+  <br/>
+  Hex string size for 32-byte values (64 hex chars + null terminator). #define
+    <b>HEX_STRING_SIZE_64</b> (64 * 2 + 1)
+  <br/>
+  Hex string size for 64-byte values (128 hex chars + null terminator). #define
+    <b>PASSWORD_BUFFER_SIZE</b> 256
+  <br/>
+  Password input buffer size (256 bytes). #define <b>ZERO_KEY_SIZE</b>
+    <b>X25519_KEY_SIZE</b>
+  <br/>
+  Zero key array size (32 bytes, used for no-identity entries).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Encryption Size Limits</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>CRYPTO_MAX_PLAINTEXT_SIZE</b> ((size_t)1024 * 1024)
+  <br/>
+  Maximum plaintext size (1MB). #define <b>CRYPTO_MAX_CIPHERTEXT_SIZE</b>
+    (<b>CRYPTO_MAX_PLAINTEXT_SIZE</b> + <b>CRYPTO_MAC_SIZE</b>)
+  <br/>
+  Maximum ciphertext size (plaintext + MAC, ~1MB + 16 bytes).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Hex String Size Constants</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>CRYPTO_HEX_KEY_SIZE</b> 64
+  <br/>
+  Hex string size for 32-byte key (64 hex characters). #define
+    <b>CRYPTO_HEX_KEY_SIZE_NULL</b> 65
+  <br/>
+  Hex string size for 32-byte key with null terminator (65 bytes). #define
+    <b>CRYPTO_HEX_KEY64_SIZE</b> 128
+  <br/>
+  Hex string size for 64-byte key (128 hex characters). #define
+    <b>CRYPTO_HEX_KEY64_SIZE_NULL</b> 129
+  <br/>
+  Hex string size for 64-byte key with null terminator (129 bytes).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Cryptographic String Literals</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>SSH_ED25519_KEY_TYPE</b> 'ssh-ed25519'
+  <br/>
+  SSH Ed25519 key type string (<i>ssh-ed25519&quot;).</i> #define
+    <b>X25519_KEY_TYPE</b> 'x25519'
+  <br/>
+  X25519 key type string (<i>x25519&quot;).</i> #define
+    <b>NO_IDENTITY_MARKER</b> 'no-identity'
+  <br/>
+  No-identity entry marker (<i>no-identity&quot;).</i>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct crypto_context_t <b>crypto_context_t</b>
+  <br/>
+  Cryptographic context structure.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>crypto_result_t</b> { <b>CRYPTO_OK</b> = 0,
+    <b>CRYPTO_ERROR_INIT_FAILED</b> = -1, <b>CRYPTO_ERROR_INVALID_PARAMS</b> =
+    -2, <b>CRYPTO_ERROR_MEMORY</b> = -3, <b>CRYPTO_ERROR_LIBSODIUM</b> = -4,
+    <b>CRYPTO_ERROR_KEY_GENERATION</b> = -5,
+    <b>CRYPTO_ERROR_PASSWORD_DERIVATION</b> = -6, <b>CRYPTO_ERROR_ENCRYPTION</b>
+    = -7, <b>CRYPTO_ERROR_DECRYPTION</b> = -8, <b>CRYPTO_ERROR_INVALID_MAC</b> =
+    -9, <b>CRYPTO_ERROR_BUFFER_TOO_SMALL</b> = -10,
+    <b>CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE</b> = -11,
+    <b>CRYPTO_ERROR_NONCE_EXHAUSTED</b> = -12,
+    <b>CRYPTO_ERROR_REKEY_IN_PROGRESS</b> = -13,
+    <b>CRYPTO_ERROR_REKEY_FAILED</b> = -14,
+    <b>CRYPTO_ERROR_REKEY_RATE_LIMITED</b> = -15 }
+  <br/>
+  Cryptographic operation result codes.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<p class="Pp"><b>Core Initialization and Setup</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>crypto_result_t</b> <b>crypto_init</b> (<b>crypto_context_t</b> *ctx)
+  <br/>
+  Initialize libsodium and crypto context. <b>crypto_result_t</b>
+    <b>crypto_init_with_password</b> (<b>crypto_context_t</b> *ctx, const char
+    *password)
+  <br/>
+  Initialize with password-based encryption. void <b>crypto_destroy</b>
+    (<b>crypto_context_t</b> *ctx)
+  <br/>
+  Cleanup crypto context with secure memory wiping. <b>crypto_result_t</b>
+    <b>crypto_generate_keypair</b> (<b>crypto_context_t</b> *ctx)
+  <br/>
+  Generate new X25519 key pair for key exchange.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Key Exchange Protocol</b>
+  <br/>
+  Automatic HTTPS-like key exchange using X25519 Diffie-Hellman. Both parties
+    exchange ephemeral public keys and compute a shared secret.</p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>crypto_result_t</b> <b>crypto_get_public_key</b> (const
+    <b>crypto_context_t</b> *ctx, <b>uint8_t</b> *public_key_out)
+  <br/>
+  Get public key for sending to peer (step 1 of handshake).
+    <b>crypto_result_t</b> <b>crypto_set_peer_public_key</b>
+    (<b>crypto_context_t</b> *ctx, const <b>uint8_t</b> *peer_public_key)
+  <br/>
+  Set peer's public key and compute shared secret (step 2 of handshake).
+    <b>bool</b> <b>crypto_is_ready</b> (const <b>crypto_context_t</b> *ctx)
+  <br/>
+  Check if key exchange is complete and ready for encryption.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Password-Based Encryption</b>
+  <br/>
+  Optional additional encryption layer using password-derived keys. Uses
+    Argon2id for memory-hard key derivation, providing resistance to offline
+    brute-force attacks.</p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>crypto_result_t</b> <b>crypto_validate_password</b> (const char *password)
+  <br/>
+  Validate password length requirements. <b>crypto_result_t</b>
+    <b>crypto_derive_password_key</b> (<b>crypto_context_t</b> *ctx, const char
+    *password)
+  <br/>
+  Derive key from password using Argon2id. <b>bool</b>
+    <b>crypto_verify_password</b> (const <b>crypto_context_t</b> *ctx, const
+    char *password)
+  <br/>
+  Verify password matches stored salt/key. <b>crypto_result_t</b>
+    <b>crypto_derive_password_encryption_key</b> (const char *password,
+    <b>uint8_t</b> encryption_key[32])
+  <br/>
+  Derive deterministic encryption key from password for handshake.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Encryption/Decryption Operations</b>
+  <br/>
+  Encrypt/decrypt data using XSalsa20-Poly1305 (via libsodium secretbox).
+    Automatically handles nonce generation and MAC verification.</p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>crypto_result_t</b> <b>crypto_encrypt</b> (<b>crypto_context_t</b> *ctx,
+    const <b>uint8_t</b> *plaintext, size_t plaintext_len, <b>uint8_t</b>
+    *ciphertext_out, size_t ciphertext_out_size, size_t *ciphertext_len_out)
+  <br/>
+  Encrypt data using XSalsa20-Poly1305. <b>crypto_result_t</b>
+    <b>crypto_decrypt</b> (<b>crypto_context_t</b> *ctx, const <b>uint8_t</b>
+    *ciphertext, size_t ciphertext_len, <b>uint8_t</b> *plaintext_out, size_t
+    plaintext_out_size, size_t *plaintext_len_out)
+  <br/>
+  Decrypt data using XSalsa20-Poly1305.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Utility Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  const char * <b>crypto_result_to_string</b> (<b>crypto_result_t</b> result)
+  <br/>
+  Convert crypto result to human-readable string. void <b>crypto_get_status</b>
+    (const <b>crypto_context_t</b> *ctx, char *status_buffer, size_t
+    <b>buffer_size</b>)
+  <br/>
+  Get crypto context status information for debugging. <b>bool</b>
+    <b>crypto_secure_compare</b> (const <b>uint8_t</b> *lhs, const
+    <b>uint8_t</b> *rhs, size_t len)
+  <br/>
+  Secure constant-time comparison of byte arrays. <b>crypto_result_t</b>
+    <b>crypto_random_bytes</b> (<b>uint8_t</b> *buffer, size_t len)
+  <br/>
+  Generate cryptographically secure random bytes.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Authentication and Handshake</b>
+  <br/>
+  HMAC-based authentication using HMAC-SHA256. Used for password authentication
+    and challenge-response protocols.</p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>crypto_result_t</b> <b>crypto_generate_nonce</b> (<b>uint8_t</b> nonce[32])
+  <br/>
+  Generate random nonce for authentication. <b>crypto_result_t</b>
+    <b>crypto_compute_hmac</b> (<b>crypto_context_t</b> *ctx, const
+    <b>uint8_t</b> key[32], const <b>uint8_t</b> data[32], <b>uint8_t</b>
+    hmac[32])
+  <br/>
+  Compute HMAC-SHA256 for fixed 32-byte data. <b>crypto_result_t</b>
+    <b>crypto_compute_hmac_ex</b> (const <b>crypto_context_t</b> *ctx, const
+    <b>uint8_t</b> key[32], const <b>uint8_t</b> *data, size_t data_len,
+    <b>uint8_t</b> hmac[32])
+  <br/>
+  Compute HMAC-SHA256 for variable-length data. <b>bool</b>
+    <b>crypto_verify_hmac</b> (const <b>uint8_t</b> key[32], const
+    <b>uint8_t</b> data[32], const <b>uint8_t</b> expected_hmac[32])
+  <br/>
+  Verify HMAC-SHA256 for fixed 32-byte data. <b>bool</b>
+    <b>crypto_verify_hmac_ex</b> (const <b>uint8_t</b> key[32], const
+    <b>uint8_t</b> *data, size_t data_len, const <b>uint8_t</b>
+    expected_hmac[32])
+  <br/>
+  Verify HMAC-SHA256 for variable-length data.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>High-Level Authentication Helpers</b>
+  <br/>
+  Authentication helpers that bind password/key authentication to the DH key
+    exchange, preventing man-in-the-middle attacks.</p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>crypto_result_t</b> <b>crypto_compute_auth_response</b> (const
+    <b>crypto_context_t</b> *ctx, const <b>uint8_t</b> nonce[32], <b>uint8_t</b>
+    hmac_out[32])
+  <br/>
+  Compute authentication response HMAC bound to DH shared_secret. <b>bool</b>
+    <b>crypto_verify_auth_response</b> (const <b>crypto_context_t</b> *ctx,
+    const <b>uint8_t</b> nonce[32], const <b>uint8_t</b> expected_hmac[32])
+  <br/>
+  Verify authentication response HMAC bound to DH shared_secret.
+    <b>crypto_result_t</b> <b>crypto_create_auth_challenge</b> (const
+    <b>crypto_context_t</b> *ctx, <b>uint8_t</b> *packet_out, size_t
+    packet_size, size_t *packet_len_out)
+  <br/>
+  Create authentication challenge packet. <b>crypto_result_t</b>
+    <b>crypto_process_auth_challenge</b> (<b>crypto_context_t</b> *ctx, const
+    <b>uint8_t</b> *packet, size_t packet_len)
+  <br/>
+  Process authentication challenge packet. <b>crypto_result_t</b>
+    <b>crypto_process_auth_response</b> (<b>crypto_context_t</b> *ctx, const
+    <b>uint8_t</b> *packet, size_t packet_len)
+  <br/>
+  Process authentication response packet.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Network Integration Helpers</b>
+  <br/>
+  Packet creation and processing functions for network transmission. Handles
+    packet formatting, encryption, and decryption automatically.</p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>crypto_result_t</b> <b>crypto_create_public_key_packet</b> (const
+    <b>crypto_context_t</b> *ctx, <b>uint8_t</b> *packet_out, size_t
+    packet_size, size_t *packet_len_out)
+  <br/>
+  Create public key packet for network transmission. <b>crypto_result_t</b>
+    <b>crypto_process_public_key_packet</b> (<b>crypto_context_t</b> *ctx, const
+    <b>uint8_t</b> *packet, size_t packet_len)
+  <br/>
+  Process received public key packet from peer. <b>crypto_result_t</b>
+    <b>crypto_create_encrypted_packet</b> (<b>crypto_context_t</b> *ctx, const
+    <b>uint8_t</b> *data, size_t data_len, <b>uint8_t</b> *packet_out, size_t
+    packet_size, size_t *packet_len_out)
+  <br/>
+  Create encrypted data packet for network transmission. <b>crypto_result_t</b>
+    <b>crypto_process_encrypted_packet</b> (<b>crypto_context_t</b> *ctx, const
+    <b>uint8_t</b> *packet, size_t packet_len, <b>uint8_t</b> *data_out, size_t
+    data_size, size_t *data_len_out)
+  <br/>
+  Process received encrypted packet from peer.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Shared Cryptographic Operations</b>
+  <br/>
+  Low-level cryptographic operations used by both client and server for
+    authentication and key exchange.</p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>asciichat_error_t</b> <b>crypto_compute_password_hmac</b>
+    (<b>crypto_context_t</b> *ctx, const <b>uint8_t</b> *password_key, const
+    <b>uint8_t</b> *nonce, const <b>uint8_t</b> *shared_secret, <b>uint8_t</b>
+    *hmac_out)
+  <br/>
+  Compute password-based HMAC for authentication. <b>asciichat_error_t</b>
+    <b>crypto_verify_peer_signature</b> (const <b>uint8_t</b> *peer_public_key,
+    const <b>uint8_t</b> *ephemeral_key, size_t ephemeral_key_size, const
+    <b>uint8_t</b> *signature)
+  <br/>
+  Verify peer's signature on ephemeral key. <b>asciichat_error_t</b>
+    <b>crypto_sign_ephemeral_key</b> (const <b>private_key_t</b> *private_key,
+    const <b>uint8_t</b> *ephemeral_key, size_t ephemeral_key_size,
+    <b>uint8_t</b> *signature_out)
+  <br/>
+  Sign ephemeral key with private key. void <b>crypto_combine_auth_data</b>
+    (const <b>uint8_t</b> *hmac, const <b>uint8_t</b> *challenge_nonce,
+    <b>uint8_t</b> *combined_out)
+  <br/>
+  Combine HMAC and challenge nonce for transmission. void
+    <b>crypto_extract_auth_data</b> (const <b>uint8_t</b> *combined_data,
+    <b>uint8_t</b> *hmac_out, <b>uint8_t</b> *challenge_out)
+  <br/>
+  Extract HMAC and challenge nonce from combined data.
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Session_Rekeying_Protocol"><a class="permalink" href="#Session_Rekeying_Protocol">Session
+  Rekeying Protocol</a></h2>
+<p class="Pp">Periodic key rotation to limit exposure if keys are compromised.
+    Rekeys after time threshold (default: 1 hour) OR packet count threshold
+    (default: 1 million), whichever comes first.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Test environment detection: If CRITERION_TEST or TESTING
+  environment variable is set, rekey thresholds are reduced to 30 seconds / 1000
+  packets for faster testing.
+<p class="Pp"></p>
+<p class="Pp">Rekeying flow:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Initiator calls <b>crypto_rekey_init()</b> and sends REKEY_REQUEST</dd>
+  <dt>2.</dt>
+  <dd>Responder processes request, calls <b>crypto_rekey_process_request()</b>,
+      sends REKEY_RESPONSE</dd>
+  <dt>3.</dt>
+  <dd>Initiator processes response, calls
+      <b>crypto_rekey_process_response()</b>, sends REKEY_COMPLETE</dd>
+  <dt>4.</dt>
+  <dd>Responder verifies REKEY_COMPLETE decrypts with new key, calls
+      <b>crypto_rekey_commit()</b></dd>
+  <dt>5.</dt>
+  <dd>Initiator calls <b>crypto_rekey_commit()</b> after receiving
+    confirmation</dd>
+</dl>
+<p class="Pp">Old keys remain active until REKEY_COMPLETE is verified, ensuring
+    no service interruption.</p>
+</div>
+<p class="Pp">
+  <br/>
+  #define <b>REKEY_MIN_INTERVAL</b> (3LL * <b>NS_PER_SEC_INT</b>)
+  <br/>
+  Minimum time interval between rekey requests (3 seconds in nanoseconds for
+    testing, 60 for production). #define <b>REKEY_DEFAULT_TIME_THRESHOLD</b>
+    (3600LL * <b>NS_PER_SEC_INT</b>)
+  <br/>
+  Default rekey time threshold (1 hour in nanoseconds). #define
+    <b>REKEY_DEFAULT_PACKET_THRESHOLD</b> 1000000
+  <br/>
+  Default rekey packet threshold (1 million packets). #define
+    <b>REKEY_TEST_TIME_THRESHOLD</b> (30LL * <b>NS_PER_SEC_INT</b>)
+  <br/>
+  Test mode rekey time threshold (30 seconds in nanoseconds). #define
+    <b>REKEY_TEST_PACKET_THRESHOLD</b> 1000
+  <br/>
+  Test mode rekey packet threshold (1000 packets). #define
+    <b>REKEY_MAX_FAILURE_COUNT</b> 10
+  <br/>
+  Maximum consecutive rekey failures before giving up. #define
+    <b>REKEY_MIN_REQUEST_INTERVAL</b> (60LL * <b>NS_PER_SEC_INT</b>)
+  <br/>
+  Minimum interval between rekey requests (60 seconds in nanoseconds, DDoS
+    protection). <b>bool</b> <b>crypto_should_rekey</b> (const
+    <b>crypto_context_t</b> *ctx)
+  <br/>
+  Check if rekeying should be triggered based on time or packet count
+    thresholds. <b>crypto_result_t</b> <b>crypto_rekey_init</b>
+    (<b>crypto_context_t</b> *ctx)
+  <br/>
+  Initiate rekeying by generating new ephemeral keys. <b>crypto_result_t</b>
+    <b>crypto_rekey_process_request</b> (<b>crypto_context_t</b> *ctx, const
+    <b>uint8_t</b> *peer_new_public_key)
+  <br/>
+  Process REKEY_REQUEST from peer (responder side). <b>crypto_result_t</b>
+    <b>crypto_rekey_process_response</b> (<b>crypto_context_t</b> *ctx, const
+    <b>uint8_t</b> *peer_new_public_key)
+  <br/>
+  Process REKEY_RESPONSE from peer (initiator side). <b>crypto_result_t</b>
+    <b>crypto_rekey_commit</b> (<b>crypto_context_t</b> *ctx)
+  <br/>
+  Commit to new keys after successful REKEY_COMPLETE. void
+    <b>crypto_rekey_abort</b> (<b>crypto_context_t</b> *ctx)
+  <br/>
+  Abort rekeying and fallback to old keys. void <b>crypto_get_rekey_status</b>
+    (const <b>crypto_context_t</b> *ctx, char *status_buffer, size_t
+    <b>buffer_size</b>)
+  <br/>
+  Get the current rekeying state for debugging/logging.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>actions.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">actions.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">actions.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">actions.h - Action option callbacks for ascii-chat.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>action_args_t</b>
+  <br/>
+  Action argument structure.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>deferred_action_t</b> { <b>ACTION_NONE</b> = 0,
+    <b>ACTION_LIST_WEBCAMS</b>, <b>ACTION_LIST_MICROPHONES</b>,
+    <b>ACTION_LIST_SPEAKERS</b>, <b>ACTION_SHOW_CAPABILITIES</b>,
+    <b>ACTION_CHECK_UPDATE</b> }
+  <br/>
+  Action type enumeration.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>actions_defer</b> (<b>deferred_action_t</b> <b>action</b>,
+    const <b>action_args_t</b> *<b>args</b>)
+  <br/>
+  Set which action to defer until options are fully initialized.
+    <b>deferred_action_t</b> <b>actions_get_deferred</b> (void)
+  <br/>
+  Get the deferred action (if any) that was set. const <b>action_args_t</b> *
+    <b>actions_get_args</b> (void)
+  <br/>
+  Get the arguments for the deferred action. void
+    <b>actions_execute_deferred</b> (void)
+  <br/>
+  Execute the deferred action (if any). void <b>action_list_webcams</b> (void)
+  <br/>
+  List available webcam devices and exit. void <b>action_list_microphones</b>
+    (void)
+  <br/>
+  List available microphone devices and exit. void <b>action_list_speakers</b>
+    (void)
+  <br/>
+  List available speaker devices and exit. void <b>action_show_capabilities</b>
+    (void)
+  <br/>
+  Show terminal capabilities and exit. void
+    <b>action_show_capabilities_immediate</b> (void)
+  <br/>
+  Execute show capabilities immediately (for binary-level execution). void
+    <b>action_show_version</b> (void)
+  <br/>
+  Show version information and exit. void <b>action_help_server</b> (void)
+  <br/>
+  Show server mode help and exit. void <b>action_help_client</b> (void)
+  <br/>
+  Show client mode help and exit. void <b>action_help_mirror</b> (void)
+  <br/>
+  Show mirror mode help and exit. void <b>action_help_acds</b> (void)
+  <br/>
+  Show discovery-service mode help and exit. void <b>action_help_discovery</b>
+    (void)
+  <br/>
+  Show discovery mode help and exit. void <b>action_create_manpage</b> (const
+    char *output_path)
+  <br/>
+  Generate man page template from options builder. void
+    <b>action_create_config</b> (const char *output_path)
+  <br/>
+  Create default configuration file and exit. void <b>action_completions</b>
+    (const char *shell_name, const char *output_path)
+  <br/>
+  Generate shell completions and output to stdout or file. void
+    <b>action_check_update</b> (void)
+  <br/>
+  Check for updates and display results. void
+    <b>action_check_update_immediate</b> (void)
+  <br/>
+  Execute update check immediately (for binary-level execution).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Action option callbacks for ascii-chat.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>actions.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>deferred_action_t</b></a></h2>
+<p class="Pp">Action type enumeration. Defines all possible deferred actions
+    that can be executed after options are fully parsed and initialized.</p>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="ACTION_NONE"><a class="permalink" href="#ACTION_NONE"><b><i>ACTION_NONE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="ACTION_LIST_WEBCAMS"><a class="permalink" href="#ACTION_LIST_WEBCAMS"><b><i>ACTION_LIST_WEBCAMS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="ACTION_LIST_MICROPHONES"><a class="permalink" href="#ACTION_LIST_MICROPHONES"><b><i>ACTION_LIST_MICROPHONES
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="ACTION_LIST_SPEAKERS"><a class="permalink" href="#ACTION_LIST_SPEAKERS"><b><i>ACTION_LIST_SPEAKERS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="ACTION_SHOW_CAPABILITIES"><a class="permalink" href="#ACTION_SHOW_CAPABILITIES"><b><i>ACTION_SHOW_CAPABILITIES
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="ACTION_CHECK_UPDATE"><a class="permalink" href="#ACTION_CHECK_UPDATE"><b><i>ACTION_CHECK_UPDATE
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>17</b> of file <b>actions.h</b>.</p>
+<pre>17              {
+18   ACTION_NONE = 0,
+19   ACTION_LIST_WEBCAMS,
+20   ACTION_LIST_MICROPHONES,
+21   ACTION_LIST_SPEAKERS,
+22   ACTION_SHOW_CAPABILITIES,
+23   ACTION_CHECK_UPDATE,
+24 } deferred_action_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_action_check_update_(void_)"><a class="permalink" href="#void_action_check_update_(void_)">void
+  action_check_update (void )</a></h2>
+<p class="Pp">Check for updates and display results. Performs update check
+    against GitHub releases API and displays results. Exits with code 0 on
+    success, 1 on error.</p>
+<p class="Pp">Definition at line <b>329</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>329                                {
+330   // Defer execution until after options are fully parsed
+331   actions_defer(ACTION_CHECK_UPDATE, NULL);
+332 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ACTION_CHECK_UPDATE</b>, and
+  <b>actions_defer()</b>.</p>
+<p class="Pp">Referenced by <b>options_registry_add_all_to_builder()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_action_check_update_immediate_(void_)"><a class="permalink" href="#void_action_check_update_immediate_(void_)">void
+  action_check_update_immediate (void )</a></h2>
+<p class="Pp">Execute update check immediately (for binary-level execution).
+    Performs immediate update check and exits. Used when --check-update is
+    specified before mode detection. Exits with code 0 on success, 1 on
+  error.</p>
+<p class="Pp"></p>
+<p class="Pp">Execute update check immediately (for binary-level execution).</p>
+<p class="Pp">Definition at line <b>311</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>311                                          {
+312   printf(&quot;Checking for updates...\n&quot;);
+313   update_check_result_t result;
+314   asciichat_error_t err = update_check_perform(&amp;result);
+315   if (err != ASCIICHAT_OK) {
+316     printf(&quot;\nFailed to check for updates.\n\n&quot;);
+317     action_exit(1);
+318   }
+319   if (result.update_available) {
+320     char notification[1024];
+321     update_check_format_notification(&amp;result, notification, sizeof(notification));
+322     printf(&quot;\n%s\n\n&quot;, notification);
+323   } else {
+324     printf(&quot;\nYou are already on the latest version: %s (%.8s)\n\n&quot;, result.current_version, result.current_sha);
+325   }
+326   action_exit(0);
+327 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>update_check_result_t::current_sha</b>,
+    <b>update_check_result_t::current_version</b>,
+    <b>update_check_result_t::update_available</b>,
+    <b>update_check_format_notification()</b>, and
+    <b>update_check_perform()</b>.</p>
+<p class="Pp">Referenced by <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_action_completions_(const_char_*_shell_name,_const_char_*_output_path)"><a class="permalink" href="#void_action_completions_(const_char_*_shell_name,_const_char_*_output_path)">void
+  action_completions (const char * shell_name, const char *
+  output_path)</a></h2>
+<p class="Pp">Generate shell completions and output to stdout or file. Generates
+    shell completion script for the specified shell (bash, fish, zsh,
+    powershell). Output is dynamically generated from the options registry,
+    ensuring completions are always in sync with current options. Outputs to
+    stdout by default, or to specified file path if provided. Prompts for
+    overwrite confirmation if file already exists. Exits with code 0 on success,
+    1 on error.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>shell_name</i> Shell name: &quot;bash&quot;,
+  &quot;fish&quot;, &quot;zsh&quot;, or &quot;powershell&quot;
+<br/>
+<i>output_path</i> Optional file path to write completions to. NULL or empty
+  string = stdout.</div>
+<p class="Pp">Definition at line <b>571</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>571                                                                          {
+572   if (!shell_name || strlen(shell_name) == 0) {
+573     log_error(&quot;--completions requires shell name (bash, fish, zsh, powershell)&quot;);
+574     action_exit(ERROR_USAGE);
+575   }
+576 
+577   completion_format_t format = completions_parse_shell_name(shell_name);
+578   if (format == COMPLETION_FORMAT_UNKNOWN) {
+579     log_error(&quot;Unknown shell '%s' (supported: bash, fish, zsh, powershell)&quot;, shell_name);
+580     action_exit(ERROR_USAGE);
+581   }
+582 
+583   FILE *output = stdout;
+584   bool should_close = false;
+585 
+586   // Determine output: use provided path if given and not &quot;-&quot;, otherwise stdout
+587   if (output_path &amp;&amp; strlen(output_path) &gt; 0 &amp;&amp; strcmp(output_path, &quot;-&quot;) != 0) {
+588     // Check if file already exists and prompt for confirmation
+589     struct stat st;
+590     if (stat(output_path, &amp;st) == 0) {
+591       // File exists - ask user if they want to overwrite
+592       log_plain(&quot;Completions file already exists: %s&quot;, output_path);
+593 
+594       bool overwrite = platform_prompt_yes_no(&quot;Overwrite&quot;, false); // Default to No
+595       if (!overwrite) {
+596         log_plain(&quot;Completions generation cancelled.&quot;);
+597         action_exit(0);
+598       }
+599 
+600       log_plain(&quot;Overwriting existing completions file...&quot;);
+601     }
+602 
+603     output = platform_fopen(&quot;file_stream&quot;, output_path, &quot;w&quot;);
+604     if (!output) {
+605       log_error(&quot;Failed to open %s for writing&quot;, output_path);
+606       action_exit(ERROR_FILE_OPERATION);
+607     }
+608     should_close = true;
+609   }
+610 
+611   asciichat_error_t result = completions_generate_for_shell(format, output);
+612 
+613   if (should_close) {
+614     fclose(output);
+615   }
+616 
+617   if (result != ASCIICHAT_OK) {
+618     log_error(&quot;Failed to generate %s completions&quot;, completions_get_shell_name(format));
+619     action_exit(ERROR_USAGE);
+620   }
+621 
+622   // Silently exit - completions are written (either to file or stdout)
+623   action_exit(0);
+624 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>COMPLETION_FORMAT_UNKNOWN</b>,
+    <b>completions_generate_for_shell()</b>,
+    <b>completions_get_shell_name()</b>, <b>completions_parse_shell_name()</b>,
+    <b>ERROR_FILE_OPERATION</b>, <b>ERROR_USAGE</b>, <b>log_error</b>,
+    <b>log_plain</b>, <b>platform_fopen()</b>, and
+    <b>platform_prompt_yes_no()</b>.</p>
+<p class="Pp">Referenced by <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_action_create_config_(const_char_*_output_path)"><a class="permalink" href="#void_action_create_config_(const_char_*_output_path)">void
+  action_create_config (const char * output_path)</a></h2>
+<p class="Pp">Create default configuration file and exit. Creates a default
+    configuration file. Outputs to stdout by default, or to specified file path
+    if provided. Prompts for overwrite confirmation if file already exists.
+    Exits with code 0 on success, 1 on error.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>output_path</i> Optional file path to write config to.
+  NULL or empty string = stdout.</div>
+<p class="Pp">Definition at line <b>524</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>524                                                    {
+525   // Build the schema first so config_create_default can generate options from it
+526   const options_config_t *unified_config = options_preset_unified(NULL, NULL);
+527   if (unified_config) {
+528     asciichat_error_t schema_build_result = config_schema_build_from_configs(&amp;unified_config, 1);
+529     if (schema_build_result != ASCIICHAT_OK) {
+530       // Schema build failed, but continue anyway
+531       (void)schema_build_result;
+532     }
+533     // options_config_destroy(unified_config);
+534   }
+535 
+536   const char *config_path = NULL;
+537 
+538   // Determine output path: use provided path, or NULL for stdout
+539   if (output_path &amp;&amp; strlen(output_path) &gt; 0 &amp;&amp; strcmp(output_path, &quot;-&quot;) != 0) {
+540     // User provided explicit path - use it as-is
+541     config_path = output_path;
+542   } else {
+543     // No path or &quot;-&quot; means stdout
+544     config_path = NULL;
+545   }
+546 
+547   // Create config with default options
+548   asciichat_error_t result = config_create_default(config_path);
+549   if (result != ASCIICHAT_OK) {
+550     asciichat_error_context_t err_ctx;
+551     if (HAS_ERRNO(&amp;err_ctx)) {
+552       log_error(&quot;Error creating config: %s&quot;, err_ctx.context_message);
+553     } else {
+554       log_error(&quot;Failed to create config file&quot;);
+555     }
+556     action_exit(ERROR_CONFIG);
+557   }
+558 
+559   if (config_path) {
+560     log_info(&quot;Created default config file at: %s&quot;, config_path);
+561   } else {
+562     log_info(&quot;Config written to stdout&quot;);
+563   }
+564   action_exit(0);
+565 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>config_create_default()</b>,
+    <b>config_schema_build_from_configs()</b>,
+    <b>asciichat_error_context_t::context_message</b>, <b>ERROR_CONFIG</b>,
+    <b>HAS_ERRNO</b>, <b>log_error</b>, <b>log_info</b>, and
+    <b>options_preset_unified()</b>.</p>
+<p class="Pp">Referenced by <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_action_create_manpage_(const_char_*_output_path)"><a class="permalink" href="#void_action_create_manpage_(const_char_*_output_path)">void
+  action_create_manpage (const char * output_path)</a></h2>
+<p class="Pp">Generate man page template from options builder. Generates a
+    merged man page template preserving manual content. Outputs to stdout by
+    default, or to specified file path if provided. Prompts for overwrite
+    confirmation if file already exists. Exits with code 0 on success, 1 on
+    error.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>output_path</i> Optional file path to write man page
+  to. NULL or empty string = stdout.</div>
+<p class="Pp">Definition at line <b>475</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>475                                                     {
+476   // Get binary-level config
+477   const options_config_t *config = options_preset_unified(NULL, NULL);
+478 
+479   if (!config) {
+480     log_error(&quot;Failed to get binary options config&quot;);
+481     action_exit(ERROR_FILE_OPERATION);
+482   }
+483 
+484   // Determine output path: use provided path, or NULL for stdout
+485   const char *path_to_use = NULL;
+486   if (output_path &amp;&amp; strlen(output_path) &gt; 0 &amp;&amp; strcmp(output_path, &quot;-&quot;) != 0) {
+487     // User provided explicit path - use it
+488     path_to_use = output_path;
+489   } else {
+490     // No path or &quot;-&quot; means stdout
+491     path_to_use = NULL;
+492   }
+493 
+494   // Generate merged man page from embedded or filesystem resources
+495   // Resources are loaded automatically based on build type:
+496   // - Production (Release): From embedded binary data
+497   // - Development (Debug): From filesystem files
+498   asciichat_error_t err =
+499       options_config_generate_manpage_merged(config, &quot;ascii-chat&quot;, NULL, path_to_use, &quot;Video chat in your terminal&quot;);
+500 
+501   if (err != ASCIICHAT_OK) {
+502     asciichat_error_context_t err_ctx;
+503     if (HAS_ERRNO(&amp;err_ctx)) {
+504       log_error(&quot;%s&quot;, err_ctx.context_message);
+505     } else {
+506       log_error(&quot;Failed to generate man page&quot;);
+507     }
+508     action_exit(ERROR_FILE_OPERATION);
+509   }
+510 
+511   if (path_to_use) {
+512     log_info(&quot;Man page written to: %s&quot;, path_to_use);
+513   } else {
+514     log_info(&quot;Man page written to stdout&quot;);
+515   }
+516 
+517   action_exit(0);
+518 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>asciichat_error_context_t::context_message</b>,
+    <b>ERROR_FILE_OPERATION</b>, <b>HAS_ERRNO</b>, <b>log_error</b>,
+    <b>log_info</b>, <b>options_config_generate_manpage_merged()</b>, and
+    <b>options_preset_unified()</b>.</p>
+<p class="Pp">Referenced by <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_action_help_acds_(void_)"><a class="permalink" href="#void_action_help_acds_(void_)">void
+  action_help_acds (void )</a></h2>
+<p class="Pp">Show discovery-service mode help and exit. Displays
+    discovery-service mode usage and options. Exits with code 0.</p>
+<p class="Pp">Definition at line <b>461</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>461                             {
+462   usage(stdout, MODE_DISCOVERY_SERVICE);
+463   action_exit(0);
+464 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>MODE_DISCOVERY_SERVICE</b>, and <b>usage()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_action_help_client_(void_)"><a class="permalink" href="#void_action_help_client_(void_)">void
+  action_help_client (void )</a></h2>
+<p class="Pp">Show client mode help and exit. Displays client mode usage and
+    options. Exits with code 0.</p>
+<p class="Pp">Definition at line <b>451</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>451                               {
+452   usage(stdout, MODE_CLIENT);
+453   action_exit(0);
+454 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>MODE_CLIENT</b>, and <b>usage()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_action_help_discovery_(void_)"><a class="permalink" href="#void_action_help_discovery_(void_)">void
+  action_help_discovery (void )</a></h2>
+<p class="Pp">Show discovery mode help and exit. Displays discovery mode usage
+    and options. Exits with code 0.</p>
+<p class="Pp">Definition at line <b>466</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>466                                  {
+467   usage(stdout, MODE_DISCOVERY);
+468   action_exit(0);
+469 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>MODE_DISCOVERY</b>, and <b>usage()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_action_help_mirror_(void_)"><a class="permalink" href="#void_action_help_mirror_(void_)">void
+  action_help_mirror (void )</a></h2>
+<p class="Pp">Show mirror mode help and exit. Displays mirror mode usage and
+    options. Exits with code 0.</p>
+<p class="Pp">Definition at line <b>456</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>456                               {
+457   usage(stdout, MODE_MIRROR);
+458   action_exit(0);
+459 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>MODE_MIRROR</b>, and <b>usage()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_action_help_server_(void_)"><a class="permalink" href="#void_action_help_server_(void_)">void
+  action_help_server (void )</a></h2>
+<p class="Pp">Show server mode help and exit. Displays server mode usage and
+    options. Exits with code 0.</p>
+<p class="Pp">Definition at line <b>446</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>446                               {
+447   usage(stdout, MODE_SERVER);
+448   action_exit(0);
+449 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>MODE_SERVER</b>, and <b>usage()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_action_list_microphones_(void_)"><a class="permalink" href="#void_action_list_microphones_(void_)">void
+  action_list_microphones (void )</a></h2>
+<p class="Pp">List available microphone devices and exit. Enumerates all audio
+    input devices and prints them to stdout. Exits with code 0 on success, 1 on
+    error.</p>
+<p class="Pp">Definition at line <b>145</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>145                                    {
+146   // Defer execution until after options are fully parsed
+147   actions_defer(ACTION_LIST_MICROPHONES, NULL);
+148 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ACTION_LIST_MICROPHONES</b>, and
+    <b>actions_defer()</b>.</p>
+<p class="Pp">Referenced by <b>options_init()</b>, and
+    <b>options_registry_add_all_to_builder()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_action_list_speakers_(void_)"><a class="permalink" href="#void_action_list_speakers_(void_)">void
+  action_list_speakers (void )</a></h2>
+<p class="Pp">List available speaker devices and exit. Enumerates all audio
+    output devices and prints them to stdout. Exits with code 0 on success, 1 on
+    error.</p>
+<p class="Pp">Definition at line <b>183</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>183                                 {
+184   // Defer execution until after options are fully parsed
+185   actions_defer(ACTION_LIST_SPEAKERS, NULL);
+186 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ACTION_LIST_SPEAKERS</b>, and
+    <b>actions_defer()</b>.</p>
+<p class="Pp">Referenced by <b>options_init()</b>, and
+    <b>options_registry_add_all_to_builder()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_action_list_webcams_(void_)"><a class="permalink" href="#void_action_list_webcams_(void_)">void
+  action_list_webcams (void )</a></h2>
+<p class="Pp">List available webcam devices and exit. Enumerates all webcam
+    devices and prints them to stdout. Exits with code 0 on success, 1 on
+  error.</p>
+<p class="Pp">Definition at line <b>107</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>107                                {
+108   // Defer execution until after options are fully parsed
+109   actions_defer(ACTION_LIST_WEBCAMS, NULL);
+110 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ACTION_LIST_WEBCAMS</b>, and
+  <b>actions_defer()</b>.</p>
+<p class="Pp">Referenced by <b>options_init()</b>, and
+    <b>options_registry_add_all_to_builder()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_action_show_capabilities_(void_)"><a class="permalink" href="#void_action_show_capabilities_(void_)">void
+  action_show_capabilities (void )</a></h2>
+<p class="Pp">Show terminal capabilities and exit. Detects and displays terminal
+    color support, UTF-8 support, dimensions, and terminal program name. Exits
+    with code 0.</p>
+<p class="Pp"></p>
+<p class="Pp">Note: This action is deferred until after all options are parsed
+    and dimensions are calculated, so that --width and --height flags are
+    properly reflected in the output.</p>
+<p class="Pp">Definition at line <b>298</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>298                                     {
+299   // Defer execution until after options are fully parsed and dimensions updated
+300   // This ensures --width and --height flags are properly reflected in the output
+301   actions_defer(ACTION_SHOW_CAPABILITIES, NULL);
+302 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ACTION_SHOW_CAPABILITIES</b>, and
+    <b>actions_defer()</b>.</p>
+<p class="Pp">Referenced by <b>options_registry_add_all_to_builder()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_action_show_capabilities_immediate_(void_)"><a class="permalink" href="#void_action_show_capabilities_immediate_(void_)">void
+  action_show_capabilities_immediate (void )</a></h2>
+<p class="Pp">Execute show capabilities immediately (for binary-level
+    execution). Shows terminal capabilities before full options parsing. Uses
+    detected terminal size (doesn't respect --width/--height). Exits with code
+    0.</p>
+<p class="Pp"></p>
+<p class="Pp">Execute show capabilities immediately (for binary-level
+    execution).</p>
+<p class="Pp">Definition at line <b>228</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>228                                               {
+229   terminal_capabilities_t caps = detect_terminal_capabilities();
+230 
+231   // Determine if we should use colored output
+232   bool use_colors = terminal_should_color_output(STDOUT_FILENO);
+233 
+234   // Override color level if colors should not be shown
+235   if (!use_colors) {
+236     caps.color_level = TERM_COLOR_NONE;
+237     caps.color_count = 0;
+238     caps.capabilities &amp;= ~((uint32_t)(TERM_CAP_COLOR_TRUE | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16));
+239   }
+240 
+241   // Use detected terminal size (immediate execution doesn't have parsed options yet)
+242   terminal_size_t size;
+243   terminal_get_size(&amp;size);
+244   unsigned short width = size.cols;
+245   unsigned short height = size.rows;
+246 
+247   log_color_t label_color = use_colors ? LOG_COLOR_GREY : LOG_COLOR_GREY;
+248   log_color_t string_color = use_colors ? LOG_COLOR_DEBUG : LOG_COLOR_GREY;
+249   log_color_t good_color = use_colors ? LOG_COLOR_INFO : LOG_COLOR_GREY;
+250   log_color_t bad_color = use_colors ? LOG_COLOR_ERROR : LOG_COLOR_GREY;
+251   log_color_t number_color = use_colors ? LOG_COLOR_FATAL : LOG_COLOR_GREY;
+252 
+253   printf(&quot;%s\n&quot;, colored_string(LOG_COLOR_WARN, &quot;Terminal Capabilities:&quot;));
+254 
+255   char size_buf[64];
+256   snprintf(size_buf, sizeof(size_buf), &quot;%ux%u&quot;, width, height);
+257   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;Terminal Size&quot;), colored_string(number_color, size_buf));
+258 
+259   const char *color_level_name = terminal_color_level_name(caps.color_level);
+260   log_color_t color_level_color = (caps.color_level == TERM_COLOR_NONE) ? bad_color : string_color;
+261   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;Color Level&quot;),
+262          colored_string(color_level_color, (char *)color_level_name));
+263 
+264   char colors_buf[64];
+265   snprintf(colors_buf, sizeof(colors_buf), &quot;%u&quot;, caps.color_count);
+266   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;Max Colors&quot;), colored_string(number_color, colors_buf));
+267 
+268   log_color_t utf8_color = caps.utf8_support ? good_color : bad_color;
+269   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;UTF-8 Support&quot;),
+270          colored_string(utf8_color, (char *)(caps.utf8_support ? &quot;Yes&quot; : &quot;No&quot;)));
+271 
+272   const char *render_mode_str = &quot;unknown&quot;;
+273   if (caps.render_mode == RENDER_MODE_FOREGROUND) {
+274     render_mode_str = &quot;foreground&quot;;
+275   } else if (caps.render_mode == RENDER_MODE_BACKGROUND) {
+276     render_mode_str = &quot;background&quot;;
+277   } else if (caps.render_mode == RENDER_MODE_HALF_BLOCK) {
+278     render_mode_str = &quot;half-block&quot;;
+279   }
+280   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;Render Mode&quot;),
+281          colored_string(string_color, (char *)render_mode_str));
+282   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;TERM&quot;), colored_string(string_color, (char *)caps.term_type));
+283   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;COLORTERM&quot;),
+284          colored_string(string_color, (char *)(strlen(caps.colorterm) ? caps.colorterm : &quot;(not set)&quot;)));
+285 
+286   log_color_t reliable_color = caps.detection_reliable ? good_color : bad_color;
+287   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;Detection Reliable&quot;),
+288          colored_string(reliable_color, (char *)(caps.detection_reliable ? &quot;Yes&quot; : &quot;No&quot;)));
+289 
+290   char bitmask_buf[64];
+291   snprintf(bitmask_buf, sizeof(bitmask_buf), &quot;0x%08x&quot;, caps.capabilities);
+292   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;Capabilities Bitmask&quot;), colored_string(number_color, bitmask_buf));
+293 
+294   fflush(stdout);
+295   action_exit(0);
+296 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>terminal_capabilities_t::capabilities</b>,
+    <b>terminal_capabilities_t::color_count</b>,
+    <b>terminal_capabilities_t::color_level</b>, <b>colored_string()</b>,
+    <b>terminal_capabilities_t::colorterm</b>, <b>terminal_size_t::cols</b>,
+    <b>detect_terminal_capabilities()</b>,
+    <b>terminal_capabilities_t::detection_reliable</b>, <b>LOG_COLOR_DEBUG</b>,
+    <b>LOG_COLOR_ERROR</b>, <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_GREY</b>,
+    <b>LOG_COLOR_INFO</b>, <b>LOG_COLOR_WARN</b>,
+    <b>terminal_capabilities_t::render_mode</b>, <b>RENDER_MODE_BACKGROUND</b>,
+    <b>RENDER_MODE_FOREGROUND</b>, <b>RENDER_MODE_HALF_BLOCK</b>,
+    <b>terminal_size_t::rows</b>, <b>TERM_CAP_COLOR_16</b>,
+    <b>TERM_CAP_COLOR_256</b>, <b>TERM_CAP_COLOR_TRUE</b>,
+    <b>TERM_COLOR_NONE</b>, <b>terminal_capabilities_t::term_type</b>,
+    <b>terminal_color_level_name()</b>, <b>terminal_get_size()</b>,
+    <b>terminal_should_color_output()</b>, and
+    <b>terminal_capabilities_t::utf8_support</b>.</p>
+<p class="Pp">Referenced by <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_action_show_version_(void_)"><a class="permalink" href="#void_action_show_version_(void_)">void
+  action_show_version (void )</a></h2>
+<p class="Pp">Show version information and exit. Displays ascii-chat version,
+    build type, build date, and compiler information. Exits with code 0.</p>
+<p class="Pp">Definition at line <b>428</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>428                                {
+429   bool use_colors = terminal_should_color_output(STDOUT_FILENO);
+430   if (use_colors) {
+431     printf(&quot;%s %s (%s, %s)\n&quot;, colored_string(LOG_COLOR_WARN, &quot;ascii-chat&quot;),
+432            colored_string(LOG_COLOR_INFO, (char *)ASCII_CHAT_VERSION_FULL),
+433            colored_string(LOG_COLOR_DEBUG, (char *)ASCII_CHAT_BUILD_TYPE),
+434            colored_string(LOG_COLOR_GREY, (char *)ASCII_CHAT_BUILD_DATE));
+435   } else {
+436     printf(&quot;ascii-chat %s (%s, %s)\n&quot;, ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
+437   }
+438 
+439   action_exit(0);
+440 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCII_CHAT_BUILD_DATE</b>,
+    <b>ASCII_CHAT_BUILD_TYPE</b>, <b>ASCII_CHAT_VERSION_FULL</b>,
+    <b>colored_string()</b>, <b>LOG_COLOR_DEBUG</b>, <b>LOG_COLOR_GREY</b>,
+    <b>LOG_COLOR_INFO</b>, <b>LOG_COLOR_WARN</b>, and
+    <b>terminal_should_color_output()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_actions_defer_("><a class="permalink" href="#void_actions_defer_(">void
+  actions_defer (<b>deferred_action_t</b> action, const <b>action_args_t</b> *
+  args)</a></h2>
+<p class="Pp">Set which action to defer until options are fully initialized.
+    Only the first action found is remembered. If multiple actions are
+    specified, only the first one will be executed.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>action</b><i></i><b> The action type to
+  defer</b>
+<br/>
+<i></i><b>args</b><i></i><b> Optional action arguments (can be NULL)</b></div>
+<p class="Pp">Definition at line <b>75</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>75                                                                         {
+76   // Only remember the first action found
+77   if (g_deferred_action_state.has_action) {
+78     return; // Action already deferred, ignore subsequent actions
+79   }
+80 
+81   g_deferred_action_state.action = action;
+82   g_deferred_action_state.has_action = true;
+83 
+84   // Copy arguments if provided
+85   if (args) {
+86     memcpy(&amp;g_deferred_action_state.args, args, sizeof(action_args_t));
+87   } else {
+88     memset(&amp;g_deferred_action_state.args, 0, sizeof(action_args_t));
+89   }
+90 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>action</b>, and <b>args</b>.</p>
+<p class="Pp">Referenced by <b>action_check_update()</b>,
+    <b>action_list_microphones()</b>, <b>action_list_speakers()</b>,
+    <b>action_list_webcams()</b>, and <b>action_show_capabilities()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_actions_execute_deferred_(void_)"><a class="permalink" href="#void_actions_execute_deferred_(void_)">void
+  actions_execute_deferred (void )</a></h2>
+<p class="Pp">Execute the deferred action (if any). This function should be
+    called during STAGE 8 of <b>options_init()</b> after all options are fully
+    parsed and dimensions are calculated.</p>
+<p class="Pp">Definition at line <b>662</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>662                                     {
+663   deferred_action_t action = actions_get_deferred();
+664 
+665   switch (action) {
+666   case ACTION_NONE:
+667     // No action to execute
+668     break;
+669 
+670   case ACTION_LIST_WEBCAMS:
+671     execute_list_webcams();
+672     break;
+673 
+674   case ACTION_LIST_MICROPHONES:
+675     execute_list_microphones();
+676     break;
+677 
+678   case ACTION_LIST_SPEAKERS:
+679     execute_list_speakers();
+680     break;
+681 
+682   case ACTION_SHOW_CAPABILITIES:
+683     execute_show_capabilities();
+684     break;
+685 
+686   case ACTION_CHECK_UPDATE:
+687     execute_check_update();
+688     break;
+689 
+690   default:
+691     log_warn(&quot;Unknown deferred action: %d&quot;, action);
+692     break;
+693   }
+694 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>action</b>, <b>ACTION_CHECK_UPDATE</b>,
+    <b>ACTION_LIST_MICROPHONES</b>, <b>ACTION_LIST_SPEAKERS</b>,
+    <b>ACTION_LIST_WEBCAMS</b>, <b>ACTION_NONE</b>,
+    <b>ACTION_SHOW_CAPABILITIES</b>, <b>actions_get_deferred()</b>, and
+    <b>log_warn</b>.</p>
+<p class="Pp">Referenced by <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>action_args_t</b> * actions_get_args (void )</a></h2>
+<p class="Pp">Get the arguments for the deferred action.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to action arguments, or NULL if no arguments were
+  set</div>
+<p class="Pp">Definition at line <b>96</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>96                                             {
+97   if (!g_deferred_action_state.has_action) {
+98     return NULL;
+99   }
+100   return &amp;g_deferred_action_state.args;
+101 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>deferred_action_t</b> actions_get_deferred (void )</h2>
+<p class="Pp">Get the deferred action (if any) that was set.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">The deferred action type, or ACTION_NONE if no action was
+  deferred</div>
+<p class="Pp">Definition at line <b>92</b> of file
+    <b>options/parsing/actions.c</b>.</p>
+<pre>92                                              {
+93   return g_deferred_action_state.action;
+94 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>actions_execute_deferred()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

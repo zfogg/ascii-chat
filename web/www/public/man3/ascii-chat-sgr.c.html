@@ -59,29 +59,36 @@
 <br/>
 <p class="Pp">void <b>prewarm_sgr256_fg_cache</b> (void)
   <br/>
-  void <b>prewarm_sgr256_cache</b> (void)
+  Prewarm 256-color foreground cache for benchmarks. void
+    <b>prewarm_sgr256_cache</b> (void)
   <br/>
-  char * <b>get_sgr256_fg_string</b> (uint8_t fg, uint8_t *len_out)
+  Prewarm 256-color foreground/background cache for benchmarks. char *
+    <b>get_sgr256_fg_string</b> (<b>uint8_t</b> fg, <b>uint8_t</b> *len_out)
   <br/>
-  char * <b>get_sgr256_bg_string</b> (uint8_t bg, uint8_t *len_out)
+  Get 256-color foreground ANSI sequence string. char *
+    <b>get_sgr256_bg_string</b> (<b>uint8_t</b> bg, <b>uint8_t</b> *len_out)
   <br/>
-  char * <b>get_sgr256_fg_bg_string</b> (uint8_t fg, uint8_t bg, uint8_t
-    *len_out)
+  Get 256-color background ANSI sequence string. char *
+    <b>get_sgr256_fg_bg_string</b> (<b>uint8_t</b> fg, <b>uint8_t</b> bg,
+    <b>uint8_t</b> *len_out)
   <br/>
-  char * <b>append_sgr_reset</b> (char *dst)
+  Get 256-color foreground/background ANSI sequence string. char *
+    <b>append_sgr_reset</b> (char *dst)
   <br/>
-  char * <b>append_sgr_truecolor_fg</b> (char *dst, uint8_t r, uint8_t g,
-    uint8_t b)
+  char * <b>append_sgr_truecolor_fg</b> (char *dst, <b>uint8_t</b> r,
+    <b>uint8_t</b> g, <b>uint8_t</b> <b>b</b>)
   <br/>
-  char * <b>append_sgr_truecolor_bg</b> (char *dst, uint8_t r, uint8_t g,
-    uint8_t b)
+  char * <b>append_sgr_truecolor_bg</b> (char *dst, <b>uint8_t</b> r,
+    <b>uint8_t</b> g, <b>uint8_t</b> <b>b</b>)
   <br/>
-  char * <b>append_sgr_truecolor_fg_bg</b> (char *dst, uint8_t fr, uint8_t fg,
-    uint8_t fb, uint8_t br, uint8_t bg, uint8_t bb)
+  char * <b>append_sgr_truecolor_fg_bg</b> (char *dst, <b>uint8_t</b> fr,
+    <b>uint8_t</b> fg, <b>uint8_t</b> fb, <b>uint8_t</b> br, <b>uint8_t</b> bg,
+    <b>uint8_t</b> bb)
   <br/>
-  char * <b>image_print_color_simd</b> (image_t *image, <b>bool</b>
+  char * <b>image_print_color_simd</b> (<b>image_t</b> *image, <b>bool</b>
     use_background_mode, <b>bool</b> use_256color, const char *ascii_chars)
   <br/>
+  Print image as ASCII with color using SIMD.
   <br/>
 </p>
 </section>
@@ -117,9 +124,9 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="char_*_append_sgr_truecolor_bg_(char_*_dst,_uint8_t_r,_uint8_t_g,_uint8_t_b)"><a class="permalink" href="#char_*_append_sgr_truecolor_bg_(char_*_dst,_uint8_t_r,_uint8_t_g,_uint8_t_b)">char
-  * append_sgr_truecolor_bg (char * dst, uint8_t r, uint8_t g, uint8_t b)
-  [inline]</a></h2>
+<h2 class="Ss" id="char_*_append_sgr_truecolor_bg_(char_*_dst,_"><a class="permalink" href="#char_*_append_sgr_truecolor_bg_(char_*_dst,_">char
+  * append_sgr_truecolor_bg (char * dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
+  <b>uint8_t</b> b) [inline]</a></h2>
 <p class="Pp">Definition at line <b>224</b> of file <b>sgr.c</b>.</p>
 <pre>224                                                                                  {
 225   // Constructor ensures initialization
@@ -182,12 +189,13 @@
 282 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>g_dec3_cache</b>.</p>
+<p class="Pp">References <b>b</b>, <b>g_dec3_cache</b>, <b>dec3_t::len</b>, and
+    <b>dec3_t::s</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="char_*_append_sgr_truecolor_fg_(char_*_dst,_uint8_t_r,_uint8_t_g,_uint8_t_b)"><a class="permalink" href="#char_*_append_sgr_truecolor_fg_(char_*_dst,_uint8_t_r,_uint8_t_g,_uint8_t_b)">char
-  * append_sgr_truecolor_fg (char * dst, uint8_t r, uint8_t g, uint8_t b)
-  [inline]</a></h2>
+<h2 class="Ss" id="char_*_append_sgr_truecolor_fg_(char_*_dst,_"><a class="permalink" href="#char_*_append_sgr_truecolor_fg_(char_*_dst,_">char
+  * append_sgr_truecolor_fg (char * dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
+  <b>uint8_t</b> b) [inline]</a></h2>
 <p class="Pp">Definition at line <b>163</b> of file <b>sgr.c</b>.</p>
 <pre>163                                                                                  {
 164   // Constructor ensures initialization
@@ -250,12 +258,14 @@
 221 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>g_dec3_cache</b>.</p>
+<p class="Pp">References <b>b</b>, <b>g_dec3_cache</b>, <b>dec3_t::len</b>, and
+    <b>dec3_t::s</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="char_*_append_sgr_truecolor_fg_bg_(char_*_dst,_uint8_t_fr,_uint8_t_fg,_uint8_t_fb,_uint8_t_br,_uint8_t_bg,_uint8_t_bb)"><a class="permalink" href="#char_*_append_sgr_truecolor_fg_bg_(char_*_dst,_uint8_t_fr,_uint8_t_fg,_uint8_t_fb,_uint8_t_br,_uint8_t_bg,_uint8_t_bb)">char
-  * append_sgr_truecolor_fg_bg (char * dst, uint8_t fr, uint8_t fg, uint8_t fb,
-  uint8_t br, uint8_t bg, uint8_t bb) [inline]</a></h2>
+<h2 class="Ss" id="char_*_append_sgr_truecolor_fg_bg_(char_*_dst,_"><a class="permalink" href="#char_*_append_sgr_truecolor_fg_bg_(char_*_dst,_">char
+  * append_sgr_truecolor_fg_bg (char * dst, <b>uint8_t</b> fr, <b>uint8_t</b>
+  fg, <b>uint8_t</b> fb, <b>uint8_t</b> br, <b>uint8_t</b> bg, <b>uint8_t</b>
+  bb) [inline]</a></h2>
 <p class="Pp">Definition at line <b>285</b> of file <b>sgr.c</b>.</p>
 <pre>286                                                     {
 287   // Constructor ensures initialization
@@ -372,104 +382,8 @@
 398 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>g_dec3_cache</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_get_sgr256_bg_string_(uint8_t_bg,_uint8_t_*_len_out)"><a class="permalink" href="#char_*_get_sgr256_bg_string_(uint8_t_bg,_uint8_t_*_len_out)">char
-  * get_sgr256_bg_string (uint8_t bg, uint8_t * len_out)</a></h2>
-<p class="Pp">Definition at line <b>141</b> of file <b>sgr.c</b>.</p>
-<pre>141                                                          {
-142   if (!sgr256_cache_initialized) {
-143     init_sgr256_cache();
-144   }
-145   *len_out = sgr256_bg_cache[bg].len;
-146   return sgr256_bg_cache[bg].seq;
-147 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>emit_set_256_color_bg()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_get_sgr256_fg_bg_string_(uint8_t_fg,_uint8_t_bg,_uint8_t_*_len_out)"><a class="permalink" href="#char_*_get_sgr256_fg_bg_string_(uint8_t_fg,_uint8_t_bg,_uint8_t_*_len_out)">char
-  * get_sgr256_fg_bg_string (uint8_t fg, uint8_t bg, uint8_t * len_out)</a></h2>
-<p class="Pp">Definition at line <b>149</b> of file <b>sgr.c</b>.</p>
-<pre>149                                                                         {
-150   // For FG+BG, still build on-demand since we'd need 256*256 cache
-151   static __thread char buf[32];
-152   return build_sgr256_fgbg(buf, fg, bg, len_out);
-153 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_get_sgr256_fg_string_(uint8_t_fg,_uint8_t_*_len_out)"><a class="permalink" href="#char_*_get_sgr256_fg_string_(uint8_t_fg,_uint8_t_*_len_out)">char
-  * get_sgr256_fg_string (uint8_t fg, uint8_t * len_out)</a></h2>
-<p class="Pp">Definition at line <b>133</b> of file <b>sgr.c</b>.</p>
-<pre>133                                                          {
-134   if (!sgr256_cache_initialized) {
-135     init_sgr256_cache();
-136   }
-137   *len_out = sgr256_fg_cache[fg].len;
-138   return sgr256_fg_cache[fg].seq;
-139 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>emit_set_256_color_fg()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_image_print_color_simd_(image_t_*_image,_"><a class="permalink" href="#char_*_image_print_color_simd_(image_t_*_image,_">char
-  * image_print_color_simd (image_t * image, <b>bool</b> use_background_mode,
-  <b>bool</b> use_256color, const char * ascii_chars)</a></h2>
-<p class="Pp">Definition at line <b>412</b> of file <b>sgr.c</b>.</p>
-<pre>412                                                                                                                    {
-413   if (!image || !ascii_chars) {
-414     return NULL;
-415   }
-416 
-417   log_dev_every(4500 * US_PER_MS_INT, &quot;image_print_color_simd called: width=%d, height=%d, use_256color=%d&quot;,
-418                 image-&gt;w, image-&gt;h, use_256color);
-419 
-420 #if SIMD_SUPPORT_AVX2
-421   log_debug_every(10 * US_PER_SEC_INT, &quot;Taking AVX2 path: width=%d, height=%d&quot;, image-&gt;w, image-&gt;h);
-422   // AVX2 implementation would go here
-423   // For now, fall through to scalar implementation
-424 #endif
-425 
-426   // Fallback to scalar implementation
-427   if (use_background_mode) {
-428     return image_print_16color_dithered_with_background(image, use_background_mode, ascii_chars);
-429   } else if (use_256color) {
-430     return image_print_256color(image, ascii_chars);
-431   } else {
-432     return image_print_color(image, ascii_chars);
-433   }
-434 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>image_print_16color_dithered_with_background()</b>,
-    <b>image_print_256color()</b>, and <b>image_print_color()</b>.</p>
-<p class="Pp">Referenced by <b>ascii_convert()</b>, and
-    <b>image_print_256color()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_prewarm_sgr256_cache_(void_)"><a class="permalink" href="#void_prewarm_sgr256_cache_(void_)">void
-  prewarm_sgr256_cache (void )</a></h2>
-<p class="Pp">Definition at line <b>128</b> of file <b>sgr.c</b>.</p>
-<pre>128                                 {
-129   init_sgr256_cache();
-130 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_prewarm_sgr256_fg_cache_(void_)"><a class="permalink" href="#void_prewarm_sgr256_fg_cache_(void_)">void
-  prewarm_sgr256_fg_cache (void )</a></h2>
-<p class="Pp">Definition at line <b>124</b> of file <b>sgr.c</b>.</p>
-<pre>124                                    {
-125   init_sgr256_cache();
-126 }</pre>
-<pre></pre>
-<p class="Pp"></p>
+<p class="Pp">References <b>g_dec3_cache</b>, <b>dec3_t::len</b>, and
+    <b>dec3_t::s</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -479,7 +393,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

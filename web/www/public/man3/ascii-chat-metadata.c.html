@@ -39,33 +39,34 @@
 <section class="Ss">
 <h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
 <br/>
-<p class="Pp">const char * <b>g_log_level_values</b> [] = {OPT_LOG_LEVEL_DEV,
-    OPT_LOG_LEVEL_DEBUG, OPT_LOG_LEVEL_INFO, OPT_LOG_LEVEL_WARN,
-    OPT_LOG_LEVEL_ERROR, OPT_LOG_LEVEL_FATAL, NULL}
+<p class="Pp">const char * <b>g_log_level_values</b> [] =
+    {<b>OPT_LOG_LEVEL_DEV</b>, <b>OPT_LOG_LEVEL_DEBUG</b>,
+    <b>OPT_LOG_LEVEL_INFO</b>, <b>OPT_LOG_LEVEL_WARN</b>,
+    <b>OPT_LOG_LEVEL_ERROR</b>, <b>OPT_LOG_LEVEL_FATAL</b>, NULL}
   <br/>
-  const int <b>g_log_level_integers</b> [] = {LOG_DEV, LOG_DEBUG, LOG_INFO,
-    LOG_WARN, LOG_ERROR, LOG_FATAL}
+  const int <b>g_log_level_integers</b> [] = {<b>LOG_DEV</b>, <b>LOG_DEBUG</b>,
+    <b>LOG_INFO</b>, <b>LOG_WARN</b>, <b>LOG_ERROR</b>, <b>LOG_FATAL</b>}
   <br/>
   const char * <b>g_log_level_descs</b> []
   <br/>
   const char * <b>g_color_setting_values</b> [] = {'auto', 'true', 'false',
     NULL}
   <br/>
-  const int <b>g_color_setting_integers</b> [] = {COLOR_SETTING_AUTO,
-    COLOR_SETTING_TRUE, COLOR_SETTING_FALSE}
+  const int <b>g_color_setting_integers</b> [] = {<b>COLOR_SETTING_AUTO</b>,
+    <b>COLOR_SETTING_TRUE</b>, <b>COLOR_SETTING_FALSE</b>}
   <br/>
   const char * <b>g_color_setting_descs</b> []
   <br/>
   const char * <b>g_utf8_setting_values</b> [] = {'auto', 'true', 'false', NULL}
   <br/>
-  const int <b>g_utf8_setting_integers</b> [] = {UTF8_SETTING_AUTO,
-    UTF8_SETTING_TRUE, UTF8_SETTING_FALSE}
+  const int <b>g_utf8_setting_integers</b> [] = {<b>UTF8_SETTING_AUTO</b>,
+    <b>UTF8_SETTING_TRUE</b>, <b>UTF8_SETTING_FALSE</b>}
   <br/>
   const char * <b>g_utf8_setting_descs</b> []
   <br/>
-  const char * <b>g_color_mode_values</b> [] = {OPT_COLOR_MODE_AUTO,
-    OPT_COLOR_MODE_NONE, OPT_COLOR_MODE_16, OPT_COLOR_MODE_256,
-    OPT_COLOR_MODE_TRUECOLOR, NULL}
+  const char * <b>g_color_mode_values</b> [] = {<b>OPT_COLOR_MODE_AUTO</b>,
+    <b>OPT_COLOR_MODE_NONE</b>, <b>OPT_COLOR_MODE_16</b>,
+    <b>OPT_COLOR_MODE_256</b>, <b>OPT_COLOR_MODE_TRUECOLOR</b>, NULL}
   <br/>
   const int <b>g_color_mode_integers</b> []
   <br/>
@@ -77,17 +78,18 @@
   <br/>
   const char * <b>g_color_filter_descs</b> []
   <br/>
-  const char * <b>g_palette_values</b> [] = {OPT_PALETTE_STANDARD,
-    OPT_PALETTE_BLOCKS, OPT_PALETTE_DIGITAL, OPT_PALETTE_MINIMAL,
-    OPT_PALETTE_COOL, OPT_PALETTE_CUSTOM, NULL}
+  const char * <b>g_palette_values</b> [] = {<b>OPT_PALETTE_STANDARD</b>,
+    <b>OPT_PALETTE_BLOCKS</b>, <b>OPT_PALETTE_DIGITAL</b>,
+    <b>OPT_PALETTE_MINIMAL</b>, <b>OPT_PALETTE_COOL</b>,
+    <b>OPT_PALETTE_CUSTOM</b>, NULL}
   <br/>
   const int <b>g_palette_integers</b> []
   <br/>
   const char * <b>g_palette_descs</b> []
   <br/>
-  const char * <b>g_render_values</b> [] = {OPT_RENDER_MODE_FOREGROUND,
-    OPT_RENDER_MODE_FG, OPT_RENDER_MODE_BACKGROUND, OPT_RENDER_MODE_BG,
-    OPT_RENDER_MODE_HALF_BLOCK, NULL}
+  const char * <b>g_render_values</b> [] = {<b>OPT_RENDER_MODE_FOREGROUND</b>,
+    <b>OPT_RENDER_MODE_FG</b>, <b>OPT_RENDER_MODE_BACKGROUND</b>,
+    <b>OPT_RENDER_MODE_BG</b>, <b>OPT_RENDER_MODE_HALF_BLOCK</b>, NULL}
   <br/>
   const int <b>g_render_integers</b> []
   <br/>
@@ -99,11 +101,13 @@
   <br/>
   const char * <b>g_render_theme_descs</b> []
   <br/>
-  const char * <b>g_audio_source_values</b> [] = {OPT_AUDIO_SOURCE_AUTO,
-    OPT_AUDIO_SOURCE_MIC, OPT_AUDIO_SOURCE_MEDIA, OPT_AUDIO_SOURCE_BOTH, NULL}
+  const char * <b>g_audio_source_values</b> [] = {<b>OPT_AUDIO_SOURCE_AUTO</b>,
+    <b>OPT_AUDIO_SOURCE_MIC</b>, <b>OPT_AUDIO_SOURCE_MEDIA</b>,
+    <b>OPT_AUDIO_SOURCE_BOTH</b>, NULL}
   <br/>
-  const int <b>g_audio_source_integers</b> [] = {AUDIO_SOURCE_AUTO,
-    AUDIO_SOURCE_MIC, AUDIO_SOURCE_MEDIA, AUDIO_SOURCE_BOTH}
+  const int <b>g_audio_source_integers</b> [] = {<b>AUDIO_SOURCE_AUTO</b>,
+    <b>AUDIO_SOURCE_MIC</b>, <b>AUDIO_SOURCE_MEDIA</b>,
+    <b>AUDIO_SOURCE_BOTH</b>}
   <br/>
   const char * <b>g_audio_source_descs</b> []
   <br/>
@@ -166,18 +170,20 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_int_g_audio_source_integers___=__AUDIO_SOURCE_AUTO,_AUDIO_SOURCE_MIC,_AUDIO_SOURCE_MEDIA,_AUDIO_SOURCE_BOTH_"><a class="permalink" href="#const_int_g_audio_source_integers___=__AUDIO_SOURCE_AUTO,_AUDIO_SOURCE_MIC,_AUDIO_SOURCE_MEDIA,_AUDIO_SOURCE_BOTH_">const
-  int g_audio_source_integers[] = {AUDIO_SOURCE_AUTO, AUDIO_SOURCE_MIC,
-  AUDIO_SOURCE_MEDIA, AUDIO_SOURCE_BOTH}</a></h2>
+<h2 class="Ss" id="const_int_g_audio_source_integers___=__"><a class="permalink" href="#const_int_g_audio_source_integers___=__">const
+  int g_audio_source_integers[] = {<b>AUDIO_SOURCE_AUTO</b>,
+  <b>AUDIO_SOURCE_MIC</b>, <b>AUDIO_SOURCE_MEDIA</b>,
+  <b>AUDIO_SOURCE_BOTH</b>}</a></h2>
 <p class="Pp">Definition at line <b>135</b> of file <b>metadata.c</b>.</p>
 <pre>135 {AUDIO_SOURCE_AUTO, AUDIO_SOURCE_MIC, AUDIO_SOURCE_MEDIA, AUDIO_SOURCE_BOTH};</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_char*_g_audio_source_values___=__OPT_AUDIO_SOURCE_AUTO,_OPT_AUDIO_SOURCE_MIC,_OPT_AUDIO_SOURCE_MEDIA,_OPT_AUDIO_SOURCE_BOTH,_NULL_"><a class="permalink" href="#const_char*_g_audio_source_values___=__OPT_AUDIO_SOURCE_AUTO,_OPT_AUDIO_SOURCE_MIC,_OPT_AUDIO_SOURCE_MEDIA,_OPT_AUDIO_SOURCE_BOTH,_NULL_">const
-  char* g_audio_source_values[] = {OPT_AUDIO_SOURCE_AUTO, OPT_AUDIO_SOURCE_MIC,
-  OPT_AUDIO_SOURCE_MEDIA, OPT_AUDIO_SOURCE_BOTH, NULL}</a></h2>
+<h2 class="Ss" id="const_char*_g_audio_source_values___=__"><a class="permalink" href="#const_char*_g_audio_source_values___=__">const
+  char* g_audio_source_values[] = {<b>OPT_AUDIO_SOURCE_AUTO</b>,
+  <b>OPT_AUDIO_SOURCE_MIC</b>, <b>OPT_AUDIO_SOURCE_MEDIA</b>,
+  <b>OPT_AUDIO_SOURCE_BOTH</b>, NULL}</a></h2>
 <p class="Pp">Definition at line <b>134</b> of file <b>metadata.c</b>.</p>
 <pre>134 {OPT_AUDIO_SOURCE_AUTO, OPT_AUDIO_SOURCE_MIC, OPT_AUDIO_SOURCE_MEDIA, OPT_AUDIO_SOURCE_BOTH, NULL};</pre>
 <pre></pre>
@@ -241,14 +247,14 @@
 <br/>
      COLOR_FILTER_ORANGE, COLOR_FILTER_TEAL,    COLOR_FILTER_CYAN,
 <br/>
-     COLOR_FILTER_PINK,   COLOR_FILTER_RED,     COLOR_FILTER_YELLOW}</pre>
+     COLOR_FILTER_PINK,   COLOR_FILTER_RED,     COLOR_FILTER_YELLOW,    COLOR_FILTER_RAINBOW}</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Definition at line <b>73</b> of file <b>metadata.c</b>.</p>
 <pre>73                                     {COLOR_FILTER_NONE,   COLOR_FILTER_BLACK,   COLOR_FILTER_WHITE,
 74                                        COLOR_FILTER_GREEN,  COLOR_FILTER_MAGENTA, COLOR_FILTER_FUCHSIA,
 75                                        COLOR_FILTER_ORANGE, COLOR_FILTER_TEAL,    COLOR_FILTER_CYAN,
-76                                        COLOR_FILTER_PINK,   COLOR_FILTER_RED,     COLOR_FILTER_YELLOW};</pre>
+76                                        COLOR_FILTER_PINK,   COLOR_FILTER_RED,     COLOR_FILTER_YELLOW,    COLOR_FILTER_RAINBOW};</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -258,12 +264,12 @@
 <p class="Pp"><b>Initial value:</b></p>
 <pre>= {OPT_COLOR_FILTER_NONE, OPT_COLOR_FILTER_BLACK, OPT_COLOR_FILTER_WHITE, OPT_COLOR_FILTER_GREEN, OPT_COLOR_FILTER_MAGENTA, OPT_COLOR_FILTER_FUCHSIA, OPT_COLOR_FILTER_ORANGE,
 <br/>
-      OPT_COLOR_FILTER_TEAL, OPT_COLOR_FILTER_CYAN,  OPT_COLOR_FILTER_PINK,  OPT_COLOR_FILTER_RED,   OPT_COLOR_FILTER_YELLOW,  NULL}</pre>
+      OPT_COLOR_FILTER_TEAL, OPT_COLOR_FILTER_CYAN,  OPT_COLOR_FILTER_PINK,  OPT_COLOR_FILTER_RED,   OPT_COLOR_FILTER_YELLOW,  OPT_COLOR_FILTER_RAINBOW, NULL}</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Definition at line <b>71</b> of file <b>metadata.c</b>.</p>
 <pre>71                                     {OPT_COLOR_FILTER_NONE, OPT_COLOR_FILTER_BLACK, OPT_COLOR_FILTER_WHITE, OPT_COLOR_FILTER_GREEN, OPT_COLOR_FILTER_MAGENTA, OPT_COLOR_FILTER_FUCHSIA, OPT_COLOR_FILTER_ORANGE,
-72                                        OPT_COLOR_FILTER_TEAL, OPT_COLOR_FILTER_CYAN,  OPT_COLOR_FILTER_PINK,  OPT_COLOR_FILTER_RED,   OPT_COLOR_FILTER_YELLOW,  NULL};</pre>
+72                                        OPT_COLOR_FILTER_TEAL, OPT_COLOR_FILTER_CYAN,  OPT_COLOR_FILTER_PINK,  OPT_COLOR_FILTER_RED,   OPT_COLOR_FILTER_YELLOW,  OPT_COLOR_FILTER_RAINBOW, NULL};</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -310,10 +316,10 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_char*_g_color_mode_values___=__OPT_COLOR_MODE_AUTO,_OPT_COLOR_MODE_NONE,_OPT_COLOR_MODE_16,_OPT_COLOR_MODE_256,_OPT_COLOR_MODE_TRUECOLOR,_NULL_"><a class="permalink" href="#const_char*_g_color_mode_values___=__OPT_COLOR_MODE_AUTO,_OPT_COLOR_MODE_NONE,_OPT_COLOR_MODE_16,_OPT_COLOR_MODE_256,_OPT_COLOR_MODE_TRUECOLOR,_NULL_">const
-  char* g_color_mode_values[] = {OPT_COLOR_MODE_AUTO, OPT_COLOR_MODE_NONE,
-  OPT_COLOR_MODE_16, OPT_COLOR_MODE_256, OPT_COLOR_MODE_TRUECOLOR,
-  NULL}</a></h2>
+<h2 class="Ss" id="const_char*_g_color_mode_values___=__"><a class="permalink" href="#const_char*_g_color_mode_values___=__">const
+  char* g_color_mode_values[] = {<b>OPT_COLOR_MODE_AUTO</b>,
+  <b>OPT_COLOR_MODE_NONE</b>, <b>OPT_COLOR_MODE_16</b>,
+  <b>OPT_COLOR_MODE_256</b>, <b>OPT_COLOR_MODE_TRUECOLOR</b>, NULL}</a></h2>
 <p class="Pp">Definition at line <b>57</b> of file <b>metadata.c</b>.</p>
 <pre>57 {OPT_COLOR_MODE_AUTO, OPT_COLOR_MODE_NONE, OPT_COLOR_MODE_16, OPT_COLOR_MODE_256, OPT_COLOR_MODE_TRUECOLOR, NULL};</pre>
 <pre></pre>
@@ -338,9 +344,9 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_int_g_color_setting_integers___=__COLOR_SETTING_AUTO,_COLOR_SETTING_TRUE,_COLOR_SETTING_FALSE_"><a class="permalink" href="#const_int_g_color_setting_integers___=__COLOR_SETTING_AUTO,_COLOR_SETTING_TRUE,_COLOR_SETTING_FALSE_">const
-  int g_color_setting_integers[] = {COLOR_SETTING_AUTO, COLOR_SETTING_TRUE,
-  COLOR_SETTING_FALSE}</a></h2>
+<h2 class="Ss" id="const_int_g_color_setting_integers___=__"><a class="permalink" href="#const_int_g_color_setting_integers___=__">const
+  int g_color_setting_integers[] = {<b>COLOR_SETTING_AUTO</b>,
+  <b>COLOR_SETTING_TRUE</b>, <b>COLOR_SETTING_FALSE</b>}</a></h2>
 <p class="Pp">Definition at line <b>38</b> of file <b>metadata.c</b>.</p>
 <pre>38 {COLOR_SETTING_AUTO, COLOR_SETTING_TRUE, COLOR_SETTING_FALSE};</pre>
 <pre></pre>
@@ -409,19 +415,20 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_int_g_log_level_integers___=__LOG_DEV,_LOG_DEBUG,_LOG_INFO,_LOG_WARN,_LOG_ERROR,_LOG_FATAL_"><a class="permalink" href="#const_int_g_log_level_integers___=__LOG_DEV,_LOG_DEBUG,_LOG_INFO,_LOG_WARN,_LOG_ERROR,_LOG_FATAL_">const
-  int g_log_level_integers[] = {LOG_DEV, LOG_DEBUG, LOG_INFO, LOG_WARN,
-  LOG_ERROR, LOG_FATAL}</a></h2>
+<h2 class="Ss" id="const_int_g_log_level_integers___=__"><a class="permalink" href="#const_int_g_log_level_integers___=__">const
+  int g_log_level_integers[] = {<b>LOG_DEV</b>, <b>LOG_DEBUG</b>,
+  <b>LOG_INFO</b>, <b>LOG_WARN</b>, <b>LOG_ERROR</b>, <b>LOG_FATAL</b>}</a></h2>
 <p class="Pp">Definition at line <b>24</b> of file <b>metadata.c</b>.</p>
 <pre>24 {LOG_DEV, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL};</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_char*_g_log_level_values___=__OPT_LOG_LEVEL_DEV,_OPT_LOG_LEVEL_DEBUG,_OPT_LOG_LEVEL_INFO,_OPT_LOG_LEVEL_WARN,_OPT_LOG_LEVEL_ERROR,_OPT_LOG_LEVEL_FATAL,_NULL_"><a class="permalink" href="#const_char*_g_log_level_values___=__OPT_LOG_LEVEL_DEV,_OPT_LOG_LEVEL_DEBUG,_OPT_LOG_LEVEL_INFO,_OPT_LOG_LEVEL_WARN,_OPT_LOG_LEVEL_ERROR,_OPT_LOG_LEVEL_FATAL,_NULL_">const
-  char* g_log_level_values[] = {OPT_LOG_LEVEL_DEV, OPT_LOG_LEVEL_DEBUG,
-  OPT_LOG_LEVEL_INFO, OPT_LOG_LEVEL_WARN, OPT_LOG_LEVEL_ERROR,
-  OPT_LOG_LEVEL_FATAL, NULL}</a></h2>
+<h2 class="Ss" id="const_char*_g_log_level_values___=__"><a class="permalink" href="#const_char*_g_log_level_values___=__">const
+  char* g_log_level_values[] = {<b>OPT_LOG_LEVEL_DEV</b>,
+  <b>OPT_LOG_LEVEL_DEBUG</b>, <b>OPT_LOG_LEVEL_INFO</b>,
+  <b>OPT_LOG_LEVEL_WARN</b>, <b>OPT_LOG_LEVEL_ERROR</b>,
+  <b>OPT_LOG_LEVEL_FATAL</b>, NULL}</a></h2>
 <p class="Pp">Definition at line <b>23</b> of file <b>metadata.c</b>.</p>
 <pre>23 {OPT_LOG_LEVEL_DEV, OPT_LOG_LEVEL_DEBUG, OPT_LOG_LEVEL_INFO, OPT_LOG_LEVEL_WARN, OPT_LOG_LEVEL_ERROR, OPT_LOG_LEVEL_FATAL, NULL};</pre>
 <pre></pre>
@@ -489,10 +496,11 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_char*_g_palette_values___=__OPT_PALETTE_STANDARD,_OPT_PALETTE_BLOCKS,_OPT_PALETTE_DIGITAL,_OPT_PALETTE_MINIMAL,_OPT_PALETTE_COOL,_OPT_PALETTE_CUSTOM,_NULL_"><a class="permalink" href="#const_char*_g_palette_values___=__OPT_PALETTE_STANDARD,_OPT_PALETTE_BLOCKS,_OPT_PALETTE_DIGITAL,_OPT_PALETTE_MINIMAL,_OPT_PALETTE_COOL,_OPT_PALETTE_CUSTOM,_NULL_">const
-  char* g_palette_values[] = {OPT_PALETTE_STANDARD, OPT_PALETTE_BLOCKS,
-  OPT_PALETTE_DIGITAL, OPT_PALETTE_MINIMAL, OPT_PALETTE_COOL,
-  OPT_PALETTE_CUSTOM, NULL}</a></h2>
+<h2 class="Ss" id="const_char*_g_palette_values___=__"><a class="permalink" href="#const_char*_g_palette_values___=__">const
+  char* g_palette_values[] = {<b>OPT_PALETTE_STANDARD</b>,
+  <b>OPT_PALETTE_BLOCKS</b>, <b>OPT_PALETTE_DIGITAL</b>,
+  <b>OPT_PALETTE_MINIMAL</b>, <b>OPT_PALETTE_COOL</b>,
+  <b>OPT_PALETTE_CUSTOM</b>, NULL}</a></h2>
 <p class="Pp">Definition at line <b>95</b> of file <b>metadata.c</b>.</p>
 <pre>95 {OPT_PALETTE_STANDARD, OPT_PALETTE_BLOCKS, OPT_PALETTE_DIGITAL, OPT_PALETTE_MINIMAL, OPT_PALETTE_COOL, OPT_PALETTE_CUSTOM, NULL};</pre>
 <pre></pre>
@@ -583,10 +591,10 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_char*_g_render_values___=__OPT_RENDER_MODE_FOREGROUND,_OPT_RENDER_MODE_FG,_OPT_RENDER_MODE_BACKGROUND,_OPT_RENDER_MODE_BG,_OPT_RENDER_MODE_HALF_BLOCK,_NULL_"><a class="permalink" href="#const_char*_g_render_values___=__OPT_RENDER_MODE_FOREGROUND,_OPT_RENDER_MODE_FG,_OPT_RENDER_MODE_BACKGROUND,_OPT_RENDER_MODE_BG,_OPT_RENDER_MODE_HALF_BLOCK,_NULL_">const
-  char* g_render_values[] = {OPT_RENDER_MODE_FOREGROUND, OPT_RENDER_MODE_FG,
-  OPT_RENDER_MODE_BACKGROUND, OPT_RENDER_MODE_BG, OPT_RENDER_MODE_HALF_BLOCK,
-  NULL}</a></h2>
+<h2 class="Ss" id="const_char*_g_render_values___=__"><a class="permalink" href="#const_char*_g_render_values___=__">const
+  char* g_render_values[] = {<b>OPT_RENDER_MODE_FOREGROUND</b>,
+  <b>OPT_RENDER_MODE_FG</b>, <b>OPT_RENDER_MODE_BACKGROUND</b>,
+  <b>OPT_RENDER_MODE_BG</b>, <b>OPT_RENDER_MODE_HALF_BLOCK</b>, NULL}</a></h2>
 <p class="Pp">Definition at line <b>110</b> of file <b>metadata.c</b>.</p>
 <pre>110 {OPT_RENDER_MODE_FOREGROUND, OPT_RENDER_MODE_FG, OPT_RENDER_MODE_BACKGROUND, OPT_RENDER_MODE_BG, OPT_RENDER_MODE_HALF_BLOCK, NULL};</pre>
 <pre></pre>
@@ -627,9 +635,9 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_int_g_utf8_setting_integers___=__UTF8_SETTING_AUTO,_UTF8_SETTING_TRUE,_UTF8_SETTING_FALSE_"><a class="permalink" href="#const_int_g_utf8_setting_integers___=__UTF8_SETTING_AUTO,_UTF8_SETTING_TRUE,_UTF8_SETTING_FALSE_">const
-  int g_utf8_setting_integers[] = {UTF8_SETTING_AUTO, UTF8_SETTING_TRUE,
-  UTF8_SETTING_FALSE}</a></h2>
+<h2 class="Ss" id="const_int_g_utf8_setting_integers___=__"><a class="permalink" href="#const_int_g_utf8_setting_integers___=__">const
+  int g_utf8_setting_integers[] = {<b>UTF8_SETTING_AUTO</b>,
+  <b>UTF8_SETTING_TRUE</b>, <b>UTF8_SETTING_FALSE</b>}</a></h2>
 <p class="Pp">Definition at line <b>48</b> of file <b>metadata.c</b>.</p>
 <pre>48 {UTF8_SETTING_AUTO, UTF8_SETTING_TRUE, UTF8_SETTING_FALSE};</pre>
 <pre></pre>
@@ -667,7 +675,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

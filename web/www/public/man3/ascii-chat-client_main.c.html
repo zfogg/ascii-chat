@@ -57,9 +57,9 @@
 <section class="Ss">
 <h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
 <br/>
-<p class="Pp">thread_pool_t * <b>g_client_worker_pool</b> = NULL
+<p class="Pp"><b>thread_pool_t</b> * <b>g_client_worker_pool</b> = NULL
   <br/>
-  Global client worker thread pool. app_client_t * <b>g_client</b> = NULL
+  Global client worker thread pool. <b>app_client_t</b> * <b>g_client</b> = NULL
   <br/>
   Global client application context. struct <b>webrtc_peer_manager</b> *
     <b>g_peer_manager</b> = NULL
@@ -583,17 +583,27 @@ ascii-chat client --address localhost --audio
 912 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>app_callbacks_register()</b>,
-    <b>asciichat_shared_destroy()</b>, <b>client_crypto_handshake()</b>,
+<p class="Pp">References <b>options_state::address</b>,
+    <b>app_callbacks_register()</b>, <b>ASCIICHAT_OK</b>,
+    <b>asciichat_shared_destroy()</b>, <b>BUFFER_SIZE_SMALL</b>,
+    <b>CLEAR_ERRNO</b>, <b>client_crypto_handshake()</b>,
     <b>client_crypto_init()</b>, <b>client_crypto_set_mode()</b>,
     <b>connection_context_cleanup()</b>, <b>connection_context_init()</b>,
     <b>crypto_client_get_context()</b>, <b>crypto_client_is_ready()</b>,
-    <b>is_localhost_ipv4()</b>, <b>log_lock_terminal()</b>,
-    <b>options_get()</b>, <b>options_set_bool()</b>,
-    <b>server_connection_set_ip()</b>, <b>server_connection_set_port()</b>,
-    <b>server_connection_shutdown()</b>, <b>session_client_like_run()</b>,
-    <b>set_interrupt_callback()</b>, <b>should_exit()</b>, <b>signal_exit()</b>,
-    <b>tcp_client_create()</b>, <b>ui_mdns_free_results()</b>,
+    <b>ERROR_WEBCAM</b>, <b>ERROR_WEBCAM_IN_USE</b>,
+    <b>ERROR_WEBCAM_PERMISSION</b>, <b>FATAL</b>, <b>GET_OPTION</b>,
+    <b>is_localhost_ipv4()</b>, <b>options_state::lan_discovery</b>,
+    <b>log_debug</b>, <b>log_error</b>, <b>log_lock_terminal()</b>,
+    <b>log_warn</b>, <b>ui_mdns_config_t::max_servers</b>,
+    <b>MS_PER_SEC_INT</b>, <b>ui_mdns_server_t::name</b>, <b>options_get()</b>,
+    <b>options_set_bool()</b>, <b>platform_force_exit()</b>,
+    <b>platform_signal()</b>, <b>options_state::port</b>,
+    <b>ui_mdns_server_t::port</b>, <b>ui_mdns_config_t::quiet</b>,
+    <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>server_connection_set_ip()</b>,
+    <b>server_connection_set_port()</b>, <b>server_connection_shutdown()</b>,
+    <b>session_client_like_run()</b>, <b>set_interrupt_callback()</b>,
+    <b>should_exit()</b>, <b>signal_exit()</b>, <b>tcp_client_create()</b>,
+    <b>ui_mdns_config_t::timeout_ms</b>, <b>ui_mdns_free_results()</b>,
     <b>ui_mdns_get_best_address()</b>, <b>ui_mdns_query()</b>,
     <b>ui_mdns_select()</b>, <b>url_is_websocket()</b>, and
     <b>webcam_print_init_error_help()</b>.</p>
@@ -603,8 +613,7 @@ ascii-chat client --address localhost --audio
 <h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="app_client_t*_g_client_=_NULL"><a class="permalink" href="#app_client_t*_g_client_=_NULL">app_client_t*
-  g_client = NULL</a></h2>
+<h2 class="Ss"><b>app_client_t</b>* g_client = NULL</h2>
 <p class="Pp">Global client application context. Global application client
     context</p>
 <p class="Pp"></p>
@@ -617,8 +626,7 @@ ascii-chat client --address localhost --audio
 <p class="Pp">Definition at line <b>152</b> of file <b>client/main.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="thread_pool_t*_g_client_worker_pool_=_NULL"><a class="permalink" href="#thread_pool_t*_g_client_worker_pool_=_NULL">thread_pool_t*
-  g_client_worker_pool = NULL</a></h2>
+<h2 class="Ss"><b>thread_pool_t</b>* g_client_worker_pool = NULL</h2>
 <p class="Pp">Global client worker thread pool. Global client worker thread
   pool</p>
 <p class="Pp"></p>
@@ -654,7 +662,7 @@ ascii-chat client --address localhost --audio
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

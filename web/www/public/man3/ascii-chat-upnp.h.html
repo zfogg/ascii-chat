@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>upnp.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">upnp.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">upnp.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">upnp.h - UPnP/NAT-PMP port mapping for direct TCP
+  connectivity.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>nat_upnp_context</b>
+  <br/>
+  Handle to UPnP context.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>nat_upnp_context</b> <b>nat_upnp_context_t</b>
+  <br/>
+  Handle to UPnP context.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>nat_upnp_open</b> (<b>uint16_t</b>
+    internal_port, const char *description, <b>nat_upnp_context_t</b> **ctx)
+  <br/>
+  Discover and open port via UPnP. void <b>nat_upnp_close</b>
+    (<b>nat_upnp_context_t</b> **ctx)
+  <br/>
+  Close port mapping and clean up. <b>bool</b> <b>nat_upnp_is_active</b> (const
+    <b>nat_upnp_context_t</b> *ctx)
+  <br/>
+  Check if port mapping is still active. <b>asciichat_error_t</b>
+    <b>nat_upnp_refresh</b> (<b>nat_upnp_context_t</b> *ctx)
+  <br/>
+  Refresh port mapping (e.g., for long-running servers).
+    <b>asciichat_error_t</b> <b>nat_upnp_get_address</b> (const
+    <b>nat_upnp_context_t</b> *ctx, char *addr, size_t addr_len)
+  <br/>
+  Get the public address (IP:port) for advertising to clients.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">UPnP/NAT-PMP port mapping for direct TCP connectivity.</p>
+<p class="Pp">Enables automatic port forwarding on home routers using
+    UPnP/NAT-PMP, making direct TCP connections work for ~70% of home users
+    without WebRTC.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Quick Win Strategy:</b></p>
+<ul class="Bl-bullet">
+  <li>Try UPnP first (works on ~90% of home routers)</li>
+  <li>Fall back to NAT-PMP (Apple/Time Capsule)</li>
+  <li>If both fail, client connects via ACDS discovery + WebRTC</li>
+</ul>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>upnp.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
+  struct <b>nat_upnp_context</b> <b>nat_upnp_context_t</b></a></h2>
+<p class="Pp">Handle to UPnP context.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_nat_upnp_close_("><a class="permalink" href="#void_nat_upnp_close_(">void
+  nat_upnp_close (<b>nat_upnp_context_t</b> ** ctx)</a></h2>
+<p class="Pp">Close port mapping and clean up. Removes the port mapping from the
+    gateway and frees resources. Safe to call with NULL.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Context handle (will be set to NULL on
+  return)</div>
+<p class="Pp">Definition at line <b>276</b> of file <b>upnp.c</b>.</p>
+<pre>276                                               {
+277   if (!ctx || !(*ctx)) {
+278     return;
+279   }
+280 
+281   if ((*ctx)-&gt;is_mapped) {
+282     // Note: In a real implementation, we'd remove the port mapping from the gateway.
+283     // For MVP, we just log and let the lease expire naturally (typically 1 hour).
+284     log_debug(&quot;NAT: Port mapping will expire in ~1 hour (cleanup handled by router)&quot;);
+285   }
+286 
+287   SAFE_FREE(*ctx);
+288   *ctx = NULL;
+289 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_debug</b>, and <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> nat_upnp_get_address (const
+  <b>nat_upnp_context_t</b> * ctx, char * addr, size_t addr_len)</h2>
+<p class="Pp">Get the public address (IP:port) for advertising to clients.
+    Useful for ACDS registration where we need to advertise the public endpoint
+    for P2P connections.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Context handle
+<br/>
+<i>addr</i> Buffer to write &quot;IP:port&quot; format (must be at least 22
+  bytes)
+<br/>
+<i>addr_len</i> Size of addr buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK if successfully written
+<p class="Pp"></p>
+<p class="Pp">ERROR_INVALID_PARAM if addr is too small</p>
+</div>
+<p class="Pp">Definition at line <b>310</b> of file <b>upnp.c</b>.</p>
+<pre>310                                                                                                    {
+311   if (!ctx || !addr || addr_len &lt; 22) {
+312     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NAT: Invalid arguments for get_address&quot;);
+313   }
+314 
+315   if (!ctx-&gt;is_mapped || ctx-&gt;external_ip[0] == '\0') {
+316     return SET_ERRNO(ERROR_NETWORK, &quot;NAT: No active mapping to advertise&quot;);
+317   }
+318 
+319   // Format as &quot;IP:port&quot; (e.g., &quot;203.0.113.42:27224&quot;)
+320   int written = safe_snprintf(addr, addr_len, &quot;%s:%u&quot;, ctx-&gt;external_ip, ctx-&gt;mapped_port);
+321 
+322   if (written &lt; 0 || (size_t)written &gt;= addr_len) {
+323     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NAT: Address buffer too small&quot;);
+324   }
+325 
+326   return ASCIICHAT_OK;
+327 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_NETWORK</b>, <b>nat_upnp_context::external_ip</b>,
+    <b>nat_upnp_context::is_mapped</b>, <b>nat_upnp_context::mapped_port</b>,
+    <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, <b>nat_detect_quality()</b>, and
+    <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> nat_upnp_is_active (const <b>nat_upnp_context_t</b> *
+  ctx)</h2>
+<p class="Pp">Check if port mapping is still active. Useful for long-running
+    servers to verify the mapping hasn't expired.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Context handle</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if port is still mapped on the gateway</div>
+<p class="Pp">Definition at line <b>291</b> of file <b>upnp.c</b>.</p>
+<pre>291                                                        {
+292   if (!ctx) {
+293     return false;
+294   }
+295   return ctx-&gt;is_mapped &amp;&amp; ctx-&gt;external_ip[0] != '\0';
+296 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>nat_upnp_context::external_ip</b>, and
+    <b>nat_upnp_context::is_mapped</b>.</p>
+<p class="Pp">Referenced by <b>nat_detect_quality()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> nat_upnp_open (<b>uint16_t</b>
+  internal_port, const char * description, <b>nat_upnp_context_t</b> **
+  ctx)</h2>
+<p class="Pp">Discover and open port via UPnP. Attempts to find an UPnP-enabled
+    gateway and request port mapping. On success, fills in external_ip and
+    mapped_port.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>internal_port</i> Local TCP port to map (e.g., 27224
+  for ACDS)
+<br/>
+<i>description</i> Description for port mapping (e.g., &quot;ascii-chat
+  Server&quot;)
+<br/>
+<i>ctx</i> Context handle (must be freed with <b>nat_upnp_close()</b>)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK if port was successfully mapped
+<p class="Pp"></p>
+<p class="Pp">ERROR_NETWORK_* if discovery or mapping failed (not fatal,
+    fallback to WebRTC)</p>
+</div>
+<p class="Pp"><b>Example:</b></p>
+<p class="Pp"></p>
+<pre>nat_upnp_context_t *ctx = NULL;
+asciichat_error_t result = nat_upnp_open(27224, &quot;ascii-chat Server&quot;, &amp;ctx);
+if (result == ASCIICHAT_OK &amp;&amp; ctx) {
+<br/>
+    printf(&quot;Public IP: %s\n&quot;, ctx-&gt;external_ip);
+<br/>
+    // Advertise ctx-&gt;external_ip:ctx-&gt;mapped_port to ACDS
+}
+</pre>
+<p class="Pp">Definition at line <b>236</b> of file <b>upnp.c</b>.</p>
+<pre>236                                                                                                            {
+237   if (!ctx || !description) {
+238     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;nat_upnp_open: Invalid arguments&quot;);
+239   }
+240 
+241   // Allocate context
+242   *ctx = SAFE_MALLOC(sizeof(nat_upnp_context_t), nat_upnp_context_t *);
+243   if (!(*ctx)) {
+244     return ERROR_MEMORY;
+245   }
+246 
+247   memset(*ctx, 0, sizeof(nat_upnp_context_t));
+248 
+249   // Try UPnP first (works on ~90% of home routers)
+250   log_info(&quot;NAT: Attempting UPnP port mapping for port %u...&quot;, internal_port);
+251   asciichat_error_t result = upnp_try_map_port(internal_port, description, *ctx);
+252 
+253   if (result == ASCIICHAT_OK) {
+254     log_info(&quot;NAT: &#x2713; UPnP port mapping successful!&quot;);
+255     return ASCIICHAT_OK;
+256   }
+257 
+258   log_info(&quot;NAT: UPnP failed, trying NAT-PMP fallback...&quot;);
+259   result = natpmp_try_map_port(internal_port, *ctx);
+260 
+261   if (result == ASCIICHAT_OK) {
+262     log_info(&quot;NAT: &#x2713; NAT-PMP port mapping successful!&quot;);
+263     return ASCIICHAT_OK;
+264   }
+265 
+266   // Both UPnP and NAT-PMP failed - this is OK, not fatal
+267   log_warn(&quot;NAT: Both UPnP and NAT-PMP failed. Direct TCP won't work, will use ACDS + WebRTC.&quot;);
+268   log_warn(&quot;NAT: This is normal for strict NATs. No action required.&quot;);
+269 
+270   SAFE_FREE(*ctx);
+271   *ctx = NULL;
+272 
+273   return SET_ERRNO(ERROR_NETWORK, &quot;NAT: No automatic port mapping available (will use WebRTC)&quot;);
+274 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>, <b>log_info</b>, <b>log_warn</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, <b>nat_detect_quality()</b>, and
+    <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> nat_upnp_refresh
+  (<b>nat_upnp_context_t</b> * ctx)</h2>
+<p class="Pp">Refresh port mapping (e.g., for long-running servers). Some
+    gateways may expire mappings. Call periodically (e.g., every hour) to ensure
+    the mapping stays active.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Context handle</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK if refresh succeeded</div>
+<p class="Pp">Definition at line <b>298</b> of file <b>upnp.c</b>.</p>
+<pre>298                                                             {
+299   if (!ctx || !ctx-&gt;is_mapped) {
+300     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NAT: Cannot refresh - no active mapping&quot;);
+301   }
+302 
+303   log_debug(&quot;NAT: Refreshing port mapping (would extend lease in full implementation)&quot;);
+304 
+305   // In a real implementation, we'd re-register the port mapping to extend the lease.
+306   // For now, we just return success since the lease is 1 hour anyway.
+307   return ASCIICHAT_OK;
+308 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>nat_upnp_context::is_mapped</b>, <b>log_debug</b>, and
+  <b>SET_ERRNO</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>terminal_capabilities_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">terminal_capabilities_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">terminal_capabilities_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">terminal_capabilities_t - Complete terminal capabilities
+    structure.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/platform/terminal.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>terminal_color_mode_t</b> <b>color_level</b>
+  <br/>
+  Detected color support level (<b>terminal_color_mode_t</b>). <b>uint32_t</b>
+    <b>capabilities</b>
+  <br/>
+  Capability flags bitmask (<b>terminal_capability_flags_t</b>). <b>uint32_t</b>
+    <b>color_count</b>
+  <br/>
+  Maximum number of colors (2, 16, 256, or 16777216). <b>bool</b>
+    <b>utf8_support</b>
+  <br/>
+  True if terminal supports UTF-8 encoding. <b>bool</b>
+    <b>detection_reliable</b>
+  <br/>
+  True if detection is confident (reliable detection). <b>render_mode_t</b>
+    <b>render_mode</b>
+  <br/>
+  Preferred rendering mode (<b>render_mode_t</b>). char <b>term_type</b> [64]
+  <br/>
+  $TERM environment variable value (for debugging) char <b>colorterm</b> [64]
+  <br/>
+  $COLORTERM environment variable value (for debugging) <b>bool</b>
+    <b>wants_background</b>
+  <br/>
+  True if background colors are preferred. int <b>palette_type</b>
+  <br/>
+  Palette type enum value (<b>palette_type_t</b>). char <b>palette_custom</b>
+    [64]
+  <br/>
+  Custom palette characters (if palette_type == PALETTE_CUSTOM). <b>uint8_t</b>
+    <b>desired_fps</b>
+  <br/>
+  Client's desired frame rate (1-144 FPS). <b>color_filter_t</b>
+    <b>color_filter</b>
+  <br/>
+  Monochromatic color filter enum value (<b>color_filter_t</b>). <b>bool</b>
+    <b>wants_padding</b>
+  <br/>
+  Whether client wants frame padding (centering) - false for snapshot/piped
+    modes. size_t <b>pad_height</b>
+  <br/>
+  Number of top padding lines when wants_padding is true.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Complete terminal capabilities structure.</p>
+<p class="Pp">Comprehensive terminal capabilities structure containing all
+    detected terminal features, color support, encoding capabilities, and
+    rendering preferences. Used for optimal ASCII art rendering
+  configuration.</p>
+<p class="Pp"></p>
+<p class="Pp">This structure is populated by
+    <b>detect_terminal_capabilities()</b> and contains all information needed to
+    make rendering decisions. The structure balances automatic detection with
+    user overrides and sensible defaults.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Detection reliability:</b> The detection_reliable field
+    indicates confidence in detected capabilities. If unreliable, the terminal
+    capabilities may be guessed or defaulted rather than definitively detected.
+    In such cases, users can override with command-line flags (--color, --256,
+    --truecolor) for more accurate results.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Color and rendering:</b></p>
+<ul class="Bl-bullet">
+  <li>color_level: Auto-detected or user-overridden via --color-mode</li>
+  <li>render_mode: Determines how ASCII art is rendered (foreground vs
+      background)</li>
+  <li>wants_background: Whether to prefer background colors over foreground</li>
+  <li>color_filter: Optional monochromatic filter for
+    accessibility/visibility</li>
+</ul>
+<p class="Pp"><b>Encoding and internationalization:</b></p>
+<ul class="Bl-bullet">
+  <li>utf8_support: Determines whether Unicode characters can be used</li>
+  <li>Required for palette characters that use Unicode blocks/symbols</li>
+</ul>
+<p class="Pp"><b>User preferences:</b></p>
+<ul class="Bl-bullet">
+  <li>desired_fps: Client's requested frame rate (1-144 FPS)</li>
+  <li>wants_padding: Whether to center video in terminal (false when
+      piped/snapshot)</li>
+  <li>palette_type: Selected character palette (ASCII, Unicode blocks,
+    custom)</li>
+</ul>
+<p class="Pp"><b>Debugging information:</b></p>
+<ul class="Bl-bullet">
+  <li>term_type: Value of $TERM environment variable (for troubleshooting)</li>
+  <li>colorterm: Value of $COLORTERM (RGB/256/none hints)</li>
+</ul>
+<p class="Pp">Definition at line <b>707</b> of file <b>terminal.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> terminal_capabilities_t::capabilities</h2>
+<p class="Pp">Capability flags bitmask (<b>terminal_capability_flags_t</b>).</p>
+<p class="Pp">Definition at line <b>711</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
+    <b>detect_terminal_capabilities()</b>,
+    <b>handle_client_capabilities_packet()</b>, <b>mirror_convert_frame()</b>,
+    and <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> terminal_capabilities_t::color_count</h2>
+<p class="Pp">Maximum number of colors (2, 16, 256, or 16777216).</p>
+<p class="Pp">Definition at line <b>713</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
+    <b>detect_terminal_capabilities()</b>,
+    <b>handle_client_capabilities_packet()</b>, <b>mirror_convert_frame()</b>,
+    and <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>color_filter_t</b> terminal_capabilities_t::color_filter</h2>
+<p class="Pp">Monochromatic color filter enum value (<b>color_filter_t</b>).</p>
+<p class="Pp">Definition at line <b>733</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>detect_terminal_capabilities()</b>, and
+    <b>mirror_convert_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>terminal_color_mode_t</b>
+  terminal_capabilities_t::color_level</h2>
+<p class="Pp">Detected color support level (<b>terminal_color_mode_t</b>).</p>
+<p class="Pp">Definition at line <b>709</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
+    <b>detect_terminal_capabilities()</b>,
+    <b>handle_client_capabilities_packet()</b>, <b>mirror_convert_frame()</b>,
+    <b>session_display_create()</b>, <b>session_display_write_ascii()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_terminal_capabilities_t::colorterm_64_"><a class="permalink" href="#char_terminal_capabilities_t::colorterm_64_">char
+  terminal_capabilities_t::colorterm[64]</a></h2>
+<p class="Pp">$COLORTERM environment variable value (for debugging)</p>
+<p class="Pp">Definition at line <b>723</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
+    <b>detect_terminal_capabilities()</b>,
+    <b>handle_client_capabilities_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> terminal_capabilities_t::desired_fps</h2>
+<p class="Pp">Client's desired frame rate (1-144 FPS).</p>
+<p class="Pp">Definition at line <b>731</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>client_video_render_thread()</b>,
+    <b>detect_terminal_capabilities()</b>,
+    <b>handle_client_capabilities_packet()</b>, <b>mirror_convert_frame()</b>,
+    and <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> terminal_capabilities_t::detection_reliable</h2>
+<p class="Pp">True if detection is confident (reliable detection).</p>
+<p class="Pp">Definition at line <b>717</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
+    <b>detect_terminal_capabilities()</b>,
+    <b>handle_client_capabilities_packet()</b>, <b>mirror_convert_frame()</b>,
+    and <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_terminal_capabilities_t::pad_height"><a class="permalink" href="#size_t_terminal_capabilities_t::pad_height">size_t
+  terminal_capabilities_t::pad_height</a></h2>
+<p class="Pp">Number of top padding lines when wants_padding is true.</p>
+<p class="Pp">Definition at line <b>737</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_terminal_capabilities_t::palette_custom_64_"><a class="permalink" href="#char_terminal_capabilities_t::palette_custom_64_">char
+  terminal_capabilities_t::palette_custom[64]</a></h2>
+<p class="Pp">Custom palette characters (if palette_type == PALETTE_CUSTOM).</p>
+<p class="Pp">Definition at line <b>729</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_terminal_capabilities_t::palette_type"><a class="permalink" href="#int_terminal_capabilities_t::palette_type">int
+  terminal_capabilities_t::palette_type</a></h2>
+<p class="Pp">Palette type enum value (<b>palette_type_t</b>).</p>
+<p class="Pp">Definition at line <b>727</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>detect_terminal_capabilities()</b>,
+    <b>handle_client_capabilities_packet()</b>, and
+    <b>mirror_convert_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>render_mode_t</b> terminal_capabilities_t::render_mode</h2>
+<p class="Pp">Preferred rendering mode (<b>render_mode_t</b>).</p>
+<p class="Pp">Definition at line <b>719</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
+    <b>ascii_convert_with_capabilities()</b>,
+    <b>detect_terminal_capabilities()</b>,
+    <b>handle_client_capabilities_packet()</b>, <b>mirror_convert_frame()</b>,
+    <b>session_display_convert_to_ascii()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_terminal_capabilities_t::term_type_64_"><a class="permalink" href="#char_terminal_capabilities_t::term_type_64_">char
+  terminal_capabilities_t::term_type[64]</a></h2>
+<p class="Pp">$TERM environment variable value (for debugging)</p>
+<p class="Pp">Definition at line <b>721</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
+    <b>detect_terminal_capabilities()</b>,
+    <b>handle_client_capabilities_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> terminal_capabilities_t::utf8_support</h2>
+<p class="Pp">True if terminal supports UTF-8 encoding.</p>
+<p class="Pp">Definition at line <b>715</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
+    <b>detect_terminal_capabilities()</b>,
+    <b>handle_client_capabilities_packet()</b>, <b>mirror_convert_frame()</b>,
+    and <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> terminal_capabilities_t::wants_background</h2>
+<p class="Pp">True if background colors are preferred.</p>
+<p class="Pp">Definition at line <b>725</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>detect_terminal_capabilities()</b>,
+    <b>handle_client_capabilities_packet()</b>, and
+    <b>mirror_convert_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> terminal_capabilities_t::wants_padding</h2>
+<p class="Pp">Whether client wants frame padding (centering) - false for
+    snapshot/piped modes.</p>
+<p class="Pp">Definition at line <b>735</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert_with_capabilities()</b>,
+    <b>handle_client_capabilities_packet()</b>, <b>mirror_convert_frame()</b>,
+    <b>session_display_create()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

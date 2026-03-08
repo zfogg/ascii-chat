@@ -40,11 +40,12 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">const uint8_t * <b>target_session_id</b>
+<p class="Pp">const <b>uint8_t</b> * <b>target_session_id</b>
   <br/>
-  Session to broadcast to. const uint8_t * <b>exclude_participant_id</b>
+  Session to broadcast to. const <b>uint8_t</b> * <b>exclude_participant_id</b>
   <br/>
-  Participant to exclude (NULL = no exclusion). packet_type_t <b>packet_type</b>
+  Participant to exclude (NULL = no exclusion). <b>packet_type_t</b>
+    <b>packet_type</b>
   <br/>
   Packet type to send. const void * <b>packet</b>
   <br/>
@@ -67,8 +68,8 @@
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="const_uint8_t*_broadcast_context_t::exclude_participant_id"><a class="permalink" href="#const_uint8_t*_broadcast_context_t::exclude_participant_id">const
-  uint8_t* broadcast_context_t::exclude_participant_id</a></h2>
+<h2 class="Ss">const <b>uint8_t</b>*
+  broadcast_context_t::exclude_participant_id</h2>
 <p class="Pp">Participant to exclude (NULL = no exclusion).</p>
 <p class="Pp">Definition at line <b>75</b> of file <b>signaling.c</b>.</p>
 </section>
@@ -85,8 +86,7 @@
 <p class="Pp">Definition at line <b>78</b> of file <b>signaling.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="packet_type_t_broadcast_context_t::packet_type"><a class="permalink" href="#packet_type_t_broadcast_context_t::packet_type">packet_type_t
-  broadcast_context_t::packet_type</a></h2>
+<h2 class="Ss"><b>packet_type_t</b> broadcast_context_t::packet_type</h2>
 <p class="Pp">Packet type to send.</p>
 <p class="Pp">Definition at line <b>76</b> of file <b>signaling.c</b>.</p>
 </section>
@@ -98,8 +98,7 @@
 <p class="Pp">Referenced by <b>signaling_broadcast()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="const_uint8_t*_broadcast_context_t::target_session_id"><a class="permalink" href="#const_uint8_t*_broadcast_context_t::target_session_id">const
-  uint8_t* broadcast_context_t::target_session_id</a></h2>
+<h2 class="Ss">const <b>uint8_t</b>* broadcast_context_t::target_session_id</h2>
 <p class="Pp">Session to broadcast to.</p>
 <p class="Pp">Definition at line <b>74</b> of file <b>signaling.c</b>.</p>
 <p class="Pp"></p>
@@ -112,7 +111,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

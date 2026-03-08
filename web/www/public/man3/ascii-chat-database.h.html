@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>database.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">database.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">database.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">database.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef sqlite3 <b>discovery_database_t</b>
+  <br/>
+  Discovery database handle (sqlite3 wrapper).
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>database_init</b> (const char
+    *db_path, sqlite3 **db)
+  <br/>
+  Initialize database and create schema. void <b>database_close</b> (sqlite3
+    *db)
+  <br/>
+  Close database. <b>asciichat_error_t</b> <b>database_session_create</b>
+    (sqlite3 *db, const <b>acip_session_create_t</b> *req, const
+    <b>acds_config_t</b> *config, <b>acip_session_created_t</b> *resp)
+  <br/>
+  Create new session. <b>asciichat_error_t</b> <b>database_session_lookup</b>
+    (sqlite3 *db, const char *session_string, const <b>acds_config_t</b>
+    *config, <b>acip_session_info_t</b> *resp)
+  <br/>
+  Lookup session by string. <b>asciichat_error_t</b>
+    <b>database_session_join</b> (sqlite3 *db, const <b>acip_session_join_t</b>
+    *req, const <b>acds_config_t</b> *config, <b>acip_session_joined_t</b>
+    *resp)
+  <br/>
+  Join existing session. <b>asciichat_error_t</b> <b>database_session_leave</b>
+    (sqlite3 *db, const <b>uint8_t</b> <b>session_id</b>[16], const
+    <b>uint8_t</b> <b>participant_id</b>[16])
+  <br/>
+  Leave session. <b>session_entry_t</b> * <b>database_session_find_by_id</b>
+    (sqlite3 *db, const <b>uint8_t</b> <b>session_id</b>[16])
+  <br/>
+  Find session by session_id. <b>session_entry_t</b> *
+    <b>database_session_find_by_string</b> (sqlite3 *db, const char
+    *session_string)
+  <br/>
+  Find session by session_string. void <b>database_session_cleanup_expired</b>
+    (sqlite3 *db)
+  <br/>
+  Clean up inactive sessions. <b>asciichat_error_t</b>
+    <b>database_session_update_host</b> (sqlite3 *db, const <b>uint8_t</b>
+    <b>session_id</b>[16], const <b>uint8_t</b> host_participant_id[16], const
+    char *host_address, <b>uint16_t</b> host_port, <b>uint8_t</b>
+    connection_type)
+  <br/>
+  Update session host (discovery mode). <b>asciichat_error_t</b>
+    <b>database_session_clear_host</b> (sqlite3 *db, const <b>uint8_t</b>
+    <b>session_id</b>[16])
+  <br/>
+  Clear session host (discovery mode - host migration). <b>asciichat_error_t</b>
+    <b>database_session_start_migration</b> (sqlite3 *db, const <b>uint8_t</b>
+    <b>session_id</b>[16])
+  <br/>
+  Start host migration (discovery mode). <b>bool</b>
+    <b>database_session_is_migration_ready</b> (sqlite3 *db, const
+    <b>uint8_t</b> <b>session_id</b>[16], <b>uint64_t</b> migration_window_ms)
+  <br/>
+  Check if migration window has completed. <b>asciichat_error_t</b>
+    <b>database_session_add_key</b> (sqlite3 *db, const char *session_string,
+    const <b>uint8_t</b> identity_pubkey[32], <b>uint32_t</b> key_version)
+  <br/>
+  Add a key to a session. <b>asciichat_error_t</b>
+    <b>database_session_revoke_key</b> (sqlite3 *db, const char *session_string,
+    const <b>uint8_t</b> identity_pubkey[32])
+  <br/>
+  Revoke a key from a session. <b>bool</b> <b>database_session_verify_key</b>
+    (sqlite3 *db, const char *session_string, const <b>uint8_t</b>
+    identity_pubkey[32])
+  <br/>
+  Check if a key is valid for a session (exists and not revoked).
+    <b>asciichat_error_t</b> <b>database_session_get_keys</b> (sqlite3 *db,
+    const char *session_string, <b>uint8_t</b>(*keys_out)[32], size_t max_keys,
+    size_t *count_out)
+  <br/>
+  Get all active keys for a session.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_sqlite3_"><a class="permalink" href="#typedef_sqlite3_">typedef
+  sqlite3 <b>discovery_database_t</b></a></h2>
+<p class="Pp">Discovery database handle (sqlite3 wrapper).</p>
+<p class="Pp">Definition at line <b>24</b> of file <b>database.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_database_close_(sqlite3_*_db)"><a class="permalink" href="#void_database_close_(sqlite3_*_db)">void
+  database_close (sqlite3 * db)</a></h2>
+<p class="Pp">Close database.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> Database handle to close</div>
+<p class="Pp">Definition at line <b>310</b> of file
+  <b>discovery/database.c</b>.</p>
+<pre>310                                  {
+311   if (!db) {
+312     return;
+313   }
+314   sqlite3_close(db);
+315   log_debug(&quot;Database closed&quot;);
+316 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_debug</b>.</p>
+<p class="Pp">Referenced by <b>acds_server_init()</b>, and
+    <b>acds_server_shutdown()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> database_init (const char * db_path,
+  sqlite3 ** db)</h2>
+<p class="Pp">Initialize database and create schema.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db_path</i> Path to SQLite database file
+<br/>
+<i>db</i> Output database handle</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>263</b> of file
+  <b>discovery/database.c</b>.</p>
+<pre>263                                                                    {
+264   if (!db_path || !db) {
+265     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db_path or db is NULL&quot;);
+266   }
+267 
+268   log_info(&quot;Opening database: %s&quot;, db_path);
+269 
+270   int rc = sqlite3_open(db_path, db);
+271   if (rc != SQLITE_OK) {
+272     const char *err = sqlite3_errmsg(*db);
+273     sqlite3_close(*db);
+274     *db = NULL;
+275     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to open database: %s&quot;, err);
+276   }
+277 
+278   // Enable Write-Ahead Logging for concurrent reads
+279   char *err_msg = NULL;
+280   rc = sqlite3_exec(*db, &quot;PRAGMA journal_mode=WAL;&quot;, NULL, NULL, &amp;err_msg);
+281   if (rc != SQLITE_OK) {
+282     log_warn(&quot;Failed to enable WAL mode: %s&quot;, err_msg ? err_msg : &quot;unknown error&quot;);
+283     sqlite3_free(err_msg);
+284   }
+285 
+286   // Enable foreign key constraints
+287   rc = sqlite3_exec(*db, &quot;PRAGMA foreign_keys=ON;&quot;, NULL, NULL, &amp;err_msg);
+288   if (rc != SQLITE_OK) {
+289     log_error(&quot;Failed to enable foreign keys: %s&quot;, err_msg ? err_msg : &quot;unknown error&quot;);
+290     sqlite3_free(err_msg);
+291     sqlite3_close(*db);
+292     *db = NULL;
+293     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to enable foreign keys&quot;);
+294   }
+295 
+296   // Create schema
+297   rc = sqlite3_exec(*db, schema_sql, NULL, NULL, &amp;err_msg);
+298   if (rc != SQLITE_OK) {
+299     log_error(&quot;Failed to create schema: %s&quot;, err_msg ? err_msg : &quot;unknown error&quot;);
+300     sqlite3_free(err_msg);
+301     sqlite3_close(*db);
+302     *db = NULL;
+303     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to create database schema&quot;);
+304   }
+305 
+306   log_info(&quot;Database initialized successfully (SQLite as single source of truth)&quot;);
+307   return ASCIICHAT_OK;
+308 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>log_error</b>, <b>log_info</b>,
+    <b>log_warn</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>acds_server_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> database_session_add_key (sqlite3 * db,
+  const char * session_string, const <b>uint8_t</b> identity_pubkey[32],
+  <b>uint32_t</b> key_version)</h2>
+<p class="Pp">Add a key to a session.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> Database handle
+<br/>
+<i>session_string</i> Session string
+<br/>
+<i>identity_pubkey</i> Ed25519 public key (32 bytes)
+<br/>
+<i>key_version</i> Key version for tracking rotation</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>1054</b> of file
+    <b>discovery/database.c</b>.</p>
+<pre>1055                                                                  {
+1056   if (!db || !session_string || !identity_pubkey) {
+1057     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for add_key&quot;);
+1058   }
+1059 
+1060   const char *sql = &quot;INSERT OR IGNORE INTO session_keys (session_string, identity_pubkey, key_version, added_at) &quot;
+1061                     &quot;VALUES (?, ?, ?, ?)&quot;;
+1062 
+1063   sqlite3_stmt *stmt = NULL;
+1064   if (sqlite3_prepare_v2(db, sql, -1, &amp;stmt, NULL) != SQLITE_OK) {
+1065     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to prepare add_key statement: %s&quot;, sqlite3_errmsg(db));
+1066   }
+1067 
+1068   sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+1069   sqlite3_bind_blob(stmt, 2, identity_pubkey, 32, SQLITE_STATIC);
+1070   sqlite3_bind_int(stmt, 3, key_version);
+1071   sqlite3_bind_int64(stmt, 4, database_get_current_time_ms());
+1072 
+1073   int rc = sqlite3_step(stmt);
+1074   sqlite3_finalize(stmt);
+1075 
+1076   if (rc != SQLITE_DONE) {
+1077     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to add session key: %s&quot;, sqlite3_errmsg(db));
+1078   }
+1079 
+1080   log_debug(&quot;Added key to session %s (version=%u)&quot;, session_string, key_version);
+1081   return ASCIICHAT_OK;
+1082 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_database_session_cleanup_expired_(sqlite3_*_db)"><a class="permalink" href="#void_database_session_cleanup_expired_(sqlite3_*_db)">void
+  database_session_cleanup_expired (sqlite3 * db)</a></h2>
+<p class="Pp">Clean up inactive sessions. Removes sessions that have been
+    inactive for more than 3 hours. Inactivity is measured by last_activity_at
+    (updated on join/leave/host updates). Called periodically by background
+    cleanup thread.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> Database handle</div>
+<p class="Pp">Definition at line <b>849</b> of file
+  <b>discovery/database.c</b>.</p>
+<pre>849                                                    {
+850   if (!db) {
+851     return;
+852   }
+853 
+854   uint64_t now = database_get_current_time_ms();
+855   // 3 hours in milliseconds
+856   uint64_t inactivity_threshold = 3ULL * SEC_PER_HOUR * MS_PER_SEC_INT;
+857   uint64_t cutoff_time = now - inactivity_threshold;
+858 
+859   // Log sessions about to be deleted
+860   const char *log_sql = &quot;SELECT session_string, last_activity_at FROM sessions WHERE last_activity_at &lt; ?&quot;;
+861   sqlite3_stmt *stmt = NULL;
+862   if (sqlite3_prepare_v2(db, log_sql, -1, &amp;stmt, NULL) == SQLITE_OK) {
+863     sqlite3_bind_int64(stmt, 1, (sqlite3_int64)cutoff_time);
+864     while (sqlite3_step(stmt) == SQLITE_ROW) {
+865       const char *session_string = (const char *)sqlite3_column_text(stmt, 0);
+866       uint64_t last_activity = (uint64_t)sqlite3_column_int64(stmt, 1);
+867       uint64_t inactive_ms = now - last_activity;
+868       uint64_t inactive_hours = inactive_ms / (SEC_PER_HOUR * MS_PER_SEC_INT);
+869       log_info(&quot;Session %s inactive for %lu hours, deleting&quot;, session_string ? session_string : &quot;&lt;unknown&gt;&quot;,
+870                inactive_hours);
+871     }
+872     sqlite3_finalize(stmt);
+873   }
+874 
+875   // Delete inactive sessions (CASCADE deletes participants)
+876   const char *del_sql = &quot;DELETE FROM sessions WHERE last_activity_at &lt; ?&quot;;
+877   if (sqlite3_prepare_v2(db, del_sql, -1, &amp;stmt, NULL) == SQLITE_OK) {
+878     sqlite3_bind_int64(stmt, 1, (sqlite3_int64)cutoff_time);
+879     sqlite3_step(stmt);
+880     int deleted = sqlite3_changes(db);
+881     sqlite3_finalize(stmt);
+882 
+883     if (deleted &gt; 0) {
+884       log_info(&quot;Cleaned up %d inactive sessions (&gt;3 hours)&quot;, deleted);
+885     }
+886   }
+887 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_info</b>, <b>MS_PER_SEC_INT</b>, and
+    <b>SEC_PER_HOUR</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> database_session_clear_host (sqlite3 *
+  db, const <b>uint8_t</b> session_id[16])</h2>
+<p class="Pp">Clear session host (discovery mode - host migration). Called when
+    the current host disconnects or fails. Clears host fields so remaining
+    participants can negotiate a new host.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> Database handle
+<br/>
+<i></i><b>session_id</b><i></i><b> Session UUID</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>938</b> of file
+  <b>discovery/database.c</b>.</p>
+<pre>938                                                                                          {
+939   if (!db || !session_id) {
+940     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db or session_id is NULL&quot;);
+941   }
+942 
+943   const char *sql = &quot;UPDATE sessions SET &quot;
+944                     &quot;host_established = 0, &quot;
+945                     &quot;host_participant_id = NULL, &quot;
+946                     &quot;host_address = NULL, &quot;
+947                     &quot;host_port = 0, &quot;
+948                     &quot;host_connection_type = 0 &quot;
+949                     &quot;WHERE session_id = ?&quot;;
+950 
+951   sqlite3_stmt *stmt = NULL;
+952   int rc = sqlite3_prepare_v2(db, sql, -1, &amp;stmt, NULL);
+953   if (rc != SQLITE_OK) {
+954     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to prepare host clear: %s&quot;, sqlite3_errmsg(db));
+955   }
+956 
+957   sqlite3_bind_blob(stmt, 1, session_id, 16, SQLITE_STATIC);
+958 
+959   rc = sqlite3_step(stmt);
+960   sqlite3_finalize(stmt);
+961 
+962   if (rc != SQLITE_DONE) {
+963     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to clear host: %s&quot;, sqlite3_errmsg(db));
+964   }
+965 
+966   int changes = sqlite3_changes(db);
+967   if (changes == 0) {
+968     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Session not found for host clear&quot;);
+969   }
+970 
+971   log_info(&quot;Session host cleared (session=%02x%02x...) - ready for migration&quot;, session_id[0], session_id[1]);
+972 
+973   return ASCIICHAT_OK;
+974 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>log_info</b>,
+    <b>session_id</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> database_session_create (sqlite3 * db,
+  const <b>acip_session_create_t</b> * req, const <b>acds_config_t</b> * config,
+  <b>acip_session_created_t</b> * resp)</h2>
+<p class="Pp">Create new session.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> Database handle
+<br/>
+<i>req</i> Session creation request
+<br/>
+<i></i><b>Config Module</b><i></i><b> ACDS server configuration</b>
+<br/>
+<i>resp</i> Session creation response (output)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>322</b> of file
+  <b>discovery/database.c</b>.</p>
+<pre>323                                                                         {
+324   if (!db || !req || !config || !resp) {
+325     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, req, config, or resp is NULL&quot;);
+326   }
+327 
+328   memset(resp, 0, sizeof(*resp));
+329 
+330   // Generate or use reserved session string
+331   char session_string[ACIP_MAX_SESSION_STRING_LEN] = {0};
+332   if (req-&gt;reserved_string_len &gt; 0) {
+333     const char *reserved_str = (const char *)(req + 1);
+334     size_t len = req-&gt;reserved_string_len &lt; (ACIP_MAX_SESSION_STRING_LEN - 1) ? req-&gt;reserved_string_len
+335                                                                               : (ACIP_MAX_SESSION_STRING_LEN - 1);
+336     memcpy(session_string, reserved_str, len);
+337     session_string[len] = '\0';
+338 
+339     if (!is_session_string(session_string)) {
+340       asciichat_error_context_t ctx;
+341       if (HAS_ERRNO(&amp;ctx)) {
+342         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid session string: %s (%s)&quot;, session_string, ctx.context_message);
+343       }
+344       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid session string: %s&quot;, session_string);
+345     }
+346   } else {
+347     asciichat_error_t result = acds_string_generate(session_string, sizeof(session_string));
+348     if (result != ASCIICHAT_OK) {
+349       return result;
+350     }
+351   }
+352 
+353   // Generate session ID
+354   uint8_t session_id[16];
+355   generate_uuid(session_id);
+356 
+357   // Set timestamps
+358   uint64_t now = database_get_current_time_ms();
+359   uint64_t expires_at = now + ACIP_SESSION_EXPIRATION_MS;
+360 
+361   // Calculate max_participants
+362   uint8_t max_participants =
+363       req-&gt;max_participants &gt; 0 &amp;&amp; req-&gt;max_participants &lt;= MAX_PARTICIPANTS ? req-&gt;max_participants : MAX_PARTICIPANTS;
+364 
+365   // Insert into database
+366   const char *sql = &quot;INSERT INTO sessions &quot;
+367                     &quot;(session_string, session_id, host_pubkey, password_hash, max_participants, &quot;
+368                     &quot;current_participants, capabilities, has_password, expose_ip_publicly, &quot;
+369                     &quot;session_type, server_address, server_port, created_at, expires_at, last_activity_at) &quot;
+370                     &quot;VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)&quot;;
+371 
+372   sqlite3_stmt *stmt = NULL;
+373   int rc = sqlite3_prepare_v2(db, sql, -1, &amp;stmt, NULL);
+374   if (rc != SQLITE_OK) {
+375     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to prepare session insert: %s&quot;, sqlite3_errmsg(db));
+376   }
+377 
+378   log_info(&quot;DATABASE_SESSION_CREATE: expose_ip_publicly=%d, server_address='%s' server_port=%u, session_type=%u, &quot;
+379            &quot;has_password=%u&quot;,
+380            req-&gt;expose_ip_publicly, req-&gt;server_address, req-&gt;server_port, req-&gt;session_type, req-&gt;has_password);
+381   sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+382   sqlite3_bind_blob(stmt, 2, session_id, 16, SQLITE_STATIC);
+383   sqlite3_bind_blob(stmt, 3, req-&gt;identity_pubkey, 32, SQLITE_STATIC);
+384   sqlite3_bind_text(stmt, 4, req-&gt;has_password ? (const char *)req-&gt;password_hash : NULL, -1, SQLITE_STATIC);
+385   sqlite3_bind_int(stmt, 5, max_participants);
+386   sqlite3_bind_int(stmt, 6, req-&gt;capabilities);
+387   sqlite3_bind_int(stmt, 7, req-&gt;has_password ? 1 : 0);
+388   sqlite3_bind_int(stmt, 8, req-&gt;expose_ip_publicly ? 1 : 0);
+389   sqlite3_bind_int(stmt, 9, req-&gt;session_type);
+390   sqlite3_bind_text(stmt, 10, req-&gt;server_address, -1, SQLITE_STATIC);
+391   sqlite3_bind_int(stmt, 11, req-&gt;server_port);
+392   sqlite3_bind_int64(stmt, 12, (sqlite3_int64)now);
+393   sqlite3_bind_int64(stmt, 13, (sqlite3_int64)expires_at);
+394   sqlite3_bind_int64(stmt, 14, (sqlite3_int64)now); // last_activity_at = created_at
+395 
+396   rc = sqlite3_step(stmt);
+397   sqlite3_finalize(stmt);
+398 
+399   if (rc != SQLITE_DONE) {
+400     if (rc == SQLITE_CONSTRAINT) {
+401       return SET_ERRNO(ERROR_INVALID_STATE, &quot;Session string already exists: %s&quot;, session_string);
+402     }
+403     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to insert session: %s&quot;, sqlite3_errmsg(db));
+404   }
+405 
+406   // Fill response
+407   resp-&gt;session_string_len = (uint8_t)strlen(session_string);
+408   SAFE_STRNCPY(resp-&gt;session_string, session_string, sizeof(resp-&gt;session_string));
+409   memcpy(resp-&gt;session_id, session_id, 16);
+410   resp-&gt;expires_at = expires_at;
+411   resp-&gt;stun_count = config-&gt;stun_count;
+412   resp-&gt;turn_count = config-&gt;turn_count;
+413 
+414   log_info(&quot;Session created: %s (session_id=%02x%02x%02x%02x..., max_participants=%d, has_password=%d)&quot;, session_string,
+415            session_id[0], session_id[1], session_id[2], session_id[3], max_participants, req-&gt;has_password ? 1 : 0);
+416 
+417   return ASCIICHAT_OK;
+418 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acds_string_generate()</b>,
+    <b>ACIP_MAX_SESSION_STRING_LEN</b>, <b>acip_session_create_t</b>,
+    <b>acip_session_created_t</b>, <b>ACIP_SESSION_EXPIRATION_MS</b>,
+    <b>ASCIICHAT_OK</b>, <b>asciichat_error_context_t::context_message</b>,
+    <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>HAS_ERRNO</b>, <b>is_session_string()</b>, <b>log_info</b>,
+    <b>MAX_PARTICIPANTS</b>, <b>SAFE_STRNCPY</b>, <b>session_id</b>,
+    <b>SET_ERRNO</b>, <b>acds_config_t::stun_count</b>, and
+    <b>acds_config_t::turn_count</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>session_entry_t</b> * database_session_find_by_id (sqlite3 *
+  db, const <b>uint8_t</b> session_id[16])</h2>
+<p class="Pp">Find session by session_id. Allocates and returns a
+    <b>session_entry_t</b>. Caller must free with
+    <b>session_entry_destroy()</b>.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> Database handle
+<br/>
+<i></i><b>session_id</b><i></i><b> Session UUID to find</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Allocated session entry (caller owns), or NULL if not
+  found</div>
+<p class="Pp">Definition at line <b>797</b> of file
+  <b>discovery/database.c</b>.</p>
+<pre>797                                                                                         {
+798   if (!db || !session_id) {
+799     return NULL;
+800   }
+801 
+802   static const char sql[] = SELECT_SESSION_BASE &quot; WHERE session_id = ?&quot;;
+803 
+804   sqlite3_stmt *stmt = NULL;
+805   if (sqlite3_prepare_v2(db, sql, -1, &amp;stmt, NULL) != SQLITE_OK) {
+806     return NULL;
+807   }
+808 
+809   sqlite3_bind_blob(stmt, 1, session_id, 16, SQLITE_STATIC);
+810 
+811   session_entry_t *session = NULL;
+812   if (sqlite3_step(stmt) == SQLITE_ROW) {
+813     session = load_session_from_row(stmt);
+814     if (session) {
+815       load_session_participants(db, session);
+816     }
+817   }
+818 
+819   sqlite3_finalize(stmt);
+820   return session;
+821 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>SELECT_SESSION_BASE</b>, and <b>session_id</b>.</p>
+<p class="Pp">Referenced by <b>signaling_broadcast()</b>,
+    <b>signaling_relay_ice()</b>, and <b>signaling_relay_sdp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>session_entry_t</b> * database_session_find_by_string (sqlite3
+  * db, const char * session_string)</h2>
+<p class="Pp">Find session by session_string. Allocates and returns a
+    <b>session_entry_t</b>. Caller must free with
+    <b>session_entry_destroy()</b>.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> Database handle
+<br/>
+<i>session_string</i> Session string to find</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Allocated session entry (caller owns), or NULL if not
+  found</div>
+<p class="Pp">Definition at line <b>823</b> of file
+  <b>discovery/database.c</b>.</p>
+<pre>823                                                                                           {
+824   if (!db || !session_string) {
+825     return NULL;
+826   }
+827 
+828   static const char sql[] = SELECT_SESSION_BASE &quot; WHERE session_string = ?&quot;;
+829 
+830   sqlite3_stmt *stmt = NULL;
+831   if (sqlite3_prepare_v2(db, sql, -1, &amp;stmt, NULL) != SQLITE_OK) {
+832     return NULL;
+833   }
+834 
+835   sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+836 
+837   session_entry_t *session = NULL;
+838   if (sqlite3_step(stmt) == SQLITE_ROW) {
+839     session = load_session_from_row(stmt);
+840     if (session) {
+841       load_session_participants(db, session);
+842     }
+843   }
+844 
+845   sqlite3_finalize(stmt);
+846   return session;
+847 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>SELECT_SESSION_BASE</b>.</p>
+<p class="Pp">Referenced by <b>database_session_join()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> database_session_get_keys (sqlite3 * db,
+  const char * session_string, <b>uint8_t</b>(*) keys_out[32], size_t max_keys,
+  size_t * count_out)</h2>
+<p class="Pp">Get all active keys for a session.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> Database handle
+<br/>
+<i>session_string</i> Session string
+<br/>
+<i>keys_out</i> Output array for keys (caller must provide buffer)
+<br/>
+<i>max_keys</i> Maximum number of keys to retrieve
+<br/>
+<i>count_out</i> Output: number of keys retrieved</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>1132</b> of file
+    <b>discovery/database.c</b>.</p>
+<pre>1133                                                                                 {
+1134   if (!db || !session_string || !keys_out || !count_out) {
+1135     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for get_keys&quot;);
+1136   }
+1137 
+1138   const char *sql = &quot;SELECT identity_pubkey FROM session_keys WHERE session_string = ? AND revoked = 0 &quot;
+1139                     &quot;ORDER BY key_version ASC&quot;;
+1140 
+1141   sqlite3_stmt *stmt = NULL;
+1142   if (sqlite3_prepare_v2(db, sql, -1, &amp;stmt, NULL) != SQLITE_OK) {
+1143     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to prepare get_keys statement: %s&quot;, sqlite3_errmsg(db));
+1144   }
+1145 
+1146   sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+1147 
+1148   size_t count = 0;
+1149   while (sqlite3_step(stmt) == SQLITE_ROW &amp;&amp; count &lt; max_keys) {
+1150     const void *blob = sqlite3_column_blob(stmt, 0);
+1151     if (blob &amp;&amp; sqlite3_column_bytes(stmt, 0) == 32) {
+1152       memcpy(keys_out[count], blob, 32);
+1153       count++;
+1154     }
+1155   }
+1156 
+1157   sqlite3_finalize(stmt);
+1158   *count_out = count;
+1159 
+1160   log_debug(&quot;Retrieved %zu keys for session %s&quot;, count, session_string);
+1161   return ASCIICHAT_OK;
+1162 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> database_session_is_migration_ready (sqlite3 * db,
+  const <b>uint8_t</b> session_id[16], <b>uint64_t</b> migration_window_ms)</h2>
+<p class="Pp">Check if migration window has completed. Called periodically to
+    check if migration collection window timeout has expired. Returns the
+    session if migration is ready for host election.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> Database handle
+<br/>
+<i></i><b>session_id</b><i></i><b> Session UUID</b>
+<br/>
+<i>migration_window_ms</i> Collection window duration in milliseconds</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if collection window has completed, false
+  otherwise</div>
+<p class="Pp">Definition at line <b>1015</b> of file
+    <b>discovery/database.c</b>.</p>
+<pre>1015                                                                                                                   {
+1016   if (!db || !session_id) {
+1017     return false;
+1018   }
+1019 
+1020   uint64_t now_ns = time_get_realtime_ns();
+1021   const char *sql = &quot;SELECT in_migration, migration_start_ns FROM sessions WHERE session_id = ?&quot;;
+1022 
+1023   sqlite3_stmt *stmt = NULL;
+1024   if (sqlite3_prepare_v2(db, sql, -1, &amp;stmt, NULL) != SQLITE_OK) {
+1025     return false;
+1026   }
+1027 
+1028   sqlite3_bind_blob(stmt, 1, session_id, 16, SQLITE_STATIC);
+1029 
+1030   bool ready = false;
+1031   if (sqlite3_step(stmt) == SQLITE_ROW) {
+1032     int in_migration = sqlite3_column_int(stmt, 0);
+1033     uint64_t migration_start_ns = (uint64_t)sqlite3_column_int64(stmt, 1);
+1034 
+1035     if (in_migration) {
+1036       uint64_t elapsed_ns = now_ns - migration_start_ns;
+1037       uint64_t migration_window_ns = migration_window_ms * NS_PER_MS_INT;
+1038       if (elapsed_ns &gt;= migration_window_ns) {
+1039         ready = true;
+1040         log_debug(&quot;Migration window complete (session=%02x%02x..., elapsed=%lu ns, window=%lu ns)&quot;, session_id[0],
+1041                   session_id[1], elapsed_ns, migration_window_ns);
+1042       }
+1043     }
+1044   }
+1045 
+1046   sqlite3_finalize(stmt);
+1047   return ready;
+1048 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_debug</b>, <b>NS_PER_MS_INT</b>,
+    <b>session_id</b>, and <b>time_get_realtime_ns()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> database_session_join (sqlite3 * db,
+  const <b>acip_session_join_t</b> * req, const <b>acds_config_t</b> * config,
+  <b>acip_session_joined_t</b> * resp)</h2>
+<p class="Pp">Join existing session.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> Database handle
+<br/>
+<i>req</i> Join request
+<br/>
+<i></i><b>Config Module</b><i></i><b> ACDS server configuration (for TURN
+  credentials)</b>
+<br/>
+<i>resp</i> Join response (output)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>482</b> of file
+  <b>discovery/database.c</b>.</p>
+<pre>483                                                                      {
+484   if (!db || !req || !config || !resp) {
+485     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, req, config, or resp is NULL&quot;);
+486   }
+487 
+488   memset(resp, 0, sizeof(*resp));
+489   resp-&gt;success = 0;
+490 
+491   // Extract session string
+492   char session_string[ACIP_MAX_SESSION_STRING_LEN] = {0};
+493   size_t len = req-&gt;session_string_len &lt; (ACIP_MAX_SESSION_STRING_LEN - 1) ? req-&gt;session_string_len
+494                                                                            : (ACIP_MAX_SESSION_STRING_LEN - 1);
+495   memcpy(session_string, req-&gt;session_string, len);
+496   session_string[len] = '\0';
+497 
+498   // Find session
+499   session_entry_t *session = database_session_find_by_string(db, session_string);
+500   if (!session) {
+501     resp-&gt;error_code = ACIP_ERROR_SESSION_NOT_FOUND;
+502     SAFE_STRNCPY(resp-&gt;error_message, &quot;Session not found&quot;, sizeof(resp-&gt;error_message));
+503     log_warn(&quot;Session join failed: %s (not found)&quot;, session_string);
+504     return ASCIICHAT_OK;
+505   }
+506 
+507   // Check if session is full
+508   if (session-&gt;current_participants &gt;= session-&gt;max_participants) {
+509     session_entry_destroy(session);
+510     resp-&gt;error_code = ACIP_ERROR_SESSION_FULL;
+511     SAFE_STRNCPY(resp-&gt;error_message, &quot;Session is full&quot;, sizeof(resp-&gt;error_message));
+512     log_warn(&quot;Session join failed: %s (full)&quot;, session_string);
+513     return ASCIICHAT_OK;
+514   }
+515 
+516   // Verify password if required
+517   if (session-&gt;has_password &amp;&amp; req-&gt;has_password) {
+518     if (!verify_password(req-&gt;password, session-&gt;password_hash)) {
+519       session_entry_destroy(session);
+520       resp-&gt;error_code = ACIP_ERROR_INVALID_PASSWORD;
+521       SAFE_STRNCPY(resp-&gt;error_message, &quot;Invalid password&quot;, sizeof(resp-&gt;error_message));
+522       log_warn(&quot;Session join failed: %s (invalid password)&quot;, session_string);
+523       return ASCIICHAT_OK;
+524     }
+525   } else if (session-&gt;has_password &amp;&amp; !req-&gt;has_password) {
+526     session_entry_destroy(session);
+527     resp-&gt;error_code = ACIP_ERROR_INVALID_PASSWORD;
+528     SAFE_STRNCPY(resp-&gt;error_message, &quot;Password required&quot;, sizeof(resp-&gt;error_message));
+529     log_warn(&quot;Session join failed: %s (password required)&quot;, session_string);
+530     return ASCIICHAT_OK;
+531   }
+532 
+533   // Generate participant ID
+534   uint8_t participant_id[16];
+535   generate_uuid(participant_id);
+536   uint64_t now = database_get_current_time_ms();
+537 
+538   // Begin transaction
+539   char *err_msg = NULL;
+540   int rc = sqlite3_exec(db, &quot;BEGIN IMMEDIATE;&quot;, NULL, NULL, &amp;err_msg);
+541   if (rc != SQLITE_OK) {
+542     session_entry_destroy(session);
+543     log_error(&quot;Failed to begin transaction: %s&quot;, err_msg ? err_msg : &quot;unknown&quot;);
+544     sqlite3_free(err_msg);
+545     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to begin transaction&quot;);
+546   }
+547 
+548   // Insert participant
+549   const char *insert_sql = &quot;INSERT INTO participants (participant_id, session_string, identity_pubkey, joined_at) &quot;
+550                            &quot;VALUES (?, ?, ?, ?)&quot;;
+551   sqlite3_stmt *stmt = NULL;
+552   rc = sqlite3_prepare_v2(db, insert_sql, -1, &amp;stmt, NULL);
+553   if (rc != SQLITE_OK) {
+554     sqlite3_exec(db, &quot;ROLLBACK;&quot;, NULL, NULL, NULL);
+555     session_entry_destroy(session);
+556     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to prepare participant insert: %s&quot;, sqlite3_errmsg(db));
+557   }
+558 
+559   sqlite3_bind_blob(stmt, 1, participant_id, 16, SQLITE_STATIC);
+560   sqlite3_bind_text(stmt, 2, session-&gt;session_string, -1, SQLITE_STATIC);
+561   sqlite3_bind_blob(stmt, 3, req-&gt;identity_pubkey, 32, SQLITE_STATIC);
+562   sqlite3_bind_int64(stmt, 4, (sqlite3_int64)now);
+563 
+564   rc = sqlite3_step(stmt);
+565   sqlite3_finalize(stmt);
+566 
+567   if (rc != SQLITE_DONE) {
+568     sqlite3_exec(db, &quot;ROLLBACK;&quot;, NULL, NULL, NULL);
+569     session_entry_destroy(session);
+570     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to insert participant: %s&quot;, sqlite3_errmsg(db));
+571   }
+572 
+573   // Update participant count and last activity
+574   const char *update_sql = &quot;UPDATE sessions SET current_participants = current_participants + 1, &quot;
+575                            &quot;last_activity_at = ? WHERE session_string = ?&quot;;
+576   rc = sqlite3_prepare_v2(db, update_sql, -1, &amp;stmt, NULL);
+577   if (rc == SQLITE_OK) {
+578     sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now);
+579     sqlite3_bind_text(stmt, 2, session-&gt;session_string, -1, SQLITE_STATIC);
+580     sqlite3_step(stmt);
+581     sqlite3_finalize(stmt);
+582   }
+583 
+584   // Set initiator_id if this is the first participant (for discovery mode tiebreaker)
+585   bool is_first_participant = (session-&gt;current_participants == 0);
+586   bool is_zero_initiator = true;
+587   for (int i = 0; i &lt; 16; i++) {
+588     if (session-&gt;initiator_id[i] != 0) {
+589       is_zero_initiator = false;
+590       break;
+591     }
+592   }
+593 
+594   if (is_first_participant || is_zero_initiator) {
+595     const char *initiator_sql = &quot;UPDATE sessions SET initiator_id = ? WHERE session_string = ?&quot;;
+596     rc = sqlite3_prepare_v2(db, initiator_sql, -1, &amp;stmt, NULL);
+597     if (rc == SQLITE_OK) {
+598       sqlite3_bind_blob(stmt, 1, participant_id, 16, SQLITE_STATIC);
+599       sqlite3_bind_text(stmt, 2, session-&gt;session_string, -1, SQLITE_STATIC);
+600       sqlite3_step(stmt);
+601       sqlite3_finalize(stmt);
+602       memcpy(session-&gt;initiator_id, participant_id, 16);
+603       log_debug(&quot;Set initiator_id to new participant %02x%02x...&quot;, participant_id[0], participant_id[1]);
+604     }
+605   }
+606 
+607   // Commit transaction
+608   rc = sqlite3_exec(db, &quot;COMMIT;&quot;, NULL, NULL, &amp;err_msg);
+609   if (rc != SQLITE_OK) {
+610     log_error(&quot;Failed to commit transaction: %s&quot;, err_msg ? err_msg : &quot;unknown&quot;);
+611     sqlite3_free(err_msg);
+612     sqlite3_exec(db, &quot;ROLLBACK;&quot;, NULL, NULL, NULL);
+613     session_entry_destroy(session);
+614     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to commit transaction&quot;);
+615   }
+616 
+617   // Fill response
+618   resp-&gt;success = 1;
+619   resp-&gt;error_code = ACIP_ERROR_NONE;
+620   memcpy(resp-&gt;participant_id, participant_id, 16);
+621   memcpy(resp-&gt;session_id, session-&gt;session_id, 16);
+622 
+623   // Discovery mode host negotiation fields
+624   memcpy(resp-&gt;initiator_id, session-&gt;initiator_id, 16);
+625   resp-&gt;host_established = session-&gt;host_established ? 1 : 0;
+626   if (session-&gt;host_established) {
+627     memcpy(resp-&gt;host_id, session-&gt;host_participant_id, 16);
+628   }
+629   // peer_count = current_participants (excluding self) that need to negotiate
+630   resp-&gt;peer_count = session-&gt;current_participants; // Will be incremented after this returns
+631 
+632   log_debug(&quot;SESSION_JOIN response: session_id=%02x%02x%02x%02x..., participant_id=%02x%02x%02x%02x..., &quot;
+633             &quot;initiator=%02x%02x..., host_established=%d, peer_count=%d&quot;,
+634             resp-&gt;session_id[0], resp-&gt;session_id[1], resp-&gt;session_id[2], resp-&gt;session_id[3], resp-&gt;participant_id[0],
+635             resp-&gt;participant_id[1], resp-&gt;participant_id[2], resp-&gt;participant_id[3], resp-&gt;initiator_id[0],
+636             resp-&gt;initiator_id[1], resp-&gt;host_established, resp-&gt;peer_count);
+637 
+638   // IP disclosure logic
+639   bool reveal_ip = false;
+640   log_info(&quot;DATABASE_SESSION_JOIN: has_password=%d, expose_ip_publicly=%d, server_address='%s'&quot;, session-&gt;has_password,
+641            session-&gt;expose_ip_publicly, session-&gt;server_address);
+642   if (session-&gt;has_password) {
+643     reveal_ip = true; // Password was verified
+644   } else if (session-&gt;expose_ip_publicly) {
+645     reveal_ip = true; // Explicit opt-in
+646   }
+647   log_info(&quot;DATABASE_SESSION_JOIN: reveal_ip=%d&quot;, reveal_ip);
+648 
+649   if (reveal_ip) {
+650     SAFE_STRNCPY(resp-&gt;server_address, session-&gt;server_address, sizeof(resp-&gt;server_address));
+651     resp-&gt;server_port = session-&gt;server_port;
+652     resp-&gt;session_type = session-&gt;session_type;
+653 
+654     // Generate TURN credentials for WebRTC sessions
+655     if (session-&gt;session_type == SESSION_TYPE_WEBRTC &amp;&amp; config-&gt;turn_secret[0] != '\0') {
+656       turn_credentials_t turn_creds;
+657       asciichat_error_t turn_result =
+658           turn_generate_credentials(session_string, config-&gt;turn_secret, 86400, &amp;turn_creds);
+659       if (turn_result == ASCIICHAT_OK) {
+660         SAFE_STRNCPY(resp-&gt;turn_username, turn_creds.username, sizeof(resp-&gt;turn_username));
+661         SAFE_STRNCPY(resp-&gt;turn_password, turn_creds.password, sizeof(resp-&gt;turn_password));
+662         log_debug(&quot;Generated TURN credentials for session %s&quot;, session_string);
+663       }
+664     }
+665 
+666     log_info(&quot;Participant joined session %s (participants=%d/%d, server=%s:%d, type=%s)&quot;, session_string,
+667              session-&gt;current_participants + 1, session-&gt;max_participants, resp-&gt;server_address, resp-&gt;server_port,
+668              session-&gt;session_type == SESSION_TYPE_WEBRTC ? &quot;WebRTC&quot; : &quot;DirectTCP&quot;);
+669   } else {
+670     log_info(&quot;Participant joined session %s (participants=%d/%d, IP WITHHELD)&quot;, session_string,
+671              session-&gt;current_participants + 1, session-&gt;max_participants);
+672   }
+673 
+674   session_entry_destroy(session);
+675   return ASCIICHAT_OK;
+676 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ACIP_ERROR_INVALID_PASSWORD</b>,
+    <b>ACIP_ERROR_NONE</b>, <b>ACIP_ERROR_SESSION_FULL</b>,
+    <b>ACIP_ERROR_SESSION_NOT_FOUND</b>, <b>ACIP_MAX_SESSION_STRING_LEN</b>,
+    <b>acip_session_join_t</b>, <b>acip_session_joined_t</b>,
+    <b>ASCIICHAT_OK</b>, <b>session_entry::current_participants</b>,
+    <b>database_session_find_by_string()</b>, <b>ERROR_CONFIG</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>session_entry::expose_ip_publicly</b>,
+    <b>session_entry::has_password</b>, <b>session_entry::host_established</b>,
+    <b>session_entry::host_participant_id</b>,
+    <b>session_entry::initiator_id</b>, <b>log_debug</b>, <b>log_error</b>,
+    <b>log_info</b>, <b>log_warn</b>, <b>session_entry::max_participants</b>,
+    <b>participant_id</b>, <b>turn_credentials_t::password</b>,
+    <b>session_entry::password_hash</b>, <b>SAFE_STRNCPY</b>,
+    <b>session_entry::server_address</b>, <b>session_entry::server_port</b>,
+    <b>session_entry_destroy()</b>, <b>session_entry::session_id</b>,
+    <b>session_entry::session_string</b>, <b>session_entry::session_type</b>,
+    <b>SESSION_TYPE_WEBRTC</b>, <b>SET_ERRNO</b>,
+    <b>turn_generate_credentials()</b>, <b>acds_config_t::turn_secret</b>, and
+    <b>turn_credentials_t::username</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> database_session_leave (sqlite3 * db,
+  const <b>uint8_t</b> session_id[16], const <b>uint8_t</b>
+  participant_id[16])</h2>
+<p class="Pp">Leave session.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> Database handle
+<br/>
+<i></i><b>session_id</b><i></i><b> Session UUID</b>
+<br/>
+<i></i><b>participant_id</b><i></i><b> Participant UUID</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>678</b> of file
+  <b>discovery/database.c</b>.</p>
+<pre>678                                                                                                                       {
+679   if (!db || !session_id || !participant_id) {
+680     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, session_id, or participant_id is NULL&quot;);
+681   }
+682 
+683   // Look up session_string from session_id
+684   char session_string[SESSION_STRING_BUFFER_SIZE] = {0};
+685   const char *lookup_sql = &quot;SELECT session_string FROM sessions WHERE session_id = ?&quot;;
+686   sqlite3_stmt *stmt = NULL;
+687   int rc = sqlite3_prepare_v2(db, lookup_sql, -1, &amp;stmt, NULL);
+688   if (rc != SQLITE_OK) {
+689     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to prepare session lookup: %s&quot;, sqlite3_errmsg(db));
+690   }
+691 
+692   sqlite3_bind_blob(stmt, 1, session_id, 16, SQLITE_STATIC);
+693   rc = sqlite3_step(stmt);
+694   if (rc != SQLITE_ROW) {
+695     sqlite3_finalize(stmt);
+696     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Session not found&quot;);
+697   }
+698 
+699   const char *str = (const char *)sqlite3_column_text(stmt, 0);
+700   if (str) {
+701     SAFE_STRNCPY(session_string, str, sizeof(session_string));
+702   }
+703   sqlite3_finalize(stmt);
+704 
+705   if (session_string[0] == '\0') {
+706     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Session string is empty&quot;);
+707   }
+708 
+709   // Begin transaction
+710   char *err_msg = NULL;
+711   rc = sqlite3_exec(db, &quot;BEGIN IMMEDIATE;&quot;, NULL, NULL, &amp;err_msg);
+712   if (rc != SQLITE_OK) {
+713     log_error(&quot;Failed to begin transaction: %s&quot;, err_msg ? err_msg : &quot;unknown&quot;);
+714     sqlite3_free(err_msg);
+715     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to begin transaction&quot;);
+716   }
+717 
+718   // Delete participant
+719   const char *del_sql = &quot;DELETE FROM participants WHERE participant_id = ? AND session_string = ?&quot;;
+720   rc = sqlite3_prepare_v2(db, del_sql, -1, &amp;stmt, NULL);
+721   if (rc != SQLITE_OK) {
+722     sqlite3_exec(db, &quot;ROLLBACK;&quot;, NULL, NULL, NULL);
+723     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to prepare participant delete: %s&quot;, sqlite3_errmsg(db));
+724   }
+725 
+726   sqlite3_bind_blob(stmt, 1, participant_id, 16, SQLITE_STATIC);
+727   sqlite3_bind_text(stmt, 2, session_string, -1, SQLITE_STATIC);
+728   rc = sqlite3_step(stmt);
+729   sqlite3_finalize(stmt);
+730 
+731   if (rc != SQLITE_DONE) {
+732     sqlite3_exec(db, &quot;ROLLBACK;&quot;, NULL, NULL, NULL);
+733     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to delete participant: %s&quot;, sqlite3_errmsg(db));
+734   }
+735 
+736   int changes = sqlite3_changes(db);
+737   if (changes == 0) {
+738     sqlite3_exec(db, &quot;ROLLBACK;&quot;, NULL, NULL, NULL);
+739     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Participant not in session&quot;);
+740   }
+741 
+742   uint64_t now = database_get_current_time_ms();
+743 
+744   // Decrement participant count and update last activity
+745   const char *update_sql = &quot;UPDATE sessions SET current_participants = current_participants - 1, &quot;
+746                            &quot;last_activity_at = ? WHERE session_string = ? AND current_participants &gt; 0&quot;;
+747   rc = sqlite3_prepare_v2(db, update_sql, -1, &amp;stmt, NULL);
+748   if (rc == SQLITE_OK) {
+749     sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now);
+750     sqlite3_bind_text(stmt, 2, session_string, -1, SQLITE_STATIC);
+751     sqlite3_step(stmt);
+752     sqlite3_finalize(stmt);
+753   }
+754 
+755   // Check if session is now empty and delete if so
+756   const char *check_sql = &quot;SELECT current_participants FROM sessions WHERE session_string = ?&quot;;
+757   rc = sqlite3_prepare_v2(db, check_sql, -1, &amp;stmt, NULL);
+758   if (rc == SQLITE_OK) {
+759     sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+760     if (sqlite3_step(stmt) == SQLITE_ROW) {
+761       int count = sqlite3_column_int(stmt, 0);
+762 
+763       if (count &lt;= 0) {
+764         log_info(&quot;Session %s has no participants, deleting&quot;, session_string);
+765         sqlite3_finalize(stmt);
+766 
+767         // Delete empty session
+768         const char *del_session_sql = &quot;DELETE FROM sessions WHERE session_string = ?&quot;;
+769         rc = sqlite3_prepare_v2(db, del_session_sql, -1, &amp;stmt, NULL);
+770         if (rc == SQLITE_OK) {
+771           sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+772           sqlite3_step(stmt);
+773           sqlite3_finalize(stmt);
+774         }
+775         stmt = NULL;
+776       } else {
+777         log_info(&quot;Participant left session %s (participants=%d remaining)&quot;, session_string, count);
+778       }
+779     }
+780     if (stmt) {
+781       sqlite3_finalize(stmt);
+782     }
+783   }
+784 
+785   // Commit transaction
+786   rc = sqlite3_exec(db, &quot;COMMIT;&quot;, NULL, NULL, &amp;err_msg);
+787   if (rc != SQLITE_OK) {
+788     log_error(&quot;Failed to commit transaction: %s&quot;, err_msg ? err_msg : &quot;unknown&quot;);
+789     sqlite3_free(err_msg);
+790     sqlite3_exec(db, &quot;ROLLBACK;&quot;, NULL, NULL, NULL);
+791     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to commit transaction&quot;);
+792   }
+793 
+794   return ASCIICHAT_OK;
+795 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>log_error</b>,
+    <b>log_info</b>, <b>participant_id</b>, <b>SAFE_STRNCPY</b>,
+    <b>session_id</b>, <b>SESSION_STRING_BUFFER_SIZE</b>, and
+  <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> database_session_lookup (sqlite3 * db,
+  const char * session_string, const <b>acds_config_t</b> * config,
+  <b>acip_session_info_t</b> * resp)</h2>
+<p class="Pp">Lookup session by string.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> Database handle
+<br/>
+<i>session_string</i> Session string to look up
+<br/>
+<i></i><b>Config Module</b><i></i><b> ACDS server configuration (for policy
+  flags)</b>
+<br/>
+<i>resp</i> Session info response (output)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>420</b> of file
+  <b>discovery/database.c</b>.</p>
+<pre>421                                                                      {
+422   if (!db || !session_string || !config || !resp) {
+423     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, session_string, config, or resp is NULL&quot;);
+424   }
+425 
+426   memset(resp, 0, sizeof(*resp));
+427 
+428   const char *sql = &quot;SELECT session_string, session_id, host_pubkey, password_hash, &quot;
+429                     &quot;max_participants, current_participants, capabilities, has_password, &quot;
+430                     &quot;expose_ip_publicly, session_type, server_address, server_port, &quot;
+431                     &quot;created_at, expires_at, last_activity_at FROM sessions WHERE session_string = ?&quot;;
+432 
+433   sqlite3_stmt *stmt = NULL;
+434   int rc = sqlite3_prepare_v2(db, sql, -1, &amp;stmt, NULL);
+435   if (rc != SQLITE_OK) {
+436     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to prepare session lookup: %s&quot;, sqlite3_errmsg(db));
+437   }
+438 
+439   sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+440 
+441   rc = sqlite3_step(stmt);
+442   if (rc != SQLITE_ROW) {
+443     sqlite3_finalize(stmt);
+444     resp-&gt;found = 0;
+445     log_debug(&quot;Session lookup failed: %s (not found)&quot;, session_string);
+446     return ASCIICHAT_OK;
+447   }
+448 
+449   // Load session data
+450   resp-&gt;found = 1;
+451 
+452   const void *blob = sqlite3_column_blob(stmt, 1);
+453   if (blob) {
+454     memcpy(resp-&gt;session_id, blob, 16);
+455   }
+456 
+457   blob = sqlite3_column_blob(stmt, 2);
+458   if (blob) {
+459     memcpy(resp-&gt;host_pubkey, blob, 32);
+460   }
+461 
+462   resp-&gt;max_participants = (uint8_t)sqlite3_column_int(stmt, 4);
+463   resp-&gt;current_participants = (uint8_t)sqlite3_column_int(stmt, 5);
+464   resp-&gt;capabilities = (uint8_t)sqlite3_column_int(stmt, 6);
+465   resp-&gt;has_password = sqlite3_column_int(stmt, 7) != 0;
+466   resp-&gt;session_type = (uint8_t)sqlite3_column_int(stmt, 9);
+467   resp-&gt;created_at = (uint64_t)sqlite3_column_int64(stmt, 12);
+468   resp-&gt;expires_at = (uint64_t)sqlite3_column_int64(stmt, 13);
+469 
+470   // ACDS policy flags
+471   resp-&gt;require_server_verify = config-&gt;require_server_verify ? 1 : 0;
+472   resp-&gt;require_client_verify = config-&gt;require_client_verify ? 1 : 0;
+473 
+474   sqlite3_finalize(stmt);
+475 
+476   log_debug(&quot;Session lookup: %s (found, participants=%d/%d)&quot;, session_string, resp-&gt;current_participants,
+477             resp-&gt;max_participants);
+478 
+479   return ASCIICHAT_OK;
+480 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_session_info_t</b>, <b>ASCIICHAT_OK</b>,
+    <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
+    <b>acds_config_t::require_client_verify</b>,
+    <b>acds_config_t::require_server_verify</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> database_session_revoke_key (sqlite3 *
+  db, const char * session_string, const <b>uint8_t</b>
+  identity_pubkey[32])</h2>
+<p class="Pp">Revoke a key from a session.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> Database handle
+<br/>
+<i>session_string</i> Session string
+<br/>
+<i>identity_pubkey</i> Ed25519 public key to revoke (32 bytes)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>1084</b> of file
+    <b>discovery/database.c</b>.</p>
+<pre>1085                                                                                  {
+1086   if (!db || !session_string || !identity_pubkey) {
+1087     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for revoke_key&quot;);
+1088   }
+1089 
+1090   const char *sql = &quot;UPDATE session_keys SET revoked = 1 WHERE session_string = ? AND identity_pubkey = ?&quot;;
+1091 
+1092   sqlite3_stmt *stmt = NULL;
+1093   if (sqlite3_prepare_v2(db, sql, -1, &amp;stmt, NULL) != SQLITE_OK) {
+1094     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to prepare revoke_key statement: %s&quot;, sqlite3_errmsg(db));
+1095   }
+1096 
+1097   sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+1098   sqlite3_bind_blob(stmt, 2, identity_pubkey, 32, SQLITE_STATIC);
+1099 
+1100   int rc = sqlite3_step(stmt);
+1101   sqlite3_finalize(stmt);
+1102 
+1103   if (rc != SQLITE_DONE) {
+1104     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to revoke session key: %s&quot;, sqlite3_errmsg(db));
+1105   }
+1106 
+1107   log_debug(&quot;Revoked key from session %s&quot;, session_string);
+1108   return ASCIICHAT_OK;
+1109 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> database_session_start_migration
+  (sqlite3 * db, const <b>uint8_t</b> session_id[16])</h2>
+<p class="Pp">Start host migration (discovery mode). Called when the current
+    host disconnects. Marks session as in_migration and starts a collection
+    window for HOST_LOST candidates.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> Database handle
+<br/>
+<i></i><b>session_id</b><i></i><b> Session UUID</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>976</b> of file
+  <b>discovery/database.c</b>.</p>
+<pre>976                                                                                               {
+977   if (!db || !session_id) {
+978     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db or session_id is NULL&quot;);
+979   }
+980 
+981   uint64_t now_ns = time_get_realtime_ns();
+982 
+983   const char *sql = &quot;UPDATE sessions SET &quot;
+984                     &quot;in_migration = 1, &quot;
+985                     &quot;migration_start_ns = ? &quot;
+986                     &quot;WHERE session_id = ?&quot;;
+987 
+988   sqlite3_stmt *stmt = NULL;
+989   int rc = sqlite3_prepare_v2(db, sql, -1, &amp;stmt, NULL);
+990   if (rc != SQLITE_OK) {
+991     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to prepare migration start: %s&quot;, sqlite3_errmsg(db));
+992   }
+993 
+994   sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now_ns);
+995   sqlite3_bind_blob(stmt, 2, session_id, 16, SQLITE_STATIC);
+996 
+997   rc = sqlite3_step(stmt);
+998   sqlite3_finalize(stmt);
+999 
+1000   if (rc != SQLITE_DONE) {
+1001     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to start migration: %s&quot;, sqlite3_errmsg(db));
+1002   }
+1003 
+1004   int changes = sqlite3_changes(db);
+1005   if (changes == 0) {
+1006     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Session not found for migration start&quot;);
+1007   }
+1008 
+1009   log_info(&quot;Session migration started (session=%02x%02x..., start_ns=%&quot; PRIu64 &quot;)&quot;, session_id[0], session_id[1],
+1010            now_ns);
+1011 
+1012   return ASCIICHAT_OK;
+1013 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>log_info</b>,
+    <b>session_id</b>, <b>SET_ERRNO</b>, and <b>time_get_realtime_ns()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> database_session_update_host (sqlite3 *
+  db, const <b>uint8_t</b> session_id[16], const <b>uint8_t</b>
+  host_participant_id[16], const char * host_address, <b>uint16_t</b> host_port,
+  <b>uint8_t</b> connection_type)</h2>
+<p class="Pp">Update session host (discovery mode). Called when a participant
+    announces they are hosting. Updates the session's host fields so new joiners
+    know where to connect.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> Database handle
+<br/>
+<i></i><b>session_id</b><i></i><b> Session UUID</b>
+<br/>
+<i>host_participant_id</i> Host's participant UUID
+<br/>
+<i>host_address</i> Host's reachable address
+<br/>
+<i>host_port</i> Host's port
+<br/>
+<i>connection_type</i> How to reach host (ACIP_CONNECTION_TYPE_*)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>889</b> of file
+  <b>discovery/database.c</b>.</p>
+<pre>891                                                                                             {
+892   if (!db || !session_id || !host_participant_id) {
+893     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, session_id, or host_participant_id is NULL&quot;);
+894   }
+895 
+896   uint64_t now = database_get_current_time_ms();
+897 
+898   const char *sql = &quot;UPDATE sessions SET &quot;
+899                     &quot;host_established = 1, &quot;
+900                     &quot;host_participant_id = ?, &quot;
+901                     &quot;host_address = ?, &quot;
+902                     &quot;host_port = ?, &quot;
+903                     &quot;host_connection_type = ?, &quot;
+904                     &quot;last_activity_at = ? &quot;
+905                     &quot;WHERE session_id = ?&quot;;
+906 
+907   sqlite3_stmt *stmt = NULL;
+908   int rc = sqlite3_prepare_v2(db, sql, -1, &amp;stmt, NULL);
+909   if (rc != SQLITE_OK) {
+910     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to prepare host update: %s&quot;, sqlite3_errmsg(db));
+911   }
+912 
+913   sqlite3_bind_blob(stmt, 1, host_participant_id, 16, SQLITE_STATIC);
+914   sqlite3_bind_text(stmt, 2, host_address ? host_address : &quot;&quot;, -1, SQLITE_STATIC);
+915   sqlite3_bind_int(stmt, 3, host_port);
+916   sqlite3_bind_int(stmt, 4, connection_type);
+917   sqlite3_bind_int64(stmt, 5, (sqlite3_int64)now);
+918   sqlite3_bind_blob(stmt, 6, session_id, 16, SQLITE_STATIC);
+919 
+920   rc = sqlite3_step(stmt);
+921   sqlite3_finalize(stmt);
+922 
+923   if (rc != SQLITE_DONE) {
+924     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to update host: %s&quot;, sqlite3_errmsg(db));
+925   }
+926 
+927   int changes = sqlite3_changes(db);
+928   if (changes == 0) {
+929     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Session not found for host update&quot;);
+930   }
+931 
+932   log_info(&quot;Session host updated: participant=%02x%02x..., address=%s:%u, type=%d&quot;, host_participant_id[0],
+933            host_participant_id[1], host_address ? host_address : &quot;(none)&quot;, host_port, connection_type);
+934 
+935   return ASCIICHAT_OK;
+936 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>log_info</b>,
+    <b>session_id</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> database_session_verify_key (sqlite3 * db, const char
+  * session_string, const <b>uint8_t</b> identity_pubkey[32])</h2>
+<p class="Pp">Check if a key is valid for a session (exists and not
+  revoked).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> Database handle
+<br/>
+<i>session_string</i> Session string
+<br/>
+<i>identity_pubkey</i> Ed25519 public key to check (32 bytes)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if key is valid, false otherwise</div>
+<p class="Pp">Definition at line <b>1111</b> of file
+    <b>discovery/database.c</b>.</p>
+<pre>1111                                                                                                              {
+1112   if (!db || !session_string || !identity_pubkey) {
+1113     return false;
+1114   }
+1115 
+1116   const char *sql = &quot;SELECT 1 FROM session_keys WHERE session_string = ? AND identity_pubkey = ? AND revoked = 0&quot;;
+1117 
+1118   sqlite3_stmt *stmt = NULL;
+1119   if (sqlite3_prepare_v2(db, sql, -1, &amp;stmt, NULL) != SQLITE_OK) {
+1120     return false;
+1121   }
+1122 
+1123   sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+1124   sqlite3_bind_blob(stmt, 2, identity_pubkey, 32, SQLITE_STATIC);
+1125 
+1126   bool valid = (sqlite3_step(stmt) == SQLITE_ROW);
+1127   sqlite3_finalize(stmt);
+1128 
+1129   return valid;
+1130 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>valid</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

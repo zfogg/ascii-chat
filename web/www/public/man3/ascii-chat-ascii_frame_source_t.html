@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ascii_frame_source_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ascii_frame_source_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ascii_frame_source_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ascii_frame_source_t - Frame source structure for grid layout.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/video/ascii/ascii.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">const char * <b>frame_data</b>
+  <br/>
+  Frame data pointer (ASCII frame string, not owned). size_t <b>frame_size</b>
+  <br/>
+  Frame data size in bytes (length of frame string).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Frame source structure for grid layout.</p>
+<p class="Pp">Contains frame data and size for grid layout operations. Used to
+    combine multiple ASCII frames into a single grid layout.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">frame_data points to ASCII frame string (not owned by
+  structure).
+<p class="Pp"></p>
+<p class="Pp">frame_size is the size of frame_data in bytes.</p>
+<p class="Pp"></p>
+<p class="Pp">Frame data must remain valid during grid creation.</p>
+</div>
+<p class="Pp">Definition at line <b>358</b> of file <b>ascii.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_ascii_frame_source_t::frame_data"><a class="permalink" href="#const_char*_ascii_frame_source_t::frame_data">const
+  char* ascii_frame_source_t::frame_data</a></h2>
+<p class="Pp">Frame data pointer (ASCII frame string, not owned).</p>
+<p class="Pp">Definition at line <b>359</b> of file <b>ascii.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_create_grid()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ascii_frame_source_t::frame_size"><a class="permalink" href="#size_t_ascii_frame_source_t::frame_size">size_t
+  ascii_frame_source_t::frame_size</a></h2>
+<p class="Pp">Frame data size in bytes (length of frame string).</p>
+<p class="Pp">Definition at line <b>360</b> of file <b>ascii.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_create_grid()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

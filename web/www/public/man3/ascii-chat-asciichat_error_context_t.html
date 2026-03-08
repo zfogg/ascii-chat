@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>asciichat_error_context_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">asciichat_error_context_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">asciichat_error_context_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">asciichat_error_context_t - Error context structure.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/asciichat_errno.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>code</b>
+  <br/>
+  Error code (<b>asciichat_error_t</b> enum value). const char * <b>file</b>
+  <br/>
+  Source file where error occurred (NULL in release builds). int <b>line</b>
+  <br/>
+  Line number where error occurred (0 in release builds). const char *
+    <b>function</b>
+  <br/>
+  Function name where error occurred (NULL in release builds). char *
+    <b>context_message</b>
+  <br/>
+  Optional custom message (dynamically allocated, owned by system).
+    <b>uint64_t</b> <b>timestamp</b>
+  <br/>
+  Timestamp when error occurred (microseconds since epoch). int
+    <b>system_errno</b>
+  <br/>
+  System errno value (if applicable, 0 otherwise). int <b>wsa_error</b>
+  <br/>
+  Windows socket error code (if applicable, 0 otherwise). <b>backtrace_t</b>
+    <b>backtrace</b>
+  <br/>
+  Stack trace (debug builds only). <b>bool</b> <b>has_system_error</b>
+  <br/>
+  True if system_errno is valid. <b>bool</b> <b>has_wsa_error</b>
+  <br/>
+  True if wsa_error is valid.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Error context structure.</p>
+<p class="Pp">Contains full error context information including error code,
+    location, stack trace (debug builds), and optional context message. This
+    structure is stored in thread-local storage for thread-safe error
+  handling.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Stack traces are only captured in debug builds (DEBUG or
+  ENABLE_ERRNO_BACKTRACES).
+<p class="Pp"></p>
+<p class="Pp">Context message is dynamically allocated and must be freed by the
+    system.</p>
+<p class="Pp"></p>
+<p class="Pp">Thread-local storage ensures each thread has independent error
+    state.</p>
+</div>
+<p class="Pp">Definition at line <b>241</b> of file
+  <b>asciichat_errno.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>backtrace_t</b> asciichat_error_context_t::backtrace</h2>
+<p class="Pp">Stack trace (debug builds only).</p>
+<p class="Pp">Definition at line <b>250</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_print_error_context()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> asciichat_error_context_t::code</h2>
+<p class="Pp">Error code (<b>asciichat_error_t</b> enum value).</p>
+<p class="Pp">Definition at line <b>242</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_print_error_context()</b>, and
+    <b>client_receive_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char*_asciichat_error_context_t::context_message"><a class="permalink" href="#char*_asciichat_error_context_t::context_message">char*
+  asciichat_error_context_t::context_message</a></h2>
+<p class="Pp">Optional custom message (dynamically allocated, owned by
+  system).</p>
+<p class="Pp">Definition at line <b>246</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_handler()</b>,
+    <b>action_create_config()</b>, <b>action_create_manpage()</b>,
+    <b>asciichat_print_error_context()</b>, <b>client_receive_thread()</b>,
+    <b>database_session_create()</b>, <b>main()</b>, <b>options_init()</b>, and
+    <b>parse_log_file()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_asciichat_error_context_t::file"><a class="permalink" href="#const_char*_asciichat_error_context_t::file">const
+  char* asciichat_error_context_t::file</a></h2>
+<p class="Pp">Source file where error occurred (NULL in release builds).</p>
+<p class="Pp">Definition at line <b>243</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_print_error_context()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_asciichat_error_context_t::function"><a class="permalink" href="#const_char*_asciichat_error_context_t::function">const
+  char* asciichat_error_context_t::function</a></h2>
+<p class="Pp">Function name where error occurred (NULL in release builds).</p>
+<p class="Pp">Definition at line <b>245</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_print_error_context()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> asciichat_error_context_t::has_system_error</h2>
+<p class="Pp">True if system_errno is valid.</p>
+<p class="Pp">Definition at line <b>251</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_print_error_context()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> asciichat_error_context_t::has_wsa_error</h2>
+<p class="Pp">True if wsa_error is valid.</p>
+<p class="Pp">Definition at line <b>252</b> of file
+  <b>asciichat_errno.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_asciichat_error_context_t::line"><a class="permalink" href="#int_asciichat_error_context_t::line">int
+  asciichat_error_context_t::line</a></h2>
+<p class="Pp">Line number where error occurred (0 in release builds).</p>
+<p class="Pp">Definition at line <b>244</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_print_error_context()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_asciichat_error_context_t::system_errno"><a class="permalink" href="#int_asciichat_error_context_t::system_errno">int
+  asciichat_error_context_t::system_errno</a></h2>
+<p class="Pp">System errno value (if applicable, 0 otherwise).</p>
+<p class="Pp">Definition at line <b>248</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_print_error_context()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> asciichat_error_context_t::timestamp</h2>
+<p class="Pp">Timestamp when error occurred (microseconds since epoch).</p>
+<p class="Pp">Definition at line <b>247</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_print_error_context()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_asciichat_error_context_t::wsa_error"><a class="permalink" href="#int_asciichat_error_context_t::wsa_error">int
+  asciichat_error_context_t::wsa_error</a></h2>
+<p class="Pp">Windows socket error code (if applicable, 0 otherwise).</p>
+<p class="Pp">Definition at line <b>249</b> of file
+  <b>asciichat_errno.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

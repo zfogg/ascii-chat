@@ -48,19 +48,22 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">asciichat_error_t <b>ffmpeg_encoder_create</b> (const char
-    *output_path, int width_px, int height_px, int fps, ffmpeg_encoder_t **out)
+<p class="Pp"><b>asciichat_error_t</b> <b>ffmpeg_encoder_create</b> (const char
+    *output_path, int width_px, int height_px, int fps, <b>ffmpeg_encoder_t</b>
+    **out)
   <br/>
-  asciichat_error_t <b>ffmpeg_encoder_write_frame</b> (ffmpeg_encoder_t *enc,
-    const uint8_t *rgb, int pitch, uint64_t captured_ns)
+  <b>asciichat_error_t</b> <b>ffmpeg_encoder_write_frame</b>
+    (<b>ffmpeg_encoder_t</b> *enc, const <b>uint8_t</b> *rgb, int pitch,
+    <b>uint64_t</b> captured_ns)
   <br/>
-  asciichat_error_t <b>ffmpeg_encoder_write_audio</b> (ffmpeg_encoder_t *enc,
-    const float *samples, int num_samples)
+  <b>asciichat_error_t</b> <b>ffmpeg_encoder_write_audio</b>
+    (<b>ffmpeg_encoder_t</b> *enc, const float *samples, int num_samples)
   <br/>
-  void <b>ffmpeg_encoder_set_snapshot_actual_duration</b> (ffmpeg_encoder_t
-    *enc, double actual_duration_sec)
+  void <b>ffmpeg_encoder_set_snapshot_actual_duration</b>
+    (<b>ffmpeg_encoder_t</b> *enc, double actual_duration_sec)
   <br/>
-  asciichat_error_t <b>ffmpeg_encoder_destroy</b> (ffmpeg_encoder_t *enc)
+  <b>asciichat_error_t</b> <b>ffmpeg_encoder_destroy</b>
+    (<b>ffmpeg_encoder_t</b> *enc)
   <br/>
   <br/>
 </p>
@@ -78,9 +81,42 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_ffmpeg_encoder_create_(const_char_*_output_path,_int_width_px,_int_height_px,_int_fps,_ffmpeg_encoder_t_**_out)"><a class="permalink" href="#asciichat_error_t_ffmpeg_encoder_create_(const_char_*_output_path,_int_width_px,_int_height_px,_int_fps,_ffmpeg_encoder_t_**_out)">asciichat_error_t
-  ffmpeg_encoder_create (const char * output_path, int width_px, int height_px,
-  int fps, ffmpeg_encoder_t ** out)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> ffmpeg_encoder_create (const char *
+  output_path, int width_px, int height_px, int fps, <b>ffmpeg_encoder_t</b> **
+  out)</h2>
+<p class="Pp">Create and initialize a video/image encoder.</p>
+<p class="Pp"></p>
+<p class="Pp">The output format and codec are automatically determined from the
+    file extension. See <b>Supported Formats &amp; Codecs</b> for supported
+    formats.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Bitrate:</b> Automatically calculated from resolution (~1 Mbps
+    per megapixel, clamped to 500-5000 kbps).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Color Space:</b> Input is expected in RGB24 format. Internal
+    conversion to the appropriate output pixel format (YUV420P for video, RGB24
+    for PNG, YUVJ420P for JPEG) is handled automatically.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>output_path</i> Path to the output file (extension
+  determines format and codec)
+<br/>
+<i>width_px</i> Video width in pixels (must be &gt; 0)
+<br/>
+<i>height_px</i> Video height in pixels (must be &gt; 0)
+<br/>
+<i>fps</i> Frames per second (must be &gt; 0)
+<br/>
+<i>out</i> Pointer to encoder handle (set on success)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">The encoder acquires resources (file handles, memory
+  buffers) that must be released with <b>ffmpeg_encoder_destroy()</b>. Failure
+  to do so may leak file handles and memory.</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>ffmpeg_encoder_write_frame</b>,
+  <b>ffmpeg_encoder_destroy</b>, ffmpeg_encoder_formats</div>
 <p class="Pp">Definition at line <b>333</b> of file <b>ffmpeg_encoder.c</b>.</p>
 <pre>334                                                                 {
 335   log_info(&quot;[FFMPEG_ENCODER_CREATE] START: output=%s, %dx%d @ %dfps&quot;, output_path, width_px, height_px, fps);
@@ -369,11 +405,54 @@
 618 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>ffmpeg_encoder_s::codec_ctx</b>, <b>ERROR_INIT</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ffmpeg_encoder_s::estimated_frame_count</b>,
+    <b>ffmpeg_encoder_s::estimated_frame_duration</b>,
+    <b>ffmpeg_encoder_s::first_frame_captured_ns</b>,
+    <b>ffmpeg_encoder_s::fmt_ctx</b>, <b>ffmpeg_encoder_s::fps</b>,
+    <b>ffmpeg_encoder_s::frame</b>, <b>ffmpeg_encoder_s::frame_count</b>,
+    <b>ffmpeg_encoder_s::frame_encoded</b>, <b>GET_OPTION</b>,
+    <b>ffmpeg_encoder_s::height_px</b>, <b>ffmpeg_encoder_s::is_image</b>,
+    <b>ffmpeg_encoder_s::is_stdout_pipe</b>, <b>log_debug</b>, <b>log_info</b>,
+    <b>LOG_IO</b>, <b>NAMED_REGISTER_FFMPEG_ENCODER</b>,
+    <b>ffmpeg_encoder_s::pkt</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
+    <b>SET_ERRNO</b>, <b>ffmpeg_encoder_s::snapshot_actual_duration</b>,
+    <b>ffmpeg_encoder_s::snapshot_elapsed_ns</b>,
+    <b>ffmpeg_encoder_s::stream</b>, <b>ffmpeg_encoder_s::sws_ctx</b>,
+    <b>ffmpeg_encoder_s::target_pix_fmt</b>, <b>ffmpeg_encoder_s::video_pts</b>,
+    and <b>ffmpeg_encoder_s::width_px</b>.</p>
 <p class="Pp">Referenced by <b>render_file_create()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_ffmpeg_encoder_destroy_(ffmpeg_encoder_t_*_enc)"><a class="permalink" href="#asciichat_error_t_ffmpeg_encoder_destroy_(ffmpeg_encoder_t_*_enc)">asciichat_error_t
-  ffmpeg_encoder_destroy (ffmpeg_encoder_t * enc)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> ffmpeg_encoder_destroy
+  (<b>ffmpeg_encoder_t</b> * enc)</h2>
+<p class="Pp">Close and finalize the output file, releasing all encoder
+    resources.</p>
+<p class="Pp"></p>
+<p class="Pp">This function flushes any pending frames in the encoder, writes
+    the file trailer, and releases all allocated resources (memory buffers, file
+    handles, codecs).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Critical:</b> This MUST be called to properly finalize the
+    output file. Without this call, the file may be incomplete or
+  unplayable.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>enc</i> Encoder handle (created with
+  <b>ffmpeg_encoder_create()</b>)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success (currently always succeeds)</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Safe to call with NULL pointer (returns ASCIICHAT_OK).
+<p class="Pp"></p>
+<p class="Pp">After this call, enc must not be used again.</p>
+<p class="Pp"></p>
+<p class="Pp">The output file is NOT guaranteed to be complete until this
+    function returns.</p>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>ffmpeg_encoder_create</b></div>
 <p class="Pp">Definition at line <b>877</b> of file <b>ffmpeg_encoder.c</b>.</p>
 <pre>877                                                                 {
 878   if (!enc)
@@ -573,13 +652,58 @@
 1072 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>g_snapshot_actual_duration_ms</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>ffmpeg_encoder_s::audio_codec_ctx</b>,
+    <b>ffmpeg_encoder_s::audio_frame</b>,
+    <b>ffmpeg_encoder_s::audio_frame_size</b>,
+    <b>ffmpeg_encoder_s::audio_partial_buf</b>,
+    <b>ffmpeg_encoder_s::audio_partial_len</b>,
+    <b>ffmpeg_encoder_s::audio_pts</b>, <b>ffmpeg_encoder_s::audio_stream</b>,
+    <b>ffmpeg_encoder_s::audio_swr_ctx</b>, <b>ffmpeg_encoder_s::codec_ctx</b>,
+    <b>EAGAIN</b>, <b>ffmpeg_encoder_s::fmt_ctx</b>,
+    <b>ffmpeg_encoder_s::fps</b>, <b>ffmpeg_encoder_s::frame</b>,
+    <b>ffmpeg_encoder_s::frame_count</b>,
+    <b>ffmpeg_encoder_s::frame_encoded</b>,
+    <b>g_snapshot_actual_duration_ms</b>, <b>GET_OPTION</b>,
+    <b>ffmpeg_encoder_s::has_audio_stream</b>, <b>log_debug</b>,
+    <b>log_info</b>, <b>LOG_IO</b>, <b>NAMED_UNREGISTER</b>,
+    <b>ffmpeg_encoder_s::pkt</b>, <b>SAFE_FREE</b>,
+    <b>ffmpeg_encoder_s::stream</b>, <b>ffmpeg_encoder_s::sws_ctx</b>, and
+    <b>ffmpeg_encoder_s::video_pts</b>.</p>
 <p class="Pp">Referenced by <b>render_file_destroy()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_ffmpeg_encoder_set_snapshot_actual_duration_(ffmpeg_encoder_t_*_enc,_double_actual_duration_sec)"><a class="permalink" href="#void_ffmpeg_encoder_set_snapshot_actual_duration_(ffmpeg_encoder_t_*_enc,_double_actual_duration_sec)">void
-  ffmpeg_encoder_set_snapshot_actual_duration (ffmpeg_encoder_t * enc, double
-  actual_duration_sec)</a></h2>
+<h2 class="Ss" id="void_ffmpeg_encoder_set_snapshot_actual_duration_("><a class="permalink" href="#void_ffmpeg_encoder_set_snapshot_actual_duration_(">void
+  ffmpeg_encoder_set_snapshot_actual_duration (<b>ffmpeg_encoder_t</b> * enc,
+  double actual_duration_sec)</a></h2>
+<p class="Pp">Set the actual wall-clock duration for snapshot mode frame
+  timing.</p>
+<p class="Pp"></p>
+<p class="Pp">In snapshot mode, frames are captured over a wall-clock duration
+    (e.g., 3 seconds of real time). This function should be called after all
+    frames are captured to provide the actual elapsed time, allowing the encoder
+    to calculate correct frame durations so the output video duration matches
+    the actual capture time.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>enc</i> Encoder handle (created with
+  <b>ffmpeg_encoder_create()</b>)
+<br/>
+<i>actual_duration_sec</i> Actual wall-clock duration in seconds (e.g., 3.5 for
+  3.5 seconds)</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Only used in snapshot mode. In normal mode, this is
+  ignored.
+<p class="Pp"></p>
+<p class="Pp">Should be called before <b>ffmpeg_encoder_destroy()</b> for the
+    adjustment to take effect.</p>
+<p class="Pp"></p>
+<p class="Pp">If not called, frame durations are calculated from FPS, which may
+    not match actual wall-clock capture time.</p>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>ffmpeg_encoder_create</b>,
+  <b>ffmpeg_encoder_destroy</b></div>
 <p class="Pp">Definition at line <b>858</b> of file <b>ffmpeg_encoder.c</b>.</p>
 <pre>858                                                                                                     {
 859   if (!enc)
@@ -601,13 +725,54 @@
 875 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>ffmpeg_encoder_s::frame_count</b>, <b>log_debug</b>,
+    <b>log_info</b>, and <b>ffmpeg_encoder_s::snapshot_actual_duration</b>.</p>
 <p class="Pp">Referenced by
   <b>render_file_set_snapshot_actual_duration()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_ffmpeg_encoder_write_audio_(ffmpeg_encoder_t_*_enc,_const_float_*_samples,_int_num_samples)"><a class="permalink" href="#asciichat_error_t_ffmpeg_encoder_write_audio_(ffmpeg_encoder_t_*_enc,_const_float_*_samples,_int_num_samples)">asciichat_error_t
-  ffmpeg_encoder_write_audio (ffmpeg_encoder_t * enc, const float * samples, int
-  num_samples)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> ffmpeg_encoder_write_audio
+  (<b>ffmpeg_encoder_t</b> * enc, const float * samples, int num_samples)</h2>
+<p class="Pp">Write audio samples to the output file.</p>
+<p class="Pp"></p>
+<p class="Pp">Encodes and writes audio samples to the output file. Audio samples
+    must be in 48kHz mono float32 format. The function internally buffers and
+    accumulates samples into codec frames before encoding.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Audio Format Requirements:</b></p>
+<ul class="Bl-bullet">
+  <li>Sample rate: 48000 Hz (48 kHz)</li>
+  <li>Channels: Mono (1 channel)</li>
+  <li>Format: 32-bit IEEE float (AV_SAMPLE_FMT_FLT)</li>
+</ul>
+<p class="Pp"><b>Notes:</b></p>
+<ul class="Bl-bullet">
+  <li>Audio is only written if the output format supports audio (MP4, WebM,
+      AVI).</li>
+  <li>Image formats (PNG, JPEG, GIF) ignore audio writes.</li>
+  <li>Samples are buffered internally and encoded in chunks as needed.</li>
+  <li>Timing is automatically synchronized with video using PTS (presentation
+      timestamp).</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>enc</i> Encoder handle (created with
+  <b>ffmpeg_encoder_create()</b>)
+<br/>
+<i>samples</i> Pointer to audio samples in float32 format (not owned, used
+  immediately)
+<br/>
+<i>num_samples</i> Number of samples to write (must be &gt; 0)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Input sample data is NOT owned by the encoder. The caller
+  must ensure the buffer remains valid throughout the call.
+<p class="Pp"></p>
+<p class="Pp">Safe to call on encoders without audio streams (no-op).</p>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>ffmpeg_encoder_create</b>,
+  <b>ffmpeg_encoder_write_frame</b></div>
 <p class="Pp">Definition at line <b>791</b> of file <b>ffmpeg_encoder.c</b>.</p>
 <pre>791                                                                                                            {
 792   if (!enc || !samples || num_samples &lt;= 0)
@@ -677,12 +842,62 @@
 856 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>ffmpeg_encoder_s::audio_codec_ctx</b>,
+    <b>ffmpeg_encoder_s::audio_frame</b>,
+    <b>ffmpeg_encoder_s::audio_frame_size</b>,
+    <b>ffmpeg_encoder_s::audio_partial_buf</b>,
+    <b>ffmpeg_encoder_s::audio_partial_len</b>,
+    <b>ffmpeg_encoder_s::audio_pts</b>, <b>ffmpeg_encoder_s::audio_stream</b>,
+    <b>EAGAIN</b>, <b>ffmpeg_encoder_s::fmt_ctx</b>,
+    <b>ffmpeg_encoder_s::has_audio_stream</b>, <b>log_warn_every</b>, and
+    <b>ffmpeg_encoder_s::pkt</b>.</p>
 <p class="Pp">Referenced by <b>render_file_write_frame()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_ffmpeg_encoder_write_frame_(ffmpeg_encoder_t_*_enc,_const_uint8_t_*_rgb,_int_pitch,_uint64_t_captured_ns)"><a class="permalink" href="#asciichat_error_t_ffmpeg_encoder_write_frame_(ffmpeg_encoder_t_*_enc,_const_uint8_t_*_rgb,_int_pitch,_uint64_t_captured_ns)">asciichat_error_t
-  ffmpeg_encoder_write_frame (ffmpeg_encoder_t * enc, const uint8_t * rgb, int
-  pitch, uint64_t captured_ns)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> ffmpeg_encoder_write_frame
+  (<b>ffmpeg_encoder_t</b> * enc, const <b>uint8_t</b> * rgb, int pitch,
+  <b>uint64_t</b> captured_ns)</h2>
+<p class="Pp">Write a single video frame to the output file.</p>
+<p class="Pp"></p>
+<p class="Pp">The frame must be in RGB24 format (8-bit per channel, 24-bit per
+    pixel). Internal color space conversion is performed automatically based on
+    the output format (see <b>Encoder Options &amp; Quality Tradeoffs</b> for
+    details).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Pitch Parameter:</b> The pitch parameter specifies the byte
+    offset from one row to the next. For tightly-packed RGB data: pitch =
+    width_px &#x00D7; 3. For padded/aligned buffers: pitch must reflect the
+    actual row size.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Timestamp Parameter:</b> The captured_ns parameter is the
+    wall-clock timestamp (in nanoseconds) when the frame was captured. This
+    ensures video playback uses actual capture timing, not encoder processing
+    time. For correct frame timing in the output video, captured_ns should be
+    the time when the frame was acquired from the media source.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>enc</i> Encoder handle (created with
+  <b>ffmpeg_encoder_create()</b>)
+<br/>
+<i>rgb</i> Pointer to frame data in RGB24 format (not copied, used immediately)
+<br/>
+<i>pitch</i> Byte offset between rows (must match actual buffer layout)
+<br/>
+<i>captured_ns</i> Wall-clock timestamp in nanoseconds when frame was
+  captured</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Input frame data is NOT owned by the encoder. The caller
+  must ensure the buffer remains valid throughout the call.
+<p class="Pp"></p>
+<p class="Pp">For image-only formats (PNG, JPEG), only the last frame written is
+    kept. Previous frames are discarded when the next frame is written.</p>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>ffmpeg_encoder_create</b>,
+  <b>ffmpeg_encoder_destroy</b></div>
 <p class="Pp">Definition at line <b>620</b> of file <b>ffmpeg_encoder.c</b>.</p>
 <pre>621                                                                    {
 622   if (!enc || !rgb)
@@ -855,8 +1070,23 @@
 789 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>g_snapshot_actual_duration_ms</b>, and
-    <b>g_snapshot_last_capture_elapsed_ns</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>ffmpeg_encoder_s::codec_ctx</b>, <b>EAGAIN</b>,
+    <b>ERROR_INVALID_PARAM</b>,
+    <b>ffmpeg_encoder_s::first_frame_captured_ns</b>,
+    <b>ffmpeg_encoder_s::fmt_ctx</b>, <b>ffmpeg_encoder_s::fps</b>,
+    <b>ffmpeg_encoder_s::frame_count</b>,
+    <b>ffmpeg_encoder_s::frame_encoded</b>,
+    <b>g_snapshot_actual_duration_ms</b>,
+    <b>g_snapshot_last_capture_elapsed_ns</b>, <b>GET_OPTION</b>,
+    <b>ffmpeg_encoder_s::height_px</b>, <b>ffmpeg_encoder_s::is_stdout_pipe</b>,
+    <b>log_debug</b>, <b>log_info</b>, <b>log_warn_every</b>,
+    <b>NS_PER_SEC_INT</b>, <b>ffmpeg_encoder_s::pkt</b>,
+    <b>ffmpeg_encoder_s::previous_captured_ns</b>, <b>SET_ERRNO</b>,
+    <b>ffmpeg_encoder_s::snapshot_actual_duration</b>,
+    <b>ffmpeg_encoder_s::stream</b>, <b>ffmpeg_encoder_s::sws_ctx</b>,
+    <b>ffmpeg_encoder_s::target_pix_fmt</b>, <b>ffmpeg_encoder_s::video_pts</b>,
+    and <b>ffmpeg_encoder_s::width_px</b>.</p>
 <p class="Pp">Referenced by <b>render_file_write_frame()</b>.</p>
 </section>
 </section>
@@ -867,7 +1097,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

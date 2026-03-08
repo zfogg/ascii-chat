@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>client_audio_pipeline_config_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">client_audio_pipeline_config_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">client_audio_pipeline_config_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">client_audio_pipeline_config_t - Pipeline configuration
+    parameters.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/audio/client_pipeline.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">int <b>sample_rate</b>
+  <br/>
+  <b>uint64_t</b> <b>frame_size_ns</b>
+  <br/>
+  int <b>opus_bitrate</b>
+  <br/>
+  <b>uint64_t</b> <b>echo_filter_ns</b>
+  <br/>
+  int <b>noise_suppress_db</b>
+  <br/>
+  int <b>agc_level</b>
+  <br/>
+  int <b>agc_max_gain</b>
+  <br/>
+  <b>uint64_t</b> <b>jitter_margin_ns</b>
+  <br/>
+  float <b>highpass_hz</b>
+  <br/>
+  float <b>lowpass_hz</b>
+  <br/>
+  float <b>comp_threshold_db</b>
+  <br/>
+  float <b>comp_ratio</b>
+  <br/>
+  <b>uint64_t</b> <b>comp_attack_ns</b>
+  <br/>
+  <b>uint64_t</b> <b>comp_release_ns</b>
+  <br/>
+  float <b>comp_makeup_db</b>
+  <br/>
+  float <b>gate_threshold</b>
+  <br/>
+  <b>uint64_t</b> <b>gate_attack_ns</b>
+  <br/>
+  <b>uint64_t</b> <b>gate_release_ns</b>
+  <br/>
+  float <b>gate_hysteresis</b>
+  <br/>
+  <b>client_audio_pipeline_flags_t</b> <b>flags</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Pipeline configuration parameters.</p>
+<p class="Pp">All parameters have sensible defaults. Pass NULL to create() for
+    defaults.</p>
+<p class="Pp">Definition at line <b>167</b> of file
+  <b>client_pipeline.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_client_audio_pipeline_config_t::agc_level"><a class="permalink" href="#int_client_audio_pipeline_config_t::agc_level">int
+  client_audio_pipeline_config_t::agc_level</a></h2>
+<p class="Pp">AGC target level (default: 8000, range 1-32767)</p>
+<p class="Pp">Definition at line <b>181</b> of file
+  <b>client_pipeline.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_client_audio_pipeline_config_t::agc_max_gain"><a class="permalink" href="#int_client_audio_pipeline_config_t::agc_max_gain">int
+  client_audio_pipeline_config_t::agc_max_gain</a></h2>
+<p class="Pp">AGC maximum gain in dB (default: 30)</p>
+<p class="Pp">Definition at line <b>183</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_process_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b>
+  client_audio_pipeline_config_t::comp_attack_ns</h2>
+<p class="Pp">Compressor attack time in nanoseconds (default: 10ms)</p>
+<p class="Pp">Definition at line <b>198</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_client_audio_pipeline_config_t::comp_makeup_db"><a class="permalink" href="#float_client_audio_pipeline_config_t::comp_makeup_db">float
+  client_audio_pipeline_config_t::comp_makeup_db</a></h2>
+<p class="Pp">Compressor makeup gain in dB (default: 3)</p>
+<p class="Pp">Definition at line <b>202</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_client_audio_pipeline_config_t::comp_ratio"><a class="permalink" href="#float_client_audio_pipeline_config_t::comp_ratio">float
+  client_audio_pipeline_config_t::comp_ratio</a></h2>
+<p class="Pp">Compressor ratio (default: 4.0 for 4:1)</p>
+<p class="Pp">Definition at line <b>196</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b>
+  client_audio_pipeline_config_t::comp_release_ns</h2>
+<p class="Pp">Compressor release time in nanoseconds (default: 100ms)</p>
+<p class="Pp">Definition at line <b>200</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_client_audio_pipeline_config_t::comp_threshold_db"><a class="permalink" href="#float_client_audio_pipeline_config_t::comp_threshold_db">float
+  client_audio_pipeline_config_t::comp_threshold_db</a></h2>
+<p class="Pp">Compressor threshold in dB (default: -10)</p>
+<p class="Pp">Definition at line <b>194</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b>
+  client_audio_pipeline_config_t::echo_filter_ns</h2>
+<p class="Pp">Echo cancellation filter length in nanoseconds (default:
+  250ms)</p>
+<p class="Pp">Definition at line <b>176</b> of file
+  <b>client_pipeline.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>client_audio_pipeline_flags_t</b>
+  client_audio_pipeline_config_t::flags</h2>
+<p class="Pp">Component enable flags</p>
+<p class="Pp">Definition at line <b>214</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_client_init()</b>, and
+    <b>client_audio_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b>
+  client_audio_pipeline_config_t::frame_size_ns</h2>
+<p class="Pp">Frame size in nanoseconds (default: 20ms)</p>
+<p class="Pp">Definition at line <b>171</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b>
+  client_audio_pipeline_config_t::gate_attack_ns</h2>
+<p class="Pp">Noise gate attack time in nanoseconds (default: 2ms)</p>
+<p class="Pp">Definition at line <b>207</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_client_audio_pipeline_config_t::gate_hysteresis"><a class="permalink" href="#float_client_audio_pipeline_config_t::gate_hysteresis">float
+  client_audio_pipeline_config_t::gate_hysteresis</a></h2>
+<p class="Pp">Noise gate hysteresis (default: 0.9)</p>
+<p class="Pp">Definition at line <b>211</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b>
+  client_audio_pipeline_config_t::gate_release_ns</h2>
+<p class="Pp">Noise gate release time in nanoseconds (default: 50ms)</p>
+<p class="Pp">Definition at line <b>209</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_client_audio_pipeline_config_t::gate_threshold"><a class="permalink" href="#float_client_audio_pipeline_config_t::gate_threshold">float
+  client_audio_pipeline_config_t::gate_threshold</a></h2>
+<p class="Pp">Noise gate threshold (linear, default: 0.01 = -40dB)</p>
+<p class="Pp">Definition at line <b>205</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_client_audio_pipeline_config_t::highpass_hz"><a class="permalink" href="#float_client_audio_pipeline_config_t::highpass_hz">float
+  client_audio_pipeline_config_t::highpass_hz</a></h2>
+<p class="Pp">High-pass filter cutoff frequency in Hz (default: 80)</p>
+<p class="Pp">Definition at line <b>189</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b>
+  client_audio_pipeline_config_t::jitter_margin_ns</h2>
+<p class="Pp">Jitter buffer margin in nanoseconds (default: 60ms)</p>
+<p class="Pp">Definition at line <b>186</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_client_init()</b>, and
+    <b>client_audio_pipeline_jitter_margin()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_client_audio_pipeline_config_t::lowpass_hz"><a class="permalink" href="#float_client_audio_pipeline_config_t::lowpass_hz">float
+  client_audio_pipeline_config_t::lowpass_hz</a></h2>
+<p class="Pp">Low-pass filter cutoff frequency in Hz (default: 8000)</p>
+<p class="Pp">Definition at line <b>191</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_client_audio_pipeline_config_t::noise_suppress_db"><a class="permalink" href="#int_client_audio_pipeline_config_t::noise_suppress_db">int
+  client_audio_pipeline_config_t::noise_suppress_db</a></h2>
+<p class="Pp">Noise suppression level in dB (default: -25, negative = more
+    suppression)</p>
+<p class="Pp">Definition at line <b>179</b> of file
+  <b>client_pipeline.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_client_audio_pipeline_config_t::opus_bitrate"><a class="permalink" href="#int_client_audio_pipeline_config_t::opus_bitrate">int
+  client_audio_pipeline_config_t::opus_bitrate</a></h2>
+<p class="Pp">Opus bitrate in bps (default: 24000)</p>
+<p class="Pp">Definition at line <b>173</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_client_init()</b>, and
+    <b>client_audio_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_client_audio_pipeline_config_t::sample_rate"><a class="permalink" href="#int_client_audio_pipeline_config_t::sample_rate">int
+  client_audio_pipeline_config_t::sample_rate</a></h2>
+<p class="Pp">Sample rate in Hz (default: 48000)</p>
+<p class="Pp">Definition at line <b>169</b> of file
+  <b>client_pipeline.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_client_init()</b>,
+    <b>client_audio_pipeline_create()</b>, and
+    <b>client_audio_pipeline_process_duplex()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>compression(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">compression(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">compression(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">compression - Compression</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+<br/>
+<p class="Pp">file <b>compression.c</b>
+  <br/>
+  &#x1F5DC;&#xFE0F; Fast zstd compression/decompression utilities for network
+    payload optimization file <b>compression.h</b>
+  <br/>
+  &#x1F4E6; Network Packet Compression Utilities
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>compress_data</b> (const void *input,
+    size_t input_size, void **output, size_t *output_size, int
+    compression_level)
+  <br/>
+  Compress data using zstd with configurable compression level.
+    <b>asciichat_error_t</b> <b>decompress_data</b> (const void *input, size_t
+    input_size, void *output, size_t output_size)
+  <br/>
+  Decompress data using zstd. <b>bool</b> <b>should_compress</b> (size_t
+    original_size, size_t compressed_size)
+  <br/>
+  Determine if compression should be used for given data sizes.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Compression_Settings"><a class="permalink" href="#Compression_Settings">Compression
+  Settings</a></h2>
+<br/>
+<p class="Pp">#define <b>COMPRESSION_RATIO_THRESHOLD</b> 0.8f
+  <br/>
+  Compression ratio threshold - only use if &lt;80% original size. #define
+    <b>COMPRESSION_MIN_SIZE</b> 1024
+  <br/>
+  Minimum packet size to attempt compression (1KB).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">This header provides compression and decompression utilities for
+    network packets in ascii-chat. The system uses zstd compression to reduce
+    bandwidth usage for large packets like video frames.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CORE_FEATURES:"><a class="permalink" href="#CORE_FEATURES:">CORE
+  FEATURES: </a></h1>
+<ul class="Bl-bullet">
+  <li>zstd compression algorithm</li>
+  <li>Automatic compression ratio checking (only use if beneficial)</li>
+  <li>Minimum size threshold to avoid compressing small packets</li>
+  <li>Memory-efficient compression/decompression</li>
+  <li>Pure utility functions (no state management)</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="COMPRESSION_STRATEGY:"><a class="permalink" href="#COMPRESSION_STRATEGY:">COMPRESSION
+  STRATEGY: </a></h1>
+<p class="Pp">Compression is only applied when:</p>
+<ul class="Bl-bullet">
+  <li>Packet size exceeds minimum threshold (1KB)</li>
+  <li>Compression achieves at least 20% size reduction (&lt;80% of
+    original)</li>
+</ul>
+<p class="Pp">This prevents:</p>
+<ul class="Bl-bullet">
+  <li>Overhead of compressing already-compressed data</li>
+  <li>CPU waste on small packets that don't benefit</li>
+  <li>Compression expansion (when compressed data is larger)</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ALGORITHM:"><a class="permalink" href="#ALGORITHM:">ALGORITHM:
+  </a></h1>
+<ul class="Bl-bullet">
+  <li>Uses Facebook's zstd deflate for compression</li>
+  <li>Provides good compression ratio for text/ASCII data</li>
+  <li>Reasonable CPU overhead for real-time streaming</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Compression is optional and only used when beneficial.
+<p class="Pp"></p>
+<p class="Pp">Frame sending functions have been moved to
+  network.h/network.c.</p>
+<p class="Pp"></p>
+<p class="Pp">The compression ratio threshold ensures compression is only used
+    when it provides meaningful bandwidth savings.</p>
+</div>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">August 2025</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_COMPRESSION_MIN_SIZE___1024"><a class="permalink" href="#_define_COMPRESSION_MIN_SIZE___1024">#define
+  COMPRESSION_MIN_SIZE 1024</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/compression.h</b>&gt;<b></b></p>
+<p class="Pp">Minimum packet size to attempt compression (1KB).</p>
+<p class="Pp">Definition at line <b>61</b> of file <b>compression.h</b>.</p>
+<p class="Pp">Referenced by <b>send_packet_secure()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_COMPRESSION_RATIO_THRESHOLD___0"><a class="permalink" href="#_define_COMPRESSION_RATIO_THRESHOLD___0">#define
+  COMPRESSION_RATIO_THRESHOLD 0.8f</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/compression.h</b>&gt;<b></b></p>
+<p class="Pp">Compression ratio threshold - only use if &lt;80% original
+  size.</p>
+<p class="Pp">Definition at line <b>58</b> of file <b>compression.h</b>.</p>
+<p class="Pp">Referenced by <b>send_packet_secure()</b>, and
+    <b>should_compress()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> compress_data (const void * input,
+  size_t input_size, void ** output, size_t * output_size, int
+  compression_level)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/compression.h</b>&gt;<b></b></p>
+<p class="Pp">Compress data using zstd with configurable compression level.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>input</i> Input data to compress (must not be NULL)
+<br/>
+<i>input_size</i> Size of input data in bytes
+<br/>
+<i>output</i> Output buffer pointer (pointer-to-pointer; function allocates and
+  stores address here)
+<br/>
+<i>output_size</i> Size of compressed data in bytes (output parameter, must not
+  be NULL)
+<br/>
+<i>compression_level</i> zstd compression level (1-9)
+<ul class="Bl-bullet">
+  <li>Level 1: Fastest compression, lowest ratio (best for real-time
+    streaming)</li>
+  <li>Level 3: Balanced speed/ratio</li>
+  <li>Level 9: Slower compression, best ratio (for limited bandwidth)</li>
+</ul>
+</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Compresses input data using zstd's compression algorithm with the
+    specified compression level. The output buffer is automatically allocated by
+    the function and must be freed by the caller using <b>SAFE_FREE()</b> or the
+    appropriate memory management function.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">The output buffer is allocated using
+  <b>SAFE_MALLOC()</b>. Caller must free it with <b>SAFE_FREE()</b> when done
+  using the compressed data.
+<p class="Pp"></p>
+<p class="Pp">Compression may fail if input data is already compressed or if
+    compression would expand the data significantly.</p>
+<p class="Pp"></p>
+<p class="Pp">For best performance, use <b>should_compress()</b> first to
+    determine if compression is beneficial before calling this function.</p>
+<p class="Pp"></p>
+<p class="Pp">Compression level must be between 1 and 9. Levels above 9 are not
+    recommended for real-time streaming due to CPU overhead.</p>
+</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">Caller must <b>SAFE_FREE()</b> the output buffer to avoid
+  memory leaks.</div>
+<p class="Pp">Definition at line <b>14</b> of file <b>compression.c</b>.</p>
+<pre>15                                                        {
+16   if (!input || input_size == 0 || !output || !output_size) {
+17     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: input=%p, input_size=%zu, output=%p, output_size=%p&quot;,
+18                      input, input_size, output, output_size);
+19   }
+20 
+21   // Validate compression level (1-9 for real-time streaming)
+22   if (compression_level &lt; 1 || compression_level &gt; 9) {
+23     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid compression level %d: must be between 1 and 9&quot;, compression_level);
+24   }
+25 
+26   // Calculate maximum compressed size
+27   size_t compressed_size = ZSTD_compressBound(input_size);
+28 
+29   // Sanity check ZSTD_compressBound result
+30   // ZSTD_compressBound returns 0 for errors or very large values for huge inputs
+31   if (compressed_size == 0 || compressed_size &gt; 256 * 1024 * 1024) { // Max 256MB compressed buffer
+32     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;ZSTD_compressBound returned unreasonable size: %zu for input %zu&quot;,
+33                      compressed_size, input_size);
+34   }
+35 
+36   unsigned char *compressed_data = NULL;
+37   compressed_data = SAFE_MALLOC(compressed_size, unsigned char *);
+38 
+39   if (!compressed_data) {
+40     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate compressed data buffer&quot;);
+41   }
+42 
+43   // Compress using zstd with user-specified compression level
+44   size_t ret = ZSTD_compress(compressed_data, compressed_size, input, input_size, compression_level);
+45 
+46   if (ZSTD_isError(ret)) {
+47     SAFE_FREE(compressed_data);
+48     return SET_ERRNO(ERROR_GENERAL, &quot;zstd compression failed: %s&quot;, ZSTD_getErrorName(ret));
+49   }
+50 
+51   *output = compressed_data;
+52   *output_size = ret;
+53 
+54   return ASCIICHAT_OK;
+55 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_GENERAL</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>send_packet_secure()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> decompress_data (const void * input,
+  size_t input_size, void * output, size_t output_size)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/compression.h</b>&gt;<b></b></p>
+<p class="Pp">Decompress data using zstd.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>input</i> Compressed input data (must not be NULL)
+<br/>
+<i>input_size</i> Size of compressed data in bytes
+<br/>
+<i>output</i> Pre-allocated output buffer (must not be NULL)
+<br/>
+<i>output_size</i> Size of output buffer in bytes (must be &gt;= decompressed
+  size)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Decompresses zstd-compressed data into a pre-allocated output
+    buffer. The output buffer must be large enough to hold the decompressed
+    data.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">The output buffer size must be known in advance
+  (typically from packet header or protocol specification). This function does
+  not dynamically allocate the output buffer.
+<p class="Pp"></p>
+<p class="Pp">This function uses zstd inflate algorithm, compatible with
+    standard zstd compression.</p>
+</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">Output buffer must be large enough for decompressed data
+  or buffer overflow will occur. Ensure output_size is correct before
+  calling.</div>
+<p class="Pp">Definition at line <b>58</b> of file <b>compression.c</b>.</p>
+<pre>58                                                                                                           {
+59   if (!input || input_size == 0 || !output || output_size == 0) {
+60     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: input=%p, input_size=%zu, output=%p, output_size=%zu&quot;,
+61                      input, input_size, output, output_size);
+62   }
+63 
+64   size_t ret = ZSTD_decompress(output, output_size, input, input_size);
+65 
+66   if (ZSTD_isError(ret)) {
+67     return SET_ERRNO(ERROR_GENERAL, &quot;zstd decompression failed: %s&quot;, ZSTD_getErrorName(ret));
+68   }
+69 
+70   return ASCIICHAT_OK;
+71 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_GENERAL</b>,
+    <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>packet_decode_frame_data_buffer()</b>, and
+    <b>packet_decode_frame_data_malloc()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> should_compress (size_t original_size, size_t
+  compressed_size)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/compression.h</b>&gt;<b></b></p>
+<p class="Pp">Determine if compression should be used for given data sizes.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>original_size</i> Original (uncompressed) data size in
+  bytes
+<br/>
+<i>compressed_size</i> Compressed data size in bytes</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if compression should be used, false otherwise</div>
+<p class="Pp">Determines whether compression is beneficial based on size
+    thresholds and compression ratio. Returns true if:</p>
+<ul class="Bl-bullet">
+  <li>Original size &gt;= COMPRESSION_MIN_SIZE (1KB minimum)</li>
+  <li>Compressed size &lt; COMPRESSION_RATIO_THRESHOLD * original_size (&lt;80%
+      of original)</li>
+</ul>
+<p class="Pp">This prevents:</p>
+<ul class="Bl-bullet">
+  <li>Compressing small packets that don't benefit</li>
+  <li>Using compression when it doesn't reduce size meaningfully</li>
+  <li>Wasting CPU on compression that expands data</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Call this function before <b>compress_data()</b> to
+  determine if compression is worth the CPU overhead.
+<p class="Pp"></p>
+<p class="Pp">The function compares sizes only. Actual compression must be
+    performed to get compressed_size for comparison.</p>
+</div>
+<p class="Pp">Definition at line <b>74</b> of file <b>compression.c</b>.</p>
+<pre>74                                                                    {
+75   if (original_size == 0)
+76     return false;
+77 
+78   float ratio = (float)compressed_size / (float)original_size;
+79   return ratio &lt; COMPRESSION_RATIO_THRESHOLD;
+80 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>COMPRESSION_RATIO_THRESHOLD</b>.</p>
+<p class="Pp">Referenced by <b>send_packet_secure()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

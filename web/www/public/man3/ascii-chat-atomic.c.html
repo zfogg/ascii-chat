@@ -38,111 +38,135 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp"><b>bool</b> <b>atomic_load_bool_impl</b> (const atomic_t *a)
+<p class="Pp"><b>bool</b> <b>atomic_load_bool_impl</b> (const <b>atomic_t</b>
+    *a)
   <br/>
-  void <b>atomic_store_bool_impl</b> (atomic_t *a, uint64_t value)
+  void <b>atomic_store_bool_impl</b> (<b>atomic_t</b> *a, <b>uint64_t</b> value)
   <br/>
-  <b>bool</b> <b>atomic_cas_bool_impl</b> (atomic_t *a, uint64_t *expected,
-    uint64_t new_value)
+  <b>bool</b> <b>atomic_cas_bool_impl</b> (<b>atomic_t</b> *a, <b>uint64_t</b>
+    *expected, <b>uint64_t</b> new_value)
   <br/>
-  int <b>atomic_load_int_impl</b> (const atomic_t *a)
+  int <b>atomic_load_int_impl</b> (const <b>atomic_t</b> *a)
   <br/>
-  void <b>atomic_store_int_impl</b> (atomic_t *a, uint64_t value)
+  void <b>atomic_store_int_impl</b> (<b>atomic_t</b> *a, <b>uint64_t</b> value)
   <br/>
-  int <b>atomic_fetch_add_int_impl</b> (atomic_t *a, int64_t delta)
+  int <b>atomic_fetch_add_int_impl</b> (<b>atomic_t</b> *a, int64_t delta)
   <br/>
-  int <b>atomic_fetch_sub_int_impl</b> (atomic_t *a, int64_t delta)
+  int <b>atomic_fetch_sub_int_impl</b> (<b>atomic_t</b> *a, int64_t delta)
   <br/>
-  uint64_t <b>atomic_load_u64_impl</b> (const atomic_t *a)
+  <b>uint64_t</b> <b>atomic_load_u64_impl</b> (const <b>atomic_t</b> *a)
   <br/>
-  void <b>atomic_store_u64_impl</b> (atomic_t *a, uint64_t value)
+  void <b>atomic_store_u64_impl</b> (<b>atomic_t</b> *a, <b>uint64_t</b> value)
   <br/>
-  uint64_t <b>atomic_fetch_add_u64_impl</b> (atomic_t *a, uint64_t delta)
+  <b>uint64_t</b> <b>atomic_fetch_add_u64_impl</b> (<b>atomic_t</b> *a,
+    <b>uint64_t</b> delta)
   <br/>
-  uint64_t <b>atomic_fetch_sub_u64_impl</b> (atomic_t *a, uint64_t delta)
+  <b>uint64_t</b> <b>atomic_fetch_sub_u64_impl</b> (<b>atomic_t</b> *a,
+    <b>uint64_t</b> delta)
   <br/>
-  <b>bool</b> <b>atomic_cas_u64_impl</b> (atomic_t *a, uint64_t *expected,
-    uint64_t new_value)
+  <b>bool</b> <b>atomic_cas_u64_impl</b> (<b>atomic_t</b> *a, <b>uint64_t</b>
+    *expected, <b>uint64_t</b> new_value)
   <br/>
-  <b>bool</b> <b>atomic_cas_int_impl</b> (atomic_t *a, int64_t *expected,
+  <b>bool</b> <b>atomic_cas_int_impl</b> (<b>atomic_t</b> *a, int64_t *expected,
     int64_t new_value)
   <br/>
-  void * <b>atomic_ptr_load_impl</b> (const atomic_ptr_t *a)
+  void * <b>atomic_ptr_load_impl</b> (const <b>atomic_ptr_t</b> *a)
   <br/>
-  void <b>atomic_ptr_store_impl</b> (atomic_ptr_t *a, void *value)
+  void <b>atomic_ptr_store_impl</b> (<b>atomic_ptr_t</b> *a, void *value)
   <br/>
-  <b>bool</b> <b>atomic_ptr_cas_impl</b> (atomic_ptr_t *a, void **expected, void
+  <b>bool</b> <b>atomic_ptr_cas_impl</b> (<b>atomic_ptr_t</b> *a, void
+    **expected, void *new_value)
+  <br/>
+  void * <b>atomic_ptr_exchange_impl</b> (<b>atomic_ptr_t</b> *a, void
     *new_value)
   <br/>
-  void * <b>atomic_ptr_exchange_impl</b> (atomic_ptr_t *a, void *new_value)
-  <br/>
-  <b>bool</b> <b>atomic_exchange_bool_impl</b> (atomic_t *a, <b>bool</b>
+  <b>bool</b> <b>atomic_exchange_bool_impl</b> (<b>atomic_t</b> *a, <b>bool</b>
     new_value)
   <br/>
-  int <b>atomic_exchange_int_impl</b> (atomic_t *a, int new_value)
+  int <b>atomic_exchange_int_impl</b> (<b>atomic_t</b> *a, int new_value)
   <br/>
-  uint64_t <b>atomic_exchange_u64_impl</b> (atomic_t *a, uint64_t new_value)
+  <b>uint64_t</b> <b>atomic_exchange_u64_impl</b> (<b>atomic_t</b> *a,
+    <b>uint64_t</b> new_value)
   <br/>
-  <b>bool</b> <b>atomic_load_bool</b> (atomic_t *a)
+  <b>bool</b> <b>atomic_load_bool</b> (<b>atomic_t</b> *a)
   <br/>
-  void <b>atomic_store_bool</b> (atomic_t *a, <b>bool</b> value)
+  Atomically load a boolean value. void <b>atomic_store_bool</b>
+    (<b>atomic_t</b> *a, <b>bool</b> value)
   <br/>
-  <b>bool</b> <b>atomic_cas_bool</b> (atomic_t *a, <b>bool</b> *expected,
-    <b>bool</b> new_value)
+  Atomically store a boolean value. <b>bool</b> <b>atomic_cas_bool</b>
+    (<b>atomic_t</b> *a, <b>bool</b> *expected, <b>bool</b> new_value)
   <br/>
-  int <b>atomic_load_int</b> (atomic_t *a)
+  Atomically compare-and-swap a boolean. int <b>atomic_load_int</b>
+    (<b>atomic_t</b> *a)
   <br/>
-  void <b>atomic_store_int</b> (atomic_t *a, int value)
+  Atomically load an int value. void <b>atomic_store_int</b> (<b>atomic_t</b>
+    *a, int value)
   <br/>
-  int <b>atomic_fetch_add_int</b> (atomic_t *a, int delta)
+  Atomically store an int value. int <b>atomic_fetch_add_int</b>
+    (<b>atomic_t</b> *a, int delta)
   <br/>
-  int <b>atomic_fetch_sub_int</b> (atomic_t *a, int delta)
+  Atomically add to an int and return the previous value. int
+    <b>atomic_fetch_sub_int</b> (<b>atomic_t</b> *a, int delta)
   <br/>
-  <b>bool</b> <b>atomic_cas_int</b> (atomic_t *a, int *expected, int new_value)
+  Atomically subtract from an int and return the previous value. <b>bool</b>
+    <b>atomic_cas_int</b> (<b>atomic_t</b> *a, int *expected, int new_value)
   <br/>
-  uint64_t <b>atomic_load_u64</b> (atomic_t *a)
+  Atomically compare-and-swap an int. <b>uint64_t</b> <b>atomic_load_u64</b>
+    (<b>atomic_t</b> *a)
   <br/>
-  void <b>atomic_store_u64</b> (atomic_t *a, uint64_t value)
+  Atomically load a <b>uint64_t</b> value. void <b>atomic_store_u64</b>
+    (<b>atomic_t</b> *a, <b>uint64_t</b> value)
   <br/>
-  uint64_t <b>atomic_fetch_add_u64</b> (atomic_t *a, uint64_t delta)
+  Atomically store a <b>uint64_t</b> value. <b>uint64_t</b>
+    <b>atomic_fetch_add_u64</b> (<b>atomic_t</b> *a, <b>uint64_t</b> delta)
   <br/>
-  uint64_t <b>atomic_fetch_sub_u64</b> (atomic_t *a, uint64_t delta)
+  Atomically add to a <b>uint64_t</b> and return the previous value.
+    <b>uint64_t</b> <b>atomic_fetch_sub_u64</b> (<b>atomic_t</b> *a,
+    <b>uint64_t</b> delta)
   <br/>
-  <b>bool</b> <b>atomic_cas_u64</b> (atomic_t *a, uint64_t *expected, uint64_t
-    new_value)
+  Atomically subtract from a <b>uint64_t</b> and return the previous value.
+    <b>bool</b> <b>atomic_cas_u64</b> (<b>atomic_t</b> *a, <b>uint64_t</b>
+    *expected, <b>uint64_t</b> new_value)
   <br/>
-  void * <b>atomic_ptr_load</b> (atomic_ptr_t *a)
+  Atomically compare-and-swap a <b>uint64_t</b>. void * <b>atomic_ptr_load</b>
+    (<b>atomic_ptr_t</b> *a)
   <br/>
-  void <b>atomic_ptr_store</b> (atomic_ptr_t *a, void *value)
+  Atomically load a pointer. void <b>atomic_ptr_store</b> (<b>atomic_ptr_t</b>
+    *a, void *value)
   <br/>
-  <b>bool</b> <b>atomic_ptr_cas</b> (atomic_ptr_t *a, void **expected, void
-    *new_value)
+  Atomically store a pointer. <b>bool</b> <b>atomic_ptr_cas</b>
+    (<b>atomic_ptr_t</b> *a, void **expected, void *new_value)
   <br/>
-  void * <b>atomic_ptr_exchange</b> (atomic_ptr_t *a, void *new_value)
+  Atomically compare-and-swap a pointer. void * <b>atomic_ptr_exchange</b>
+    (<b>atomic_ptr_t</b> *a, void *new_value)
   <br/>
-  <b>bool</b> <b>atomic_exchange_bool</b> (atomic_t *a, <b>bool</b> new_value)
+  Atomically exchange a pointer and return the old value. <b>bool</b>
+    <b>atomic_exchange_bool</b> (<b>atomic_t</b> *a, <b>bool</b> new_value)
   <br/>
-  int <b>atomic_exchange_int</b> (atomic_t *a, int new_value)
+  Atomically exchange a boolean and return the old value. int
+    <b>atomic_exchange_int</b> (<b>atomic_t</b> *a, int new_value)
   <br/>
-  uint64_t <b>atomic_exchange_u64</b> (atomic_t *a, uint64_t new_value)
+  Atomically exchange an int and return the old value. <b>uint64_t</b>
+    <b>atomic_exchange_u64</b> (<b>atomic_t</b> *a, <b>uint64_t</b> new_value)
   <br/>
-  <b>bool</b> <b>debug_atomic_is_initialized</b> (void)
+  Atomically exchange a <b>uint64_t</b> and return the old value. <b>bool</b>
+    <b>debug_atomic_is_initialized</b> (void)
   <br/>
-  void <b>atomic_on_load</b> (atomic_t *a)
+  void <b>atomic_on_load</b> (<b>atomic_t</b> *a)
   <br/>
-  void <b>atomic_on_store</b> (atomic_t *a)
+  void <b>atomic_on_store</b> (<b>atomic_t</b> *a)
   <br/>
-  void <b>atomic_on_cas</b> (atomic_t *a, <b>bool</b> success)
+  void <b>atomic_on_cas</b> (<b>atomic_t</b> *a, <b>bool</b> success)
   <br/>
-  void <b>atomic_on_fetch</b> (atomic_t *a)
+  void <b>atomic_on_fetch</b> (<b>atomic_t</b> *a)
   <br/>
-  void <b>atomic_ptr_on_load</b> (atomic_ptr_t *a)
+  void <b>atomic_ptr_on_load</b> (<b>atomic_ptr_t</b> *a)
   <br/>
-  void <b>atomic_ptr_on_store</b> (atomic_ptr_t *a)
+  void <b>atomic_ptr_on_store</b> (<b>atomic_ptr_t</b> *a)
   <br/>
-  void <b>atomic_ptr_on_cas</b> (atomic_ptr_t *a, <b>bool</b> success)
+  void <b>atomic_ptr_on_cas</b> (<b>atomic_ptr_t</b> *a, <b>bool</b> success)
   <br/>
-  void <b>atomic_ptr_on_exchange</b> (atomic_ptr_t *a)
+  void <b>atomic_ptr_on_exchange</b> (<b>atomic_ptr_t</b> *a)
   <br/>
   <br/>
 </p>
@@ -161,16 +185,25 @@
     release builds, the macros call these directly for zero overhead.</p>
 <p class="Pp"></p>
 <p class="Pp">Design: Uses raw C11 atomic operations internally, never calls
-    back into the atomic_t system (no recursion). Debug hooks are called after
-    the atomic operation completes.</p>
+    back into the <b>atomic_t</b> system (no recursion). Debug hooks are called
+    after the atomic operation completes.</p>
 <p class="Pp">Definition in file <b>atomic.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> atomic_cas_bool (atomic_t * a, <b>bool</b> *
+<h2 class="Ss"><b>bool</b> atomic_cas_bool (<b>atomic_t</b> * a, <b>bool</b> *
   expected, <b>bool</b> new_value)</h2>
+<p class="Pp">Atomically compare-and-swap a boolean.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_t</b>
+<br/>
+<i>expected</i> Expected current value (passed by reference)
+<br/>
+<i>new_value</i> Value to store if comparison succeeds</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if swap succeeded, false otherwise</div>
 <p class="Pp">Definition at line <b>159</b> of file <b>atomic.c</b>.</p>
 <pre>159                                                                   {
 160     if (!a || !expected) return false;
@@ -184,12 +217,13 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_on_cas()</b>, and <b>bool</b>.</p>
 <p class="Pp">Referenced by <b>handle_image_frame_packet()</b>,
-    <b>log_lock_terminal()</b>, <b>log_search_check_signal_cancel()</b>,
-    <b>splash_intro_start()</b>, and <b>symbol_cache_resolve_batch()</b>.</p>
+    <b>keyboard_help_check_signal_cancel()</b>, <b>log_lock_terminal()</b>,
+    <b>log_search_check_signal_cancel()</b>, <b>splash_intro_start()</b>, and
+    <b>symbol_cache_resolve_batch()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> atomic_cas_bool_impl (atomic_t * a, uint64_t *
-  expected, uint64_t new_value)</h2>
+<h2 class="Ss"><b>bool</b> atomic_cas_bool_impl (<b>atomic_t</b> * a,
+  <b>uint64_t</b> * expected, <b>uint64_t</b> new_value)</h2>
 <p class="Pp">Definition at line <b>35</b> of file <b>atomic.c</b>.</p>
 <pre>35                                                                                {
 36     if (!a || !expected) return false;
@@ -199,8 +233,17 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> atomic_cas_int (atomic_t * a, int * expected, int
-  new_value)</h2>
+<h2 class="Ss"><b>bool</b> atomic_cas_int (<b>atomic_t</b> * a, int * expected,
+  int new_value)</h2>
+<p class="Pp">Atomically compare-and-swap an int.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_t</b>
+<br/>
+<i>expected</i> Expected current value (passed by reference)
+<br/>
+<i>new_value</i> Value to store if comparison succeeds</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if swap succeeded, false otherwise</div>
 <p class="Pp">Definition at line <b>195</b> of file <b>atomic.c</b>.</p>
 <pre>195                                                                {
 196     if (!a || !expected) return false;
@@ -217,7 +260,7 @@
 <p class="Pp">Referenced by <b>lifecycle_init_once()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> atomic_cas_int_impl (atomic_t * a, int64_t *
+<h2 class="Ss"><b>bool</b> atomic_cas_int_impl (<b>atomic_t</b> * a, int64_t *
   expected, int64_t new_value)</h2>
 <p class="Pp">Definition at line <b>93</b> of file <b>atomic.c</b>.</p>
 <pre>93                                                                             {
@@ -232,8 +275,17 @@
 <p class="Pp">Referenced by <b>atomic_cas_int()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> atomic_cas_u64 (atomic_t * a, uint64_t * expected,
-  uint64_t new_value)</h2>
+<h2 class="Ss"><b>bool</b> atomic_cas_u64 (<b>atomic_t</b> * a, <b>uint64_t</b>
+  * expected, <b>uint64_t</b> new_value)</h2>
+<p class="Pp">Atomically compare-and-swap a <b>uint64_t</b>.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_t</b>
+<br/>
+<i>expected</i> Expected current value (passed by reference)
+<br/>
+<i>new_value</i> Value to store if comparison succeeds</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if swap succeeded, false otherwise</div>
 <p class="Pp">Definition at line <b>231</b> of file <b>atomic.c</b>.</p>
 <pre>231                                                                          {
 232     if (!a || !expected) return false;
@@ -252,8 +304,8 @@
     <b>websocket_callback_timing_record()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> atomic_cas_u64_impl (atomic_t * a, uint64_t *
-  expected, uint64_t new_value)</h2>
+<h2 class="Ss"><b>bool</b> atomic_cas_u64_impl (<b>atomic_t</b> * a,
+  <b>uint64_t</b> * expected, <b>uint64_t</b> new_value)</h2>
 <p class="Pp">Definition at line <b>88</b> of file <b>atomic.c</b>.</p>
 <pre>88                                                                               {
 89     if (!a || !expected) return false;
@@ -263,8 +315,18 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> atomic_exchange_bool (atomic_t * a, <b>bool</b>
-  new_value)</h2>
+<h2 class="Ss"><b>bool</b> atomic_exchange_bool (<b>atomic_t</b> * a,
+  <b>bool</b> new_value)</h2>
+<p class="Pp">Atomically exchange a boolean and return the old value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_t</b>
+<br/>
+<i>new_value</i> Boolean value to store</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Previous boolean value</div>
+<p class="Pp">Atomically swaps the new value for the old value and returns the
+    old value. Avoids TOCTOU race conditions present in load+check+cas
+  patterns.</p>
 <p class="Pp">Definition at line <b>265</b> of file <b>atomic.c</b>.</p>
 <pre>265                                                        {
 266     if (!a) return false;
@@ -281,8 +343,8 @@
     <b>session_display_write_ascii()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> atomic_exchange_bool_impl (atomic_t * a, <b>bool</b>
-  new_value)</h2>
+<h2 class="Ss"><b>bool</b> atomic_exchange_bool_impl (<b>atomic_t</b> * a,
+  <b>bool</b> new_value)</h2>
 <p class="Pp">Definition at line <b>125</b> of file <b>atomic.c</b>.</p>
 <pre>125                                                             {
 126     if (!a) return false;
@@ -292,8 +354,15 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_atomic_exchange_int_(atomic_t_*_a,_int_new_value)"><a class="permalink" href="#int_atomic_exchange_int_(atomic_t_*_a,_int_new_value)">int
-  atomic_exchange_int (atomic_t * a, int new_value)</a></h2>
+<h2 class="Ss" id="int_atomic_exchange_int_("><a class="permalink" href="#int_atomic_exchange_int_(">int
+  atomic_exchange_int (<b>atomic_t</b> * a, int new_value)</a></h2>
+<p class="Pp">Atomically exchange an int and return the old value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_t</b>
+<br/>
+<i>new_value</i> Int value to store</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Previous int value</div>
 <p class="Pp">Definition at line <b>272</b> of file <b>atomic.c</b>.</p>
 <pre>272                                                     {
 273     if (!a) return 0;
@@ -306,8 +375,8 @@
 <p class="Pp">References <b>atomic_on_store()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_atomic_exchange_int_impl_(atomic_t_*_a,_int_new_value)"><a class="permalink" href="#int_atomic_exchange_int_impl_(atomic_t_*_a,_int_new_value)">int
-  atomic_exchange_int_impl (atomic_t * a, int new_value)</a></h2>
+<h2 class="Ss" id="int_atomic_exchange_int_impl_("><a class="permalink" href="#int_atomic_exchange_int_impl_(">int
+  atomic_exchange_int_impl (<b>atomic_t</b> * a, int new_value)</a></h2>
 <p class="Pp">Definition at line <b>130</b> of file <b>atomic.c</b>.</p>
 <pre>130                                                          {
 131     if (!a) return 0;
@@ -317,8 +386,25 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint64_t_atomic_exchange_u64_(atomic_t_*_a,_uint64_t_new_value)"><a class="permalink" href="#uint64_t_atomic_exchange_u64_(atomic_t_*_a,_uint64_t_new_value)">uint64_t
-  atomic_exchange_u64 (atomic_t * a, uint64_t new_value)</a></h2>
+<h2 class="Ss"><b>uint64_t</b> atomic_exchange_u64 (<b>atomic_t</b> * a,
+  <b>uint64_t</b> new_value)</h2>
+<p class="Pp">Atomically exchange a <b>uint64_t</b> and return the old
+  value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_t</b>
+<br/>
+<i>new_value</i> Value to store</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Previous <b>uint64_t</b> value</div>
+<p class="Pp">Used for atomic min/max updates and other exchange patterns where
+    you need the old value atomically. Avoids TOCTOU race conditions present in
+    load+check+cas.</p>
+<p class="Pp"></p>
+<p class="Pp">Example (atomic minimum):</p>
+<p class="Pp"></p>
+<pre>uint64_t old = atomic_exchange_u64(&amp;stats-&gt;min_val, 0);
+// old is the previous value, atomically
+</pre>
 <p class="Pp">Definition at line <b>279</b> of file <b>atomic.c</b>.</p>
 <pre>279                                                               {
 280     if (!a) return 0;
@@ -331,8 +417,8 @@
 <p class="Pp">References <b>atomic_on_store()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint64_t_atomic_exchange_u64_impl_(atomic_t_*_a,_uint64_t_new_value)"><a class="permalink" href="#uint64_t_atomic_exchange_u64_impl_(atomic_t_*_a,_uint64_t_new_value)">uint64_t
-  atomic_exchange_u64_impl (atomic_t * a, uint64_t new_value)</a></h2>
+<h2 class="Ss"><b>uint64_t</b> atomic_exchange_u64_impl (<b>atomic_t</b> * a,
+  <b>uint64_t</b> new_value)</h2>
 <p class="Pp">Definition at line <b>135</b> of file <b>atomic.c</b>.</p>
 <pre>135                                                                    {
 136     if (!a) return 0;
@@ -342,8 +428,15 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_atomic_fetch_add_int_(atomic_t_*_a,_int_delta)"><a class="permalink" href="#int_atomic_fetch_add_int_(atomic_t_*_a,_int_delta)">int
-  atomic_fetch_add_int (atomic_t * a, int delta)</a></h2>
+<h2 class="Ss" id="int_atomic_fetch_add_int_("><a class="permalink" href="#int_atomic_fetch_add_int_(">int
+  atomic_fetch_add_int (<b>atomic_t</b> * a, int delta)</a></h2>
+<p class="Pp">Atomically add to an int and return the previous value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_t</b>
+<br/>
+<i>delta</i> Value to add</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Previous value before the add</div>
 <p class="Pp">Definition at line <b>181</b> of file <b>atomic.c</b>.</p>
 <pre>181                                                  {
 182     if (!a) return 0;
@@ -356,8 +449,8 @@
 <p class="Pp">References <b>atomic_on_fetch()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_atomic_fetch_add_int_impl_(atomic_t_*_a,_int64_t_delta)"><a class="permalink" href="#int_atomic_fetch_add_int_impl_(atomic_t_*_a,_int64_t_delta)">int
-  atomic_fetch_add_int_impl (atomic_t * a, int64_t delta)</a></h2>
+<h2 class="Ss" id="int_atomic_fetch_add_int_impl_("><a class="permalink" href="#int_atomic_fetch_add_int_impl_(">int
+  atomic_fetch_add_int_impl (<b>atomic_t</b> * a, int64_t delta)</a></h2>
 <p class="Pp">Definition at line <b>54</b> of file <b>atomic.c</b>.</p>
 <pre>54                                                           {
 55     if (!a) return 0;
@@ -367,8 +460,16 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint64_t_atomic_fetch_add_u64_(atomic_t_*_a,_uint64_t_delta)"><a class="permalink" href="#uint64_t_atomic_fetch_add_u64_(atomic_t_*_a,_uint64_t_delta)">uint64_t
-  atomic_fetch_add_u64 (atomic_t * a, uint64_t delta)</a></h2>
+<h2 class="Ss"><b>uint64_t</b> atomic_fetch_add_u64 (<b>atomic_t</b> * a,
+  <b>uint64_t</b> delta)</h2>
+<p class="Pp">Atomically add to a <b>uint64_t</b> and return the previous
+  value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_t</b>
+<br/>
+<i>delta</i> Value to add</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Previous value before the add</div>
 <p class="Pp">Definition at line <b>217</b> of file <b>atomic.c</b>.</p>
 <pre>217                                                            {
 218     if (!a) return 0;
@@ -391,8 +492,8 @@
     <b>websocket_callback_timing_record()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint64_t_atomic_fetch_add_u64_impl_(atomic_t_*_a,_uint64_t_delta)"><a class="permalink" href="#uint64_t_atomic_fetch_add_u64_impl_(atomic_t_*_a,_uint64_t_delta)">uint64_t
-  atomic_fetch_add_u64_impl (atomic_t * a, uint64_t delta)</a></h2>
+<h2 class="Ss"><b>uint64_t</b> atomic_fetch_add_u64_impl (<b>atomic_t</b> * a,
+  <b>uint64_t</b> delta)</h2>
 <p class="Pp">Definition at line <b>78</b> of file <b>atomic.c</b>.</p>
 <pre>78                                                                 {
 79     if (!a) return 0;
@@ -402,8 +503,15 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_atomic_fetch_sub_int_(atomic_t_*_a,_int_delta)"><a class="permalink" href="#int_atomic_fetch_sub_int_(atomic_t_*_a,_int_delta)">int
-  atomic_fetch_sub_int (atomic_t * a, int delta)</a></h2>
+<h2 class="Ss" id="int_atomic_fetch_sub_int_("><a class="permalink" href="#int_atomic_fetch_sub_int_(">int
+  atomic_fetch_sub_int (<b>atomic_t</b> * a, int delta)</a></h2>
+<p class="Pp">Atomically subtract from an int and return the previous value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_t</b>
+<br/>
+<i>delta</i> Value to subtract</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Previous value before the subtract</div>
 <p class="Pp">Definition at line <b>188</b> of file <b>atomic.c</b>.</p>
 <pre>188                                                  {
 189     if (!a) return 0;
@@ -416,8 +524,8 @@
 <p class="Pp">References <b>atomic_on_fetch()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_atomic_fetch_sub_int_impl_(atomic_t_*_a,_int64_t_delta)"><a class="permalink" href="#int_atomic_fetch_sub_int_impl_(atomic_t_*_a,_int64_t_delta)">int
-  atomic_fetch_sub_int_impl (atomic_t * a, int64_t delta)</a></h2>
+<h2 class="Ss" id="int_atomic_fetch_sub_int_impl_("><a class="permalink" href="#int_atomic_fetch_sub_int_impl_(">int
+  atomic_fetch_sub_int_impl (<b>atomic_t</b> * a, int64_t delta)</a></h2>
 <p class="Pp">Definition at line <b>59</b> of file <b>atomic.c</b>.</p>
 <pre>59                                                           {
 60     if (!a) return 0;
@@ -427,8 +535,16 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint64_t_atomic_fetch_sub_u64_(atomic_t_*_a,_uint64_t_delta)"><a class="permalink" href="#uint64_t_atomic_fetch_sub_u64_(atomic_t_*_a,_uint64_t_delta)">uint64_t
-  atomic_fetch_sub_u64 (atomic_t * a, uint64_t delta)</a></h2>
+<h2 class="Ss"><b>uint64_t</b> atomic_fetch_sub_u64 (<b>atomic_t</b> * a,
+  <b>uint64_t</b> delta)</h2>
+<p class="Pp">Atomically subtract from a <b>uint64_t</b> and return the previous
+    value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_t</b>
+<br/>
+<i>delta</i> Value to subtract</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Previous value before the subtract</div>
 <p class="Pp">Definition at line <b>224</b> of file <b>atomic.c</b>.</p>
 <pre>224                                                            {
 225     if (!a) return 0;
@@ -447,8 +563,8 @@
     <b>rwlock_on_unlock()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint64_t_atomic_fetch_sub_u64_impl_(atomic_t_*_a,_uint64_t_delta)"><a class="permalink" href="#uint64_t_atomic_fetch_sub_u64_impl_(atomic_t_*_a,_uint64_t_delta)">uint64_t
-  atomic_fetch_sub_u64_impl (atomic_t * a, uint64_t delta)</a></h2>
+<h2 class="Ss"><b>uint64_t</b> atomic_fetch_sub_u64_impl (<b>atomic_t</b> * a,
+  <b>uint64_t</b> delta)</h2>
 <p class="Pp">Definition at line <b>83</b> of file <b>atomic.c</b>.</p>
 <pre>83                                                                 {
 84     if (!a) return 0;
@@ -458,7 +574,12 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> atomic_load_bool (atomic_t * a)</h2>
+<h2 class="Ss"><b>bool</b> atomic_load_bool (<b>atomic_t</b> * a)</h2>
+<p class="Pp">Atomically load a boolean value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_t</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Current boolean value</div>
 <p class="Pp">Definition at line <b>146</b> of file <b>atomic.c</b>.</p>
 <pre>146                                    {
 147     if (!a) return false;
@@ -483,7 +604,8 @@
     <b>handle_image_frame_h265_packet()</b>, <b>handle_image_frame_packet()</b>,
     <b>handle_ping_packet()</b>, <b>keepalive_stop_thread()</b>,
     <b>keepalive_thread_exited()</b>, <b>keyboard_help_is_active()</b>,
-    <b>keyboard_help_toggle()</b>, <b>log_lock_terminal()</b>, <b>log_msg()</b>,
+    <b>keyboard_help_is_active_global()</b>, <b>keyboard_help_toggle()</b>,
+    <b>log_lock_terminal()</b>, <b>log_msg()</b>,
     <b>log_search_needs_rerender()</b>, <b>mutex_stack_cleanup()</b>,
     <b>mutex_stack_cleanup_current_thread()</b>, <b>packet_queue_enqueue()</b>,
     <b>packet_queue_enqueue_packet()</b>, <b>packet_queue_try_dequeue()</b>,
@@ -505,7 +627,8 @@
     and <b>websocket_server_run()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> atomic_load_bool_impl (const atomic_t * a)</h2>
+<h2 class="Ss"><b>bool</b> atomic_load_bool_impl (const <b>atomic_t</b> *
+  a)</h2>
 <p class="Pp">Definition at line <b>25</b> of file <b>atomic.c</b>.</p>
 <pre>25                                               {
 26     if (!a) return false;
@@ -515,8 +638,13 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_atomic_load_int_(atomic_t_*_a)"><a class="permalink" href="#int_atomic_load_int_(atomic_t_*_a)">int
-  atomic_load_int (atomic_t * a)</a></h2>
+<h2 class="Ss" id="int_atomic_load_int_("><a class="permalink" href="#int_atomic_load_int_(">int
+  atomic_load_int (<b>atomic_t</b> * a)</a></h2>
+<p class="Pp">Atomically load an int value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_t</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Current int value</div>
 <p class="Pp">Definition at line <b>168</b> of file <b>atomic.c</b>.</p>
 <pre>168                                  {
 169     if (!a) return 0;
@@ -539,8 +667,8 @@
     <b>mutex_stack_get_all_threads()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_atomic_load_int_impl_(const_atomic_t_*_a)"><a class="permalink" href="#int_atomic_load_int_impl_(const_atomic_t_*_a)">int
-  atomic_load_int_impl (const atomic_t * a)</a></h2>
+<h2 class="Ss" id="int_atomic_load_int_impl_(const_"><a class="permalink" href="#int_atomic_load_int_impl_(const_">int
+  atomic_load_int_impl (const <b>atomic_t</b> * a)</a></h2>
 <p class="Pp">Definition at line <b>44</b> of file <b>atomic.c</b>.</p>
 <pre>44                                             {
 45     if (!a) return 0;
@@ -550,8 +678,12 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint64_t_atomic_load_u64_(atomic_t_*_a)"><a class="permalink" href="#uint64_t_atomic_load_u64_(atomic_t_*_a)">uint64_t
-  atomic_load_u64 (atomic_t * a)</a></h2>
+<h2 class="Ss"><b>uint64_t</b> atomic_load_u64 (<b>atomic_t</b> * a)</h2>
+<p class="Pp">Atomically load a <b>uint64_t</b> value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_t</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Current <b>uint64_t</b> value</div>
 <p class="Pp">Definition at line <b>204</b> of file <b>atomic.c</b>.</p>
 <pre>204                                       {
 205     if (!a) return 0;
@@ -595,8 +727,8 @@
     <b>websocket_callback_timing_record()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint64_t_atomic_load_u64_impl_(const_atomic_t_*_a)"><a class="permalink" href="#uint64_t_atomic_load_u64_impl_(const_atomic_t_*_a)">uint64_t
-  atomic_load_u64_impl (const atomic_t * a)</a></h2>
+<h2 class="Ss"><b>uint64_t</b> atomic_load_u64_impl (const <b>atomic_t</b> *
+  a)</h2>
 <p class="Pp">Definition at line <b>68</b> of file <b>atomic.c</b>.</p>
 <pre>68                                                  {
 69     if (!a) return 0;
@@ -606,8 +738,8 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_atomic_on_cas_(atomic_t_*_a,_"><a class="permalink" href="#void_atomic_on_cas_(atomic_t_*_a,_">void
-  atomic_on_cas (atomic_t * a, <b>bool</b> success)</a></h2>
+<h2 class="Ss" id="void_atomic_on_cas_("><a class="permalink" href="#void_atomic_on_cas_(">void
+  atomic_on_cas (<b>atomic_t</b> * a, <b>bool</b> success)</a></h2>
 <p class="Pp">Definition at line <b>305</b> of file <b>atomic.c</b>.</p>
 <pre>305                                               {
 306     if (!a || !debug_atomic_is_initialized()) return;
@@ -619,14 +751,15 @@
 312 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>debug_atomic_is_initialized()</b>, and
-    <b>time_get_ns()</b>.</p>
+<p class="Pp">References <b>atomic_t::cas_count</b>,
+    <b>atomic_t::cas_success_count</b>, <b>debug_atomic_is_initialized()</b>,
+    <b>atomic_t::last_store_time_ns</b>, and <b>time_get_ns()</b>.</p>
 <p class="Pp">Referenced by <b>atomic_cas_bool()</b>, <b>atomic_cas_int()</b>,
     and <b>atomic_cas_u64()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_atomic_on_fetch_(atomic_t_*_a)"><a class="permalink" href="#void_atomic_on_fetch_(atomic_t_*_a)">void
-  atomic_on_fetch (atomic_t * a)</a></h2>
+<h2 class="Ss" id="void_atomic_on_fetch_("><a class="permalink" href="#void_atomic_on_fetch_(">void
+  atomic_on_fetch (<b>atomic_t</b> * a)</a></h2>
 <p class="Pp">Definition at line <b>314</b> of file <b>atomic.c</b>.</p>
 <pre>314                                   {
 315     if (!a || !debug_atomic_is_initialized()) return;
@@ -635,15 +768,16 @@
 318 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>debug_atomic_is_initialized()</b>, and
+<p class="Pp">References <b>debug_atomic_is_initialized()</b>,
+    <b>atomic_t::fetch_count</b>, <b>atomic_t::last_store_time_ns</b>, and
     <b>time_get_ns()</b>.</p>
 <p class="Pp">Referenced by <b>atomic_fetch_add_int()</b>,
     <b>atomic_fetch_add_u64()</b>, <b>atomic_fetch_sub_int()</b>, and
     <b>atomic_fetch_sub_u64()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_atomic_on_load_(atomic_t_*_a)"><a class="permalink" href="#void_atomic_on_load_(atomic_t_*_a)">void
-  atomic_on_load (atomic_t * a)</a></h2>
+<h2 class="Ss" id="void_atomic_on_load_("><a class="permalink" href="#void_atomic_on_load_(">void
+  atomic_on_load (<b>atomic_t</b> * a)</a></h2>
 <p class="Pp">Definition at line <b>293</b> of file <b>atomic.c</b>.</p>
 <pre>293                                  {
 294     if (!a || !debug_atomic_is_initialized()) return;
@@ -652,14 +786,15 @@
 297 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>debug_atomic_is_initialized()</b>, and
+<p class="Pp">References <b>debug_atomic_is_initialized()</b>,
+    <b>atomic_t::last_load_time_ns</b>, <b>atomic_t::load_count</b>, and
     <b>time_get_ns()</b>.</p>
 <p class="Pp">Referenced by <b>atomic_load_bool()</b>, <b>atomic_load_int()</b>,
     and <b>atomic_load_u64()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_atomic_on_store_(atomic_t_*_a)"><a class="permalink" href="#void_atomic_on_store_(atomic_t_*_a)">void
-  atomic_on_store (atomic_t * a)</a></h2>
+<h2 class="Ss" id="void_atomic_on_store_("><a class="permalink" href="#void_atomic_on_store_(">void
+  atomic_on_store (<b>atomic_t</b> * a)</a></h2>
 <p class="Pp">Definition at line <b>299</b> of file <b>atomic.c</b>.</p>
 <pre>299                                   {
 300     if (!a || !debug_atomic_is_initialized()) return;
@@ -668,7 +803,8 @@
 303 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>debug_atomic_is_initialized()</b>, and
+<p class="Pp">References <b>debug_atomic_is_initialized()</b>,
+    <b>atomic_t::last_store_time_ns</b>, <b>atomic_t::store_count</b>, and
     <b>time_get_ns()</b>.</p>
 <p class="Pp">Referenced by <b>atomic_exchange_bool()</b>,
     <b>atomic_exchange_int()</b>, <b>atomic_exchange_u64()</b>,
@@ -676,8 +812,17 @@
     <b>atomic_store_u64()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> atomic_ptr_cas (atomic_ptr_t * a, void ** expected,
-  void * new_value)</h2>
+<h2 class="Ss"><b>bool</b> atomic_ptr_cas (<b>atomic_ptr_t</b> * a, void **
+  expected, void * new_value)</h2>
+<p class="Pp">Atomically compare-and-swap a pointer.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_ptr_t</b>
+<br/>
+<i>expected</i> Expected current pointer (passed by reference)
+<br/>
+<i>new_value</i> Pointer value to store if comparison succeeds</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if swap succeeded, false otherwise</div>
 <p class="Pp">Definition at line <b>251</b> of file <b>atomic.c</b>.</p>
 <pre>251                                                                        {
 252     if (!a || !expected) return false;
@@ -695,7 +840,7 @@
     <b>packet_queue_try_dequeue()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> atomic_ptr_cas_impl (atomic_ptr_t * a, void **
+<h2 class="Ss"><b>bool</b> atomic_ptr_cas_impl (<b>atomic_ptr_t</b> * a, void **
   expected, void * new_value)</h2>
 <p class="Pp">Definition at line <b>115</b> of file <b>atomic.c</b>.</p>
 <pre>115                                                                             {
@@ -706,8 +851,15 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_*_atomic_ptr_exchange_(atomic_ptr_t_*_a,_void_*_new_value)"><a class="permalink" href="#void_*_atomic_ptr_exchange_(atomic_ptr_t_*_a,_void_*_new_value)">void
-  * atomic_ptr_exchange (atomic_ptr_t * a, void * new_value)</a></h2>
+<h2 class="Ss" id="void_*_atomic_ptr_exchange_("><a class="permalink" href="#void_*_atomic_ptr_exchange_(">void
+  * atomic_ptr_exchange (<b>atomic_ptr_t</b> * a, void * new_value)</a></h2>
+<p class="Pp">Atomically exchange a pointer and return the old value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_ptr_t</b>
+<br/>
+<i>new_value</i> Pointer value to store</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Previous pointer value</div>
 <p class="Pp">Definition at line <b>258</b> of file <b>atomic.c</b>.</p>
 <pre>258                                                             {
 259     if (!a) return NULL;
@@ -721,8 +873,9 @@
 <p class="Pp">Referenced by <b>buffer_pool_shrink()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_*_atomic_ptr_exchange_impl_(atomic_ptr_t_*_a,_void_*_new_value)"><a class="permalink" href="#void_*_atomic_ptr_exchange_impl_(atomic_ptr_t_*_a,_void_*_new_value)">void
-  * atomic_ptr_exchange_impl (atomic_ptr_t * a, void * new_value)</a></h2>
+<h2 class="Ss" id="void_*_atomic_ptr_exchange_impl_("><a class="permalink" href="#void_*_atomic_ptr_exchange_impl_(">void
+  * atomic_ptr_exchange_impl (<b>atomic_ptr_t</b> * a, void *
+  new_value)</a></h2>
 <p class="Pp">Definition at line <b>120</b> of file <b>atomic.c</b>.</p>
 <pre>120                                                                  {
 121     if (!a) return NULL;
@@ -732,8 +885,13 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_*_atomic_ptr_load_(atomic_ptr_t_*_a)"><a class="permalink" href="#void_*_atomic_ptr_load_(atomic_ptr_t_*_a)">void
-  * atomic_ptr_load (atomic_ptr_t * a)</a></h2>
+<h2 class="Ss" id="void_*_atomic_ptr_load_("><a class="permalink" href="#void_*_atomic_ptr_load_(">void
+  * atomic_ptr_load (<b>atomic_ptr_t</b> * a)</a></h2>
+<p class="Pp">Atomically load a pointer.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_ptr_t</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Current pointer value</div>
 <p class="Pp">Definition at line <b>238</b> of file <b>atomic.c</b>.</p>
 <pre>238                                        {
 239     if (!a) return NULL;
@@ -753,8 +911,8 @@
     <b>packet_queue_try_dequeue()</b>, and <b>shutdown_is_requested()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_*_atomic_ptr_load_impl_(const_atomic_ptr_t_*_a)"><a class="permalink" href="#void_*_atomic_ptr_load_impl_(const_atomic_ptr_t_*_a)">void
-  * atomic_ptr_load_impl (const atomic_ptr_t * a)</a></h2>
+<h2 class="Ss" id="void_*_atomic_ptr_load_impl_(const_"><a class="permalink" href="#void_*_atomic_ptr_load_impl_(const_">void
+  * atomic_ptr_load_impl (const <b>atomic_ptr_t</b> * a)</a></h2>
 <p class="Pp">Definition at line <b>105</b> of file <b>atomic.c</b>.</p>
 <pre>105                                                   {
 106     if (!a) return NULL;
@@ -764,8 +922,8 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_atomic_ptr_on_cas_(atomic_ptr_t_*_a,_"><a class="permalink" href="#void_atomic_ptr_on_cas_(atomic_ptr_t_*_a,_">void
-  atomic_ptr_on_cas (atomic_ptr_t * a, <b>bool</b> success)</a></h2>
+<h2 class="Ss" id="void_atomic_ptr_on_cas_("><a class="permalink" href="#void_atomic_ptr_on_cas_(">void
+  atomic_ptr_on_cas (<b>atomic_ptr_t</b> * a, <b>bool</b> success)</a></h2>
 <p class="Pp">Definition at line <b>332</b> of file <b>atomic.c</b>.</p>
 <pre>332                                                       {
 333     if (!a || !debug_atomic_is_initialized()) return;
@@ -777,13 +935,15 @@
 339 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>debug_atomic_is_initialized()</b>, and
-    <b>time_get_ns()</b>.</p>
+<p class="Pp">References <b>atomic_ptr_t::cas_count</b>,
+    <b>atomic_ptr_t::cas_success_count</b>,
+    <b>debug_atomic_is_initialized()</b>,
+    <b>atomic_ptr_t::last_store_time_ns</b>, and <b>time_get_ns()</b>.</p>
 <p class="Pp">Referenced by <b>atomic_ptr_cas()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_atomic_ptr_on_exchange_(atomic_ptr_t_*_a)"><a class="permalink" href="#void_atomic_ptr_on_exchange_(atomic_ptr_t_*_a)">void
-  atomic_ptr_on_exchange (atomic_ptr_t * a)</a></h2>
+<h2 class="Ss" id="void_atomic_ptr_on_exchange_("><a class="permalink" href="#void_atomic_ptr_on_exchange_(">void
+  atomic_ptr_on_exchange (<b>atomic_ptr_t</b> * a)</a></h2>
 <p class="Pp">Definition at line <b>341</b> of file <b>atomic.c</b>.</p>
 <pre>341                                              {
 342     if (!a || !debug_atomic_is_initialized()) return;
@@ -792,13 +952,14 @@
 345 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>debug_atomic_is_initialized()</b>, and
-    <b>time_get_ns()</b>.</p>
+<p class="Pp">References <b>debug_atomic_is_initialized()</b>,
+    <b>atomic_ptr_t::exchange_count</b>,
+    <b>atomic_ptr_t::last_store_time_ns</b>, and <b>time_get_ns()</b>.</p>
 <p class="Pp">Referenced by <b>atomic_ptr_exchange()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_atomic_ptr_on_load_(atomic_ptr_t_*_a)"><a class="permalink" href="#void_atomic_ptr_on_load_(atomic_ptr_t_*_a)">void
-  atomic_ptr_on_load (atomic_ptr_t * a)</a></h2>
+<h2 class="Ss" id="void_atomic_ptr_on_load_("><a class="permalink" href="#void_atomic_ptr_on_load_(">void
+  atomic_ptr_on_load (<b>atomic_ptr_t</b> * a)</a></h2>
 <p class="Pp">Definition at line <b>320</b> of file <b>atomic.c</b>.</p>
 <pre>320                                          {
 321     if (!a || !debug_atomic_is_initialized()) return;
@@ -807,13 +968,14 @@
 324 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>debug_atomic_is_initialized()</b>, and
+<p class="Pp">References <b>debug_atomic_is_initialized()</b>,
+    <b>atomic_ptr_t::last_load_time_ns</b>, <b>atomic_ptr_t::load_count</b>, and
     <b>time_get_ns()</b>.</p>
 <p class="Pp">Referenced by <b>atomic_ptr_load()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_atomic_ptr_on_store_(atomic_ptr_t_*_a)"><a class="permalink" href="#void_atomic_ptr_on_store_(atomic_ptr_t_*_a)">void
-  atomic_ptr_on_store (atomic_ptr_t * a)</a></h2>
+<h2 class="Ss" id="void_atomic_ptr_on_store_("><a class="permalink" href="#void_atomic_ptr_on_store_(">void
+  atomic_ptr_on_store (<b>atomic_ptr_t</b> * a)</a></h2>
 <p class="Pp">Definition at line <b>326</b> of file <b>atomic.c</b>.</p>
 <pre>326                                           {
 327     if (!a || !debug_atomic_is_initialized()) return;
@@ -822,13 +984,19 @@
 330 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>debug_atomic_is_initialized()</b>, and
-    <b>time_get_ns()</b>.</p>
+<p class="Pp">References <b>debug_atomic_is_initialized()</b>,
+    <b>atomic_ptr_t::last_store_time_ns</b>, <b>atomic_ptr_t::store_count</b>,
+    and <b>time_get_ns()</b>.</p>
 <p class="Pp">Referenced by <b>atomic_ptr_store()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_atomic_ptr_store_(atomic_ptr_t_*_a,_void_*_value)"><a class="permalink" href="#void_atomic_ptr_store_(atomic_ptr_t_*_a,_void_*_value)">void
-  atomic_ptr_store (atomic_ptr_t * a, void * value)</a></h2>
+<h2 class="Ss" id="void_atomic_ptr_store_("><a class="permalink" href="#void_atomic_ptr_store_(">void
+  atomic_ptr_store (<b>atomic_ptr_t</b> * a, void * value)</a></h2>
+<p class="Pp">Atomically store a pointer.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_ptr_t</b>
+<br/>
+<i>value</i> Pointer value to store</div>
 <p class="Pp">Definition at line <b>245</b> of file <b>atomic.c</b>.</p>
 <pre>245                                                     {
 246     if (!a) return;
@@ -845,12 +1013,13 @@
     <b>node_pool_get()</b>, <b>node_pool_put()</b>,
     <b>options_state_destroy()</b>, <b>options_state_init()</b>,
     <b>packet_queue_create_with_pools()</b>, <b>packet_queue_enqueue()</b>,
-    <b>packet_queue_enqueue_packet()</b>, <b>packet_queue_try_dequeue()</b>, and
+    <b>packet_queue_enqueue_packet()</b>, <b>packet_queue_try_dequeue()</b>,
+    <b>session_display_set_global_context()</b>, and
     <b>shutdown_register_callback()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_atomic_ptr_store_impl_(atomic_ptr_t_*_a,_void_*_value)"><a class="permalink" href="#void_atomic_ptr_store_impl_(atomic_ptr_t_*_a,_void_*_value)">void
-  atomic_ptr_store_impl (atomic_ptr_t * a, void * value)</a></h2>
+<h2 class="Ss" id="void_atomic_ptr_store_impl_("><a class="permalink" href="#void_atomic_ptr_store_impl_(">void
+  atomic_ptr_store_impl (<b>atomic_ptr_t</b> * a, void * value)</a></h2>
 <p class="Pp">Definition at line <b>110</b> of file <b>atomic.c</b>.</p>
 <pre>110                                                          {
 111     if (!a) return;
@@ -860,8 +1029,13 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_atomic_store_bool_(atomic_t_*_a,_"><a class="permalink" href="#void_atomic_store_bool_(atomic_t_*_a,_">void
-  atomic_store_bool (atomic_t * a, <b>bool</b> value)</a></h2>
+<h2 class="Ss" id="void_atomic_store_bool_("><a class="permalink" href="#void_atomic_store_bool_(">void
+  atomic_store_bool (<b>atomic_t</b> * a, <b>bool</b> value)</a></h2>
+<p class="Pp">Atomically store a boolean value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_t</b>
+<br/>
+<i>value</i> Value to store</div>
 <p class="Pp">Definition at line <b>153</b> of file <b>atomic.c</b>.</p>
 <pre>153                                                 {
 154     if (!a) return;
@@ -888,16 +1062,16 @@
     <b>display_reset_for_new_connection()</b>,
     <b>handle_client_leave_packet()</b>, <b>handle_stream_start_packet()</b>,
     <b>handle_stream_stop_packet()</b>, <b>keepalive_start_thread()</b>,
-    <b>keyboard_help_toggle()</b>, <b>log_destroy()</b>, <b>log_init()</b>,
-    <b>log_search_enter_mode()</b>, <b>log_search_exit_mode()</b>,
-    <b>log_search_handle_key()</b>, <b>log_search_init()</b>,
-    <b>log_search_needs_rerender()</b>, <b>log_search_signal_cancel()</b>,
-    <b>log_set_level()</b>, <b>log_shutdown_begin()</b>,
-    <b>mutex_stack_cleanup()</b>, <b>packet_queue_create_with_pools()</b>,
-    <b>protocol_start_connection()</b>, <b>remove_client()</b>,
-    <b>server_connection_close()</b>, <b>server_connection_establish()</b>,
-    <b>server_connection_init()</b>, <b>server_connection_lost()</b>,
-    <b>server_connection_set_transport()</b>,
+    <b>keyboard_help_signal_cancel()</b>, <b>keyboard_help_toggle()</b>,
+    <b>log_destroy()</b>, <b>log_init()</b>, <b>log_search_enter_mode()</b>,
+    <b>log_search_exit_mode()</b>, <b>log_search_handle_key()</b>,
+    <b>log_search_init()</b>, <b>log_search_needs_rerender()</b>,
+    <b>log_search_signal_cancel()</b>, <b>log_set_level()</b>,
+    <b>log_shutdown_begin()</b>, <b>mutex_stack_cleanup()</b>,
+    <b>packet_queue_create_with_pools()</b>, <b>protocol_start_connection()</b>,
+    <b>remove_client()</b>, <b>server_connection_close()</b>,
+    <b>server_connection_establish()</b>, <b>server_connection_init()</b>,
+    <b>server_connection_lost()</b>, <b>server_connection_set_transport()</b>,
     <b>server_connection_shutdown()</b>, <b>server_main()</b>,
     <b>session_client_like_run()</b>, <b>session_display_create()</b>,
     <b>session_display_reset_first_frame()</b>,
@@ -917,8 +1091,8 @@
     and <b>websocket_server_init()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_atomic_store_bool_impl_(atomic_t_*_a,_uint64_t_value)"><a class="permalink" href="#void_atomic_store_bool_impl_(atomic_t_*_a,_uint64_t_value)">void
-  atomic_store_bool_impl (atomic_t * a, uint64_t value)</a></h2>
+<h2 class="Ss" id="void_atomic_store_bool_impl_("><a class="permalink" href="#void_atomic_store_bool_impl_(">void
+  atomic_store_bool_impl (<b>atomic_t</b> * a, <b>uint64_t</b> value)</a></h2>
 <p class="Pp">Definition at line <b>30</b> of file <b>atomic.c</b>.</p>
 <pre>30                                                          {
 31     if (!a) return;
@@ -928,8 +1102,13 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_atomic_store_int_(atomic_t_*_a,_int_value)"><a class="permalink" href="#void_atomic_store_int_(atomic_t_*_a,_int_value)">void
-  atomic_store_int (atomic_t * a, int value)</a></h2>
+<h2 class="Ss" id="void_atomic_store_int_("><a class="permalink" href="#void_atomic_store_int_(">void
+  atomic_store_int (<b>atomic_t</b> * a, int value)</a></h2>
+<p class="Pp">Atomically store an int value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_t</b>
+<br/>
+<i>value</i> Value to store</div>
 <p class="Pp">Definition at line <b>175</b> of file <b>atomic.c</b>.</p>
 <pre>175                                               {
 176     if (!a) return;
@@ -948,8 +1127,8 @@
     <b>mutex_stack_cleanup()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_atomic_store_int_impl_(atomic_t_*_a,_uint64_t_value)"><a class="permalink" href="#void_atomic_store_int_impl_(atomic_t_*_a,_uint64_t_value)">void
-  atomic_store_int_impl (atomic_t * a, uint64_t value)</a></h2>
+<h2 class="Ss" id="void_atomic_store_int_impl_("><a class="permalink" href="#void_atomic_store_int_impl_(">void
+  atomic_store_int_impl (<b>atomic_t</b> * a, <b>uint64_t</b> value)</a></h2>
 <p class="Pp">Definition at line <b>49</b> of file <b>atomic.c</b>.</p>
 <pre>49                                                         {
 50     if (!a) return;
@@ -959,8 +1138,13 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_atomic_store_u64_(atomic_t_*_a,_uint64_t_value)"><a class="permalink" href="#void_atomic_store_u64_(atomic_t_*_a,_uint64_t_value)">void
-  atomic_store_u64 (atomic_t * a, uint64_t value)</a></h2>
+<h2 class="Ss" id="void_atomic_store_u64_("><a class="permalink" href="#void_atomic_store_u64_(">void
+  atomic_store_u64 (<b>atomic_t</b> * a, <b>uint64_t</b> value)</a></h2>
+<p class="Pp">Atomically store a <b>uint64_t</b> value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> Pointer to <b>atomic_t</b>
+<br/>
+<i>value</i> Value to store</div>
 <p class="Pp">Definition at line <b>211</b> of file <b>atomic.c</b>.</p>
 <pre>211                                                    {
 212     if (!a) return;
@@ -997,8 +1181,8 @@
     <b>websocket_callback_timing_reset()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_atomic_store_u64_impl_(atomic_t_*_a,_uint64_t_value)"><a class="permalink" href="#void_atomic_store_u64_impl_(atomic_t_*_a,_uint64_t_value)">void
-  atomic_store_u64_impl (atomic_t * a, uint64_t value)</a></h2>
+<h2 class="Ss" id="void_atomic_store_u64_impl_("><a class="permalink" href="#void_atomic_store_u64_impl_(">void
+  atomic_store_u64_impl (<b>atomic_t</b> * a, <b>uint64_t</b> value)</a></h2>
 <p class="Pp">Definition at line <b>73</b> of file <b>atomic.c</b>.</p>
 <pre>73                                                         {
 74     if (!a) return;
@@ -1009,10 +1193,10 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> debug_atomic_is_initialized (void ) [extern]</h2>
-<p class="Pp">Definition at line <b>36</b> of file <b>debug/atomic.c</b>.</p>
-<pre>36                                        {
-37     return g_atomic_debug_initialized;
-38 }</pre>
+<p class="Pp">Definition at line <b>38</b> of file <b>debug/atomic.c</b>.</p>
+<pre>38                                        {
+39     return g_atomic_debug_initialized;
+40 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>atomic_on_cas()</b>, <b>atomic_on_fetch()</b>,
@@ -1028,7 +1212,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

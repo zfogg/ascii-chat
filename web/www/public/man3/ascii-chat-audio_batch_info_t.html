@@ -30,7 +30,9 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">audio_batch_info_t</p>
+<p class="Pp">audio_batch_info_t - Parsed audio batch packet header
+  information.</p>
+<p class="Pp"></p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
@@ -39,14 +41,15 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">uint32_t <b>batch_count</b>
+<p class="Pp"><b>uint32_t</b> <b>batch_count</b>
   <br/>
-  uint32_t <b>total_samples</b>
+  Number of audio frames in this batch. <b>uint32_t</b> <b>total_samples</b>
   <br/>
-  uint32_t <b>sample_rate</b>
+  Total number of samples across all frames. <b>uint32_t</b> <b>sample_rate</b>
   <br/>
-  uint32_t <b>channels</b>
+  Sample rate in Hz (e.g., 48000). <b>uint32_t</b> <b>channels</b>
   <br/>
+  Number of channels (1=mono, 2=stereo).
   <br/>
 </p>
 </section>
@@ -54,6 +57,21 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
+<p class="Pp">Parsed audio batch packet header information.</p>
+<p class="Pp">Contains unpacked and validated audio batch metadata extracted
+    from PACKET_TYPE_AUDIO_BATCH packets. This structure is used by both server
+    and client protocol handlers to process batched audio frames.</p>
+<p class="Pp"></p>
+<p class="Pp">Audio Batch Packet Format: The audio batch packet contains
+    multiple audio frames in a single packet to improve bandwidth efficiency.
+    The packet structure includes:</p>
+<ul class="Bl-bullet">
+  <li>batch_count: Number of individual audio frames in this batch</li>
+  <li>total_samples: Total number of audio samples across all frames</li>
+  <li>sample_rate: Sample rate (Hz) for this batch</li>
+  <li>channels: Number of audio channels (mono=1, stereo=2)</li>
+  <li>Followed by: Packed audio frames</li>
+</ul>
 <p class="Pp">Definition at line <b>19</b> of file
     <b>lib/platform/wasm/stubs/audio.h</b>.</p>
 </section>
@@ -61,8 +79,8 @@
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="uint32_t_audio_batch_info_t::batch_count"><a class="permalink" href="#uint32_t_audio_batch_info_t::batch_count">uint32_t
-  audio_batch_info_t::batch_count</a></h2>
+<h2 class="Ss"><b>uint32_t</b> audio_batch_info_t::batch_count</h2>
+<p class="Pp">Number of audio frames in this batch.</p>
 <p class="Pp">Definition at line <b>20</b> of file
     <b>lib/platform/wasm/stubs/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_parse_batch_header()</b>,
@@ -70,16 +88,16 @@
     <b>handle_audio_batch_packet()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint32_t_audio_batch_info_t::channels"><a class="permalink" href="#uint32_t_audio_batch_info_t::channels">uint32_t
-  audio_batch_info_t::channels</a></h2>
+<h2 class="Ss"><b>uint32_t</b> audio_batch_info_t::channels</h2>
+<p class="Pp">Number of channels (1=mono, 2=stereo).</p>
 <p class="Pp">Definition at line <b>23</b> of file
     <b>lib/platform/wasm/stubs/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_parse_batch_header()</b>, and
     <b>audio_validate_batch_params()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint32_t_audio_batch_info_t::sample_rate"><a class="permalink" href="#uint32_t_audio_batch_info_t::sample_rate">uint32_t
-  audio_batch_info_t::sample_rate</a></h2>
+<h2 class="Ss"><b>uint32_t</b> audio_batch_info_t::sample_rate</h2>
+<p class="Pp">Sample rate in Hz (e.g., 48000).</p>
 <p class="Pp">Definition at line <b>22</b> of file
     <b>lib/platform/wasm/stubs/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_parse_batch_header()</b>,
@@ -87,8 +105,8 @@
     <b>handle_audio_batch_packet()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="uint32_t_audio_batch_info_t::total_samples"><a class="permalink" href="#uint32_t_audio_batch_info_t::total_samples">uint32_t
-  audio_batch_info_t::total_samples</a></h2>
+<h2 class="Ss"><b>uint32_t</b> audio_batch_info_t::total_samples</h2>
+<p class="Pp">Total number of samples across all frames.</p>
 <p class="Pp">Definition at line <b>21</b> of file
     <b>lib/platform/wasm/stubs/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_parse_batch_header()</b>,
@@ -104,7 +122,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -62,36 +62,50 @@
   <br/>
   int <b>platform_set_cursor_position</b> (int row, int col)
   <br/>
-  asciichat_error_t <b>get_terminal_size</b> (unsigned short int *width,
+  <b>asciichat_error_t</b> <b>get_terminal_size</b> (unsigned short int *width,
     unsigned short int *height)
   <br/>
-  <b>bool</b> <b>terminal_supports_utf8</b> (void)
+  Get terminal size with multiple fallback methods. <b>bool</b>
+    <b>terminal_supports_utf8</b> (void)
   <br/>
-  <b>bool</b> <b>terminal_is_piped_output</b> (void)
+  Check if terminal supports UTF-8. <b>bool</b> <b>terminal_is_piped_output</b>
+    (void)
   <br/>
-  <b>bool</b> <b>terminal_should_color_output</b> (int fd)
+  Check if stdout is piped or redirected. <b>bool</b>
+    <b>terminal_should_color_output</b> (int fd)
   <br/>
-  <b>bool</b> <b>terminal_is_stdin_tty</b> (void)
+  Determine if color output should be used. <b>bool</b>
+    <b>terminal_is_stdin_tty</b> (void)
   <br/>
-  <b>bool</b> <b>terminal_is_stdout_tty</b> (void)
+  Check if stdin is connected to a TTY. <b>bool</b>
+    <b>terminal_is_stdout_tty</b> (void)
   <br/>
-  <b>bool</b> <b>terminal_is_stderr_tty</b> (void)
+  Check if stdout is connected to a TTY. <b>bool</b>
+    <b>terminal_is_stderr_tty</b> (void)
   <br/>
-  <b>bool</b> <b>terminal_is_interactive</b> (void)
+  Check if stderr is connected to a TTY. <b>bool</b>
+    <b>terminal_is_interactive</b> (void)
   <br/>
-  <b>bool</b> <b>terminal_should_force_stderr</b> (void)
+  Check if the session is fully interactive. <b>bool</b>
+    <b>terminal_should_force_stderr</b> (void)
   <br/>
-  <b>bool</b> <b>terminal_can_prompt_user</b> (void)
+  Determine if logs should be forced to stderr. <b>bool</b>
+    <b>terminal_can_prompt_user</b> (void)
   <br/>
-  <b>bool</b> <b>terminal_has_dark_background</b> (void)
+  Determine if interactive user prompts are appropriate. <b>bool</b>
+    <b>terminal_has_dark_background</b> (void)
   <br/>
-  asciichat_error_t <b>terminal_flush</b> (int fd)
+  Detect if terminal theme is dark. <b>asciichat_error_t</b>
+    <b>terminal_flush</b> (int fd)
   <br/>
-  terminal_capabilities_t <b>detect_terminal_capabilities</b> (void)
+  Flush terminal output. <b>terminal_capabilities_t</b>
+    <b>detect_terminal_capabilities</b> (void)
   <br/>
-  <b>bool</b> <b>terminal_query_background_color</b> (uint8_t *bg_r, uint8_t
-    *bg_g, uint8_t *bg_b)
+  Detect terminal capabilities. <b>bool</b>
+    <b>terminal_query_background_color</b> (<b>uint8_t</b> *bg_r, <b>uint8_t</b>
+    *bg_g, <b>uint8_t</b> *bg_b)
   <br/>
+  Query terminal background color using OSC 11 escape sequence.
   <br/>
 </p>
 </section>
@@ -109,8 +123,35 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="terminal_capabilities_t_detect_terminal_capabilities_(void_)"><a class="permalink" href="#terminal_capabilities_t_detect_terminal_capabilities_(void_)">terminal_capabilities_t
-  detect_terminal_capabilities (void )</a></h2>
+<h2 class="Ss"><b>terminal_capabilities_t</b> detect_terminal_capabilities (void
+  )</h2>
+<p class="Pp">Detect terminal capabilities.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Terminal capabilities structure with all detected
+  features</div>
+<p class="Pp">Comprehensively detects terminal capabilities including:</p>
+<ul class="Bl-bullet">
+  <li>Color support level (none, 16, 256, truecolor)</li>
+  <li>UTF-8 encoding support</li>
+  <li>Terminal type and environment variables</li>
+  <li>Render mode preferences</li>
+  <li>Detection reliability</li>
+</ul>
+<p class="Pp">Detection uses multiple methods:</p>
+<ul class="Bl-bullet">
+  <li>Environment variable analysis ($TERM, $COLORTERM, $LC_ALL, $LANG)</li>
+  <li>Terminal type database lookups</li>
+  <li>Runtime capability queries (where available)</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Returns a structure with all detected capabilities.
+<p class="Pp"></p>
+<p class="Pp">Detection reliability is indicated by detection_reliable
+  field.</p>
+<p class="Pp"></p>
+<p class="Pp">Use <b>apply_color_mode_override()</b> to apply command-line
+    overrides.</p>
+</div>
 <p class="Pp">Definition at line <b>146</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
 <pre>146                                                            {
@@ -131,7 +172,18 @@
 161 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_strlcpy()</b>.</p>
+<p class="Pp">References <b>terminal_capabilities_t::capabilities</b>,
+    <b>terminal_capabilities_t::color_count</b>,
+    <b>terminal_capabilities_t::color_filter</b>, <b>COLOR_FILTER_NONE</b>,
+    <b>terminal_capabilities_t::color_level</b>,
+    <b>terminal_capabilities_t::colorterm</b>,
+    <b>terminal_capabilities_t::desired_fps</b>,
+    <b>terminal_capabilities_t::detection_reliable</b>,
+    <b>terminal_capabilities_t::palette_type</b>, <b>platform_strlcpy()</b>,
+    <b>terminal_capabilities_t::render_mode</b>, <b>RENDER_MODE_FOREGROUND</b>,
+    <b>TERM_COLOR_256</b>, <b>terminal_capabilities_t::term_type</b>,
+    <b>terminal_capabilities_t::utf8_support</b>, and
+    <b>terminal_capabilities_t::wants_background</b>.</p>
 <p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
     <b>log_redetect_terminal_capabilities()</b>, <b>main()</b>,
     <b>session_display_create()</b>, and
@@ -153,9 +205,35 @@
   Module.xterm.write(UTF8ToString(data, len));} } )</a></h2>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_get_terminal_size_(unsigned_short_int_*_width,_unsigned_short_int_*_height)"><a class="permalink" href="#asciichat_error_t_get_terminal_size_(unsigned_short_int_*_width,_unsigned_short_int_*_height)">asciichat_error_t
-  get_terminal_size (unsigned short int * width, unsigned short int *
-  height)</a></h2>
+<h2 class="Ss"><b>asciichat_error_t</b> get_terminal_size (unsigned short int *
+  width, unsigned short int * height)</h2>
+<p class="Pp">Get terminal size with multiple fallback methods.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>width</i> Pointer to store width in columns (must not
+  be NULL)
+<br/>
+<i>height</i> Pointer to store height in rows (must not be NULL)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Detects terminal size using multiple fallback methods for
+    reliability:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Terminal size query (ioctl TIOCGWINSZ on Unix, Console API on
+    Windows)</dd>
+  <dt>2.</dt>
+  <dd>Environment variable fallback ($COLUMNS, $LINES)</dd>
+  <dt>3.</dt>
+  <dd>Default size fallback (80x24) if all methods fail</dd>
+</dl>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">On failure, output parameters are not modified.
+<p class="Pp"></p>
+<p class="Pp">Terminal size may change if terminal is resized.</p>
+<p class="Pp"></p>
+<p class="Pp">This function is more reliable than <b>terminal_get_size()</b> due
+    to fallbacks.</p>
+</div>
 <p class="Pp">Definition at line <b>80</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
 <pre>80                                                                                            {
@@ -172,7 +250,8 @@
 91 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_get_terminal_size()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_PLATFORM_INIT</b>, and <b>platform_get_terminal_size()</b>.</p>
 <p class="Pp">Referenced by <b>session_render_loop()</b>,
     <b>update_dimensions_for_full_height()</b>, and
     <b>update_dimensions_to_terminal_size()</b>.</p>
@@ -270,6 +349,52 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_can_prompt_user (void )</h2>
+<p class="Pp">Determine if interactive user prompts are appropriate.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if prompts can be shown, false if
+  non-interactive/automated</div>
+<p class="Pp">Determines whether interactive user prompts (yes/no, passwords,
+    confirmations) should be displayed. Returns false in non-interactive or
+    automated contexts.</p>
+<p class="Pp"></p>
+<p class="Pp">Use this to decide whether:</p>
+<ul class="Bl-bullet">
+  <li>Password prompts should be shown (or auto-cancel)</li>
+  <li>Yes/No confirmations should wait for input (or use defaults)</li>
+  <li>Known hosts prompts should be interactive (or auto-deny)</li>
+</ul>
+<p class="Pp">Logic:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>If not fully interactive (stdin or stdout not TTY) &#x2192; false</dd>
+  <dt>2.</dt>
+  <dd>If in snapshot mode (--snapshot) &#x2192; false</dd>
+  <dt>3.</dt>
+  <dd>If ASCII_CHAT_QUESTION_PROMPT_RESPONSE set &#x2192; false (automated
+      responses)</dd>
+  <dt>4.</dt>
+  <dd>Otherwise &#x2192; true (interactive prompts OK)</dd>
+</dl>
+<p class="Pp">Examples:</p>
+<ul class="Bl-bullet">
+  <li>ascii-chat client in terminal &#x2192; true (can prompt)</li>
+  <li>ascii-chat client --snapshot &#x2192; false (non-interactive mode)</li>
+  <li>echo data | ascii-chat client &#x2192; false (stdin piped)</li>
+  <li>ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' ascii-chat client &#x2192; false
+      (automated)</li>
+  <li>ascii-chat client &gt; output.txt &#x2192; false (stdout redirected)</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Combines checks for: TTY status, snapshot mode,
+  automation env vars
+<p class="Pp"></p>
+<p class="Pp">Used by password prompts, known_hosts verification, user
+    confirmations</p>
+<p class="Pp"></p>
+<p class="Pp">When false, password prompts should auto-cancel with error</p>
+<p class="Pp"></p>
+<p class="Pp">When false, yes/no prompts should use default value or deny</p>
+</div>
 <p class="Pp">Definition at line <b>130</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
 <pre>130                                     {
@@ -279,24 +404,40 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="asciichat_error_t_terminal_flush_(int_fd)"><a class="permalink" href="#asciichat_error_t_terminal_flush_(int_fd)">asciichat_error_t
-  terminal_flush (int fd)</a></h2>
-<p class="Pp">Definition at line <b>140</b> of file
-    <b>platform/wasm/terminal.c</b>.</p>
-<pre>140                                          {
-141   (void)fd;
-142   return ASCIICHAT_OK; // No-op - xterm.js handles flushing
-143 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>ascii_write()</b>,
-    <b>config_create_default()</b>, <b>keyboard_help_render()</b>,
-    <b>session_display_render_fps_overlay()</b>, <b>session_display_reset()</b>,
-    <b>session_display_write_ascii()</b>, <b>session_display_write_raw()</b>,
-    and <b>splash_wait_for_animation()</b>.</p>
-</section>
-<section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_has_dark_background (void )</h2>
+<p class="Pp">Detect if terminal theme is dark.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if terminal has a dark theme, false if light theme
+  or unknown</div>
+<p class="Pp">Attempts to detect terminal's color theme (dark or light
+    background) using:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>OSC 11 escape sequence query with luminance calculation (modern
+    terminals)</dd>
+  <dt>2.</dt>
+  <dd>Common environment variables (COLORFGBG, TERM_PROGRAM)</dd>
+  <dt>3.</dt>
+  <dd>Terminal-specific hints (iTerm2, VS Code, Konsole, etc.)</dd>
+  <dt>4.</dt>
+  <dd>Defaults to dark theme (most common for developer terminals)</dd>
+</dl>
+<p class="Pp">Used by the theme system to select appropriate colors throughout
+    the UI:</p>
+<ul class="Bl-bullet">
+  <li>Color schemes adapt based on detected theme</li>
+  <li>Highlight colors choose better contrast for the detected theme</li>
+  <li>Text colors are selected to work with the background theme</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This is a best-effort heuristic and may not be 100%
+  accurate
+<p class="Pp"></p>
+<p class="Pp">Result is cached for performance (theme doesn't change during
+    session)</p>
+<p class="Pp"></p>
+<p class="Pp">User can override via TERM_BACKGROUND environment variable</p>
+</div>
 <p class="Pp">Definition at line <b>135</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
 <pre>135                                         {
@@ -308,6 +449,39 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_is_interactive (void )</h2>
+<p class="Pp">Check if the session is fully interactive.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if BOTH stdin AND stdout are TTYs, false
+  otherwise</div>
+<p class="Pp">Determines whether the session is fully interactive (user at
+    terminal). Returns true only when BOTH stdin and stdout are connected to
+    TTYs.</p>
+<p class="Pp"></p>
+<p class="Pp">Use this to decide whether:</p>
+<ul class="Bl-bullet">
+  <li>User prompts and interactive input should be shown</li>
+  <li>Splash screens and animations should be displayed</li>
+  <li>Frame padding should be enabled</li>
+  <li>Password prompts are appropriate</li>
+</ul>
+<p class="Pp">Examples:</p>
+<ul class="Bl-bullet">
+  <li>ascii-chat mirror in terminal &#x2192; true (interactive)</li>
+  <li>ascii-chat mirror | less &#x2192; false (stdout piped)</li>
+  <li>cat file | ascii-chat client &#x2192; false (stdin piped)</li>
+  <li>ascii-chat client &lt; input.txt &gt; output.txt &#x2192; false (both
+      piped)</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Equivalent to: <b>terminal_is_stdin_tty()</b> &amp;&amp;
+  <b>terminal_is_stdout_tty()</b>
+<p class="Pp"></p>
+<p class="Pp">Used for enabling interactive features (prompts, padding,
+  splash)</p>
+<p class="Pp"></p>
+<p class="Pp">Snapshot mode is checked separately via
+    <b>GET_OPTION(snapshot_mode)</b></p>
+</div>
 <p class="Pp">Definition at line <b>122</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
 <pre>122                                    {
@@ -318,6 +492,31 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_is_piped_output (void )</h2>
+<p class="Pp">Check if stdout is piped or redirected.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if stdout is piped/redirected, false if connected to
+  TTY</div>
+<p class="Pp">Determines whether standard output is being piped or redirected to
+    a file. This is the logical inverse of <b>terminal_is_stdout_tty()</b>.</p>
+<p class="Pp"></p>
+<p class="Pp">Use this to decide whether:</p>
+<ul class="Bl-bullet">
+  <li>Logs should be forced to stderr (to avoid corrupting piped output)</li>
+  <li>Frame padding should be disabled</li>
+  <li>Clean, parseable output should be preferred</li>
+</ul>
+<p class="Pp">Examples:</p>
+<ul class="Bl-bullet">
+  <li>ascii-chat mirror &gt; output.txt &#x2192; true (redirected)</li>
+  <li>ascii-chat client | grep pattern &#x2192; true (piped)</li>
+  <li>ascii-chat mirror in terminal &#x2192; false (TTY)</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Equivalent to: !terminal_is_stdout_tty()
+<p class="Pp"></p>
+<p class="Pp">Common pattern: force stderr when piped to prevent data
+  corruption</p>
+</div>
 <p class="Pp">Definition at line <b>99</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
 <pre>99                                     {
@@ -328,6 +527,20 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_is_stderr_tty (void )</h2>
+<p class="Pp">Check if stderr is connected to a TTY.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if stderr is a TTY, false otherwise</div>
+<p class="Pp">Determines whether standard error is connected to a terminal
+    device. Returns false when stderr is piped or redirected to a file.</p>
+<p class="Pp"></p>
+<p class="Pp">Use this to decide whether diagnostic messages should include
+    colors.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Wrapper around platform_isatty(STDERR_FILENO) for clarity
+<p class="Pp"></p>
+<p class="Pp">stderr is often a TTY even when stdout is piped</p>
+</div>
 <p class="Pp">Definition at line <b>118</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
 <pre>118                                   {
@@ -338,6 +551,22 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_is_stdin_tty (void )</h2>
+<p class="Pp">Check if stdin is connected to a TTY.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if stdin is a TTY (can read interactive input),
+  false otherwise</div>
+<p class="Pp">Determines whether standard input is connected to a terminal
+    device. Returns false when stdin is piped or redirected from a file.</p>
+<p class="Pp"></p>
+<p class="Pp">Use this to decide whether interactive input (prompts, keyboard
+    events) is possible.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Wrapper around platform_isatty(STDIN_FILENO) for clarity
+<p class="Pp"></p>
+<p class="Pp">Returns false in non-interactive environments (CI, scripts,
+  pipes)</p>
+</div>
 <p class="Pp">Definition at line <b>110</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
 <pre>110                                  {
@@ -348,6 +577,25 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_is_stdout_tty (void )</h2>
+<p class="Pp">Check if stdout is connected to a TTY.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if stdout is a TTY (not piped/redirected), false
+  otherwise</div>
+<p class="Pp">Determines whether standard output is connected to a terminal
+    device. Returns false when stdout is piped or redirected to a file.</p>
+<p class="Pp"></p>
+<p class="Pp">Use this to decide whether:</p>
+<ul class="Bl-bullet">
+  <li>Terminal control sequences (colors, cursor movement) should be used</li>
+  <li>Output padding/formatting should be applied</li>
+  <li>Progress bars or animations should be shown</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Wrapper around platform_isatty(STDOUT_FILENO) for clarity
+<p class="Pp"></p>
+<p class="Pp">Returns false in piped contexts (e.g., ascii-chat client |
+  less)</p>
+</div>
 <p class="Pp">Definition at line <b>114</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
 <pre>114                                   {
@@ -357,8 +605,29 @@
 <p class="Pp"></p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> terminal_query_background_color (uint8_t * bg_r,
-  uint8_t * bg_g, uint8_t * bg_b)</h2>
+<h2 class="Ss"><b>bool</b> terminal_query_background_color (<b>uint8_t</b> *
+  bg_r, <b>uint8_t</b> * bg_g, <b>uint8_t</b> * bg_b)</h2>
+<p class="Pp">Query terminal background color using OSC 11 escape sequence.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>bg_r</i> Pointer to store red component (0-255)
+<br/>
+<i>bg_g</i> Pointer to store green component (0-255)
+<br/>
+<i>bg_b</i> Pointer to store blue component (0-255)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if successful, false if query failed or timed
+  out</div>
+<p class="Pp">Sends OSC 11 query to terminal and parses RGB response. Works with
+    modern terminals (iTerm2, kitty, Konsole, etc.) Returns false if terminal
+    doesn't support OSC 11 or times out.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Requires raw terminal mode to read response
+<p class="Pp"></p>
+<p class="Pp">Has 100ms timeout to prevent hanging</p>
+<p class="Pp"></p>
+<p class="Pp">Only works if stdout is a TTY</p>
+</div>
 <p class="Pp">Definition at line <b>164</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
 <pre>164                                                                                   {
@@ -376,6 +645,25 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_should_color_output (int fd)</h2>
+<p class="Pp">Determine if color output should be used. Priority order:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>If --color flag is set &#x2192; ALWAYS use colors (force override)</dd>
+  <dt>2.</dt>
+  <dd>If CLAUDECODE env var is set &#x2192; NEVER use colors (LLM
+    automation)</dd>
+  <dt>3.</dt>
+  <dd>If output is not a TTY (piping) &#x2192; NO colors</dd>
+  <dt>4.</dt>
+  <dd>If --color-mode=none &#x2192; NO colors (user choice)</dd>
+  <dt>5.</dt>
+  <dd>Otherwise &#x2192; Use colors</dd>
+</dl>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>fd</i> File descriptor to check (STDOUT_FILENO or
+  STDERR_FILENO)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if colors should be used, false otherwise</div>
 <p class="Pp">Definition at line <b>104</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
 <pre>104                                           {
@@ -387,6 +675,41 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_should_force_stderr (void )</h2>
+<p class="Pp">Determine if logs should be forced to stderr.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if logs should go to stderr only, false if stdout is
+  acceptable</div>
+<p class="Pp">Determines whether logging output should be forced to stderr
+    instead of stdout. Returns true when stdout is piped/redirected (to avoid
+    corrupting output data).</p>
+<p class="Pp"></p>
+<p class="Pp">Use this to decide whether to call log_set_force_stderr(true).</p>
+<p class="Pp"></p>
+<p class="Pp">Logic:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>If stdout is piped/redirected &#x2192; force stderr (true)</dd>
+  <dt>2.</dt>
+  <dd>If in TESTING environment &#x2192; allow stdout (false)</dd>
+  <dt>3.</dt>
+  <dd>Otherwise &#x2192; allow stdout (false)</dd>
+</dl>
+<p class="Pp">Examples:</p>
+<ul class="Bl-bullet">
+  <li>ascii-chat mirror &gt; frames.txt &#x2192; true (don't corrupt frame
+    data)</li>
+  <li>ascii-chat mirror in terminal &#x2192; false (stdout is fine)</li>
+  <li>TESTING=1 ascii-chat mirror &#x2192; false (tests may capture stdout)</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This prevents logs from corrupting piped ASCII frame data
+<p class="Pp"></p>
+<p class="Pp">TESTING environment variable bypasses this for test
+  environments</p>
+<p class="Pp"></p>
+<p class="Pp">Typical usage: if (<b>terminal_should_force_stderr()</b>)
+    log_set_force_stderr(true);</p>
+</div>
 <p class="Pp">Definition at line <b>126</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
 <pre>126                                         {
@@ -394,18 +717,6 @@
 128 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> terminal_supports_utf8 (void )</h2>
-<p class="Pp">Definition at line <b>94</b> of file
-    <b>platform/wasm/terminal.c</b>.</p>
-<pre>94                                   {
-95   return true; // xterm.js supports UTF-8
-96 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>detect_client_utf8_support()</b>, and
-    <b>options_init()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -415,7 +726,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-date">Version 0.9.2</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

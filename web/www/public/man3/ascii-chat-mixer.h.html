@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>mixer.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">mixer.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">mixer.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">mixer.h - Multi-Source Audio Mixing and Processing System.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>compressor_t</b>
+  <br/>
+  Dynamic range compressor settings and state. struct <b>noise_gate_t</b>
+  <br/>
+  Noise gate settings and state. struct <b>highpass_filter_t</b>
+  <br/>
+  High-pass filter settings and state. struct <b>lowpass_filter_t</b>
+  <br/>
+  Low-pass filter state. struct <b>ducking_t</b>
+  <br/>
+  Ducking system settings and state. struct <b>mixer_t</b>
+  <br/>
+  Main mixer structure for multi-source audio processing.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<p class="Pp"><b>Audio Mixing Configuration</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  #define <b>MIXER_MAX_SOURCES</b> 32
+  <br/>
+  Maximum number of simultaneous audio sources. #define <b>MIXER_FRAME_SIZE</b>
+    256
+  <br/>
+  Number of samples processed per audio frame.
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<p class="Pp"><b>Mixer Lifecycle Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  <b>mixer_t</b> * <b>mixer_create</b> (int max_sources, int sample_rate)
+  <br/>
+  Create a new audio mixer. void <b>mixer_destroy</b> (<b>mixer_t</b> *mixer)
+  <br/>
+  Destroy a mixer and free all resources.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Audio Processing Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  int <b>mixer_process</b> (<b>mixer_t</b> *mixer, float *output, int
+    num_samples)
+  <br/>
+  Process audio from all active sources. int
+    <b>mixer_process_excluding_source</b> (<b>mixer_t</b> *mixer, float *output,
+    int num_samples, <b>uint32_t</b> exclude_client_id)
+  <br/>
+  Process audio from all sources except one (for per-client output).
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Utility Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  float <b>db_to_linear</b> (float db)
+  <br/>
+  Convert decibels to linear gain. float <b>linear_to_db</b> (float linear)
+  <br/>
+  Convert linear gain to decibels. float <b>clamp_float</b> (float value, float
+    min, float max)
+  <br/>
+  Clamp a float value to a range.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Compressor Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  void <b>compressor_init</b> (<b>compressor_t</b> *comp, float sample_rate)
+  <br/>
+  Initialize a compressor. void <b>compressor_set_params</b>
+    (<b>compressor_t</b> *comp, float threshold_dB, float ratio, <b>uint64_t</b>
+    attack_ns, <b>uint64_t</b> release_ns, float makeup_dB)
+  <br/>
+  Set compressor parameters. float <b>compressor_process_sample</b>
+    (<b>compressor_t</b> *comp, float sidechain)
+  <br/>
+  Process a single sample through compressor.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Ducking Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  int <b>ducking_init</b> (<b>ducking_t</b> *duck, int num_sources, float
+    sample_rate)
+  <br/>
+  Initialize ducking system. void <b>ducking_destroy</b> (<b>ducking_t</b>
+    *duck)
+  <br/>
+  Free ducking system resources. void <b>ducking_set_params</b>
+    (<b>ducking_t</b> *duck, float threshold_dB, float leader_margin_dB, float
+    atten_dB, <b>uint64_t</b> attack_ns, <b>uint64_t</b> release_ns)
+  <br/>
+  Set ducking parameters. void <b>ducking_process_frame</b> (<b>ducking_t</b>
+    *duck, float *envelopes, float *gains, int num_sources)
+  <br/>
+  Process a frame of audio through ducking system.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Noise Gate Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  void <b>noise_gate_init</b> (<b>noise_gate_t</b> *gate, float sample_rate)
+  <br/>
+  Initialize a noise gate. void <b>noise_gate_set_params</b>
+    (<b>noise_gate_t</b> *gate, float threshold, <b>uint64_t</b> attack_ns,
+    <b>uint64_t</b> release_ns, float hysteresis)
+  <br/>
+  Set noise gate parameters. float <b>noise_gate_process_sample</b>
+    (<b>noise_gate_t</b> *gate, float input, float peak_amplitude)
+  <br/>
+  Process a single sample through noise gate. void
+    <b>noise_gate_process_buffer</b> (<b>noise_gate_t</b> *gate, float *buffer,
+    int num_samples)
+  <br/>
+  Process a buffer of samples through noise gate. <b>bool</b>
+    <b>noise_gate_is_open</b> (const <b>noise_gate_t</b> *gate)
+  <br/>
+  Check if noise gate is currently open.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>High-Pass Filter Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  void <b>highpass_filter_init</b> (<b>highpass_filter_t</b> *filter, float
+    cutoff_hz, float sample_rate)
+  <br/>
+  Initialize a high-pass filter. void <b>highpass_filter_reset</b>
+    (<b>highpass_filter_t</b> *filter)
+  <br/>
+  Reset high-pass filter state. float <b>highpass_filter_process_sample</b>
+    (<b>highpass_filter_t</b> *filter, float input)
+  <br/>
+  Process a single sample through high-pass filter. void
+    <b>highpass_filter_process_buffer</b> (<b>highpass_filter_t</b> *filter,
+    float *buffer, int num_samples)
+  <br/>
+  Process a buffer of samples through high-pass filter.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Low-Pass Filter Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  void <b>lowpass_filter_init</b> (<b>lowpass_filter_t</b> *filter, float
+    cutoff_hz, float sample_rate)
+  <br/>
+  Initialize a low-pass filter. void <b>lowpass_filter_reset</b>
+    (<b>lowpass_filter_t</b> *filter)
+  <br/>
+  Reset low-pass filter state. float <b>lowpass_filter_process_sample</b>
+    (<b>lowpass_filter_t</b> *filter, float input)
+  <br/>
+  Process a single sample through low-pass filter. void
+    <b>lowpass_filter_process_buffer</b> (<b>lowpass_filter_t</b> *filter, float
+    *buffer, int num_samples)
+  <br/>
+  Process a buffer of samples through low-pass filter.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Buffer Utility Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  float <b>smoothstep</b> (float t)
+  <br/>
+  Compute smoothstep interpolation. int16_t <b>float_to_int16</b> (float sample)
+  <br/>
+  Convert float sample to int16 (WebRTC format). float <b>int16_to_float</b>
+    (int16_t sample)
+  <br/>
+  Convert int16 sample to float. void <b>buffer_float_to_int16</b> (const float
+    *src, int16_t *dst, int count)
+  <br/>
+  Convert float buffer to int16 buffer. void <b>buffer_int16_to_float</b> (const
+    int16_t *src, float *dst, int count)
+  <br/>
+  Convert int16 buffer to float buffer. float <b>buffer_peak</b> (const float
+    *buffer, int count)
+  <br/>
+  Find peak absolute value in buffer. void <b>apply_gain_buffer</b> (float
+    *buffer, int count, float gain)
+  <br/>
+  Apply gain to buffer in-place. void <b>fade_buffer</b> (float *buffer, int
+    count, float start_gain, float end_gain)
+  <br/>
+  Apply linear fade to buffer in-place. void <b>fade_buffer_smooth</b> (float
+    *buffer, int count, <b>bool</b> fade_in)
+  <br/>
+  Apply smoothstep fade to buffer in-place. void <b>copy_buffer_with_gain</b>
+    (const float *src, float *dst, int count, float gain)
+  <br/>
+  Copy buffer with gain scaling.
+  <br/>
+  <br/>
+</p>
+<p class="Pp"><b>Soft Clipping Functions</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  float <b>soft_clip</b> (float sample, float threshold, float steepness)
+  <br/>
+  Apply soft clipping to a sample. void <b>soft_clip_buffer</b> (float *buffer,
+    int num_samples, float threshold, float steepness)
+  <br/>
+  Apply soft clipping to a buffer.
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Source_Management_Functions"><a class="permalink" href="#Source_Management_Functions">Source
+  Management Functions</a></h2>
+<br/>
+<p class="Pp">#define <b>MIXER_HASH_INVALID</b> 0xFF
+  <br/>
+  Invalid index sentinel value for mixer hash table. int <b>mixer_add_source</b>
+    (<b>mixer_t</b> *mixer, const char *client_id, <b>audio_ring_buffer_t</b>
+    *buffer)
+  <br/>
+  Add an audio source to the mixer. void <b>mixer_remove_source</b>
+    (<b>mixer_t</b> *mixer, const char *client_id)
+  <br/>
+  Remove an audio source from the mixer. void <b>mixer_set_source_active</b>
+    (<b>mixer_t</b> *mixer, const char *client_id, <b>bool</b> active)
+  <br/>
+  Set whether a source is active (receiving audio).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Multi-Source Audio Mixing and Processing System.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>mixer.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>
