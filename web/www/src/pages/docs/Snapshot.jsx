@@ -25,9 +25,9 @@ export default function Snapshot() {
       <div className="bg-gray-950 text-gray-100 flex flex-col">
         <div className="flex-1 flex flex-col docs-container">
           <header className="mb-12 sm:mb-16">
-            <h1 className="heading-1 mb-4">
+            <Heading level={1} className="heading-1 mb-4">
               <span className="text-teal-400">📸</span> Snapshot Mode
-            </h1>
+            </Heading>
             <p className="text-lg sm:text-xl text-gray-300">
               Single-frame capture, scripting, automation, and debugging
             </p>
@@ -39,9 +39,9 @@ export default function Snapshot() {
               ⚡ Quick Start
             </Heading>
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-3">
+              <Heading level={3} className="heading-3 text-teal-300 mb-3">
                 Single Frame Capture
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Capture one frame from webcam and save as ASCII art:
               </p>
@@ -69,9 +69,9 @@ export default function Snapshot() {
 
           {/* Understanding Output & Piping */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-purple-400">
+            <Heading level={2} className="heading-2 text-purple-400">
               🔌 Piping, Redirection & isatty()
-            </h2>
+            </Heading>
 
             <p className="docs-paragraph">
               ascii-chat automatically detects whether stdout is connected to a
@@ -80,14 +80,14 @@ export default function Snapshot() {
             </p>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-purple-300 mb-3">
+              <Heading level={3} className="heading-3 text-purple-300 mb-3">
                 How Output Detection Works
-              </h3>
+              </Heading>
               <div className="space-y-3">
                 <div className="card-standard accent-cyan">
-                  <h4 className="text-cyan-300 font-semibold mb-2">
+                  <Heading level={4} className="text-cyan-300 font-semibold mb-2">
                     Terminal (TTY)
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm">
                     When stdout is a terminal, ascii-chat outputs with ANSI
                     codes, cursor movement, and terminal optimizations for live
@@ -95,9 +95,9 @@ export default function Snapshot() {
                   </p>
                 </div>
                 <div className="card-standard accent-teal">
-                  <h4 className="text-teal-300 font-semibold mb-2">
+                  <Heading level={4} className="text-teal-300 font-semibold mb-2">
                     Piped/Redirected (Non-TTY)
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm">
                     When stdout is piped or redirected to a file, ascii-chat
                     automatically outputs clean ASCII without ANSI codes, cursor
@@ -108,9 +108,9 @@ export default function Snapshot() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-3">
+              <Heading level={3} className="heading-3 text-teal-300 mb-3">
                 Practical Examples
-              </h3>
+              </Heading>
               <CodeBlock language="bash">
                 {
                   "# Terminal: displayed with colors and animations\nascii-chat mirror --snapshot\n\n# File: clean ASCII saved to disk\nascii-chat mirror --snapshot > frame.txt\n\n# Pipe: clean ASCII sent downstream\nascii-chat mirror --snapshot | pbcopy\n\n# Viewing piped output\nascii-chat mirror --snapshot | cat -\n\n# Force plain ASCII (no color codes at all)\nascii-chat mirror --snapshot --color-mode mono > plain.txt"
@@ -119,9 +119,9 @@ export default function Snapshot() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-pink-300 mb-3">
+              <Heading level={3} className="heading-3 text-pink-300 mb-3">
                 Clipboard Magic (macOS)
-              </h3>
+              </Heading>
               <CodeBlock language="bash">
                 {
                   "# Capture to clipboard\nascii-chat mirror --snapshot | pbcopy\n\n# Display clipboard contents\npbpaste | cat -\n\n# Capture AND display\nascii-chat mirror --snapshot | tee /tmp/frame.txt | pbcopy\n\n# Capture from clipboard, modify, save back\npbpaste > frame.txt\nnvim frame.txt  # Edit in neovim\ncat frame.txt | pbcopy  # Copy modified version back"
@@ -153,14 +153,14 @@ export default function Snapshot() {
 
           {/* Snapshot Delay & Timing */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-pink-400">
+            <Heading level={2} className="heading-2 text-pink-400">
               ⏱️ Snapshot Delay & Timing
-            </h2>
+            </Heading>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-pink-300 mb-3">
+              <Heading level={3} className="heading-3 text-pink-300 mb-3">
                 Zero-Delay Capture (-D 0)
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Capture the very first frame with no warmup delay (useful for
                 scripting and integration tests):
@@ -216,9 +216,9 @@ export default function Snapshot() {
 
           {/* HTTP/HTTPS, RTMP & YouTube Snapshots */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-pink-400">
+            <Heading level={2} className="heading-2 text-pink-400">
               🎥 HTTP/HTTPS, RTMP & YouTube Snapshots
-            </h2>
+            </Heading>
 
             <p className="docs-paragraph">
               Capture ASCII art frames from any media source that ffmpeg
@@ -239,9 +239,9 @@ export default function Snapshot() {
 
           {/* Debugging & Verification */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-green-400">
+            <Heading level={2} className="heading-2 text-green-400">
               🔍 Debugging & Network Verification
-            </h2>
+            </Heading>
 
             <p className="docs-paragraph">
               Snapshot mode is perfect for verifying your setup. A successful
@@ -249,9 +249,9 @@ export default function Snapshot() {
             </p>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-green-300 mb-3">
+              <Heading level={3} className="heading-3 text-green-300 mb-3">
                 What a Successful Snapshot Verifies
-              </h3>
+              </Heading>
               <ul className="space-y-1 text-gray-300 text-sm">
                 <li>
                   <span className="text-cyan-300">✅ Webcam Access</span> —
@@ -290,9 +290,9 @@ export default function Snapshot() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-3">
+              <Heading level={3} className="heading-3 text-teal-300 mb-3">
                 Verification Examples
-              </h3>
+              </Heading>
               <CodeBlock language="bash">
                 {
                   '# Test local webcam only\nascii-chat mirror -S -D 0\necho "Exit code: $?"  # 0 = success\n\n# Test network connection to server\nascii-chat client example.com -S -D 3\necho "Exit code: $?"  # Verifies: network, crypto, frame transmission\n\n# Test with specific encryption\nascii-chat client example.com --key ~/.ssh/id_ed25519 -S -D 3\necho "Exit code: $?"  # Verifies: key auth, handshake, transmission\n\n# Test ACDS discovery and WebRTC\nascii-chat my-session-string -S -D 5\necho "Exit code: $?"  # Verifies: ACDS lookup, NAT traversal, P2P connection'
@@ -301,9 +301,9 @@ export default function Snapshot() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-cyan-300 mb-3">
+              <Heading level={3} className="heading-3 text-cyan-300 mb-3">
                 Exit Codes for Scripting
-              </h3>
+              </Heading>
               <CodeBlock language="bash">
                 {
                   '# Check if snapshot succeeded\nif ascii-chat mirror -S -D 1 > /dev/null 2>&1; then\n  echo "✓ Webcam working"\nelse\n  echo "✗ Webcam failed (exit code: $?)"\nfi\n\n# Verify server connection\nif ascii-chat client example.com:8080 -S -D 3 > /tmp/frame.txt 2>&1; then\n  echo "✓ Connected to server and received frame"\n  cat /tmp/frame.txt | head -20  # Show first 20 lines\nelse\n  echo "✗ Server connection failed (exit code: $?)"\nfi\n\n# Retry logic\nfor attempt in {1..3}; do\n  echo "Attempt $attempt..."\n  if ascii-chat client example.com -S -D 2; then\n    echo "Success!"\n    break\n  fi\n  echo "Failed, retrying..."\n  sleep 2\ndone'
@@ -314,19 +314,19 @@ export default function Snapshot() {
 
           {/* Scripting Tips & Tricks */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-purple-400">
+            <Heading level={2} className="heading-2 text-purple-400">
               💡 Tips, Tricks & Common Gotchas
-            </h2>
+            </Heading>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-pink-300 mb-3">
+              <Heading level={3} className="heading-3 text-pink-300 mb-3">
                 Common Gotchas & Solutions
-              </h3>
+              </Heading>
               <div className="space-y-3">
                 <div className="card-standard accent-pink">
-                  <h4 className="text-pink-300 font-semibold mb-2">
+                  <Heading level={4} className="text-pink-300 font-semibold mb-2">
                     Black Frames on macOS
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-2">
                     <strong>Problem:</strong> Using{" "}
                     <code className="text-cyan-300">-D 0</code> gives a
@@ -339,9 +339,9 @@ export default function Snapshot() {
                   </p>
                 </div>
                 <div className="card-standard accent-cyan">
-                  <h4 className="text-cyan-300 font-semibold mb-2">
+                  <Heading level={4} className="text-cyan-300 font-semibold mb-2">
                     Empty or Corrupted Output
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-2">
                     <strong>Problem:</strong> Output file is empty or contains
                     garbage
@@ -354,9 +354,9 @@ export default function Snapshot() {
                   </p>
                 </div>
                 <div className="card-standard accent-teal">
-                  <h4 className="text-teal-300 font-semibold mb-2">
+                  <Heading level={4} className="text-teal-300 font-semibold mb-2">
                     ANSI Codes in Piped Output
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-2">
                     <strong>Problem:</strong> Output contains ANSI escape
                     sequences even when piped
@@ -369,9 +369,9 @@ export default function Snapshot() {
                   </p>
                 </div>
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-2">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-2">
                     Network Timeouts
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-2">
                     <strong>Problem:</strong> Client snapshot hangs or times out
                     waiting for server
@@ -390,14 +390,14 @@ export default function Snapshot() {
 
           {/* Advanced Scripting */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-green-400">
+            <Heading level={2} className="heading-2 text-green-400">
               🚀 Advanced Scripting Examples
-            </h2>
+            </Heading>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-green-300 mb-3">
+              <Heading level={3} className="heading-3 text-green-300 mb-3">
                 Batch Processing Images
-              </h3>
+              </Heading>
               <CodeBlock language="bash">
                 {
                   '# Convert all images in directory\nfor img in *.jpg; do\n  echo "Converting $img..."\n  ascii-chat mirror --file "$img" --snapshot > "ascii_${img}.txt"\ndone\n\n# Convert with specific palette and dimensions\nfor img in *.png; do\n  ascii-chat mirror --file "$img" --snapshot \\\n    --palette blocks --width 100 --height 50 \\\n    > "ascii_${img}.txt"\ndone'
@@ -406,9 +406,9 @@ export default function Snapshot() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-cyan-300 mb-3">
+              <Heading level={3} className="heading-3 text-cyan-300 mb-3">
                 Integration Testing
-              </h3>
+              </Heading>
               <CodeBlock language="bash">
                 {
                   '#!/bin/bash\n# Integration test: verify entire stack works\n\necho "Testing webcam..."\nif ! ascii-chat mirror -S -D 2 > /tmp/local.txt 2>&1; then\n  echo "✗ Webcam test failed"\n  exit 1\nfi\necho "✓ Webcam working"\n\necho "Testing server connection..."\nif ! ascii-chat client example.com -S -D 3 > /tmp/remote.txt 2>&1; then\n  echo "✗ Network test failed"\n  exit 1\nfi\necho "✓ Network connection working"\n\necho "Testing encrypted connection..."\nif ! ascii-chat client example.com --key ~/.ssh/id_ed25519 -S -D 3 > /tmp/encrypted.txt 2>&1; then\n  echo "✗ Encryption test failed"\n  exit 1\nfi\necho "✓ Encryption working"\n\necho "All tests passed!"\nexit 0'
@@ -417,9 +417,9 @@ export default function Snapshot() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-3">
+              <Heading level={3} className="heading-3 text-teal-300 mb-3">
                 Video Frame Extraction
-              </h3>
+              </Heading>
               <CodeBlock language="bash">
                 {
                   '#!/bin/bash\n# Extract frames from video at intervals\n\nVIDEO="$1"\nFRAMES_PER_SECOND=1\n\nif [ ! -f "$VIDEO" ]; then\n  echo "Usage: $0 <video-file>"\n  exit 1\nfi\n\nmkdir -p frames\n\n# Get video duration\nDURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1:nk=1 "$VIDEO")\nFRAMES=$(echo "$DURATION * $FRAMES_PER_SECOND" | bc)\n\necho "Extracting ~$FRAMES frames from $VIDEO"\n\nfor i in $(seq 0 $((1/$FRAMES_PER_SECOND)) $(echo "$DURATION - 1" | bc)); do\n  TIME=$(printf "%02d:%02d:%06.3f" $((${i%.*}/60/60)) $(((${i%.*}/60)%60)) $(bc -l <<< "$i - int($i) + int($i)"))\n  ascii-chat mirror --file "$VIDEO" --seek "$i" -S -D 1 \\\n    --color-mode mono --palette minimal > "frames/frame_$(printf "%06d" $i).txt"\ndone\n\necho "Frames saved to frames/ directory"'
@@ -435,9 +435,9 @@ export default function Snapshot() {
             </Heading>
             <div className="space-y-3">
               <div className="card-standard accent-yellow">
-                <h4 className="text-yellow-300 font-semibold mb-2">
+                <Heading level={4} className="text-yellow-300 font-semibold mb-2">
                   YouTube, RTMP & Streaming Media
-                </h4>
+                </Heading>
                 <p className="text-gray-300 text-sm mb-2">
                   Capture ASCII art frames from any media source—YouTube videos,
                   HTTP(S) files, RTMP live streams, and more. Use{" "}
@@ -457,9 +457,9 @@ export default function Snapshot() {
                 </p>
               </div>
               <div className="card-standard accent-green">
-                <h4 className="text-green-300 font-semibold mb-2">
+                <Heading level={4} className="text-green-300 font-semibold mb-2">
                   Media Processing & Batch Conversion
-                </h4>
+                </Heading>
                 <p className="text-gray-300 text-sm">
                   Batch convert images and videos to ASCII art with custom
                   palettes and dimensions. Process entire directories or create
@@ -467,9 +467,9 @@ export default function Snapshot() {
                 </p>
               </div>
               <div className="card-standard accent-purple">
-                <h4 className="text-purple-300 font-semibold mb-2">
+                <Heading level={4} className="text-purple-300 font-semibold mb-2">
                   Documentation & Creative Projects
-                </h4>
+                </Heading>
                 <p className="text-gray-300 text-sm">
                   Generate ASCII art screenshots for README files,
                   presentations, blog posts, or web pages. Create unique visual
@@ -477,9 +477,9 @@ export default function Snapshot() {
                 </p>
               </div>
               <div className="card-standard accent-teal">
-                <h4 className="text-teal-300 font-semibold mb-2">
+                <Heading level={4} className="text-teal-300 font-semibold mb-2">
                   Automated Testing & CI/CD
-                </h4>
+                </Heading>
                 <p className="text-gray-300 text-sm">
                   Test that the entire video/crypto/network stack works by
                   checking exit codes and comparing frame output. Verify network
@@ -488,13 +488,14 @@ export default function Snapshot() {
                 </p>
               </div>
               <div className="card-standard accent-cyan">
-                <h4 className="text-cyan-300 font-semibold mb-2">
-                  Debug Network Issues
-                </h4>
+                <Heading level={4} className="text-cyan-300 font-semibold mb-2">
+                  🤳 Take an ASCII Art Selfie
+                </Heading>
                 <p className="text-gray-300 text-sm">
-                  Quickly verify whether connectivity, encryption, server
-                  response, or client setup is the problem. Single command
-                  checks the entire pipeline
+                  Capture yourself as ASCII art in real-time. Perfect for profile
+                  pictures, social media, or just having fun. Zero delay mode
+                  gives instant results, or use a longer delay for the perfect
+                  pose
                 </p>
               </div>
             </div>
