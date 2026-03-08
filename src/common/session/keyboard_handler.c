@@ -105,12 +105,6 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   // Debug: log all key codes to help identify unknown keys
   if (key != KEY_NONE) {
     log_info("KEYBOARD INPUT: code=%d (0x%02x) char='%c'", key, key, (key >= 32 && key < 127) ? key : '?');
-    if (key == 'x' || key == 'X') {
-      log_info("!!! X KEY DETECTED AT HANDLER ENTRY !!!");
-    }
-    if (key == '-' || key == 45) {
-      log_info("!!! MINUS KEY DETECTED AT HANDLER ENTRY !!!");
-    }
   }
 
   switch ((int)key) {
@@ -325,7 +319,6 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
 
   // ===== FPS COUNTER TOGGLE =====
   case KEY_MINUS: {
-    log_info("!!! MINUS KEY DETECTED !!!");
     bool current = (bool)GET_OPTION(fps_counter);
     options_set_bool("fps_counter", !current);
     log_info("FPS counter: %s", !current ? "enabled" : "disabled");
@@ -342,7 +335,10 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
 #endif
 
   default:
-    // Unknown key - silently ignore
+    // Unknown key - log it for debugging
+    if (key != KEY_NONE) {
+      log_info("UNKNOWN KEY: code=%d (0x%02x) char='%c'", key, key, (key >= 32 && key < 127) ? key : '?');
+    }
     break;
   }
 
