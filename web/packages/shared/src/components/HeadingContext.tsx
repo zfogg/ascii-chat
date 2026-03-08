@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 
 interface HeadingContextType {
@@ -16,7 +16,7 @@ export function HeadingProvider({ children }: { children: ReactNode }) {
     usedIdsRef.current.clear();
   }, [location.pathname]);
 
-  const registerHeading = (baseId: string): string => {
+  const registerHeading = useCallback((baseId: string): string => {
     if (!usedIdsRef.current.has(baseId)) {
       usedIdsRef.current.add(baseId);
       return baseId;
@@ -32,10 +32,12 @@ export function HeadingProvider({ children }: { children: ReactNode }) {
 
     usedIdsRef.current.add(candidateId);
     return candidateId;
-  };
+  }, []);
+
+  const contextValue = useMemo(() => ({ registerHeading }), [registerHeading]);
 
   return (
-    <HeadingContext.Provider value={{ registerHeading }}>
+    <HeadingContext.Provider value={contextValue}>
       {children}
     </HeadingContext.Provider>
   );
