@@ -10,6 +10,17 @@
  * - Discovery service (port 27226 / discovery-service.ascii-chat.com for WebSocket)
  */
 
+declare global {
+  interface ImportMetaEnv {
+    readonly DEV: boolean;
+    readonly NODE_ENV?: string;
+  }
+
+  interface ImportMeta {
+    readonly env: ImportMetaEnv;
+  }
+}
+
 const isDev = import.meta.env.DEV;
 
 /**

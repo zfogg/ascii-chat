@@ -4,8 +4,16 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@wasm/*": ["./public/wasm/*"]
-    }
+      "@wasm/*": ["./public/wasm/*"],
+      "@ascii-chat/shared": ["../packages/shared/src/index.ts"],
+      "@ascii-chat/shared/components": [
+        "../packages/shared/src/components/index.ts"
+      ],
+      "@ascii-chat/shared/utils": ["../packages/shared/src/utils/index.ts"],
+      "@ascii-chat/shared/styles/*": ["../packages/shared/src/styles/*"]
+    },
+    "skipLibCheck": true,
+    "moduleResolution": "node"
   },
   "include": ["src"]
 }
