@@ -455,9 +455,9 @@ target_include_directories(ascii-chat-video PRIVATE ${FREETYPE_INCLUDE_DIRS})
 target_link_libraries(ascii-chat-video ${FREETYPE_LIBRARIES})
 
 # Fontconfig for font selection in render-file
-if(FONTCONFIG_LIBRARIES)
+if(FONTCONFIG_LINK_LIBRARIES)
     target_include_directories(ascii-chat-video PRIVATE ${FONTCONFIG_INCLUDE_DIRS})
-    target_link_libraries(ascii-chat-video ${FONTCONFIG_LIBRARIES})
+    target_link_libraries(ascii-chat-video ${FONTCONFIG_LINK_LIBRARIES})
 endif()
 
 # Mark generated font files as generated (for OBJECT libraries, must be before module creation)
@@ -1094,8 +1094,8 @@ endif()
 # Link FreeType2 and Fontconfig for font rendering
 # Use PUBLIC to ensure these are transitively linked when linking static library
 target_link_libraries(ascii-chat-shared PUBLIC ${FREETYPE_LIBRARIES})
-if(FONTCONFIG_LIBRARIES)
-    target_link_libraries(ascii-chat-shared PUBLIC ${FONTCONFIG_LIBRARIES})
+if(FONTCONFIG_LINK_LIBRARIES)
+    target_link_libraries(ascii-chat-shared PUBLIC ${FONTCONFIG_LINK_LIBRARIES})
 endif()
 
 # Link vterm for terminal emulation
