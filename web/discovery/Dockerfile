@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends bash && npm ins
 
 WORKDIR /app
 COPY . .
-RUN cd web && bun install
+RUN cd web && bun install && npm install --save-optional @rollup/rollup-linux-arm64-gnu 2>/dev/null || true
 
 # Build discovery
 FROM base AS builder

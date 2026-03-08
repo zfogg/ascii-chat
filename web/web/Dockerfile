@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends bash && npm ins
 
 WORKDIR /app
 COPY . .
-RUN bun install
+RUN bun install && npm install --save-optional @rollup/rollup-linux-arm64-gnu 2>/dev/null || true && npm install --save-optional @rollup/rollup-linux-arm64-gnu 2>/dev/null || true
 
 # Build web
 FROM base AS builder
