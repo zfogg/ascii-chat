@@ -268,7 +268,7 @@ static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_disp
                                                  NULL,                    // No capture callback (using capture context)
                                                  NULL,                    // No sleep callback (built-in FPS limiting)
                                                  mirror_keyboard_handler, // Keyboard handler
-                                                 NULL);                   // No user_data (not using callbacks)
+                                                 display);                // Pass display as user_data for help screen toggle
   log_info("mirror_run: session_render_loop returned with result=%d", result);
   return result;
 }
