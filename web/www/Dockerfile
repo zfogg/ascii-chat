@@ -32,6 +32,7 @@ COPY --from=builder /app/www/dist ./dist
 COPY --from=builder /app/www/node_modules ./node_modules
 COPY --from=builder /app/www/api.js ./api.js
 COPY --from=builder /app/www/package.json ./package.json
+COPY --from=builder /app/www/src ./src
 
 # Copy Caddyfile for frontend serving + API proxying
 COPY www/Caddyfile /etc/caddy/Caddyfile
