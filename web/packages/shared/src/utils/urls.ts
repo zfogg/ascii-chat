@@ -15,6 +15,10 @@ declare global {
     DEV: boolean;
     NODE_ENV?: string;
   }
+
+  interface ImportMeta {
+    readonly env: ImportMetaEnv;
+  }
 }
 
 const isDev = import.meta.env.DEV;
