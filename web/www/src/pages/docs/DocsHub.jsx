@@ -74,12 +74,12 @@ export default function DocsHub() {
       textClass: "text-pink-300",
     },
     {
-      icon: "📋",
-      title: "ascii-chat(5)",
-      description: "File formats for configuration and authentication",
-      to: "/man5",
-      colorClass: "accent-orange",
-      textClass: "text-orange-300",
+      icon: "📚",
+      title: "ascii-chat-*(3)",
+      description: "API documentation for the libasciichat library",
+      to: "/man3",
+      colorClass: "accent-teal",
+      textClass: "text-teal-300",
     },
     {
       icon: "🔐",

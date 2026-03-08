@@ -316,22 +316,6 @@ sudo make install`}
               </TrackedLink>
 
               <TrackedLink
-                to="/man5"
-                label="Home - Docs Man Page (5)"
-                className="bg-gray-900/50 border border-orange-900/50 rounded-lg p-4 hover:border-orange-500/50 transition-colors"
-              >
-                <Heading
-                  level={3}
-                  className="text-orange-300 font-semibold mb-1"
-                >
-                  📋 ascii-chat(5)
-                </Heading>
-                <p className="text-gray-400 text-sm">
-                  File formats and configuration man(5) page
-                </p>
-              </TrackedLink>
-
-              <TrackedLink
                 to="/crypto"
                 label="Home - Docs Cryptography"
                 className="bg-gray-900/50 border border-purple-900/50 rounded-lg p-4 hover:border-purple-500/50 transition-colors"
