@@ -852,6 +852,8 @@ static void bool_field_updater(options_t *opts, void *context) {
     opts->status_screen = ctx->value;
   else if (strcmp(ctx->field_name, "matrix_rain") == 0)
     opts->matrix_rain = ctx->value;
+  else if (strcmp(ctx->field_name, "fps_counter") == 0)
+    opts->fps_counter = ctx->value;
 }
 
 asciichat_error_t options_set_bool(const char *field_name, bool value) {
@@ -971,6 +973,8 @@ asciichat_error_t options_set_bool(const char *field_name, bool value) {
       temp.status_screen = value;
     else if (strcmp(field_name, "matrix_rain") == 0)
       temp.matrix_rain = value;
+    else if (strcmp(field_name, "fps_counter") == 0)
+      temp.fps_counter = value;
 
     asciichat_error_t err = rcu_validate_field(field_name, &temp);
     if (err != ASCIICHAT_OK) return err;
