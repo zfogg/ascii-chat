@@ -1,16 +1,5 @@
 # WWW app (frontend + API)
-FROM node:22-alpine AS builder
-
-# Install bash and bun
-RUN apk add --no-cache bash && npm install -g bun
-
-WORKDIR /app
-
-# Copy entire monorepo (preserves workspace structure)
-COPY . .
-
-# Install dependencies for entire monorepo workspace
-RUN bun install
+FROM zfogg/ascii-chat-web-shared:latest AS builder
 
 # Build www project only (uses vite to build dist/)
 RUN cd web && bun run --filter './www' build

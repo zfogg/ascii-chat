@@ -1,11 +1,4 @@
 services:
-  shared:
-    build:
-      context: ..
-      dockerfile: web/shared.Dockerfile
-    image: zfogg/ascii-chat-web-shared:latest
-    container_name: ascii-chat-shared
-
   gateway:
     build:
       context: ..
@@ -19,7 +12,6 @@ services:
       - discovery
       - web
       - www
-      - shared
     networks:
       ascii-chat:
         aliases:
