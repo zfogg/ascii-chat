@@ -1,25 +1,26 @@
-# Discovery web app
-FROM zfogg/ascii-chat-web-shared:latest AS builder
+# Discovery app - builds on shared
+FROM node:22-alpine AS base
 
-# Build discovery project only
+RUN apk add --no-cache bash && npm install -g bun
+
+WORKDIR /app
+COPY . .
+RUN cd web && bun install
+
+# Build discovery
+FROM base AS builder
+
 RUN cd web && bun run --filter './discovery' build
-
-# Clean up node_modules and other packages (keep discovery)
 RUN rm -rf /app/node_modules /app/packages /app/www /app/bun.lock*
 
-# Production stage with Caddy
+# Production stage
 FROM caddy:alpine
 
 WORKDIR /app/discovery
 
-# Copy built dist from builder
 COPY --from=builder /app/discovery/dist ./dist
-
-# Copy Caddyfile
 COPY web/discovery/Caddyfile /etc/caddy/Caddyfile
 
-# Expose port for serving
 EXPOSE 5174
 
-# Serve with Caddy
 CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]

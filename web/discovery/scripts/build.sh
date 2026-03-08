@@ -5,7 +5,7 @@ set -e
 cd "$(dirname "$0")/.."
 
 echo "Type checking with TypeScript..."
-bun x tsc --noEmit
+bun run type-check
 
 echo "Formatting check with prettier..."
 bun run format:check
