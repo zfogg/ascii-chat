@@ -27,8 +27,9 @@ COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
 
 WORKDIR /app/www
 
-# Copy root node_modules (monorepo hoisted dependencies)
+# Copy root node_modules to both root and www (for import resolution)
 COPY --from=builder /app/node_modules /app/node_modules
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy only www dist and specific files from builder
 COPY --from=builder /app/www/dist ./dist
