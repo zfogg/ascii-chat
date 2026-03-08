@@ -712,6 +712,7 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   log_info("[TCP_DBG] LOCK_START: About to acquire client manager write lock");
   rwlock_wrlock(&g_client_manager_rwlock);
   log_info("[TCP_DBG] LOCK_ACQUIRED: Client manager lock acquired");
+  log_info("[TCP_DBG] SLOT_RECHECK: About to check if slot is still available");
 
   // Re-check slot availability under lock (another thread might have taken it)
   if (g_client_manager.clients[slot].client_id[0] != '\0') {
@@ -764,17 +765,16 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
 
   // Generate unique noun-based client name with transport type and port
   // Note: We're holding the write lock here, so it's safe to iterate existing clients
+  log_info("[TCP_DBG] BEFORE_GENERATE_CLIENT_NAME");
   if (generate_client_name(client->display_name, sizeof(client->display_name), g_client_manager.clients_by_id, port,
                            true /* is_tcp */) != 0) {
     // Fallback to numeric name if generation fails
     safe_snprintf(client->display_name, sizeof(client->display_name), "client_%u (tcp:%d)", new_client_id, port);
   }
+  log_info("[TCP_DBG] AFTER_GENERATE_CLIENT_NAME: display_name=%s", client->display_name);
 
   // Register client with named debug system using the generated name
   (void)NAMED_REGISTER_CLIENT(client, client->display_name, NULL);
-
-  // Register all atomic fields for debug tracking
-  register_client_info_atomics(client);
 
   log_info("Added new client %s from %s:%d (socket=%d, slot=%d)", new_client_id, client_ip, port, socket, slot);
   log_debug("Client slot assigned: client_id=%s assigned to slot %d, socket=%d", new_client_id, slot, socket);
@@ -800,6 +800,12 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   // Configure socket OUTSIDE lock
   configure_client_socket(socket, new_client_id);
 
+  // Register all atomic fields for debug tracking OUTSIDE lock
+  // (register_client_info_atomics calls NAMED_REGISTER_MUTEX which acquires debug registry lock)
+  log_info("[TCP_DBG] BEFORE_REGISTER_CLIENT_ATOMICS");
+  register_client_info_atomics(client);
+  log_info("[TCP_DBG] AFTER_REGISTER_CLIENT_ATOMICS");
+
   // Initialize mutexes OUTSIDE lock
   if (mutex_init(&client->client_state_mutex, "client_state") != 0) {
     log_error("Failed to initialize client state mutex for client %s", new_client_id);
@@ -819,6 +825,7 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   }
 
   // Register with audio mixer OUTSIDE lock
+  // CRITICAL: Do this BEFORE crypto handshake to avoid deadlock with mixer thread
   if (g_audio_mixer && client->incoming_audio_buffer) {
     if (mixer_add_source(g_audio_mixer, new_client_id, client->incoming_audio_buffer) < 0) {
       log_warn("Failed to add client %s to audio mixer", new_client_id);
