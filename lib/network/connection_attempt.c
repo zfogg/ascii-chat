@@ -208,7 +208,14 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
       // Copy host to local buffer since url_parts will be destroyed
       SAFE_STRNCPY(tcp_address_buf, url_parts.host, sizeof(tcp_address_buf) - 1);
       effective_address = tcp_address_buf;
-      effective_port = (url_parts.port > 0) ? (uint16_t)url_parts.port : server_port;
+      // Use port from URL if present, otherwise fall back to server_port, otherwise default to 27224
+      if (url_parts.port > 0) {
+        effective_port = (uint16_t)url_parts.port;
+      } else if (server_port > 0) {
+        effective_port = server_port;
+      } else {
+        effective_port = 27224;  // Default port
+      }
       log_debug("TCP URL converted to address='%s', port=%u", effective_address, effective_port);
       url_parts_destroy(&url_parts);
     } else {

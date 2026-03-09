@@ -477,10 +477,21 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
   // Attempt connection with fallback stages (TCP, WebRTC+STUN, WebRTC+TURN)
   // Get pre-created TCP client from framework if available
   tcp_client_t *framework_tcp_client = session_client_like_get_tcp_client();
+
+  // For TCP URLs, pass port=0 to let connection_attempt_tcp() extract port from URL
+  // Otherwise use discovered_port or default to 27224
+  const char *addr = g_client_session.discovered_address != NULL ? g_client_session.discovered_address : "";
+  uint16_t port = 0;
+  if (url_is_tcp(addr)) {
+    port = 0;  // Port embedded in URL, will be extracted by connection_attempt_tcp()
+  } else {
+    port = (uint16_t)(g_client_session.discovered_port > 0 ? g_client_session.discovered_port : 27224);
+  }
+
   asciichat_error_t connection_result = connection_attempt_tcp(
       &g_client_session.connection_ctx,
-      g_client_session.discovered_address != NULL ? g_client_session.discovered_address : "",
-      (uint16_t)(g_client_session.discovered_port > 0 ? g_client_session.discovered_port : 27224),
+      addr,
+      port,
       framework_tcp_client);
 
   // Check if shutdown was requested during connection attempt
