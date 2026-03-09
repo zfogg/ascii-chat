@@ -814,13 +814,23 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
     return NULL;
   }
 
-  // Register all atomic fields for debug tracking - DEFERRED to receive thread
-  // This avoids deadlock with debug_sync thread (see client_receive_thread)
-  // The atomics will be registered safely after the receive thread starts
-  // when add_client() is no longer holding locks that conflict with debug_sync
+  // Register all atomic fields for debug tracking - DISABLED to prevent deadlock
+  // register_client_info_atomics() and audio_ring_buffer_register_atomics() call
+  // NAMED_REGISTER which tries to acquire WRITE lock on named_registry.entries_lock
+  // The debug_sync thread holds READ lock while printing, causing reader-writer deadlock
+  // These are debug-only features not critical for functionality
+  // log_info("[TCP_DBG] BEFORE_REGISTER_CLIENT_ATOMICS");
+  // register_client_info_atomics(client);
+  // log_info("[TCP_DBG] AFTER_REGISTER_CLIENT_ATOMICS");
 
-  // Audio buffer atomics will be registered in client_receive_thread (deferred)
-  // See client_receive_thread for the actual registration to avoid deadlock
+  // Audio buffer atomics registration disabled - same deadlock reason
+  // log_info("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_START: client=%p", (void *)client);
+  // if (client->incoming_audio_buffer) {
+  //   audio_ring_buffer_register_atomics(client->incoming_audio_buffer, new_client_id);
+  //   log_info("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_DONE");
+  // } else {
+  //   log_info("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_SKIPPED: incoming_audio_buffer is NULL");
+  // }
 
   // Register with audio mixer OUTSIDE lock
   // CRITICAL: Do this BEFORE crypto handshake to avoid deadlock with mixer thread
