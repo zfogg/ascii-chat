@@ -545,9 +545,9 @@
   :root {
     color-scheme: dark;
     --color-cyan-300: oklch(86.5% 0.127 207.078);
-    /* Scrollbar colors - teal normally, cyan on hover */
+    /* Scrollbar colors - match header logo (teal-400 and cyan-400) */
     --scrollbar-track: #030712;
-    --scrollbar-thumb: #0d9488;
+    --scrollbar-thumb: #14b8a6;
     --scrollbar-thumb-hover: #22d3ee;
     --scrollbar-thumb-active: #06b6d4;
   }
