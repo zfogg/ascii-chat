@@ -3,13 +3,13 @@
  * @brief ACIP protocol message structures and helpers
  *
  * This header provides a centralized location for all ACIP message structures
- * used in packets 1-199. It includes packet structures from packet.h and adds
+ * used in ACIP packets. It includes packet structures from packet.h and adds
  * ACIP-specific helpers and type definitions.
  *
  * ACIP PACKET RANGES:
  * ===================
  * - Packets 1-35: Core ascii-chat protocol (video, audio, control)
- * - Packets 100-199: ACDS discovery service protocol
+ * - Packets 6000-6199: ACDS discovery service protocol
  *
  * DESIGN RATIONALE:
  * =================

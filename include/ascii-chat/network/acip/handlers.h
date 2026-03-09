@@ -2,7 +2,7 @@
  * @file network/acip/handlers.h
  * @brief ACIP protocol packet handlers (transport-agnostic)
  *
- * Provides handler functions for all ACIP packet types (1-199).
+ * Provides handler functions for all ACIP packet types (6000-6199).
  * Handlers are transport-agnostic - they work with any acip_transport_t.
  *
  * DESIGN PATTERN:

@@ -42,11 +42,12 @@
  *
  * CORE RESPONSIBILITIES:
  * ======================
- * 1. Session management packet type definitions (100-109)
- * 2. WebRTC signaling packet type definitions (110-119)
- * 3. String reservation packet type definitions (120-129)
- * 4. Discovery service control packet type definitions (150-198)
- * 5. Error handling packet type definitions
+ * 1. Session management packet type definitions (6000-6008)
+ * 2. WebRTC signaling packet type definitions (6009-6010)
+ * 3. String reservation packet type definitions (6020-6023)
+ * 4. Ring consensus and host negotiation (6050-6068)
+ * 5. Bandwidth testing (6070-6075)
+ * 6. Discovery service control and error handling (6190, 6199)
  *
  * PACKET RANGE ALLOCATION:
  * ========================
@@ -235,7 +236,7 @@ static inline bool packet_is_acip_type(uint16_t type) {
 /**
  * @brief Check if ACIP packet type is a session management packet
  * @param type Packet type to check
- * @return true if packet is session management (100-109), false otherwise
+ * @return true if packet is session management (6000-6008), false otherwise
  *
  * @ingroup acip
  */
@@ -257,7 +258,7 @@ static inline bool packet_is_acip_webrtc_type(uint16_t type) {
 /**
  * @brief Check if ACIP packet type is a string reservation packet
  * @param type Packet type to check
- * @return true if packet is string reservation (120-129), false otherwise
+ * @return true if packet is string reservation (6020-6023), false otherwise
  *
  * @ingroup acip
  */

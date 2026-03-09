@@ -27,7 +27,7 @@
  * Offset  Size  Field     Value/Description
  * ------  ----  -----     -----------------
  * 0       8     magic     0xA5C11C4A1 ("ASCIICHAT" in hex)
- * 8       2     type      100-199 (ACIP packet type enum)
+ * 8       2     type      6000-6199 (ACIP packet type enum)
  * 10      4     length    Payload length (0-2097152 bytes)
  * 14      4     crc32     CRC32 of payload bytes only
  * 18      4     client_id Client identifier (0 if not assigned)
@@ -97,7 +97,7 @@
  *
  * INTEGRATION WITH OTHER MODULES:
  * ===============================
- * - network/acip/protocol.h: Defines ACIP packet types (100-199)
+ * - network/acip/protocol.h: Defines ACIP packet types (6000-6199)
  * - network/packet.h: Provides packet_header_t infrastructure (header, CRC, etc.)
  * - src/acds/: ACDS server implementation
  * - lib/network/acip/: Protocol handlers and transports
