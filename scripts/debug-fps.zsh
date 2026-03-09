@@ -204,8 +204,9 @@ else
 fi
 
 # Wait for client to finish
-wait $CLIENT_BG_PID
+wait $CLIENT_BG_PID 2>/dev/null || true
 END_TIME=$(date +%s%N)
+echo "[DEBUG] Script continuing after wait" >&2
 
 # Calculate elapsed time in seconds
 ELAPSED_NS=$((END_TIME - START_TIME))
@@ -276,8 +277,6 @@ else
 fi
 
 # Wait for logs to flush before displaying results
-SLEEP_SECS=$(echo "$SNAPSHOT_DELAY + 1" | bc)
-sleep "$SLEEP_SECS"
 echo ""
 echo "📋 Log files:"
 echo "  Client log:      $client_log"
