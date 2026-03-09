@@ -247,7 +247,7 @@ static inline bool packet_is_acip_session_type(uint16_t type) {
 /**
  * @brief Check if ACIP packet type is a WebRTC signaling packet
  * @param type Packet type to check
- * @return true if packet is WebRTC signaling (110-119), false otherwise
+ * @return true if packet is WebRTC signaling (6009-6010), false otherwise
  *
  * @ingroup acip
  */
