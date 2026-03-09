@@ -94,50 +94,68 @@ extern "C" {
  *
  * ACIP packet types are defined in the main packet_type_t enum (network/packet.h).
  *
- * **Range**: 100-199 (reserved for ACIP, avoiding ascii-chat packets 1-99)
+ * **Range**: 6000-6199 (reserved for ACIP discovery protocol)
  *
- * ## Session Management Packets (100-109)
+ * ## Session Management Packets (6000-6008)
  * Handles session creation, discovery, joining, and termination.
  *
- * - `100`: SESSION_CREATE - Client requests new session creation
- * - `101`: SESSION_CREATED - Server confirms session created with ID
- * - `102`: SESSION_LOOKUP - Client queries for session by string identifier
- * - `103`: SESSION_INFO - Server returns session metadata (no connection details)
- * - `104`: SESSION_JOIN - Client requests to join existing session
- * - `105`: SESSION_JOINED - Server confirms join with connection details
- * - `106`: SESSION_LEAVE - Client notifies leaving session
- * - `107`: SESSION_END - Server notifies session ended
- * - `108`: SESSION_RECONNECT - Client reconnects after temporary disconnect
+ * - `6000`: SESSION_CREATE - Client requests new session creation
+ * - `6001`: SESSION_CREATED - Server confirms session created with ID
+ * - `6002`: SESSION_LOOKUP - Client queries for session by string identifier
+ * - `6003`: SESSION_INFO - Server returns session metadata (no connection details)
+ * - `6004`: SESSION_JOIN - Client requests to join existing session
+ * - `6005`: SESSION_JOINED - Server confirms join with connection details
+ * - `6006`: SESSION_LEAVE - Client notifies leaving session
+ * - `6007`: SESSION_END - Server notifies session ended
+ * - `6008`: SESSION_RECONNECT - Client reconnects after temporary disconnect
  *
- * ## WebRTC Signaling Packets (110-119)
+ * ## WebRTC Signaling Packets (6009-6010)
  * Relays WebRTC session description and ICE candidate exchange.
  *
- * - `110`: WEBRTC_SDP - SDP offer/answer for P2P negotiation
- * - `111`: WEBRTC_ICE - ICE candidate for NAT traversal
+ * - `6009`: WEBRTC_SDP - SDP offer/answer for P2P negotiation
+ * - `6010`: WEBRTC_ICE - ICE candidate for NAT traversal
  *
- * ## String Reservation Packets (120-129)
- * Handles session string reservation for custom identifiers (future use).
+ * ## String Reservation Packets (6020-6023)
+ * Handles session string reservation for custom identifiers.
  *
- * - `120`: STRING_RESERVE - Request to reserve custom session string
- * - `121`: STRING_RESERVED - Confirmation of reserved string
- * - `122`: STRING_RENEW - Request to extend string reservation
- * - `123`: STRING_RELEASE - Request to release reserved string
+ * - `6020`: STRING_RESERVE - Request to reserve custom session string
+ * - `6021`: STRING_RESERVED - Confirmation of reserved string
+ * - `6022`: STRING_RENEW - Request to extend string reservation
+ * - `6023`: STRING_RELEASE - Request to release reserved string
  *
- * ## Participant Notifications (130-149)
- * Broadcasts to participants about session changes.
+ * ## Ring Consensus Packets (6050-6051)
+ * Proactive future host election every 5 minutes.
  *
- * - `130`: PARTICIPANT_JOINED - New participant joined session
- * - `131`: PARTICIPANT_LEFT - Participant left session
- * - `132`: PARTICIPANT_CAPABILITIES - Participant updated capabilities
+ * - `6050`: PARTICIPANT_LIST - Participant list with ring order (ACDS -> Participants)
+ * - `6051`: RING_COLLECT - Ring collect request (Participant -> Next Participant)
  *
- * ## Control & Discovery Packets (150-198)
- * Protocol control, keepalive, and discovery service operations.
+ * ## Host Negotiation & Migration Packets (6060-6068)
+ * Dynamic host selection and failover.
  *
- * - `150`: DISCOVERY_PING - Keepalive ping from client
- * - `151-198`: Reserved for future control packets
+ * - `6060`: NETWORK_QUALITY - Network quality metrics exchange
+ * - `6061`: HOST_ANNOUNCEMENT - Host announcement (Participant -> ACDS)
+ * - `6062`: HOST_DESIGNATED - Host designated (ACDS -> All Participants)
+ * - `6063`: SETTINGS_SYNC - Settings sync (Initiator -> Host -> All Participants)
+ * - `6064`: SETTINGS_ACK - Settings acknowledgment (Participant -> Initiator)
+ * - `6065`: HOST_LOST - Host lost notification (Participant -> ACDS)
+ * - `6066`: FUTURE_HOST_ELECTED - Future host elected announcement
+ * - `6067`: PARTICIPANT_JOINED - Participant joined notification (ACDS -> Participants)
+ * - `6068`: PARTICIPANT_LEFT - Participant left notification (ACDS -> Participants)
  *
- * ## Error Packets (199)
- * - `199`: ERROR - Generic error response (payload: acip_error_t)
+ * ## Bandwidth Testing Packets (6070-6071)
+ * Network bandwidth measurement during NAT quality detection.
+ *
+ * - `6070`: BANDWIDTH_TEST - Bandwidth test request (Client -> ACDS)
+ * - `6071`: BANDWIDTH_RESULT - Bandwidth test result (ACDS -> Client)
+ *
+ * ## Broadcast Acknowledgment (6075)
+ * - `6075`: BROADCAST_ACK - Broadcast acknowledgment packet
+ *
+ * ## Control & Discovery Packets (6190-6199)
+ * Protocol control and discovery service operations.
+ *
+ * - `6190`: DISCOVERY_PING - Keepalive ping from client
+ * - `6199`: ERROR - Generic error response (payload: acip_error_t)
  *
  * @see packet_type_t in network/packet.h for actual definitions
  * @see network/acip/acds.h for ACDS message structures
@@ -145,36 +163,52 @@ extern "C" {
 
 // ACIP packet types are defined in packet_type_t enum (network/packet.h):
 //
-// Session Management (100-109):
-//   PACKET_TYPE_ACIP_SESSION_CREATE      = 100   // Client -> Server: Create session
-//   PACKET_TYPE_ACIP_SESSION_CREATED     = 101   // Server -> Client: Session created
-//   PACKET_TYPE_ACIP_SESSION_LOOKUP      = 102   // Client -> Server: Lookup session
-//   PACKET_TYPE_ACIP_SESSION_INFO        = 103   // Server -> Client: Session info
-//   PACKET_TYPE_ACIP_SESSION_JOIN        = 104   // Client -> Server: Join session
-//   PACKET_TYPE_ACIP_SESSION_JOINED      = 105   // Server -> Client: Join confirmed
-//   PACKET_TYPE_ACIP_SESSION_LEAVE       = 106   // Client -> Server: Leave session
-//   PACKET_TYPE_ACIP_SESSION_END         = 107   // Server -> Client: Session ended
-//   PACKET_TYPE_ACIP_SESSION_RECONNECT   = 108   // Client -> Server: Reconnect
+// Session Management (6000-6008):
+//   PACKET_TYPE_ACIP_SESSION_CREATE      = 6000  // Client -> Server: Create session
+//   PACKET_TYPE_ACIP_SESSION_CREATED     = 6001  // Server -> Client: Session created
+//   PACKET_TYPE_ACIP_SESSION_LOOKUP      = 6002  // Client -> Server: Lookup session
+//   PACKET_TYPE_ACIP_SESSION_INFO        = 6003  // Server -> Client: Session info
+//   PACKET_TYPE_ACIP_SESSION_JOIN        = 6004  // Client -> Server: Join session
+//   PACKET_TYPE_ACIP_SESSION_JOINED      = 6005  // Server -> Client: Join confirmed
+//   PACKET_TYPE_ACIP_SESSION_LEAVE       = 6006  // Client -> Server: Leave session
+//   PACKET_TYPE_ACIP_SESSION_END         = 6007  // Server -> Client: Session ended
+//   PACKET_TYPE_ACIP_SESSION_RECONNECT   = 6008  // Client -> Server: Reconnect
 //
-// WebRTC Signaling (110-119):
-//   PACKET_TYPE_ACIP_WEBRTC_SDP          = 110   // Bidirectional: SDP offer/answer
-//   PACKET_TYPE_ACIP_WEBRTC_ICE          = 111   // Bidirectional: ICE candidate
+// WebRTC Signaling (6009-6010):
+//   PACKET_TYPE_ACIP_WEBRTC_SDP          = 6009  // Bidirectional: SDP offer/answer
+//   PACKET_TYPE_ACIP_WEBRTC_ICE          = 6010  // Bidirectional: ICE candidate
 //
-// Participant Notifications (130-139):
-//   PACKET_TYPE_ACIP_PARTICIPANT_JOINED  = 130   // Server -> All: New participant
-//   PACKET_TYPE_ACIP_PARTICIPANT_LEFT    = 131   // Server -> All: Participant left
+// String Reservation (6020-6023):
+//   PACKET_TYPE_ACIP_STRING_RESERVE      = 6020  // Client -> Server: Reserve string
+//   PACKET_TYPE_ACIP_STRING_RESERVED     = 6021  // Server -> Client: String reserved
+//   PACKET_TYPE_ACIP_STRING_RENEW        = 6022  // Client -> Server: Renew reservation
+//   PACKET_TYPE_ACIP_STRING_RELEASE      = 6023  // Client -> Server: Release string
 //
-// String Reservation (120-129):
-//   PACKET_TYPE_ACIP_STRING_RESERVE      = 120   // Client -> Server: Reserve string
-//   PACKET_TYPE_ACIP_STRING_RESERVED     = 121   // Server -> Client: String reserved
-//   PACKET_TYPE_ACIP_STRING_RENEW        = 122   // Client -> Server: Renew reservation
-//   PACKET_TYPE_ACIP_STRING_RELEASE      = 123   // Client -> Server: Release string
+// Ring Consensus (6050-6051):
+//   PACKET_TYPE_ACIP_PARTICIPANT_LIST    = 6050  // ACDS -> Participants: Participant list
+//   PACKET_TYPE_ACIP_RING_COLLECT        = 6051  // Participant -> Next: Ring collect
 //
-// Control & Discovery (150-198):
-//   PACKET_TYPE_ACIP_DISCOVERY_PING      = 150   // Client -> Server: Keepalive
+// Host Negotiation (6060-6068):
+//   PACKET_TYPE_ACIP_NETWORK_QUALITY     = 6060  // Bidirectional: Quality metrics
+//   PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT   = 6061  // Participant -> ACDS: Host announcement
+//   PACKET_TYPE_ACIP_HOST_DESIGNATED     = 6062  // ACDS -> All: Host designated
+//   PACKET_TYPE_ACIP_SETTINGS_SYNC       = 6063  // Initiator -> Host -> All: Settings
+//   PACKET_TYPE_ACIP_SETTINGS_ACK        = 6064  // Participant -> Initiator: Ack
+//   PACKET_TYPE_ACIP_HOST_LOST           = 6065  // Participant -> ACDS: Host lost
+//   PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED = 6066  // Quorum Leader -> All: Future host elected
+//   PACKET_TYPE_ACIP_PARTICIPANT_JOINED  = 6067  // ACDS -> Participants: New participant
+//   PACKET_TYPE_ACIP_PARTICIPANT_LEFT    = 6068  // ACDS -> Participants: Participant left
 //
-// Error Response:
-//   PACKET_TYPE_ACIP_ERROR               = 199   // Server -> Client: Error message
+// Bandwidth Testing (6070-6071):
+//   PACKET_TYPE_ACIP_BANDWIDTH_TEST      = 6070  // Client -> ACDS: Bandwidth test
+//   PACKET_TYPE_ACIP_BANDWIDTH_RESULT    = 6071  // ACDS -> Client: Bandwidth result
+//
+// Broadcast Acknowledgment (6075):
+//   PACKET_TYPE_ACIP_BROADCAST_ACK       = 6075  // Broadcast acknowledgment
+//
+// Control & Discovery (6190, 6199):
+//   PACKET_TYPE_ACIP_DISCOVERY_PING      = 6190  // Client -> ACDS: Keepalive ping
+//   PACKET_TYPE_ACIP_ERROR               = 6199  // Server -> Client: Error message
 
 /** @} */
 

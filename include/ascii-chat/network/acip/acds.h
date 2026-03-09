@@ -20,6 +20,7 @@
  * - **String Encoding**: UTF-8, null-terminated where specified
  * - **Timestamps**: Unix milliseconds (uint64_t)
  * - **Identifiers**: UUIDs as 16-byte binary (not ASCII strings)
+ * - **Packet Type Range**: 6000-6199 (session management, discovery, host election)
  *
  * ## Packet Header Format (22 bytes)
  * ```
