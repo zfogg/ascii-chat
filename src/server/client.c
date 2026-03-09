@@ -814,25 +814,13 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
     return NULL;
   }
 
-  // Register all atomic fields for debug tracking OUTSIDE lock
-  // (register_client_info_atomics calls NAMED_REGISTER_MUTEX which requires initialized mutexes)
-  // DISABLED: This causes reader-writer deadlock with debug_sync thread
-  // debug_sync holds READ lock while iterating registry, register_client_info_atomics tries WRITE lock
-  // log_info("[TCP_DBG] BEFORE_REGISTER_CLIENT_ATOMICS");
-  // register_client_info_atomics(client);
-  // log_info("[TCP_DBG] AFTER_REGISTER_CLIENT_ATOMICS");
+  // Register all atomic fields for debug tracking - DEFERRED to receive thread
+  // This avoids deadlock with debug_sync thread (see client_receive_thread)
+  // The atomics will be registered safely after the receive thread starts
+  // when add_client() is no longer holding locks that conflict with debug_sync
 
-  // Register audio and video buffer atomic fields for debug tracking
-  // NOTE: Disabled - this causes reader-writer deadlock with debug_sync thread
-  // debug_sync holds a READ lock on named_registry_lock while printing state,
-  // and this tries to acquire WRITE lock -> deadlock. The debug tracking is optional.
-  // log_info("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_START: client=%p", (void *)client);
-  // if (client->incoming_audio_buffer) {
-  //   audio_ring_buffer_register_atomics(client->incoming_audio_buffer, new_client_id);
-  //   log_info("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_DONE");
-  // } else {
-  //   log_info("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_SKIPPED: incoming_audio_buffer is NULL");
-  // }
+  // Audio buffer atomics will be registered in client_receive_thread (deferred)
+  // See client_receive_thread for the actual registration to avoid deadlock
 
   // Register with audio mixer OUTSIDE lock
   // CRITICAL: Do this BEFORE crypto handshake to avoid deadlock with mixer thread
@@ -1821,6 +1809,13 @@ void *client_receive_thread(void *arg) {
     log_error("Invalid client socket in receive thread");
     return NULL;
   }
+
+  // NOTE: Atomic registration disabled
+  // register_client_info_atomics() and audio_ring_buffer_register_atomics() attempt
+  // to acquire WRITE lock on named_registry.entries_lock, which conflicts with debug_sync
+  // thread holding READ lock during printing, causing deadlock.
+  // These are debug-only features, not critical for functionality.
+  // The atomics work fine without being registered in the debug system.
 
   // Enable thread cancellation for clean shutdown
   // Thread cancellation not available in platform abstraction
