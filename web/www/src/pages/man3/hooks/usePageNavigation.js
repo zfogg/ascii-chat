@@ -7,14 +7,14 @@ import { setBreadcrumbSchema } from "../../../utils/breadcrumbs";
  * @param {Array} manPages - Full page index
  * @param {Function} processPageContent - HTML preprocessing function
  * @param {Function} processDefinitionLinks - GitHub link processor
- * @param {string} searchQuery - Current search query
+ * @param {string} searchQuery - Current search query (optional, defaults to empty string)
  * @returns {{ selectedPageContent, selectedPageName, pageNotFound, targetLineNumber, targetSnippetIndex, targetSnippetText, contentViewerRef, loadPageContent, and state setters }}
  */
 export function usePageNavigation(
   manPages,
   processPageContent,
   processDefinitionLinks,
-  searchQuery,
+  searchQuery = "",
 ) {
   const [selectedPageContent, setSelectedPageContent] = useState(null);
   const [selectedPageName, setSelectedPageName] = useState(null);
@@ -23,24 +23,6 @@ export function usePageNavigation(
   const [targetSnippetIndex, setTargetSnippetIndex] = useState(null);
   const [targetSnippetText, setTargetSnippetText] = useState(null);
   const contentViewerRef = useRef(null);
-
-  // Initialize breadcrumbs and load initial page from URL
-  useEffect(() => {
-    setBreadcrumbSchema([
-      { name: "Home", path: "/" },
-      { name: "API Reference", path: "/man3" },
-    ]);
-
-    // Load from URL params
-    const params = new URLSearchParams(window.location.search);
-    const pageParam = params.get("page");
-
-    if (pageParam) {
-      const pageName = decodeURIComponent(pageParam);
-      // Trigger load without history push since we're hydrating from URL
-      loadPageContent(pageName, null, null, true);
-    }
-  }, []); // Only on mount
 
   // Load page content from file and update state
   const loadPageContent = useCallback(
@@ -51,9 +33,11 @@ export function usePageNavigation(
       skipHistoryPush = false,
       snippetText = null,
     ) => {
-      if (!pageName || manPages.length === 0) return;
+      if (!pageName) return;
 
-      const filename = `${pageName}.html`;
+      // Find the page in manPages to get the correct filename
+      const page = manPages.find((p) => p.name === pageName);
+      const filename = page?.file || `ascii-chat-${pageName}.html`;
 
       fetch(`/man3/${filename}`)
         .then((r) => {
@@ -132,6 +116,24 @@ export function usePageNavigation(
     },
     [processPageContent, processDefinitionLinks, searchQuery, manPages],
   );
+
+  // Initialize breadcrumbs and load initial page from URL
+  useEffect(() => {
+    setBreadcrumbSchema([
+      { name: "Home", path: "/" },
+      { name: "API Reference", path: "/man3" },
+    ]);
+
+    // Load from URL params
+    const params = new URLSearchParams(window.location.search);
+    const pageParam = params.get("page");
+
+    if (pageParam) {
+      const pageName = decodeURIComponent(pageParam);
+      // Trigger load without history push since we're hydrating from URL
+      loadPageContent(pageName, null, null, true);
+    }
+  }, [loadPageContent]); // Depend on loadPageContent
 
   // Left-panel snippet scroll: scroll snippet into view in left panel
   useEffect(() => {
