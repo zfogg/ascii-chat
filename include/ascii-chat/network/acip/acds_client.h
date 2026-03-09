@@ -47,16 +47,16 @@
  *    - Recv: SESSION_END notification when all participants leave
  *
  * ## Packet Type Summary
- * - SESSION_CREATE (100): Host creates new session
- * - SESSION_CREATED (101): Discovery confirms creation
- * - SESSION_LOOKUP (102): Client queries for session
- * - SESSION_INFO (103): Discovery returns metadata
- * - SESSION_JOIN (104): Guest requests to join
- * - SESSION_JOINED (105): Discovery confirms join with details
- * - SESSION_LEAVE (106): Client notifies disconnect
- * - SESSION_END (107): Discovery notifies session closed
- * - WEBRTC_SDP (110): P2P session description
- * - WEBRTC_ICE (111): P2P ICE candidate
+ * - SESSION_CREATE (6000): Host creates new session
+ * - SESSION_CREATED (6001): Discovery confirms creation
+ * - SESSION_LOOKUP (6002): Client queries for session
+ * - SESSION_INFO (6003): Discovery returns metadata
+ * - SESSION_JOIN (6004): Guest requests to join
+ * - SESSION_JOINED (6005): Discovery confirms join with details
+ * - SESSION_LEAVE (6006): Client notifies disconnect
+ * - SESSION_END (6007): Discovery notifies session closed
+ * - WEBRTC_SDP (6009): P2P session description
+ * - WEBRTC_ICE (6010): P2P ICE candidate
  *
  * ## Connection Configuration
  * The acds_client_config_t structure specifies:
