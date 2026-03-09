@@ -545,11 +545,11 @@
   :root {
     color-scheme: dark;
     --color-cyan-300: oklch(86.5% 0.127 207.078);
-    /* Scrollbar colors - green to match ascii-chat logo */
+    /* Scrollbar colors - cyan to match ascii-chat logo */
     --scrollbar-track: #030712;
-    --scrollbar-thumb: #22c55e;
-    --scrollbar-thumb-hover: #4ade80;
-    --scrollbar-thumb-active: #86efac;
+    --scrollbar-thumb: #06b6d4;
+    --scrollbar-thumb-hover: #22d3ee;
+    --scrollbar-thumb-active: #67e8f9;
   }
 
   /* Webkit browsers (Chrome, Safari, Edge) */
