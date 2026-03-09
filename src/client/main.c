@@ -815,7 +815,13 @@ int client_main(void) {
     if (opts_fallback && opts_fallback->address[0] != '\0') {
       SAFE_STRNCPY(address_storage, opts_fallback->address, sizeof(address_storage));
       g_client_session.discovered_address = address_storage;
-      g_client_session.discovered_port = opts_fallback->port;
+      // For TCP URLs, port is embedded in the URL - don't use opts_fallback->port
+      // connection_attempt_tcp() will parse the URL and extract the port
+      if (url_is_tcp(opts_fallback->address)) {
+        g_client_session.discovered_port = 0; // Port is in the URL, use 0 as default
+      } else {
+        g_client_session.discovered_port = opts_fallback->port;
+      }
     } else {
       g_client_session.discovered_address = "localhost";
       g_client_session.discovered_port = 27224;
