@@ -50,5 +50,71 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    function({ addUtilities, theme }) {
+      const scrollbarColors = {
+        '.scrollbar-primary': {
+          '--scrollbar-thumb': 'rgb(34, 211, 238)',
+          '--scrollbar-thumb-hover': 'rgb(6, 182, 212)',
+          '--scrollbar-thumb-active': 'rgb(165, 243, 252)',
+        },
+        '.scrollbar-accent': {
+          '--scrollbar-thumb': 'rgb(168, 85, 247)',
+          '--scrollbar-thumb-hover': 'rgb(147, 51, 234)',
+          '--scrollbar-thumb-active': 'rgb(196, 181, 253)',
+        },
+        '.scrollbar-success': {
+          '--scrollbar-thumb': 'rgb(34, 197, 94)',
+          '--scrollbar-thumb-hover': 'rgb(22, 163, 74)',
+          '--scrollbar-thumb-active': 'rgb(134, 239, 172)',
+        },
+        '.scrollbar-warning': {
+          '--scrollbar-thumb': 'rgb(234, 179, 8)',
+          '--scrollbar-thumb-hover': 'rgb(202, 138, 4)',
+          '--scrollbar-thumb-active': 'rgb(253, 224, 71)',
+        },
+        '.scrollbar-error': {
+          '--scrollbar-thumb': 'rgb(239, 68, 68)',
+          '--scrollbar-thumb-hover': 'rgb(220, 38, 38)',
+          '--scrollbar-thumb-active': 'rgb(252, 165, 165)',
+        },
+        '.scrollbar-cyan': {
+          '--scrollbar-thumb': 'rgb(34, 211, 238)',
+          '--scrollbar-thumb-hover': 'rgb(6, 182, 212)',
+          '--scrollbar-thumb-active': 'rgb(165, 243, 252)',
+        },
+        '.scrollbar-purple': {
+          '--scrollbar-thumb': 'rgb(168, 85, 247)',
+          '--scrollbar-thumb-hover': 'rgb(147, 51, 234)',
+          '--scrollbar-thumb-active': 'rgb(196, 181, 253)',
+        },
+        '.scrollbar-teal': {
+          '--scrollbar-thumb': 'rgb(20, 184, 166)',
+          '--scrollbar-thumb-hover': 'rgb(13, 148, 136)',
+          '--scrollbar-thumb-active': 'rgb(45, 212, 191)',
+        },
+        '.scrollbar-pink': {
+          '--scrollbar-thumb': 'rgb(236, 72, 153)',
+          '--scrollbar-thumb-hover': 'rgb(219, 39, 119)',
+          '--scrollbar-thumb-active': 'rgb(249, 168, 212)',
+        },
+        '.scrollbar-green': {
+          '--scrollbar-thumb': 'rgb(34, 197, 94)',
+          '--scrollbar-thumb-hover': 'rgb(22, 163, 74)',
+          '--scrollbar-thumb-active': 'rgb(134, 239, 172)',
+        },
+        '.scrollbar-yellow': {
+          '--scrollbar-thumb': 'rgb(234, 179, 8)',
+          '--scrollbar-thumb-hover': 'rgb(202, 138, 4)',
+          '--scrollbar-thumb-active': 'rgb(253, 224, 71)',
+        },
+        '.scrollbar-red': {
+          '--scrollbar-thumb': 'rgb(239, 68, 68)',
+          '--scrollbar-thumb-hover': 'rgb(220, 38, 38)',
+          '--scrollbar-thumb-active': 'rgb(252, 165, 165)',
+        },
+      };
+      addUtilities(scrollbarColors);
+    },
+  ],
 }
