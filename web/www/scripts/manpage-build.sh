@@ -34,7 +34,13 @@ if [ -d "$REPO_ROOT" ]; then
 
   # Generate man(3) pages from Doxygen (man pages only, no HTML)
   echo "📚 Generating man(3) pages from Doxygen..."
-  cmake --build "$BUILD_DIR" --target man3
+  # Force doxygen to run directly to pick up documentation changes in header files
+  # (cmake build system skips if source code hasn't changed, even if comments did)
+  if [ -f "$BUILD_DIR/Doxyfile.man3" ]; then
+    doxygen "$BUILD_DIR/Doxyfile.man3" > /dev/null 2>&1
+  else
+    cmake --build "$BUILD_DIR" --target man3
+  fi
 
   # Check if man3 directory exists and has files
   if [ -d "$BUILD_DIR/share/man/man3" ]; then
