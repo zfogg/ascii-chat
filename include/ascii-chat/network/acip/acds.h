@@ -14,25 +14,24 @@
  * ## Protocol Overview
  * - **Transport**: TCP (port 27225 default, configurable)
  * - **Format**: Binary ACIP packets (NOT JSON/HTTP)
- * - **Packet Structure**: packet_header_t (20 bytes) + payload
+ * - **Packet Structure**: packet_header_t (22 bytes) + payload
  * - **Payload Format**: Packed C structs with explicit size fields
  * - **Byte Order**: Little-endian (host byte order on x86/ARM)
  * - **String Encoding**: UTF-8, null-terminated where specified
  * - **Timestamps**: Unix milliseconds (uint64_t)
  * - **Identifiers**: UUIDs as 16-byte binary (not ASCII strings)
  *
- * ## Packet Header Format (20 bytes)
+ * ## Packet Header Format (22 bytes)
  * ```
  * Offset  Size  Field     Value/Description
  * ------  ----  -----     -----------------
- * 0       4     magic     0x4C494341 (little-endian "ACIL")
- * 4       2     type      100-199 (ACIP packet type enum)
- * 6       2     reserved  0x0000
- * 8       4     length    Payload length (0-2097152 bytes)
- * 12      4     crc32     CRC32 of payload bytes only
- * 16      4     client_id Client identifier (0 if not assigned)
+ * 0       8     magic     0xA5C11C4A1 ("ASCIICHAT" in hex)
+ * 8       2     type      100-199 (ACIP packet type enum)
+ * 10      4     length    Payload length (0-2097152 bytes)
+ * 14      4     crc32     CRC32 of payload bytes only
+ * 18      4     client_id Client identifier (0 if not assigned)
  * ------
- * Total: 20 bytes + payload_length bytes
+ * Total: 22 bytes + payload_length bytes
  * ```
  *
  * ## Version Information
