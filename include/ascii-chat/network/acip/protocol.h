@@ -1,83 +1,150 @@
 /**
  * @file network/acip/protocol.h
- * @brief ascii-chat IP Protocol (ACIP) packet type definitions
+ * @brief ascii-chat Binary Network Protocol (complete system including ACIP discovery service)
  * @ingroup network
  * @addtogroup acip
  * @{
  *
- * This module defines the ACIP protocol packet types used for session management,
- * WebRTC signaling, and discovery service communication. ACIP is a binary protocol
- * over TCP used by the ascii-chat Discovery Service (ACDS) and clients.
+ * This module documents the complete ascii-chat binary network protocol, including:
+ * - Universal packet header structure used by ALL packet types
+ * - Core protocol negotiation and cryptographic handshake
+ * - Session communication (messages, media, audio, control)
+ * - ACIP discovery service protocol (6000-6199 range)
  *
- * # ACIP Binary Protocol Format
+ * # ASCII-CHAT BINARY PROTOCOL ARCHITECTURE
  *
- * ## Protocol Overview
- * - **Transport**: TCP (default port 27225 for ACDS)
- * - **Packet Format**: Binary, little-endian
- * - **Authentication**: Ed25519 digital signatures
- * - **Encryption**: Optional TLS or application-level encryption
- * - **Reliability**: CRC32 checksum per packet
- * - **Session Identifiers**: UUID (16 bytes) for sessions and participants
+ * ## Complete Protocol Overview
+ * - **Transport**: TCP (client-server) or custom transports (WebRTC, WebSocket)
+ * - **Packet Format**: Binary, little-endian with fixed headers
+ * - **Magic Number**: 0xA5C11C4A1 (validates all packet types)
+ * - **Authentication**: Ed25519 digital signatures (handshake) or Diffie-Hellman
+ * - **Encryption**: XSalsa20-Poly1305 AEAD (after handshake)
+ * - **Integrity**: CRC32 checksum per packet payload
+ * - **Client Identification**: 32-bit client ID (0 = server, >0 = client)
  *
- * ## Packet Structure
- * All ACIP packets follow the same packet_header_t structure:
+ * ## Universal Packet Structure
+ * ALL packets in ascii-chat (regardless of type) use the same 22-byte header:
  * ```
  * Offset  Size  Field          Description
  * ------  ----  -----          -----------
- * 0       8     magic          Magic number (0xA5C11C4A1 = "ASCIICHAT" in hex) - NOW IT WORKS!
- * 8       2     type           Packet type (PACKET_TYPE_ACIP_* enum, 6000-6199)
- * 10      4     length         Payload length in bytes (0-2MB)
- * 14      4     crc32          CRC32 checksum of payload
- * 18      4     client_id      Client identifier (assigned by server)
+ * 0       8     magic          Magic number 0xA5C11C4A1 (spells "ASCIICHAT" in hex)
+ * 8       2     type           Packet type enum (packet_type_t) - see full range below
+ * 10      4     length         Payload length in bytes (0 = header-only, max ~2MB)
+ * 14      4     crc32          CRC32 checksum of payload (0 if length == 0)
+ * 18      4     client_id      Client identifier (0=server, 1-9=clients)
  * 22      N     payload        Payload data (N = length)
  * ------
  * Total: 22 + payload_length bytes
  * ```
  *
+ * ## Complete Packet Type System
+ * The ascii-chat binary protocol uses multiple packet type ranges for different purposes:
+ *
+ * **Type 1: Protocol Version Negotiation**
+ * - PACKET_TYPE_PROTOCOL_VERSION = 1 (version and capabilities exchange)
+ *
+ * **Types 1000-1203: Cryptographic Handshake & Rekeying**
+ * - 1000-1099: Client hello and crypto capability exchange
+ * - 1100-1109: Handshake exchange (key exchange, authentication)
+ * - 1200-1203: Session encryption and rekeying
+ * - Note: All handshake packets are ALWAYS sent unencrypted (plaintext)
+ *
+ * **Types 2000-2004: Session Messages**
+ * - 2000: Terminal size updates (width/height changes)
+ * - 2001: Audio message data
+ * - 2002: Text message data
+ * - 2003: Error packets with error codes and messages
+ * - 2004: Remote logging (bidirectional log forwarding)
+ *
+ * **Types 3000-3002: Media Frames**
+ * - 3000: ASCII art frames (pre-rendered terminal representation)
+ * - 3001: Raw RGB image frames
+ * - 3002: H.265/HEVC encoded video frames
+ *
+ * **Types 4000-4001: Audio Packets**
+ * - 4000: Batched raw audio samples
+ * - 4001: Batched Opus-encoded audio (pre-compressed)
+ *
+ * **Types 5000-5008: Control & State**
+ * - 5000: Client capabilities (color, features, etc.)
+ * - 5001: Keepalive ping packet
+ * - 5002: Keepalive pong response
+ * - 5003: Client join notification
+ * - 5004: Client leave notification
+ * - 5005: Stream start request
+ * - 5006: Stream stop request
+ * - 5007: Clear console command
+ * - 5008: Server state broadcast to clients
+ *
+ * **Types 6000-6199: ACIP Discovery Service Protocol**
+ * - 6000-6008: Session management (create, join, leave, lookup)
+ * - 6009-6010: WebRTC signaling (SDP, ICE candidates)
+ * - 6020-6023: String reservation (reserve, renew, release)
+ * - 6050-6051: Ring consensus protocol (future host election)
+ * - 6060-6068: Host negotiation & migration (dynamic host failover)
+ * - 6070-6071: Bandwidth testing
+ * - 6075: Broadcast acknowledgment
+ * - 6100-6104: Ring consensus statistics and election
+ * - 6190-6199: Discovery keepalive ping and error responses
+ *
+ * ## Encryption & Handshake Flow
+ *
+ * **Unencrypted Phase** (connection establishment):
+ * 1. Client sends CRYPTO_CLIENT_HELLO (type 1000)
+ * 2. Server sends CRYPTO_CAPABILITIES (type 1100)
+ * 3. Exchange keys via CRYPTO_KEY_EXCHANGE_INIT/RESP (1102, 1103)
+ * 4. Authentication via CRYPTO_AUTH_CHALLENGE/RESPONSE (1104, 1105)
+ * 5. Server sends CRYPTO_HANDSHAKE_COMPLETE (type 1108)
+ *
+ * **Encrypted Phase** (after handshake):
+ * - All non-handshake packets are encrypted with XSalsa20-Poly1305
+ * - Handshake packets are NEVER encrypted (protocol compliance)
+ * - Rekeying packets (types 1201-1203) use old keys, then switch to new keys
+ *
+ * ## ACIP (ASCII-Chat IP) Discovery Service
+ * ACIP is the discovery protocol layer that runs on top of the core binary protocol.
+ * It enables P2P session discovery without a central server (decentralized mode).
+ *
+ * **ACIP Use Cases:**
+ * - Creating sessions with unique string identifiers (e.g., "blue-mountain-tiger")
+ * - Looking up and joining sessions by string
+ * - WebRTC offer/answer exchange for peer negotiation
+ * - Dynamic host election when original host disconnects
+ * - Participant notification when others join/leave
+ *
+ * **ACIP Transport:**
+ * - Default TCP port: 27225 (configurable for ACDS - ASCII-Chat Discovery Service)
+ * - Uses same packet_header_t structure as all other packets
+ * - Supports Ed25519 identity signatures for authentication
+ * - Optional password protection per session
+ *
+ * ## Integration with Other Modules
+ * - **network/packet.h**: Complete packet_type_t enum with all ranges
+ * - **network/packet/parsing.h**: Packet parsing and serialization
+ * - **network/acip/acds.h**: ACDS message payload structures
+ * - **network/acip/transport.h**: Transport abstraction (TCP, WebSocket, WebRTC)
+ * - **network/acip/acds_client.h**: ACDS client connection API
+ * - **crypto/crypto.h**: Encryption/decryption operations
+ * - **lib/network/acip** (send.c, handlers.c, etc.): Protocol implementation
+ *
  * ## Version Information
- * - **ACIP Version**: 1.0
+ * - **Protocol Version**: 1.0
  * - **Release Date**: January 2026
  * - **Status**: Production
- * - **Backward Compatibility**: ACIP 1.0 packets are version-locked to 1.0
+ * - **Packet Format Stability**: Version-locked to 1.0 (no breaking changes)
  *
- * CORE RESPONSIBILITIES:
- * ======================
- * 1. Session management packet type definitions (6000-6008)
- * 2. WebRTC signaling packet type definitions (6009-6010)
- * 3. String reservation packet type definitions (6020-6023)
- * 4. Ring consensus and host negotiation (6050-6068)
- * 5. Bandwidth testing (6070-6075)
- * 6. Discovery service control and error handling (6190, 6199)
+ * @note The packet_header_t structure is identical for ALL 200+ packet types.
+ *       The only difference is the 'type' field and payload structure.
  *
- * PACKET RANGE ALLOCATION:
- * ========================
- * ACIP packets use range 6000-6199 for discovery protocol operations.
+ * @note CRC32 is computed over payload bytes ONLY (not including the 22-byte header).
  *
- * - 6000-6008: Session management (CREATE, JOIN, LEAVE, etc.)
- * - 6009-6010: WebRTC signaling (SDP offers/answers, ICE candidates)
- * - 6020-6023: String reservation (reserve, renew, release)
- * - 6050-6068: Ring consensus and host negotiation
- * - 6070-6075: Bandwidth testing and broadcast acknowledgment
- * - 6190, 6199: Discovery ping and error response
- *
- * INTEGRATION WITH OTHER MODULES:
- * ===============================
- * - network/packet.h: Defines packet_header_t and uses ACIP packet types in packet_type_t enum
- * - network/acip/acds.h: ACDS-specific message structures and payload definitions
- * - network/acip/transport.h: Transport abstraction layer for different connection types
- * - lib/network/acip/: Protocol implementation files (send.c, handlers.c, etc.)
- *
- * @note ACIP packets are defined in the same packet_type_t enum as ascii-chat
- *       packets, but use a separate numeric range (6000-6199).
- *
- * @note All ACIP packets use the same packet header structure as ascii-chat
- *       (magic, type, length, CRC32, client_id).
- *
- * @note Payload CRC32 is computed over payload bytes only (not the header).
+ * @note This file documents protocol architecture. Detailed packet definitions
+ *       are in network/packet.h (packet_type_t enum). Detailed ACIP message
+ *       structures are in network/acip/acds.h.
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date January 2026
- * @version 1.0 (ACIP Protocol Refactoring)
+ * @version 1.0 (Complete Binary Protocol Documentation)
  */
 
 #pragma once
@@ -90,51 +157,56 @@ extern "C" {
 #endif
 
 /**
- * @name ACIP Packet Type Reference
+ * @name ACIP Discovery Service Packet Types (6000-6199)
  * @{
  * @ingroup acip
  *
- * ACIP packet types are defined in the main packet_type_t enum (network/packet.h).
+ * ACIP (ASCII-Chat IP) packet types form part of the complete packet_type_t enum
+ * defined in network/packet.h. ACIP packets are used for discovery service operations
+ * and P2P session coordination.
+ *
+ * All ACIP packets use the same universal packet_header_t (22 bytes) and are
+ * transmitted via TCP to the ACDS (ASCII-Chat Discovery Service) server.
  *
  * **Range**: 6000-6199 (reserved for ACIP discovery protocol)
  *
  * ## Session Management Packets (6000-6008)
  * Handles session creation, discovery, joining, and termination.
  *
- * - `6000`: SESSION_CREATE - Client requests new session creation
- * - `6001`: SESSION_CREATED - Server confirms session created with ID
+ * - `6000`: SESSION_CREATE - Host creates new session with identity and capabilities
+ * - `6001`: SESSION_CREATED - ACDS confirms session created with session ID
  * - `6002`: SESSION_LOOKUP - Client queries for session by string identifier
- * - `6003`: SESSION_INFO - Server returns session metadata (no connection details)
+ * - `6003`: SESSION_INFO - ACDS returns session metadata (public info only)
  * - `6004`: SESSION_JOIN - Client requests to join existing session
- * - `6005`: SESSION_JOINED - Server confirms join with connection details
+ * - `6005`: SESSION_JOINED - ACDS confirms join with server connection details
  * - `6006`: SESSION_LEAVE - Client notifies leaving session
- * - `6007`: SESSION_END - Server notifies session ended
+ * - `6007`: SESSION_END - ACDS notifies session ended (last participant left)
  * - `6008`: SESSION_RECONNECT - Client reconnects after temporary disconnect
  *
  * ## WebRTC Signaling Packets (6009-6010)
- * Relays WebRTC session description and ICE candidate exchange.
+ * Relays WebRTC session description and ICE candidate exchange for P2P negotiation.
  *
- * - `6009`: WEBRTC_SDP - SDP offer/answer for P2P negotiation
+ * - `6009`: WEBRTC_SDP - SDP offer/answer for P2P connection negotiation
  * - `6010`: WEBRTC_ICE - ICE candidate for NAT traversal
  *
  * ## String Reservation Packets (6020-6023)
- * Handles session string reservation for custom identifiers.
+ * Handles session string reservation for custom session identifiers.
  *
  * - `6020`: STRING_RESERVE - Request to reserve custom session string
- * - `6021`: STRING_RESERVED - Confirmation of reserved string
- * - `6022`: STRING_RENEW - Request to extend string reservation
+ * - `6021`: STRING_RESERVED - ACDS confirms string reservation
+ * - `6022`: STRING_RENEW - Request to extend string reservation lifetime
  * - `6023`: STRING_RELEASE - Request to release reserved string
  *
  * ## Ring Consensus Packets (6050-6051)
- * Proactive future host election every 5 minutes.
+ * Proactive future host election every 5 minutes using ring-based consensus.
  *
  * - `6050`: PARTICIPANT_LIST - Participant list with ring order (ACDS -> Participants)
  * - `6051`: RING_COLLECT - Ring collect request (Participant -> Next Participant)
  *
- * ## Host Negotiation & Migration Packets (6060-6068)
- * Dynamic host selection and failover.
+ * ## Host Negotiation & Migration (6060-6068)
+ * Dynamic host selection and failover when original host disconnects.
  *
- * - `6060`: NETWORK_QUALITY - Network quality metrics exchange
+ * - `6060`: NETWORK_QUALITY - Network quality metrics exchange (all participants)
  * - `6061`: HOST_ANNOUNCEMENT - Host announcement (Participant -> ACDS)
  * - `6062`: HOST_DESIGNATED - Host designated (ACDS -> All Participants)
  * - `6063`: SETTINGS_SYNC - Settings sync (Initiator -> Host -> All Participants)
@@ -144,23 +216,34 @@ extern "C" {
  * - `6067`: PARTICIPANT_JOINED - Participant joined notification (ACDS -> Participants)
  * - `6068`: PARTICIPANT_LEFT - Participant left notification (ACDS -> Participants)
  *
- * ## Bandwidth Testing Packets (6070-6071)
+ * ## Bandwidth Testing (6070-6071)
  * Network bandwidth measurement during NAT quality detection.
  *
  * - `6070`: BANDWIDTH_TEST - Bandwidth test request (Client -> ACDS)
  * - `6071`: BANDWIDTH_RESULT - Bandwidth test result (ACDS -> Client)
  *
  * ## Broadcast Acknowledgment (6075)
- * - `6075`: BROADCAST_ACK - Broadcast acknowledgment packet
+ * - `6075`: BROADCAST_ACK - Broadcast acknowledgment for reliable delivery
  *
- * ## Control & Discovery Packets (6190-6199)
+ * ## Ring Consensus Statistics (6100-6104)
+ * Statistics collection for ring-based consensus election.
+ *
+ * - `6100`: RING_MEMBERS - Ring member list announcement (ACDS -> All)
+ * - `6101`: STATS_COLLECTION_START - Start statistics collection phase
+ * - `6102`: STATS_UPDATE - Statistics update during collection (Participant -> Next)
+ * - `6103`: RING_ELECTION_RESULT - Final election result (Leader -> All)
+ * - `6104`: STATS_ACK - Acknowledgment of statistics update (Participant -> Sender)
+ *
+ * ## Discovery Service Control (6190-6199)
  * Protocol control and discovery service operations.
  *
- * - `6190`: DISCOVERY_PING - Keepalive ping from client
- * - `6199`: ERROR - Generic error response (payload: acip_error_t)
+ * - `6190`: DISCOVERY_PING - Keepalive ping from client (verifies connection)
+ * - `6199`: ERROR - Generic error response (contains error code and message)
  *
- * @see packet_type_t in network/packet.h for actual definitions
- * @see network/acip/acds.h for ACDS message structures
+ * @see packet_type_t in network/packet.h for complete packet enum definitions
+ * @see network/packet.h for PACKET_HEADER structure and magic constant
+ * @see network/acip/acds.h for ACDS message payload structures
+ * @see network/acip/acds_client.h for ACDS client connection API
  */
 
 // ACIP packet types are defined in packet_type_t enum (network/packet.h):
@@ -221,16 +304,16 @@ extern "C" {
  */
 
 /**
- * @brief Check if packet type is an ACIP packet
+ * @brief Check if packet type is an ACIP discovery packet
  * @param type Packet type to check
  * @return true if packet is ACIP protocol (range 6000-6199), false otherwise
  *
- * Use this to distinguish ACIP packets from ascii-chat packets.
+ * Use this to distinguish ACIP discovery packets from other ascii-chat packet types.
  *
  * @ingroup acip
  */
 static inline bool packet_is_acip_type(uint16_t type) {
-  return (type >= 100 && type <= 199);
+  return (type >= 6000 && type <= 6199);
 }
 
 /**
