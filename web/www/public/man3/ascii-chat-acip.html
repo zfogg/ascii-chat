@@ -62,120 +62,212 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">This module defines the ACIP protocol packet types used for
-    session management, WebRTC signaling, and discovery service communication.
-    ACIP is a binary protocol over TCP used by the ascii-chat Discovery Service
-    (ACDS) and clients.</p>
-<p class="Pp"></p>
+<p class="Pp">This module documents the complete ascii-chat binary network
+    protocol, including:</p>
+<ul class="Bl-bullet">
+  <li>Universal packet header structure used by ALL packet types</li>
+  <li>Core protocol negotiation and cryptographic handshake</li>
+  <li>Session communication (messages, media, audio, control)</li>
+  <li>ACIP discovery service protocol (6000-6199 range)</li>
+</ul>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="ACIP_Binary_Protocol_Format"><a class="permalink" href="#ACIP_Binary_Protocol_Format">ACIP
-  Binary Protocol Format</a></h1>
+<h1 class="Sh" id="ASCII-CHAT_BINARY_PROTOCOL_ARCHITECTURE"><a class="permalink" href="#ASCII-CHAT_BINARY_PROTOCOL_ARCHITECTURE">ASCII-CHAT
+  BINARY PROTOCOL ARCHITECTURE</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="Protocol_Overview"><a class="permalink" href="#Protocol_Overview">Protocol
-  Overview</a></h2>
+<h2 class="Ss" id="Complete_Protocol_Overview"><a class="permalink" href="#Complete_Protocol_Overview">Complete
+  Protocol Overview</a></h2>
 <ul class="Bl-bullet">
-  <li><b>Transport</b>: TCP (default port 27225 for ACDS)</li>
-  <li><b>Packet Format</b>: Binary, little-endian</li>
-  <li><b>Authentication</b>: Ed25519 digital signatures</li>
-  <li><b>Encryption</b>: Optional TLS or application-level encryption</li>
-  <li><b>Reliability</b>: CRC32 checksum per packet</li>
-  <li><b>Session Identifiers</b>: UUID (16 bytes) for sessions and
-    participants</li>
+  <li><b>Transport</b>: TCP (client-server) or custom transports (WebRTC,
+      WebSocket)</li>
+  <li><b>Packet Format</b>: Binary, little-endian with fixed headers</li>
+  <li><b>Magic Number</b>: 0xA5C11C4A1 (validates all packet types)</li>
+  <li><b>Authentication</b>: Ed25519 digital signatures (handshake) or
+      Diffie-Hellman</li>
+  <li><b>Encryption</b>: XSalsa20-Poly1305 AEAD (after handshake)</li>
+  <li><b>Integrity</b>: CRC32 checksum per packet payload</li>
+  <li><b>Client Identification</b>: 32-bit client ID (0 = server, &gt;0 =
+      client)</li>
 </ul>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="Packet_Structure"><a class="permalink" href="#Packet_Structure">Packet
-  Structure</a></h2>
-<p class="Pp">All ACIP packets follow the same <b>packet_header_t</b>
-  structure:</p>
+<h2 class="Ss" id="Universal_Packet_Structure"><a class="permalink" href="#Universal_Packet_Structure">Universal
+  Packet Structure</a></h2>
+<p class="Pp">ALL packets in ascii-chat (regardless of type) use the same
+    22-byte header:</p>
 <p class="Pp"></p>
 <pre>Offset  Size  Field          Description
 ------  ----  -----          -----------
-0       8     magic          Magic number (0xA5C11C4A1 = &quot;ASCIICHAT&quot; in hex) - NOW IT WORKS!
-8       2     type           Packet type (PACKET_TYPE_ACIP_* enum, 6000-6199)
-10      4     length         Payload length in bytes (0-2MB)
-14      4     crc32          CRC32 checksum of payload
-18      4     client_id      Client identifier (assigned by server)
+0       8     magic          Magic number 0xA5C11C4A1 (spells &quot;ASCIICHAT&quot; in hex)
+8       2     type           Packet type enum (packet_type_t) - see full range below
+10      4     length         Payload length in bytes (0 = header-only, max ~2MB)
+14      4     crc32          CRC32 checksum of payload (0 if length == 0)
+18      4     client_id      Client identifier (0=server, 1-9=clients)
 22      N     payload        Payload data (N = length)
 ------
 Total: 22 + payload_length bytes
 </pre>
 </section>
 <section class="Ss">
+<h2 class="Ss" id="Complete_Packet_Type_System"><a class="permalink" href="#Complete_Packet_Type_System">Complete
+  Packet Type System</a></h2>
+<p class="Pp">The ascii-chat binary protocol uses multiple packet type ranges
+    for different purposes:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Type 1: Protocol Version Negotiation</b></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>PACKET_TYPE_PROTOCOL_VERSION = 1 (version and capabilities exchange)</dd>
+</dl>
+<p class="Pp"><b>Types 1000-1203: Cryptographic Handshake &amp; Rekeying</b></p>
+<ul class="Bl-bullet">
+  <li>1000-1099: Client hello and crypto capability exchange</li>
+  <li>1100-1109: Handshake exchange (key exchange, authentication)</li>
+  <li>1200-1203: Session encryption and rekeying</li>
+  <li>Note: All handshake packets are ALWAYS sent unencrypted (plaintext)</li>
+</ul>
+<p class="Pp"><b>Types 2000-2004: Session Messages</b></p>
+<ul class="Bl-bullet">
+  <li>2000: Terminal size updates (width/height changes)</li>
+  <li>2001: Audio message data</li>
+  <li>2002: Text message data</li>
+  <li>2003: Error packets with error codes and messages</li>
+  <li>2004: Remote logging (bidirectional log forwarding)</li>
+</ul>
+<p class="Pp"><b>Types 3000-3002: Media Frames</b></p>
+<ul class="Bl-bullet">
+  <li>3000: ASCII art frames (pre-rendered terminal representation)</li>
+  <li>3001: Raw RGB image frames</li>
+  <li>3002: H.265/HEVC encoded video frames</li>
+</ul>
+<p class="Pp"><b>Types 4000-4001: Audio Packets</b></p>
+<ul class="Bl-bullet">
+  <li>4000: Batched raw audio samples</li>
+  <li>4001: Batched Opus-encoded audio (pre-compressed)</li>
+</ul>
+<p class="Pp"><b>Types 5000-5008: Control &amp; State</b></p>
+<ul class="Bl-bullet">
+  <li>5000: Client capabilities (color, features, etc.)</li>
+  <li>5001: Keepalive ping packet</li>
+  <li>5002: Keepalive pong response</li>
+  <li>5003: Client join notification</li>
+  <li>5004: Client leave notification</li>
+  <li>5005: Stream start request</li>
+  <li>5006: Stream stop request</li>
+  <li>5007: Clear console command</li>
+  <li>5008: Server state broadcast to clients</li>
+</ul>
+<p class="Pp"><b>Types 6000-6199: ACIP Discovery Service Protocol</b></p>
+<ul class="Bl-bullet">
+  <li>6000-6008: Session management (create, join, leave, lookup)</li>
+  <li>6009-6010: WebRTC signaling (SDP, ICE candidates)</li>
+  <li>6020-6023: String reservation (reserve, renew, release)</li>
+  <li>6050-6051: Ring consensus protocol (future host election)</li>
+  <li>6060-6068: Host negotiation &amp; migration (dynamic host failover)</li>
+  <li>6070-6071: Bandwidth testing</li>
+  <li>6075: Broadcast acknowledgment</li>
+  <li>6100-6104: Ring consensus statistics and election</li>
+  <li>6190-6199: Discovery keepalive ping and error responses</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Encryption_&amp;_Handshake_Flow"><a class="permalink" href="#Encryption_&amp;_Handshake_Flow">Encryption
+  &amp; Handshake Flow</a></h2>
+<p class="Pp"><b>Unencrypted Phase</b> (connection establishment):</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Client sends CRYPTO_CLIENT_HELLO (type 1000)</dd>
+  <dt>2.</dt>
+  <dd>Server sends CRYPTO_CAPABILITIES (type 1100)</dd>
+  <dt>3.</dt>
+  <dd>Exchange keys via CRYPTO_KEY_EXCHANGE_INIT/RESP (1102, 1103)</dd>
+  <dt>4.</dt>
+  <dd>Authentication via CRYPTO_AUTH_CHALLENGE/RESPONSE (1104, 1105)</dd>
+  <dt>5.</dt>
+  <dd>Server sends CRYPTO_HANDSHAKE_COMPLETE (type 1108)</dd>
+</dl>
+<p class="Pp"><b>Encrypted Phase</b> (after handshake):</p>
+<ul class="Bl-bullet">
+  <li>All non-handshake packets are encrypted with XSalsa20-Poly1305</li>
+  <li>Handshake packets are NEVER encrypted (protocol compliance)</li>
+  <li>Rekeying packets (types 1201-1203) use old keys, then switch to new
+    keys</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ACIP_(ASCII-Chat_IP)_Discovery_Service"><a class="permalink" href="#ACIP_(ASCII-Chat_IP)_Discovery_Service">ACIP
+  (ASCII-Chat IP) Discovery Service</a></h2>
+<p class="Pp">ACIP is the discovery protocol layer that runs on top of the core
+    binary protocol. It enables P2P session discovery without a central server
+    (decentralized mode).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>ACIP Use Cases:</b></p>
+<ul class="Bl-bullet">
+  <li>Creating sessions with unique string identifiers (e.g.,
+      &quot;blue-mountain-tiger&quot;)</li>
+  <li>Looking up and joining sessions by string</li>
+  <li>WebRTC offer/answer exchange for peer negotiation</li>
+  <li>Dynamic host election when original host disconnects</li>
+  <li>Participant notification when others join/leave</li>
+</ul>
+<p class="Pp"><b>ACIP Transport:</b></p>
+<ul class="Bl-bullet">
+  <li>Default TCP port: 27225 (configurable for ACDS - ASCII-Chat Discovery
+      Service)</li>
+  <li>Uses same <b>packet_header_t</b> structure as all other packets</li>
+  <li>Supports Ed25519 identity signatures for authentication</li>
+  <li>Optional password protection per session</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Integration_with_Other_Modules"><a class="permalink" href="#Integration_with_Other_Modules">Integration
+  with Other Modules</a></h2>
+<ul class="Bl-bullet">
+  <li><b>network/packet.h</b>: Complete <b>packet_type_t</b> enum with all
+      ranges</li>
+  <li><b></b><b>network/packet/parsing.h</b><b></b><b>: Packet parsing and
+      serialization</b></li>
+  <li><b></b><b>network/acip/acds.h</b><b></b><b>: ACDS message payload
+      structures</b></li>
+  <li><b></b><b>network/acip/transport.h</b><b></b><b>: Transport abstraction
+      (TCP, WebSocket, WebRTC)</b></li>
+  <li><b></b><b>network/acip/acds_client.h</b><b></b><b>: ACDS client connection
+      API</b></li>
+  <li><b></b><b>crypto/crypto.h</b><b></b><b>: Encryption/decryption
+      operations</b></li>
+  <li><b>lib/network/acip</b> (<b>send.c</b>, handlers.c, etc.): Protocol
+      implementation</li>
+</ul>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Version_Information"><a class="permalink" href="#Version_Information">Version
   Information</a></h2>
 <ul class="Bl-bullet">
-  <li><b>ACIP Version</b>: 1.0</li>
+  <li><b>Protocol Version</b>: 1.0</li>
   <li><b>Release Date</b>: January 2026</li>
   <li><b>Status</b>: Production</li>
-  <li><b>Backward Compatibility</b>: ACIP 1.0 packets are version-locked to
-    1.0</li>
-</ul>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="CORE_RESPONSIBILITIES:"><a class="permalink" href="#CORE_RESPONSIBILITIES:">CORE
-  RESPONSIBILITIES: </a></h1>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Session management packet type definitions (6000-6008)</dd>
-  <dt>2.</dt>
-  <dd>WebRTC signaling packet type definitions (6009-6010)</dd>
-  <dt>3.</dt>
-  <dd>String reservation packet type definitions (6020-6023)</dd>
-  <dt>4.</dt>
-  <dd>Ring consensus and host negotiation (6050-6068)</dd>
-  <dt>5.</dt>
-  <dd>Bandwidth testing (6070-6075)</dd>
-  <dt>6.</dt>
-  <dd>Discovery service control and error handling (6190, 6199)</dd>
-</dl>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PACKET_RANGE_ALLOCATION:"><a class="permalink" href="#PACKET_RANGE_ALLOCATION:">PACKET
-  RANGE ALLOCATION: </a></h1>
-<p class="Pp">ACIP packets use range 6000-6199 for discovery protocol
-    operations.</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>6000-6008: Session management (CREATE, JOIN, LEAVE, etc.)</li>
-  <li>6009-6010: WebRTC signaling (SDP offers/answers, ICE candidates)</li>
-  <li>6020-6023: String reservation (reserve, renew, release)</li>
-  <li>6050-6068: Ring consensus and host negotiation</li>
-  <li>6070-6075: Bandwidth testing and broadcast acknowledgment</li>
-  <li>6190, 6199: Discovery ping and error response</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="INTEGRATION_WITH_OTHER_MODULES:"><a class="permalink" href="#INTEGRATION_WITH_OTHER_MODULES:">INTEGRATION
-  WITH OTHER MODULES: </a></h1>
-<ul class="Bl-bullet">
-  <li>network/packet.h: Defines <b>packet_header_t</b> and uses ACIP packet
-      types in <b>packet_type_t</b> enum</li>
-  <li><b>network/acip/acds.h</b>: ACDS-specific message structures and payload
-      definitions</li>
-  <li><b>network/acip/transport.h</b>: Transport abstraction layer for different
-      connection types</li>
-  <li>lib/network/acip/: Protocol implementation files (<b>send.c</b>,
-      handlers.c, etc.)</li>
+  <li><b>Packet Format Stability</b>: Version-locked to 1.0 (no breaking
+      changes)</li>
 </ul>
 <p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">ACIP packets are defined in the same <b>packet_type_t</b>
-  enum as ascii-chat packets, but use a separate numeric range (6000-6199).
+<div class="Bd-indent">The <b>packet_header_t</b> structure is identical for ALL
+  200+ packet types. The only difference is the 'type' field and payload
+  structure.
 <p class="Pp"></p>
-<p class="Pp">All ACIP packets use the same packet header structure as
-    ascii-chat (magic, type, length, CRC32, client_id).</p>
+<p class="Pp">CRC32 is computed over payload bytes ONLY (not including the
+    22-byte header).</p>
 <p class="Pp"></p>
-<p class="Pp">Payload CRC32 is computed over payload bytes only (not the
-    header).</p>
+<p class="Pp">This file documents protocol architecture. Detailed packet
+    definitions are in network/packet.h (<b>packet_type_t</b> enum). Detailed
+    ACIP message structures are in <b>network/acip/acds.h</b>.</p>
 </div>
 <p class="Pp"><b>Author</b></p>
 <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
 <p class="Pp"><b>Date</b></p>
 <div class="Bd-indent">January 2026</div>
 <p class="Pp"><b>Version</b></p>
-<div class="Bd-indent">1.0 (ACIP Protocol Refactoring)</div>
+<div class="Bd-indent">1.0 (Complete Binary Protocol Documentation)</div>
+</section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
