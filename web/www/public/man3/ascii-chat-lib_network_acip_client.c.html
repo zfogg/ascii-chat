@@ -294,15 +294,15 @@
 <i>cap_len</i> Capability data length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>319</b> of file
+<p class="Pp">Definition at line <b>326</b> of file
     <b>lib/network/acip/client.c</b>.</p>
-<pre>319                                                                                                             {
-320   if (!transport || !cap_data) {
-321     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or cap_data&quot;);
-322   }
-323 
-324   return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_CAPABILITIES, cap_data, cap_len, 0);
-325 }</pre>
+<pre>326                                                                                                             {
+327   if (!transport || !cap_data) {
+328     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or cap_data&quot;);
+329   }
+330 
+331   return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_CAPABILITIES, cap_data, cap_len, 0);
+332 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
@@ -321,16 +321,16 @@
 <i>capabilities</i> Client capability bitmask (video, audio, etc.)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>281</b> of file
+<p class="Pp">Definition at line <b>288</b> of file
     <b>lib/network/acip/client.c</b>.</p>
-<pre>281                                                                                            {
-282   if (!transport) {
-283     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
-284   }
-285 
-286   // Simple capability byte payload
-287   return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_JOIN, &amp;capabilities, sizeof(capabilities), 0);
-288 }</pre>
+<pre>288                                                                                            {
+289   if (!transport) {
+290     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
+291   }
+292 
+293   // Simple capability byte payload
+294   return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_JOIN, &amp;capabilities, sizeof(capabilities), 0);
+295 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
@@ -347,16 +347,16 @@
 <div class="Bd-indent"><i>transport</i> Transport instance</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>290</b> of file
+<p class="Pp">Definition at line <b>297</b> of file
     <b>lib/network/acip/client.c</b>.</p>
-<pre>290                                                                       {
-291   if (!transport) {
-292     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
-293   }
-294 
-295   // Leave has no payload
-296   return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_LEAVE, NULL, 0, 0);
-297 }</pre>
+<pre>297                                                                       {
+298   if (!transport) {
+299     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
+300   }
+301 
+302   // Leave has no payload
+303   return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_LEAVE, NULL, 0, 0);
+304 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
@@ -483,49 +483,55 @@
 242   // H.265 can produce output larger than input due to codec overhead
 243   // Use 2x multiplier to account for worst-case frame content
 244   size_t output_buffer_size = 5 + (width * height * 2);
-245   uint8_t *output_buffer = buffer_pool_alloc(NULL, output_buffer_size);
-246   if (!output_buffer) {
-247     log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME_H265: Failed to allocate output buffer&quot;);
-248     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate H.265 output buffer: %zu bytes&quot;, output_buffer_size);
-249   }
-250 
-251   // Encode frame
-252   size_t encoded_size = output_buffer_size - 5;
-253   asciichat_error_t encode_result = h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data,
-254                                                 output_buffer + 5, &amp;encoded_size);
-255 
-256   if (encode_result != ASCIICHAT_OK) {
-257     log_error(&quot;H.265 encoding failed: %s&quot;, asciichat_error_string(encode_result));
-258     buffer_pool_free(NULL, output_buffer, output_buffer_size);
-259     return encode_result;
-260   }
-261 
-262   // Prepare H.265 packet: [flags:u8][width:u16][height:u16][h265_data...]
-263   output_buffer[0] = 0; // flags: no flags set by default
-264   output_buffer[1] = (width &gt;&gt; 8) &amp; 0xFF;
-265   output_buffer[2] = width &amp; 0xFF;
-266   output_buffer[3] = (height &gt;&gt; 8) &amp; 0xFF;
-267   output_buffer[4] = height &amp; 0xFF;
-268 
-269   size_t total_size = 5 + encoded_size;
-270 
-271   log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME_H265: Encoded %ux%u &#x2192; %zu bytes&quot;, width, height, total_size);
+245   log_dev(&quot;[ACIP_SEND_H265_1] About to allocate output buffer (%zu bytes)&quot;, output_buffer_size);
+246   uint8_t *output_buffer = buffer_pool_alloc(NULL, output_buffer_size);
+247   log_dev(&quot;[ACIP_SEND_H265_2] &#x2705; Allocated output buffer&quot;);
+248   if (!output_buffer) {
+249     log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME_H265: Failed to allocate output buffer&quot;);
+250     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate H.265 output buffer: %zu bytes&quot;, output_buffer_size);
+251   }
+252 
+253   // Encode frame
+254   size_t encoded_size = output_buffer_size - 5;
+255   log_dev(&quot;[ACIP_SEND_H265_3] Calling h265_encode&quot;);
+256   asciichat_error_t encode_result = h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data,
+257                                                 output_buffer + 5, &amp;encoded_size);
+258   log_dev(&quot;[ACIP_SEND_H265_4] h265_encode returned: %d, encoded_size=%zu&quot;, encode_result, encoded_size);
+259 
+260   if (encode_result != ASCIICHAT_OK) {
+261     log_error(&quot;H.265 encoding failed: %s&quot;, asciichat_error_string(encode_result));
+262     buffer_pool_free(NULL, output_buffer, output_buffer_size);
+263     return encode_result;
+264   }
+265 
+266   // Prepare H.265 packet: [flags:u8][width:u16][height:u16][h265_data...]
+267   output_buffer[0] = 0; // flags: no flags set by default
+268   output_buffer[1] = (width &gt;&gt; 8) &amp; 0xFF;
+269   output_buffer[2] = width &amp; 0xFF;
+270   output_buffer[3] = (height &gt;&gt; 8) &amp; 0xFF;
+271   output_buffer[4] = height &amp; 0xFF;
 272 
-273   // Send via transport
-274   asciichat_error_t result =
-275       packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME_H265, output_buffer, total_size, 0);
+273   size_t total_size = 5 + encoded_size;
+274 
+275   log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME_H265: Encoded %ux%u &#x2192; %zu bytes&quot;, width, height, total_size);
 276 
-277   buffer_pool_free(NULL, output_buffer, output_buffer_size);
-278   return result;
-279 }</pre>
+277   // Send via transport
+278   log_dev(&quot;[ACIP_SEND_H265_5] Calling packet_send_via_transport with %zu bytes&quot;, total_size);
+279   asciichat_error_t result =
+280       packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME_H265, output_buffer, total_size, 0);
+281   log_dev(&quot;[ACIP_SEND_H265_6] packet_send_via_transport returned: %d&quot;, result);
+282 
+283   buffer_pool_free(NULL, output_buffer, output_buffer_size);
+284   log_dev(&quot;[ACIP_SEND_H265_7] &#x2705; Freed output buffer, returning from acip_send_image_frame_h265&quot;);
+285   return result;
+286 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
     <b>buffer_pool_free()</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
-    <b>h265_encode()</b>, <b>log_debug</b>, <b>log_error</b>,
+    <b>h265_encode()</b>, <b>log_debug</b>, <b>log_dev</b>, <b>log_error</b>,
     <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_IMAGE_FRAME_H265</b>, and
     <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>threaded_send_image_frame_h265()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> acip_send_protocol_version
@@ -540,15 +546,15 @@
 <i>version</i> Protocol version structure</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>327</b> of file
+<p class="Pp">Definition at line <b>334</b> of file
     <b>lib/network/acip/client.c</b>.</p>
-<pre>327                                                                                                                     {
-328   if (!transport || !version) {
-329     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or version&quot;);
-330   }
-331 
-332   return packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, version, sizeof(*version), 0);
-333 }</pre>
+<pre>334                                                                                                                     {
+335   if (!transport || !version) {
+336     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or version&quot;);
+337   }
+338 
+339   return packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, version, sizeof(*version), 0);
+340 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
@@ -567,17 +573,17 @@
 <i>stream_types</i> Stream type bitmask (video, audio, etc.)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>299</b> of file
+<p class="Pp">Definition at line <b>306</b> of file
     <b>lib/network/acip/client.c</b>.</p>
-<pre>299                                                                                             {
-300   if (!transport) {
-301     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
-302   }
-303 
-304   // Server expects uint32_t (4 bytes), not uint8_t
-305   uint32_t stream_types_net = HOST_TO_NET_U32((uint32_t)stream_types);
-306   return packet_send_via_transport(transport, PACKET_TYPE_STREAM_START, &amp;stream_types_net, sizeof(stream_types_net), 0);
-307 }</pre>
+<pre>306                                                                                             {
+307   if (!transport) {
+308     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
+309   }
+310 
+311   // Server expects uint32_t (4 bytes), not uint8_t
+312   uint32_t stream_types_net = HOST_TO_NET_U32((uint32_t)stream_types);
+313   return packet_send_via_transport(transport, PACKET_TYPE_STREAM_START, &amp;stream_types_net, sizeof(stream_types_net), 0);
+314 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>HOST_TO_NET_U32</b>,
@@ -596,17 +602,17 @@
 <i>stream_types</i> Stream type bitmask (video, audio, etc.)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>309</b> of file
+<p class="Pp">Definition at line <b>316</b> of file
     <b>lib/network/acip/client.c</b>.</p>
-<pre>309                                                                                            {
-310   if (!transport) {
-311     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
-312   }
-313 
-314   // Server expects uint32_t (4 bytes), not uint8_t
-315   uint32_t stream_types_net = HOST_TO_NET_U32((uint32_t)stream_types);
-316   return packet_send_via_transport(transport, PACKET_TYPE_STREAM_STOP, &amp;stream_types_net, sizeof(stream_types_net), 0);
-317 }</pre>
+<pre>316                                                                                            {
+317   if (!transport) {
+318     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
+319   }
+320 
+321   // Server expects uint32_t (4 bytes), not uint8_t
+322   uint32_t stream_types_net = HOST_TO_NET_U32((uint32_t)stream_types);
+323   return packet_send_via_transport(transport, PACKET_TYPE_STREAM_STOP, &amp;stream_types_net, sizeof(stream_types_net), 0);
+324 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>HOST_TO_NET_U32</b>,
@@ -621,7 +627,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.2</td>
+    <td class="foot-date">Version 0.9.3</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

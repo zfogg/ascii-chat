@@ -470,16 +470,28 @@ export default function Man3() {
 
   // Transform function P tags into tables (works on HTML strings)
   const transformFunctionsInHTML = (html) => {
+    // First, remove __attribute__ tags to clean up the HTML for regex matching
+    let cleaned = html.replace(/<b>__attribute__<\/b>\s*\(\([^)]*\)\)\s*/g, "");
+
     // Find P tags with function signatures separated by <br> tags
     // Only matches tags that contain bold function names followed by parameters
-    return html.replace(
-      /<p[^>]*class="Pp"[^>]*>[\s\S]*?<b>[a-zA-Z_][a-zA-Z0-9_]*<\/b>\s*\([\s\S]*?<\/p>/g,
+    return cleaned.replace(
+      /<p[^>]*>(?:[^<]|<(?!\/p>))*<b>[a-zA-Z_][a-zA-Z0-9_]*<\/b>\s*\([\s\S]*?<\/p>/g,
       (match) => {
         // Skip P tags with macro definitions - let them render as plain text to preserve grouping
         if (match.includes("#define")) {
           return match;
         }
-        const content = match.replace(/<p[^>]*>/, "").replace(/<\/p>/, "");
+        let content = match.replace(/<p[^>]*>/, "").replace(/<\/p>/, "");
+
+        // Remove __attribute__ directives and visibility markers from content (various formats)
+        content = content.replace(
+          /__attribute__\s*\(\(\s*visibility\s*\(\s*['"]*\w+['"]*\s*\)\s*\)\)\s*/g,
+          ""
+        );
+        content = content.replace(/__attribute__\s*\(\([^)]*\)\)\s*/g, "");
+        content = content.replace(/__attribute__\s*\([^)]*\)\s*/g, "");
+
         const sections = content.split(/<br\s*\/?>/i);
 
         const rows = [];
@@ -492,7 +504,16 @@ export default function Man3() {
           // Extract plain text without HTML
           const tempDiv = document.createElement("div");
           tempDiv.innerHTML = trimmed;
-          const plainText = tempDiv.textContent.trim();
+          let plainText = tempDiv.textContent.trim();
+
+          // Remove __attribute__ directives and visibility markers (various formats)
+          plainText = plainText.replace(
+            /__attribute__\s*\(\(\s*visibility\s*\(\s*['"]*\w+['"]*\s*\)\s*\)\)\s*/g,
+            ""
+          );
+          plainText = plainText.replace(/__attribute__\s*\(\([^)]*\)\)\s*/g, "");
+          plainText = plainText.replace(/__attribute__\s*\([^)]*\)\s*/g, "");
+          plainText = plainText.trim();
 
           // Find ALL function definitions in this section (bold name + parens)
           // Pattern: <b>functionName</b> followed by parentheses

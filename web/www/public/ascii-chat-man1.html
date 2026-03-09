@@ -95,10 +95,10 @@
 <div class="Bd-indent"><b>Examples:</b>
 <div class="Bd-indent">
 <pre>(empty/unset) start new session. generates a session string to give someone to connect to you.
-persistent-freud-memorial
-canary-peep-banquet
-muscular-admirer-author
-parisian-collective-motor</pre>
+innocent-regret-mumbai
+negligent-vatican-chilly
+wise-trance-flag
+compatible-utmost-link</pre>
 </div>
 </div>
 <dl class="Bl-tag">
@@ -182,27 +182,27 @@ https://example.com/stream.m3u8</pre>
 <dl class="Bl-tag">
   <dt id="ascii-chat"><a class="permalink" href="#ascii-chat"><b>ascii-chat</b></a></dt>
   <dd>Start new session (share the session string)</dd>
-  <dt><b>ascii-chat yummy-white-belgian</b></dt>
+  <dt><b>ascii-chat dotty-split-filter</b></dt>
   <dd>Join a session using the session string</dd>
-  <dt><b>ascii-chat key-hustle-student --file video.mp4</b></dt>
+  <dt><b>ascii-chat navigational-walton-arrival --file video.mp4</b></dt>
   <dd>Join session and stream from local video file</dd>
-  <dt><b>ascii-chat mobile-place-majesty --url
+  <dt><b>ascii-chat atomic-lace-geography --url
     'https://www.youtube.com/watch?v=dQw4w9WgXcQ'</b></dt>
   <dd>Join session and stream from YouTube video</dd>
-  <dt><b>ascii-chat solitary-squirt-clatter -f -</b></dt>
+  <dt><b>ascii-chat stylish-epidemic-ordeal -f -</b></dt>
   <dd>Join session and stream media from stdin</dd>
-  <dt><b>ascii-chat little-babylon-poison --palette-chars '@%#*+=-:. '</b></dt>
+  <dt><b>ascii-chat timely-toilet-currency --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Join session with custom ASCII palette characters</dd>
-  <dt><b>ascii-chat elect-moon-adult --discovery-service
+  <dt><b>ascii-chat better-ratio-churchill --discovery-service
     --discovery-service-port 27225</b></dt>
   <dd>Join session via custom discovery server</dd>
   <dt><b>ascii-chat server</b></dt>
   <dd>Start on localhost (127.0.0.1 and ::1)</dd>
-  <dt><b>ascii-chat server 0.0.0.0</b></dt>
+  <dt><b>ascii-chat discovery-service 0.0.0.0</b></dt>
   <dd>Start on all IPv4 interfaces</dd>
   <dt><b>ascii-chat discovery-service 0.0.0.0 ::</b></dt>
   <dd>Start on all IPv4 and IPv6 interfaces (dual-stack)</dd>
-  <dt><b>ascii-chat discovery-service --port 8080</b></dt>
+  <dt><b>ascii-chat server --port 8080</b></dt>
   <dd>Start on custom port</dd>
   <dt><b>ascii-chat server --key ~/.ssh/id_ed25519 --discovery</b></dt>
   <dd>Start with identity key and discovery registration</dd>
@@ -214,11 +214,11 @@ https://example.com/stream.m3u8</pre>
   <dd>Stream from local video file</dd>
   <dt><b>ascii-chat client --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Custom palette characters to use. UTF-8 is allowed.</dd>
-  <dt><b>ascii-chat mirror --snapshot</b></dt>
+  <dt><b>ascii-chat client --snapshot</b></dt>
   <dd>Print ascii art for --snapshot-delay's value of seconds then print the
       last frame and exit. In snapshot mode, --width, --height, and --color are
       NOT autodetected when piping stdin in or redirecting output.</dd>
-  <dt><b>ascii-chat mirror --color-filter cyan --palette cool</b></dt>
+  <dt><b>ascii-chat client --color-filter cyan --palette cool</b></dt>
   <dd>Apply cyan color filter and cool palette</dd>
   <dt><b>ascii-chat client example.com</b></dt>
   <dd>Connect to remote server</dd>
@@ -308,8 +308,9 @@ https://example.com/stream.m3u8</pre>
 <dl class="Bl-tag">
   <dt id="L,"><a class="permalink" href="#L,"><b>-L, --log-file
     <i>FILE</i></b></a></dt>
-  <dd>Set FILE as path for log file (default: current directory; filenames:
-      server.log, client.log, mirror.log, acds.log, discovery.log).</dd>
+  <dd>Set FILE as path for log file (default: $TMPDIR/ascii-chat/ or
+      %TEMP%scii-chat; filenames: server.log, client.log, mirror.log, acds.log,
+      discovery.log). (mode: global)</dd>
   <dt id="log-level"><a class="permalink" href="#log-level"><b>--log-level
     <i>VALUE</i></b></a></dt>
   <dd>Set log level: dev, debug, info, warn, error, fatal. Logs at or above this
@@ -528,10 +529,6 @@ https://example.com/stream.m3u8</pre>
     <i>VALUE</i></b></a></dt>
   <dd>Select which audio sources to use: auto (smart), mic, media, or both.
       (modes: default, client, mirror)</dd>
-  <dt id="audio-analysis"><a class="permalink" href="#audio-analysis"><b>--audio-analysis
-    <i>BOOLEAN</i></b></a></dt>
-  <dd>Enable audio analysis (debug). (default: false) (modes: default,
-    client)</dd>
   <dt id="no-audio-playback"><a class="permalink" href="#no-audio-playback"><b>--no-audio-playback
     <i>BOOLEAN</i></b></a></dt>
   <dd>Disable speakers output. (default: false) (modes: default, client)</dd>
@@ -664,8 +661,8 @@ https://example.com/stream.m3u8</pre>
   <dd>Disable compression. (default: false) (modes: default, client,
     server)</dd>
   <dt><b>--discovery-service <i>STRING</i></b></dt>
-  <dd>Discovery service endpoint (IP address or hostname). (default: localhost)
-      (modes: default, client, server)</dd>
+  <dd>Discovery service endpoint (IP address or hostname). (default:
+      discovery-service.ascii-chat.com) (modes: default, client, server)</dd>
   <dt id="discovery-service-port"><a class="permalink" href="#discovery-service-port"><b>--discovery-service-port
     <i>INTEGER</i></b></a></dt>
   <dd>Discovery service port (1-65535). (default: 27225) (modes: default,
@@ -722,13 +719,12 @@ https://example.com/stream.m3u8</pre>
       discovery-service)</dd>
   <dt id="turn-username"><a class="permalink" href="#turn-username"><b>--turn-username
     <i>STRING</i></b></a></dt>
-  <dd>Username for WebRTC+TURN authentication. (default: ascii) (modes: default,
-      client, server, discovery-service)</dd>
+  <dd>Username for WebRTC+TURN authentication. (modes: default, client, server,
+      discovery-service)</dd>
   <dt id="turn-credential"><a class="permalink" href="#turn-credential"><b>--turn-credential
     <i>STRING</i></b></a></dt>
-  <dd>Credential/password for WebRTC+TURN authentication. (default:
-      0aa9917b4dad1b01631e87a32b875e09) (modes: default, client, server,
-      discovery-service)</dd>
+  <dd>Credential/password for WebRTC+TURN authentication. (modes: default,
+      client, server, discovery-service)</dd>
   <dt id="turn-secret"><a class="permalink" href="#turn-secret"><b>--turn-secret
     <i>STRING</i></b></a></dt>
   <dd>Shared secret for dynamic WebRTC+TURN credential generation (HMAC-SHA1).
@@ -801,25 +797,6 @@ https://example.com/stream.m3u8</pre>
   <dt id="database"><a class="permalink" href="#database"><b>--database
     <i>STRING</i></b></a></dt>
   <dd>Path to SQLite database for discovery session storage. (modes:
-      discovery-service)</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="DEBUG"><a class="permalink" href="#DEBUG">DEBUG</a></h2>
-<dl class="Bl-tag">
-  <dt id="sync-state"><a class="permalink" href="#sync-state"><b>--sync-state
-    <i>TIME</i></b></a></dt>
-  <dd>Print synchronization primitive state with optional time offset (debug
-      builds only). (default: 0.00) (modes: global, client, server, mirror,
-      discovery-service)</dd>
-  <dt id="backtrace"><a class="permalink" href="#backtrace"><b>--backtrace
-    <i>TIME</i></b></a></dt>
-  <dd>Print backtrace with optional time offset (debug builds only). (default:
-      0.00) (modes: global, client, server, mirror, discovery-service)</dd>
-  <dt id="memory-report"><a class="permalink" href="#memory-report"><b>--memory-report
-    <i>TIME</i></b></a></dt>
-  <dd>Print memory report periodically at specified interval in seconds (debug
-      builds only). (default: 0.00) (modes: global, client, server, mirror,
       discovery-service)
     <p class="Pp"></p>
     <p class="Pp"></p>
@@ -1166,8 +1143,6 @@ https://example.com/stream.m3u8</pre>
       (%APPDATA%\ascii-chat). Primary location for config files on Windows.</dd>
   <dt id="ASCII_CHAT_AUDIO"><a class="permalink" href="#ASCII_CHAT_AUDIO"><b>ASCII_CHAT_AUDIO</b></a></dt>
   <dd>See: <b>--audio</b></dd>
-  <dt id="ASCII_CHAT_AUDIO_ANALYSIS"><a class="permalink" href="#ASCII_CHAT_AUDIO_ANALYSIS"><b>ASCII_CHAT_AUDIO_ANALYSIS</b></a></dt>
-  <dd>See: <b>--audio-analysis</b></dd>
   <dt id="ASCII_CHAT_AUDIO_SOURCE"><a class="permalink" href="#ASCII_CHAT_AUDIO_SOURCE"><b>ASCII_CHAT_AUDIO_SOURCE</b></a></dt>
   <dd>See: <b>--audio-source</b></dd>
   <dt id="ASCII_CHAT_CLIENT_KEYS"><a class="permalink" href="#ASCII_CHAT_CLIENT_KEYS"><b>ASCII_CHAT_CLIENT_KEYS</b></a></dt>
@@ -1543,8 +1518,8 @@ https://example.com/stream.m3u8</pre>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">2026-03-08</td>
-    <td class="foot-os">ascii-chat 0.9.2</td>
+    <td class="foot-date">2026-03-09</td>
+    <td class="foot-os">ascii-chat 0.9.3</td>
   </tr>
 </table>
 </body>
