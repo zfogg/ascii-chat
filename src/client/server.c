@@ -1386,20 +1386,26 @@ asciichat_error_t threaded_send_image_frame_h265(const void *pixel_data, uint32_
     return SET_ERRNO(ERROR_INVALID_STATE, "H.265 encoder not initialized");
   }
 
+  log_info("[H265_SEND_FRAME_1] About to acquire g_send_mutex");
   mutex_lock(&g_send_mutex);
+  log_info("[H265_SEND_FRAME_2] ✅ Acquired g_send_mutex, checking transport");
 
   // Get transport reference - may be NULL if connection was lost
   acip_transport_t *transport = server_connection_get_transport();
   if (!transport || !server_connection_is_active()) {
     mutex_unlock(&g_send_mutex);
+    log_info("[H265_SEND_FRAME_3] Transport unavailable");
     return SET_ERRNO(ERROR_NETWORK, "Transport unavailable");
   }
 
   // Send H.265 frame with socket lock held
+  log_info("[H265_SEND_FRAME_4] Transport ready, calling acip_send_image_frame_h265");
   asciichat_error_t result = acip_send_image_frame_h265(transport, encoder, pixel_data, width, height);
+  log_info("[H265_SEND_FRAME_5] acip_send_image_frame_h265 returned: %d", result);
 
   // Unlock after send completes
   mutex_unlock(&g_send_mutex);
+  log_info("[H265_SEND_FRAME_6] ✅ Released g_send_mutex");
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {

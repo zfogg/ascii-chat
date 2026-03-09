@@ -55,7 +55,16 @@ tmpdir=$(mktemp -d "/tmp/XXX-ascii-chat-debug-fps")
 
 client_log="$tmpdir/client-logfile-$PORT.log"
 client_stdout="$tmpdir/client-stdout-$PORT.log"
+client_strace="$tmpdir/client-strace-$PORT.log"
 server_log="$tmpdir/server-logfile-$PORT.log"
+server_strace="$tmpdir/server-strace-$PORT.log"
+
+# Detect if macOS or Linux for strace/dstrace
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  STRACE_CMD="dstrace"
+else
+  STRACE_CMD="strace"
+fi
 
 cert_file="/tmp/wss-test-cert.pem"
 key_file="/tmp/wss-test-key.pem"
@@ -94,8 +103,9 @@ case "$PROTO" in
     ;;
 esac
 
-# Start WebSocket server
-"$BUILD_DIR"/bin/ascii-chat --log-file "$server_log" --log-level debug \
+# Start WebSocket server with strace/dstrace
+"$STRACE_CMD" -f -o "$server_strace" \
+  "$BUILD_DIR"/bin/ascii-chat --log-file "$server_log" --log-level debug \
   server --port "$PORT" --websocket-port "$PORT_WS" "${server_args[@]}" \
   >/dev/null 2>&1 &
 SERVER_PID=$!
@@ -113,7 +123,8 @@ case "$PROTO" in
     PROTO_PORT="$PORT_WS"
     ;;
 esac
-timeout -k1 "$((SNAPSHOT_DELAY + 1))" "$BUILD_DIR"/bin/ascii-chat \
+timeout -k1 "$((SNAPSHOT_DELAY + 1))" "$STRACE_CMD" -f -o "$client_strace" \
+  "$BUILD_DIR"/bin/ascii-chat \
   --log-level debug --log-file "$client_log" --sync-state 1 \
   client "${PROTO_PREFIX}://localhost:$PROTO_PORT" \
   --test-pattern \
@@ -177,9 +188,11 @@ echo "Actual frames rendered: $FRAME_COUNT (with SNAPSHOT_DELAY=${SNAPSHOT_DELAY
 
 echo ""
 echo "📋 Log files:"
-echo "  Client log:    $client_log"
-echo "  Client stdout: $client_stdout"
-echo "  Server log:    $server_log"
+echo "  Client log:      $client_log"
+echo "  Client stdout:   $client_stdout"
+echo "  Client strace:   $client_strace"
+echo "  Server log:      $server_log"
+echo "  Server strace:   $server_strace"
 
 echo ""
 pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
