@@ -468,35 +468,23 @@ export function usePageNavigation(
     }
   };
 
-  // Scroll to hash fragment when page content changes
+  // Handle initial hash on page load and hash changes from link clicks
   useEffect(() => {
     if (!selectedPageContent || !contentViewerRef.current) return;
 
     const hash = window.location.hash;
-    console.log("[usePageNavigation] Hash scroll effect triggered", {
-      hash,
-      hasContent: !!selectedPageContent,
-      hasContainer: !!contentViewerRef.current,
-    });
-    if (!hash) {
-      console.log("[usePageNavigation] No hash, skipping scroll");
-      return;
-    }
+    if (!hash) return;
 
-    // Wait for content to be fully rendered before scrolling
-    // React finishes rendering and DOM is stable after ~500ms
-    const timeoutId = setTimeout(() => {
+    // Wait for DOM to be fully rendered before scrolling
+    setTimeout(() => {
       scrollToHash(hash);
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
+    }, 100);
   }, [selectedPageContent]);
 
   // Scroll to hash when user clicks a link on the same page (hashchange event)
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash;
-      console.log("[usePageNavigation] Hash changed via link click", { hash });
       if (hash) {
         // Small delay to ensure DOM is ready
         setTimeout(() => {

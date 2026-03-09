@@ -206,6 +206,7 @@ export function useHtmlTransforms(validPagesRef) {
 
   /**
    * Transform function P tags into tables
+   * Handles multiple functions in a single P tag by splitting at function boundaries
    */
   const transformFunctionsInHTML = (html) => {
     // First, remove __attribute__ tags to clean up the HTML for regex matching
@@ -236,88 +237,102 @@ export function useHtmlTransforms(validPagesRef) {
         content = content.replace(/__attribute__\s*\(\([^)]*\)\)\s*/g, "");
         content = content.replace(/__attribute__\s*\([^)]*\)\s*/g, "");
 
-        // Extract plain text for the table
+        // Extract plain text for parsing
         const tempDiv = document.createElement("div");
         tempDiv.innerHTML = content;
         const fullPlainText = tempDiv.textContent.trim();
 
-        // Extract function name from the regex match
-        const funcMatch = content.match(
-          /<b>([a-zA-Z_][a-zA-Z0-9_]*)<\/b>\s*\(/,
-        );
-        if (funcMatch) {
-          const funcName = funcMatch[1];
+        // Find ALL function names in the content (bold text followed by paren)
+        const funcNameMatches = [];
+        const boldRegex = /<b>([a-zA-Z_][a-zA-Z0-9_]*)<\/b>\s*\(/g;
+        let boldMatch;
+        while ((boldMatch = boldRegex.exec(content))) {
+          funcNameMatches.push(boldMatch[1]);
+        }
 
-          // Extract function signature (from start through closing paren)
-          const nameIdx = fullPlainText.indexOf(funcName);
-          const openParenIdx = fullPlainText.indexOf("(", nameIdx);
+        // If no functions found, return original
+        if (funcNameMatches.length === 0) {
+          return match;
+        }
 
-          // Count parentheses to find the matching closing paren
-          let parenCount = 1; // We already have one opening paren
+        // Split the full plain text into function entries
+        // Use a regex to find all function signatures, handling wrapping
+        const rows = [];
+
+        // Find all function names by looking for patterns like "funcName ("
+        const funcNamePattern = /([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g;
+        const funcMatches = [];
+        let fnMatch;
+        while ((fnMatch = funcNamePattern.exec(fullPlainText))) {
+          funcMatches.push({
+            name: fnMatch[1],
+            startIdx: fnMatch.index
+          });
+        }
+
+        // For each function match, extract the full signature and description
+        for (let i = 0; i < funcMatches.length; i++) {
+          const currentMatch = funcMatches[i];
+          const nextMatch = funcMatches[i + 1];
+
+          // Find where this function's content ends (start of next function or end of text)
+          const contentEnd = nextMatch ? nextMatch.startIdx : fullPlainText.length;
+          const functionContent = fullPlainText.substring(currentMatch.startIdx, contentEnd);
+
+          // Find the opening paren for this function
+          const openParenIdx = functionContent.indexOf("(");
           let closeParenIdx = -1;
-          for (let i = openParenIdx + 1; i < fullPlainText.length; i++) {
-            if (fullPlainText[i] === "(") parenCount++;
-            if (fullPlainText[i] === ")") {
+          let parenCount = 1;
+
+          for (let j = openParenIdx + 1; j < functionContent.length; j++) {
+            if (functionContent[j] === "(") parenCount++;
+            if (functionContent[j] === ")") {
               parenCount--;
               if (parenCount === 0) {
-                closeParenIdx = i;
+                closeParenIdx = j;
                 break;
               }
             }
           }
 
-          // If no closing paren found, find the first line break or description
-          if (closeParenIdx === -1) {
-            // Look for the first newline followed by non-whitespace and non-opening bracket
-            const match = fullPlainText
-              .substring(openParenIdx)
-              .match(/\n\s*([a-zA-Z])/);
-            if (match) {
-              closeParenIdx = openParenIdx + match.index;
-            }
-          }
-
-          // Extract the full signature (from start through closing paren, or to first description)
+          // Extract signature and description
           let signature = "";
           let description = "";
 
           if (closeParenIdx !== -1) {
-            // We found a paren, use it
-            signature = fullPlainText.substring(0, closeParenIdx + 1).trim();
-            description = fullPlainText.substring(closeParenIdx + 1).trim();
-          } else {
-            // No paren found, split at first newline pattern that looks like description start
-            const lines = fullPlainText.split("\n");
-            let sigLines = [];
-            let descLines = [];
-            let foundDesc = false;
-
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i].trim();
-              if (!foundDesc && line.length > 0 && !line.includes("(")) {
-                // This looks like the start of description
-                foundDesc = true;
-              }
-              if (!foundDesc) {
-                sigLines.push(lines[i]);
-              } else {
-                descLines.push(line);
+            // Get everything up to and including the closing paren as signature
+            signature = functionContent.substring(0, closeParenIdx + 1).trim();
+            // Everything after is description
+            description = functionContent.substring(closeParenIdx + 1).trim();
+            // Remove the next function name from description (it starts where we found it)
+            if (nextMatch) {
+              // Find where the next function starts in the description
+              const nextFuncIdx = description.indexOf(nextMatch.name);
+              if (nextFuncIdx > -1) {
+                // Only keep text before the next function name
+                description = description.substring(0, nextFuncIdx).trim();
               }
             }
-
-            signature = sigLines.join("\n").trim();
-            description = descLines.join(" ").trim();
+          } else {
+            // No closing paren found, use whole content as signature
+            signature = functionContent.trim();
+            description = "";
           }
 
-          // Build table with name, full signature, and description
-          let tableHtml = '<table class="man-functions-table"><tbody>';
-          tableHtml += `<tr><td class="man-func-name"><code>${funcName}</code></td><td class="man-func-sig"><code>${signature}</code></td><td class="man-func-desc">${description}</td></tr>`;
-          tableHtml += "</tbody></table>";
-          return tableHtml;
+          rows.push({
+            name: currentMatch.name,
+            signature: signature,
+            description: description
+          });
         }
 
-        // Fallback: if we couldn't extract function, return original match
-        return match;
+        // Build table with all rows
+        let tableHtml = '<table class="man-functions-table"><tbody>';
+        for (const row of rows) {
+          tableHtml += `<tr><td class="man-func-name"><code>${row.name}</code></td><td class="man-func-sig"><code>${row.signature}</code></td><td class="man-func-desc">${row.description}</td></tr>`;
+        }
+        tableHtml += "</tbody></table>";
+        return tableHtml;
       },
     );
 
