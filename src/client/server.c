@@ -1386,26 +1386,63 @@ asciichat_error_t threaded_send_image_frame_h265(const void *pixel_data, uint32_
     return SET_ERRNO(ERROR_INVALID_STATE, "H.265 encoder not initialized");
   }
 
-  log_info("[H265_SEND_FRAME_1] About to acquire g_send_mutex");
+  // Allocate buffer and encode frame WITHOUT holding the send mutex.
+  // This avoids long critical section that can cause deadlocks with named registry operations.
+  log_info("[H265_SEND_FRAME_1] Allocating buffer and encoding frame (no mutex held)");
+  size_t output_buffer_size = 5 + (width * height * 2);
+  uint8_t *output_buffer = buffer_pool_alloc(NULL, output_buffer_size);
+  if (!output_buffer) {
+    log_error("Failed to allocate output buffer for frame");
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate H.265 output buffer: %zu bytes", output_buffer_size);
+  }
+
+  // Encode frame
+  size_t encoded_size = output_buffer_size - 5;
+  asciichat_error_t encode_result = h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data,
+                                                output_buffer + 5, &encoded_size);
+  log_info("[H265_SEND_FRAME_2] ✅ Frame encoded, encoded_size=%zu, result=%d", encoded_size, encode_result);
+
+  if (encode_result != ASCIICHAT_OK) {
+    log_error("H.265 encoding failed: %s", asciichat_error_string(encode_result));
+    buffer_pool_free(NULL, output_buffer, output_buffer_size);
+    return encode_result;
+  }
+
+  // Prepare packet header: [flags:u8][width:u16][height:u16][h265_data...]
+  output_buffer[0] = 0; // flags: no flags set by default
+  output_buffer[1] = (width >> 8) & 0xFF;
+  output_buffer[2] = width & 0xFF;
+  output_buffer[3] = (height >> 8) & 0xFF;
+  output_buffer[4] = height & 0xFF;
+
+  size_t total_size = 5 + encoded_size;
+
+  // NOW acquire the send mutex just for the actual network transmission
+  log_info("[H265_SEND_FRAME_3] About to acquire g_send_mutex for network send");
   mutex_lock(&g_send_mutex);
-  log_info("[H265_SEND_FRAME_2] ✅ Acquired g_send_mutex, checking transport");
+  log_info("[H265_SEND_FRAME_4] ✅ Acquired g_send_mutex, checking transport");
 
   // Get transport reference - may be NULL if connection was lost
   acip_transport_t *transport = server_connection_get_transport();
   if (!transport || !server_connection_is_active()) {
     mutex_unlock(&g_send_mutex);
-    log_info("[H265_SEND_FRAME_3] Transport unavailable");
+    log_info("[H265_SEND_FRAME_5] Transport unavailable, releasing mutex");
+    buffer_pool_free(NULL, output_buffer, output_buffer_size);
     return SET_ERRNO(ERROR_NETWORK, "Transport unavailable");
   }
 
-  // Send H.265 frame with socket lock held
-  log_info("[H265_SEND_FRAME_4] Transport ready, calling acip_send_image_frame_h265");
-  asciichat_error_t result = acip_send_image_frame_h265(transport, encoder, pixel_data, width, height);
-  log_info("[H265_SEND_FRAME_5] acip_send_image_frame_h265 returned: %d", result);
+  // Send H.265 frame with socket lock held (short critical section)
+  log_info("[H265_SEND_FRAME_6] Sending packet via transport (%zu bytes)", total_size);
+  asciichat_error_t result =
+      packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME_H265, output_buffer, total_size, 0);
+  log_info("[H265_SEND_FRAME_7] packet_send_via_transport returned: %d", result);
 
   // Unlock after send completes
   mutex_unlock(&g_send_mutex);
-  log_info("[H265_SEND_FRAME_6] ✅ Released g_send_mutex");
+  log_info("[H265_SEND_FRAME_8] ✅ Released g_send_mutex");
+
+  buffer_pool_free(NULL, output_buffer, output_buffer_size);
+  log_info("[H265_SEND_FRAME_9] ✅ Freed output buffer");
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {

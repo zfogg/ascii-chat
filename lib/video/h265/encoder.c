@@ -251,6 +251,7 @@ static void h265_encoder_ascii_to_yuv420(const uint8_t *rgb_data, uint16_t width
 
 asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t height, const uint8_t *ascii_data,
                               uint8_t *output_buf, size_t *output_size) {
+  log_dev("[H265_ENCODE_1] Starting h265_encode %ux%u", width, height);
   if (!encoder || !ascii_data || !output_buf || !output_size) {
     return SET_ERRNO(ERROR_INTERNAL, "Invalid encoder arguments");
   }
@@ -259,7 +260,9 @@ asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t 
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Output buffer too small (minimum 5 bytes)");
   }
 
+  log_dev("[H265_ENCODE_2] Calling h265_encoder_reconfigure");
   asciichat_error_t result = h265_encoder_reconfigure(encoder, width, height);
+  log_dev("[H265_ENCODE_2b] h265_encoder_reconfigure returned: %d", result);
   if (result != ASCIICHAT_OK) {
     return result;
   }
@@ -337,6 +340,7 @@ asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t 
 
   *output_size = required_size;
   encoder->total_frames++;
+  log_dev("[H265_ENCODE_DONE] Encoding complete, output_size=%zu", required_size);
 
   return ASCIICHAT_OK;
 }

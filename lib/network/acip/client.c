@@ -242,7 +242,9 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
   // H.265 can produce output larger than input due to codec overhead
   // Use 2x multiplier to account for worst-case frame content
   size_t output_buffer_size = 5 + (width * height * 2);
+  log_dev("[ACIP_SEND_H265_1] About to allocate output buffer (%zu bytes)", output_buffer_size);
   uint8_t *output_buffer = buffer_pool_alloc(NULL, output_buffer_size);
+  log_dev("[ACIP_SEND_H265_2] ✅ Allocated output buffer");
   if (!output_buffer) {
     log_debug("★ ACIP_SEND_IMAGE_FRAME_H265: Failed to allocate output buffer");
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate H.265 output buffer: %zu bytes", output_buffer_size);
@@ -250,8 +252,10 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
 
   // Encode frame
   size_t encoded_size = output_buffer_size - 5;
+  log_dev("[ACIP_SEND_H265_3] Calling h265_encode");
   asciichat_error_t encode_result = h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data,
                                                 output_buffer + 5, &encoded_size);
+  log_dev("[ACIP_SEND_H265_4] h265_encode returned: %d, encoded_size=%zu", encode_result, encoded_size);
 
   if (encode_result != ASCIICHAT_OK) {
     log_error("H.265 encoding failed: %s", asciichat_error_string(encode_result));
@@ -271,10 +275,13 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
   log_debug("★ ACIP_SEND_IMAGE_FRAME_H265: Encoded %ux%u → %zu bytes", width, height, total_size);
 
   // Send via transport
+  log_dev("[ACIP_SEND_H265_5] Calling packet_send_via_transport with %zu bytes", total_size);
   asciichat_error_t result =
       packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME_H265, output_buffer, total_size, 0);
+  log_dev("[ACIP_SEND_H265_6] packet_send_via_transport returned: %d", result);
 
   buffer_pool_free(NULL, output_buffer, output_buffer_size);
+  log_dev("[ACIP_SEND_H265_7] ✅ Freed output buffer, returning from acip_send_image_frame_h265");
   return result;
 }
 

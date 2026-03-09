@@ -46,7 +46,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-SNAPSHOT_DELAY=3.5
+SNAPSHOT_DELAY=1.0
 
 PORT=$(((RANDOM % 6000) + 2000))
 PORT_WS=$(((RANDOM % 6000) + 2000))

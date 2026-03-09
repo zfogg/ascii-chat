@@ -225,9 +225,13 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
   named_entry_init(entry, type, format_spec, file, line, func);
 
   // Only hold lock for the hash table operation
+  log_dev("[NAMED_REGISTER_LOCK_1] About to acquire entries_lock for key=%p type=%s", (void*)key, type);
   rwlock_wrlock(&g_named_registry.entries_lock);
+  log_dev("[NAMED_REGISTER_LOCK_2] ✅ Acquired entries_lock, adding hash entry");
   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+  log_dev("[NAMED_REGISTER_LOCK_3] Hash entry added, releasing entries_lock");
   rwlock_wrunlock(&g_named_registry.entries_lock);
+  log_dev("[NAMED_REGISTER_LOCK_4] ✅ Released entries_lock");
 
   return entry->name;
 }
