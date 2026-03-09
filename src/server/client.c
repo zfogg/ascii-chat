@@ -800,13 +800,8 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   // Configure socket OUTSIDE lock
   configure_client_socket(socket, new_client_id);
 
-  // Register all atomic fields for debug tracking OUTSIDE lock
-  // (register_client_info_atomics calls NAMED_REGISTER_MUTEX which acquires debug registry lock)
-  log_info("[TCP_DBG] BEFORE_REGISTER_CLIENT_ATOMICS");
-  register_client_info_atomics(client);
-  log_info("[TCP_DBG] AFTER_REGISTER_CLIENT_ATOMICS");
-
-  // Initialize mutexes OUTSIDE lock
+  // Initialize mutexes OUTSIDE lock BEFORE registering them
+  // register_client_info_atomics needs these mutexes to be initialized first
   if (mutex_init(&client->client_state_mutex, "client_state") != 0) {
     log_error("Failed to initialize client state mutex for client %s", new_client_id);
     remove_client(server_ctx, new_client_id);
@@ -819,26 +814,45 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
     return NULL;
   }
 
+  // Register all atomic fields for debug tracking OUTSIDE lock
+  // (register_client_info_atomics calls NAMED_REGISTER_MUTEX which requires initialized mutexes)
+  log_info("[TCP_DBG] BEFORE_REGISTER_CLIENT_ATOMICS");
+  register_client_info_atomics(client);
+  log_info("[TCP_DBG] AFTER_REGISTER_CLIENT_ATOMICS");
+
   // Register audio and video buffer atomic fields for debug tracking
+  log_info("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_START: client=%p", (void *)client);
   if (client->incoming_audio_buffer) {
     audio_ring_buffer_register_atomics(client->incoming_audio_buffer, new_client_id);
+    log_info("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_DONE");
+  } else {
+    log_info("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_SKIPPED: incoming_audio_buffer is NULL");
   }
 
   // Register with audio mixer OUTSIDE lock
   // CRITICAL: Do this BEFORE crypto handshake to avoid deadlock with mixer thread
+  log_info("[TCP_DBG] MIXER_ADD_SOURCE_START: g_audio_mixer=%p, client->incoming_audio_buffer=%p", (void *)g_audio_mixer,
+           (void *)client->incoming_audio_buffer);
   if (g_audio_mixer && client->incoming_audio_buffer) {
+    log_info("[TCP_DBG] MIXER_ADD_SOURCE_CALLING: client_id=%s", new_client_id);
     if (mixer_add_source(g_audio_mixer, new_client_id, client->incoming_audio_buffer) < 0) {
       log_warn("Failed to add client %s to audio mixer", new_client_id);
     } else {
+      log_info("[TCP_DBG] MIXER_ADD_SOURCE_SUCCESS: client_id=%s", new_client_id);
 #ifdef DEBUG_AUDIO
       log_debug("Added client %s to audio mixer", new_client_id);
 #endif
     }
+  } else {
+    log_info("[TCP_DBG] MIXER_ADD_SOURCE_SKIPPED: conditions not met");
   }
+  log_info("[TCP_DBG] MIXER_ADD_SOURCE_DONE");
 
   // Perform crypto handshake before starting threads.
   // This ensures the handshake uses the socket directly without interference from receive thread.
+  log_info("[TCP_DBG] CRYPTO_INIT_START: About to call server_crypto_init()");
   if (server_crypto_init() == 0) {
+    log_info("[TCP_DBG] CRYPTO_INIT_DONE: server_crypto_init() returned 0");
     // Set timeout for crypto handshake to prevent indefinite blocking
     // This prevents clients from connecting but never completing the handshake
     const uint64_t HANDSHAKE_TIMEOUT_NS = 30ULL * NS_PER_SEC_INT;
@@ -849,7 +863,9 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
       // Continue anyway - timeout is a safety feature, not critical
     }
 
+    log_info("[TCP_DBG] SERVER_CRYPTO_HANDSHAKE_START: About to call server_crypto_handshake()");
     int crypto_result = server_crypto_handshake(client);
+    log_info("[TCP_DBG] SERVER_CRYPTO_HANDSHAKE_DONE: result=%d", crypto_result);
     if (crypto_result != 0) {
       log_error("Crypto handshake failed for client %s: %s", new_client_id, network_error_string());
       if (remove_client(server_ctx, new_client_id) != 0) {
@@ -860,6 +876,7 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
 
     // Clear socket timeout after handshake completes successfully
     // This allows normal operation without timeouts on data transfer
+    log_info("[TCP_DBG] CLEAR_SOCKET_TIMEOUT_START");
     asciichat_error_t clear_timeout_result = set_socket_timeout(socket, 0);
     if (clear_timeout_result != ASCIICHAT_OK) {
       log_warn("Failed to clear handshake timeout for client %s: %s", new_client_id,
