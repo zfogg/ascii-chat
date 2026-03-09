@@ -144,7 +144,7 @@ debug_log_msg "PROTO=$PROTO, PROTO_PREFIX=$PROTO_PREFIX"
 debug_log_msg "PORT=$PORT, PORT_WS=$PORT_WS, PROTO_PORT=$PROTO_PORT"
 
 # Start client in background (so we can attach lldb to it)
-# NOTE: We skip strace for client because lldb can't attach to a process being traced
+# NOTE: We skip strace for client because lldb cant attach to a process being traced
 EXIT_CODE=0
 START_TIME=$(date +%s%N)
 TIMEOUT_SECS=$(echo "$SNAPSHOT_DELAY + 1" | bc)
@@ -275,6 +275,9 @@ else
     echo "⚠️  Client backtrace not found"
 fi
 
+# Wait for logs to flush before displaying results
+SLEEP_SECS=$(echo "$SNAPSHOT_DELAY + 1" | bc)
+sleep "$SLEEP_SECS"
 echo ""
 echo "📋 Log files:"
 echo "  Client log:      $client_log"
@@ -295,5 +298,8 @@ if [ -f "$debug_log" ]; then
   echo ""
 fi
 
-pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
-pkill -f "lldb.*" && sleep 0.25 || true
+# Give processes time to flush logs before killing
+sleep 2
+pkill -f "ascii-chat.*(server|client).*$PORT" 2>/dev/null || true
+sleep 0.5
+pkill -f "lldb.*" 2>/dev/null || true
