@@ -218,27 +218,28 @@
 <ul class="Bl-bullet">
   <li><b>Transport</b>: TCP (port 27225 default, configurable)</li>
   <li><b>Format</b>: Binary ACIP packets (NOT JSON/HTTP)</li>
-  <li><b>Packet Structure</b>: <b>packet_header_t</b> (20 bytes) + payload</li>
+  <li><b>Packet Structure</b>: <b>packet_header_t</b> (22 bytes) + payload</li>
   <li><b>Payload Format</b>: Packed C structs with explicit size fields</li>
   <li><b>Byte Order</b>: Little-endian (host byte order on x86/ARM)</li>
   <li><b>String Encoding</b>: UTF-8, null-terminated where specified</li>
   <li><b>Timestamps</b>: Unix milliseconds (<b>uint64_t</b>)</li>
   <li><b>Identifiers</b>: UUIDs as 16-byte binary (not ASCII strings)</li>
+  <li><b>Packet Type Range</b>: 6000-6199 (session management, discovery, host
+      election)</li>
 </ul>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="Packet_Header_Format_(20_bytes)"><a class="permalink" href="#Packet_Header_Format_(20_bytes)">Packet
-  Header Format (20 bytes)</a></h2>
+<h2 class="Ss" id="Packet_Header_Format_(22_bytes)"><a class="permalink" href="#Packet_Header_Format_(22_bytes)">Packet
+  Header Format (22 bytes)</a></h2>
 <pre>Offset  Size  Field     Value/Description
 ------  ----  -----     -----------------
-0       4     magic     0x4C494341 (little-endian &quot;ACIL&quot;)
-4       2     type      100-199 (ACIP packet type enum)
-6       2     reserved  0x0000
-8       4     length    Payload length (0-2097152 bytes)
-12      4     crc32     CRC32 of payload bytes only
-16      4     client_id Client identifier (0 if not assigned)
+0       8     magic     0xA5C11C4A1 (&quot;ASCIICHAT&quot; in hex)
+8       2     type      6000-6199 (ACIP packet type enum)
+10      4     length    Payload length (0-2097152 bytes)
+14      4     crc32     CRC32 of payload bytes only
+18      4     client_id Client identifier (0 if not assigned)
 ------
-Total: 20 bytes + payload_length bytes</pre>
+Total: 22 bytes + payload_length bytes</pre>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="Version_Information"><a class="permalink" href="#Version_Information">Version
@@ -357,7 +358,7 @@ Total: 20 bytes + payload_length bytes</pre>
 <h1 class="Sh" id="INTEGRATION_WITH_OTHER_MODULES:"><a class="permalink" href="#INTEGRATION_WITH_OTHER_MODULES:">INTEGRATION
   WITH OTHER MODULES: </a></h1>
 <ul class="Bl-bullet">
-  <li><b>network/acip/protocol.h</b>: Defines ACIP packet types (100-199)</li>
+  <li><b>network/acip/protocol.h</b>: Defines ACIP packet types (6000-6199)</li>
   <li>network/packet.h: Provides <b>packet_header_t</b> infrastructure (header,
       CRC, etc.)</li>
   <li>src/acds/: ACDS server implementation</li>

@@ -24,7 +24,7 @@
  * ```
  * Offset  Size  Field          Description
  * ------  ----  -----          -----------
- * 0       8     magic          Magic number (0xA5C11C4A1 = "ASCIICHAT" in hex) - cmake test
+ * 0       8     magic          Magic number (0xA5C11C4A1 = "ASCIICHAT" in hex) - NOW IT WORKS!
  * 8       2     type           Packet type (PACKET_TYPE_ACIP_* enum, 6000-6199)
  * 10      4     length         Payload length in bytes (0-2MB)
  * 14      4     crc32          CRC32 checksum of payload

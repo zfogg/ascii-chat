@@ -92,15 +92,14 @@
 <p class="Pp"></p>
 <pre>Offset  Size  Field          Description
 ------  ----  -----          -----------
-0       4     magic          Magic number (0x4C494341 = &quot;ACIL&quot; in little-endian)
-4       2     type           Packet type (PACKET_TYPE_ACIP_* enum, 100-199)
-6       2     reserved       Reserved (0)
-8       4     length         Payload length in bytes (0-2MB)
-12      4     crc32          CRC32 checksum of payload
-16      4     client_id      Client identifier (assigned by server)
-20      N     payload        Payload data (N = length)
+0       8     magic          Magic number (0xA5C11C4A1 = &quot;ASCIICHAT&quot; in hex) - NOW IT WORKS!
+8       2     type           Packet type (PACKET_TYPE_ACIP_* enum, 6000-6199)
+10      4     length         Payload length in bytes (0-2MB)
+14      4     crc32          CRC32 checksum of payload
+18      4     client_id      Client identifier (assigned by server)
+22      N     payload        Payload data (N = length)
 ------
-Total: 20 + payload_length bytes
+Total: 22 + payload_length bytes
 </pre>
 </section>
 <section class="Ss">
@@ -120,29 +119,32 @@ Total: 20 + payload_length bytes
   RESPONSIBILITIES: </a></h1>
 <dl class="Bl-tag">
   <dt>1.</dt>
-  <dd>Session management packet type definitions (100-109)</dd>
+  <dd>Session management packet type definitions (6000-6008)</dd>
   <dt>2.</dt>
-  <dd>WebRTC signaling packet type definitions (110-119)</dd>
+  <dd>WebRTC signaling packet type definitions (6009-6010)</dd>
   <dt>3.</dt>
-  <dd>String reservation packet type definitions (120-129)</dd>
+  <dd>String reservation packet type definitions (6020-6023)</dd>
   <dt>4.</dt>
-  <dd>Discovery service control packet type definitions (150-198)</dd>
+  <dd>Ring consensus and host negotiation (6050-6068)</dd>
   <dt>5.</dt>
-  <dd>Error handling packet type definitions</dd>
+  <dd>Bandwidth testing (6070-6075)</dd>
+  <dt>6.</dt>
+  <dd>Discovery service control and error handling (6190, 6199)</dd>
 </dl>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="PACKET_RANGE_ALLOCATION:"><a class="permalink" href="#PACKET_RANGE_ALLOCATION:">PACKET
   RANGE ALLOCATION: </a></h1>
-<p class="Pp">ACIP packets use range 100-199 to avoid conflicts with ascii-chat
-    protocol (1-99).</p>
+<p class="Pp">ACIP packets use range 6000-6199 for discovery protocol
+    operations.</p>
 <p class="Pp"></p>
 <ul class="Bl-bullet">
-  <li>100-109: Session management (CREATE, JOIN, LEAVE, etc.)</li>
-  <li>110-119: WebRTC signaling (SDP offers/answers, ICE candidates)</li>
-  <li>120-129: String reservation (reserve, renew, release)</li>
-  <li>150-198: Control and utilities (PING, discovery)</li>
-  <li>199: Generic error response</li>
+  <li>6000-6008: Session management (CREATE, JOIN, LEAVE, etc.)</li>
+  <li>6009-6010: WebRTC signaling (SDP offers/answers, ICE candidates)</li>
+  <li>6020-6023: String reservation (reserve, renew, release)</li>
+  <li>6050-6068: Ring consensus and host negotiation</li>
+  <li>6070-6075: Bandwidth testing and broadcast acknowledgment</li>
+  <li>6190, 6199: Discovery ping and error response</li>
 </ul>
 </section>
 <section class="Sh">
@@ -160,7 +162,7 @@ Total: 20 + payload_length bytes
 </ul>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">ACIP packets are defined in the same <b>packet_type_t</b>
-  enum as ascii-chat packets, but use a separate numeric range (100-199).
+  enum as ascii-chat packets, but use a separate numeric range (6000-6199).
 <p class="Pp"></p>
 <p class="Pp">All ACIP packets use the same packet header structure as
     ascii-chat (magic, type, length, CRC32, client_id).</p>
