@@ -3,7 +3,7 @@
  * @brief ACIP Discovery Server (ACDS) packet handlers with O(1) dispatch
  *
  * Implements O(1) array-based packet dispatching for ascii-chat Discovery Server.
- * Handles ACIP packets 100-150: session management, WebRTC signaling, discovery.
+ * Handles ACIP packets 6000-6199: session management, WebRTC signaling, discovery, host election.
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date January 2026

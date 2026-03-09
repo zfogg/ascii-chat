@@ -102,7 +102,7 @@ extern "C" {
  * @return true if valid server-side ACIP packet, false otherwise
  *
  * Checks if packet type is a valid ACIP packet that a server
- * should accept from clients (range 100-199).
+ * should accept from clients (range 6000-6199).
  *
  * @ingroup acip_server
  */

@@ -25,7 +25,7 @@
  * Offset  Size  Field          Description
  * ------  ----  -----          -----------
  * 0       8     magic          Magic number (0xA5C11C4A1 = "ASCIICHAT" in hex)
- * 8       2     type           Packet type (PACKET_TYPE_ACIP_* enum, 100-199)
+ * 8       2     type           Packet type (PACKET_TYPE_ACIP_* enum, 6000-6199)
  * 10      4     length         Payload length in bytes (0-2MB)
  * 14      4     crc32          CRC32 checksum of payload
  * 18      4     client_id      Client identifier (assigned by server)
@@ -50,13 +50,14 @@
  *
  * PACKET RANGE ALLOCATION:
  * ========================
- * ACIP packets use range 100-199 to avoid conflicts with ascii-chat protocol (1-99).
+ * ACIP packets use range 6000-6199 for discovery protocol operations.
  *
- * - 100-109: Session management (CREATE, JOIN, LEAVE, etc.)
- * - 110-119: WebRTC signaling (SDP offers/answers, ICE candidates)
- * - 120-129: String reservation (reserve, renew, release)
- * - 150-198: Control and utilities (PING, discovery)
- * - 199: Generic error response
+ * - 6000-6008: Session management (CREATE, JOIN, LEAVE, etc.)
+ * - 6009-6010: WebRTC signaling (SDP offers/answers, ICE candidates)
+ * - 6020-6023: String reservation (reserve, renew, release)
+ * - 6050-6068: Ring consensus and host negotiation
+ * - 6070-6075: Bandwidth testing and broadcast acknowledgment
+ * - 6190, 6199: Discovery ping and error response
  *
  * INTEGRATION WITH OTHER MODULES:
  * ===============================
@@ -66,7 +67,7 @@
  * - lib/network/acip/: Protocol implementation files (send.c, handlers.c, etc.)
  *
  * @note ACIP packets are defined in the same packet_type_t enum as ascii-chat
- *       packets, but use a separate numeric range (100-199).
+ *       packets, but use a separate numeric range (6000-6199).
  *
  * @note All ACIP packets use the same packet header structure as ascii-chat
  *       (magic, type, length, CRC32, client_id).
@@ -221,7 +222,7 @@ extern "C" {
 /**
  * @brief Check if packet type is an ACIP packet
  * @param type Packet type to check
- * @return true if packet is ACIP protocol (range 100-199), false otherwise
+ * @return true if packet is ACIP protocol (range 6000-6199), false otherwise
  *
  * Use this to distinguish ACIP packets from ascii-chat packets.
  *
