@@ -457,6 +457,17 @@ export function usePageNavigation(
     };
   }, [loadPageContent]);
 
+  // Helper function to scroll to hash target
+  const scrollToHash = (hash) => {
+    if (!hash || !contentViewerRef.current) return;
+    const container = contentViewerRef.current;
+    const elementId = hash.substring(1); // Remove the # prefix
+    const targetElement = container.querySelector(`[id="${elementId}"]`);
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: "auto", block: "start" });
+    }
+  };
+
   // Scroll to hash fragment when page content changes
   useEffect(() => {
     if (!selectedPageContent || !contentViewerRef.current) return;
@@ -474,18 +485,29 @@ export function usePageNavigation(
 
     // Wait for content to be fully rendered before scrolling
     // React finishes rendering and DOM is stable after ~500ms
-    const container = contentViewerRef.current;
-    const elementId = hash.substring(1); // Remove the # prefix
-
     const timeoutId = setTimeout(() => {
-      const targetElement = container.querySelector(`[id="${elementId}"]`);
-      if (targetElement) {
-        targetElement.scrollIntoView({ behavior: "auto", block: "start" });
-      }
+      scrollToHash(hash);
     }, 500);
 
     return () => clearTimeout(timeoutId);
   }, [selectedPageContent]);
+
+  // Scroll to hash when user clicks a link on the same page (hashchange event)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      console.log("[usePageNavigation] Hash changed via link click", { hash });
+      if (hash) {
+        // Small delay to ensure DOM is ready
+        setTimeout(() => {
+          scrollToHash(hash);
+        }, 100);
+      }
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
 
   // Browser back/forward (popstate)
   useEffect(() => {
