@@ -6,7 +6,7 @@ import Home from "./pages/Home";
 import Crypto from "./pages/docs/Crypto";
 import Man1 from "./pages/Man1";
 import Man5 from "./pages/Man5";
-import Man3 from "./pages/Man3";
+import Man3 from "./pages/man3";
 import NotFound from "./pages/NotFound";
 import DocsHub from "./pages/docs/DocsHub";
 import Configuration from "./pages/docs/Configuration";

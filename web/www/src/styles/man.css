@@ -263,6 +263,11 @@ section {
   display: contents;
 }
 
+.man-functions-table td {
+  padding: 0.5rem;
+  min-width: 0;
+}
+
 /* Desktop: 3 columns (name | signature | description) */
 @media (min-width: 1024px) {
   .man-functions-table {
@@ -452,5 +457,9 @@ dt {
 }
 
 #Data_Fields + br {
+  display: none;
+}
+
+br + br {
   display: none;
 }
