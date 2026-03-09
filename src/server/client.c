@@ -821,13 +821,16 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   log_info("[TCP_DBG] AFTER_REGISTER_CLIENT_ATOMICS");
 
   // Register audio and video buffer atomic fields for debug tracking
-  log_info("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_START: client=%p", (void *)client);
-  if (client->incoming_audio_buffer) {
-    audio_ring_buffer_register_atomics(client->incoming_audio_buffer, new_client_id);
-    log_info("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_DONE");
-  } else {
-    log_info("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_SKIPPED: incoming_audio_buffer is NULL");
-  }
+  // NOTE: Disabled - this causes reader-writer deadlock with debug_sync thread
+  // debug_sync holds a READ lock on named_registry_lock while printing state,
+  // and this tries to acquire WRITE lock -> deadlock. The debug tracking is optional.
+  // log_info("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_START: client=%p", (void *)client);
+  // if (client->incoming_audio_buffer) {
+  //   audio_ring_buffer_register_atomics(client->incoming_audio_buffer, new_client_id);
+  //   log_info("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_DONE");
+  // } else {
+  //   log_info("[TCP_DBG] AUDIO_BUFFER_REGISTER_ATOMICS_SKIPPED: incoming_audio_buffer is NULL");
+  // }
 
   // Register with audio mixer OUTSIDE lock
   // CRITICAL: Do this BEFORE crypto handshake to avoid deadlock with mixer thread
@@ -1000,8 +1003,11 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
 
   // Broadcast server state to ALL clients AFTER the new client is fully set up
   // This notifies all clients (including the new one) about the updated grid
+  log_info("[TCP_DBG] BROADCAST_SERVER_STATE_START: About to broadcast to all clients");
   broadcast_server_state_to_all_clients();
+  log_info("[TCP_DBG] BROADCAST_SERVER_STATE_DONE");
 
+  log_info("[TCP_DBG] ADD_CLIENT_RETURNING: client_id=%s, client=%p", client->client_id, (void *)client);
   return client;
 
 error_cleanup:

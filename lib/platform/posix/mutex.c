@@ -22,12 +22,16 @@ int mutex_init(mutex_t *mutex, const char *name) {
   int err = pthread_mutex_init(&mutex->impl, NULL);
   if (err == 0) {
     log_info("[MUTEX_INIT_DBG] pthread_mutex_init=%d, name=%s", err, name);
-    log_info("[MUTEX_INIT_DBG] About to call NAMED_REGISTER_MUTEX with name=%s at %p", name, (void *)mutex);
-    fflush(stdout);
-    fflush(stderr);
+    // DISABLED: NAMED_REGISTER_MUTEX causes reader-writer deadlock with debug_sync thread
+    // debug_sync holds READ lock on named_registry.entries_lock while printing,
+    // and NAMED_REGISTER_MUTEX tries to acquire WRITE lock -> deadlock
+    // log_info("[MUTEX_INIT_DBG] About to call NAMED_REGISTER_MUTEX with name=%s at %p", name, (void *)mutex);
+    // fflush(stdout);
+    // fflush(stderr);
     // Add a timeout mechanism to detect deadlocks
-    mutex->name = NAMED_REGISTER_MUTEX(mutex, name, NULL);
-    log_info("[MUTEX_INIT_DBG] NAMED_REGISTER_MUTEX returned: %s", mutex->name);
+    // mutex->name = NAMED_REGISTER_MUTEX(mutex, name, NULL);
+    mutex->name = name;  // Just store the name directly without registration
+    // log_info("[MUTEX_INIT_DBG] NAMED_REGISTER_MUTEX returned: %s", mutex->name);
 #ifndef NDEBUG
     mutex->last_lock_time_ns = 0;
     mutex->last_unlock_time_ns = 0;
