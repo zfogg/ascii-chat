@@ -172,8 +172,8 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
     log_debug("ADVANCE_X: value=%ld (26.6pt) → cell_w=%d (advance + 1 for stretch), cols=%d → width_px=%d",
               advance_x_26_6, r->cell_w, r->cols, r->cols * r->cell_w);
   } else {
-    log_debug("ADVANCE_X: value=%ld (26.6pt) → cell_w=%d (preserve aspect ratio), cols=%d → width_px=%d", adv
-              nce_x_26_6, r->cell_w, r->cols, r->cols * r->cell_w);
+    log_debug("ADVANCE_X: value=%ld (26.6pt) → cell_w=%d (preserve aspect ratio), cols=%d → width_px=%d",
+              advance_x_26_6, r->cell_w, r->cols, r->cols * r->cell_w);
   }
 
   // For both bitmap and scalable fonts, use the actual glyph bitmap height
