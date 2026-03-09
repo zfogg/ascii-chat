@@ -116,19 +116,19 @@
 #endif
 
 /**
- * @brief Receive timeout in seconds (30 seconds)
+ * @brief Receive timeout in seconds (1 second)
  *
- * Maximum time to wait for incoming data. Increased to 30 seconds to allow
- * for network latency and frame processing delays without prematurely
- * disconnecting. If no data is received within this time, receive operation
- * returns allowing the caller to check g_should_exit.
+ * Reduced to 1 second to allow snapshot mode to check elapsed time frequently
+ * and exit cleanly when snapshot_delay expires. With the longer 30-second timeout,
+ * clients in snapshot mode would block waiting for data and miss their snapshot
+ * window. The 1-second timeout balances responsiveness with network latency tolerance.
  *
  * @ingroup network
  */
 #ifdef NDEBUG
-#define RECV_TIMEOUT 30
+#define RECV_TIMEOUT 1
 #else
-#define RECV_TIMEOUT 30
+#define RECV_TIMEOUT 1
 #endif
 
 /**
