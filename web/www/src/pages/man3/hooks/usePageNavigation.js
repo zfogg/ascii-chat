@@ -462,72 +462,29 @@ export function usePageNavigation(
     if (!selectedPageContent || !contentViewerRef.current) return;
 
     const hash = window.location.hash;
-    if (!hash) return;
+    console.log("[usePageNavigation] Hash scroll effect triggered", {
+      hash,
+      hasContent: !!selectedPageContent,
+      hasContainer: !!contentViewerRef.current,
+    });
+    if (!hash) {
+      console.log("[usePageNavigation] No hash, skipping scroll");
+      return;
+    }
 
-    // Try to find and scroll to hash target (line numbers or element IDs)
-    const scrollToHash = () => {
-      const container = contentViewerRef.current;
+    // Wait for content to be fully rendered before scrolling
+    // React finishes rendering and DOM is stable after ~500ms
+    const container = contentViewerRef.current;
+    const elementId = hash.substring(1); // Remove the # prefix
 
-      // Check if hash is a line number pattern (#l<digits> or #l<digits>-<digits>)
-      const lineMatch = hash.match(/#l(\d+)/);
-      if (lineMatch) {
-        // Handle line number scrolling
-        const targetLineNum = parseInt(lineMatch[1], 10);
-
-        // First try to find by exact ID match (for inline code blocks)
-        const blockId = `code-block-${targetLineNum}`;
-        let targetBlock = container.querySelector(`div[id="${blockId}"]`);
-        if (targetBlock) {
-          targetBlock.scrollIntoView({ behavior: "smooth", block: "center" });
-          return true;
-        }
-
-        // Otherwise, look for a code block that contains this line number
-        // by checking data attributes (first-line and last-line)
-        const allCodeBlocks = container.querySelectorAll(
-          ".code-with-highlight",
-        );
-        for (const block of allCodeBlocks) {
-          const firstLine = parseInt(block.getAttribute("data-first-line"), 10);
-          const lastLine = parseInt(block.getAttribute("data-last-line"), 10);
-
-          if (
-            !isNaN(firstLine) &&
-            !isNaN(lastLine) &&
-            targetLineNum >= firstLine &&
-            targetLineNum <= lastLine
-          ) {
-            // Found the code block that contains the target line
-            block.scrollIntoView({ behavior: "smooth", block: "center" });
-            return true;
-          }
-        }
-
-        // Final fallback: scroll to first code block if nothing else matched
-        const firstCodeBlock = container.querySelector(
-          ".code-with-highlight, pre",
-        );
-        if (firstCodeBlock) {
-          firstCodeBlock.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-          });
-          return true;
-        }
-      } else {
-        // Handle non-line-number hashes (section IDs, function IDs, etc.)
-        const elementId = hash.substring(1); // Remove the # prefix
-        const targetElement = container.querySelector(`[id="${elementId}"]`);
-        if (targetElement) {
-          targetElement.scrollIntoView({ behavior: "smooth", block: "start" });
-          return true;
-        }
+    const timeoutId = setTimeout(() => {
+      const targetElement = container.querySelector(`[id="${elementId}"]`);
+      if (targetElement) {
+        targetElement.scrollIntoView({ behavior: "auto", block: "start" });
       }
+    }, 500);
 
-      return false;
-    };
-
-    setTimeout(() => scrollToHash(), 50);
+    return () => clearTimeout(timeoutId);
   }, [selectedPageContent]);
 
   // Browser back/forward (popstate)
