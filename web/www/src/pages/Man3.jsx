@@ -2275,7 +2275,7 @@ export default function Man3() {
                 ? (
                   <div
                     ref={contentViewerRef}
-                    className="h-full bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto"
+                    className="h-full w-full bg-gray-899/30 border border-gray-800 rounded-lg p-6 overflow-y-auto"
                   >
                     <div className="mb-4 pb-4 border-b border-gray-800">
                       <h2 className="text-2xl font-bold text-purple-400">
@@ -2297,10 +2297,10 @@ export default function Man3() {
                 : (
                   <div className="h-full w-full bg-gray-900/30 border border-gray-800 rounded-lg p-12 flex items-center justify-center text-center">
                     <div>
-                      <p className="text-gray-400 text-lg mb-2">
+                      <p className="text-gray-400 text-4xl mb-2">
                         Select a page to view documentation
                       </p>
-                      <p className="text-gray-500 text-sm">
+                      <p className="text-gray-500 text-2xl">
                         {searchResults.length > 0
                           ? "Click any page name in the list"
                           : "Search to find API documentation"}
