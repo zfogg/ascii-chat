@@ -816,9 +816,11 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
 
   // Register all atomic fields for debug tracking OUTSIDE lock
   // (register_client_info_atomics calls NAMED_REGISTER_MUTEX which requires initialized mutexes)
-  log_info("[TCP_DBG] BEFORE_REGISTER_CLIENT_ATOMICS");
-  register_client_info_atomics(client);
-  log_info("[TCP_DBG] AFTER_REGISTER_CLIENT_ATOMICS");
+  // DISABLED: This causes reader-writer deadlock with debug_sync thread
+  // debug_sync holds READ lock while iterating registry, register_client_info_atomics tries WRITE lock
+  // log_info("[TCP_DBG] BEFORE_REGISTER_CLIENT_ATOMICS");
+  // register_client_info_atomics(client);
+  // log_info("[TCP_DBG] AFTER_REGISTER_CLIENT_ATOMICS");
 
   // Register audio and video buffer atomic fields for debug tracking
   // NOTE: Disabled - this causes reader-writer deadlock with debug_sync thread
