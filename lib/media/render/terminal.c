@@ -75,8 +75,8 @@ static void blit_glyph(terminal_renderer_t *r, FT_Bitmap *bm, int px, int py, ui
   // DEBUG: Log first blit to see colors being used
   static int blit_count = 0;
   if (blit_count++ < 10) {
-    log_info("BLIT_GLYPH[%d]: px=%d py=%d bitmap(%ux%u) FG=RGB(%u,%u,%u) BG=RGB(%u,%u,%u)",
-             blit_count, px, py, bm->width, bm->rows, fr, fg, fb, br, bg, bb);
+    log_debug("BLIT_GLYPH[%d]: px=%d py=%d bitmap(%ux%u) FG=RGB(%u,%u,%u) BG=RGB(%u,%u,%u)", blit_count, px, py,
+              bm->width, bm->rows, fr, fg, fb, br, bg, bb);
   }
 
   for (unsigned row = 0; row < bm->rows; row++) {
@@ -169,11 +169,11 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   bool stretch_mode = GET_OPTION(stretch);
   if (stretch_mode) {
     r->cell_w++;
-    log_info("ADVANCE_X: value=%ld (26.6pt) → cell_w=%d (advance + 1 for stretch), cols=%d → width_px=%d",
-             advance_x_26_6, r->cell_w, r->cols, r->cols * r->cell_w);
+    log_debug("ADVANCE_X: value=%ld (26.6pt) → cell_w=%d (advance + 1 for stretch), cols=%d → width_px=%d",
+              advance_x_26_6, r->cell_w, r->cols, r->cols * r->cell_w);
   } else {
-    log_info("ADVANCE_X: value=%ld (26.6pt) → cell_w=%d (preserve aspect ratio), cols=%d → width_px=%d", advance_x_26_6,
-             r->cell_w, r->cols, r->cols * r->cell_w);
+    log_debug("ADVANCE_X: value=%ld (26.6pt) → cell_w=%d (preserve aspect ratio), cols=%d → width_px=%d", adv
+              nce_x_26_6, r->cell_w, r->cols, r->cols * r->cell_w);
   }
 
   // For both bitmap and scalable fonts, use the actual glyph bitmap height
@@ -188,7 +188,7 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   if (!stretch_mode) {
     int corrected_h = r->cell_w * 2;
     if (corrected_h != r->cell_h && r->cell_h > 0) {
-      log_info("ASPECT_RATIO: Correcting cell_h from %d to %d (2x width=%d)", r->cell_h, corrected_h, r->cell_w);
+      log_debug("ASPECT_RATIO: Correcting cell_h from %d to %d (2x width=%d)", r->cell_h, corrected_h, r->cell_w);
       r->cell_h = corrected_h;
     }
   }
@@ -212,8 +212,8 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   // Each pixel is 3 bytes (RGB), so we calculate base pitch and round up
   int base_pitch = r->width_px * 3;
   r->pitch = (base_pitch + 3) & ~3; // Round up to next multiple of 4
-  log_info("PITCH_CALC: width_px=%d, base_pitch=%d, final_pitch=%d (padded by %d bytes)", r->width_px, base_pitch,
-           r->pitch, r->pitch - base_pitch);
+  log_debug("PITCH_CALC: width_px=%d, base_pitch=%d, final_pitch=%d (padded by %d bytes)", r->width_px, base_pitch,
+            r->pitch, r->pitch - base_pitch);
   log_debug("DEBUG: Allocating framebuffer: %d bytes total (%d pitch * %d height)",
             (int)((size_t)r->pitch * r->height_px), r->pitch, r->height_px);
   r->framebuffer = SAFE_MALLOC((size_t)r->pitch * r->height_px, uint8_t *);
@@ -232,7 +232,7 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   // Verify the size was set correctly after reset
   int vt_rows, vt_cols;
   vterm_get_size(r->vt, &vt_rows, &vt_cols);
-  log_info("DEBUG: vterm_get_size returned rows=%d cols=%d (expected %d,%d)", vt_rows, vt_cols, r->rows, r->cols);
+  log_debug("DEBUG: vterm_get_size returned rows=%d cols=%d (expected %d,%d)", vt_rows, vt_cols, r->rows, r->cols);
 
   // CRITICAL: Set size AGAIN after reset, as reset may have affected it
   vterm_set_size(r->vt, r->rows, r->cols);
@@ -250,8 +250,8 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
   // DEBUG: Log cell dimensions and font info
   static int feed_count = 0;
   if (feed_count++ < 2) {
-    log_info("TERM_RENDERER_FEED[%d]: Grid=%dx%d, Cell=(%d,%d)px, Output=(%dx%d)px, Baseline=%d",
-             feed_count, r->cols, r->rows, r->cell_w, r->cell_h, r->width_px, r->height_px, r->baseline);
+    log_debug("TERM_RENDERER_FEED[%d]: Grid=%dx%d, Cell=(%d,%d)px, Output=(%dx%d)px, Baseline=%d", feed_count, r->cols,
+              r->rows, r->cell_w, r->cell_h, r->width_px, r->height_px, r->baseline);
   }
 
   static const char home[] = "\033[H";
@@ -346,8 +346,8 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
 
       // DEBUG: Log color extraction for sample cells
       if ((row == 0 && col % 50 == 0) || (row == 5 && col % 50 == 0)) {
-        log_info("COLORS_EXTRACTED: row=%d col=%d char=0x%02x FG=RGB(%u,%u,%u) BG=RGB(%u,%u,%u)",
-                 row, col, cell.chars[0], fr, fg, fb, br, bg, bb);
+        log_debug("COLORS_EXTRACTED: row=%d col=%d char=0x%02x FG=RGB(%u,%u,%u) BG=RGB(%u,%u,%u)", row, col,
+                  cell.chars[0], fr, fg, fb, br, bg, bb);
       }
 
       int px = col * r->cell_w, py = row * r->cell_h;
@@ -429,8 +429,6 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
     }
   }
 
-  log_info("DEBUG: RENDER_COMPLETE: cells_with_chars=%d cells_rendered=%d (grid capacity=%d)", cells_with_chars,
-           cells_rendered, r->rows * r->cols);
   log_debug("DEBUG: render loop finished - processed %d cells total", r->rows * r->cols);
 
   // Sample pixels from framebuffer to verify content

@@ -1,4 +1,4 @@
-import { Heading, Button } from "@ascii-chat/shared/components";
+import { Button, Heading } from "@ascii-chat/shared/components";
 import { WebClientHead } from "../components/WebClientHead";
 
 export function HomePage() {
@@ -27,7 +27,8 @@ export function HomePage() {
               Mirror Mode
             </Button>
             <p className="text-sm text-terminal-cyan flex-1 text-left">
-              Use your webcam, files, or URLs without network activity
+              Chat with yourself! Use your webcam, files, or URLs without
+              network activity
             </p>
           </div>
           <div className="flex items-center gap-4 w-full justify-center">
@@ -49,7 +50,7 @@ export function HomePage() {
               Discovery Mode
             </Button>
             <p className="text-sm text-terminal-magenta flex-1 text-left">
-              Get a shareable link for someone to see your ASCII art face.
+              Get a shareable link for someone to see your ASCII art face
             </p>
           </div>
         </div>
