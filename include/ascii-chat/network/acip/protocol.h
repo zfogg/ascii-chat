@@ -24,7 +24,7 @@
  * ```
  * Offset  Size  Field          Description
  * ------  ----  -----          -----------
- * 0       4     magic          Magic number (0x4C494341 = "ACIL" in little-endian)
+ * 0       4     magic          Magic number (0x50494341 = "ACIP" in little-endian)
  * 4       2     type           Packet type (PACKET_TYPE_ACIP_* enum, 100-199)
  * 6       2     reserved       Reserved (0)
  * 8       4     length         Payload length in bytes (0-2MB)
