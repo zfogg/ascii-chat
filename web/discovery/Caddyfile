@@ -1,25 +1,25 @@
 :80 {
-  root * /app/discovery/dist
+	root * /app/discovery/dist
 
-  # Security headers from vercel.json
-  header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-  header X-Content-Type-Options "nosniff"
-  header X-Frame-Options "SAMEORIGIN"
-  header X-XSS-Protection "1; mode=block"
-  header Referrer-Policy "strict-origin-when-cross-origin"
-  header Permissions-Policy "camera=(), microphone=(), geolocation=()"
+	# Security headers from vercel.json
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+	header X-Content-Type-Options "nosniff"
+	header X-Frame-Options "SAMEORIGIN"
+	header X-XSS-Protection "1; mode=block"
+	header Referrer-Policy "strict-origin-when-cross-origin"
+	header Permissions-Policy "camera=(), microphone=(), geolocation=()"
 
-  # Rewrites: / and /404 rewrite to index.html
-  @sparoutes {
-    path / /404
-  }
-  rewrite @sparoutes /index.html
+	# Rewrites: / and /404 rewrite to index.html
+	@sparoutes {
+		path / /404
+	}
+	rewrite @sparoutes /index.html
 
-  file_server
+	file_server
 
-  # Handle 404 errors for non-existent routes
-  handle_errors 404 {
-    rewrite * /404.html
-    file_server
-  }
+	# Handle 404 errors for non-existent routes
+	handle_errors 404 {
+		rewrite * /404.html
+		file_server
+	}
 }
