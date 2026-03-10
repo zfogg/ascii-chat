@@ -47,18 +47,8 @@ EXPOSE 80 3001
 COPY --from=builder /app/web/www/Caddyfile /etc/caddy/Caddyfile
 
 RUN echo '#!/bin/sh' > /start.sh && \
-    echo 'set -e' >> /start.sh && \
-    echo 'cd /app/web/www' >> /start.sh && \
-    echo 'bun run api.js >> api.log 2>&1 &' >> /start.sh && \
-    echo 'API_PID=$!' >> /start.sh && \
-    echo 'sleep 1' >> /start.sh && \
-    echo 'if ! kill -0 $API_PID 2>/dev/null; then' >> /start.sh && \
-    echo '  echo "API process failed to start"' >> /start.sh && \
-    echo '  cat api.log' >> /start.sh && \
-    echo '  exit 1' >> /start.sh && \
-    echo 'fi' >> /start.sh && \
-    echo 'trap "kill $API_PID" EXIT' >> /start.sh && \
-    echo 'exec caddy run --config /etc/caddy/Caddyfile' >> /start.sh && \
+    echo 'cd /app/web/www && bun run api.js &' >> /start.sh && \
+    echo 'caddy run --config /etc/caddy/Caddyfile' >> /start.sh && \
     chmod +x /start.sh
 
 # Health check for API server
