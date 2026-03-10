@@ -19,6 +19,8 @@ RUN cd web && bun install --no-cache
 # Build www
 FROM base AS builder
 
+ARG VITE_DISCOVERY_API_BASE
+
 RUN cd www && bun run build && test -d dist || (echo "ERROR: dist directory not created during build" && ls -la && exit 1)
 
 # Production stage
