@@ -32,7 +32,7 @@ FROM node:22-slim
 ARG NODE_ENV=development
 ENV NODE_ENV=${NODE_ENV}
 
-RUN apt-get update && apt-get install -y --no-install-recommends git && npm install -g bun@1.3.10 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends git wget && npm install -g bun@1.3.10 && rm -rf /var/lib/apt/lists/*
 COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
 
 WORKDIR /app/web
