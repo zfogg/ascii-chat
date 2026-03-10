@@ -88,72 +88,61 @@ static const char **zsh_collect_groups(const option_descriptor_t *opts, size_t c
 /**
  * Write value completion case blocks for enum, boolean, and device index options
  *
- * Generates case arms that intercept when completing after an option:
- *   --color-mode) _values 'color mode' auto none 16 256 truecolor; return ;;
- *   --webcam-index) _ascii_chat_webcam_indices; return ;;
- *   --audio) _values 'value' true false; return ;;
+ * Generates _arguments specifications with completion actions:
+ *   '--color-mode=:color mode:_values color-mode auto none 16 256 truecolor'
+ *   '--webcam-index=:device index:_ascii_chat_webcam_indices'
  */
 static void zsh_write_value_cases(FILE *output, const option_descriptor_t *opts, size_t count) {
   if (!opts || count == 0)
     return;
 
-  // Case statement for option name matching
-  fprintf(output, "  case \"$prev\" in\n");
+  // Use _arguments to establish proper completion context and specify value completions
+  fprintf(output, "  local -a value_completions=(\n");
 
   for (size_t i = 0; i < count; i++) {
     // Skip action options (they take no value)
     if (opts[i].type == OPTION_TYPE_ACTION)
       continue;
 
+    fprintf(output, "    '--%-30s", opts[i].long_name);
+
     // Device index options: call helper functions
     if (strcmp(opts[i].long_name, "webcam-index") == 0) {
-      fprintf(output, "    --%-30s) _ascii_chat_webcam_indices; return ;;\n", opts[i].long_name);
+      fprintf(output, "=:device index:_ascii_chat_webcam_indices'\n");
     } else if (strcmp(opts[i].long_name, "microphone-index") == 0) {
-      fprintf(output, "    --%-30s) _ascii_chat_microphone_indices; return ;;\n", opts[i].long_name);
+      fprintf(output, "=:device index:_ascii_chat_microphone_indices'\n");
     } else if (strcmp(opts[i].long_name, "speakers-index") == 0) {
-      fprintf(output, "    --%-30s) _ascii_chat_speakers_indices; return ;;\n", opts[i].long_name);
+      fprintf(output, "=:device index:_ascii_chat_speakers_indices'\n");
     }
-    // Enum options: emit value completion
+    // Enum options: emit value completion with descriptions
     else if (opts[i].metadata.input_type == OPTION_INPUT_ENUM && opts[i].metadata.enum_values) {
-      fprintf(output, "    --%-30s) _values '%s'", opts[i].long_name, opts[i].long_name);
+      fprintf(output, "=:%s:(", opts[i].long_name);
 
       for (size_t j = 0; opts[i].metadata.enum_values[j] != NULL; j++) {
-        fprintf(output, " %s", opts[i].metadata.enum_values[j]);
+        // Include description if available
+        if (opts[i].metadata.enum_descriptions && opts[i].metadata.enum_descriptions[j]) {
+          fprintf(output, "\"%s[", opts[i].metadata.enum_values[j]);
+          zsh_escape_desc(output, opts[i].metadata.enum_descriptions[j]);
+          fprintf(output, "]\" ");
+        } else {
+          fprintf(output, "%s ", opts[i].metadata.enum_values[j]);
+        }
       }
-      fprintf(output, "; return ;;\n");
+      fprintf(output, ")'\n");
     }
-    // Boolean options: emit true/false completion
+    // Boolean options: emit true/false completion with descriptions
     else if (opts[i].type == OPTION_TYPE_BOOL) {
-      fprintf(output, "    --%-30s) _values 'value' true false; return ;;\n", opts[i].long_name);
+      fprintf(output, "=:(true[enable] false[disable])'\n");
+    }
+    // Other options without specific values
+    else {
+      fprintf(output, "=:value:'\n");
     }
   }
 
-  fprintf(output, "  esac\n\n");
+  fprintf(output, "  )\n\n");
 
-  // Also handle --option=VALUE form (device indices don't support this form)
-  fprintf(output, "  case \"${words[CURRENT]}\" in\n");
-
-  for (size_t i = 0; i < count; i++) {
-    if (opts[i].type == OPTION_TYPE_ACTION)
-      continue;
-
-    // Skip device index options (they don't support =VALUE form)
-    if (strcmp(opts[i].long_name, "webcam-index") == 0 || strcmp(opts[i].long_name, "microphone-index") == 0 ||
-        strcmp(opts[i].long_name, "speakers-index") == 0) {
-      continue;
-    }
-
-    if (opts[i].metadata.input_type == OPTION_INPUT_ENUM && opts[i].metadata.enum_values) {
-      fprintf(output, "    '--%-30s=*') _values '%s'", opts[i].long_name, opts[i].long_name);
-
-      for (size_t j = 0; opts[i].metadata.enum_values[j] != NULL; j++) {
-        fprintf(output, " %s", opts[i].metadata.enum_values[j]);
-      }
-      fprintf(output, "; return ;;\n");
-    }
-  }
-
-  fprintf(output, "  esac\n\n");
+  fprintf(output, "  _arguments -s -S \"${value_completions[@]}\"\n\n");
 }
 
 /**
