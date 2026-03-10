@@ -23,7 +23,7 @@ RUN apt-get update && \
       libminiupnpc-dev libprotobuf-c-dev \
       libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev \
       libabsl-dev libwebsockets-dev \
-      libvterm-dev libfreetype6-dev libfontconfig1-dev \
+      libvterm-dev libfreetype6-dev libfontconfig1-dev libpcre2-dev \
       yt-dlp perl make autoconf && \
     rm -rf /var/lib/apt/lists/*
 
