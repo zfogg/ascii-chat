@@ -20,6 +20,8 @@ RUN cd web && bun install --no-cache
 # Build www
 FROM base AS builder
 
+ENV VERCEL=1
+ENV VITE_DISCOVERY_API_BASE=${VITE_DISCOVERY_API_BASE:-http://localhost:5173}
 RUN cd web/www && bun run build && test -d dist || (echo "ERROR: dist directory not created during build" && ls -la && exit 1)
 
 # Production stage
@@ -29,23 +31,23 @@ FROM node:22-slim
 RUN apt-get update && apt-get install -y --no-install-recommends git && npm install -g bun@1.3.10 && rm -rf /var/lib/apt/lists/*
 COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
 
-WORKDIR /app
+WORKDIR /app/web
 
-COPY --from=builder /app/bun.lock ./bun.lock
-COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/web/node_modules ./node_modules
+COPY --from=builder /app/web/bun.lock ./bun.lock
+COPY --from=builder /app/web/package.json ./package.json
 COPY --from=builder /app/web/www ./www
 COPY --from=builder /app/web/web ./web
 COPY --from=builder /app/web/discovery ./discovery
 COPY --from=builder /app/web/packages ./packages
-COPY --from=builder /app/web/www/Caddyfile /etc/caddy/Caddyfile
-
-RUN bun install --production
 
 ENV API_PORT=3001
 EXPOSE 80 3001
 
+COPY --from=builder /app/web/www/Caddyfile /etc/caddy/Caddyfile
+
 RUN echo '#!/bin/sh' > /start.sh && \
-    echo 'cd /app/www && bun run api.js &' >> /start.sh && \
+    echo 'cd /app/web/www && bun run api.js &' >> /start.sh && \
     echo 'caddy run --config /etc/caddy/Caddyfile' >> /start.sh && \
     chmod +x /start.sh
 

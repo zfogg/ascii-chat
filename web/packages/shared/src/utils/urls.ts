@@ -30,7 +30,9 @@ const isDev = import.meta.env.DEV;
  */
 export const SITES = {
   MAIN: isDev ? "http://localhost:5173" : "https://ascii-chat.com",
-  DISCOVERY: isDev ? "http://localhost:5174" : "https://discovery.ascii-chat.com",
+  DISCOVERY: isDev
+    ? "http://localhost:5174"
+    : "https://discovery.ascii-chat.com",
   WEB: isDev ? "http://localhost:3000" : "https://web.ascii-chat.com",
 } as const;
 
@@ -43,11 +45,11 @@ export const API_BASE = isDev ? "http://localhost:3001" : "";
 
 /**
  * Discovery service API base URL (for fetching session strings)
- * In dev: localhost:3001 (same as main API)
+ * In dev: localhost:5173 (www site's API, accessible across all sites)
  * In prod: set via VITE_DISCOVERY_API_BASE environment variable
  */
 export const DISCOVERY_API_BASE = isDev
-  ? "http://localhost:3001"
+  ? "http://localhost:5173"
   : import.meta.env["VITE_DISCOVERY_API_BASE"] || "";
 
 /**

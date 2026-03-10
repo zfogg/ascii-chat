@@ -13,7 +13,6 @@ polecats
 deploy
 
 # Node/package managers
-node_modules
 npm-debug.log
 bun.lockb
 pnpm-lock.yaml

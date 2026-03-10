@@ -1,18 +1,18 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
-  Footer,
-  PreCode,
-  Heading,
   Button,
-  Link,
-  GettingHelpSection,
-  UsageExamplesSection,
   CodeBlock,
+  Footer,
+  GettingHelpSection,
+  Heading,
+  Link,
+  PreCode,
+  UsageExamplesSection,
 } from "@ascii-chat/shared/components";
 import {
   fetchSessionStrings,
-  useScrollToHash,
   SITES,
+  useScrollToHash,
 } from "@ascii-chat/shared/utils";
 import { ACDSHead } from "../components/ACDSHead";
 
@@ -143,9 +143,9 @@ function Home() {
               ) - Serves public keys over HTTPS
             </li>
             <li>
-              <strong>ACDS server</strong> (
+              <strong>Official ACDS server instance</strong> (
               <code className="bg-gray-800 px-1 rounded">
-                discovery-service.ascii-chat.com:27225
+                tcp://discovery-service.ascii-chat.com:27225
               </code>
               ) - Handles session management (TCP)
             </li>
@@ -153,7 +153,7 @@ function Home() {
           <p className="leading-relaxed mb-4 text-base md:text-lg">
             The ascii-chat client is programmed to automatically connect to{" "}
             <code className="bg-gray-800 px-1 rounded">
-              discovery-service.ascii-chat.com:27225
+              tcp://discovery-service.ascii-chat.com:27225
             </code>{" "}
             and trust keys from this website.
           </p>
@@ -170,7 +170,7 @@ function Home() {
             These Ed25519 public keys are used to verify the identity of the
             official ACDS server at{" "}
             <code className="bg-gray-800 px-1 rounded">
-              {window.location.hostname}
+              tcp://discovery-service.ascii-chat.com:27225
             </code>
             . Download and verify these keys before connecting.
           </p>
@@ -269,7 +269,7 @@ function Home() {
             💻 Usage Examples
           </Heading>
           <UsageExamplesSection
-            sessionString={sessionStrings[0]}
+            sessionString={sessionStrings[1]}
             headingClassName="sr-only"
           />
         </section>
@@ -325,7 +325,8 @@ function Home() {
             </code>{" "}
             flag.
           </p>
-          <CodeBlock language="bash">{`# Start your own ACDS server with SSH and GPG keys
+          <CodeBlock language="bash">
+            {`# Start your own ACDS server with SSH and GPG keys
 ascii-chat discovery-service 0.0.0.0 :: --port 27225 \\
   --key ~/.ssh/id_ed25519 \\
   --key gpg:YOUR_GPG_KEY_ID
@@ -338,7 +339,8 @@ ascii-chat client session-name \\
   --discovery-service your-acds.example.com \\
   --discovery-service-key https://your-acds.example.com/key.pub \\
   --key ~/.ssh/id_ed25519 \\
-  --server-key gpg:SERVER_GPG_KEY_ID`}</CodeBlock>
+  --server-key gpg:SERVER_GPG_KEY_ID`}
+          </CodeBlock>
           <p className="leading-relaxed mb-4 text-base md:text-lg">
             <strong>Important:</strong> You should share the public key with
             ascii-chatters in a safe way. We recommend pre-sharing them safely

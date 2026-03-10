@@ -40,6 +40,9 @@ const logger = winston.createLogger({
   ],
 });
 
+// Trust proxy headers (set by Caddy reverse proxy)
+app.set("trust proxy", true);
+
 // HTTP request logging middleware
 app.use(
   morgan(NODE_ENV === "production" ? "combined" : "dev", {
