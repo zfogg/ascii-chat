@@ -106,7 +106,7 @@ section {
 }
 
 .man-page-content .Pp + .Bd-indent {
-  font-size: 1.2rem;
+  font-size: 0.9rem;
   margin-top: -1rem;
   margin-left: 2rem;
 }
