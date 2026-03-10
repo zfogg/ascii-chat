@@ -43,6 +43,7 @@ export default defineConfig({
     dedupe: ["react", "react-dom"],
   },
   server: {
+    port: 5173,
     // Development: http://localhost:5173
     // Production: https://ascii-chat.com
     // API proxy: /api requests route to localhost:3001 (via API_PORT env var)
