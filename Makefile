@@ -82,7 +82,7 @@ configure:
 
 build: $(BUILD_DIR)/CMakeCache.txt
 	@echo "Building ascii-chat..."
-	@env MAKEFLAGS= $(CMAKE) --build "$(BUILD_DIR)" --target ascii-chat
+	@env MAKEFLAGS= $(CMAKE) --build "$(BUILD_DIR)"
 
 $(BUILD_DIR)/CMakeCache.txt:
 	@$(MAKE) configure
