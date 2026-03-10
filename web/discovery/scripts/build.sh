@@ -4,6 +4,9 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+echo "Generating key files from env vars..."
+bash scripts/generate-keys.sh
+
 echo "Type checking with TypeScript..."
 bun run type-check
 
