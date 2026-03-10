@@ -70,12 +70,10 @@ COPY --from=builder /home/linuxbrew/.linuxbrew /home/linuxbrew/.linuxbrew
 # Create ACDS directory for keys
 RUN mkdir -p /acds && chmod 755 /acds
 
-# Copy SSH keys from build secrets
-RUN --mount=type=secret,id=key_pub,target=/run/secrets/key.pub \
-    --mount=type=secret,id=key_gpg,target=/run/secrets/key.gpg \
-    cp /run/secrets/key.pub /acds/key.pub 2>/dev/null || true && \
-    cp /run/secrets/key.gpg /acds/key.gpg 2>/dev/null || true && \
-    chmod 600 /acds/key.* 2>/dev/null || true
+# Copy SSH private key from build secrets
+RUN --mount=type=secret,id=KEY_SSH,target=/run/secrets/KEY_SSH \
+    cp /run/secrets/KEY_SSH /acds/key 2>/dev/null || true && \
+    chmod 600 /acds/key 2>/dev/null || true
 
 # Create non-root user for running ascii-chat
 RUN useradd -m -u 1001 -s /bin/bash ascii && \
@@ -97,7 +95,7 @@ EXPOSE 27224 27225
 
 # Set ascii-chat as the entrypoint
 # Users can override the command in their deployment platform (Coolify, etc)
-# Example: discovery-service 0.0.0.0 :: --key /acds/key.pub --key /acds/key.gpg
+# Example: discovery-service 0.0.0.0 :: --key /acds/key
 ENTRYPOINT ["/usr/local/bin/ascii-chat"]
 
 # Default command shows help
