@@ -23,17 +23,20 @@ declare global {
 
 const isDev = import.meta.env.DEV;
 const baseUrl = isDev ? "http://localhost" : "https://ascii-chat.com";
+const mainPort = isDev ? 5173 : 443;
+const discoveryPort = isDev ? 5174 : 443;
+const webPort = isDev ? 3000 : 443;
 
 /**
  * Site base URLs
  * In dev: localhost with ports
- * In prod: actual domains
+ * In prod: actual domains with port 443
  */
 export const SITES = {
-  MAIN: `${baseUrl}:5173`,
-  DISCOVERY: `${baseUrl}:5174`,
-  WEB: `${baseUrl}:3000`,
-  CRYPTO_DOCS: `${baseUrl}:5173/man1#SECURITY`,
+  MAIN: `${baseUrl}:${mainPort}`,
+  DISCOVERY: `${baseUrl}:${discoveryPort}`,
+  WEB: `${baseUrl}:${webPort}`,
+  CRYPTO_DOCS: `${baseUrl}:${mainPort}/man1#SECURITY`,
 } as const;
 
 /**
