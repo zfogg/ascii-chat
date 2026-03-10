@@ -1,5 +1,5 @@
 :80 {
-  root * /app/www/dist
+  root * /app/web/www/dist
 
   # Security headers from vercel.json
   header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
