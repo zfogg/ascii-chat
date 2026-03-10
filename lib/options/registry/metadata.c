@@ -86,6 +86,7 @@ const char *g_color_filter_descs[] = {"No filtering (default)",
                                       "Pink color tint (#FFB6C1)",
                                       "Red color tint (#FF3333)",
                                       "Yellow color tint (#FFEB99)",
+                                      "Rainbow color tint",
                                       NULL};
 
 // ============================================================================
