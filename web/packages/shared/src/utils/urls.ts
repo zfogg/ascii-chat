@@ -42,6 +42,15 @@ export const SITES = {
 export const API_BASE = isDev ? "http://localhost:3001" : "";
 
 /**
+ * Discovery service API base URL (for fetching session strings)
+ * In dev: localhost:3001 (same as main API)
+ * In prod: set via VITE_DISCOVERY_API_BASE environment variable
+ */
+export const DISCOVERY_API_BASE = isDev
+  ? "http://localhost:3001"
+  : import.meta.env["VITE_DISCOVERY_API_BASE"] || "";
+
+/**
  * API endpoints with full URLs (for cross-origin requests in dev)
  */
 export const API = {
