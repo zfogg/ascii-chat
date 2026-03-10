@@ -1,3 +1,4 @@
+/* global __SSH_PUBLIC_KEY__, __GPG_PUBLIC_KEY__ */
 import { useEffect, useState } from "react";
 import {
   Button,
@@ -15,11 +16,14 @@ import {
   useScrollToHash,
 } from "@ascii-chat/shared/utils";
 import { ACDSHead } from "../components/ACDSHead";
+import { getSshFingerprint, getGpgFingerprint } from "../utils/keyFingerprints";
 
 function Home() {
   useScrollToHash(100);
-  const [sshKey, setSshKey] = useState("");
-  const [gpgKey, setGpgKey] = useState("");
+  const [sshKey, setSshKey] = useState(__SSH_PUBLIC_KEY__ || "");
+  const [gpgKey, setGpgKey] = useState(__GPG_PUBLIC_KEY__ || "");
+  const [sshFingerprint, setSshFingerprint] = useState("");
+  const [gpgFingerprint, setGpgFingerprint] = useState("");
   const [baseUrl] = useState(() => window.location.origin);
   const [sessionStrings, setSessionStrings] = useState([
     "hindu-batman-marriage",
@@ -27,22 +31,25 @@ function Home() {
   ]);
 
   useEffect(() => {
-    // Fetch public keys
-    fetch("/key.pub")
-      .then((r) => r.text())
-      .then((text) => setSshKey(text.trim()))
-      .catch((e) => console.error("Failed to load SSH key:", e));
+    // Compute fingerprints from keys
+    const computeFingerprints = async () => {
+      if (sshKey) {
+        const fp = await getSshFingerprint(sshKey);
+        if (fp) setSshFingerprint(fp);
+      }
+      if (gpgKey) {
+        const fp = await getGpgFingerprint(gpgKey);
+        if (fp) setGpgFingerprint(fp);
+      }
+    };
 
-    fetch("/key.gpg")
-      .then((r) => r.text())
-      .then((text) => setGpgKey(text.trim()))
-      .catch((e) => console.error("Failed to load GPG key:", e));
+    computeFingerprints();
 
     // Fetch session strings
     fetchSessionStrings(3)
       .then((strings) => setSessionStrings(strings))
       .catch((e) => console.error("Failed to load session strings:", e));
-  }, []);
+  }, [sshKey, gpgKey]);
 
   const handleSshDownload = () => {
     if (window.gtag) {
@@ -205,16 +212,20 @@ function Home() {
           <p className="leading-relaxed mb-2 text-base md:text-lg">
             <strong>Fingerprint:</strong>
           </p>
-          <PreCode>SHA256:Uvr6k+9VjcC60gbVtcvwiVZDsIfB6jZvMuD4G2FME6w</PreCode>
+          <PreCode>
+            {sshFingerprint ||
+              (sshKey ? "..." : "(set SSH_PUBLIC_KEY env var at build time)")}
+          </PreCode>
           <p className="leading-relaxed mb-2 text-base md:text-lg">
             <strong>Public Key:</strong>
           </p>
-          <PreCode>{sshKey || "Loading..."}</PreCode>
+          <PreCode style={{ minHeight: "60px" }}>
+            {sshKey || "(SSH_PUBLIC_KEY env var not set at build time)"}
+          </PreCode>
           <Button
             variant="secondary"
             href="/key.pub"
             download
-            onClick={handleSshDownload}
             className="inline-block mt-2 mb-4"
           >
             ⬇ Download SSH Public Key
@@ -229,16 +240,20 @@ function Home() {
           <p className="leading-relaxed mb-2 text-base md:text-lg">
             <strong>Fingerprint:</strong>
           </p>
-          <PreCode>0AAE 7D67 D734 6959 74C3 6CEE C380 DA08 AF18 35B9</PreCode>
+          <PreCode>
+            {gpgFingerprint ||
+              (gpgKey ? "..." : "(set GPG_PUBLIC_KEY env var at build time)")}
+          </PreCode>
           <p className="leading-relaxed mb-2 text-base md:text-lg">
             <strong>Public Key:</strong>
           </p>
-          <PreCode>{gpgKey || "Loading..."}</PreCode>
+          <PreCode style={{ minHeight: "200px" }}>
+            {gpgKey || "(GPG_PUBLIC_KEY env var not set at build time)"}
+          </PreCode>
           <Button
             variant="secondary"
             href="/key.gpg"
             download
-            onClick={handleGpgDownload}
             className="inline-block mt-2 mb-4"
           >
             ⬇ Download GPG Public Key

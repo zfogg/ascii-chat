@@ -4,6 +4,10 @@ import sitemap from "vite-plugin-sitemap";
 import { execSync } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+
+// Load .env file
+dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -34,6 +38,8 @@ const getCommitSha = () => {
 export default defineConfig({
   define: {
     __COMMIT_SHA__: JSON.stringify(getCommitSha()),
+    __SSH_PUBLIC_KEY__: JSON.stringify(process.env.SSH_PUBLIC_KEY || ""),
+    __GPG_PUBLIC_KEY__: JSON.stringify(process.env.GPG_PUBLIC_KEY || ""),
   },
   resolve: {
     alias: {
