@@ -35,7 +35,7 @@ if(PLATFORM_IOS)
             file(DOWNLOAD
                 "https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz"
                 "${OPENSSL_TARBALL}"
-                EXPECTED_HASH SHA256=cf3098950cb4d529d2e4a8e25c72edd6cd7fff53ec5c0326b3515afc450b484c
+                EXPECTED_HASH SHA256=cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8
                 STATUS DOWNLOAD_STATUS
                 SHOW_PROGRESS
             )
@@ -182,7 +182,7 @@ if(USE_MUSL)
             file(DOWNLOAD
                 "https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz"
                 "${OPENSSL_TARBALL}"
-                EXPECTED_HASH SHA256=cf3098950cb4d529d2e4a8e25c72edd6cd7fff53ec5c0326b3515afc450b484c
+                EXPECTED_HASH SHA256=cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8
                 STATUS DOWNLOAD_STATUS
                 SHOW_PROGRESS
             )
@@ -309,7 +309,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
     if(APPLE)
         set(OPENSSL_VERSION "1.1.1w")
         set(OPENSSL_DOWNLOAD_TAG "OpenSSL_1_1_1w")
-        set(OPENSSL_EXPECTED_HASH "SHA256=cf3098950cb4d529d2e4a8e25c72edd6cd7fff53ec5c0326b3515afc450b484c")
+        set(OPENSSL_EXPECTED_HASH "SHA256=cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8")
         message(STATUS "Configuring ${BoldBlue}OpenSSL 1.1.1w${ColorReset} from source (macOS libwebsockets compatibility)...")
     else()
         set(OPENSSL_VERSION "3.4.0")
