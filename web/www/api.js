@@ -491,7 +491,23 @@ app.get("/api/health", (req, res) => {
 // Session strings endpoint
 app.get("/api/session-strings", sessionStringLimiter, (req, res) => {
   // Enable CORS for session strings endpoint
-  res.header("Access-Control-Allow-Origin", "*");
+  if (NODE_ENV === "production") {
+    // In production, only allow ascii-chat subdomains
+    const origin = req.get("origin");
+    const allowedOrigins = [
+      "https://ascii-chat.com",
+      "https://www.ascii-chat.com",
+      "https://web.ascii-chat.com",
+      "https://discovery.ascii-chat.com",
+    ];
+
+    if (origin && allowedOrigins.includes(origin)) {
+      res.header("Access-Control-Allow-Origin", origin);
+    }
+  } else {
+    // In development, allow all origins
+    res.header("Access-Control-Allow-Origin", "*");
+  }
   res.header("Access-Control-Allow-Methods", "GET");
   res.header("Access-Control-Allow-Headers", "Content-Type");
 
