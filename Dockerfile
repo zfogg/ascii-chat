@@ -16,7 +16,7 @@ COPY . /build/
 
 # Initialize git submodules
 RUN apt-get update && \
-    apt-get install build-essential curl file git ruby-full locales --no-install-recommends -y && \
+    apt-get install build-essential cmake ninja-build pkg-config curl file git ruby-full locales wget lsb-release gpg software-properties-common --no-install-recommends -y && \
     rm -rf /var/lib/apt/lists/*
 
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
@@ -43,7 +43,7 @@ ENV CC=clang \
 
 # Build ascii-chat in Release mode and install to /usr/local
 # Disable defer tool and analyzers (to speed up emulated builds)
-RUN make install CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX=/usr/local
+RUN make install CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX=/usr/local EXTRA_CMAKE_ARGS="-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF"
 
 # ============================================================================
 # Stage 2: Runtime
