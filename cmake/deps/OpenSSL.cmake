@@ -304,7 +304,7 @@ endif()
 #   - macOS: OpenSSL 1.1.1w (for libwebsockets compatibility)
 #   - Linux: OpenSSL 3.4.0 (has SSL_CTX_load_verify_dir function)
 # =============================================================================
-if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev"))
+if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
     # Determine OpenSSL version based on platform
     if(APPLE)
         set(OPENSSL_VERSION "1.1.1w")
