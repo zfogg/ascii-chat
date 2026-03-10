@@ -301,8 +301,8 @@ export function useHtmlTransforms(validPagesRef) {
           }
 
           // Extract signature and description
-          let signature = "";
-          let description = "";
+          let signature;
+          let description;
 
           if (closeParenIdx !== -1) {
             // Get everything up to and including the closing paren as the params+name part

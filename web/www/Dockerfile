@@ -44,7 +44,7 @@ ENV API_PORT=3001
 EXPOSE 5173 3001
 
 RUN echo '#!/bin/sh' > /start.sh && \
-    echo 'cd /app && bun www/api.js &' >> /start.sh && \
+    echo 'cd /app/www && bun run api.js &' >> /start.sh && \
     echo 'caddy run --config /etc/caddy/Caddyfile' >> /start.sh && \
     chmod +x /start.sh
 
