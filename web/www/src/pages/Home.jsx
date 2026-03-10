@@ -562,7 +562,7 @@ ascii-chat mirror --file video.mp4`}
                 {`# Watch YouTube video as ASCII art locally (mirror mode)
 ascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' -s 38:29 --color-mode truecolor
 
-# Share YouTube video with others in a call (client mode)
+# Share YouTube video with others in a call
 ascii-chat ${sessionStrings[5]} --url 'https://youtu.be/7ynHVGCehoM' -s 38:29`}
               </CodeBlock>
             </div>

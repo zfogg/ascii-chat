@@ -16,7 +16,7 @@ import {
   useScrollToHash,
 } from "@ascii-chat/shared/utils";
 import { ACDSHead } from "../components/ACDSHead";
-import { getSshFingerprint, getGpgFingerprint } from "../utils/keyFingerprints";
+import { getGpgFingerprint, getSshFingerprint } from "../utils/keyFingerprints";
 
 function Home() {
   useScrollToHash(100);
@@ -317,7 +317,7 @@ ascii-chat discovery-service 0.0.0.0 :: --port 27225 \\
 ascii-chat server --key gpg:SERVER_GPG_KEY_ID
 
 # Client connects with explicit ACDS trust and authenticates with SSH key
-ascii-chat client session-name \\
+ascii-chat session-name \\
   --discovery-service your-acds.example.com \\
   --discovery-service-key https://your-acds.example.com/key.pub \\
   --key ~/.ssh/id_ed25519 \\
