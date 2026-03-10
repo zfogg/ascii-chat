@@ -24,7 +24,6 @@ function Home() {
   const [sessionStrings, setSessionStrings] = useState([
     "hindu-batman-marriage",
     "jumbo-slayer-sergeant",
-    "shaky-fudge-moron",
   ]);
 
   useEffect(() => {
@@ -150,13 +149,6 @@ function Home() {
               ) - Handles session management (TCP)
             </li>
           </ul>
-          <p className="leading-relaxed mb-4 text-base md:text-lg">
-            The ascii-chat client is programmed to automatically connect to{" "}
-            <code className="bg-gray-800 px-1 rounded">
-              tcp://discovery-service.ascii-chat.com:27225
-            </code>{" "}
-            and trust keys from this website.
-          </p>
         </section>
 
         <section className="mb-12">
@@ -172,7 +164,15 @@ function Home() {
             <code className="bg-gray-800 px-1 rounded">
               tcp://discovery-service.ascii-chat.com:27225
             </code>
-            . Download and verify these keys before connecting.
+            . You may download and verify these keys before connecting.
+          </p>
+          <p className="leading-relaxed mb-4 text-base md:text-lg">
+            The ascii-chat client is programmed to automatically download public
+            keys over HTTPS from this site and connect to{" "}
+            <code className="bg-gray-800 px-1 rounded">
+              tcp://discovery-service.ascii-chat.com:27225
+            </code>{" "}
+            and trust it.
           </p>
           <p className="leading-relaxed mb-4 text-base md:text-lg">
             Keys are available at:
@@ -211,6 +211,7 @@ function Home() {
           </p>
           <PreCode>{sshKey || "Loading..."}</PreCode>
           <Button
+            variant="secondary"
             href="/key.pub"
             download
             onClick={handleSshDownload}
@@ -234,6 +235,7 @@ function Home() {
           </p>
           <PreCode>{gpgKey || "Loading..."}</PreCode>
           <Button
+            variant="secondary"
             href="/key.gpg"
             download
             onClick={handleGpgDownload}
@@ -341,6 +343,7 @@ ascii-chat client session-name \\
   --key ~/.ssh/id_ed25519 \\
   --server-key gpg:SERVER_GPG_KEY_ID`}
           </CodeBlock>
+          <br />
           <p className="leading-relaxed mb-4 text-base md:text-lg">
             <strong>Important:</strong> You should share the public key with
             ascii-chatters in a safe way. We recommend pre-sharing them safely
