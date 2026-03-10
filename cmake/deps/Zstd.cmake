@@ -171,11 +171,16 @@ if(NOT zstd_FOUND)
     include(FindPkgConfig)
     pkg_check_modules(zstd REQUIRED libzstd)
 
-    # Create interface library for compatibility
+    # Create interface library for compatibility (use zstd::libzstd for consistency)
+    if(NOT TARGET zstd::libzstd)
+        add_library(zstd::libzstd INTERFACE IMPORTED)
+        target_include_directories(zstd::libzstd SYSTEM INTERFACE ${zstd_INCLUDE_DIRS})
+        target_link_libraries(zstd::libzstd INTERFACE ${zstd_LIBRARIES})
+    endif()
+
+    # Also create zstd::zstd as an alias for backward compatibility
     if(NOT TARGET zstd::zstd)
-        add_library(zstd::zstd INTERFACE IMPORTED)
-        target_include_directories(zstd::zstd SYSTEM INTERFACE ${zstd_INCLUDE_DIRS})
-        target_link_libraries(zstd::zstd INTERFACE ${zstd_LIBRARIES})
+        add_library(zstd::zstd ALIAS zstd::libzstd)
     endif()
 endif()
 

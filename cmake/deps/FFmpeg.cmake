@@ -438,24 +438,31 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
     set(FFMPEG_FOUND TRUE)
     set(FFMPEG_INCLUDE_DIRS "${FFMPEG_PREFIX}/include")
 
-    # Static FFmpeg libraries + macOS frameworks
+    # Static FFmpeg libraries + platform-specific dependencies
     set(FFMPEG_LIBRARIES
         "${FFMPEG_PREFIX}/lib/libavformat.a"
         "${FFMPEG_PREFIX}/lib/libavcodec.a"
         "${FFMPEG_PREFIX}/lib/libswscale.a"
         "${FFMPEG_PREFIX}/lib/libswresample.a"
         "${FFMPEG_PREFIX}/lib/libavutil.a"
-        "-framework AudioToolbox"
-        "-framework CoreMedia"
-        "-framework CoreVideo"
-        "-framework VideoToolbox"
-        "-framework Security"
-        "-framework CoreFoundation"
-        "-framework CoreServices"
-        "-liconv"
-        "-lbz2"
-        "-lz"
     )
+
+    # Add macOS frameworks only on macOS
+    if(APPLE)
+        list(APPEND FFMPEG_LIBRARIES
+            "-framework AudioToolbox"
+            "-framework CoreMedia"
+            "-framework CoreVideo"
+            "-framework VideoToolbox"
+            "-framework Security"
+            "-framework CoreFoundation"
+            "-framework CoreServices"
+            "-liconv"
+        )
+    else()
+        # On Linux/Unix, add compression libraries (iconv is part of glibc, don't link it separately)
+        list(APPEND FFMPEG_LIBRARIES "-lbz2" "-lz")
+    endif()
 
 
     message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg configured (static from source):")

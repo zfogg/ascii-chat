@@ -156,11 +156,16 @@ function(configure_yyjson)
     # We export it to parent scope for use in target_link_libraries
     set(YYJSON_LIBRARIES yyjson::yyjson PARENT_SCOPE)
 
-    # Find include directory
-    find_path(YYJSON_INCLUDE yyjson.h)
-    set(YYJSON_INCLUDE_DIRS ${YYJSON_INCLUDE} PARENT_SCOPE)
+    # Use pkg-config include dirs if available, otherwise find the header
+    if(NOT yyjson_INCLUDE_DIRS)
+        # If not found via pkg-config, try to find the header manually
+        find_path(YYJSON_INCLUDE yyjson.h PATHS /usr/include /usr/local/include /home/linuxbrew/.linuxbrew/include)
+        set(yyjson_INCLUDE_DIRS ${YYJSON_INCLUDE})
+    endif()
+
+    set(YYJSON_INCLUDE_DIRS ${yyjson_INCLUDE_DIRS} PARENT_SCOPE)
 
     message(STATUS "Configured ${BoldGreen}yyjson${ColorReset} from system package")
     message(STATUS "  YYJSON_LIBRARIES: yyjson::yyjson")
-    message(STATUS "  YYJSON_INCLUDE_DIRS: ${YYJSON_INCLUDE}")
+    message(STATUS "  YYJSON_INCLUDE_DIRS: ${yyjson_INCLUDE_DIRS}")
 endfunction()

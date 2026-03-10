@@ -18,7 +18,7 @@ COPY ./scripts/install-deps.sh /tmp/install-deps.sh
 # Set up locale and minimal prerequisites
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends locales curl git gpg ca-certificates && \
+    apt-get install -y --no-install-recommends locales curl wget git gpg ca-certificates lsb-release software-properties-common && \
     localedef -i en_US -f UTF-8 en_US.UTF-8 && \
     rm -rf /var/lib/apt/lists/*
 
@@ -53,17 +53,31 @@ FROM ubuntu:24.04
 # Prevent interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Set up locale
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends locales ca-certificates && \
+    localedef -i en_US -f UTF-8 en_US.UTF-8 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install runtime dependencies via install-deps.sh
+COPY ./scripts/install-deps.sh /tmp/install-deps.sh
+RUN chmod +x /tmp/install-deps.sh && /tmp/install-deps.sh
+
 # Copy installed files from builder
 COPY --from=builder /usr/local /usr/local
+COPY --from=builder /home/linuxbrew/.linuxbrew /home/linuxbrew/.linuxbrew
 
 # Create non-root user for running ascii-chat
-RUN useradd -m -u 1000 -s /bin/bash ascii && \
+RUN useradd -m -u 1001 -s /bin/bash ascii && \
     mkdir -p /home/ascii/.config /home/ascii/.local/share && \
     chown -R ascii:ascii /home/ascii
 
 # Switch to non-root user
 USER ascii
 WORKDIR /home/ascii
+
+# Set library path to include Homebrew libraries from builder
+ENV LD_LIBRARY_PATH="/home/linuxbrew/.linuxbrew/lib:/usr/lib/x86_64-linux-gnu:/usr/local/lib"
 
 # Expose default ports
 # 27224: ascii-chat server

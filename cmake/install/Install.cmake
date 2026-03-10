@@ -591,6 +591,7 @@ if(UNIX)
     install(FILES "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
         DESTINATION share/bash-completion/completions
         COMPONENT Runtime
+        OPTIONAL
     )
     message(STATUS "${BoldGreen}Configured${ColorReset} bash completion: ${BoldBlue}ascii-chat${ColorReset} (generated) → ${BoldYellow}share/bash-completion/completions/ascii-chat${ColorReset}")
 
@@ -600,6 +601,7 @@ if(UNIX)
     install(FILES "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii_chat"
         DESTINATION share/zsh/site-functions
         COMPONENT Runtime
+        OPTIONAL
     )
     message(STATUS "${BoldGreen}Configured${ColorReset} zsh completion: ${BoldBlue}_ascii_chat${ColorReset} (generated) → ${BoldYellow}share/zsh/site-functions/_ascii_chat${ColorReset}")
 
@@ -609,6 +611,7 @@ if(UNIX)
     install(FILES "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
         DESTINATION share/fish/vendor_completions.d
         COMPONENT Runtime
+        OPTIONAL
     )
     message(STATUS "${BoldGreen}Configured${ColorReset} fish completion: ${BoldBlue}ascii-chat.fish${ColorReset} (generated) → ${BoldYellow}share/fish/vendor_completions.d/ascii-chat.fish${ColorReset}")
 
@@ -618,6 +621,7 @@ if(UNIX)
     install(FILES "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
         DESTINATION share/powershell/Completions
         COMPONENT Runtime
+        OPTIONAL
     )
     message(STATUS "${BoldGreen}Configured${ColorReset} powershell completion: ${BoldBlue}ascii-chat.ps1${ColorReset} (generated) → ${BoldYellow}share/powershell/Completions/ascii-chat.ps1${ColorReset}")
 endif()
