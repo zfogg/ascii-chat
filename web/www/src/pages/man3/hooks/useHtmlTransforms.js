@@ -300,28 +300,56 @@ export function useHtmlTransforms(validPagesRef) {
           let description = "";
 
           if (closeParenIdx !== -1) {
-            // Get everything up to and including the closing paren as signature
-            signature = functionContent.substring(0, closeParenIdx + 1).trim();
-            // Everything after is description
-            description = functionContent.substring(closeParenIdx + 1).trim();
-            // Remove the next function name from description (it starts where we found it)
-            if (nextMatch) {
-              // Find where the next function starts in the description
-              const nextFuncIdx = description.indexOf(nextMatch.name);
-              if (nextFuncIdx > -1) {
-                // Only keep text before the next function name
-                description = description.substring(0, nextFuncIdx).trim();
+            // Get everything up to and including the closing paren as the params+name part
+            const nameAndParams = functionContent.substring(0, closeParenIdx + 1).trim();
+
+            // Extract the return type from the text before the function name
+            // Look backwards from currentMatch.startIdx to find the return type
+            let returnType = "";
+            if (currentMatch.startIdx > 0) {
+              // Get text before the function name
+              const beforeFunc = fullPlainText.substring(0, currentMatch.startIdx).trim();
+              // Return type is the last "word-like" token before the function name
+              // It could be: void, char, char *, uint8_t, struct X, const char *, etc.
+              const parts = beforeFunc.split(/\s+/);
+              // Take the last part(s) that look like a return type
+              if (parts.length > 0) {
+                // Simple heuristic: last 1-2 parts are the return type (e.g., "char" or "char *")
+                returnType = parts[parts.length - 1];
+                // If it's just a pointer symbol or continuation, get the previous part too
+                if (parts.length > 1 && (returnType === "*" || returnType === "const")) {
+                  returnType = parts[parts.length - 2] + " " + returnType;
+                }
               }
             }
+
+            // Full signature: return_type name(params)
+            signature = (returnType ? returnType + " " : "") + nameAndParams;
+
+            // Everything after the closing paren is description (don't trim yet - regex needs whitespace)
+            description = functionContent.substring(closeParenIdx + 1);
+
+            // The description may be followed by the return type of the next function
+            // Remove return type patterns that appear at the end of the description
+            // Return types include: void, char *, int, bool, uint8_t, struct X, const char *, etc.
+            // Pattern: optional whitespace + return type (including pointer types) + optional whitespace at end
+            description = description.replace(/\s*(?:void|bool|int|char\s*\*?|size_t|uint\d+_t|struct\s+\w+(?:\s*\*)?|const\s+\w+(?:\s+\*)?|unsigned\s+\w+|static\s+\w+(?:\s*\*)?)\s*$/i, '').trim();
           } else {
             // No closing paren found, use whole content as signature
             signature = functionContent.trim();
             description = "";
           }
 
+          // Remove the function name from the signature (it's already in the first column)
+          // Replace "funcName (" with "("
+          const signatureWithoutName = signature.replace(
+            new RegExp(`\\b${currentMatch.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\(`),
+            '('
+          );
+
           rows.push({
             name: currentMatch.name,
-            signature: signature,
+            signature: signatureWithoutName,
             description: description
           });
         }
