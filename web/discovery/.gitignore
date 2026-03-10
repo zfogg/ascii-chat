@@ -30,3 +30,7 @@ acds_identity.gpg
 *.sec
 .vercel
 .env*.local
+
+# Generated key files (created at build time from env vars)
+public/key.pub
+public/key.gpg
