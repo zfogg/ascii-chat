@@ -62,7 +62,7 @@ services:
         aliases:
           - www
     healthcheck:
-      test: ["CMD", "test", "-f", "/app/www/dist/index.html"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
       interval: 30s
       timeout: 5s
       retries: 5
