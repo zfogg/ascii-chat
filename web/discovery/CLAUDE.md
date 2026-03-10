@@ -94,10 +94,6 @@ Part of `/web` monorepo. Key dependency:
 - Prettier 3.8.1
 - Vite Sitemap plugin
 
-**Monitoring**:
-
-- Vercel Analytics (`@vercel/analytics`)
-
 ## Key Files
 
 ```
