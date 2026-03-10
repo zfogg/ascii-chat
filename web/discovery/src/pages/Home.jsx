@@ -341,8 +341,7 @@ ascii-chat client session-name \\
           </Heading>
           <p className="leading-relaxed mb-4 text-base md:text-lg">
             The discovery service uses the same crypto protocol and code as the
-            client/server. You can find more about the crypto protocol and all
-            discovery mode crypto flags in the{" "}
+            client/server. You can find more about the crypto protocol in the{" "}
             <Link
               href={SITES.CRYPTO_DOCS}
               onClick={() =>
@@ -351,7 +350,19 @@ ascii-chat client session-name \\
             >
               ascii-chat docs
             </Link>
-            .
+            . See the{" "}
+            <Link
+              href={SITES.MAIN + "/man1#SECURITY"}
+              onClick={() =>
+                handleLinkClick(
+                  SITES.MAIN + "/man1#SECURITY",
+                  "Man page SECURITY section",
+                )
+              }
+            >
+              man page
+            </Link>{" "}
+            for all discovery-service mode crypto flags.
           </p>
         </section>
 
