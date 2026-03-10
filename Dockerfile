@@ -11,23 +11,19 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /build
 
-# Copy source code and dependency script
+# Copy source code
 COPY . /build/
 COPY ./scripts/install-deps.sh /tmp/install-deps.sh
 
-# Install base tools needed by the install-deps.sh script
+# Set up locale and minimal prerequisites
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      build-essential git wget curl gpg ca-certificates locales lsb-release software-properties-common && \
+    apt-get install -y --no-install-recommends locales curl gpg ca-certificates && \
     localedef -i en_US -f UTF-8 en_US.UTF-8 && \
     rm -rf /var/lib/apt/lists/*
 
-# Run the dependency installer script
+# Run the install-deps.sh script (handles platform-specific dependencies)
 RUN chmod +x /tmp/install-deps.sh && /tmp/install-deps.sh
-
-# Verify essential build tools are available
-RUN which cmake ninja pkg-config || (apt-get update && apt-get install -y cmake ninja-build pkg-config && rm -rf /var/lib/apt/lists/*)
 
 # Install yyjson via Homebrew
 RUN useradd -m -s /bin/bash linuxbrew && \
@@ -43,8 +39,7 @@ ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
 # Set compiler environment variables
 ENV CC=clang \
     CXX=clang++ \
-    CMAKE_GENERATOR=Ninja \
-    PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/linuxbrew/.linuxbrew/bin"
+    CMAKE_GENERATOR=Ninja
 
 # Build ascii-chat in Release mode and install to /usr/local
 # Disable defer tool and analyzers (to speed up emulated builds)
