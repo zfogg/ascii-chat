@@ -67,10 +67,21 @@ RUN chmod +x /tmp/install-deps.sh && /tmp/install-deps.sh
 COPY --from=builder /usr/local /usr/local
 COPY --from=builder /home/linuxbrew/.linuxbrew /home/linuxbrew/.linuxbrew
 
+# Create ACDS directory for keys
+RUN mkdir -p /acds && chmod 755 /acds
+
+# Copy SSH keys from build secrets
+RUN --mount=type=secret,id=key_pub,target=/run/secrets/key.pub \
+    --mount=type=secret,id=key_gpg,target=/run/secrets/key.gpg \
+    cp /run/secrets/key.pub /acds/key.pub 2>/dev/null || true && \
+    cp /run/secrets/key.gpg /acds/key.gpg 2>/dev/null || true && \
+    chmod 600 /acds/key.* 2>/dev/null || true
+
 # Create non-root user for running ascii-chat
 RUN useradd -m -u 1001 -s /bin/bash ascii && \
     mkdir -p /home/ascii/.config /home/ascii/.local/share && \
-    chown -R ascii:ascii /home/ascii
+    chown -R ascii:ascii /home/ascii && \
+    chown -R ascii:ascii /acds 2>/dev/null || true
 
 # Switch to non-root user
 USER ascii
@@ -85,7 +96,8 @@ ENV LD_LIBRARY_PATH="/home/linuxbrew/.linuxbrew/lib:/usr/lib/x86_64-linux-gnu:/u
 EXPOSE 27224 27225
 
 # Set ascii-chat as the entrypoint
-# This allows users to run: docker run ghcr.io/zfogg/ascii-chat:latest server --port 8080
+# Users can override the command in their deployment platform (Coolify, etc)
+# Example: discovery-service 0.0.0.0 :: --key /acds/key.pub --key /acds/key.gpg
 ENTRYPOINT ["/usr/local/bin/ascii-chat"]
 
 # Default command shows help
