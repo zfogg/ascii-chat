@@ -88,61 +88,62 @@ static const char **zsh_collect_groups(const option_descriptor_t *opts, size_t c
 /**
  * Write value completion case blocks for enum, boolean, and device index options
  *
- * Generates _arguments specifications with completion actions:
- *   '--color-mode=:color mode:_values color-mode auto none 16 256 truecolor'
- *   '--webcam-index=:device index:_ascii_chat_webcam_indices'
+ * Uses $prev to check if we're completing a value, then shows suggestions with descriptions.
+ * Falls back to full option list if not in value completion mode.
  */
 static void zsh_write_value_cases(FILE *output, const option_descriptor_t *opts, size_t count) {
   if (!opts || count == 0)
     return;
 
-  // Use _arguments to establish proper completion context and specify value completions
-  fprintf(output, "  local -a value_completions=(\n");
+  // First, check if we're completing a value for a previous option
+  // Use _arguments with value completions FIRST
+  fprintf(output, "  # Try value completions first (when completing after an option)\n");
+  fprintf(output, "  local -a value_specs=(\n");
 
   for (size_t i = 0; i < count; i++) {
     // Skip action options (they take no value)
     if (opts[i].type == OPTION_TYPE_ACTION)
       continue;
 
-    fprintf(output, "    '--%-30s", opts[i].long_name);
+    fprintf(output, "    '");
 
     // Device index options: call helper functions
     if (strcmp(opts[i].long_name, "webcam-index") == 0) {
-      fprintf(output, "=:device index:_ascii_chat_webcam_indices'\n");
+      fprintf(output, "--%-30s=:device index:_ascii_chat_webcam_indices'\n", opts[i].long_name);
     } else if (strcmp(opts[i].long_name, "microphone-index") == 0) {
-      fprintf(output, "=:device index:_ascii_chat_microphone_indices'\n");
+      fprintf(output, "--%-30s=:device index:_ascii_chat_microphone_indices'\n", opts[i].long_name);
     } else if (strcmp(opts[i].long_name, "speakers-index") == 0) {
-      fprintf(output, "=:device index:_ascii_chat_speakers_indices'\n");
+      fprintf(output, "--%-30s=:device index:_ascii_chat_speakers_indices'\n", opts[i].long_name);
     }
-    // Enum options: emit value completion with descriptions
+    // Enum options: emit value completion with descriptions (rg-style format)
     else if (opts[i].metadata.input_type == OPTION_INPUT_ENUM && opts[i].metadata.enum_values) {
-      fprintf(output, "=:%s:(", opts[i].long_name);
+      fprintf(output, "--%-30s=:%s:((", opts[i].long_name, opts[i].long_name);
 
       for (size_t j = 0; opts[i].metadata.enum_values[j] != NULL; j++) {
-        // Include description if available
+        // Include description if available using rg-style escaped quotes: value\"description"
         if (opts[i].metadata.enum_descriptions && opts[i].metadata.enum_descriptions[j]) {
-          fprintf(output, "\"%s[", opts[i].metadata.enum_values[j]);
+          fprintf(output, "\\\n      %s\\\"", opts[i].metadata.enum_values[j]);
           zsh_escape_desc(output, opts[i].metadata.enum_descriptions[j]);
-          fprintf(output, "]\" ");
+          fprintf(output, "\"");
         } else {
           fprintf(output, "%s ", opts[i].metadata.enum_values[j]);
         }
       }
-      fprintf(output, ")'\n");
+      fprintf(output, "))'\n");
     }
-    // Boolean options: emit true/false completion with descriptions
+    // Boolean options: emit true/false completion with descriptions (rg-style)
     else if (opts[i].type == OPTION_TYPE_BOOL) {
-      fprintf(output, "=:(true[enable] false[disable])'\n");
+      fprintf(output, "--%-30s=:((true\\\"enable\" false\\\"disable\"))'\n", opts[i].long_name);
     }
     // Other options without specific values
     else {
-      fprintf(output, "=:value:'\n");
+      fprintf(output, "--%-30s=:value:'\n", opts[i].long_name);
     }
   }
 
   fprintf(output, "  )\n\n");
 
-  fprintf(output, "  _arguments -s -S \"${value_completions[@]}\"\n\n");
+  fprintf(output, "  _arguments -s \"${value_specs[@]}\"\n\n");
 }
 
 /**
