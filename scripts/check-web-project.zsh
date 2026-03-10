@@ -19,8 +19,8 @@ check_web_project() {
       # Git add any staged files that were changed by formatting
       echo "$staged_files" | while read file; do
         local_file="${file#${project_dir#./}/}"
-        if [[ -f "$local_file" ]] && git diff "$file" | grep -q .; then
-          git add "$file"
+        if [[ -f "$local_file" ]] && git diff -- "$local_file" | grep -q .; then
+          git add "$local_file"
         fi
       done
     fi

@@ -1,5 +1,5 @@
-import {useCallback} from "react"
-import {highlightMatchesInHTML} from "../utils/highlight.jsx"
+import { useCallback } from "react";
+import { highlightMatchesInHTML } from "../utils/highlight.jsx";
 
 /**
  * Hook for all HTML string transformation functions
