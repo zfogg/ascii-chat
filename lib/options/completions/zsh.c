@@ -130,9 +130,9 @@ static void zsh_write_value_cases(FILE *output, const option_descriptor_t *opts,
       for (size_t j = 0; opts[i].metadata.enum_values[j] != NULL; j++) {
         // Include description if available using rg-style escaped quotes: value\"description"
         if (opts[i].metadata.enum_descriptions && opts[i].metadata.enum_descriptions[j]) {
-          fprintf(output, "\\\n      %s\\\"", opts[i].metadata.enum_values[j]);
+          fprintf(output, "%s\\\"", opts[i].metadata.enum_values[j]);
           zsh_escape_desc(output, opts[i].metadata.enum_descriptions[j]);
-          fprintf(output, "\"");
+          fprintf(output, "\" ");
         } else {
           fprintf(output, "%s ", opts[i].metadata.enum_values[j]);
         }
