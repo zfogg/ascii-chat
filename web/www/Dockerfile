@@ -20,7 +20,7 @@ RUN cd web && bun install --no-cache
 # Build www
 FROM base AS builder
 
-RUN cd www && bun run build && test -d dist || (echo "ERROR: dist directory not created during build" && ls -la && exit 1)
+RUN cd web/www && bun run build && test -d dist || (echo "ERROR: dist directory not created during build" && ls -la && exit 1)
 
 # Production stage
 FROM caddy:alpine AS caddy
@@ -33,11 +33,11 @@ WORKDIR /app
 
 COPY --from=builder /app/bun.lock ./bun.lock
 COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/www ./www
-COPY --from=builder /app/web ./web
-COPY --from=builder /app/discovery ./discovery
-COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/www/Caddyfile /etc/caddy/Caddyfile
+COPY --from=builder /app/web/www ./www
+COPY --from=builder /app/web/web ./web
+COPY --from=builder /app/web/discovery ./discovery
+COPY --from=builder /app/web/packages ./packages
+COPY --from=builder /app/web/www/Caddyfile /etc/caddy/Caddyfile
 
 RUN bun install --production
 
