@@ -151,6 +151,7 @@ if(USE_MUSL)
     set(OPENSSL_PREFIX "${MUSL_DEPS_DIR_STATIC}/openssl")
     set(OPENSSL_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/openssl-build")
     set(OPENSSL_SOURCE_DIR "${OPENSSL_BUILD_DIR}/src/openssl")
+    set(OPENSSL_VERSION "3.4.0")
 
     # Detect target architecture for OpenSSL Configure
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
@@ -175,14 +176,14 @@ if(USE_MUSL)
         file(MAKE_DIRECTORY "${OPENSSL_BUILD_DIR}")
         file(MAKE_DIRECTORY "${OPENSSL_SOURCE_DIR}")
 
-        # Download OpenSSL source (1.1.1 for libwebsockets compatibility)
-        set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-1.1.1w.tar.gz")
+        # Download OpenSSL source (3.4.0 for SSL_CTX_load_verify_dir support)
+        set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-3.4.0.tar.gz")
         if(NOT EXISTS "${OPENSSL_TARBALL}")
-            message(STATUS "  Downloading OpenSSL 1.1.1w...")
+            message(STATUS "  Downloading OpenSSL 3.4.0...")
             file(DOWNLOAD
-                "https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz"
+                "https://github.com/openssl/openssl/releases/download/openssl-3.4.0/openssl-3.4.0.tar.gz"
                 "${OPENSSL_TARBALL}"
-                EXPECTED_HASH SHA256=cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8
+                EXPECTED_HASH SHA256=e15dda82fe2fe8139dc2ac21a36d4ca01d5313c75f99f46c4e8a27709b7294bf
                 STATUS DOWNLOAD_STATUS
                 SHOW_PROGRESS
             )
@@ -204,7 +205,7 @@ if(USE_MUSL)
             if(NOT EXTRACT_RESULT EQUAL 0)
                 message(FATAL_ERROR "Failed to extract OpenSSL tarball")
             endif()
-            # Move from openssl-1.1.1w/ to src/openssl/
+            # Move from openssl-X.Y.Z/ to src/openssl/
             file(RENAME "${OPENSSL_BUILD_DIR}/openssl-${OPENSSL_VERSION}" "${OPENSSL_SOURCE_DIR}")
         endif()
 
