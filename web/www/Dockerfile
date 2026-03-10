@@ -40,7 +40,6 @@ COPY --from=builder /app/www/Caddyfile /etc/caddy/Caddyfile
 
 RUN bun install --production
 
-ENV NODE_ENV=production
 ENV API_PORT=3001
 EXPOSE 80 3001
 
