@@ -21,6 +21,7 @@ check_web_project() {
         local_file="${file#${project_dir#./}/}"
         if [[ -f "$local_file" ]] && git diff -- "$local_file" | grep -q .; then
           git add "$local_file"
+          echo "  ✦ Auto-formatted: $file"
         fi
       done
     fi
