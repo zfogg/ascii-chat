@@ -139,7 +139,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       pkg-config make autoconf automake libtool ccache \
       cmake ninja-build \
       musl-tools musl-dev \
-      libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev \
+      libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev libsystemd-dev \
       libcriterion-dev libffi-dev libsqlite3-dev \
       libssl-dev \
       libminiupnpc-dev \

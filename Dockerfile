@@ -11,24 +11,25 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /build
 
-# Copy source code
+# Copy source code and dependency script
 COPY . /build/
+COPY ./scripts/install-deps.sh /tmp/install-deps.sh
 
-# Install build dependencies directly (instead of relying on install-deps.sh)
+# Install base tools needed by the install-deps.sh script
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      build-essential clang lld cmake ninja-build pkg-config curl file git ruby-full locales wget lsb-release gpg software-properties-common \
-      libzstd-dev libsodium-dev portaudio19-dev libopus-dev \
-      libssl-dev libffi-dev libsqlite3-dev \
-      libminiupnpc-dev libprotobuf-c-dev \
-      libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev \
-      libabsl-dev libwebsockets-dev \
-      libvterm-dev libfreetype6-dev libfontconfig1-dev libpcre2-dev \
-      yt-dlp perl make autoconf && \
+      build-essential git wget curl gpg ca-certificates locales lsb-release software-properties-common && \
+    localedef -i en_US -f UTF-8 en_US.UTF-8 && \
     rm -rf /var/lib/apt/lists/*
 
-RUN localedef -i en_US -f UTF-8 en_US.UTF-8
+# Run the dependency installer script
+RUN chmod +x /tmp/install-deps.sh && /tmp/install-deps.sh
 
+# Verify essential build tools are available
+RUN which cmake ninja pkg-config || (apt-get update && apt-get install -y cmake ninja-build pkg-config && rm -rf /var/lib/apt/lists/*)
+
+# Install yyjson via Homebrew
 RUN useradd -m -s /bin/bash linuxbrew && \
     echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >>/etc/sudoers
 
@@ -39,15 +40,11 @@ RUN /home/linuxbrew/.linuxbrew/bin/brew install yyjson
 USER root
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
 
-COPY ./scripts/install-deps.sh /tmp/install-deps.sh
-RUN chmod +x /tmp/install-deps.sh \
-  && /tmp/install-deps.sh \
-  && rm -rf /var/lib/apt/lists/*
-
 # Set compiler environment variables
 ENV CC=clang \
     CXX=clang++ \
-    CMAKE_GENERATOR=Ninja
+    CMAKE_GENERATOR=Ninja \
+    PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/linuxbrew/.linuxbrew/bin"
 
 # Build ascii-chat in Release mode and install to /usr/local
 # Disable defer tool and analyzers (to speed up emulated builds)
