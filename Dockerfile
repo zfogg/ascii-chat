@@ -15,8 +15,26 @@ WORKDIR /build
 COPY . /build/
 
 # Initialize git submodules
+RUN apt-get update && \
+    apt-get install build-essential curl file git ruby-full locales --no-install-recommends -y && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN localedef -i en_US -f UTF-8 en_US.UTF-8
+
+RUN useradd -m -s /bin/bash linuxbrew && \
+    echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >>/etc/sudoers
+
+USER linuxbrew
+RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"
+RUN /home/linuxbrew/.linuxbrew/bin/brew install yyjson
+
+USER root
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
+
 COPY ./scripts/install-deps.sh /tmp/install-deps.sh
-RUN chmod +x /tmp/install-deps.sh && /tmp/install-deps.sh && rm -rf /var/lib/apt/lists/*
+RUN chmod +x /tmp/install-deps.sh \
+  && /tmp/install-deps.sh \
+  && rm -rf /var/lib/apt/lists/*
 
 # Set compiler environment variables
 ENV CC=clang \
@@ -25,7 +43,7 @@ ENV CC=clang \
 
 # Build ascii-chat in Release mode and install to /usr/local
 # Disable defer tool and analyzers (to speed up emulated builds)
-RUN make install
+RUN make install CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX=/usr/local
 
 # ============================================================================
 # Stage 2: Runtime

@@ -79,7 +79,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
 
 # Linux: Detect package manager
 elif [[ "$PLATFORM" == "linux" ]]; then
-  if [ -f /etc/devian_version ]; then
+  if [ -f /etc/debian_version ]; then
       bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
 
   elif command -v apt-get &>/dev/null; then
@@ -152,12 +152,12 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       yt-dlp \
       libwebsockets-dev  \
       libvterm-dev libfreetype6-dev libfontconfig1-dev \
-      curl \
+      curl unzip \
       || true
     #yyjson-dev \
 
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    brew install yyjson
+    # INFO: DO THIS - /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    #brew install yyjson
 
     curl -fsSL https://bun.com/install | bash
 
