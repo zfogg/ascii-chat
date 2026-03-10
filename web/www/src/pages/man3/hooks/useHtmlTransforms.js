@@ -1,5 +1,5 @@
-import { useCallback } from "react";
-import { highlightMatchesInHTML } from "../utils/highlight.jsx";
+import {useCallback} from "react"
+import {highlightMatchesInHTML} from "../utils/highlight.jsx"
 
 /**
  * Hook for all HTML string transformation functions
@@ -266,7 +266,7 @@ export function useHtmlTransforms(validPagesRef) {
         while ((fnMatch = funcNamePattern.exec(fullPlainText))) {
           funcMatches.push({
             name: fnMatch[1],
-            startIdx: fnMatch.index
+            startIdx: fnMatch.index,
           });
         }
 
@@ -276,8 +276,13 @@ export function useHtmlTransforms(validPagesRef) {
           const nextMatch = funcMatches[i + 1];
 
           // Find where this function's content ends (start of next function or end of text)
-          const contentEnd = nextMatch ? nextMatch.startIdx : fullPlainText.length;
-          const functionContent = fullPlainText.substring(currentMatch.startIdx, contentEnd);
+          const contentEnd = nextMatch
+            ? nextMatch.startIdx
+            : fullPlainText.length;
+          const functionContent = fullPlainText.substring(
+            currentMatch.startIdx,
+            contentEnd,
+          );
 
           // Find the opening paren for this function
           const openParenIdx = functionContent.indexOf("(");
@@ -301,14 +306,18 @@ export function useHtmlTransforms(validPagesRef) {
 
           if (closeParenIdx !== -1) {
             // Get everything up to and including the closing paren as the params+name part
-            const nameAndParams = functionContent.substring(0, closeParenIdx + 1).trim();
+            const nameAndParams = functionContent
+              .substring(0, closeParenIdx + 1)
+              .trim();
 
             // Extract the return type from the text before the function name
             // Look backwards from currentMatch.startIdx to find the return type
             let returnType = "";
             if (currentMatch.startIdx > 0) {
               // Get text before the function name
-              const beforeFunc = fullPlainText.substring(0, currentMatch.startIdx).trim();
+              const beforeFunc = fullPlainText
+                .substring(0, currentMatch.startIdx)
+                .trim();
               // Return type is the last "word-like" token before the function name
               // It could be: void, char, char *, uint8_t, struct X, const char *, etc.
               const parts = beforeFunc.split(/\s+/);
@@ -317,7 +326,10 @@ export function useHtmlTransforms(validPagesRef) {
                 // Simple heuristic: last 1-2 parts are the return type (e.g., "char" or "char *")
                 returnType = parts[parts.length - 1];
                 // If it's just a pointer symbol or continuation, get the previous part too
-                if (parts.length > 1 && (returnType === "*" || returnType === "const")) {
+                if (
+                  parts.length > 1 &&
+                  (returnType === "*" || returnType === "const")
+                ) {
                   returnType = parts[parts.length - 2] + " " + returnType;
                 }
               }
@@ -333,7 +345,12 @@ export function useHtmlTransforms(validPagesRef) {
             // Remove return type patterns that appear at the end of the description
             // Return types include: void, char *, int, bool, uint8_t, struct X, const char *, etc.
             // Pattern: optional whitespace + return type (including pointer types) + optional whitespace at end
-            description = description.replace(/\s*(?:void|bool|int|char\s*\*?|size_t|uint\d+_t|struct\s+\w+(?:\s*\*)?|const\s+\w+(?:\s+\*)?|unsigned\s+\w+|static\s+\w+(?:\s*\*)?)\s*$/i, '').trim();
+            description = description
+              .replace(
+                /\s*(?:void|bool|int|char\s*\*?|size_t|uint\d+_t|struct\s+\w+(?:\s*\*)?|const\s+\w+(?:\s+\*)?|unsigned\s+\w+|static\s+\w+(?:\s*\*)?)\s*$/i,
+                "",
+              )
+              .trim();
           } else {
             // No closing paren found, use whole content as signature
             signature = functionContent.trim();
@@ -343,14 +360,16 @@ export function useHtmlTransforms(validPagesRef) {
           // Remove the function name from the signature (it's already in the first column)
           // Replace "funcName (" with "("
           const signatureWithoutName = signature.replace(
-            new RegExp(`\\b${currentMatch.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\(`),
-            '('
+            new RegExp(
+              `\\b${currentMatch.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\(`,
+            ),
+            "(",
           );
 
           rows.push({
             name: currentMatch.name,
             signature: signatureWithoutName,
-            description: description
+            description: description,
           });
         }
 
