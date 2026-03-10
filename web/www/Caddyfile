@@ -28,7 +28,3 @@
     file_server
   }
 }
-
-:3001 {
-  reverse_proxy * localhost:3001
-}
