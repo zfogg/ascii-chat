@@ -7,7 +7,7 @@ export all_staged=$(git diff --cached --name-only --diff-filter=ACM || true)
 
 # Check each web project
 cwp="scripts/check-web-project.zsh"
-bun run concurrently --kill-others-on-fail --kill-timeout $((1000 * 20)) \
+bun x concurrently --kill-others-on-fail --kill-timeout $((1000 * 20)) \
   "scripts/clang-format-and-add.zsh" \
   "$cwp 'web/web'" \
   "$cwp 'web/www'" \

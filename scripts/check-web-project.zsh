@@ -18,7 +18,8 @@ check_web_project() {
       bun run format > /dev/null 2>&1
       # Git add any staged files that were changed by formatting
       echo "$staged_files" | while read file; do
-        if [[ -f "$file" ]] && git diff "$file" | grep -q .; then
+        local_file="${file#${project_dir#./}/}"
+        if [[ -f "$local_file" ]] && git diff "$file" | grep -q .; then
           git add "$file"
         fi
       done
