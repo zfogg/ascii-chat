@@ -14,9 +14,17 @@ WORKDIR /build
 # Copy source code
 COPY . /build/
 
-# Initialize git submodules
+# Install build dependencies directly (instead of relying on install-deps.sh)
 RUN apt-get update && \
-    apt-get install build-essential cmake ninja-build pkg-config curl file git ruby-full locales wget lsb-release gpg software-properties-common --no-install-recommends -y && \
+    apt-get install -y --no-install-recommends \
+      build-essential clang lld cmake ninja-build pkg-config curl file git ruby-full locales wget lsb-release gpg software-properties-common \
+      libzstd-dev libsodium-dev portaudio19-dev libopus-dev \
+      libssl-dev libffi-dev libsqlite3-dev \
+      libminiupnpc-dev libprotobuf-c-dev \
+      libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev \
+      libabsl-dev libwebsockets-dev \
+      libvterm-dev libfreetype6-dev libfontconfig1-dev \
+      yt-dlp perl make autoconf && \
     rm -rf /var/lib/apt/lists/*
 
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
