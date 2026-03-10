@@ -22,6 +22,7 @@ declare global {
 }
 
 const isDev = import.meta.env.DEV;
+const baseUrl = isDev ? "http://localhost" : "https://ascii-chat.com";
 
 /**
  * Site base URLs
@@ -29,11 +30,14 @@ const isDev = import.meta.env.DEV;
  * In prod: actual domains
  */
 export const SITES = {
-  MAIN: isDev ? "http://localhost:5173" : "https://ascii-chat.com",
+  MAIN: isDev ? `${baseUrl}:5173` : baseUrl,
   DISCOVERY: isDev
-    ? "http://localhost:5174"
-    : "https://discovery.ascii-chat.com",
-  WEB: isDev ? "http://localhost:3000" : "https://web.ascii-chat.com",
+    ? `${baseUrl}:5174`
+    : `https://discovery.ascii-chat.com`,
+  WEB: isDev ? `${baseUrl}:3000` : `https://web.ascii-chat.com`,
+  CRYPTO_DOCS: isDev
+    ? `${baseUrl}:5173/man1#SECURITY`
+    : `${baseUrl}/man1#SECURITY`,
 } as const;
 
 /**
