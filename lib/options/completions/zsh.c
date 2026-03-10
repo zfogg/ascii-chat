@@ -28,6 +28,16 @@ static void zsh_escape_desc(FILE *output, const char *text) {
       // Escape single quotes: end quote, escaped quote, start quote
       fprintf(output, "'\\''");
       break;
+    case '|':
+    case '[':
+    case ']':
+      // Escape special zsh characters that conflict with completion syntax
+      fprintf(output, "\\%c", *p);
+      break;
+    case '\\':
+      // Escape backslashes
+      fprintf(output, "\\\\");
+      break;
     case '\n':
     case '\t':
       fprintf(output, " ");
@@ -91,20 +101,13 @@ static const char **zsh_collect_groups(const option_descriptor_t *opts, size_t c
  * Uses $prev to check if we're completing a value, then shows suggestions with descriptions.
  * Falls back to full option list if not in value completion mode.
  */
-static void zsh_write_value_cases(FILE *output, const option_descriptor_t *opts, size_t count) {
+static void zsh_write_combined_args(FILE *output, const option_descriptor_t *opts, size_t count) {
   if (!opts || count == 0)
     return;
 
-  // First, check if we're completing a value for a previous option
-  // Use _arguments with value completions FIRST
-  fprintf(output, "  # Try value completions first (when completing after an option)\n");
-  fprintf(output, "  local -a value_specs=(\n");
+  fprintf(output, "  local -a args=(\n");
 
   for (size_t i = 0; i < count; i++) {
-    // Skip action options (they take no value)
-    if (opts[i].type == OPTION_TYPE_ACTION)
-      continue;
-
     fprintf(output, "    '");
 
     // Device index options: call helper functions
@@ -121,15 +124,13 @@ static void zsh_write_value_cases(FILE *output, const option_descriptor_t *opts,
       zsh_escape_desc(output, opts[i].help_text);
       fprintf(output, "]:device index:_ascii_chat_speakers_indices'\n");
     }
-    // Enum options: emit value completion with descriptions (rg-style format)
+    // Enum options: full spec with values and descriptions
     else if (opts[i].metadata.input_type == OPTION_INPUT_ENUM && opts[i].metadata.enum_values) {
       fprintf(output, "--%s=[", opts[i].long_name);
       zsh_escape_desc(output, opts[i].help_text);
-      fprintf(output, "]:%s:((", opts[i].long_name);
+      fprintf(output, "]:%s:((\\\n", opts[i].long_name);
 
-      fprintf(output, "\\\n");
       for (size_t j = 0; opts[i].metadata.enum_values[j] != NULL; j++) {
-        // Include description using zsh format: value\:"description"
         fprintf(output, "      %s", opts[i].metadata.enum_values[j]);
         if (opts[i].metadata.enum_descriptions && opts[i].metadata.enum_descriptions[j]) {
           fprintf(output, "\\:\"");
@@ -140,13 +141,19 @@ static void zsh_write_value_cases(FILE *output, const option_descriptor_t *opts,
       }
       fprintf(output, "    ))'\n");
     }
-    // Boolean options: emit true/false completion with descriptions
+    // Boolean options with values
     else if (opts[i].type == OPTION_TYPE_BOOL) {
       fprintf(output, "--%s=[", opts[i].long_name);
       zsh_escape_desc(output, opts[i].help_text);
       fprintf(output, "]:value:((true\\:\"enable\" false\\:\"disable\"))'\n");
     }
-    // Other options without specific values
+    // Action options (no value)
+    else if (opts[i].type == OPTION_TYPE_ACTION) {
+      fprintf(output, "--%s[", opts[i].long_name);
+      zsh_escape_desc(output, opts[i].help_text);
+      fprintf(output, "]'\n");
+    }
+    // Other options
     else {
       fprintf(output, "--%s=[", opts[i].long_name);
       zsh_escape_desc(output, opts[i].help_text);
@@ -155,8 +162,7 @@ static void zsh_write_value_cases(FILE *output, const option_descriptor_t *opts,
   }
 
   fprintf(output, "  )\n\n");
-
-  fprintf(output, "  _arguments -C -s -S : $value_specs[@]\n\n");
+  fprintf(output, "  _arguments -C -s -S : $args && return\n\n");
 }
 
 /**
@@ -218,11 +224,8 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   size_t discovery_count = 0;
   const option_descriptor_t *discovery_opts = options_registry_get_for_display(MODE_DISCOVERY, false, &discovery_count);
 
-  fprintf(output, "compdef _ascii_chat ascii-chat\n"
-                  "compdef _ascii_chat 'build/bin/ascii-chat'\n"
-                  "# Zsh completion script for ascii-chat\n"
+  fprintf(output, "# Zsh completion script for ascii-chat\n"
                   "# Generated from options registry - DO NOT EDIT MANUALLY\n"
-                  "\n"
                   "\n"
                   "# Configure completion for ascii-chat\n"
                   "# Use only _complete (no corrections or approximate matching)\n"
@@ -285,8 +288,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
 
   /* Write binary-level options in grouped format */
   if (binary_opts) {
-    zsh_write_value_cases(output, binary_opts, binary_count);
-    zsh_write_options_grouped(output, binary_opts, binary_count, "binary");
+    zsh_write_combined_args(output, binary_opts, binary_count);
   }
 
   fprintf(output, "}\n"
@@ -379,8 +381,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   const option_descriptor_t *server_opts = options_registry_get_for_display(MODE_SERVER, false, &server_count);
 
   if (server_opts) {
-    zsh_write_value_cases(output, server_opts, server_count);
-    zsh_write_options_grouped(output, server_opts, server_count, "server");
+    zsh_write_combined_args(output, server_opts, server_count);
     SAFE_FREE(server_opts);
   }
 
@@ -397,8 +398,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
       options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
 
   if (discovery_svc_opts) {
-    zsh_write_value_cases(output, discovery_svc_opts, discovery_svc_count);
-    zsh_write_options_grouped(output, discovery_svc_opts, discovery_svc_count, "discovery_service");
+    zsh_write_combined_args(output, discovery_svc_opts, discovery_svc_count);
     SAFE_FREE(discovery_svc_opts);
   }
 
@@ -415,8 +415,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   const option_descriptor_t *client_opts = options_registry_get_for_display(MODE_CLIENT, false, &client_count);
 
   if (client_opts) {
-    zsh_write_value_cases(output, client_opts, client_count);
-    zsh_write_options_grouped(output, client_opts, client_count, "client");
+    zsh_write_combined_args(output, client_opts, client_count);
     SAFE_FREE(client_opts);
   }
 
@@ -432,8 +431,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   const option_descriptor_t *mirror_opts = options_registry_get_for_display(MODE_MIRROR, false, &mirror_count);
 
   if (mirror_opts) {
-    zsh_write_value_cases(output, mirror_opts, mirror_count);
-    zsh_write_options_grouped(output, mirror_opts, mirror_count, "mirror");
+    zsh_write_combined_args(output, mirror_opts, mirror_count);
     SAFE_FREE(mirror_opts);
   }
 
@@ -447,13 +445,14 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
 
   /* Discovery options - grouped by category (reuse already-loaded options) */
   if (discovery_opts) {
-    zsh_write_value_cases(output, discovery_opts, discovery_count);
-    zsh_write_options_grouped(output, discovery_opts, discovery_count, "discovery");
+    zsh_write_combined_args(output, discovery_opts, discovery_count);
   }
 
   fprintf(output, "}\n"
                   "\n"
-                  "_ascii_chat \"$@\"\n");
+                  "# Register completion functions (must come after definitions)\n"
+                  "compdef _ascii_chat ascii-chat\n"
+                  "compdef _ascii_chat 'build/bin/ascii-chat'\n");
 
   SAFE_FREE(binary_opts);
   SAFE_FREE(discovery_opts);
