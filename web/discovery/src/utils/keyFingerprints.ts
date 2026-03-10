@@ -66,12 +66,27 @@ export async function getGpgFingerprint(
     // Dynamic import to avoid loading openpgpjs if not needed
     const openpgp = await import("openpgp");
 
-    const key = await openpgp.readKey({ armoredKey: keyString });
+    // Fix missing blank line after BEGIN header (Coolify env var processing issue)
+    let processedKey = keyString;
+    if (
+      keyString.includes("-----BEGIN PGP PUBLIC KEY BLOCK-----") &&
+      !keyString.includes("-----BEGIN PGP PUBLIC KEY BLOCK-----\n\n")
+    ) {
+      processedKey = keyString.replace(
+        "-----BEGIN PGP PUBLIC KEY BLOCK-----\n",
+        "-----BEGIN PGP PUBLIC KEY BLOCK-----\n\n",
+      );
+    }
+
+    const key = await openpgp.readKey({ armoredKey: processedKey });
     const fingerprint = key.getFingerprint().toUpperCase();
 
     // Format as: 0AAE 7D67 D734 6959 74C3 6CEE C380 DA08 AF18 35B9
     return fingerprint.match(/.{1,4}/g)?.join(" ") || fingerprint;
-  } catch {
+  } catch (error) {
+    console.error("GPG fingerprint computation failed:", error);
+    console.error("Key string length:", keyString?.length);
+    console.error("Key starts with:", keyString?.substring(0, 50));
     return null;
   }
 }
