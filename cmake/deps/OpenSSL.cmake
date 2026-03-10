@@ -227,7 +227,6 @@ if(USE_MUSL)
             RESULT_VARIABLE CONFIG_RESULT
             OUTPUT_VARIABLE CONFIG_OUTPUT
             ERROR_VARIABLE CONFIG_ERROR
-            INPUT ""
         )
         if(NOT CONFIG_RESULT EQUAL 0)
             message(FATAL_ERROR "Failed to configure OpenSSL:\n${CONFIG_ERROR}")
