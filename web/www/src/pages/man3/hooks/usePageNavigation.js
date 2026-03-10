@@ -54,8 +54,9 @@ export function usePageNavigation(
 
           setPageNotFound(false);
 
-          // Clear scroll to top on new page
-          if (contentViewerRef.current) {
+          // Clear scroll to top on new page, UNLESS there's a hash target
+          // (don't scroll to top if we need to scroll to an anchor instead)
+          if (contentViewerRef.current && !window.location.hash) {
             contentViewerRef.current.scrollTop = 0;
           }
 
