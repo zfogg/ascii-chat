@@ -152,6 +152,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       yt-dlp \
       libwebsockets-dev  \
       libvterm-dev libfreetype6-dev libfontconfig1-dev \
+      curl \
       || true
     #yyjson-dev \
 

@@ -1,12 +1,16 @@
 # Build artifacts
 build/
 build_*/
+.deps-cache/
+node_modules/
 bin/
 *.o
 *.a
 *.so
 *.dylib
 *.dll
+
+todo/
 
 # IDE and editor files
 .vscode/
