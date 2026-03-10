@@ -143,7 +143,7 @@ static void zsh_write_value_cases(FILE *output, const option_descriptor_t *opts,
 
   fprintf(output, "  )\n\n");
 
-  fprintf(output, "  _arguments -s \"${value_specs[@]}\"\n\n");
+  fprintf(output, "  _arguments -C -s : \"${value_specs[@]}\" && return\n\n");
 }
 
 /**
