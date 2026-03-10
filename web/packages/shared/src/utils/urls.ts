@@ -37,7 +37,7 @@ export const SITES = {
   MAIN: `${baseUrl}:${mainPort}`,
   DISCOVERY: `${discoveryBaseUrl}:${discoveryPort}`,
   WEB: `${baseUrl}:${webPort}`,
-  CRYPTO_DOCS: `${baseUrl}:${mainPort}/man1#SECURITY`,
+  CRYPTO_DOCS: `${baseUrl}:${mainPort}/docs/crypto`,
 } as const;
 
 /**
