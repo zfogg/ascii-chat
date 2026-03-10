@@ -15,6 +15,12 @@ services:
       ascii-chat:
         aliases:
           - discovery
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 3s
 
   web:
     build:
@@ -32,6 +38,12 @@ services:
       ascii-chat:
         aliases:
           - web
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 3s
 
   www:
     build:
@@ -49,6 +61,12 @@ services:
       ascii-chat:
         aliases:
           - www
+    healthcheck:
+      test: ["CMD", "test", "-f", "/app/www/dist/index.html"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 3s
 
 volumes:
   node_modules:
