@@ -81,8 +81,9 @@ if [[ "$PLATFORM" == "macos" ]]; then
 elif [[ "$PLATFORM" == "linux" ]]; then
   if [ -f /etc/debian_version ]; then
       bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+  fi
 
-  elif command -v apt-get &>/dev/null; then
+  if command -v apt-get &>/dev/null; then
     echo "Detected apt-get package manager"
     echo "Installing dependencies..."
 

@@ -18,7 +18,7 @@ COPY ./scripts/install-deps.sh /tmp/install-deps.sh
 # Set up locale and minimal prerequisites
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends locales curl gpg ca-certificates && \
+    apt-get install -y --no-install-recommends locales curl git gpg ca-certificates && \
     localedef -i en_US -f UTF-8 en_US.UTF-8 && \
     rm -rf /var/lib/apt/lists/*
 

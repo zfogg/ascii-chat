@@ -463,7 +463,9 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_TARGETS_DEFINED)
     set(WASM_TARGETS_DEFINED TRUE)
 endif()
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/tests ${CMAKE_BINARY_DIR}/tests)
+if(EXISTS ${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt)
+  add_subdirectory(${CMAKE_SOURCE_DIR}/tests ${CMAKE_BINARY_DIR}/tests)
+endif()
 # Optional CTest dashboard integration
 if(ASCIICHAT_ENABLE_CTEST_DASHBOARD)
     include(CTest)
@@ -475,7 +477,9 @@ endif()
 # =============================================================================
 # Project meta stuff like documentation, installation packages, and custom targets like clang-tidy and clang-format
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/install/Documentation.cmake)
+if(EXISTS ${CMAKE_SOURCE_DIR}/docs)
+  include(${CMAKE_SOURCE_DIR}/cmake/install/Documentation.cmake)
+endif()
 include(${CMAKE_SOURCE_DIR}/cmake/install/Install.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/install/SystemConfig.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tools/CustomTargets.cmake)
