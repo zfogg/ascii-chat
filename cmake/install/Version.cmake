@@ -131,14 +131,24 @@ function(version_setup_targets)
     # Create a script that generates version.h on every build
     set(VERSION_SCRIPT_PATH "${CMAKE_BINARY_DIR}/generate_version.cmake")
     file(WRITE "${VERSION_SCRIPT_PATH}" "
-# Get git describe output (includes commits since last tag)
-execute_process(
-    COMMAND bash -c \"timeout 3 git describe --tags --long --dirty --always --match 'v[0-9]*'\"
-    WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
-    OUTPUT_VARIABLE GIT_DESCRIBE
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET
-)
+# Check if SOURCE_COMMIT is provided (e.g., from Coolify/Docker build)
+# If SOURCE_COMMIT is set, use it instead of git commands (for Docker builds without .git)
+if(DEFINED ENV{SOURCE_COMMIT})
+    set(GIT_COMMIT_HASH \"\$ENV{SOURCE_COMMIT}\")
+    set(GIT_DESCRIBE \"\${GIT_COMMIT_HASH}\")
+    set(GIT_IS_DIRTY \"false\")
+else()
+    # Get git describe output (includes commits since last tag)
+    execute_process(
+        COMMAND bash -c \"timeout 3 git describe --tags --long --dirty --always --match 'v[0-9]*'\"
+        WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
+        OUTPUT_VARIABLE GIT_DESCRIBE
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+
+    set(GIT_DESCRIBE_AVAILABLE TRUE)
+endif()
 
 # Parse git describe output
 # Format: v0.2.0-42-gf811525-dirty
@@ -212,29 +222,33 @@ endif()
 set(VERSION_BUILD_TYPE \"${CMAKE_BUILD_TYPE}\")
 set(VERSION_OS \"${CMAKE_SYSTEM_NAME}\")
 
-# Get git commit hash and dirty state
-execute_process(
-    COMMAND bash -c \"timeout 3 git rev-parse HEAD\"
-    WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
-    OUTPUT_VARIABLE GIT_COMMIT_HASH
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET
-)
-if(NOT GIT_COMMIT_HASH)
-    set(GIT_COMMIT_HASH \"unknown\")
+# Get git commit hash and dirty state (skip if SOURCE_COMMIT already set above)
+if(NOT DEFINED GIT_COMMIT_HASH OR GIT_COMMIT_HASH STREQUAL \"\")
+    execute_process(
+        COMMAND bash -c \"timeout 3 git rev-parse HEAD\"
+        WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
+        OUTPUT_VARIABLE GIT_COMMIT_HASH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(NOT GIT_COMMIT_HASH)
+        set(GIT_COMMIT_HASH \"unknown\")
+    endif()
 endif()
 
-# Check if working tree is dirty
-execute_process(
-    COMMAND bash -c \"timeout 3 git diff-index --quiet HEAD --\"
-    WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
-    RESULT_VARIABLE GIT_DIRTY_RESULT
-    ERROR_QUIET
-)
-if(GIT_DIRTY_RESULT EQUAL 0)
-    set(GIT_IS_DIRTY \"false\")
-else()
-    set(GIT_IS_DIRTY \"true\")
+# Check if working tree is dirty (skip if SOURCE_COMMIT already set)
+if(NOT DEFINED GIT_IS_DIRTY)
+    execute_process(
+        COMMAND bash -c \"timeout 3 git diff-index --quiet HEAD --\"
+        WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
+        RESULT_VARIABLE GIT_DIRTY_RESULT
+        ERROR_QUIET
+    )
+    if(GIT_DIRTY_RESULT EQUAL 0)
+        set(GIT_IS_DIRTY \"false\")
+    else()
+        set(GIT_IS_DIRTY \"true\")
+    endif()
 endif()
 
 # Get current date in yyyy-mm-dd format
@@ -309,7 +323,14 @@ configure_file(
         set(_GIT_DIR "${CMAKE_SOURCE_DIR}/.git")
     endif()
 
-    if(CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
+    # Check if SOURCE_COMMIT is available (Docker builds without .git)
+    if(DEFINED ENV{SOURCE_COMMIT})
+        # When SOURCE_COMMIT is provided, only depend on version.h.in template
+        # No git files needed - version is fixed by SOURCE_COMMIT
+        set(VERSION_DEPENDENCIES
+            "${CMAKE_SOURCE_DIR}/include/ascii-chat/version.h.in"
+        )
+    elseif(CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
         # Debug/Dev: Only depend on .git/HEAD (commits/branches), NOT .git/index
         # This prevents rebuilds from uncommitted changes or staging
         set(VERSION_DEPENDENCIES
