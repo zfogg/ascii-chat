@@ -296,41 +296,6 @@ function Home() {
             level={2}
             className="text-blue-400 border-b border-gray-700 pb-2 mb-4 text-2xl md:text-3xl"
           >
-            🔒 Security
-          </Heading>
-          <ul className="leading-relaxed ml-0 pl-4 space-y-2">
-            <li>
-              <strong>Automatic Trust:</strong> The ascii-chat client
-              automatically trusts keys from{" "}
-              <code className="bg-gray-800 px-1 rounded">
-                discovery.ascii-chat.com
-              </code>{" "}
-              downloaded over HTTPS (official server only)
-            </li>
-            <li>
-              <strong>Key Verification:</strong> You can manually verify keys
-              using the fingerprints shown above
-            </li>
-            <li>
-              <strong>Identity Verification:</strong> ACDS supports optional
-              Ed25519 identity verification for servers and clients
-            </li>
-            <li>
-              <strong>No Media Access:</strong> ACDS never sees your video or
-              audio—only connection metadata
-            </li>
-            <li>
-              <strong>End-to-End Encryption:</strong> All media flows
-              peer-to-peer with ACIP encryption
-            </li>
-          </ul>
-        </section>
-
-        <section className="mb-12">
-          <Heading
-            level={2}
-            className="text-blue-400 border-b border-gray-700 pb-2 mb-4 text-2xl md:text-3xl"
-          >
             🏗️ Running Your Own ACDS Server
           </Heading>
           <p className="leading-relaxed mb-4 text-base md:text-lg">
