@@ -56,6 +56,6 @@ RUN echo '#!/bin/sh' > /start.sh && \
 
 # Health check for API server
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=5 \
-  CMD wget --tries=2 --spider http://localhost:3001/api/health
+  CMD wget --no-verbose --tries=2 --spider http://127.0.0.1:3001/api/health || exit 1
 
 CMD ["/start.sh"]
