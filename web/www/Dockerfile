@@ -1,6 +1,7 @@
 # WWW app - builds on shared
 ARG SOURCE_COMMIT
 ARG VITE_DISCOVERY_API_BASE
+ARG NODE_ENV=development
 FROM node:22-slim AS base
 
 # Install bash, git, and bun
@@ -28,6 +29,9 @@ RUN cd web/www && bun run build && test -d dist || (echo "ERROR: dist directory 
 FROM caddy:alpine AS caddy
 FROM node:22-slim
 
+ARG NODE_ENV=development
+ENV NODE_ENV=${NODE_ENV}
+
 RUN apt-get update && apt-get install -y --no-install-recommends git && npm install -g bun@1.3.10 && rm -rf /var/lib/apt/lists/*
 COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
 
@@ -40,7 +44,6 @@ COPY --from=builder /app/web/www ./www
 COPY --from=builder /app/web/web ./web
 COPY --from=builder /app/web/discovery ./discovery
 COPY --from=builder /app/web/packages ./packages
-
 ENV API_PORT=3001
 EXPOSE 80 3001
 

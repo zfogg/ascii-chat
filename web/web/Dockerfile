@@ -1,6 +1,7 @@
 # Web app - builds on shared
 ARG SOURCE_COMMIT
 ARG VITE_DISCOVERY_API_BASE
+ARG NODE_ENV=development
 FROM node:22-slim AS base
 
 RUN apt-get update && apt-get install -y --no-install-recommends bash git && npm install -g bun@1.3.10 && rm -rf /var/lib/apt/lists/*
@@ -26,11 +27,13 @@ RUN test -d /app/web/web/dist || (echo "ERROR: dist directory not created during
 # Production stage
 FROM caddy:alpine
 
+ARG NODE_ENV=development
+ENV NODE_ENV=${NODE_ENV}
+
 WORKDIR /app/web
 
 COPY --from=builder /app/web/web/dist ./dist
 COPY web/web/Caddyfile /etc/caddy/Caddyfile
-
 EXPOSE 3000
 
 CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]
