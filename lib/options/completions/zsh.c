@@ -128,22 +128,22 @@ static void zsh_write_value_cases(FILE *output, const option_descriptor_t *opts,
       fprintf(output, "]:%s:((", opts[i].long_name);
 
       for (size_t j = 0; opts[i].metadata.enum_values[j] != NULL; j++) {
-        // Include description if available using rg-style escaped quotes: value\"description"
+        // Include description using zsh format: value\:"description"
+        fprintf(output, "%s", opts[i].metadata.enum_values[j]);
         if (opts[i].metadata.enum_descriptions && opts[i].metadata.enum_descriptions[j]) {
-          fprintf(output, "%s\\\"", opts[i].metadata.enum_values[j]);
+          fprintf(output, "\\:\"");
           zsh_escape_desc(output, opts[i].metadata.enum_descriptions[j]);
-          fprintf(output, "\" ");
-        } else {
-          fprintf(output, "%s ", opts[i].metadata.enum_values[j]);
+          fprintf(output, "\"");
         }
+        fprintf(output, " ");
       }
       fprintf(output, "))'\n");
     }
-    // Boolean options: emit true/false completion with descriptions (rg-style)
+    // Boolean options: emit true/false completion with descriptions
     else if (opts[i].type == OPTION_TYPE_BOOL) {
       fprintf(output, "--%s=[", opts[i].long_name);
       zsh_escape_desc(output, opts[i].help_text);
-      fprintf(output, "]:value:((true\\\"enable\" false\\\"disable\"))'\n");
+      fprintf(output, "]:value:((true\\:\"enable\" false\\:\"disable\"))'\n");
     }
     // Other options without specific values
     else {
@@ -155,7 +155,7 @@ static void zsh_write_value_cases(FILE *output, const option_descriptor_t *opts,
 
   fprintf(output, "  )\n\n");
 
-  fprintf(output, "  _arguments -C -s -S : \"${value_specs[@]}\"\n\n");
+  fprintf(output, "  _arguments -C -s -S : $value_specs[@]\n\n");
 }
 
 /**
