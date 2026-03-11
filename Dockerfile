@@ -72,10 +72,13 @@ COPY --from=builder /home/linuxbrew/.linuxbrew /home/linuxbrew/.linuxbrew
 # Create ACDS directory for keys
 RUN mkdir -p /acds && chmod 755 /acds
 
-# Copy SSH private key from build secrets
+# Copy SSH and GPG keys from build secrets
 RUN --mount=type=secret,id=KEY_SSH,target=/run/secrets/KEY_SSH \
+    --mount=type=secret,id=KEY_GPG,target=/run/secrets/KEY_GPG \
     cp /run/secrets/KEY_SSH /acds/key 2>/dev/null || true && \
-    chmod 600 /acds/key 2>/dev/null || true
+    chmod 600 /acds/key 2>/dev/null || true && \
+    cp /run/secrets/KEY_GPG /acds/key.gpg 2>/dev/null || true && \
+    chmod 600 /acds/key.gpg 2>/dev/null || true
 
 # Create non-root user for running ascii-chat
 RUN useradd -m -u 1001 -s /bin/bash ascii && \
