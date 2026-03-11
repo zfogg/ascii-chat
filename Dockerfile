@@ -69,6 +69,10 @@ RUN chmod +x /tmp/install-deps.sh && /tmp/install-deps.sh
 COPY --from=builder /usr/local /usr/local
 COPY --from=builder /home/linuxbrew/.linuxbrew /home/linuxbrew/.linuxbrew
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Create ACDS directory for keys
 RUN mkdir -p /acds && chmod 755 /acds
 
@@ -98,10 +102,10 @@ ENV LD_LIBRARY_PATH="/home/linuxbrew/.linuxbrew/lib:/usr/local/lib:/usr/lib/x86_
 # 27225: ACDS discovery service
 EXPOSE 27224 27225
 
-# Set ascii-chat as the entrypoint
+# Set entrypoint script (generates keys if not provided, then runs ascii-chat)
 # Users can override the command in their deployment platform (Coolify, etc)
 # Example: discovery-service 0.0.0.0 :: --key /acds/key
-ENTRYPOINT ["/usr/local/bin/ascii-chat"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # Default command shows help
 CMD ["--help"]
