@@ -34,7 +34,8 @@ RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/mast
 RUN /home/linuxbrew/.linuxbrew/bin/brew install yyjson
 
 USER root
-ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}" \
+    LD_LIBRARY_PATH="/home/linuxbrew/.linuxbrew/lib:/build/build/lib"
 
 # Set compiler environment variables
 ENV CC=clang \
@@ -43,8 +44,7 @@ ENV CC=clang \
 
 # Build ascii-chat in Release mode and install to /usr/local
 # Disable defer tool and analyzers (to speed up emulated builds)
-# Set LD_LIBRARY_PATH so binary can find libasciichat.so during build (shell completion generation)
-RUN LD_LIBRARY_PATH=/home/linuxbrew/.linuxbrew/lib:/build/build/lib make install CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX=/usr/local EXTRA_CMAKE_ARGS="-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF"
+RUN make install CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX=/usr/local EXTRA_CMAKE_ARGS="-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF"
 
 # ============================================================================
 # Stage 2: Runtime
@@ -86,8 +86,8 @@ RUN useradd -m -u 1001 -s /bin/bash ascii && \
 USER ascii
 WORKDIR /home/ascii
 
-# Set library path to include Homebrew libraries from builder
-ENV LD_LIBRARY_PATH="/home/linuxbrew/.linuxbrew/lib:/usr/lib/x86_64-linux-gnu:/usr/local/lib"
+# Set library path to include Homebrew libraries from builder and local lib directory
+ENV LD_LIBRARY_PATH="/home/linuxbrew/.linuxbrew/lib:/usr/local/lib:/usr/lib/x86_64-linux-gnu"
 
 # Expose default ports
 # 27224: ascii-chat server
