@@ -44,7 +44,7 @@ ENV CC=clang \
 
 # Build ascii-chat in Release mode and install to /usr/local
 # Disable defer tool and analyzers (to speed up emulated builds)
-RUN make install CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX=/usr/local EXTRA_CMAKE_ARGS="-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF"
+RUN make install CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX=/usr/local EXTRA_CMAKE_ARGS="-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=0.3.0"
 
 # ============================================================================
 # Stage 2: Runtime
