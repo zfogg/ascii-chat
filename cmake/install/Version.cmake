@@ -80,43 +80,59 @@ endmacro()
 # Call AFTER version_detect() but can be called before or after project()
 # =============================================================================
 macro(library_version_detect)
-    # Get the highest lib/v* tag (sorted by version)
-    execute_process(
-        COMMAND bash -c "timeout 3 git tag -l 'lib/v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname"
-        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-        OUTPUT_VARIABLE _LIB_TAGS
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET
-    )
-
-    # Extract the first (highest) tag
-    if(_LIB_TAGS)
-        string(REGEX MATCH "^lib/v([0-9]+)\\.([0-9]+)\\.([0-9]+)" _LIB_TAG_MATCH "${_LIB_TAGS}")
-        if(_LIB_TAG_MATCH)
+    # If ASCIICHAT_LIB_VERSION was already provided via command-line, skip git detection
+    if(ASCIICHAT_LIB_VERSION)
+        # Parse the provided version
+        if(ASCIICHAT_LIB_VERSION MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)$")
             set(ASCIICHAT_LIB_VERSION_MAJOR "${CMAKE_MATCH_1}")
             set(ASCIICHAT_LIB_VERSION_MINOR "${CMAKE_MATCH_2}")
             set(ASCIICHAT_LIB_VERSION_PATCH "${CMAKE_MATCH_3}")
-            set(ASCIICHAT_LIB_VERSION "${ASCIICHAT_LIB_VERSION_MAJOR}.${ASCIICHAT_LIB_VERSION_MINOR}.${ASCIICHAT_LIB_VERSION_PATCH}")
-            set(_LIB_VERSION_TYPE "tagged")
+            set(_LIB_VERSION_TYPE "command-line")
         else()
-            # Fallback if regex didn't match
+            message(WARNING "Invalid version format: ${ASCIICHAT_LIB_VERSION} (expected X.Y.Z)")
+            set(_LIB_VERSION_TYPE "command-line-invalid")
+        endif()
+    else()
+        # Get the highest lib/v* tag (sorted by version)
+        execute_process(
+            COMMAND bash -c "timeout 3 git tag -l 'lib/v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname"
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            OUTPUT_VARIABLE _LIB_TAGS
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+
+        # Extract the first (highest) tag
+        if(_LIB_TAGS)
+            string(REGEX MATCH "^lib/v([0-9]+)\\.([0-9]+)\\.([0-9]+)" _LIB_TAG_MATCH "${_LIB_TAGS}")
+            if(_LIB_TAG_MATCH)
+                set(ASCIICHAT_LIB_VERSION_MAJOR "${CMAKE_MATCH_1}")
+                set(ASCIICHAT_LIB_VERSION_MINOR "${CMAKE_MATCH_2}")
+                set(ASCIICHAT_LIB_VERSION_PATCH "${CMAKE_MATCH_3}")
+                set(ASCIICHAT_LIB_VERSION "${ASCIICHAT_LIB_VERSION_MAJOR}.${ASCIICHAT_LIB_VERSION_MINOR}.${ASCIICHAT_LIB_VERSION_PATCH}")
+                set(_LIB_VERSION_TYPE "tagged")
+            else()
+                # Fallback if regex didn't match
+                set(ASCIICHAT_LIB_VERSION_MAJOR "0")
+                set(ASCIICHAT_LIB_VERSION_MINOR "1")
+                set(ASCIICHAT_LIB_VERSION_PATCH "0")
+                set(ASCIICHAT_LIB_VERSION "0.1.0")
+                set(_LIB_VERSION_TYPE "fallback")
+            endif()
+        else()
+            # No lib/v* tags found - use fallback
             set(ASCIICHAT_LIB_VERSION_MAJOR "0")
             set(ASCIICHAT_LIB_VERSION_MINOR "1")
             set(ASCIICHAT_LIB_VERSION_PATCH "0")
             set(ASCIICHAT_LIB_VERSION "0.1.0")
             set(_LIB_VERSION_TYPE "fallback")
         endif()
-    else()
-        # No lib/v* tags found - use fallback
-        set(ASCIICHAT_LIB_VERSION_MAJOR "0")
-        set(ASCIICHAT_LIB_VERSION_MINOR "1")
-        set(ASCIICHAT_LIB_VERSION_PATCH "0")
-        set(ASCIICHAT_LIB_VERSION "0.1.0")
-        set(_LIB_VERSION_TYPE "fallback")
     endif()
 
     # Print library version info
-    if(_LIB_VERSION_TYPE STREQUAL "tagged")
+    if(_LIB_VERSION_TYPE STREQUAL "command-line")
+        message(STATUS "Library version: ${BoldGreen}${ASCIICHAT_LIB_VERSION}${ColorReset} (from command-line)")
+    elseif(_LIB_VERSION_TYPE STREQUAL "tagged")
         message(STATUS "Library version from ${BoldBlue}git${ColorReset} tag ${BoldMagenta}lib/v${ASCIICHAT_LIB_VERSION}${ColorReset}: ${BoldGreen}${ASCIICHAT_LIB_VERSION}${ColorReset}")
     else()
         message(STATUS "Library version: ${BoldYellow}${ASCIICHAT_LIB_VERSION}${ColorReset} (no lib/v* tags found)")
