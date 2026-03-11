@@ -35,7 +35,8 @@ RUN /home/linuxbrew/.linuxbrew/bin/brew install yyjson
 
 USER root
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}" \
-    LD_LIBRARY_PATH="/home/linuxbrew/.linuxbrew/lib:/build/build/lib"
+    LD_LIBRARY_PATH="/home/linuxbrew/.linuxbrew/lib:/build/build/lib" \
+    SOURCE_COMMIT="docker-build"
 
 # Set compiler environment variables
 ENV CC=clang \
