@@ -17,8 +17,7 @@
     "type-check": "bun run --filter './www' --filter './discovery' --filter './web' type-check",
     "lint": "bun run --filter './www' --filter './discovery' --filter './web' lint",
     "format": "bun run --filter './www' --filter './discovery' --filter './web' format",
-    "format:check": "bun run --filter './www' --filter './discovery' --filter './web' format:check",
-    "build:sites": "bun run build:shared && bun run --filter './www' --filter './discovery' --filter './web' build"
+    "format:check": "bun run --filter './www' --filter './discovery' --filter './web' format:check"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
