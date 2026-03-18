@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { HeadingProvider } from "@ascii-chat/shared/components";
 import Navigation from "./components/Navigation";
@@ -21,12 +21,6 @@ const Media = lazy(() => import("./pages/docs/Media"));
 // Wrapper component that passes commitSha to Man3
 function Man3Wrapper() {
   const sha = "__COMMIT_SHA__";
-  console.log("[Man3Wrapper] sha value after Vite replacement:", sha);
-  console.log("[Man3Wrapper] typeof sha:", typeof sha);
-  console.log(
-    "[Man3Wrapper] sha === '__COMMIT_SHA__':",
-    sha === "__COMMIT_SHA__",
-  );
   return <Man3Lazy commitSha={sha} />;
 }
 

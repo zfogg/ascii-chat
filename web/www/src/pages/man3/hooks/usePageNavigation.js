@@ -27,13 +27,6 @@ export function usePageNavigation(
   const contentViewerRef = useRef(null);
   const commitSha = providedCommitSha || "master";
 
-  console.log("[usePageNavigation] Initialized with:", {
-    manPagesLength: manPages?.length,
-    hasProcessPageContent: typeof processPageContent === "function",
-    hasProcessDefinitionLinks: typeof processDefinitionLinks === "function",
-    commitSha,
-  });
-
   // Load page content from file and update state
   const loadPageContent = useCallback(
     (
@@ -43,9 +36,7 @@ export function usePageNavigation(
       skipHistoryPush = false,
       snippetText = null,
     ) => {
-      console.log("[loadPageContent] CALLBACK EXECUTING - pageName:", pageName);
       if (!pageName) {
-        console.log("[loadPageContent] No pageName, returning early");
         return;
       }
 
@@ -84,19 +75,21 @@ export function usePageNavigation(
           const isSourcePage = pageName?.endsWith("_source") || false;
 
           // Apply HTML transformations in sequence with proper parameters
-          console.log("[usePageNavigation.loadPageContent] CALLED with pageName:", pageName, "commitSha:", commitSha);
-          let processedContent = processPageContent(html, currentSearchQuery, sourcePath, isSourcePage);
+          let processedContent = processPageContent(
+            html,
+            currentSearchQuery,
+            sourcePath,
+            isSourcePage,
+          );
 
           // processDefinitionLinks is already called inside processPageContent -> preprocessPageHTML
           // This second call is a safeguard in case the transformation needs to be applied again
-          console.log("[usePageNavigation.loadPageContent] Before processDefinitionLinks - commitSha:", commitSha);
           processedContent = processDefinitionLinks(
             processedContent,
             sourcePath,
             commitSha,
             isSourcePage,
           );
-          console.log("[usePageNavigation.loadPageContent] After processDefinitionLinks - changed:", processedContent !== html);
 
           setSelectedPageContent(processedContent);
           setSelectedPageName(pageName);
@@ -137,12 +130,17 @@ export function usePageNavigation(
         })
         .catch((e) => console.error("Failed to load page:", e));
     },
-    [processPageContent, processDefinitionLinks, searchQuery, manPages, commitSha],
+    [
+      processPageContent,
+      processDefinitionLinks,
+      searchQuery,
+      manPages,
+      commitSha,
+    ],
   );
 
   // Initialize breadcrumbs and load initial page from URL
   useEffect(() => {
-    console.log("[usePageNavigation.useEffect] RUNNING - loading from URL params");
     setBreadcrumbSchema([
       { name: "Home", path: "/" },
       { name: "API Reference", path: "/man3" },
@@ -151,15 +149,11 @@ export function usePageNavigation(
     // Load from URL params
     const params = new URLSearchParams(window.location.search);
     const pageParam = params.get("page");
-    console.log("[usePageNavigation.useEffect] pageParam:", pageParam);
 
     if (pageParam) {
       const pageName = decodeURIComponent(pageParam);
-      console.log("[usePageNavigation.useEffect] Calling loadPageContent with pageName:", pageName);
       // Trigger load without history push since we're hydrating from URL
       loadPageContent(pageName, null, null, true);
-    } else {
-      console.log("[usePageNavigation.useEffect] No pageParam found");
     }
   }, [loadPageContent]); // Depend on loadPageContent
 

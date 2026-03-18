@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Footer from "../../components/Footer";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
 import { SITES } from "@ascii-chat/shared/utils";
@@ -22,23 +22,22 @@ export default function Man3({ commitSha }) {
   // Extract commit SHA from Footer's data-commit-sha attribute
   useEffect(() => {
     // Try to get from Footer's data attribute
-    const footer = document.querySelector('footer[data-commit-sha]');
+    const footer = document.querySelector("footer[data-commit-sha]");
     if (footer) {
-      const commitShaAttr = footer.getAttribute('data-commit-sha');
+      const commitShaAttr = footer.getAttribute("data-commit-sha");
       if (commitShaAttr && commitShaAttr !== "__COMMIT_SHA__") {
-        console.log("[Man3.jsx] Got commit SHA from footer data attribute:", commitShaAttr);
-        setSha(commitShaAttr); // Use full commit SHA
+        // Only set SHA if it's different from current to avoid infinite loops
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setSha((prevSha) =>
+          prevSha !== commitShaAttr ? commitShaAttr : prevSha,
+        );
         return;
       }
     }
 
     // Fallback to prop or default
     if (commitSha && commitSha !== "__COMMIT_SHA__") {
-      console.log("[Man3.jsx] Using commitSha prop:", commitSha);
-      setSha(commitSha);
-    } else {
-      console.log("[Man3.jsx] Using default: master");
-      setSha("master");
+      setSha((prevSha) => (prevSha !== commitSha ? commitSha : prevSha));
     }
   }, [commitSha]);
 
@@ -59,18 +58,13 @@ export default function Man3({ commitSha }) {
 
   // When SHA changes from initial "master" to the actual commit SHA, reload the page
   const initialShaRef = useRef("master");
+  const { selectedPageName, loadPageContent } = nav;
   useEffect(() => {
-    if (sha !== initialShaRef.current && nav.selectedPageName) {
-      console.log(
-        "[Man3.jsx] SHA extracted from Footer, reloading page:",
-        nav.selectedPageName,
-        "with new sha:",
-        sha,
-      );
+    if (sha !== initialShaRef.current && selectedPageName) {
       initialShaRef.current = sha;
-      nav.loadPageContent(nav.selectedPageName);
+      loadPageContent(selectedPageName);
     }
-  }, [sha, nav.selectedPageName, nav.loadPageContent]);
+  }, [sha, selectedPageName, loadPageContent]);
 
   // Search functionality
   const search = useSearch(manPages);
