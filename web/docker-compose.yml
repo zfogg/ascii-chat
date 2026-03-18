@@ -5,6 +5,8 @@ services:
       dockerfile: web/discovery/Dockerfile
       args:
         SOURCE_COMMIT: ${SOURCE_COMMIT:-unknown}
+        SSH_PUBLIC_KEY: ${SSH_PUBLIC_KEY}
+        GPG_PUBLIC_KEY: ${GPG_PUBLIC_KEY}
     image: zfogg/ascii-chat-web-discovery:latest
     environment:
       - API_PORT=3001
