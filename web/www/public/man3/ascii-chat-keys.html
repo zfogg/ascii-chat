@@ -5837,10 +5837,10 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... bob@example.com
 <p class="Pp">Ed25519 seed (32) + public key (32) = 64 bytes</p>
 <p class="Pp">Definition at line <b>94</b> of file <b>key_types.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>crypto_sign_ephemeral_key()</b>, <b>ed25519_sign_message()</b>,
-    <b>parse_private_key()</b>, <b>parse_ssh_private_key()</b>,
-    <b>private_key_to_x25519()</b>, <b>ssh_agent_add_key()</b>, and
-    <b>validate_private_key()</b>.</p>
+    <b>crypto_sign_ephemeral_key()</b>, <b>discovery_session_start()</b>,
+    <b>ed25519_sign_message()</b>, <b>parse_private_key()</b>,
+    <b>parse_ssh_private_key()</b>, <b>private_key_to_x25519()</b>,
+    <b>ssh_agent_add_key()</b>, and <b>validate_private_key()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_private_key_t::gpg_keygrip_64_"><a class="permalink" href="#char_private_key_t::gpg_keygrip_64_">char
@@ -5855,10 +5855,10 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... bob@example.com
   } private_key_t::key</a></h2>
 <p class="Pp">Private key data (union based on key type)</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>crypto_sign_ephemeral_key()</b>, <b>ed25519_sign_message()</b>,
-    <b>parse_private_key()</b>, <b>parse_ssh_private_key()</b>,
-    <b>private_key_to_x25519()</b>, <b>ssh_agent_add_key()</b>, and
-    <b>validate_private_key()</b>.</p>
+    <b>crypto_sign_ephemeral_key()</b>, <b>discovery_session_start()</b>,
+    <b>ed25519_sign_message()</b>, <b>parse_private_key()</b>,
+    <b>parse_ssh_private_key()</b>, <b>private_key_to_x25519()</b>,
+    <b>ssh_agent_add_key()</b>, and <b>validate_private_key()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> public_key_t::key[32]</h2>
@@ -5870,13 +5870,13 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... bob@example.com
     <b>crypto_handshake_server_auth_challenge()</b>,
     <b>crypto_handshake_server_complete()</b>,
     <b>discovery_keys_download_https()</b>, <b>discovery_keys_load_file()</b>,
-    <b>discovery_keys_verify()</b>, <b>ed25519_sign_message()</b>,
-    <b>format_public_key()</b>, <b>generate_key_fingerprint()</b>,
-    <b>parse_gpg_key()</b>, <b>parse_gpg_key_binary()</b>,
-    <b>parse_public_key()</b>, <b>parse_ssh_private_key()</b>,
-    <b>public_key_to_x25519()</b>, <b>server_crypto_handshake()</b>,
-    <b>ssh_agent_has_key()</b>, <b>ssh_agent_sign()</b>, and
-    <b>validate_public_key()</b>.</p>
+    <b>discovery_keys_verify()</b>, <b>discovery_session_start()</b>,
+    <b>ed25519_sign_message()</b>, <b>format_public_key()</b>,
+    <b>generate_key_fingerprint()</b>, <b>parse_gpg_key()</b>,
+    <b>parse_gpg_key_binary()</b>, <b>parse_public_key()</b>,
+    <b>parse_ssh_private_key()</b>, <b>public_key_to_x25519()</b>,
+    <b>server_crypto_handshake()</b>, <b>ssh_agent_has_key()</b>,
+    <b>ssh_agent_sign()</b>, and <b>validate_public_key()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_private_key_t::key_comment_256_"><a class="permalink" href="#char_private_key_t::key_comment_256_">char
@@ -5904,9 +5904,10 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... bob@example.com
     <b>client_crypto_init()</b>, <b>crypto_handshake_client_auth_response()</b>,
     <b>crypto_handshake_client_key_exchange()</b>,
     <b>crypto_handshake_server_start()</b>, <b>crypto_sign_ephemeral_key()</b>,
-    <b>ed25519_sign_message()</b>, <b>parse_private_key()</b>,
-    <b>parse_ssh_private_key()</b>, <b>private_key_to_x25519()</b>,
-    <b>ssh_agent_add_key()</b>, and <b>validate_private_key()</b>.</p>
+    <b>discovery_session_start()</b>, <b>ed25519_sign_message()</b>,
+    <b>parse_private_key()</b>, <b>parse_ssh_private_key()</b>,
+    <b>private_key_to_x25519()</b>, <b>ssh_agent_add_key()</b>, and
+    <b>validate_private_key()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>key_type_t</b> public_key_t::type</h2>
@@ -5915,12 +5916,12 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... bob@example.com
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
     <b>compare_public_keys()</b>,
     <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>crypto_handshake_server_complete()</b>, <b>ed25519_sign_message()</b>,
-    <b>format_public_key()</b>, <b>parse_gpg_key()</b>,
-    <b>parse_gpg_key_binary()</b>, <b>parse_public_key()</b>,
-    <b>parse_ssh_private_key()</b>, <b>public_key_to_x25519()</b>,
-    <b>server_crypto_handshake()</b>, <b>ssh_agent_sign()</b>, and
-    <b>validate_public_key()</b>.</p>
+    <b>crypto_handshake_server_complete()</b>, <b>discovery_session_start()</b>,
+    <b>ed25519_sign_message()</b>, <b>format_public_key()</b>,
+    <b>parse_gpg_key()</b>, <b>parse_gpg_key_binary()</b>,
+    <b>parse_public_key()</b>, <b>parse_ssh_private_key()</b>,
+    <b>public_key_to_x25519()</b>, <b>server_crypto_handshake()</b>,
+    <b>ssh_agent_sign()</b>, and <b>validate_public_key()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> private_key_t::use_gpg_agent</h2>

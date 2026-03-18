@@ -1350,7 +1350,8 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
     support).</p>
 <p class="Pp">Definition at line <b>298</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
-<p class="Pp">Referenced by <b>options_collect_identity_keys()</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_create()</b>, and
+    <b>options_collect_identity_keys()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_MODE_SERVER_GROUPS"><a class="permalink" href="#_define_MODE_SERVER_GROUPS">#define
@@ -4870,9 +4871,9 @@ opts = options_get();  // Returns static defaults again
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_ptr_load()</b>.</p>
 <p class="Pp">Referenced by <b>acds_main()</b>, <b>client_crypto_init()</b>,
-    <b>client_main()</b>, <b>discovery_session_process()</b>,
-    <b>log_set_terminal_output()</b>, <b>main()</b>,
-    <b>nat_detect_quality()</b>, <b>options_set_bool()</b>,
+    <b>client_main()</b>, <b>discovery_session_create()</b>,
+    <b>discovery_session_process()</b>, <b>log_set_terminal_output()</b>,
+    <b>main()</b>, <b>nat_detect_quality()</b>, <b>options_set_bool()</b>,
     <b>options_set_double()</b>, <b>options_set_int()</b>,
     <b>options_set_string()</b>, <b>server_crypto_handshake()</b>,
     <b>session_settings_from_options()</b>, <b>terminal_screen_render()</b>, and

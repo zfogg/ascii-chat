@@ -178,8 +178,9 @@
 <p class="Pp">Client's Ed25519 private key (for signing challenges)</p>
 <p class="Pp">Definition at line <b>82</b> of file
     <b>crypto/handshake/common.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_handshake_client_auth_response()</b>, and
-    <b>crypto_handshake_client_key_exchange()</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_client_auth_response()</b>,
+    <b>crypto_handshake_client_key_exchange()</b>, and
+    <b>discovery_session_start()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>public_key_t</b>
@@ -188,6 +189,7 @@
     authentication)</p>
 <p class="Pp">Definition at line <b>81</b> of file
     <b>crypto/handshake/common.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_start()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> crypto_handshake_context_t::client_sent_identity</h2>
@@ -350,7 +352,8 @@
 <p class="Pp">Current handshake state (validated by each function)</p>
 <p class="Pp">Definition at line <b>73</b> of file
     <b>crypto/handshake/common.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_handshake_client_auth_response()</b>,
+<p class="Pp">Referenced by <b>acds_client_handler()</b>,
+    <b>crypto_handshake_client_auth_response()</b>,
     <b>crypto_handshake_client_complete()</b>,
     <b>crypto_handshake_client_key_exchange()</b>,
     <b>crypto_handshake_init()</b>,
@@ -358,8 +361,8 @@
     <b>crypto_handshake_is_ready()</b>,
     <b>crypto_handshake_server_auth_challenge()</b>,
     <b>crypto_handshake_server_complete()</b>,
-    <b>crypto_handshake_server_start()</b>, and
-    <b>server_crypto_handshake()</b>.</p>
+    <b>crypto_handshake_server_start()</b>, <b>discovery_session_start()</b>,
+    and <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> crypto_handshake_context_t::verify_server_key</h2>

@@ -312,60 +312,65 @@
 189   // Session type (Direct TCP or WebRTC)
 190   req.session_type = params-&gt;session_type;
 191 
-192   // Send SESSION_CREATE packet
-193   asciichat_error_t send_result = send_packet(client-&gt;socket, PACKET_TYPE_ACIP_SESSION_CREATE, &amp;req, sizeof(req));
-194   if (send_result != ASCIICHAT_OK) {
-195     return send_result;
-196   }
-197 
-198   log_debug(&quot;Sent SESSION_CREATE request&quot;);
-199   log_debug(&quot;&#x2605; ACDS_CLIENT: About to receive SESSION_CREATED on socket %d&quot;, client-&gt;socket);
-200 
-201   // Receive SESSION_CREATED response
-202   packet_type_t resp_type;
-203   void *resp_payload = NULL;
-204   size_t resp_size = 0;
+192   // Multi-key protocol: set to single-key mode (total_keys=0 for backward compatibility, or =1 for new protocol)
+193   // For now, using legacy single-key mode (total_keys=0, key_index=0)
+194   req.total_keys = 0;  // Legacy mode: server knows this is single-key
+195   req.key_index = 0;   // Not used in legacy mode
+196 
+197   // Send SESSION_CREATE packet
+198   asciichat_error_t send_result = send_packet(client-&gt;socket, PACKET_TYPE_ACIP_SESSION_CREATE, &amp;req, sizeof(req));
+199   if (send_result != ASCIICHAT_OK) {
+200     return send_result;
+201   }
+202 
+203   log_debug(&quot;Sent SESSION_CREATE request&quot;);
+204   log_debug(&quot;&#x2605; ACDS_CLIENT: About to receive SESSION_CREATED on socket %d&quot;, client-&gt;socket);
 205 
-206   int recv_result = receive_packet(client-&gt;socket, &amp;resp_type, &amp;resp_payload, &amp;resp_size);
-207   log_debug(&quot;&#x2605; ACDS_CLIENT: receive_packet returned %d&quot;, recv_result);
-208   if (recv_result &lt; 0) {
-209     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive SESSION_CREATED response&quot;);
-210   }
-211 
-212   // Check response type
-213   if (resp_type != PACKET_TYPE_ACIP_SESSION_CREATED) {
-214     if (resp_type == PACKET_TYPE_ERROR_MESSAGE || resp_type == PACKET_TYPE_ACIP_ERROR) {
-215       log_error(&quot;Session creation failed: server returned error packet&quot;);
-216       buffer_pool_free(NULL, resp_payload, resp_size);
-217       return SET_ERRNO(ERROR_NETWORK, &quot;Session creation failed&quot;);
-218     }
-219     buffer_pool_free(NULL, resp_payload, resp_size);
-220     return SET_ERRNO(ERROR_NETWORK, &quot;Unexpected response type: 0x%02X&quot;, resp_type);
-221   }
-222 
-223   // Parse SESSION_CREATED response
-224   if (resp_size &lt; sizeof(acip_session_created_t)) {
-225     buffer_pool_free(NULL, resp_payload, resp_size);
-226     return SET_ERRNO(ERROR_NETWORK, &quot;SESSION_CREATED response too small: %zu bytes&quot;, resp_size);
-227   }
-228 
-229   acip_session_created_t *resp = (acip_session_created_t *)resp_payload;
-230 
-231   // Copy session string (null-terminate)
-232   size_t string_len = resp-&gt;session_string_len &lt; sizeof(result-&gt;session_string) - 1
-233                           ? resp-&gt;session_string_len
-234                           : sizeof(result-&gt;session_string) - 1;
-235   memcpy(result-&gt;session_string, resp-&gt;session_string, string_len);
-236   result-&gt;session_string[string_len] = '\0';
-237 
-238   memcpy(result-&gt;session_id, resp-&gt;session_id, 16);
-239   result-&gt;expires_at = resp-&gt;expires_at;
-240 
-241   log_info(&quot;Session created: %s (expires at %llu)&quot;, result-&gt;session_string, (unsigned long long)result-&gt;expires_at);
+206   // Receive SESSION_CREATED response
+207   packet_type_t resp_type;
+208   void *resp_payload = NULL;
+209   size_t resp_size = 0;
+210 
+211   int recv_result = receive_packet(client-&gt;socket, &amp;resp_type, &amp;resp_payload, &amp;resp_size);
+212   log_debug(&quot;&#x2605; ACDS_CLIENT: receive_packet returned %d&quot;, recv_result);
+213   if (recv_result &lt; 0) {
+214     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive SESSION_CREATED response&quot;);
+215   }
+216 
+217   // Check response type
+218   if (resp_type != PACKET_TYPE_ACIP_SESSION_CREATED) {
+219     if (resp_type == PACKET_TYPE_ERROR_MESSAGE || resp_type == PACKET_TYPE_ACIP_ERROR) {
+220       log_error(&quot;Session creation failed: server returned error packet&quot;);
+221       buffer_pool_free(NULL, resp_payload, resp_size);
+222       return SET_ERRNO(ERROR_NETWORK, &quot;Session creation failed&quot;);
+223     }
+224     buffer_pool_free(NULL, resp_payload, resp_size);
+225     return SET_ERRNO(ERROR_NETWORK, &quot;Unexpected response type: 0x%02X&quot;, resp_type);
+226   }
+227 
+228   // Parse SESSION_CREATED response
+229   if (resp_size &lt; sizeof(acip_session_created_t)) {
+230     buffer_pool_free(NULL, resp_payload, resp_size);
+231     return SET_ERRNO(ERROR_NETWORK, &quot;SESSION_CREATED response too small: %zu bytes&quot;, resp_size);
+232   }
+233 
+234   acip_session_created_t *resp = (acip_session_created_t *)resp_payload;
+235 
+236   // Copy session string (null-terminate)
+237   size_t string_len = resp-&gt;session_string_len &lt; sizeof(result-&gt;session_string) - 1
+238                           ? resp-&gt;session_string_len
+239                           : sizeof(result-&gt;session_string) - 1;
+240   memcpy(result-&gt;session_string, resp-&gt;session_string, string_len);
+241   result-&gt;session_string[string_len] = '\0';
 242 
-243   buffer_pool_free(NULL, resp_payload, resp_size);
-244   return ASCIICHAT_OK;
-245 }</pre>
+243   memcpy(result-&gt;session_id, resp-&gt;session_id, 16);
+244   result-&gt;expires_at = resp-&gt;expires_at;
+245 
+246   log_info(&quot;Session created: %s (expires at %llu)&quot;, result-&gt;session_string, (unsigned long long)result-&gt;expires_at);
+247 
+248   buffer_pool_free(NULL, resp_payload, resp_size);
+249   return ASCIICHAT_OK;
+250 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acds_session_create_params_t::acds_expose_ip</b>,
@@ -408,100 +413,100 @@
 <i>result</i> Join result (output)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>324</b> of file <b>acds_client.c</b>.</p>
-<pre>325                                                                         {
-326   if (!client || !params || !result) {
-327     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
-328   }
-329 
-330   if (!client-&gt;connected) {
-331     return SET_ERRNO(ERROR_NETWORK, &quot;Not connected to ACDS server&quot;);
-332   }
-333 
-334   // Build SESSION_JOIN payload
-335   acip_session_join_t req;
-336   memset(&amp;req, 0, sizeof(req));
-337 
-338   req.session_string_len = strlen(params-&gt;session_string);
-339   if (req.session_string_len &gt;= sizeof(req.session_string)) {
-340     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string too long&quot;);
-341   }
+<p class="Pp">Definition at line <b>329</b> of file <b>acds_client.c</b>.</p>
+<pre>330                                                                         {
+331   if (!client || !params || !result) {
+332     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+333   }
+334 
+335   if (!client-&gt;connected) {
+336     return SET_ERRNO(ERROR_NETWORK, &quot;Not connected to ACDS server&quot;);
+337   }
+338 
+339   // Build SESSION_JOIN payload
+340   acip_session_join_t req;
+341   memset(&amp;req, 0, sizeof(req));
 342 
-343   memcpy(req.session_string, params-&gt;session_string, req.session_string_len);
-344   memcpy(req.identity_pubkey, params-&gt;identity_pubkey, 32);
-345 
-346   // Sign the request: type || timestamp || session_string
-347   uint64_t timestamp = (uint64_t)time(NULL) * 1000;
-348   req.timestamp = timestamp;
-349 
-350   // Generate Ed25519 signature for identity verification
-351   asciichat_error_t sign_result =
-352       acds_sign_session_join(params-&gt;identity_seckey, timestamp, params-&gt;session_string, req.signature);
-353   if (sign_result != ASCIICHAT_OK) {
-354     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to sign SESSION_JOIN request&quot;);
-355   }
-356 
-357   req.has_password = params-&gt;has_password ? 1 : 0;
-358   if (params-&gt;has_password) {
-359     SAFE_STRNCPY(req.password, params-&gt;password, sizeof(req.password));
+343   req.session_string_len = strlen(params-&gt;session_string);
+344   if (req.session_string_len &gt;= sizeof(req.session_string)) {
+345     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string too long&quot;);
+346   }
+347 
+348   memcpy(req.session_string, params-&gt;session_string, req.session_string_len);
+349   memcpy(req.identity_pubkey, params-&gt;identity_pubkey, 32);
+350 
+351   // Sign the request: type || timestamp || session_string
+352   uint64_t timestamp = (uint64_t)time(NULL) * 1000;
+353   req.timestamp = timestamp;
+354 
+355   // Generate Ed25519 signature for identity verification
+356   asciichat_error_t sign_result =
+357       acds_sign_session_join(params-&gt;identity_seckey, timestamp, params-&gt;session_string, req.signature);
+358   if (sign_result != ASCIICHAT_OK) {
+359     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to sign SESSION_JOIN request&quot;);
 360   }
 361 
-362   // Send SESSION_JOIN packet
-363   asciichat_error_t send_result = send_packet(client-&gt;socket, PACKET_TYPE_ACIP_SESSION_JOIN, &amp;req, sizeof(req));
-364   if (send_result != ASCIICHAT_OK) {
-365     return send_result;
-366   }
-367 
-368   log_debug(&quot;Sent SESSION_JOIN request for '%s'&quot;, params-&gt;session_string);
-369 
-370   // Receive SESSION_JOINED response
-371   packet_type_t resp_type;
-372   void *resp_payload = NULL;
-373   size_t resp_size = 0;
+362   req.has_password = params-&gt;has_password ? 1 : 0;
+363   if (params-&gt;has_password) {
+364     SAFE_STRNCPY(req.password, params-&gt;password, sizeof(req.password));
+365   }
+366 
+367   // Send SESSION_JOIN packet
+368   asciichat_error_t send_result = send_packet(client-&gt;socket, PACKET_TYPE_ACIP_SESSION_JOIN, &amp;req, sizeof(req));
+369   if (send_result != ASCIICHAT_OK) {
+370     return send_result;
+371   }
+372 
+373   log_debug(&quot;Sent SESSION_JOIN request for '%s'&quot;, params-&gt;session_string);
 374 
-375   int recv_result = receive_packet(client-&gt;socket, &amp;resp_type, &amp;resp_payload, &amp;resp_size);
-376   if (recv_result &lt; 0) {
-377     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive SESSION_JOINED response&quot;);
-378   }
+375   // Receive SESSION_JOINED response
+376   packet_type_t resp_type;
+377   void *resp_payload = NULL;
+378   size_t resp_size = 0;
 379 
-380   if (resp_type != PACKET_TYPE_ACIP_SESSION_JOINED) {
-381     buffer_pool_free(NULL, resp_payload, resp_size);
-382     return SET_ERRNO(ERROR_NETWORK, &quot;Unexpected response type: 0x%02X&quot;, resp_type);
+380   int recv_result = receive_packet(client-&gt;socket, &amp;resp_type, &amp;resp_payload, &amp;resp_size);
+381   if (recv_result &lt; 0) {
+382     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive SESSION_JOINED response&quot;);
 383   }
 384 
-385   if (resp_size &lt; sizeof(acip_session_joined_t)) {
+385   if (resp_type != PACKET_TYPE_ACIP_SESSION_JOINED) {
 386     buffer_pool_free(NULL, resp_payload, resp_size);
-387     return SET_ERRNO(ERROR_NETWORK, &quot;SESSION_JOINED response too small&quot;);
+387     return SET_ERRNO(ERROR_NETWORK, &quot;Unexpected response type: 0x%02X&quot;, resp_type);
 388   }
 389 
-390   acip_session_joined_t *resp = (acip_session_joined_t *)resp_payload;
-391 
-392   // Copy result
-393   result-&gt;success = resp-&gt;success != 0;
-394   if (result-&gt;success) {
-395     memcpy(result-&gt;participant_id, resp-&gt;participant_id, 16);
-396     memcpy(result-&gt;session_id, resp-&gt;session_id, 16);
-397     // Server connection information (ONLY revealed after successful authentication)
-398     result-&gt;session_type = resp-&gt;session_type;
-399     SAFE_STRNCPY(result-&gt;server_address, resp-&gt;server_address, sizeof(result-&gt;server_address));
-400     result-&gt;server_port = resp-&gt;server_port;
-401     log_info(&quot;Joined session successfully (participant ID: %02x%02x..., server=%s:%d, type=%s)&quot;,
-402              result-&gt;participant_id[0], result-&gt;participant_id[1], result-&gt;server_address, result-&gt;server_port,
-403              result-&gt;session_type == SESSION_TYPE_WEBRTC ? &quot;WebRTC&quot; : &quot;DirectTCP&quot;);
-404   } else {
-405     result-&gt;error_code = resp-&gt;error_code;
-406     size_t msg_len = strnlen(resp-&gt;error_message, sizeof(resp-&gt;error_message));
-407     if (msg_len &gt;= sizeof(result-&gt;error_message)) {
-408       msg_len = sizeof(result-&gt;error_message) - 1;
-409     }
-410     memcpy(result-&gt;error_message, resp-&gt;error_message, msg_len);
-411     result-&gt;error_message[msg_len] = '\0';
-412     log_warn(&quot;Failed to join session: %s (code %d)&quot;, result-&gt;error_message, result-&gt;error_code);
-413   }
-414 
-415   buffer_pool_free(NULL, resp_payload, resp_size);
-416   return ASCIICHAT_OK;
-417 }</pre>
+390   if (resp_size &lt; sizeof(acip_session_joined_t)) {
+391     buffer_pool_free(NULL, resp_payload, resp_size);
+392     return SET_ERRNO(ERROR_NETWORK, &quot;SESSION_JOINED response too small&quot;);
+393   }
+394 
+395   acip_session_joined_t *resp = (acip_session_joined_t *)resp_payload;
+396 
+397   // Copy result
+398   result-&gt;success = resp-&gt;success != 0;
+399   if (result-&gt;success) {
+400     memcpy(result-&gt;participant_id, resp-&gt;participant_id, 16);
+401     memcpy(result-&gt;session_id, resp-&gt;session_id, 16);
+402     // Server connection information (ONLY revealed after successful authentication)
+403     result-&gt;session_type = resp-&gt;session_type;
+404     SAFE_STRNCPY(result-&gt;server_address, resp-&gt;server_address, sizeof(result-&gt;server_address));
+405     result-&gt;server_port = resp-&gt;server_port;
+406     log_info(&quot;Joined session successfully (participant ID: %02x%02x..., server=%s:%d, type=%s)&quot;,
+407              result-&gt;participant_id[0], result-&gt;participant_id[1], result-&gt;server_address, result-&gt;server_port,
+408              result-&gt;session_type == SESSION_TYPE_WEBRTC ? &quot;WebRTC&quot; : &quot;DirectTCP&quot;);
+409   } else {
+410     result-&gt;error_code = resp-&gt;error_code;
+411     size_t msg_len = strnlen(resp-&gt;error_message, sizeof(resp-&gt;error_message));
+412     if (msg_len &gt;= sizeof(result-&gt;error_message)) {
+413       msg_len = sizeof(result-&gt;error_message) - 1;
+414     }
+415     memcpy(result-&gt;error_message, resp-&gt;error_message, msg_len);
+416     result-&gt;error_message[msg_len] = '\0';
+417     log_warn(&quot;Failed to join session: %s (code %d)&quot;, result-&gt;error_message, result-&gt;error_code);
+418   }
+419 
+420   buffer_pool_free(NULL, resp_payload, resp_size);
+421   return ASCIICHAT_OK;
+422 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acds_sign_session_join()</b>,
@@ -543,82 +548,82 @@
 <i>result</i> Lookup result (output)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>247</b> of file <b>acds_client.c</b>.</p>
-<pre>248                                                                             {
-249   if (!client || !session_string || !result) {
-250     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
-251   }
-252 
-253   if (!client-&gt;connected) {
-254     return SET_ERRNO(ERROR_NETWORK, &quot;Not connected to ACDS server&quot;);
-255   }
-256 
-257   // Build SESSION_LOOKUP payload
-258   acip_session_lookup_t req;
-259   memset(&amp;req, 0, sizeof(req));
-260 
-261   req.session_string_len = strlen(session_string);
-262   if (req.session_string_len &gt;= sizeof(req.session_string)) {
-263     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string too long&quot;);
-264   }
+<p class="Pp">Definition at line <b>252</b> of file <b>acds_client.c</b>.</p>
+<pre>253                                                                             {
+254   if (!client || !session_string || !result) {
+255     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+256   }
+257 
+258   if (!client-&gt;connected) {
+259     return SET_ERRNO(ERROR_NETWORK, &quot;Not connected to ACDS server&quot;);
+260   }
+261 
+262   // Build SESSION_LOOKUP payload
+263   acip_session_lookup_t req;
+264   memset(&amp;req, 0, sizeof(req));
 265 
-266   memcpy(req.session_string, session_string, req.session_string_len);
-267 
-268   // Send SESSION_LOOKUP packet
-269   asciichat_error_t send_result = send_packet(client-&gt;socket, PACKET_TYPE_ACIP_SESSION_LOOKUP, &amp;req, sizeof(req));
-270   if (send_result != ASCIICHAT_OK) {
-271     return send_result;
-272   }
-273 
-274   log_debug(&quot;Sent SESSION_LOOKUP request for '%s'&quot;, session_string);
-275 
-276   // Receive SESSION_INFO response
-277   packet_type_t resp_type;
-278   void *resp_payload = NULL;
-279   size_t resp_size = 0;
+266   req.session_string_len = strlen(session_string);
+267   if (req.session_string_len &gt;= sizeof(req.session_string)) {
+268     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string too long&quot;);
+269   }
+270 
+271   memcpy(req.session_string, session_string, req.session_string_len);
+272 
+273   // Send SESSION_LOOKUP packet
+274   asciichat_error_t send_result = send_packet(client-&gt;socket, PACKET_TYPE_ACIP_SESSION_LOOKUP, &amp;req, sizeof(req));
+275   if (send_result != ASCIICHAT_OK) {
+276     return send_result;
+277   }
+278 
+279   log_debug(&quot;Sent SESSION_LOOKUP request for '%s'&quot;, session_string);
 280 
-281   int recv_result = receive_packet(client-&gt;socket, &amp;resp_type, &amp;resp_payload, &amp;resp_size);
-282   if (recv_result &lt; 0) {
-283     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive SESSION_INFO response&quot;);
-284   }
+281   // Receive SESSION_INFO response
+282   packet_type_t resp_type;
+283   void *resp_payload = NULL;
+284   size_t resp_size = 0;
 285 
-286   if (resp_type != PACKET_TYPE_ACIP_SESSION_INFO) {
-287     buffer_pool_free(NULL, resp_payload, resp_size);
-288     return SET_ERRNO(ERROR_NETWORK, &quot;Unexpected response type: 0x%02X&quot;, resp_type);
+286   int recv_result = receive_packet(client-&gt;socket, &amp;resp_type, &amp;resp_payload, &amp;resp_size);
+287   if (recv_result &lt; 0) {
+288     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive SESSION_INFO response&quot;);
 289   }
 290 
-291   if (resp_size &lt; sizeof(acip_session_info_t)) {
+291   if (resp_type != PACKET_TYPE_ACIP_SESSION_INFO) {
 292     buffer_pool_free(NULL, resp_payload, resp_size);
-293     return SET_ERRNO(ERROR_NETWORK, &quot;SESSION_INFO response too small&quot;);
+293     return SET_ERRNO(ERROR_NETWORK, &quot;Unexpected response type: 0x%02X&quot;, resp_type);
 294   }
 295 
-296   acip_session_info_t *resp = (acip_session_info_t *)resp_payload;
-297 
-298   // Copy result
-299   result-&gt;found = resp-&gt;found != 0;
-300   if (result-&gt;found) {
-301     memcpy(result-&gt;session_id, resp-&gt;session_id, 16);
-302     memcpy(result-&gt;host_pubkey, resp-&gt;host_pubkey, 32);
-303     result-&gt;capabilities = resp-&gt;capabilities;
-304     result-&gt;max_participants = resp-&gt;max_participants;
-305     result-&gt;current_participants = resp-&gt;current_participants;
-306     result-&gt;has_password = resp-&gt;has_password != 0;
-307     result-&gt;created_at = resp-&gt;created_at;
-308     result-&gt;expires_at = resp-&gt;expires_at;
-309     result-&gt;require_server_verify = resp-&gt;require_server_verify != 0;
-310     result-&gt;require_client_verify = resp-&gt;require_client_verify != 0;
-311 
-312     log_info(&quot;Session found: %s (%d/%d participants, password=%s, policies: server_verify=%d client_verify=%d)&quot;,
-313              session_string, result-&gt;current_participants, result-&gt;max_participants,
-314              result-&gt;has_password ? &quot;required&quot; : &quot;not required&quot;, result-&gt;require_server_verify,
-315              result-&gt;require_client_verify);
-316   } else {
-317     log_info(&quot;Session not found: %s&quot;, session_string);
-318   }
-319 
-320   buffer_pool_free(NULL, resp_payload, resp_size);
-321   return ASCIICHAT_OK;
-322 }</pre>
+296   if (resp_size &lt; sizeof(acip_session_info_t)) {
+297     buffer_pool_free(NULL, resp_payload, resp_size);
+298     return SET_ERRNO(ERROR_NETWORK, &quot;SESSION_INFO response too small&quot;);
+299   }
+300 
+301   acip_session_info_t *resp = (acip_session_info_t *)resp_payload;
+302 
+303   // Copy result
+304   result-&gt;found = resp-&gt;found != 0;
+305   if (result-&gt;found) {
+306     memcpy(result-&gt;session_id, resp-&gt;session_id, 16);
+307     memcpy(result-&gt;host_pubkey, resp-&gt;host_pubkey, 32);
+308     result-&gt;capabilities = resp-&gt;capabilities;
+309     result-&gt;max_participants = resp-&gt;max_participants;
+310     result-&gt;current_participants = resp-&gt;current_participants;
+311     result-&gt;has_password = resp-&gt;has_password != 0;
+312     result-&gt;created_at = resp-&gt;created_at;
+313     result-&gt;expires_at = resp-&gt;expires_at;
+314     result-&gt;require_server_verify = resp-&gt;require_server_verify != 0;
+315     result-&gt;require_client_verify = resp-&gt;require_client_verify != 0;
+316 
+317     log_info(&quot;Session found: %s (%d/%d participants, password=%s, policies: server_verify=%d client_verify=%d)&quot;,
+318              session_string, result-&gt;current_participants, result-&gt;max_participants,
+319              result-&gt;has_password ? &quot;required&quot; : &quot;not required&quot;, result-&gt;require_server_verify,
+320              result-&gt;require_client_verify);
+321   } else {
+322     log_info(&quot;Session not found: %s&quot;, session_string);
+323   }
+324 
+325   buffer_pool_free(NULL, resp_payload, resp_size);
+326   return ASCIICHAT_OK;
+327 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_session_info_t</b>,
@@ -662,33 +667,33 @@
 <i>signature_out</i> Output buffer for signature (64 bytes)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>423</b> of file <b>acds_client.c</b>.</p>
-<pre>424                                                                                                 {
-425   if (!identity_seckey || !signature_out) {
-426     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter to acds_sign_session_create&quot;);
-427   }
-428 
-429   // Build message: type (1 byte) || timestamp (8 bytes) || capabilities (1 byte) || max_participants (1 byte)
-430   uint8_t message[11];
-431   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_CREATE;
-432 
-433   // Convert timestamp to network byte order and pack into message
-434   uint64_t timestamp_net = HOST_TO_NET_U64(timestamp);
-435   memcpy(&amp;message[1], &amp;timestamp_net, sizeof(timestamp_net));
-436 
-437   message[9] = capabilities;
-438   message[10] = max_participants;
-439 
-440   // Sign using Ed25519
-441   if (crypto_sign_detached(signature_out, NULL, message, sizeof(message), identity_seckey) != 0) {
-442     return SET_ERRNO(ERROR_CRYPTO, &quot;Ed25519 signature generation failed&quot;);
-443   }
+<p class="Pp">Definition at line <b>428</b> of file <b>acds_client.c</b>.</p>
+<pre>429                                                                                                 {
+430   if (!identity_seckey || !signature_out) {
+431     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter to acds_sign_session_create&quot;);
+432   }
+433 
+434   // Build message: type (1 byte) || timestamp (8 bytes) || capabilities (1 byte) || max_participants (1 byte)
+435   uint8_t message[11];
+436   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_CREATE;
+437 
+438   // Convert timestamp to network byte order and pack into message
+439   uint64_t timestamp_net = HOST_TO_NET_U64(timestamp);
+440   memcpy(&amp;message[1], &amp;timestamp_net, sizeof(timestamp_net));
+441 
+442   message[9] = capabilities;
+443   message[10] = max_participants;
 444 
-445   log_debug(&quot;Generated SESSION_CREATE signature (timestamp=%llu, caps=%u, max=%u)&quot;, (unsigned long long)timestamp,
-446             capabilities, max_participants);
-447 
-448   return ASCIICHAT_OK;
-449 }</pre>
+445   // Sign using Ed25519
+446   if (crypto_sign_detached(signature_out, NULL, message, sizeof(message), identity_seckey) != 0) {
+447     return SET_ERRNO(ERROR_CRYPTO, &quot;Ed25519 signature generation failed&quot;);
+448   }
+449 
+450   log_debug(&quot;Generated SESSION_CREATE signature (timestamp=%llu, caps=%u, max=%u)&quot;, (unsigned long long)timestamp,
+451             capabilities, max_participants);
+452 
+453   return ASCIICHAT_OK;
+454 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CRYPTO</b>,
@@ -713,40 +718,40 @@
 <i>signature_out</i> Output buffer for signature (64 bytes)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>479</b> of file <b>acds_client.c</b>.</p>
-<pre>480                                                                                                 {
-481   if (!identity_seckey || !session_string || !signature_out) {
-482     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter to acds_sign_session_join&quot;);
-483   }
-484 
-485   size_t session_len = strlen(session_string);
-486   if (session_len &gt; 48) {
-487     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string too long (max 48 chars)&quot;);
+<p class="Pp">Definition at line <b>484</b> of file <b>acds_client.c</b>.</p>
+<pre>485                                                                                                 {
+486   if (!identity_seckey || !session_string || !signature_out) {
+487     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter to acds_sign_session_join&quot;);
 488   }
 489 
-490   // Build message: type (1 byte) || timestamp (8 bytes) || session_string (variable length)
-491   uint8_t message[1 + 8 + 48];
-492   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_JOIN;
-493 
-494   // Convert timestamp to network byte order and pack into message
-495   uint64_t timestamp_net = HOST_TO_NET_U64(timestamp);
-496   memcpy(&amp;message[1], &amp;timestamp_net, sizeof(timestamp_net));
-497 
-498   // Copy session string (copy exactly session_len bytes, no null terminator in signature)
-499   memcpy(&amp;message[9], session_string, session_len);
-500 
-501   size_t message_len = 9 + session_len;
+490   size_t session_len = strlen(session_string);
+491   if (session_len &gt; 48) {
+492     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string too long (max 48 chars)&quot;);
+493   }
+494 
+495   // Build message: type (1 byte) || timestamp (8 bytes) || session_string (variable length)
+496   uint8_t message[1 + 8 + 48];
+497   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_JOIN;
+498 
+499   // Convert timestamp to network byte order and pack into message
+500   uint64_t timestamp_net = HOST_TO_NET_U64(timestamp);
+501   memcpy(&amp;message[1], &amp;timestamp_net, sizeof(timestamp_net));
 502 
-503   // Sign using Ed25519
-504   if (crypto_sign_detached(signature_out, NULL, message, message_len, identity_seckey) != 0) {
-505     return SET_ERRNO(ERROR_CRYPTO, &quot;Ed25519 signature generation failed&quot;);
-506   }
+503   // Copy session string (copy exactly session_len bytes, no null terminator in signature)
+504   memcpy(&amp;message[9], session_string, session_len);
+505 
+506   size_t message_len = 9 + session_len;
 507 
-508   log_debug(&quot;Generated SESSION_JOIN signature (timestamp=%llu, session='%s')&quot;, (unsigned long long)timestamp,
-509             session_string);
-510 
-511   return ASCIICHAT_OK;
-512 }</pre>
+508   // Sign using Ed25519
+509   if (crypto_sign_detached(signature_out, NULL, message, message_len, identity_seckey) != 0) {
+510     return SET_ERRNO(ERROR_CRYPTO, &quot;Ed25519 signature generation failed&quot;);
+511   }
+512 
+513   log_debug(&quot;Generated SESSION_JOIN signature (timestamp=%llu, session='%s')&quot;, (unsigned long long)timestamp,
+514             session_string);
+515 
+516   return ASCIICHAT_OK;
+517 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CRYPTO</b>,
@@ -768,30 +773,30 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if timestamp is valid, false if too old or in the
   future</div>
-<p class="Pp">Definition at line <b>548</b> of file <b>acds_client.c</b>.</p>
-<pre>548                                                                              {
-549   uint64_t now_ms = time_ns_to_ms(time_get_realtime_ns());
-550   uint64_t window_ms = (uint64_t)window_seconds * 1000;
-551 
-552   if (timestamp_ms &gt; now_ms + 60000) {
-553     int64_t skew = (int64_t)timestamp_ms - (int64_t)now_ms;
-554     log_warn(&quot;Timestamp is in the future: %llu &gt; %llu (skew: %lld ms)&quot;, (unsigned long long)timestamp_ms,
-555              (unsigned long long)now_ms, (long long)skew);
-556     return false;
-557   }
-558 
-559   uint64_t min_valid_timestamp = (now_ms &gt;= window_ms) ? (now_ms - window_ms) : 0;
-560   if (timestamp_ms &lt; min_valid_timestamp) {
-561     int64_t age = (int64_t)now_ms - (int64_t)timestamp_ms;
-562     log_warn(&quot;Timestamp is too old: %llu &lt; %llu (age: %lld ms, max: %u seconds)&quot;, (unsigned long long)timestamp_ms,
-563              (unsigned long long)min_valid_timestamp, (long long)age, window_seconds);
-564     return false;
-565   }
-566 
-567   int64_t age = (int64_t)now_ms - (int64_t)timestamp_ms;
-568   log_debug(&quot;Timestamp validation passed (age: %lld ms, window: %u seconds)&quot;, (long long)age, window_seconds);
-569   return true;
-570 }</pre>
+<p class="Pp">Definition at line <b>553</b> of file <b>acds_client.c</b>.</p>
+<pre>553                                                                              {
+554   uint64_t now_ms = time_ns_to_ms(time_get_realtime_ns());
+555   uint64_t window_ms = (uint64_t)window_seconds * 1000;
+556 
+557   if (timestamp_ms &gt; now_ms + 60000) {
+558     int64_t skew = (int64_t)timestamp_ms - (int64_t)now_ms;
+559     log_warn(&quot;Timestamp is in the future: %llu &gt; %llu (skew: %lld ms)&quot;, (unsigned long long)timestamp_ms,
+560              (unsigned long long)now_ms, (long long)skew);
+561     return false;
+562   }
+563 
+564   uint64_t min_valid_timestamp = (now_ms &gt;= window_ms) ? (now_ms - window_ms) : 0;
+565   if (timestamp_ms &lt; min_valid_timestamp) {
+566     int64_t age = (int64_t)now_ms - (int64_t)timestamp_ms;
+567     log_warn(&quot;Timestamp is too old: %llu &lt; %llu (age: %lld ms, max: %u seconds)&quot;, (unsigned long long)timestamp_ms,
+568              (unsigned long long)min_valid_timestamp, (long long)age, window_seconds);
+569     return false;
+570   }
+571 
+572   int64_t age = (int64_t)now_ms - (int64_t)timestamp_ms;
+573   log_debug(&quot;Timestamp validation passed (age: %lld ms, window: %u seconds)&quot;, (long long)age, window_seconds);
+574   return true;
+575 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_debug</b>, <b>log_warn</b>, and
@@ -818,32 +823,32 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK if valid, ERROR_CRYPTO_VERIFY_FAILED if
   invalid</div>
-<p class="Pp">Definition at line <b>451</b> of file <b>acds_client.c</b>.</p>
-<pre>453                                                                           {
-454   if (!identity_pubkey || !signature) {
-455     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter to acds_verify_session_create&quot;);
-456   }
-457 
-458   // Build message: type (1 byte) || timestamp (8 bytes) || capabilities (1 byte) || max_participants (1 byte)
-459   uint8_t message[11];
-460   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_CREATE;
-461 
-462   // Convert timestamp to network byte order and pack into message
-463   uint64_t timestamp_net = HOST_TO_NET_U64(timestamp);
-464   memcpy(&amp;message[1], &amp;timestamp_net, sizeof(timestamp_net));
-465 
-466   message[9] = capabilities;
-467   message[10] = max_participants;
-468 
-469   // Verify using Ed25519
-470   if (crypto_sign_verify_detached(signature, message, sizeof(message), identity_pubkey) != 0) {
-471     log_warn(&quot;SESSION_CREATE signature verification failed&quot;);
-472     return SET_ERRNO(ERROR_CRYPTO_VERIFICATION, &quot;Invalid SESSION_CREATE signature&quot;);
-473   }
-474 
-475   log_debug(&quot;SESSION_CREATE signature verified successfully&quot;);
-476   return ASCIICHAT_OK;
-477 }</pre>
+<p class="Pp">Definition at line <b>456</b> of file <b>acds_client.c</b>.</p>
+<pre>458                                                                           {
+459   if (!identity_pubkey || !signature) {
+460     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter to acds_verify_session_create&quot;);
+461   }
+462 
+463   // Build message: type (1 byte) || timestamp (8 bytes) || capabilities (1 byte) || max_participants (1 byte)
+464   uint8_t message[11];
+465   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_CREATE;
+466 
+467   // Convert timestamp to network byte order and pack into message
+468   uint64_t timestamp_net = HOST_TO_NET_U64(timestamp);
+469   memcpy(&amp;message[1], &amp;timestamp_net, sizeof(timestamp_net));
+470 
+471   message[9] = capabilities;
+472   message[10] = max_participants;
+473 
+474   // Verify using Ed25519
+475   if (crypto_sign_verify_detached(signature, message, sizeof(message), identity_pubkey) != 0) {
+476     log_warn(&quot;SESSION_CREATE signature verification failed&quot;);
+477     return SET_ERRNO(ERROR_CRYPTO_VERIFICATION, &quot;Invalid SESSION_CREATE signature&quot;);
+478   }
+479 
+480   log_debug(&quot;SESSION_CREATE signature verified successfully&quot;);
+481   return ASCIICHAT_OK;
+482 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CRYPTO_VERIFICATION</b>,
@@ -869,39 +874,39 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK if valid, ERROR_CRYPTO_VERIFY_FAILED if
   invalid</div>
-<p class="Pp">Definition at line <b>514</b> of file <b>acds_client.c</b>.</p>
-<pre>515                                                                                                     {
-516   if (!identity_pubkey || !session_string || !signature) {
-517     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter to acds_verify_session_join&quot;);
-518   }
-519 
-520   size_t session_len = strlen(session_string);
-521   if (session_len &gt; 48) {
-522     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string too long (max 48 chars)&quot;);
+<p class="Pp">Definition at line <b>519</b> of file <b>acds_client.c</b>.</p>
+<pre>520                                                                                                     {
+521   if (!identity_pubkey || !session_string || !signature) {
+522     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter to acds_verify_session_join&quot;);
 523   }
 524 
-525   // Build message: type (1 byte) || timestamp (8 bytes) || session_string (variable length)
-526   uint8_t message[1 + 8 + 48];
-527   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_JOIN;
-528 
-529   // Convert timestamp to network byte order and pack into message
-530   uint64_t timestamp_net = HOST_TO_NET_U64(timestamp);
-531   memcpy(&amp;message[1], &amp;timestamp_net, sizeof(timestamp_net));
-532 
-533   // Copy session string (copy exactly session_len bytes, no null terminator in signature)
-534   memcpy(&amp;message[9], session_string, session_len);
-535 
-536   size_t message_len = 9 + session_len;
+525   size_t session_len = strlen(session_string);
+526   if (session_len &gt; 48) {
+527     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string too long (max 48 chars)&quot;);
+528   }
+529 
+530   // Build message: type (1 byte) || timestamp (8 bytes) || session_string (variable length)
+531   uint8_t message[1 + 8 + 48];
+532   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_JOIN;
+533 
+534   // Convert timestamp to network byte order and pack into message
+535   uint64_t timestamp_net = HOST_TO_NET_U64(timestamp);
+536   memcpy(&amp;message[1], &amp;timestamp_net, sizeof(timestamp_net));
 537 
-538   // Verify using Ed25519
-539   if (crypto_sign_verify_detached(signature, message, message_len, identity_pubkey) != 0) {
-540     log_warn(&quot;SESSION_JOIN signature verification failed&quot;);
-541     return SET_ERRNO(ERROR_CRYPTO_VERIFICATION, &quot;Invalid SESSION_JOIN signature&quot;);
-542   }
-543 
-544   log_debug(&quot;SESSION_JOIN signature verified successfully&quot;);
-545   return ASCIICHAT_OK;
-546 }</pre>
+538   // Copy session string (copy exactly session_len bytes, no null terminator in signature)
+539   memcpy(&amp;message[9], session_string, session_len);
+540 
+541   size_t message_len = 9 + session_len;
+542 
+543   // Verify using Ed25519
+544   if (crypto_sign_verify_detached(signature, message, message_len, identity_pubkey) != 0) {
+545     log_warn(&quot;SESSION_JOIN signature verification failed&quot;);
+546     return SET_ERRNO(ERROR_CRYPTO_VERIFICATION, &quot;Invalid SESSION_JOIN signature&quot;);
+547   }
+548 
+549   log_debug(&quot;SESSION_JOIN signature verified successfully&quot;);
+550   return ASCIICHAT_OK;
+551 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CRYPTO_VERIFICATION</b>,

@@ -402,7 +402,7 @@ Total: 22 bytes + payload_length bytes</pre>
   <li>options.h: OPT_ENDPOINT_DISCOVERY_SERVICE (production build)</li>
 </ul>
 <p class="Pp">Single source of truth to avoid duplication across headers.</p>
-<p class="Pp">Definition at line <b>1101</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>1107</b> of file <b>acds.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ACIP_DISCOVERY_DEFAULT_PORT___"><a class="permalink" href="#_define_ACIP_DISCOVERY_DEFAULT_PORT___">#define
@@ -411,7 +411,7 @@ Total: 22 bytes + payload_length bytes</pre>
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
 <p class="Pp">Discovery server default port (use OPT_ACDS_PORT_INT_DEFAULT from
     options.h).</p>
-<p class="Pp">Definition at line <b>1088</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>1094</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_config_init_defaults()</b>, and
     <b>discovery_session_create()</b>.</p>
 </section>
@@ -422,7 +422,7 @@ Total: 22 bytes + payload_length bytes</pre>
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
 <p class="Pp">Default port for discovery mode hosts (use OPT_PORT_INT_DEFAULT
     from options.h).</p>
-<p class="Pp">Definition at line <b>1091</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>1097</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by <b>negotiate_determine_result()</b>.</p>
 </section>
 <section class="Ss">
@@ -432,7 +432,7 @@ Total: 22 bytes + payload_length bytes</pre>
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
 <p class="Pp">Maximum session string length (e.g.,
     &quot;swift-river-mountain&quot; = 20 chars).</p>
-<p class="Pp">Definition at line <b>1079</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>1085</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_server_validate_session_join()</b>,
     <b>database_session_create()</b>, and <b>database_session_join()</b>.</p>
 </section>
@@ -444,7 +444,7 @@ Total: 22 bytes + payload_length bytes</pre>
 <p class="Pp">Session maximum lifetime (24 hours in milliseconds) Note: Sessions
     are actually cleaned up after 3 hours of inactivity (last_activity_at), but
     expires_at serves as an absolute maximum lifetime.</p>
-<p class="Pp">Definition at line <b>1085</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>1091</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by <b>database_session_create()</b>.</p>
 </section>
 </section>
@@ -503,13 +503,13 @@ Total: 22 bytes + payload_length bytes</pre>
     </i></b></a></dt>
   <dd>TURN relay (fallback).</dd>
 </dl>
-<p class="Pp">Definition at line <b>831</b> of file <b>acds.h</b>.</p>
-<pre>831              {
-832   ACIP_CONNECTION_TYPE_DIRECT_PUBLIC = 0, 
-833   ACIP_CONNECTION_TYPE_UPNP = 1,          
-834   ACIP_CONNECTION_TYPE_STUN = 2,          
-835   ACIP_CONNECTION_TYPE_TURN = 3           
-836 } acip_connection_type_t;</pre>
+<p class="Pp">Definition at line <b>837</b> of file <b>acds.h</b>.</p>
+<pre>837              {
+838   ACIP_CONNECTION_TYPE_DIRECT_PUBLIC = 0, 
+839   ACIP_CONNECTION_TYPE_UPNP = 1,          
+840   ACIP_CONNECTION_TYPE_STUN = 2,          
+841   ACIP_CONNECTION_TYPE_TURN = 3           
+842 } acip_connection_type_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -551,18 +551,18 @@ Total: 22 bytes + payload_length bytes</pre>
     </i></b></a></dt>
   <dd>Internal server error.</dd>
 </dl>
-<p class="Pp">Definition at line <b>1058</b> of file <b>acds.h</b>.</p>
-<pre>1058              {
-1059   ACIP_ERROR_NONE = 0,              
-1060   ACIP_ERROR_SESSION_NOT_FOUND = 1, 
-1061   ACIP_ERROR_SESSION_FULL = 2,      
-1062   ACIP_ERROR_INVALID_PASSWORD = 3,  
-1063   ACIP_ERROR_INVALID_SIGNATURE = 4, 
-1064   ACIP_ERROR_RATE_LIMITED = 5,      
-1065   ACIP_ERROR_STRING_TAKEN = 6,      
-1066   ACIP_ERROR_STRING_INVALID = 7,    
-1067   ACIP_ERROR_INTERNAL = 255         
-1068 } acip_error_code_t;</pre>
+<p class="Pp">Definition at line <b>1064</b> of file <b>acds.h</b>.</p>
+<pre>1064              {
+1065   ACIP_ERROR_NONE = 0,              
+1066   ACIP_ERROR_SESSION_NOT_FOUND = 1, 
+1067   ACIP_ERROR_SESSION_FULL = 2,      
+1068   ACIP_ERROR_INVALID_PASSWORD = 3,  
+1069   ACIP_ERROR_INVALID_SIGNATURE = 4, 
+1070   ACIP_ERROR_RATE_LIMITED = 5,      
+1071   ACIP_ERROR_STRING_TAKEN = 6,      
+1072   ACIP_ERROR_STRING_INVALID = 7,    
+1073   ACIP_ERROR_INTERNAL = 255         
+1074 } acip_error_code_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -591,14 +591,14 @@ Total: 22 bytes + payload_length bytes</pre>
     </i></b></a></dt>
   <dd>Symmetric NAT (hardest, requires TURN).</dd>
 </dl>
-<p class="Pp">Definition at line <b>819</b> of file <b>acds.h</b>.</p>
-<pre>819              {
-820   ACIP_NAT_TYPE_OPEN = 0,            
-821   ACIP_NAT_TYPE_FULL_CONE = 1,       
-822   ACIP_NAT_TYPE_RESTRICTED = 2,      
-823   ACIP_NAT_TYPE_PORT_RESTRICTED = 3, 
-824   ACIP_NAT_TYPE_SYMMETRIC = 4        
-825 } acip_nat_type_t;</pre>
+<p class="Pp">Definition at line <b>825</b> of file <b>acds.h</b>.</p>
+<pre>825              {
+826   ACIP_NAT_TYPE_OPEN = 0,            
+827   ACIP_NAT_TYPE_FULL_CONE = 1,       
+828   ACIP_NAT_TYPE_RESTRICTED = 2,      
+829   ACIP_NAT_TYPE_PORT_RESTRICTED = 3, 
+830   ACIP_NAT_TYPE_SYMMETRIC = 4        
+831 } acip_nat_type_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -716,10 +716,12 @@ Total: 22 bytes + payload_length bytes</pre>
 108     128   password_hash          Argon2id hash (if has_password=1)
 236     1     expose_ip_publicly     0=require verify, 1=allow public IP
 237     1     reserved_string_len    0=auto-generate, &gt;0=use provided
-238     64    server_address         IPv4/IPv6/hostname (null-terminated)
-302     2     server_port            TCP port for client connection
+238     1     total_keys             Total number of keys in multi-key sequence (0=single key mode)
+239     1     key_index              Index of this key in sequence (0-based, only valid if total_keys &gt; 0)
+240     64    server_address         IPv4/IPv6/hostname (null-terminated)
+304     2     server_port            TCP port for client connection
 ------
-Total: 304 bytes + reserved_string (if len &gt; 0, max 47 bytes)</pre>
+Total: 306 bytes + reserved_string (if len &gt; 0, max 47 bytes)</pre>
 <p class="Pp">The client requests creation of a new session with specific
     capabilities, optionally providing a pre-reserved session string. The server
     responds with SESSION_CREATED containing the session identifier.</p>
@@ -1142,6 +1144,12 @@ Total: 50 + candidate_len bytes</pre>
 <p class="Pp"></p>
 <p class="Pp">&lt; 0 = auto-generate, &gt;0 = use provided string</p>
 <p class="Pp"></p>
+<p class="Pp">&lt; Total number of keys to transmit (0 = single key mode,
+    legacy)</p>
+<p class="Pp"></p>
+<p class="Pp">&lt; Index of this key in the sequence (0-based), only valid if
+    total_keys &gt; 0</p>
+<p class="Pp"></p>
 <p class="Pp">&lt; IPv4/IPv6 address or hostname (null-terminated)</p>
 <p class="Pp"></p>
 <p class="Pp">&lt; Port number for client connection</p>
@@ -1352,28 +1360,32 @@ Total: 50 + candidate_len bytes</pre>
 <p class="Pp"></p>
 <p class="Pp">&lt; Type of packet being acknowledged</p>
 <p class="Pp">Definition at line <b>1</b> of file <b>acds.h</b>.</p>
-<pre>193                                        {
-194   uint8_t identity_pubkey[32]; 
-195   uint8_t signature[64];       
-196   uint64_t timestamp;          
-197 
-198   uint8_t capabilities;     
-199   uint8_t max_participants; 
-200   uint8_t session_type;     
-201 
-202   uint8_t has_password;       
-203   uint8_t password_hash[128]; 
-204   uint8_t expose_ip_publicly; 
-206 
-207   uint8_t reserved_string_len; 
-208   // char  reserved_string[];        ///&lt; Variable length, follows if len &gt; 0
-209 
-210   // Server connection information (where clients should connect)
-211   // For DIRECT_TCP: server_address and server_port specify where to connect
-212   // For WEBRTC: these fields are ignored, signaling happens through ACDS
-213   char server_address[64]; 
-214   uint16_t server_port;    
-215 } acip_session_create_t;</pre>
+<pre>195                                        {
+196   uint8_t identity_pubkey[32]; 
+197   uint8_t signature[64];       
+198   uint64_t timestamp;          
+199 
+200   uint8_t capabilities;     
+201   uint8_t max_participants; 
+202   uint8_t session_type;     
+203 
+204   uint8_t has_password;       
+205   uint8_t password_hash[128]; 
+206   uint8_t expose_ip_publicly; 
+208 
+209   uint8_t reserved_string_len; 
+210   // char  reserved_string[];        ///&lt; Variable length, follows if len &gt; 0
+211 
+212   // Multi-key protocol: tracks which key in sequence this is
+213   uint8_t total_keys;  
+214   uint8_t key_index;   
+215 
+216   // Server connection information (where clients should connect)
+217   // For DIRECT_TCP: server_address and server_port specify where to connect
+218   // For WEBRTC: these fields are ignored, signaling happens through ACDS
+219   char server_address[64]; 
+220   uint16_t server_port;    
+221 } acip_session_create_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -1385,27 +1397,27 @@ Total: 50 + candidate_len bytes</pre>
 <h2 class="Ss" id="acip_bandwidth_result_t"><a class="permalink" href="#acip_bandwidth_result_t">acip_bandwidth_result_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>1031</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>1037</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by <b>nat_measure_bandwidth()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_bandwidth_test_t"><a class="permalink" href="#acip_bandwidth_test_t">acip_bandwidth_test_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>1014</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>1020</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by <b>nat_measure_bandwidth()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_broadcast_ack_t"><a class="permalink" href="#acip_broadcast_ack_t">acip_broadcast_ack_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>1049</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>1055</b> of file <b>acds.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_error_t"><a class="permalink" href="#acip_error_t">acip_error_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>998</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>1004</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_server_send_error()</b>, and
     <b>send_error_packet_message()</b>.</p>
 </section>
@@ -1413,26 +1425,26 @@ Total: 50 + candidate_len bytes</pre>
 <h2 class="Ss" id="acip_future_host_elected_t"><a class="permalink" href="#acip_future_host_elected_t">acip_future_host_elected_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>975</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>981</b> of file <b>acds.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_host_announcement_t"><a class="permalink" href="#acip_host_announcement_t">acip_host_announcement_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>904</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>910</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_become_host()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_host_designated_t"><a class="permalink" href="#acip_host_designated_t">acip_host_designated_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>922</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>928</b> of file <b>acds.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_host_lost_t"><a class="permalink" href="#acip_host_lost_t">acip_host_lost_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>946</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>952</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by
   <b>discovery_session_handle_host_disconnect()</b>.</p>
 </section>
@@ -1440,7 +1452,7 @@ Total: 50 + candidate_len bytes</pre>
 <h2 class="Ss" id="acip_nat_quality_t"><a class="permalink" href="#acip_nat_quality_t">acip_nat_quality_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>885</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>891</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by <b>nat_quality_from_acip()</b>,
     <b>nat_quality_to_acip()</b>, <b>negotiate_elect_future_host()</b>, and
     <b>negotiate_receive_peer_quality()</b>.</p>
@@ -1449,37 +1461,37 @@ Total: 50 + candidate_len bytes</pre>
 <h2 class="Ss" id="acip_participant_entry_t"><a class="permalink" href="#acip_participant_entry_t">acip_participant_entry_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>782</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>788</b> of file <b>acds.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_participant_joined_t"><a class="permalink" href="#acip_participant_joined_t">acip_participant_joined_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>486</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>492</b> of file <b>acds.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_participant_left_t"><a class="permalink" href="#acip_participant_left_t">acip_participant_left_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>503</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>509</b> of file <b>acds.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_participant_list_t"><a class="permalink" href="#acip_participant_list_t">acip_participant_list_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>768</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>774</b> of file <b>acds.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_ring_collect_t"><a class="permalink" href="#acip_ring_collect_t">acip_ring_collect_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>805</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>811</b> of file <b>acds.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_session_create_t"><a class="permalink" href="#acip_session_create_t">acip_session_create_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>215</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>221</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_session_create()</b>,
     <b>acip_server_validate_session_create()</b>, and
     <b>database_session_create()</b>.</p>
@@ -1488,7 +1500,7 @@ Total: 50 + candidate_len bytes</pre>
 <h2 class="Ss" id="acip_session_created_t"><a class="permalink" href="#acip_session_created_t">acip_session_created_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>263</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>269</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_session_create()</b>,
     <b>acip_send_session_created()</b>, and
   <b>database_session_create()</b>.</p>
@@ -1497,13 +1509,13 @@ Total: 50 + candidate_len bytes</pre>
 <h2 class="Ss" id="acip_session_end_t"><a class="permalink" href="#acip_session_end_t">acip_session_end_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>533</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>539</b> of file <b>acds.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_session_info_t"><a class="permalink" href="#acip_session_info_t">acip_session_info_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>349</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>355</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_session_lookup()</b>,
     <b>acip_send_session_info()</b>, and <b>database_session_lookup()</b>.</p>
 </section>
@@ -1511,7 +1523,7 @@ Total: 50 + candidate_len bytes</pre>
 <h2 class="Ss" id="acip_session_join_t"><a class="permalink" href="#acip_session_join_t">acip_session_join_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>397</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>403</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_session_join()</b>,
     <b>acip_server_validate_session_join()</b>, and
     <b>database_session_join()</b>.</p>
@@ -1520,7 +1532,7 @@ Total: 50 + candidate_len bytes</pre>
 <h2 class="Ss" id="acip_session_joined_t"><a class="permalink" href="#acip_session_joined_t">acip_session_joined_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>468</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>474</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_session_join()</b>,
     <b>acip_send_session_joined()</b>, and <b>database_session_join()</b>.</p>
 </section>
@@ -1528,51 +1540,51 @@ Total: 50 + candidate_len bytes</pre>
 <h2 class="Ss" id="acip_session_leave_t"><a class="permalink" href="#acip_session_leave_t">acip_session_leave_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>518</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>524</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_stop()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_session_lookup_t"><a class="permalink" href="#acip_session_lookup_t">acip_session_lookup_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>298</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>304</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_session_lookup()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_session_reconnect_t"><a class="permalink" href="#acip_session_reconnect_t">acip_session_reconnect_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>549</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>555</b> of file <b>acds.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_string_release_t"><a class="permalink" href="#acip_string_release_t">acip_string_release_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>722</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>728</b> of file <b>acds.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_string_renew_t"><a class="permalink" href="#acip_string_renew_t">acip_string_renew_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>705</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>711</b> of file <b>acds.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_string_reserve_t"><a class="permalink" href="#acip_string_reserve_t">acip_string_reserve_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>671</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>677</b> of file <b>acds.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_string_reserved_t"><a class="permalink" href="#acip_string_reserved_t">acip_string_reserved_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>687</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>693</b> of file <b>acds.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="acip_webrtc_ice_t"><a class="permalink" href="#acip_webrtc_ice_t">acip_webrtc_ice_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>644</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>650</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by <b>signaling_relay_ice()</b>, and
     <b>webrtc_peer_manager_handle_ice()</b>.</p>
 </section>
@@ -1580,7 +1592,7 @@ Total: 50 + candidate_len bytes</pre>
 <h2 class="Ss" id="acip_webrtc_sdp_t"><a class="permalink" href="#acip_webrtc_sdp_t">acip_webrtc_sdp_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>598</b> of file <b>acds.h</b>.</p>
+<p class="Pp">Definition at line <b>604</b> of file <b>acds.h</b>.</p>
 <p class="Pp">Referenced by <b>signaling_relay_sdp()</b>, and
     <b>webrtc_peer_manager_handle_sdp()</b>.</p>
 </section>

@@ -14,6 +14,7 @@ export function Man3RightPanel({
   targetLineNumber,
   searchResults,
 }) {
+  console.log("[Man3RightPanel] Rendering with selectedPageName:", selectedPageName, "contentLength:", selectedPageContent?.length);
   return (
     <div className="flex-1 flex min-w-0">
       {pageNotFound ? (

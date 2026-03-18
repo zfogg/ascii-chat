@@ -128,161 +128,161 @@
 <p class="Pp">State transition: CRYPTO_HANDSHAKE_KEY_EXCHANGE -&gt;
     CRYPTO_HANDSHAKE_AUTHENTICATING</p>
 </div>
-<p class="Pp">Definition at line <b>611</b> of file
+<p class="Pp">Definition at line <b>613</b> of file
     <b>lib/crypto/handshake/client.c</b>.</p>
-<pre>613                                                                             {
-614   if (!ctx || ctx-&gt;state != CRYPTO_HANDSHAKE_KEY_EXCHANGE) {
-615     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid state: ctx=%p, state=%d&quot;, ctx, ctx ? ctx-&gt;state : -1);
-616   }
-617   if (!transport) {
-618     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;transport is NULL&quot;);
-619   }
-620 
-621   // Note: Packet already received by ACIP handler
-622   int result;
-623 
-624   // If server sent HANDSHAKE_COMPLETE, authentication was skipped (client has
-625   // no key)
-626   if (packet_type == PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE) {
-627     ctx-&gt;state = CRYPTO_HANDSHAKE_READY;
-628     ctx-&gt;crypto_ctx.handshake_complete = true; // Mark crypto context as ready for rekeying
-629     log_debug(&quot;Crypto handshake completed successfully (no authentication required)&quot;);
-630     return ASCIICHAT_OK;
-631   }
-632 
-633   // If server sent AUTH_FAILED, client is not authorized
-634   if (packet_type == PACKET_TYPE_CRYPTO_AUTH_FAILED) {
-635     return SET_ERRNO(ERROR_CRYPTO, &quot;Server rejected authentication - client key not authorized&quot;);
-636   }
-637 
-638   // Otherwise, verify packet type is AUTH_CHALLENGE
-639   if (packet_type != PACKET_TYPE_CRYPTO_AUTH_CHALLENGE) {
-640     return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
-641                      &quot;Expected AUTH_CHALLENGE, HANDSHAKE_COMPLETE, or AUTH_FAILED, &quot;
-642                      &quot;got packet type %d&quot;,
-643                      packet_type);
-644   }
-645 
-646   // Validate packet size using session parameters
-647   asciichat_error_t validation_result =
-648       crypto_handshake_validate_packet_size(ctx, PACKET_TYPE_CRYPTO_AUTH_CHALLENGE, payload_len);
-649   if (validation_result != ASCIICHAT_OK) {
-650     return validation_result;
-651   }
-652 
-653   // Parse auth requirement flags
-654   uint8_t auth_flags = payload[0];
-655 
-656   // Copy nonce to local buffer before freeing payload
-657   // Use auth_challenge_size since that's what the server sent
-658   // Note: auth_challenge_size is uint8_t (max 255), buffer is 256 bytes, so always sufficient
-659   uint8_t nonce_buffer[256];
-660   memcpy(nonce_buffer, payload + 1, ctx-&gt;crypto_ctx.auth_challenge_size);
-661   const uint8_t *nonce = nonce_buffer;
-662 
-663   log_debug(&quot;Server auth requirements: password=%s, client_key=%s&quot;,
-664             (auth_flags &amp; AUTH_REQUIRE_PASSWORD) ? &quot;required&quot; : &quot;no&quot;,
-665             (auth_flags &amp; AUTH_REQUIRE_CLIENT_KEY) ? &quot;required&quot; : &quot;no&quot;);
-666 
-667   // Check if we can satisfy the server's authentication requirements
-668   bool has_password = ctx-&gt;crypto_ctx.has_password;
-669   bool has_client_key = (ctx-&gt;client_private_key.type == KEY_TYPE_ED25519);
-670   bool password_required = (auth_flags &amp; AUTH_REQUIRE_PASSWORD);
-671   bool client_key_required = (auth_flags &amp; AUTH_REQUIRE_CLIENT_KEY);
-672 
-673   // Provide specific error messages based on what's missing
-674   if (password_required &amp;&amp; !has_password) {
-675     if (client_key_required &amp;&amp; !has_client_key) {
-676       return SET_ERRNO(ERROR_CRYPTO, &quot;Server requires both password and client key authentication. Please &quot;
-677                                      &quot;provide --password and --key to authenticate&quot;);
-678     }
-679     // Prompt for password interactively
-680     char prompted_password[PASSWORD_BUFFER_SIZE];
-681     if (prompt_password(&quot;Server password required - please enter password:&quot;, prompted_password,
-682                         sizeof(prompted_password)) != 0) {
-683       return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to read password&quot;);
-684     }
-685 
-686     // Derive password key from prompted password
-687     log_debug(&quot;Deriving key from prompted password&quot;);
-688     crypto_result_t crypto_result = crypto_derive_password_key(&amp;ctx-&gt;crypto_ctx, prompted_password);
-689     sodium_memzero(prompted_password, sizeof(prompted_password));
-690 
-691     if (crypto_result != CRYPTO_OK) {
-692       return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to derive password key: %s&quot;, crypto_result_to_string(crypto_result));
-693     }
-694 
-695     // Mark that password auth is now available
-696     ctx-&gt;crypto_ctx.has_password = true;
-697     has_password = true; // Update flag for logic below
-698   }
-699 
-700   // Authentication response priority:
-701   // NOTE: Identity verification happens during KEY_EXCHANGE phase, not
-702   // AUTH_RESPONSE!
-703   // 1. If server requires password &#x2192; MUST send HMAC (hmac_size bytes), error if no password
-704   // 2. Else if server requires identity (whitelist) &#x2192; MUST send Ed25519 signature (signature_size bytes), error if no
-705   // key
-706   // 3. Else if client has password &#x2192; send HMAC (optional password auth)
-707   // 4. Else if client has SSH key &#x2192; send Ed25519 signature (optional identity
-708   // proof)
-709   // 5. Else &#x2192; no authentication available
-710 
-711   // Clean up payload before any early returns
-712   if (password_required) {
-713     // Server requires password - HIGHEST PRIORITY
-714     // (Identity was already verified in KEY_EXCHANGE phase if whitelist is
-715     // enabled)
-716     if (!has_password) {
-717       return SET_ERRNO(ERROR_CRYPTO, &quot;Server requires password authentication\n&quot;
-718                                      &quot;Please provide --password for this server&quot;);
-719     }
-720 
-721     result = send_password_auth_response(ctx, transport, nonce, &quot;required password&quot;);
-722     if (result != ASCIICHAT_OK) {
-723       SET_ERRNO(ERROR_NETWORK, &quot;Failed to send password auth response&quot;);
-724       return result;
-725     }
-726   } else if (client_key_required) {
-727     // Server requires client key (whitelist) - SECOND PRIORITY
-728     if (!has_client_key) {
-729       return SET_ERRNO(ERROR_CRYPTO, &quot;Server requires client key authentication (whitelist)\n&quot;
-730                                      &quot;Please provide --key with your authorized Ed25519 key&quot;);
-731     }
-732 
-733     result = send_key_auth_response(ctx, transport, nonce, &quot;required client key&quot;);
-734     if (result != ASCIICHAT_OK) {
-735       SET_ERRNO(ERROR_NETWORK, &quot;Failed to send key auth response&quot;);
-736       return result;
-737     }
-738   } else if (has_password) {
-739     // No server requirements, but client has password &#x2192; send HMAC + client
-740     // nonce (optional)
-741     result = send_password_auth_response(ctx, transport, nonce, &quot;optional password&quot;);
-742     if (result != ASCIICHAT_OK) {
-743       SET_ERRNO(ERROR_NETWORK, &quot;Failed to send password auth response&quot;);
-744       return result;
-745     }
-746   } else if (has_client_key) {
-747     // No server requirements, but client has SSH key &#x2192; send Ed25519 signature +
-748     // client nonce (optional)
-749     result = send_key_auth_response(ctx, transport, nonce, &quot;optional identity&quot;);
-750     if (result != ASCIICHAT_OK) {
-751       SET_ERRNO(ERROR_NETWORK, &quot;Failed to send key auth response&quot;);
-752       return result;
-753     }
-754   } else {
-755     // No authentication method available
-756     // Continue without authentication (server will decide if this is
-757     // acceptable)
-758     log_debug(&quot;No authentication credentials provided - continuing without &quot;
-759               &quot;authentication&quot;);
-760   }
-761 
-762   ctx-&gt;state = CRYPTO_HANDSHAKE_AUTHENTICATING;
+<pre>615                                                                             {
+616   if (!ctx || ctx-&gt;state != CRYPTO_HANDSHAKE_KEY_EXCHANGE) {
+617     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid state: ctx=%p, state=%d&quot;, ctx, ctx ? ctx-&gt;state : -1);
+618   }
+619   if (!transport) {
+620     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;transport is NULL&quot;);
+621   }
+622 
+623   // Note: Packet already received by ACIP handler
+624   int result;
+625 
+626   // If server sent HANDSHAKE_COMPLETE, authentication was skipped (client has
+627   // no key)
+628   if (packet_type == PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE) {
+629     ctx-&gt;state = CRYPTO_HANDSHAKE_READY;
+630     ctx-&gt;crypto_ctx.handshake_complete = true; // Mark crypto context as ready for rekeying
+631     log_debug(&quot;Crypto handshake completed successfully (no authentication required)&quot;);
+632     return ASCIICHAT_OK;
+633   }
+634 
+635   // If server sent AUTH_FAILED, client is not authorized
+636   if (packet_type == PACKET_TYPE_CRYPTO_AUTH_FAILED) {
+637     return SET_ERRNO(ERROR_CRYPTO, &quot;Server rejected authentication - client key not authorized&quot;);
+638   }
+639 
+640   // Otherwise, verify packet type is AUTH_CHALLENGE
+641   if (packet_type != PACKET_TYPE_CRYPTO_AUTH_CHALLENGE) {
+642     return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
+643                      &quot;Expected AUTH_CHALLENGE, HANDSHAKE_COMPLETE, or AUTH_FAILED, &quot;
+644                      &quot;got packet type %d&quot;,
+645                      packet_type);
+646   }
+647 
+648   // Validate packet size using session parameters
+649   asciichat_error_t validation_result =
+650       crypto_handshake_validate_packet_size(ctx, PACKET_TYPE_CRYPTO_AUTH_CHALLENGE, payload_len);
+651   if (validation_result != ASCIICHAT_OK) {
+652     return validation_result;
+653   }
+654 
+655   // Parse auth requirement flags
+656   uint8_t auth_flags = payload[0];
+657 
+658   // Copy nonce to local buffer before freeing payload
+659   // Use auth_challenge_size since that's what the server sent
+660   // Note: auth_challenge_size is uint8_t (max 255), buffer is 256 bytes, so always sufficient
+661   uint8_t nonce_buffer[256];
+662   memcpy(nonce_buffer, payload + 1, ctx-&gt;crypto_ctx.auth_challenge_size);
+663   const uint8_t *nonce = nonce_buffer;
+664 
+665   log_debug(&quot;Server auth requirements: password=%s, client_key=%s&quot;,
+666             (auth_flags &amp; AUTH_REQUIRE_PASSWORD) ? &quot;required&quot; : &quot;no&quot;,
+667             (auth_flags &amp; AUTH_REQUIRE_CLIENT_KEY) ? &quot;required&quot; : &quot;no&quot;);
+668 
+669   // Check if we can satisfy the server's authentication requirements
+670   bool has_password = ctx-&gt;crypto_ctx.has_password;
+671   bool has_client_key = (ctx-&gt;client_private_key.type == KEY_TYPE_ED25519);
+672   bool password_required = (auth_flags &amp; AUTH_REQUIRE_PASSWORD);
+673   bool client_key_required = (auth_flags &amp; AUTH_REQUIRE_CLIENT_KEY);
+674 
+675   // Provide specific error messages based on what's missing
+676   if (password_required &amp;&amp; !has_password) {
+677     if (client_key_required &amp;&amp; !has_client_key) {
+678       return SET_ERRNO(ERROR_CRYPTO, &quot;Server requires both password and client key authentication. Please &quot;
+679                                      &quot;provide --password and --key to authenticate&quot;);
+680     }
+681     // Prompt for password interactively
+682     char prompted_password[PASSWORD_BUFFER_SIZE];
+683     if (prompt_password(&quot;Server password required - please enter password:&quot;, prompted_password,
+684                         sizeof(prompted_password)) != 0) {
+685       return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to read password&quot;);
+686     }
+687 
+688     // Derive password key from prompted password
+689     log_debug(&quot;Deriving key from prompted password&quot;);
+690     crypto_result_t crypto_result = crypto_derive_password_key(&amp;ctx-&gt;crypto_ctx, prompted_password);
+691     sodium_memzero(prompted_password, sizeof(prompted_password));
+692 
+693     if (crypto_result != CRYPTO_OK) {
+694       return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to derive password key: %s&quot;, crypto_result_to_string(crypto_result));
+695     }
+696 
+697     // Mark that password auth is now available
+698     ctx-&gt;crypto_ctx.has_password = true;
+699     has_password = true; // Update flag for logic below
+700   }
+701 
+702   // Authentication response priority:
+703   // NOTE: Identity verification happens during KEY_EXCHANGE phase, not
+704   // AUTH_RESPONSE!
+705   // 1. If server requires password &#x2192; MUST send HMAC (hmac_size bytes), error if no password
+706   // 2. Else if server requires identity (whitelist) &#x2192; MUST send Ed25519 signature (signature_size bytes), error if no
+707   // key
+708   // 3. Else if client has password &#x2192; send HMAC (optional password auth)
+709   // 4. Else if client has SSH key &#x2192; send Ed25519 signature (optional identity
+710   // proof)
+711   // 5. Else &#x2192; no authentication available
+712 
+713   // Clean up payload before any early returns
+714   if (password_required) {
+715     // Server requires password - HIGHEST PRIORITY
+716     // (Identity was already verified in KEY_EXCHANGE phase if whitelist is
+717     // enabled)
+718     if (!has_password) {
+719       return SET_ERRNO(ERROR_CRYPTO, &quot;Server requires password authentication\n&quot;
+720                                      &quot;Please provide --password for this server&quot;);
+721     }
+722 
+723     result = send_password_auth_response(ctx, transport, nonce, &quot;required password&quot;);
+724     if (result != ASCIICHAT_OK) {
+725       SET_ERRNO(ERROR_NETWORK, &quot;Failed to send password auth response&quot;);
+726       return result;
+727     }
+728   } else if (client_key_required) {
+729     // Server requires client key (whitelist) - SECOND PRIORITY
+730     if (!has_client_key) {
+731       return SET_ERRNO(ERROR_CRYPTO, &quot;Server requires client key authentication (whitelist)\n&quot;
+732                                      &quot;Please provide --key with your authorized Ed25519 key&quot;);
+733     }
+734 
+735     result = send_key_auth_response(ctx, transport, nonce, &quot;required client key&quot;);
+736     if (result != ASCIICHAT_OK) {
+737       SET_ERRNO(ERROR_NETWORK, &quot;Failed to send key auth response&quot;);
+738       return result;
+739     }
+740   } else if (has_password) {
+741     // No server requirements, but client has password &#x2192; send HMAC + client
+742     // nonce (optional)
+743     result = send_password_auth_response(ctx, transport, nonce, &quot;optional password&quot;);
+744     if (result != ASCIICHAT_OK) {
+745       SET_ERRNO(ERROR_NETWORK, &quot;Failed to send password auth response&quot;);
+746       return result;
+747     }
+748   } else if (has_client_key) {
+749     // No server requirements, but client has SSH key &#x2192; send Ed25519 signature +
+750     // client nonce (optional)
+751     result = send_key_auth_response(ctx, transport, nonce, &quot;optional identity&quot;);
+752     if (result != ASCIICHAT_OK) {
+753       SET_ERRNO(ERROR_NETWORK, &quot;Failed to send key auth response&quot;);
+754       return result;
+755     }
+756   } else {
+757     // No authentication method available
+758     // Continue without authentication (server will decide if this is
+759     // acceptable)
+760     log_debug(&quot;No authentication credentials provided - continuing without &quot;
+761               &quot;authentication&quot;);
+762   }
 763 
-764   return ASCIICHAT_OK;
-765 }</pre>
+764   ctx-&gt;state = CRYPTO_HANDSHAKE_AUTHENTICATING;
+765 
+766   return ASCIICHAT_OK;
+767 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -315,40 +315,41 @@
 <p class="Pp"><b>Deprecated</b></p>
 <div class="Bd-indent">Use <b>crypto_handshake_client_auth_response()</b> with
   <b>acip_transport_t</b> instead</div>
-<p class="Pp">Definition at line <b>908</b> of file
+<p class="Pp">Definition at line <b>910</b> of file
     <b>lib/crypto/handshake/client.c</b>.</p>
-<pre>909                                                                                        {
-910   // Receive packet using old method
-911   packet_type_t packet_type;
-912   uint8_t *payload = NULL;
-913   size_t payload_len = 0;
-914   int result = receive_packet(client_socket, &amp;packet_type, (void **)&amp;payload, &amp;payload_len);
-915   if (result != ASCIICHAT_OK) {
-916     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive packet from server&quot;);
-917   }
-918 
-919   // Create temporary TCP transport
-920   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_handshake_temp_socket&quot;, client_socket, NULL);
-921   if (!temp_transport) {
-922     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
-923   }
-924 
-925   // Call new function (takes ownership of payload and will free it)
-926   asciichat_error_t handshake_result =
-927       crypto_handshake_client_auth_response(ctx, temp_transport, packet_type, payload, payload_len);
-928 
-929   // Destroy temporary transport
-930   acip_transport_destroy(temp_transport);
-931 
-932   return handshake_result;
-933 }</pre>
+<pre>911                                                                                        {
+912   // Receive packet using old method
+913   packet_type_t packet_type;
+914   uint8_t *payload = NULL;
+915   size_t payload_len = 0;
+916   int result = receive_packet(client_socket, &amp;packet_type, (void **)&amp;payload, &amp;payload_len);
+917   if (result != ASCIICHAT_OK) {
+918     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive packet from server&quot;);
+919   }
+920 
+921   // Create temporary TCP transport
+922   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_handshake_temp_socket&quot;, client_socket, NULL);
+923   if (!temp_transport) {
+924     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
+925   }
+926 
+927   // Call new function (takes ownership of payload and will free it)
+928   asciichat_error_t handshake_result =
+929       crypto_handshake_client_auth_response(ctx, temp_transport, packet_type, payload, payload_len);
+930 
+931   // Destroy temporary transport
+932   acip_transport_destroy(temp_transport);
+933 
+934   return handshake_result;
+935 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_tcp_transport_create()</b>,
     <b>acip_transport_destroy()</b>, <b>ASCIICHAT_OK</b>,
     <b>crypto_handshake_client_auth_response()</b>, <b>ERROR_NETWORK</b>,
     <b>receive_packet()</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
+    <b>discovery_session_start()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_client_complete
@@ -380,104 +381,104 @@
 <p class="Pp">State transition: CRYPTO_HANDSHAKE_AUTHENTICATING -&gt;
     CRYPTO_HANDSHAKE_READY</p>
 </div>
-<p class="Pp">Definition at line <b>767</b> of file
+<p class="Pp">Definition at line <b>769</b> of file
     <b>lib/crypto/handshake/client.c</b>.</p>
-<pre>769                                                                        {
-770   // Accept both KEY_EXCHANGE and AUTHENTICATING states for simple mode compatibility
-771   // In simple mode, server skips AUTH_CHALLENGE and sends HANDSHAKE_COMPLETE directly
-772   if (!ctx || (ctx-&gt;state != CRYPTO_HANDSHAKE_KEY_EXCHANGE &amp;&amp; ctx-&gt;state != CRYPTO_HANDSHAKE_AUTHENTICATING)) {
-773     SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid state: ctx=%p, state=%d&quot;, ctx, ctx ? ctx-&gt;state : -1);
-774     return ERROR_INVALID_STATE;
-775   }
-776   if (!transport) {
-777     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;transport is NULL&quot;);
-778   }
-779 
-780   // Note: Packet already received by ACIP handler
-781   (void)transport; // Unused parameter (this function only receives, doesn't send)
-782 
-783   // Check packet type
-784   if (packet_type == PACKET_TYPE_CRYPTO_AUTH_FAILED) {
-785     // Parse the auth failure packet to get specific reasons
-786     if (payload_len &gt;= sizeof(auth_failure_packet_t)) {
-787       auth_failure_packet_t *failure = (auth_failure_packet_t *)payload;
-788       SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Server rejected authentication:&quot;);
-789 
-790       if (failure-&gt;reason_flags &amp; AUTH_FAIL_PASSWORD_INCORRECT) {
-791         SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;  - Incorrect password&quot;);
-792       }
-793       if (failure-&gt;reason_flags &amp; AUTH_FAIL_PASSWORD_REQUIRED) {
-794         SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;  - Server requires a password (use --password)&quot;);
-795       }
-796       if (failure-&gt;reason_flags &amp; AUTH_FAIL_CLIENT_KEY_REQUIRED) {
-797         SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;  - Server requires a whitelisted client key (use --key &quot;
-798                                      &quot;with your SSH key)&quot;);
-799       }
-800       if (failure-&gt;reason_flags &amp; AUTH_FAIL_CLIENT_KEY_REJECTED) {
-801         SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;  - Your client key is not in the server's whitelist&quot;);
-802       }
-803       if (failure-&gt;reason_flags &amp; AUTH_FAIL_SIGNATURE_INVALID) {
-804         SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;  - Client signature verification failed&quot;);
-805       }
-806 
-807       // Provide helpful guidance
-808       if (failure-&gt;reason_flags &amp; (AUTH_FAIL_PASSWORD_INCORRECT | AUTH_FAIL_CLIENT_KEY_REQUIRED)) {
-809         if ((failure-&gt;reason_flags &amp; AUTH_FAIL_PASSWORD_INCORRECT) &amp;&amp;
-810             (failure-&gt;reason_flags &amp; AUTH_FAIL_CLIENT_KEY_REQUIRED)) {
-811           SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Hint: Server requires BOTH correct password AND &quot;
-812                                        &quot;whitelisted key&quot;);
-813         } else if (failure-&gt;reason_flags &amp; AUTH_FAIL_PASSWORD_INCORRECT) {
-814           SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Hint: Check your password and try again&quot;);
-815         } else if (failure-&gt;reason_flags &amp; AUTH_FAIL_CLIENT_KEY_REQUIRED) {
-816           SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Hint: Provide your SSH key with --key ~/.ssh/id_ed25519&quot;);
-817         } else if (failure-&gt;reason_flags &amp; AUTH_FAIL_CLIENT_KEY_REJECTED) {
-818           SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Hint: Your key needs to be added to the server's whitelist&quot;);
-819         }
-820       }
-821     } else {
-822       SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Server rejected authentication (no details provided)&quot;);
-823     }
-824     return SET_ERRNO(ERROR_CRYPTO_AUTH,
-825                      &quot;Server authentication failed - incorrect HMAC&quot;); // Special code for
-826                                                                        // auth failure - do
-827                                                                        // not retry
-828   }
-829 
-830   // Handle no-auth flow: server sends HANDSHAKE_COMPLETE directly
-831   if (packet_type == PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE) {
-832     ctx-&gt;state = CRYPTO_HANDSHAKE_READY;
-833     log_info(&quot;Handshake complete (no authentication required)&quot;);
-834     return ASCIICHAT_OK;
-835   }
-836 
-837   // Handle with-auth flow: server sends SERVER_AUTH_RESP after authentication
-838   if (packet_type != PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP) {
-839     return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
-840                      &quot;Expected HANDSHAKE_COMPLETE, SERVER_AUTH_RESPONSE, or AUTH_FAILED, got packet type %d&quot;,
-841                      packet_type);
-842   }
-843 
-844   // Verify server's HMAC for mutual authentication
-845   // Use ctx-&gt;crypto_ctx.hmac_size (negotiated during handshake) rather than SERVER_AUTH_RESPONSE_SIZE constant
-846   if (payload_len != ctx-&gt;crypto_ctx.hmac_size) {
-847     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid SERVER_AUTH_RESPONSE size: %zu bytes (expected %u)&quot;, payload_len,
-848                      ctx-&gt;crypto_ctx.hmac_size);
-849   }
-850 
-851   // Verify server's HMAC (binds to DH shared_secret to prevent MITM)
-852   if (!crypto_verify_auth_response(&amp;ctx-&gt;crypto_ctx, ctx-&gt;client_challenge_nonce, payload)) {
-853     SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;SECURITY: Server authentication failed - incorrect HMAC&quot;);
-854     SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;This may indicate a man-in-the-middle attack!&quot;);
-855     return SET_ERRNO(ERROR_CRYPTO_AUTH,
-856                      &quot;Server authentication failed - incorrect HMAC&quot;); // Authentication
-857                                                                        // failure - do not
-858                                                                        // retry
-859   }
-860   ctx-&gt;state = CRYPTO_HANDSHAKE_READY;
-861   log_info(&quot;Server authentication successful - mutual authentication complete&quot;);
-862 
-863   return ASCIICHAT_OK;
-864 }</pre>
+<pre>771                                                                        {
+772   // Accept both KEY_EXCHANGE and AUTHENTICATING states for simple mode compatibility
+773   // In simple mode, server skips AUTH_CHALLENGE and sends HANDSHAKE_COMPLETE directly
+774   if (!ctx || (ctx-&gt;state != CRYPTO_HANDSHAKE_KEY_EXCHANGE &amp;&amp; ctx-&gt;state != CRYPTO_HANDSHAKE_AUTHENTICATING)) {
+775     SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid state: ctx=%p, state=%d&quot;, ctx, ctx ? ctx-&gt;state : -1);
+776     return ERROR_INVALID_STATE;
+777   }
+778   if (!transport) {
+779     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;transport is NULL&quot;);
+780   }
+781 
+782   // Note: Packet already received by ACIP handler
+783   (void)transport; // Unused parameter (this function only receives, doesn't send)
+784 
+785   // Check packet type
+786   if (packet_type == PACKET_TYPE_CRYPTO_AUTH_FAILED) {
+787     // Parse the auth failure packet to get specific reasons
+788     if (payload_len &gt;= sizeof(auth_failure_packet_t)) {
+789       auth_failure_packet_t *failure = (auth_failure_packet_t *)payload;
+790       SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Server rejected authentication:&quot;);
+791 
+792       if (failure-&gt;reason_flags &amp; AUTH_FAIL_PASSWORD_INCORRECT) {
+793         SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;  - Incorrect password&quot;);
+794       }
+795       if (failure-&gt;reason_flags &amp; AUTH_FAIL_PASSWORD_REQUIRED) {
+796         SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;  - Server requires a password (use --password)&quot;);
+797       }
+798       if (failure-&gt;reason_flags &amp; AUTH_FAIL_CLIENT_KEY_REQUIRED) {
+799         SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;  - Server requires a whitelisted client key (use --key &quot;
+800                                      &quot;with your SSH key)&quot;);
+801       }
+802       if (failure-&gt;reason_flags &amp; AUTH_FAIL_CLIENT_KEY_REJECTED) {
+803         SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;  - Your client key is not in the server's whitelist&quot;);
+804       }
+805       if (failure-&gt;reason_flags &amp; AUTH_FAIL_SIGNATURE_INVALID) {
+806         SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;  - Client signature verification failed&quot;);
+807       }
+808 
+809       // Provide helpful guidance
+810       if (failure-&gt;reason_flags &amp; (AUTH_FAIL_PASSWORD_INCORRECT | AUTH_FAIL_CLIENT_KEY_REQUIRED)) {
+811         if ((failure-&gt;reason_flags &amp; AUTH_FAIL_PASSWORD_INCORRECT) &amp;&amp;
+812             (failure-&gt;reason_flags &amp; AUTH_FAIL_CLIENT_KEY_REQUIRED)) {
+813           SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Hint: Server requires BOTH correct password AND &quot;
+814                                        &quot;whitelisted key&quot;);
+815         } else if (failure-&gt;reason_flags &amp; AUTH_FAIL_PASSWORD_INCORRECT) {
+816           SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Hint: Check your password and try again&quot;);
+817         } else if (failure-&gt;reason_flags &amp; AUTH_FAIL_CLIENT_KEY_REQUIRED) {
+818           SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Hint: Provide your SSH key with --key ~/.ssh/id_ed25519&quot;);
+819         } else if (failure-&gt;reason_flags &amp; AUTH_FAIL_CLIENT_KEY_REJECTED) {
+820           SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Hint: Your key needs to be added to the server's whitelist&quot;);
+821         }
+822       }
+823     } else {
+824       SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Server rejected authentication (no details provided)&quot;);
+825     }
+826     return SET_ERRNO(ERROR_CRYPTO_AUTH,
+827                      &quot;Server authentication failed - incorrect HMAC&quot;); // Special code for
+828                                                                        // auth failure - do
+829                                                                        // not retry
+830   }
+831 
+832   // Handle no-auth flow: server sends HANDSHAKE_COMPLETE directly
+833   if (packet_type == PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE) {
+834     ctx-&gt;state = CRYPTO_HANDSHAKE_READY;
+835     log_info(&quot;Handshake complete (no authentication required)&quot;);
+836     return ASCIICHAT_OK;
+837   }
+838 
+839   // Handle with-auth flow: server sends SERVER_AUTH_RESP after authentication
+840   if (packet_type != PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP) {
+841     return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
+842                      &quot;Expected HANDSHAKE_COMPLETE, SERVER_AUTH_RESPONSE, or AUTH_FAILED, got packet type %d&quot;,
+843                      packet_type);
+844   }
+845 
+846   // Verify server's HMAC for mutual authentication
+847   // Use ctx-&gt;crypto_ctx.hmac_size (negotiated during handshake) rather than SERVER_AUTH_RESPONSE_SIZE constant
+848   if (payload_len != ctx-&gt;crypto_ctx.hmac_size) {
+849     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid SERVER_AUTH_RESPONSE size: %zu bytes (expected %u)&quot;, payload_len,
+850                      ctx-&gt;crypto_ctx.hmac_size);
+851   }
+852 
+853   // Verify server's HMAC (binds to DH shared_secret to prevent MITM)
+854   if (!crypto_verify_auth_response(&amp;ctx-&gt;crypto_ctx, ctx-&gt;client_challenge_nonce, payload)) {
+855     SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;SECURITY: Server authentication failed - incorrect HMAC&quot;);
+856     SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;This may indicate a man-in-the-middle attack!&quot;);
+857     return SET_ERRNO(ERROR_CRYPTO_AUTH,
+858                      &quot;Server authentication failed - incorrect HMAC&quot;); // Authentication
+859                                                                        // failure - do not
+860                                                                        // retry
+861   }
+862   ctx-&gt;state = CRYPTO_HANDSHAKE_READY;
+863   log_info(&quot;Server authentication successful - mutual authentication complete&quot;);
+864 
+865   return ASCIICHAT_OK;
+866 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -507,40 +508,41 @@
 <p class="Pp"><b>Deprecated</b></p>
 <div class="Bd-indent">Use <b>crypto_handshake_client_complete()</b> with
   <b>acip_transport_t</b> instead</div>
-<p class="Pp">Definition at line <b>938</b> of file
+<p class="Pp">Definition at line <b>940</b> of file
     <b>lib/crypto/handshake/client.c</b>.</p>
-<pre>938                                                                                                                    {
-939   // Receive packet using old method
-940   packet_type_t packet_type;
-941   uint8_t *payload = NULL;
-942   size_t payload_len = 0;
-943   int result = receive_packet(client_socket, &amp;packet_type, (void **)&amp;payload, &amp;payload_len);
-944   if (result != ASCIICHAT_OK) {
-945     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive handshake completion packet&quot;);
-946   }
-947 
-948   // Create temporary TCP transport
-949   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_handshake_temp_socket&quot;, client_socket, NULL);
-950   if (!temp_transport) {
-951     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
-952   }
-953 
-954   // Call new function (takes ownership of payload and will free it)
-955   asciichat_error_t handshake_result =
-956       crypto_handshake_client_complete(ctx, temp_transport, packet_type, payload, payload_len);
-957 
-958   // Destroy temporary transport
-959   acip_transport_destroy(temp_transport);
-960 
-961   return handshake_result;
-962 }</pre>
+<pre>940                                                                                                                    {
+941   // Receive packet using old method
+942   packet_type_t packet_type;
+943   uint8_t *payload = NULL;
+944   size_t payload_len = 0;
+945   int result = receive_packet(client_socket, &amp;packet_type, (void **)&amp;payload, &amp;payload_len);
+946   if (result != ASCIICHAT_OK) {
+947     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive handshake completion packet&quot;);
+948   }
+949 
+950   // Create temporary TCP transport
+951   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_handshake_temp_socket&quot;, client_socket, NULL);
+952   if (!temp_transport) {
+953     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
+954   }
+955 
+956   // Call new function (takes ownership of payload and will free it)
+957   asciichat_error_t handshake_result =
+958       crypto_handshake_client_complete(ctx, temp_transport, packet_type, payload, payload_len);
+959 
+960   // Destroy temporary transport
+961   acip_transport_destroy(temp_transport);
+962 
+963   return handshake_result;
+964 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_tcp_transport_create()</b>,
     <b>acip_transport_destroy()</b>, <b>ASCIICHAT_OK</b>,
     <b>crypto_handshake_client_complete()</b>, <b>ERROR_NETWORK</b>,
     <b>receive_packet()</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
+    <b>discovery_session_start()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_client_key_exchange
@@ -631,418 +633,420 @@
 86     return validation_result;
 87   }
 88 
-89   // Check if server is using authentication (auth_public_key_size &gt; 0 means
-90   // authenticated format)
-91   if (ctx-&gt;crypto_ctx.auth_public_key_size &gt; 0 &amp;&amp; payload_len == expected_auth_size) {
-92     // Authenticated format:
-93     // [ephemeral:public_key_size][identity:auth_public_key_size][signature:signature_size]
-94     log_debug(&quot;Received authenticated KEY_EXCHANGE_INIT (%zu bytes)&quot;, expected_auth_size);
-95     memcpy(server_ephemeral_key, payload, ctx-&gt;crypto_ctx.public_key_size);
-96     memcpy(server_identity_key, payload + ctx-&gt;crypto_ctx.public_key_size, ctx-&gt;crypto_ctx.auth_public_key_size);
-97     memcpy(server_signature, payload + ctx-&gt;crypto_ctx.public_key_size + ctx-&gt;crypto_ctx.auth_public_key_size,
-98            ctx-&gt;crypto_ctx.signature_size);
-99 
-100     // Server is using client authentication
-101     ctx-&gt;server_uses_client_auth = true;
-102 
-103     // DEBUG: Print identity key received
-104     char hex_id[HEX_STRING_SIZE_32];
-105     for (int i = 0; i &lt; ED25519_PUBLIC_KEY_SIZE; i++) {
-106       safe_snprintf(hex_id + i * 2, 3, &quot;%02x&quot;, server_identity_key[i]);
-107     }
-108     hex_id[HEX_STRING_SIZE_32 - 1] = '\0';
-109     log_debug(&quot;Received identity key: %s&quot;, hex_id);
-110 
-111     // DEBUG: Print ephemeral key and signature
-112     char hex_eph[HEX_STRING_SIZE_32];
-113     for (int i = 0; i &lt; ED25519_PUBLIC_KEY_SIZE; i++) {
-114       safe_snprintf(hex_eph + i * 2, 3, &quot;%02x&quot;, server_ephemeral_key[i]);
-115     }
-116     hex_eph[HEX_STRING_SIZE_32 - 1] = '\0';
-117     log_debug(&quot;Received ephemeral key: %s&quot;, hex_eph);
-118 
-119     char hex_sig[HEX_STRING_SIZE_64];
-120     for (int i = 0; i &lt; ED25519_SIGNATURE_SIZE; i++) {
-121       safe_snprintf(hex_sig + i * 2, 3, &quot;%02x&quot;, server_signature[i]);
-122     }
-123     hex_sig[HEX_STRING_SIZE_64 - 1] = '\0';
-124     log_debug(&quot;Received signature: %s&quot;, hex_sig);
-125 
-126     // Verify signature: server identity signed the ephemeral key
-127     log_debug(&quot;Verifying server's signature over ephemeral key (already logged above)&quot;);
-128 
-129     // If client didn't specify --server-key, skip signature verification
-130     // (client doesn't care about server identity verification)
-131     if (!ctx-&gt;verify_server_key) {
-132       log_info(&quot;Skipping server signature verification (no --server-key specified)&quot;);
-133       log_warn(&quot;Connection is encrypted but server identity is NOT verified (vulnerable to MITM)&quot;);
-134     } else {
-135       // Extract GPG key ID from expected_server_key if it's a GPG key (gpg:KEYID format)
-136       const char *gpg_key_id = NULL;
-137       if (ctx-&gt;expected_server_key[0] != '\0' &amp;&amp; strncmp(ctx-&gt;expected_server_key, &quot;gpg:&quot;, 4) == 0) {
-138         const char *key_id_start = ctx-&gt;expected_server_key + 4;
-139         size_t key_id_len = strlen(key_id_start);
-140         // Accept 8, 16, or 40 character GPG key IDs (short, long, or full fingerprint)
-141         if (key_id_len == 8 || key_id_len == 16 || key_id_len == 40) {
-142           gpg_key_id = key_id_start;
-143           log_debug(&quot;Using GPG key ID from --server-key for verification: %s&quot;, gpg_key_id);
-144         }
-145       }
-146 
-147       if (ed25519_verify_signature(server_identity_key, server_ephemeral_key, ctx-&gt;crypto_ctx.public_key_size,
-148                                    server_signature, gpg_key_id) != 0) {
-149         SAFE_FREE(server_ephemeral_key);
-150         SAFE_FREE(server_identity_key);
-151         SAFE_FREE(server_signature);
-152         return SET_ERRNO(ERROR_CRYPTO, &quot;Server signature verification FAILED - rejecting connection. &quot;
-153                                        &quot;This indicates: Server's identity key does not &quot;
-154                                        &quot;match its ephemeral key, Potential man-in-the-middle attack, &quot;
-155                                        &quot;Corrupted or malicious server&quot;);
-156       }
-157       log_debug(&quot;Server signature verified successfully&quot;);
-158     }
-159 
-160     // Verify server identity against expected key if --server-key is specified
-161     if (ctx-&gt;verify_server_key &amp;&amp; strlen(ctx-&gt;expected_server_key) &gt; 0) {
-162       // Parse ALL expected server keys (github:/gitlab: may have multiple keys)
-163       public_key_t expected_keys[MAX_CLIENTS];
-164       size_t num_expected_keys = 0;
-165       if (parse_public_keys(ctx-&gt;expected_server_key, expected_keys, &amp;num_expected_keys, MAX_CLIENTS) != 0 ||
-166           num_expected_keys == 0) {
-167         SAFE_FREE(server_ephemeral_key);
-168         SAFE_FREE(server_identity_key);
-169         SAFE_FREE(server_signature);
-170         return SET_ERRNO(ERROR_CONFIG,
-171                          &quot;Failed to parse expected server key: %s. Check that &quot;
-172                          &quot;--server-key value is valid (ssh-ed25519 &quot;
-173                          &quot;format, github:username, or hex)&quot;,
-174                          ctx-&gt;expected_server_key);
-175       }
-176 
-177       // Compare server's IDENTITY key against ALL expected keys (match any one)
-178       // This supports users with multiple SSH keys (e.g., different machines)
-179       bool key_matched = false;
-180       for (size_t i = 0; i &lt; num_expected_keys; i++) {
-181         if (sodium_memcmp(server_identity_key, expected_keys[i].key, ED25519_PUBLIC_KEY_SIZE) == 0) {
-182           key_matched = true;
-183           log_debug(&quot;Server identity key matched expected key %zu/%zu&quot;, i + 1, num_expected_keys);
-184           break;
-185         }
-186       }
-187 
-188       if (!key_matched) {
-189         SAFE_FREE(server_ephemeral_key);
-190         SAFE_FREE(server_identity_key);
-191         SAFE_FREE(server_signature);
-192         return SET_ERRNO(ERROR_CRYPTO,
-193                          &quot;Server identity key mismatch - potential MITM attack! &quot;
-194                          &quot;Expected key(s) from: %s (checked %zu keys), Server presented a different key &quot;
-195                          &quot;than specified with --server-key, DO NOT CONNECT to this &quot;
-196                          &quot;server - likely man-in-the-middle attack!&quot;,
-197                          ctx-&gt;expected_server_key, num_expected_keys);
-198       }
-199       log_info(&quot;Server identity key verified against --server-key (%zu key(s) checked)&quot;, num_expected_keys);
-200     }
-201 
-202     // Note: Server IP resolution now handled by caller (TCP transport layer)
-203     // For WebSocket/WebRTC transports, server_ip should be set by the transport
-204     // before handshake begins. TCP clients will use the legacy wrapper which
-205     // handles this.
-206     if (ctx-&gt;server_ip[0] == '\0') {
-207       log_debug(&quot;Server IP not set - skipping known_hosts verification (non-TCP transport)&quot;);
-208     } else {
-209       log_debug(&quot;Server IP already set: %s&quot;, ctx-&gt;server_ip);
-210     }
-211 
-212     // Check known_hosts for this server (if we have server IP and port)
-213     // Check if known_hosts verification should be skipped
-214     bool skip_known_hosts = false;
-215     const char *env_skip = platform_getenv(&quot;ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK&quot;);
-216     if (env_skip &amp;&amp; strcmp(env_skip, STR_ONE) == 0) {
-217       log_warn(
-218           &quot;Skipping known_hosts checking for authenticated connection (ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1)&quot;);
-219       skip_known_hosts = true;
-220     }
-221 #ifndef NDEBUG
-222     // In debug builds, also skip for Claude Code (LLM automation can't do interactive prompts)
-223     else if (platform_getenv(&quot;CLAUDECODE&quot;)) {
-224       log_warn(&quot;Skipping known_hosts checking (CLAUDECODE set in debug build)&quot;);
-225       skip_known_hosts = true;
-226     }
-227 #endif
-228 
-229     if (!skip_known_hosts &amp;&amp; ctx-&gt;server_ip[0] != '\0' &amp;&amp; ctx-&gt;server_port &gt; 0) {
-230       asciichat_error_t known_host_result = check_known_host(ctx-&gt;server_ip, ctx-&gt;server_port, server_identity_key);
-231       if (known_host_result == ERROR_CRYPTO_VERIFICATION) {
-232         // Key mismatch - MITM attack detected! Prompt user for confirmation
-233         log_error(&quot;SECURITY: Server key does NOT match known_hosts entry!\n&quot;
-234                   &quot;This indicates a possible man-in-the-middle attack!&quot;);
-235         uint8_t stored_key[ZERO_KEY_SIZE] = {0}; // We don't have the stored key easily
-236                                                  // accessible, use zeros for now
-237         if (!display_mitm_warning(ctx-&gt;server_ip, ctx-&gt;server_port, stored_key, server_identity_key)) {
-238           // User declined to continue - ABORT connection for security          SAFE_FREE(server_ephemeral_key);
-239           SAFE_FREE(server_identity_key);
-240           SAFE_FREE(server_signature);
-241           return SET_ERRNO(ERROR_CRYPTO_VERIFICATION,
-242                            &quot;SECURITY: Connection aborted - server key mismatch (possible MITM attack)&quot;);
-243         }
-244         // User accepted the risk - continue with connection
-245         log_warn(&quot;SECURITY WARNING: User accepted MITM risk - continuing with connection&quot;);
-246       } else if (known_host_result == ASCIICHAT_OK) {
-247         // Unknown host (first connection) - prompt user to verify fingerprint
-248         if (!prompt_unknown_host(ctx-&gt;server_ip, ctx-&gt;server_port, server_identity_key)) {
-249           // User declined to add host - ABORT connection          SAFE_FREE(server_ephemeral_key);
-250           SAFE_FREE(server_identity_key);
-251           SAFE_FREE(server_signature);
-252           return SET_ERRNO(ERROR_CRYPTO, &quot;User declined to verify unknown host&quot;);
-253         }
-254 
-255         // User accepted - add to known_hosts
-256         if (add_known_host(ctx-&gt;server_ip, ctx-&gt;server_port, server_identity_key) != ASCIICHAT_OK) {
-257           SAFE_FREE(server_ephemeral_key);
-258           SAFE_FREE(server_identity_key);
-259           SAFE_FREE(server_signature);
-260           return SET_ERRNO(ERROR_CONFIG,
-261                            &quot;CRITICAL SECURITY ERROR: Failed to create known_hosts &quot;
-262                            &quot;file! This is a security vulnerability - the &quot;
-263                            &quot;program cannot track known hosts. Please check file &quot;
-264                            &quot;permissions and ensure the program can write to: %s&quot;,
-265                            get_known_hosts_path());
-266         }
-267         log_debug(&quot;Server host added to known_hosts successfully&quot;);
-268       } else if (known_host_result == 1) {
-269         // Key matches - connection is secure!
-270         log_info(&quot;Server host key verified from known_hosts - connection secure&quot;);
-271       } else {
-272         // Unexpected error code from check_known_host        SAFE_FREE(server_ephemeral_key);
-273         SAFE_FREE(server_identity_key);
-274         SAFE_FREE(server_signature);
-275         return SET_ERRNO(known_host_result, &quot;SECURITY: known_hosts verification failed with error code %d&quot;,
-276                          known_host_result);
-277       }
-278     }
-279   } else if (payload_len == ctx-&gt;crypto_ctx.public_key_size) {
-280     // Simple format: just ephemeral key (no identity key)
-281     log_debug(&quot;Received simple KEY_EXCHANGE_INIT (%zu bytes) - server has no &quot;
-282               &quot;identity key&quot;,
-283               payload_len);
-284     memcpy(server_ephemeral_key, payload, ctx-&gt;crypto_ctx.public_key_size);
-285 
-286     // Clear identity key and signature for simple format
-287     memset(server_identity_key, 0, ctx-&gt;crypto_ctx.auth_public_key_size);
-288     memset(server_signature, 0, ctx-&gt;crypto_ctx.signature_size);
-289 
-290     // Server is not using client authentication in simple mode
-291     ctx-&gt;server_uses_client_auth = false;
-292 
-293     log_debug(&quot;Received ephemeral key (simple format)&quot;);
+89   // Check if server is using authenticated format (includes signature)
+90   // This covers both cases:
+91   // 1. With identity key: ephemeral + identity + signature
+92   // 2. Without identity key but with signature: ephemeral + 0 + signature
+93   if (payload_len == expected_auth_size) {
+94     // Authenticated format:
+95     // [ephemeral:public_key_size][identity:auth_public_key_size][signature:signature_size]
+96     log_debug(&quot;Received authenticated KEY_EXCHANGE_INIT (%zu bytes)&quot;, expected_auth_size);
+97     memcpy(server_ephemeral_key, payload, ctx-&gt;crypto_ctx.public_key_size);
+98     memcpy(server_identity_key, payload + ctx-&gt;crypto_ctx.public_key_size, ctx-&gt;crypto_ctx.auth_public_key_size);
+99     memcpy(server_signature, payload + ctx-&gt;crypto_ctx.public_key_size + ctx-&gt;crypto_ctx.auth_public_key_size,
+100            ctx-&gt;crypto_ctx.signature_size);
+101 
+102     // Server is using client authentication
+103     ctx-&gt;server_uses_client_auth = true;
+104 
+105     // DEBUG: Print identity key received
+106     char hex_id[HEX_STRING_SIZE_32];
+107     for (int i = 0; i &lt; ED25519_PUBLIC_KEY_SIZE; i++) {
+108       safe_snprintf(hex_id + i * 2, 3, &quot;%02x&quot;, server_identity_key[i]);
+109     }
+110     hex_id[HEX_STRING_SIZE_32 - 1] = '\0';
+111     log_debug(&quot;Received identity key: %s&quot;, hex_id);
+112 
+113     // DEBUG: Print ephemeral key and signature
+114     char hex_eph[HEX_STRING_SIZE_32];
+115     for (int i = 0; i &lt; ED25519_PUBLIC_KEY_SIZE; i++) {
+116       safe_snprintf(hex_eph + i * 2, 3, &quot;%02x&quot;, server_ephemeral_key[i]);
+117     }
+118     hex_eph[HEX_STRING_SIZE_32 - 1] = '\0';
+119     log_debug(&quot;Received ephemeral key: %s&quot;, hex_eph);
+120 
+121     char hex_sig[HEX_STRING_SIZE_64];
+122     for (int i = 0; i &lt; ED25519_SIGNATURE_SIZE; i++) {
+123       safe_snprintf(hex_sig + i * 2, 3, &quot;%02x&quot;, server_signature[i]);
+124     }
+125     hex_sig[HEX_STRING_SIZE_64 - 1] = '\0';
+126     log_debug(&quot;Received signature: %s&quot;, hex_sig);
+127 
+128     // Verify signature: server identity signed the ephemeral key
+129     log_debug(&quot;Verifying server's signature over ephemeral key (already logged above)&quot;);
+130 
+131     // If client didn't specify --server-key, skip signature verification
+132     // (client doesn't care about server identity verification)
+133     if (!ctx-&gt;verify_server_key) {
+134       log_info(&quot;Skipping server signature verification (no --server-key specified)&quot;);
+135       log_warn(&quot;Connection is encrypted but server identity is NOT verified (vulnerable to MITM)&quot;);
+136     } else {
+137       // Extract GPG key ID from expected_server_key if it's a GPG key (gpg:KEYID format)
+138       const char *gpg_key_id = NULL;
+139       if (ctx-&gt;expected_server_key[0] != '\0' &amp;&amp; strncmp(ctx-&gt;expected_server_key, &quot;gpg:&quot;, 4) == 0) {
+140         const char *key_id_start = ctx-&gt;expected_server_key + 4;
+141         size_t key_id_len = strlen(key_id_start);
+142         // Accept 8, 16, or 40 character GPG key IDs (short, long, or full fingerprint)
+143         if (key_id_len == 8 || key_id_len == 16 || key_id_len == 40) {
+144           gpg_key_id = key_id_start;
+145           log_debug(&quot;Using GPG key ID from --server-key for verification: %s&quot;, gpg_key_id);
+146         }
+147       }
+148 
+149       if (ed25519_verify_signature(server_identity_key, server_ephemeral_key, ctx-&gt;crypto_ctx.public_key_size,
+150                                    server_signature, gpg_key_id) != 0) {
+151         SAFE_FREE(server_ephemeral_key);
+152         SAFE_FREE(server_identity_key);
+153         SAFE_FREE(server_signature);
+154         return SET_ERRNO(ERROR_CRYPTO, &quot;Server signature verification FAILED - rejecting connection. &quot;
+155                                        &quot;This indicates: Server's identity key does not &quot;
+156                                        &quot;match its ephemeral key, Potential man-in-the-middle attack, &quot;
+157                                        &quot;Corrupted or malicious server&quot;);
+158       }
+159       log_debug(&quot;Server signature verified successfully&quot;);
+160     }
+161 
+162     // Verify server identity against expected key if --server-key is specified
+163     if (ctx-&gt;verify_server_key &amp;&amp; strlen(ctx-&gt;expected_server_key) &gt; 0) {
+164       // Parse ALL expected server keys (github:/gitlab: may have multiple keys)
+165       public_key_t expected_keys[MAX_CLIENTS];
+166       size_t num_expected_keys = 0;
+167       if (parse_public_keys(ctx-&gt;expected_server_key, expected_keys, &amp;num_expected_keys, MAX_CLIENTS) != 0 ||
+168           num_expected_keys == 0) {
+169         SAFE_FREE(server_ephemeral_key);
+170         SAFE_FREE(server_identity_key);
+171         SAFE_FREE(server_signature);
+172         return SET_ERRNO(ERROR_CONFIG,
+173                          &quot;Failed to parse expected server key: %s. Check that &quot;
+174                          &quot;--server-key value is valid (ssh-ed25519 &quot;
+175                          &quot;format, github:username, or hex)&quot;,
+176                          ctx-&gt;expected_server_key);
+177       }
+178 
+179       // Compare server's IDENTITY key against ALL expected keys (match any one)
+180       // This supports users with multiple SSH keys (e.g., different machines)
+181       bool key_matched = false;
+182       for (size_t i = 0; i &lt; num_expected_keys; i++) {
+183         if (sodium_memcmp(server_identity_key, expected_keys[i].key, ED25519_PUBLIC_KEY_SIZE) == 0) {
+184           key_matched = true;
+185           log_debug(&quot;Server identity key matched expected key %zu/%zu&quot;, i + 1, num_expected_keys);
+186           break;
+187         }
+188       }
+189 
+190       if (!key_matched) {
+191         SAFE_FREE(server_ephemeral_key);
+192         SAFE_FREE(server_identity_key);
+193         SAFE_FREE(server_signature);
+194         return SET_ERRNO(ERROR_CRYPTO,
+195                          &quot;Server identity key mismatch - potential MITM attack! &quot;
+196                          &quot;Expected key(s) from: %s (checked %zu keys), Server presented a different key &quot;
+197                          &quot;than specified with --server-key, DO NOT CONNECT to this &quot;
+198                          &quot;server - likely man-in-the-middle attack!&quot;,
+199                          ctx-&gt;expected_server_key, num_expected_keys);
+200       }
+201       log_info(&quot;Server identity key verified against --server-key (%zu key(s) checked)&quot;, num_expected_keys);
+202     }
+203 
+204     // Note: Server IP resolution now handled by caller (TCP transport layer)
+205     // For WebSocket/WebRTC transports, server_ip should be set by the transport
+206     // before handshake begins. TCP clients will use the legacy wrapper which
+207     // handles this.
+208     if (ctx-&gt;server_ip[0] == '\0') {
+209       log_debug(&quot;Server IP not set - skipping known_hosts verification (non-TCP transport)&quot;);
+210     } else {
+211       log_debug(&quot;Server IP already set: %s&quot;, ctx-&gt;server_ip);
+212     }
+213 
+214     // Check known_hosts for this server (if we have server IP and port)
+215     // Check if known_hosts verification should be skipped
+216     bool skip_known_hosts = false;
+217     const char *env_skip = platform_getenv(&quot;ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK&quot;);
+218     if (env_skip &amp;&amp; strcmp(env_skip, STR_ONE) == 0) {
+219       log_warn(
+220           &quot;Skipping known_hosts checking for authenticated connection (ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1)&quot;);
+221       skip_known_hosts = true;
+222     }
+223 #ifndef NDEBUG
+224     // In debug builds, also skip for Claude Code (LLM automation can't do interactive prompts)
+225     else if (platform_getenv(&quot;CLAUDECODE&quot;)) {
+226       log_warn(&quot;Skipping known_hosts checking (CLAUDECODE set in debug build)&quot;);
+227       skip_known_hosts = true;
+228     }
+229 #endif
+230 
+231     if (!skip_known_hosts &amp;&amp; ctx-&gt;server_ip[0] != '\0' &amp;&amp; ctx-&gt;server_port &gt; 0) {
+232       asciichat_error_t known_host_result = check_known_host(ctx-&gt;server_ip, ctx-&gt;server_port, server_identity_key);
+233       if (known_host_result == ERROR_CRYPTO_VERIFICATION) {
+234         // Key mismatch - MITM attack detected! Prompt user for confirmation
+235         log_error(&quot;SECURITY: Server key does NOT match known_hosts entry!\n&quot;
+236                   &quot;This indicates a possible man-in-the-middle attack!&quot;);
+237         uint8_t stored_key[ZERO_KEY_SIZE] = {0}; // We don't have the stored key easily
+238                                                  // accessible, use zeros for now
+239         if (!display_mitm_warning(ctx-&gt;server_ip, ctx-&gt;server_port, stored_key, server_identity_key)) {
+240           // User declined to continue - ABORT connection for security          SAFE_FREE(server_ephemeral_key);
+241           SAFE_FREE(server_identity_key);
+242           SAFE_FREE(server_signature);
+243           return SET_ERRNO(ERROR_CRYPTO_VERIFICATION,
+244                            &quot;SECURITY: Connection aborted - server key mismatch (possible MITM attack)&quot;);
+245         }
+246         // User accepted the risk - continue with connection
+247         log_warn(&quot;SECURITY WARNING: User accepted MITM risk - continuing with connection&quot;);
+248       } else if (known_host_result == ASCIICHAT_OK) {
+249         // Unknown host (first connection) - prompt user to verify fingerprint
+250         if (!prompt_unknown_host(ctx-&gt;server_ip, ctx-&gt;server_port, server_identity_key)) {
+251           // User declined to add host - ABORT connection          SAFE_FREE(server_ephemeral_key);
+252           SAFE_FREE(server_identity_key);
+253           SAFE_FREE(server_signature);
+254           return SET_ERRNO(ERROR_CRYPTO, &quot;User declined to verify unknown host&quot;);
+255         }
+256 
+257         // User accepted - add to known_hosts
+258         if (add_known_host(ctx-&gt;server_ip, ctx-&gt;server_port, server_identity_key) != ASCIICHAT_OK) {
+259           SAFE_FREE(server_ephemeral_key);
+260           SAFE_FREE(server_identity_key);
+261           SAFE_FREE(server_signature);
+262           return SET_ERRNO(ERROR_CONFIG,
+263                            &quot;CRITICAL SECURITY ERROR: Failed to create known_hosts &quot;
+264                            &quot;file! This is a security vulnerability - the &quot;
+265                            &quot;program cannot track known hosts. Please check file &quot;
+266                            &quot;permissions and ensure the program can write to: %s&quot;,
+267                            get_known_hosts_path());
+268         }
+269         log_debug(&quot;Server host added to known_hosts successfully&quot;);
+270       } else if (known_host_result == 1) {
+271         // Key matches - connection is secure!
+272         log_info(&quot;Server host key verified from known_hosts - connection secure&quot;);
+273       } else {
+274         // Unexpected error code from check_known_host        SAFE_FREE(server_ephemeral_key);
+275         SAFE_FREE(server_identity_key);
+276         SAFE_FREE(server_signature);
+277         return SET_ERRNO(known_host_result, &quot;SECURITY: known_hosts verification failed with error code %d&quot;,
+278                          known_host_result);
+279       }
+280     }
+281   } else if (payload_len == ctx-&gt;crypto_ctx.public_key_size) {
+282     // Simple format: just ephemeral key (no identity key)
+283     log_debug(&quot;Received simple KEY_EXCHANGE_INIT (%zu bytes) - server has no &quot;
+284               &quot;identity key&quot;,
+285               payload_len);
+286     memcpy(server_ephemeral_key, payload, ctx-&gt;crypto_ctx.public_key_size);
+287 
+288     // Clear identity key and signature for simple format
+289     memset(server_identity_key, 0, ctx-&gt;crypto_ctx.auth_public_key_size);
+290     memset(server_signature, 0, ctx-&gt;crypto_ctx.signature_size);
+291 
+292     // Server is not using client authentication in simple mode
+293     ctx-&gt;server_uses_client_auth = false;
 294 
-295     // SECURITY: For servers without identity keys, we implement a different security model:
-296     // 1. Verify IP address matches known_hosts entry
-297     // 2. Always require user confirmation (no silent connections)
-298     // 3. Store server fingerprint for future verification
-299 
-300     if (ctx-&gt;server_ip[0] == '\0' || ctx-&gt;server_port &lt;= 0) {
-301       SAFE_FREE(server_ephemeral_key);
-302       SAFE_FREE(server_identity_key);
-303       SAFE_FREE(server_signature);
-304       return SET_ERRNO(ERROR_CRYPTO, &quot;Server IP or port not set, cannot check known_hosts&quot;);
-305     }
-306 
-307     // Check if this server was previously connected to (IP verification)
-308     bool skip_known_hosts = false;
-309     asciichat_error_t known_host_result = ASCIICHAT_OK;
-310     const char *env_skip_known_hosts_checking = platform_getenv(&quot;ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK&quot;);
-311     if (env_skip_known_hosts_checking &amp;&amp; strcmp(env_skip_known_hosts_checking, STR_ONE) == 0) {
-312       log_warn(&quot;Skipping known_hosts checking. This is a security vulnerability.&quot;);
-313       skip_known_hosts = true;
-314     }
-315 #ifndef NDEBUG
-316     // In debug builds, also skip for Claude Code (LLM automation can't do interactive prompts)
-317     else if (platform_getenv(&quot;CLAUDECODE&quot;)) {
-318       log_warn(&quot;Skipping known_hosts checking (CLAUDECODE set in debug build).&quot;);
-319       skip_known_hosts = true;
-320     }
-321 #endif
-322     else {
-323       known_host_result = check_known_host_no_identity(ctx-&gt;server_ip, ctx-&gt;server_port);
-324     }
-325 
-326     if (skip_known_hosts || known_host_result == 1) {
-327       // Server IP is known and verified - allow connection without warnings
-328       log_info(&quot;SECURITY: Server IP %s:%u is known (no-identity entry found) - connection verified&quot;, ctx-&gt;server_ip,
-329                ctx-&gt;server_port);
-330     } else if (known_host_result == ASCIICHAT_OK) {
-331       // Server IP is unknown - require user confirmation
-332       log_warn(&quot;SECURITY: Unknown server IP %s:%u with no identity key\n&quot;
-333                &quot;This connection is vulnerable to man-in-the-middle attacks\n&quot;
-334                &quot;Anyone can intercept your connection and read your data&quot;,
-335                ctx-&gt;server_ip, ctx-&gt;server_port);
-336 
-337       if (!prompt_unknown_host_no_identity(ctx-&gt;server_ip, ctx-&gt;server_port)) {
-338         SAFE_FREE(server_ephemeral_key);
-339         SAFE_FREE(server_identity_key);
-340         SAFE_FREE(server_signature);
-341         return SET_ERRNO(ERROR_CRYPTO, &quot;User declined to connect to unknown server without identity key&quot;);
-342       }
-343 
-344       // User accepted - add to known_hosts as no-identity entry
-345       // For servers without identity keys, pass zero key to indicate no-identity
-346       uint8_t zero_key[ZERO_KEY_SIZE] = {0};
-347       if (add_known_host(ctx-&gt;server_ip, ctx-&gt;server_port, zero_key) != ASCIICHAT_OK) {
-348         SAFE_FREE(server_ephemeral_key);
-349         SAFE_FREE(server_identity_key);
-350         SAFE_FREE(server_signature);
-351         return SET_ERRNO(ERROR_CONFIG,
-352                          &quot;CRITICAL SECURITY ERROR: Failed to create known_hosts &quot;
-353                          &quot;file! This is a security vulnerability - the &quot;
-354                          &quot;program cannot track known hosts. Please check file &quot;
-355                          &quot;permissions and ensure the program can write to: %s&quot;,
-356                          get_known_hosts_path());
-357       }
-358       log_debug(&quot;Server host added to known_hosts successfully&quot;);
-359     } else if (known_host_result == ERROR_CRYPTO_VERIFICATION) {
-360       // Server previously had identity key but now has none - potential security issue
-361       log_warn(&quot;SECURITY: Server previously had identity key but now has none - potential security issue&quot;);
-362       SAFE_FREE(server_ephemeral_key);
-363       SAFE_FREE(server_identity_key);
-364       SAFE_FREE(server_signature);
-365       return SET_ERRNO(ERROR_CRYPTO_VERIFICATION, &quot;Server key configuration changed - potential security issue&quot;);
-366     } else {
-367       // Other error checking known_hosts (e.g., ERROR_INVALID_PARAM)      SAFE_FREE(server_ephemeral_key);
-368       SAFE_FREE(server_identity_key);
-369       SAFE_FREE(server_signature);
-370       return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to verify server IP address&quot;);
-371     }
-372   } else {
-373     SAFE_FREE(server_ephemeral_key);
-374     SAFE_FREE(server_identity_key);
-375     SAFE_FREE(server_signature);
-376     return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
-377                      &quot;Invalid KEY_EXCHANGE_INIT size: %zu bytes (expected %zu or &quot;
-378                      &quot;%zu). This indicates: Protocol violation &quot;
-379                      &quot;or incompatible server version, Potential man-in-the-middle &quot;
-380                      &quot;attack, Network corruption&quot;,
-381                      payload_len, expected_auth_size, ctx-&gt;crypto_ctx.public_key_size);
-382     // retry
-383   }
-384 
-385   // Set peer's public key (EPHEMERAL X25519) - this also derives the shared secret
-386   crypto_result_t crypto_result = crypto_set_peer_public_key(&amp;ctx-&gt;crypto_ctx, server_ephemeral_key);
-387   if (crypto_result != CRYPTO_OK) {
-388     SAFE_FREE(server_ephemeral_key);
-389     SAFE_FREE(server_identity_key);
-390     SAFE_FREE(server_signature);
-391     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to set peer public key and derive shared secret: %s&quot;,
-392                      crypto_result_to_string(crypto_result));
-393   }
-394 
-395   // Determine if client has an identity key
-396   bool client_has_identity_key = (ctx-&gt;client_private_key.type == KEY_TYPE_ED25519);
-397 
-398   // Send authenticated response if server has identity key (auth_public_key_size &gt; 0)
-399   // OR if server requires client authentication (require_client_auth)
-400   // Note: server_uses_client_auth is set when server has identity key, but we should
-401   // send authenticated response when server has identity key regardless of client auth requirement
-402   bool server_has_identity = (ctx-&gt;crypto_ctx.auth_public_key_size &gt; 0 &amp;&amp; ctx-&gt;crypto_ctx.signature_size &gt; 0);
-403   bool server_requires_auth = server_has_identity || ctx-&gt;require_client_auth;
-404 
-405   if (server_requires_auth) {
-406     // Send authenticated packet:
-407     // [ephemeral:kex_size][identity:auth_size][signature:sig_size][gpg_key_id_len:1][gpg_key_id:0-16]
-408     // Use Ed25519 sizes since client has Ed25519 key
-409     size_t ed25519_pubkey_size = ED25519_PUBLIC_KEY_SIZE; // Ed25519 public key is always 32 bytes
-410     size_t ed25519_sig_size = ED25519_SIGNATURE_SIZE;     // Ed25519 signature is always 64 bytes
-411     size_t response_size = ctx-&gt;crypto_ctx.public_key_size + ed25519_pubkey_size + ed25519_sig_size;
-412 
-413     // Check if client has a GPG key ID to send
-414     uint8_t gpg_key_id_len = 0;
-415     if (ctx-&gt;client_gpg_key_id[0] != '\0') {
-416       gpg_key_id_len = (uint8_t)strlen(ctx-&gt;client_gpg_key_id);
-417       if (gpg_key_id_len &gt; 40) {
-418         gpg_key_id_len = 40; // Truncate to max length (full fingerprint)
-419       }
-420       response_size += 1 + gpg_key_id_len; // 1 byte for length + key ID
-421     } else {
-422       response_size += 1; // Just the length byte (0)
-423     }
-424 
-425     uint8_t *key_response = SAFE_MALLOC(response_size, uint8_t *);
-426     size_t offset = 0;
-427 
-428     // Copy ephemeral key
-429     memcpy(key_response + offset, ctx-&gt;crypto_ctx.public_key,
-430            ctx-&gt;crypto_ctx.public_key_size); // X25519 ephemeral for encryption
-431     offset += ctx-&gt;crypto_ctx.public_key_size;
-432 
-433     if (client_has_identity_key) {
-434       // Client has identity key - send it with signature
-435       memcpy(key_response + offset, ctx-&gt;client_private_key.public_key, ed25519_pubkey_size); // Ed25519 identity
-436       offset += ed25519_pubkey_size;
-437 
-438       // Sign ephemeral key with client identity key
-439       if (ed25519_sign_message(&amp;ctx-&gt;client_private_key, ctx-&gt;crypto_ctx.public_key, ctx-&gt;crypto_ctx.public_key_size,
-440                                key_response + offset) != 0) {
-441         SAFE_FREE(key_response);
-442         SAFE_FREE(server_ephemeral_key);
-443         SAFE_FREE(server_identity_key);
-444         SAFE_FREE(server_signature);
-445         return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to sign client ephemeral key&quot;);
-446       }
-447       offset += ed25519_sig_size;
-448     } else {
-449       // Client has no identity key - send null identity and null signature
-450       memset(key_response + offset, 0, ed25519_pubkey_size); // Null identity
-451       offset += ed25519_pubkey_size;
-452       memset(key_response + offset, 0, ed25519_sig_size); // Null signature
-453       offset += ed25519_sig_size;
-454     }
-455 
-456     // Append GPG key ID length
-457     key_response[offset] = gpg_key_id_len;
-458     offset += 1;
-459 
-460     // Append GPG key ID if present
-461     if (gpg_key_id_len &gt; 0) {
-462       memcpy(key_response + offset, ctx-&gt;client_gpg_key_id, gpg_key_id_len);
-463       offset += gpg_key_id_len;
-464       log_debug(&quot;Including client GPG key ID in KEY_EXCHANGE_RESPONSE: %.*s&quot;, gpg_key_id_len, ctx-&gt;client_gpg_key_id);
-465     }
-466 
-467     result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, key_response, response_size, 0);
-468     if (result != 0) {
-469       SAFE_FREE(key_response);
-470       SAFE_FREE(server_ephemeral_key);
-471       SAFE_FREE(server_identity_key);
-472       SAFE_FREE(server_signature);
-473       return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send KEY_EXCHANGE_RESPONSE packet&quot;);
-474     }
-475 
-476     // Zero out the buffer before freeing
-477     sodium_memzero(key_response, response_size);
-478     SAFE_FREE(key_response);
-479   } else {
-480     // Send X25519 encryption key only to server (no identity key)
-481     // Format: [X25519 pubkey (kex_size)] = kex_size bytes total
-482     result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, ctx-&gt;crypto_ctx.public_key,
-483                                        ctx-&gt;crypto_ctx.public_key_size, 0);
-484     if (result != 0) {
-485       SAFE_FREE(server_ephemeral_key);
-486       SAFE_FREE(server_identity_key);
-487       SAFE_FREE(server_signature);
-488       return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send KEY_EXCHANGE_RESPONSE packet&quot;);
-489     }
-490   }
-491 
-492   ctx-&gt;state = CRYPTO_HANDSHAKE_KEY_EXCHANGE;
+295     log_debug(&quot;Received ephemeral key (simple format)&quot;);
+296 
+297     // SECURITY: For servers without identity keys, we implement a different security model:
+298     // 1. Verify IP address matches known_hosts entry
+299     // 2. Always require user confirmation (no silent connections)
+300     // 3. Store server fingerprint for future verification
+301 
+302     if (ctx-&gt;server_ip[0] == '\0' || ctx-&gt;server_port &lt;= 0) {
+303       SAFE_FREE(server_ephemeral_key);
+304       SAFE_FREE(server_identity_key);
+305       SAFE_FREE(server_signature);
+306       return SET_ERRNO(ERROR_CRYPTO, &quot;Server IP or port not set, cannot check known_hosts&quot;);
+307     }
+308 
+309     // Check if this server was previously connected to (IP verification)
+310     bool skip_known_hosts = false;
+311     asciichat_error_t known_host_result = ASCIICHAT_OK;
+312     const char *env_skip_known_hosts_checking = platform_getenv(&quot;ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK&quot;);
+313     if (env_skip_known_hosts_checking &amp;&amp; strcmp(env_skip_known_hosts_checking, STR_ONE) == 0) {
+314       log_warn(&quot;Skipping known_hosts checking. This is a security vulnerability.&quot;);
+315       skip_known_hosts = true;
+316     }
+317 #ifndef NDEBUG
+318     // In debug builds, also skip for Claude Code (LLM automation can't do interactive prompts)
+319     else if (platform_getenv(&quot;CLAUDECODE&quot;)) {
+320       log_warn(&quot;Skipping known_hosts checking (CLAUDECODE set in debug build).&quot;);
+321       skip_known_hosts = true;
+322     }
+323 #endif
+324     else {
+325       known_host_result = check_known_host_no_identity(ctx-&gt;server_ip, ctx-&gt;server_port);
+326     }
+327 
+328     if (skip_known_hosts || known_host_result == 1) {
+329       // Server IP is known and verified - allow connection without warnings
+330       log_info(&quot;SECURITY: Server IP %s:%u is known (no-identity entry found) - connection verified&quot;, ctx-&gt;server_ip,
+331                ctx-&gt;server_port);
+332     } else if (known_host_result == ASCIICHAT_OK) {
+333       // Server IP is unknown - require user confirmation
+334       log_warn(&quot;SECURITY: Unknown server IP %s:%u with no identity key\n&quot;
+335                &quot;This connection is vulnerable to man-in-the-middle attacks\n&quot;
+336                &quot;Anyone can intercept your connection and read your data&quot;,
+337                ctx-&gt;server_ip, ctx-&gt;server_port);
+338 
+339       if (!prompt_unknown_host_no_identity(ctx-&gt;server_ip, ctx-&gt;server_port)) {
+340         SAFE_FREE(server_ephemeral_key);
+341         SAFE_FREE(server_identity_key);
+342         SAFE_FREE(server_signature);
+343         return SET_ERRNO(ERROR_CRYPTO, &quot;User declined to connect to unknown server without identity key&quot;);
+344       }
+345 
+346       // User accepted - add to known_hosts as no-identity entry
+347       // For servers without identity keys, pass zero key to indicate no-identity
+348       uint8_t zero_key[ZERO_KEY_SIZE] = {0};
+349       if (add_known_host(ctx-&gt;server_ip, ctx-&gt;server_port, zero_key) != ASCIICHAT_OK) {
+350         SAFE_FREE(server_ephemeral_key);
+351         SAFE_FREE(server_identity_key);
+352         SAFE_FREE(server_signature);
+353         return SET_ERRNO(ERROR_CONFIG,
+354                          &quot;CRITICAL SECURITY ERROR: Failed to create known_hosts &quot;
+355                          &quot;file! This is a security vulnerability - the &quot;
+356                          &quot;program cannot track known hosts. Please check file &quot;
+357                          &quot;permissions and ensure the program can write to: %s&quot;,
+358                          get_known_hosts_path());
+359       }
+360       log_debug(&quot;Server host added to known_hosts successfully&quot;);
+361     } else if (known_host_result == ERROR_CRYPTO_VERIFICATION) {
+362       // Server previously had identity key but now has none - potential security issue
+363       log_warn(&quot;SECURITY: Server previously had identity key but now has none - potential security issue&quot;);
+364       SAFE_FREE(server_ephemeral_key);
+365       SAFE_FREE(server_identity_key);
+366       SAFE_FREE(server_signature);
+367       return SET_ERRNO(ERROR_CRYPTO_VERIFICATION, &quot;Server key configuration changed - potential security issue&quot;);
+368     } else {
+369       // Other error checking known_hosts (e.g., ERROR_INVALID_PARAM)      SAFE_FREE(server_ephemeral_key);
+370       SAFE_FREE(server_identity_key);
+371       SAFE_FREE(server_signature);
+372       return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to verify server IP address&quot;);
+373     }
+374   } else {
+375     SAFE_FREE(server_ephemeral_key);
+376     SAFE_FREE(server_identity_key);
+377     SAFE_FREE(server_signature);
+378     return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
+379                      &quot;Invalid KEY_EXCHANGE_INIT size: %zu bytes (expected %zu or &quot;
+380                      &quot;%zu). This indicates: Protocol violation &quot;
+381                      &quot;or incompatible server version, Potential man-in-the-middle &quot;
+382                      &quot;attack, Network corruption&quot;,
+383                      payload_len, expected_auth_size, ctx-&gt;crypto_ctx.public_key_size);
+384     // retry
+385   }
+386 
+387   // Set peer's public key (EPHEMERAL X25519) - this also derives the shared secret
+388   crypto_result_t crypto_result = crypto_set_peer_public_key(&amp;ctx-&gt;crypto_ctx, server_ephemeral_key);
+389   if (crypto_result != CRYPTO_OK) {
+390     SAFE_FREE(server_ephemeral_key);
+391     SAFE_FREE(server_identity_key);
+392     SAFE_FREE(server_signature);
+393     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to set peer public key and derive shared secret: %s&quot;,
+394                      crypto_result_to_string(crypto_result));
+395   }
+396 
+397   // Determine if client has an identity key
+398   bool client_has_identity_key = (ctx-&gt;client_private_key.type == KEY_TYPE_ED25519);
+399 
+400   // Send authenticated response if server has identity key (auth_public_key_size &gt; 0)
+401   // OR if server requires client authentication (require_client_auth)
+402   // Note: server_uses_client_auth is set when server has identity key, but we should
+403   // send authenticated response when server has identity key regardless of client auth requirement
+404   bool server_has_identity = (ctx-&gt;crypto_ctx.auth_public_key_size &gt; 0 &amp;&amp; ctx-&gt;crypto_ctx.signature_size &gt; 0);
+405   bool server_requires_auth = server_has_identity || ctx-&gt;require_client_auth;
+406 
+407   if (server_requires_auth) {
+408     // Send authenticated packet:
+409     // [ephemeral:kex_size][identity:auth_size][signature:sig_size][gpg_key_id_len:1][gpg_key_id:0-16]
+410     // Use Ed25519 sizes since client has Ed25519 key
+411     size_t ed25519_pubkey_size = ED25519_PUBLIC_KEY_SIZE; // Ed25519 public key is always 32 bytes
+412     size_t ed25519_sig_size = ED25519_SIGNATURE_SIZE;     // Ed25519 signature is always 64 bytes
+413     size_t response_size = ctx-&gt;crypto_ctx.public_key_size + ed25519_pubkey_size + ed25519_sig_size;
+414 
+415     // Check if client has a GPG key ID to send
+416     uint8_t gpg_key_id_len = 0;
+417     if (ctx-&gt;client_gpg_key_id[0] != '\0') {
+418       gpg_key_id_len = (uint8_t)strlen(ctx-&gt;client_gpg_key_id);
+419       if (gpg_key_id_len &gt; 40) {
+420         gpg_key_id_len = 40; // Truncate to max length (full fingerprint)
+421       }
+422       response_size += 1 + gpg_key_id_len; // 1 byte for length + key ID
+423     } else {
+424       response_size += 1; // Just the length byte (0)
+425     }
+426 
+427     uint8_t *key_response = SAFE_MALLOC(response_size, uint8_t *);
+428     size_t offset = 0;
+429 
+430     // Copy ephemeral key
+431     memcpy(key_response + offset, ctx-&gt;crypto_ctx.public_key,
+432            ctx-&gt;crypto_ctx.public_key_size); // X25519 ephemeral for encryption
+433     offset += ctx-&gt;crypto_ctx.public_key_size;
+434 
+435     if (client_has_identity_key) {
+436       // Client has identity key - send it with signature
+437       memcpy(key_response + offset, ctx-&gt;client_private_key.public_key, ed25519_pubkey_size); // Ed25519 identity
+438       offset += ed25519_pubkey_size;
+439 
+440       // Sign ephemeral key with client identity key
+441       if (ed25519_sign_message(&amp;ctx-&gt;client_private_key, ctx-&gt;crypto_ctx.public_key, ctx-&gt;crypto_ctx.public_key_size,
+442                                key_response + offset) != 0) {
+443         SAFE_FREE(key_response);
+444         SAFE_FREE(server_ephemeral_key);
+445         SAFE_FREE(server_identity_key);
+446         SAFE_FREE(server_signature);
+447         return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to sign client ephemeral key&quot;);
+448       }
+449       offset += ed25519_sig_size;
+450     } else {
+451       // Client has no identity key - send null identity and null signature
+452       memset(key_response + offset, 0, ed25519_pubkey_size); // Null identity
+453       offset += ed25519_pubkey_size;
+454       memset(key_response + offset, 0, ed25519_sig_size); // Null signature
+455       offset += ed25519_sig_size;
+456     }
+457 
+458     // Append GPG key ID length
+459     key_response[offset] = gpg_key_id_len;
+460     offset += 1;
+461 
+462     // Append GPG key ID if present
+463     if (gpg_key_id_len &gt; 0) {
+464       memcpy(key_response + offset, ctx-&gt;client_gpg_key_id, gpg_key_id_len);
+465       offset += gpg_key_id_len;
+466       log_debug(&quot;Including client GPG key ID in KEY_EXCHANGE_RESPONSE: %.*s&quot;, gpg_key_id_len, ctx-&gt;client_gpg_key_id);
+467     }
+468 
+469     result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, key_response, response_size, 0);
+470     if (result != 0) {
+471       SAFE_FREE(key_response);
+472       SAFE_FREE(server_ephemeral_key);
+473       SAFE_FREE(server_identity_key);
+474       SAFE_FREE(server_signature);
+475       return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send KEY_EXCHANGE_RESPONSE packet&quot;);
+476     }
+477 
+478     // Zero out the buffer before freeing
+479     sodium_memzero(key_response, response_size);
+480     SAFE_FREE(key_response);
+481   } else {
+482     // Send X25519 encryption key only to server (no identity key)
+483     // Format: [X25519 pubkey (kex_size)] = kex_size bytes total
+484     result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, ctx-&gt;crypto_ctx.public_key,
+485                                        ctx-&gt;crypto_ctx.public_key_size, 0);
+486     if (result != 0) {
+487       SAFE_FREE(server_ephemeral_key);
+488       SAFE_FREE(server_identity_key);
+489       SAFE_FREE(server_signature);
+490       return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send KEY_EXCHANGE_RESPONSE packet&quot;);
+491     }
+492   }
 493 
-494   // Free temporary buffers before successful return
-495   SAFE_FREE(server_ephemeral_key);
-496   SAFE_FREE(server_identity_key);
-497   SAFE_FREE(server_signature);
-498 
-499   return ASCIICHAT_OK;
-500 }</pre>
+494   ctx-&gt;state = CRYPTO_HANDSHAKE_KEY_EXCHANGE;
+495 
+496   // Free temporary buffers before successful return
+497   SAFE_FREE(server_ephemeral_key);
+498   SAFE_FREE(server_identity_key);
+499   SAFE_FREE(server_signature);
+500 
+501   return ASCIICHAT_OK;
+502 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>add_known_host()</b>, <b>ASCIICHAT_OK</b>,
@@ -1092,44 +1096,45 @@
 <p class="Pp"><b>Deprecated</b></p>
 <div class="Bd-indent">Use <b>crypto_handshake_client_key_exchange()</b> with
   <b>acip_transport_t</b> instead</div>
-<p class="Pp">Definition at line <b>875</b> of file
+<p class="Pp">Definition at line <b>877</b> of file
     <b>lib/crypto/handshake/client.c</b>.</p>
-<pre>875                                                                                                                        {
-876   if (!ctx) {
-877     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Context cannot be NULL&quot;);
-878   }
-879 
-880   // Receive packet using old method
-881   packet_type_t packet_type;
-882   uint8_t *payload = NULL;
-883   size_t payload_len = 0;
-884   int result = receive_packet(client_socket, &amp;packet_type, (void **)&amp;payload, &amp;payload_len);
-885   if (result != ASCIICHAT_OK) {
-886     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive KEY_EXCHANGE_INIT packet&quot;);
-887   }
-888 
-889   // Create temporary TCP transport
-890   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_handshake_temp_socket&quot;, client_socket, NULL);
-891   if (!temp_transport) {
-892     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
-893   }
-894 
-895   // Call new function (takes ownership of payload and will free it)
-896   asciichat_error_t handshake_result =
-897       crypto_handshake_client_key_exchange(ctx, temp_transport, packet_type, payload, payload_len);
-898 
-899   // Destroy temporary transport
-900   acip_transport_destroy(temp_transport);
-901 
-902   return handshake_result;
-903 }</pre>
+<pre>877                                                                                                                        {
+878   if (!ctx) {
+879     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Context cannot be NULL&quot;);
+880   }
+881 
+882   // Receive packet using old method
+883   packet_type_t packet_type;
+884   uint8_t *payload = NULL;
+885   size_t payload_len = 0;
+886   int result = receive_packet(client_socket, &amp;packet_type, (void **)&amp;payload, &amp;payload_len);
+887   if (result != ASCIICHAT_OK) {
+888     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive KEY_EXCHANGE_INIT packet&quot;);
+889   }
+890 
+891   // Create temporary TCP transport
+892   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_handshake_temp_socket&quot;, client_socket, NULL);
+893   if (!temp_transport) {
+894     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
+895   }
+896 
+897   // Call new function (takes ownership of payload and will free it)
+898   asciichat_error_t handshake_result =
+899       crypto_handshake_client_key_exchange(ctx, temp_transport, packet_type, payload, payload_len);
+900 
+901   // Destroy temporary transport
+902   acip_transport_destroy(temp_transport);
+903 
+904   return handshake_result;
+905 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_tcp_transport_create()</b>,
     <b>acip_transport_destroy()</b>, <b>ASCIICHAT_OK</b>,
     <b>crypto_handshake_client_key_exchange()</b>, <b>ERROR_INVALID_STATE</b>,
     <b>ERROR_NETWORK</b>, <b>receive_packet()</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
+    <b>discovery_session_start()</b>.</p>
 </section>
 </section>
 <section class="Sh">
