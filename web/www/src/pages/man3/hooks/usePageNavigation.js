@@ -519,95 +519,57 @@ export function usePageNavigation(
 
   // Data Fields table DOM transform
   useEffect(() => {
-    const dataFieldsHeading = document.getElementById("Data_Fields");
-    if (!dataFieldsHeading) return;
+    const fieldDocHeading = document.getElementById("Field_Documentation");
+    if (!fieldDocHeading) return;
 
-    // Find the p tag that follows
-    let pTag = dataFieldsHeading.nextElementSibling;
-    while (pTag && pTag.tagName !== "P") {
-      pTag = pTag.nextElementSibling;
-    }
-
-    if (!pTag) return;
-
-    // Split by <br> to get sections
-    const html = pTag.innerHTML;
-    const sections = html.split(/<br\s*\/?>/i);
-    if (sections.length < 2) return;
-
-    // Parse each section to extract type, name, and description
+    // Collect all SECTION elements that follow Field_Documentation
     const rows = [];
-    let previousField = null;
+    let current = fieldDocHeading.nextElementSibling;
+    const commitSha = __COMMIT_SHA__;
 
-    for (let i = 0; i < sections.length; i++) {
-      const section = sections[i].trim();
-      if (!section) continue;
+    while (current && current.tagName === "SECTION") {
+      // Extract field type and name from h2
+      const h2 = current.querySelector("h2");
+      if (!h2) {
+        current = current.nextElementSibling;
+        continue;
+      }
 
-      // Create temp element to query b tags within this section
-      const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = section;
-      const bTags = tempDiv.querySelectorAll("b");
+      // Parse: "<b>uint8_t</b> ALIGNED_ATTR::fieldName"
+      const bTag = h2.querySelector("b");
+      const type = bTag ? bTag.textContent : "";
+      const fullText = h2.textContent;
+      const name = fullText.substring(fullText.indexOf(" ") + 1).trim();
 
-      if (bTags.length === 0) continue;
-
-      // Extract type and name based on number of b tags
-      let type,
-        name,
-        description = "";
-
-      if (bTags.length === 2) {
-        type = bTags[0].textContent;
-        name = bTags[1].textContent;
-        description = "";
-      } else if (bTags.length === 1) {
-        name = bTags[0].textContent;
-
-        const lastBStart = section.lastIndexOf("<b>");
-        const beforeLastB = section.substring(0, lastBStart).trim();
-
-        // Extract plain text first to handle HTML tags correctly
-        const tempEl = document.createElement("div");
-        tempEl.innerHTML = beforeLastB;
-        const plainText = tempEl.textContent;
-
-        // Split by period to separate description from type
-        const periodIndex = plainText.lastIndexOf(". ");
-        let prevDesc = "";
-        let typeStr;
-
-        if (periodIndex !== -1) {
-          prevDesc = plainText.substring(0, periodIndex + 1).trim();
-          typeStr = plainText.substring(periodIndex + 2).trim();
-        } else {
-          const lastSpace = plainText.lastIndexOf(" ");
-          if (lastSpace !== -1) {
-            prevDesc = plainText.substring(0, lastSpace).trim();
-            typeStr = plainText.substring(lastSpace + 1).trim();
+      // Collect description from P tags
+      let description = "";
+      const pTags = current.querySelectorAll("p");
+      for (const p of pTags) {
+        const pText = p.textContent;
+        if (pText.includes("Definition at line")) {
+          // Convert to GitHub link
+          if (commitSha && commitSha !== "unknown") {
+            description = p.innerHTML.replace(
+              /Definition at line\s*<b>?(\d+)<\/b>?\s*of file\s*<b>?([^<]+)<\/b>?\.?/g,
+              (match, lineNum, filename) => {
+                const filepath = filename.trim();
+                return `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${filepath}#L${lineNum}" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">Definition at line <b>${lineNum}</b> of file <b>${filepath}</b></a>`;
+              }
+            );
           } else {
-            typeStr = plainText;
+            description = p.innerHTML;
           }
-        }
-
-        type = typeStr;
-        description = prevDesc;
-
-        // If there's a previous field waiting for a description, assign this description to it
-        if (previousField && !previousField.description) {
-          previousField.description = description;
-          rows.push(previousField);
-          previousField = null;
-          description = "";
+        } else if (!description && pText.trim()) {
+          // First non-definition P is the field description
+          description = p.textContent;
         }
       }
 
       if (type && name) {
-        previousField = { type, name, description };
+        rows.push({ type, name, description });
       }
-    }
 
-    // Don't forget the last field if it hasn't been pushed yet
-    if (previousField) {
-      rows.push(previousField);
+      current = current.nextElementSibling;
     }
 
     // Build table from parsed rows
@@ -616,31 +578,25 @@ export function usePageNavigation(
     const tbody = document.createElement("tbody");
     for (const row of rows) {
       const tr = document.createElement("tr");
-
-      // Convert "Definition at line X of file Y" to GitHub link
-      let descriptionHtml = row.description;
-      const commitSha = __COMMIT_SHA__;
-      if (descriptionHtml && commitSha && commitSha !== "unknown") {
-        descriptionHtml = descriptionHtml.replace(
-          /Definition at line (\d+) of file ([^\n]+)/g,
-          (match, lineNum, filename) => {
-            const filepath = filename.trim();
-            return `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${filepath}#L${lineNum}" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">Definition at line ${lineNum} of file ${filepath}</a>`;
-          }
-        );
-      }
-
-      tr.innerHTML = `<td class="man-data-field-type">${row.type}</td><td class="man-data-field-name">${row.name}</td><td class="man-data-field-desc">${descriptionHtml}</td>`;
+      tr.innerHTML = `<td class="man-data-field-type">${row.type}</td><td class="man-data-field-name">${row.name}</td><td class="man-data-field-desc">${row.description}</td>`;
       tbody.appendChild(tr);
     }
 
-    if (tbody.children.length > 0) {
-      const table = document.createElement("table");
-      table.className = "man-data-fields-table";
-      table.appendChild(tbody);
-      pTag.innerHTML = "";
-      pTag.appendChild(table);
+    // Insert table after Field_Documentation heading
+    const table = document.createElement("table");
+    table.className = "man-data-fields-table";
+    table.appendChild(tbody);
+
+    // Remove all field SECTION elements
+    current = fieldDocHeading.nextElementSibling;
+    while (current && current.tagName === "SECTION") {
+      const next = current.nextElementSibling;
+      current.remove();
+      current = next;
     }
+
+    // Insert table where the sections were
+    fieldDocHeading.insertAdjacentElement("afterend", table);
   }, [selectedPageContent]);
 
   // Functions table DOM transform
