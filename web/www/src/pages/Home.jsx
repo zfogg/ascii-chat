@@ -44,7 +44,7 @@ export default function Home() {
   return (
     <>
       <AsciiChatHead />
-      <div className="flex flex-col max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-4 w-full">
+      <div className="flex flex-col max-w-4xl mx-auto px-4 sm:px-6 w-full mt-[var(--header-height)] pt-4">
         {/* Header */}
         <header className="mb-12 sm:mb-16 text-center">
           <Heading

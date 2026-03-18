@@ -25,7 +25,7 @@ export default function App() {
         <HeadingProvider>
           <div className="flex flex-col h-screen overflow-y-auto">
             <Navigation />
-            <main className="pt-[65px] flex flex-col flex-1">
+            <main className="pt-[var(--header-height)] flex flex-col flex-1">
               <Suspense fallback={null}>
                 <Routes className="flex-1">
                   <Route path="/" element={<Home />} />

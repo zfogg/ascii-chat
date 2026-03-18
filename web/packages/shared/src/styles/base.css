@@ -433,7 +433,16 @@
     max-width: 56rem;
     margin-left: auto;
     margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
     padding-top: 2rem;
+  }
+
+  @media (min-width: 1024px) {
+    .docs-container {
+      padding-left: 0;
+      padding-right: 0;
+    }
   }
 
   .docs-section-spacing {

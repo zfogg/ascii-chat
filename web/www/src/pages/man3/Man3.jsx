@@ -55,7 +55,7 @@ export default function Man3() {
           nav.selectedPageName ? `?page=${nav.selectedPageName}` : ""
         }`}
       />
-      <div className="w-full h-[calc(100vh-65px)] mx-auto max-w-[2200px] xl:px-[4rem] bg-gray-950 text-gray-100 flex flex-col overflow-hidden">
+      <div className="w-full h-[calc(100vh-var(--header-height))] mx-auto max-w-[2200px] xl:px-[4rem] bg-gray-950 text-gray-100 flex flex-col overflow-hidden">
         {/* Header - does not scroll */}
         <Man3Header
           searchQuery={search.searchQuery}
