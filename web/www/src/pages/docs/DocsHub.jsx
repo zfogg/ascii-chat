@@ -93,7 +93,7 @@ export default function DocsHub() {
       icon: "🔐",
       title: "Cryptography",
       description: "Encryption, authentication, SSH keys, TOFU",
-      to: "/crypto",
+      to: "/docs/crypto",
       colorClass: "accent-purple",
       textClass: "text-purple-300",
     },
