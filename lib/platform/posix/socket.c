@@ -149,8 +149,16 @@ int socket_set_nodelay(socket_t sock, bool nodelay) {
 
 // Error handling
 int socket_get_error(socket_t sock) {
-  (void)sock; // POSIX doesn't need the socket for error retrieval
-  return errno;
+  int error = 0;
+  socklen_t len = sizeof(error);
+
+  // Use getsockopt to get the socket's error status (for non-blocking operations)
+  if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0) {
+    // If getsockopt fails, fall back to errno
+    return errno;
+  }
+
+  return error;
 }
 
 const char *socket_error_string(int error) {
