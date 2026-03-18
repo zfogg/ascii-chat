@@ -319,19 +319,21 @@ export default function Man({
                   allSpans.forEach((span, spanIdx) => {
                     if (span.textContent.includes("⟹")) {
                       span.style.backgroundColor = "var(--highlight-color)";
-                      span.style.color = "#000";
+                      span.style.color = "var(--text-highlight)";
 
                       for (let i = spanIdx + 1; i < allSpans.length; i++) {
                         const nextSpan = allSpans[i];
                         if (nextSpan.textContent.includes("\n")) {
                           if (nextSpan.textContent.includes("⟸")) {
-                            nextSpan.style.backgroundColor = "var(--highlight-color)";
-                            nextSpan.style.color = "#000";
+                            nextSpan.style.backgroundColor =
+                              "var(--highlight-color)";
+                            nextSpan.style.color = "var(--text-highlight)";
                           }
                           break;
                         }
-                        nextSpan.style.backgroundColor = "var(--highlight-color)";
-                        nextSpan.style.color = "#000";
+                        nextSpan.style.backgroundColor =
+                          "var(--highlight-color)";
+                        nextSpan.style.color = "var(--text-highlight)";
                       }
                     }
                   });
