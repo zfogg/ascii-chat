@@ -4,6 +4,10 @@
 @source ".";
 @source "../../packages/shared/src";
 
+html {
+  overflow-y: hidden;
+}
+
 body {
   overflow-y: auto;
 }
