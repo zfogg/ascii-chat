@@ -35,7 +35,7 @@
         "ASCIICHAT_ENABLE_UNITY_BUILDS": "OFF",
         "ASCIICHAT_ENABLE_CTEST_DASHBOARD": "ON",
         "ASCIICHAT_USE_PCH": "ON",
-        "ASCIICHAT_ENABLE_ANALYZERS": "OFF",
+        "ASCIICHAT_ENABLE_ANALYZERS": "ON",
         "ASCIICHAT_BUILD_WITH_PANIC": "OFF",
         "ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS": "ON"
       }
@@ -52,7 +52,7 @@
         "ASCIICHAT_ENABLE_UNITY_BUILDS": "ON",
         "ASCIICHAT_RELEASE_ENABLE_FAST_MATH": "ON",
         "ASCIICHAT_ENABLE_CTEST_DASHBOARD": "OFF",
-        "ASCIICHAT_ENABLE_ANALYZERS": "ON",
+        "ASCIICHAT_ENABLE_ANALYZERS": "OFF",
         "ASCIICHAT_BUILD_WITH_PANIC": "OFF",
         "ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS": "OFF"
       }
@@ -73,6 +73,7 @@
       "description": "Debug build with system libc and sanitizers (ASan+UBSan+LSan) - same as default",
       "inherits": "base-debug",
       "cacheVariables": {
+        "USE_MUSL": "OFF",
         "CMAKE_BUILD_TYPE": "Debug",
         "ASCIICHAT_ENABLE_ANALYZERS": "ON",
         "BUILD_TESTS": "OFF"
@@ -112,7 +113,8 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "USE_MIMALLOC": "ON"
+        "USE_MIMALLOC": "ON",
+        "ASCIICHAT_ENABLE_ANALYZERS": "OFF"
       }
     },
     {
@@ -161,7 +163,8 @@
         "CMAKE_C_STANDARD": "23",
         "CMAKE_C_FLAGS": "-std=c2x",
         "ASCIICHAT_FORCE_CRITERION_TESTS": "ON",
-        "ASCIICHAT_ENABLE_COVERAGE": "ON"
+        "ASCIICHAT_ENABLE_COVERAGE": "ON",
+        "ASCIICHAT_ENABLE_ANALYZERS": "OFF"
       }
     },
     {
