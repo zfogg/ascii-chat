@@ -39,7 +39,7 @@ export default function Man3() {
   const { manPages, loading, validPagesRef } = useManPages();
 
   // HTML transformation pipeline
-  const transforms = useHtmlTransforms(validPagesRef, sha);
+  const transforms = useHtmlTransforms(validPagesRef, manPages, sha);
 
   // Page navigation and content loading (must be before search to maintain hook order)
   const nav = usePageNavigation(
