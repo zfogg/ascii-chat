@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import {
   Button,
-  CodeBlock,
   Footer,
   GettingHelpSection,
   Heading,
@@ -10,6 +9,7 @@ import {
   PreCode,
   UsageExamplesSection,
 } from "@ascii-chat/shared/components";
+import { CodeBlock } from "@ascii-chat/shared/components/CodeBlock";
 import {
   fetchSessionStrings,
   SITES,
