@@ -14,7 +14,7 @@ export default function NotFoundPage() {
       <div className="flex-1 flex items-center justify-center">
         <NotFound />
       </div>
-      <div className="bg-gray-950 mt-8 pt-8">
+      <div className="bg-gray-950 mt-8 pt-8 pb-8">
         <Footer />
       </div>
     </div>
