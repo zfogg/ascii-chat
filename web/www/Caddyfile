@@ -1,7 +1,7 @@
 :80 {
   root * /app/web/www/dist
 
-  # Security headers from vercel.json
+  # Security headers from vercel.json (applied globally)
   header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
   header X-Content-Type-Options "nosniff"
   header X-Frame-Options "SAMEORIGIN"
@@ -14,13 +14,27 @@
     reverse_proxy localhost:3001
   }
 
+  # Cache static assets with content hashes for 1 year (immutable)
+  handle /assets/* {
+    header Cache-Control "public, max-age=31536000, immutable"
+    file_server
+  }
+
   # Rewrites from vercel.json: /, /docs, /docs/*, /man1, /man3, /man5, /404
   @sparoutes {
     path / /404 /docs /docs/* /man1 /man3 /man5
   }
-  rewrite @sparoutes /index.html
+  handle @sparoutes {
+    rewrite * /index.html
+    header Cache-Control "public, max-age=3600"
+    file_server
+  }
 
-  file_server
+  # Default file server for remaining files (1 hour cache)
+  handle {
+    header Cache-Control "public, max-age=3600"
+    file_server
+  }
 
   # Handle 404 errors for non-existent routes
   handle_errors 404 {

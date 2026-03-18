@@ -9,13 +9,27 @@
 	header Referrer-Policy "strict-origin-when-cross-origin"
 	header Permissions-Policy "camera=(), microphone=(), geolocation=()"
 
+	# Cache static assets with content hashes for 1 year (immutable)
+	handle /assets/* {
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
 	# Rewrites: / and /404 rewrite to index.html
 	@sparoutes {
 		path / /404
 	}
-	rewrite @sparoutes /index.html
+	handle @sparoutes {
+		rewrite * /index.html
+		header Cache-Control "public, max-age=3600"
+		file_server
+	}
 
-	file_server
+	# Default file server for remaining files (1 hour cache)
+	handle {
+		header Cache-Control "public, max-age=3600"
+		file_server
+	}
 
 	# Handle 404 errors for non-existent routes
 	handle_errors 404 {

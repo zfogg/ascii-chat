@@ -5,13 +5,27 @@
   header Cross-Origin-Embedder-Policy "require-corp"
   header Cross-Origin-Opener-Policy "same-origin"
 
+  # Cache static assets with content hashes for 1 year (immutable)
+  handle /assets/* {
+    header Cache-Control "public, max-age=31536000, immutable"
+    file_server
+  }
+
   # Rewrites: /, /mirror, /client, /discovery, /404
   @sparoutes {
     path / /404 /mirror /client /discovery
   }
-  rewrite @sparoutes /index.html
+  handle @sparoutes {
+    rewrite * /index.html
+    header Cache-Control "public, max-age=3600"
+    file_server
+  }
 
-  file_server
+  # Default file server for remaining files (1 hour cache)
+  handle {
+    header Cache-Control "public, max-age=3600"
+    file_server
+  }
 
   # Handle 404 errors for non-existent routes
   handle_errors 404 {
