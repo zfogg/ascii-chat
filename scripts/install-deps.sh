@@ -140,6 +140,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       pkg-config make autoconf automake libtool ccache \
       cmake ninja-build \
       musl-tools musl-dev \
+      nasm \
       libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev libsystemd-dev \
       libcriterion-dev libffi-dev libsqlite3-dev \
       libssl-dev \
@@ -305,6 +306,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libcxx-devel libcxxabi-devel \
       cmake ninja-build \
       musl-devel musl-gcc musl-libc-static \
+      nasm \
       mimalloc-devel libzstd-devel zlib-devel libsodium-devel portaudio-devel opus-devel \
       criterion-devel libffi-devel sqlite-devel \
       openssl-devel \
@@ -330,6 +332,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       ccache \
       clang llvm lldb lld \
       libc++ libc++abi \
+      nasm \
       cmake ninja make \
       musl mimalloc \
       zstd zlib libsodium portaudio opus sqlite libdatachannel miniupnpc ffmpeg \
