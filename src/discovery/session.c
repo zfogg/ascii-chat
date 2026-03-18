@@ -25,6 +25,8 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/crypto/keys.h>
+#include <ascii-chat/crypto/handshake/common.h>
+#include <ascii-chat/crypto/handshake/client.h>
 
 #ifdef _WIN32
 #include <ws2tcpip.h> // For getaddrinfo on Windows
@@ -517,6 +519,61 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
   }
 }
 
+static asciichat_error_t acds_crypto_handshake(discovery_session_t *session) {
+  if (!session) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "null session");
+  }
+
+  set_state(session, DISCOVERY_STATE_HANDSHAKING);
+  log_info("Starting ACDS crypto handshake...");
+
+  // Initialize crypto handshake context as client
+  crypto_handshake_context_t handshake_ctx;
+  memset(&handshake_ctx, 0, sizeof(handshake_ctx));
+
+  asciichat_error_t result = crypto_handshake_init("discovery_client", &handshake_ctx, false);
+  if (result != ASCIICHAT_OK) {
+    set_error(session, result, "Failed to initialize crypto handshake");
+    return result;
+  }
+
+  // Store identity key in handshake context
+  handshake_ctx.client_public_key.type = KEY_TYPE_ED25519;
+  handshake_ctx.client_private_key.type = KEY_TYPE_ED25519;
+  memcpy(handshake_ctx.client_public_key.key, session->identity_pubkey, 32);
+  memcpy(handshake_ctx.client_private_key.key.ed25519, session->identity_seckey, 64);
+
+  // Step 1: Key exchange (receive server key, send client key)
+  log_debug("Handshake step 1: Performing key exchange...");
+  result = crypto_handshake_client_key_exchange_socket(&handshake_ctx, session->acds_socket);
+  if (result != ASCIICHAT_OK) {
+    log_error("Crypto handshake step 1 failed: %s", asciichat_error_string(result));
+    set_error(session, result, "Handshake step 1 failed");
+    return result;
+  }
+
+  // Step 2: Authentication response (send auth response to challenge)
+  log_debug("Handshake step 2: Sending auth response...");
+  result = crypto_handshake_client_auth_response_socket(&handshake_ctx, session->acds_socket);
+  if (result != ASCIICHAT_OK) {
+    log_error("Crypto handshake step 2 failed: %s", asciichat_error_string(result));
+    set_error(session, result, "Handshake step 2 failed");
+    return result;
+  }
+
+  // Step 3: Complete handshake (verify server auth)
+  log_debug("Handshake step 3: Completing handshake...");
+  result = crypto_handshake_client_complete_socket(&handshake_ctx, session->acds_socket);
+  if (result != ASCIICHAT_OK) {
+    log_error("Crypto handshake step 3 failed: %s", asciichat_error_string(result));
+    set_error(session, result, "Handshake step 3 failed");
+    return result;
+  }
+
+  log_info("ACDS crypto handshake completed successfully");
+  return ASCIICHAT_OK;
+}
+
 static asciichat_error_t create_session(discovery_session_t *session) {
   if (!session) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "null session");
@@ -593,7 +650,12 @@ static asciichat_error_t create_session(discovery_session_t *session) {
     return ERROR_NETWORK_PROTOCOL;
   }
 
+  log_debug("SESSION_CREATE response: type=%d (expected %d), len=%zu (expected %zu)",
+           type, PACKET_TYPE_ACIP_SESSION_CREATED, len, sizeof(acip_session_created_t));
+
   if (type != PACKET_TYPE_ACIP_SESSION_CREATED || len < sizeof(acip_session_created_t)) {
+    log_debug("Response mismatch: type_match=%d, len_match=%d",
+             type == PACKET_TYPE_ACIP_SESSION_CREATED, len >= sizeof(acip_session_created_t));
     set_error(session, ERROR_NETWORK_PROTOCOL, "Unexpected response to SESSION_CREATE");
     POOL_FREE(data, len);
     return ERROR_NETWORK_PROTOCOL;
@@ -1244,10 +1306,25 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
     return ASCIICHAT_OK; // Return success to allow clean shutdown
   }
 
+  // Perform crypto handshake with ACDS
+  log_info("discovery_session_start: Calling acds_crypto_handshake...");
+  result = acds_crypto_handshake(session);
+  if (result != ASCIICHAT_OK) {
+    log_error("discovery_session_start: acds_crypto_handshake FAILED - result=%d", result);
+    return result;
+  }
+  log_info("discovery_session_start: acds_crypto_handshake succeeded");
+
+  // Check again after handshake
+  if (session->should_exit_callback && session->should_exit_callback(session->exit_callback_data)) {
+    log_info("discovery_session_start: Exiting early due to should_exit_callback (after handshake)");
+    return ASCIICHAT_OK; // Return success to allow clean shutdown
+  }
+
   // Create or join session
   if (session->is_initiator) {
     log_info("discovery_session_start: Calling create_session - participant_ctx before=%p", session->participant_ctx);
-    asciichat_error_t result = create_session(session);
+    result = create_session(session);
     log_info("discovery_session_start: create_session returned - participant_ctx after=%p, result=%d",
              session->participant_ctx, result);
     return result;

@@ -12,13 +12,13 @@ import sys
 import time
 from dataclasses import dataclass
 
-# ACIP Packet Types (from lib/network/packet.h)
-PACKET_TYPE_ACIP_SESSION_CREATE = 0x20
-PACKET_TYPE_ACIP_SESSION_CREATED = 0x21
-PACKET_TYPE_ACIP_SESSION_LOOKUP = 0x22
-PACKET_TYPE_ACIP_SESSION_INFO = 0x23
-PACKET_TYPE_ACIP_SESSION_JOIN = 0x24
-PACKET_TYPE_ACIP_SESSION_JOINED = 0x25
+# ACIP Packet Types (from include/ascii-chat/network/packet/packet.h)
+PACKET_TYPE_ACIP_SESSION_CREATE = 6000
+PACKET_TYPE_ACIP_SESSION_CREATED = 6001
+PACKET_TYPE_ACIP_SESSION_LOOKUP = 6002
+PACKET_TYPE_ACIP_SESSION_INFO = 6003
+PACKET_TYPE_ACIP_SESSION_JOIN = 6004
+PACKET_TYPE_ACIP_SESSION_JOINED = 6005
 
 # Packet header constants
 PACKET_MAGIC = 0xDEADBEEF
@@ -81,26 +81,34 @@ def test_session_create(sock: socket.socket):
     """Test SESSION_CREATE packet"""
     print("\n=== Test 1: SESSION_CREATE ===")
 
-    # Build acip_session_create_t payload (229 bytes fixed part)
+    # Build acip_session_create_t payload (304 bytes fixed part)
     identity_pubkey = b'\x00' * 32  # Dummy Ed25519 public key
     signature = b'\x00' * 64        # Dummy signature
     timestamp = int(time.time() * 1000)  # Unix ms
 
     capabilities = 0x03  # video=1, audio=1
     max_participants = 4
+    session_type = 0  # 0=DIRECT_TCP, 1=WEBRTC
     has_password = 0
     password_hash = b'\x00' * 128
+    expose_ip_publicly = 0
     reserved_string_len = 0  # Auto-generate session string
+    server_address = b'127.0.0.1'.ljust(64, b'\x00')  # Server address (null-padded)
+    server_port = 27224  # Default ACIP port
 
-    payload = struct.pack('<32s64sQBBB128sB',
+    payload = struct.pack('<32s64sQBBBB128sBB64sH',
                          identity_pubkey,
                          signature,
                          timestamp,
                          capabilities,
                          max_participants,
+                         session_type,
                          has_password,
                          password_hash,
-                         reserved_string_len)
+                         expose_ip_publicly,
+                         reserved_string_len,
+                         server_address,
+                         server_port)
 
     send_packet(sock, PACKET_TYPE_ACIP_SESSION_CREATE, payload)
 
@@ -111,9 +119,9 @@ def test_session_create(sock: socket.socket):
         print(f"✗ Expected SESSION_CREATED (0x{PACKET_TYPE_ACIP_SESSION_CREATED:02X}), got 0x{resp_type:02X}")
         return None
 
-    # Parse response (66 bytes fixed part)
-    string_len, session_string, session_id, expires_at, stun_count, turn_count = struct.unpack(
-        '<B48s16sQBB', resp_payload[:66])
+    # Parse response (91 bytes fixed part + optional STUN/TURN servers)
+    string_len, session_string, session_id, participant_id, expires_at, stun_count, turn_count = struct.unpack(
+        '<B48s16s16sQBB', resp_payload[:91])
 
     session_string = session_string[:string_len].decode('utf-8')
     session_id_hex = session_id.hex()
