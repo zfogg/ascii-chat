@@ -96,7 +96,14 @@ def test_session_create(sock: socket.socket):
     server_address = b'127.0.0.1'.ljust(64, b'\x00')  # Server address (null-padded)
     server_port = 27224  # Default ACIP port
 
-    payload = struct.pack('<32s64sQBBBB128sBB64sH',
+    # Multi-key protocol: add total_keys and key_index for upfront key count
+    # Format: identity_pubkey(32) + signature(64) + timestamp(8) + capabilities(1) + max_participants(1)
+    #         session_type(1) + has_password(1) + password_hash(128) + expose_ip_publicly(1)
+    #         + reserved_string_len(1) + total_keys(1) + key_index(1) + server_address(64) + server_port(2)
+    total_keys = 1  # Single key mode for this test
+    key_index = 0   # First and only key
+
+    payload = struct.pack('<32s64sQBBBB128sBBBB64sH',
                          identity_pubkey,
                          signature,
                          timestamp,
@@ -107,6 +114,8 @@ def test_session_create(sock: socket.socket):
                          password_hash,
                          expose_ip_publicly,
                          reserved_string_len,
+                         total_keys,
+                         key_index,
                          server_address,
                          server_port)
 
