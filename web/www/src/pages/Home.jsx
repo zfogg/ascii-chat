@@ -313,7 +313,7 @@ sudo make install`}
             </TrackedLink>
 
             <TrackedLink
-              to="/crypto"
+              to="/docs/crypto"
               label="Home - Docs Cryptography"
               className="bg-gray-900/50 border border-purple-900/50 rounded-lg p-4 hover:border-purple-500/50 transition-colors"
             >

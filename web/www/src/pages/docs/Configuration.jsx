@@ -244,7 +244,7 @@ export default function Configuration() {
                       <code className="text-cyan-300">[crypto]</code>
                       {" ("}
                       <TrackedLink
-                        to="/crypto"
+                        to="/docs/crypto"
                         label="crypto config"
                         className="text-cyan-400 hover:text-cyan-300 transition-colors"
                       >
