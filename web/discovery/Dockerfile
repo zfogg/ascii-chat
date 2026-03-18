@@ -22,6 +22,11 @@ RUN cd web && bun install --no-cache
 # Build discovery
 FROM base AS builder
 
+# Redeclare ARGs for this stage (they don't carry over from global scope)
+ARG SSH_PUBLIC_KEY
+ARG GPG_PUBLIC_KEY
+ARG VITE_DISCOVERY_API_BASE
+
 ENV VITE_DISCOVERY_API_BASE=${VITE_DISCOVERY_API_BASE:-http://localhost:5173}
 ENV SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY}
 ENV GPG_PUBLIC_KEY=${GPG_PUBLIC_KEY}
