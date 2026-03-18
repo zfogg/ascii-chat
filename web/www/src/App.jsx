@@ -23,11 +23,11 @@ export default function App() {
     <BrowserRouter>
       <HelmetProvider>
         <HeadingProvider>
-          <div className="flex flex-col min-h-screen overflow-y-auto">
+          <div className="flex flex-col overflow-y-auto">
             <Navigation />
-            <main className="pt-[65px]">
+            <main className="pt-[65px] flex flex-col flex-1">
               <Suspense fallback={null}>
-                <Routes>
+                <Routes className="flex-1">
                   <Route path="/" element={<Home />} />
                   <Route path="/docs" element={<DocsHub />} />
                   <Route path="/docs/" element={<DocsHub />} />
