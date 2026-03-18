@@ -23,7 +23,7 @@ export default function Crypto() {
         description="Encryption, keys, and authentication in ascii-chat. Learn about Ed25519, X25519, and end-to-end encryption."
         url={`${SITES.MAIN}/crypto`}
       />
-      <div className="bg-gray-950 text-gray-100 flex flex-col">
+      <div className="bg-gray-950 text-gray-100 flex flex-col flex-1">
         <div className="flex-1 flex flex-col max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 w-full">
           {/* Header */}
           <header className="mb-12 sm:mb-16">

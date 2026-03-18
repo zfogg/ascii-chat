@@ -106,7 +106,7 @@ export default function DocsHub() {
         description="Complete guides for configuring, using, and scripting ascii-chat. Learn about configuration, hardware, terminal modes, snapshots, networking, and media."
         url={`${SITES.MAIN}/docs`}
       />
-      <div className="bg-gray-950 text-gray-100 flex flex-col">
+      <div className="bg-gray-950 text-gray-100 flex flex-col flex-1">
         <div className="flex-1 flex flex-col docs-container">
           {/* Header */}
           <header className="mb-12 sm:mb-16 text-center">

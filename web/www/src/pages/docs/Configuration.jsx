@@ -25,7 +25,7 @@ export default function Configuration() {
         description="Learn about ascii-chat configuration: config files, command-line options, color schemes, and shell completions."
         url={`${SITES.MAIN}/docs/configuration`}
       />
-      <div className="bg-gray-950 text-gray-100 flex flex-col">
+      <div className="bg-gray-950 text-gray-100 flex flex-col flex-1">
         <div className="flex flex-col docs-container">
           <header className="mb-12 sm:mb-16">
             <Heading level={1} className="heading-1 mb-4">
