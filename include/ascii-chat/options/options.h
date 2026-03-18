@@ -535,7 +535,8 @@ typedef enum {
  *       In debug builds, uses localhost for local testing
  */
 #ifdef NDEBUG
-#define OPT_ENDPOINT_DISCOVERY_SERVICE "discovery-service.ascii-chat.com"
+#include "../network/acip/acds.h"
+#define OPT_ENDPOINT_DISCOVERY_SERVICE ACDS_OFFICIAL_SERVER_HOSTNAME
 #else
 #define OPT_ENDPOINT_DISCOVERY_SERVICE "localhost"
 #endif

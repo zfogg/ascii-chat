@@ -1090,6 +1090,16 @@ typedef enum {
 /** @brief Default port for discovery mode hosts (use OPT_PORT_INT_DEFAULT from options.h) */
 #define ACIP_HOST_DEFAULT_PORT OPT_PORT_INT_DEFAULT
 
+/** @brief Official ACDS server hostname (automatic HTTPS key trust)
+ *
+ * Used by:
+ * - crypto/discovery_keys.h: ACDS_OFFICIAL_SERVER
+ * - options.h: OPT_ENDPOINT_DISCOVERY_SERVICE (production build)
+ *
+ * Single source of truth to avoid duplication across headers.
+ */
+#define ACDS_OFFICIAL_SERVER_HOSTNAME "discovery-service.ascii-chat.com"
+
 /** @} */
 
 #ifdef _WIN32

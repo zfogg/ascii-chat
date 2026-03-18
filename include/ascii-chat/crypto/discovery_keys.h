@@ -52,6 +52,7 @@
 
 #include "../asciichat_errno.h"
 #include "../common.h"
+#include "../network/acip/acds.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -61,8 +62,10 @@ extern "C" {
 
 /**
  * @brief Official ACDS server hostname (automatic HTTPS key trust)
+ *
+ * References the authoritative definition from network/acip/acds.h
  */
-#define ACDS_OFFICIAL_SERVER "discovery-service.ascii-chat.com"
+#define ACDS_OFFICIAL_SERVER ACDS_OFFICIAL_SERVER_HOSTNAME
 
 /**
  * @brief Default HTTPS URLs for official ACDS keys
