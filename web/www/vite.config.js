@@ -106,6 +106,13 @@ export default defineConfig({
           if (id.includes("@ascii-chat/shared")) {
             return "shared";
           }
+          // Lazy-loaded routes get their own chunks
+          if (id.includes("/src/pages/")) {
+            const match = id.match(/\/pages\/(.+?)\.jsx?$/);
+            if (match) {
+              return `page-${match[1].toLowerCase()}`;
+            }
+          }
         },
       },
     },
