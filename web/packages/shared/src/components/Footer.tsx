@@ -35,11 +35,11 @@ export function Footer({ links, commitSha, onCommitClick, extraLine, authorLinkC
         ))}
       </p>
       {extraLine && (
-        <p className="text-xs md:text-sm text-gray-600 mt-4">
+        <p className="text-xs md:text-sm text-gray-500 mt-4">
           {extraLine}
         </p>
       )}
-      <p className="text-xs md:text-sm text-gray-600 mt-2">
+      <p className="text-xs md:text-sm text-gray-500 mt-2">
         made with ❤️ by{' '}
         <Link href="https://zfo.gg" className={authorLinkColor}>
           @zfogg

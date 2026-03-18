@@ -76,25 +76,35 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Dependencies
+          // React core — tiny, needed immediately
+          if (
+            id.includes("node_modules/react/") ||
+            id.includes("node_modules/react-dom/")
+          ) {
+            return "vendor-react";
+          }
+          // React Router — only needed when routing activates
+          if (
+            id.includes("node_modules/react-router") ||
+            id.includes("node_modules/@remix-run")
+          ) {
+            return "vendor-router";
+          }
+          // react-helmet-async — small, used on every page
+          if (
+            id.includes("node_modules/react-helmet-async") ||
+            id.includes("node_modules/react-fast-compare") ||
+            id.includes("node_modules/invariant")
+          ) {
+            return "vendor-helmet";
+          }
+          // Everything else in node_modules
           if (id.includes("node_modules")) {
-            return "deps";
+            return "vendor-misc";
           }
-          // Man pages and components - all in single chunk
-          if (id.includes("Man") && id.includes(".jsx")) {
-            return "man";
-          }
-          // Docs pages
-          if (id.includes("/docs/")) {
-            return "docs";
-          }
-          // Shared components
+          // Shared package
           if (id.includes("@ascii-chat/shared")) {
             return "shared";
-          }
-          // Home page
-          if (id.includes("/Home.jsx")) {
-            return "home";
           }
         },
       },

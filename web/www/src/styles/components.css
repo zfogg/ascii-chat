@@ -178,7 +178,7 @@
 
   /* ========== BUTTONS ========== */
   .btn-primary {
-    @apply inline-block bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-6 py-3 rounded-lg transition-colors;
+    @apply inline-block bg-cyan-700 hover:bg-cyan-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors;
   }
 
   .btn-secondary {

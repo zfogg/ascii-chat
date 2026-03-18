@@ -98,7 +98,7 @@ export default function Home() {
                   label="Home - Download Latest Release"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-block bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+                  className="inline-block bg-cyan-700 hover:bg-cyan-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
                 >
                   📦 Download Latest Release
                 </TrackedLink>
