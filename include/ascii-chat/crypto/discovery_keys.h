@@ -7,14 +7,14 @@
  * It provides functionality to:
  * - Download keys from HTTPS URLs using lib/crypto/http_client.h
  * - Load keys from local files (SSH/GPG formats)
- * - Special-case automatic trust for discovery.ascii-chat.com
+ * - Special-case automatic trust for discovery-service.ascii-chat.com
  * - Cache keys locally and detect changes (requires user verification)
  * - Parse github:user and gitlab:user.gpg key specifications
  *
  * ## Trust Model
  *
- * **Official ACDS Server (discovery.ascii-chat.com)**:
- * - Automatically trusts keys downloaded from https://discovery.ascii-chat.com/key.pub or /key.gpg
+ * **Official ACDS Server (discovery-service.ascii-chat.com)**:
+ * - Automatically trusts keys downloaded from https://discovery-service.ascii-chat.com/key.pub or /key.gpg
  * - First connection: downloads and caches key
  * - Subsequent connections: uses cached key
  * - Key changes: requires user verification (prevents MITM attacks)
@@ -35,7 +35,7 @@
  *                                             pubkey);
  *
  * // Automatic trust for official server
- * result = discovery_keys_verify("discovery.ascii-chat.com", NULL, pubkey);
+ * result = discovery_keys_verify("discovery-service.ascii-chat.com", NULL, pubkey);
  *
  * // Load from local file
  * result = discovery_keys_verify("acds.example.com", "/path/to/key.pub", pubkey);
@@ -62,7 +62,7 @@ extern "C" {
 /**
  * @brief Official ACDS server hostname (automatic HTTPS key trust)
  */
-#define ACDS_OFFICIAL_SERVER "discovery.ascii-chat.com"
+#define ACDS_OFFICIAL_SERVER "discovery-service.ascii-chat.com"
 
 /**
  * @brief Default HTTPS URLs for official ACDS keys
@@ -80,8 +80,8 @@ extern "C" {
  *
  * This function handles all ACDS key verification scenarios:
  *
- * **Automatic Trust (discovery.ascii-chat.com only)**:
- * - If acds_server == "discovery.ascii-chat.com" and key_spec == NULL:
+ * **Automatic Trust (discovery-service.ascii-chat.com only)**:
+ * - If acds_server == "discovery-service.ascii-chat.com" and key_spec == NULL:
  *   - Downloads from ACDS_OFFICIAL_KEY_SSH_URL or ACDS_OFFICIAL_KEY_GPG_URL
  *   - Caches key locally
  *   - Trusts without user verification (first time)
@@ -99,7 +99,7 @@ extern "C" {
  *
  * @param acds_server ACDS server hostname (e.g., "acds.example.com")
  * @param key_spec Key specification:
- *                 - NULL: automatic trust for discovery.ascii-chat.com only
+ *                 - NULL: automatic trust for discovery-service.ascii-chat.com only
  *                 - HTTPS URL: https://example.com/key.pub
  *                 - File path: /path/to/key.pub or ~/.ssh/server.pub
  *                 - GitHub: github:username
