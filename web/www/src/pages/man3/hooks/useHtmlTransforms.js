@@ -263,6 +263,14 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
             // Map Doxygen file paths to GitHub paths if not found
             // video/rgba/image.h -> include/ascii-chat/video/rgba/image.h
             filepath = `include/ascii-chat/${filepath}`;
+          } else if (
+            filepath.includes("/") &&
+            !filepath.startsWith("src/") &&
+            !filepath.startsWith("include/") &&
+            !filepath.startsWith("lib/")
+          ) {
+            // If it's a relative path like video/rgba/image.h, prepend include/ascii-chat/
+            filepath = `include/ascii-chat/${filepath}`;
           }
         } else {
           // Fallback if manPages not available
