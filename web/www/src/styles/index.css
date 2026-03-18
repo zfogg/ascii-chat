@@ -4,10 +4,12 @@
 @source ".";
 @source "../../packages/shared/src";
 
+:root {
+  --header-height: 65px;
+}
+
 html {
   overflow-y: hidden;
-  --header-height: 65px;
-  --highlight-color: #fbbf24;
 }
 
 body {

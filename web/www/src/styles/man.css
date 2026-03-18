@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+:root {
+  --highlight-color: #fbbf24;
+  --text-secondary: #d1d5db;
+  --text-highlight: #000;
+}
+
 /**
  * Man page styling for ascii-chat.com
  * Styles for Doxygen-generated man page content and custom rendering
@@ -68,7 +74,7 @@ section {
 .man-page-content p {
   font-size: 1rem;
   margin-bottom: 1rem;
-  color: #d1d5db;
+  color: var(--text-secondary);
 }
 
 /* Inline code (.Li) */
@@ -132,7 +138,7 @@ section {
   font-size: 1rem;
   margin-left: 0;
   margin-bottom: 0.5rem;
-  color: #d1d5db;
+  color: var(--text-secondary);
   display: inline;
 }
 
@@ -189,7 +195,7 @@ section {
 }
 
 .man-data-field-desc {
-  color: #d1d5db;
+  color: var(--text-secondary);
 }
 
 /* Macros table styling with CSS grid */
@@ -242,7 +248,7 @@ section {
 }
 
 .man-macro-desc {
-  color: #d1d5db;
+  color: var(--text-secondary);
 }
 
 /* Functions table styling with CSS grid */
@@ -311,7 +317,7 @@ section {
 }
 
 .man-func-desc {
-  color: #d1d5db;
+  color: var(--text-secondary);
 }
 
 /* Lists */
@@ -319,7 +325,7 @@ section {
 .man-page-content ol {
   margin: 1rem 0;
   margin-left: 2rem;
-  color: #d1d5db;
+  color: var(--text-secondary);
 }
 
 .man-page-content li {
