@@ -23,7 +23,7 @@ export function Footer({ links, commitSha, onCommitClick, extraLine, authorLinkC
       <p className="mx-auto flex flex-row flex-wrap justify-center items-center gap-2">
         {links.map((link, index) => (
           <Fragment key={link.href}>
-            {index > 0 && <span className="text-gray-500">·</span>}
+            {index > 0 && <span className="text-gray-400">·</span>}
             <Link
               href={link.href}
               onClick={link.onClick}
@@ -35,11 +35,11 @@ export function Footer({ links, commitSha, onCommitClick, extraLine, authorLinkC
         ))}
       </p>
       {extraLine && (
-        <p className="text-xs md:text-sm text-gray-500 mt-4">
+        <p className="text-xs md:text-sm text-gray-400 mt-4">
           {extraLine}
         </p>
       )}
-      <p className="text-xs md:text-sm text-gray-500 mt-2">
+      <p className="text-xs md:text-sm text-gray-400 mt-2">
         made with ❤️ by{' '}
         <Link href="https://zfo.gg" className={authorLinkColor}>
           @zfogg

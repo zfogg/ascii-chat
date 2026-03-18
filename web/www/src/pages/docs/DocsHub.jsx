@@ -129,7 +129,7 @@ export default function DocsHub() {
                   className={`card ${section.colorClass} transition-colors`}
                 >
                   <Heading
-                    level={3}
+                    level={2}
                     className={`text-2xl ${section.textClass} font-semibold mb-2`}
                   >
                     {section.icon} {section.title}
