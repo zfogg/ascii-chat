@@ -5,18 +5,18 @@ import { HeadingProvider } from "@ascii-chat/shared/components";
 import Navigation from "./components/Navigation";
 import Home from "./pages/Home";
 
-const Crypto        = lazy(() => import("./pages/docs/Crypto"));
-const Man1          = lazy(() => import("./pages/Man1"));
-const Man5          = lazy(() => import("./pages/Man5"));
-const Man3          = lazy(() => import("./pages/man3"));
-const NotFound      = lazy(() => import("./pages/NotFound"));
-const DocsHub       = lazy(() => import("./pages/docs/DocsHub"));
+const Crypto = lazy(() => import("./pages/docs/Crypto"));
+const Man1 = lazy(() => import("./pages/Man1"));
+const Man5 = lazy(() => import("./pages/Man5"));
+const Man3 = lazy(() => import("./pages/man3"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const DocsHub = lazy(() => import("./pages/docs/DocsHub"));
 const Configuration = lazy(() => import("./pages/docs/Configuration"));
-const Hardware      = lazy(() => import("./pages/docs/Hardware"));
-const Terminal      = lazy(() => import("./pages/docs/Terminal"));
-const Snapshot      = lazy(() => import("./pages/docs/Snapshot"));
-const Network       = lazy(() => import("./pages/docs/Network"));
-const Media         = lazy(() => import("./pages/docs/Media"));
+const Hardware = lazy(() => import("./pages/docs/Hardware"));
+const Terminal = lazy(() => import("./pages/docs/Terminal"));
+const Snapshot = lazy(() => import("./pages/docs/Snapshot"));
+const Network = lazy(() => import("./pages/docs/Network"));
+const Media = lazy(() => import("./pages/docs/Media"));
 
 export default function App() {
   return (
@@ -31,7 +31,10 @@ export default function App() {
                   <Route path="/" element={<Home />} />
                   <Route path="/docs" element={<DocsHub />} />
                   <Route path="/docs/" element={<DocsHub />} />
-                  <Route path="/docs/configuration" element={<Configuration />} />
+                  <Route
+                    path="/docs/configuration"
+                    element={<Configuration />}
+                  />
                   <Route path="/docs/hardware" element={<Hardware />} />
                   <Route path="/docs/terminal" element={<Terminal />} />
                   <Route path="/docs/snapshot" element={<Snapshot />} />
