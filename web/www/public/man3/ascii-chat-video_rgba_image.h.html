@@ -40,10 +40,9 @@
 <br/>
 <p class="Pp">struct <b>PACKED_ATTR</b>
   <br/>
-  RGB pixel structure. struct <b>ALIGNED_ATTR</b>
+  struct <b>ALIGNED_ATTR</b>
   <br/>
-  SIMD-aligned RGB pixel structure for optimal NEON/AVX performance. struct
-    <b>image_t</b>
+  struct <b>image_t</b>
   <br/>
   Image structure.
   <br/>
@@ -57,7 +56,8 @@
   Maximum image width (4K resolution). #define <b>IMAGE_MAX_HEIGHT</b> 2160
   <br/>
   Maximum image height (4K resolution). #define <b>IMAGE_MAX_PIXELS_SIZE</b>
-    (<b>IMAGE_MAX_WIDTH</b> * <b>IMAGE_MAX_HEIGHT</b> * sizeof(rgb_pixel_t))
+    (<b>IMAGE_MAX_WIDTH</b> * <b>IMAGE_MAX_HEIGHT</b> *
+    sizeof(<b>rgb_pixel_t</b>))
   <br/>
   Maximum pixel data size in bytes.
   <br/>

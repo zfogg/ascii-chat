@@ -44,7 +44,7 @@
   <br/>
   Image width in pixels (must be &gt; 0). int <b>h</b>
   <br/>
-  Image height in pixels (must be &gt; 0). rgb_pixel_t * <b>pixels</b>
+  Image height in pixels (must be &gt; 0). <b>rgb_pixel_t</b> * <b>pixels</b>
   <br/>
   Pixel data array (width * height RGB pixels, row-major order). <b>uint8_t</b>
     <b>alloc_method</b>
@@ -83,7 +83,7 @@
 <p class="Pp">alloc_method tracks allocation source for correct
   deallocation.</p>
 </div>
-<p class="Pp">Definition at line <b>141</b> of file
+<p class="Pp">Definition at line <b>143</b> of file
   <b>video/rgba/image.h</b>.</p>
 </section>
 <section class="Sh">
@@ -93,7 +93,7 @@
 <h2 class="Ss"><b>uint8_t</b> image_t::alloc_method</h2>
 <p class="Pp">Allocation method (<b>image_alloc_method_t</b>) for correct
     deallocation.</p>
-<p class="Pp">Definition at line <b>145</b> of file
+<p class="Pp">Definition at line <b>147</b> of file
   <b>video/rgba/image.h</b>.</p>
 <p class="Pp">Referenced by <b>create_mixed_ascii_frame_for_client()</b>,
     <b>image_destroy()</b>, <b>image_new()</b>, and
@@ -103,7 +103,7 @@
 <h2 class="Ss" id="int_image_t::h"><a class="permalink" href="#int_image_t::h">int
   image_t::h</a></h2>
 <p class="Pp">Image height in pixels (must be &gt; 0).</p>
-<p class="Pp">Definition at line <b>143</b> of file
+<p class="Pp">Definition at line <b>145</b> of file
   <b>video/rgba/image.h</b>.</p>
 <p class="Pp">Referenced by <b>ascii_convert()</b>,
     <b>ascii_convert_with_capabilities()</b>, <b>image_clear()</b>,
@@ -118,10 +118,9 @@
     <b>session_host_inject_frame()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="rgb_pixel_t*_image_t::pixels"><a class="permalink" href="#rgb_pixel_t*_image_t::pixels">rgb_pixel_t*
-  image_t::pixels</a></h2>
+<h2 class="Ss"><b>rgb_pixel_t</b>* image_t::pixels</h2>
 <p class="Pp">Pixel data array (width * height RGB pixels, row-major order).</p>
-<p class="Pp">Definition at line <b>144</b> of file
+<p class="Pp">Definition at line <b>146</b> of file
   <b>video/rgba/image.h</b>.</p>
 <p class="Pp">Referenced by <b>ascii_convert()</b>,
     <b>ascii_convert_with_capabilities()</b>, <b>image_clear()</b>,
@@ -139,7 +138,7 @@
 <h2 class="Ss" id="int_image_t::w"><a class="permalink" href="#int_image_t::w">int
   image_t::w</a></h2>
 <p class="Pp">Image width in pixels (must be &gt; 0).</p>
-<p class="Pp">Definition at line <b>142</b> of file
+<p class="Pp">Definition at line <b>144</b> of file
   <b>video/rgba/image.h</b>.</p>
 <p class="Pp">Referenced by <b>ascii_convert()</b>,
     <b>ascii_convert_with_capabilities()</b>, <b>image_clear()</b>,

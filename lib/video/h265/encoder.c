@@ -48,8 +48,26 @@ h265_encoder_t *h265_encoder_create(uint16_t initial_width, uint16_t initial_hei
     return NULL;
   }
 
-  // Find best available HEVC encoder (hevc_vaapi, hevc_nvenc, libx265, or software fallback)
+  // Find best available HEVC encoder (try by ID first, then by name for specific implementations)
   const AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_HEVC);
+
+  // If generic HEVC encoder not found, try specific implementations by name
+  if (!codec) {
+    codec = avcodec_find_encoder_by_name("libx265");
+  }
+  if (!codec) {
+    codec = avcodec_find_encoder_by_name("hevc_vaapi");
+  }
+  if (!codec) {
+    codec = avcodec_find_encoder_by_name("hevc_videotoolbox");
+  }
+  if (!codec) {
+    codec = avcodec_find_encoder_by_name("hevc_nvenc");
+  }
+  if (!codec) {
+    codec = avcodec_find_encoder_by_name("hevc_qsv");
+  }
+
   if (!codec) {
     SET_ERRNO(ERROR_MEDIA_INIT, "HEVC encoder not found");
     SAFE_FREE(enc);

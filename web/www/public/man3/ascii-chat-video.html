@@ -107,12 +107,15 @@
   <br/>
   Color filter metadata structure. struct <b>PACKED_ATTR</b>
   <br/>
-  RGB pixel structure. struct <b>ALIGNED_ATTR</b>
+  struct <b>ALIGNED_ATTR</b>
   <br/>
-  SIMD-aligned RGB pixel structure for optimal NEON/AVX performance. struct
-    <b>image_t</b>
+  struct <b>image_t</b>
   <br/>
-  Image structure.
+  Image structure. struct <b>rgb_pixel_t</b>
+  <br/>
+  RGB pixel structure. struct <b>rgb_pixel_simd_t</b>
+  <br/>
+  SIMD-aligned RGB pixel structure for optimal NEON/AVX performance.
   <br/>
 </p>
 </section>
@@ -178,7 +181,8 @@
   Maximum image width (4K resolution). #define <b>IMAGE_MAX_HEIGHT</b> 2160
   <br/>
   Maximum image height (4K resolution). #define <b>IMAGE_MAX_PIXELS_SIZE</b>
-    (<b>IMAGE_MAX_WIDTH</b> * <b>IMAGE_MAX_HEIGHT</b> * sizeof(rgb_pixel_t))
+    (<b>IMAGE_MAX_WIDTH</b> * <b>IMAGE_MAX_HEIGHT</b> *
+    sizeof(<b>rgb_pixel_t</b>))
   <br/>
   Maximum pixel data size in bytes.
   <br/>
@@ -297,8 +301,8 @@
     int h)
   <br/>
   Allocate a new <b>ImageRGB</b> (RGB8 format). void
-    <b>convert_pixels_scalar</b> (const rgb_pixel_t *pixels, char *ascii_chars,
-    int count, const char luminance_palette[256])
+    <b>convert_pixels_scalar</b> (const <b>rgb_pixel_t</b> *pixels, char
+    *ascii_chars, int count, const char luminance_palette[256])
   <br/>
   Convert pixels to ASCII (scalar fallback). char *
     <b>convert_pixels_scalar_with_newlines</b> (<b>image_t</b> *image, const
@@ -1329,7 +1333,7 @@ if (filter != COLOR_FILTER_NONE) {
 <p class="Pp"></p>
 <p class="Pp">Video pipeline may enforce lower limits for performance.</p>
 </div>
-<p class="Pp">Definition at line <b>177</b> of file
+<p class="Pp">Definition at line <b>179</b> of file
   <b>video/rgba/image.h</b>.</p>
 <p class="Pp">Referenced by <b>image_new_from_pool()</b>, and
     <b>image_validate_dimensions()</b>.</p>
@@ -1337,7 +1341,7 @@ if (filter != COLOR_FILTER_NONE) {
 <section class="Ss">
 <h2 class="Ss" id="_define_IMAGE_MAX_PIXELS_SIZE___("><a class="permalink" href="#_define_IMAGE_MAX_PIXELS_SIZE___(">#define
   IMAGE_MAX_PIXELS_SIZE (<b>IMAGE_MAX_WIDTH</b> * <b>IMAGE_MAX_HEIGHT</b> *
-  sizeof(rgb_pixel_t))</a></h2>
+  sizeof(<b>rgb_pixel_t</b>))</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/video/rgba/image.h</b>&gt;<b></b></p>
 <p class="Pp">Maximum pixel data size in bytes. Maximum size in bytes for pixel
@@ -1349,7 +1353,7 @@ if (filter != COLOR_FILTER_NONE) {
 <p class="Pp"></p>
 <p class="Pp">Actual memory usage may be higher due to alignment.</p>
 </div>
-<p class="Pp">Definition at line <b>191</b> of file
+<p class="Pp">Definition at line <b>193</b> of file
   <b>video/rgba/image.h</b>.</p>
 <p class="Pp">Referenced by <b>frame_validate_new()</b>, <b>image_new()</b>, and
     <b>image_validate_buffer_size()</b>.</p>
@@ -1368,7 +1372,7 @@ if (filter != COLOR_FILTER_NONE) {
 <p class="Pp"></p>
 <p class="Pp">Video pipeline may enforce lower limits for performance.</p>
 </div>
-<p class="Pp">Definition at line <b>164</b> of file
+<p class="Pp">Definition at line <b>166</b> of file
   <b>video/rgba/image.h</b>.</p>
 <p class="Pp">Referenced by <b>image_new_from_pool()</b>, and
     <b>image_validate_dimensions()</b>.</p>
@@ -1475,12 +1479,12 @@ if (filter != COLOR_FILTER_NONE) {
     </i></b></a></dt>
   <dd>Pixels allocated with <b>buffer_pool_alloc()</b>.</dd>
 </dl>
-<p class="Pp">Definition at line <b>116</b> of file
+<p class="Pp">Definition at line <b>118</b> of file
   <b>video/rgba/image.h</b>.</p>
-<pre>116              {
-117   IMAGE_ALLOC_SIMD = 0, 
-118   IMAGE_ALLOC_POOL = 1  
-119 } image_alloc_method_t;</pre>
+<pre>118              {
+119   IMAGE_ALLOC_SIMD = 0, 
+120   IMAGE_ALLOC_POOL = 1  
+121 } image_alloc_method_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -3526,9 +3530,9 @@ if (grid) {
     <b>digital_rain_set_color_from_filter()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_convert_pixels_scalar_(const_rgb_pixel_t_*_pixels,_char_*_ascii_chars,_int_count,_const_char_luminance_palette_256_)"><a class="permalink" href="#void_convert_pixels_scalar_(const_rgb_pixel_t_*_pixels,_char_*_ascii_chars,_int_count,_const_char_luminance_palette_256_)">void
-  convert_pixels_scalar (const rgb_pixel_t * pixels, char * ascii_chars, int
-  count, const char luminance_palette[256])</a></h2>
+<h2 class="Ss" id="void_convert_pixels_scalar_(const_"><a class="permalink" href="#void_convert_pixels_scalar_(const_">void
+  convert_pixels_scalar (const <b>rgb_pixel_t</b> * pixels, char * ascii_chars,
+  int count, const char luminance_palette[256])</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/video/ascii/common.h</b>&gt;<b></b></p>
 <p class="Pp">Convert pixels to ASCII (scalar fallback).</p>

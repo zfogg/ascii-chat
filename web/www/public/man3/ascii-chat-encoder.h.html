@@ -140,101 +140,101 @@
 <div class="Bd-indent">Error code (ASCIICHAT_OK on success)</div>
 <p class="Pp">OUTPUT PACKET FORMAT: [flags: u8][width: u16][height:
     u16][x265_data...]</p>
-<p class="Pp">Definition at line <b>252</b> of file <b>encoder.c</b>.</p>
-<pre>253                                                                         {
-254   log_dev(&quot;[H265_ENCODE_1] Starting h265_encode %ux%u&quot;, width, height);
-255   if (!encoder || !ascii_data || !output_buf || !output_size) {
-256     return SET_ERRNO(ERROR_INTERNAL, &quot;Invalid encoder arguments&quot;);
-257   }
-258 
-259   if (*output_size &lt; 5) {
-260     return SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Output buffer too small (minimum 5 bytes)&quot;);
-261   }
-262 
-263   log_dev(&quot;[H265_ENCODE_2] Calling h265_encoder_reconfigure&quot;);
-264   asciichat_error_t result = h265_encoder_reconfigure(encoder, width, height);
-265   log_dev(&quot;[H265_ENCODE_2b] h265_encoder_reconfigure returned: %d&quot;, result);
-266   if (result != ASCIICHAT_OK) {
-267     return result;
-268   }
-269 
-270   h265_encoder_ascii_to_yuv420(ascii_data, width, height, encoder-&gt;yuv_buf);
-271 
-272   // Setup frame data pointers
-273   encoder-&gt;frame-&gt;data[0] = encoder-&gt;yuv_buf;
-274   encoder-&gt;frame-&gt;data[1] = encoder-&gt;yuv_buf + width * height;
-275   encoder-&gt;frame-&gt;data[2] = encoder-&gt;yuv_buf + width * height + (width / 2) * (height / 2);
-276   encoder-&gt;frame-&gt;linesize[0] = width;
-277   encoder-&gt;frame-&gt;linesize[1] = width / 2;
-278   encoder-&gt;frame-&gt;linesize[2] = width / 2;
-279   encoder-&gt;frame-&gt;width = width;
-280   encoder-&gt;frame-&gt;height = height;
-281   encoder-&gt;frame-&gt;format = AV_PIX_FMT_YUV420P;
-282 
-283   // Request keyframe if needed
-284   if (encoder-&gt;request_keyframe) {
-285     encoder-&gt;frame-&gt;pict_type = AV_PICTURE_TYPE_I;
-286     encoder-&gt;request_keyframe = false;
-287   }
-288 
-289   // Encode frame
-290   log_debug(&quot;H265_ENCODE: Sending frame to encoder: %ux%u format=%d&quot;, width, height, encoder-&gt;frame-&gt;format);
-291   int send_ret = avcodec_send_frame(encoder-&gt;codec_ctx, encoder-&gt;frame);
-292   if (send_ret &lt; 0) {
-293     log_error(&quot;H265_ENCODE: avcodec_send_frame failed: %d&quot;, send_ret);
-294     return SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to send frame to encoder&quot;);
-295   }
-296 
-297   log_debug(&quot;H265_ENCODE: Receiving encoded packet...&quot;);
-298   int recv_ret = avcodec_receive_packet(encoder-&gt;codec_ctx, encoder-&gt;packet);
-299   if (recv_ret == AVERROR(EAGAIN)) {
-300     // EAGAIN is normal - encoder needs more frames before outputting a packet
-301     log_dev(&quot;H265_ENCODE: EAGAIN - encoder buffering frames (normal), waiting for next frame&quot;);
-302     *output_size = 0; // No output this time
-303     return ASCIICHAT_OK;
-304   }
-305   if (recv_ret &lt; 0) {
-306     log_error(&quot;H265_ENCODE: avcodec_receive_packet failed: %d (EAGAIN=%d)&quot;, recv_ret, AVERROR(EAGAIN));
-307     return SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to receive encoded packet&quot;);
-308   }
-309   log_debug(&quot;H265_ENCODE: Got packet: size=%d&quot;, (int)encoder-&gt;packet-&gt;size);
-310 
-311   uint8_t flags = 0;
-312   if (encoder-&gt;frame-&gt;pict_type == AV_PICTURE_TYPE_I) {
-313     flags |= H265_ENCODER_FLAG_KEYFRAME;
-314     encoder-&gt;keyframes++;
-315   }
-316 
-317   if (width != encoder-&gt;current_width || height != encoder-&gt;current_height) {
-318     flags |= H265_ENCODER_FLAG_SIZE_CHANGE;
-319   }
-320 
-321   size_t header_size = 5;
-322   size_t packet_size = encoder-&gt;packet-&gt;size;
-323   size_t required_size = header_size + packet_size;
-324 
-325   if (required_size &gt; *output_size) {
-326     return SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Output buffer too small: need %zu, have %zu&quot;, required_size, *output_size);
-327   }
+<p class="Pp">Definition at line <b>270</b> of file <b>encoder.c</b>.</p>
+<pre>271                                                                         {
+272   log_dev(&quot;[H265_ENCODE_1] Starting h265_encode %ux%u&quot;, width, height);
+273   if (!encoder || !ascii_data || !output_buf || !output_size) {
+274     return SET_ERRNO(ERROR_INTERNAL, &quot;Invalid encoder arguments&quot;);
+275   }
+276 
+277   if (*output_size &lt; 5) {
+278     return SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Output buffer too small (minimum 5 bytes)&quot;);
+279   }
+280 
+281   log_dev(&quot;[H265_ENCODE_2] Calling h265_encoder_reconfigure&quot;);
+282   asciichat_error_t result = h265_encoder_reconfigure(encoder, width, height);
+283   log_dev(&quot;[H265_ENCODE_2b] h265_encoder_reconfigure returned: %d&quot;, result);
+284   if (result != ASCIICHAT_OK) {
+285     return result;
+286   }
+287 
+288   h265_encoder_ascii_to_yuv420(ascii_data, width, height, encoder-&gt;yuv_buf);
+289 
+290   // Setup frame data pointers
+291   encoder-&gt;frame-&gt;data[0] = encoder-&gt;yuv_buf;
+292   encoder-&gt;frame-&gt;data[1] = encoder-&gt;yuv_buf + width * height;
+293   encoder-&gt;frame-&gt;data[2] = encoder-&gt;yuv_buf + width * height + (width / 2) * (height / 2);
+294   encoder-&gt;frame-&gt;linesize[0] = width;
+295   encoder-&gt;frame-&gt;linesize[1] = width / 2;
+296   encoder-&gt;frame-&gt;linesize[2] = width / 2;
+297   encoder-&gt;frame-&gt;width = width;
+298   encoder-&gt;frame-&gt;height = height;
+299   encoder-&gt;frame-&gt;format = AV_PIX_FMT_YUV420P;
+300 
+301   // Request keyframe if needed
+302   if (encoder-&gt;request_keyframe) {
+303     encoder-&gt;frame-&gt;pict_type = AV_PICTURE_TYPE_I;
+304     encoder-&gt;request_keyframe = false;
+305   }
+306 
+307   // Encode frame
+308   log_debug(&quot;H265_ENCODE: Sending frame to encoder: %ux%u format=%d&quot;, width, height, encoder-&gt;frame-&gt;format);
+309   int send_ret = avcodec_send_frame(encoder-&gt;codec_ctx, encoder-&gt;frame);
+310   if (send_ret &lt; 0) {
+311     log_error(&quot;H265_ENCODE: avcodec_send_frame failed: %d&quot;, send_ret);
+312     return SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to send frame to encoder&quot;);
+313   }
+314 
+315   log_debug(&quot;H265_ENCODE: Receiving encoded packet...&quot;);
+316   int recv_ret = avcodec_receive_packet(encoder-&gt;codec_ctx, encoder-&gt;packet);
+317   if (recv_ret == AVERROR(EAGAIN)) {
+318     // EAGAIN is normal - encoder needs more frames before outputting a packet
+319     log_dev(&quot;H265_ENCODE: EAGAIN - encoder buffering frames (normal), waiting for next frame&quot;);
+320     *output_size = 0; // No output this time
+321     return ASCIICHAT_OK;
+322   }
+323   if (recv_ret &lt; 0) {
+324     log_error(&quot;H265_ENCODE: avcodec_receive_packet failed: %d (EAGAIN=%d)&quot;, recv_ret, AVERROR(EAGAIN));
+325     return SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to receive encoded packet&quot;);
+326   }
+327   log_debug(&quot;H265_ENCODE: Got packet: size=%d&quot;, (int)encoder-&gt;packet-&gt;size);
 328 
-329   // Write header: [flags][width:u16][height:u16]
-330   output_buf[0] = flags;
-331   output_buf[1] = (width &gt;&gt; 8) &amp; 0xFF;
-332   output_buf[2] = width &amp; 0xFF;
-333   output_buf[3] = (height &gt;&gt; 8) &amp; 0xFF;
-334   output_buf[4] = height &amp; 0xFF;
-335 
-336   // Write encoded data
-337   if (packet_size &gt; 0) {
-338     memcpy(output_buf + header_size, encoder-&gt;packet-&gt;data, packet_size);
-339   }
-340 
-341   *output_size = required_size;
-342   encoder-&gt;total_frames++;
-343   log_dev(&quot;[H265_ENCODE_DONE] Encoding complete, output_size=%zu&quot;, required_size);
-344 
-345   return ASCIICHAT_OK;
-346 }</pre>
+329   uint8_t flags = 0;
+330   if (encoder-&gt;frame-&gt;pict_type == AV_PICTURE_TYPE_I) {
+331     flags |= H265_ENCODER_FLAG_KEYFRAME;
+332     encoder-&gt;keyframes++;
+333   }
+334 
+335   if (width != encoder-&gt;current_width || height != encoder-&gt;current_height) {
+336     flags |= H265_ENCODER_FLAG_SIZE_CHANGE;
+337   }
+338 
+339   size_t header_size = 5;
+340   size_t packet_size = encoder-&gt;packet-&gt;size;
+341   size_t required_size = header_size + packet_size;
+342 
+343   if (required_size &gt; *output_size) {
+344     return SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Output buffer too small: need %zu, have %zu&quot;, required_size, *output_size);
+345   }
+346 
+347   // Write header: [flags][width:u16][height:u16]
+348   output_buf[0] = flags;
+349   output_buf[1] = (width &gt;&gt; 8) &amp; 0xFF;
+350   output_buf[2] = width &amp; 0xFF;
+351   output_buf[3] = (height &gt;&gt; 8) &amp; 0xFF;
+352   output_buf[4] = height &amp; 0xFF;
+353 
+354   // Write encoded data
+355   if (packet_size &gt; 0) {
+356     memcpy(output_buf + header_size, encoder-&gt;packet-&gt;data, packet_size);
+357   }
+358 
+359   *output_size = required_size;
+360   encoder-&gt;total_frames++;
+361   log_dev(&quot;[H265_ENCODE_DONE] Encoding complete, output_size=%zu&quot;, required_size);
+362 
+363   return ASCIICHAT_OK;
+364 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>h265_encoder::codec_ctx</b>,
@@ -274,87 +274,105 @@
 48     return NULL;
 49   }
 50 
-51   // Find best available HEVC encoder (hevc_vaapi, hevc_nvenc, libx265, or software fallback)
+51   // Find best available HEVC encoder (try by ID first, then by name for specific implementations)
 52   const AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_HEVC);
-53   if (!codec) {
-54     SET_ERRNO(ERROR_MEDIA_INIT, &quot;HEVC encoder not found&quot;);
-55     SAFE_FREE(enc);
-56     return NULL;
+53 
+54   // If generic HEVC encoder not found, try specific implementations by name
+55   if (!codec) {
+56     codec = avcodec_find_encoder_by_name(&quot;libx265&quot;);
 57   }
-58 
-59   enc-&gt;codec_ctx = avcodec_alloc_context3(codec);
-60   if (!enc-&gt;codec_ctx) {
-61     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate codec context&quot;);
-62     SAFE_FREE(enc);
-63     return NULL;
-64   }
-65 
-66   // Configure codec context
-67   enc-&gt;codec_ctx-&gt;width = initial_width;
-68   enc-&gt;codec_ctx-&gt;height = initial_height;
-69   enc-&gt;codec_ctx-&gt;pix_fmt = AV_PIX_FMT_YUV420P;
-70   enc-&gt;codec_ctx-&gt;time_base = (AVRational){1, 30};
-71   enc-&gt;codec_ctx-&gt;framerate = (AVRational){30, 1};
-72 
-73   // Set ultrafast preset for low-latency encoding
-74   if (av_opt_set(enc-&gt;codec_ctx-&gt;priv_data, &quot;preset&quot;, &quot;ultrafast&quot;, 0) &lt; 0) {
-75     log_warn(&quot;Failed to set preset to ultrafast, using default&quot;);
-76   }
-77   if (av_opt_set(enc-&gt;codec_ctx-&gt;priv_data, &quot;tune&quot;, &quot;zerolatency&quot;, 0) &lt; 0) {
-78     log_warn(&quot;Failed to set tune to zerolatency, using default&quot;);
-79   }
-80 
-81   // Open codec (capture x265 library output during initialization)
-82   int codec_open_result = 0;
-83   LOG_IO(&quot;hevc&quot;, {
-84       codec_open_result = avcodec_open2(enc-&gt;codec_ctx, codec, NULL);
-85   });
-86 
-87   if (codec_open_result &lt; 0) {
-88     SET_ERRNO(ERROR_MEDIA_INIT, &quot;Failed to open HEVC encoder&quot;);
-89     avcodec_free_context(&amp;enc-&gt;codec_ctx);
-90     SAFE_FREE(enc);
-91     return NULL;
-92   }
-93 
-94   // Allocate frame and packet
-95   enc-&gt;frame = av_frame_alloc();
-96   enc-&gt;packet = av_packet_alloc();
-97 
-98   if (!enc-&gt;frame || !enc-&gt;packet) {
-99     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate frame/packet&quot;);
-100     if (enc-&gt;frame)
-101       av_frame_free(&amp;enc-&gt;frame);
-102     if (enc-&gt;packet)
-103       av_packet_free(&amp;enc-&gt;packet);
-104     avcodec_free_context(&amp;enc-&gt;codec_ctx);
-105     SAFE_FREE(enc);
-106     return NULL;
-107   }
-108 
-109   enc-&gt;current_width = initial_width;
-110   enc-&gt;current_height = initial_height;
+58   if (!codec) {
+59     codec = avcodec_find_encoder_by_name(&quot;hevc_vaapi&quot;);
+60   }
+61   if (!codec) {
+62     codec = avcodec_find_encoder_by_name(&quot;hevc_videotoolbox&quot;);
+63   }
+64   if (!codec) {
+65     codec = avcodec_find_encoder_by_name(&quot;hevc_nvenc&quot;);
+66   }
+67   if (!codec) {
+68     codec = avcodec_find_encoder_by_name(&quot;hevc_qsv&quot;);
+69   }
+70 
+71   if (!codec) {
+72     SET_ERRNO(ERROR_MEDIA_INIT, &quot;HEVC encoder not found&quot;);
+73     SAFE_FREE(enc);
+74     return NULL;
+75   }
+76 
+77   enc-&gt;codec_ctx = avcodec_alloc_context3(codec);
+78   if (!enc-&gt;codec_ctx) {
+79     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate codec context&quot;);
+80     SAFE_FREE(enc);
+81     return NULL;
+82   }
+83 
+84   // Configure codec context
+85   enc-&gt;codec_ctx-&gt;width = initial_width;
+86   enc-&gt;codec_ctx-&gt;height = initial_height;
+87   enc-&gt;codec_ctx-&gt;pix_fmt = AV_PIX_FMT_YUV420P;
+88   enc-&gt;codec_ctx-&gt;time_base = (AVRational){1, 30};
+89   enc-&gt;codec_ctx-&gt;framerate = (AVRational){30, 1};
+90 
+91   // Set ultrafast preset for low-latency encoding
+92   if (av_opt_set(enc-&gt;codec_ctx-&gt;priv_data, &quot;preset&quot;, &quot;ultrafast&quot;, 0) &lt; 0) {
+93     log_warn(&quot;Failed to set preset to ultrafast, using default&quot;);
+94   }
+95   if (av_opt_set(enc-&gt;codec_ctx-&gt;priv_data, &quot;tune&quot;, &quot;zerolatency&quot;, 0) &lt; 0) {
+96     log_warn(&quot;Failed to set tune to zerolatency, using default&quot;);
+97   }
+98 
+99   // Open codec (capture x265 library output during initialization)
+100   int codec_open_result = 0;
+101   LOG_IO(&quot;hevc&quot;, {
+102       codec_open_result = avcodec_open2(enc-&gt;codec_ctx, codec, NULL);
+103   });
+104 
+105   if (codec_open_result &lt; 0) {
+106     SET_ERRNO(ERROR_MEDIA_INIT, &quot;Failed to open HEVC encoder&quot;);
+107     avcodec_free_context(&amp;enc-&gt;codec_ctx);
+108     SAFE_FREE(enc);
+109     return NULL;
+110   }
 111 
-112   // Allocate YUV420P buffer (Y plane + U/V planes)
-113   size_t stride = initial_width;
-114   enc-&gt;yuv_buf_size = stride * initial_height * 3 / 2;
-115   enc-&gt;yuv_buf = SAFE_MALLOC(enc-&gt;yuv_buf_size, uint8_t *);
-116   if (!enc-&gt;yuv_buf) {
-117     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate YUV buffer&quot;);
-118     av_frame_free(&amp;enc-&gt;frame);
-119     av_packet_free(&amp;enc-&gt;packet);
-120     avcodec_free_context(&amp;enc-&gt;codec_ctx);
-121     SAFE_FREE(enc);
-122     return NULL;
-123   }
-124 
-125   log_info(&quot;FFmpeg HEVC encoder created: %ux%u (codec: %s)&quot;, initial_width, initial_height, codec-&gt;name);
+112   // Allocate frame and packet
+113   enc-&gt;frame = av_frame_alloc();
+114   enc-&gt;packet = av_packet_alloc();
+115 
+116   if (!enc-&gt;frame || !enc-&gt;packet) {
+117     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate frame/packet&quot;);
+118     if (enc-&gt;frame)
+119       av_frame_free(&amp;enc-&gt;frame);
+120     if (enc-&gt;packet)
+121       av_packet_free(&amp;enc-&gt;packet);
+122     avcodec_free_context(&amp;enc-&gt;codec_ctx);
+123     SAFE_FREE(enc);
+124     return NULL;
+125   }
 126 
-127   // Register encoder for debugging
-128   NAMED_REGISTER_H265_ENCODER(enc, &quot;h265_encoder&quot;, NULL);
+127   enc-&gt;current_width = initial_width;
+128   enc-&gt;current_height = initial_height;
 129 
-130   return enc;
-131 }</pre>
+130   // Allocate YUV420P buffer (Y plane + U/V planes)
+131   size_t stride = initial_width;
+132   enc-&gt;yuv_buf_size = stride * initial_height * 3 / 2;
+133   enc-&gt;yuv_buf = SAFE_MALLOC(enc-&gt;yuv_buf_size, uint8_t *);
+134   if (!enc-&gt;yuv_buf) {
+135     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate YUV buffer&quot;);
+136     av_frame_free(&amp;enc-&gt;frame);
+137     av_packet_free(&amp;enc-&gt;packet);
+138     avcodec_free_context(&amp;enc-&gt;codec_ctx);
+139     SAFE_FREE(enc);
+140     return NULL;
+141   }
+142 
+143   log_info(&quot;FFmpeg HEVC encoder created: %ux%u (codec: %s)&quot;, initial_width, initial_height, codec-&gt;name);
+144 
+145   // Register encoder for debugging
+146   NAMED_REGISTER_H265_ENCODER(enc, &quot;h265_encoder&quot;, NULL);
+147 
+148   return enc;
+149 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>h265_encoder::codec_ctx</b>,
@@ -373,28 +391,28 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>encoder</i> Encoder to destroy (may be NULL)</div>
-<p class="Pp">Definition at line <b>133</b> of file <b>encoder.c</b>.</p>
-<pre>133                                                    {
-134   if (!encoder)
-135     return;
-136 
-137   if (encoder-&gt;frame) {
-138     av_frame_free(&amp;encoder-&gt;frame);
-139   }
-140   if (encoder-&gt;packet) {
-141     av_packet_free(&amp;encoder-&gt;packet);
-142   }
-143   if (encoder-&gt;codec_ctx) {
-144     // Capture x265 encoder cleanup output (final frame stats, etc.)
-145     LOG_IO(&quot;hevc&quot;, {
-146       avcodec_free_context(&amp;encoder-&gt;codec_ctx);
-147     });
-148   }
-149   if (encoder-&gt;yuv_buf) {
-150     SAFE_FREE(encoder-&gt;yuv_buf);
-151   }
-152   SAFE_FREE(encoder);
-153 }</pre>
+<p class="Pp">Definition at line <b>151</b> of file <b>encoder.c</b>.</p>
+<pre>151                                                    {
+152   if (!encoder)
+153     return;
+154 
+155   if (encoder-&gt;frame) {
+156     av_frame_free(&amp;encoder-&gt;frame);
+157   }
+158   if (encoder-&gt;packet) {
+159     av_packet_free(&amp;encoder-&gt;packet);
+160   }
+161   if (encoder-&gt;codec_ctx) {
+162     // Capture x265 encoder cleanup output (final frame stats, etc.)
+163     LOG_IO(&quot;hevc&quot;, {
+164       avcodec_free_context(&amp;encoder-&gt;codec_ctx);
+165     });
+166   }
+167   if (encoder-&gt;yuv_buf) {
+168     SAFE_FREE(encoder-&gt;yuv_buf);
+169   }
+170   SAFE_FREE(encoder);
+171 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>h265_encoder::codec_ctx</b>,
@@ -425,76 +443,76 @@
 <p class="Pp">USAGE: // After final <b>h265_encode()</b> call, flush remaining
     frames while (size &gt; 0) { size = max_size; h265_encoder_flush(encoder,
     buf, &amp;size); if (size &gt; 0) { // Send the flushed frame... } }</p>
-<p class="Pp">Definition at line <b>354</b> of file <b>encoder.c</b>.</p>
-<pre>354                                                                                                         {
-355   if (!encoder || !output_buf || !output_size) {
-356     return SET_ERRNO(ERROR_INTERNAL, &quot;Invalid encoder or output parameters for flush&quot;);
-357   }
-358 
-359   if (*output_size &lt; 5) {
-360     return SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Output buffer too small (minimum 5 bytes)&quot;);
-361   }
-362 
-363   // Send NULL frame to signal end of stream (flushes encoder)
-364   log_debug(&quot;H265_FLUSH: Sending NULL frame to encoder to flush buffered data&quot;);
-365   int send_ret = avcodec_send_frame(encoder-&gt;codec_ctx, NULL);
-366   if (send_ret &lt; 0) {
-367     log_error(&quot;H265_FLUSH: avcodec_send_frame(NULL) failed: %d&quot;, send_ret);
-368     return SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to flush encoder&quot;);
-369   }
-370 
-371   // Try to receive a packet
-372   log_debug(&quot;H265_FLUSH: Attempting to receive flushed packet...&quot;);
-373   int recv_ret = avcodec_receive_packet(encoder-&gt;codec_ctx, encoder-&gt;packet);
-374   if (recv_ret == AVERROR(EAGAIN)) {
-375     log_dev(&quot;H265_FLUSH: EAGAIN - no more frames available&quot;);
-376     *output_size = 0;
-377     return ASCIICHAT_OK;
-378   }
-379   if (recv_ret == AVERROR_EOF) {
-380     log_debug(&quot;H265_FLUSH: EOF - encoder is flushed&quot;);
-381     *output_size = 0;
-382     return ASCIICHAT_OK;
-383   }
-384   if (recv_ret &lt; 0) {
-385     log_error(&quot;H265_FLUSH: avcodec_receive_packet failed: %d&quot;, recv_ret);
-386     return SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to receive flushed packet&quot;);
+<p class="Pp">Definition at line <b>372</b> of file <b>encoder.c</b>.</p>
+<pre>372                                                                                                         {
+373   if (!encoder || !output_buf || !output_size) {
+374     return SET_ERRNO(ERROR_INTERNAL, &quot;Invalid encoder or output parameters for flush&quot;);
+375   }
+376 
+377   if (*output_size &lt; 5) {
+378     return SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Output buffer too small (minimum 5 bytes)&quot;);
+379   }
+380 
+381   // Send NULL frame to signal end of stream (flushes encoder)
+382   log_debug(&quot;H265_FLUSH: Sending NULL frame to encoder to flush buffered data&quot;);
+383   int send_ret = avcodec_send_frame(encoder-&gt;codec_ctx, NULL);
+384   if (send_ret &lt; 0) {
+385     log_error(&quot;H265_FLUSH: avcodec_send_frame(NULL) failed: %d&quot;, send_ret);
+386     return SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to flush encoder&quot;);
 387   }
 388 
-389   log_debug(&quot;H265_FLUSH: Got flushed packet: size=%d&quot;, (int)encoder-&gt;packet-&gt;size);
-390 
-391   // Check if packet size exceeds output buffer
-392   size_t header_size = 5;
-393   size_t packet_size = encoder-&gt;packet-&gt;size;
-394   size_t required_size = header_size + packet_size;
-395 
-396   if (required_size &gt; *output_size) {
-397     return SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Output buffer too small: need %zu, have %zu&quot;, required_size, *output_size);
-398   }
-399 
-400   // Write header: [flags][width:u16][height:u16]
-401   uint8_t flags = 0;
-402   if (encoder-&gt;frame-&gt;pict_type == AV_PICTURE_TYPE_I) {
-403     flags |= H265_ENCODER_FLAG_KEYFRAME;
-404     encoder-&gt;keyframes++;
+389   // Try to receive a packet
+390   log_debug(&quot;H265_FLUSH: Attempting to receive flushed packet...&quot;);
+391   int recv_ret = avcodec_receive_packet(encoder-&gt;codec_ctx, encoder-&gt;packet);
+392   if (recv_ret == AVERROR(EAGAIN)) {
+393     log_dev(&quot;H265_FLUSH: EAGAIN - no more frames available&quot;);
+394     *output_size = 0;
+395     return ASCIICHAT_OK;
+396   }
+397   if (recv_ret == AVERROR_EOF) {
+398     log_debug(&quot;H265_FLUSH: EOF - encoder is flushed&quot;);
+399     *output_size = 0;
+400     return ASCIICHAT_OK;
+401   }
+402   if (recv_ret &lt; 0) {
+403     log_error(&quot;H265_FLUSH: avcodec_receive_packet failed: %d&quot;, recv_ret);
+404     return SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to receive flushed packet&quot;);
 405   }
 406 
-407   output_buf[0] = flags;
-408   output_buf[1] = (encoder-&gt;current_width &gt;&gt; 8) &amp; 0xFF;
-409   output_buf[2] = encoder-&gt;current_width &amp; 0xFF;
-410   output_buf[3] = (encoder-&gt;current_height &gt;&gt; 8) &amp; 0xFF;
-411   output_buf[4] = encoder-&gt;current_height &amp; 0xFF;
-412 
-413   // Write encoded data
-414   if (packet_size &gt; 0) {
-415     memcpy(output_buf + header_size, encoder-&gt;packet-&gt;data, packet_size);
+407   log_debug(&quot;H265_FLUSH: Got flushed packet: size=%d&quot;, (int)encoder-&gt;packet-&gt;size);
+408 
+409   // Check if packet size exceeds output buffer
+410   size_t header_size = 5;
+411   size_t packet_size = encoder-&gt;packet-&gt;size;
+412   size_t required_size = header_size + packet_size;
+413 
+414   if (required_size &gt; *output_size) {
+415     return SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Output buffer too small: need %zu, have %zu&quot;, required_size, *output_size);
 416   }
 417 
-418   *output_size = required_size;
-419   encoder-&gt;total_frames++;
-420 
-421   return ASCIICHAT_OK;
-422 }</pre>
+418   // Write header: [flags][width:u16][height:u16]
+419   uint8_t flags = 0;
+420   if (encoder-&gt;frame-&gt;pict_type == AV_PICTURE_TYPE_I) {
+421     flags |= H265_ENCODER_FLAG_KEYFRAME;
+422     encoder-&gt;keyframes++;
+423   }
+424 
+425   output_buf[0] = flags;
+426   output_buf[1] = (encoder-&gt;current_width &gt;&gt; 8) &amp; 0xFF;
+427   output_buf[2] = encoder-&gt;current_width &amp; 0xFF;
+428   output_buf[3] = (encoder-&gt;current_height &gt;&gt; 8) &amp; 0xFF;
+429   output_buf[4] = encoder-&gt;current_height &amp; 0xFF;
+430 
+431   // Write encoded data
+432   if (packet_size &gt; 0) {
+433     memcpy(output_buf + header_size, encoder-&gt;packet-&gt;data, packet_size);
+434   }
+435 
+436   *output_size = required_size;
+437   encoder-&gt;total_frames++;
+438 
+439   return ASCIICHAT_OK;
+440 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>h265_encoder::codec_ctx</b>,
@@ -522,18 +540,18 @@
 <i>keyframes</i> Output: total keyframes encoded
 <br/>
 <i>avg_bitrate</i> Output: average bitrate in bits per second</div>
-<p class="Pp">Definition at line <b>424</b> of file <b>encoder.c</b>.</p>
-<pre>425                                                    {
-426   if (!encoder)
-427     return;
-428 
-429   if (total_frames)
-430     *total_frames = encoder-&gt;total_frames;
-431   if (keyframes)
-432     *keyframes = encoder-&gt;keyframes;
-433   if (avg_bitrate)
-434     *avg_bitrate = encoder-&gt;avg_bitrate;
-435 }</pre>
+<p class="Pp">Definition at line <b>442</b> of file <b>encoder.c</b>.</p>
+<pre>443                                                    {
+444   if (!encoder)
+445     return;
+446 
+447   if (total_frames)
+448     *total_frames = encoder-&gt;total_frames;
+449   if (keyframes)
+450     *keyframes = encoder-&gt;keyframes;
+451   if (avg_bitrate)
+452     *avg_bitrate = encoder-&gt;avg_bitrate;
+453 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>h265_encoder::avg_bitrate</b>,
@@ -551,12 +569,12 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>encoder</i> Encoder handle</div>
-<p class="Pp">Definition at line <b>348</b> of file <b>encoder.c</b>.</p>
-<pre>348                                                             {
-349   if (encoder) {
-350     encoder-&gt;request_keyframe = true;
-351   }
-352 }</pre>
+<p class="Pp">Definition at line <b>366</b> of file <b>encoder.c</b>.</p>
+<pre>366                                                             {
+367   if (encoder) {
+368     encoder-&gt;request_keyframe = true;
+369   }
+370 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>h265_encoder::request_keyframe</b>.</p>

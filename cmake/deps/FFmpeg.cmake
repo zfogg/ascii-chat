@@ -62,9 +62,12 @@ if(PLATFORM_IOS)
                 --disable-autodetect \
                 --disable-asm \
                 --disable-inline-asm \
+                --enable-gpl \
                 --enable-protocol=file,http,https,rtsp,rtmp,hls \
                 --enable-demuxer=mov,matroska,avi,gif,image2,mp3,wav,flac,ogg,hls \
                 --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg,mp3,aac,flac,vorbis,opus,pcm_s16le \
+                --enable-encoder=hevc_videotoolbox,libx265 \
+                --enable-libx265 \
                 --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video,aac,mpegaudio \
                 --enable-swscale \
                 --enable-swresample"
@@ -193,9 +196,12 @@ if(USE_MUSL)
                 --disable-autodetect
                 --disable-x86asm
                 --disable-inline-asm
+                --enable-gpl
                 --enable-protocol=file
                 --enable-demuxer=mov,matroska,avi,gif,image2
                 --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg
+                --enable-encoder=libx265
+                --enable-libx265
                 --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video
                 --enable-swscale
                 --enable-swresample
@@ -384,10 +390,13 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
                 --disable-txtpages
                 --disable-debug
                 --disable-autodetect
+                --enable-gpl
                 ${FFMPEG_HWACCEL_FLAGS}
                 --enable-protocol=file
                 --enable-demuxer=mov,matroska,avi,gif,image2,mp3,wav,flac,ogg
                 --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg,mp3,aac,flac,vorbis,opus,pcm_s16le
+                --enable-encoder=libx265
+                --enable-libx265
                 --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video,aac,mpegaudio
                 --enable-swscale
                 --enable-swresample
@@ -471,6 +480,132 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
     message(STATUS "  - libavutil: ${FFMPEG_PREFIX}/lib/libavutil.a")
     message(STATUS "  - libswscale: ${FFMPEG_PREFIX}/lib/libswscale.a")
     message(STATUS "  - libswresample: ${FFMPEG_PREFIX}/lib/libswresample.a")
+endif()
+
+# =============================================================================
+# Debug builds: Build FFmpeg from source with H265 support for fast iteration
+# =============================================================================
+if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT ASCIICHAT_SHARED_DEPS AND NOT FFMPEG_FOUND)
+    message(STATUS "Configuring ${BoldBlue}FFmpeg${ColorReset} from source (Debug)...")
+
+    include(ProcessorCount)
+    ProcessorCount(NPROC)
+    if(NPROC EQUAL 0)
+        set(NPROC 4)
+    endif()
+
+    set(FFMPEG_VERSION "7.1")
+    set(FFMPEG_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg")
+    set(FFMPEG_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg-build")
+    set(FFMPEG_SOURCE_DIR "${FFMPEG_BUILD_DIR}/ffmpeg-${FFMPEG_VERSION}")
+
+    # Build FFmpeg if not cached or if libx265 support is missing
+    if(NOT EXISTS "${FFMPEG_PREFIX}/lib/libavcodec.so" OR
+       NOT EXISTS "${FFMPEG_PREFIX}/lib/libavformat.so" OR
+       NOT EXISTS "${FFMPEG_PREFIX}/lib/libx265.a")
+
+        message(STATUS "  FFmpeg libraries not found in cache, building from source...")
+
+        file(MAKE_DIRECTORY "${FFMPEG_BUILD_DIR}")
+
+        # Download FFmpeg source
+        set(FFMPEG_TARBALL "${FFMPEG_BUILD_DIR}/ffmpeg-${FFMPEG_VERSION}.tar.xz")
+        if(NOT EXISTS "${FFMPEG_TARBALL}")
+            message(STATUS "  Downloading FFmpeg ${FFMPEG_VERSION}...")
+            file(DOWNLOAD
+                "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
+                "${FFMPEG_TARBALL}"
+                EXPECTED_HASH SHA256=40973d44970dbc83ef302b0609f2e74982be2d85916dd2ee7472d30678a7abe6
+                STATUS DOWNLOAD_STATUS
+            )
+            list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+            if(NOT STATUS_CODE EQUAL 0)
+                list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
+                message(FATAL_ERROR "Failed to download FFmpeg: ${ERROR_MSG}")
+            endif()
+        endif()
+
+        # Extract tarball
+        if(NOT EXISTS "${FFMPEG_SOURCE_DIR}/configure")
+            message(STATUS "  Extracting FFmpeg...")
+            execute_process(
+                COMMAND ${CMAKE_COMMAND} -E tar xJf "${FFMPEG_TARBALL}"
+                WORKING_DIRECTORY "${FFMPEG_BUILD_DIR}"
+                RESULT_VARIABLE EXTRACT_RESULT
+            )
+            if(NOT EXTRACT_RESULT EQUAL 0)
+                message(FATAL_ERROR "Failed to extract FFmpeg tarball")
+            endif()
+        endif()
+
+        message(STATUS "  Configuring FFmpeg...")
+        execute_process(
+            COMMAND "${FFMPEG_SOURCE_DIR}/configure"
+                --prefix=${FFMPEG_PREFIX}
+                --enable-shared
+                --disable-static
+                --enable-gpl
+                --enable-libx265
+                --disable-programs
+                --disable-doc
+                --enable-protocol=file
+                --enable-demuxer=mov,matroska,avi,gif,image2,mp3,wav,flac,ogg
+                --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg,mp3,aac,flac,vorbis,opus,pcm_s16le
+                --enable-encoder=libx265
+                --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video,aac,mpegaudio
+                --enable-swscale
+                --enable-swresample
+            WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
+            RESULT_VARIABLE CONFIG_RESULT
+            OUTPUT_VARIABLE CONFIG_OUTPUT
+            ERROR_VARIABLE CONFIG_ERROR
+        )
+        if(NOT CONFIG_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to configure FFmpeg:\n${CONFIG_ERROR}")
+        endif()
+
+        message(STATUS "  Building FFmpeg (using ${NPROC} jobs)...")
+        execute_process(
+            COMMAND make -j${NPROC}
+            WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
+            RESULT_VARIABLE BUILD_RESULT
+            ERROR_VARIABLE BUILD_ERROR
+        )
+        if(NOT BUILD_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to build FFmpeg:\n${BUILD_ERROR}")
+        endif()
+
+        message(STATUS "  Installing FFmpeg...")
+        execute_process(
+            COMMAND make install
+            WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
+            RESULT_VARIABLE INSTALL_RESULT
+            ERROR_VARIABLE INSTALL_ERROR
+        )
+        if(NOT INSTALL_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to install FFmpeg:\n${INSTALL_ERROR}")
+        endif()
+
+        message(STATUS "  ${BoldGreen}FFmpeg${ColorReset} built and cached successfully")
+    else()
+        message(STATUS "${BoldGreen}FFmpeg${ColorReset} found in cache: ${FFMPEG_PREFIX}/lib/libavcodec.so")
+    endif()
+
+    set(FFMPEG_FOUND TRUE)
+    set(FFMPEG_INCLUDE_DIRS "${FFMPEG_PREFIX}/include")
+    set(FFMPEG_LIBRARIES
+        "${FFMPEG_PREFIX}/lib/libavformat.so"
+        "${FFMPEG_PREFIX}/lib/libavcodec.so"
+        "${FFMPEG_PREFIX}/lib/libswscale.so"
+        "${FFMPEG_PREFIX}/lib/libswresample.so"
+        "${FFMPEG_PREFIX}/lib/libavutil.so"
+        "-lx265"
+    )
+
+    message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg configured (shared from source, Debug):")
+    message(STATUS "  - libavformat: ${FFMPEG_PREFIX}/lib/libavformat.so")
+    message(STATUS "  - libavcodec: ${FFMPEG_PREFIX}/lib/libavcodec.so")
+    message(STATUS "  - libavutil: ${FFMPEG_PREFIX}/lib/libavutil.so")
 endif()
 
 # =============================================================================
