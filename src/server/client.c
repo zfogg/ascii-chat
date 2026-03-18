@@ -148,6 +148,7 @@
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/network/log.h>
+#include <ascii-chat/log/io.h>
 
 // FFmpeg headers for H.265 decoding
 #include <libavcodec/avcodec.h>
@@ -3278,8 +3279,10 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
   // Reuse or create persistent color converter if needed
   struct SwsContext *sws_ctx = (struct SwsContext *)client->h265_sws_ctx;
   if (!sws_ctx || sws_ctx == NULL) {
-    sws_ctx = sws_getContext(frame->width, frame->height, (int)frame->format, frame->width, frame->height,
-                             AV_PIX_FMT_RGB24, SWS_FAST_BILINEAR, NULL, NULL, NULL);
+    LOG_IO("swscaler", {
+      sws_ctx = sws_getContext(frame->width, frame->height, (int)frame->format, frame->width, frame->height,
+                               AV_PIX_FMT_RGB24, SWS_FAST_BILINEAR, NULL, NULL, NULL);
+    });
     if (!sws_ctx) {
       log_error("Failed to create color converter");
       SAFE_FREE(pkt_data);

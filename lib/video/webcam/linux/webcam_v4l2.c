@@ -37,6 +37,7 @@
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/atomic.h>
+#include <ascii-chat/log/io.h>
 
 #define WEBCAM_BUFFER_COUNT_DEFAULT 4
 #define WEBCAM_BUFFER_COUNT_MAX 8
@@ -122,8 +123,10 @@ static int webcam_v4l2_init_swscale(webcam_context_t *ctx, enum AVPixelFormat sr
   }
 
   // Create new swscale context for conversion to RGB24
-  ctx->sws_ctx = sws_getContext(ctx->width, ctx->height, src_fmt, ctx->width, ctx->height, AV_PIX_FMT_RGB24,
-                                SWS_BILINEAR, NULL, NULL, NULL);
+  LOG_IO("swscaler", {
+    ctx->sws_ctx = sws_getContext(ctx->width, ctx->height, src_fmt, ctx->width, ctx->height, AV_PIX_FMT_RGB24,
+                                  SWS_BILINEAR, NULL, NULL, NULL);
+  });
 
   if (!ctx->sws_ctx) {
     log_error("Failed to create swscale context for format conversion");

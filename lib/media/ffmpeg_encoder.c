@@ -536,8 +536,10 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   }
 
   // Create SWS context for RGB → target format conversion
-  enc->sws_ctx = sws_getContext(width_px, height_px, AV_PIX_FMT_RGB24, width_px, height_px, enc->target_pix_fmt,
-                                SWS_BICUBIC, NULL, NULL, NULL);
+  LOG_IO("swscaler", {
+    enc->sws_ctx = sws_getContext(width_px, height_px, AV_PIX_FMT_RGB24, width_px, height_px, enc->target_pix_fmt,
+                                  SWS_BICUBIC, NULL, NULL, NULL);
+  });
   if (!enc->sws_ctx) {
     av_frame_free(&enc->frame);
     av_frame_free(&enc->frame_encoded);

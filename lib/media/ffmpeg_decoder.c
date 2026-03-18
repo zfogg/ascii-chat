@@ -446,8 +446,10 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       if (!decoder->sws_ctx) {
         log_debug("Lazy init swscale: width=%d, height=%d, pix_fmt=%d", width, height, pix_fmt_to_use);
         if (width > 0 && height > 0 && pix_fmt_to_use != AV_PIX_FMT_NONE) {
-          decoder->sws_ctx = sws_getContext(width, height, pix_fmt_to_use, width, height,
-                                            AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
+          LOG_IO("swscaler", {
+            decoder->sws_ctx = sws_getContext(width, height, pix_fmt_to_use, width, height,
+                                              AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
+          });
           if (!decoder->sws_ctx) {
             log_error("Failed to create swscale context: pix_fmt=%d (might be unsupported for conversion)",
                       pix_fmt_to_use);
@@ -714,10 +716,12 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
       // Don't create swscale context yet - will create it lazily on first frame read
     } else {
       // Create swscale context with valid parameters
-      decoder->sws_ctx =
-          sws_getContext(decoder->video_codec_ctx->width, decoder->video_codec_ctx->height,
-                         decoder->video_codec_ctx->pix_fmt, decoder->video_codec_ctx->width,
-                         decoder->video_codec_ctx->height, AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
+      LOG_IO("swscaler", {
+        decoder->sws_ctx =
+            sws_getContext(decoder->video_codec_ctx->width, decoder->video_codec_ctx->height,
+                           decoder->video_codec_ctx->pix_fmt, decoder->video_codec_ctx->width,
+                           decoder->video_codec_ctx->height, AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
+      });
       if (!decoder->sws_ctx) {
         SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to create swscale context");
         ffmpeg_decoder_destroy(decoder);
@@ -969,10 +973,12 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
       // Don't create swscale context yet - will create it lazily on first frame read
     } else {
       // Create swscale context with valid parameters
-      decoder->sws_ctx =
-          sws_getContext(decoder->video_codec_ctx->width, decoder->video_codec_ctx->height,
-                         decoder->video_codec_ctx->pix_fmt, decoder->video_codec_ctx->width,
-                         decoder->video_codec_ctx->height, AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
+      LOG_IO("swscaler", {
+        decoder->sws_ctx =
+            sws_getContext(decoder->video_codec_ctx->width, decoder->video_codec_ctx->height,
+                           decoder->video_codec_ctx->pix_fmt, decoder->video_codec_ctx->width,
+                           decoder->video_codec_ctx->height, AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
+      });
       if (!decoder->sws_ctx) {
         SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to create swscale context");
         ffmpeg_decoder_destroy(decoder);
