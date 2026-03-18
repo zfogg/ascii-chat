@@ -5,14 +5,16 @@ import { SITES } from "@ascii-chat/shared/utils";
 
 export default function NotFoundPage() {
   return (
-    <div className="h-full flex flex-col bg-gray-950 text-gray-100">
+    <div className="min-h-screen flex flex-col bg-gray-950 text-gray-100">
       <AsciiChatHead
         title="404 - Page Not Found | ascii-chat"
         description="The page you're looking for doesn't exist or has been moved."
         url={`${SITES.MAIN}/404`}
       />
-      <NotFound />
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-950 mb-8">
+      <div className="flex-1 flex items-center justify-center">
+        <NotFound />
+      </div>
+      <div className="bg-gray-950 mt-8 pt-8">
         <Footer />
       </div>
     </div>

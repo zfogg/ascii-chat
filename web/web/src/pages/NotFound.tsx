@@ -4,13 +4,13 @@ import { WebClientHead } from "../components/WebClientHead";
 
 export function NotFoundPage() {
   return (
-    <>
+    <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-100">
       <WebClientHead
         title="404 - Page Not Found | ascii-chat Web Client"
         description="The page you're looking for doesn't exist or has been moved."
         url={`${SITES.WEB}/404`}
       />
       <NotFound />
-    </>
+    </div>
   );
 }
