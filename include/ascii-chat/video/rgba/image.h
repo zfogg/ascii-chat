@@ -66,6 +66,7 @@
  */
 
 /**
+ * @struct rgb_pixel_t
  * @brief RGB pixel structure
  *
  * Standard RGB pixel structure with 3 bytes per pixel (R, G, B).
@@ -84,6 +85,7 @@ typedef struct {
 } PACKED_ATTR rgb_pixel_t;
 
 /**
+ * @struct rgb_pixel_simd_t
  * @brief SIMD-aligned RGB pixel structure for optimal NEON/AVX performance
  *
  * SIMD-optimized RGB pixel structure with 4-byte alignment for efficient

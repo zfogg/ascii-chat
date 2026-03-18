@@ -4266,6 +4266,18 @@
     "sourcePath": null
   },
   {
+    "name": "rgb_pixel_simd_t",
+    "title": "rgb_pixel_simd_t",
+    "file": "ascii-chat-rgb_pixel_simd_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "rgb_pixel_t",
+    "title": "rgb_pixel_t",
+    "file": "ascii-chat-rgb_pixel_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "ring_consensus_t",
     "title": "ring_consensus_t",
     "file": "ascii-chat-ring_consensus_t.html",
