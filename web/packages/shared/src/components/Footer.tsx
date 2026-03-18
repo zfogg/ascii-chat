@@ -19,7 +19,10 @@ interface FooterProps {
 
 export function Footer({ links, commitSha, onCommitClick, extraLine, authorLinkColor = "text-cyan-400 hover:text-cyan-300", className = "mt-8 pt-8 border-t-2 border-gray-700" }: FooterProps) {
   return (
-    <footer className={`${className} w-full flex flex-col text-center text-sm md:text-base`}>
+    <footer
+      className={`${className} w-full flex flex-col text-center text-sm md:text-base`}
+      data-commit-sha={commitSha}
+    >
       <p className="mx-auto flex flex-row flex-wrap justify-center items-center gap-2">
         {links.map((link, index) => (
           <Fragment key={link.href}>

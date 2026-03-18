@@ -6,7 +6,7 @@ interface CommitLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
 
 export function CommitLink({ commitSha, className = "", ...props }: CommitLinkProps) {
   const isUnknown = commitSha === "unknown";
-  const displayText = isUnknown ? "unknown commit" : commitSha;
+  const displayText = isUnknown ? "unknown commit" : commitSha.substring(0, 8);
 
   return (
     <a

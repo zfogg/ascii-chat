@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import Footer from "../../components/Footer";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
 import { SITES } from "@ascii-chat/shared/utils";
@@ -19,15 +19,15 @@ import { highlightMatches } from "./utils/highlight.jsx";
 export default function Man3({ commitSha }) {
   const [sha, setSha] = useState("master");
 
-  // Extract commit SHA from Footer after it renders
+  // Extract commit SHA from Footer's data-commit-sha attribute
   useEffect(() => {
-    // Try to get from Footer's commit link
-    const link = document.querySelector('a[href*="/commit/"]');
-    if (link) {
-      const match = link.href.match(/commit\/([a-f0-9]{8,})/);
-      if (match) {
-        console.log("[Man3.jsx] Got commit SHA from Footer:", match[1]);
-        setSha(match[1].substring(0, 8));
+    // Try to get from Footer's data attribute
+    const footer = document.querySelector('footer[data-commit-sha]');
+    if (footer) {
+      const commitShaAttr = footer.getAttribute('data-commit-sha');
+      if (commitShaAttr && commitShaAttr !== "__COMMIT_SHA__") {
+        console.log("[Man3.jsx] Got commit SHA from footer data attribute:", commitShaAttr);
+        setSha(commitShaAttr); // Use full commit SHA
         return;
       }
     }
@@ -57,15 +57,17 @@ export default function Man3({ commitSha }) {
     sha, // Pass the extracted/resolved SHA
   );
 
-  // When SHA changes, reload the current page to apply the new commit reference
+  // When SHA changes from initial "master" to the actual commit SHA, reload the page
+  const initialShaRef = useRef("master");
   useEffect(() => {
-    if (nav.selectedPageName && sha !== "master") {
+    if (sha !== initialShaRef.current && nav.selectedPageName) {
       console.log(
-        "[Man3.jsx] SHA changed, reloading page:",
+        "[Man3.jsx] SHA extracted from Footer, reloading page:",
         nav.selectedPageName,
-        "with sha:",
+        "with new sha:",
         sha,
       );
+      initialShaRef.current = sha;
       nav.loadPageContent(nav.selectedPageName);
     }
   }, [sha, nav.selectedPageName, nav.loadPageContent]);

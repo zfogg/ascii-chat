@@ -18,22 +18,25 @@ const getCommitSha = () => {
 
   for (const envVar of envVars) {
     if (envVar) {
-      return envVar.substring(0, 8);
+      return envVar;
     }
   }
 
   // Fall back to git command for local development
   try {
-    return execSync("git rev-parse HEAD").toString().trim().substring(0, 8);
+    return execSync("git rev-parse HEAD").toString().trim();
   } catch {
     return "unknown";
   }
 };
 
+const commitSha = getCommitSha();
+console.log("[vite.config.js] Commit SHA:", commitSha);
+
 // https://vite.dev/config/
 export default defineConfig({
   define: {
-    __COMMIT_SHA__: JSON.stringify(getCommitSha()),
+    __COMMIT_SHA__: JSON.stringify(commitSha),
   },
   resolve: {
     alias: {

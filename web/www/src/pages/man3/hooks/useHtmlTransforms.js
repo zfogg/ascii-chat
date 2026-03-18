@@ -69,9 +69,11 @@ export function useHtmlTransforms(validPagesRef, commitSha) {
         plainText = plainText
           .replace(
             new RegExp(
-              `^#define\\s+${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*${(
-                value || ""
-              ).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+              `^#define\\s+${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*${
+                (
+                  value || ""
+                ).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+              }`,
             ),
             "",
           )
@@ -109,7 +111,8 @@ export function useHtmlTransforms(validPagesRef, commitSha) {
     for (const row of rows) {
       const nameCell = row.name ? `<code>${row.name}</code>` : "";
       const valueCell = row.value ? `<code>${row.value}</code>` : "";
-      tableHtml += `<tr><td class="man-macro-name">${nameCell}</td><td class="man-macro-value">${valueCell}</td><td class="man-macro-desc">${row.description}</td></tr>`;
+      tableHtml +=
+        `<tr><td class="man-macro-name">${nameCell}</td><td class="man-macro-value">${valueCell}</td><td class="man-macro-desc">${row.description}</td></tr>`;
     }
     tableHtml += "</tbody></table>";
 
@@ -177,9 +180,22 @@ export function useHtmlTransforms(validPagesRef, commitSha) {
    */
   const processDefinitionLinks = useCallback(
     (html, sourcePath, passedCommitSha, isSourcePage = false) => {
+      // Visible indicator that this function was called
+      if (typeof document !== "undefined" && html) {
+        const matches = html.match(/Definition at line/g);
+        if (matches && matches.length > 0) {
+          const indicator = document.body.getAttribute("data-definition-links-called");
+          if (!indicator) {
+            document.body.setAttribute("data-definition-links-called", "true");
+          }
+        }
+      }
+
       // Get the commit SHA - use passed value, then hook value, finally default to master
       const sha = passedCommitSha || commitSha;
       const githubRef = sha && sha !== "unknown" ? sha : "master";
+
+      console.log(commitSha, sha, githubRef);
 
       console.log(
         "[processDefinitionLinks]",
@@ -233,20 +249,50 @@ export function useHtmlTransforms(validPagesRef, commitSha) {
       // Use flexible regex to match the actual pattern found
       const transformRegex =
         /Definition at line[^<]*<b[^>]*>(\d+)<\/b>[^<]*of file[^<]*<b[^>]*>([^<]+)<\/b>/g;
+
+      console.log(
+        "[processDefinitionLinks] DEBUG - regex test result:",
+        transformRegex.test(html.substring(0, 2000)),
+      );
+      transformRegex.lastIndex = 0; // Reset lastIndex after test
+
       let result = html.replace(transformRegex, (match, lineNum, filename) => {
-        const filepath = sourcePath || filename.trim();
+        console.log(
+          "[processDefinitionLinks] MATCH FOUND - line:",
+          lineNum,
+          "file:",
+          filename,
+        );
+        let filepath = sourcePath || filename.trim();
+
+        // Map Doxygen file paths to GitHub paths
+        // video/rgba/image.h -> include/ascii-chat/video/rgba/image.h
+        if (!filepath.includes('/')) {
+          filepath = `include/ascii-chat/${filepath}`;
+        } else if (!filepath.startsWith('src/') && !filepath.startsWith('include/') && !filepath.startsWith('lib/')) {
+          filepath = `include/ascii-chat/${filepath}`;
+        }
+
         const link =
           `<a href="https://github.com/zfogg/ascii-chat/blob/${githubRef}/${filepath}#L${lineNum}" ` +
-          `target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">` +
+          `target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300 underline">` +
           `Definition at line <b>${lineNum}</b> of file <b>${filename}</b></a>`;
         console.log(
           "[processDefinitionLinks] Created link for line",
           lineNum,
           "file",
           filename.substring(0, 30),
+          "-> URL path:",
+          filepath,
         );
         return link;
       });
+
+      if (result === html) {
+        console.log(
+          "[processDefinitionLinks] WARNING - No replacements made, HTML unchanged",
+        );
+      }
       console.log(
         "[processDefinitionLinks] Transform complete, HTML changed:",
         result !== html,
@@ -427,7 +473,9 @@ export function useHtmlTransforms(validPagesRef, commitSha) {
           // Replace "funcName (" with "("
           const signatureWithoutName = signature.replace(
             new RegExp(
-              `\\b${currentMatch.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\(`,
+              `\\b${
+                currentMatch.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+              }\\s*\\(`,
             ),
             "(",
           );
@@ -442,7 +490,8 @@ export function useHtmlTransforms(validPagesRef, commitSha) {
         // Build table with all rows
         let tableHtml = '<table class="man-functions-table"><tbody>';
         for (const row of rows) {
-          tableHtml += `<tr><td class="man-func-name"><code>${row.name}</code></td><td class="man-func-sig"><code>${row.signature}</code></td><td class="man-func-desc">${row.description}</td></tr>`;
+          tableHtml +=
+            `<tr><td class="man-func-name"><code>${row.name}</code></td><td class="man-func-sig"><code>${row.signature}</code></td><td class="man-func-desc">${row.description}</td></tr>`;
         }
         tableHtml += "</tbody></table>";
         return tableHtml;
@@ -463,6 +512,13 @@ export function useHtmlTransforms(validPagesRef, commitSha) {
       commitSha = "",
       isSourcePage = false,
     ) => {
+      console.log("[preprocessPageHTML] CALLED with:", {
+        htmlLength: html?.length,
+        searchQuery,
+        sourcePath,
+        commitSha,
+        isSourcePage,
+      });
       if (!html) return html;
 
       // Step 1: Transform macros to tables
@@ -532,14 +588,29 @@ export function useHtmlTransforms(validPagesRef, commitSha) {
    * Process HTML content: extract body and apply preprocessing pipeline
    */
   const processPageContent = useCallback(
-    (html, searchQuery) => {
+    (html, searchQuery, sourcePath = "", isSourcePage = false) => {
+      // Track that this function was called
+      if (typeof document !== "undefined") {
+        document.body.setAttribute("data-process-page-content-called", "true");
+      }
+      console.log("[processPageContent] CALLED with searchQuery:", searchQuery);
       const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
       let content = bodyMatch ? bodyMatch[1] : html;
 
+      console.log(
+        "[processPageContent] Calling preprocessPageHTML with commitSha:",
+        commitSha,
+      );
       // Apply comprehensive preprocessing pipeline
-      return preprocessPageHTML(content, searchQuery);
+      return preprocessPageHTML(
+        content,
+        searchQuery,
+        sourcePath,
+        commitSha,
+        isSourcePage,
+      );
     },
-    [preprocessPageHTML],
+    [preprocessPageHTML, commitSha],
   );
 
   return {
