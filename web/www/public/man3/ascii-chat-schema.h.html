@@ -49,7 +49,7 @@
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
 <p class="Pp">typedef <b>bool</b>(* <b>builder_validate_fn_t</b>) (const void
-    *options_struct, char **<b>error_msg</b>)
+    *options_struct, char **error_msg)
   <br/>
   Validation function from options builder.
   <br/>
@@ -109,7 +109,7 @@
 <section class="Ss">
 <h2 class="Ss" id="typedef_"><a class="permalink" href="#typedef_">typedef
   <b>bool</b>(* builder_validate_fn_t) (const void *options_struct, char
-  **<b>error_msg</b>)</a></h2>
+  **error_msg)</a></h2>
 <p class="Pp">Validation function from options builder. This is the same
     validation function signature used by the options builder. It receives the
     full options struct and can perform cross-field validation.</p>
@@ -118,8 +118,8 @@
 <div class="Bd-indent"><i>options_struct</i> Full options struct (cast to void*
   for generic use)
 <br/>
-<i></i><b>error_msg</b><i></i><b> Output: error message (allocated by validator,
-  caller frees)</b></div>
+<i>error_msg</i> Output: error message (allocated by validator, caller
+  frees)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if valid, false if invalid</div>
 <p class="Pp">Definition at line <b>41</b> of file <b>schema.h</b>.</p>

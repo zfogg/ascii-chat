@@ -57,12 +57,11 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">void <b>pubkey_to_hex</b> (const <b>uint8_t</b> <b>pubkey</b>[32],
-    char hex_out[65])
+<p class="Pp">void <b>pubkey_to_hex</b> (const <b>uint8_t</b> pubkey[32], char
+    hex_out[65])
   <br/>
   Convert Ed25519 public key to hex string. <b>asciichat_error_t</b>
-    <b>hex_to_pubkey</b> (const char *hex_str, <b>uint8_t</b>
-    <b>pubkey_out</b>[32])
+    <b>hex_to_pubkey</b> (const char *hex_str, <b>uint8_t</b> pubkey_out[32])
   <br/>
   Convert hex string to Ed25519 public key. <b>ui_mdns_server_t</b> *
     <b>discovery_mdns_query</b> (int timeout_ms, int max_servers, <b>bool</b>
@@ -494,7 +493,7 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>hex_str</i> Hex string (64 characters)
 <br/>
-<i></i><b>pubkey_out</b><i></i><b> Output binary pubkey (32 bytes)</b></div>
+<i>pubkey_out</i> Output binary pubkey (32 bytes)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM if invalid
   hex</div>
@@ -528,8 +527,8 @@
 84 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>pubkey_out</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_pubkey_to_hex_(const_"><a class="permalink" href="#void_pubkey_to_hex_(const_">void
@@ -538,8 +537,7 @@
     pubkey to lowercase hex (64 characters).</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>pubkey</b><i></i><b> Binary public key (32
-  bytes)</b>
+<div class="Bd-indent"><i>pubkey</i> Binary public key (32 bytes)
 <br/>
 <i>hex_out</i> Output hex string buffer (must be at least 65 bytes)</div>
 <p class="Pp">Definition at line <b>49</b> of file <b>discovery.c</b>.</p>
@@ -553,7 +551,7 @@
 56 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>pubkey</b>, and <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>safe_snprintf()</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>

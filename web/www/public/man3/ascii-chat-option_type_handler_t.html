@@ -46,12 +46,12 @@
   Extract value from TOML datum. <b>asciichat_error_t</b>(*
     <b>parse_validate</b> )(const char *value_str, const
     <b>config_option_metadata_t</b> *meta, <b>option_parsed_value_t</b> *parsed,
-    char *<b>error_msg</b>, size_t error_size)
+    char *error_msg, size_t error_size)
   <br/>
   Parse and validate value. <b>asciichat_error_t</b>(* <b>write_to_struct</b>
     )(const <b>option_parsed_value_t</b> *parsed, const
     <b>config_option_metadata_t</b> *meta, <b>options_t</b> *opts, char
-    *<b>error_msg</b>, size_t error_size)
+    *error_msg, size_t error_size)
   <br/>
   Write to options struct. void(* <b>format_output</b> )(const char *field_ptr,
     size_t field_size, const <b>config_option_metadata_t</b> *meta, char *buf,
@@ -108,8 +108,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b>(* option_type_handler_t::parse_validate)
   (const char *value_str, const <b>config_option_metadata_t</b> *meta,
-  <b>option_parsed_value_t</b> *parsed, char *<b>error_msg</b>, size_t
-  error_size)</h2>
+  <b>option_parsed_value_t</b> *parsed, char *error_msg, size_t error_size)</h2>
 <p class="Pp">Parse and validate value.</p>
 <p class="Pp">Definition at line <b>148</b> of file <b>config.c</b>.</p>
 </section>
@@ -117,7 +116,7 @@
 <h2 class="Ss"><b>asciichat_error_t</b>(*
   option_type_handler_t::write_to_struct) (const <b>option_parsed_value_t</b>
   *parsed, const <b>config_option_metadata_t</b> *meta, <b>options_t</b> *opts,
-  char *<b>error_msg</b>, size_t error_size)</h2>
+  char *error_msg, size_t error_size)</h2>
 <p class="Pp">Write to options struct.</p>
 <p class="Pp">Definition at line <b>151</b> of file <b>config.c</b>.</p>
 <p class="Pp"></p>

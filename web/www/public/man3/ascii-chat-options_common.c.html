@@ -85,7 +85,7 @@
   <br/>
   Validate webcam index using the common device index validator.
     <b>asciichat_error_t</b> <b>detect_default_ssh_key</b> (char *key_path,
-    size_t <b>path_size</b>)
+    size_t path_size)
   <br/>
   Detect default SSH key path for the current user. char *
     <b>strip_equals_prefix</b> (const char *opt_value, char *buffer, size_t
@@ -94,13 +94,13 @@
   Strip equals sign prefix from option argument. char *
     <b>read_password_from_stdin</b> (const char *prompt)
   <br/>
-  Read password from stdin with prompt. <b>__attribute__</b>
-    ((visibility('default')))
+  Read password from stdin with prompt. <b>asciichat_error_t</b>
+    <b>parse_color_mode_option</b> (const char *value_str, <b>options_t</b>
+    *opts)
   <br/>
-  Global argc for early argument inspection (e.g., --color flag detection) Set
-    by <b>main()</b> for access from <b>lib/platform/terminal.c</b> during early
-    execution. <b>asciichat_error_t</b> <b>parse_render_mode_option</b> (const
-    char *value_str, <b>options_t</b> *opts)
+  Parse --color-mode option and set opts-&gt;color_mode.
+    <b>asciichat_error_t</b> <b>parse_render_mode_option</b> (const char
+    *value_str, <b>options_t</b> *opts)
   <br/>
   Parse --render-mode option and set opts-&gt;render_mode.
     <b>asciichat_error_t</b> <b>parse_palette_option</b> (const char *value_str,
@@ -155,6 +155,35 @@
   <br/>
 </p>
 </section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>auto_width</b> = <b>true</b>
+  <br/>
+  <b>bool</b> <b>auto_height</b> = <b>true</b>
+  <br/>
+  <b>bool</b> <b>port_explicitly_set_via_flag</b> = <b>false</b>
+  <br/>
+  const float <b>weight_red</b> = 0.2989f
+  <br/>
+  Red weight for luminance calculation. const float <b>weight_green</b> =
+    0.5866f
+  <br/>
+  Green weight for luminance calculation. const float <b>weight_blue</b> =
+    0.1145f
+  <br/>
+  Blue weight for luminance calculation. unsigned short int <b>RED</b> [256]
+  <br/>
+  Red channel lookup table. unsigned short int <b>GREEN</b> [256]
+  <br/>
+  Green channel lookup table. unsigned short int <b>BLUE</b> [256]
+  <br/>
+  Blue channel lookup table. unsigned short int <b>GRAY</b> [256]
+  <br/>
+  Grayscale lookup table.
+  <br/>
+</p>
+</section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
@@ -177,7 +206,7 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>key_path</i> Buffer to store detected key path
 <br/>
-<i></i><b>path_size</b><i></i><b> Size of key_path buffer</b></div>
+<i>path_size</i> Size of key_path buffer</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK if found, ERROR_CRYPTO_KEY with helpful
   message otherwise</div>
@@ -226,8 +255,8 @@ if (detect_default_ssh_key(key_path, sizeof(key_path)) == ASCIICHAT_OK) {
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>,
     <b>ERROR_CRYPTO_KEY</b>, <b>expand_path()</b>, <b>log_debug</b>,
-    <b>log_error</b>, <b>path_size</b>, <b>SAFE_FREE</b>, <b>SAFE_SNPRINTF</b>,
-    and <b>SET_ERRNO</b>.</p>
+    <b>log_error</b>, <b>SAFE_FREE</b>, <b>SAFE_SNPRINTF</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_find_similar_option_(const_char_*_unknown_opt,_const_struct_option_*_options)"><a class="permalink" href="#const_char_*_find_similar_option_(const_char_*_unknown_opt,_const_struct_option_*_options)">const
@@ -626,6 +655,58 @@ SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, &quot;%s&quot;, value);
     <b>manpage_content_generate_options()</b>.</p>
 </section>
 <section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> parse_color_mode_option (const char *
+  value_str, <b>options_t</b> * opts)</h2>
+<p class="Pp">Parse --color-mode option and set opts-&gt;color_mode. Validates
+    color mode string and sets opts-&gt;color_mode field. Accepts:
+    &quot;auto&quot;, &quot;none&quot;, &quot;mono&quot;, &quot;16&quot;,
+    &quot;16color&quot;, &quot;256&quot;, &quot;256color&quot;,
+    &quot;truecolor&quot;, &quot;24bit&quot;</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Color mode string from command line
+<br/>
+<i>opts</i> Options struct to update</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid
+  mode</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Prints error message to stderr on failure
+<p class="Pp"></p>
+<p class="Pp">Sets opts-&gt;color_mode on success</p>
+</div>
+<p class="Pp">Definition at line <b>385</b> of file <b>options/common.c</b>.</p>
+<pre>385                                                                                   {
+386   if (!value_str || !opts) {
+387     return ERROR_INVALID_PARAM;
+388   }
+389 
+390   if (strcmp(value_str, &quot;auto&quot;) == 0 || strcmp(value_str, &quot;a&quot;) == 0) {
+391     opts-&gt;color_mode = COLOR_MODE_AUTO;
+392   } else if (strcmp(value_str, &quot;none&quot;) == 0 || strcmp(value_str, &quot;mono&quot;) == 0) {
+393     opts-&gt;color_mode = COLOR_MODE_NONE;
+394   } else if (strcmp(value_str, &quot;16&quot;) == 0 || strcmp(value_str, &quot;16color&quot;) == 0 || strcmp(value_str, &quot;ansi&quot;) == 0) {
+395     opts-&gt;color_mode = COLOR_MODE_16_COLOR;
+396   } else if (strcmp(value_str, &quot;256&quot;) == 0 || strcmp(value_str, &quot;256color&quot;) == 0) {
+397     opts-&gt;color_mode = COLOR_MODE_256_COLOR;
+398   } else if (strcmp(value_str, &quot;truecolor&quot;) == 0 || strcmp(value_str, &quot;24bit&quot;) == 0 || strcmp(value_str, &quot;tc&quot;) == 0 ||
+399              strcmp(value_str, &quot;rgb&quot;) == 0 || strcmp(value_str, &quot;true&quot;) == 0) {
+400     opts-&gt;color_mode = COLOR_MODE_TRUECOLOR;
+401   } else {
+402     log_error(&quot;Invalid color mode '%s'. Valid modes: auto, none, 16, 256, truecolor&quot;, value_str);
+403     return ERROR_INVALID_PARAM;
+404   }
+405 
+406   return ASCIICHAT_OK;
+407 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>options_state::color_mode</b>,
+    <b>COLOR_MODE_16_COLOR</b>, <b>COLOR_MODE_256_COLOR</b>,
+    <b>COLOR_MODE_AUTO</b>, <b>COLOR_MODE_NONE</b>, <b>COLOR_MODE_TRUECOLOR</b>,
+    <b>ERROR_INVALID_PARAM</b>, and <b>log_error</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> parse_height_option (const char *
   value_str, <b>options_t</b> * opts)</h2>
 <p class="Pp">Parse --height option and set opts-&gt;height. Validates height
@@ -707,7 +788,7 @@ SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, &quot;%s&quot;, value);
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>BUFFER_SIZE_SMALL</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>error_msg</b>, <b>log_error</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>log_error</b>,
     <b>options_state::log_level</b>, and <b>validate_opt_log_level()</b>.</p>
 </section>
 <section class="Ss">
@@ -1358,9 +1439,29 @@ opt_webcam_index = webcam_idx;
 259 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>BUFFER_SIZE_SMALL</b>, <b>error_msg</b>,
-    <b>log_error</b>, and <b>validate_opt_device_index()</b>.</p>
+<p class="Pp">References <b>BUFFER_SIZE_SMALL</b>, <b>log_error</b>, and
+    <b>validate_opt_device_index()</b>.</p>
 <p class="Pp">Referenced by <b>parse_webcam_index_option()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> auto_height = <b>true</b></h2>
+<p class="Pp">Definition at line <b>364</b> of file <b>options/common.c</b>.</p>
+<p class="Pp">Referenced by <b>session_render_loop()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> auto_width = <b>true</b></h2>
+<p class="Pp">Definition at line <b>364</b> of file <b>options/common.c</b>.</p>
+<p class="Pp">Referenced by <b>session_render_loop()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> port_explicitly_set_via_flag = <b>false</b></h2>
+<p class="Pp">Definition at line <b>367</b> of file <b>options/common.c</b>.</p>
 </section>
 </section>
 <section class="Sh">

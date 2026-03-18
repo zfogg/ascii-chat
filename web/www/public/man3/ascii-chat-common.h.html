@@ -154,17 +154,35 @@
   <br/>
   Exit with error code and context (used by FATAL macro).
     <b>asciichat_error_t</b> <b>asciichat_shared_init</b> (const char
-    *<b>log_file</b>, <b>bool</b> <b>is_client</b>)
+    *<b>log_file</b>, <b>bool</b> is_client)
   <br/>
   Initialize common subsystems shared by client and server. void
     <b>asciichat_shared_destroy</b> (void)
   <br/>
-  Clean up shared library subsystems. <b>__attribute__</b>
-    ((visibility('default'))) int g_argc
+  Clean up shared library subsystems.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">int <b>g_argc</b>
   <br/>
   Global argc for early argument inspection (e.g., --color flag detection) Set
     by <b>main()</b> for access from <b>lib/platform/terminal.c</b> during early
-    execution.
+    execution. char ** <b>g_argv</b>
+  <br/>
+  Global argv for early argument inspection (e.g., --color flag detection) Set
+    by <b>main()</b> for access from <b>lib/platform/terminal.c</b> during early
+    execution. <b>bool</b> <b>g_color_flag_passed</b>
+  <br/>
+  Was --color explicitly passed in command-line arguments? Set by
+    <b>options_init()</b> before RCU is initialized, used by
+    <b>terminal_should_color_output()</b>. <b>bool</b> <b>g_color_flag_value</b>
+  <br/>
+  Value of --color flag (true if --color was in argv) Set by
+    <b>options_init()</b> before RCU is initialized, used by
+    <b>terminal_should_color_output()</b>.
   <br/>
 </p>
 </section>

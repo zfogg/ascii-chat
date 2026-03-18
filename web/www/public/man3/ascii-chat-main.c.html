@@ -80,7 +80,7 @@
   <br/>
   void <b>setup_signal_handlers</b> (void)
   <br/>
-  int <b>main</b> (int <b>argc</b>, char *<b>argv</b>[])
+  int <b>main</b> (int argc, char *argv[])
   <br/>
   <br/>
 </p>
@@ -721,11 +721,11 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>action_show_version()</b>,
     <b>app_callbacks_register()</b>, <b>apply_color_mode_override()</b>,
-    <b>apply_palette_config()</b>, <b>argc</b>, <b>argv</b>,
-    <b>ASCII_CHAT_BUILD_TYPE</b>, <b>ASCIICHAT_OK</b>,
-    <b>asciichat_pcre2_cleanup_all()</b>, <b>asciichat_shared_destroy()</b>,
-    <b>asciichat_shared_init()</b>, <b>asciichat_thread_self()</b>,
-    <b>backtrace_print_simple()</b>, <b>colorscheme_load_builtin()</b>,
+    <b>apply_palette_config()</b>, <b>ASCII_CHAT_BUILD_TYPE</b>,
+    <b>ASCIICHAT_OK</b>, <b>asciichat_pcre2_cleanup_all()</b>,
+    <b>asciichat_shared_destroy()</b>, <b>asciichat_shared_init()</b>,
+    <b>asciichat_thread_self()</b>, <b>backtrace_print_simple()</b>,
+    <b>colorscheme_load_builtin()</b>,
     <b>asciichat_error_context_t::context_message</b>,
     <b>debug_atomic_init()</b>, <b>debug_memory_set_quiet_mode()</b>,
     <b>debug_sync_init()</b>, <b>debug_sync_set_main_thread_id()</b>,
@@ -735,17 +735,19 @@
     <b>mode_descriptor_t::entry_point</b>, <b>ERROR_CONFIG</b>,
     <b>ERROR_PLATFORM_INIT</b>, <b>ERROR_THREAD</b>, <b>ERROR_USAGE</b>,
     <b>FATAL</b>, <b>FILE_PERM_PRIVATE</b>, <b>options_state::fps</b>,
-    <b>GET_OPTION</b>, <b>grep_init()</b>, <b>HAS_ERRNO</b>,
-    <b>options_state::help</b>, <b>IS_OPTION_EXPLICIT</b>, <b>log_debug</b>,
-    <b>log_dev</b>, <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>, <b>log_file</b>,
-    <b>options_state::log_file</b>, <b>log_info</b>, <b>log_init_colors()</b>,
-    <b>log_redetect_terminal_capabilities()</b>, <b>log_set_color_scheme()</b>,
-    <b>log_set_force_stderr()</b>, <b>log_set_format()</b>,
-    <b>log_set_json_output()</b>, <b>log_set_terminal_output()</b>,
-    <b>log_truncate_if_large()</b>, <b>log_warn</b>, <b>MODE_CLIENT</b>,
-    <b>MODE_DISCOVERY</b>, <b>MODE_DISCOVERY_SERVICE</b>, <b>MODE_INVALID</b>,
-    <b>MODE_MIRROR</b>, <b>MODE_SERVER</b>, <b>named_init()</b>,
-    <b>NAMED_REGISTER_THREAD</b>, <b>named_registry_register_packet_types()</b>,
+    <b>g_argc</b>, <b>g_argv</b>, <b>g_color_flag_passed</b>,
+    <b>g_color_flag_value</b>, <b>GET_OPTION</b>, <b>grep_init()</b>,
+    <b>HAS_ERRNO</b>, <b>options_state::help</b>, <b>IS_OPTION_EXPLICIT</b>,
+    <b>log_debug</b>, <b>log_dev</b>, <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>,
+    <b>log_file</b>, <b>options_state::log_file</b>, <b>log_info</b>,
+    <b>log_init_colors()</b>, <b>log_redetect_terminal_capabilities()</b>,
+    <b>log_set_color_scheme()</b>, <b>log_set_force_stderr()</b>,
+    <b>log_set_format()</b>, <b>log_set_json_output()</b>,
+    <b>log_set_terminal_output()</b>, <b>log_truncate_if_large()</b>,
+    <b>log_warn</b>, <b>MODE_CLIENT</b>, <b>MODE_DISCOVERY</b>,
+    <b>MODE_DISCOVERY_SERVICE</b>, <b>MODE_INVALID</b>, <b>MODE_MIRROR</b>,
+    <b>MODE_SERVER</b>, <b>named_init()</b>, <b>NAMED_REGISTER_THREAD</b>,
+    <b>named_registry_register_packet_types()</b>,
     <b>options_cleanup_schema()</b>, <b>options_colorscheme_init_early()</b>,
     <b>options_get()</b>, <b>options_init()</b>, <b>options_state_destroy()</b>,
     <b>options_state::palette_custom</b>,

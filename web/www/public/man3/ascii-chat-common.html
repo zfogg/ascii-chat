@@ -119,18 +119,13 @@
   <br/>
   Exit with error code and context (used by FATAL macro).
     <b>asciichat_error_t</b> <b>asciichat_shared_init</b> (const char
-    *<b>log_file</b>, <b>bool</b> <b>is_client</b>)
+    *<b>log_file</b>, <b>bool</b> is_client)
   <br/>
   Initialize common subsystems shared by client and server. void
     <b>asciichat_shared_destroy</b> (void)
   <br/>
-  Clean up shared library subsystems. <b>__attribute__</b>
-    ((visibility('default'))) int g_argc
-  <br/>
-  Global argc for early argument inspection (e.g., --color flag detection) Set
-    by <b>main()</b> for access from <b>lib/platform/terminal.c</b> during early
-    execution. void <b>fps_init</b> (<b>fps_t</b> *tracker, int expected_fps,
-    const char *name)
+  Clean up shared library subsystems. void <b>fps_init</b> (<b>fps_t</b>
+    *tracker, int expected_fps, const char *name)
   <br/>
   Initialize FPS tracker. void <b>fps_init_with_interval</b> (<b>fps_t</b>
     *tracker, int expected_fps, const char *name, <b>uint64_t</b>
@@ -141,6 +136,29 @@
     *context)
   <br/>
   Track a frame and detect lag conditions (nanosecond version - PRIMARY).
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">int <b>g_argc</b>
+  <br/>
+  Global argc for early argument inspection (e.g., --color flag detection) Set
+    by <b>main()</b> for access from <b>lib/platform/terminal.c</b> during early
+    execution. char ** <b>g_argv</b>
+  <br/>
+  Global argv for early argument inspection (e.g., --color flag detection) Set
+    by <b>main()</b> for access from <b>lib/platform/terminal.c</b> during early
+    execution. <b>bool</b> <b>g_color_flag_passed</b>
+  <br/>
+  Was --color explicitly passed in command-line arguments? Set by
+    <b>options_init()</b> before RCU is initialized, used by
+    <b>terminal_should_color_output()</b>. <b>bool</b> <b>g_color_flag_value</b>
+  <br/>
+  Value of --color flag (true if --color was in argv) Set by
+    <b>options_init()</b> before RCU is initialized, used by
+    <b>terminal_should_color_output()</b>.
   <br/>
 </p>
 </section>
@@ -1506,423 +1524,6 @@ if (result != OK) {
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="__attribute___((visibility('default'))_)"><a class="permalink" href="#__attribute___((visibility('default'))_)">__attribute__
-  ((visibility('default')) ) [extern]</a></h2>
-<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
-<p class="Pp">Global argc for early argument inspection (e.g., --color flag
-    detection) Set by <b>main()</b> for access from
-    <b>lib/platform/terminal.c</b> during early execution. Value of --color flag
-    (true if --color was in argv) Set by <b>options_init()</b> before RCU is
-    initialized, used by <b>terminal_should_color_output()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp">Was --color explicitly passed in command-line arguments? Set by
-    <b>options_init()</b> before RCU is initialized, used by
-    <b>terminal_should_color_output()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp">Global argv for early argument inspection (e.g., --color flag
-    detection) Set by <b>main()</b> for access from
-    <b>lib/platform/terminal.c</b> during early execution.</p>
-<p class="Pp"></p>
-<p class="Pp">Global argc for early argument inspection (e.g., --color flag
-    detection) Set by <b>main()</b> for access from
-    <b>lib/platform/terminal.c</b> during early execution.</p>
-<p class="Pp"></p>
-<p class="Pp">Check if a key path is a remote/virtual key (not a local
-  file).</p>
-<p class="Pp"></p>
-<p class="Pp">Collect multiple --key flags into identity_keys array.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate password (8-256 characters).</p>
-<p class="Pp"></p>
-<p class="Pp">Validate device index (-1 for default, 0+ for specific
-  device).</p>
-<p class="Pp"></p>
-<p class="Pp">Validate reconnect value.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate compression level (1-9).</p>
-<p class="Pp"></p>
-<p class="Pp">Validate max clients value (1-32).</p>
-<p class="Pp"></p>
-<p class="Pp">Validate FPS value (1-144).</p>
-<p class="Pp"></p>
-<p class="Pp">Validate volume value (0.0-1.0).</p>
-<p class="Pp"></p>
-<p class="Pp">Validate non-negative float value.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate IP address or hostname.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate log level string.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate palette type string.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate render mode string.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate color mode string.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate non-negative integer.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate positive integer.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate port number (1-65535).</p>
-<p class="Pp"></p>
-<p class="Pp">Find the most similar string from a NULL-terminated array.</p>
-<p class="Pp"></p>
-<p class="Pp">Calculate Levenshtein distance with explicit string lengths.</p>
-<p class="Pp"></p>
-<p class="Pp">Clear cached key for ACDS server.</p>
-<p class="Pp"></p>
-<p class="Pp">Verify key change with user.</p>
-<p class="Pp"></p>
-<p class="Pp">Save key to cache.</p>
-<p class="Pp"></p>
-<p class="Pp">Check if cached key exists and load it.</p>
-<p class="Pp"></p>
-<p class="Pp">Get cached key path for ACDS server.</p>
-<p class="Pp"></p>
-<p class="Pp">Load key from local file.</p>
-<p class="Pp"></p>
-<p class="Pp">Download key from HTTPS URL.</p>
-<p class="Pp"></p>
-<p class="Pp">Value of --color flag (true if --color was in argv) Set by
-    <b>options_init()</b> before RCU is initialized, used by
-    <b>terminal_should_color_output()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp">Was --color explicitly passed in command-line arguments? Set by
-    <b>options_init()</b> before RCU is initialized, used by
-    <b>terminal_should_color_output()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp">Downloads a public key from an HTTPS URL using
-    lib/crypto/http_client.h. Supports both SSH (OpenSSH format) and GPG
-    (ASCII-armored or binary) keys.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>url</i> HTTPS URL to download from
-<br/>
-<i></i><b>pubkey_out</b><i></i><b> Ed25519 public key output (32
-  bytes)</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Loads a public key from a local file. Supports:</p>
-<ul class="Bl-bullet">
-  <li>OpenSSH format (.pub files)</li>
-  <li>GPG ASCII-armored format (.asc, .gpg)</li>
-  <li>GPG binary format</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>file_path</b><i></i><b> Path to key file</b>
-<br/>
-<i></i><b>pubkey_out</b><i></i><b> Ed25519 public key output (32
-  bytes)</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Returns the local cache path for a given ACDS server's key. Path:
-    ~/.config/ascii-chat/acds_keys/&lt;hostname&gt;/key.pub</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Acds_server</b><i></i><b> ACDS server
-  hostname</b>
-<br/>
-<i></i><b>path_out</b><i></i><b> Output buffer for cache path</b>
-<br/>
-<i></i><b>path_size</b><i></i><b> Size of output buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Attempts to load a cached key for the given ACDS server.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Acds_server</b><i></i><b> ACDS server
-  hostname</b>
-<br/>
-<i></i><b>pubkey_out</b><i></i><b> Ed25519 public key output (32
-  bytes)</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK if cached key exists and loaded
-  successfully, error otherwise</div>
-<p class="Pp">Caches a public key for the given ACDS server.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Acds_server</b><i></i><b> ACDS server
-  hostname</b>
-<br/>
-<i></i><b>pubkey</b><i></i><b> Public key to cache (32 bytes)</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">When a cached key doesn't match the newly downloaded/loaded key,
-    prompts the user to verify the change.</p>
-<p class="Pp"></p>
-<p class="Pp">Displays:</p>
-<ul class="Bl-bullet">
-  <li>Old key fingerprint (SHA256)</li>
-  <li>New key fingerprint (SHA256)</li>
-  <li>Warning about potential MITM attack</li>
-  <li>Prompt: &quot;Accept new key? (y/N): &quot;</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Acds_server</b><i></i><b> ACDS server
-  hostname</b>
-<br/>
-<i></i><b>old_pubkey</b><i></i><b> Previous cached key (32 bytes)</b>
-<br/>
-<i></i><b>new_pubkey</b><i></i><b> New downloaded key (32 bytes)</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK if user accepts, ERROR_USER_REJECTED if
-  declined</div>
-<p class="Pp">Removes the cached key for the given ACDS server. Useful for
-    testing or forcing key re-download.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Acds_server</b><i></i><b> ACDS server
-  hostname</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>a</i> First string
-<br/>
-<i></i><b>length</b><i></i><b> Length of first string</b>
-<br/>
-<i></i><b>b</b><i></i><b> Second string</b>
-<br/>
-<i></i><b>bLength</b><i></i><b> Length of second string</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Edit distance, or SIZE_MAX on error</div>
-<p class="Pp">Searches through an array of candidate strings to find the one
-    most similar to the input string, using Levenshtein distance.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>unknown</i> The string to match against
-<br/>
-<i></i><b>candidates</b><i></i><b> NULL-terminated array of candidate
-  strings</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Best matching string, or NULL if no match within
-  threshold</div>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Port number as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Validates that the port string is a valid number in the range
-    1-65535.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Integer value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed value on success, -1 on error</div>
-<p class="Pp">Validates that the string is a positive integer (&gt; 0).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Integer value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed value on success, -1 on error</div>
-<p class="Pp">Validates that the string is a non-negative integer (&gt;= 0).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Color mode value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed color mode enum value on success, -1 on
-  error</div>
-<p class="Pp">Valid values: auto, none, mono, 16, 16color, 256, 256color,
-    truecolor, 24bit</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Render mode value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed render mode enum value on success, -1 on
-  error</div>
-<p class="Pp">Valid values: foreground, fg, background, bg, half-block,
-    halfblock</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Palette type as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed palette type enum value on success, -1 on
-  error</div>
-<p class="Pp">Valid values: standard, blocks, digital, minimal, cool, custom</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Log level as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed log level enum value on success, -1 on error</div>
-<p class="Pp">Valid values (case-insensitive): dev, debug, info, warn, error,
-    fatal</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> IP address or hostname as string
-<br/>
-<i></i><b>parsed_address</b><i></i><b> Buffer to store resolved/parsed
-  address</b>
-<br/>
-<i></i><b>address_size</b><i></i><b> Size of parsed_address buffer</b>
-<br/>
-<i></i><b>is_client</b><i></i><b> True if client mode (for error messages)</b>
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Validates IPv4, IPv6 addresses, or resolves hostname to IP.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Float value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed float value on success, -1.0f on error</div>
-<p class="Pp">Validates that the string is a valid non-negative floating-point
-    number.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Volume value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed volume value on success, -1.0f on error</div>
-<p class="Pp">Validates that the string is a valid volume in the range 0.0 to
-    1.0. Used for --volume, --microphone-volume, and similar audio options.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> FPS value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed FPS value on success, -1 on error</div>
-<p class="Pp">Validates that the FPS is in the valid range of 1-144.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Max clients value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed value on success, -1 on error</div>
-<p class="Pp">Validates that the max clients is in the valid range of 1-32.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Compression level as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed level on success, -1 on error</div>
-<p class="Pp">Validates zstd compression level in range 1-9.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Reconnect value as string
-  (&quot;off&quot;, &quot;auto&quot;, or 0-999)
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 for off, -1 for auto, 1-999 for count, INT_MIN on
-  error</div>
-<p class="Pp">Valid values:</p>
-<ul class="Bl-bullet">
-  <li>&quot;off&quot; or &quot;0&quot;: No reconnection (returns 0)</li>
-  <li>&quot;auto&quot; or &quot;-1&quot;: Unlimited reconnection (returns
-    -1)</li>
-  <li>&quot;1&quot; to &quot;999&quot;: Retry count (returns the count)</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Device index as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed index on success, INT_MIN on error</div>
-<p class="Pp">Used for microphone-index, speakers-index, webcam-index. -1 means
-    use system default device.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Password string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Validates password length is 8-256 characters and contains no null
-    bytes.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>opts</i> Options structure to populate
-<br/>
-<i></i><b>argc</b><i></i><b> Argument count from </b><b>main()</b><b></b>
-<br/>
-<i></i><b>argv</b><i></i><b> Argument vector from </b><b>main()</b><b></b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of keys collected on success, -1 on error</div>
-<p class="Pp">Scans command-line arguments for all --key/-K flags and populates
-    both opts-&gt;encrypt_key (first key, for compatibility) and
-    opts-&gt;identity_keys[] array with all keys. Also sets
-    opts-&gt;num_identity_keys.</p>
-<p class="Pp"></p>
-<p class="Pp">This enables multi-key support: servers can load multiple identity
-    keys (e.g., both SSH and GPG) and select the appropriate one during
-    handshake based on what the client expects.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Must be called after options_parse() but before key
-  loading
-<p class="Pp"></p>
-<p class="Pp">Supports up to MAX_IDENTITY_KEYS (32) keys</p>
-</div>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>key_path</i> Key path to check</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if the key is remote (github:, gitlab:, gpg:,
-  http://, https://), false otherwise</div>
-<p class="Pp">Remote keys are fetched at runtime and don't need file existence
-    validation.</p>
-<p class="Pp">Definition at line <b>53</b> of file <b>common.c</b>.</p>
-<pre>67                                         {0};</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_API</b>, <b>ASCIICHAT_OK</b>, <b>BLUE</b>,
-    <b>options_state::color_mode</b>, <b>COLOR_MODE_16_COLOR</b>,
-    <b>COLOR_MODE_256_COLOR</b>, <b>COLOR_MODE_AUTO</b>, <b>COLOR_MODE_NONE</b>,
-    <b>COLOR_MODE_TRUECOLOR</b>, <b>ERROR_INVALID_PARAM</b>, <b>GRAY</b>,
-    <b>GREEN</b>, <b>log_error</b>, <b>RED</b>, <b>weight_blue</b>,
-    <b>weight_green</b>, and <b>weight_red</b>.</p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="void_asciichat_fatal_with_context_("><a class="permalink" href="#void_asciichat_fatal_with_context_(">void
   asciichat_fatal_with_context (<b>asciichat_error_t</b> code, const char *
   file, int line, const char * function, const char * format, ...)</a></h2>
@@ -2238,8 +1839,8 @@ if (result != OK) {
 <div class="Bd-indent"><i></i><b>log_file</b><i></i><b> Log filename to use
   (e.g., &quot;client.log&quot; or &quot;ascii-chat.log&quot;)</b>
 <br/>
-<i></i><b>is_client</b><i></i><b> true for client mode (routes all logs to
-  stderr), false for server mode</b></div>
+<i>is_client</i> true for client mode (routes all logs to stderr), false for
+  server mode</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Definition at line <b>115</b> of file <b>common.c</b>.</p>
@@ -2307,7 +1908,7 @@ if (result != OK) {
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_init_global()</b>,
     <b>debug_memory_ensure_init()</b>, <b>ERROR_PLATFORM_INIT</b>, <b>FATAL</b>,
-    <b>is_client</b>, <b>LOG_DEBUG</b>, <b>log_file</b>, <b>log_init()</b>,
+    <b>LOG_DEBUG</b>, <b>log_file</b>, <b>log_init()</b>,
     <b>log_system_init()</b>, <b>named_init()</b>, <b>platform_init()</b>,
     <b>SET_ERRNO</b>, <b>symbol_cache_init()</b>,
     <b>terminal_is_piped_output()</b>, and <b>timer_system_init()</b>.</p>
@@ -2470,6 +2071,52 @@ fps_frame_ns(&amp;tracker, now, &quot;frame rendered&quot;);
     <b>fps_t::last_fps_report_ns</b>, <b>fps_t::last_frame_time_ns</b>,
     <b>fps_t::report_interval_ns</b>, and <b>fps_t::tracker_name</b>.</p>
 <p class="Pp">Referenced by <b>fps_init()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_g_argc"><a class="permalink" href="#int_g_argc">int
+  g_argc [extern]</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
+<p class="Pp">Global argc for early argument inspection (e.g., --color flag
+    detection) Set by <b>main()</b> for access from
+    <b>lib/platform/terminal.c</b> during early execution.</p>
+<p class="Pp">Definition at line <b>53</b> of file <b>common.c</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, and
+    <b>terminal_should_color_output()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char**_g_argv"><a class="permalink" href="#char**_g_argv">char**
+  g_argv [extern]</a></h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
+<p class="Pp">Global argv for early argument inspection (e.g., --color flag
+    detection) Set by <b>main()</b> for access from
+    <b>lib/platform/terminal.c</b> during early execution.</p>
+<p class="Pp">Definition at line <b>54</b> of file <b>common.c</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, and
+    <b>terminal_should_color_output()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> g_color_flag_passed [extern]</h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
+<p class="Pp">Was --color explicitly passed in command-line arguments? Set by
+    <b>options_init()</b> before RCU is initialized, used by
+    <b>terminal_should_color_output()</b>.</p>
+<p class="Pp">Definition at line <b>57</b> of file <b>common.c</b>.</p>
+<p class="Pp">Referenced by <b>colored_string()</b>, <b>log_msg()</b>, and
+    <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> g_color_flag_value [extern]</h2>
+<p class="Pp">#include &lt;<b>include/ascii-chat/common.h</b>&gt;<b></b></p>
+<p class="Pp">Value of --color flag (true if --color was in argv) Set by
+    <b>options_init()</b> before RCU is initialized, used by
+    <b>terminal_should_color_output()</b>.</p>
+<p class="Pp">Definition at line <b>58</b> of file <b>common.c</b>.</p>
+<p class="Pp">Referenced by <b>colored_string()</b>, <b>log_msg()</b>, and
+    <b>main()</b>.</p>
 </section>
 </section>
 <section class="Sh">

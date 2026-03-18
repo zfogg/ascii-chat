@@ -318,6 +318,7 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
   /**
    * Transform function P tags into tables
    * Handles multiple functions in a single P tag by splitting at function boundaries
+   * Handles malformed HTML where signatures span multiple lines with <br/> tags
    */
   const transformFunctionsInHTML = (html) => {
     // First, remove __attribute__ tags to clean up the HTML for regex matching
@@ -335,8 +336,8 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
           return match;
         }
 
-        // Check if this P tag contains a function signature (bold name followed by paren)
-        if (!/<b>[a-zA-Z_][a-zA-Z0-9_]*<\/b>\s*\(/.test(content)) {
+        // Check if this P tag contains a function signature (bold name followed by paren or br)
+        if (!/<b>[a-zA-Z_][a-zA-Z0-9_]*<\/b>\s*[\(<br]/.test(content)) {
           return match;
         }
 
@@ -348,146 +349,239 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
         content = content.replace(/__attribute__\s*\(\([^)]*\)\)\s*/g, "");
         content = content.replace(/__attribute__\s*\([^)]*\)\s*/g, "");
 
-        // Extract plain text for parsing
-        const tempDiv = document.createElement("div");
-        tempDiv.innerHTML = content;
-        const fullPlainText = tempDiv.textContent.trim();
+        // Check if this is the special case: function signature with <br/> delimiters
+        // Pattern: bold function name followed by ( and incomplete params, then <br/>
+        const brDelimiterPattern = /<b>([a-zA-Z_][a-zA-Z0-9_]*)<\/b>\s*\([^)]*<br\s*\/?>/;
+        const hasBrDelimiters = brDelimiterPattern.test(content);
 
-        // Find ALL function names in the content (bold text followed by paren)
-        const funcNameMatches = [];
-        const boldRegex = /<b>([a-zA-Z_][a-zA-Z0-9_]*)<\/b>\s*\(/g;
-        let boldMatch;
-        while ((boldMatch = boldRegex.exec(content))) {
-          funcNameMatches.push(boldMatch[1]);
-        }
-
-        // If no functions found, return original
-        if (funcNameMatches.length === 0) {
-          return match;
-        }
-
-        // Split the full plain text into function entries
-        // Use a regex to find all function signatures, handling wrapping
         const rows = [];
 
-        // Find all function names by looking for patterns like "funcName ("
-        const funcNamePattern = /([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g;
-        const funcMatches = [];
-        let fnMatch;
-        while ((fnMatch = funcNamePattern.exec(fullPlainText))) {
-          funcMatches.push({
-            name: fnMatch[1],
-            startIdx: fnMatch.index,
-          });
-        }
+        if (hasBrDelimiters) {
+          // Special handling for <br/> delimited functions
+          // The uniqueness: function_name(<incomplete_params<br/>description<br/>
+          // Find all such patterns to extract complete function signatures
+          const funcPattern = /<b>([a-zA-Z_][a-zA-Z0-9_]*)<\/b>\s*\(([^<]*)<br\s*\/?>\s*([\s\S]*?)<br\s*\/?>/g;
+          let funcMatch;
 
-        // For each function match, extract the full signature and description
-        for (let i = 0; i < funcMatches.length; i++) {
-          const currentMatch = funcMatches[i];
-          const nextMatch = funcMatches[i + 1];
+          while ((funcMatch = funcPattern.exec(content))) {
+            const funcName = funcMatch[1];
+            const incompleteParams = funcMatch[2].trim();
+            const description = funcMatch[3].trim();
+            const boldTagStartIdx = funcMatch.index; // Position of <b> in content
 
-          // Find where this function's content ends (start of next function or end of text)
-          const contentEnd = nextMatch
-            ? nextMatch.startIdx
-            : fullPlainText.length;
-          const functionContent = fullPlainText.substring(
-            currentMatch.startIdx,
-            contentEnd,
-          );
+            // Extract the COMPLETE return type by looking at everything before <b>funcName</b>
+            // This includes multi-word types like "const char *" or "__attribute__(...) size_t"
+            const beforeBold = content.substring(0, boldTagStartIdx);
 
-          // Find the opening paren for this function
-          const openParenIdx = functionContent.indexOf("(");
-          let closeParenIdx = -1;
-          let parenCount = 1;
+            // Remove all HTML tags from the before text to get pure content
+            const tempDiv = document.createElement("div");
+            tempDiv.innerHTML = beforeBold;
+            const plainBefore = tempDiv.textContent;
 
-          for (let j = openParenIdx + 1; j < functionContent.length; j++) {
-            if (functionContent[j] === "(") parenCount++;
-            if (functionContent[j] === ")") {
-              parenCount--;
-              if (parenCount === 0) {
-                closeParenIdx = j;
-                break;
-              }
-            }
-          }
-
-          // Extract signature and description
-          let signature;
-          let description;
-
-          if (closeParenIdx !== -1) {
-            // Get everything up to and including the closing paren as the params+name part
-            const nameAndParams = functionContent
-              .substring(0, closeParenIdx + 1)
-              .trim();
-
-            // Extract the return type from the text before the function name
-            // Look backwards from currentMatch.startIdx to find the return type
+            // Extract all non-whitespace tokens and take the last meaningful one(s) as return type
+            const beforeTokens = plainBefore.trim().split(/\s+/).filter(t => t);
             let returnType = "";
-            if (currentMatch.startIdx > 0) {
-              // Get text before the function name
-              const beforeFunc = fullPlainText
-                .substring(0, currentMatch.startIdx)
-                .trim();
-              // Return type is the last "word-like" token before the function name
-              // It could be: void, char, char *, uint8_t, struct X, const char *, etc.
-              const parts = beforeFunc.split(/\s+/);
-              // Take the last part(s) that look like a return type
-              if (parts.length > 0) {
-                // Simple heuristic: last 1-2 parts are the return type (e.g., "char" or "char *")
-                returnType = parts[parts.length - 1];
-                // If it's just a pointer symbol or continuation, get the previous part too
-                if (
-                  parts.length > 1 &&
-                  (returnType === "*" || returnType === "const")
+
+            if (beforeTokens.length > 0) {
+              // Take last token(s) as return type, handling multi-word types
+              returnType = beforeTokens[beforeTokens.length - 1];
+
+              // Check if we need to combine with previous token (for cases like "char *")
+              if (beforeTokens.length > 1) {
+                const lastToken = beforeTokens[beforeTokens.length - 1];
+                // If last token is * or const, combine with previous
+                if (lastToken === "*" || lastToken === "const") {
+                  returnType =
+                    beforeTokens[beforeTokens.length - 2] + " " + lastToken;
+                }
+                // Also handle "const char *" pattern
+                else if (
+                  beforeTokens.length > 2 &&
+                  beforeTokens[beforeTokens.length - 2] === "char" &&
+                  beforeTokens[beforeTokens.length - 3] === "const"
                 ) {
-                  returnType = parts[parts.length - 2] + " " + returnType;
+                  returnType =
+                    beforeTokens[beforeTokens.length - 3] +
+                    " " +
+                    beforeTokens[beforeTokens.length - 2] +
+                    " " +
+                    lastToken;
                 }
               }
             }
 
-            // Full signature: return_type name(params)
-            signature = (returnType ? returnType + " " : "") + nameAndParams;
+            // Extract complete parameters: everything from ( to <br/>
+            const params = incompleteParams ? `(${incompleteParams}` : "(";
 
-            // Everything after the closing paren is description (don't trim yet - regex needs whitespace)
-            description = functionContent.substring(closeParenIdx + 1);
+            // Build full signature with return type and function name
+            const fullSignature =
+              (returnType ? returnType + " " : "") + funcName + params;
 
-            // The description may be followed by the return type of the next function
-            // Remove return type patterns that appear at the end of the description
-            // Return types include: void, char *, int, bool, uint8_t, struct X, const char *, etc.
-            // Pattern: optional whitespace + return type (including pointer types) + optional whitespace at end
-            description = description
-              .replace(
-                /\s*(?:void|bool|int|char\s*\*?|size_t|uint\d+_t|struct\s+\w+(?:\s*\*)?|const\s+\w+(?:\s+\*)?|unsigned\s+\w+|static\s+\w+(?:\s*\*)?)\s*$/i,
-                "",
-              )
-              .trim();
-          } else {
-            // No closing paren found, use whole content as signature
-            signature = functionContent.trim();
-            description = "";
+            // For table display, show just the params part without function name
+            const signatureWithoutName = params;
+
+            rows.push({
+              name: funcName,
+              signature: signatureWithoutName,
+              description: description,
+            });
+          }
+        } else {
+          // Original logic for standard function parsing
+          // Extract plain text for parsing, replacing <br> with space
+          const tempDiv = document.createElement("div");
+          tempDiv.innerHTML = content.replace(/<br\s*\/?>/gi, " ");
+          const fullPlainText = tempDiv.textContent.trim();
+
+          // Find ALL function names in the content (bold text followed by paren or br)
+          const funcNameMatches = [];
+          const boldRegex = /<b>([a-zA-Z_][a-zA-Z0-9_]*)<\/b>\s*[\(<br]/g;
+          let boldMatch;
+          while ((boldMatch = boldRegex.exec(content))) {
+            funcNameMatches.push(boldMatch[1]);
           }
 
-          // Remove the function name from the signature (it's already in the first column)
-          // Replace "funcName (" with "("
-          const signatureWithoutName = signature.replace(
-            new RegExp(
-              `\\b${currentMatch.name.replace(
-                /[.*+?^${}()|[\]\\]/g,
-                "\\$&",
-              )}\\s*\\(`,
-            ),
-            "(",
-          );
+          // If no functions found, return original
+          if (funcNameMatches.length === 0) {
+            return match;
+          }
 
-          rows.push({
-            name: currentMatch.name,
-            signature: signatureWithoutName,
-            description: description,
-          });
+          // Find all function names by looking for patterns like "funcName ("
+          const funcNamePattern = /([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g;
+          const funcMatches = [];
+          let fnMatch;
+          while ((fnMatch = funcNamePattern.exec(fullPlainText))) {
+            funcMatches.push({
+              name: fnMatch[1],
+              startIdx: fnMatch.index,
+            });
+          }
+
+          // For each function match, extract the full signature and description
+          for (let i = 0; i < funcMatches.length; i++) {
+            const currentMatch = funcMatches[i];
+            const nextMatch = funcMatches[i + 1];
+
+            // Find where this function's content ends (start of next function or end of text)
+            const contentEnd = nextMatch
+              ? nextMatch.startIdx
+              : fullPlainText.length;
+            const functionContent = fullPlainText.substring(
+              currentMatch.startIdx,
+              contentEnd,
+            );
+
+            // Find the opening paren for this function
+            const openParenIdx = functionContent.indexOf("(");
+            let closeParenIdx = -1;
+            let parenCount = 1;
+
+            for (let j = openParenIdx + 1; j < functionContent.length; j++) {
+              if (functionContent[j] === "(") parenCount++;
+              if (functionContent[j] === ")") {
+                parenCount--;
+                if (parenCount === 0) {
+                  closeParenIdx = j;
+                  break;
+                }
+              }
+            }
+
+            // If closing paren not found, assume rest of content until next keyword
+            if (closeParenIdx === -1) {
+              // Look for common description starters or end of content
+              const descPattern = /\s+(Calculate|Find|Get|Return|Check|Validate|Parse|Generate|Build|Create|Delete|Update|Process|Handle|Manage|Initialize|Configure|Set|Add|Remove|Extract|Transform|Convert|Encode|Decode|Encrypt|Decrypt|Serialize|Deserialize|Execute|Run|Start|Stop|Close|Open|Read|Write|Send|Receive|Send|Request|Response|Submit|Commit|Rollback|Allocate|Deallocate|Copy|Clone|Merge|Split|Join|Filter|Sort|Search|Lookup|Insert|Replace|Update|Append|Prepend|Reverse|Rotate|Shift|Swap|Compare|Match|Find|Locate|Register|Unregister|Subscribe|Unsubscribe|Attach|Detach|Link|Unlink|Mount|Unmount|Load|Unload|Import|Export|Include|Exclude|Enable|Disable|Activate|Deactivate|Suspend|Resume)/;
+              const descMatch = functionContent.substring(openParenIdx).search(descPattern);
+              if (descMatch > 0) {
+                closeParenIdx = openParenIdx + descMatch - 1;
+              } else {
+                // Fallback: use all content up to end
+                closeParenIdx = functionContent.length - 1;
+              }
+            }
+
+            // Extract signature and description
+            let signature;
+            let description;
+
+            if (closeParenIdx !== -1) {
+              // Get everything up to and including the closing paren as the params+name part
+              const nameAndParams = functionContent
+                .substring(0, closeParenIdx + 1)
+                .trim();
+
+              // Extract the return type from the text before the function name
+              // Look backwards from currentMatch.startIdx to find the return type
+              let returnType = "";
+              if (currentMatch.startIdx > 0) {
+                // Get text before the function name
+                const beforeFunc = fullPlainText
+                  .substring(0, currentMatch.startIdx)
+                  .trim();
+                // Return type is the last "word-like" token before the function name
+                // It could be: void, char, char *, uint8_t, struct X, const char *, etc.
+                const parts = beforeFunc.split(/\s+/);
+                // Take the last part(s) that look like a return type
+                if (parts.length > 0) {
+                  // Simple heuristic: last 1-2 parts are the return type (e.g., "char" or "char *")
+                  returnType = parts[parts.length - 1];
+                  // If it's just a pointer symbol or continuation, get the previous part too
+                  if (
+                    parts.length > 1 &&
+                    (returnType === "*" || returnType === "const")
+                  ) {
+                    returnType = parts[parts.length - 2] + " " + returnType;
+                  }
+                }
+              }
+
+              // Full signature: return_type name(params)
+              signature = (returnType ? returnType + " " : "") + nameAndParams;
+
+              // Everything after the closing paren is description (don't trim yet - regex needs whitespace)
+              description = functionContent.substring(closeParenIdx + 1);
+
+              // The description may be followed by the return type of the next function
+              // Remove return type patterns that appear at the end of the description
+              // Return types include: void, char *, int, bool, uint8_t, struct X, const char *, etc.
+              // Pattern: optional whitespace + return type (including pointer types) + optional whitespace at end
+              description = description
+                .replace(
+                  /\s*(?:void|bool|int|char\s*\*?|size_t|uint\d+_t|struct\s+\w+(?:\s*\*)?|const\s+\w+(?:\s+\*)?|unsigned\s+\w+|static\s+\w+(?:\s*\*)?)\s*$/i,
+                  "",
+                )
+                .trim();
+            } else {
+              // No closing paren found, use whole content as signature
+              signature = functionContent.trim();
+              description = "";
+            }
+
+            // Remove the function name from the signature (it's already in the first column)
+            // Replace "funcName (" with "("
+            const signatureWithoutName = signature.replace(
+              new RegExp(
+                `\\b${currentMatch.name.replace(
+                  /[.*+?^${}()|[\]\\]/g,
+                  "\\$&",
+                )}\\s*\\(`,
+              ),
+              "(",
+            );
+
+            rows.push({
+              name: currentMatch.name,
+              signature: signatureWithoutName,
+              description: description,
+            });
+          }
         }
 
         // Build table with all rows
+        if (rows.length === 0) {
+          return match; // No functions parsed, return original
+        }
+
         let tableHtml = '<table class="man-functions-table"><tbody>';
         for (const row of rows) {
           tableHtml += `<tr><td class="man-func-name"><code>${row.name}</code></td><td class="man-func-sig"><code>${row.signature}</code></td><td class="man-func-desc">${row.description}</td></tr>`;

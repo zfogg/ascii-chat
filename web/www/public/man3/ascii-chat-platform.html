@@ -248,8 +248,8 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>VALIDATE_AGENT_PATH</b>(path, <b>path_out</b>,
-    <b>path_size</b>, context)
+<p class="Pp">#define <b>VALIDATE_AGENT_PATH</b>(path, path_out, path_size,
+    context)
   <br/>
   Validate and copy agent socket path. #define <b>ASCIICHAT_API</b>
     <b>__attribute__</b>((visibility('default')))
@@ -492,11 +492,9 @@
     (<b>socket_t</b> sock)
   <br/>
   Optimize socket for high-throughput video streaming. int
-    <b>platform_get_ssh_agent_socket</b> (char *<b>path_out</b>, size_t
-    <b>path_size</b>)
+    <b>platform_get_ssh_agent_socket</b> (char *path_out, size_t path_size)
   <br/>
-  int <b>platform_get_gpg_agent_socket</b> (char *<b>path_out</b>, size_t
-    <b>path_size</b>)
+  int <b>platform_get_gpg_agent_socket</b> (char *path_out, size_t path_size)
   <br/>
   int <b>platform_backtrace</b> (void **buffer, int size)
   <br/>
@@ -555,15 +553,15 @@
     (const char *path, int mode)
   <br/>
   Create directories recursively (mkdir -p equivalent). <b>asciichat_error_t</b>
-    <b>platform_mkdtemp</b> (char *<b>path_out</b>, size_t <b>path_size</b>,
-    const char *prefix)
+    <b>platform_mkdtemp</b> (char *path_out, size_t path_size, const char
+    *prefix)
   <br/>
   Create a temporary directory with a given prefix. <b>asciichat_error_t</b>
     <b>platform_rmdir_recursive</b> (const char *path)
   <br/>
   Recursively delete a directory and all its contents. int
-    <b>platform_create_temp_file</b> (char *<b>path_out</b>, size_t
-    <b>path_size</b>, const char *prefix, int *fd)
+    <b>platform_create_temp_file</b> (char *path_out, size_t path_size, const
+    char *prefix, int *fd)
   <br/>
   Create a temporary file with a given prefix. int
     <b>platform_delete_temp_file</b> (const char *path)
@@ -635,8 +633,7 @@
     <b>platform_normalize_path_separators</b> (char *path)
   <br/>
   Normalize path separators for the current platform. int
-    <b>platform_path_strcasecmp</b> (const char *a, const char *<b>b</b>, size_t
-    n)
+    <b>platform_path_strcasecmp</b> (const char *a, const char *b, size_t n)
   <br/>
   Platform-aware path string comparison. const char *
     <b>file_read_error_message</b> (const char *path)
@@ -651,13 +648,13 @@
     *path)
   <br/>
   Check if file is writable. <b>bool</b> <b>platform_get_executable_path</b>
-    (char *exe_path, size_t <b>path_size</b>)
+    (char *exe_path, size_t path_size)
   <br/>
   Get the path to the current executable. <b>bool</b>
-    <b>platform_get_temp_dir</b> (char *temp_dir, size_t <b>path_size</b>)
+    <b>platform_get_temp_dir</b> (char *temp_dir, size_t path_size)
   <br/>
   Get the system temporary directory path. <b>bool</b> <b>platform_get_cwd</b>
-    (char *cwd, size_t <b>path_size</b>)
+    (char *cwd, size_t path_size)
   <br/>
   Get the current working directory of the process. int <b>platform_access</b>
     (const char *path, int mode)
@@ -743,7 +740,7 @@
   Close a process stream opened with <b>platform_popen()</b>.
     <b>asciichat_error_t</b> <b>platform_process_spawn</b>
     (<b>platform_process_t</b> **process_out, const char *path, const char
-    *const *<b>argv</b>, int stdin_fd, int stdout_fd, int stderr_fd)
+    *const *argv, int stdin_fd, int stdout_fd, int stderr_fd)
   <br/>
   Spawn a child process. <b>asciichat_error_t</b> <b>platform_process_wait</b>
     (<b>platform_process_t</b> *process, int timeout_ms, int *exit_code_out)
@@ -2345,8 +2342,6 @@ if (ready &gt; 0) {
     building with -fvisibility=hidden for better performance and smaller symbol
     tables.</p>
 <p class="Pp">Definition at line <b>82</b> of file <b>api.h</b>.</p>
-<p class="Pp">Referenced by <b>__attribute__()</b>, <b>__attribute__()</b>, and
-    <b>__attribute__()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_cond_timedwait(_cond,__"><a class="permalink" href="#_define_cond_timedwait(_cond,__">#define
@@ -3595,9 +3590,8 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp">Referenced by <b>terminal_get_default_foreground_color()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="_define_VALIDATE_AGENT_PATH(_path,__"><a class="permalink" href="#_define_VALIDATE_AGENT_PATH(_path,__">#define
-  VALIDATE_AGENT_PATH( path, <b>path_out</b>, <b>path_size</b>,
-  context)</a></h2>
+<h2 class="Ss" id="_define_VALIDATE_AGENT_PATH(_path,__path_out,__path_size,__context)"><a class="permalink" href="#_define_VALIDATE_AGENT_PATH(_path,__path_out,__path_size,__context)">#define
+  VALIDATE_AGENT_PATH( path, path_out, path_size, context)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/agent.h</b>&gt;<b></b><b>Value:</b><b></b></p>
 <pre>do {                                                                                                                 \
@@ -3628,9 +3622,9 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>path</i> Source path string
 <br/>
-<i></i><b>path_out</b><i></i><b> Output buffer</b>
+<i>path_out</i> Output buffer
 <br/>
-<i></i><b>path_size</b><i></i><b> Output buffer size</b>
+<i>path_size</i> Output buffer size
 <br/>
 <i>context</i> Description for error messages (e.g.,
   &quot;SSH_AUTH_SOCK&quot;)</div>
@@ -4734,7 +4728,6 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <div class="Bd-indent"><i>path</i> File path to check</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if file is writable, false otherwise</div>
-<p class="Pp">References <b>path_size</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_file_read_error_message_(const_char_*_path)"><a class="permalink" href="#const_char_*_file_read_error_message_(const_char_*_path)">const
@@ -5615,10 +5608,10 @@ for (int i = 0; i &lt; count; i++) {
     file via mkstemp with prefix in /tmp</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>path_out</b><i></i><b> Buffer to store the
-  created temp file path (must be at least 256 bytes)</b>
+<div class="Bd-indent"><i>path_out</i> Buffer to store the created temp file
+  path (must be at least 256 bytes)
 <br/>
-<i></i><b>path_size</b><i></i><b> Size of path_out buffer</b>
+<i>path_size</i> Size of path_out buffer
 <br/>
 <i>prefix</i> Prefix for the temp file name (e.g., &quot;asc_sig&quot;)
 <br/>
@@ -5629,7 +5622,6 @@ for (int i = 0; i &lt; count; i++) {
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Caller must close fd on Unix and delete the file on both
   platforms when done</div>
-<p class="Pp">References <b>path_out</b>, and <b>path_size</b>.</p>
 <p class="Pp">Referenced by <b>gpg_sign_with_key()</b>,
     <b>gpg_verify_detached_ed25519()</b>,
     <b>gpg_verify_signature_with_binary()</b>, and
@@ -6121,7 +6113,7 @@ if (config_dir) {
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>cwd</i> Buffer to store the current working directory
 <br/>
-<i></i><b>path_size</b><i></i><b> Size of the buffer in bytes</b></div>
+<i>path_size</i> Size of the buffer in bytes</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on failure (buffer too small or
   API error)</div>
@@ -6135,7 +6127,7 @@ if (config_dir) {
 116 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>path_size</b>, and <b>platform_strlcpy()</b>.</p>
+<p class="Pp">References <b>platform_strlcpy()</b>.</p>
 <p class="Pp">Referenced by <b>get_log_dir()</b>, and
     <b>path_validate_user_path()</b>.</p>
 </section>
@@ -6201,7 +6193,7 @@ if (data_dir) {
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>exe_path</i> Buffer to store the executable path
 <br/>
-<i></i><b>path_size</b><i></i><b> Size of the buffer</b></div>
+<i>path_size</i> Size of the buffer</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on failure</div>
 <p class="Pp"><b>Note</b></p>
@@ -6224,7 +6216,7 @@ if (platform_get_executable_path(exe_path, sizeof(exe_path))) {
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>exe_path</i> Buffer to store the executable path
 <br/>
-<i></i><b>path_size</b><i></i><b> Size of the buffer</b></div>
+<i>path_size</i> Size of the buffer</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on failure</div>
 <p class="Pp">Definition at line <b>189</b> of file <b>filesystem.c</b>.</p>
@@ -6282,8 +6274,8 @@ if (platform_get_executable_path(exe_path, sizeof(exe_path))) {
 <p class="Pp"></p>
 <p class="Pp">References <b>errno</b>, <b>ERROR_BUFFER_OVERFLOW</b>,
     <b>ERROR_GENERAL</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>path_size</b>, <b>SAFE_STRERROR</b>,
-    <b>SET_ERRNO</b>, and <b>SET_ERRNO_SYS</b>.</p>
+    <b>ERROR_INVALID_STATE</b>, <b>SAFE_STRERROR</b>, <b>SET_ERRNO</b>, and
+    <b>SET_ERRNO_SYS</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_get_gpg_agent_socket_(char_*_path_out,_size_t_path_size)"><a class="permalink" href="#int_platform_get_gpg_agent_socket_(char_*_path_out,_size_t_path_size)">int
@@ -6296,13 +6288,12 @@ if (platform_get_executable_path(exe_path, sizeof(exe_path))) {
     or ~/.gnupg/S.gpg-agent</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>path_out</b><i></i><b> Buffer to store path
-  (should be at least 256 bytes)</b>
+<div class="Bd-indent"><i>path_out</i> Buffer to store path (should be at least
+  256 bytes)
 <br/>
-<i></i><b>path_size</b><i></i><b> Size of path_out buffer</b></div>
+<i>path_size</i> Size of path_out buffer</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">References <b>path_out</b>, and <b>path_size</b>.</p>
 <p class="Pp">Referenced by <b>gpg_agent_connect()</b>.</p>
 </section>
 <section class="Ss">
@@ -6422,13 +6413,12 @@ if (platform_get_executable_path(exe_path, sizeof(exe_path))) {
     SSH_AUTH_SOCK environment variable.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>path_out</b><i></i><b> Buffer to store path
-  (should be at least 256 bytes)</b>
+<div class="Bd-indent"><i>path_out</i> Buffer to store path (should be at least
+  256 bytes)
 <br/>
-<i></i><b>path_size</b><i></i><b> Size of path_out buffer</b></div>
+<i>path_size</i> Size of path_out buffer</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">References <b>path_out</b>, and <b>path_size</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> platform_get_temp_dir (char * temp_dir, size_t
@@ -6448,7 +6438,7 @@ if (platform_get_executable_path(exe_path, sizeof(exe_path))) {
 <div class="Bd-indent"><i>temp_dir</i> Buffer to store the temporary directory
   path
 <br/>
-<i></i><b>path_size</b><i></i><b> Size of the buffer</b></div>
+<i>path_size</i> Size of the buffer</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success (directory exists and is writable), false
   on failure</div>
@@ -6487,7 +6477,7 @@ if (platform_get_temp_dir(temp_dir, sizeof(temp_dir))) {
 80 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>path_size</b>, and <b>platform_strlcpy()</b>.</p>
+<p class="Pp">References <b>platform_strlcpy()</b>.</p>
 <p class="Pp">Referenced by <b>get_log_dir()</b>, and
     <b>path_validate_user_path()</b>.</p>
 </section>
@@ -7073,10 +7063,10 @@ if (platform_mkdir_recursive(&quot;~/.ascii-chat/config&quot;, 0700) == ASCIICHA
     prefix Unix: Creates directory via mkdtemp with prefix in /tmp</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>path_out</b><i></i><b> Buffer to store the
-  created temp directory path (must be at least 256 bytes)</b>
+<div class="Bd-indent"><i>path_out</i> Buffer to store the created temp
+  directory path (must be at least 256 bytes)
 <br/>
-<i></i><b>path_size</b><i></i><b> Size of path_out buffer</b>
+<i>path_size</i> Size of path_out buffer
 <br/>
 <i>prefix</i> Prefix for the temp directory name (e.g.,
   &quot;ascii-chat-gpg&quot;)</div>
@@ -7089,7 +7079,6 @@ if (platform_mkdir_recursive(&quot;~/.ascii-chat/config&quot;, 0700) == ASCIICHA
 <p class="Pp">Directory permissions are restricted to 0700 (owner-only
   access)</p>
 </div>
-<p class="Pp">References <b>path_out</b>, and <b>path_size</b>.</p>
 <p class="Pp">Referenced by <b>gpg_homedir_create()</b>.</p>
 </section>
 <section class="Ss">
@@ -7350,7 +7339,6 @@ if (platform_mmap_open(&quot;/tmp/log.mmap&quot;, 1024 * 1024, &amp;mapping) == 
 <p class="Pp"></p>
 <p class="Pp">Safe to call with relative paths</p>
 </div>
-<p class="Pp">References <b>b</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_path_strcasecmp_(const_char_*_a,_const_char_*_b,_size_t_n)"><a class="permalink" href="#int_platform_path_strcasecmp_(const_char_*_a,_const_char_*_b,_size_t_n)">int
@@ -7368,7 +7356,7 @@ if (platform_mmap_open(&quot;/tmp/log.mmap&quot;, 1024 * 1024, &amp;mapping) == 
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>a</i> First path string
 <br/>
-<i></i><b>b</b><i></i><b> Second path string</b>
+<i>b</i> Second path string
 <br/>
 <i>n</i> Maximum number of characters to compare</div>
 <p class="Pp"><b>Returns</b></p>
@@ -7379,7 +7367,6 @@ if (platform_mmap_open(&quot;/tmp/log.mmap&quot;, 1024 * 1024, &amp;mapping) == 
 121 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>.</p>
 <p class="Pp">Referenced by <b>path_is_within_base()</b>.</p>
 </section>
 <section class="Ss">
@@ -7644,8 +7631,7 @@ if (platform_popen(&quot;ssh-keygen -l -f key.pub&quot;, &quot;r&quot;, &amp;str
 <br/>
 <i>path</i> Path to executable (can be relative or absolute)
 <br/>
-<i></i><b>argv</b><i></i><b> Argument array, NULL-terminated (argv[0] should be
-  program name)</b>
+<i>argv</i> Argument array, NULL-terminated (argv[0] should be program name)
 <br/>
 <i>stdin_fd</i> File descriptor for stdin, or -1 to use parent's stdin
 <br/>
@@ -7659,7 +7645,6 @@ if (platform_popen(&quot;ssh-keygen -l -f key.pub&quot;, &quot;r&quot;, &amp;str
 <p class="Pp"></p>
 <p class="Pp">File descriptors are duplicated, not closed</p>
 </div>
-<p class="Pp">References <b>argv</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> platform_process_wait

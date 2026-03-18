@@ -374,12 +374,19 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp"><b>__attribute__</b> ((visibility('default'))) size_t
-    <b>levenshtein</b>(const char *a
+<p class="Pp">size_t <b>levenshtein</b> (const char *a, const char *b)
   <br/>
-  Calculate Levenshtein distance between two strings. <b>asciichat_error_t</b>
-    <b>options_config_generate_manpage_template</b> (const
-    <b>options_config_t</b> *config, const char *program_name, const char
+  Calculate Levenshtein distance between two strings. size_t
+    <b>levenshtein_n</b> (const char *a, const size_t length, const char *b,
+    const size_t bLength)
+  <br/>
+  Calculate Levenshtein distance with explicit string lengths. const char *
+    <b>levenshtein_find_similar</b> (const char *unknown, const char *const
+    *candidates)
+  <br/>
+  Find the most similar string from a NULL-terminated array.
+    <b>asciichat_error_t</b> <b>options_config_generate_manpage_template</b>
+    (const <b>options_config_t</b> *config, const char *program_name, const char
     *mode_name, const char *output_path, const char *brief_description)
   <br/>
   Generate a man page template from options builder configuration.
@@ -445,15 +452,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
 <br/>
-<p class="Pp">const char * <b>b</b>
-  <br/>
-  const size_t <b>length</b>
-  <br/>
-  const size_t const char const size_t <b>bLength</b>
-  <br/>
-  const char *const * <b>candidates</b>
-  <br/>
-  const float <b>weight_red</b>
+<p class="Pp">const float <b>weight_red</b>
   <br/>
   Red weight for luminance calculation. const float <b>weight_green</b>
   <br/>
@@ -468,32 +467,6 @@
   Blue channel lookup table. unsigned short int <b>GRAY</b> []
   <br/>
   Grayscale lookup table.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Validation_Functions"><a class="permalink" href="#Validation_Functions">Validation
-  Functions</a></h2>
-<br/>
-<p class="Pp">char * <b>error_msg</b>
-  <br/>
-  char size_t <b>error_msg_size</b>
-  <br/>
-  char * <b>parsed_address</b>
-  <br/>
-  char size_t <b>address_size</b>
-  <br/>
-  char size_t <b>bool</b> <b>is_client</b>
-  <br/>
-  int <b>argc</b>
-  <br/>
-  int char * <b>argv</b> []
-  <br/>
-  <b>__attribute__</b> ((visibility('default')))
-  <br/>
-  Global argv for early argument inspection (e.g., --color flag detection) Set
-    by <b>main()</b> for access from <b>lib/platform/terminal.c</b> during early
-    execution.
   <br/>
 </p>
 </section>
@@ -514,7 +487,7 @@
 <p class="Pp"><b>options_t</b> <b>options_t_new</b> (void)
   <br/>
   Initialize options by parsing command-line arguments. <b>asciichat_error_t</b>
-    <b>options_init</b> (int <b>argc</b>, char **<b>argv</b>)
+    <b>options_init</b> (int argc, char **argv)
   <br/>
   Initialize options by parsing command-line arguments with unified mode
     detection. void <b>usage</b> (FILE *stream, <b>asciichat_mode_t</b> mode)
@@ -534,6 +507,70 @@
     <b>update_dimensions_for_full_height</b> (<b>options_t</b> *opts)
   <br/>
   Update dimensions to use full terminal height while maintaining aspect ratio.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Validation_Functions"><a class="permalink" href="#Validation_Functions">Validation
+  Functions</a></h2>
+<br/>
+<p class="Pp">int <b>validate_opt_port</b> (const char *value_str, char
+    *error_msg, size_t error_msg_size)
+  <br/>
+  Validate port number (1-65535). int <b>validate_opt_positive_int</b> (const
+    char *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate positive integer. int <b>validate_opt_non_negative_int</b> (const
+    char *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate non-negative integer. int <b>validate_opt_color_mode</b> (const char
+    *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate color mode string. int <b>validate_opt_render_mode</b> (const char
+    *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate render mode string. int <b>validate_opt_palette</b> (const char
+    *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate palette type string. int <b>validate_opt_log_level</b> (const char
+    *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate log level string. int <b>validate_opt_ip_address</b> (const char
+    *value_str, char *parsed_address, size_t address_size, <b>bool</b>
+    is_client, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate IP address or hostname. float <b>validate_opt_float_non_negative</b>
+    (const char *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate non-negative float value. float <b>validate_opt_volume</b> (const
+    char *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate volume value (0.0-1.0). int <b>validate_opt_fps</b> (const char
+    *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate FPS value (1-144). int <b>validate_opt_max_clients</b> (const char
+    *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate max clients value (1-32). int <b>validate_opt_compression_level</b>
+    (const char *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate compression level (1-9). int <b>validate_opt_reconnect</b> (const
+    char *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate reconnect value. int <b>validate_opt_device_index</b> (const char
+    *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate device index (-1 for default, 0+ for specific device). int
+    <b>validate_opt_password</b> (const char *value_str, char *error_msg, size_t
+    error_msg_size)
+  <br/>
+  Validate password (8-256 characters). int <b>options_collect_identity_keys</b>
+    (<b>options_t</b> *opts, int argc, char *argv[])
+  <br/>
+  Collect multiple --key flags into identity_keys array. <b>bool</b>
+    <b>is_remote_key_path</b> (const char *key_path)
+  <br/>
+  Check if a key path is a remote/virtual key (not a local file).
   <br/>
 </p>
 </section>
@@ -1146,8 +1183,8 @@ options_state_set(&amp;my_opts);</pre>
 <p class="Pp">16-color mode (full name)</p>
 <p class="Pp">Definition at line <b>216</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
-<p class="Pp">Referenced by <b>__attribute__()</b>,
-    <b>append_color_fg_for_mode()</b>, and <b>validate_opt_color_mode()</b>.</p>
+<p class="Pp">Referenced by <b>append_color_fg_for_mode()</b>,
+    <b>parse_color_mode_option()</b>, and <b>validate_opt_color_mode()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_COLOR_MODE_256___"><a class="permalink" href="#_define_COLOR_MODE_256___">#define
@@ -1166,8 +1203,8 @@ options_state_set(&amp;my_opts);</pre>
 <p class="Pp">256-color mode (full name)</p>
 <p class="Pp">Definition at line <b>218</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
-<p class="Pp">Referenced by <b>__attribute__()</b>,
-    <b>append_color_fg_for_mode()</b>, and <b>validate_opt_color_mode()</b>.</p>
+<p class="Pp">Referenced by <b>append_color_fg_for_mode()</b>,
+    <b>parse_color_mode_option()</b>, and <b>validate_opt_color_mode()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_COLOR_MODE_AUTO___"><a class="permalink" href="#_define_COLOR_MODE_AUTO___">#define
@@ -1178,8 +1215,8 @@ options_state_set(&amp;my_opts);</pre>
     Auto-detect color support</p>
 <p class="Pp">Definition at line <b>213</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
-<p class="Pp">Referenced by <b>__attribute__()</b>,
-    <b>append_color_fg_for_mode()</b>,
+<p class="Pp">Referenced by <b>append_color_fg_for_mode()</b>,
+    <b>parse_color_mode_option()</b>,
     <b>threaded_send_terminal_size_with_auto_detect()</b>, and
     <b>validate_opt_color_mode()</b>.</p>
 </section>
@@ -1191,8 +1228,8 @@ options_state_set(&amp;my_opts);</pre>
 <p class="Pp">Monochrome mode.</p>
 <p class="Pp">Definition at line <b>214</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
-<p class="Pp">Referenced by <b>__attribute__()</b>,
-    <b>append_color_fg_for_mode()</b>, <b>server_connection_establish()</b>,
+<p class="Pp">Referenced by <b>append_color_fg_for_mode()</b>,
+    <b>parse_color_mode_option()</b>, <b>server_connection_establish()</b>,
     <b>terminal_should_color_output()</b>, and
   <b>validate_opt_color_mode()</b>.</p>
 </section>
@@ -1204,8 +1241,8 @@ options_state_set(&amp;my_opts);</pre>
 <p class="Pp">24-bit truecolor mode</p>
 <p class="Pp">Definition at line <b>219</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
-<p class="Pp">Referenced by <b>__attribute__()</b>,
-    <b>append_color_fg_for_mode()</b>, and <b>validate_opt_color_mode()</b>.</p>
+<p class="Pp">Referenced by <b>append_color_fg_for_mode()</b>,
+    <b>parse_color_mode_option()</b>, and <b>validate_opt_color_mode()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_GET_OPTION(_field)"><a class="permalink" href="#_define_GET_OPTION(_field)">#define
@@ -2944,703 +2981,6 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="__attribute___((visibility('default'))_)"><a class="permalink" href="#__attribute___((visibility('default'))_)">__attribute__
-  ((visibility('default')) )</a></h2>
-<p class="Pp">#include &lt;<b>lib/common.c</b>&gt;<b></b></p>
-<p class="Pp">Global argv for early argument inspection (e.g., --color flag
-    detection) Set by <b>main()</b> for access from
-    <b>lib/platform/terminal.c</b> during early execution. Global argc for early
-    argument inspection (e.g., --color flag detection) Set by <b>main()</b> for
-    access from <b>lib/platform/terminal.c</b> during early execution.</p>
-<p class="Pp"></p>
-<p class="Pp">Check if a key path is a remote/virtual key (not a local
-  file).</p>
-<p class="Pp"></p>
-<p class="Pp">Collect multiple --key flags into identity_keys array.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate password (8-256 characters).</p>
-<p class="Pp"></p>
-<p class="Pp">Validate device index (-1 for default, 0+ for specific
-  device).</p>
-<p class="Pp"></p>
-<p class="Pp">Validate reconnect value.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate compression level (1-9).</p>
-<p class="Pp"></p>
-<p class="Pp">Validate max clients value (1-32).</p>
-<p class="Pp"></p>
-<p class="Pp">Validate FPS value (1-144).</p>
-<p class="Pp"></p>
-<p class="Pp">Validate volume value (0.0-1.0).</p>
-<p class="Pp"></p>
-<p class="Pp">Validate non-negative float value.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate IP address or hostname.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate log level string.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate palette type string.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate render mode string.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate color mode string.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate non-negative integer.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate positive integer.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate port number (1-65535).</p>
-<p class="Pp"></p>
-<p class="Pp">Find the most similar string from a NULL-terminated array.</p>
-<p class="Pp"></p>
-<p class="Pp">Calculate Levenshtein distance with explicit string lengths.</p>
-<p class="Pp"></p>
-<p class="Pp">Clear cached key for ACDS server.</p>
-<p class="Pp"></p>
-<p class="Pp">Verify key change with user.</p>
-<p class="Pp"></p>
-<p class="Pp">Save key to cache.</p>
-<p class="Pp"></p>
-<p class="Pp">Check if cached key exists and load it.</p>
-<p class="Pp"></p>
-<p class="Pp">Get cached key path for ACDS server.</p>
-<p class="Pp"></p>
-<p class="Pp">Load key from local file.</p>
-<p class="Pp"></p>
-<p class="Pp">Download key from HTTPS URL.</p>
-<p class="Pp"></p>
-<p class="Pp">Value of --color flag (true if --color was in argv) Set by
-    <b>options_init()</b> before RCU is initialized, used by
-    <b>terminal_should_color_output()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp">Was --color explicitly passed in command-line arguments? Set by
-    <b>options_init()</b> before RCU is initialized, used by
-    <b>terminal_should_color_output()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp">Downloads a public key from an HTTPS URL using
-    lib/crypto/http_client.h. Supports both SSH (OpenSSH format) and GPG
-    (ASCII-armored or binary) keys.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>url</i> HTTPS URL to download from
-<br/>
-<i></i><b>pubkey_out</b><i></i><b> Ed25519 public key output (32
-  bytes)</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Loads a public key from a local file. Supports:</p>
-<ul class="Bl-bullet">
-  <li>OpenSSH format (.pub files)</li>
-  <li>GPG ASCII-armored format (.asc, .gpg)</li>
-  <li>GPG binary format</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>file_path</b><i></i><b> Path to key file</b>
-<br/>
-<i></i><b>pubkey_out</b><i></i><b> Ed25519 public key output (32
-  bytes)</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Returns the local cache path for a given ACDS server's key. Path:
-    ~/.config/ascii-chat/acds_keys/&lt;hostname&gt;/key.pub</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Acds_server</b><i></i><b> ACDS server
-  hostname</b>
-<br/>
-<i></i><b>path_out</b><i></i><b> Output buffer for cache path</b>
-<br/>
-<i></i><b>path_size</b><i></i><b> Size of output buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Attempts to load a cached key for the given ACDS server.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Acds_server</b><i></i><b> ACDS server
-  hostname</b>
-<br/>
-<i></i><b>pubkey_out</b><i></i><b> Ed25519 public key output (32
-  bytes)</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK if cached key exists and loaded
-  successfully, error otherwise</div>
-<p class="Pp">Caches a public key for the given ACDS server.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Acds_server</b><i></i><b> ACDS server
-  hostname</b>
-<br/>
-<i></i><b>pubkey</b><i></i><b> Public key to cache (32 bytes)</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">When a cached key doesn't match the newly downloaded/loaded key,
-    prompts the user to verify the change.</p>
-<p class="Pp"></p>
-<p class="Pp">Displays:</p>
-<ul class="Bl-bullet">
-  <li>Old key fingerprint (SHA256)</li>
-  <li>New key fingerprint (SHA256)</li>
-  <li>Warning about potential MITM attack</li>
-  <li>Prompt: &quot;Accept new key? (y/N): &quot;</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Acds_server</b><i></i><b> ACDS server
-  hostname</b>
-<br/>
-<i></i><b>old_pubkey</b><i></i><b> Previous cached key (32 bytes)</b>
-<br/>
-<i></i><b>new_pubkey</b><i></i><b> New downloaded key (32 bytes)</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK if user accepts, ERROR_USER_REJECTED if
-  declined</div>
-<p class="Pp">Removes the cached key for the given ACDS server. Useful for
-    testing or forcing key re-download.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Acds_server</b><i></i><b> ACDS server
-  hostname</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>a</i> First string
-<br/>
-<i></i><b>length</b><i></i><b> Length of first string</b>
-<br/>
-<i></i><b>b</b><i></i><b> Second string</b>
-<br/>
-<i></i><b>bLength</b><i></i><b> Length of second string</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Edit distance, or SIZE_MAX on error</div>
-<p class="Pp">Searches through an array of candidate strings to find the one
-    most similar to the input string, using Levenshtein distance.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>unknown</i> The string to match against
-<br/>
-<i></i><b>candidates</b><i></i><b> NULL-terminated array of candidate
-  strings</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Best matching string, or NULL if no match within
-  threshold</div>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Port number as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Validates that the port string is a valid number in the range
-    1-65535.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Integer value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed value on success, -1 on error</div>
-<p class="Pp">Validates that the string is a positive integer (&gt; 0).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Integer value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed value on success, -1 on error</div>
-<p class="Pp">Validates that the string is a non-negative integer (&gt;= 0).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Color mode value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed color mode enum value on success, -1 on
-  error</div>
-<p class="Pp">Valid values: auto, none, mono, 16, 16color, 256, 256color,
-    truecolor, 24bit</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Render mode value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed render mode enum value on success, -1 on
-  error</div>
-<p class="Pp">Valid values: foreground, fg, background, bg, half-block,
-    halfblock</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Palette type as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed palette type enum value on success, -1 on
-  error</div>
-<p class="Pp">Valid values: standard, blocks, digital, minimal, cool, custom</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Log level as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed log level enum value on success, -1 on error</div>
-<p class="Pp">Valid values (case-insensitive): dev, debug, info, warn, error,
-    fatal</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> IP address or hostname as string
-<br/>
-<i></i><b>parsed_address</b><i></i><b> Buffer to store resolved/parsed
-  address</b>
-<br/>
-<i></i><b>address_size</b><i></i><b> Size of parsed_address buffer</b>
-<br/>
-<i></i><b>is_client</b><i></i><b> True if client mode (for error messages)</b>
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Validates IPv4, IPv6 addresses, or resolves hostname to IP.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Float value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed float value on success, -1.0f on error</div>
-<p class="Pp">Validates that the string is a valid non-negative floating-point
-    number.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Volume value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed volume value on success, -1.0f on error</div>
-<p class="Pp">Validates that the string is a valid volume in the range 0.0 to
-    1.0. Used for --volume, --microphone-volume, and similar audio options.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> FPS value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed FPS value on success, -1 on error</div>
-<p class="Pp">Validates that the FPS is in the valid range of 1-144.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Max clients value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed value on success, -1 on error</div>
-<p class="Pp">Validates that the max clients is in the valid range of 1-32.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Compression level as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed level on success, -1 on error</div>
-<p class="Pp">Validates zstd compression level in range 1-9.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Reconnect value as string
-  (&quot;off&quot;, &quot;auto&quot;, or 0-999)
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 for off, -1 for auto, 1-999 for count, INT_MIN on
-  error</div>
-<p class="Pp">Valid values:</p>
-<ul class="Bl-bullet">
-  <li>&quot;off&quot; or &quot;0&quot;: No reconnection (returns 0)</li>
-  <li>&quot;auto&quot; or &quot;-1&quot;: Unlimited reconnection (returns
-    -1)</li>
-  <li>&quot;1&quot; to &quot;999&quot;: Retry count (returns the count)</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Device index as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed index on success, INT_MIN on error</div>
-<p class="Pp">Used for microphone-index, speakers-index, webcam-index. -1 means
-    use system default device.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Password string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Validates password length is 8-256 characters and contains no null
-    bytes.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>opts</i> Options structure to populate
-<br/>
-<i></i><b>argc</b><i></i><b> Argument count from </b><b>main()</b><b></b>
-<br/>
-<i></i><b>argv</b><i></i><b> Argument vector from </b><b>main()</b><b></b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of keys collected on success, -1 on error</div>
-<p class="Pp">Scans command-line arguments for all --key/-K flags and populates
-    both opts-&gt;encrypt_key (first key, for compatibility) and
-    opts-&gt;identity_keys[] array with all keys. Also sets
-    opts-&gt;num_identity_keys.</p>
-<p class="Pp"></p>
-<p class="Pp">This enables multi-key support: servers can load multiple identity
-    keys (e.g., both SSH and GPG) and select the appropriate one during
-    handshake based on what the client expects.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Must be called after options_parse() but before key
-  loading
-<p class="Pp"></p>
-<p class="Pp">Supports up to MAX_IDENTITY_KEYS (32) keys</p>
-</div>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>key_path</i> Key path to check</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if the key is remote (github:, gitlab:, gpg:,
-  http://, https://), false otherwise</div>
-<p class="Pp">Remote keys are fetched at runtime and don't need file existence
-    validation.</p>
-<p class="Pp">Definition at line <b>53</b> of file <b>common.c</b>.</p>
-<pre>67                                         {0};</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_API</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="__attribute___((visibility('default'))_)_const"><a class="permalink" href="#__attribute___((visibility('default'))_)_const">__attribute__
-  ((visibility('default')) ) const</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/options/levenshtein.h</b>&gt;<b></b></p>
-<p class="Pp">Calculate Levenshtein distance between two strings. Check if a key
-    path is a remote/virtual key (not a local file).</p>
-<p class="Pp"></p>
-<p class="Pp">Collect multiple --key flags into identity_keys array.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate password (8-256 characters).</p>
-<p class="Pp"></p>
-<p class="Pp">Validate device index (-1 for default, 0+ for specific
-  device).</p>
-<p class="Pp"></p>
-<p class="Pp">Validate reconnect value.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate compression level (1-9).</p>
-<p class="Pp"></p>
-<p class="Pp">Validate max clients value (1-32).</p>
-<p class="Pp"></p>
-<p class="Pp">Validate FPS value (1-144).</p>
-<p class="Pp"></p>
-<p class="Pp">Validate volume value (0.0-1.0).</p>
-<p class="Pp"></p>
-<p class="Pp">Validate non-negative float value.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate IP address or hostname.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate log level string.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate palette type string.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate render mode string.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate color mode string.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate non-negative integer.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate positive integer.</p>
-<p class="Pp"></p>
-<p class="Pp">Validate port number (1-65535).</p>
-<p class="Pp"></p>
-<p class="Pp">Find the most similar string from a NULL-terminated array.</p>
-<p class="Pp"></p>
-<p class="Pp">Calculate Levenshtein distance with explicit string lengths.</p>
-<p class="Pp"></p>
-<p class="Pp">The Levenshtein distance is the minimum number of single-character
-    edits (insertions, deletions, or substitutions) required to change one
-    string into the other.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>a</i> First string
-<br/>
-<i></i><b>b</b><i></i><b> Second string</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Edit distance, or SIZE_MAX on error</div>
-<p class="Pp"><b>See also</b></p>
-<div class="Bd-indent">https://en.wikipedia.org/wiki/Levenshtein_distance</div>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>a</i> First string
-<br/>
-<i></i><b>length</b><i></i><b> Length of first string</b>
-<br/>
-<i></i><b>b</b><i></i><b> Second string</b>
-<br/>
-<i></i><b>bLength</b><i></i><b> Length of second string</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Edit distance, or SIZE_MAX on error</div>
-<p class="Pp">Searches through an array of candidate strings to find the one
-    most similar to the input string, using Levenshtein distance.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>unknown</i> The string to match against
-<br/>
-<i></i><b>candidates</b><i></i><b> NULL-terminated array of candidate
-  strings</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Best matching string, or NULL if no match within
-  threshold</div>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Port number as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Validates that the port string is a valid number in the range
-    1-65535.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Integer value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed value on success, -1 on error</div>
-<p class="Pp">Validates that the string is a positive integer (&gt; 0).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Integer value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed value on success, -1 on error</div>
-<p class="Pp">Validates that the string is a non-negative integer (&gt;= 0).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Color mode value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed color mode enum value on success, -1 on
-  error</div>
-<p class="Pp">Valid values: auto, none, mono, 16, 16color, 256, 256color,
-    truecolor, 24bit</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Render mode value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed render mode enum value on success, -1 on
-  error</div>
-<p class="Pp">Valid values: foreground, fg, background, bg, half-block,
-    halfblock</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Palette type as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed palette type enum value on success, -1 on
-  error</div>
-<p class="Pp">Valid values: standard, blocks, digital, minimal, cool, custom</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Log level as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed log level enum value on success, -1 on error</div>
-<p class="Pp">Valid values (case-insensitive): dev, debug, info, warn, error,
-    fatal</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> IP address or hostname as string
-<br/>
-<i></i><b>parsed_address</b><i></i><b> Buffer to store resolved/parsed
-  address</b>
-<br/>
-<i></i><b>address_size</b><i></i><b> Size of parsed_address buffer</b>
-<br/>
-<i></i><b>is_client</b><i></i><b> True if client mode (for error messages)</b>
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Validates IPv4, IPv6 addresses, or resolves hostname to IP.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Float value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed float value on success, -1.0f on error</div>
-<p class="Pp">Validates that the string is a valid non-negative floating-point
-    number.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Volume value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed volume value on success, -1.0f on error</div>
-<p class="Pp">Validates that the string is a valid volume in the range 0.0 to
-    1.0. Used for --volume, --microphone-volume, and similar audio options.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> FPS value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed FPS value on success, -1 on error</div>
-<p class="Pp">Validates that the FPS is in the valid range of 1-144.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Max clients value as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed value on success, -1 on error</div>
-<p class="Pp">Validates that the max clients is in the valid range of 1-32.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Compression level as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed level on success, -1 on error</div>
-<p class="Pp">Validates zstd compression level in range 1-9.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Reconnect value as string
-  (&quot;off&quot;, &quot;auto&quot;, or 0-999)
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 for off, -1 for auto, 1-999 for count, INT_MIN on
-  error</div>
-<p class="Pp">Valid values:</p>
-<ul class="Bl-bullet">
-  <li>&quot;off&quot; or &quot;0&quot;: No reconnection (returns 0)</li>
-  <li>&quot;auto&quot; or &quot;-1&quot;: Unlimited reconnection (returns
-    -1)</li>
-  <li>&quot;1&quot; to &quot;999&quot;: Retry count (returns the count)</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Device index as string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Parsed index on success, INT_MIN on error</div>
-<p class="Pp">Used for microphone-index, speakers-index, webcam-index. -1 means
-    use system default device.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>value_str</i> Password string
-<br/>
-<i></i><b>error_msg</b><i></i><b> Buffer for error message (can be NULL)</b>
-<br/>
-<i></i><b>error_msg_size</b><i></i><b> Size of error message buffer</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Validates password length is 8-256 characters and contains no null
-    bytes.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>opts</i> Options structure to populate
-<br/>
-<i></i><b>argc</b><i></i><b> Argument count from </b><b>main()</b><b></b>
-<br/>
-<i></i><b>argv</b><i></i><b> Argument vector from </b><b>main()</b><b></b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Number of keys collected on success, -1 on error</div>
-<p class="Pp">Scans command-line arguments for all --key/-K flags and populates
-    both opts-&gt;encrypt_key (first key, for compatibility) and
-    opts-&gt;identity_keys[] array with all keys. Also sets
-    opts-&gt;num_identity_keys.</p>
-<p class="Pp"></p>
-<p class="Pp">This enables multi-key support: servers can load multiple identity
-    keys (e.g., both SSH and GPG) and select the appropriate one during
-    handshake based on what the client expects.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Must be called after options_parse() but before key
-  loading
-<p class="Pp"></p>
-<p class="Pp">Supports up to MAX_IDENTITY_KEYS (32) keys</p>
-</div>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>key_path</i> Key path to check</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if the key is remote (github:, gitlab:, gpg:,
-  http://, https://), false otherwise</div>
-<p class="Pp">Remote keys are fetched at runtime and don't need file existence
-    validation.</p>
-<p class="Pp">References <b>ASCIICHAT_API</b>, and <b>b</b>.</p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="const_char_*_escape_groff_special_(const_char_*_str)"><a class="permalink" href="#const_char_*_escape_groff_special_(const_char_*_str)">const
   char * escape_groff_special (const char * str)</a></h2>
 <p class="Pp">#include
@@ -3806,6 +3146,256 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp"></p>
 </section>
 <section class="Ss">
+<h2 class="Ss"><b>bool</b> is_remote_key_path (const char * key_path)</h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
+<p class="Pp">Check if a key path is a remote/virtual key (not a local
+  file).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>key_path</i> Key path to check</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if the key is remote (github:, gitlab:, gpg:,
+  http://, https://), false otherwise</div>
+<p class="Pp">Remote keys are fetched at runtime and don't need file existence
+    validation.</p>
+<p class="Pp">Definition at line <b>595</b> of file <b>validation.c</b>.</p>
+<pre>595                                               {
+596   if (!key_path || key_path[0] == '\0') {
+597     return false;
+598   }
+599   return (strncmp(key_path, &quot;github:&quot;, 7) == 0 || strncmp(key_path, &quot;gitlab:&quot;, 7) == 0 ||
+600           strncmp(key_path, &quot;gpg:&quot;, 4) == 0 || strncmp(key_path, &quot;http://&quot;, 7) == 0 ||
+601           strncmp(key_path, &quot;https://&quot;, 8) == 0);
+602 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>options_collect_identity_keys()</b>, and
+    <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_levenshtein_(const_char_*_a,_const_char_*_b)"><a class="permalink" href="#size_t_levenshtein_(const_char_*_a,_const_char_*_b)">size_t
+  levenshtein (const char * a, const char * b)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/levenshtein.h</b>&gt;<b></b></p>
+<p class="Pp">Calculate Levenshtein distance between two strings. The
+    Levenshtein distance is the minimum number of single-character edits
+    (insertions, deletions, or substitutions) required to change one string into
+    the other.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> First string
+<br/>
+<i>b</i> Second string</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Edit distance, or SIZE_MAX on error</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent">https://en.wikipedia.org/wiki/Levenshtein_distance</div>
+<p class="Pp">Definition at line <b>74</b> of file <b>levenshtein.c</b>.</p>
+<pre>74                                                  {
+75   if (!a || !b) {
+76     return SIZE_MAX;
+77   }
+78 
+79   // Count UTF-8 characters instead of bytes
+80   size_t char_count_a = utf8_char_count(a);
+81   size_t char_count_b = utf8_char_count(b);
+82 
+83   if (char_count_a == SIZE_MAX || char_count_b == SIZE_MAX) {
+84     return SIZE_MAX; // Invalid UTF-8 in one of the strings
+85   }
+86 
+87   // Convert strings to codepoint arrays for UTF-8-aware comparison
+88   if (char_count_a == 0) {
+89     return char_count_b;
+90   }
+91   if (char_count_b == 0) {
+92     return char_count_a;
+93   }
+94 
+95   uint32_t *codepoints_a = SAFE_MALLOC(char_count_a * sizeof(uint32_t), uint32_t *);
+96   uint32_t *codepoints_b = SAFE_MALLOC(char_count_b * sizeof(uint32_t), uint32_t *);
+97 
+98   if (!codepoints_a || !codepoints_b) {
+99     SAFE_FREE(codepoints_a);
+100     SAFE_FREE(codepoints_b);
+101     return SIZE_MAX;
+102   }
+103 
+104   size_t decoded_a = utf8_to_codepoints(a, codepoints_a, char_count_a);
+105   size_t decoded_b = utf8_to_codepoints(b, codepoints_b, char_count_b);
+106 
+107   if (decoded_a == SIZE_MAX || decoded_b == SIZE_MAX) {
+108     SAFE_FREE(codepoints_a);
+109     SAFE_FREE(codepoints_b);
+110     return SIZE_MAX;
+111   }
+112 
+113   // Compute Levenshtein distance on codepoint arrays
+114   size_t *cache = SAFE_CALLOC(char_count_a * sizeof(size_t), 1, size_t *);
+115   if (!cache) {
+116     SAFE_FREE(codepoints_a);
+117     SAFE_FREE(codepoints_b);
+118     return SIZE_MAX;
+119   }
+120 
+121   // Initialize cache
+122   for (size_t i = 0; i &lt; char_count_a; i++) {
+123     cache[i] = i + 1;
+124   }
+125 
+126   size_t distance = 0;
+127   size_t result = 0;
+128   for (size_t b_idx = 0; b_idx &lt; char_count_b; b_idx++) {
+129     uint32_t b_code = codepoints_b[b_idx];
+130     result = distance = b_idx;
+131 
+132     for (size_t a_idx = 0; a_idx &lt; char_count_a; a_idx++) {
+133       uint32_t a_code = codepoints_a[a_idx];
+134       size_t b_distance = (a_code == b_code) ? distance : distance + 1;
+135       distance = cache[a_idx];
+136 
+137       cache[a_idx] = result = (distance &gt; result) ? ((b_distance &gt; result) ? result + 1 : b_distance)
+138                                                   : ((b_distance &gt; distance) ? distance + 1 : b_distance);
+139     }
+140   }
+141 
+142   SAFE_FREE(cache);
+143   SAFE_FREE(codepoints_a);
+144   SAFE_FREE(codepoints_b);
+145 
+146   return result;
+147 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>utf8_char_count()</b>, and
+    <b>utf8_to_codepoints()</b>.</p>
+<p class="Pp">Referenced by <b>find_similar_option()</b>,
+    <b>find_similar_option_with_mode()</b>, and
+    <b>levenshtein_find_similar()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_levenshtein_find_similar_(const_char_*_unknown,_const_char_*const_*_candidates)"><a class="permalink" href="#const_char_*_levenshtein_find_similar_(const_char_*_unknown,_const_char_*const_*_candidates)">const
+  char * levenshtein_find_similar (const char * unknown, const char *const *
+  candidates)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/levenshtein.h</b>&gt;<b></b></p>
+<p class="Pp">Find the most similar string from a NULL-terminated array.
+    Searches through an array of candidate strings to find the one most similar
+    to the input string, using Levenshtein distance.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>unknown</i> The string to match against
+<br/>
+<i>candidates</i> NULL-terminated array of candidate strings</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Best matching string, or NULL if no match within
+  threshold</div>
+<p class="Pp">Definition at line <b>149</b> of file <b>levenshtein.c</b>.</p>
+<pre>149                                                                                          {
+150   if (!unknown || !candidates) {
+151     return NULL;
+152   }
+153 
+154   const char *best_match = NULL;
+155   size_t best_distance = SIZE_MAX;
+156 
+157   for (int i = 0; candidates[i] != NULL; i++) {
+158     size_t dist = levenshtein(unknown, candidates[i]);
+159     if (dist &lt; best_distance) {
+160       best_distance = dist;
+161       best_match = candidates[i];
+162     }
+163   }
+164 
+165   // Only suggest if the distance is within our threshold
+166   if (best_distance &lt;= LEVENSHTEIN_SUGGESTION_THRESHOLD) {
+167     return best_match;
+168   }
+169 
+170   return NULL;
+171 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>levenshtein()</b>, and
+    <b>LEVENSHTEIN_SUGGESTION_THRESHOLD</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_suggest_enum_value()</b>, and
+    <b>asciichat_suggest_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_levenshtein_n_(const_char_*_a,_const_size_t_length,_const_char_*_b,_const_size_t_bLength)"><a class="permalink" href="#size_t_levenshtein_n_(const_char_*_a,_const_size_t_length,_const_char_*_b,_const_size_t_bLength)">size_t
+  levenshtein_n (const char * a, const size_t length, const char * b, const
+  size_t bLength)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/levenshtein.h</b>&gt;<b></b></p>
+<p class="Pp">Calculate Levenshtein distance with explicit string lengths.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>a</i> First string
+<br/>
+<i>length</i> Length of first string
+<br/>
+<i>b</i> Second string
+<br/>
+<i>bLength</i> Length of second string</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Edit distance, or SIZE_MAX on error</div>
+<p class="Pp">Definition at line <b>22</b> of file <b>levenshtein.c</b>.</p>
+<pre>22                                                                                               {
+23   // Shortcut optimizations / degenerate cases.
+24   if (a == b) {
+25     return 0;
+26   }
+27 
+28   if (length == 0) {
+29     return bLength;
+30   }
+31 
+32   if (bLength == 0) {
+33     return length;
+34   }
+35 
+36   size_t *cache = SAFE_CALLOC(length, sizeof(size_t), size_t *);
+37   if (!cache) {
+38     return SIZE_MAX; // Allocation failed
+39   }
+40 
+41   size_t index = 0;
+42   size_t bIndex = 0;
+43   size_t distance;
+44   size_t bDistance;
+45   size_t result = 0;
+46   char code;
+47 
+48   // initialize the vector.
+49   while (index &lt; length) {
+50     cache[index] = index + 1;
+51     index++;
+52   }
+53 
+54   // Loop.
+55   while (bIndex &lt; bLength) {
+56     code = b[bIndex];
+57     result = distance = bIndex++;
+58 
+59     for (index = 0; index &lt; length; index++) {
+60       bDistance = code == a[index] ? distance : distance + 1;
+61       distance = cache[index];
+62 
+63       cache[index] = result = distance &gt; result      ? bDistance &gt; result ? result + 1 : bDistance
+64                               : bDistance &gt; distance ? distance + 1
+65                                                      : bDistance;
+66     }
+67   }
+68 
+69   SAFE_FREE(cache);
+70 
+71   return result;
+72 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>SAFE_CALLOC</b>, and <b>SAFE_FREE</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b>
   options_builder_generate_manpage_template (<b>options_builder_t</b> * builder,
   const char * program_name, const char * mode_name, const char * output_path,
@@ -3847,6 +3437,124 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">References <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>options_builder_build()</b>,
     <b>options_config_generate_manpage_template()</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_options_collect_identity_keys_("><a class="permalink" href="#int_options_collect_identity_keys_(">int
+  options_collect_identity_keys (<b>options_t</b> * opts, int argc, char *
+  argv[])</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
+<p class="Pp">Collect multiple --key flags into identity_keys array.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>opts</i> Options structure to populate
+<br/>
+<i>argc</i> Argument count from <b>main()</b>
+<br/>
+<i>argv</i> Argument vector from <b>main()</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of keys collected on success, -1 on error</div>
+<p class="Pp">Scans command-line arguments for all --key/-K flags and populates
+    both opts-&gt;encrypt_key (first key, for compatibility) and
+    opts-&gt;identity_keys[] array with all keys. Also sets
+    opts-&gt;num_identity_keys.</p>
+<p class="Pp"></p>
+<p class="Pp">This enables multi-key support: servers can load multiple identity
+    keys (e.g., both SSH and GPG) and select the appropriate one during
+    handshake based on what the client expects.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Must be called after options_parse() but before key
+  loading
+<p class="Pp"></p>
+<p class="Pp">Supports up to MAX_IDENTITY_KEYS (32) keys</p>
+</div>
+<p class="Pp">Collect multiple --key flags into identity_keys array</p>
+<p class="Pp"></p>
+<p class="Pp">Scans argv for all --key or -K flags and populates:</p>
+<ul class="Bl-bullet">
+  <li>opts-&gt;encrypt_key with the first key (backward compatibility)</li>
+  <li>opts-&gt;identity_keys[] with all keys</li>
+  <li>opts-&gt;num_identity_keys with count</li>
+</ul>
+<p class="Pp">This enables multi-key support for servers/ACDS that need to
+    present different identity keys (SSH, GPG) based on client expectations.</p>
+<p class="Pp">Definition at line <b>527</b> of file <b>validation.c</b>.</p>
+<pre>527                                                                            {
+528   if (!opts || !argv) {
+529     log_error(&quot;options_collect_identity_keys: Invalid arguments&quot;);
+530     return -1;
+531   }
+532 
+533   size_t key_count = 0;
+534 
+535   // Scan argv for all --key or -K flags
+536   for (int i = 1; i &lt; argc &amp;&amp; key_count &lt; MAX_IDENTITY_KEYS; i++) {
+537     const char *arg = argv[i];
+538 
+539     // Check if this is a --key or -K flag
+540     bool is_key_flag = false;
+541     const char *key_value = NULL;
+542 
+543     if (strcmp(arg, &quot;--key&quot;) == 0 || strcmp(arg, &quot;-K&quot;) == 0) {
+544       // Next argument is the key path
+545       if (i + 1 &lt; argc) {
+546         key_value = argv[i + 1];
+547         is_key_flag = true;
+548         i++; // Skip the value argument
+549       }
+550     } else if (strncmp(arg, &quot;--key=&quot;, 6) == 0) {
+551       // --key=value format
+552       key_value = arg + 6;
+553       is_key_flag = true;
+554     }
+555 
+556     if (is_key_flag &amp;&amp; key_value &amp;&amp; strlen(key_value) &gt; 0) {
+557       // Validate that local key files exist (skip for remote/virtual keys)
+558       if (!is_remote_key_path(key_value)) {
+559         struct stat st;
+560         if (stat(key_value, &amp;st) != 0) {
+561           log_error(&quot;Key file not found: %s&quot;, key_value);
+562           SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Key file not found: %s&quot;, key_value);
+563           return -1;
+564         }
+565         // Check if it's a regular file (S_IFREG) - works on both Windows and Unix
+566         if ((st.st_mode &amp; S_IFMT) != S_IFREG) {
+567           log_error(&quot;Key path is not a regular file: %s&quot;, key_value);
+568           SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Key path is not a regular file: %s&quot;, key_value);
+569           return -1;
+570         }
+571       }
+572 
+573       // Store in identity_keys array
+574       SAFE_STRNCPY(opts-&gt;identity_keys[key_count], key_value, OPTIONS_BUFF_SIZE);
+575 
+576       // First key also goes into encrypt_key for backward compatibility
+577       if (key_count == 0) {
+578         SAFE_STRNCPY(opts-&gt;encrypt_key, key_value, OPTIONS_BUFF_SIZE);
+579       }
+580 
+581       key_count++;
+582       log_debug(&quot;Collected identity key #%zu: %s&quot;, key_count, key_value);
+583     }
+584   }
+585 
+586   opts-&gt;num_identity_keys = key_count;
+587 
+588   if (key_count &gt; 0) {
+589     log_info(&quot;Collected %zu identity key(s) for multi-key support&quot;, key_count);
+590   }
+591 
+592   return (int)key_count;
+593 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_state::encrypt_key</b>,
+    <b>ERROR_CRYPTO_KEY</b>, <b>options_state::identity_keys</b>,
+    <b>is_remote_key_path()</b>, <b>log_debug</b>, <b>log_error</b>,
+    <b>log_info</b>, <b>MAX_IDENTITY_KEYS</b>,
+    <b>options_state::num_identity_keys</b>, <b>OPTIONS_BUFF_SIZE</b>,
+    <b>SAFE_STRNCPY</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>options_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> options_config_generate_final_manpage
@@ -4987,10 +4695,9 @@ if (help) {
 <p class="Pp">Initialize options by parsing command-line arguments with unified
     mode detection.</p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>argc</b><i></i><b> Argument count from
-  </b><b>main()</b><b></b>
+<div class="Bd-indent"><i>argc</i> Argument count from <b>main()</b>
 <br/>
-<i></i><b>argv</b><i></i><b> Argument vector from </b><b>main()</b><b></b></div>
+<i>argv</i> Argument vector from <b>main()</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, ERROR_USAGE on parse
   errors</div>
@@ -5179,10 +4886,9 @@ if (help) {
   <li>--version causes version to print and exit(0) (never returns)</li>
 </ul>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>argc</b><i></i><b> Argument count from
-  </b><b>main()</b><b></b>
+<div class="Bd-indent"><i>argc</i> Argument count from <b>main()</b>
 <br/>
-<i></i><b>argv</b><i></i><b> Argument vector from </b><b>main()</b><b></b></div>
+<i>argv</i> Argument vector from <b>main()</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, ERROR_USAGE on parse error,
   other on fatal error</div>
@@ -6469,13 +6175,12 @@ if (help) {
     <b>action_show_capabilities_immediate()</b>,
     <b>actions_execute_deferred()</b>, <b>options_state::address</b>,
     <b>options_state::address6</b>, <b>apply_mode_specific_defaults()</b>,
-    <b>argc</b>, <b>argv</b>, <b>ASCIICHAT_OK</b>,
-    <b>options_state::auto_height</b>, <b>options_state::auto_width</b>,
-    <b>options_state::client_keys</b>, <b>options_state::color</b>,
-    <b>options_state::color_filter</b>, <b>COLOR_FILTER_NONE</b>,
-    <b>options_state::color_scheme_name</b>, <b>COLOR_SETTING_AUTO</b>,
-    <b>COLOR_SETTING_FALSE</b>, <b>COLOR_SETTING_TRUE</b>,
-    <b>colorscheme_get_active_scheme()</b>,
+    <b>ASCIICHAT_OK</b>, <b>options_state::auto_height</b>,
+    <b>options_state::auto_width</b>, <b>options_state::client_keys</b>,
+    <b>options_state::color</b>, <b>options_state::color_filter</b>,
+    <b>COLOR_FILTER_NONE</b>, <b>options_state::color_scheme_name</b>,
+    <b>COLOR_SETTING_AUTO</b>, <b>COLOR_SETTING_FALSE</b>,
+    <b>COLOR_SETTING_TRUE</b>, <b>colorscheme_get_active_scheme()</b>,
     <b>colorscheme_set_active_scheme()</b>, <b>config_create_default()</b>,
     <b>config_load_system_and_user()</b>,
     <b>config_schema_build_from_configs()</b>,
@@ -6494,13 +6199,13 @@ if (help) {
     <b>options_state::encode_audio</b>, <b>options_state::encrypt_enabled</b>,
     <b>options_state::encrypt_key</b>, <b>options_state::encrypt_keyfile</b>,
     <b>ERROR_CONFIG</b>, <b>ERROR_CRYPTO_KEY</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_MEMORY</b>, <b>error_msg</b>, <b>ERROR_USAGE</b>,
-    <b>options_state::flip_x</b>, <b>options_state::flip_y</b>,
-    <b>options_state::force_utf8</b>, <b>get_config_dir()</b>,
-    <b>get_discovery_database_dir()</b>, <b>has_action</b>, <b>HAS_ERRNO</b>,
-    <b>options_state::height</b>, <b>is_remote_key_path()</b>,
-    <b>options_state::json</b>, <b>log_debug</b>, <b>LOG_DEV</b>,
-    <b>log_dev</b>, <b>log_error</b>, <b>options_state::log_file</b>,
+    <b>ERROR_MEMORY</b>, <b>ERROR_USAGE</b>, <b>options_state::flip_x</b>,
+    <b>options_state::flip_y</b>, <b>options_state::force_utf8</b>,
+    <b>get_config_dir()</b>, <b>get_discovery_database_dir()</b>,
+    <b>has_action</b>, <b>HAS_ERRNO</b>, <b>options_state::height</b>,
+    <b>is_remote_key_path()</b>, <b>options_state::json</b>, <b>log_debug</b>,
+    <b>LOG_DEV</b>, <b>log_dev</b>, <b>log_error</b>,
+    <b>options_state::log_file</b>,
     <b>options_state::log_format_console_only</b>, <b>log_get_level()</b>,
     <b>log_info</b>, <b>options_state::log_level</b>, <b>log_plain</b>,
     <b>log_set_color_scheme()</b>, <b>log_set_level()</b>,
@@ -7002,13 +6707,11 @@ options_set_bool(&quot;audio_enabled&quot;, true);
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Initialize options by parsing command-line arguments.</p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>argc</b><i></i><b> Argument count from
-  </b><b>main()</b><b></b>
+<div class="Bd-indent"><i>argc</i> Argument count from <b>main()</b>
 <br/>
-<i></i><b>argv</b><i></i><b> Argument vector from </b><b>main()</b><b></b>
+<i>argv</i> Argument vector from <b>main()</b>
 <br/>
-<i></i><b>is_client</b><i></i><b> true if parsing client options, false for
-  server options</b></div>
+<i>is_client</i> true if parsing client options, false for server options</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, ERROR_USAGE on parse
   errors</div>
@@ -7039,11 +6742,10 @@ options_set_bool(&quot;audio_enabled&quot;, true);
 </ul>
 <p class="Pp"><b>Mode-Specific Behavior</b>:</p>
 <ul class="Bl-bullet">
-  <li><b>Client mode</b> (<b>is_client</b> = <b>true</b><b>): Parses
-      client-specific options (color mode, webcam, snapshot mode, etc.)</b></li>
-  <li><b>Server mode</b> (<b>is_client</b> = <b>false</b><b>): Parses
-      server-specific options (bind address, client keys whitelist,
-    etc.)</b></li>
+  <li><b>Client mode</b> (is_client = <b>true</b><b>): Parses client-specific
+      options (color mode, webcam, snapshot mode, etc.)</b></li>
+  <li><b>Server mode</b> (is_client = <b>false</b><b>): Parses server-specific
+      options (bind address, client keys whitelist, etc.)</b></li>
 </ul>
 <p class="Pp"><b>Validation</b>:</p>
 <ul class="Bl-bullet">
@@ -7875,81 +7577,768 @@ usage(stdout, MODE_SERVER);
     <b>options_config_calculate_max_col_width()</b>, <b>options_init()</b>, and
     <b>options_print_help_for_mode()</b>.</p>
 </section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_color_mode_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_color_mode_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_color_mode (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
+<p class="Pp">Validate color mode string.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Color mode value as string
+<br/>
+<i>error_msg</i> Buffer for error message (can be NULL)
+<br/>
+<i>error_msg_size</i> Size of error message buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Parsed color mode enum value on success, -1 on
+  error</div>
+<p class="Pp">Valid values: auto, none, mono, 16, 16color, 256, 256color,
+    truecolor, 24bit</p>
+<p class="Pp"></p>
+<p class="Pp">Validate color mode string Returns parsed color mode on success,
+    -1 on error</p>
+<p class="Pp">Definition at line <b>138</b> of file <b>validation.c</b>.</p>
+<pre>138                                                                                            {
+139   if (!value_str) {
+140     if (error_msg) {
+141       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Color mode value is required&quot;);
+142     }
+143     return -1;
+144   }
+145 
+146   if (strcmp(value_str, &quot;auto&quot;) == 0) {
+147     return COLOR_MODE_AUTO;
+148   }
+149   if (strcmp(value_str, &quot;none&quot;) == 0 || strcmp(value_str, &quot;mono&quot;) == 0) {
+150     return COLOR_MODE_NONE;
+151   }
+152   if (strcmp(value_str, &quot;16&quot;) == 0 || strcmp(value_str, &quot;16color&quot;) == 0) {
+153     return COLOR_MODE_16_COLOR;
+154   }
+155   if (strcmp(value_str, &quot;256&quot;) == 0 || strcmp(value_str, &quot;256color&quot;) == 0) {
+156     return COLOR_MODE_256_COLOR;
+157   }
+158   if (strcmp(value_str, &quot;truecolor&quot;) == 0 || strcmp(value_str, &quot;24bit&quot;) == 0) {
+159     return COLOR_MODE_TRUECOLOR;
+160   }
+161   if (error_msg) {
+162     SAFE_SNPRINTF(error_msg, error_msg_size,
+163                   &quot;Invalid color mode '%s'. Valid modes: auto, none, mono, 16, 256, truecolor&quot;, value_str);
+164   }
+165   return -1;
+166 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>COLOR_MODE_16_COLOR</b>,
+    <b>COLOR_MODE_256_COLOR</b>, <b>COLOR_MODE_AUTO</b>, <b>COLOR_MODE_NONE</b>,
+    <b>COLOR_MODE_TRUECOLOR</b>, and <b>SAFE_SNPRINTF</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_compression_level_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_compression_level_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_compression_level (const char * value_str, char * error_msg,
+  size_t error_msg_size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
+<p class="Pp">Validate compression level (1-9).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Compression level as string
+<br/>
+<i>error_msg</i> Buffer for error message (can be NULL)
+<br/>
+<i>error_msg_size</i> Size of error message buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Parsed level on success, -1 on error</div>
+<p class="Pp">Validates zstd compression level in range 1-9.</p>
+<p class="Pp"></p>
+<p class="Pp">Validate compression level (1-9) Returns parsed value on success,
+    -1 on error</p>
+<p class="Pp">Definition at line <b>387</b> of file <b>validation.c</b>.</p>
+<pre>387                                                                                                   {
+388   int result = validate_int_range(value_str, 1, 9, &quot;Compression level&quot;, error_msg, error_msg_size);
+389   return (result == INT_MIN) ? -1 : result;
+390 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_device_index_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_device_index_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_device_index (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
+<p class="Pp">Validate device index (-1 for default, 0+ for specific
+  device).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Device index as string
+<br/>
+<i>error_msg</i> Buffer for error message (can be NULL)
+<br/>
+<i>error_msg_size</i> Size of error message buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Parsed index on success, INT_MIN on error</div>
+<p class="Pp">Used for microphone-index, speakers-index, webcam-index. -1 means
+    use system default device.</p>
+<p class="Pp"></p>
+<p class="Pp">Validate device index (-1 for default, or 0+ for specific device)
+    Returns parsed value on success, INT_MIN on error</p>
+<p class="Pp">Definition at line <b>456</b> of file <b>validation.c</b>.</p>
+<pre>456                                                                                              {
+457   if (!value_str || strlen(value_str) == 0) {
+458     if (error_msg) {
+459       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Device index value is required&quot;);
+460     }
+461     return INT_MIN;
+462   }
+463 
+464   int index = strtoint_safe(value_str);
+465   if (index == INT_MIN) {
+466     if (error_msg) {
+467       SAFE_SNPRINTF(error_msg, error_msg_size,
+468                     &quot;Invalid device index '%s'. Must be -1 (default) or a non-negative integer.&quot;, value_str);
+469     }
+470     return INT_MIN;
+471   }
+472 
+473   // -1 is valid (system default), otherwise must be &gt;= 0
+474   if (index &lt; -1) {
+475     if (error_msg) {
+476       SAFE_SNPRINTF(error_msg, error_msg_size,
+477                     &quot;Invalid device index '%d'. Must be -1 (default) or a non-negative integer.&quot;, index);
+478     }
+479     return INT_MIN;
+480   }
+481   return index;
+482 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>SAFE_SNPRINTF</b>, and <b>strtoint_safe()</b>.</p>
+<p class="Pp">Referenced by <b>validate_webcam_index()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_validate_opt_float_non_negative_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#float_validate_opt_float_non_negative_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">float
+  validate_opt_float_non_negative (const char * value_str, char * error_msg,
+  size_t error_msg_size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
+<p class="Pp">Validate non-negative float value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Float value as string
+<br/>
+<i>error_msg</i> Buffer for error message (can be NULL)
+<br/>
+<i>error_msg_size</i> Size of error message buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Parsed float value on success, -1.0f on error</div>
+<p class="Pp">Validates that the string is a valid non-negative floating-point
+    number.</p>
+<p class="Pp"></p>
+<p class="Pp">Validate float value (non-negative) Returns parsed value on
+    success, returns -1.0f on error (caller must check)</p>
+<p class="Pp">Definition at line <b>320</b> of file <b>validation.c</b>.</p>
+<pre>320                                                                                                      {
+321   if (!value_str || strlen(value_str) == 0) {
+322     if (error_msg) {
+323       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Value is required&quot;);
+324     }
+325     return -1.0f;
+326   }
+327 
+328   char *endptr;
+329   float val = strtof(value_str, &amp;endptr);
+330   if (*endptr != '\0' || value_str == endptr) {
+331     if (error_msg) {
+332       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Invalid float value '%s'. Must be a number.&quot;, value_str);
+333     }
+334     return -1.0f;
+335   }
+336   if (val &lt; 0.0f) {
+337     if (error_msg) {
+338       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Value must be non-negative (got %.2f)&quot;, val);
+339     }
+340     return -1.0f;
+341   }
+342   return val;
+343 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>SAFE_SNPRINTF</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_fps_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_fps_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_fps (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
+<p class="Pp">Validate FPS value (1-144).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> FPS value as string
+<br/>
+<i>error_msg</i> Buffer for error message (can be NULL)
+<br/>
+<i>error_msg_size</i> Size of error message buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Parsed FPS value on success, -1 on error</div>
+<p class="Pp">Validates that the FPS is in the valid range of 1-144.</p>
+<p class="Pp"></p>
+<p class="Pp">Validate FPS value (1-144) Returns parsed value on success, -1 on
+    error</p>
+<p class="Pp">Definition at line <b>396</b> of file <b>validation.c</b>.</p>
+<pre>396                                                                                     {
+397   int result = validate_int_range(value_str, 1, 144, &quot;FPS&quot;, error_msg, error_msg_size);
+398   return (result == INT_MIN) ? -1 : result;
+399 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_ip_address_(const_char_*_value_str,_char_*_parsed_address,_size_t_address_size,_"><a class="permalink" href="#int_validate_opt_ip_address_(const_char_*_value_str,_char_*_parsed_address,_size_t_address_size,_">int
+  validate_opt_ip_address (const char * value_str, char * parsed_address, size_t
+  address_size, <b>bool</b> is_client, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
+<p class="Pp">Validate IP address or hostname.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> IP address or hostname as string
+<br/>
+<i>parsed_address</i> Buffer to store resolved/parsed address
+<br/>
+<i>address_size</i> Size of parsed_address buffer
+<br/>
+<i>is_client</i> True if client mode (for error messages)
+<br/>
+<i>error_msg</i> Buffer for error message (can be NULL)
+<br/>
+<i>error_msg_size</i> Size of error message buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, -1 on error</div>
+<p class="Pp">Validates IPv4, IPv6 addresses, or resolves hostname to IP.</p>
+<p class="Pp"></p>
+<p class="Pp">Validate IP address or hostname Returns 0 on success, -1 on error
+    Sets parsed_address on success (resolved if hostname)</p>
+<p class="Pp">Definition at line <b>268</b> of file <b>validation.c</b>.</p>
+<pre>269                                                                     {
+270   (void)is_client; // Parameter not used but kept for API consistency
+271   if (!value_str || strlen(value_str) == 0) {
+272     if (error_msg) {
+273       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Address value is required&quot;);
+274     }
+275     return -1;
+276   }
+277 
+278   // Parse IPv6 address (remove brackets if present)
+279   char parsed_addr[OPTIONS_BUFF_SIZE];
+280   if (parse_ipv6_address(value_str, parsed_addr, sizeof(parsed_addr)) == 0) {
+281     value_str = parsed_addr;
+282   }
+283 
+284   // Check if it's a valid IPv4 address
+285   if (is_valid_ipv4(value_str)) {
+286     SAFE_SNPRINTF(parsed_address, address_size, &quot;%s&quot;, value_str);
+287     return 0;
+288   }
+289   // Check if it's a valid IPv6 address
+290   if (is_valid_ipv6(value_str)) {
+291     SAFE_SNPRINTF(parsed_address, address_size, &quot;%s&quot;, value_str);
+292     return 0;
+293   }
+294   // Check if it looks like an invalid IP (has dots but not valid IPv4 format)
+295   if (strchr(value_str, '.') != NULL) {
+296     if (error_msg) {
+297       SAFE_SNPRINTF(error_msg, error_msg_size,
+298                     &quot;Invalid IP address format '%s'. IPv4 addresses must have exactly 4 octets.&quot;, value_str);
+299     }
+300     return -1;
+301   }
+302 
+303   // Otherwise, try to resolve as hostname
+304   char resolved_ip[OPTIONS_BUFF_SIZE];
+305   if (platform_resolve_hostname_to_ipv4(value_str, resolved_ip, sizeof(resolved_ip)) == 0) {
+306     SAFE_SNPRINTF(parsed_address, address_size, &quot;%s&quot;, resolved_ip);
+307     return 0;
+308   } else {
+309     if (error_msg) {
+310       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Failed to resolve hostname '%s' to IP address.&quot;, value_str);
+311     }
+312     return -1;
+313   }
+314 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_valid_ipv4()</b>, <b>is_valid_ipv6()</b>,
+    <b>OPTIONS_BUFF_SIZE</b>, <b>parse_ipv6_address()</b>,
+    <b>platform_resolve_hostname_to_ipv4()</b>, and <b>SAFE_SNPRINTF</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_log_level_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_log_level_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_log_level (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
+<p class="Pp">Validate log level string.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Log level as string
+<br/>
+<i>error_msg</i> Buffer for error message (can be NULL)
+<br/>
+<i>error_msg_size</i> Size of error message buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Parsed log level enum value on success, -1 on error</div>
+<p class="Pp">Valid values (case-insensitive): dev, debug, info, warn, error,
+    fatal</p>
+<p class="Pp"></p>
+<p class="Pp">Validate log level string Returns parsed log level on success, -1
+    on error</p>
+<p class="Pp">Definition at line <b>234</b> of file <b>validation.c</b>.</p>
+<pre>234                                                                                           {
+235   if (!value_str) {
+236     if (error_msg) {
+237       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Log level value is required&quot;);
+238     }
+239     return -1;
+240   }
+241 
+242   if (platform_strcasecmp(value_str, &quot;dev&quot;) == 0) {
+243     return LOG_DEV;
+244   } else if (platform_strcasecmp(value_str, &quot;debug&quot;) == 0) {
+245     return LOG_DEBUG;
+246   } else if (platform_strcasecmp(value_str, &quot;info&quot;) == 0) {
+247     return LOG_INFO;
+248   } else if (platform_strcasecmp(value_str, &quot;warn&quot;) == 0) {
+249     return LOG_WARN;
+250   } else if (platform_strcasecmp(value_str, &quot;error&quot;) == 0) {
+251     return LOG_ERROR;
+252   } else if (platform_strcasecmp(value_str, &quot;fatal&quot;) == 0) {
+253     return LOG_FATAL;
+254   } else {
+255     if (error_msg) {
+256       SAFE_SNPRINTF(error_msg, error_msg_size,
+257                     &quot;Invalid log level '%s'. Valid levels: dev, debug, info, warn, error, fatal&quot;, value_str);
+258     }
+259     return -1;
+260   }
+261 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>LOG_DEBUG</b>, <b>LOG_DEV</b>, <b>LOG_ERROR</b>,
+    <b>LOG_FATAL</b>, <b>LOG_INFO</b>, <b>LOG_WARN</b>,
+    <b>platform_strcasecmp()</b>, and <b>SAFE_SNPRINTF</b>.</p>
+<p class="Pp">Referenced by <b>parse_log_level_option()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_max_clients_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_max_clients_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_max_clients (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
+<p class="Pp">Validate max clients value (1-32).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Max clients value as string
+<br/>
+<i>error_msg</i> Buffer for error message (can be NULL)
+<br/>
+<i>error_msg_size</i> Size of error message buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Parsed value on success, -1 on error</div>
+<p class="Pp">Validates that the max clients is in the valid range of 1-32.</p>
+<p class="Pp"></p>
+<p class="Pp">Validate max clients (1-32) Returns parsed value on success, -1 on
+    error</p>
+<p class="Pp">Definition at line <b>378</b> of file <b>validation.c</b>.</p>
+<pre>378                                                                                             {
+379   int result = validate_int_range(value_str, 1, 32, &quot;Max clients&quot;, error_msg, error_msg_size);
+380   return (result == INT_MIN) ? -1 : result;
+381 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_non_negative_int_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_non_negative_int_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_non_negative_int (const char * value_str, char * error_msg,
+  size_t error_msg_size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
+<p class="Pp">Validate non-negative integer.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Integer value as string
+<br/>
+<i>error_msg</i> Buffer for error message (can be NULL)
+<br/>
+<i>error_msg_size</i> Size of error message buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Parsed value on success, -1 on error</div>
+<p class="Pp">Validates that the string is a non-negative integer (&gt;= 0).</p>
+<p class="Pp"></p>
+<p class="Pp">Validate non-negative integer Returns parsed value on success, -1
+    on error</p>
+<p class="Pp">Definition at line <b>129</b> of file <b>validation.c</b>.</p>
+<pre>129                                                                                                  {
+130   int result = validate_int_range(value_str, 0, INT_MAX, &quot;Value&quot;, error_msg, error_msg_size);
+131   return (result == INT_MIN) ? -1 : result;
+132 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_palette_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_palette_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_palette (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
+<p class="Pp">Validate palette type string.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Palette type as string
+<br/>
+<i>error_msg</i> Buffer for error message (can be NULL)
+<br/>
+<i>error_msg_size</i> Size of error message buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Parsed palette type enum value on success, -1 on
+  error</div>
+<p class="Pp">Valid values: standard, blocks, digital, minimal, cool, custom</p>
+<p class="Pp"></p>
+<p class="Pp">Validate palette type string Returns parsed palette type on
+    success, -1 on error</p>
+<p class="Pp">Definition at line <b>200</b> of file <b>validation.c</b>.</p>
+<pre>200                                                                                         {
+201   if (!value_str) {
+202     if (error_msg) {
+203       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Palette value is required&quot;);
+204     }
+205     return -1;
+206   }
+207 
+208   if (strcmp(value_str, &quot;standard&quot;) == 0) {
+209     return PALETTE_STANDARD;
+210   } else if (strcmp(value_str, &quot;blocks&quot;) == 0) {
+211     return PALETTE_BLOCKS;
+212   } else if (strcmp(value_str, &quot;digital&quot;) == 0) {
+213     return PALETTE_DIGITAL;
+214   } else if (strcmp(value_str, &quot;minimal&quot;) == 0) {
+215     return PALETTE_MINIMAL;
+216   } else if (strcmp(value_str, &quot;cool&quot;) == 0) {
+217     return PALETTE_COOL;
+218   } else if (strcmp(value_str, &quot;custom&quot;) == 0) {
+219     return PALETTE_CUSTOM;
+220   } else {
+221     if (error_msg) {
+222       SAFE_SNPRINTF(error_msg, error_msg_size,
+223                     &quot;Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom&quot;,
+224                     value_str);
+225     }
+226     return -1;
+227   }
+228 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>PALETTE_BLOCKS</b>, <b>PALETTE_COOL</b>,
+    <b>PALETTE_CUSTOM</b>, <b>PALETTE_DIGITAL</b>, <b>PALETTE_MINIMAL</b>,
+    <b>PALETTE_STANDARD</b>, and <b>SAFE_SNPRINTF</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_password_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_password_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_password (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
+<p class="Pp">Validate password (8-256 characters).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Password string
+<br/>
+<i>error_msg</i> Buffer for error message (can be NULL)
+<br/>
+<i>error_msg_size</i> Size of error message buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, -1 on error</div>
+<p class="Pp">Validates password length is 8-256 characters and contains no null
+    bytes.</p>
+<p class="Pp"></p>
+<p class="Pp">Validate password (8-256 characters, no null bytes) Returns 0 on
+    success, -1 on error</p>
+<p class="Pp">Definition at line <b>488</b> of file <b>validation.c</b>.</p>
+<pre>488                                                                                          {
+489   if (!value_str) {
+490     if (error_msg) {
+491       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Password value is required&quot;);
+492     }
+493     return -1;
+494   }
+495 
+496   size_t len = strlen(value_str);
+497   if (len &lt; 8) {
+498     if (error_msg) {
+499       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Password too short (%zu chars). Must be at least 8 characters.&quot;, len);
+500     }
+501     return -1;
+502   }
+503   if (len &gt; 256) {
+504     if (error_msg) {
+505       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Password too long (%zu chars). Must be at most 256 characters.&quot;, len);
+506     }
+507     return -1;
+508   }
+509 
+510   // Note: No need to check for embedded null bytes - strlen() already stopped at the first null,
+511   // so by definition there are no null bytes within [0, len).
+512 
+513   return 0;
+514 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>SAFE_SNPRINTF</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_port_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_port_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_port (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
+<p class="Pp">Validate port number (1-65535).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Port number as string
+<br/>
+<i>error_msg</i> Buffer for error message (can be NULL)
+<br/>
+<i>error_msg_size</i> Size of error message buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, -1 on error</div>
+<p class="Pp">Validates that the port string is a valid number in the range
+    1-65535.</p>
+<p class="Pp"></p>
+<p class="Pp">Validate port number (1-65535) Returns 0 on success, non-zero on
+    error</p>
+<p class="Pp">Definition at line <b>73</b> of file <b>validation.c</b>.</p>
+<pre>73                                                                                      {
+74   if (!value_str || strlen(value_str) == 0) {
+75     if (error_msg) {
+76       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Port value is required&quot;);
+77     }
+78     return -1;
+79   }
+80 
+81   // Use safe integer parsing with range validation
+82   uint16_t port_num;
+83   if (parse_port(value_str, &amp;port_num) != ASCIICHAT_OK) {
+84     if (error_msg) {
+85       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Invalid port value '%s'. Port must be a number between 1 and 65535.&quot;,
+86                     value_str);
+87     }
+88     return -1;
+89   }
+90   return 0;
+91 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>parse_port()</b>, and
+    <b>SAFE_SNPRINTF</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_positive_int_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_positive_int_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_positive_int (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
+<p class="Pp">Validate positive integer.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Integer value as string
+<br/>
+<i>error_msg</i> Buffer for error message (can be NULL)
+<br/>
+<i>error_msg_size</i> Size of error message buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Parsed value on success, -1 on error</div>
+<p class="Pp">Validates that the string is a positive integer (&gt; 0).</p>
+<p class="Pp"></p>
+<p class="Pp">Validate positive integer Returns parsed value on success, -1 on
+    error</p>
+<p class="Pp">Definition at line <b>120</b> of file <b>validation.c</b>.</p>
+<pre>120                                                                                              {
+121   int result = validate_int_range(value_str, 1, INT_MAX, &quot;Value&quot;, error_msg, error_msg_size);
+122   return (result == INT_MIN) ? -1 : result;
+123 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_reconnect_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_reconnect_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_reconnect (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
+<p class="Pp">Validate reconnect value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Reconnect value as string
+  (&quot;off&quot;, &quot;auto&quot;, or 0-999)
+<br/>
+<i>error_msg</i> Buffer for error message (can be NULL)
+<br/>
+<i>error_msg_size</i> Size of error message buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 for off, -1 for auto, 1-999 for count, INT_MIN on
+  error</div>
+<p class="Pp">Valid values:</p>
+<ul class="Bl-bullet">
+  <li>&quot;off&quot; or &quot;0&quot;: No reconnection (returns 0)</li>
+  <li>&quot;auto&quot; or &quot;-1&quot;: Unlimited reconnection (returns
+    -1)</li>
+  <li>&quot;1&quot; to &quot;999&quot;: Retry count (returns the count)</li>
+</ul>
+<p class="Pp">Validate reconnect value (off, auto, 0, -1, or 1-999) Returns: 0
+    for &quot;off&quot; (no retries) -1 for &quot;auto&quot; (unlimited retries)
+    1-999 for specific retry count INT_MIN on parse error</p>
+<p class="Pp">Definition at line <b>409</b> of file <b>validation.c</b>.</p>
+<pre>409                                                                                           {
+410   if (!value_str || strlen(value_str) == 0) {
+411     if (error_msg) {
+412       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Reconnect value is required&quot;);
+413     }
+414     return INT_MIN;
+415   }
+416 
+417   // Check for string values first
+418   if (platform_strcasecmp(value_str, &quot;off&quot;) == 0) {
+419     return 0; // No retries
+420   }
+421   if (platform_strcasecmp(value_str, &quot;auto&quot;) == 0) {
+422     return -1; // Unlimited retries
+423   }
+424 
+425   // Parse as integer
+426   int val = strtoint_safe(value_str);
+427   if (val == INT_MIN) {
+428     if (error_msg) {
+429       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Invalid reconnect value '%s'. Use 'off', 'auto', or a number 0-999.&quot;,
+430                     value_str);
+431     }
+432     return INT_MIN;
+433   }
+434 
+435   // 0 means off, -1 means auto, 1-999 is valid range
+436   if (val == 0) {
+437     return 0; // No retries
+438   }
+439   if (val == -1) {
+440     return -1; // Unlimited retries
+441   }
+442   if (val &lt; 1 || val &gt; 999) {
+443     if (error_msg) {
+444       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Invalid reconnect count '%s'. Must be 'off', 'auto', or 1-999.&quot;,
+445                     value_str);
+446     }
+447     return INT_MIN;
+448   }
+449   return val;
+450 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_strcasecmp()</b>, <b>SAFE_SNPRINTF</b>, and
+    <b>strtoint_safe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_render_mode_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_render_mode_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_render_mode (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
+<p class="Pp">Validate render mode string.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Render mode value as string
+<br/>
+<i>error_msg</i> Buffer for error message (can be NULL)
+<br/>
+<i>error_msg_size</i> Size of error message buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Parsed render mode enum value on success, -1 on
+  error</div>
+<p class="Pp">Valid values: foreground, fg, background, bg, half-block,
+    halfblock</p>
+<p class="Pp"></p>
+<p class="Pp">Validate render mode string Returns parsed render mode on success,
+    -1 on error</p>
+<p class="Pp">Definition at line <b>172</b> of file <b>validation.c</b>.</p>
+<pre>172                                                                                             {
+173   if (!value_str) {
+174     if (error_msg) {
+175       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Render mode value is required&quot;);
+176     }
+177     return -1;
+178   }
+179 
+180   if (strcmp(value_str, &quot;foreground&quot;) == 0 || strcmp(value_str, &quot;fg&quot;) == 0) {
+181     return RENDER_MODE_FOREGROUND;
+182   }
+183   if (strcmp(value_str, &quot;background&quot;) == 0 || strcmp(value_str, &quot;bg&quot;) == 0) {
+184     return RENDER_MODE_BACKGROUND;
+185   }
+186   if (strcmp(value_str, &quot;half-block&quot;) == 0 || strcmp(value_str, &quot;halfblock&quot;) == 0) {
+187     return RENDER_MODE_HALF_BLOCK;
+188   }
+189   if (error_msg) {
+190     SAFE_SNPRINTF(error_msg, error_msg_size,
+191                   &quot;Invalid render mode '%s'. Valid modes: foreground, background, half-block&quot;, value_str);
+192   }
+193   return -1;
+194 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>RENDER_MODE_BACKGROUND</b>,
+    <b>RENDER_MODE_FOREGROUND</b>, <b>RENDER_MODE_HALF_BLOCK</b>, and
+    <b>SAFE_SNPRINTF</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_validate_opt_volume_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#float_validate_opt_volume_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">float
+  validate_opt_volume (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
+<p class="Pp">Validate volume value (0.0-1.0).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>value_str</i> Volume value as string
+<br/>
+<i>error_msg</i> Buffer for error message (can be NULL)
+<br/>
+<i>error_msg_size</i> Size of error message buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Parsed volume value on success, -1.0f on error</div>
+<p class="Pp">Validates that the string is a valid volume in the range 0.0 to
+    1.0. Used for --volume, --microphone-volume, and similar audio options.</p>
+<p class="Pp"></p>
+<p class="Pp">Validate volume value (0.0-1.0) Returns parsed value on success,
+    -1.0f on error</p>
+<p class="Pp">Definition at line <b>349</b> of file <b>validation.c</b>.</p>
+<pre>349                                                                                          {
+350   if (!value_str || strlen(value_str) == 0) {
+351     if (error_msg) {
+352       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Volume value is required&quot;);
+353     }
+354     return -1.0f;
+355   }
+356 
+357   char *endptr;
+358   float val = strtof(value_str, &amp;endptr);
+359   if (*endptr != '\0' || value_str == endptr) {
+360     if (error_msg) {
+361       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Invalid volume value '%s'. Must be a number.&quot;, value_str);
+362     }
+363     return -1.0f;
+364   }
+365   if (val &lt; 0.0f || val &gt; 1.0f) {
+366     if (error_msg) {
+367       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Volume must be between 0.0 and 1.0 (got %.2f)&quot;, val);
+368     }
+369     return -1.0f;
+370   }
+371   return val;
+372 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>SAFE_SNPRINTF</b>.</p>
+</section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
   Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="char_size_t_address_size"><a class="permalink" href="#char_size_t_address_size">char
-  size_t address_size</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>143</b> of file
-  <b>options/validation.h</b>.</p>
-<p class="Pp">Referenced by <b>validate_opt_ip_address()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_argc"><a class="permalink" href="#int_argc">int
-  argc</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>275</b> of file
-  <b>options/validation.h</b>.</p>
-<p class="Pp">Referenced by <b>client_init_with_args()</b>, <b>main()</b>,
-    <b>main()</b>, <b>main()</b>, <b>mirror_init_with_args()</b>,
-    <b>options_collect_identity_keys()</b>,
-    <b>options_colorscheme_init_early()</b>, <b>options_config_parse()</b>,
-    <b>options_init()</b>, and <b>wasm_parse_args()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_char*_argv__"><a class="permalink" href="#int_char*_argv__">int
-  char* argv[]</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>275</b> of file
-  <b>options/validation.h</b>.</p>
-<p class="Pp">Referenced by <b>client_init_with_args()</b>, <b>main()</b>,
-    <b>main()</b>, <b>main()</b>, <b>mirror_init_with_args()</b>,
-    <b>options_collect_identity_keys()</b>,
-    <b>options_colorscheme_init_early()</b>, <b>options_config_parse()</b>,
-    <b>options_init()</b>, <b>platform_process_spawn()</b>, and
-    <b>wasm_parse_args()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_size_t_const_char_*_b"><a class="permalink" href="#const_size_t_const_char_*_b">const
-  size_t const char * b</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/options/levenshtein.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>47</b> of file <b>levenshtein.h</b>.</p>
-<p class="Pp">Referenced by <b>__attribute__()</b>, <b>ansi_rle_add_pixel()</b>,
-    <b>append_color_fg_for_mode()</b>, <b>append_sgr_truecolor_bg()</b>,
-    <b>append_sgr_truecolor_fg()</b>, <b>append_truecolor_bg()</b>,
-    <b>append_truecolor_fg()</b>, <b>apply_color_filter()</b>,
-    <b>color_filter_calculate_rainbow()</b>,
-    <b>colorscheme_compile_scheme()</b>, <b>digital_rain_apply()</b>,
-    <b>digital_rain_set_color()</b>, <b>emit_set_bg()</b>, <b>emit_set_fg()</b>,
-    <b>emit_set_truecolor_bg()</b>, <b>emit_set_truecolor_fg()</b>,
-    <b>get_16color_rgb()</b>, <b>grep_highlight()</b>,
-    <b>grep_highlight_colored()</b>, <b>image_print_color()</b>,
-    <b>ascii_query::json::JsonValue::JsonValue()</b>, <b>levenshtein()</b>,
-    <b>levenshtein_n()</b>, <b>options_builder_add_logging_group()</b>,
-    <b>options_preset_unified()</b>, <b>parse_hex_color()</b>,
-    <b>platform_path_skip_absolute_prefix()</b>,
-    <b>platform_path_strcasecmp()</b>, <b>quantize_color()</b>,
-    <b>rgb_to_16color()</b>, <b>rgb_to_16color_dithered()</b>,
-    <b>rgb_to_256color()</b>, <b>rgb_to_ansi_8bit()</b>,
-    <b>rgb_to_ansi_bg()</b>, <b>rgb_to_ansi_fg()</b>,
-    <b>rgb_to_truecolor_ansi()</b>, <b>session_settings_equal()</b>,
-    <b>SHA1Transform()</b>, and <b>version_compare()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_size_t_const_char_const_size_t_bLength"><a class="permalink" href="#const_size_t_const_char_const_size_t_bLength">const
-  size_t const char const size_t bLength</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/options/levenshtein.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>58</b> of file <b>levenshtein.h</b>.</p>
-<p class="Pp">Referenced by <b>levenshtein_n()</b>.</p>
-</section>
 <section class="Ss">
 <h2 class="Ss" id="unsigned_short_int_BLUE__"><a class="permalink" href="#unsigned_short_int_BLUE__">unsigned
   short int BLUE[] [extern]</a></h2>
@@ -7957,68 +8346,8 @@ usage(stdout, MODE_SERVER);
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Blue channel lookup table. Lookup table for blue channel values.
     See <b>RED</b>[]<b> for details.</b></p>
-<p class="Pp">Referenced by <b>__attribute__()</b>, and
-    <b>precalc_rgb_palettes()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_const*_candidates"><a class="permalink" href="#const_char*_const*_candidates">const
-  char* const* candidates</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/options/levenshtein.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>70</b> of file <b>levenshtein.h</b>.</p>
-<p class="Pp">Referenced by <b>levenshtein_find_similar()</b>, and
-    <b>test_get_binary_path()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_error_msg"><a class="permalink" href="#char_*_error_msg">char
-  * error_msg</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>49</b> of file
-  <b>options/validation.h</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_process()</b>,
-    <b>options_builder_add_int_with_metadata()</b>,
-    <b>options_builder_add_positional()</b>,
-    <b>options_config_parse_positional()</b>,
-    <b>options_config_set_defaults()</b>, <b>options_init()</b>,
-    <b>parse_audio_source()</b>, <b>parse_client_address()</b>,
-    <b>parse_color_filter()</b>, <b>parse_color_mode()</b>,
-    <b>parse_color_setting()</b>, <b>parse_log_file()</b>,
-    <b>parse_log_level()</b>, <b>parse_log_level_option()</b>,
-    <b>parse_mirror_media()</b>, <b>parse_palette_chars()</b>,
-    <b>parse_palette_type()</b>, <b>parse_port_option()</b>,
-    <b>parse_render_mode()</b>, <b>parse_render_theme()</b>,
-    <b>parse_server_bind_address()</b>, <b>parse_timestamp()</b>,
-    <b>parse_utf8_setting()</b>, <b>parse_verbose_flag()</b>,
-    <b>parse_volume()</b>, <b>set_palette()</b>,
-    <b>update_check_load_cache()</b>, <b>update_check_save_cache()</b>,
-    <b>validate_opt_color_mode()</b>, <b>validate_opt_compression_level()</b>,
-    <b>validate_opt_device_index()</b>,
-    <b>validate_opt_float_non_negative()</b>, <b>validate_opt_fps()</b>,
-    <b>validate_opt_ip_address()</b>, <b>validate_opt_log_level()</b>,
-    <b>validate_opt_max_clients()</b>, <b>validate_opt_non_negative_int()</b>,
-    <b>validate_opt_palette()</b>, <b>validate_opt_password()</b>,
-    <b>validate_opt_port()</b>, <b>validate_opt_positive_int()</b>,
-    <b>validate_opt_reconnect()</b>, <b>validate_opt_render_mode()</b>,
-    <b>validate_opt_volume()</b>, <b>validate_port_callback()</b>, and
-    <b>validate_webcam_index()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_size_t_error_msg_size"><a class="permalink" href="#char_size_t_error_msg_size">char
-  size_t error_msg_size</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>49</b> of file
-  <b>options/validation.h</b>.</p>
-<p class="Pp">Referenced by <b>validate_opt_color_mode()</b>,
-    <b>validate_opt_compression_level()</b>, <b>validate_opt_device_index()</b>,
-    <b>validate_opt_float_non_negative()</b>, <b>validate_opt_fps()</b>,
-    <b>validate_opt_ip_address()</b>, <b>validate_opt_log_level()</b>,
-    <b>validate_opt_max_clients()</b>, <b>validate_opt_non_negative_int()</b>,
-    <b>validate_opt_palette()</b>, <b>validate_opt_password()</b>,
-    <b>validate_opt_port()</b>, <b>validate_opt_positive_int()</b>,
-    <b>validate_opt_reconnect()</b>, <b>validate_opt_render_mode()</b>, and
-    <b>validate_opt_volume()</b>.</p>
+<p class="Pp">Definition at line <b>378</b> of file <b>options/common.c</b>.</p>
+<p class="Pp">Referenced by <b>precalc_rgb_palettes()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="unsigned_short_int_GRAY__"><a class="permalink" href="#unsigned_short_int_GRAY__">unsigned
@@ -8028,8 +8357,8 @@ usage(stdout, MODE_SERVER);
 <p class="Pp">Grayscale lookup table. Lookup table for grayscale values. Used
     for monochrome ASCII conversion when color information is not needed or
     available.</p>
-<p class="Pp">Referenced by <b>__attribute__()</b>, and
-    <b>precalc_rgb_palettes()</b>.</p>
+<p class="Pp">Definition at line <b>379</b> of file <b>options/common.c</b>.</p>
+<p class="Pp">Referenced by <b>precalc_rgb_palettes()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="unsigned_short_int_GREEN__"><a class="permalink" href="#unsigned_short_int_GREEN__">unsigned
@@ -8038,37 +8367,8 @@ usage(stdout, MODE_SERVER);
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Green channel lookup table. Lookup table for green channel values.
     See <b>RED</b>[]<b> for details.</b></p>
-<p class="Pp">Referenced by <b>__attribute__()</b>, and
-    <b>precalc_rgb_palettes()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_size_t_"><a class="permalink" href="#char_size_t_">char
-  size_t <b>bool</b> is_client</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>144</b> of file
-  <b>options/validation.h</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_shared_init()</b>, and
-    <b>validate_opt_ip_address()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_size_t_length"><a class="permalink" href="#const_size_t_length">const
-  size_t length</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/options/levenshtein.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>58</b> of file <b>levenshtein.h</b>.</p>
-<p class="Pp">Referenced by <b>client_parse_packet()</b>,
-    <b>digital_rain_set_raindrop_length()</b>, <b>levenshtein_n()</b>, and
-    <b>packet_queue_validate_packet()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char*_parsed_address"><a class="permalink" href="#char*_parsed_address">char*
-  parsed_address</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/options/validation.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>143</b> of file
-  <b>options/validation.h</b>.</p>
-<p class="Pp">Referenced by <b>validate_opt_ip_address()</b>.</p>
+<p class="Pp">Definition at line <b>377</b> of file <b>options/common.c</b>.</p>
+<p class="Pp">Referenced by <b>precalc_rgb_palettes()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="unsigned_short_int_RED__"><a class="permalink" href="#unsigned_short_int_RED__">unsigned
@@ -8089,8 +8389,8 @@ usage(stdout, MODE_SERVER);
 <p class="Pp"></p>
 <p class="Pp">Access these tables via palette functions, not directly</p>
 </div>
-<p class="Pp">Referenced by <b>__attribute__()</b>, and
-    <b>precalc_rgb_palettes()</b>.</p>
+<p class="Pp">Definition at line <b>376</b> of file <b>options/common.c</b>.</p>
+<p class="Pp">Referenced by <b>precalc_rgb_palettes()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_float_weight_blue"><a class="permalink" href="#const_float_weight_blue">const
@@ -8102,8 +8402,8 @@ usage(stdout, MODE_SERVER);
 <p class="Pp"></p>
 <p class="Pp"><b>Default</b>: Typically 0.114 (standard ITU-R BT.601
   weights)</p>
-<p class="Pp">Referenced by <b>__attribute__()</b>, and
-  <b>server_main()</b>.</p>
+<p class="Pp">Definition at line <b>372</b> of file <b>options/common.c</b>.</p>
+<p class="Pp">Referenced by <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_float_weight_green"><a class="permalink" href="#const_float_weight_green">const
@@ -8115,8 +8415,8 @@ usage(stdout, MODE_SERVER);
 <p class="Pp"></p>
 <p class="Pp"><b>Default</b>: Typically 0.587 (standard ITU-R BT.601
   weights)</p>
-<p class="Pp">Referenced by <b>__attribute__()</b>, and
-  <b>server_main()</b>.</p>
+<p class="Pp">Definition at line <b>371</b> of file <b>options/common.c</b>.</p>
+<p class="Pp">Referenced by <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_float_weight_red"><a class="permalink" href="#const_float_weight_red">const
@@ -8125,8 +8425,8 @@ usage(stdout, MODE_SERVER);
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Red weight for luminance calculation. Weight for red channel in
     luminance calculation.</p>
-<p class="Pp">Referenced by <b>__attribute__()</b>, and
-  <b>server_main()</b>.</p>
+<p class="Pp">Definition at line <b>370</b> of file <b>options/common.c</b>.</p>
+<p class="Pp">Referenced by <b>server_main()</b>.</p>
 </section>
 </section>
 <section class="Sh">

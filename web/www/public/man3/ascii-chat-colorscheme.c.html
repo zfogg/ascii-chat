@@ -72,10 +72,10 @@
   <br/>
   Load a color scheme from a TOML file. <b>asciichat_error_t</b>
     <b>parse_hex_color</b> (const char *hex, <b>uint8_t</b> *r, <b>uint8_t</b>
-    *g, <b>uint8_t</b> *<b>b</b>)
+    *g, <b>uint8_t</b> *b)
   <br/>
   Parse a hex color string. void <b>rgb_to_truecolor_ansi</b> (<b>uint8_t</b> r,
-    <b>uint8_t</b> g, <b>uint8_t</b> <b>b</b>, char *buf, size_t size)
+    <b>uint8_t</b> g, <b>uint8_t</b> b, char *buf, size_t size)
   <br/>
   Generate truecolor ANSI escape code. <b>asciichat_error_t</b>
     <b>colorscheme_compile_scheme</b> (const <b>color_scheme_t</b> *scheme,
@@ -90,8 +90,8 @@
     <b>detect_terminal_background</b> (void)
   <br/>
   Detect the user's terminal theme (dark or light background).
-    <b>asciichat_error_t</b> <b>options_colorscheme_init_early</b> (int
-    <b>argc</b>, const char *const <b>argv</b>[])
+    <b>asciichat_error_t</b> <b>options_colorscheme_init_early</b> (int argc,
+    const char *const argv[])
   <br/>
   Initialize color scheme early (before logging).
   <br/>
@@ -278,7 +278,7 @@
 628 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>b</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
     <b>compiled_color_scheme_t::codes_16</b>,
     <b>compiled_color_scheme_t::codes_256</b>,
     <b>compiled_color_scheme_t::codes_truecolor</b>,
@@ -405,14 +405,14 @@
 697 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>colorscheme_load_builtin()</b>,
-    <b>color_scheme_t::description</b>, <b>ERROR_FILE_OPERATION</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>file_path</b>,
-    <b>color_scheme_t::has_light_variant</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>rgb_pixel_t::b</b>,
+    <b>colorscheme_load_builtin()</b>, <b>color_scheme_t::description</b>,
+    <b>ERROR_FILE_OPERATION</b>, <b>ERROR_INVALID_PARAM</b>, <b>file_path</b>,
+    <b>rgb_pixel_t::g</b>, <b>color_scheme_t::has_light_variant</b>,
     <b>color_scheme_t::log_colors_dark</b>,
     <b>color_scheme_t::log_colors_light</b>, <b>color_scheme_t::name</b>,
-    <b>platform_fopen()</b>, <b>safe_snprintf()</b>, <b>SET_ERRNO</b>, and
-    <b>SET_ERRNO_SYS</b>.</p>
+    <b>platform_fopen()</b>, <b>rgb_pixel_t::r</b>, <b>safe_snprintf()</b>,
+    <b>SET_ERRNO</b>, and <b>SET_ERRNO_SYS</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
@@ -614,14 +614,14 @@
 497 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>rgb_pixel_t::b</b>,
     <b>color_scheme_t::description</b>, <b>ERROR_CONFIG</b>,
     <b>ERROR_FILE_NOT_FOUND</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>color_scheme_t::has_light_variant</b>, <b>color_scheme_t::is_builtin</b>,
-    <b>color_scheme_t::log_colors_dark</b>,
+    <b>rgb_pixel_t::g</b>, <b>color_scheme_t::has_light_variant</b>,
+    <b>color_scheme_t::is_builtin</b>, <b>color_scheme_t::log_colors_dark</b>,
     <b>color_scheme_t::log_colors_light</b>, <b>color_scheme_t::name</b>,
-    <b>parse_hex_color()</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>, and
-    <b>color_scheme_t::source_file</b>.</p>
+    <b>parse_hex_color()</b>, <b>rgb_pixel_t::r</b>, <b>SAFE_STRNCPY</b>,
+    <b>SET_ERRNO</b>, and <b>color_scheme_t::source_file</b>.</p>
 <p class="Pp">Referenced by <b>colorscheme_set_active_scheme()</b>.</p>
 </section>
 <section class="Ss">
@@ -736,9 +736,9 @@
     scheme early, before logging.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>argc</b><i></i><b> Argument count</b>
+<div class="Bd-indent"><i>argc</i> Argument count
 <br/>
-<i></i><b>argv</b><i></i><b> Argument array</b></div>
+<i>argv</i> Argument array</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure
   (non-fatal)</div>
@@ -786,9 +786,8 @@
 837 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>argc</b>, <b>argv</b>, <b>ASCIICHAT_OK</b>,
-    <b>colorscheme_init()</b>, <b>colorscheme_set_active_scheme()</b>, and
-    <b>color_scheme_t::name</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>colorscheme_init()</b>,
+    <b>colorscheme_set_active_scheme()</b>, and <b>color_scheme_t::name</b>.</p>
 <p class="Pp">Referenced by <b>main()</b>.</p>
 </section>
 <section class="Ss">
@@ -803,7 +802,7 @@
 <br/>
 <i>g</i> Pointer to store green channel
 <br/>
-<i></i><b>b</b><i></i><b> Pointer to store blue channel</b></div>
+<i>b</i> Pointer to store blue channel</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Parses hex color strings in #RRGGBB or RRGGBB format.</p>
@@ -837,7 +836,7 @@
 529 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>b</b>, <b>ERROR_CONFIG</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>SAFE_SSCANF</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>colorscheme_load_from_file()</b>.</p>
 </section>
@@ -851,7 +850,7 @@
 <br/>
 <i>g</i> Green channel (0-255)
 <br/>
-<i></i><b>b</b><i></i><b> Blue channel (0-255)</b>
+<i>b</i> Blue channel (0-255)
 <br/>
 <i>buf</i> Output buffer for escape code
 <br/>
@@ -865,7 +864,7 @@
 539 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>, and <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>safe_snprintf()</b>.</p>
 <p class="Pp">Referenced by <b>colorscheme_compile_scheme()</b>.</p>
 </section>
 </section>

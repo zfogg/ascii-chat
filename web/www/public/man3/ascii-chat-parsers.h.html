@@ -39,66 +39,63 @@
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp"><b>bool</b> <b>parse_color_setting</b> (const char *arg, void
-    *dest, char **<b>error_msg</b>)
+    *dest, char **error_msg)
   <br/>
   Parse color setting option (--color flag). <b>bool</b>
-    <b>parse_utf8_setting</b> (const char *arg, void *dest, char
-    **<b>error_msg</b>)
+    <b>parse_utf8_setting</b> (const char *arg, void *dest, char **error_msg)
   <br/>
   Parse UTF-8 setting option (--utf8 flag). <b>bool</b> <b>parse_color_mode</b>
-    (const char *arg, void *dest, char **<b>error_msg</b>)
+    (const char *arg, void *dest, char **error_msg)
   <br/>
   Parse terminal color level option. <b>bool</b> <b>parse_color_filter</b>
-    (const char *arg, void *dest, char **<b>error_msg</b>)
+    (const char *arg, void *dest, char **error_msg)
   <br/>
   Parse color filter option. <b>bool</b> <b>parse_render_mode</b> (const char
-    *arg, void *dest, char **<b>error_msg</b>)
+    *arg, void *dest, char **error_msg)
   <br/>
   Parse render mode option. <b>bool</b> <b>parse_render_theme</b> (const char
-    *arg, void *dest, char **<b>error_msg</b>)
+    *arg, void *dest, char **error_msg)
   <br/>
   Parse render theme option for pixel rendering (macOS and Linux only).
     <b>bool</b> <b>parse_palette_type</b> (const char *arg, void *dest, char
-    **<b>error_msg</b>)
+    **error_msg)
   <br/>
   Parse palette type option. <b>bool</b> <b>parse_palette_chars</b> (const char
-    *arg, void *dest, char **<b>error_msg</b>)
+    *arg, void *dest, char **error_msg)
   <br/>
   Parse custom palette characters option. <b>bool</b> <b>parse_log_level</b>
-    (const char *arg, void *dest, char **<b>error_msg</b>)
+    (const char *arg, void *dest, char **error_msg)
   <br/>
   Parse log level option. <b>bool</b> <b>parse_port_option</b> (const char *arg,
-    void *dest, char **<b>error_msg</b>)
+    void *dest, char **error_msg)
   <br/>
   Parse and validate port option for CLI. int <b>parse_server_bind_address</b>
     (const char *arg, void *config, char **remaining, int num_remaining, char
-    **<b>error_msg</b>)
+    **error_msg)
   <br/>
   Parse server bind address positional argument. int <b>parse_client_address</b>
     (const char *arg, void *config, char **remaining, int num_remaining, char
-    **<b>error_msg</b>)
+    **error_msg)
   <br/>
   Parse client address positional argument. int <b>parse_mirror_media</b> (const
     char *arg, void *config, char **remaining, int num_remaining, char
-    **<b>error_msg</b>)
+    **error_msg)
   <br/>
   Parse mirror mode media positional argument. <b>bool</b>
-    <b>parse_verbose_flag</b> (const char *arg, void *dest, char
-    **<b>error_msg</b>)
+    <b>parse_verbose_flag</b> (const char *arg, void *dest, char **error_msg)
   <br/>
   Custom parser for --verbose flag. <b>bool</b> <b>parse_timestamp</b> (const
-    char *arg, void *dest, char **<b>error_msg</b>)
+    char *arg, void *dest, char **error_msg)
   <br/>
   Custom parser for --timestamp flag. <b>bool</b> <b>parse_volume</b> (const
-    char *arg, void *dest, char **<b>error_msg</b>)
+    char *arg, void *dest, char **error_msg)
   <br/>
   Custom parser for volume options (--volume, --speakers-volume,
     --microphone-volume). <b>bool</b> <b>parse_log_file</b> (const char *arg,
-    void *dest, char **<b>error_msg</b>)
+    void *dest, char **error_msg)
   <br/>
   Custom parser for log file paths (--log-file, -L). <b>bool</b>
-    <b>parse_audio_source</b> (const char *arg, void *dest, char
-    **<b>error_msg</b>)
+    <b>parse_audio_source</b> (const char *arg, void *dest, char **error_msg)
   <br/>
   Parse audio source option (--audio-source).
   <br/>
@@ -132,8 +129,7 @@
 <br/>
 <i>dest</i> Destination pointer (audio_source_t*)
 <br/>
-<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
-  failure)</b></div>
+<i>error_msg</i> Optional error message output (set on failure)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on error</div>
 <p class="Pp">Valid values:</p>
@@ -189,7 +185,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>AUDIO_SOURCE_AUTO</b>, <b>AUDIO_SOURCE_BOTH</b>,
-    <b>AUDIO_SOURCE_MEDIA</b>, <b>AUDIO_SOURCE_MIC</b>, <b>error_msg</b>,
+    <b>AUDIO_SOURCE_MEDIA</b>, <b>AUDIO_SOURCE_MIC</b>,
     <b>OPT_AUDIO_SOURCE_AUTO</b>, <b>OPT_AUDIO_SOURCE_BOTH</b>,
     <b>OPT_AUDIO_SOURCE_MEDIA</b>, <b>OPT_AUDIO_SOURCE_MIC</b>, and
     <b>platform_strdup()</b>.</p>
@@ -209,8 +205,7 @@
 <br/>
 <i>num_remaining</i> Count of remaining args
 <br/>
-<i></i><b>error_msg</b><i></i><b> Error message output (set on
-  failure)</b></div>
+<i>error_msg</i> Error message output (set on failure)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of args consumed (always 1), or -1 on error</div>
 <p class="Pp">Client address parsing rules:</p>
@@ -427,10 +422,10 @@
 853 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>error_msg</b>, <b>is_session_string()</b>,
-    <b>is_valid_ipv4()</b>, <b>is_valid_ipv6()</b>, <b>log_debug</b>,
-    <b>OPTIONS_BUFF_SIZE</b>, <b>platform_strdup()</b>, <b>SAFE_SNPRINTF</b>,
-    <b>safe_snprintf()</b>, and <b>SESSION_STRING_BUFFER_SIZE</b>.</p>
+<p class="Pp">References <b>is_session_string()</b>, <b>is_valid_ipv4()</b>,
+    <b>is_valid_ipv6()</b>, <b>log_debug</b>, <b>OPTIONS_BUFF_SIZE</b>,
+    <b>platform_strdup()</b>, <b>SAFE_SNPRINTF</b>, <b>safe_snprintf()</b>, and
+    <b>SESSION_STRING_BUFFER_SIZE</b>.</p>
 <p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
 </section>
 <section class="Ss">
@@ -443,8 +438,7 @@
 <br/>
 <i>dest</i> Destination pointer (color_filter_t*)
 <br/>
-<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
-  failure)</b></div>
+<i>error_msg</i> Optional error message output (set on failure)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on error</div>
 <p class="Pp">Valid values: none, black, white, green, magenta, fuchsia, orange,
@@ -482,7 +476,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>color_filter_from_cli_name()</b>,
-    <b>COLOR_FILTER_NONE</b>, <b>error_msg</b>, <b>OPT_COLOR_FILTER_NONE</b>,
+    <b>COLOR_FILTER_NONE</b>, <b>OPT_COLOR_FILTER_NONE</b>,
     <b>platform_strdup()</b>, and <b>safe_snprintf()</b>.</p>
 </section>
 <section class="Ss">
@@ -495,8 +489,7 @@
 <br/>
 <i>dest</i> Destination pointer (terminal_color_mode_t*)
 <br/>
-<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
-  failure)</b></div>
+<i>error_msg</i> Optional error message output (set on failure)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on error</div>
 <p class="Pp">Valid values:</p>
@@ -573,7 +566,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_suggest_enum_value()</b>,
-    <b>error_msg</b>, <b>OPT_COLOR_MODE_16</b>, <b>OPT_COLOR_MODE_256</b>,
+    <b>OPT_COLOR_MODE_16</b>, <b>OPT_COLOR_MODE_256</b>,
     <b>OPT_COLOR_MODE_AUTO</b>, <b>OPT_COLOR_MODE_NONE</b>,
     <b>OPT_COLOR_MODE_TRUECOLOR</b>, <b>platform_strdup()</b>,
     <b>safe_snprintf()</b>, <b>TERM_COLOR_16</b>, <b>TERM_COLOR_256</b>,
@@ -590,8 +583,7 @@
 <br/>
 <i>dest</i> Destination pointer (int*, will store <b>color_setting_t</b> value)
 <br/>
-<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
-  failure)</b></div>
+<i>error_msg</i> Optional error message output (set on failure)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on error</div>
 <p class="Pp">Valid values:</p>
@@ -627,7 +619,7 @@
 178 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>COLOR_SETTING_TRUE</b>, <b>error_msg</b>, and
+<p class="Pp">References <b>COLOR_SETTING_TRUE</b>, and
     <b>platform_strdup()</b>.</p>
 <p class="Pp">Referenced by <b>options_init()</b>.</p>
 </section>
@@ -681,10 +673,9 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>asciichat_error_context_t::context_message</b>, <b>error_msg</b>,
-    <b>HAS_ERRNO</b>, <b>PATH_ROLE_LOG_FILE</b>,
-    <b>path_validate_user_path()</b>, <b>platform_strdup()</b>,
-    <b>SAFE_FREE</b>, and <b>SAFE_STRNCPY</b>.</p>
+    <b>asciichat_error_context_t::context_message</b>, <b>HAS_ERRNO</b>,
+    <b>PATH_ROLE_LOG_FILE</b>, <b>path_validate_user_path()</b>,
+    <b>platform_strdup()</b>, <b>SAFE_FREE</b>, and <b>SAFE_STRNCPY</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> parse_log_level (const char * arg, void * dest, char
@@ -696,8 +687,7 @@
 <br/>
 <i>dest</i> Destination pointer (log_level_t*)
 <br/>
-<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
-  failure)</b></div>
+<i>error_msg</i> Optional error message output (set on failure)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on error</div>
 <p class="Pp">Valid values:</p>
@@ -780,13 +770,12 @@
 509 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>DEFAULT_LOG_LEVEL</b>, <b>error_msg</b>,
-    <b>LOG_DEBUG</b>, <b>LOG_DEV</b>, <b>LOG_ERROR</b>, <b>LOG_FATAL</b>,
-    <b>LOG_INFO</b>, <b>LOG_WARN</b>, <b>OPT_LOG_LEVEL_DEBUG</b>,
-    <b>OPT_LOG_LEVEL_DEV</b>, <b>OPT_LOG_LEVEL_ERROR</b>,
-    <b>OPT_LOG_LEVEL_FATAL</b>, <b>OPT_LOG_LEVEL_INFO</b>,
-    <b>OPT_LOG_LEVEL_WARN</b>, <b>platform_strdup()</b>, and
-    <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>DEFAULT_LOG_LEVEL</b>, <b>LOG_DEBUG</b>,
+    <b>LOG_DEV</b>, <b>LOG_ERROR</b>, <b>LOG_FATAL</b>, <b>LOG_INFO</b>,
+    <b>LOG_WARN</b>, <b>OPT_LOG_LEVEL_DEBUG</b>, <b>OPT_LOG_LEVEL_DEV</b>,
+    <b>OPT_LOG_LEVEL_ERROR</b>, <b>OPT_LOG_LEVEL_FATAL</b>,
+    <b>OPT_LOG_LEVEL_INFO</b>, <b>OPT_LOG_LEVEL_WARN</b>,
+    <b>platform_strdup()</b>, and <b>safe_snprintf()</b>.</p>
 <p class="Pp">Referenced by <b>options_init()</b>.</p>
 </section>
 <section class="Ss">
@@ -804,8 +793,7 @@
 <br/>
 <i>num_remaining</i> Count of remaining args
 <br/>
-<i></i><b>error_msg</b><i></i><b> Error message output (set on failure, caller
-  must free)</b></div>
+<i>error_msg</i> Error message output (set on failure, caller must free)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">1 if consumed the argument, -1 on error</div>
 <p class="Pp">Mirror mode media argument parsing rules:</p>
@@ -894,10 +882,9 @@
 912 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>error_msg</b>, <b>log_debug</b>,
-    <b>OPTIONS_BUFF_SIZE</b>, <b>platform_access()</b>,
-    <b>PLATFORM_ACCESS_READ</b>, <b>platform_strdup()</b>, and
-    <b>SAFE_SNPRINTF</b>.</p>
+<p class="Pp">References <b>log_debug</b>, <b>OPTIONS_BUFF_SIZE</b>,
+    <b>platform_access()</b>, <b>PLATFORM_ACCESS_READ</b>,
+    <b>platform_strdup()</b>, and <b>SAFE_SNPRINTF</b>.</p>
 <p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
 </section>
 <section class="Ss">
@@ -910,8 +897,7 @@
 <br/>
 <i>dest</i> Destination pointer (char[256])
 <br/>
-<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
-  failure)</b></div>
+<i>error_msg</i> Optional error message output (set on failure)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on error</div>
 <p class="Pp">The characters should be ordered from darkest (leftmost) to
@@ -963,7 +949,7 @@
 959 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>error_msg</b>, <b>PALETTE_CUSTOM</b>,
+<p class="Pp">References <b>PALETTE_CUSTOM</b>,
     <b>options_state::palette_type</b>, <b>platform_strdup()</b>,
     <b>safe_snprintf()</b>, and <b>SAFE_STRNCPY</b>.</p>
 </section>
@@ -977,8 +963,7 @@
 <br/>
 <i>dest</i> Destination pointer (palette_type_t*)
 <br/>
-<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
-  failure)</b></div>
+<i>error_msg</i> Optional error message output (set on failure)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on error</div>
 <p class="Pp">Valid values:</p>
@@ -1060,7 +1045,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_suggest_enum_value()</b>,
-    <b>error_msg</b>, <b>OPT_PALETTE_BLOCKS</b>, <b>OPT_PALETTE_COOL</b>,
+    <b>OPT_PALETTE_BLOCKS</b>, <b>OPT_PALETTE_COOL</b>,
     <b>OPT_PALETTE_CUSTOM</b>, <b>OPT_PALETTE_DIGITAL</b>,
     <b>OPT_PALETTE_MINIMAL</b>, <b>OPT_PALETTE_STANDARD</b>,
     <b>PALETTE_BLOCKS</b>, <b>PALETTE_COOL</b>, <b>PALETTE_CUSTOM</b>,
@@ -1077,8 +1062,7 @@
 <br/>
 <i>dest</i> Destination pointer (int* for port storage)
 <br/>
-<i></i><b>error_msg</b><i></i><b> Error message output (set on failure, caller
-  must free)</b></div>
+<i>error_msg</i> Error message output (set on failure, caller must free)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on error</div>
 <p class="Pp">Validates port is a number in the range 1-65535.</p>
@@ -1111,9 +1095,8 @@
 536 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>error_msg</b>,
-    <b>parse_port()</b>, <b>platform_strdup()</b>, and
-  <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>parse_port()</b>,
+    <b>platform_strdup()</b>, and <b>safe_snprintf()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> parse_render_mode (const char * arg, void * dest,
@@ -1125,8 +1108,7 @@
 <br/>
 <i>dest</i> Destination pointer (render_mode_t*)
 <br/>
-<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
-  failure)</b></div>
+<i>error_msg</i> Optional error message output (set on failure)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on error</div>
 <p class="Pp">Valid values:</p>
@@ -1186,12 +1168,11 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_suggest_enum_value()</b>,
-    <b>error_msg</b>, <b>OPT_RENDER_MODE_BACKGROUND</b>,
-    <b>OPT_RENDER_MODE_BG</b>, <b>OPT_RENDER_MODE_FG</b>,
-    <b>OPT_RENDER_MODE_FOREGROUND</b>, <b>OPT_RENDER_MODE_HALF_BLOCK</b>,
-    <b>platform_strdup()</b>, <b>RENDER_MODE_BACKGROUND</b>,
-    <b>RENDER_MODE_FOREGROUND</b>, <b>RENDER_MODE_HALF_BLOCK</b>, and
-    <b>safe_snprintf()</b>.</p>
+    <b>OPT_RENDER_MODE_BACKGROUND</b>, <b>OPT_RENDER_MODE_BG</b>,
+    <b>OPT_RENDER_MODE_FG</b>, <b>OPT_RENDER_MODE_FOREGROUND</b>,
+    <b>OPT_RENDER_MODE_HALF_BLOCK</b>, <b>platform_strdup()</b>,
+    <b>RENDER_MODE_BACKGROUND</b>, <b>RENDER_MODE_FOREGROUND</b>,
+    <b>RENDER_MODE_HALF_BLOCK</b>, and <b>safe_snprintf()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> parse_render_theme (const char * arg, void * dest,
@@ -1205,8 +1186,7 @@
 <i>dest</i> Destination pointer (int*, will store <b>term_renderer_theme_t</b>
   value)
 <br/>
-<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
-  failure)</b></div>
+<i>error_msg</i> Optional error message output (set on failure)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on error</div>
 <p class="Pp">Controls the rendering theme when using pixel output (ghostty
@@ -1262,8 +1242,8 @@
 382 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>error_msg</b>, <b>platform_strdup()</b>, and
-    <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>platform_strdup()</b>, and
+  <b>safe_snprintf()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_parse_server_bind_address_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)"><a class="permalink" href="#int_parse_server_bind_address_(const_char_*_arg,_void_*_config,_char_**_remaining,_int_num_remaining,_char_**_error_msg)">int
@@ -1280,8 +1260,7 @@
 <br/>
 <i>num_remaining</i> Count of remaining args
 <br/>
-<i></i><b>error_msg</b><i></i><b> Error message output (set on
-  failure)</b></div>
+<i>error_msg</i> Error message output (set on failure)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of args consumed (0-2), or -1 on error</div>
 <p class="Pp">Server bind address parsing rules:</p>
@@ -1433,11 +1412,10 @@
 666 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>error_msg</b>, <b>is_localhost_ipv4()</b>,
-    <b>is_localhost_ipv6()</b>, <b>is_valid_ipv4()</b>, <b>is_valid_ipv6()</b>,
-    <b>OPTIONS_BUFF_SIZE</b>, <b>parse_ipv6_address()</b>,
-    <b>platform_strdup()</b>, <b>SAFE_SNPRINTF</b>, and
-  <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>is_localhost_ipv4()</b>, <b>is_localhost_ipv6()</b>,
+    <b>is_valid_ipv4()</b>, <b>is_valid_ipv6()</b>, <b>OPTIONS_BUFF_SIZE</b>,
+    <b>parse_ipv6_address()</b>, <b>platform_strdup()</b>, <b>SAFE_SNPRINTF</b>,
+    and <b>safe_snprintf()</b>.</p>
 <p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
 </section>
 <section class="Ss">
@@ -1546,8 +1524,8 @@
 1082 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>error_msg</b>, <b>platform_strdup()</b>,
-    <b>SEC_PER_HOUR</b>, and <b>SEC_PER_MIN</b>.</p>
+<p class="Pp">References <b>platform_strdup()</b>, <b>SEC_PER_HOUR</b>, and
+    <b>SEC_PER_MIN</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> parse_utf8_setting (const char * arg, void * dest,
@@ -1559,8 +1537,7 @@
 <br/>
 <i>dest</i> Destination pointer (int*, will store <b>utf8_setting_t</b> value)
 <br/>
-<i></i><b>error_msg</b><i></i><b> Optional error message output (set on
-  failure)</b></div>
+<i>error_msg</i> Optional error message output (set on failure)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on error</div>
 <p class="Pp">Valid values:</p>
@@ -1597,8 +1574,8 @@
 209 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>error_msg</b>, <b>platform_strdup()</b>, and
-    <b>UTF8_SETTING_TRUE</b>.</p>
+<p class="Pp">References <b>platform_strdup()</b>, and
+  <b>UTF8_SETTING_TRUE</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> parse_verbose_flag (const char * arg, void * dest,
@@ -1634,7 +1611,6 @@
 985 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>error_msg</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> parse_volume (const char * arg, void * dest, char **
@@ -1676,8 +1652,7 @@
 1114 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>error_msg</b>, <b>platform_strdup()</b>, and
-    <b>SAFE_SNPRINTF</b>.</p>
+<p class="Pp">References <b>platform_strdup()</b>, and <b>SAFE_SNPRINTF</b>.</p>
 </section>
 </section>
 <section class="Sh">

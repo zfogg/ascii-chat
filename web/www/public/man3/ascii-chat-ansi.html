@@ -67,10 +67,10 @@
   <br/>
   Check if a position in text is already colored. char *
     <b>append_truecolor_fg</b> (char *dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
-    <b>uint8_t</b> <b>b</b>)
+    <b>uint8_t</b> b)
   <br/>
   char * <b>append_truecolor_bg</b> (char *dst, <b>uint8_t</b> r, <b>uint8_t</b>
-    g, <b>uint8_t</b> <b>b</b>)
+    g, <b>uint8_t</b> b)
   <br/>
   char * <b>append_truecolor_fg_bg</b> (char *dst, <b>uint8_t</b> fg_r,
     <b>uint8_t</b> fg_g, <b>uint8_t</b> fg_b, <b>uint8_t</b> bg_r,
@@ -80,7 +80,7 @@
     size_t capacity, <b>ansi_color_mode_t</b> mode)
   <br/>
   void <b>ansi_rle_add_pixel</b> (<b>ansi_rle_context_t</b> *ctx, <b>uint8_t</b>
-    r, <b>uint8_t</b> g, <b>uint8_t</b> <b>b</b>, char ascii_char)
+    r, <b>uint8_t</b> g, <b>uint8_t</b> b, char ascii_char)
   <br/>
   void <b>ansi_rle_finish</b> (<b>ansi_rle_context_t</b> *ctx)
   <br/>
@@ -95,24 +95,23 @@
   char * <b>append_256color_bg</b> (char *dst, <b>uint8_t</b> color_index)
   <br/>
   <b>uint8_t</b> <b>rgb_to_256color</b> (<b>uint8_t</b> r, <b>uint8_t</b> g,
-    <b>uint8_t</b> <b>b</b>)
+    <b>uint8_t</b> b)
   <br/>
   char * <b>append_16color_fg</b> (char *dst, <b>uint8_t</b> color_index)
   <br/>
   char * <b>append_16color_bg</b> (char *dst, <b>uint8_t</b> color_index)
   <br/>
   <b>uint8_t</b> <b>rgb_to_16color</b> (<b>uint8_t</b> r, <b>uint8_t</b> g,
-    <b>uint8_t</b> <b>b</b>)
+    <b>uint8_t</b> b)
   <br/>
   void <b>get_16color_rgb</b> (<b>uint8_t</b> color_index, <b>uint8_t</b> *r,
-    <b>uint8_t</b> *g, <b>uint8_t</b> *<b>b</b>)
+    <b>uint8_t</b> *g, <b>uint8_t</b> *b)
   <br/>
-  <b>uint8_t</b> <b>rgb_to_16color_dithered</b> (int r, int g, int <b>b</b>, int
-    x, int y, int width, int height, <b>rgb_error_t</b> *error_buffer)
+  <b>uint8_t</b> <b>rgb_to_16color_dithered</b> (int r, int g, int b, int x, int
+    y, int width, int height, <b>rgb_error_t</b> *error_buffer)
   <br/>
   char * <b>append_color_fg_for_mode</b> (char *dst, <b>uint8_t</b> r,
-    <b>uint8_t</b> g, <b>uint8_t</b> <b>b</b>, <b>terminal_color_mode_t</b>
-    mode)
+    <b>uint8_t</b> g, <b>uint8_t</b> b, <b>terminal_color_mode_t</b> mode)
   <br/>
   <br/>
 </p>
@@ -287,7 +286,7 @@
 <br/>
 <i>g</i> Green component
 <br/>
-<i></i><b>b</b><i></i><b> Blue component</b>
+<i>b</i> Blue component
 <br/>
 <i>ascii_char</i> ASCII character to append</div>
 <p class="Pp">Definition at line <b>243</b> of file <b>ansi.c</b>.</p>
@@ -336,12 +335,12 @@
 <p class="Pp">References <b>ANSI_MODE_BACKGROUND</b>,
     <b>ANSI_MODE_FOREGROUND</b>, <b>ANSI_MODE_FOREGROUND_BACKGROUND</b>,
     <b>append_truecolor_bg()</b>, <b>append_truecolor_fg()</b>,
-    <b>append_truecolor_fg_bg()</b>, <b>b</b>,
-    <b>ansi_rle_context_t::buffer</b>, <b>ansi_rle_context_t::capacity</b>,
-    <b>ansi_rle_context_t::first_pixel</b>, <b>ansi_rle_context_t::last_b</b>,
-    <b>ansi_rle_context_t::last_g</b>, <b>ansi_rle_context_t::last_r</b>,
-    <b>ansi_rle_context_t::length</b>, <b>log_warn_every</b>,
-    <b>ansi_rle_context_t::mode</b>, and <b>US_PER_SEC_INT</b>.</p>
+    <b>append_truecolor_fg_bg()</b>, <b>ansi_rle_context_t::buffer</b>,
+    <b>ansi_rle_context_t::capacity</b>, <b>ansi_rle_context_t::first_pixel</b>,
+    <b>ansi_rle_context_t::last_b</b>, <b>ansi_rle_context_t::last_g</b>,
+    <b>ansi_rle_context_t::last_r</b>, <b>ansi_rle_context_t::length</b>,
+    <b>log_warn_every</b>, <b>ansi_rle_context_t::mode</b>, and
+    <b>US_PER_SEC_INT</b>.</p>
 <p class="Pp">Referenced by <b>image_print_color()</b>.</p>
 </section>
 <section class="Ss">
@@ -616,7 +615,7 @@
 <br/>
 <i>g</i> Green component
 <br/>
-<i></i><b>b</b><i></i><b> Blue component</b>
+<i>b</i> Blue component
 <br/>
 <i>mode</i> Terminal color mode capability</div>
 <p class="Pp"><b>Returns</b></p>
@@ -647,7 +646,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>append_16color_fg()</b>,
-    <b>append_256color_fg()</b>, <b>append_truecolor_fg()</b>, <b>b</b>,
+    <b>append_256color_fg()</b>, <b>append_truecolor_fg()</b>,
     <b>COLOR_MODE_16_COLOR</b>, <b>COLOR_MODE_256_COLOR</b>,
     <b>COLOR_MODE_AUTO</b>, <b>COLOR_MODE_NONE</b>, <b>COLOR_MODE_TRUECOLOR</b>,
     <b>rgb_to_16color()</b>, and <b>rgb_to_256color()</b>.</p>
@@ -667,7 +666,7 @@
 <br/>
 <i>g</i> Green component
 <br/>
-<i></i><b>b</b><i></i><b> Blue component</b></div>
+<i>b</i> Blue component</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to end of written data</div>
 <p class="Pp">Definition at line <b>155</b> of file <b>ansi.c</b>.</p>
@@ -696,7 +695,7 @@
 177 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>, <b>g_dec3_cache</b>, <b>init_dec3()</b>, and
+<p class="Pp">References <b>g_dec3_cache</b>, <b>init_dec3()</b>, and
     <b>SAFE_MEMCPY</b>.</p>
 <p class="Pp">Referenced by <b>ansi_rle_add_pixel()</b>,
     <b>grep_highlight()</b>, and <b>grep_highlight_colored()</b>.</p>
@@ -716,7 +715,7 @@
 <br/>
 <i>g</i> Green component
 <br/>
-<i></i><b>b</b><i></i><b> Blue component</b></div>
+<i>b</i> Blue component</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to end of written data</div>
 <p class="Pp">Definition at line <b>125</b> of file <b>ansi.c</b>.</p>
@@ -749,7 +748,7 @@
 151 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>, <b>g_dec3_cache</b>, <b>init_dec3()</b>, and
+<p class="Pp">References <b>g_dec3_cache</b>, <b>init_dec3()</b>, and
     <b>SAFE_MEMCPY</b>.</p>
 <p class="Pp">Referenced by <b>ansi_rle_add_pixel()</b>, and
     <b>append_color_fg_for_mode()</b>.</p>
@@ -844,7 +843,7 @@
 <br/>
 <i>g</i> Output green component
 <br/>
-<i></i><b>b</b><i></i><b> Output blue component</b></div>
+<i>b</i> Output blue component</div>
 <p class="Pp">Definition at line <b>462</b> of file <b>ansi.c</b>.</p>
 <pre>462                                                                               {
 463   // Same color table as rgb_to_16color()
@@ -877,7 +876,6 @@
 490 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>.</p>
 <p class="Pp">Referenced by
     <b>image_print_16color_dithered_with_background()</b>, and
     <b>rgb_to_16color_dithered()</b>.</p>
@@ -894,7 +892,7 @@
 <br/>
 <i>g</i> Green component
 <br/>
-<i></i><b>b</b><i></i><b> Blue component</b></div>
+<i>b</i> Blue component</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">16-color index (0-15)</div>
 <p class="Pp">Definition at line <b>419</b> of file <b>ansi.c</b>.</p>
@@ -941,7 +939,6 @@
 459 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>.</p>
 <p class="Pp">Referenced by <b>append_color_fg_for_mode()</b>,
     <b>colorscheme_compile_scheme()</b>, <b>image_print_16color()</b>,
     <b>rgb_to_16color_dithered()</b>, and
@@ -958,7 +955,7 @@
 <br/>
 <i>g</i> Green component
 <br/>
-<i></i><b>b</b><i></i><b> Blue component</b>
+<i>b</i> Blue component
 <br/>
 <i>x</i> Current pixel X coordinate
 <br/>
@@ -1047,7 +1044,7 @@
 565 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>, <b>rgb_error_t::b</b>, <b>rgb_error_t::g</b>,
+<p class="Pp">References <b>rgb_error_t::b</b>, <b>rgb_error_t::g</b>,
     <b>get_16color_rgb()</b>, <b>rgb_error_t::r</b>, and
     <b>rgb_to_16color()</b>.</p>
 <p class="Pp">Referenced by <b>image_print_16color_dithered()</b>, and
@@ -1065,7 +1062,7 @@
 <br/>
 <i>g</i> Green component
 <br/>
-<i></i><b>b</b><i></i><b> Blue component</b></div>
+<i>b</i> Blue component</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">256-color palette index (0-255)</div>
 <p class="Pp">Definition at line <b>342</b> of file <b>ansi.c</b>.</p>
@@ -1091,7 +1088,6 @@
 361 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>.</p>
 <p class="Pp">Referenced by <b>append_color_fg_for_mode()</b>,
     <b>colorscheme_compile_scheme()</b>, and
     <b>rgb_to_256color_halfblocks_scalar()</b>.</p>

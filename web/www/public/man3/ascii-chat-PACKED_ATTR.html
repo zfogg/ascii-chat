@@ -17,48 +17,35 @@
     code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
       font-family: inherit; }
   </style>
-  <title>levenshtein.h(3)</title>
+  <title>PACKED_ATTR(3)</title>
 </head>
 <body>
 <table class="head">
   <tr>
-    <td class="head-ltitle">levenshtein.h(3)</td>
+    <td class="head-ltitle">PACKED_ATTR(3)</td>
     <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">levenshtein.h(3)</td>
+    <td class="head-rtitle">PACKED_ATTR(3)</td>
   </tr>
 </table>
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">levenshtein.h - Levenshtein distance algorithm for fuzzy string
-    matching.</p>
-<p class="Pp"></p>
+<p class="Pp">PACKED_ATTR</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/video/rgba/image.h&gt;</p>
 <section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
 <br/>
-<p class="Pp">#define <b>LEVENSHTEIN_SUGGESTION_THRESHOLD</b> 4
+<p class="Pp"><b>uint8_t</b> <b>r</b>
   <br/>
-  Maximum edit distance to suggest an option.
+  Red color component (0-255). <b>uint8_t</b> <b>g</b>
   <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">size_t <b>levenshtein</b> (const char *a, const char *b)
+  Green color component (0-255). <b>uint8_t</b> <b>b</b>
   <br/>
-  Calculate Levenshtein distance between two strings. size_t
-    <b>levenshtein_n</b> (const char *a, const size_t length, const char *b,
-    const size_t bLength)
-  <br/>
-  Calculate Levenshtein distance with explicit string lengths. const char *
-    <b>levenshtein_find_similar</b> (const char *unknown, const char *const
-    *candidates)
-  <br/>
-  Find the most similar string from a NULL-terminated array.
+  Blue color component (0-255).
   <br/>
 </p>
 </section>
@@ -66,10 +53,31 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">Levenshtein distance algorithm for fuzzy string matching.</p>
+<p class="Pp">Definition at line <b>81</b> of file
+  <b>video/rgba/image.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> PACKED_ATTR::b</h2>
+<p class="Pp">Blue color component (0-255).</p>
+<p class="Pp">Definition at line <b>84</b> of file
+  <b>video/rgba/image.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> PACKED_ATTR::g</h2>
+<p class="Pp">Green color component (0-255).</p>
+<p class="Pp">Definition at line <b>83</b> of file
+  <b>video/rgba/image.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> PACKED_ATTR::r</h2>
+<p class="Pp">Red color component (0-255).</p>
+<p class="Pp">Definition at line <b>82</b> of file
+  <b>video/rgba/image.h</b>.</p>
 <p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>levenshtein.h</b>.</p>
+</section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>

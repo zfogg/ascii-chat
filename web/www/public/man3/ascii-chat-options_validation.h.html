@@ -37,34 +37,67 @@
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>__attribute__</b> ((visibility('default'))) size_t
-    <b>levenshtein</b>(const char *a
-  <br/>
-  Calculate Levenshtein distance between two strings.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
 <p class="Pp"><b>Validation Functions</b></p>
 <p class="Pp">
   <br/>
   <br/>
-  char * <b>error_msg</b>
+  int <b>validate_opt_port</b> (const char *value_str, char *error_msg, size_t
+    error_msg_size)
   <br/>
-  char size_t <b>error_msg_size</b>
+  Validate port number (1-65535). int <b>validate_opt_positive_int</b> (const
+    char *value_str, char *error_msg, size_t error_msg_size)
   <br/>
-  char * <b>parsed_address</b>
+  Validate positive integer. int <b>validate_opt_non_negative_int</b> (const
+    char *value_str, char *error_msg, size_t error_msg_size)
   <br/>
-  char size_t <b>address_size</b>
+  Validate non-negative integer. int <b>validate_opt_color_mode</b> (const char
+    *value_str, char *error_msg, size_t error_msg_size)
   <br/>
-  char size_t <b>bool</b> <b>is_client</b>
+  Validate color mode string. int <b>validate_opt_render_mode</b> (const char
+    *value_str, char *error_msg, size_t error_msg_size)
   <br/>
-  int <b>argc</b>
+  Validate render mode string. int <b>validate_opt_palette</b> (const char
+    *value_str, char *error_msg, size_t error_msg_size)
   <br/>
-  int char * <b>argv</b> []
+  Validate palette type string. int <b>validate_opt_log_level</b> (const char
+    *value_str, char *error_msg, size_t error_msg_size)
   <br/>
+  Validate log level string. int <b>validate_opt_ip_address</b> (const char
+    *value_str, char *parsed_address, size_t address_size, <b>bool</b>
+    is_client, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate IP address or hostname. float <b>validate_opt_float_non_negative</b>
+    (const char *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate non-negative float value. float <b>validate_opt_volume</b> (const
+    char *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate volume value (0.0-1.0). int <b>validate_opt_fps</b> (const char
+    *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate FPS value (1-144). int <b>validate_opt_max_clients</b> (const char
+    *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate max clients value (1-32). int <b>validate_opt_compression_level</b>
+    (const char *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate compression level (1-9). int <b>validate_opt_reconnect</b> (const
+    char *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate reconnect value. int <b>validate_opt_device_index</b> (const char
+    *value_str, char *error_msg, size_t error_msg_size)
+  <br/>
+  Validate device index (-1 for default, 0+ for specific device). int
+    <b>validate_opt_password</b> (const char *value_str, char *error_msg, size_t
+    error_msg_size)
+  <br/>
+  Validate password (8-256 characters). int <b>options_collect_identity_keys</b>
+    (<b>options_t</b> *opts, int argc, char *argv[])
+  <br/>
+  Collect multiple --key flags into identity_keys array. <b>bool</b>
+    <b>is_remote_key_path</b> (const char *key_path)
+  <br/>
+  Check if a key path is a remote/virtual key (not a local file).
   <br/>
   <br/>
 </p>

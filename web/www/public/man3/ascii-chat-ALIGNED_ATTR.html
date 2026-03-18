@@ -17,21 +17,20 @@
     code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
       font-family: inherit; }
   </style>
-  <title>rgb_pixel_t(3)</title>
+  <title>ALIGNED_ATTR(3)</title>
 </head>
 <body>
 <table class="head">
   <tr>
-    <td class="head-ltitle">rgb_pixel_t(3)</td>
+    <td class="head-ltitle">ALIGNED_ATTR(3)</td>
     <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">rgb_pixel_t(3)</td>
+    <td class="head-rtitle">ALIGNED_ATTR(3)</td>
   </tr>
 </table>
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">rgb_pixel_t - RGB pixel structure.</p>
-<p class="Pp"></p>
+<p class="Pp">ALIGNED_ATTR</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
@@ -46,7 +45,9 @@
   <br/>
   Green color component (0-255). <b>uint8_t</b> <b>b</b>
   <br/>
-  Blue color component (0-255).
+  Blue color component (0-255). <b>uint8_t</b> <b>padding</b>
+  <br/>
+  Padding byte to align to 4-byte boundary (SIMD alignment).
   <br/>
 </p>
 </section>
@@ -54,61 +55,35 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">RGB pixel structure.</p>
-<p class="Pp">Standard RGB pixel structure with 3 bytes per pixel (R, G, B).
-    Packed structure (no padding) for efficient memory usage.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Structure is packed for wire format compatibility.
-<p class="Pp"></p>
-<p class="Pp">Color components are in range 0-255.</p>
-<p class="Pp"></p>
-<p class="Pp">Size: 3 bytes per pixel.</p>
-</div>
-<p class="Pp">Definition at line <b>81</b> of file
+<p class="Pp">Definition at line <b>102</b> of file
   <b>video/rgba/image.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> rgb_pixel_t::b</h2>
+<h2 class="Ss"><b>uint8_t</b> ALIGNED_ATTR::b</h2>
 <p class="Pp">Blue color component (0-255).</p>
-<p class="Pp">Definition at line <b>84</b> of file
+<p class="Pp">Definition at line <b>105</b> of file
   <b>video/rgba/image.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_convert_with_capabilities()</b>,
-    <b>colorscheme_export_scheme()</b>, <b>colorscheme_load_from_file()</b>,
-    <b>image_print()</b>, <b>image_print_16color()</b>,
-    <b>image_print_16color_dithered()</b>,
-    <b>image_print_16color_dithered_with_background()</b>,
-    <b>image_print_color()</b>, <b>media_source_read_video()</b>,
-    <b>mirror_convert_frame()</b>, and <b>webcam_read()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> rgb_pixel_t::g</h2>
+<h2 class="Ss"><b>uint8_t</b> ALIGNED_ATTR::g</h2>
 <p class="Pp">Green color component (0-255).</p>
-<p class="Pp">Definition at line <b>83</b> of file
+<p class="Pp">Definition at line <b>104</b> of file
   <b>video/rgba/image.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_convert_with_capabilities()</b>,
-    <b>colorscheme_export_scheme()</b>, <b>colorscheme_load_from_file()</b>,
-    <b>image_print()</b>, <b>image_print_16color()</b>,
-    <b>image_print_16color_dithered()</b>,
-    <b>image_print_16color_dithered_with_background()</b>,
-    <b>image_print_color()</b>, <b>media_source_read_video()</b>,
-    <b>mirror_convert_frame()</b>, and <b>webcam_read()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> rgb_pixel_t::r</h2>
-<p class="Pp">Red color component (0-255).</p>
-<p class="Pp">Definition at line <b>82</b> of file
+<h2 class="Ss"><b>uint8_t</b> ALIGNED_ATTR::padding</h2>
+<p class="Pp">Padding byte to align to 4-byte boundary (SIMD alignment).</p>
+<p class="Pp">Definition at line <b>106</b> of file
   <b>video/rgba/image.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_convert_with_capabilities()</b>,
-    <b>colorscheme_export_scheme()</b>, <b>colorscheme_load_from_file()</b>,
-    <b>image_print()</b>, <b>image_print_16color()</b>,
-    <b>image_print_16color_dithered()</b>,
-    <b>image_print_16color_dithered_with_background()</b>,
-    <b>image_print_color()</b>, <b>media_source_read_video()</b>,
-    <b>mirror_convert_frame()</b>, and <b>webcam_read()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> ALIGNED_ATTR::r</h2>
+<p class="Pp">Red color component (0-255).</p>
+<p class="Pp">Definition at line <b>103</b> of file
+  <b>video/rgba/image.h</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>

@@ -69,10 +69,10 @@
   <br/>
   Check if a position in text is already colored. char *
     <b>append_truecolor_fg</b> (char *dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
-    <b>uint8_t</b> <b>b</b>)
+    <b>uint8_t</b> b)
   <br/>
   char * <b>append_truecolor_bg</b> (char *dst, <b>uint8_t</b> r, <b>uint8_t</b>
-    g, <b>uint8_t</b> <b>b</b>)
+    g, <b>uint8_t</b> b)
   <br/>
   char * <b>append_truecolor_fg_bg</b> (char *dst, <b>uint8_t</b> fg_r,
     <b>uint8_t</b> fg_g, <b>uint8_t</b> fg_b, <b>uint8_t</b> bg_r,
@@ -82,7 +82,7 @@
     size_t capacity, <b>ansi_color_mode_t</b> mode)
   <br/>
   void <b>ansi_rle_add_pixel</b> (<b>ansi_rle_context_t</b> *ctx, <b>uint8_t</b>
-    r, <b>uint8_t</b> g, <b>uint8_t</b> <b>b</b>, char ascii_char)
+    r, <b>uint8_t</b> g, <b>uint8_t</b> b, char ascii_char)
   <br/>
   void <b>ansi_rle_finish</b> (<b>ansi_rle_context_t</b> *ctx)
   <br/>
@@ -97,24 +97,23 @@
   char * <b>append_256color_bg</b> (char *dst, <b>uint8_t</b> color_index)
   <br/>
   <b>uint8_t</b> <b>rgb_to_256color</b> (<b>uint8_t</b> r, <b>uint8_t</b> g,
-    <b>uint8_t</b> <b>b</b>)
+    <b>uint8_t</b> b)
   <br/>
   char * <b>append_16color_fg</b> (char *dst, <b>uint8_t</b> color_index)
   <br/>
   char * <b>append_16color_bg</b> (char *dst, <b>uint8_t</b> color_index)
   <br/>
   <b>uint8_t</b> <b>rgb_to_16color</b> (<b>uint8_t</b> r, <b>uint8_t</b> g,
-    <b>uint8_t</b> <b>b</b>)
+    <b>uint8_t</b> b)
   <br/>
   void <b>get_16color_rgb</b> (<b>uint8_t</b> color_index, <b>uint8_t</b> *r,
-    <b>uint8_t</b> *g, <b>uint8_t</b> *<b>b</b>)
+    <b>uint8_t</b> *g, <b>uint8_t</b> *b)
   <br/>
-  <b>uint8_t</b> <b>rgb_to_16color_dithered</b> (int r, int g, int <b>b</b>, int
-    x, int y, int width, int height, <b>rgb_error_t</b> *error_buffer)
+  <b>uint8_t</b> <b>rgb_to_16color_dithered</b> (int r, int g, int b, int x, int
+    y, int width, int height, <b>rgb_error_t</b> *error_buffer)
   <br/>
   char * <b>append_color_fg_for_mode</b> (char *dst, <b>uint8_t</b> r,
-    <b>uint8_t</b> g, <b>uint8_t</b> <b>b</b>, <b>terminal_color_mode_t</b>
-    mode)
+    <b>uint8_t</b> g, <b>uint8_t</b> b, <b>terminal_color_mode_t</b> mode)
   <br/>
   <br/>
 </p>

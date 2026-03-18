@@ -121,15 +121,15 @@
     (const char *path, int mode)
   <br/>
   Create directories recursively (mkdir -p equivalent). <b>asciichat_error_t</b>
-    <b>platform_mkdtemp</b> (char *<b>path_out</b>, size_t <b>path_size</b>,
-    const char *prefix)
+    <b>platform_mkdtemp</b> (char *path_out, size_t path_size, const char
+    *prefix)
   <br/>
   Create a temporary directory with a given prefix. <b>asciichat_error_t</b>
     <b>platform_rmdir_recursive</b> (const char *path)
   <br/>
   Recursively delete a directory and all its contents. int
-    <b>platform_create_temp_file</b> (char *<b>path_out</b>, size_t
-    <b>path_size</b>, const char *prefix, int *fd)
+    <b>platform_create_temp_file</b> (char *path_out, size_t path_size, const
+    char *prefix, int *fd)
   <br/>
   Create a temporary file with a given prefix. int
     <b>platform_delete_temp_file</b> (const char *path)
@@ -201,8 +201,7 @@
     <b>platform_normalize_path_separators</b> (char *path)
   <br/>
   Normalize path separators for the current platform. int
-    <b>platform_path_strcasecmp</b> (const char *a, const char *<b>b</b>, size_t
-    n)
+    <b>platform_path_strcasecmp</b> (const char *a, const char *b, size_t n)
   <br/>
   Platform-aware path string comparison. const char *
     <b>file_read_error_message</b> (const char *path)
@@ -217,13 +216,13 @@
     *path)
   <br/>
   Check if file is writable. <b>bool</b> <b>platform_get_executable_path</b>
-    (char *exe_path, size_t <b>path_size</b>)
+    (char *exe_path, size_t path_size)
   <br/>
   Get the path to the current executable. <b>bool</b>
-    <b>platform_get_temp_dir</b> (char *temp_dir, size_t <b>path_size</b>)
+    <b>platform_get_temp_dir</b> (char *temp_dir, size_t path_size)
   <br/>
   Get the system temporary directory path. <b>bool</b> <b>platform_get_cwd</b>
-    (char *cwd, size_t <b>path_size</b>)
+    (char *cwd, size_t path_size)
   <br/>
   Get the current working directory of the process. int <b>platform_access</b>
     (const char *path, int mode)

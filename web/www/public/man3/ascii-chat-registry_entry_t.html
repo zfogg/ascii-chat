@@ -67,10 +67,9 @@
   const char * <b>env_var_name</b>
   <br/>
   <b>bool</b>(* <b>validate_fn</b> )(const void *options_struct, char
-    **<b>error_msg</b>)
+    **error_msg)
   <br/>
-  <b>bool</b>(* <b>parse_fn</b> )(const char *arg, void *dest, char
-    **<b>error_msg</b>)
+  <b>bool</b>(* <b>parse_fn</b> )(const char *arg, void *dest, char **error_msg)
   <br/>
   <b>bool</b> <b>owns_memory</b>
   <br/>
@@ -231,7 +230,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b>(* registry_entry_t::parse_fn) (const char *arg, void
-  *dest, char **<b>error_msg</b>)</h2>
+  *dest, char **error_msg)</h2>
 <p class="Pp">Definition at line <b>44</b> of file
     <b>options/registry/common.h</b>.</p>
 <p class="Pp">Referenced by <b>options_registry_add_all_to_builder()</b>,
@@ -269,7 +268,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b>(* registry_entry_t::validate_fn) (const void
-  *options_struct, char **<b>error_msg</b>)</h2>
+  *options_struct, char **error_msg)</h2>
 <p class="Pp">Definition at line <b>43</b> of file
     <b>options/registry/common.h</b>.</p>
 <p class="Pp">Referenced by <b>options_registry_add_all_to_builder()</b>,

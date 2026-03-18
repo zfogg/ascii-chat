@@ -38,8 +38,8 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">int <b>wasm_parse_args</b> (const char *args_str, char
-    **<b>argv</b>, int max_args, char **out_args_copy)
+<p class="Pp">int <b>wasm_parse_args</b> (const char *args_str, char **argv, int
+    max_args, char **out_args_copy)
   <br/>
   <br/>
 </p>
@@ -66,8 +66,7 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>args_str</i> Space-separated argument string
 <br/>
-<i></i><b>argv</b><i></i><b> Output array to store argument pointers (at least
-  max_args elements)</b>
+<i>argv</i> Output array to store argument pointers (at least max_args elements)
 <br/>
 <i>max_args</i> Maximum number of arguments to parse
 <br/>
@@ -103,7 +102,6 @@
 47 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>argc</b>, and <b>argv</b>.</p>
 <p class="Pp">Referenced by <b>client_init_with_args()</b>, and
     <b>mirror_init_with_args()</b>.</p>
 </section>

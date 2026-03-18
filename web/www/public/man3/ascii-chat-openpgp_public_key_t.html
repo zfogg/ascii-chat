@@ -70,26 +70,32 @@
 <h2 class="Ss"><b>uint8_t</b> openpgp_public_key_t::algorithm</h2>
 <p class="Pp">Public key algorithm (22 = EdDSA).</p>
 <p class="Pp">Definition at line <b>94</b> of file <b>openpgp.h</b>.</p>
+<p class="Pp">Referenced by <b>openpgp_parse_public_key_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> openpgp_public_key_t::created</h2>
 <p class="Pp">Creation timestamp (Unix epoch).</p>
 <p class="Pp">Definition at line <b>93</b> of file <b>openpgp.h</b>.</p>
+<p class="Pp">Referenced by <b>openpgp_parse_public_key_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> openpgp_public_key_t::keyid</h2>
 <p class="Pp">OpenPGP Key ID (last 8 bytes of fingerprint).</p>
 <p class="Pp">Definition at line <b>96</b> of file <b>openpgp.h</b>.</p>
+<p class="Pp">Referenced by <b>openpgp_parse_public_key_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> openpgp_public_key_t::pubkey[32]</h2>
 <p class="Pp">Ed25519 public key (32 bytes).</p>
 <p class="Pp">Definition at line <b>95</b> of file <b>openpgp.h</b>.</p>
+<p class="Pp">Referenced by <b>openpgp_parse_armored_pubkey()</b>, and
+    <b>openpgp_parse_public_key_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> openpgp_public_key_t::version</h2>
 <p class="Pp">Packet version (should be 4).</p>
 <p class="Pp">Definition at line <b>92</b> of file <b>openpgp.h</b>.</p>
+<p class="Pp">Referenced by <b>openpgp_parse_public_key_packet()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>

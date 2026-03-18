@@ -44,7 +44,7 @@
   <br/>
   Parse a version string into semantic version components. int
     <b>version_compare</b> (<b>semantic_version_t</b> a,
-    <b>semantic_version_t</b> <b>b</b>)
+    <b>semantic_version_t</b> b)
   <br/>
   Compare two semantic versions.
   <br/>
@@ -71,7 +71,7 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>a</i> First version
 <br/>
-<i></i><b>b</b><i></i><b> Second version</b></div>
+<i>b</i> Second version</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">-1 if a &lt; b, 0 if a == b, 1 if a &gt; b</div>
 <p class="Pp">Definition at line <b>112</b> of file <b>version.c</b>.</p>
@@ -105,7 +105,7 @@
 139 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>, <b>semantic_version_t::major</b>,
+<p class="Pp">References <b>semantic_version_t::major</b>,
     <b>semantic_version_t::minor</b>, and <b>semantic_version_t::patch</b>.</p>
 <p class="Pp">Referenced by <b>update_check_load_cache()</b>, and
     <b>update_check_perform()</b>.</p>

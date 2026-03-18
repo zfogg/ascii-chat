@@ -62,8 +62,7 @@
   Check if a file descriptor is a terminal. void
     <b>platform_clear_error_state</b> (void)
   <br/>
-  <b>bool</b> <b>platform_get_temp_dir</b> (char *temp_dir, size_t
-    <b>path_size</b>)
+  <b>bool</b> <b>platform_get_temp_dir</b> (char *temp_dir, size_t path_size)
   <br/>
   Get the system temporary directory path. <b>bool</b>
     <b>platform_prompt_yes_no</b> (const char *question, <b>bool</b>
@@ -81,11 +80,10 @@
     <b>platform_get_config_dir</b> (void)
   <br/>
   Get the application configuration directory. <b>bool</b>
-    <b>platform_get_cwd</b> (char *cwd, size_t <b>path_size</b>)
+    <b>platform_get_cwd</b> (char *cwd, size_t path_size)
   <br/>
   Get the current working directory of the process. int
-    <b>platform_path_strcasecmp</b> (const char *a, const char *<b>b</b>, size_t
-    n)
+    <b>platform_path_strcasecmp</b> (const char *a, const char *b, size_t n)
   <br/>
   Platform-aware path string comparison. int <b>platform_is_regular_file</b>
     (const char *path)

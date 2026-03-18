@@ -63,7 +63,7 @@
     <b>validate_fn</b>
   <br/>
   Builder's validation function (can be NULL for simple types). <b>bool</b>(*
-    <b>parse_fn</b> )(const char *arg, void *dest, char **<b>error_msg</b>)
+    <b>parse_fn</b> )(const char *arg, void *dest, char **error_msg)
   <br/>
   Custom parser for callbacks (or NULL). <b>option_mode_bitmask_t</b>
     <b>mode_bitmask</b>
@@ -208,7 +208,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b>(* config_option_metadata_t::parse_fn) (const char
-  *arg, void *dest, char **<b>error_msg</b>)</h2>
+  *arg, void *dest, char **error_msg)</h2>
 <p class="Pp">Custom parser for callbacks (or NULL).</p>
 <p class="Pp">Definition at line <b>62</b> of file <b>schema.h</b>.</p>
 <p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>.</p>

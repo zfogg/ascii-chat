@@ -52,8 +52,7 @@
     <b>uint8_t</b> public_key[32], char fingerprint[65])
   <br/>
   Compute SHA256 fingerprint of public key. <b>asciichat_error_t</b>
-    <b>acds_identity_default_path</b> (char *<b>path_out</b>, size_t
-    <b>path_size</b>)
+    <b>acds_identity_default_path</b> (char *path_out, size_t path_size)
   <br/>
   Get default identity file path for current platform.
   <br/>
@@ -68,10 +67,10 @@
   path_out, size_t path_size)</h2>
 <p class="Pp">Get default identity file path for current platform.</p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>path_out</b><i></i><b> Output buffer for path
-  (should be at least 256 bytes)</b>
+<div class="Bd-indent"><i>path_out</i> Output buffer for path (should be at
+  least 256 bytes)
 <br/>
-<i></i><b>path_size</b><i></i><b> Size of output buffer</b></div>
+<i>path_size</i> Size of output buffer</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
 <p class="Pp">Returns:</p>
@@ -104,9 +103,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>path_out</b>, <b>path_size</b>,
-    <b>platform_get_config_dir()</b>, <b>SAFE_FREE</b>, <b>safe_snprintf()</b>,
-    and <b>SET_ERRNO</b>.</p>
+    <b>ERROR_INVALID_PARAM</b>, <b>platform_get_config_dir()</b>,
+    <b>SAFE_FREE</b>, <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
 </section>
 <section class="Ss">

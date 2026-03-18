@@ -42,8 +42,7 @@
   <br/>
   #define <b>THREAD_CREATE_SAFE</b>(thread_var, func, arg)
   <br/>
-  #define <b>THREAD_CREATE_OR_RETURN_VOID</b>(thread_var, func, arg,
-    <b>error_msg</b>)
+  #define <b>THREAD_CREATE_OR_RETURN_VOID</b>(thread_var, func, arg, error_msg)
   <br/>
   #define <b>THREAD_JOIN_SAFE</b>(thread_var, exit_code)
   <br/>
@@ -143,9 +142,8 @@ void stop_worker(void) {
 <p class="Pp">Definition at line <b>145</b> of file <b>util/thread.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="_define_THREAD_CREATE_OR_RETURN_VOID(_thread_var,__func,__arg,__"><a class="permalink" href="#_define_THREAD_CREATE_OR_RETURN_VOID(_thread_var,__func,__arg,__">#define
-  THREAD_CREATE_OR_RETURN_VOID( thread_var, func, arg,
-  <b>error_msg</b>)</a></h2>
+<h2 class="Ss" id="_define_THREAD_CREATE_OR_RETURN_VOID(_thread_var,__func,__arg,__error_msg)"><a class="permalink" href="#_define_THREAD_CREATE_OR_RETURN_VOID(_thread_var,__func,__arg,__error_msg)">#define
+  THREAD_CREATE_OR_RETURN_VOID( thread_var, func, arg, error_msg)</a></h2>
 <p class="Pp"><b>Value:</b></p>
 <pre>do {                                                                                                                 \
 <br/>
@@ -169,7 +167,7 @@ void stop_worker(void) {
 <br/>
 <i>arg</i> Thread argument
 <br/>
-<i></i><b>error_msg</b><i></i><b> Message to log on failure</b></div>
+<i>error_msg</i> Message to log on failure</div>
 <p class="Pp">On failure, logs an error and the macro exits the enclosing
     function with return. Useful for mandatory thread creation where failure is
     fatal.</p>

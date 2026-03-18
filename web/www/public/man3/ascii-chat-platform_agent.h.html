@@ -38,8 +38,8 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>VALIDATE_AGENT_PATH</b>(path, <b>path_out</b>,
-    <b>path_size</b>, context)
+<p class="Pp">#define <b>VALIDATE_AGENT_PATH</b>(path, path_out, path_size,
+    context)
   <br/>
   Validate and copy agent socket path.
   <br/>
@@ -48,11 +48,10 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">int <b>platform_get_ssh_agent_socket</b> (char *<b>path_out</b>,
-    size_t <b>path_size</b>)
+<p class="Pp">int <b>platform_get_ssh_agent_socket</b> (char *path_out, size_t
+    path_size)
   <br/>
-  int <b>platform_get_gpg_agent_socket</b> (char *<b>path_out</b>, size_t
-    <b>path_size</b>)
+  int <b>platform_get_gpg_agent_socket</b> (char *path_out, size_t path_size)
   <br/>
   <br/>
 </p>

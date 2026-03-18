@@ -78,7 +78,7 @@
     *config, const void *opts)
   <br/>
   Validate options and report errors to stderr. <b>asciichat_error_t</b>
-    <b>detect_default_ssh_key</b> (char *key_path, size_t <b>path_size</b>)
+    <b>detect_default_ssh_key</b> (char *key_path, size_t path_size)
   <br/>
   Detect default SSH key path for the current user. char *
     <b>strip_equals_prefix</b> (const char *opt_value, char *buffer, size_t
@@ -283,7 +283,7 @@ if (suggestion) {
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>key_path</i> Buffer to store detected key path
 <br/>
-<i></i><b>path_size</b><i></i><b> Size of key_path buffer</b></div>
+<i>path_size</i> Size of key_path buffer</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK if found, ERROR_CRYPTO_KEY with helpful
   message otherwise</div>
@@ -332,8 +332,8 @@ if (detect_default_ssh_key(key_path, sizeof(key_path)) == ASCIICHAT_OK) {
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>,
     <b>ERROR_CRYPTO_KEY</b>, <b>expand_path()</b>, <b>log_debug</b>,
-    <b>log_error</b>, <b>path_size</b>, <b>SAFE_FREE</b>, <b>SAFE_SNPRINTF</b>,
-    and <b>SET_ERRNO</b>.</p>
+    <b>log_error</b>, <b>SAFE_FREE</b>, <b>SAFE_SNPRINTF</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_find_similar_option_(const_char_*_unknown_opt,_const_struct_option_*_options)"><a class="permalink" href="#const_char_*_find_similar_option_(const_char_*_unknown_opt,_const_struct_option_*_options)">const
@@ -562,6 +562,36 @@ SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, &quot;%s&quot;, value);
 <p class="Pp"></p>
 <p class="Pp">Sets opts-&gt;color_mode on success</p>
 </div>
+<p class="Pp">Definition at line <b>385</b> of file <b>options/common.c</b>.</p>
+<pre>385                                                                                   {
+386   if (!value_str || !opts) {
+387     return ERROR_INVALID_PARAM;
+388   }
+389 
+390   if (strcmp(value_str, &quot;auto&quot;) == 0 || strcmp(value_str, &quot;a&quot;) == 0) {
+391     opts-&gt;color_mode = COLOR_MODE_AUTO;
+392   } else if (strcmp(value_str, &quot;none&quot;) == 0 || strcmp(value_str, &quot;mono&quot;) == 0) {
+393     opts-&gt;color_mode = COLOR_MODE_NONE;
+394   } else if (strcmp(value_str, &quot;16&quot;) == 0 || strcmp(value_str, &quot;16color&quot;) == 0 || strcmp(value_str, &quot;ansi&quot;) == 0) {
+395     opts-&gt;color_mode = COLOR_MODE_16_COLOR;
+396   } else if (strcmp(value_str, &quot;256&quot;) == 0 || strcmp(value_str, &quot;256color&quot;) == 0) {
+397     opts-&gt;color_mode = COLOR_MODE_256_COLOR;
+398   } else if (strcmp(value_str, &quot;truecolor&quot;) == 0 || strcmp(value_str, &quot;24bit&quot;) == 0 || strcmp(value_str, &quot;tc&quot;) == 0 ||
+399              strcmp(value_str, &quot;rgb&quot;) == 0 || strcmp(value_str, &quot;true&quot;) == 0) {
+400     opts-&gt;color_mode = COLOR_MODE_TRUECOLOR;
+401   } else {
+402     log_error(&quot;Invalid color mode '%s'. Valid modes: auto, none, 16, 256, truecolor&quot;, value_str);
+403     return ERROR_INVALID_PARAM;
+404   }
+405 
+406   return ASCIICHAT_OK;
+407 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>options_state::color_mode</b>,
+    <b>COLOR_MODE_16_COLOR</b>, <b>COLOR_MODE_256_COLOR</b>,
+    <b>COLOR_MODE_AUTO</b>, <b>COLOR_MODE_NONE</b>, <b>COLOR_MODE_TRUECOLOR</b>,
+    <b>ERROR_INVALID_PARAM</b>, and <b>log_error</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> parse_height_option (const char *
@@ -645,7 +675,7 @@ SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, &quot;%s&quot;, value);
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>BUFFER_SIZE_SMALL</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>error_msg</b>, <b>log_error</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>log_error</b>,
     <b>options_state::log_level</b>, and <b>validate_opt_log_level()</b>.</p>
 </section>
 <section class="Ss">
@@ -1452,8 +1482,8 @@ opt_webcam_index = webcam_idx;
 259 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>BUFFER_SIZE_SMALL</b>, <b>error_msg</b>,
-    <b>log_error</b>, and <b>validate_opt_device_index()</b>.</p>
+<p class="Pp">References <b>BUFFER_SIZE_SMALL</b>, <b>log_error</b>, and
+    <b>validate_opt_device_index()</b>.</p>
 <p class="Pp">Referenced by <b>parse_webcam_index_option()</b>.</p>
 </section>
 </section>

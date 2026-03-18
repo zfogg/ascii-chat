@@ -621,7 +621,7 @@
   <br/>
   Check if settings need update based on versions. <b>bool</b>
     <b>session_settings_equal</b> (const <b>session_settings_t</b> *a, const
-    <b>session_settings_t</b> *<b>b</b>)
+    <b>session_settings_t</b> *b)
   <br/>
   Compare two settings structures for equality. <b>fps_counter_t</b> *
     <b>fps_counter_create</b> (void)
@@ -8378,8 +8378,8 @@ int main(void) {
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>APP_CALLBACK_VOID</b>, <b>ASCIICHAT_OK</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>g_snapshot_first_capture_ns</b>,
-    <b>g_snapshot_first_frame_rendered</b>,
+    <b>auto_height</b>, <b>auto_width</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>g_snapshot_first_capture_ns</b>, <b>g_snapshot_first_frame_rendered</b>,
     <b>g_snapshot_first_frame_rendered_ns</b>, <b>GET_OPTION</b>,
     <b>get_terminal_size()</b>, <b>keyboard_help_check_signal_cancel()</b>,
     <b>keyboard_help_is_active()</b>, <b>keyboard_help_render()</b>,
@@ -8690,7 +8690,7 @@ int main(void) {
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>a</i> First settings structure (must not be NULL)
 <br/>
-<i></i><b>b</b><i></i><b> Second settings structure (must not be NULL)</b></div>
+<i>b</i> Second settings structure (must not be NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if settings are equal (ignoring version), false
   otherwise</div>
@@ -8708,7 +8708,7 @@ int main(void) {
 234 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_settings_t::audio_enabled</b>, <b>b</b>,
+<p class="Pp">References <b>session_settings_t::audio_enabled</b>,
     <b>session_settings_t::color_mode</b>,
     <b>session_settings_t::encryption_required</b>,
     <b>session_settings_t::height</b>,

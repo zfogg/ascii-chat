@@ -105,17 +105,14 @@
   <br/>
   Dynamic output buffer (auto-expanding). struct <b>color_filter_def_t</b>
   <br/>
-  Color filter metadata structure. struct <b>PACKED_ATTR</b>
-  <br/>
-  struct <b>ALIGNED_ATTR</b>
-  <br/>
-  struct <b>image_t</b>
-  <br/>
-  Image structure. struct <b>rgb_pixel_t</b>
+  Color filter metadata structure. struct <b>rgb_pixel_t</b>
   <br/>
   RGB pixel structure. struct <b>rgb_pixel_simd_t</b>
   <br/>
-  SIMD-aligned RGB pixel structure for optimal NEON/AVX performance.
+  SIMD-aligned RGB pixel structure for optimal NEON/AVX performance. struct
+    <b>image_t</b>
+  <br/>
+  Image structure.
   <br/>
 </p>
 </section>
@@ -226,11 +223,11 @@
     (<b>digital_rain_t</b> *rain, float speed)
   <br/>
   Set digital rain fall speed. void <b>digital_rain_set_raindrop_length</b>
-    (<b>digital_rain_t</b> *rain, float <b>length</b>)
+    (<b>digital_rain_t</b> *rain, float length)
   <br/>
   Set digital rain raindrop length. void <b>digital_rain_set_color</b>
     (<b>digital_rain_t</b> *rain, <b>uint8_t</b> r, <b>uint8_t</b> g,
-    <b>uint8_t</b> <b>b</b>)
+    <b>uint8_t</b> b)
   <br/>
   Set digital rain color. void <b>digital_rain_set_color_from_filter</b>
     (<b>digital_rain_t</b> *rain, <b>color_filter_t</b> filter)
@@ -392,11 +389,10 @@
   <br/>
   Append unsigned 32-bit integer as decimal string. void
     <b>emit_set_truecolor_fg</b> (<b>outbuf_t</b> *ob, <b>uint8_t</b> r,
-    <b>uint8_t</b> g, <b>uint8_t</b> <b>b</b>)
+    <b>uint8_t</b> g, <b>uint8_t</b> b)
   <br/>
   Emit truecolor foreground ANSI sequence. void <b>emit_set_truecolor_bg</b>
-    (<b>outbuf_t</b> *ob, <b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b>
-    <b>b</b>)
+    (<b>outbuf_t</b> *ob, <b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b> b)
   <br/>
   Emit truecolor background ANSI sequence. void <b>emit_set_256_color_fg</b>
     (<b>outbuf_t</b> *ob, <b>uint8_t</b> color_idx)
@@ -414,11 +410,10 @@
     (<b>outbuf_t</b> *ob, <b>uint32_t</b> extra)
   <br/>
   Emit run-length encoded sequence. void <b>emit_set_fg</b> (<b>outbuf_t</b>
-    *ob, <b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b> <b>b</b>)
+    *ob, <b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b> b)
   <br/>
   Emit foreground color sequence (auto-select mode). void <b>emit_set_bg</b>
-    (<b>outbuf_t</b> *ob, <b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b>
-    <b>b</b>)
+    (<b>outbuf_t</b> *ob, <b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b> b)
   <br/>
   Emit background color sequence (auto-select mode). char *
     <b>ansi_expand_rle</b> (const char *input, size_t input_len)
@@ -451,7 +446,7 @@
   <br/>
   Convert color filter CLI name to enum value. void
     <b>color_filter_calculate_rainbow</b> (float time, <b>uint8_t</b> *r,
-    <b>uint8_t</b> *g, <b>uint8_t</b> *<b>b</b>)
+    <b>uint8_t</b> *g, <b>uint8_t</b> *b)
   <br/>
   Calculate rainbow color from time (3.5s cycle). char *
     <b>rainbow_replace_ansi_colors</b> (const char *ansi_string, float
@@ -500,7 +495,7 @@
     *image, <b>bool</b> use_background, const char *palette)
   <br/>
   Print image using 16-color ANSI mode with dithering and background colors.
-    void <b>quantize_color</b> (int *r, int *g, int *<b>b</b>, int levels)
+    void <b>quantize_color</b> (int *r, int *g, int *b, int levels)
   <br/>
   Quantize color to specified number of levels. void <b>precalc_rgb_palettes</b>
     (const float red, const float green, const float blue)
@@ -513,13 +508,13 @@
     <b>image_t</b> *dest)
   <br/>
   Resize image using bilinear interpolation. char * <b>rgb_to_ansi_fg</b> (int
-    r, int g, int <b>b</b>)
+    r, int g, int b)
   <br/>
   Convert RGB to ANSI foreground color code. char * <b>rgb_to_ansi_bg</b> (int
-    r, int g, int <b>b</b>)
+    r, int g, int b)
   <br/>
   Convert RGB to ANSI background color code. void <b>rgb_to_ansi_8bit</b> (int
-    r, int g, int <b>b</b>, int *fg_code, int *bg_code)
+    r, int g, int b, int *fg_code, int *bg_code)
   <br/>
   Convert RGB to 8-bit ANSI color codes.
   <br/>
@@ -1867,7 +1862,7 @@ free(expanded);
 346 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>, <b>color_filter_calculate_rainbow()</b>,
+<p class="Pp">References <b>color_filter_calculate_rainbow()</b>,
     <b>color_filter_get_metadata()</b>, <b>COLOR_FILTER_NONE</b>, and
     <b>COLOR_FILTER_RAINBOW</b>.</p>
 <p class="Pp">Referenced by <b>mirror_convert_frame()</b>, and
@@ -2310,16 +2305,17 @@ free(expanded);
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ascii_pad_frame_height()</b>,
-    <b>ascii_pad_frame_width()</b>, <b>aspect_ratio()</b>, <b>image_t::h</b>,
+    <b>ascii_pad_frame_width()</b>, <b>aspect_ratio()</b>,
+    <b>rgb_pixel_t::b</b>, <b>rgb_pixel_t::g</b>, <b>image_t::h</b>,
     <b>image_clear()</b>, <b>image_destroy()</b>, <b>image_new()</b>,
     <b>image_print_with_capabilities()</b>, <b>image_resize()</b>,
     <b>log_debug_every</b>, <b>log_dev</b>, <b>log_error</b>, <b>log_warn</b>,
     <b>NS_PER_MS_INT</b>, <b>NS_PER_SEC_INT</b>, <b>image_t::pixels</b>,
-    <b>terminal_capabilities_t::render_mode</b>, <b>RENDER_MODE_HALF_BLOCK</b>,
-    <b>SAFE_FREE</b>, <b>START_TIMER</b>, <b>STOP_TIMER_AND_LOG_EVERY</b>,
-    <b>time_elapsed_ns()</b>, <b>time_get_ns()</b>, <b>time_pretty()</b>,
-    <b>US_PER_SEC_INT</b>, <b>image_t::w</b>, and
-    <b>terminal_capabilities_t::wants_padding</b>.</p>
+    <b>rgb_pixel_t::r</b>, <b>terminal_capabilities_t::render_mode</b>,
+    <b>RENDER_MODE_HALF_BLOCK</b>, <b>SAFE_FREE</b>, <b>START_TIMER</b>,
+    <b>STOP_TIMER_AND_LOG_EVERY</b>, <b>time_elapsed_ns()</b>,
+    <b>time_get_ns()</b>, <b>time_pretty()</b>, <b>US_PER_SEC_INT</b>,
+    <b>image_t::w</b>, and <b>terminal_capabilities_t::wants_padding</b>.</p>
 <p class="Pp">Referenced by <b>mirror_convert_frame()</b>, and
     <b>session_display_convert_to_ascii()</b>.</p>
 </section>
@@ -3364,7 +3360,7 @@ if (grid) {
 <br/>
 <i>g</i> Output green component (0-255)
 <br/>
-<i></i><b>b</b><i></i><b> Output blue component (0-255)</b></div>
+<i>b</i> Output blue component (0-255)</div>
 <p class="Pp">Centralized rainbow color calculation used by both --matrix and
     --color-filter rainbow. Cycles through full RGB spectrum over 3.5
   seconds.</p>
@@ -3450,7 +3446,6 @@ if (grid) {
 243 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>.</p>
 <p class="Pp">Referenced by <b>apply_color_filter()</b>,
     <b>digital_rain_apply()</b>, and <b>rainbow_replace_ansi_colors()</b>.</p>
 </section>
@@ -3766,7 +3761,7 @@ if (grid) {
 522 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>digital_rain_t::animation_speed</b>, <b>b</b>,
+<p class="Pp">References <b>digital_rain_t::animation_speed</b>,
     <b>digital_rain_t::brightness_decay</b>, <b>digital_rain_t::color_b</b>,
     <b>color_filter_calculate_rainbow()</b>, <b>digital_rain_t::color_g</b>,
     <b>digital_rain_t::color_r</b>, <b>digital_rain_t::first_frame</b>,
@@ -3958,7 +3953,7 @@ if (grid) {
 <br/>
 <i>g</i> Green component (0-255)
 <br/>
-<i></i><b>b</b><i></i><b> Blue component (0-255)</b></div>
+<i>b</i> Blue component (0-255)</div>
 <p class="Pp">Definition at line <b>193</b> of file <b>digital_rain.c</b>.</p>
 <pre>193                                                                                    {
 194   if (rain) {
@@ -3969,7 +3964,7 @@ if (grid) {
 199 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>, <b>digital_rain_t::color_b</b>,
+<p class="Pp">References <b>digital_rain_t::color_b</b>,
     <b>digital_rain_t::color_g</b>, and <b>digital_rain_t::color_r</b>.</p>
 <p class="Pp">Referenced by <b>digital_rain_set_color_from_filter()</b>.</p>
 </section>
@@ -4058,8 +4053,7 @@ if (grid) {
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>rain</i> Digital rain context (must not be NULL)
 <br/>
-<i></i><b>length</b><i></i><b> Raindrop length in cells (suggested range: 5.0 to
-  50.0)</b></div>
+<i>length</i> Raindrop length in cells (suggested range: 5.0 to 50.0)</div>
 <p class="Pp">Definition at line <b>187</b> of file <b>digital_rain.c</b>.</p>
 <pre>187                                                                           {
 188   if (rain) {
@@ -4068,8 +4062,7 @@ if (grid) {
 191 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>length</b>, and
-    <b>digital_rain_t::raindrop_length</b>.</p>
+<p class="Pp">References <b>digital_rain_t::raindrop_length</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_emit_rep_("><a class="permalink" href="#void_emit_rep_(">void
@@ -4251,7 +4244,7 @@ if (rep_is_profitable(50)) {
 <br/>
 <i>g</i> Green component (0-255)
 <br/>
-<i></i><b>b</b><i></i><b> Blue component (0-255)</b></div>
+<i>b</i> Blue component (0-255)</div>
 <p class="Pp">Emits background color ANSI sequence using the optimal color mode
     based on terminal capabilities. Automatically selects:</p>
 <ul class="Bl-bullet">
@@ -4285,7 +4278,7 @@ if (rep_is_profitable(50)) {
 214 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>, <b>ob_putc()</b>, <b>ob_u8()</b>, and
+<p class="Pp">References <b>ob_putc()</b>, <b>ob_u8()</b>, and
     <b>ob_write()</b>.</p>
 <p class="Pp">Referenced by <b>rgb_to_truecolor_halfblocks_scalar()</b>.</p>
 </section>
@@ -4303,7 +4296,7 @@ if (rep_is_profitable(50)) {
 <br/>
 <i>g</i> Green component (0-255)
 <br/>
-<i></i><b>b</b><i></i><b> Blue component (0-255)</b></div>
+<i>b</i> Blue component (0-255)</div>
 <p class="Pp">Emits foreground color ANSI sequence using the optimal color mode
     based on terminal capabilities. Automatically selects:</p>
 <ul class="Bl-bullet">
@@ -4337,7 +4330,7 @@ if (rep_is_profitable(50)) {
 199 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>, <b>ob_putc()</b>, <b>ob_u8()</b>, and
+<p class="Pp">References <b>ob_putc()</b>, <b>ob_u8()</b>, and
     <b>ob_write()</b>.</p>
 <p class="Pp">Referenced by <b>rgb_to_truecolor_halfblocks_scalar()</b>.</p>
 </section>
@@ -4355,7 +4348,7 @@ if (rep_is_profitable(50)) {
 <br/>
 <i>g</i> Green component (0-255)
 <br/>
-<i></i><b>b</b><i></i><b> Blue component (0-255)</b></div>
+<i>b</i> Blue component (0-255)</div>
 <p class="Pp">Emits ANSI escape sequence for 24-bit truecolor background color.
     Format: ESC[48;2;r;g;bm (where r, g, b are RGB values). Uses 24-bit RGB
     color values for optimal color accuracy.</p>
@@ -4382,7 +4375,7 @@ if (rep_is_profitable(50)) {
 136 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>, <b>ob_putc()</b>, <b>ob_u8()</b>, and
+<p class="Pp">References <b>ob_putc()</b>, <b>ob_u8()</b>, and
     <b>ob_write()</b>.</p>
 </section>
 <section class="Ss">
@@ -4399,7 +4392,7 @@ if (rep_is_profitable(50)) {
 <br/>
 <i>g</i> Green component (0-255)
 <br/>
-<i></i><b>b</b><i></i><b> Blue component (0-255)</b></div>
+<i>b</i> Blue component (0-255)</div>
 <p class="Pp">Emits ANSI escape sequence for 24-bit truecolor foreground color.
     Format: ESC[38;2;r;g;bm (where r, g, b are RGB values). Uses 24-bit RGB
     color values for optimal color accuracy.</p>
@@ -4426,7 +4419,7 @@ if (rep_is_profitable(50)) {
 120 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>, <b>ob_putc()</b>, <b>ob_u8()</b>, and
+<p class="Pp">References <b>ob_putc()</b>, <b>ob_u8()</b>, and
     <b>ob_write()</b>.</p>
 </section>
 <section class="Ss">
@@ -5249,14 +5242,16 @@ if (img) {
 137 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>outbuf_t::buf</b>,
-    <b>utf8_char_t::byte_len</b>, <b>utf8_palette_cache::cache64</b>,
-    <b>outbuf_t::cap</b>, <b>utf8_palette_cache::char_index_ramp</b>,
-    <b>emit_rep()</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>ERROR_MEMORY</b>, <b>get_utf8_palette_cache()</b>, <b>image_t::h</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>rgb_pixel_t::b</b>,
+    <b>outbuf_t::buf</b>, <b>utf8_char_t::byte_len</b>,
+    <b>utf8_palette_cache::cache64</b>, <b>outbuf_t::cap</b>,
+    <b>utf8_palette_cache::char_index_ramp</b>, <b>emit_rep()</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
+    <b>rgb_pixel_t::g</b>, <b>get_utf8_palette_cache()</b>, <b>image_t::h</b>,
     <b>ob_putc()</b>, <b>ob_term()</b>, <b>ob_write()</b>,
-    <b>image_t::pixels</b>, <b>rep_is_profitable()</b>, <b>SAFE_MALLOC</b>,
-    <b>SET_ERRNO</b>, <b>utf8_char_t::utf8_bytes</b>, and <b>image_t::w</b>.</p>
+    <b>image_t::pixels</b>, <b>rgb_pixel_t::r</b>, <b>rep_is_profitable()</b>,
+    <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, <b>utf8_char_t::utf8_bytes</b>, and
+    <b>image_t::w</b>.</p>
 <p class="Pp">Referenced by <b>ascii_convert()</b>.</p>
 </section>
 <section class="Ss">
@@ -5384,13 +5379,15 @@ if (img) {
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_fast_init_16color()</b>,
-    <b>append_16color_fg()</b>, <b>ASCIICHAT_OK</b>, <b>buffer_size</b>,
-    <b>utf8_char_t::byte_len</b>, <b>utf8_palette_cache::cache</b>,
+    <b>append_16color_fg()</b>, <b>ASCIICHAT_OK</b>, <b>rgb_pixel_t::b</b>,
+    <b>buffer_size</b>, <b>utf8_char_t::byte_len</b>,
+    <b>utf8_palette_cache::cache</b>,
     <b>utf8_palette_cache::char_index_ramp</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>get_utf8_palette_cache()</b>,
-    <b>image_t::h</b>, <b>image_t::pixels</b>, <b>rgb_to_16color()</b>,
-    <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
-    <b>utf8_char_t::utf8_bytes</b>, and <b>image_t::w</b>.</p>
+    <b>ERROR_INVALID_STATE</b>, <b>rgb_pixel_t::g</b>,
+    <b>get_utf8_palette_cache()</b>, <b>image_t::h</b>, <b>image_t::pixels</b>,
+    <b>rgb_pixel_t::r</b>, <b>rgb_to_16color()</b>, <b>SAFE_MALLOC</b>,
+    <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>, <b>utf8_char_t::utf8_bytes</b>, and
+    <b>image_t::w</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_*_image_print_16color_dithered_(const_"><a class="permalink" href="#char_*_image_print_16color_dithered_(const_">char
@@ -5533,14 +5530,15 @@ if (img) {
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_fast_init_16color()</b>,
-    <b>append_16color_fg()</b>, <b>ASCIICHAT_OK</b>, <b>buffer_size</b>,
-    <b>utf8_char_t::byte_len</b>, <b>utf8_palette_cache::cache</b>,
+    <b>append_16color_fg()</b>, <b>ASCIICHAT_OK</b>, <b>rgb_pixel_t::b</b>,
+    <b>buffer_size</b>, <b>utf8_char_t::byte_len</b>,
+    <b>utf8_palette_cache::cache</b>,
     <b>utf8_palette_cache::char_index_ramp</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>get_utf8_palette_cache()</b>,
-    <b>image_t::h</b>, <b>image_t::pixels</b>, <b>rgb_to_16color_dithered()</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>, <b>utf8_char_t::utf8_bytes</b>, and
-    <b>image_t::w</b>.</p>
+    <b>ERROR_INVALID_STATE</b>, <b>rgb_pixel_t::g</b>,
+    <b>get_utf8_palette_cache()</b>, <b>image_t::h</b>, <b>image_t::pixels</b>,
+    <b>rgb_pixel_t::r</b>, <b>rgb_to_16color_dithered()</b>, <b>SAFE_CALLOC</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
+    <b>utf8_char_t::utf8_bytes</b>, and <b>image_t::w</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_*_image_print_16color_dithered_with_background_(const_"><a class="permalink" href="#char_*_image_print_16color_dithered_with_background_(const_">char
@@ -5683,13 +5681,14 @@ if (img) {
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_fast_init_16color()</b>,
-    <b>append_16color_bg()</b>, <b>append_16color_fg()</b>, <b>buffer_size</b>,
-    <b>utf8_char_t::byte_len</b>, <b>utf8_palette_cache::cache</b>,
+    <b>append_16color_bg()</b>, <b>append_16color_fg()</b>,
+    <b>rgb_pixel_t::b</b>, <b>buffer_size</b>, <b>utf8_char_t::byte_len</b>,
+    <b>utf8_palette_cache::cache</b>,
     <b>utf8_palette_cache::char_index_ramp</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>get_16color_rgb()</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>rgb_pixel_t::g</b>, <b>get_16color_rgb()</b>,
     <b>get_utf8_palette_cache()</b>, <b>image_t::h</b>, <b>image_t::pixels</b>,
-    <b>rgb_to_16color_dithered()</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
+    <b>rgb_pixel_t::r</b>, <b>rgb_to_16color_dithered()</b>, <b>SAFE_CALLOC</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
     <b>utf8_char_t::utf8_bytes</b>, and <b>image_t::w</b>.</p>
 <p class="Pp">Referenced by <b>image_print_color_simd()</b>.</p>
 </section>
@@ -5983,13 +5982,14 @@ if (img) {
 <p class="Pp"></p>
 <p class="Pp">References <b>ANSI_MODE_FOREGROUND</b>,
     <b>ansi_rle_add_pixel()</b>, <b>ansi_rle_finish()</b>,
-    <b>ansi_rle_init()</b>, <b>b</b>, <b>ansi_rle_context_t::buffer</b>,
-    <b>utf8_palette_cache::cache</b>, <b>ansi_rle_context_t::capacity</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>ansi_rle_init()</b>, <b>rgb_pixel_t::b</b>,
+    <b>ansi_rle_context_t::buffer</b>, <b>utf8_palette_cache::cache</b>,
+    <b>ansi_rle_context_t::capacity</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>rgb_pixel_t::g</b>,
     <b>get_utf8_palette_cache()</b>, <b>image_t::h</b>,
     <b>ansi_rle_context_t::length</b>, <b>log_error</b>, <b>image_t::pixels</b>,
-    <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>, <b>SET_ERRNO</b>,
-    <b>utf8_char_t::utf8_bytes</b>, and <b>image_t::w</b>.</p>
+    <b>rgb_pixel_t::r</b>, <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>,
+    <b>SET_ERRNO</b>, <b>utf8_char_t::utf8_bytes</b>, and <b>image_t::w</b>.</p>
 <p class="Pp">Referenced by <b>ascii_convert()</b>,
     <b>image_print_256color()</b>, <b>image_print_color_background()</b>,
     <b>image_print_color_simd()</b>, and
@@ -6814,8 +6814,7 @@ if (img) {
 <br/>
 <i>g</i> Green component (input/output, must not be NULL, range 0-255)
 <br/>
-<i></i><b>b</b><i></i><b> Blue component (input/output, must not be NULL, range
-  0-255)</b>
+<i>b</i> Blue component (input/output, must not be NULL, range 0-255)
 <br/>
 <i>levels</i> Number of quantization levels (must be &gt; 0)</div>
 <p class="Pp">Quantizes RGB color components to a specified number of levels.
@@ -6856,8 +6855,7 @@ if (img) {
 155 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>, <b>ERROR_INVALID_PARAM</b>, and
-    <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_*_rainbow_replace_ansi_colors_(const_char_*_ansi_string,_float_time_seconds)"><a class="permalink" href="#char_*_rainbow_replace_ansi_colors_(const_char_*_ansi_string,_float_time_seconds)">char
@@ -7325,7 +7323,7 @@ if (img) {
 <br/>
 <i>g</i> Green component (0-255)
 <br/>
-<i></i><b>b</b><i></i><b> Blue component (0-255)</b>
+<i>b</i> Blue component (0-255)
 <br/>
 <i>fg_code</i> Output foreground color code (must not be NULL, range 0-255)
 <br/>
@@ -7380,8 +7378,7 @@ if (img) {
 387 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>, <b>ERROR_INVALID_PARAM</b>, and
-    <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_*_rgb_to_ansi_bg_(int_r,_int_g,_int_b)"><a class="permalink" href="#char_*_rgb_to_ansi_bg_(int_r,_int_g,_int_b)">char
@@ -7394,7 +7391,7 @@ if (img) {
 <br/>
 <i>g</i> Green component (0-255)
 <br/>
-<i></i><b>b</b><i></i><b> Blue component (0-255)</b></div>
+<i>b</i> Blue component (0-255)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Allocated ANSI color code string (caller must free), or
   NULL on error</div>
@@ -7420,7 +7417,7 @@ if (img) {
 361 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>, and <b>SAFE_SNPRINTF</b>.</p>
+<p class="Pp">References <b>SAFE_SNPRINTF</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_*_rgb_to_ansi_fg_(int_r,_int_g,_int_b)"><a class="permalink" href="#char_*_rgb_to_ansi_fg_(int_r,_int_g,_int_b)">char
@@ -7433,7 +7430,7 @@ if (img) {
 <br/>
 <i>g</i> Green component (0-255)
 <br/>
-<i></i><b>b</b><i></i><b> Blue component (0-255)</b></div>
+<i>b</i> Blue component (0-255)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Allocated ANSI color code string (caller must free), or
   NULL on error</div>
@@ -7458,7 +7455,7 @@ if (img) {
 355 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>b</b>, and <b>SAFE_SNPRINTF</b>.</p>
+<p class="Pp">References <b>SAFE_SNPRINTF</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_*_rgb_to_halfblocks_scalar_(const_"><a class="permalink" href="#char_*_rgb_to_halfblocks_scalar_(const_">char

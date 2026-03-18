@@ -61,9 +61,9 @@
     console.error('[WASM] sendPacketCallback not registered - cannot send
     packet');return;} const packetArray=new Uint8Array(HEAPU8.buffer,
     packet_data, packet_len);const packetCopy=new Uint8Array(packetArray);var
-    pktType=<b>packetCopy.length</b> &gt;=10 ?((packetCopy[8]&lt;&lt;
-    8)|packetCopy[9]) :-1;console.error('[WASM-&gt;JS] Sending raw packet:',
-    <b>packetCopy.length</b>, 'bytes,
+    pktType=packetCopy.length &gt;=10 ?((packetCopy[8]&lt;&lt; 8)|packetCopy[9])
+    :-1;console.error('[WASM-&gt;JS] Sending raw packet:', packetCopy.length,
+    'bytes,
     type=0x'+pktType.toString(16));Module.sendPacketCallback(packetCopy);})
   <br/>
   EMSCRIPTEN_KEEPALIVE int <b>client_init_with_args</b> (const char *args_json)
@@ -405,8 +405,8 @@
 322 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>CRYPTO_HANDSHAKE_DISABLED</b>, <b>pubkey</b>,
-    <b>SAFE_MALLOC</b>, and <b>WASM_ERROR</b>.</p>
+<p class="Pp">References <b>CRYPTO_HANDSHAKE_DISABLED</b>, <b>SAFE_MALLOC</b>,
+    and <b>WASM_ERROR</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_handle_auth_challenge_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_handle_auth_challenge_(const_">EMSCRIPTEN_KEEPALIVE
@@ -724,11 +724,11 @@
 196 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ansi_fast_init()</b>, <b>argc</b>, <b>argv</b>,
-    <b>ASCIICHAT_OK</b>, <b>CONNECTION_STATE_DISCONNECTED</b>, <b>LOG_DEBUG</b>,
-    <b>log_info</b>, <b>log_init()</b>, <b>options_init()</b>,
-    <b>platform_init()</b>, <b>WASM_ERROR</b>, <b>WASM_LOG</b>,
-    <b>WASM_LOG_INT</b>, and <b>wasm_parse_args()</b>.</p>
+<p class="Pp">References <b>ansi_fast_init()</b>, <b>ASCIICHAT_OK</b>,
+    <b>CONNECTION_STATE_DISCONNECTED</b>, <b>LOG_DEBUG</b>, <b>log_info</b>,
+    <b>log_init()</b>, <b>options_init()</b>, <b>platform_init()</b>,
+    <b>WASM_ERROR</b>, <b>WASM_LOG</b>, <b>WASM_LOG_INT</b>, and
+    <b>wasm_parse_args()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_opus_decode_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_opus_decode_(const_">EMSCRIPTEN_KEEPALIVE
@@ -953,11 +953,10 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>packet_header_t::client_id</b>,
-    <b>packet_header_t::crc32</b>, <b>length</b>,
-    <b>packet_header_t::length</b>, <b>packet_header_t::magic</b>,
-    <b>NET_TO_HOST_U16</b>, <b>NET_TO_HOST_U32</b>, <b>NET_TO_HOST_U64</b>,
-    <b>PACKET_MAGIC</b>, <b>SAFE_MALLOC</b>, <b>packet_header_t::type</b>, and
-    <b>WASM_ERROR</b>.</p>
+    <b>packet_header_t::crc32</b>, <b>packet_header_t::length</b>,
+    <b>packet_header_t::magic</b>, <b>NET_TO_HOST_U16</b>,
+    <b>NET_TO_HOST_U32</b>, <b>NET_TO_HOST_U64</b>, <b>PACKET_MAGIC</b>,
+    <b>SAFE_MALLOC</b>, <b>packet_header_t::type</b>, and <b>WASM_ERROR</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_send_video_frame_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_send_video_frame_(const_">EMSCRIPTEN_KEEPALIVE
@@ -1087,10 +1086,9 @@
   packet_len) , { if(!Module.sendPacketCallback) { console.error('[WASM]
   sendPacketCallback not registered - cannot send packet');return;} const
   packetArray=new Uint8Array(HEAPU8.buffer, packet_data, packet_len);const
-  packetCopy=new Uint8Array(packetArray);var pktType=<b>packetCopy.length</b>
-  &gt;=10 ?((packetCopy[8]&lt;&lt; 8)|packetCopy[9])
-  :-1;console.error('[WASM-&gt;JS] Sending raw packet:',
-  <b>packetCopy.length</b>, 'bytes,
+  packetCopy=new Uint8Array(packetArray);var pktType=packetCopy.length &gt;=10
+  ?((packetCopy[8]&lt;&lt; 8)|packetCopy[9]) :-1;console.error('[WASM-&gt;JS]
+  Sending raw packet:', packetCopy.length, 'bytes,
   type=0x'+pktType.toString(16));Module.sendPacketCallback(packetCopy);}
   )</a></h2>
 </section>

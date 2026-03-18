@@ -584,7 +584,7 @@
   <br/>
   Parse OpenPGP packet header. <b>asciichat_error_t</b>
     <b>openpgp_parse_public_key_packet</b> (const <b>uint8_t</b> *packet_body,
-    size_t body_len, <b>openpgp_public_key_t</b> *<b>pubkey</b>)
+    size_t body_len, <b>openpgp_public_key_t</b> *pubkey)
   <br/>
   Parse OpenPGP Public Key Packet (tag 6). <b>asciichat_error_t</b>
     <b>openpgp_parse_secret_key_packet</b> (const <b>uint8_t</b> *packet_body,
@@ -8016,7 +8016,7 @@ yqG5PFO0MmFzY2lpLWNoYXQgRGlzY292ZXJ5IFNlcnZpY2UgPGFjZHNAYXNjaWkt
     <b>openpgp_packet_header_t::length</b>, <b>log_debug</b>,
     <b>openpgp_base64_decode()</b>, <b>openpgp_parse_packet_header()</b>,
     <b>openpgp_parse_public_key_packet()</b>, <b>OPENPGP_TAG_PUBLIC_KEY</b>,
-    <b>pubkey</b>, <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, and
+    <b>openpgp_public_key_t::pubkey</b>, <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, and
     <b>openpgp_packet_header_t::tag</b>.</p>
 <p class="Pp">Referenced by <b>parse_gpg_key_binary()</b>.</p>
 </section>
@@ -8339,7 +8339,7 @@ yqG5PFMAAQDm8...
 <br/>
 <i>body_len</i> Length of packet body
 <br/>
-<i></i><b>pubkey</b><i></i><b> Output parameter for parsed public key</b></div>
+<i>pubkey</i> Output parameter for parsed public key</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Parses Public Key Packet (tag 6) body:</p>
@@ -8443,9 +8443,12 @@ yqG5PFMAAQDm8...
 284 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CRYPTO_KEY</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>, <b>OPENPGP_ALGO_EDDSA</b>,
-    <b>pubkey</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>openpgp_public_key_t::algorithm</b>,
+    <b>ASCIICHAT_OK</b>, <b>openpgp_public_key_t::created</b>,
+    <b>ERROR_CRYPTO_KEY</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>openpgp_public_key_t::keyid</b>, <b>log_debug</b>,
+    <b>OPENPGP_ALGO_EDDSA</b>, <b>openpgp_public_key_t::pubkey</b>,
+    <b>SET_ERRNO</b>, and <b>openpgp_public_key_t::version</b>.</p>
 <p class="Pp">Referenced by <b>openpgp_parse_armored_pubkey()</b>.</p>
 </section>
 <section class="Ss">

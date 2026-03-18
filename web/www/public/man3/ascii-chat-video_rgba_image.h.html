@@ -38,11 +38,12 @@
 <h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
   Structures</a></h2>
 <br/>
-<p class="Pp">struct <b>PACKED_ATTR</b>
+<p class="Pp">struct <b>rgb_pixel_t</b>
   <br/>
-  struct <b>ALIGNED_ATTR</b>
+  RGB pixel structure. struct <b>rgb_pixel_simd_t</b>
   <br/>
-  struct <b>image_t</b>
+  SIMD-aligned RGB pixel structure for optimal NEON/AVX performance. struct
+    <b>image_t</b>
   <br/>
   Image structure.
   <br/>
@@ -119,7 +120,7 @@
     *image, <b>bool</b> use_background, const char *palette)
   <br/>
   Print image using 16-color ANSI mode with dithering and background colors.
-    void <b>quantize_color</b> (int *r, int *g, int *<b>b</b>, int levels)
+    void <b>quantize_color</b> (int *r, int *g, int *b, int levels)
   <br/>
   Quantize color to specified number of levels. void <b>precalc_rgb_palettes</b>
     (const float red, const float green, const float blue)
@@ -132,13 +133,13 @@
     <b>image_t</b> *dest)
   <br/>
   Resize image using bilinear interpolation. char * <b>rgb_to_ansi_fg</b> (int
-    r, int g, int <b>b</b>)
+    r, int g, int b)
   <br/>
   Convert RGB to ANSI foreground color code. char * <b>rgb_to_ansi_bg</b> (int
-    r, int g, int <b>b</b>)
+    r, int g, int b)
   <br/>
   Convert RGB to ANSI background color code. void <b>rgb_to_ansi_8bit</b> (int
-    r, int g, int <b>b</b>, int *fg_code, int *bg_code)
+    r, int g, int b, int *fg_code, int *bg_code)
   <br/>
   Convert RGB to 8-bit ANSI color codes.
   <br/>

@@ -171,10 +171,10 @@
   FNV-1a 32-bit hash macro for a single byte. #define <b>ROUND</b>(xfloat)
   <br/>
   Round floating-point value to nearest integer. #define <b>SIZE_MUL_SAFE</b>(a,
-    <b>b</b>)
+    b)
   <br/>
   Multiply with overflow check inline (macro form for tight loops). #define
-    <b>SIZE_ADD_SAFE</b>(a, <b>b</b>)
+    <b>SIZE_ADD_SAFE</b>(a, b)
   <br/>
   Add with overflow check inline (macro form for tight loops). #define
     <b>PASSWORD_MAX_LEN</b> 260
@@ -1259,8 +1259,8 @@ int rounded = ROUND(-2.5);  // Returns -2
 <p class="Pp">Definition at line <b>53</b> of file <b>math.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="_define_SIZE_ADD_SAFE(_a,__"><a class="permalink" href="#_define_SIZE_ADD_SAFE(_a,__">#define
-  SIZE_ADD_SAFE( a, <b>b</b>)</a></h2>
+<h2 class="Ss" id="_define_SIZE_ADD_SAFE(_a,__b)"><a class="permalink" href="#_define_SIZE_ADD_SAFE(_a,__b)">#define
+  SIZE_ADD_SAFE( a, b)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/util/overflow.h</b>&gt;<b></b><b>Value:</b><b></b></p>
 <pre>(size_add_would_overflow(a, b) ? SIZE_MAX : (a) + (b))</pre>
@@ -1270,7 +1270,7 @@ int rounded = ROUND(-2.5);  // Returns -2
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>a</i> First operand
 <br/>
-<i></i><b>b</b><i></i><b> Second operand</b></div>
+<i>b</i> Second operand</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Sum if no overflow, SIZE_MAX if would overflow</div>
 <p class="Pp">Macro version of checked addition that returns SIZE_MAX on
@@ -1283,8 +1283,8 @@ int rounded = ROUND(-2.5);  // Returns -2
 <p class="Pp">Definition at line <b>244</b> of file <b>overflow.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="_define_SIZE_MUL_SAFE(_a,__"><a class="permalink" href="#_define_SIZE_MUL_SAFE(_a,__">#define
-  SIZE_MUL_SAFE( a, <b>b</b>)</a></h2>
+<h2 class="Ss" id="_define_SIZE_MUL_SAFE(_a,__b)"><a class="permalink" href="#_define_SIZE_MUL_SAFE(_a,__b)">#define
+  SIZE_MUL_SAFE( a, b)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/util/overflow.h</b>&gt;<b></b><b>Value:</b><b></b></p>
 <pre>(size_mul_would_overflow(a, b) ? SIZE_MAX : (a) * (b))</pre>
@@ -1295,7 +1295,7 @@ int rounded = ROUND(-2.5);  // Returns -2
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>a</i> First operand
 <br/>
-<i></i><b>b</b><i></i><b> Second operand</b></div>
+<i>b</i> Second operand</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Product if no overflow, SIZE_MAX if would overflow</div>
 <p class="Pp">Macro version of checked multiplication that returns SIZE_MAX on
@@ -2142,6 +2142,7 @@ fprintf(stderr, &quot;%s %s\n&quot;,
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>COLORED_BUFFER_SIZE</b>, <b>COLORED_BUFFERS</b>,
+    <b>g_color_flag_passed</b>, <b>g_color_flag_value</b>,
     <b>LOG_COLOR_RESET</b>, <b>log_level_color()</b>, <b>safe_snprintf()</b>,
     and <b>terminal_should_color_output()</b>.</p>
 <p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,

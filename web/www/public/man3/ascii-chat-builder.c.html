@@ -104,8 +104,8 @@
     (<b>options_builder_t</b> *builder, const char *long_name, char short_name,
     size_t offset, int default_value, const char *help_text, const char *group,
     <b>bool</b> required, const char *env_var_name, <b>bool</b>(*validate)(const
-    void *options_struct, char **<b>error_msg</b>), const
-    <b>option_metadata_t</b> *metadata)
+    void *options_struct, char **error_msg), const <b>option_metadata_t</b>
+    *metadata)
   <br/>
   Add integer option with metadata (for numeric ranges and examples). void
     <b>options_builder_add_string</b> (<b>options_builder_t</b> *builder, const
@@ -214,7 +214,7 @@
     const char *name, const char *help_text, <b>bool</b> required, const char
     *section_heading, const char **examples, size_t num_examples,
     <b>option_mode_bitmask_t</b> mode_bitmask, int(*parse_fn)(const char *arg,
-    void *config, char **remaining, int num_remaining, char **<b>error_msg</b>))
+    void *config, char **remaining, int num_remaining, char **error_msg))
   <br/>
   Add positional argument descriptor. void <b>options_builder_add_usage</b>
     (<b>options_builder_t</b> *builder, const char *mode, const char
@@ -250,9 +250,8 @@
   <br/>
   Find option descriptor by short or long name. <b>asciichat_error_t</b>
     <b>options_config_parse</b> (const <b>options_config_t</b> *config, int
-    <b>argc</b>, char **<b>argv</b>, void *options_struct,
-    <b>option_mode_bitmask_t</b> detected_mode, int *remaining_argc, char
-    ***remaining_argv)
+    argc, char **argv, void *options_struct, <b>option_mode_bitmask_t</b>
+    detected_mode, int *remaining_argc, char ***remaining_argv)
   <br/>
   Parse command-line arguments. <b>asciichat_error_t</b>
     <b>options_config_validate</b> (const <b>options_config_t</b> *config, const
@@ -808,7 +807,7 @@
   options_builder_add_callback (<b>options_builder_t</b> * builder, const char *
   long_name, char short_name, size_t offset, const void * default_value, size_t
   value_size, <b>bool</b>(* parse_fn )(const char *arg, void *dest, char
-  **<b>error_msg</b>), const char * help_text, const char * group, <b>bool</b>
+  **error_msg), const char * help_text, const char * group, <b>bool</b>
   required, const char * env_var_name)</a></h2>
 <p class="Pp">Add option with custom callback parser.</p>
 <p class="Pp"><b>Parameters</b></p>
@@ -931,9 +930,9 @@
   options_builder_add_callback_with_metadata (<b>options_builder_t</b> *
   builder, const char * long_name, char short_name, size_t offset, const void *
   default_value, size_t value_size, <b>bool</b>(* parse_fn )(const char *arg,
-  void *dest, char **<b>error_msg</b>), const char * help_text, const char *
-  group, <b>bool</b> required, const char * env_var_name, <b>bool</b>
-  optional_arg, const <b>option_metadata_t</b> * metadata)</a></h2>
+  void *dest, char **error_msg), const char * help_text, const char * group,
+  <b>bool</b> required, const char * env_var_name, <b>bool</b> optional_arg,
+  const <b>option_metadata_t</b> * metadata)</a></h2>
 <p class="Pp">Add callback option with full metadata (for enums, ranges,
     examples, etc.). Adds a callback-based option with complete metadata
     information for help and shell completions.</p>
@@ -1181,7 +1180,7 @@
   long_name, char short_name, size_t offset, double default_value, const char *
   help_text, const char * group, <b>bool</b> required, const char *
   env_var_name, <b>bool</b>(* validate )(const void *options_struct, char
-  **<b>error_msg</b>), <b>bool</b> optional_arg)</a></h2>
+  **error_msg), <b>bool</b> optional_arg)</a></h2>
 <p class="Pp">Add double/float option.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>builder</i> Builder to add to
@@ -1410,7 +1409,7 @@ options_builder_add_example(b, &quot;client&quot;, &quot;example.com&quot;,
   long_name, char short_name, size_t offset, int default_value, const char *
   help_text, const char * group, <b>bool</b> required, const char *
   env_var_name, <b>bool</b>(* validate )(const void *options_struct, char
-  **<b>error_msg</b>))</a></h2>
+  **error_msg))</a></h2>
 <p class="Pp">Add integer option.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>builder</i> Builder to add to
@@ -1477,7 +1476,7 @@ options_builder_add_example(b, &quot;client&quot;, &quot;example.com&quot;,
   const char * long_name, char short_name, size_t offset, int default_value,
   const char * help_text, const char * group, <b>bool</b> required, const char *
   env_var_name, <b>bool</b>(* validate )(const void *options_struct, char
-  **<b>error_msg</b>), const <b>option_metadata_t</b> * metadata)</a></h2>
+  **error_msg), const <b>option_metadata_t</b> * metadata)</a></h2>
 <p class="Pp">Add integer option with metadata (for numeric ranges and
     examples). Like <b>options_builder_add_int()</b> but also includes metadata
     for numeric ranges, examples, and completions.</p>
@@ -1520,7 +1519,7 @@ options_builder_add_example(b, &quot;client&quot;, &quot;example.com&quot;,
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
-    <b>ensure_descriptor_capacity()</b>, <b>error_msg</b>, <b>log_error</b>,
+    <b>ensure_descriptor_capacity()</b>, <b>log_error</b>,
     <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>, and
     <b>OPTION_TYPE_INT</b>.</p>
 <p class="Pp">Referenced by <b>options_registry_add_all_to_builder()</b>.</p>
@@ -1568,8 +1567,7 @@ options_builder_add_mode(b, &quot;mirror&quot;, &quot;View local webcam as ASCII
   * name, const char * help_text, <b>bool</b> required, const char *
   section_heading, const char ** examples, size_t num_examples,
   <b>option_mode_bitmask_t</b> mode_bitmask, int(* parse_fn )(const char *arg,
-  void *config, char **remaining, int num_remaining, char
-  **<b>error_msg</b>))</a></h2>
+  void *config, char **remaining, int num_remaining, char **error_msg))</a></h2>
 <p class="Pp">Add positional argument descriptor. Positional arguments are
     parsed after getopt finishes, from the remaining argv elements that don't
     start with '-'. They are parsed in the order they are added to the
@@ -1646,7 +1644,7 @@ options_builder_add_mode(b, &quot;mirror&quot;, &quot;View local webcam as ASCII
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ensure_positional_arg_capacity()</b>,
-    <b>error_msg</b>, <b>options_builder_t::num_positional_args</b>, and
+    <b>options_builder_t::num_positional_args</b>, and
     <b>options_builder_t::positional_args</b>.</p>
 <p class="Pp">Referenced by <b>options_builder_from_preset()</b>, and
     <b>options_preset_unified()</b>.</p>
@@ -1657,7 +1655,7 @@ options_builder_add_mode(b, &quot;mirror&quot;, &quot;View local webcam as ASCII
   long_name, char short_name, size_t offset, const char * default_value, const
   char * help_text, const char * group, <b>bool</b> required, const char *
   env_var_name, <b>bool</b>(* validate )(const void *options_struct, char
-  **<b>error_msg</b>))</a></h2>
+  **error_msg))</a></h2>
 <p class="Pp">Add string option. Strings are automatically strdup'd during
     parsing and freed during cleanup.</p>
 <p class="Pp"></p>
@@ -2595,9 +2593,9 @@ options_builder_set_input_type(builder, &quot;compression-level&quot;, OPTION_IN
 <div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options
   configuration</b>
 <br/>
-<i></i><b>argc</b><i></i><b> Argument count</b>
+<i>argc</i> Argument count
 <br/>
-<i></i><b>argv</b><i></i><b> Argument vector</b>
+<i>argv</i> Argument vector
 <br/>
 <i>options_struct</i> Options struct to fill
 <br/>
@@ -2632,8 +2630,8 @@ options_builder_set_input_type(builder, &quot;compression-level&quot;, OPTION_IN
 1835 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>argc</b>, <b>argv</b>, <b>ASCIICHAT_OK</b>,
-    <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>options_init()</b>.</p>
 </section>
 <section class="Ss">
@@ -2727,9 +2725,8 @@ options_builder_set_input_type(builder, &quot;compression-level&quot;, OPTION_IN
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>error_msg</b>, <b>ERROR_USAGE</b>,
-    <b>positional_arg_descriptor_t::help_text</b>, <b>log_error</b>,
-    <b>positional_arg_descriptor_t::name</b>,
+    <b>ERROR_USAGE</b>, <b>positional_arg_descriptor_t::help_text</b>,
+    <b>log_error</b>, <b>positional_arg_descriptor_t::name</b>,
     <b>options_config_t::num_positional_args</b>,
     <b>positional_arg_descriptor_t::parse_fn</b>,
     <b>options_config_t::positional_args</b>,
@@ -2798,11 +2795,11 @@ options_builder_set_input_type(builder, &quot;compression-level&quot;, OPTION_IN
     <b>option_descriptor_t::default_value</b>,
     <b>options_config_t::descriptors</b>,
     <b>option_descriptor_t::env_var_name</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>error_msg</b>, <b>g_builder_handlers</b>,
-    <b>options_config_t::num_descriptors</b>, <b>NUM_OPTION_TYPES</b>,
-    <b>option_descriptor_t::offset</b>, <b>OPTION_TYPE_CALLBACK</b>,
-    <b>option_descriptor_t::parse_fn</b>, <b>SAFE_GETENV</b>, <b>SET_ERRNO</b>,
-    and <b>option_descriptor_t::type</b>.</p>
+    <b>g_builder_handlers</b>, <b>options_config_t::num_descriptors</b>,
+    <b>NUM_OPTION_TYPES</b>, <b>option_descriptor_t::offset</b>,
+    <b>OPTION_TYPE_CALLBACK</b>, <b>option_descriptor_t::parse_fn</b>,
+    <b>SAFE_GETENV</b>, <b>SET_ERRNO</b>, and
+  <b>option_descriptor_t::type</b>.</p>
 <p class="Pp">Referenced by <b>options_init()</b>.</p>
 </section>
 <section class="Ss">
