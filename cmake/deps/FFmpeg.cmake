@@ -485,7 +485,7 @@ endif()
 # =============================================================================
 # Debug builds: Build FFmpeg from source with H265 support for fast iteration
 # =============================================================================
-if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT ASCIICHAT_SHARED_DEPS AND NOT FFMPEG_FOUND AND FALSE)
+if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT ASCIICHAT_SHARED_DEPS AND NOT FFMPEG_FOUND)
     message(STATUS "Configuring ${BoldBlue}FFmpeg${ColorReset} from source (Debug)...")
 
     include(ProcessorCount)
@@ -494,14 +494,34 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT ASCIICHAT_SHARED_D
         set(NPROC 4)
     endif()
 
-    set(FFMPEG_VERSION "7.1")
+    set(FFMPEG_VERSION "8.1")
     set(FFMPEG_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg")
     set(FFMPEG_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg-build")
     set(FFMPEG_SOURCE_DIR "${FFMPEG_BUILD_DIR}/ffmpeg-${FFMPEG_VERSION}")
 
-    # Build FFmpeg if not cached
+    # Build FFmpeg if not cached, or if libx265 support is missing
+    # Check if x265 support is available by looking for encoder in existing FFmpeg
+    set(NEED_FFMPEG_REBUILD FALSE)
     if(NOT EXISTS "${FFMPEG_PREFIX}/lib/libavcodec.so" OR
        NOT EXISTS "${FFMPEG_PREFIX}/lib/libavformat.so")
+        set(NEED_FFMPEG_REBUILD TRUE)
+    else()
+        # FFmpeg exists, check if x265 encoder is available
+        # We do this by checking if we can find the encoder in the library
+        execute_process(
+            COMMAND strings "${FFMPEG_PREFIX}/lib/libavcodec.so"
+            COMMAND grep -q "ff_libx265_encoder"
+            RESULT_VARIABLE ENCODER_CHECK_RESULT
+            ERROR_QUIET
+            OUTPUT_QUIET
+        )
+        if(NOT ENCODER_CHECK_RESULT EQUAL 0)
+            message(STATUS "  FFmpeg exists but libx265 encoder not found, rebuilding...")
+            set(NEED_FFMPEG_REBUILD TRUE)
+        endif()
+    endif()
+
+    if(NEED_FFMPEG_REBUILD)
 
         message(STATUS "  FFmpeg libraries not found in cache, building from source...")
 
@@ -526,7 +546,7 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT ASCIICHAT_SHARED_D
             file(DOWNLOAD
                 "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
                 "${FFMPEG_TARBALL}"
-                EXPECTED_HASH SHA256=40973d44970dbc83ef302b0609f2e74982be2d85916dd2ee7472d30678a7abe6
+                EXPECTED_HASH SHA256=b072aed6871998cce9b36e7774033105ca29e33632be5b6347f3206898e0756a
                 STATUS DOWNLOAD_STATUS
             )
             list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
