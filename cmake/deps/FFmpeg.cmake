@@ -510,7 +510,19 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT ASCIICHAT_SHARED_D
 
         # Download FFmpeg source
         set(FFMPEG_TARBALL "${FFMPEG_BUILD_DIR}/ffmpeg-${FFMPEG_VERSION}.tar.xz")
+        # Check if file needs to be downloaded (doesn't exist or is empty from failed download)
         if(NOT EXISTS "${FFMPEG_TARBALL}")
+            set(NEED_DOWNLOAD TRUE)
+        else()
+            file(SIZE "${FFMPEG_TARBALL}" TARBALL_SIZE)
+            if(TARBALL_SIZE EQUAL 0)
+                set(NEED_DOWNLOAD TRUE)
+            else()
+                set(NEED_DOWNLOAD FALSE)
+            endif()
+        endif()
+
+        if(NEED_DOWNLOAD)
             message(STATUS "  Downloading FFmpeg ${FFMPEG_VERSION}...")
             file(DOWNLOAD
                 "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
@@ -538,7 +550,7 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT ASCIICHAT_SHARED_D
             endif()
         endif()
 
-        message(STATUS "  Configuring FFmpeg...")
+        message(STATUS "  Configuring FFmpeg from: ${FFMPEG_SOURCE_DIR}")
         execute_process(
             COMMAND "${FFMPEG_SOURCE_DIR}/configure"
                 --prefix=${FFMPEG_PREFIX}
@@ -561,7 +573,7 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT ASCIICHAT_SHARED_D
             ERROR_VARIABLE CONFIG_ERROR
         )
         if(NOT CONFIG_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to configure FFmpeg:\n${CONFIG_ERROR}")
+            message(FATAL_ERROR "Failed to configure FFmpeg:\nstderr: ${CONFIG_ERROR}\nstdout: ${CONFIG_OUTPUT}")
         endif()
 
         message(STATUS "  Building FFmpeg (using ${NPROC} jobs)...")
