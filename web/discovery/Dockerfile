@@ -39,11 +39,16 @@ FROM caddy:alpine
 ARG NODE_ENV=development
 ENV NODE_ENV=${NODE_ENV}
 
+RUN apk add --no-cache curl
+
 WORKDIR /app/discovery
 
 COPY --from=builder /app/web/discovery/dist ./dist
 COPY web/discovery/Caddyfile /etc/caddy/Caddyfile
 
 EXPOSE 5174
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=3s --retries=3 \
+  CMD curl -f http://localhost/
 
 CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]

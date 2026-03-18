@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "concurrently \"ls api.js | entr -rdc vite --port 5173 | tee vite.log\" \"bun api.js | tee api.log\" \"scripts/manpage-watch.sh\"",
     "api": "bun api.js",
+    "start": "concurrently \"vite --port 5173\" \"bun api.js\"",
+    "start:caddy": "concurrently \"bun api.js\" \"caddy run --config /etc/caddy/Caddyfile\"",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "build": "bash scripts/build.sh",
