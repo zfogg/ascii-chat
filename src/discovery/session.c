@@ -465,8 +465,6 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
     int select_result = socket_select(session->acds_socket + 1, NULL, &writefds, &exceptfds, &tv);
 
     if (select_result < 0) {
-      int err = socket_get_last_error();
-      log_debug("select() returned %d, errno=%d", select_result, err);
       set_error(session, ERROR_NETWORK, "select() failed");
       socket_close(session->acds_socket);
       session->acds_socket = INVALID_SOCKET_VALUE;
@@ -476,18 +474,11 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
 
     if (select_result == 0) {
       // Timeout, loop again to check exit flag
-      log_debug("select() timeout (no socket ready)");
       continue;
     }
 
-    log_debug("select() returned %d (socket ready)", select_result);
-
     // Socket is ready - check if connection succeeded or failed
-    int is_readable = socket_fd_isset(session->acds_socket, &exceptfds);
-    int is_writable = socket_fd_isset(session->acds_socket, &writefds);
-    log_debug("fd_isset: readable=%d, writable=%d", is_readable, is_writable);
-
-    if (is_readable) {
+    if (socket_fd_isset(session->acds_socket, &exceptfds)) {
       // Exception on socket means connection failed
       int socket_errno = socket_get_error(session->acds_socket);
       log_debug("ACDS connection failed with error: %d", socket_errno);
@@ -498,10 +489,9 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
       return ERROR_NETWORK_CONNECT;
     }
 
-    if (is_writable) {
+    if (socket_fd_isset(session->acds_socket, &writefds)) {
       // Verify connection succeeded by checking SO_ERROR
       int socket_errno = socket_get_error(session->acds_socket);
-      log_debug("SO_ERROR check: errno=%d", socket_errno);
 
       if (socket_errno == 0) {
         // Connection succeeded - restore blocking mode for subsequent operations
@@ -513,7 +503,6 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
 
       // If EINPROGRESS, connection is still in progress, keep polling
       if (socket_is_in_progress_error(socket_errno)) {
-        log_debug("ACDS connection still in progress (errno=%d)", socket_errno);
         continue;
       }
 
