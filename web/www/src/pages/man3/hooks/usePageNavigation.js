@@ -517,86 +517,44 @@ export function usePageNavigation(
     return () => window.removeEventListener("popstate", handlePopState);
   }, [loadPageContent]);
 
-  // Data Fields table DOM transform
+  // Convert "Definition at line X of file Y" text to GitHub links
   useEffect(() => {
-    const fieldDocHeading = document.getElementById("Field_Documentation");
-    if (!fieldDocHeading) return;
-
-    // Collect all SECTION elements that follow Field_Documentation
-    const rows = [];
-    let current = fieldDocHeading.nextElementSibling;
     const commitSha = __COMMIT_SHA__;
+    if (!commitSha || commitSha === "unknown") return;
 
-    while (current && current.tagName === "SECTION") {
-      // Extract field type and name from h2
-      const h2 = current.querySelector("h2");
-      if (!h2) {
-        current = current.nextElementSibling;
-        continue;
+    if (!contentViewerRef.current) return;
+
+    const viewer = contentViewerRef.current;
+
+    // Find all text nodes containing "Definition at line"
+    const walker = document.createTreeWalker(
+      viewer,
+      NodeFilter.SHOW_TEXT,
+      null,
+      false
+    );
+
+    const nodesToProcess = [];
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.textContent.includes("Definition at line")) {
+        nodesToProcess.push(node);
       }
+    }
 
-      // Parse: "<b>uint8_t</b> ALIGNED_ATTR::fieldName"
-      const bTag = h2.querySelector("b");
-      const type = bTag ? bTag.textContent : "";
-      const fullText = h2.textContent;
-      const name = fullText.substring(fullText.indexOf(" ") + 1).trim();
+    // Replace "Definition at line X of file Y" with GitHub links
+    for (const textNode of nodesToProcess) {
+      const parent = textNode.parentElement;
+      if (!parent) continue;
 
-      // Collect description from P tags
-      let description = "";
-      const pTags = current.querySelectorAll("p");
-      for (const p of pTags) {
-        const pText = p.textContent;
-        if (pText.includes("Definition at line")) {
-          // Convert to GitHub link
-          if (commitSha && commitSha !== "unknown") {
-            description = p.innerHTML.replace(
-              /Definition at line\s*<b>?(\d+)<\/b>?\s*of file\s*<b>?([^<]+)<\/b>?\.?/g,
-              (match, lineNum, filename) => {
-                const filepath = filename.trim();
-                return `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${filepath}#L${lineNum}" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">Definition at line <b>${lineNum}</b> of file <b>${filepath}</b></a>`;
-              }
-            );
-          } else {
-            description = p.innerHTML;
-          }
-        } else if (!description && pText.trim()) {
-          // First non-definition P is the field description
-          description = p.textContent;
+      parent.innerHTML = parent.innerHTML.replace(
+        /Definition at line\s*<b>?(\d+)<\/b>?\s*of file\s*<b>?([^<]+)<\/b>?\.?/g,
+        (match, lineNum, filename) => {
+          const filepath = filename.trim();
+          return `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${filepath}#L${lineNum}" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">Definition at line <b>${lineNum}</b> of file <b>${filepath}</b></a>`;
         }
-      }
-
-      if (type && name) {
-        rows.push({ type, name, description });
-      }
-
-      current = current.nextElementSibling;
+      );
     }
-
-    // Build table from parsed rows
-    if (rows.length === 0) return;
-
-    const tbody = document.createElement("tbody");
-    for (const row of rows) {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td class="man-data-field-type">${row.type}</td><td class="man-data-field-name">${row.name}</td><td class="man-data-field-desc">${row.description}</td>`;
-      tbody.appendChild(tr);
-    }
-
-    // Insert table after Field_Documentation heading
-    const table = document.createElement("table");
-    table.className = "man-data-fields-table";
-    table.appendChild(tbody);
-
-    // Remove all field SECTION elements
-    current = fieldDocHeading.nextElementSibling;
-    while (current && current.tagName === "SECTION") {
-      const next = current.nextElementSibling;
-      current.remove();
-      current = next;
-    }
-
-    // Insert table where the sections were
-    fieldDocHeading.insertAdjacentElement("afterend", table);
   }, [selectedPageContent]);
 
   // Functions table DOM transform
