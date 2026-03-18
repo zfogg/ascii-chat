@@ -16,7 +16,7 @@ import { highlightMatches } from "./utils/highlight.jsx";
  * Man3 - API documentation page for ascii-chat library
  * Composed of modular hooks and components
  */
-export default function Man3({ commitSha }) {
+export default function Man3() {
   const [sha, setSha] = useState("master");
 
   // Extract commit SHA from Footer's data-commit-sha attribute
@@ -31,15 +31,9 @@ export default function Man3({ commitSha }) {
         setSha((prevSha) =>
           prevSha !== commitShaAttr ? commitShaAttr : prevSha,
         );
-        return;
       }
     }
-
-    // Fallback to prop or default
-    if (commitSha && commitSha !== "__COMMIT_SHA__") {
-      setSha((prevSha) => (prevSha !== commitSha ? commitSha : prevSha));
-    }
-  }, [commitSha]);
+  }, []);
 
   // Load man page index
   const { manPages, loading, validPagesRef } = useManPages();

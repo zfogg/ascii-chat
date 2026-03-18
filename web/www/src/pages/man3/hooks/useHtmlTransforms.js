@@ -187,13 +187,6 @@ export function useHtmlTransforms(validPagesRef, commitSha) {
         /Definition at line <b>(\d+)<\/b> of file\s*<b>([^<]+)<\/b>[.!?]?/g;
       let matches = Array.from(html.matchAll(definitionRegex));
 
-      // If no matches, try more flexible pattern (handle extra tags/attributes)
-      if (matches.length === 0) {
-        definitionRegex =
-          /Definition at line[^<]*<b[^>]*>(\d+)<\/b>[^<]*of file[^<]*<b[^>]*>([^<]+)<\/b>[.!?]?/g;
-        matches = Array.from(html.matchAll(definitionRegex));
-      }
-
       // Transform "Definition at line X of file Y" text to add GitHub links
       // Use flexible regex to match the actual pattern found (including optional trailing period)
       const transformRegex =
