@@ -1,7 +1,6 @@
 export { Badge } from "./Badge";
 export { Button } from "./Button";
 export { Card } from "./Card";
-export { CodeBlock } from "./CodeBlock";
 export { CommitLink } from "./CommitLink";
 export { Footer } from "./Footer";
 export { GettingHelpSection } from "./GettingHelpSection";

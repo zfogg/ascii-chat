@@ -1,4 +1,4 @@
-import { CodeBlock } from "@ascii-chat/shared/components";
+import { CodeBlock } from "@ascii-chat/shared/components/CodeBlock";
 
 /**
  * Decode HTML entities using browser's HTML parser

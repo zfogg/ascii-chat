@@ -1,4 +1,5 @@
-import { CodeBlock, Heading } from "@ascii-chat/shared/components";
+import { Heading } from "@ascii-chat/shared/components";
+import { CodeBlock } from "@ascii-chat/shared/components/CodeBlock";
 import { SITES } from "@ascii-chat/shared/utils";
 import { useEffect } from "react";
 import { AsciiChatHead } from "../../components/AsciiChatHead";

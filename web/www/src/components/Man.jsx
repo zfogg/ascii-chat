@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { CodeBlock } from "@ascii-chat/shared/components";
+import { CodeBlock } from "@ascii-chat/shared/components/CodeBlock";
 
 export default function Man({
   html,

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import {
-  CodeBlock,
   GettingHelpSection,
   Heading,
   UsageExamplesSection,
 } from "@ascii-chat/shared/components";
+import { CodeBlock } from "@ascii-chat/shared/components/CodeBlock";
 import { fetchSessionStrings, SITES } from "@ascii-chat/shared/utils";
 import { useAnchorNavigation } from "../hooks/useAnchorNavigation";
 import { AsciiChatHead } from "../components/AsciiChatHead";

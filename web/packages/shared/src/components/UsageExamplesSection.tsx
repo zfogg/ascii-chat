@@ -1,4 +1,5 @@
-import { CodeBlock, Heading } from "./index";
+import { CodeBlock } from "./CodeBlock";
+import { Heading } from "./index";
 
 export interface UsageExamplesSectionProps {
   /**
