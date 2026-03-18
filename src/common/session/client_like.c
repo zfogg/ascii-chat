@@ -592,8 +592,11 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
   // Wait for splash animation to finish before proceeding to render loop
   // (splash_anim thread uses the display, must not be disrupted before cleanup)
+  // But skip for immediate snapshots (snapshot-delay=0) which need to output first frame immediately
   splash_intro_done();
-  splash_wait_for_animation();
+  if (!(GET_OPTION(snapshot_mode) && GET_OPTION(snapshot_delay) == 0.0)) {
+    splash_wait_for_animation();
+  }
 
   // ============================================================================
   // SETUP: Create Mirror Capture (after splash screen finishes)

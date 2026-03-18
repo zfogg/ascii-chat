@@ -178,13 +178,16 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
   // Wait for splash animation to complete before rendering first frame
   // This prevents ASCII art from mixing with splash screen output
+  // But skip for immediate snapshots (snapshot-delay=0) which need to output first frame immediately
   static bool splash_wait_done = false;
   if (!splash_wait_done) {
     splash_wait_done = true;
-    // Re-enable logging briefly for splash wait, then disable again
-    log_set_terminal_output(true);
-    splash_wait_for_animation();
-    log_set_terminal_output(false);
+    if (!(GET_OPTION(snapshot_mode) && GET_OPTION(snapshot_delay) == 0.0)) {
+      // Re-enable logging briefly for splash wait, then disable again
+      log_set_terminal_output(true);
+      splash_wait_for_animation();
+      log_set_terminal_output(false);
+    }
   }
 
   // In snapshot mode, we must render at least one frame before checking should_exit
