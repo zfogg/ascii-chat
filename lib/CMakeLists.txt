@@ -752,22 +752,57 @@ add_library(ascii-chat-shared SHARED
         SOVERSION ${ASCIICHAT_LIB_VERSION_MAJOR}
     )
 
-    # Set RPATH on shared library so it can find ghostty library at runtime
-    # This ensures transitive dependencies (like libghostty-vt.so.0) are found
-    if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-        set(_shared_rpath_list "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
-        # Add ghostty library path for transitive dependency resolution
-        list(APPEND _shared_rpath_list "${ASCIICHAT_DEPS_CACHE_DIR}/ghostty/lib")
-        if(CMAKE_BUILD_RPATH)
-            list(APPEND _shared_rpath_list ${CMAKE_BUILD_RPATH})
+    # Set RPATH on shared library so it can find dependencies at runtime
+    # This ensures transitive dependencies (like libghostty-vt.so.0 and custom FFmpeg) are found
+    if(APPLE OR UNIX)
+        if(CMAKE_BUILD_TYPE STREQUAL "Release")
+            # Release builds: use only relative paths to avoid embedded developer paths
+            # Copy FFmpeg libraries to lib/ directory alongside shared library
+            file(GLOB _ffmpeg_libs_for_shared "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/lib/*.so*")
+            foreach(_lib ${_ffmpeg_libs_for_shared})
+                add_custom_command(TARGET ascii-chat-shared PRE_LINK
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_lib}" "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/"
+                )
+            endforeach()
+            # Use $ORIGIN to find FFmpeg libraries in the same directory
+            set(_shared_rpath_list "\$ORIGIN")
+            message(STATUS "Release build: Will copy FFmpeg libs to ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} with \$ORIGIN RPATH")
+        else()
+            # Non-Release builds: use absolute paths (will be removed by remove_paths.sh in Release only)
+            set(_shared_rpath_list "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+
+            # Add ghostty library path for transitive dependency resolution
+            list(APPEND _shared_rpath_list "${ASCIICHAT_DEPS_CACHE_DIR}/ghostty/lib")
+
+            if(CMAKE_BUILD_RPATH)
+                list(APPEND _shared_rpath_list ${CMAKE_BUILD_RPATH})
+            endif()
+            if(APPLE)
+                list(APPEND _shared_rpath_list "${HOMEBREW_PREFIX}/lib")
+            endif()
         endif()
-        if(APPLE)
-            list(APPEND _shared_rpath_list "${HOMEBREW_PREFIX}/lib")
+
+        # Convert list to colon-separated string for linker -rpath flag
+        string(REPLACE ";" ":" _shared_rpath_str "${_shared_rpath_list}")
+
+        # Set both BUILD_RPATH and linker flags to ensure RPATH is embedded
+        if(CMAKE_BUILD_TYPE STREQUAL "Release")
+            # Release: use only our explicit RPATH, don't add linked library paths automatically
+            set_target_properties(ascii-chat-shared PROPERTIES
+                BUILD_RPATH "${_shared_rpath_list}"
+                SKIP_BUILD_RPATH FALSE
+                INSTALL_RPATH_USE_LINK_PATH FALSE
+            )
+        else()
+            # Non-Release: allow automatic RPATH for development
+            set_target_properties(ascii-chat-shared PROPERTIES
+                BUILD_RPATH "${_shared_rpath_list}"
+                SKIP_BUILD_RPATH FALSE
+                INSTALL_RPATH_USE_LINK_PATH TRUE
+            )
         endif()
-        set_target_properties(ascii-chat-shared PROPERTIES
-            BUILD_RPATH "${_shared_rpath_list}"
-            SKIP_BUILD_RPATH FALSE
-        )
+        # Also use linker flag to ensure RPATH is properly embedded
+        target_link_options(ascii-chat-shared PRIVATE "LINKER:-rpath=${_shared_rpath_str}")
     endif()
 
     # Windows: Explicitly set import library location for Windows

@@ -125,8 +125,21 @@ if(_use_shared_lib)
         )
         # Link BearSSL (required)
         target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
-        # Link FFmpeg (required for video codec support)
-        target_link_libraries(ascii-chat ${FFMPEG_LIBRARIES})
+        # Link against custom FFmpeg libraries
+        # The shared library will also link against these, and RPATH will be set appropriately
+        target_link_libraries(ascii-chat
+            "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/lib/libavformat.so"
+            "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/lib/libavcodec.so"
+            "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/lib/libswscale.so"
+            "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/lib/libswresample.so"
+            "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/lib/libavutil.so"
+        )
+        # For non-Release builds, add absolute RPATH (will be stripped in Release)
+        if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+            target_link_options(ascii-chat PRIVATE
+                -Wl,-rpath=${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/lib
+            )
+        endif()
         # Link WebRTC audio processing for echo cancellation
         if(TARGET webrtc_audio_processing)
             target_link_libraries(ascii-chat webrtc_audio_processing)
@@ -196,20 +209,34 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     # Release builds now use shared library (after OBJECT library simplification)
     # Use relative rpath to avoid embedding developer paths in the binary
     # This satisfies the ValidatePaths.cmake security check
-    # Add ghostty library directory for releases (ghostty is static in release, no rpath needed)
     if(APPLE)
         set(_release_rpath "@loader_path/../lib;/usr/local/lib;${HOMEBREW_PREFIX}/lib")
+        set_target_properties(ascii-chat PROPERTIES
+            BUILD_RPATH "${_release_rpath}"
+            INSTALL_RPATH "${_release_rpath}"
+            SKIP_BUILD_RPATH FALSE
+        )
     else()
-        set(_release_rpath "$ORIGIN/../lib:/usr/local/lib")
+        # For Release builds on Linux, copy custom FFmpeg libraries to build/lib
+        # This allows relative RPATH ($ORIGIN/../lib) to find our custom FFmpeg
+        # while passing security validation (no absolute developer paths in binary)
+        file(GLOB _ffmpeg_libs "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/lib/*.so*")
+        foreach(_lib ${_ffmpeg_libs})
+            add_custom_command(TARGET ascii-chat PRE_LINK
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_lib}" "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/"
+            )
+        endforeach()
+
+        # Set RPATH to use relative path which will find our copied FFmpeg
+        # Note: CMake interprets RPATH values and converts them to the linker format
+        # We need to escape the dollar sign as \$ORIGIN so CMake doesn't interpret it
+        set_target_properties(ascii-chat PROPERTIES
+            BUILD_RPATH "\$ORIGIN/../lib"
+            INSTALL_RPATH "\$ORIGIN/../lib"
+            SKIP_BUILD_RPATH FALSE
+        )
+        message(STATUS "Release build: Copying FFmpeg libraries to ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} and using relative RPATH")
     endif()
-    set_target_properties(ascii-chat PROPERTIES
-        # Skip automatic rpath during build - we set it explicitly
-        SKIP_BUILD_RPATH FALSE
-        BUILD_WITH_INSTALL_RPATH TRUE
-        INSTALL_RPATH "${_release_rpath}"
-        # Don't add link directories to rpath - use only what we specify
-        INSTALL_RPATH_USE_LINK_PATH FALSE
-    )
 endif()
 
 # Include directories for executable (needed for version.h and other generated headers)
