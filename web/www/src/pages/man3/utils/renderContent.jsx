@@ -93,7 +93,7 @@ export function renderContentWithCodeBlocks(
       // Strip search highlighting to allow CodeBlock to tokenize properly
       const cleanedContent = codeContent
         .replace(
-          /<span[^>]*style="[^"]*background-color:\s*#fbbf24[^"]*"[^>]*>/g,
+          /<span[^>]*style="[^"]*background-color:\s*(?:#fbbf24|var\(--highlight-color\))[^"]*"[^>]*>/g,
           "",
         )
         .replace(/<span[^>]*class="[^"]*bg-yellow-900[^"]*"[^>]*>/g, "")

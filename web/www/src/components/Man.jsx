@@ -130,7 +130,7 @@ export default function Man({
                     lineNum >= targetLineStart && lineNum <= targetLineEnd;
 
                   if (isTarget) {
-                    return `<div style="background-color: #fbbf24; padding: 0.125rem 0.5rem;"><span style="font-family: monospace;">${paddedNum}  ${text}</span></div>`;
+                    return `<div style="background-color: var(--highlight-color); padding: 0.125rem 0.5rem;"><span style="font-family: monospace;">${paddedNum}  ${text}</span></div>`;
                   }
                   return `<div style="font-family: monospace;"><span>    ${paddedNum}  ${text}</span></div>`;
                 })
@@ -318,19 +318,19 @@ export default function Man({
 
                   allSpans.forEach((span, spanIdx) => {
                     if (span.textContent.includes("⟹")) {
-                      span.style.backgroundColor = "#fbbf24";
+                      span.style.backgroundColor = "var(--highlight-color)";
                       span.style.color = "#000";
 
                       for (let i = spanIdx + 1; i < allSpans.length; i++) {
                         const nextSpan = allSpans[i];
                         if (nextSpan.textContent.includes("\n")) {
                           if (nextSpan.textContent.includes("⟸")) {
-                            nextSpan.style.backgroundColor = "#fbbf24";
+                            nextSpan.style.backgroundColor = "var(--highlight-color)";
                             nextSpan.style.color = "#000";
                           }
                           break;
                         }
-                        nextSpan.style.backgroundColor = "#fbbf24";
+                        nextSpan.style.backgroundColor = "var(--highlight-color)";
                         nextSpan.style.color = "#000";
                       }
                     }

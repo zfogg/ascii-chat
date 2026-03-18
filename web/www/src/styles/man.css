@@ -296,7 +296,7 @@ section {
 }
 
 .man-func-sig {
-  color: #fbbf24;
+  color: var(--highlight-color);
   @apply max-w-[550px];
 }
 
@@ -307,7 +307,7 @@ section {
 }
 
 .man-func-sig code {
-  color: #fbbf24;
+  color: var(--highlight-color);
 }
 
 .man-func-desc {
