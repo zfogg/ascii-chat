@@ -67,8 +67,19 @@ export function usePageNavigation(
           const currentParams = new URLSearchParams(window.location.search);
           const currentSearchQuery = currentParams.get("q") || searchQuery;
 
-          // processPageContent now handles all transformations including GitHub links (step 1.5)
-          const processedContent = processPageContent(html, currentSearchQuery);
+          // Apply HTML transformations in sequence
+          let processedContent = processPageContent(html, currentSearchQuery);
+
+          // Add GitHub links to "Definition at line X" references
+          const page = manPages.find((p) => p.name === pageName);
+          const sourcePath = page?.sourcePath;
+          const isSourcePage = pageName?.endsWith("_source") || false;
+          processedContent = processDefinitionLinks(
+            processedContent,
+            sourcePath,
+            commitSha,
+            isSourcePage,
+          );
 
           setSelectedPageContent(processedContent);
           setSelectedPageName(pageName);
