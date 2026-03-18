@@ -6,10 +6,11 @@ import { highlightMatchesInHTML } from "../utils/highlight.jsx";
  * Used in the preprocessing pipeline to convert raw Doxygen HTML to clean documentation
  *
  * @param {React.MutableRefObject<Set>} validPagesRef - Set of valid page names for link detection
+ * @param {Array} manPages - Full pages array with sourcePath information
  * @param {string} commitSha - Git commit SHA for GitHub links
  * @returns {{ processPageContent, preprocessPageHTML, processDefinitionLinks }}
  */
-export function useHtmlTransforms(validPagesRef, commitSha) {
+export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
   /**
    * Parse a macro match and convert to HTML table
    */
@@ -176,7 +177,13 @@ export function useHtmlTransforms(validPagesRef, commitSha) {
    * Also converts line number anchors on source pages to GitHub links
    */
   const processDefinitionLinks = useCallback(
-    (html, sourcePath, passedCommitSha, isSourcePage = false) => {
+    (
+      html,
+      sourcePath,
+      passedCommitSha,
+      isSourcePage = false,
+      selectedPageName = null,
+    ) => {
       // Get the commit SHA - use passed value, then hook value, finally default to master
       const sha = passedCommitSha || commitSha;
       const githubRef = sha && sha !== "unknown" ? sha : "master";
@@ -197,16 +204,84 @@ export function useHtmlTransforms(validPagesRef, commitSha) {
       let result = html.replace(transformRegex, (match, lineNum, filename) => {
         let filepath = sourcePath || filename.trim();
 
-        // Map Doxygen file paths to GitHub paths
-        // video/rgba/image.h -> include/ascii-chat/video/rgba/image.h
-        if (!filepath.includes("/")) {
-          filepath = `include/ascii-chat/${filepath}`;
-        } else if (
-          !filepath.startsWith("src/") &&
-          !filepath.startsWith("include/") &&
-          !filepath.startsWith("lib/")
-        ) {
-          filepath = `include/ascii-chat/${filepath}`;
+        // Extract basename for lookup (works whether filepath is basename or full path)
+        const basename = filepath.includes("/")
+          ? filepath.substring(filepath.lastIndexOf("/") + 1)
+          : filepath;
+
+        // Look it up in manPages if available
+        if (manPages && manPages.length > 0) {
+          // Find all pages with this basename
+          const candidatePages = manPages.filter((p) => p.name === basename);
+          let page = null;
+
+          if (candidatePages.length === 1) {
+            // Only one file with this name - but check if content suggests a different file
+            page = candidatePages[0];
+
+            // Special case: if it's agent.c and content contains GPG markers, use GPG version
+            const hasGPGMarkers =
+              html.includes("GPG_AGENT") || html.includes("gpg_agent_");
+            if (basename === "agent.c" && hasGPGMarkers) {
+              // pages.json is incomplete - it doesn't have the GPG agent.c entry
+              // So we hardcode the path when we detect GPG content
+              filepath = "lib/crypto/gpg/agent.c";
+              page = null; // Skip the lookup since we already set filepath
+            }
+          } else if (candidatePages.length > 1) {
+            // Multiple files with same name - try to pick the right one
+            // First, check if current page has the same basename
+            if (selectedPageName) {
+              const currentPage = manPages.find(
+                (p) => p.name === selectedPageName,
+              );
+              if (currentPage && currentPage.name.endsWith(filepath)) {
+                // Current page has matching basename, use it
+                page = currentPage;
+              } else if (currentPage && currentPage.sourcePath) {
+                // Try to find a page from the same directory as current page
+                const currentDir = currentPage.sourcePath.substring(
+                  0,
+                  currentPage.sourcePath.lastIndexOf("/"),
+                );
+                page = candidatePages.find((p) =>
+                  p.sourcePath.startsWith(currentDir + "/"),
+                );
+              }
+            }
+
+            // If still not found, use the first candidate (fallback)
+            if (!page) {
+              page = candidatePages[0];
+            }
+          }
+
+          if (page && page.sourcePath && !filepath.includes("/")) {
+            // Only update filepath from page if it wasn't already set above
+            filepath = page.sourcePath;
+          } else if (!filepath.includes("/")) {
+            // Map Doxygen file paths to GitHub paths if not found
+            // video/rgba/image.h -> include/ascii-chat/video/rgba/image.h
+            filepath = `include/ascii-chat/${filepath}`;
+          }
+        } else {
+          // Fallback if manPages not available
+          if (
+            filepath &&
+            !filepath.includes("/") &&
+            (!manPages || manPages.length === 0)
+          ) {
+            // Fallback if manPages not available
+            filepath = `include/ascii-chat/${filepath}`;
+          } else if (
+            filepath &&
+            filepath.includes("/") &&
+            !filepath.startsWith("src/") &&
+            !filepath.startsWith("include/") &&
+            !filepath.startsWith("lib/")
+          ) {
+            filepath = `include/ascii-chat/${filepath}`;
+          }
         }
 
         const link =
@@ -229,7 +304,7 @@ export function useHtmlTransforms(validPagesRef, commitSha) {
 
       return result;
     },
-    [commitSha],
+    [commitSha, manPages],
   );
 
   /**

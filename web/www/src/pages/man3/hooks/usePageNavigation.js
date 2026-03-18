@@ -89,6 +89,7 @@ export function usePageNavigation(
             sourcePath,
             commitSha,
             isSourcePage,
+            pageName,
           );
 
           setSelectedPageContent(processedContent);
