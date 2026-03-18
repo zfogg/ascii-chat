@@ -529,10 +529,15 @@ typedef enum {
 /** @brief Default IPv6 server address */
 #define OPT_ADDRESS6_DEFAULT "::1"
 
-/** @brief Default discovery service endpoint
+/** @brief Default discovery service endpoint (what to connect to by default)
  *
- * @note In production (NDEBUG), uses discovery-service.ascii-chat.com
- *       In debug builds, uses localhost for local testing
+ * Production: connects to official server by default
+ * Debug: connects to localhost by default for local testing
+ *
+ * @note This is different from is_official_server() in crypto/discovery_keys.c which
+ * determines which servers have automatic HTTPS key trust. In debug builds:
+ * - DEFAULT ENDPOINT (this constant): localhost
+ * - AUTO-TRUST ENDPOINTS (discovery_keys.c): localhost AND official server
  */
 #ifdef NDEBUG
 #include "../network/acip/acds.h"

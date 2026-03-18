@@ -36,6 +36,15 @@
 /**
  * @brief Check if this is the official ACDS server
  */
+/**
+ * Determine which servers have automatic HTTPS key trust (no --discovery-service-key needed)
+ *
+ * Production: Only official ACDS server
+ * Debug: Official ACDS server + localhost (IPv4/IPv6) for testing both
+ *
+ * Note: Different from OPT_ENDPOINT_DISCOVERY_SERVICE (options.h) which sets the default
+ * connection endpoint. In debug builds both are localhost-aware but serve different purposes.
+ */
 static bool is_official_server(const char *acds_server) {
   if (!acds_server) {
     return false;
