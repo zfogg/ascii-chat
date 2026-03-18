@@ -728,240 +728,243 @@
 592 
 593   // Wait for splash animation to finish before proceeding to render loop
 594   // (splash_anim thread uses the display, must not be disrupted before cleanup)
-595   splash_intro_done();
-596   splash_wait_for_animation();
-597 
-598   // ============================================================================
-599   // SETUP: Create Mirror Capture (after splash screen finishes)
-600   // ============================================================================
-601 
-602   log_info(&quot;[MIRROR_CHECK] stdin_render_mode=%d, capture=%p&quot;, stdin_render_mode, (void *)capture);
-603   if (!stdin_render_mode &amp;&amp; !capture) {
-604     // Mirror mode: create capture context with local media source (NOW, after splash finishes)
-605     log_info(&quot;Mirror mode detected - creating mirror capture after splash screen&quot;);
-606     uint64_t mirror_cap_start = time_get_ns();
-607     capture = session_mirror_capture_create(&amp;capture_config);
-608     double mirror_cap_ms = time_ns_to_ms(time_elapsed_ns(mirror_cap_start, time_get_ns()));
-609     log_info(&quot;&#x2605; INIT_CHECKPOINT: Mirror capture created in %.1f ms (after splash)&quot;, mirror_cap_ms);
-610     if (!capture) {
-611       log_fatal(&quot;Failed to initialize mirror capture source&quot;);
-612       result = ERROR_MEDIA_INIT;
-613       goto cleanup;
-614     }
-615 
-616     // Set audio source for render-file encoding (after capture is created)
-617     media_source_t *render_audio_source = session_capture_get_media_source(capture);
-618     const char *render_file_path = GET_OPTION(render_file);
-619     log_info(&quot;[AUDIO_SOURCE] render_audio_source=%p, render_file=%s, render_file_len=%zu&quot;,
-620              render_audio_source, render_file_path ? render_file_path : &quot;(null)&quot;,
-621              render_file_path ? strlen(render_file_path) : 0);
-622     if (render_audio_source &amp;&amp; render_file_path &amp;&amp; strlen(render_file_path) &gt; 0) {
-623       session_display_set_render_audio_source(display, render_audio_source);
-624       log_info(&quot;Audio source set for render-file output&quot;);
-625     } else {
-626       log_warn(&quot;[AUDIO_SOURCE] Conditions not met: render_audio_source=%p, render_file_path=%s, len=%zu&quot;,
-627                render_audio_source, render_file_path ? render_file_path : &quot;(null)&quot;,
-628                render_file_path ? strlen(render_file_path) : 0);
-629     }
-630   }
-631 
-632   // ============================================================================
-633   // SETUP: Start Audio Playback
-634   // ============================================================================
-635 
-636   log_debug(&quot;[SETUP_AUDIO] About to check audio context for duplex&quot;);
-637   if (audio_ctx &amp;&amp; audio_available) {
-638     log_debug(&quot;[SETUP_AUDIO] Starting audio duplex&quot;);
-639     if (audio_start_duplex(audio_ctx) == ASCIICHAT_OK) {
-640       log_info(&quot;Audio playback started&quot;);
-641     } else {
-642       log_warn(&quot;Failed to start audio duplex&quot;);
-643       audio_destroy(audio_ctx);
-644       SAFE_FREE(audio_ctx);
-645       audio_ctx = NULL;
-646       audio_available = false;
-647     }
-648   }
-649 
-650   log_info(&quot;[MARKER] Audio setup complete at line 614&quot;);
-651   log_info(&quot;[SETUP_COMPLETE] All setup complete, about to start connection loop&quot;);
+595   // But skip for immediate snapshots (snapshot-delay=0) which need to output first frame immediately
+596   splash_intro_done();
+597   if (!(GET_OPTION(snapshot_mode) &amp;&amp; GET_OPTION(snapshot_delay) == 0.0)) {
+598     splash_wait_for_animation();
+599   }
+600 
+601   // ============================================================================
+602   // SETUP: Create Mirror Capture (after splash screen finishes)
+603   // ============================================================================
+604 
+605   log_info(&quot;[MIRROR_CHECK] stdin_render_mode=%d, capture=%p&quot;, stdin_render_mode, (void *)capture);
+606   if (!stdin_render_mode &amp;&amp; !capture) {
+607     // Mirror mode: create capture context with local media source (NOW, after splash finishes)
+608     log_info(&quot;Mirror mode detected - creating mirror capture after splash screen&quot;);
+609     uint64_t mirror_cap_start = time_get_ns();
+610     capture = session_mirror_capture_create(&amp;capture_config);
+611     double mirror_cap_ms = time_ns_to_ms(time_elapsed_ns(mirror_cap_start, time_get_ns()));
+612     log_info(&quot;&#x2605; INIT_CHECKPOINT: Mirror capture created in %.1f ms (after splash)&quot;, mirror_cap_ms);
+613     if (!capture) {
+614       log_fatal(&quot;Failed to initialize mirror capture source&quot;);
+615       result = ERROR_MEDIA_INIT;
+616       goto cleanup;
+617     }
+618 
+619     // Set audio source for render-file encoding (after capture is created)
+620     media_source_t *render_audio_source = session_capture_get_media_source(capture);
+621     const char *render_file_path = GET_OPTION(render_file);
+622     log_info(&quot;[AUDIO_SOURCE] render_audio_source=%p, render_file=%s, render_file_len=%zu&quot;,
+623              render_audio_source, render_file_path ? render_file_path : &quot;(null)&quot;,
+624              render_file_path ? strlen(render_file_path) : 0);
+625     if (render_audio_source &amp;&amp; render_file_path &amp;&amp; strlen(render_file_path) &gt; 0) {
+626       session_display_set_render_audio_source(display, render_audio_source);
+627       log_info(&quot;Audio source set for render-file output&quot;);
+628     } else {
+629       log_warn(&quot;[AUDIO_SOURCE] Conditions not met: render_audio_source=%p, render_file_path=%s, len=%zu&quot;,
+630                render_audio_source, render_file_path ? render_file_path : &quot;(null)&quot;,
+631                render_file_path ? strlen(render_file_path) : 0);
+632     }
+633   }
+634 
+635   // ============================================================================
+636   // SETUP: Start Audio Playback
+637   // ============================================================================
+638 
+639   log_debug(&quot;[SETUP_AUDIO] About to check audio context for duplex&quot;);
+640   if (audio_ctx &amp;&amp; audio_available) {
+641     log_debug(&quot;[SETUP_AUDIO] Starting audio duplex&quot;);
+642     if (audio_start_duplex(audio_ctx) == ASCIICHAT_OK) {
+643       log_info(&quot;Audio playback started&quot;);
+644     } else {
+645       log_warn(&quot;Failed to start audio duplex&quot;);
+646       audio_destroy(audio_ctx);
+647       SAFE_FREE(audio_ctx);
+648       audio_ctx = NULL;
+649       audio_available = false;
+650     }
+651   }
 652 
-653   // ============================================================================
-654   // RUN: Mode-Specific Main Loop with Reconnection
-655   // ============================================================================
-656 
-657   // Connection/attempt loop - wraps run_fn with reconnection logic
-658   int attempt = 0;
-659   int max_attempts = config-&gt;max_reconnect_attempts;
-660 
-661   log_info(&quot;[CLIENT_LIKE_LOOP] Starting connection loop, max_attempts=%d&quot;, max_attempts);
-662 
-663   while (true) {
-664     attempt++;
+653   log_info(&quot;[MARKER] Audio setup complete at line 614&quot;);
+654   log_info(&quot;[SETUP_COMPLETE] All setup complete, about to start connection loop&quot;);
+655 
+656   // ============================================================================
+657   // RUN: Mode-Specific Main Loop with Reconnection
+658   // ============================================================================
+659 
+660   // Connection/attempt loop - wraps run_fn with reconnection logic
+661   int attempt = 0;
+662   int max_attempts = config-&gt;max_reconnect_attempts;
+663 
+664   log_info(&quot;[CLIENT_LIKE_LOOP] Starting connection loop, max_attempts=%d&quot;, max_attempts);
 665 
-666     result = config-&gt;run_fn(capture, display, config-&gt;run_user_data);
-667 
-668     // Exit immediately if run_fn succeeded
-669     if (result == ASCIICHAT_OK) {
-670       // Connection succeeded - splash screen cleanup now happens when first frame renders
-671       // This ensures the splash stays visible during TCP/WebSocket/datachannel connection attempts
-672 
-673       break;
-674     }
+666   while (true) {
+667     attempt++;
+668 
+669     result = config-&gt;run_fn(capture, display, config-&gt;run_user_data);
+670 
+671     // Exit immediately if run_fn succeeded
+672     if (result == ASCIICHAT_OK) {
+673       // Connection succeeded - splash screen cleanup now happens when first frame renders
+674       // This ensures the splash stays visible during TCP/WebSocket/datachannel connection attempts
 675 
-676     // Check if we should attempt reconnection
-677     bool should_retry = false;
+676       break;
+677     }
 678 
-679     if (max_attempts != 0) { // max_attempts == 0 means no retries
-680       // Check custom reconnect logic if provided
-681       if (config-&gt;should_reconnect_callback) {
-682         should_retry = config-&gt;should_reconnect_callback(result, attempt, config-&gt;reconnect_user_data);
-683       } else {
-684         should_retry = true; // Default: always retry
-685       }
-686 
-687       // Check retry limits if still planning to retry
-688       if (should_retry &amp;&amp; max_attempts &gt; 0 &amp;&amp; attempt &gt;= max_attempts) {
-689         log_debug(&quot;Reached maximum reconnection attempts (%d), giving up&quot;, max_attempts);
-690         should_retry = false;
-691       }
-692     }
-693 
-694     // If not retrying or shutdown requested, exit loop
-695     if (!should_retry || APP_CALLBACK_BOOL(should_exit)) {
-696       break;
-697     }
-698 
-699     // Reconnection will happen - show splash screen during reconnection attempt
-700     // Reset first_frame flag so splash cleanup runs on next successful connection
-701     session_display_reset_first_frame(display);
-702 
-703     // splash_intro_start() handles all the logic:
-704     // - If splash should display: shows splash and disables console logging
-705     // - If splash shouldn't display: restores stderr and returns without changing logging state
-706     splash_intro_start(display);
-707 
-708     // Log reconnection message
-709     if (max_attempts == -1) {
-710       log_info(&quot;Connection failed, retrying...&quot;);
-711     } else if (max_attempts &gt; 0) {
-712       log_info(&quot;Connection failed, retrying (attempt %d/%d)...&quot;, attempt + 1, max_attempts);
-713     }
-714 
-715     // Apply reconnection delay if configured
-716     // Check APP_CALLBACK_BOOL(should_exit) frequently during sleep so SIGTERM can interrupt reconnection attempts
-717     if (config-&gt;reconnect_delay_ms &gt; 0) {
-718       unsigned int remaining_ms = config-&gt;reconnect_delay_ms;
-719       const unsigned int check_interval_ms = 100; // Check exit flag every 100ms
-720 
-721       while (remaining_ms &gt; 0 &amp;&amp; !APP_CALLBACK_BOOL(should_exit)) {
-722         unsigned int sleep_ms = (remaining_ms &lt; check_interval_ms) ? remaining_ms : check_interval_ms;
-723         platform_sleep_ms(sleep_ms);
-724         remaining_ms -= sleep_ms;
-725       }
-726     }
-727 
-728     // Continue loop to retry
-729   }
+679     // Check if we should attempt reconnection
+680     bool should_retry = false;
+681 
+682     if (max_attempts != 0) { // max_attempts == 0 means no retries
+683       // Check custom reconnect logic if provided
+684       if (config-&gt;should_reconnect_callback) {
+685         should_retry = config-&gt;should_reconnect_callback(result, attempt, config-&gt;reconnect_user_data);
+686       } else {
+687         should_retry = true; // Default: always retry
+688       }
+689 
+690       // Check retry limits if still planning to retry
+691       if (should_retry &amp;&amp; max_attempts &gt; 0 &amp;&amp; attempt &gt;= max_attempts) {
+692         log_debug(&quot;Reached maximum reconnection attempts (%d), giving up&quot;, max_attempts);
+693         should_retry = false;
+694       }
+695     }
+696 
+697     // If not retrying or shutdown requested, exit loop
+698     if (!should_retry || APP_CALLBACK_BOOL(should_exit)) {
+699       break;
+700     }
+701 
+702     // Reconnection will happen - show splash screen during reconnection attempt
+703     // Reset first_frame flag so splash cleanup runs on next successful connection
+704     session_display_reset_first_frame(display);
+705 
+706     // splash_intro_start() handles all the logic:
+707     // - If splash should display: shows splash and disables console logging
+708     // - If splash shouldn't display: restores stderr and returns without changing logging state
+709     splash_intro_start(display);
+710 
+711     // Log reconnection message
+712     if (max_attempts == -1) {
+713       log_info(&quot;Connection failed, retrying...&quot;);
+714     } else if (max_attempts &gt; 0) {
+715       log_info(&quot;Connection failed, retrying (attempt %d/%d)...&quot;, attempt + 1, max_attempts);
+716     }
+717 
+718     // Apply reconnection delay if configured
+719     // Check APP_CALLBACK_BOOL(should_exit) frequently during sleep so SIGTERM can interrupt reconnection attempts
+720     if (config-&gt;reconnect_delay_ms &gt; 0) {
+721       unsigned int remaining_ms = config-&gt;reconnect_delay_ms;
+722       const unsigned int check_interval_ms = 100; // Check exit flag every 100ms
+723 
+724       while (remaining_ms &gt; 0 &amp;&amp; !APP_CALLBACK_BOOL(should_exit)) {
+725         unsigned int sleep_ms = (remaining_ms &lt; check_interval_ms) ? remaining_ms : check_interval_ms;
+726         platform_sleep_ms(sleep_ms);
+727         remaining_ms -= sleep_ms;
+728       }
+729     }
 730 
-731   // ============================================================================
-732   // CLEANUP (always runs, even on error)
-733   // ============================================================================
-734 
-735 cleanup:
-736   // Re-enable terminal output for shutdown logs
-737   log_set_terminal_output(true);
-738 
-739   // Cleanup network transports (TCP/WebSocket clients)
-740   if (g_websocket_client) {
-741     log_debug(&quot;Destroying WebSocket client&quot;);
-742     websocket_client_destroy(&amp;g_websocket_client);
-743   }
-744   if (g_tcp_client) {
-745     log_debug(&quot;Destroying TCP client&quot;);
-746     tcp_client_destroy(&amp;g_tcp_client);
-747   }
-748 
-749   // CRITICAL: Terminate PortAudio device resources FIRST
-750   log_debug(&quot;Terminating PortAudio device resources&quot;);
-751   audio_terminate_portaudio_final();
-752 
-753   // Stop audio thread before destroying audio context to prevent use-after-free
-754   // The audio worker thread may still be logging when we destroy the buffer
-755   APP_CALLBACK_VOID(audio_stop_thread);
-756 
-757   // Stop and destroy audio (after PortAudio is terminated and audio thread is stopped)
-758   if (audio_ctx) {
-759     audio_stop_duplex(audio_ctx);
-760     audio_destroy(audio_ctx);
-761     SAFE_FREE(audio_ctx);
-762     audio_ctx = NULL;
-763   }
-764 
-765   // Destroy display
-766   if (display) {
-767     session_display_destroy(display);
-768     display = NULL;
-769   }
-770 
-771   // Destroy capture
-772   if (capture) {
-773     session_capture_destroy(capture);
-774     capture = NULL;
-775   }
-776 
-777   // Destroy stdin reader if active (stdin render mode)
-778   if (g_stdin_reader) {
-779     terminal_fd_reader_destroy(g_stdin_reader);
-780     g_stdin_reader = NULL;
-781   }
-782 
-783   // Clean up probe source if still allocated (shouldn't happen, but be safe)
-784   if (probe_source) {
-785     media_source_destroy(probe_source);
-786     probe_source = NULL;
-787   }
-788 
-789   // Stop splash animation and enforce minimum display time (even on error path)
-790   // But skip completely if shutting down - don't interact with splash at all during shutdown
-791   // The animation thread will exit on its own when it detects shutdown_is_requested()
-792   if (!APP_CALLBACK_BOOL(should_exit)) {
-793     log_debug(&quot;[CLEANUP] About to call splash_intro_done()&quot;);
-794     splash_intro_done();
-795     log_debug(&quot;[CLEANUP] splash_intro_done() returned&quot;);
-796 
-797     // Wait for animation thread to exit before cleanup
-798     log_debug(&quot;[CLEANUP] About to call splash_wait_for_animation()&quot;);
-799     splash_wait_for_animation();
-800     log_debug(&quot;[CLEANUP] splash_wait_for_animation() returned&quot;);
-801   } else {
-802     log_debug(&quot;[CLEANUP] Skipping all splash operations (shutdown in progress)&quot;);
-803     // During shutdown, don't interact with splash - let animation thread exit naturally
-804     // and don't wait for it (prevents blocking on signals)
-805   }
-806 
-807   // Stop debug sync thread before destroying log buffer to prevent use-after-free
-808   log_debug(&quot;[CLEANUP] About to call debug_sync_cleanup_thread()&quot;);
-809   debug_sync_cleanup_thread();
-810   log_debug(&quot;[CLEANUP] debug_sync_cleanup_thread() returned&quot;);
-811 
-812   // Disable keepawake (re-allow OS to sleep)
-813   log_debug(&quot;[CLEANUP] Disabling keepawake&quot;);
-814   platform_disable_keepawake();
-815   log_debug(&quot;[CLEANUP] keepawake disabled&quot;);
-816 
-817   // Write newline to separate final frame from prompt (if configured)
-818   log_debug(&quot;About to check print_newline_on_tty_exit&quot;);
-819   if (config-&gt;print_newline_on_tty_exit &amp;&amp; terminal_is_stdout_tty()) {
-820     log_debug(&quot;Writing newline&quot;);
-821     const char newline = '\n';
-822     (void)platform_write_all(STDOUT_FILENO, &amp;newline, 1);
-823   }
-824 
-825   log_set_terminal_output(false);
-826 
-827   return result;
-828 }</pre>
+731     // Continue loop to retry
+732   }
+733 
+734   // ============================================================================
+735   // CLEANUP (always runs, even on error)
+736   // ============================================================================
+737 
+738 cleanup:
+739   // Re-enable terminal output for shutdown logs
+740   log_set_terminal_output(true);
+741 
+742   // Cleanup network transports (TCP/WebSocket clients)
+743   if (g_websocket_client) {
+744     log_debug(&quot;Destroying WebSocket client&quot;);
+745     websocket_client_destroy(&amp;g_websocket_client);
+746   }
+747   if (g_tcp_client) {
+748     log_debug(&quot;Destroying TCP client&quot;);
+749     tcp_client_destroy(&amp;g_tcp_client);
+750   }
+751 
+752   // CRITICAL: Terminate PortAudio device resources FIRST
+753   log_debug(&quot;Terminating PortAudio device resources&quot;);
+754   audio_terminate_portaudio_final();
+755 
+756   // Stop audio thread before destroying audio context to prevent use-after-free
+757   // The audio worker thread may still be logging when we destroy the buffer
+758   APP_CALLBACK_VOID(audio_stop_thread);
+759 
+760   // Stop and destroy audio (after PortAudio is terminated and audio thread is stopped)
+761   if (audio_ctx) {
+762     audio_stop_duplex(audio_ctx);
+763     audio_destroy(audio_ctx);
+764     SAFE_FREE(audio_ctx);
+765     audio_ctx = NULL;
+766   }
+767 
+768   // Destroy display
+769   if (display) {
+770     session_display_destroy(display);
+771     display = NULL;
+772   }
+773 
+774   // Destroy capture
+775   if (capture) {
+776     session_capture_destroy(capture);
+777     capture = NULL;
+778   }
+779 
+780   // Destroy stdin reader if active (stdin render mode)
+781   if (g_stdin_reader) {
+782     terminal_fd_reader_destroy(g_stdin_reader);
+783     g_stdin_reader = NULL;
+784   }
+785 
+786   // Clean up probe source if still allocated (shouldn't happen, but be safe)
+787   if (probe_source) {
+788     media_source_destroy(probe_source);
+789     probe_source = NULL;
+790   }
+791 
+792   // Stop splash animation and enforce minimum display time (even on error path)
+793   // But skip completely if shutting down - don't interact with splash at all during shutdown
+794   // The animation thread will exit on its own when it detects shutdown_is_requested()
+795   if (!APP_CALLBACK_BOOL(should_exit)) {
+796     log_debug(&quot;[CLEANUP] About to call splash_intro_done()&quot;);
+797     splash_intro_done();
+798     log_debug(&quot;[CLEANUP] splash_intro_done() returned&quot;);
+799 
+800     // Wait for animation thread to exit before cleanup
+801     log_debug(&quot;[CLEANUP] About to call splash_wait_for_animation()&quot;);
+802     splash_wait_for_animation();
+803     log_debug(&quot;[CLEANUP] splash_wait_for_animation() returned&quot;);
+804   } else {
+805     log_debug(&quot;[CLEANUP] Skipping all splash operations (shutdown in progress)&quot;);
+806     // During shutdown, don't interact with splash - let animation thread exit naturally
+807     // and don't wait for it (prevents blocking on signals)
+808   }
+809 
+810   // Stop debug sync thread before destroying log buffer to prevent use-after-free
+811   log_debug(&quot;[CLEANUP] About to call debug_sync_cleanup_thread()&quot;);
+812   debug_sync_cleanup_thread();
+813   log_debug(&quot;[CLEANUP] debug_sync_cleanup_thread() returned&quot;);
+814 
+815   // Disable keepawake (re-allow OS to sleep)
+816   log_debug(&quot;[CLEANUP] Disabling keepawake&quot;);
+817   platform_disable_keepawake();
+818   log_debug(&quot;[CLEANUP] keepawake disabled&quot;);
+819 
+820   // Write newline to separate final frame from prompt (if configured)
+821   log_debug(&quot;About to check print_newline_on_tty_exit&quot;);
+822   if (config-&gt;print_newline_on_tty_exit &amp;&amp; terminal_is_stdout_tty()) {
+823     log_debug(&quot;Writing newline&quot;);
+824     const char newline = '\n';
+825     (void)platform_write_all(STDOUT_FILENO, &amp;newline, 1);
+826   }
+827 
+828   log_set_terminal_output(false);
+829 
+830   return result;
+831 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>APP_CALLBACK_BOOL</b>, <b>APP_CALLBACK_VOID</b>,

@@ -39,7 +39,8 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>ACDS_OFFICIAL_SERVER</b> 'discovery.ascii-chat.com'
+<p class="Pp">#define <b>ACDS_OFFICIAL_SERVER</b>
+    <b>ACDS_OFFICIAL_SERVER_HOSTNAME</b>
   <br/>
   Official ACDS server hostname (automatic HTTPS key trust). #define
     <b>ACDS_OFFICIAL_KEY_SSH_URL</b> 'https://discovery.ascii-chat.com/key.pub'
@@ -94,17 +95,18 @@
 <ul class="Bl-bullet">
   <li>Download keys from HTTPS URLs using lib/crypto/http_client.h</li>
   <li>Load keys from local files (SSH/GPG formats)</li>
-  <li>Special-case automatic trust for discovery.ascii-chat.com</li>
+  <li>Special-case automatic trust for discovery-service.ascii-chat.com</li>
   <li>Cache keys locally and detect changes (requires user verification)</li>
   <li>Parse github:user and gitlab:user.gpg key specifications</li>
 </ul>
 <section class="Ss">
 <h2 class="Ss" id="Trust_Model"><a class="permalink" href="#Trust_Model">Trust
   Model</a></h2>
-<p class="Pp"><b>Official ACDS Server (discovery.ascii-chat.com)</b>:</p>
+<p class="Pp"><b>Official ACDS Server
+  (discovery-service.ascii-chat.com)</b>:</p>
 <ul class="Bl-bullet">
   <li>Automatically trusts keys downloaded from
-      https://discovery.ascii-chat.com/key.pub or /key.gpg</li>
+      https://discovery-service.ascii-chat.com/key.pub or /key.gpg</li>
   <li>First connection: downloads and caches key</li>
   <li>Subsequent connections: uses cached key</li>
   <li>Key changes: requires user verification (prevents MITM attacks)</li>
@@ -128,7 +130,7 @@ asciichat_error_t result = discovery_keys_verify(&quot;acds.example.com&quot;,
 <br/>
                                             pubkey);
 // Automatic trust for official server
-result = discovery_keys_verify(&quot;discovery.ascii-chat.com&quot;, NULL, pubkey);
+result = discovery_keys_verify(&quot;discovery-service.ascii-chat.com&quot;, NULL, pubkey);
 // Load from local file
 result = discovery_keys_verify(&quot;acds.example.com&quot;, &quot;/path/to/key.pub&quot;, pubkey);
 // GitHub key
@@ -147,27 +149,28 @@ result = discovery_keys_verify(&quot;acds.example.com&quot;, &quot;github:zfogg&
 <h2 class="Ss" id="_define_ACDS_KEYS_CACHE_DIR___'acds_keys'"><a class="permalink" href="#_define_ACDS_KEYS_CACHE_DIR___'acds_keys'">#define
   ACDS_KEYS_CACHE_DIR 'acds_keys'</a></h2>
 <p class="Pp">Key cache directory (relative to config dir).</p>
-<p class="Pp">Definition at line <b>76</b> of file <b>discovery_keys.h</b>.</p>
+<p class="Pp">Definition at line <b>79</b> of file <b>discovery_keys.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_keys_get_cache_path()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ACDS_OFFICIAL_KEY_GPG_URL___'https://discovery"><a class="permalink" href="#_define_ACDS_OFFICIAL_KEY_GPG_URL___'https://discovery">#define
   ACDS_OFFICIAL_KEY_GPG_URL 'https://discovery.ascii-chat.com/key.gpg'</a></h2>
-<p class="Pp">Definition at line <b>71</b> of file <b>discovery_keys.h</b>.</p>
+<p class="Pp">Definition at line <b>74</b> of file <b>discovery_keys.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_keys_verify()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ACDS_OFFICIAL_KEY_SSH_URL___'https://discovery"><a class="permalink" href="#_define_ACDS_OFFICIAL_KEY_SSH_URL___'https://discovery">#define
   ACDS_OFFICIAL_KEY_SSH_URL 'https://discovery.ascii-chat.com/key.pub'</a></h2>
 <p class="Pp">Default HTTPS URLs for official ACDS keys.</p>
-<p class="Pp">Definition at line <b>70</b> of file <b>discovery_keys.h</b>.</p>
+<p class="Pp">Definition at line <b>73</b> of file <b>discovery_keys.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_keys_verify()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="_define_ACDS_OFFICIAL_SERVER___'discovery"><a class="permalink" href="#_define_ACDS_OFFICIAL_SERVER___'discovery">#define
-  ACDS_OFFICIAL_SERVER 'discovery.ascii-chat.com'</a></h2>
-<p class="Pp">Official ACDS server hostname (automatic HTTPS key trust).</p>
-<p class="Pp">Definition at line <b>65</b> of file <b>discovery_keys.h</b>.</p>
+<h2 class="Ss" id="_define_ACDS_OFFICIAL_SERVER___"><a class="permalink" href="#_define_ACDS_OFFICIAL_SERVER___">#define
+  ACDS_OFFICIAL_SERVER <b>ACDS_OFFICIAL_SERVER_HOSTNAME</b></a></h2>
+<p class="Pp">Official ACDS server hostname (automatic HTTPS key trust).
+    References the authoritative definition from <b>network/acip/acds.h</b></p>
+<p class="Pp">Definition at line <b>68</b> of file <b>discovery_keys.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_keys_verify()</b>.</p>
 </section>
 </section>
@@ -194,11 +197,12 @@ result = discovery_keys_verify(&quot;acds.example.com&quot;, &quot;github:zfogg&
 <p class="Pp"></p>
 <p class="Pp">This function handles all ACDS key verification scenarios:</p>
 <p class="Pp"></p>
-<p class="Pp"><b>Automatic Trust (discovery.ascii-chat.com only)</b>:</p>
+<p class="Pp"><b>Automatic Trust (discovery-service.ascii-chat.com
+  only)</b>:</p>
 <dl class="Bl-tag">
   <dt>&#x2022;</dt>
-  <dd>If acds_server == &quot;discovery.ascii-chat.com&quot; and key_spec ==
-      NULL:</dd>
+  <dd>If acds_server == &quot;discovery-service.ascii-chat.com&quot; and
+      key_spec == NULL:</dd>
 </dl>
 <dl class="Bl-tag">
   <dt> &#x2022;</dt>
@@ -228,7 +232,7 @@ result = discovery_keys_verify(&quot;acds.example.com&quot;, &quot;github:zfogg&
 <br/>
 <i></i><b>key_spec</b><i></i><b> Key specification:</b>
 <ul class="Bl-bullet">
-  <li>NULL: automatic trust for discovery.ascii-chat.com only</li>
+  <li>NULL: automatic trust for discovery-service.ascii-chat.com only</li>
   <li>HTTPS URL: https://example.com/key.pub</li>
   <li>File path: /path/to/key.pub or ~/.ssh/server.pub</li>
   <li>GitHub: github:username</li>
@@ -332,25 +336,25 @@ result = discovery_keys_verify(&quot;acds.example.com&quot;, &quot;github:zfogg&
 <section class="Ss">
 <h2 class="Ss" id="const_char*_key_spec"><a class="permalink" href="#const_char*_key_spec">const
   char* key_spec</a></h2>
-<p class="Pp">Definition at line <b>110</b> of file <b>discovery_keys.h</b>.</p>
+<p class="Pp">Definition at line <b>113</b> of file <b>discovery_keys.h</b>.</p>
 <p class="Pp">Referenced by <b>__attribute__()</b>, and
     <b>discovery_keys_verify()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">const <b>uint8_t</b> const <b>uint8_t</b> new_pubkey[32]</h2>
-<p class="Pp">Definition at line <b>193</b> of file <b>discovery_keys.h</b>.</p>
+<p class="Pp">Definition at line <b>196</b> of file <b>discovery_keys.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_keys_verify()</b>, and
     <b>discovery_keys_verify_change()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">const <b>uint8_t</b> old_pubkey[32]</h2>
-<p class="Pp">Definition at line <b>192</b> of file <b>discovery_keys.h</b>.</p>
+<p class="Pp">Definition at line <b>195</b> of file <b>discovery_keys.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_keys_verify_change()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char*_path_out"><a class="permalink" href="#char*_path_out">char*
   path_out</a></h2>
-<p class="Pp">Definition at line <b>150</b> of file <b>discovery_keys.h</b>.</p>
+<p class="Pp">Definition at line <b>153</b> of file <b>discovery_keys.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_identity_default_path()</b>,
     <b>discovery_keys_get_cache_path()</b>, <b>platform_create_temp_file()</b>,
     <b>platform_get_gpg_agent_socket()</b>,
@@ -359,7 +363,7 @@ result = discovery_keys_verify(&quot;acds.example.com&quot;, &quot;github:zfogg&
 <section class="Ss">
 <h2 class="Ss" id="char_size_t_path_size"><a class="permalink" href="#char_size_t_path_size">char
   size_t path_size</a></h2>
-<p class="Pp">Definition at line <b>151</b> of file <b>discovery_keys.h</b>.</p>
+<p class="Pp">Definition at line <b>154</b> of file <b>discovery_keys.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_identity_default_path()</b>,
     <b>detect_default_ssh_key()</b>, <b>discovery_keys_get_cache_path()</b>,
     <b>file_is_writable()</b>, <b>platform_create_temp_file()</b>,
@@ -370,14 +374,14 @@ result = discovery_keys_verify(&quot;acds.example.com&quot;, &quot;github:zfogg&
 </section>
 <section class="Ss">
 <h2 class="Ss">const <b>uint8_t</b> pubkey[32]</h2>
-<p class="Pp">Definition at line <b>173</b> of file <b>discovery_keys.h</b>.</p>
+<p class="Pp">Definition at line <b>176</b> of file <b>discovery_keys.h</b>.</p>
 <p class="Pp">Referenced by <b>client_get_public_key_hex()</b>,
     <b>discovery_keys_save_cached()</b>, <b>openpgp_parse_armored_pubkey()</b>,
     <b>openpgp_parse_public_key_packet()</b>, and <b>pubkey_to_hex()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> pubkey_out</h2>
-<p class="Pp">Definition at line <b>111</b> of file <b>discovery_keys.h</b>.</p>
+<p class="Pp">Definition at line <b>114</b> of file <b>discovery_keys.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_keys_download_https()</b>,
     <b>discovery_keys_load_cached()</b>, <b>discovery_keys_load_file()</b>,
     <b>discovery_keys_verify()</b>, and <b>hex_to_pubkey()</b>.</p>

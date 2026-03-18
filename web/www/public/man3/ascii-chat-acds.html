@@ -196,7 +196,10 @@
     #define <b>ACIP_HOST_DEFAULT_PORT</b> <b>OPT_PORT_INT_DEFAULT</b>
   <br/>
   Default port for discovery mode hosts (use OPT_PORT_INT_DEFAULT from
-    options.h).
+    options.h). #define <b>ACDS_OFFICIAL_SERVER_HOSTNAME</b>
+    'discovery-service.ascii-chat.com'
+  <br/>
+  Official ACDS server hostname (automatic HTTPS key trust).
   <br/>
 </p>
 </section>
@@ -387,6 +390,20 @@ Total: 22 bytes + payload_length bytes</pre>
 <section class="Sh">
 <h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
   Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_ACDS_OFFICIAL_SERVER_HOSTNAME___'discovery"><a class="permalink" href="#_define_ACDS_OFFICIAL_SERVER_HOSTNAME___'discovery">#define
+  ACDS_OFFICIAL_SERVER_HOSTNAME 'discovery-service.ascii-chat.com'</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+<p class="Pp">Official ACDS server hostname (automatic HTTPS key trust). Used
+    by:</p>
+<ul class="Bl-bullet">
+  <li><b>crypto/discovery_keys.h</b>: ACDS_OFFICIAL_SERVER</li>
+  <li>options.h: OPT_ENDPOINT_DISCOVERY_SERVICE (production build)</li>
+</ul>
+<p class="Pp">Single source of truth to avoid duplication across headers.</p>
+<p class="Pp">Definition at line <b>1101</b> of file <b>acds.h</b>.</p>
+</section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ACIP_DISCOVERY_DEFAULT_PORT___"><a class="permalink" href="#_define_ACIP_DISCOVERY_DEFAULT_PORT___">#define
   ACIP_DISCOVERY_DEFAULT_PORT <b>OPT_ACDS_PORT_INT_DEFAULT</b></a></h2>

@@ -34,7 +34,7 @@ export default function Footer() {
       ]}
       commitSha={__COMMIT_SHA__}
       extraLine="ascii-chat · Video chat in your terminal"
-      className="mt-auto"
+      className="mt-auto pb-4"
     />
   );
 }

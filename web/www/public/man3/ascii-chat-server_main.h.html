@@ -1444,7 +1444,7 @@ ascii-chat server --port 8080
 </ul>
 <p class="Pp">THREAD SAFETY: Protected by g_client_manager_rwlock for concurrent
     access</p>
-<p class="Pp">Definition at line <b>333</b> of file
+<p class="Pp">Definition at line <b>334</b> of file
   <b>src/server/client.c</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>any_clients_sending_video()</b>,
@@ -1477,9 +1477,9 @@ ascii-chat server --port 8080
       <b>remove_client()</b></li>
   <li>Always acquire THIS lock before per-client mutexes (lock ordering)</li>
 </ul>
-<p class="Pp">Definition at line <b>348</b> of file
+<p class="Pp">Definition at line <b>349</b> of file
   <b>src/server/client.c</b>.</p>
-<pre>348 {0};</pre>
+<pre>349 {0};</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,

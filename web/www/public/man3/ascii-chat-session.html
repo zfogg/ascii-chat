@@ -2533,15 +2533,15 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent">true if end of stream reached, false otherwise</div>
 <p class="Pp">Useful for detecting end of file sources. Webcam and test pattern
     sources never reach end.</p>
-<p class="Pp">Definition at line <b>477</b> of file
+<p class="Pp">Definition at line <b>465</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>477                                                         {
-478   if (!ctx || !ctx-&gt;initialized || !ctx-&gt;source) {
-479     return true;
-480   }
-481 
-482   return media_source_at_end(ctx-&gt;source);
-483 }</pre>
+<pre>465                                                         {
+466   if (!ctx || !ctx-&gt;initialized || !ctx-&gt;source) {
+467     return true;
+468   }
+469 
+470   return media_source_at_end(ctx-&gt;source);
+471 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::initialized</b>,
@@ -2682,50 +2682,38 @@ fps_counter_destroy(fps);</pre>
 306       ctx-&gt;frame_count = 0;
 307       ctx-&gt;start_time_ns = time_get_ns();
 308 
-309       // For snapshot mode with immediate snapshot (delay=0), we need to wait for prefetch thread to
-310       // decode the seeked frame. This is a workaround for a timing issue where the prefetch thread
-311       // needs time to decode the frame at the new position after seeking.
-312       // The sleep duration must be long enough for the prefetch thread to decode one frame.
-313       float snapshot_delay = GET_OPTION(snapshot_delay);
-314       if (GET_OPTION(snapshot_mode) &amp;&amp; snapshot_delay == 0.0f) {
-315         // HTTP streams are slow - need 1+ second for first frame decode after seek
-316         // Local files are faster - 100-200ms is usually sufficient
-317         // Use 1 second as a safe default to handle both cases
-318         log_debug(&quot;Waiting for prefetch thread after seek (snapshot_delay=0, HTTP streams need ~1 second)&quot;);
-319         platform_sleep_us(US_PER_SEC_INT); // 1 second - ensures prefetch thread has delivered seeked frame
-320       }
-321     }
-322   }
+309     }
+310   }
+311 
+312   // Initialize adaptive sleep for frame rate limiting
+313   // Calculate baseline sleep time in nanoseconds from target FPS
+314   uint64_t baseline_sleep_ns = NS_PER_SEC_INT / ctx-&gt;target_fps;
+315   adaptive_sleep_config_t sleep_config = {
+316       .baseline_sleep_ns = baseline_sleep_ns,
+317       .min_speed_multiplier = 0.5, // Allow slowing down to 50% of baseline
+318       .max_speed_multiplier = 2.0, // Allow speeding up to 200% of baseline
+319       .speedup_rate = 0.1,         // Adapt by 10% per frame if possible
+320       .slowdown_rate = 0.1         // Adapt by 10% per frame if possible
+321   };
+322   adaptive_sleep_init(&amp;ctx-&gt;sleep_state, &amp;sleep_config);
 323 
-324   // Initialize adaptive sleep for frame rate limiting
-325   // Calculate baseline sleep time in nanoseconds from target FPS
-326   uint64_t baseline_sleep_ns = NS_PER_SEC_INT / ctx-&gt;target_fps;
-327   adaptive_sleep_config_t sleep_config = {
-328       .baseline_sleep_ns = baseline_sleep_ns,
-329       .min_speed_multiplier = 0.5, // Allow slowing down to 50% of baseline
-330       .max_speed_multiplier = 2.0, // Allow speeding up to 200% of baseline
-331       .speedup_rate = 0.1,         // Adapt by 10% per frame if possible
-332       .slowdown_rate = 0.1         // Adapt by 10% per frame if possible
-333   };
-334   adaptive_sleep_init(&amp;ctx-&gt;sleep_state, &amp;sleep_config);
-335 
-336   // Initialize FPS tracker
-337   // Note: Must allocate tracker_name on heap since fps_init stores a pointer to it
-338   char *tracker_name = SAFE_MALLOC(32, char *);
-339   if (!tracker_name) {
-340     media_source_destroy(ctx-&gt;source);
-341     SAFE_FREE(ctx);
-342     return NULL;
-343   }
-344   safe_snprintf(tracker_name, 32, &quot;CAPTURE_%u&quot;, ctx-&gt;target_fps);
-345   fps_init(&amp;ctx-&gt;fps_tracker, (int)ctx-&gt;target_fps, tracker_name);
-346 
-347   // Record start time for FPS calculation (nanoseconds)
-348   ctx-&gt;start_time_ns = time_get_ns();
-349 
-350   ctx-&gt;initialized = true;
-351   return ctx;
-352 }</pre>
+324   // Initialize FPS tracker
+325   // Note: Must allocate tracker_name on heap since fps_init stores a pointer to it
+326   char *tracker_name = SAFE_MALLOC(32, char *);
+327   if (!tracker_name) {
+328     media_source_destroy(ctx-&gt;source);
+329     SAFE_FREE(ctx);
+330     return NULL;
+331   }
+332   safe_snprintf(tracker_name, 32, &quot;CAPTURE_%u&quot;, ctx-&gt;target_fps);
+333   fps_init(&amp;ctx-&gt;fps_tracker, (int)ctx-&gt;target_fps, tracker_name);
+334 
+335   // Record start time for FPS calculation (nanoseconds)
+336   ctx-&gt;start_time_ns = time_get_ns();
+337 
+338   ctx-&gt;initialized = true;
+339   return ctx;
+340 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>adaptive_sleep_init()</b>, <b>ASCIICHAT_OK</b>,
@@ -2747,7 +2735,7 @@ fps_counter_destroy(fps);</pre>
     <b>MEDIA_SOURCE_TEST</b>, <b>MEDIA_SOURCE_WEBCAM</b>,
     <b>session_capture_config_t::mic_audio_ctx</b>,
     <b>session_capture_ctx::mic_audio_ctx</b>, <b>NS_PER_SEC_INT</b>,
-    <b>session_capture_config_t::path</b>, <b>platform_sleep_us()</b>,
+    <b>session_capture_config_t::path</b>,
     <b>session_capture_config_t::resize_for_network</b>,
     <b>session_capture_ctx::resize_for_network</b>, <b>SAFE_CALLOC</b>,
     <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>,
@@ -2757,7 +2745,7 @@ fps_counter_destroy(fps);</pre>
     <b>session_capture_ctx::start_time_ns</b>,
     <b>session_capture_config_t::target_fps</b>,
     <b>session_capture_ctx::target_fps</b>, <b>time_get_ns()</b>,
-    <b>session_capture_config_t::type</b>, <b>US_PER_SEC_INT</b>, and
+    <b>session_capture_config_t::type</b>, and
     <b>session_capture_ctx::using_file_audio</b>.</p>
 <p class="Pp">Referenced by <b>capture_init()</b>, <b>display_init()</b>,
     <b>session_mirror_capture_create()</b>, and
@@ -2772,28 +2760,28 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>ctx</i> Capture context to destroy (can be NULL)</div>
 <p class="Pp">Cleans up the capture context and releases all resources including
     the media source. Safe to call with NULL.</p>
-<p class="Pp">Definition at line <b>354</b> of file
+<p class="Pp">Definition at line <b>342</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>354                                                          {
-355   if (!ctx) {
-356     return;
+<pre>342                                                          {
+343   if (!ctx) {
+344     return;
+345   }
+346 
+347   // Destroy media source
+348   if (ctx-&gt;source) {
+349     media_source_destroy(ctx-&gt;source);
+350     ctx-&gt;source = NULL;
+351   }
+352 
+353   // Free FPS tracker name (allocated in session_capture_create)
+354   if (ctx-&gt;fps_tracker.tracker_name) {
+355     char *temp = (char *)ctx-&gt;fps_tracker.tracker_name;
+356     SAFE_FREE(temp);
 357   }
 358 
-359   // Destroy media source
-360   if (ctx-&gt;source) {
-361     media_source_destroy(ctx-&gt;source);
-362     ctx-&gt;source = NULL;
-363   }
-364 
-365   // Free FPS tracker name (allocated in session_capture_create)
-366   if (ctx-&gt;fps_tracker.tracker_name) {
-367     char *temp = (char *)ctx-&gt;fps_tracker.tracker_name;
-368     SAFE_FREE(temp);
-369   }
-370 
-371   ctx-&gt;initialized = false;
-372   SAFE_FREE(ctx);
-373 }</pre>
+359   ctx-&gt;initialized = false;
+360   SAFE_FREE(ctx);
+361 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::fps_tracker</b>,
@@ -2814,23 +2802,23 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Current FPS, or 0.0 if not enough frames captured
   yet</div>
-<p class="Pp">Definition at line <b>489</b> of file
+<p class="Pp">Definition at line <b>477</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>489                                                                    {
-490   if (!ctx || !ctx-&gt;initialized || ctx-&gt;frame_count == 0) {
-491     return 0.0;
-492   }
-493 
-494   // Calculate elapsed time in nanoseconds then convert to seconds
-495   uint64_t elapsed_ns = time_elapsed_ns(ctx-&gt;start_time_ns, time_get_ns());
-496   double elapsed_sec = time_ns_to_s(elapsed_ns);
-497 
-498   if (elapsed_sec &lt;= 0.0) {
-499     return 0.0;
-500   }
-501 
-502   return (double)ctx-&gt;frame_count / elapsed_sec;
-503 }</pre>
+<pre>477                                                                    {
+478   if (!ctx || !ctx-&gt;initialized || ctx-&gt;frame_count == 0) {
+479     return 0.0;
+480   }
+481 
+482   // Calculate elapsed time in nanoseconds then convert to seconds
+483   uint64_t elapsed_ns = time_elapsed_ns(ctx-&gt;start_time_ns, time_get_ns());
+484   double elapsed_sec = time_ns_to_s(elapsed_ns);
+485 
+486   if (elapsed_sec &lt;= 0.0) {
+487     return 0.0;
+488   }
+489 
+490   return (double)ctx-&gt;frame_count / elapsed_sec;
+491 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::frame_count</b>,
@@ -2859,14 +2847,14 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp">Use for advanced control like pause/resume or seek operations</p>
 </div>
-<p class="Pp">Definition at line <b>553</b> of file
+<p class="Pp">Definition at line <b>541</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>553                                                                    {
-554   if (!ctx || !ctx-&gt;initialized || !ctx-&gt;source) {
-555     return NULL;
-556   }
-557   return (void *)ctx-&gt;source;
-558 }</pre>
+<pre>541                                                                    {
+542   if (!ctx || !ctx-&gt;initialized || !ctx-&gt;source) {
+543     return NULL;
+544   }
+545   return (void *)ctx-&gt;source;
+546 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::initialized</b>, and
@@ -2883,14 +2871,14 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>ctx</i> Capture context (must not be NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Target FPS from configuration</div>
-<p class="Pp">Definition at line <b>505</b> of file
+<p class="Pp">Definition at line <b>493</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>505                                                                     {
-506   if (!ctx) {
-507     return 0;
-508   }
-509   return ctx-&gt;target_fps;
-510 }</pre>
+<pre>493                                                                     {
+494   if (!ctx) {
+495     return 0;
+496   }
+497   return ctx-&gt;target_fps;
+498 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::target_fps</b>.</p>
@@ -2906,14 +2894,14 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent">true if audio is available, false otherwise</div>
 <p class="Pp">Returns whether the capture source has audio and it is
   enabled.</p>
-<p class="Pp">Definition at line <b>512</b> of file
+<p class="Pp">Definition at line <b>500</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>512                                                            {
-513   if (!ctx || !ctx-&gt;initialized) {
-514     return false;
-515   }
-516   return ctx-&gt;audio_enabled;
-517 }</pre>
+<pre>500                                                            {
+501   if (!ctx || !ctx-&gt;initialized) {
+502     return false;
+503   }
+504   return ctx-&gt;audio_enabled;
+505 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::audio_enabled</b>, and
@@ -2929,11 +2917,11 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if context is valid and initialized, false
   otherwise</div>
-<p class="Pp">Definition at line <b>485</b> of file
+<p class="Pp">Definition at line <b>473</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>485                                                           {
-486   return ctx != NULL &amp;&amp; ctx-&gt;initialized &amp;&amp; ctx-&gt;source != NULL;
-487 }</pre>
+<pre>473                                                           {
+474   return ctx != NULL &amp;&amp; ctx-&gt;initialized &amp;&amp; ctx-&gt;source != NULL;
+475 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::initialized</b>, and
@@ -2963,54 +2951,54 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">Caller owns the returned image and must call
     <b>image_destroy()</b>.</p>
 </div>
-<p class="Pp">Definition at line <b>421</b> of file
+<p class="Pp">Definition at line <b>409</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>421                                                                                               {
-422   if (!ctx || !frame) {
-423     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_capture_process_for_transmission: NULL parameter&quot;);
-424     return NULL;
-425   }
-426 
-427   // If resize is not enabled, just create a copy
-428   if (!ctx-&gt;resize_for_network) {
-429     image_t *copy = image_new(frame-&gt;w, frame-&gt;h);
-430     if (!copy) {
-431       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate image copy&quot;);
-432       return NULL;
-433     }
-434     memcpy(copy-&gt;pixels, frame-&gt;pixels, (size_t)frame-&gt;w * (size_t)frame-&gt;h * sizeof(rgb_pixel_t));
-435     return copy;
-436   }
-437 
-438   // Calculate optimal dimensions for network transmission
-439   ssize_t resized_width, resized_height;
-440   calculate_optimal_dimensions(frame-&gt;w, frame-&gt;h, SESSION_MAX_FRAME_WIDTH, SESSION_MAX_FRAME_HEIGHT, &amp;resized_width,
-441                                &amp;resized_height);
+<pre>409                                                                                               {
+410   if (!ctx || !frame) {
+411     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_capture_process_for_transmission: NULL parameter&quot;);
+412     return NULL;
+413   }
+414 
+415   // If resize is not enabled, just create a copy
+416   if (!ctx-&gt;resize_for_network) {
+417     image_t *copy = image_new(frame-&gt;w, frame-&gt;h);
+418     if (!copy) {
+419       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate image copy&quot;);
+420       return NULL;
+421     }
+422     memcpy(copy-&gt;pixels, frame-&gt;pixels, (size_t)frame-&gt;w * (size_t)frame-&gt;h * sizeof(rgb_pixel_t));
+423     return copy;
+424   }
+425 
+426   // Calculate optimal dimensions for network transmission
+427   ssize_t resized_width, resized_height;
+428   calculate_optimal_dimensions(frame-&gt;w, frame-&gt;h, SESSION_MAX_FRAME_WIDTH, SESSION_MAX_FRAME_HEIGHT, &amp;resized_width,
+429                                &amp;resized_height);
+430 
+431   // Check if resizing is actually needed
+432   if (frame-&gt;w == resized_width &amp;&amp; frame-&gt;h == resized_height) {
+433     // No resizing needed - create a copy
+434     image_t *copy = image_new(frame-&gt;w, frame-&gt;h);
+435     if (!copy) {
+436       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate image copy&quot;);
+437       return NULL;
+438     }
+439     memcpy(copy-&gt;pixels, frame-&gt;pixels, (size_t)frame-&gt;w * (size_t)frame-&gt;h * sizeof(rgb_pixel_t));
+440     return copy;
+441   }
 442 
-443   // Check if resizing is actually needed
-444   if (frame-&gt;w == resized_width &amp;&amp; frame-&gt;h == resized_height) {
-445     // No resizing needed - create a copy
-446     image_t *copy = image_new(frame-&gt;w, frame-&gt;h);
-447     if (!copy) {
-448       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate image copy&quot;);
-449       return NULL;
-450     }
-451     memcpy(copy-&gt;pixels, frame-&gt;pixels, (size_t)frame-&gt;w * (size_t)frame-&gt;h * sizeof(rgb_pixel_t));
-452     return copy;
-453   }
-454 
-455   // Create new image for resized frame
-456   image_t *resized = image_new(resized_width, resized_height);
-457   if (!resized) {
-458     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate resized image buffer&quot;);
-459     return NULL;
-460   }
-461 
-462   // Perform resizing operation
-463   image_resize(frame, resized);
-464 
-465   return resized;
-466 }</pre>
+443   // Create new image for resized frame
+444   image_t *resized = image_new(resized_width, resized_height);
+445   if (!resized) {
+446     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate resized image buffer&quot;);
+447     return NULL;
+448   }
+449 
+450   // Perform resizing operation
+451   image_resize(frame, resized);
+452 
+453   return resized;
+454 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
@@ -3041,34 +3029,34 @@ fps_counter_destroy(fps);</pre>
   <li>Microphone if using fallback</li>
 </ul>
 <p class="Pp">Returns 0 if audio is not enabled or available.</p>
-<p class="Pp">Definition at line <b>519</b> of file
+<p class="Pp">Definition at line <b>507</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>519                                                                                                  {
-520   if (!ctx || !ctx-&gt;initialized || !buffer || num_samples == 0) {
-521     return 0;
-522   }
-523 
-524   if (!ctx-&gt;audio_enabled) {
-525     return 0;
-526   }
-527 
-528   // If using file audio, read from media source
-529   if (ctx-&gt;using_file_audio &amp;&amp; ctx-&gt;source) {
-530     return media_source_read_audio(ctx-&gt;source, buffer, num_samples);
-531   }
-532 
-533   // If using microphone fallback, read from mic context
-534   if (ctx-&gt;mic_audio_ctx) {
-535     // mic_audio_ctx is actually an audio_context_t pointer
-536     // We need to read from its capture_buffer audio ring buffer
-537     audio_context_t *audio_ctx = (audio_context_t *)ctx-&gt;mic_audio_ctx;
-538     if (audio_ctx &amp;&amp; audio_ctx-&gt;capture_buffer) {
-539       return audio_ring_buffer_read(audio_ctx-&gt;capture_buffer, buffer, num_samples);
-540     }
-541   }
-542 
-543   return 0;
-544 }</pre>
+<pre>507                                                                                                  {
+508   if (!ctx || !ctx-&gt;initialized || !buffer || num_samples == 0) {
+509     return 0;
+510   }
+511 
+512   if (!ctx-&gt;audio_enabled) {
+513     return 0;
+514   }
+515 
+516   // If using file audio, read from media source
+517   if (ctx-&gt;using_file_audio &amp;&amp; ctx-&gt;source) {
+518     return media_source_read_audio(ctx-&gt;source, buffer, num_samples);
+519   }
+520 
+521   // If using microphone fallback, read from mic context
+522   if (ctx-&gt;mic_audio_ctx) {
+523     // mic_audio_ctx is actually an audio_context_t pointer
+524     // We need to read from its capture_buffer audio ring buffer
+525     audio_context_t *audio_ctx = (audio_context_t *)ctx-&gt;mic_audio_ctx;
+526     if (audio_ctx &amp;&amp; audio_ctx-&gt;capture_buffer) {
+527       return audio_ring_buffer_read(audio_ctx-&gt;capture_buffer, buffer, num_samples);
+528     }
+529   }
+530 
+531   return 0;
+532 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::audio_enabled</b>,
@@ -3097,49 +3085,49 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">Check <b>session_capture_at_end()</b> to distinguish error from
     EOF.</p>
 </div>
-<p class="Pp">Definition at line <b>379</b> of file
+<p class="Pp">Definition at line <b>367</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>379                                                                 {
-380   if (!ctx || !ctx-&gt;initialized || !ctx-&gt;source) {
-381     return NULL;
-382   }
+<pre>367                                                                 {
+368   if (!ctx || !ctx-&gt;initialized || !ctx-&gt;source) {
+369     return NULL;
+370   }
+371 
+372   static uint64_t last_frame_time_ns = 0;
+373   uint64_t frame_request_time_ns = time_get_ns();
+374 
+375   image_t *frame = media_source_read_video(ctx-&gt;source);
+376 
+377   if (frame) {
+378     uint64_t frame_available_time_ns = time_get_ns();
+379 
+380     // Track frame for FPS reporting
+381     fps_frame_ns(&amp;ctx-&gt;fps_tracker, frame_available_time_ns, &quot;frame captured&quot;);
+382     ctx-&gt;frame_count++;
 383 
-384   static uint64_t last_frame_time_ns = 0;
-385   uint64_t frame_request_time_ns = time_get_ns();
-386 
-387   image_t *frame = media_source_read_video(ctx-&gt;source);
-388 
-389   if (frame) {
-390     uint64_t frame_available_time_ns = time_get_ns();
-391 
-392     // Track frame for FPS reporting
-393     fps_frame_ns(&amp;ctx-&gt;fps_tracker, frame_available_time_ns, &quot;frame captured&quot;);
-394     ctx-&gt;frame_count++;
-395 
-396     // Log frame-to-frame timing
-397     if (last_frame_time_ns &gt; 0) {
-398       uint64_t time_since_last_frame_ns = time_elapsed_ns(last_frame_time_ns, frame_request_time_ns);
-399       uint64_t time_to_get_frame_ns = time_elapsed_ns(frame_request_time_ns, frame_available_time_ns);
-400       double since_last_ms = (double)time_since_last_frame_ns / NS_PER_MS;
-401       double to_get_ms = (double)time_to_get_frame_ns / NS_PER_MS;
-402 
-403       if (ctx-&gt;frame_count % 30 == 0) {
-404         log_dev_every(3 * US_PER_SEC_INT, &quot;FRAME_TIMING[%lu]: since_last=%.1f ms, to_get=%.1f ms&quot;, ctx-&gt;frame_count,
-405                       since_last_ms, to_get_ms);
-406       }
-407     }
-408     last_frame_time_ns = frame_available_time_ns;
-409 
-410     // Handle --pause flag: pause after first frame is read
-411     if (ctx-&gt;should_pause_after_first_frame &amp;&amp; !ctx-&gt;paused_after_first_frame) {
-412       media_source_pause(ctx-&gt;source);
-413       ctx-&gt;paused_after_first_frame = true;
-414       log_info(&quot;Paused (--pause flag)&quot;);
-415     }
-416   }
-417 
-418   return frame;
-419 }</pre>
+384     // Log frame-to-frame timing
+385     if (last_frame_time_ns &gt; 0) {
+386       uint64_t time_since_last_frame_ns = time_elapsed_ns(last_frame_time_ns, frame_request_time_ns);
+387       uint64_t time_to_get_frame_ns = time_elapsed_ns(frame_request_time_ns, frame_available_time_ns);
+388       double since_last_ms = (double)time_since_last_frame_ns / NS_PER_MS;
+389       double to_get_ms = (double)time_to_get_frame_ns / NS_PER_MS;
+390 
+391       if (ctx-&gt;frame_count % 30 == 0) {
+392         log_dev_every(3 * US_PER_SEC_INT, &quot;FRAME_TIMING[%lu]: since_last=%.1f ms, to_get=%.1f ms&quot;, ctx-&gt;frame_count,
+393                       since_last_ms, to_get_ms);
+394       }
+395     }
+396     last_frame_time_ns = frame_available_time_ns;
+397 
+398     // Handle --pause flag: pause after first frame is read
+399     if (ctx-&gt;should_pause_after_first_frame &amp;&amp; !ctx-&gt;paused_after_first_frame) {
+400       media_source_pause(ctx-&gt;source);
+401       ctx-&gt;paused_after_first_frame = true;
+402       log_info(&quot;Paused (--pause flag)&quot;);
+403     }
+404   }
+405 
+406   return frame;
+407 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>fps_frame_ns()</b>,
@@ -3165,16 +3153,16 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Uses adaptive sleep for smooth frame rate limiting.</div>
-<p class="Pp">Definition at line <b>468</b> of file
+<p class="Pp">Definition at line <b>456</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>468                                                                {
-469   if (!ctx || !ctx-&gt;initialized) {
-470     return;
-471   }
-472 
-473   // Use adaptive sleep with queue_depth=0, target_depth=0 for constant rate
-474   adaptive_sleep_do(&amp;ctx-&gt;sleep_state, 0, 0);
-475 }</pre>
+<pre>456                                                                {
+457   if (!ctx || !ctx-&gt;initialized) {
+458     return;
+459   }
+460 
+461   // Use adaptive sleep with queue_depth=0, target_depth=0 for constant rate
+462   adaptive_sleep_do(&amp;ctx-&gt;sleep_state, 0, 0);
+463 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>adaptive_sleep_do()</b>,
@@ -3192,14 +3180,14 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent">true if using file audio, false if using microphone or no
   audio</div>
 <p class="Pp">Useful for logging and debugging which audio source is active.</p>
-<p class="Pp">Definition at line <b>546</b> of file
+<p class="Pp">Definition at line <b>534</b> of file
     <b>common/session/capture.c</b>.</p>
-<pre>546                                                                   {
-547   if (!ctx || !ctx-&gt;initialized) {
-548     return false;
-549   }
-550   return ctx-&gt;using_file_audio;
-551 }</pre>
+<pre>534                                                                   {
+535   if (!ctx || !ctx-&gt;initialized) {
+536     return false;
+537   }
+538   return ctx-&gt;using_file_audio;
+539 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::initialized</b>, and
@@ -8054,336 +8042,339 @@ int main(void) {
 178 
 179   // Wait for splash animation to complete before rendering first frame
 180   // This prevents ASCII art from mixing with splash screen output
-181   static bool splash_wait_done = false;
-182   if (!splash_wait_done) {
-183     splash_wait_done = true;
-184     // Re-enable logging briefly for splash wait, then disable again
-185     log_set_terminal_output(true);
-186     splash_wait_for_animation();
-187     log_set_terminal_output(false);
-188   }
-189 
-190   // In snapshot mode, we must render at least one frame before checking should_exit
-191   // to ensure the snapshot delay timer can start
-192   bool force_first_iteration = snapshot_mode &amp;&amp; frame_count == 0;
-193 
-194   // Register display context globally so signal handlers (Ctrl+C) can access it
-195   // This enables Ctrl+C to close the help screen instead of quitting when help is active
-196   session_display_set_global_context(display);
-197 
-198   while (force_first_iteration || (!should_exit(user_data) &amp;&amp; !(snapshot_mode &amp;&amp; snapshot_done))) {
-199     force_first_iteration = false;
-200     loop_iteration++;
-201     log_info(&quot;[LOOP_ITER] iteration=%d, snapshot_done=%s, frame_count=%lu&quot;, loop_iteration, snapshot_done ? &quot;YES&quot; : &quot;NO&quot;, frame_count);
-202     if (loop_iteration % 60 == 0) {
-203       log_debug(&quot;session_render_loop: iteration %d, should_exit check returning false&quot;, loop_iteration);
-204     }
-205     // Snapshot mode: exit at start of iteration if done
-206     // This prevents frame 2+ from being captured when snapshot_delay has elapsed
-207     if (snapshot_mode &amp;&amp; snapshot_done &amp;&amp; frame_count &gt; 0) {
-208       log_info(&quot;[SNAPSHOT_EXIT] Snapshot mode: exiting at loop iteration start (snapshot_done=true, frames=%lu)&quot;, frame_count);
-209       break;
-210     }
-211 
-212     log_debug_every(US_PER_SEC_INT, &quot;session_render_loop: frame %lu&quot;, frame_count);
-213     // Frame timing - measure total time to maintain target FPS
-214     frame_start_ns = time_get_ns();
-215 
-216     // Frame capture and timing - mode-dependent
-217     image_t *image = NULL;
-218     uint64_t capture_start_ns = 0;
-219     uint64_t capture_end_ns = 0;
-220     uint64_t pre_convert_ns = 0;
-221     uint64_t post_convert_ns = 0;
-222     uint64_t conversion_elapsed_ns = 0;
-223 
-224     // EVENT-DRIVEN MODE: Frames come from callbacks
-225     // Both sleep_cb and capture_cb are guaranteed non-NULL by validation above
-226     sleep_cb(user_data);
-227     image = capture_cb(user_data);
-228 
-229     if (!image) {
-230       // No frame available - this is normal in async modes (network latency, etc.)
-231       // Just continue to next iteration, don't exit
-232       continue;
-233     }
-234 
-235     // Event-driven mode: increment frame count
-236     frame_count++;
+181   // But skip for immediate snapshots (snapshot-delay=0) which need to output first frame immediately
+182   static bool splash_wait_done = false;
+183   if (!splash_wait_done) {
+184     splash_wait_done = true;
+185     if (!(GET_OPTION(snapshot_mode) &amp;&amp; GET_OPTION(snapshot_delay) == 0.0)) {
+186       // Re-enable logging briefly for splash wait, then disable again
+187       log_set_terminal_output(true);
+188       splash_wait_for_animation();
+189       log_set_terminal_output(false);
+190     }
+191   }
+192 
+193   // In snapshot mode, we must render at least one frame before checking should_exit
+194   // to ensure the snapshot delay timer can start
+195   bool force_first_iteration = snapshot_mode &amp;&amp; frame_count == 0;
+196 
+197   // Register display context globally so signal handlers (Ctrl+C) can access it
+198   // This enables Ctrl+C to close the help screen instead of quitting when help is active
+199   session_display_set_global_context(display);
+200 
+201   while (force_first_iteration || (!should_exit(user_data) &amp;&amp; !(snapshot_mode &amp;&amp; snapshot_done))) {
+202     force_first_iteration = false;
+203     loop_iteration++;
+204     log_info(&quot;[LOOP_ITER] iteration=%d, snapshot_done=%s, frame_count=%lu&quot;, loop_iteration, snapshot_done ? &quot;YES&quot; : &quot;NO&quot;, frame_count);
+205     if (loop_iteration % 60 == 0) {
+206       log_debug(&quot;session_render_loop: iteration %d, should_exit check returning false&quot;, loop_iteration);
+207     }
+208     // Snapshot mode: exit at start of iteration if done
+209     // This prevents frame 2+ from being captured when snapshot_delay has elapsed
+210     if (snapshot_mode &amp;&amp; snapshot_done &amp;&amp; frame_count &gt; 0) {
+211       log_info(&quot;[SNAPSHOT_EXIT] Snapshot mode: exiting at loop iteration start (snapshot_done=true, frames=%lu)&quot;, frame_count);
+212       break;
+213     }
+214 
+215     log_debug_every(US_PER_SEC_INT, &quot;session_render_loop: frame %lu&quot;, frame_count);
+216     // Frame timing - measure total time to maintain target FPS
+217     frame_start_ns = time_get_ns();
+218 
+219     // Frame capture and timing - mode-dependent
+220     image_t *image = NULL;
+221     uint64_t capture_start_ns = 0;
+222     uint64_t capture_end_ns = 0;
+223     uint64_t pre_convert_ns = 0;
+224     uint64_t post_convert_ns = 0;
+225     uint64_t conversion_elapsed_ns = 0;
+226 
+227     // EVENT-DRIVEN MODE: Frames come from callbacks
+228     // Both sleep_cb and capture_cb are guaranteed non-NULL by validation above
+229     sleep_cb(user_data);
+230     image = capture_cb(user_data);
+231 
+232     if (!image) {
+233       // No frame available - this is normal in async modes (network latency, etc.)
+234       // Just continue to next iteration, don't exit
+235       continue;
+236     }
 237 
-238     // Check for terminal resize (if auto_width or auto_height is enabled)
-239     // This allows the render to adapt immediately when the user resizes the terminal
-240     bool auto_width = GET_OPTION(auto_width);
-241     bool auto_height = GET_OPTION(auto_height);
-242     if (auto_width || auto_height) {
-243       unsigned short int current_width = 0;
-244       unsigned short int current_height = 0;
-245 
-246       asciichat_error_t size_err = get_terminal_size(&amp;current_width, &amp;current_height);
-247       if (size_err == ASCIICHAT_OK) {
-248         bool width_changed = auto_width &amp;&amp; (current_width != last_terminal_width);
-249         bool height_changed = auto_height &amp;&amp; (current_height != last_terminal_height);
-250 
-251         if (width_changed || height_changed) {
-252           if (width_changed) {
-253             options_set_int(&quot;width&quot;, current_width);
-254             log_info(&quot;Terminal width changed: %u &#x2192; %u&quot;, last_terminal_width, current_width);
-255             last_terminal_width = current_width;
-256           }
-257           if (height_changed) {
-258             options_set_int(&quot;height&quot;, current_height);
-259             log_info(&quot;Terminal height changed: %u &#x2192; %u&quot;, last_terminal_height, current_height);
-260             last_terminal_height = current_height;
-261           }
-262           // Clear screen when terminal is resized to avoid visual artifacts
-263           terminal_clear_screen();
-264         }
-265       }
-266     }
-267 
-268     // Convert image to ASCII using display context
-269     // Handles all palette, terminal caps, width, height, stretch settings
-270     pre_convert_ns = time_get_ns();
-271     char *ascii_frame = session_display_convert_to_ascii(display, image);
-272     post_convert_ns = time_get_ns();
-273     conversion_elapsed_ns = post_convert_ns - pre_convert_ns;
-274 
-275 
-276     if (frame_count &lt;= 3) {
-277       log_info(&quot;RENDER_LOOP[%lu]: image=%p, ascii_frame=%p (conversion took %u ms)&quot;,
-278                frame_count, (void *)image, (void *)ascii_frame,
-279                (unsigned)(conversion_elapsed_ns / NS_PER_MS_INT));
-280     }
-281 
-282     // Declare variables that need scope beyond the if (ascii_frame) block
-283     bool is_paused_frame = initial_paused_frame_rendered &amp;&amp; is_paused;
-284     bool output_paused_frame = snapshot_mode &amp;&amp; is_paused_frame;
-285     uint64_t pre_render_ns = 0, post_render_ns = 0;
-286 
-287     if (ascii_frame) {
-288       log_info_every(1 * NS_PER_SEC_INT, &quot;render_loop: ascii_frame ready (len=%zu)&quot;, strlen(ascii_frame));
+238     // Event-driven mode: increment frame count
+239     frame_count++;
+240 
+241     // Check for terminal resize (if auto_width or auto_height is enabled)
+242     // This allows the render to adapt immediately when the user resizes the terminal
+243     bool auto_width = GET_OPTION(auto_width);
+244     bool auto_height = GET_OPTION(auto_height);
+245     if (auto_width || auto_height) {
+246       unsigned short int current_width = 0;
+247       unsigned short int current_height = 0;
+248 
+249       asciichat_error_t size_err = get_terminal_size(&amp;current_width, &amp;current_height);
+250       if (size_err == ASCIICHAT_OK) {
+251         bool width_changed = auto_width &amp;&amp; (current_width != last_terminal_width);
+252         bool height_changed = auto_height &amp;&amp; (current_height != last_terminal_height);
+253 
+254         if (width_changed || height_changed) {
+255           if (width_changed) {
+256             options_set_int(&quot;width&quot;, current_width);
+257             log_info(&quot;Terminal width changed: %u &#x2192; %u&quot;, last_terminal_width, current_width);
+258             last_terminal_width = current_width;
+259           }
+260           if (height_changed) {
+261             options_set_int(&quot;height&quot;, current_height);
+262             log_info(&quot;Terminal height changed: %u &#x2192; %u&quot;, last_terminal_height, current_height);
+263             last_terminal_height = current_height;
+264           }
+265           // Clear screen when terminal is resized to avoid visual artifacts
+266           terminal_clear_screen();
+267         }
+268       }
+269     }
+270 
+271     // Convert image to ASCII using display context
+272     // Handles all palette, terminal caps, width, height, stretch settings
+273     pre_convert_ns = time_get_ns();
+274     char *ascii_frame = session_display_convert_to_ascii(display, image);
+275     post_convert_ns = time_get_ns();
+276     conversion_elapsed_ns = post_convert_ns - pre_convert_ns;
+277 
+278 
+279     if (frame_count &lt;= 3) {
+280       log_info(&quot;RENDER_LOOP[%lu]: image=%p, ascii_frame=%p (conversion took %u ms)&quot;,
+281                frame_count, (void *)image, (void *)ascii_frame,
+282                (unsigned)(conversion_elapsed_ns / NS_PER_MS_INT));
+283     }
+284 
+285     // Declare variables that need scope beyond the if (ascii_frame) block
+286     bool is_paused_frame = initial_paused_frame_rendered &amp;&amp; is_paused;
+287     bool output_paused_frame = snapshot_mode &amp;&amp; is_paused_frame;
+288     uint64_t pre_render_ns = 0, post_render_ns = 0;
 289 
-290       // Always attempt to render frames; the display context will handle filtering based on:
-291       // - TTY mode: render all frames with cursor control (even in snapshot mode, for animation)
-292       // - Piped mode: render all frames without cursor control (for continuous capture)
-293       // - Snapshot mode on non-TTY: only the display context renders the final frame
-294       // BUT: don't render if splash screen is still animating - wait for it to finish
-295       bool splash_running = splash_is_running();
-296       bool should_write = !splash_running;
-297       if (frame_count == 1) {
-298         log_dev(&quot;[RENDER_FRAME] Frame 1: splash_is_running=%s, should_write=%s&quot;, splash_running ? &quot;YES&quot; : &quot;NO&quot;, should_write ? &quot;YES&quot; : &quot;NO&quot;);
-299       }
-300       if (should_write) {
-301         // is_final = true when: snapshot done, or paused frame (for both snapshot and pause modes)
-302         // Profile: render frame
-303         pre_render_ns = time_get_ns();
-304         START_TIMER(&quot;render_frame&quot;);
-305 
-306         if (frame_count &lt;= 5 || frame_count % 10 == 0) {
-307           log_info(&quot;RENDER_LOOP: Frame %lu - calling session_display_render_frame, display=%p&quot;,
-308                    (unsigned long)frame_count, (void *)display);
-309         }
-310 
-311         // Check if SIGINT handler cancelled help mode (Ctrl+C while help is open).
-312         // The signal handler sets an atomic flag instead of touching state directly.
-313         if (display &amp;&amp; keyboard_help_check_signal_cancel()) {
-314           keyboard_help_toggle(display);
-315           log_debug(&quot;Ctrl+C cancelled help screen - returning to ASCII art&quot;);
-316         }
-317 
-318         // Check if help screen is active - if so, render help instead of frame
-319         // Help screen is disabled in snapshot mode and non-interactive terminals (keyboard disabled)
-320         bool help_is_active = display &amp;&amp; keyboard_help_is_active(display);
-321 
-322         // Detect transition from help to ASCII art rendering
-323         // When help closes, clear the screen before rendering ASCII art
-324         if (help_was_active &amp;&amp; !help_is_active) {
-325           terminal_clear_screen();
-326           log_debug_every(1 * NS_PER_SEC_INT, &quot;Cleared screen when transitioning from help to ASCII art&quot;);
-327         }
-328 
-329         if (help_is_active) {
-330           keyboard_help_render(display);
-331         } else {
-332           session_display_render_frame(display, ascii_frame);
-333         }
-334 
-335         // Snapshot mode: increment frame counter for all displayed frames
-336         // Counter starts at 1 for the first displayed frame, then 2, 3, 4... for subsequent frames
-337         // Timer is started by display.c when g_snapshot_first_frame_rendered is set
-338         if (snapshot_mode &amp;&amp; g_snapshot_first_frame_rendered) {
-339           frames_rendered_since_first++;
-340           log_info_every(1 * NS_PER_SEC_INT, &quot;[SNAPSHOT] Frame rendered: frames_rendered_since_first=%lu&quot;, frames_rendered_since_first);
-341         }
-342 
-343         // Update help state for next iteration
-344         help_was_active = help_is_active;
+290     if (ascii_frame) {
+291       log_info_every(1 * NS_PER_SEC_INT, &quot;render_loop: ascii_frame ready (len=%zu)&quot;, strlen(ascii_frame));
+292 
+293       // Always attempt to render frames; the display context will handle filtering based on:
+294       // - TTY mode: render all frames with cursor control (even in snapshot mode, for animation)
+295       // - Piped mode: render all frames without cursor control (for continuous capture)
+296       // - Snapshot mode on non-TTY: only the display context renders the final frame
+297       // BUT: don't render if splash screen is still animating - wait for it to finish
+298       bool splash_running = splash_is_running();
+299       bool should_write = !splash_running;
+300       if (frame_count == 1) {
+301         log_dev(&quot;[RENDER_FRAME] Frame 1: splash_is_running=%s, should_write=%s&quot;, splash_running ? &quot;YES&quot; : &quot;NO&quot;, should_write ? &quot;YES&quot; : &quot;NO&quot;);
+302       }
+303       if (should_write) {
+304         // is_final = true when: snapshot done, or paused frame (for both snapshot and pause modes)
+305         // Profile: render frame
+306         pre_render_ns = time_get_ns();
+307         START_TIMER(&quot;render_frame&quot;);
+308 
+309         if (frame_count &lt;= 5 || frame_count % 10 == 0) {
+310           log_info(&quot;RENDER_LOOP: Frame %lu - calling session_display_render_frame, display=%p&quot;,
+311                    (unsigned long)frame_count, (void *)display);
+312         }
+313 
+314         // Check if SIGINT handler cancelled help mode (Ctrl+C while help is open).
+315         // The signal handler sets an atomic flag instead of touching state directly.
+316         if (display &amp;&amp; keyboard_help_check_signal_cancel()) {
+317           keyboard_help_toggle(display);
+318           log_debug(&quot;Ctrl+C cancelled help screen - returning to ASCII art&quot;);
+319         }
+320 
+321         // Check if help screen is active - if so, render help instead of frame
+322         // Help screen is disabled in snapshot mode and non-interactive terminals (keyboard disabled)
+323         bool help_is_active = display &amp;&amp; keyboard_help_is_active(display);
+324 
+325         // Detect transition from help to ASCII art rendering
+326         // When help closes, clear the screen before rendering ASCII art
+327         if (help_was_active &amp;&amp; !help_is_active) {
+328           terminal_clear_screen();
+329           log_debug_every(1 * NS_PER_SEC_INT, &quot;Cleared screen when transitioning from help to ASCII art&quot;);
+330         }
+331 
+332         if (help_is_active) {
+333           keyboard_help_render(display);
+334         } else {
+335           session_display_render_frame(display, ascii_frame);
+336         }
+337 
+338         // Snapshot mode: increment frame counter for all displayed frames
+339         // Counter starts at 1 for the first displayed frame, then 2, 3, 4... for subsequent frames
+340         // Timer is started by display.c when g_snapshot_first_frame_rendered is set
+341         if (snapshot_mode &amp;&amp; g_snapshot_first_frame_rendered) {
+342           frames_rendered_since_first++;
+343           log_info_every(1 * NS_PER_SEC_INT, &quot;[SNAPSHOT] Frame rendered: frames_rendered_since_first=%lu&quot;, frames_rendered_since_first);
+344         }
 345 
-346         STOP_TIMER(&quot;render_frame&quot;);
-347       }
+346         // Update help state for next iteration
+347         help_was_active = help_is_active;
 348 
-349       // Keyboard input polling (if enabled) - MUST come before snapshot exit check so help screen can be toggled
-350       // Allow keyboard in snapshot mode too (for help screen toggle debugging)
-351       // Only enable keyboard if BOTH stdin AND stdout are TTYs to avoid buffering issues
-352       // when tcsetattr() modifies the tty line discipline
-353       if (keyboard_enabled &amp;&amp; keyboard_handler) {
-354         START_TIMER(&quot;keyboard_read_%lu&quot;, (unsigned long)frame_count);
-355         keyboard_key_t key = keyboard_read_nonblocking();
-356         double keyboard_elapsed_ns = STOP_TIMER(&quot;keyboard_read_%lu&quot;, (unsigned long)frame_count);
-357         if (keyboard_elapsed_ns &gt;= 0.0) {
-358           char _duration_str[32];
-359           time_pretty((uint64_t)keyboard_elapsed_ns, -1, _duration_str, sizeof(_duration_str));
-360           log_dev_every(1 * NS_PER_SEC_INT, &quot;RENDER[%lu] Keyboard read complete (key=%d) in %s&quot;,
-361                         (unsigned long)frame_count, key, _duration_str);
-362         }
-363         if (key != KEY_NONE) {
-364           log_debug(&quot;KEYBOARD: Key pressed: code=%d char='%c'&quot;, key, (key &gt;= 32 &amp;&amp; key &lt; 127) ? key : '?');
-365           // Check if interactive grep should handle this key
-366           if (log_search_should_handle(key)) {
-367             log_debug(&quot;KEYBOARD: Grep handler taking key %d&quot;, key);
-368             log_search_handle_key(key);
-369             continue; // Force immediate re-render
-370           }
-371 
-372           // Normal keyboard handler
-373           log_debug(&quot;KEYBOARD: Normal handler taking key %d&quot;, key);
-374           keyboard_handler(capture, key, user_data);
-375         }
-376       }
-377 
-378 
-379       // Free frame before checking exit conditions to avoid double-free
-380       SAFE_FREE(ascii_frame);
-381     }
-382 
-383     // Snapshot mode: check if elapsed time has reached snapshot_delay duration (terminal render timing)
-384     // Separate from capture timing - both should measure their own snapshot_delay
-385     if (snapshot_mode &amp;&amp; !snapshot_done) {
-386       if (g_snapshot_first_frame_rendered &amp;&amp; g_snapshot_first_frame_rendered_ns &gt; 0) {
-387         double snapshot_delay = GET_OPTION(snapshot_delay);
-388         uint64_t now_ns = time_get_ns();
-389         uint64_t elapsed_ns = now_ns - g_snapshot_first_frame_rendered_ns;
-390         double elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
-391 
-392         if (frames_rendered_since_first == 1 || frames_rendered_since_first % 20 == 0) {
-393           log_info(&quot;SNAPSHOT: RENDER_CHECK iter=%lu elapsed=%.3f target=%.2f (from first_frame_rendered)&quot;,
-394                    frames_rendered_since_first, elapsed_sec, snapshot_delay);
-395         }
-396 
-397         // snapshot_delay=0 means exit after first frame
-398         // snapshot_delay&gt;0 means wait that many seconds before exiting
-399         // Exit is based on elapsed wall-clock time, not frame count
-400         bool should_exit = (snapshot_delay == 0.0) || (elapsed_sec &gt;= snapshot_delay);
-401 
-402         if (should_exit) {
-403           log_info(&quot;SNAPSHOT: RENDER_DONE at iteration %lu - elapsed=%.3f target=%.2f (setting snapshot_done=true)&quot;,
-404                    frames_rendered_since_first, elapsed_sec, snapshot_delay);
-405           // We don't end frames with newlines so the next log would print on the same line as the frame's
-406           // last row without an \n here. We only need this \n in stdout in snapshot mode and when interactive,
-407           // so piped snapshots don't have a weird newline in stdout that they don't need.
-408           if (snapshot_mode &amp;&amp; terminal_is_interactive()) {
-409             printf(&quot;\n&quot;);
-410           }
-411           snapshot_done = true;
-412         }
-413       } else {
-414         if (frames_rendered_since_first == 0) {
-415           log_debug(&quot;SNAPSHOT: Waiting for first_frame_rendered (g_snapshot_first_frame_rendered=%d, g_snapshot_first_frame_rendered_ns=%llu)&quot;,
-416                     g_snapshot_first_frame_rendered, (unsigned long long)g_snapshot_first_frame_rendered_ns);
-417         }
-418       }
-419     }
-420 
-421     // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
-422     if (snapshot_mode &amp;&amp; (snapshot_done || output_paused_frame)) {
-423       log_info(&quot;SNAPSHOT: EXIT CONDITION MET - snapshot_done=%d, output_paused_frame=%d&quot;, snapshot_done, output_paused_frame);
-424 
-425       // Calculate elapsed time from first frame captured (for video file)
-426       // This is separate from render time - video should span from first capture to last capture
-427       double capture_elapsed_sec = 0.0;
-428       if (g_snapshot_first_capture_ns &gt; 0) {
-429         uint64_t now_ns = time_get_ns();
-430         uint64_t elapsed_ns = now_ns - g_snapshot_first_capture_ns;
-431         capture_elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
-432         log_info(&quot;SNAPSHOT: EXIT - Capture elapsed: %.3f seconds, render elapsed: %.3f seconds, g_snapshot_first_capture_ns=%llu&quot;,
-433                  capture_elapsed_sec,
-434                  (g_snapshot_first_frame_rendered_ns &gt; 0) ? (double)(now_ns - g_snapshot_first_frame_rendered_ns) / NS_PER_SEC_INT : 0.0,
-435                  (unsigned long long)g_snapshot_first_capture_ns);
-436       } else {
-437         log_warn(&quot;SNAPSHOT: EXIT condition met but g_snapshot_first_capture_ns is 0!&quot;);
-438       }
-439 
-440       // Pass actual capture elapsed time to encoder for correct video duration
-441       log_info(&quot;SNAPSHOT: About to call session_display_set_snapshot_actual_duration with duration=%.3f, display=%p&quot;,
-442                capture_elapsed_sec, (void *)display);
-443       if (display) {
-444         session_display_set_snapshot_actual_duration(display, capture_elapsed_sec);
-445       } else {
-446         log_warn(&quot;SNAPSHOT: display context is NULL!&quot;);
-447       }
-448 
-449       // Signal application to exit in snapshot mode
-450       APP_CALLBACK_VOID(signal_exit);
-451       break;
-452     }
-453 
-454     // Frame rendering and timing details (moved down since snapshot exit is now above it)
-455     if (ascii_frame) {
+349         STOP_TIMER(&quot;render_frame&quot;);
+350       }
+351 
+352       // Keyboard input polling (if enabled) - MUST come before snapshot exit check so help screen can be toggled
+353       // Allow keyboard in snapshot mode too (for help screen toggle debugging)
+354       // Only enable keyboard if BOTH stdin AND stdout are TTYs to avoid buffering issues
+355       // when tcsetattr() modifies the tty line discipline
+356       if (keyboard_enabled &amp;&amp; keyboard_handler) {
+357         START_TIMER(&quot;keyboard_read_%lu&quot;, (unsigned long)frame_count);
+358         keyboard_key_t key = keyboard_read_nonblocking();
+359         double keyboard_elapsed_ns = STOP_TIMER(&quot;keyboard_read_%lu&quot;, (unsigned long)frame_count);
+360         if (keyboard_elapsed_ns &gt;= 0.0) {
+361           char _duration_str[32];
+362           time_pretty((uint64_t)keyboard_elapsed_ns, -1, _duration_str, sizeof(_duration_str));
+363           log_dev_every(1 * NS_PER_SEC_INT, &quot;RENDER[%lu] Keyboard read complete (key=%d) in %s&quot;,
+364                         (unsigned long)frame_count, key, _duration_str);
+365         }
+366         if (key != KEY_NONE) {
+367           log_debug(&quot;KEYBOARD: Key pressed: code=%d char='%c'&quot;, key, (key &gt;= 32 &amp;&amp; key &lt; 127) ? key : '?');
+368           // Check if interactive grep should handle this key
+369           if (log_search_should_handle(key)) {
+370             log_debug(&quot;KEYBOARD: Grep handler taking key %d&quot;, key);
+371             log_search_handle_key(key);
+372             continue; // Force immediate re-render
+373           }
+374 
+375           // Normal keyboard handler
+376           log_debug(&quot;KEYBOARD: Normal handler taking key %d&quot;, key);
+377           keyboard_handler(capture, key, user_data);
+378         }
+379       }
+380 
+381 
+382       // Free frame before checking exit conditions to avoid double-free
+383       SAFE_FREE(ascii_frame);
+384     }
+385 
+386     // Snapshot mode: check if elapsed time has reached snapshot_delay duration (terminal render timing)
+387     // Separate from capture timing - both should measure their own snapshot_delay
+388     if (snapshot_mode &amp;&amp; !snapshot_done) {
+389       if (g_snapshot_first_frame_rendered &amp;&amp; g_snapshot_first_frame_rendered_ns &gt; 0) {
+390         double snapshot_delay = GET_OPTION(snapshot_delay);
+391         uint64_t now_ns = time_get_ns();
+392         uint64_t elapsed_ns = now_ns - g_snapshot_first_frame_rendered_ns;
+393         double elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
+394 
+395         if (frames_rendered_since_first == 1 || frames_rendered_since_first % 20 == 0) {
+396           log_info(&quot;SNAPSHOT: RENDER_CHECK iter=%lu elapsed=%.3f target=%.2f (from first_frame_rendered)&quot;,
+397                    frames_rendered_since_first, elapsed_sec, snapshot_delay);
+398         }
+399 
+400         // snapshot_delay=0 means exit after first frame
+401         // snapshot_delay&gt;0 means wait that many seconds before exiting
+402         // Exit is based on elapsed wall-clock time, not frame count
+403         bool should_exit = (snapshot_delay == 0.0) || (elapsed_sec &gt;= snapshot_delay);
+404 
+405         if (should_exit) {
+406           log_info(&quot;SNAPSHOT: RENDER_DONE at iteration %lu - elapsed=%.3f target=%.2f (setting snapshot_done=true)&quot;,
+407                    frames_rendered_since_first, elapsed_sec, snapshot_delay);
+408           // We don't end frames with newlines so the next log would print on the same line as the frame's
+409           // last row without an \n here. We only need this \n in stdout in snapshot mode and when interactive,
+410           // so piped snapshots don't have a weird newline in stdout that they don't need.
+411           if (snapshot_mode &amp;&amp; terminal_is_interactive()) {
+412             printf(&quot;\n&quot;);
+413           }
+414           snapshot_done = true;
+415         }
+416       } else {
+417         if (frames_rendered_since_first == 0) {
+418           log_debug(&quot;SNAPSHOT: Waiting for first_frame_rendered (g_snapshot_first_frame_rendered=%d, g_snapshot_first_frame_rendered_ns=%llu)&quot;,
+419                     g_snapshot_first_frame_rendered, (unsigned long long)g_snapshot_first_frame_rendered_ns);
+420         }
+421       }
+422     }
+423 
+424     // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
+425     if (snapshot_mode &amp;&amp; (snapshot_done || output_paused_frame)) {
+426       log_info(&quot;SNAPSHOT: EXIT CONDITION MET - snapshot_done=%d, output_paused_frame=%d&quot;, snapshot_done, output_paused_frame);
+427 
+428       // Calculate elapsed time from first frame captured (for video file)
+429       // This is separate from render time - video should span from first capture to last capture
+430       double capture_elapsed_sec = 0.0;
+431       if (g_snapshot_first_capture_ns &gt; 0) {
+432         uint64_t now_ns = time_get_ns();
+433         uint64_t elapsed_ns = now_ns - g_snapshot_first_capture_ns;
+434         capture_elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
+435         log_info(&quot;SNAPSHOT: EXIT - Capture elapsed: %.3f seconds, render elapsed: %.3f seconds, g_snapshot_first_capture_ns=%llu&quot;,
+436                  capture_elapsed_sec,
+437                  (g_snapshot_first_frame_rendered_ns &gt; 0) ? (double)(now_ns - g_snapshot_first_frame_rendered_ns) / NS_PER_SEC_INT : 0.0,
+438                  (unsigned long long)g_snapshot_first_capture_ns);
+439       } else {
+440         log_warn(&quot;SNAPSHOT: EXIT condition met but g_snapshot_first_capture_ns is 0!&quot;);
+441       }
+442 
+443       // Pass actual capture elapsed time to encoder for correct video duration
+444       log_info(&quot;SNAPSHOT: About to call session_display_set_snapshot_actual_duration with duration=%.3f, display=%p&quot;,
+445                capture_elapsed_sec, (void *)display);
+446       if (display) {
+447         session_display_set_snapshot_actual_duration(display, capture_elapsed_sec);
+448       } else {
+449         log_warn(&quot;SNAPSHOT: display context is NULL!&quot;);
+450       }
+451 
+452       // Signal application to exit in snapshot mode
+453       APP_CALLBACK_VOID(signal_exit);
+454       break;
+455     }
 456 
-457       // Measure frame completion right after rendering, BEFORE keyboard polling
-458       // This gives us accurate timing for just the core frame operations
-459       uint64_t frame_end_render_ns = time_get_ns();
-460 
-461       // Calculate each phase duration
-462       uint64_t prestart_ms =
-463           (capture_start_ns &gt; frame_start_ns) ? (capture_start_ns - frame_start_ns) / NS_PER_MS_INT : 0;
-464       uint64_t capture_ms =
-465           (capture_end_ns &gt; capture_start_ns) ? (capture_end_ns - capture_start_ns) / NS_PER_MS_INT : 0;
-466       uint64_t convert_ms = conversion_elapsed_ns / NS_PER_MS_INT;
-467       uint64_t render_ms =
-468           (post_render_ns &gt; pre_render_ns &amp;&amp; post_render_ns &gt; 0) ? (post_render_ns - pre_render_ns) / NS_PER_MS_INT : 0;
-469       uint64_t total_ms =
-470           (frame_end_render_ns &gt; frame_start_ns) ? (frame_end_render_ns - frame_start_ns) / NS_PER_MS_INT : 0;
-471 
-472       // Log phase breakdown every 5 frames
-473       if (frame_count % 5 == 0) {
-474         log_dev_every(
-475             2 * NS_PER_SEC_INT,
-476             &quot;PHASE_BREAKDOWN[%lu]: prestart=%llu ms, capture=%llu ms, convert=%llu ms, render=%llu ms (total=%llu ms)&quot;,
-477             frame_count, prestart_ms, capture_ms, convert_ms, render_ms, total_ms);
-478       }
-479     } else {
-480       // Snapshot mode: even if frame conversion failed, check if we should exit
-481       // This ensures snapshot_delay is honored even if display context isn't rendering
-482       if (snapshot_mode &amp;&amp; snapshot_done) {
-483         break;
-484       }
-485     }
-486 
-487     // In event-driven mode, frame rate limiting is handled by the sleep_cb callback
-488     // Synchronous mode (with capture context) uses the pipeline and returns early above
+457     // Frame rendering and timing details (moved down since snapshot exit is now above it)
+458     if (ascii_frame) {
+459 
+460       // Measure frame completion right after rendering, BEFORE keyboard polling
+461       // This gives us accurate timing for just the core frame operations
+462       uint64_t frame_end_render_ns = time_get_ns();
+463 
+464       // Calculate each phase duration
+465       uint64_t prestart_ms =
+466           (capture_start_ns &gt; frame_start_ns) ? (capture_start_ns - frame_start_ns) / NS_PER_MS_INT : 0;
+467       uint64_t capture_ms =
+468           (capture_end_ns &gt; capture_start_ns) ? (capture_end_ns - capture_start_ns) / NS_PER_MS_INT : 0;
+469       uint64_t convert_ms = conversion_elapsed_ns / NS_PER_MS_INT;
+470       uint64_t render_ms =
+471           (post_render_ns &gt; pre_render_ns &amp;&amp; post_render_ns &gt; 0) ? (post_render_ns - pre_render_ns) / NS_PER_MS_INT : 0;
+472       uint64_t total_ms =
+473           (frame_end_render_ns &gt; frame_start_ns) ? (frame_end_render_ns - frame_start_ns) / NS_PER_MS_INT : 0;
+474 
+475       // Log phase breakdown every 5 frames
+476       if (frame_count % 5 == 0) {
+477         log_dev_every(
+478             2 * NS_PER_SEC_INT,
+479             &quot;PHASE_BREAKDOWN[%lu]: prestart=%llu ms, capture=%llu ms, convert=%llu ms, render=%llu ms (total=%llu ms)&quot;,
+480             frame_count, prestart_ms, capture_ms, convert_ms, render_ms, total_ms);
+481       }
+482     } else {
+483       // Snapshot mode: even if frame conversion failed, check if we should exit
+484       // This ensures snapshot_delay is honored even if display context isn't rendering
+485       if (snapshot_mode &amp;&amp; snapshot_done) {
+486         break;
+487       }
+488     }
 489 
-490     // Note: Images returned by media sources are cached/reused and should NOT be destroyed
-491     // The image pointers are managed by the source and will be cleaned up on source shutdown
-492   } // while (!should_exit(user_data)) {
-493 
-494   // Re-enable console logging after rendering completes
-495   log_set_terminal_output(true);
-496   if (!snapshot_mode &amp;&amp; terminal_is_interactive()) {
-497     printf(&quot;\n&quot;);
-498   }
-499 
-500   // Keyboard input cleanup (if it was initialized)
-501   if (keyboard_enabled) {
-502     keyboard_destroy();
-503     log_debug_every(2 * NS_PER_SEC_INT, &quot;Keyboard input disabled&quot;);
-504   }
-505 
-506   // Unregister global display context (for signal handlers)
-507   session_display_set_global_context(NULL);
+490     // In event-driven mode, frame rate limiting is handled by the sleep_cb callback
+491     // Synchronous mode (with capture context) uses the pipeline and returns early above
+492 
+493     // Note: Images returned by media sources are cached/reused and should NOT be destroyed
+494     // The image pointers are managed by the source and will be cleaned up on source shutdown
+495   } // while (!should_exit(user_data)) {
+496 
+497   // Re-enable console logging after rendering completes
+498   log_set_terminal_output(true);
+499   if (!snapshot_mode &amp;&amp; terminal_is_interactive()) {
+500     printf(&quot;\n&quot;);
+501   }
+502 
+503   // Keyboard input cleanup (if it was initialized)
+504   if (keyboard_enabled) {
+505     keyboard_destroy();
+506     log_debug_every(2 * NS_PER_SEC_INT, &quot;Keyboard input disabled&quot;);
+507   }
 508 
-509   return ASCIICHAT_OK;
-510 }</pre>
+509   // Unregister global display context (for signal handlers)
+510   session_display_set_global_context(NULL);
+511 
+512   return ASCIICHAT_OK;
+513 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>APP_CALLBACK_VOID</b>, <b>ASCIICHAT_OK</b>,

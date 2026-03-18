@@ -706,7 +706,8 @@
   Default IPv6 server address. #define <b>OPT_ENDPOINT_DISCOVERY_SERVICE</b>
     'localhost'
   <br/>
-  Default discovery service endpoint. #define <b>OPT_PORT_DEFAULT</b> '27224'
+  Default discovery service endpoint (what to connect to by default). #define
+    <b>OPT_PORT_DEFAULT</b> '27224'
   <br/>
   Default TCP port for client/server communication (string). #define
     <b>OPT_PORT_INT_DEFAULT</b> 27224
@@ -1267,17 +1268,17 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">Zero-initialized fields are returned if options pointer is somehow
     NULL</p>
 </div>
-<p class="Pp">Definition at line <b>1235</b> of file
+<p class="Pp">Definition at line <b>1241</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
-<pre>1235 #define GET_OPTION(field)                                                                                              \
-1236   ({                                                                                                                   \
-1237     const options_t *_opts = options_get();                                                                            \
-1238     if (!_opts) {                                                                                                      \
-1239       log_warn(&quot;GET_OPTION(&quot; #field &quot;) called but options not initialized&quot;);                                           \
-1240     }                                                                                                                  \
-1241     static typeof(((options_t *)0)-&gt;field) _default = {0};                                                             \
-1242     (_opts ? (_opts-&gt;field) : _default);                                                                               \
-1243   })</pre>
+<pre>1241 #define GET_OPTION(field)                                                                                              \
+1242   ({                                                                                                                   \
+1243     const options_t *_opts = options_get();                                                                            \
+1244     if (!_opts) {                                                                                                      \
+1245       log_warn(&quot;GET_OPTION(&quot; #field &quot;) called but options not initialized&quot;);                                           \
+1246     }                                                                                                                  \
+1247     static typeof(((options_t *)0)-&gt;field) _default = {0};                                                             \
+1248     (_opts ? (_opts-&gt;field) : _default);                                                                               \
+1249   })</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>acds_main()</b>, <b>add_client()</b>,
@@ -1377,7 +1378,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default ACDS registration flag (false = disabled).</p>
-<p class="Pp">Definition at line <b>568</b> of file
+<p class="Pp">Definition at line <b>574</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -1387,7 +1388,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default ACDS expose IP flag (false = private by default).</p>
-<p class="Pp">Definition at line <b>577</b> of file
+<p class="Pp">Definition at line <b>583</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -1397,7 +1398,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default ACDS insecure mode flag (false = verify server).</p>
-<p class="Pp">Definition at line <b>580</b> of file
+<p class="Pp">Definition at line <b>586</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -1407,7 +1408,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default ACDS discovery service port (string).</p>
-<p class="Pp">Definition at line <b>574</b> of file
+<p class="Pp">Definition at line <b>580</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 </section>
 <section class="Ss">
@@ -1416,7 +1417,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default ACDS discovery service port (integer).</p>
-<p class="Pp">Definition at line <b>571</b> of file
+<p class="Pp">Definition at line <b>577</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>apply_mode_specific_defaults()</b>,
     <b>discovery_config_init_defaults()</b>, and <b>options_t_new()</b>.</p>
@@ -1447,7 +1448,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default audio analysis enabled flag.</p>
-<p class="Pp">Definition at line <b>714</b> of file
+<p class="Pp">Definition at line <b>720</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -1457,7 +1458,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default audio enabled flag (true = audio enabled by default).</p>
-<p class="Pp">Definition at line <b>696</b> of file
+<p class="Pp">Definition at line <b>702</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -1467,7 +1468,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default audio playback flag (false = enable playback).</p>
-<p class="Pp">Definition at line <b>717</b> of file
+<p class="Pp">Definition at line <b>723</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -1477,7 +1478,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default audio source (AUDIO_SOURCE_AUTO = smart selection).</p>
-<p class="Pp">Definition at line <b>699</b> of file
+<p class="Pp">Definition at line <b>705</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -1550,7 +1551,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default compression level (1-9).</p>
-<p class="Pp">Definition at line <b>562</b> of file
+<p class="Pp">Definition at line <b>568</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -1582,7 +1583,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default enable UPnP flag (false = UPnP disabled).</p>
-<p class="Pp">Definition at line <b>595</b> of file
+<p class="Pp">Definition at line <b>601</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -1592,7 +1593,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default audio encoding state (true = Opus encoding enabled).</p>
-<p class="Pp">Definition at line <b>720</b> of file
+<p class="Pp">Definition at line <b>726</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -1602,7 +1603,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default encrypt enabled flag (true = encryption required).</p>
-<p class="Pp">Definition at line <b>727</b> of file
+<p class="Pp">Definition at line <b>733</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -1611,12 +1612,21 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
   OPT_ENDPOINT_DISCOVERY_SERVICE 'localhost'</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
-<p class="Pp">Default discovery service endpoint.</p>
+<p class="Pp">Default discovery service endpoint (what to connect to by
+    default). Production: connects to official server by default Debug: connects
+    to localhost by default for local testing</p>
+<p class="Pp"></p>
 <p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">In production (NDEBUG), uses
-  discovery-service.ascii-chat.com In debug builds, uses localhost for local
-  testing</div>
-<p class="Pp">Definition at line <b>540</b> of file
+<div class="Bd-indent">This is different from is_official_server() in
+  <b>crypto/discovery_keys.c</b> which determines which servers have automatic
+  HTTPS key trust. In debug builds:
+<ul class="Bl-bullet">
+  <li>DEFAULT ENDPOINT (this constant): localhost</li>
+  <li>AUTO-TRUST ENDPOINTS (<b>discovery_keys.c</b>): localhost AND official
+      server</li>
+</ul>
+</div>
+<p class="Pp">Definition at line <b>546</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -1626,7 +1636,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Fallback STUN server (Google public STUN).</p>
-<p class="Pp">Definition at line <b>608</b> of file
+<p class="Pp">Definition at line <b>614</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 </section>
 <section class="Ss">
@@ -1635,7 +1645,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Primary STUN server (ascii-chat hosted).</p>
-<p class="Pp">Definition at line <b>605</b> of file
+<p class="Pp">Definition at line <b>611</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 </section>
 <section class="Ss">
@@ -1645,7 +1655,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default STUN servers (comma-separated list).</p>
-<p class="Pp">Definition at line <b>611</b> of file
+<p class="Pp">Definition at line <b>617</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>server_main()</b>.</p>
 </section>
@@ -1655,7 +1665,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Primary TURN server (ascii-chat hosted).</p>
-<p class="Pp">Definition at line <b>614</b> of file
+<p class="Pp">Definition at line <b>620</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 </section>
 <section class="Ss">
@@ -1664,7 +1674,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default TURN servers (comma-separated list).</p>
-<p class="Pp">Definition at line <b>617</b> of file
+<p class="Pp">Definition at line <b>623</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 </section>
 <section class="Ss">
@@ -1771,7 +1781,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default LAN discovery flag (false = discovery disabled).</p>
-<p class="Pp">Definition at line <b>589</b> of file
+<p class="Pp">Definition at line <b>595</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -1901,7 +1911,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default maximum concurrent clients (server only).</p>
-<p class="Pp">Definition at line <b>556</b> of file
+<p class="Pp">Definition at line <b>562</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -1942,7 +1952,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default microphone device index (-1 means system default).</p>
-<p class="Pp">Definition at line <b>702</b> of file
+<p class="Pp">Definition at line <b>708</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -1952,7 +1962,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default microphone sensitivity (1.0 = normal volume).</p>
-<p class="Pp">Definition at line <b>708</b> of file
+<p class="Pp">Definition at line <b>714</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -1972,7 +1982,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default no auth flag (false = allow authentication).</p>
-<p class="Pp">Definition at line <b>733</b> of file
+<p class="Pp">Definition at line <b>739</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -1993,7 +2003,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default no compression flag (false = enable compression).</p>
-<p class="Pp">Definition at line <b>565</b> of file
+<p class="Pp">Definition at line <b>571</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2003,7 +2013,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default no encrypt flag (false = allow encryption).</p>
-<p class="Pp">Definition at line <b>730</b> of file
+<p class="Pp">Definition at line <b>736</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2013,7 +2023,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default no mDNS advertise flag (false = advertise enabled).</p>
-<p class="Pp">Definition at line <b>592</b> of file
+<p class="Pp">Definition at line <b>598</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2023,7 +2033,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default no WebRTC flag (false = WebRTC enabled).</p>
-<p class="Pp">Definition at line <b>652</b> of file
+<p class="Pp">Definition at line <b>658</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2063,7 +2073,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default TCP port for client/server communication (string).</p>
-<p class="Pp">Definition at line <b>544</b> of file
+<p class="Pp">Definition at line <b>550</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 </section>
 <section class="Ss">
@@ -2072,7 +2082,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default TCP port for client/server communication (integer).</p>
-<p class="Pp">Definition at line <b>547</b> of file
+<p class="Pp">Definition at line <b>553</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>apply_mode_specific_defaults()</b>,
     <b>client_crypto_init()</b>, <b>options_t_new()</b>,
@@ -2084,7 +2094,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default prefer WebRTC flag (false = try direct TCP first).</p>
-<p class="Pp">Definition at line <b>649</b> of file
+<p class="Pp">Definition at line <b>655</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2104,7 +2114,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default reconnect attempts (-1 means auto/infinite).</p>
-<p class="Pp">Definition at line <b>559</b> of file
+<p class="Pp">Definition at line <b>565</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2113,7 +2123,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
   OPT_RENDER_FILE_DEFAULT ''</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>764</b> of file
+<p class="Pp">Definition at line <b>770</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 </section>
 <section class="Ss">
@@ -2121,7 +2131,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
   OPT_RENDER_FONT_DEFAULT ''</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>766</b> of file
+<p class="Pp">Definition at line <b>772</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 </section>
 <section class="Ss">
@@ -2129,7 +2139,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
   OPT_RENDER_FONT_SIZE_DEFAULT 12.0</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>767</b> of file
+<p class="Pp">Definition at line <b>773</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2148,7 +2158,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
   OPT_RENDER_THEME_DEFAULT 0</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>765</b> of file
+<p class="Pp">Definition at line <b>771</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2158,7 +2168,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default require-client-identity setting for ACDS.</p>
-<p class="Pp">Definition at line <b>586</b> of file
+<p class="Pp">Definition at line <b>592</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2168,7 +2178,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default require client verify flag (false = not required).</p>
-<p class="Pp">Definition at line <b>739</b> of file
+<p class="Pp">Definition at line <b>745</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2178,7 +2188,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default require-server-identity setting for ACDS.</p>
-<p class="Pp">Definition at line <b>583</b> of file
+<p class="Pp">Definition at line <b>589</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2188,7 +2198,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default require server verify flag (false = not required).</p>
-<p class="Pp">Definition at line <b>736</b> of file
+<p class="Pp">Definition at line <b>742</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2230,7 +2240,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default speakers device index (-1 means system default).</p>
-<p class="Pp">Definition at line <b>705</b> of file
+<p class="Pp">Definition at line <b>711</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2240,7 +2250,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default speakers volume (1.0 = normal volume).</p>
-<p class="Pp">Definition at line <b>711</b> of file
+<p class="Pp">Definition at line <b>717</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2305,7 +2315,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default empty string for string option fields that have no
     configured value.</p>
-<p class="Pp">Definition at line <b>758</b> of file
+<p class="Pp">Definition at line <b>764</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 </section>
 <section class="Ss">
@@ -2324,7 +2334,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Fallback STUN server hostname only.</p>
-<p class="Pp">Definition at line <b>626</b> of file
+<p class="Pp">Definition at line <b>632</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 </section>
 <section class="Ss">
@@ -2333,7 +2343,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">STUN server hostname only (without protocol/port).</p>
-<p class="Pp">Definition at line <b>620</b> of file
+<p class="Pp">Definition at line <b>626</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 </section>
 <section class="Ss">
@@ -2342,7 +2352,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Fallback STUN server port.</p>
-<p class="Pp">Definition at line <b>629</b> of file
+<p class="Pp">Definition at line <b>635</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 </section>
 <section class="Ss">
@@ -2351,7 +2361,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">STUN server port for primary server.</p>
-<p class="Pp">Definition at line <b>623</b> of file
+<p class="Pp">Definition at line <b>629</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 </section>
 <section class="Ss">
@@ -2360,7 +2370,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default STUN server URLs (comma-separated).</p>
-<p class="Pp">Definition at line <b>638</b> of file
+<p class="Pp">Definition at line <b>644</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2384,7 +2394,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <div class="Bd-indent">In production (NDEBUG), empty string - ACDS provides
   credentials via SESSION_JOINED In debug builds, provides test credentials for
   testing without ACDS</div>
-<p class="Pp">Definition at line <b>688</b> of file
+<p class="Pp">Definition at line <b>694</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2394,7 +2404,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">TURN server hostname only.</p>
-<p class="Pp">Definition at line <b>632</b> of file
+<p class="Pp">Definition at line <b>638</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 </section>
 <section class="Ss">
@@ -2403,7 +2413,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">TURN server port.</p>
-<p class="Pp">Definition at line <b>635</b> of file
+<p class="Pp">Definition at line <b>641</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 </section>
 <section class="Ss">
@@ -2412,7 +2422,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default TURN server URLs (comma-separated).</p>
-<p class="Pp">Definition at line <b>641</b> of file
+<p class="Pp">Definition at line <b>647</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2426,7 +2436,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <div class="Bd-indent">In production (NDEBUG), empty string - ACDS provides
   credentials via SESSION_JOINED In debug builds, provides test credentials for
   testing without ACDS</div>
-<p class="Pp">Definition at line <b>677</b> of file
+<p class="Pp">Definition at line <b>683</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2467,7 +2477,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default WebRTC mode flag (true = P2P WebRTC, false = direct
   TCP).</p>
-<p class="Pp">Definition at line <b>646</b> of file
+<p class="Pp">Definition at line <b>652</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2477,7 +2487,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default WebRTC disable TURN flag (false = use TURN).</p>
-<p class="Pp">Definition at line <b>658</b> of file
+<p class="Pp">Definition at line <b>664</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2488,7 +2498,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default WebRTC ICE gathering timeout in milliseconds (10
   seconds).</p>
-<p class="Pp">Definition at line <b>664</b> of file
+<p class="Pp">Definition at line <b>670</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2499,7 +2509,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default WebRTC reconnection attempts (3 = try initial + 3
     retries).</p>
-<p class="Pp">Definition at line <b>667</b> of file
+<p class="Pp">Definition at line <b>673</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2510,7 +2520,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default WebRTC skip host candidates flag (false = use host
     candidates).</p>
-<p class="Pp">Definition at line <b>661</b> of file
+<p class="Pp">Definition at line <b>667</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2520,7 +2530,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default WebRTC skip STUN flag (false = use STUN).</p>
-<p class="Pp">Definition at line <b>655</b> of file
+<p class="Pp">Definition at line <b>661</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_t_new()</b>.</p>
 </section>
@@ -2530,7 +2540,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default WebSocket port for discovery-service mode (integer).</p>
-<p class="Pp">Definition at line <b>553</b> of file
+<p class="Pp">Definition at line <b>559</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>apply_mode_specific_defaults()</b>.</p>
 </section>
@@ -2540,7 +2550,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
 <p class="Pp">Default WebSocket port for server mode (integer).</p>
-<p class="Pp">Definition at line <b>550</b> of file
+<p class="Pp">Definition at line <b>556</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>apply_mode_specific_defaults()</b>, and
     <b>options_t_new()</b>.</p>
@@ -2569,7 +2579,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
   | <b>OPTION_MODE_DISCOVERY</b>)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>945</b> of file
+<p class="Pp">Definition at line <b>951</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
 </section>
@@ -2579,10 +2589,10 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
   <b>OPTION_MODE_DISCOVERY_SVC</b> | <b>OPTION_MODE_DISCOVERY</b>)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>946</b> of file
+<p class="Pp">Definition at line <b>952</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
-<pre>946 #define OPTION_MODE_NETWORKED                                                                                          \
-947   (OPTION_MODE_SERVER | OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY)</pre>
+<pre>952 #define OPTION_MODE_NETWORKED                                                                                          \
+953   (OPTION_MODE_SERVER | OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY)</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -2595,7 +2605,7 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">Mode group macros for examples. These macros combine multiple mode
     bits to allow examples to apply to logical groups of modes (e.g.,
     server-like modes, client-like modes).</p>
-<p class="Pp">Definition at line <b>944</b> of file
+<p class="Pp">Definition at line <b>950</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
 <p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
 </section>
@@ -2661,16 +2671,16 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
     </i></b></a></dt>
   <dd>Invalid mode.</dd>
 </dl>
-<p class="Pp">Definition at line <b>912</b> of file
+<p class="Pp">Definition at line <b>918</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
-<pre>912              {
-913   MODE_SERVER,            
-914   MODE_CLIENT,            
-915   MODE_MIRROR,            
-916   MODE_DISCOVERY_SERVICE, 
-917   MODE_DISCOVERY,         
-918   MODE_INVALID            
-919 } asciichat_mode_t;</pre>
+<pre>918              {
+919   MODE_SERVER,            
+920   MODE_CLIENT,            
+921   MODE_MIRROR,            
+922   MODE_DISCOVERY_SERVICE, 
+923   MODE_DISCOVERY,         
+924   MODE_INVALID            
+925 } asciichat_mode_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -2876,18 +2886,18 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
     </i></b></a></dt>
   <dd>All modes + binary.</dd>
 </dl>
-<p class="Pp">Definition at line <b>927</b> of file
+<p class="Pp">Definition at line <b>933</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
-<pre>927              {
-928   OPTION_MODE_NONE = 0,                                      
-929   OPTION_MODE_SERVER = (1 &lt;&lt; MODE_SERVER),                   
-930   OPTION_MODE_CLIENT = (1 &lt;&lt; MODE_CLIENT),                   
-931   OPTION_MODE_MIRROR = (1 &lt;&lt; MODE_MIRROR),                   
-932   OPTION_MODE_DISCOVERY_SVC = (1 &lt;&lt; MODE_DISCOVERY_SERVICE), 
-933   OPTION_MODE_DISCOVERY = (1 &lt;&lt; MODE_DISCOVERY),             
-934   OPTION_MODE_BINARY = 0x100,                                
-935   OPTION_MODE_ALL = 0x1F | 0x100                             
-936 } option_mode_bitmask_t;</pre>
+<pre>933              {
+934   OPTION_MODE_NONE = 0,                                      
+935   OPTION_MODE_SERVER = (1 &lt;&lt; MODE_SERVER),                   
+936   OPTION_MODE_CLIENT = (1 &lt;&lt; MODE_CLIENT),                   
+937   OPTION_MODE_MIRROR = (1 &lt;&lt; MODE_MIRROR),                   
+938   OPTION_MODE_DISCOVERY_SVC = (1 &lt;&lt; MODE_DISCOVERY_SERVICE), 
+939   OPTION_MODE_DISCOVERY = (1 &lt;&lt; MODE_DISCOVERY),             
+940   OPTION_MODE_BINARY = 0x100,                                
+941   OPTION_MODE_ALL = 0x1F | 0x100                             
+942 } option_mode_bitmask_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
