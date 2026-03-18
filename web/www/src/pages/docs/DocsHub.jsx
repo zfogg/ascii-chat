@@ -57,10 +57,10 @@ export default function DocsHub() {
       ...getRandomColor(),
     },
     {
-      icon: "📸",
-      title: "Snapshot Mode",
-      description: "Single-frame capture, scripting, automation examples",
-      to: "/docs/snapshot",
+      icon: "🎬",
+      title: "Media Files and URLs",
+      description: "Local files, remote URLs, YouTube, live streams, FFmpeg",
+      to: "/docs/media",
       ...getRandomColor(),
     },
     {
@@ -71,10 +71,17 @@ export default function DocsHub() {
       ...getRandomColor(),
     },
     {
-      icon: "🎬",
-      title: "Media Files and URLs",
-      description: "Local files, remote URLs, YouTube, live streams, FFmpeg",
-      to: "/docs/media",
+      icon: "📸",
+      title: "Snapshot Mode",
+      description: "Single-frame capture, scripting, automation examples",
+      to: "/docs/snapshot",
+      ...getRandomColor(),
+    },
+    {
+      icon: "🔐",
+      title: "Cryptography",
+      description: "Encryption, authentication, SSH keys, TOFU",
+      to: "/docs/crypto",
       ...getRandomColor(),
     },
     {
@@ -96,13 +103,6 @@ export default function DocsHub() {
       title: "ascii-chat-*(3)",
       description: "Source code documentation for ascii-chat and libasciichat",
       to: "/man3",
-      ...getRandomColor(),
-    },
-    {
-      icon: "🔐",
-      title: "Cryptography",
-      description: "Encryption, authentication, SSH keys, TOFU",
-      to: "/docs/crypto",
       ...getRandomColor(),
     },
   ];
