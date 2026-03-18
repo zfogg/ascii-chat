@@ -48,7 +48,21 @@ static bool is_official_server(const char *acds_server) {
     *p = (char)tolower((unsigned char)*p);
   }
 
-  return strcmp(server_lower, "discovery.ascii-chat.com") == 0;
+  // Check official production server
+  if (strcmp(server_lower, ACDS_OFFICIAL_SERVER) == 0) {
+    return true;
+  }
+
+  // In debug builds, also trust localhost for testing (IPv4 and IPv6)
+#ifndef NDEBUG
+  if (strcmp(server_lower, "localhost") == 0 ||
+      strcmp(server_lower, "127.0.0.1") == 0 ||
+      strcmp(server_lower, "::1") == 0) {
+    return true;
+  }
+#endif
+
+  return false;
 }
 
 // ============================================================================
