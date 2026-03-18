@@ -1278,6 +1278,7 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
   }
 
   // Step 2: Auth response
+  // Note: For ACDS servers without authentication, auth_response completes the handshake
   result = crypto_handshake_client_auth_response_socket(&handshake_ctx, session->acds_socket);
   if (result != ASCIICHAT_OK) {
     log_error("discovery_session_start: Handshake auth response failed");
@@ -1286,11 +1287,17 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
   }
 
   // Step 3: Complete handshake
-  result = crypto_handshake_client_complete_socket(&handshake_ctx, session->acds_socket);
-  if (result != ASCIICHAT_OK) {
-    log_error("discovery_session_start: Handshake complete failed");
-    set_error(session, result, "Handshake complete failed");
-    return result;
+  // Note: Some servers (like ACDS without auth) complete the handshake in step 2,
+  // so check if we're already done before trying to receive another packet
+  if (handshake_ctx.state != CRYPTO_HANDSHAKE_READY) {
+    result = crypto_handshake_client_complete_socket(&handshake_ctx, session->acds_socket);
+    if (result != ASCIICHAT_OK) {
+      log_error("discovery_session_start: Handshake complete failed");
+      set_error(session, result, "Handshake complete failed");
+      return result;
+    }
+  } else {
+    log_info("discovery_session_start: Handshake already complete from auth_response step");
   }
 
   log_info("discovery_session_start: Crypto handshake with ACDS completed");
