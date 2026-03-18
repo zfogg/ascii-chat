@@ -485,7 +485,7 @@ endif()
 # =============================================================================
 # Debug builds: Build FFmpeg from source with H265 support for fast iteration
 # =============================================================================
-if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT ASCIICHAT_SHARED_DEPS AND NOT FFMPEG_FOUND)
+if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT ASCIICHAT_SHARED_DEPS AND NOT FFMPEG_FOUND AND FALSE)
     message(STATUS "Configuring ${BoldBlue}FFmpeg${ColorReset} from source (Debug)...")
 
     include(ProcessorCount)
@@ -499,10 +499,9 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT ASCIICHAT_SHARED_D
     set(FFMPEG_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg-build")
     set(FFMPEG_SOURCE_DIR "${FFMPEG_BUILD_DIR}/ffmpeg-${FFMPEG_VERSION}")
 
-    # Build FFmpeg if not cached or if libx265 support is missing
+    # Build FFmpeg if not cached
     if(NOT EXISTS "${FFMPEG_PREFIX}/lib/libavcodec.so" OR
-       NOT EXISTS "${FFMPEG_PREFIX}/lib/libavformat.so" OR
-       NOT EXISTS "${FFMPEG_PREFIX}/lib/libx265.a")
+       NOT EXISTS "${FFMPEG_PREFIX}/lib/libavformat.so")
 
         message(STATUS "  FFmpeg libraries not found in cache, building from source...")
 
