@@ -616,7 +616,21 @@ export function usePageNavigation(
     const tbody = document.createElement("tbody");
     for (const row of rows) {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td class="man-data-field-type">${row.type}</td><td class="man-data-field-name">${row.name}</td><td class="man-data-field-desc">${row.description}</td>`;
+
+      // Convert "Definition at line X of file Y" to GitHub link
+      let descriptionHtml = row.description;
+      const commitSha = __COMMIT_SHA__;
+      if (descriptionHtml && commitSha && commitSha !== "unknown") {
+        descriptionHtml = descriptionHtml.replace(
+          /Definition at line (\d+) of file ([^\n]+)/g,
+          (match, lineNum, filename) => {
+            const filepath = filename.trim();
+            return `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${filepath}#L${lineNum}" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">Definition at line ${lineNum} of file ${filepath}</a>`;
+          }
+        );
+      }
+
+      tr.innerHTML = `<td class="man-data-field-type">${row.type}</td><td class="man-data-field-name">${row.name}</td><td class="man-data-field-desc">${descriptionHtml}</td>`;
       tbody.appendChild(tr);
     }
 
