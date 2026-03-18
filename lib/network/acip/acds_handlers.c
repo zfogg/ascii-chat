@@ -146,18 +146,10 @@ static asciichat_error_t handle_acds_session_create(const void *payload, size_t 
 
   const acip_session_create_t *req = (const acip_session_create_t *)payload;
 
-  // Check if this is a finalize packet (zero key means multi-key finalization)
-  bool is_zero_key = true;
-  for (size_t i = 0; i < 32; i++) {
-    if (req->identity_pubkey[i] != 0) {
-      is_zero_key = false;
-      break;
-    }
-  }
-
-  // Skip validation for finalize packets (all fields are zeroed except for internal state)
-  if (!is_zero_key) {
-    // Validate session parameters for regular SESSION_CREATE packets
+  // Multi-key protocol: validate parameters only for first key (key_index == 0)
+  // total_keys > 0 indicates multi-key mode; skip validation for subsequent keys
+  if (req->key_index == 0 || req->total_keys == 0) {
+    // Validate session parameters for first key or single-key mode
     if (req->max_participants == 0 || req->max_participants > 32) {
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid max_participants: %u from %s (expected: 1-32)",
                        req->max_participants, client_ip);

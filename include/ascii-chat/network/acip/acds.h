@@ -175,10 +175,12 @@ typedef enum {
  * 108     128   password_hash          Argon2id hash (if has_password=1)
  * 236     1     expose_ip_publicly     0=require verify, 1=allow public IP
  * 237     1     reserved_string_len    0=auto-generate, >0=use provided
- * 238     64    server_address         IPv4/IPv6/hostname (null-terminated)
- * 302     2     server_port            TCP port for client connection
+ * 238     1     total_keys             Total number of keys in multi-key sequence (0=single key mode)
+ * 239     1     key_index              Index of this key in sequence (0-based, only valid if total_keys > 0)
+ * 240     64    server_address         IPv4/IPv6/hostname (null-terminated)
+ * 304     2     server_port            TCP port for client connection
  * ------
- * Total: 304 bytes + reserved_string (if len > 0, max 47 bytes)
+ * Total: 306 bytes + reserved_string (if len > 0, max 47 bytes)
  * ```
  *
  * The client requests creation of a new session with specific capabilities,
@@ -206,6 +208,10 @@ typedef struct __attribute__((packed)) {
 
   uint8_t reserved_string_len; ///< 0 = auto-generate, >0 = use provided string
   // char  reserved_string[];        ///< Variable length, follows if len > 0
+
+  // Multi-key protocol: tracks which key in sequence this is
+  uint8_t total_keys;  ///< Total number of keys to transmit (0 = single key mode, legacy)
+  uint8_t key_index;   ///< Index of this key in the sequence (0-based), only valid if total_keys > 0
 
   // Server connection information (where clients should connect)
   // For DIRECT_TCP: server_address and server_port specify where to connect

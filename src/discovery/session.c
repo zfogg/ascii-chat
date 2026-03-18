@@ -109,6 +109,31 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
     log_info("Using identity key with fingerprint: %.16s...", fingerprint);
   }
 
+  // Load multiple identity keys from options (multi-key protocol support)
+  const options_t *opts = options_get();
+  if (opts && opts->num_identity_keys > 0) {
+    // Load all identity keys from options
+    for (size_t i = 0; i < opts->num_identity_keys && i < MAX_IDENTITY_KEYS; i++) {
+      uint8_t pubkey[32] = {0};
+      uint8_t seckey[64] = {0};
+      asciichat_error_t key_result = acds_identity_load(opts->identity_keys[i], pubkey, seckey);
+      if (key_result == ASCIICHAT_OK) {
+        memcpy(session->identity_pubkeys[i], pubkey, 32);
+        char fingerprint[65];
+        acds_identity_fingerprint(pubkey, fingerprint);
+        log_info("Loaded identity key #%zu with fingerprint: %.16s...", i + 1, fingerprint);
+      } else {
+        log_warn("Failed to load identity key #%zu from %s", i + 1, opts->identity_keys[i]);
+      }
+    }
+    session->num_identity_keys = opts->num_identity_keys;
+    log_info("Loaded %zu identity key(s) for multi-key protocol", session->num_identity_keys);
+  } else {
+    // Single-key mode: use only the primary identity key
+    memcpy(session->identity_pubkeys[0], session->identity_pubkey, 32);
+    session->num_identity_keys = 1;
+  }
+
   // ACDS connection info
   if (config->acds_address && config->acds_address[0]) {
     SAFE_STRNCPY(session->acds_address, config->acds_address, sizeof(session->acds_address));
@@ -527,68 +552,76 @@ static asciichat_error_t create_session(discovery_session_t *session) {
   set_state(session, DISCOVERY_STATE_CREATING_SESSION);
   log_info("Creating new discovery session...");
 
-  // Build SESSION_CREATE message
-  acip_session_create_t create_msg;
-  memset(&create_msg, 0, sizeof(create_msg));
-
-  // Set identity public key
-  memcpy(create_msg.identity_pubkey, session->identity_pubkey, 32);
-
-  // Set timestamp for signature
-  create_msg.timestamp = session_get_current_time_ms();
-
-  // Set capabilities
-  create_msg.capabilities = 0x03; // Video + Audio
-  create_msg.max_participants = 8;
-
-  // Generate signature (signs: type || timestamp || capabilities || max_participants)
-  asciichat_error_t sig_result =
-      acds_sign_session_create(session->identity_seckey, create_msg.timestamp, create_msg.capabilities,
-                               create_msg.max_participants, create_msg.signature);
-  if (sig_result != ASCIICHAT_OK) {
-    set_error(session, sig_result, "Failed to sign SESSION_CREATE");
-    return sig_result;
-  }
-
-  // Check if WebRTC is preferred
+  // Multi-key protocol: send all identity keys with count upfront
   const options_t *opts = options_get();
-  if (opts && opts->prefer_webrtc) {
-    log_info("DISCOVERY: WebRTC preferred, using SESSION_TYPE_WEBRTC");
-    create_msg.session_type = SESSION_TYPE_WEBRTC;
-  } else {
-    log_info("DISCOVERY: Using direct TCP (SESSION_TYPE_DIRECT_TCP)");
-    create_msg.session_type = SESSION_TYPE_DIRECT_TCP;
-  }
 
-  create_msg.has_password = 0;
-  create_msg.expose_ip_publicly = 0;
-  create_msg.reserved_string_len = 0;
+  // Send all identity keys
+  for (size_t key_idx = 0; key_idx < session->num_identity_keys; key_idx++) {
+    acip_session_create_t create_msg;
+    memset(&create_msg, 0, sizeof(create_msg));
 
-  // Set server address (will be updated after NAT detection)
-  SAFE_STRNCPY(create_msg.server_address, "127.0.0.1", sizeof(create_msg.server_address));
-  create_msg.server_port = ACIP_HOST_DEFAULT_PORT;
+    // Set this identity public key
+    memcpy(create_msg.identity_pubkey, session->identity_pubkeys[key_idx], 32);
 
-  // Send SESSION_CREATE with identity key
-  asciichat_error_t result =
-      packet_send(session->acds_socket, PACKET_TYPE_ACIP_SESSION_CREATE, &create_msg, sizeof(create_msg));
-  if (result != ASCIICHAT_OK) {
-    set_error(session, result, "Failed to send SESSION_CREATE");
-    return result;
-  }
+    // Set timestamp for signature
+    create_msg.timestamp = session_get_current_time_ms();
 
-  // Send SESSION_CREATE with zero key to finalize (multi-key protocol)
-  acip_session_create_t finalize_msg;
-  memset(&finalize_msg, 0, sizeof(finalize_msg));
-  result = packet_send(session->acds_socket, PACKET_TYPE_ACIP_SESSION_CREATE, &finalize_msg, sizeof(finalize_msg));
-  if (result != ASCIICHAT_OK) {
-    set_error(session, result, "Failed to send SESSION_CREATE finalize");
-    return result;
+    // Set capabilities (only for first key)
+    if (key_idx == 0) {
+      create_msg.capabilities = 0x03; // Video + Audio
+      create_msg.max_participants = 8;
+    }
+
+    // Multi-key tracking: send total count and current index upfront
+    create_msg.total_keys = (uint8_t)session->num_identity_keys;
+    create_msg.key_index = (uint8_t)key_idx;
+
+    // Generate signature for this key (signs: type || timestamp || capabilities || max_participants)
+    asciichat_error_t sig_result =
+        acds_sign_session_create(session->identity_seckey, create_msg.timestamp, create_msg.capabilities,
+                                 create_msg.max_participants, create_msg.signature);
+    if (sig_result != ASCIICHAT_OK) {
+      log_error("Failed to sign SESSION_CREATE for key %zu", key_idx);
+      set_error(session, sig_result, "Failed to sign SESSION_CREATE");
+      return sig_result;
+    }
+
+    // Set session type (only for first key)
+    if (key_idx == 0) {
+      if (opts && opts->prefer_webrtc) {
+        log_info("DISCOVERY: WebRTC preferred, using SESSION_TYPE_WEBRTC");
+        create_msg.session_type = SESSION_TYPE_WEBRTC;
+      } else {
+        log_info("DISCOVERY: Using direct TCP (SESSION_TYPE_DIRECT_TCP)");
+        create_msg.session_type = SESSION_TYPE_DIRECT_TCP;
+      }
+
+      create_msg.has_password = 0;
+      create_msg.expose_ip_publicly = 0;
+      create_msg.reserved_string_len = 0;
+
+      // Set server address (will be updated after NAT detection)
+      SAFE_STRNCPY(create_msg.server_address, "127.0.0.1", sizeof(create_msg.server_address));
+      create_msg.server_port = ACIP_HOST_DEFAULT_PORT;
+    }
+
+    // Send SESSION_CREATE with this identity key
+    asciichat_error_t result =
+        packet_send(session->acds_socket, PACKET_TYPE_ACIP_SESSION_CREATE, &create_msg, sizeof(create_msg));
+    if (result != ASCIICHAT_OK) {
+      log_error("Failed to send SESSION_CREATE for key %zu/%zu", key_idx + 1, session->num_identity_keys);
+      set_error(session, result, "Failed to send SESSION_CREATE");
+      return result;
+    }
+
+    log_info("Sent SESSION_CREATE for identity key %zu/%zu", key_idx + 1, session->num_identity_keys);
   }
 
   // Receive SESSION_CREATED response
   packet_type_t type;
   void *data = NULL;
   size_t len = 0;
+  asciichat_error_t result;
 
   result = packet_receive(session->acds_socket, &type, &data, &len);
   if (result != ASCIICHAT_OK) {

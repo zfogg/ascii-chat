@@ -21,6 +21,7 @@
 #include <ascii-chat/discovery/strings.h>
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/network/webrtc/turn.h>
+#include <ascii-chat/options/options.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -144,9 +145,13 @@ typedef struct {
   bool is_initiator;
   bool is_host;
 
-  // Identity keys (Ed25519)
-  uint8_t identity_pubkey[32]; ///< Ed25519 public key for this participant
-  uint8_t identity_seckey[64]; ///< Ed25519 secret key for signing
+  // Identity keys (Ed25519) - Multi-key support
+  uint8_t identity_pubkey[32]; ///< Ed25519 public key for this participant (primary key)
+  uint8_t identity_seckey[64]; ///< Ed25519 secret key for signing (primary key)
+
+  // Multi-key support: all identity keys for multi-key handshake
+  uint8_t identity_pubkeys[MAX_IDENTITY_KEYS][32]; ///< All public keys for multi-key protocol
+  size_t num_identity_keys;                         ///< Number of identity keys loaded
 
   // ACDS connection
   socket_t acds_socket;

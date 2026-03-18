@@ -352,36 +352,64 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
   }
   acds_client_data_t *client_data = (acds_client_data_t *)client_data_ptr;
 
-  // Check if identity_pubkey is all zeros (finalize sentinel)
-  bool is_zero_key = true;
-  for (size_t i = 0; i < 32; i++) {
-    if (req->identity_pubkey[i] != 0) {
-      is_zero_key = false;
-      break;
-    }
-  }
+  // === MULTI-KEY PROTOCOL: Handle key by key_index ===
+  // total_keys > 0 indicates multi-key mode
+  // key_index == 0 starts a new sequence; subsequent keys are appended
 
-  // === MULTI-KEY PROTOCOL: Finalize session ===
-  if (is_zero_key) {
-    if (!client_data->in_multikey_session_create) {
-      // Special case: If identity verification is not required, allow single zero-key session creation
-      if (!server->config.require_server_identity) {
-        log_debug(
-            "SESSION_CREATE with zero key from %s: identity verification not required, treating as anonymous session",
-            client_ip);
-        // Store the zero key as first key and proceed to finalize immediately
-        memcpy(&client_data->pending_session, req, sizeof(acip_session_create_t));
-        memcpy(client_data->pending_session_keys[0], req->identity_pubkey, 32);
-        client_data->num_pending_keys = 1;
-        client_data->in_multikey_session_create = true;
-        // Fall through to finalize logic below
-      } else {
-        acip_send_error(transport, ERROR_INVALID_PARAM, "Zero key received but not in multi-key session creation mode");
+  if (req->total_keys > 0) {
+    // Multi-key mode: total_keys tells us how many to expect
+    if (req->key_index == 0) {
+      // First key in sequence - initialize state
+      log_info("SESSION_CREATE starting multi-key sequence from %s: expecting %u key(s)", client_ip, req->total_keys);
+
+      // Store the first packet's session parameters
+      memcpy(&client_data->pending_session, req, sizeof(acip_session_create_t));
+
+      // Allocate for keys (should already be sized for MAX_IDENTITY_KEYS, but validate bounds)
+      if (req->total_keys > MAX_IDENTITY_KEYS) {
+        log_error("Too many keys: %u (max %u)", req->total_keys, MAX_IDENTITY_KEYS);
+        acip_send_error(transport, ERROR_INVALID_PARAM, "Too many keys");
         ACDS_DESTROY_TRANSPORT(transport);
         return;
       }
+
+      client_data->num_pending_keys = 0;
+      client_data->in_multikey_session_create = true;
     }
 
+    // Store this key
+    if (req->key_index >= req->total_keys) {
+      log_error("Invalid key_index: %u >= total_keys: %u", req->key_index, req->total_keys);
+      acip_send_error(transport, ERROR_INVALID_PARAM, "Invalid key index");
+      client_data->in_multikey_session_create = false;
+      client_data->num_pending_keys = 0;
+      ACDS_DESTROY_TRANSPORT(transport);
+      return;
+    }
+
+    memcpy(client_data->pending_session_keys[req->key_index], req->identity_pubkey, 32);
+    client_data->num_pending_keys = req->key_index + 1;
+
+    log_debug("SESSION_CREATE received key %u/%u from %s", req->key_index + 1, req->total_keys, client_ip);
+
+    // Check if this is the last key
+    bool is_final_key = (req->key_index == req->total_keys - 1);
+    if (!is_final_key) {
+      // More keys expected - wait for next packet
+      log_debug("Waiting for remaining %u key(s)", req->total_keys - client_data->num_pending_keys);
+      ACDS_DESTROY_TRANSPORT(transport);
+      return;
+    }
+
+    // Final key received - finalize session
+    log_info("SESSION_CREATE finalize from %s: received all %zu identity key(s)", client_ip, client_data->num_pending_keys);
+  } else {
+    // Legacy single-key mode (total_keys == 0)
+    log_debug("SESSION_CREATE single-key mode from %s", client_ip);
+    memcpy(&client_data->pending_session, req, sizeof(acip_session_create_t));
+    memcpy(client_data->pending_session_keys[0], req->identity_pubkey, 32);
+    client_data->num_pending_keys = 1;
+    client_data->in_multikey_session_create = false;
     log_info("SESSION_CREATE finalize from %s: %zu identity key(s)", client_ip, client_data->num_pending_keys);
 
     // Auto-detect server's public IP if not provided (empty address)
