@@ -87,10 +87,11 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
   }
 
   // Check if server is using authenticated format (includes signature)
+  // Must have signature_size > 0 to distinguish from simple ephemeral-only format
   // This covers both cases:
   // 1. With identity key: ephemeral + identity + signature
   // 2. Without identity key but with signature: ephemeral + 0 + signature
-  if (payload_len == expected_auth_size) {
+  if (ctx->crypto_ctx.signature_size > 0 && payload_len == expected_auth_size) {
     // Authenticated format:
     // [ephemeral:public_key_size][identity:auth_public_key_size][signature:signature_size]
     log_debug("Received authenticated KEY_EXCHANGE_INIT (%zu bytes)", expected_auth_size);
