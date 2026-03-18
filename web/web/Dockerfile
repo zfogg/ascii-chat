@@ -8,14 +8,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends bash git && npm
 
 WORKDIR /app
 
+# Copy dependency files first for layer caching
+COPY bun.lock web/bun.lock
+COPY web/package.json web/
+COPY web/discovery/package.json web/discovery/
+COPY web/web/package.json web/web/
+COPY web/www/package.json web/www/
+COPY web/packages web/packages
+
+# Clean install dependencies (from web root where monorepo is)
+RUN cd web && bun install
+
 # Copy entire monorepo (node_modules excluded via .dockerignore)
 COPY . .
 
 # Pass SOURCE_COMMIT from Coolify as environment variable for build-time use
 ENV SOURCE_COMMIT=${SOURCE_COMMIT}
-
-# Clean install dependencies with no cache (from web root where monorepo is)
-RUN cd web && bun install --no-cache
 
 # Build web
 FROM base AS builder
@@ -24,21 +32,29 @@ ENV VITE_DISCOVERY_API_BASE=${VITE_DISCOVERY_API_BASE:-http://localhost:5173}
 RUN cd web/web && bun run build
 RUN test -d /app/web/web/dist || (echo "ERROR: dist directory not created during build" && ls -la && exit 1)
 
+# Caddy stage
+FROM caddy:alpine AS caddy
+
 # Production stage
-FROM caddy:alpine
+FROM node:22-alpine
 
 ARG NODE_ENV=development
 ENV NODE_ENV=${NODE_ENV}
 
-RUN apk add --no-cache curl
+RUN apk add curl && npm install -g bun@1.3.10
+
+COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
+COPY web/web/Caddyfile /etc/caddy/Caddyfile
 
 WORKDIR /app/web
-
 COPY --from=builder /app/web/web/dist ./dist
-COPY web/web/Caddyfile /etc/caddy/Caddyfile
+COPY --from=builder /app/web/web/package.json ./package.json
+COPY --from=builder /app/web/bun.lock ./bun.lock
+
 EXPOSE 3000
+
+CMD ["bun", "run", "start:caddy"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=3s --retries=3 \
   CMD curl -f http://localhost/
 
-CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]

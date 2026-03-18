@@ -9,14 +9,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends bash curl git w
 
 WORKDIR /app
 
+# Copy dependency files first for layer caching
+COPY bun.lock web/bun.lock
+COPY web/package.json web/
+COPY web/discovery/package.json web/discovery/
+COPY web/web/package.json web/web/
+COPY web/www/package.json web/www/
+COPY web/packages web/packages
+
+# Clean install dependencies with no cache (from web root where monorepo is)
+RUN cd web && bun install
+
 # Copy entire monorepo (node_modules excluded via .dockerignore)
 COPY . .
 
 # Pass SOURCE_COMMIT from Coolify as environment variable for build-time use
 ENV SOURCE_COMMIT=${SOURCE_COMMIT}
-
-# Clean install dependencies with no cache (from web root where monorepo is)
-RUN cd web && bun install --no-cache
 
 # Build www
 FROM base AS builder
@@ -41,18 +49,18 @@ COPY --from=builder /app/web/node_modules ./node_modules
 COPY --from=builder /app/web/bun.lock ./bun.lock
 COPY --from=builder /app/web/package.json ./package.json
 COPY --from=builder /app/web/www ./www
-COPY --from=builder /app/web/web ./web
-COPY --from=builder /app/web/discovery ./discovery
 COPY --from=builder /app/web/packages ./packages
-ENV API_PORT=3001
-EXPOSE 80 3001
 
 COPY --from=builder /app/web/www/Caddyfile /etc/caddy/Caddyfile
 
 WORKDIR /app/web/www
 
+ENV API_PORT=3001
+EXPOSE 80 3001
+
+CMD ["bun", "run", "start:caddy"]
+
 # Health check for both Caddy and API server
 HEALTHCHECK --interval=30s --timeout=1.5s --start-period=3s --retries=3 \
   CMD curl -f http://localhost/api/health || exit 1
 
-CMD ["bun", "run", "start:caddy"]
