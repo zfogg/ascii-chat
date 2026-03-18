@@ -568,11 +568,20 @@ static asciichat_error_t create_session(discovery_session_t *session) {
   SAFE_STRNCPY(create_msg.server_address, "127.0.0.1", sizeof(create_msg.server_address));
   create_msg.server_port = ACIP_HOST_DEFAULT_PORT;
 
-  // Send SESSION_CREATE
+  // Send SESSION_CREATE with identity key
   asciichat_error_t result =
       packet_send(session->acds_socket, PACKET_TYPE_ACIP_SESSION_CREATE, &create_msg, sizeof(create_msg));
   if (result != ASCIICHAT_OK) {
     set_error(session, result, "Failed to send SESSION_CREATE");
+    return result;
+  }
+
+  // Send SESSION_CREATE with zero key to finalize (multi-key protocol)
+  acip_session_create_t finalize_msg;
+  memset(&finalize_msg, 0, sizeof(finalize_msg));
+  result = packet_send(session->acds_socket, PACKET_TYPE_ACIP_SESSION_CREATE, &finalize_msg, sizeof(finalize_msg));
+  if (result != ASCIICHAT_OK) {
+    set_error(session, result, "Failed to send SESSION_CREATE finalize");
     return result;
   }
 

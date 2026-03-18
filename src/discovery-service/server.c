@@ -877,13 +877,17 @@ void *acds_client_handler(void *arg) {
     return NULL;
   }
 
-  // Step 3: Complete handshake (verify and finalize)
-  handshake_result = crypto_handshake_server_complete_socket(&client_data->handshake_ctx, client_socket);
-  if (handshake_result != ASCIICHAT_OK) {
-    log_warn("Crypto handshake complete failed for client %s", client_ip);
-    tcp_server_remove_client(&server->tcp_server, client_socket);
-    SAFE_FREE(ctx);
-    return NULL;
+  // Step 3: Complete handshake (verify and finalize) - skip if already complete
+  if (client_data->handshake_ctx.state != CRYPTO_HANDSHAKE_READY) {
+    handshake_result = crypto_handshake_server_complete_socket(&client_data->handshake_ctx, client_socket);
+    if (handshake_result != ASCIICHAT_OK) {
+      log_warn("Crypto handshake complete failed for client %s", client_ip);
+      tcp_server_remove_client(&server->tcp_server, client_socket);
+      SAFE_FREE(ctx);
+      return NULL;
+    }
+  } else {
+    log_debug("Crypto handshake already complete from auth_challenge step for client %s", client_ip);
   }
 
   client_data->handshake_complete = true;
