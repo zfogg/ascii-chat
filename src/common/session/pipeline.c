@@ -231,56 +231,6 @@ static void *pipeline_capture_thread(void *arg) {
             continue;
         }
 
-        // Check snapshot mode elapsed time (measure from first capture, not first render)
-        if (snapshot_mode) {
-            uint64_t now_ns = time_get_ns();
-
-            // Set first capture timestamp on first frame (only once)
-            if (g_snapshot_first_capture_ns == 0) {
-                g_snapshot_first_capture_ns = now_ns;
-                log_info("[SNAPSHOT_CAPTURE] First frame captured at %llu ns", (unsigned long long)now_ns);
-            }
-
-            // Calculate elapsed time from first capture
-            double elapsed = (double)(now_ns - g_snapshot_first_capture_ns) / NS_PER_SEC_INT;
-            double snapshot_delay = GET_OPTION(snapshot_delay);
-
-            if (elapsed >= snapshot_delay) {
-                log_info("[PIPELINE_CAPTURE] Snapshot video elapsed=%.3f reached delay=%.2f - stopping capture but waiting for encode queue to drain",
-                         elapsed, snapshot_delay);
-
-                // Update with actual measured duration so encoder can scale frames accurately
-                extern uint64_t g_snapshot_actual_duration_ms;
-                extern uint64_t g_snapshot_last_capture_elapsed_ns;
-                uint64_t actual_ms = (uint64_t)(elapsed * 1000.0);
-                g_snapshot_actual_duration_ms = actual_ms;
-                uint64_t last_frame_elapsed_ns = now_ns - g_snapshot_first_capture_ns;
-                g_snapshot_last_capture_elapsed_ns = last_frame_elapsed_ns;
-                log_info("[PIPELINE_CAPTURE] g_snapshot_actual_duration_ms=%llu, last_capture_elapsed_ns=%llu",
-                         (unsigned long long)actual_ms, (unsigned long long)last_frame_elapsed_ns);
-
-                // Wait for encode queue to drain (all buffered frames processed)
-                // This ensures slow encoders can catch up and encode all captured frames
-                if (pipeline->has_render_file) {
-                    while (frame_queue_count(pipeline->encode_queue) > 0) {
-                        log_debug("[PIPELINE_CAPTURE] Waiting for encode queue to drain (%d frames pending)",
-                                 frame_queue_count(pipeline->encode_queue));
-                        platform_sleep_ns(10 * NS_PER_MS_INT);
-                    }
-                    log_info("[PIPELINE_CAPTURE] Encode queue drained, sending EOF sentinel");
-                }
-
-                // Push EOF sentinels (zero-initialized)
-                pipeline_frame_t *sentinel1 = SAFE_CALLOC(1, sizeof(*sentinel1), pipeline_frame_t *);
-                frame_queue_push(pipeline->display_queue, sentinel1, 10 * NS_PER_MS_INT);
-                if (pipeline->has_render_file) {
-                    pipeline_frame_t *sentinel2 = SAFE_CALLOC(1, sizeof(*sentinel2), pipeline_frame_t *);
-                    frame_queue_push(pipeline->encode_queue, sentinel2, 10 * NS_PER_MS_INT);
-                }
-                break;
-            }
-        }
-
         // Respect configured FPS
         session_capture_sleep_for_fps(pipeline->capture);
 
@@ -317,6 +267,58 @@ static void *pipeline_capture_thread(void *arg) {
         } else {
             log_warn_every(1000 * NS_PER_MS_INT, "[PIPELINE_CAPTURE] has_render_file=false, NOT encoding frames");
             free_frame(frame);
+        }
+
+        // Check snapshot mode elapsed time AFTER queueing frame (ensure at least 1 frame is queued)
+        if (snapshot_mode) {
+            uint64_t now_ns = time_get_ns();
+
+            // Set first capture timestamp on first frame (only once)
+            if (g_snapshot_first_capture_ns == 0) {
+                g_snapshot_first_capture_ns = now_ns;
+                log_info("[SNAPSHOT_CAPTURE] First frame captured at %llu ns", (unsigned long long)now_ns);
+            }
+
+            // Calculate elapsed time from first capture
+            double elapsed = (double)(now_ns - g_snapshot_first_capture_ns) / NS_PER_SEC_INT;
+            double snapshot_delay = GET_OPTION(snapshot_delay);
+
+            if (elapsed >= snapshot_delay) {
+                log_info("[PIPELINE_CAPTURE] Snapshot video elapsed=%.3f reached delay=%.2f - stopping capture but waiting for encode queue to drain",
+                         elapsed, snapshot_delay);
+
+                // Update with actual measured duration so encoder can scale frames accurately
+                extern uint64_t g_snapshot_actual_duration_ms;
+                extern uint64_t g_snapshot_last_capture_elapsed_ns;
+                uint64_t actual_ms = (uint64_t)(elapsed * 1000.0);
+                g_snapshot_actual_duration_ms = actual_ms;
+                uint64_t last_frame_elapsed_ns = now_ns - g_snapshot_first_capture_ns;
+                g_snapshot_last_capture_elapsed_ns = last_frame_elapsed_ns;
+                log_info("[PIPELINE_CAPTURE] g_snapshot_actual_duration_ms=%llu, last_capture_elapsed_ns=%llu",
+                         (unsigned long long)actual_ms, (unsigned long long)last_frame_elapsed_ns);
+
+                // Wait for encode queue to drain (all buffered frames processed)
+                // This ensures slow encoders can catch up and encode all captured frames
+                // Skip wait if snapshot_delay is 0 (immediate exit after 1 frame)
+                double snapshot_delay = GET_OPTION(snapshot_delay);
+                if (pipeline->has_render_file && snapshot_delay > 0) {
+                    while (frame_queue_count(pipeline->encode_queue) > 0) {
+                        log_debug("[PIPELINE_CAPTURE] Waiting for encode queue to drain (%d frames pending)",
+                                 frame_queue_count(pipeline->encode_queue));
+                        platform_sleep_ns(10 * NS_PER_MS_INT);
+                    }
+                    log_info("[PIPELINE_CAPTURE] Encode queue drained, sending EOF sentinel");
+                }
+
+                // Push EOF sentinels (zero-initialized)
+                pipeline_frame_t *sentinel1 = SAFE_CALLOC(1, sizeof(*sentinel1), pipeline_frame_t *);
+                frame_queue_push(pipeline->display_queue, sentinel1, 10 * NS_PER_MS_INT);
+                if (pipeline->has_render_file) {
+                    pipeline_frame_t *sentinel2 = SAFE_CALLOC(1, sizeof(*sentinel2), pipeline_frame_t *);
+                    frame_queue_push(pipeline->encode_queue, sentinel2, 10 * NS_PER_MS_INT);
+                }
+                break;
+            }
         }
     }
 
