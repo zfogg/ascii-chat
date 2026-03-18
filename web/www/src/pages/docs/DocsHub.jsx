@@ -16,86 +16,94 @@ export default function DocsHub() {
     ]);
   }, []);
 
+  // Color palette for randomization
+  const colorOptions = [
+    { colorClass: "accent-purple", textClass: "text-purple-300" },
+    { colorClass: "accent-pink", textClass: "text-pink-300" },
+    { colorClass: "accent-cyan", textClass: "text-cyan-300" },
+    { colorClass: "accent-teal", textClass: "text-teal-300" },
+    { colorClass: "accent-green", textClass: "text-green-300" },
+    { colorClass: "accent-yellow", textClass: "text-yellow-300" },
+    { colorClass: "accent-blue", textClass: "text-blue-300" },
+    { colorClass: "accent-orange", textClass: "text-orange-300" },
+    { colorClass: "accent-indigo", textClass: "text-indigo-300" },
+    { colorClass: "accent-red", textClass: "text-red-300" },
+  ];
+
+  const getRandomColor = () => {
+    return colorOptions[Math.floor(Math.random() * colorOptions.length)];
+  };
+
   const docSections = [
     {
       icon: "⚙️",
       title: "Configuration",
       description: "Config files, options, color schemes, shell completions",
       to: "/docs/configuration",
-      colorClass: "accent-purple",
-      textClass: "text-purple-300",
+      ...getRandomColor(),
     },
     {
       icon: "🎥",
       title: "Hardware",
       description: "Webcams, microphones, speakers, keyboard shortcuts",
       to: "/docs/hardware",
-      colorClass: "accent-pink",
-      textClass: "text-pink-300",
+      ...getRandomColor(),
     },
     {
       icon: "🖥️",
       title: "Terminal",
       description: "Color modes, render modes, dimensions, capabilities",
       to: "/docs/terminal",
-      colorClass: "accent-cyan",
-      textClass: "text-cyan-300",
+      ...getRandomColor(),
     },
     {
       icon: "📸",
       title: "Snapshot Mode",
       description: "Single-frame capture, scripting, automation examples",
       to: "/docs/snapshot",
-      colorClass: "accent-teal",
-      textClass: "text-teal-300",
+      ...getRandomColor(),
     },
     {
       icon: "🌐",
       title: "Network",
       description: "Connections, discovery service, NAT traversal, protocols",
       to: "/docs/network",
-      colorClass: "accent-green",
-      textClass: "text-green-300",
+      ...getRandomColor(),
     },
     {
       icon: "🎬",
       title: "Media Files and URLs",
       description: "Local files, remote URLs, YouTube, live streams, FFmpeg",
       to: "/docs/media",
-      colorClass: "accent-yellow",
-      textClass: "text-yellow-300",
+      ...getRandomColor(),
     },
     {
       icon: "📖",
       title: "ascii-chat(1)",
       description: "Complete man page with all command-line options",
       to: "/man1",
-      colorClass: "accent-pink",
-      textClass: "text-pink-300",
+      ...getRandomColor(),
     },
     {
       icon: "📋",
       title: "ascii-chat(5)",
       description: "File format and configuration syntax documentation",
       to: "/man5",
-      colorClass: "accent-blue",
-      textClass: "text-blue-300",
+      ...getRandomColor(),
     },
     {
       icon: "📚",
       title: "ascii-chat-*(3)",
       description: "Source code documentation for ascii-chat and libasciichat",
       to: "/man3",
-      colorClass: "accent-teal",
-      textClass: "text-teal-300",
+      ...getRandomColor(),
     },
     {
       icon: "🔐",
       title: "Cryptography",
       description: "Encryption, authentication, SSH keys, TOFU",
       to: "/docs/crypto",
-      colorClass: "accent-purple",
-      textClass: "text-purple-300",
+      ...getRandomColor(),
     },
   ];
 
