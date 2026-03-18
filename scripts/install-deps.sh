@@ -148,6 +148,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libprotobuf-c-dev \
       libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev \
       libabsl-dev \
+      libx265-dev \
       emscripten \
       doxygen \
       dpkg-dev rpm \
@@ -307,6 +308,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       cmake ninja-build \
       musl-devel musl-gcc musl-libc-static \
       nasm \
+      libx265-devel \
       mimalloc-devel libzstd-devel zlib-devel libsodium-devel portaudio-devel opus-devel \
       criterion-devel libffi-devel sqlite-devel \
       openssl-devel \
@@ -336,6 +338,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       cmake ninja make \
       musl mimalloc \
       zstd zlib libsodium portaudio opus sqlite libdatachannel miniupnpc ffmpeg \
+      x265 \
       openssl \
       abseil-cpp \
       criterion \
