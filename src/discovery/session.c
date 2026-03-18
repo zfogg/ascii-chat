@@ -426,9 +426,9 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
     return ERROR_NETWORK_CONNECT;
   }
 
-  // Poll for connection with 100ms timeout intervals, checking exit flag each iteration
+  // Poll for connection with 500ms timeout intervals, checking exit flag each iteration
   const uint64_t start_time_ms = session_get_current_time_ms();
-  const uint64_t max_connect_timeout_ms = 10000; // 10 second hard timeout
+  const uint64_t max_connect_timeout_ms = 2000; // 2 second hard timeout
 
   while (1) {
     // Check if we should exit
@@ -451,10 +451,10 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
       return ERROR_NETWORK_CONNECT;
     }
 
-    // Set up select() timeout (100ms)
+    // Set up select() timeout (500ms)
     struct timeval tv;
     tv.tv_sec = 0;
-    tv.tv_usec = 100000; // 100ms
+    tv.tv_usec = 500000; // 500ms
 
     fd_set writefds, exceptfds;
     socket_fd_zero(&writefds);
@@ -492,20 +492,27 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
     if (socket_fd_isset(session->acds_socket, &writefds)) {
       // Verify connection succeeded by checking SO_ERROR
       int socket_errno = socket_get_error(session->acds_socket);
-      if (socket_errno != 0) {
-        log_debug("ACDS connection failed with SO_ERROR: %d", socket_errno);
-        set_error(session, ERROR_NETWORK_CONNECT, "Failed to connect to ACDS");
-        socket_close(session->acds_socket);
-        session->acds_socket = INVALID_SOCKET_VALUE;
+      if (socket_errno == 0) {
+        // Connection succeeded - restore blocking mode for subsequent operations
+        socket_set_blocking(session->acds_socket);
         freeaddrinfo(result);
-        return ERROR_NETWORK_CONNECT;
+        log_info("Connected to ACDS");
+        return ASCIICHAT_OK;
       }
 
-      // Connection succeeded - restore blocking mode for subsequent operations
-      socket_set_blocking(session->acds_socket);
+      // If EINPROGRESS, connection is still in progress, keep polling
+      if (socket_is_in_progress_error(socket_errno)) {
+        log_debug("ACDS connection still in progress");
+        continue;
+      }
+
+      // Any other error means connection failed
+      log_debug("ACDS connection failed with SO_ERROR: %d", socket_errno);
+      set_error(session, ERROR_NETWORK_CONNECT, "Failed to connect to ACDS");
+      socket_close(session->acds_socket);
+      session->acds_socket = INVALID_SOCKET_VALUE;
       freeaddrinfo(result);
-      log_info("Connected to ACDS");
-      return ASCIICHAT_OK;
+      return ERROR_NETWORK_CONNECT;
     }
   }
 }
