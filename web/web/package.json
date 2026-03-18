@@ -6,6 +6,7 @@
     "dev": "vite",
     "build": "bash scripts/build.sh",
     "preview": "vite preview",
+    "start:caddy": "caddy run --config /etc/caddy/Caddyfile",
     "vite:build": "vite build",
     "type-check": "bun x tsc --noEmit",
     "format": "prettier --write .",
