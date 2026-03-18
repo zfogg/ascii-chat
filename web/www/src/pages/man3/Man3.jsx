@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Footer from "../../components/Footer";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
 import { SITES } from "@ascii-chat/shared/utils";
@@ -16,19 +16,59 @@ import { highlightMatches } from "./utils/highlight.jsx";
  * Man3 - API documentation page for ascii-chat library
  * Composed of modular hooks and components
  */
-export default function Man3() {
+export default function Man3({ commitSha }) {
+  const [sha, setSha] = useState("master");
+
+  // Extract commit SHA from Footer after it renders
+  useEffect(() => {
+    // Try to get from Footer's commit link
+    const link = document.querySelector('a[href*="/commit/"]');
+    if (link) {
+      const match = link.href.match(/commit\/([a-f0-9]{8,})/);
+      if (match) {
+        console.log("[Man3.jsx] Got commit SHA from Footer:", match[1]);
+        setSha(match[1].substring(0, 8));
+        return;
+      }
+    }
+
+    // Fallback to prop or default
+    if (commitSha && commitSha !== "__COMMIT_SHA__") {
+      console.log("[Man3.jsx] Using commitSha prop:", commitSha);
+      setSha(commitSha);
+    } else {
+      console.log("[Man3.jsx] Using default: master");
+      setSha("master");
+    }
+  }, [commitSha]);
+
   // Load man page index
   const { manPages, loading, validPagesRef } = useManPages();
 
   // HTML transformation pipeline
-  const transforms = useHtmlTransforms(validPagesRef);
+  const transforms = useHtmlTransforms(validPagesRef, sha);
 
   // Page navigation and content loading (must be before search to maintain hook order)
   const nav = usePageNavigation(
     manPages,
     transforms.processPageContent,
     transforms.processDefinitionLinks,
+    "",
+    sha, // Pass the extracted/resolved SHA
   );
+
+  // When SHA changes, reload the current page to apply the new commit reference
+  useEffect(() => {
+    if (nav.selectedPageName && sha !== "master") {
+      console.log(
+        "[Man3.jsx] SHA changed, reloading page:",
+        nav.selectedPageName,
+        "with sha:",
+        sha,
+      );
+      nav.loadPageContent(nav.selectedPageName);
+    }
+  }, [sha, nav.selectedPageName, nav.loadPageContent]);
 
   // Search functionality
   const search = useSearch(manPages);

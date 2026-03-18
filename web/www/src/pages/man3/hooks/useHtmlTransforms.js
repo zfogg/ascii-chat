@@ -6,9 +6,10 @@ import { highlightMatchesInHTML } from "../utils/highlight.jsx";
  * Used in the preprocessing pipeline to convert raw Doxygen HTML to clean documentation
  *
  * @param {React.MutableRefObject<Set>} validPagesRef - Set of valid page names for link detection
+ * @param {string} commitSha - Git commit SHA for GitHub links
  * @returns {{ processPageContent, preprocessPageHTML, processDefinitionLinks }}
  */
-export function useHtmlTransforms(validPagesRef) {
+export function useHtmlTransforms(validPagesRef, commitSha) {
   /**
    * Parse a macro match and convert to HTML table
    */
@@ -175,33 +176,98 @@ export function useHtmlTransforms(validPagesRef) {
    * Also converts line number anchors on source pages to GitHub links
    */
   const processDefinitionLinks = useCallback(
-    (html, sourcePath, commitSha, isSourcePage = false) => {
-      if (!sourcePath || !commitSha || commitSha === "unknown") return html;
+    (html, sourcePath, passedCommitSha, isSourcePage = false) => {
+      // Get the commit SHA - use passed value, then hook value, finally default to master
+      const sha = passedCommitSha || commitSha;
+      const githubRef = sha && sha !== "unknown" ? sha : "master";
 
-      // Transform "Definition at line X of file Y" text to add GitHub links with commit hash
-      // Use \s* to handle whitespace/newlines between "of file" and the filename
-      let result = html.replace(
-        /Definition at line <b>(\d+)<\/b> of file\s*<b>([^<]+)<\/b>/g,
-        (_, lineNum, filename) =>
-          `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}#L${lineNum}" ` +
+      console.log(
+        "[processDefinitionLinks]",
+        JSON.stringify({
+          passedCommitSha,
+          commitSha,
+          sha,
+          githubRef,
+          sourcePath,
+          isSourcePage,
+          htmlLength: html?.length || 0,
+        }),
+      );
+
+      // Log a sample of the input HTML
+      const htmlSample = html
+        ?.substring(0, 1000)
+        .replace(/\n/g, "\\n")
+        .substring(0, 100);
+      console.log("[processDefinitionLinks] HTML sample:", htmlSample);
+
+      // Create fresh regex for each call to avoid state issues
+      // Try multiple patterns to handle different HTML formatting
+      let definitionRegex =
+        /Definition at line <b>(\d+)<\/b> of file\s*<b>([^<]+)<\/b>/g;
+      let matches = Array.from(html.matchAll(definitionRegex));
+
+      // If no matches, try more flexible pattern (handle extra tags/attributes)
+      if (matches.length === 0) {
+        definitionRegex =
+          /Definition at line[^<]*<b[^>]*>(\d+)<\/b>[^<]*of file[^<]*<b[^>]*>([^<]+)<\/b>/g;
+        matches = Array.from(html.matchAll(definitionRegex));
+        console.log(
+          "[processDefinitionLinks] No matches with strict regex, trying flexible pattern. Found:",
+          matches.length,
+        );
+      } else {
+        console.log(
+          "[processDefinitionLinks] Found",
+          matches.length,
+          "matches with strict regex",
+        );
+      }
+
+      console.log(
+        "[processDefinitionLinks] Regex patterns tested, final match count:",
+        matches.length,
+      );
+
+      // Transform "Definition at line X of file Y" text to add GitHub links
+      // Use flexible regex to match the actual pattern found
+      const transformRegex =
+        /Definition at line[^<]*<b[^>]*>(\d+)<\/b>[^<]*of file[^<]*<b[^>]*>([^<]+)<\/b>/g;
+      let result = html.replace(transformRegex, (match, lineNum, filename) => {
+        const filepath = sourcePath || filename.trim();
+        const link =
+          `<a href="https://github.com/zfogg/ascii-chat/blob/${githubRef}/${filepath}#L${lineNum}" ` +
           `target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">` +
-          `Definition at line <b>${lineNum}</b> of file <b>${filename}</b></a>`,
+          `Definition at line <b>${lineNum}</b> of file <b>${filename}</b></a>`;
+        console.log(
+          "[processDefinitionLinks] Created link for line",
+          lineNum,
+          "file",
+          filename.substring(0, 30),
+        );
+        return link;
+      });
+      console.log(
+        "[processDefinitionLinks] Transform complete, HTML changed:",
+        result !== html,
+        "- replacements made:",
+        (html.match(transformRegex) || []).length,
       );
 
       // On source pages, transform line number anchors to GitHub links
       // e.g., <a id="l00022">22</a> becomes <a href="...#L22" ...>22</a>
-      if (isSourcePage) {
+      if (isSourcePage && sourcePath) {
         result = result.replace(
           /<a\s+id="l(\d+)"[^>]*>(\d+)<\/a>/g,
           (_, lineNum, displayNum) =>
-            `<a id="l${lineNum}" href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}#L${lineNum}" ` +
+            `<a id="l${lineNum}" href="https://github.com/zfogg/ascii-chat/blob/${githubRef}/${sourcePath}#L${lineNum}" ` +
             `target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">${displayNum}</a>`,
         );
       }
 
       return result;
     },
-    [],
+    [commitSha],
   );
 
   /**
@@ -402,6 +468,14 @@ export function useHtmlTransforms(validPagesRef) {
       // Step 1: Transform macros to tables
       let processed = transformMacrosInHTML(html);
 
+      // Step 1.5: Add GitHub links BEFORE transforming functions (preserve "Definition at line" structure)
+      processed = processDefinitionLinks(
+        processed,
+        sourcePath,
+        commitSha,
+        isSourcePage,
+      );
+
       // Step 1b: Transform functions to tables
       processed = transformFunctionsInHTML(processed);
 
@@ -439,18 +513,10 @@ export function useHtmlTransforms(validPagesRef) {
         '<a id="$1">\u200B</a>',
       );
 
-      // Step 5: Add GitHub links to definition references
-      processed = processDefinitionLinks(
-        processed,
-        sourcePath,
-        commitSha,
-        isSourcePage,
-      );
-
-      // Step 6: Transform filenames to man3 links (in HTML)
+      // Step 5: Transform filenames to man3 links (in HTML)
       processed = transformFilenameLinksInHTML(processed);
 
-      // Step 7: Highlight search matches
+      // Step 6: Highlight search matches
       processed = highlightMatchesInHTML(processed, searchQuery);
 
       return processed;

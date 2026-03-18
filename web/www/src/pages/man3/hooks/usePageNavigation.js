@@ -5,16 +5,16 @@ import { setBreadcrumbSchema } from "../../../utils/breadcrumbs";
  * Hook for managing page navigation, loading, history, and scrolling
  *
  * @param {Array} manPages - Full page index
- * @param {Function} processPageContent - HTML preprocessing function
- * @param {Function} processDefinitionLinks - GitHub link processor
+ * @param {Function} processPageContent - HTML preprocessing function (includes GitHub link processing)
  * @param {string} searchQuery - Current search query (optional, defaults to empty string)
+ * @param {string} providedCommitSha - Git commit SHA for GitHub links
  * @returns {{ selectedPageContent, selectedPageName, pageNotFound, targetLineNumber, targetSnippetIndex, targetSnippetText, contentViewerRef, loadPageContent, and state setters }}
  */
 export function usePageNavigation(
   manPages,
   processPageContent,
-  processDefinitionLinks,
   searchQuery = "",
+  providedCommitSha = null,
 ) {
   const [selectedPageContent, setSelectedPageContent] = useState(null);
   const [selectedPageName, setSelectedPageName] = useState(null);
@@ -23,6 +23,9 @@ export function usePageNavigation(
   const [targetSnippetIndex, setTargetSnippetIndex] = useState(null);
   const [targetSnippetText, setTargetSnippetText] = useState(null);
   const contentViewerRef = useRef(null);
+  const commitSha = providedCommitSha || "master";
+
+  console.log("[usePageNavigation] commitSha:", commitSha);
 
   // Load page content from file and update state
   const loadPageContent = useCallback(
@@ -63,18 +66,9 @@ export function usePageNavigation(
           // Read current search query from URL to ensure we use latest value
           const currentParams = new URLSearchParams(window.location.search);
           const currentSearchQuery = currentParams.get("q") || searchQuery;
-          let processedContent = processPageContent(html, currentSearchQuery);
 
-          // Add GitHub links for "Definition at line X" text and line numbers
-          const page = manPages.find((p) => p.name === pageName);
-          const sourcePath = page?.sourcePath;
-          const isSourcePage = pageName?.endsWith("_source") || false;
-          processedContent = processDefinitionLinks(
-            processedContent,
-            sourcePath,
-            __COMMIT_SHA__,
-            isSourcePage,
-          );
+          // processPageContent now handles all transformations including GitHub links (step 1.5)
+          const processedContent = processPageContent(html, currentSearchQuery);
 
           setSelectedPageContent(processedContent);
           setSelectedPageName(pageName);
@@ -115,7 +109,7 @@ export function usePageNavigation(
         })
         .catch((e) => console.error("Failed to load page:", e));
     },
-    [processPageContent, processDefinitionLinks, searchQuery, manPages],
+    [processPageContent, searchQuery, manPages, commitSha],
   );
 
   // Initialize breadcrumbs and load initial page from URL
@@ -516,46 +510,6 @@ export function usePageNavigation(
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [loadPageContent]);
-
-  // Convert "Definition at line X of file Y" text to GitHub links
-  useEffect(() => {
-    const commitSha = __COMMIT_SHA__;
-    if (!commitSha || commitSha === "unknown") return;
-
-    if (!contentViewerRef.current) return;
-
-    const viewer = contentViewerRef.current;
-
-    // Find all text nodes containing "Definition at line"
-    const walker = document.createTreeWalker(
-      viewer,
-      NodeFilter.SHOW_TEXT,
-      null,
-      false
-    );
-
-    const nodesToProcess = [];
-    let node;
-    while ((node = walker.nextNode())) {
-      if (node.textContent.includes("Definition at line")) {
-        nodesToProcess.push(node);
-      }
-    }
-
-    // Replace "Definition at line X of file Y" with GitHub links
-    for (const textNode of nodesToProcess) {
-      const parent = textNode.parentElement;
-      if (!parent) continue;
-
-      parent.innerHTML = parent.innerHTML.replace(
-        /Definition at line\s*<b>?(\d+)<\/b>?\s*of file\s*<b>?([^<]+)<\/b>?\.?/g,
-        (match, lineNum, filename) => {
-          const filepath = filename.trim();
-          return `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${filepath}#L${lineNum}" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">Definition at line <b>${lineNum}</b> of file <b>${filepath}</b></a>`;
-        }
-      );
-    }
-  }, [selectedPageContent]);
 
   // Functions table DOM transform
   useEffect(() => {
