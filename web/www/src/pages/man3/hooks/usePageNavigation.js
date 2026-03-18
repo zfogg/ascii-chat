@@ -120,7 +120,7 @@ export function usePageNavigation(
         })
         .catch((e) => console.error("Failed to load page:", e));
     },
-    [processPageContent, searchQuery, manPages, commitSha],
+    [processPageContent, processDefinitionLinks, searchQuery, manPages, commitSha],
   );
 
   // Initialize breadcrumbs and load initial page from URL
