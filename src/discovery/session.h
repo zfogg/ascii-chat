@@ -116,7 +116,6 @@ typedef bool (*discovery_should_exit_fn)(void *user_data);
 typedef enum {
   DISCOVERY_STATE_INIT,             ///< Initial state
   DISCOVERY_STATE_CONNECTING_ACDS,  ///< Connecting to ACDS
-  DISCOVERY_STATE_HANDSHAKING,      ///< Performing crypto handshake with ACDS
   DISCOVERY_STATE_CREATING_SESSION, ///< Creating new session
   DISCOVERY_STATE_JOINING_SESSION,  ///< Joining existing session
   DISCOVERY_STATE_WAITING_PEER,     ///< Waiting for peer to join (initiator)
