@@ -86,9 +86,11 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     return validation_result;
   }
 
-  // Check if server is using authentication (auth_public_key_size > 0 means
-  // authenticated format)
-  if (ctx->crypto_ctx.auth_public_key_size > 0 && payload_len == expected_auth_size) {
+  // Check if server is using authenticated format (includes signature)
+  // This covers both cases:
+  // 1. With identity key: ephemeral + identity + signature
+  // 2. Without identity key but with signature: ephemeral + 0 + signature
+  if (payload_len == expected_auth_size) {
     // Authenticated format:
     // [ephemeral:public_key_size][identity:auth_public_key_size][signature:signature_size]
     log_debug("Received authenticated KEY_EXCHANGE_INIT (%zu bytes)", expected_auth_size);
