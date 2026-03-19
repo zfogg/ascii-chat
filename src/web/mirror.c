@@ -242,9 +242,7 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
     }
   }
 
-  // Digital rain disabled for WASM - causes excessive memory allocation and heap exhaustion
-  // WASM heap is limited to 32MB, and digital rain grid allocation consumes significant space
-  bool matrix_rain = false;  // Force disable - ignore options setting
+  bool matrix_rain = GET_OPTION(matrix_rain);
   if (matrix_rain) {
     // Initialize digital rain context if needed or dimensions changed
     if (!g_digital_rain || g_digital_rain->num_columns != dst_width || g_digital_rain->num_rows != dst_height) {

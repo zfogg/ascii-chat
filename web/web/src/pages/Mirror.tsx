@@ -218,13 +218,11 @@ export function MirrorPage() {
         );
       }
 
-      const t0 = performance.now();
       const asciiArt = convertFrameToAscii(
         frame.data,
         frame.width,
         frame.height,
       );
-      const t1 = performance.now();
       if (!asciiArt) {
         if (debugCountRef.current % 300 === 0) {
           console.log("[Mirror] convertFrameToAscii returned empty");

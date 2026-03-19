@@ -266,9 +266,17 @@ char *image_print_color(const image_t *p, const char *palette) {
 
     for (int x = 0; x < w; x++) {
       const rgb_pixel_t pixel = pix[row_offset + x];
+#ifdef __EMSCRIPTEN__
+      // In WASM/xterm.js builds, quantize RGB to reduce unique colors.
+      // xterm.js batches consecutive same-colored cells into single draw calls,
+      // so fewer unique colors = fewer batches = dramatically faster rendering.
+      // 16 levels per channel (4K colors) is visually imperceptible.
+      int r = pixel.r & 0xF0, g = pixel.g & 0xF0, b = pixel.b & 0xF0;
+#else
       int r = pixel.r, g = pixel.g, b = pixel.b;
-      // Standard ITU-R BT.601 luminance calculation
-      const int luminance = (77 * r + 150 * g + 29 * b + 128) >> 8;
+#endif
+      // Standard ITU-R BT.601 luminance calculation (uses original values for accuracy)
+      const int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
 
       // Use UTF-8 character cache for proper character selection
       uint8_t safe_luminance = clamp_rgb(luminance);
@@ -288,61 +296,6 @@ char *image_print_color(const image_t *p, const char *palette) {
   }
 
   ansi_rle_finish(&rle_ctx);
-
-  // DEBUG: Validate frame integrity right after rendering
-  // Check for incomplete ANSI sequences line by line
-  {
-    const char *line_start = lines;
-    int line_num = 0;
-    while (*line_start) {
-      const char *line_end = line_start;
-      while (*line_end && *line_end != '\n')
-        line_end++;
-
-      // Check for incomplete ANSI sequence at end of this line
-      for (const char *p = line_start; p < line_end;) {
-        if (*p == '\033' && p + 1 < line_end && *(p + 1) == '[') {
-          const char *seq_start = p;
-          p += 2;
-          // Scan for terminator (@ through ~, i.e., 0x40-0x7E)
-          while (p < line_end && !(*p >= '@' && *p <= '~'))
-            p++;
-          if (p >= line_end) {
-            // Incomplete sequence found
-            size_t incomplete_len = (size_t)(line_end - seq_start);
-            log_error("RENDER_INCOMPLETE_ANSI: Line %d (w=%d h=%d) has incomplete ANSI sequence (%zu bytes)", line_num,
-                      w, h, incomplete_len);
-            // Show the incomplete sequence
-            char debug_buf[128] = {0};
-            size_t debug_pos = 0;
-            for (const char *d = seq_start; d < line_end && debug_pos < sizeof(debug_buf) - 10; d++) {
-              unsigned char c = (unsigned char)*d;
-              if (c == '\033') {
-                debug_buf[debug_pos++] = '<';
-                debug_buf[debug_pos++] = 'E';
-                debug_buf[debug_pos++] = 'S';
-                debug_buf[debug_pos++] = 'C';
-                debug_buf[debug_pos++] = '>';
-              } else if (c >= 0x20 && c < 0x7F) {
-                debug_buf[debug_pos++] = (char)c;
-              } else {
-                debug_pos += (size_t)safe_snprintf(debug_buf + debug_pos, sizeof(debug_buf) - debug_pos, "<%02X>", c);
-              }
-            }
-            log_error("  Incomplete seq: %s", debug_buf);
-            break;
-          } else {
-            p++; // Skip terminator
-          }
-        } else {
-          p++;
-        }
-      }
-
-      line_num++;
-      line_start = *line_end ? line_end + 1 : line_end;
-    }
-  }
 
   return lines;
 }
