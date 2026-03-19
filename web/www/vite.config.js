@@ -68,6 +68,7 @@ export default defineConfig({
         "/docs/configuration",
         "/docs/hardware",
         "/docs/terminal",
+        "/docs/display",
         "/docs/snapshot",
         "/docs/network",
         "/docs/media",

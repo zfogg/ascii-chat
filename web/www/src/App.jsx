@@ -14,6 +14,7 @@ const DocsHub = lazy(() => import("./pages/docs/DocsHub"));
 const Configuration = lazy(() => import("./pages/docs/Configuration"));
 const Hardware = lazy(() => import("./pages/docs/Hardware"));
 const Terminal = lazy(() => import("./pages/docs/Terminal"));
+const Display = lazy(() => import("./pages/docs/Display"));
 const Snapshot = lazy(() => import("./pages/docs/Snapshot"));
 const Network = lazy(() => import("./pages/docs/Network"));
 const Media = lazy(() => import("./pages/docs/Media"));
@@ -37,6 +38,7 @@ export default function App() {
                   />
                   <Route path="/docs/hardware" element={<Hardware />} />
                   <Route path="/docs/terminal" element={<Terminal />} />
+                  <Route path="/docs/display" element={<Display />} />
                   <Route path="/docs/snapshot" element={<Snapshot />} />
                   <Route path="/docs/network" element={<Network />} />
                   <Route path="/docs/media" element={<Media />} />

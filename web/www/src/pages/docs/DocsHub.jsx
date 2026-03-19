@@ -52,8 +52,16 @@ export default function DocsHub() {
     {
       icon: "🖥️",
       title: "Terminal",
-      description: "Color modes, render modes, dimensions, capabilities",
+      description: "Color modes, dimensions, UTF-8, terminal capabilities",
       to: "/docs/terminal",
+      ...getRandomColor(),
+    },
+    {
+      icon: "🎨",
+      title: "Display",
+      description:
+        "Render modes, palettes, color filters, animations, framerate",
+      to: "/docs/display",
       ...getRandomColor(),
     },
     {

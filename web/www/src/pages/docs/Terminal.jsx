@@ -21,7 +21,7 @@ export default function Terminal() {
     <>
       <AsciiChatHead
         title="Terminal - ascii-chat Documentation"
-        description="Terminal color modes, render modes, dimensions, and terminal capabilities for ascii-chat."
+        description="Terminal color modes, dimensions, UTF-8 support, and terminal capabilities for ascii-chat."
         url={`${SITES.MAIN}/docs/terminal`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col flex-1">
@@ -31,8 +31,7 @@ export default function Terminal() {
               <span className="text-cyan-400">🖥️</span> Terminal Rendering
             </Heading>
             <p className="text-lg sm:text-xl text-gray-300">
-              Colors, display modes, dimensions, Unicode support, and terminal
-              capabilities for perfect rendering
+              Colors, dimensions, Unicode support, and terminal capabilities
             </p>
           </header>
 
@@ -181,80 +180,24 @@ export default function Terminal() {
             </div>
           </section>
 
-          {/* Display Modes */}
+          {/* Display & Rendering */}
           <section className="docs-section-spacing">
             <Heading level={2} className="heading-2 text-green-400">
-              📐 Display Modes
+              🎨 Display & Rendering
             </Heading>
 
-            <div className="docs-subsection-spacing">
-              <Heading level={3} className="heading-3 text-green-300 mb-3">
-                Render Modes
-              </Heading>
-              <p className="docs-paragraph">
-                Control how ASCII characters are rendered to represent
-                brightness:
-              </p>
-              <CodeBlock language="bash">
-                {
-                  "# Foreground (DEFAULT) - colored text on dark background\nascii-chat client --render-mode foreground\n\n# Background - colored background with white text\nascii-chat client --render-mode background\n\n# Half-block - Unicode blocks for 2x vertical resolution\nascii-chat mirror --render-mode half-block\n\n# Short form\nascii-chat mirror -M half-block"
-                }
-              </CodeBlock>
-              <div className="space-y-2 mt-3">
-                <div className="card-standard accent-green">
-                  <Heading
-                    level={4}
-                    className="text-green-300 font-semibold mb-2"
-                  >
-                    Render Mode Comparison
-                  </Heading>
-                  <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
-                    <li>
-                      <strong>foreground:</strong> Classic look, good
-                      compatibility
-                    </li>
-                    <li>
-                      <strong>background:</strong> Better for light terminals
-                    </li>
-                    <li>
-                      <strong>half-block:</strong> Double vertical resolution,
-                      requires UTF-8
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            <div className="docs-subsection-spacing">
-              <Heading level={3} className="heading-3 text-pink-300 mb-3">
-                ASCII Palettes
-              </Heading>
-              <p className="docs-paragraph">
-                Control which ASCII characters represent different brightness
-                levels:
-              </p>
-              <CodeBlock language="bash">
-                {
-                  '# Built-in palettes\nascii-chat mirror --palette standard   # Default\nascii-chat mirror --palette blocks      # Unicode blocks\nascii-chat mirror --palette digital     # Digital style\nascii-chat mirror --palette minimal     # Minimal detail\nascii-chat mirror --palette cool        # Alternative\n\n# Custom palette (darkest to brightest)\nascii-chat mirror --palette custom --palette-chars " .:-=+*#%@"'
-                }
-              </CodeBlock>
-            </div>
-
-            <div className="docs-subsection-spacing">
-              <Heading level={3} className="heading-3 text-yellow-300 mb-3">
-                Aspect Ratio
-              </Heading>
-              <p className="docs-paragraph">
-                By default, ascii-chat preserves aspect ratio (terminal
-                characters are ~2:1 height:width). Use <code>--stretch</code> to
-                ignore aspect ratio and fill the terminal:
-              </p>
-              <CodeBlock language="bash">
-                {
-                  "# Preserve aspect ratio (DEFAULT)\nascii-chat mirror video.mp4\n\n# Stretch to fill terminal (may distort)\nascii-chat mirror video.mp4 --stretch"
-                }
-              </CodeBlock>
-            </div>
+            <p className="docs-paragraph">
+              For render modes, ASCII palettes, color filters, animations,
+              framerate, and video transforms, see the{" "}
+              <TrackedLink
+                to="/docs/display"
+                label="display docs"
+                className="link-standard"
+              >
+                Display page
+              </TrackedLink>
+              .
+            </p>
           </section>
 
           {/* Terminal Dimensions */}
@@ -503,7 +446,7 @@ export default function Terminal() {
 
             <div className="docs-subsection-spacing">
               <Heading level={3} className="heading-3 text-blue-300 mb-3">
-                Render Mode & Display Dependencies
+                Terminal & Display Dependencies
               </Heading>
               <div className="space-y-2">
                 <div className="card-standard accent-blue">
@@ -517,19 +460,6 @@ export default function Terminal() {
                     <strong>Combination:</strong>{" "}
                     <code>--render-mode half-block</code> +{" "}
                     <code>--utf8 true</code>
-                  </p>
-                </div>
-
-                <div className="card-standard accent-blue">
-                  <Heading
-                    level={4}
-                    className="text-blue-300 font-semibold mb-2"
-                  >
-                    Custom Palette Requires UTF-8
-                  </Heading>
-                  <p className="text-gray-300 text-sm">
-                    <strong>Combination:</strong>{" "}
-                    <code>--palette blocks --utf8 true</code>
                   </p>
                 </div>
 
@@ -561,30 +491,11 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
                     level={4}
                     className="text-cyan-300 font-semibold mb-2"
                   >
-                    Maximum Quality
-                  </Heading>
-                  <CodeBlock language="bash">
-                    {`ascii-chat mirror \\
-  --color-mode truecolor \\
-  --render-mode half-block \\
-  --palette blocks \\
-  --utf8 true \\
-  --fps 60`}
-                  </CodeBlock>
-                </div>
-
-                <div className="card-standard accent-cyan">
-                  <Heading
-                    level={4}
-                    className="text-cyan-300 font-semibold mb-2"
-                  >
-                    Over SSH (Slow)
+                    Over SSH
                   </Heading>
                   <CodeBlock language="bash">
                     {`ascii-chat client example.com \\
-  --color-mode 256 \\
-  --render-mode foreground \\
-  --fps 30`}
+  --color-mode 256`}
                   </CodeBlock>
                 </div>
 
@@ -597,7 +508,6 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
                   </Heading>
                   <CodeBlock language="bash">
                     {`ascii-chat mirror -x 120 -y 40 \\
-  --snapshot -D 0 \\
   --strip-ansi > frame.txt`}
                   </CodeBlock>
                 </div>
@@ -611,8 +521,7 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
                   </Heading>
                   <CodeBlock language="bash">
                     {`COLUMNS=150 ROWS=50 ascii-chat mirror \\
-  --color true \\
-  --render-mode half-block | lolcat`}
+  --color true | tee output.txt`}
                   </CodeBlock>
                 </div>
               </div>
@@ -658,7 +567,7 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
 
             <div className="docs-subsection-spacing">
               <Heading level={3} className="heading-3 text-purple-300 mb-3">
-                Optimal Settings by Device
+                Optimal Terminal Settings
               </Heading>
               <div className="space-y-2">
                 <div className="card-standard accent-purple">
@@ -669,10 +578,7 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
                     Modern Terminal
                   </Heading>
                   <p className="text-gray-300 text-sm">
-                    <code>
-                      --color-mode truecolor --render-mode half-block --utf8
-                      true
-                    </code>
+                    <code>--color-mode truecolor --utf8 true</code>
                   </p>
                 </div>
 
@@ -681,12 +587,11 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
                     level={4}
                     className="text-purple-300 font-semibold mb-2"
                   >
-                    Slow Network
+                    Slow Network / SSH
                   </Heading>
                   <p className="text-gray-300 text-sm">
-                    <code>
-                      --color-mode 16 --render-mode foreground --fps 30
-                    </code>
+                    <code>--color-mode 16</code> or{" "}
+                    <code>--color-mode 256</code>
                   </p>
                 </div>
 
@@ -695,13 +600,24 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
                     level={4}
                     className="text-purple-300 font-semibold mb-2"
                   >
-                    Lightweight
+                    Lightweight / Scripting
                   </Heading>
                   <p className="text-gray-300 text-sm">
-                    <code>--color false --fps 20 -x 80 -y 24</code>
+                    <code>--color false -x 80 -y 24</code>
                   </p>
                 </div>
               </div>
+              <p className="text-gray-400 text-sm mt-3">
+                See also:{" "}
+                <TrackedLink
+                  to="/docs/display"
+                  label="display common setups"
+                  className="link-standard"
+                >
+                  Display common setups
+                </TrackedLink>{" "}
+                for render mode, palette, and FPS combinations.
+              </p>
             </div>
           </section>
 
