@@ -56,6 +56,7 @@ RUN --mount=type=cache,target=/build/build \
     --mount=type=cache,target=/build/.deps-cache \
     --mount=type=cache,target=/build/.git/modules \
     --mount=type=cache,target=/build/deps \
+    rm -f /build/build/CMakeCache.txt /build/build/build.ninja && \
     make CMAKE_BUILD_TYPE=Debug EXTRA_CMAKE_ARGS="-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=0.3.0"
 
 # Install to /usr/local
