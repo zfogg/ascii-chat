@@ -68,12 +68,12 @@ RUN apt-get update && \
     localedef -i en_US -f UTF-8 en_US.UTF-8 && \
     rm -rf /var/lib/apt/lists/*
 
-# Install minimal runtime dependencies (runtime libs only, no build tools)
+# Install runtime dependencies (install -dev packages for runtime libs + headers, without build tools)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      libmimalloc2 libzstd1 zlib1g libsodium23 portaudio19-dev libopus0 libsystemd0 \
-      libssl3 libminiupnpc17 libavformat60 libavcodec60 libavutil58 libswscale5 libswresample4 \
-      libwebsockets19 libvterm0 libfreetype6 libfontconfig1 \
+      libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev libsystemd-dev \
+      libssl-dev libminiupnpc-dev libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev \
+      libwebsockets-dev libvterm-dev libfreetype6-dev libfontconfig1-dev \
       ca-certificates curl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
