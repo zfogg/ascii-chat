@@ -50,11 +50,11 @@ export const API_BASE = isDev ? "http://localhost:3001" : "";
 
 /**
  * Discovery service API base URL (for fetching session strings)
- * In dev: localhost:5173 (www site's API, accessible across all sites)
+ * In dev: localhost:3001 (API server, accessible across all sites)
  * In prod: set via VITE_DISCOVERY_API_BASE environment variable
  */
 export const DISCOVERY_API_BASE = isDev
-  ? "http://localhost:5173"
+  ? "http://localhost:3001"
   : import.meta.env["VITE_DISCOVERY_API_BASE"] || "";
 
 /**
