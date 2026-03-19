@@ -6252,24 +6252,25 @@ if (platform_get_executable_path(exe_path, sizeof(exe_path))) {
 218               path_size);
 219     return false;
 220   }
-221   exe_path[len] = '\0';
-222   return true;
-223 
-224 #elif defined(__APPLE__)
-225   uint32_t bufsize = (uint32_t)path_size;
-226   int result = _NSGetExecutablePath(exe_path, &amp;bufsize);
-227   if (result != 0) {
-228     SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;_NSGetExecutablePath failed: path requires %u bytes, buffer size = %zu bytes&quot;,
-229               bufsize, path_size);
-230     return false;
-231   }
-232   return true;
-233 
-234 #else
-235   SET_ERRNO(ERROR_GENERAL, &quot;Unsupported platform - cannot get executable path&quot;);
-236   return false;
-237 #endif
-238 }</pre>
+221   // NOLINTNEXTLINE(clang-analyzer-security.ArrayBound) - len bounded by path_size check above
+222   exe_path[len] = '\0';
+223   return true;
+224 
+225 #elif defined(__APPLE__)
+226   uint32_t bufsize = (uint32_t)path_size;
+227   int result = _NSGetExecutablePath(exe_path, &amp;bufsize);
+228   if (result != 0) {
+229     SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;_NSGetExecutablePath failed: path requires %u bytes, buffer size = %zu bytes&quot;,
+230               bufsize, path_size);
+231     return false;
+232   }
+233   return true;
+234 
+235 #else
+236   SET_ERRNO(ERROR_GENERAL, &quot;Unsupported platform - cannot get executable path&quot;);
+237   return false;
+238 #endif
+239 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>errno</b>, <b>ERROR_BUFFER_OVERFLOW</b>,

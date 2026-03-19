@@ -8067,128 +8067,128 @@ yqG5PFMAAQDm8...
 =abcd
 -----END PGP PRIVATE KEY BLOCK-----
 </pre>
-<p class="Pp">Definition at line <b>652</b> of file <b>openpgp.c</b>.</p>
-<pre>653                                                                        {
-654   if (!armored_text || !ed25519_pk || !ed25519_sk) {
-655     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for armored seckey parsing&quot;);
-656   }
-657 
-658   // Find the BEGIN marker (try both &quot;PRIVATE KEY&quot; and &quot;SECRET KEY&quot; formats)
-659   const char *begin = strstr(armored_text, &quot;-----BEGIN PGP PRIVATE KEY BLOCK-----&quot;);
-660   if (!begin) {
-661     begin = strstr(armored_text, &quot;-----BEGIN PGP SECRET KEY BLOCK-----&quot;);
-662   }
-663   if (!begin) {
-664     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Missing PGP PRIVATE/SECRET KEY BLOCK BEGIN marker&quot;);
-665   }
-666 
-667   // Skip to the end of the BEGIN line
-668   const char *base64_start = strchr(begin, '\n');
-669   if (!base64_start) {
-670     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Invalid PGP armored format: no newline after BEGIN marker&quot;);
-671   }
-672   base64_start++; // Skip the newline
-673 
-674   // Find the END marker (try both formats)
-675   const char *end = strstr(base64_start, &quot;-----END PGP PRIVATE KEY BLOCK-----&quot;);
-676   if (!end) {
-677     end = strstr(base64_start, &quot;-----END PGP SECRET KEY BLOCK-----&quot;);
-678   }
-679   if (!end) {
-680     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Missing PGP PRIVATE/SECRET KEY BLOCK END marker&quot;);
-681   }
-682 
-683   // Find the checksum line (starts with '=') and exclude it
-684   const char *base64_end = end;
-685   const char *checksum = base64_end;
-686   while (checksum &gt; base64_start &amp;&amp; *checksum != '=') {
-687     checksum--;
-688   }
-689   if (*checksum == '=') {
-690     // Move back to before the checksum line
-691     while (checksum &gt; base64_start &amp;&amp; (checksum[-1] == '\n' || checksum[-1] == '\r')) {
-692       checksum--;
-693     }
-694     base64_end = checksum;
-695   }
-696 
-697   size_t base64_len = (size_t)(base64_end - base64_start);
-698 
-699   log_debug(&quot;Extracting base64 data from PGP secret key armor (%zu bytes)&quot;, base64_len);
+<p class="Pp">Definition at line <b>656</b> of file <b>openpgp.c</b>.</p>
+<pre>657                                                                        {
+658   if (!armored_text || !ed25519_pk || !ed25519_sk) {
+659     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for armored seckey parsing&quot;);
+660   }
+661 
+662   // Find the BEGIN marker (try both &quot;PRIVATE KEY&quot; and &quot;SECRET KEY&quot; formats)
+663   const char *begin = strstr(armored_text, &quot;-----BEGIN PGP PRIVATE KEY BLOCK-----&quot;);
+664   if (!begin) {
+665     begin = strstr(armored_text, &quot;-----BEGIN PGP SECRET KEY BLOCK-----&quot;);
+666   }
+667   if (!begin) {
+668     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Missing PGP PRIVATE/SECRET KEY BLOCK BEGIN marker&quot;);
+669   }
+670 
+671   // Skip to the end of the BEGIN line
+672   const char *base64_start = strchr(begin, '\n');
+673   if (!base64_start) {
+674     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Invalid PGP armored format: no newline after BEGIN marker&quot;);
+675   }
+676   base64_start++; // Skip the newline
+677 
+678   // Find the END marker (try both formats)
+679   const char *end = strstr(base64_start, &quot;-----END PGP PRIVATE KEY BLOCK-----&quot;);
+680   if (!end) {
+681     end = strstr(base64_start, &quot;-----END PGP SECRET KEY BLOCK-----&quot;);
+682   }
+683   if (!end) {
+684     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Missing PGP PRIVATE/SECRET KEY BLOCK END marker&quot;);
+685   }
+686 
+687   // Find the checksum line (starts with '=') and exclude it
+688   const char *base64_end = end;
+689   const char *checksum = base64_end;
+690   while (checksum &gt; base64_start &amp;&amp; *checksum != '=') {
+691     checksum--;
+692   }
+693   if (*checksum == '=') {
+694     // Move back to before the checksum line
+695     while (checksum &gt; base64_start &amp;&amp; (checksum[-1] == '\n' || checksum[-1] == '\r')) {
+696       checksum--;
+697     }
+698     base64_end = checksum;
+699   }
 700 
-701   // Decode base64 to binary OpenPGP packets
-702   uint8_t *binary_data;
-703   size_t binary_len;
-704   asciichat_error_t decode_result = openpgp_base64_decode(base64_start, base64_len, &amp;binary_data, &amp;binary_len);
-705   if (decode_result != ASCIICHAT_OK) {
-706     return decode_result;
-707   }
-708 
-709   log_debug(&quot;Decoded %zu bytes of OpenPGP secret key packet data&quot;, binary_len);
-710 
-711   // Parse OpenPGP packets to find the secret key packet (tag 5)
-712   size_t offset = 0;
-713   bool found_seckey = false;
+701   size_t base64_len = (size_t)(base64_end - base64_start);
+702 
+703   log_debug(&quot;Extracting base64 data from PGP secret key armor (%zu bytes)&quot;, base64_len);
+704 
+705   // Decode base64 to binary OpenPGP packets
+706   uint8_t *binary_data;
+707   size_t binary_len;
+708   asciichat_error_t decode_result = openpgp_base64_decode(base64_start, base64_len, &amp;binary_data, &amp;binary_len);
+709   if (decode_result != ASCIICHAT_OK) {
+710     return decode_result;
+711   }
+712 
+713   log_debug(&quot;Decoded %zu bytes of OpenPGP secret key packet data&quot;, binary_len);
 714 
-715   while (offset &lt; binary_len) {
-716     openpgp_packet_header_t header;
-717     asciichat_error_t header_result = openpgp_parse_packet_header(binary_data + offset, binary_len - offset, &amp;header);
-718     if (header_result != ASCIICHAT_OK) {
-719       SAFE_FREE(binary_data);
-720       return header_result;
-721     }
-722 
-723     log_debug(&quot;Packet at offset %zu: tag=%u, length=%zu&quot;, offset, header.tag, header.length);
-724 
-725     // Check if this is a secret key packet (tag 5)
-726     if (header.tag == OPENPGP_TAG_SECRET_KEY) {
-727       openpgp_secret_key_t seckey;
-728       asciichat_error_t parse_result =
-729           openpgp_parse_secret_key_packet(binary_data + offset + header.header_len, header.length, &amp;seckey);
-730 
-731       if (parse_result == ASCIICHAT_OK) {
-732         // Check if key is encrypted
-733         if (seckey.is_encrypted) {
-734           SAFE_FREE(binary_data);
-735           log_debug(&quot;Detected encrypted GPG key, attempting to decrypt with passphrase&quot;);
-736 
-737           // Decrypt the key using gpg binary
-738           char *decrypted_text = NULL;
-739           asciichat_error_t decrypt_result = openpgp_decrypt_with_gpg(armored_text, &amp;decrypted_text);
-740           if (decrypt_result != ASCIICHAT_OK) {
-741             return decrypt_result;
-742           }
-743 
-744           // Recursively parse the decrypted key
-745           asciichat_error_t recursive_result = openpgp_parse_armored_seckey(decrypted_text, ed25519_pk, ed25519_sk);
-746           SAFE_FREE(decrypted_text);
-747           return recursive_result;
-748         }
-749 
-750         // Unencrypted key - extract directly
-751         memcpy(ed25519_pk, seckey.pubkey, 32);
-752         memcpy(ed25519_sk, seckey.seckey, 32);
-753         found_seckey = true;
-754         log_debug(&quot;Extracted Ed25519 keypair from OpenPGP armored secret key block&quot;);
-755         break;
-756       } else {
-757         // Not an Ed25519 key, try next packet
-758         log_debug(&quot;Skipping non-Ed25519 secret key packet&quot;);
-759       }
-760     }
-761 
-762     // Move to next packet
-763     offset += header.header_len + header.length;
-764   }
+715   // Parse OpenPGP packets to find the secret key packet (tag 5)
+716   size_t offset = 0;
+717   bool found_seckey = false;
+718 
+719   while (offset &lt; binary_len) {
+720     openpgp_packet_header_t header;
+721     asciichat_error_t header_result = openpgp_parse_packet_header(binary_data + offset, binary_len - offset, &amp;header);
+722     if (header_result != ASCIICHAT_OK) {
+723       SAFE_FREE(binary_data);
+724       return header_result;
+725     }
+726 
+727     log_debug(&quot;Packet at offset %zu: tag=%u, length=%zu&quot;, offset, header.tag, header.length);
+728 
+729     // Check if this is a secret key packet (tag 5)
+730     if (header.tag == OPENPGP_TAG_SECRET_KEY) {
+731       openpgp_secret_key_t seckey;
+732       asciichat_error_t parse_result =
+733           openpgp_parse_secret_key_packet(binary_data + offset + header.header_len, header.length, &amp;seckey);
+734 
+735       if (parse_result == ASCIICHAT_OK) {
+736         // Check if key is encrypted
+737         if (seckey.is_encrypted) {
+738           SAFE_FREE(binary_data);
+739           log_debug(&quot;Detected encrypted GPG key, attempting to decrypt with passphrase&quot;);
+740 
+741           // Decrypt the key using gpg binary
+742           char *decrypted_text = NULL;
+743           asciichat_error_t decrypt_result = openpgp_decrypt_with_gpg(armored_text, &amp;decrypted_text);
+744           if (decrypt_result != ASCIICHAT_OK) {
+745             return decrypt_result;
+746           }
+747 
+748           // Recursively parse the decrypted key
+749           asciichat_error_t recursive_result = openpgp_parse_armored_seckey(decrypted_text, ed25519_pk, ed25519_sk);
+750           SAFE_FREE(decrypted_text);
+751           return recursive_result;
+752         }
+753 
+754         // Unencrypted key - extract directly
+755         memcpy(ed25519_pk, seckey.pubkey, 32);
+756         memcpy(ed25519_sk, seckey.seckey, 32);
+757         found_seckey = true;
+758         log_debug(&quot;Extracted Ed25519 keypair from OpenPGP armored secret key block&quot;);
+759         break;
+760       } else {
+761         // Not an Ed25519 key, try next packet
+762         log_debug(&quot;Skipping non-Ed25519 secret key packet&quot;);
+763       }
+764     }
 765 
-766   SAFE_FREE(binary_data);
-767 
-768   if (!found_seckey) {
-769     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;No Ed25519 secret key found in PGP armored block&quot;);
-770   }
+766     // Move to next packet
+767     offset += header.header_len + header.length;
+768   }
+769 
+770   SAFE_FREE(binary_data);
 771 
-772   return ASCIICHAT_OK;
-773 }</pre>
+772   if (!found_seckey) {
+773     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;No Ed25519 secret key found in PGP armored block&quot;);
+774   }
+775 
+776   return ASCIICHAT_OK;
+777 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CRYPTO_KEY</b>,
@@ -9126,79 +9126,80 @@ yqG5PFMAAQDm8...
 178   write_u32_be(buf + pos, len);
 179   pos += 4;
 180   // Binary protocol: intentionally not null-terminated
-181   memcpy(buf + pos, &quot;ssh-ed25519&quot;, 11);
-182   pos += 11;
-183 
-184   // Public key (32 bytes) - last 32 bytes of the 64-byte ed25519 key
-185   len = 32;
-186   write_u32_be(buf + pos, len);
-187   pos += 4;
-188   memcpy(buf + pos, private_key-&gt;key.ed25519 + 32, 32); // Public key is second half
-189   pos += 32;
-190 
-191   // Private key (64 bytes - full ed25519 key: 32-byte seed + 32-byte public)
-192   len = 64;
-193   write_u32_be(buf + pos, len);
-194   pos += 4;
-195   memcpy(buf + pos, private_key-&gt;key.ed25519, 64);
-196   pos += 64;
-197 
-198   // Comment (key path)
-199   len = key_path ? strlen(key_path) : 0;
-200 
-201   // SECURITY: Validate key path length to prevent buffer overflow
-202   // Buffer is BUFFER_SIZE_XXLARGE (4096), pos is ~128 at this point, need 4 bytes for length prefix
-203   size_t max_key_path_len = sizeof(buf) - pos - 4;
-204   if (len &gt; max_key_path_len) {
-205     platform_pipe_close(pipe);
-206     sodium_memzero(buf, sizeof(buf));
-207     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;SSH key path too long: %u bytes (max %zu)&quot;, len, max_key_path_len);
-208   }
-209 
-210   write_u32_be(buf + pos, len);
-211   pos += 4;
-212   if (len &gt; 0) {
-213     memcpy(buf + pos, key_path, len);
-214     pos += len;
-215   }
-216 
-217   // Write message length at start (excluding the 4-byte length field itself)
-218   uint32_t msg_len = pos - 4;
-219   write_u32_be(buf, msg_len);
-220 
-221   // Send message to agent
-222   ssize_t bytes_written = platform_pipe_write(pipe, buf, pos);
-223   if (bytes_written != (ssize_t)pos) {
-224     platform_pipe_close(pipe);
-225     sodium_memzero(buf, sizeof(buf));
-226     return SET_ERRNO_SYS(ERROR_CRYPTO, &quot;Failed to write to ssh-agent pipe&quot;);
-227   }
-228 
-229   // Read response
-230   unsigned char response[BUFFER_SIZE_SMALL];
-231   ssize_t bytes_read = platform_pipe_read(pipe, response, sizeof(response));
-232   if (bytes_read &lt; 5) {
-233     platform_pipe_close(pipe);
-234     sodium_memzero(buf, sizeof(buf));
-235     return SET_ERRNO_SYS(ERROR_CRYPTO, &quot;Failed to read from ssh-agent pipe&quot;);
-236   }
-237 
-238   // Done with the pipe - close it
-239   platform_pipe_close(pipe);
-240   sodium_memzero(buf, sizeof(buf));
-241 
-242   // Check response: should be SSH_AGENT_SUCCESS (6)
-243   // Response format: uint32 length, byte message_type
-244   uint8_t response_type = response[4];
-245   if (response_type == 6) {
-246     log_debug(&quot;Successfully added key to ssh-agent&quot;);
-247     return ASCIICHAT_OK;
-248   } else if (response_type == 5) {
-249     return SET_ERRNO(ERROR_CRYPTO, &quot;ssh-agent rejected key (SSH_AGENT_FAILURE)&quot;);
-250   } else {
-251     return SET_ERRNO(ERROR_CRYPTO, &quot;ssh-agent returned unexpected response: %d&quot;, response_type);
-252   }
-253 }</pre>
+181   // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary data
+182   memcpy(buf + pos, &quot;ssh-ed25519&quot;, 11);
+183   pos += 11;
+184 
+185   // Public key (32 bytes) - last 32 bytes of the 64-byte ed25519 key
+186   len = 32;
+187   write_u32_be(buf + pos, len);
+188   pos += 4;
+189   memcpy(buf + pos, private_key-&gt;key.ed25519 + 32, 32); // Public key is second half
+190   pos += 32;
+191 
+192   // Private key (64 bytes - full ed25519 key: 32-byte seed + 32-byte public)
+193   len = 64;
+194   write_u32_be(buf + pos, len);
+195   pos += 4;
+196   memcpy(buf + pos, private_key-&gt;key.ed25519, 64);
+197   pos += 64;
+198 
+199   // Comment (key path)
+200   len = key_path ? strlen(key_path) : 0;
+201 
+202   // SECURITY: Validate key path length to prevent buffer overflow
+203   // Buffer is BUFFER_SIZE_XXLARGE (4096), pos is ~128 at this point, need 4 bytes for length prefix
+204   size_t max_key_path_len = sizeof(buf) - pos - 4;
+205   if (len &gt; max_key_path_len) {
+206     platform_pipe_close(pipe);
+207     sodium_memzero(buf, sizeof(buf));
+208     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;SSH key path too long: %u bytes (max %zu)&quot;, len, max_key_path_len);
+209   }
+210 
+211   write_u32_be(buf + pos, len);
+212   pos += 4;
+213   if (len &gt; 0) {
+214     memcpy(buf + pos, key_path, len);
+215     pos += len;
+216   }
+217 
+218   // Write message length at start (excluding the 4-byte length field itself)
+219   uint32_t msg_len = pos - 4;
+220   write_u32_be(buf, msg_len);
+221 
+222   // Send message to agent
+223   ssize_t bytes_written = platform_pipe_write(pipe, buf, pos);
+224   if (bytes_written != (ssize_t)pos) {
+225     platform_pipe_close(pipe);
+226     sodium_memzero(buf, sizeof(buf));
+227     return SET_ERRNO_SYS(ERROR_CRYPTO, &quot;Failed to write to ssh-agent pipe&quot;);
+228   }
+229 
+230   // Read response
+231   unsigned char response[BUFFER_SIZE_SMALL];
+232   ssize_t bytes_read = platform_pipe_read(pipe, response, sizeof(response));
+233   if (bytes_read &lt; 5) {
+234     platform_pipe_close(pipe);
+235     sodium_memzero(buf, sizeof(buf));
+236     return SET_ERRNO_SYS(ERROR_CRYPTO, &quot;Failed to read from ssh-agent pipe&quot;);
+237   }
+238 
+239   // Done with the pipe - close it
+240   platform_pipe_close(pipe);
+241   sodium_memzero(buf, sizeof(buf));
+242 
+243   // Check response: should be SSH_AGENT_SUCCESS (6)
+244   // Response format: uint32 length, byte message_type
+245   uint8_t response_type = response[4];
+246   if (response_type == 6) {
+247     log_debug(&quot;Successfully added key to ssh-agent&quot;);
+248     return ASCIICHAT_OK;
+249   } else if (response_type == 5) {
+250     return SET_ERRNO(ERROR_CRYPTO, &quot;ssh-agent rejected key (SSH_AGENT_FAILURE)&quot;);
+251   } else {
+252     return SET_ERRNO(ERROR_CRYPTO, &quot;ssh-agent returned unexpected response: %d&quot;, response_type);
+253   }
+254 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>BUFFER_SIZE_SMALL</b>,
@@ -9473,161 +9474,162 @@ yqG5PFMAAQDm8...
 <p class="Pp">The public key must already be in the ssh-agent (check with
     ssh_agent_has_key first).</p>
 </div>
-<p class="Pp">Definition at line <b>255</b> of file <b>ssh_agent.c</b>.</p>
-<pre>256                                                         {
-257   if (!public_key || !message || !signature) {
-258     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: public_key=%p, message=%p, signature=%p&quot;, public_key,
-259                      message, signature);
-260   }
-261 
-262   if (public_key-&gt;type != KEY_TYPE_ED25519) {
-263     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Only Ed25519 keys are supported for SSH agent signing&quot;);
-264   }
-265 
-266   // SSH agent protocol limits message size (typical OpenSSH agent limit is around 1MB)
-267   // Large messages can cause agent memory exhaustion or timeout
-268   if (message_len &gt; 1024 * 1024) {
-269     return SET_ERRNO(ERROR_CRYPTO, &quot;Message too large for SSH agent (max 1MB)&quot;);
-270   }
-271 
-272   // Connect to SSH agent
-273   pipe_t pipe = ssh_agent_open_pipe();
-274   if (pipe == INVALID_PIPE_VALUE) {
-275     return SET_ERRNO(ERROR_CRYPTO, &quot;Cannot connect to ssh-agent&quot;);
-276   }
-277 
-278   // Build SSH2_AGENTC_SIGN_REQUEST message (type 13)
-279   // Format: uint32 length, byte type, string key_blob, string data, uint32 flags
-280   // For Ed25519, key_blob is: string &quot;ssh-ed25519&quot;, string public_key(32 bytes)
-281 
-282   const char *key_type = &quot;ssh-ed25519&quot;;
-283   uint32_t key_type_len = (uint32_t)strlen(key_type);
-284 
-285   // Calculate total message length
-286   // 1 (type) + 4 (key_blob_len) + key_blob_size + 4 (data_len) + data_size + 4 (flags)
-287   uint32_t key_blob_size = 4 + key_type_len + 4 + 32; // string(key_type) + string(pubkey)
-288   uint32_t total_len = 1 + 4 + key_blob_size + 4 + message_len + 4;
-289 
-290   uint8_t *buf = SAFE_MALLOC(total_len + 4, uint8_t *); // +4 for length prefix
-291   if (!buf) {
-292     platform_pipe_close(pipe);
-293     return SET_ERRNO(ERROR_CRYPTO, &quot;Out of memory for SSH agent sign request&quot;);
-294   }
-295 
-296   uint32_t offset = 0;
-297 
-298   // Write total message length (excluding this 4-byte length field)
-299   write_u32_be(buf + offset, total_len);
-300   offset += 4;
-301 
-302   // Write message type (13 = SSH2_AGENTC_SIGN_REQUEST)
-303   buf[offset++] = 13;
-304 
-305   // Write key_blob length
-306   write_u32_be(buf + offset, key_blob_size);
-307   offset += 4;
-308 
-309   // Write key_blob: string(key_type)
-310   write_u32_be(buf + offset, key_type_len);
-311   offset += 4;
-312   memcpy(buf + offset, key_type, key_type_len);
-313   offset += key_type_len;
-314 
-315   // Write key_blob: string(public_key)
-316   write_u32_be(buf + offset, 32);
-317   offset += 4;
-318   memcpy(buf + offset, public_key-&gt;key, 32);
-319   offset += 32;
-320 
-321   // Write data to sign
-322   write_u32_be(buf + offset, (uint32_t)message_len);
-323   offset += 4;
-324   memcpy(buf + offset, message, message_len);
-325   offset += (uint32_t)message_len;
-326 
-327   // Write flags (0 = default)
-328   write_u32_be(buf + offset, 0);
-329   offset += 4;
-330 
-331   // Send request
-332   ssize_t written = platform_pipe_write(pipe, buf, total_len + 4);
-333   sodium_memzero(buf, total_len + 4);
-334   SAFE_FREE(buf);
-335 
-336   if (written &lt; 0 || (size_t)written != total_len + 4) {
-337     platform_pipe_close(pipe);
-338     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to write SSH agent sign request&quot;);
-339   }
-340 
-341   // Read response
-342   uint8_t response[BUFFER_SIZE_XXLARGE];
-343   ssize_t read_bytes = platform_pipe_read(pipe, response, sizeof(response));
-344   platform_pipe_close(pipe);
-345 
-346   if (read_bytes &lt; 5) {
-347     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to read SSH agent sign response (read %zd bytes)&quot;, read_bytes);
-348   }
-349 
-350   // Response format: uint32 length, byte type, data...
-351   // We validate length implicitly by checking read_bytes and parsing the full response
-352   (void)read_u32_be(response); // Read but don't need explicit length check
-353   uint8_t response_type = response[4];
-354 
-355   // Check for SSH2_AGENT_SIGN_RESPONSE (14)
-356   if (response_type != 14) {
-357     if (response_type == 5) {
-358       return SET_ERRNO(ERROR_CRYPTO, &quot;ssh-agent refused to sign (SSH_AGENT_FAILURE)&quot;);
-359     }
-360     return SET_ERRNO(ERROR_CRYPTO, &quot;ssh-agent returned unexpected response type: %d (expected 14)&quot;, response_type);
-361   }
-362 
-363   // Parse signature blob
-364   // Response format: uint32 len, byte type(14), string signature_blob
-365   if (read_bytes &lt; 9) {
-366     return SET_ERRNO(ERROR_CRYPTO, &quot;SSH agent response too short (no signature blob length)&quot;);
-367   }
-368 
-369   uint32_t sig_blob_len = read_u32_be(response + 5);
-370   uint32_t expected_total = 4 + 1 + 4 + sig_blob_len;
-371 
-372   if ((size_t)read_bytes &lt; expected_total) {
-373     return SET_ERRNO(ERROR_CRYPTO, &quot;SSH agent response truncated (expected %u bytes, got %zd)&quot;, expected_total,
-374                      read_bytes);
-375   }
-376 
-377   // Signature blob format for Ed25519: string &quot;ssh-ed25519&quot;, string signature(64 bytes)
-378   uint32_t offset_sig = 9;
-379   uint32_t sig_type_len = read_u32_be(response + offset_sig);
-380   offset_sig += 4;
-381 
-382   if (offset_sig + sig_type_len + 4 &gt; (uint32_t)read_bytes) {
-383     return SET_ERRNO(ERROR_CRYPTO, &quot;SSH agent signature blob truncated at signature type&quot;);
-384   }
-385 
-386   // Verify signature type is &quot;ssh-ed25519&quot;
-387   if (sig_type_len != 11 || memcmp(response + offset_sig, &quot;ssh-ed25519&quot;, 11) != 0) {
-388     return SET_ERRNO(ERROR_CRYPTO, &quot;SSH agent returned non-Ed25519 signature&quot;);
-389   }
-390   offset_sig += sig_type_len;
-391 
-392   // Read signature bytes
-393   uint32_t sig_len = read_u32_be(response + offset_sig);
-394   offset_sig += 4;
-395 
-396   if (sig_len != 64) {
-397     return SET_ERRNO(ERROR_CRYPTO, &quot;SSH agent returned invalid Ed25519 signature length: %u (expected 64)&quot;, sig_len);
-398   }
-399 
-400   if (offset_sig + 64 &gt; (uint32_t)read_bytes) {
-401     return SET_ERRNO(ERROR_CRYPTO, &quot;SSH agent signature blob truncated at signature bytes&quot;);
-402   }
-403 
-404   // Copy signature to output
-405   memcpy(signature, response + offset_sig, 64);
-406 
-407   log_debug(&quot;SSH agent successfully signed %zu bytes with Ed25519 key&quot;, message_len);
-408   return ASCIICHAT_OK;
-409 }</pre>
+<p class="Pp">Definition at line <b>256</b> of file <b>ssh_agent.c</b>.</p>
+<pre>257                                                         {
+258   if (!public_key || !message || !signature) {
+259     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: public_key=%p, message=%p, signature=%p&quot;, public_key,
+260                      message, signature);
+261   }
+262 
+263   if (public_key-&gt;type != KEY_TYPE_ED25519) {
+264     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Only Ed25519 keys are supported for SSH agent signing&quot;);
+265   }
+266 
+267   // SSH agent protocol limits message size (typical OpenSSH agent limit is around 1MB)
+268   // Large messages can cause agent memory exhaustion or timeout
+269   if (message_len &gt; 1024 * 1024) {
+270     return SET_ERRNO(ERROR_CRYPTO, &quot;Message too large for SSH agent (max 1MB)&quot;);
+271   }
+272 
+273   // Connect to SSH agent
+274   pipe_t pipe = ssh_agent_open_pipe();
+275   if (pipe == INVALID_PIPE_VALUE) {
+276     return SET_ERRNO(ERROR_CRYPTO, &quot;Cannot connect to ssh-agent&quot;);
+277   }
+278 
+279   // Build SSH2_AGENTC_SIGN_REQUEST message (type 13)
+280   // Format: uint32 length, byte type, string key_blob, string data, uint32 flags
+281   // For Ed25519, key_blob is: string &quot;ssh-ed25519&quot;, string public_key(32 bytes)
+282 
+283   const char *key_type = &quot;ssh-ed25519&quot;;
+284   uint32_t key_type_len = (uint32_t)strlen(key_type);
+285 
+286   // Calculate total message length
+287   // 1 (type) + 4 (key_blob_len) + key_blob_size + 4 (data_len) + data_size + 4 (flags)
+288   uint32_t key_blob_size = 4 + key_type_len + 4 + 32; // string(key_type) + string(pubkey)
+289   uint32_t total_len = 1 + 4 + key_blob_size + 4 + message_len + 4;
+290 
+291   uint8_t *buf = SAFE_MALLOC(total_len + 4, uint8_t *); // +4 for length prefix
+292   if (!buf) {
+293     platform_pipe_close(pipe);
+294     return SET_ERRNO(ERROR_CRYPTO, &quot;Out of memory for SSH agent sign request&quot;);
+295   }
+296 
+297   uint32_t offset = 0;
+298 
+299   // Write total message length (excluding this 4-byte length field)
+300   write_u32_be(buf + offset, total_len);
+301   offset += 4;
+302 
+303   // Write message type (13 = SSH2_AGENTC_SIGN_REQUEST)
+304   buf[offset++] = 13;
+305 
+306   // Write key_blob length
+307   write_u32_be(buf + offset, key_blob_size);
+308   offset += 4;
+309 
+310   // Write key_blob: string(key_type)
+311   write_u32_be(buf + offset, key_type_len);
+312   offset += 4;
+313   // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary data
+314   memcpy(buf + offset, key_type, key_type_len);
+315   offset += key_type_len;
+316 
+317   // Write key_blob: string(public_key)
+318   write_u32_be(buf + offset, 32);
+319   offset += 4;
+320   memcpy(buf + offset, public_key-&gt;key, 32);
+321   offset += 32;
+322 
+323   // Write data to sign
+324   write_u32_be(buf + offset, (uint32_t)message_len);
+325   offset += 4;
+326   memcpy(buf + offset, message, message_len);
+327   offset += (uint32_t)message_len;
+328 
+329   // Write flags (0 = default)
+330   write_u32_be(buf + offset, 0);
+331   offset += 4;
+332 
+333   // Send request
+334   ssize_t written = platform_pipe_write(pipe, buf, total_len + 4);
+335   sodium_memzero(buf, total_len + 4);
+336   SAFE_FREE(buf);
+337 
+338   if (written &lt; 0 || (size_t)written != total_len + 4) {
+339     platform_pipe_close(pipe);
+340     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to write SSH agent sign request&quot;);
+341   }
+342 
+343   // Read response
+344   uint8_t response[BUFFER_SIZE_XXLARGE];
+345   ssize_t read_bytes = platform_pipe_read(pipe, response, sizeof(response));
+346   platform_pipe_close(pipe);
+347 
+348   if (read_bytes &lt; 5) {
+349     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to read SSH agent sign response (read %zd bytes)&quot;, read_bytes);
+350   }
+351 
+352   // Response format: uint32 length, byte type, data...
+353   // We validate length implicitly by checking read_bytes and parsing the full response
+354   (void)read_u32_be(response); // Read but don't need explicit length check
+355   uint8_t response_type = response[4];
+356 
+357   // Check for SSH2_AGENT_SIGN_RESPONSE (14)
+358   if (response_type != 14) {
+359     if (response_type == 5) {
+360       return SET_ERRNO(ERROR_CRYPTO, &quot;ssh-agent refused to sign (SSH_AGENT_FAILURE)&quot;);
+361     }
+362     return SET_ERRNO(ERROR_CRYPTO, &quot;ssh-agent returned unexpected response type: %d (expected 14)&quot;, response_type);
+363   }
+364 
+365   // Parse signature blob
+366   // Response format: uint32 len, byte type(14), string signature_blob
+367   if (read_bytes &lt; 9) {
+368     return SET_ERRNO(ERROR_CRYPTO, &quot;SSH agent response too short (no signature blob length)&quot;);
+369   }
+370 
+371   uint32_t sig_blob_len = read_u32_be(response + 5);
+372   uint32_t expected_total = 4 + 1 + 4 + sig_blob_len;
+373 
+374   if ((size_t)read_bytes &lt; expected_total) {
+375     return SET_ERRNO(ERROR_CRYPTO, &quot;SSH agent response truncated (expected %u bytes, got %zd)&quot;, expected_total,
+376                      read_bytes);
+377   }
+378 
+379   // Signature blob format for Ed25519: string &quot;ssh-ed25519&quot;, string signature(64 bytes)
+380   uint32_t offset_sig = 9;
+381   uint32_t sig_type_len = read_u32_be(response + offset_sig);
+382   offset_sig += 4;
+383 
+384   if (offset_sig + sig_type_len + 4 &gt; (uint32_t)read_bytes) {
+385     return SET_ERRNO(ERROR_CRYPTO, &quot;SSH agent signature blob truncated at signature type&quot;);
+386   }
+387 
+388   // Verify signature type is &quot;ssh-ed25519&quot;
+389   if (sig_type_len != 11 || memcmp(response + offset_sig, &quot;ssh-ed25519&quot;, 11) != 0) {
+390     return SET_ERRNO(ERROR_CRYPTO, &quot;SSH agent returned non-Ed25519 signature&quot;);
+391   }
+392   offset_sig += sig_type_len;
+393 
+394   // Read signature bytes
+395   uint32_t sig_len = read_u32_be(response + offset_sig);
+396   offset_sig += 4;
+397 
+398   if (sig_len != 64) {
+399     return SET_ERRNO(ERROR_CRYPTO, &quot;SSH agent returned invalid Ed25519 signature length: %u (expected 64)&quot;, sig_len);
+400   }
+401 
+402   if (offset_sig + 64 &gt; (uint32_t)read_bytes) {
+403     return SET_ERRNO(ERROR_CRYPTO, &quot;SSH agent signature blob truncated at signature bytes&quot;);
+404   }
+405 
+406   // Copy signature to output
+407   memcpy(signature, response + offset_sig, 64);
+408 
+409   log_debug(&quot;SSH agent successfully signed %zu bytes with Ed25519 key&quot;, message_len);
+410   return ASCIICHAT_OK;
+411 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>BUFFER_SIZE_XXLARGE</b>,

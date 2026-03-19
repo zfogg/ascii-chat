@@ -124,90 +124,90 @@
 <br/>
 <i>continuation_indent_extra</i> Extra spaces for continuation lines (0 for
   none, 2 for options)</div>
-<p class="Pp">Definition at line <b>224</b> of file <b>layout.c</b>.</p>
-<pre>225                                                                                 {
-226   if (!stream || !first_column || !second_column)
-227     return;
-228 
-229   // Strip ANSI escape codes before calculating display width
-230   char *stripped = ansi_strip_escapes(first_column, strlen(first_column));
-231 
-232   // Calculate actual display width of first column (accounts for UTF-8, excluding ANSI codes)
-233   int display_width = utf8_display_width(stripped ? stripped : first_column);
-234   if (display_width &lt; 0)
-235     display_width = first_col_len; // Fallback to provided value if available
-236 
-237   SAFE_FREE(stripped);
-238 
-239   // Use calculated first_col_len if provided (accounts for UTF-8 and ANSI codes),
-240   // otherwise default to 35. The provided width respects both colored text and UTF-8 characters.
-241   // Allow the first column to expand up to 60% of terminal width, but leave room for description.
-242   int fixed_first_col_width = (first_col_len &gt; 0) ? first_col_len : 35;
-243   int max_first_col_width = (term_width * 6) / 10;
-244   if (max_first_col_width &lt; 40)
-245     max_first_col_width = 40;
-246   if (fixed_first_col_width &gt; max_first_col_width) {
-247     fixed_first_col_width = max_first_col_width;
-248   }
+<p class="Pp">Definition at line <b>220</b> of file <b>layout.c</b>.</p>
+<pre>221                                                                                 {
+222   if (!stream || !first_column || !second_column)
+223     return;
+224 
+225   // Strip ANSI escape codes before calculating display width
+226   char *stripped = ansi_strip_escapes(first_column, strlen(first_column));
+227 
+228   // Calculate actual display width of first column (accounts for UTF-8, excluding ANSI codes)
+229   int display_width = utf8_display_width(stripped ? stripped : first_column);
+230   if (display_width &lt; 0)
+231     display_width = first_col_len; // Fallback to provided value if available
+232 
+233   SAFE_FREE(stripped);
+234 
+235   // Use calculated first_col_len if provided (accounts for UTF-8 and ANSI codes),
+236   // otherwise default to 35. The provided width respects both colored text and UTF-8 characters.
+237   // Allow the first column to expand up to 60% of terminal width, but leave room for description.
+238   int fixed_first_col_width = (first_col_len &gt; 0) ? first_col_len : 35;
+239   int max_first_col_width = (term_width * 6) / 10;
+240   if (max_first_col_width &lt; 40)
+241     max_first_col_width = 40;
+242   if (fixed_first_col_width &gt; max_first_col_width) {
+243     fixed_first_col_width = max_first_col_width;
+244   }
+245 
+246   // Second column starts after first column (with 2 spaces padding)
+247   // This allows descriptions to be quite wide for wrapping
+248   int second_col_start = 2 + fixed_first_col_width + 2;
 249 
-250   // Second column starts after first column (with 2 spaces padding)
-251   // This allows descriptions to be quite wide for wrapping
-252   int second_col_start = 2 + fixed_first_col_width + 2;
-253 
-254   // At narrow terminal widths, force single-column layout
-255   bool force_single_column = (term_width &lt;= 90);
-256 
-257   // Position where first column ends (including leading spaces)
-258   int first_col_end = 2 + display_width;
-259 
-260   // Check if first column fits within the fixed width
-261   bool fits_in_first_column_width = (display_width &lt;= fixed_first_col_width);
-262 
-263   // If first column fits within its width and we're not forcing single column, try same-line layout
-264   if (fits_in_first_column_width &amp;&amp; !force_single_column) {
-265     // Print first column
-266     fprintf(stream, &quot;  %s&quot;, first_column);
-267 
-268     // Pad to second column start position
-269     int padding = second_col_start - first_col_end;
-270     if (padding &gt; 0) {
-271       fprintf(stream, &quot;%*s&quot;, padding, &quot;&quot;);
-272     } else {
-273       fprintf(stream, &quot; &quot;);
-274     }
-275 
-276     // Print description with wrapping at second column position
-277     layout_print_wrapped_description(stream, second_column, second_col_start, term_width, continuation_indent_extra);
-278     fprintf(stream, &quot;\n&quot;);
-279   } else if (force_single_column) {
-280     // Terminal too narrow, put description on next line with indent
-281     fprintf(stream, &quot;  %s\n&quot;, first_column);
-282 
-283     // Only print description if it exists
-284     if (second_column &amp;&amp; second_column[0] != '\0') {
-285       int description_indent = 4;
-286       for (int i = 0; i &lt; description_indent; i++)
-287         fprintf(stream, &quot; &quot;);
-288 
-289       layout_print_wrapped_description(stream, second_column, description_indent, term_width,
-290                                        continuation_indent_extra);
-291       fprintf(stream, &quot;\n&quot;);
-292     }
-293   } else {
-294     // First column overflows its fixed width - bump description to next line
-295     // Print first column as-is (it will overflow)
-296     fprintf(stream, &quot;  %s\n&quot;, first_column);
-297 
-298     // Only print description if it exists
-299     if (second_column &amp;&amp; second_column[0] != '\0') {
-300       // Print description on next line at second column position, with wide wrapping
-301       for (int i = 0; i &lt; second_col_start; i++)
-302         fprintf(stream, &quot; &quot;);
-303       layout_print_wrapped_description(stream, second_column, second_col_start, term_width, continuation_indent_extra);
-304       fprintf(stream, &quot;\n&quot;);
-305     }
-306   }
-307 }</pre>
+250   // At narrow terminal widths, force single-column layout
+251   bool force_single_column = (term_width &lt;= 90);
+252 
+253   // Position where first column ends (including leading spaces)
+254   int first_col_end = 2 + display_width;
+255 
+256   // Check if first column fits within the fixed width
+257   bool fits_in_first_column_width = (display_width &lt;= fixed_first_col_width);
+258 
+259   // If first column fits within its width and we're not forcing single column, try same-line layout
+260   if (fits_in_first_column_width &amp;&amp; !force_single_column) {
+261     // Print first column
+262     fprintf(stream, &quot;  %s&quot;, first_column);
+263 
+264     // Pad to second column start position
+265     int padding = second_col_start - first_col_end;
+266     if (padding &gt; 0) {
+267       fprintf(stream, &quot;%*s&quot;, padding, &quot;&quot;);
+268     } else {
+269       fprintf(stream, &quot; &quot;);
+270     }
+271 
+272     // Print description with wrapping at second column position
+273     layout_print_wrapped_description(stream, second_column, second_col_start, term_width, continuation_indent_extra);
+274     fprintf(stream, &quot;\n&quot;);
+275   } else if (force_single_column) {
+276     // Terminal too narrow, put description on next line with indent
+277     fprintf(stream, &quot;  %s\n&quot;, first_column);
+278 
+279     // Only print description if it exists
+280     if (second_column &amp;&amp; second_column[0] != '\0') {
+281       int description_indent = 4;
+282       for (int i = 0; i &lt; description_indent; i++)
+283         fprintf(stream, &quot; &quot;);
+284 
+285       layout_print_wrapped_description(stream, second_column, description_indent, term_width,
+286                                        continuation_indent_extra);
+287       fprintf(stream, &quot;\n&quot;);
+288     }
+289   } else {
+290     // First column overflows its fixed width - bump description to next line
+291     // Print first column as-is (it will overflow)
+292     fprintf(stream, &quot;  %s\n&quot;, first_column);
+293 
+294     // Only print description if it exists
+295     if (second_column &amp;&amp; second_column[0] != '\0') {
+296       // Print description on next line at second column position, with wide wrapping
+297       for (int i = 0; i &lt; second_col_start; i++)
+298         fprintf(stream, &quot; &quot;);
+299       layout_print_wrapped_description(stream, second_column, second_col_start, term_width, continuation_indent_extra);
+300       fprintf(stream, &quot;\n&quot;);
+301     }
+302   }
+303 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_strip_escapes()</b>, <b>display_width()</b>,
@@ -305,59 +305,55 @@
 163       const char *next = p + 1;
 164       while (*next == ' ')
 165         next++;
-166       // Check if next is a metadata marker - this is a good break point to prefer
-167       if (is_metadata_start(next)) {
-168         // Update last_space to this position (prefer breaking before metadata)
-169         last_space = p;
-170       } else if (!last_space || *next != '(') {
-171         // Otherwise track normal spaces, but skip spaces before non-short parentheticals
-172         last_space = p;
-173       }
-174     }
-175 
-176     // Decode UTF-8 character length
-177     int char_bytes = utf8_next_char_bytes(p, strlen(p));
-178 
-179     if (char_bytes &lt;= 0) {
-180       // Invalid UTF-8 or end of string, stop
-181       break;
-182     }
-183 
-184     // Advance to next character first
-185     p += char_bytes;
-186 
-187     // Calculate actual display width from line_start to current position (excluding ANSI codes)
-188     int actual_width = calculate_segment_display_width(line_start, p - line_start);
-189 
-190     // Check if we need to wrap
-191     if (actual_width &gt;= available_width &amp;&amp; last_space &amp;&amp; last_space &gt; line_start) {
-192       // Print text up to break point with colors applied
-193       int text_len = last_space - line_start;
-194       char seg[BUFFER_SIZE_MEDIUM];
-195       SAFE_STRNCPY(seg, line_start, text_len + 1);
-196       layout_print_colored_segment(stream, seg);
-197 
-198       fprintf(stream, &quot;\n&quot;);
-199       // Continuation lines get extra indent if specified
-200       int continuation_indent = indent_width + continuation_indent_extra;
-201       for (int i = 0; i &lt; continuation_indent; i++)
-202         fprintf(stream, &quot; &quot;);
-203 
-204       p = last_space + 1;
-205       line_start = p;
-206       last_space = NULL;
-207       continue;
-208     }
-209   }
-210 
-211   // Print remaining text
-212   if (p &gt; line_start) {
-213     char seg[BUFFER_SIZE_MEDIUM];
-214     int text_len = p - line_start;
-215     SAFE_STRNCPY(seg, line_start, text_len + 1);
-216     layout_print_colored_segment(stream, seg);
-217   }
-218 }</pre>
+166       // Track space as break point if it's before metadata or a normal space (not before parenthetical)
+167       if (is_metadata_start(next) || !last_space || *next != '(') {
+168         last_space = p;
+169       }
+170     }
+171 
+172     // Decode UTF-8 character length
+173     int char_bytes = utf8_next_char_bytes(p, strlen(p));
+174 
+175     if (char_bytes &lt;= 0) {
+176       // Invalid UTF-8 or end of string, stop
+177       break;
+178     }
+179 
+180     // Advance to next character first
+181     p += char_bytes;
+182 
+183     // Calculate actual display width from line_start to current position (excluding ANSI codes)
+184     int actual_width = calculate_segment_display_width(line_start, p - line_start);
+185 
+186     // Check if we need to wrap
+187     if (actual_width &gt;= available_width &amp;&amp; last_space &amp;&amp; last_space &gt; line_start) {
+188       // Print text up to break point with colors applied
+189       int text_len = last_space - line_start;
+190       char seg[BUFFER_SIZE_MEDIUM];
+191       SAFE_STRNCPY(seg, line_start, text_len + 1);
+192       layout_print_colored_segment(stream, seg);
+193 
+194       fprintf(stream, &quot;\n&quot;);
+195       // Continuation lines get extra indent if specified
+196       int continuation_indent = indent_width + continuation_indent_extra;
+197       for (int i = 0; i &lt; continuation_indent; i++)
+198         fprintf(stream, &quot; &quot;);
+199 
+200       p = last_space + 1;
+201       line_start = p;
+202       last_space = NULL;
+203       continue;
+204     }
+205   }
+206 
+207   // Print remaining text
+208   if (p &gt; line_start) {
+209     char seg[BUFFER_SIZE_MEDIUM];
+210     int text_len = p - line_start;
+211     SAFE_STRNCPY(seg, line_start, text_len + 1);
+212     layout_print_colored_segment(stream, seg);
+213   }
+214 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>BUFFER_SIZE_MEDIUM</b>, <b>SAFE_STRNCPY</b>, and

@@ -88,159 +88,157 @@
 <p class="Pp"></p>
 <p class="Pp">Timeout applies to each connection attempt independently</p>
 </div>
-<p class="Pp">Definition at line <b>174</b> of file
+<p class="Pp">Definition at line <b>173</b> of file
   <b>parallel_connect.c</b>.</p>
-<pre>174                                                                                                   {
-175   if (!config || !out_socket) {
-176     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;config or out_socket is NULL&quot;);
-177   }
-178 
-179   *out_socket = INVALID_SOCKET_VALUE;
-180 
-181   // Resolve hostname
-182   log_debug(&quot;PCONN: Resolving %s:%d&quot;, config-&gt;hostname, config-&gt;port);
-183 
-184   struct addrinfo hints;
-185   struct addrinfo *result = NULL;
-186   memset(&amp;hints, 0, sizeof(hints));
-187   hints.ai_family = AF_UNSPEC;
-188   hints.ai_socktype = SOCK_STREAM;
-189 
-190   char port_str[16];
-191   safe_snprintf(port_str, sizeof(port_str), &quot;%d&quot;, config-&gt;port);
-192 
-193   int gai_result = getaddrinfo(config-&gt;hostname, port_str, &amp;hints, &amp;result);
-194   if (gai_result != 0) {
-195     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to resolve %s: %s&quot;, config-&gt;hostname, gai_strerror(gai_result));
-196   }
-197 
-198   // Find first IPv4 and IPv6 addresses
-199   struct addrinfo *ipv4_addr = NULL;
-200   struct addrinfo *ipv6_addr = NULL;
-201 
-202   for (struct addrinfo *rp = result; rp != NULL; rp = rp-&gt;ai_next) {
-203     if (rp-&gt;ai_family == AF_INET &amp;&amp; !ipv4_addr) {
-204       ipv4_addr = rp;
-205       log_debug(&quot;PCONN: Found IPv4 address&quot;);
-206     } else if (rp-&gt;ai_family == AF_INET6 &amp;&amp; !ipv6_addr) {
-207       ipv6_addr = rp;
-208       log_debug(&quot;PCONN: Found IPv6 address&quot;);
-209     }
-210     if (ipv4_addr &amp;&amp; ipv6_addr)
-211       break;
-212   }
-213 
-214   // Need at least one address
-215   if (!ipv4_addr &amp;&amp; !ipv6_addr) {
-216     freeaddrinfo(result);
-217     return SET_ERRNO(ERROR_NETWORK, &quot;No IPv4 or IPv6 addresses found for %s&quot;, config-&gt;hostname);
-218   }
-219 
-220   // Shared state
-221   mutex_t lock;
-222   cond_t signal;
-223   mutex_init(&amp;lock, &quot;parallel_connect&quot;);
-224   cond_init(&amp;signal, &quot;parallel_connect&quot;);
-225 
-226   volatile socket_t winner_socket = INVALID_SOCKET_VALUE;
-227   volatile bool winner_found = false;
-228 
-229   connection_attempt_t ipv4_attempt = {0};
-230   connection_attempt_t ipv6_attempt = {0};
-231   asciichat_thread_t ipv4_thread;
-232   asciichat_thread_t ipv6_thread;
-233 
-234   asciichat_thread_init(&amp;ipv4_thread);
-235   asciichat_thread_init(&amp;ipv6_thread);
-236 
-237   // Start IPv4 attempt if available
-238   if (ipv4_addr) {
-239     ipv4_attempt.family = AF_INET;
-240     ipv4_attempt.family_name = &quot;IPv4&quot;;
-241     ipv4_attempt.timeout_ms = config-&gt;timeout_ms;
-242     ipv4_attempt.winner_socket = &amp;winner_socket;
-243     ipv4_attempt.winner_found = &amp;winner_found;
-244     ipv4_attempt.lock = &amp;lock;
-245     ipv4_attempt.signal = &amp;signal;
-246     ipv4_attempt.should_exit_callback = config-&gt;should_exit_callback;
-247     ipv4_attempt.callback_data = config-&gt;callback_data;
-248     memcpy(&amp;ipv4_attempt.addr, ipv4_addr-&gt;ai_addr, ipv4_addr-&gt;ai_addrlen);
-249     ipv4_attempt.addr_len = ipv4_addr-&gt;ai_addrlen;
-250 
-251     asciichat_thread_create(&amp;ipv4_thread, &quot;connect_ipv4&quot;, attempt_connection_thread, &amp;ipv4_attempt);
-252   }
-253 
-254   // Start IPv6 attempt if available
-255   if (ipv6_addr) {
-256     ipv6_attempt.family = AF_INET6;
-257     ipv6_attempt.family_name = &quot;IPv6&quot;;
-258     ipv6_attempt.timeout_ms = config-&gt;timeout_ms;
-259     ipv6_attempt.winner_socket = &amp;winner_socket;
-260     ipv6_attempt.winner_found = &amp;winner_found;
-261     ipv6_attempt.lock = &amp;lock;
-262     ipv6_attempt.signal = &amp;signal;
-263     ipv6_attempt.should_exit_callback = config-&gt;should_exit_callback;
-264     ipv6_attempt.callback_data = config-&gt;callback_data;
-265     memcpy(&amp;ipv6_attempt.addr, ipv6_addr-&gt;ai_addr, ipv6_addr-&gt;ai_addrlen);
-266     ipv6_attempt.addr_len = ipv6_addr-&gt;ai_addrlen;
-267 
-268     asciichat_thread_create(&amp;ipv6_thread, &quot;connect_ipv6&quot;, attempt_connection_thread, &amp;ipv6_attempt);
-269   }
-270 
-271   // Wait for winner or both to finish
-272   uint32_t max_wait_ms = config-&gt;timeout_ms + 1000;
-273   uint32_t elapsed_ms = 0;
-274 
-275   mutex_lock(&amp;lock);
-276   while (!winner_found &amp;&amp; elapsed_ms &lt; max_wait_ms) {
-277     cond_timedwait(&amp;signal, &amp;lock, 100 * NS_PER_MS_INT);
-278     elapsed_ms += 100;
-279 
-280     // Check if both are done
-281     if (ipv4_addr &amp;&amp; ipv6_addr) {
-282       if (ipv4_attempt.done &amp;&amp; ipv6_attempt.done) {
-283         break;
-284       }
-285     } else if (ipv4_addr &amp;&amp; ipv4_attempt.done) {
-286       break;
-287     } else if (ipv6_addr &amp;&amp; ipv6_attempt.done) {
-288       break;
-289     }
-290   }
-291   mutex_unlock(&amp;lock);
-292 
-293   // Join threads (must wait for both to complete before returning)
-294   // The threads access shared state on our stack, so we cannot return until they're done
-295   if (asciichat_thread_is_initialized(&amp;ipv4_thread)) {
-296     asciichat_thread_join(&amp;ipv4_thread, NULL);
+<pre>173                                                                                                   {
+174   if (!config || !out_socket) {
+175     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;config or out_socket is NULL&quot;);
+176   }
+177 
+178   *out_socket = INVALID_SOCKET_VALUE;
+179 
+180   // Resolve hostname
+181   log_debug(&quot;PCONN: Resolving %s:%d&quot;, config-&gt;hostname, config-&gt;port);
+182 
+183   struct addrinfo hints;
+184   struct addrinfo *result = NULL;
+185   memset(&amp;hints, 0, sizeof(hints));
+186   hints.ai_family = AF_UNSPEC;
+187   hints.ai_socktype = SOCK_STREAM;
+188 
+189   char port_str[16];
+190   safe_snprintf(port_str, sizeof(port_str), &quot;%d&quot;, config-&gt;port);
+191 
+192   int gai_result = getaddrinfo(config-&gt;hostname, port_str, &amp;hints, &amp;result);
+193   if (gai_result != 0) {
+194     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to resolve %s: %s&quot;, config-&gt;hostname, gai_strerror(gai_result));
+195   }
+196 
+197   // Find first IPv4 and IPv6 addresses
+198   struct addrinfo *ipv4_addr = NULL;
+199   struct addrinfo *ipv6_addr = NULL;
+200 
+201   for (struct addrinfo *rp = result; rp != NULL; rp = rp-&gt;ai_next) {
+202     if (rp-&gt;ai_family == AF_INET &amp;&amp; !ipv4_addr) {
+203       ipv4_addr = rp;
+204       log_debug(&quot;PCONN: Found IPv4 address&quot;);
+205     } else if (rp-&gt;ai_family == AF_INET6 &amp;&amp; !ipv6_addr) {
+206       ipv6_addr = rp;
+207       log_debug(&quot;PCONN: Found IPv6 address&quot;);
+208     }
+209     if (ipv4_addr &amp;&amp; ipv6_addr)
+210       break;
+211   }
+212 
+213   // Need at least one address
+214   if (!ipv4_addr &amp;&amp; !ipv6_addr) {
+215     freeaddrinfo(result);
+216     return SET_ERRNO(ERROR_NETWORK, &quot;No IPv4 or IPv6 addresses found for %s&quot;, config-&gt;hostname);
+217   }
+218 
+219   // Shared state
+220   mutex_t lock;
+221   cond_t signal;
+222   mutex_init(&amp;lock, &quot;parallel_connect&quot;);
+223   cond_init(&amp;signal, &quot;parallel_connect&quot;);
+224 
+225   volatile socket_t winner_socket = INVALID_SOCKET_VALUE;
+226   volatile bool winner_found = false;
+227 
+228   connection_attempt_t ipv4_attempt = {0};
+229   connection_attempt_t ipv6_attempt = {0};
+230   asciichat_thread_t ipv4_thread;
+231   asciichat_thread_t ipv6_thread;
+232 
+233   asciichat_thread_init(&amp;ipv4_thread);
+234   asciichat_thread_init(&amp;ipv6_thread);
+235 
+236   // Start IPv4 attempt if available
+237   if (ipv4_addr) {
+238     ipv4_attempt.family = AF_INET;
+239     ipv4_attempt.family_name = &quot;IPv4&quot;;
+240     ipv4_attempt.timeout_ms = config-&gt;timeout_ms;
+241     ipv4_attempt.winner_socket = &amp;winner_socket;
+242     ipv4_attempt.winner_found = &amp;winner_found;
+243     ipv4_attempt.lock = &amp;lock;
+244     ipv4_attempt.signal = &amp;signal;
+245     ipv4_attempt.should_exit_callback = config-&gt;should_exit_callback;
+246     ipv4_attempt.callback_data = config-&gt;callback_data;
+247     memcpy(&amp;ipv4_attempt.addr, ipv4_addr-&gt;ai_addr, ipv4_addr-&gt;ai_addrlen);
+248     ipv4_attempt.addr_len = ipv4_addr-&gt;ai_addrlen;
+249 
+250     asciichat_thread_create(&amp;ipv4_thread, &quot;connect_ipv4&quot;, attempt_connection_thread, &amp;ipv4_attempt);
+251   }
+252 
+253   // Start IPv6 attempt if available
+254   if (ipv6_addr) {
+255     ipv6_attempt.family = AF_INET6;
+256     ipv6_attempt.family_name = &quot;IPv6&quot;;
+257     ipv6_attempt.timeout_ms = config-&gt;timeout_ms;
+258     ipv6_attempt.winner_socket = &amp;winner_socket;
+259     ipv6_attempt.winner_found = &amp;winner_found;
+260     ipv6_attempt.lock = &amp;lock;
+261     ipv6_attempt.signal = &amp;signal;
+262     ipv6_attempt.should_exit_callback = config-&gt;should_exit_callback;
+263     ipv6_attempt.callback_data = config-&gt;callback_data;
+264     memcpy(&amp;ipv6_attempt.addr, ipv6_addr-&gt;ai_addr, ipv6_addr-&gt;ai_addrlen);
+265     ipv6_attempt.addr_len = ipv6_addr-&gt;ai_addrlen;
+266 
+267     asciichat_thread_create(&amp;ipv6_thread, &quot;connect_ipv6&quot;, attempt_connection_thread, &amp;ipv6_attempt);
+268   }
+269 
+270   // Wait for winner or both to finish
+271   uint32_t max_wait_ms = config-&gt;timeout_ms + 1000;
+272   uint32_t elapsed_ms = 0;
+273 
+274   mutex_lock(&amp;lock);
+275   while (!winner_found &amp;&amp; elapsed_ms &lt; max_wait_ms) {
+276     cond_timedwait(&amp;signal, &amp;lock, 100 * NS_PER_MS_INT);
+277     elapsed_ms += 100;
+278 
+279     // Check if both are done
+280     if (ipv4_addr &amp;&amp; ipv6_addr) {
+281       if (ipv4_attempt.done &amp;&amp; ipv6_attempt.done) {
+282         break;
+283       }
+284     } else if ((ipv4_addr &amp;&amp; ipv4_attempt.done) || (ipv6_addr &amp;&amp; ipv6_attempt.done)) {
+285       break;
+286     }
+287   }
+288   mutex_unlock(&amp;lock);
+289 
+290   // Join threads (must wait for both to complete before returning)
+291   // The threads access shared state on our stack, so we cannot return until they're done
+292   if (asciichat_thread_is_initialized(&amp;ipv4_thread)) {
+293     asciichat_thread_join(&amp;ipv4_thread, NULL);
+294   }
+295   if (asciichat_thread_is_initialized(&amp;ipv6_thread)) {
+296     asciichat_thread_join(&amp;ipv6_thread, NULL);
 297   }
-298   if (asciichat_thread_is_initialized(&amp;ipv6_thread)) {
-299     asciichat_thread_join(&amp;ipv6_thread, NULL);
-300   }
-301 
-302   // Close any remaining sockets
-303   if (ipv4_attempt.socket != INVALID_SOCKET_VALUE) {
-304     socket_close(ipv4_attempt.socket);
+298 
+299   // Close any remaining sockets
+300   if (ipv4_attempt.socket != INVALID_SOCKET_VALUE) {
+301     socket_close(ipv4_attempt.socket);
+302   }
+303   if (ipv6_attempt.socket != INVALID_SOCKET_VALUE) {
+304     socket_close(ipv6_attempt.socket);
 305   }
-306   if (ipv6_attempt.socket != INVALID_SOCKET_VALUE) {
-307     socket_close(ipv6_attempt.socket);
-308   }
-309 
-310   // Cleanup
-311   mutex_destroy(&amp;lock);
-312   cond_destroy(&amp;signal);
-313   freeaddrinfo(result);
-314 
-315   // Check result
-316   if (winner_socket == INVALID_SOCKET_VALUE) {
-317     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to connect to %s:%d (both IPv4 and IPv6 failed)&quot;, config-&gt;hostname,
-318                      config-&gt;port);
-319   }
-320 
-321   *out_socket = (socket_t)winner_socket;
-322   log_info(&quot;PCONN: Successfully connected to %s:%d&quot;, config-&gt;hostname, config-&gt;port);
-323   return ASCIICHAT_OK;
-324 }</pre>
+306 
+307   // Cleanup
+308   mutex_destroy(&amp;lock);
+309   cond_destroy(&amp;signal);
+310   freeaddrinfo(result);
+311 
+312   // Check result
+313   if (winner_socket == INVALID_SOCKET_VALUE) {
+314     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to connect to %s:%d (both IPv4 and IPv6 failed)&quot;, config-&gt;hostname,
+315                      config-&gt;port);
+316   }
+317 
+318   *out_socket = (socket_t)winner_socket;
+319   log_info(&quot;PCONN: Successfully connected to %s:%d&quot;, config-&gt;hostname, config-&gt;port);
+320   return ASCIICHAT_OK;
+321 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>connection_attempt_t::addr</b>,

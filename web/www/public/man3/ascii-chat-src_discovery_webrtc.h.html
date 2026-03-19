@@ -122,17 +122,17 @@
 <p class="Pp"></p>
 <p class="Pp">Thread-safe.</p>
 </div>
-<p class="Pp">Definition at line <b>285</b> of file
+<p class="Pp">Definition at line <b>286</b> of file
     <b>src/discovery/webrtc.c</b>.</p>
-<pre>285                                               {
-286   ensure_mutex_initialized();
-287   mutex_lock(&amp;g_webrtc_mutex);
-288 
-289   g_tcp_transport = NULL;
-290   g_session_context.is_set = false;
-291 
-292   mutex_unlock(&amp;g_webrtc_mutex);
-293 }</pre>
+<pre>286                                               {
+287   ensure_mutex_initialized();
+288   mutex_lock(&amp;g_webrtc_mutex);
+289 
+290   g_tcp_transport = NULL;
+291   g_session_context.is_set = false;
+292 
+293   mutex_unlock(&amp;g_webrtc_mutex);
+294 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>mutex_lock</b>, and <b>mutex_unlock</b>.</p>
@@ -166,30 +166,30 @@
 <p class="Pp"></p>
 <p class="Pp">Set tcp_transport to NULL to disable the callbacks.</p>
 </div>
-<p class="Pp">Definition at line <b>238</b> of file
+<p class="Pp">Definition at line <b>239</b> of file
     <b>src/discovery/webrtc.c</b>.</p>
-<pre>240                                                                                                                {
-241   ensure_mutex_initialized();
-242   mutex_lock(&amp;g_webrtc_mutex);
-243 
-244   g_tcp_transport = tcp_transport;
-245 
-246   if (session_id &amp;&amp; participant_id) {
-247     memcpy(g_session_context.session_id, session_id, 16);
-248     memcpy(g_session_context.participant_id, participant_id, 16);
-249     g_session_context.is_set = true;
-250   }
-251 
-252   mutex_unlock(&amp;g_webrtc_mutex);
-253 
-254   webrtc_signaling_callbacks_t callbacks = {
-255       .send_sdp = discovery_send_sdp,
-256       .send_ice = discovery_send_ice,
-257       .user_data = NULL, // Unused - we use global state
-258   };
-259 
-260   return callbacks;
-261 }</pre>
+<pre>241                                                                                                                {
+242   ensure_mutex_initialized();
+243   mutex_lock(&amp;g_webrtc_mutex);
+244 
+245   g_tcp_transport = tcp_transport;
+246 
+247   if (session_id &amp;&amp; participant_id) {
+248     memcpy(g_session_context.session_id, session_id, 16);
+249     memcpy(g_session_context.participant_id, participant_id, 16);
+250     g_session_context.is_set = true;
+251   }
+252 
+253   mutex_unlock(&amp;g_webrtc_mutex);
+254 
+255   webrtc_signaling_callbacks_t callbacks = {
+256       .send_sdp = discovery_send_sdp,
+257       .send_ice = discovery_send_ice,
+258       .user_data = NULL, // Unused - we use global state
+259   };
+260 
+261   return callbacks;
+262 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>mutex_lock</b>, <b>mutex_unlock</b>,
@@ -212,22 +212,22 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Callbacks will fail with ERROR_INVALID_STATE if IDs are
   not set.</div>
-<p class="Pp">Definition at line <b>270</b> of file
+<p class="Pp">Definition at line <b>271</b> of file
     <b>src/discovery/webrtc.c</b>.</p>
-<pre>270                                                                                                           {
-271   ensure_mutex_initialized();
-272   mutex_lock(&amp;g_webrtc_mutex);
-273 
-274   if (session_id &amp;&amp; participant_id) {
-275     memcpy(g_session_context.session_id, session_id, 16);
-276     memcpy(g_session_context.participant_id, participant_id, 16);
-277     g_session_context.is_set = true;
-278   } else {
-279     g_session_context.is_set = false;
-280   }
-281 
-282   mutex_unlock(&amp;g_webrtc_mutex);
-283 }</pre>
+<pre>271                                                                                                           {
+272   ensure_mutex_initialized();
+273   mutex_lock(&amp;g_webrtc_mutex);
+274 
+275   if (session_id &amp;&amp; participant_id) {
+276     memcpy(g_session_context.session_id, session_id, 16);
+277     memcpy(g_session_context.participant_id, participant_id, 16);
+278     g_session_context.is_set = true;
+279   } else {
+280     g_session_context.is_set = false;
+281   }
+282 
+283   mutex_unlock(&amp;g_webrtc_mutex);
+284 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>mutex_lock</b>, <b>mutex_unlock</b>,
@@ -252,14 +252,14 @@
 <p class="Pp">Callbacks will fail with ERROR_INVALID_STATE if transport is
   NULL.</p>
 </div>
-<p class="Pp">Definition at line <b>263</b> of file
+<p class="Pp">Definition at line <b>264</b> of file
     <b>src/discovery/webrtc.c</b>.</p>
-<pre>263                                                                      {
-264   ensure_mutex_initialized();
-265   mutex_lock(&amp;g_webrtc_mutex);
-266   g_tcp_transport = transport;
-267   mutex_unlock(&amp;g_webrtc_mutex);
-268 }</pre>
+<pre>264                                                                      {
+265   ensure_mutex_initialized();
+266   mutex_lock(&amp;g_webrtc_mutex);
+267   g_tcp_transport = transport;
+268   mutex_unlock(&amp;g_webrtc_mutex);
+269 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>mutex_lock</b>, and <b>mutex_unlock</b>.</p>

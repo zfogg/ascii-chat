@@ -89,20 +89,20 @@
 <i>section_name</i> Section name to search for (case-sensitive)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to matching section, or NULL if not found</div>
-<p class="Pp">Definition at line <b>396</b> of file <b>parser.c</b>.</p>
-<pre>397                                                                               {
-398   if (!sections || !section_name) {
-399     return NULL;
-400   }
-401 
-402   for (size_t i = 0; i &lt; count; i++) {
-403     if (sections[i].section_name &amp;&amp; strcmp(sections[i].section_name, section_name) == 0) {
-404       return &amp;sections[i];
-405     }
-406   }
-407 
-408   return NULL;
-409 }</pre>
+<p class="Pp">Definition at line <b>400</b> of file <b>parser.c</b>.</p>
+<pre>401                                                                               {
+402   if (!sections || !section_name) {
+403     return NULL;
+404   }
+405 
+406   for (size_t i = 0; i &lt; count; i++) {
+407     if (sections[i].section_name &amp;&amp; strcmp(sections[i].section_name, section_name) == 0) {
+408       return &amp;sections[i];
+409     }
+410   }
+411 
+412   return NULL;
+413 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>find_section()</b>.</p>
@@ -119,23 +119,23 @@
 <div class="Bd-indent"><i>sections</i> Array of parsed sections (can be NULL)
 <br/>
 <i>count</i> Number of sections in array</div>
-<p class="Pp">Definition at line <b>379</b> of file <b>parser.c</b>.</p>
-<pre>379                                                                             {
-380   if (!sections) {
-381     return;
-382   }
-383 
-384   for (size_t i = 0; i &lt; count; i++) {
-385     if (sections[i].section_name) {
-386       SAFE_FREE(sections[i].section_name);
-387     }
-388     if (sections[i].content) {
-389       SAFE_FREE(sections[i].content);
-390     }
-391   }
-392 
-393   SAFE_FREE(sections);
-394 }</pre>
+<p class="Pp">Definition at line <b>383</b> of file <b>parser.c</b>.</p>
+<pre>383                                                                             {
+384   if (!sections) {
+385     return;
+386   }
+387 
+388   for (size_t i = 0; i &lt; count; i++) {
+389     if (sections[i].section_name) {
+390       SAFE_FREE(sections[i].section_name);
+391     }
+392     if (sections[i].content) {
+393       SAFE_FREE(sections[i].content);
+394     }
+395   }
+396 
+397   SAFE_FREE(sections);
+398 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>SAFE_FREE</b>.</p>
@@ -174,14 +174,14 @@
 <p class="Pp">The file position is not reset; caller may need to fseek if
   needed</p>
 </div>
-<p class="Pp">Definition at line <b>338</b> of file <b>parser.c</b>.</p>
-<pre>338                                                                                                          {
-339   if (!f || !out_sections || !out_count) {
-340     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for manpage_parser_parse_file&quot;);
-341   }
-342 
-343   return parse_sections_internal(f, out_sections, out_count);
-344 }</pre>
+<p class="Pp">Definition at line <b>339</b> of file <b>parser.c</b>.</p>
+<pre>339                                                                                                          {
+340   if (!f || !out_sections || !out_count) {
+341     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for manpage_parser_parse_file&quot;);
+342   }
+343 
+344   return parse_sections_internal(f, out_sections, out_count);
+345 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
@@ -225,38 +225,41 @@
 <p class="Pp"></p>
 <p class="Pp">Available in all builds (Debug, Dev, Release)</p>
 </div>
-<p class="Pp">Definition at line <b>346</b> of file <b>parser.c</b>.</p>
-<pre>347                                                                  {
-348   if (!content || content_len == 0 || !out_sections || !out_count) {
-349     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for manpage_parser_parse_memory&quot;);
-350   }
-351 
-352   // Create temporary file from memory
-353   FILE *tmp = platform_tmpfile();
-354   if (!tmp) {
-355     return SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to create temporary file for memory parsing&quot;);
-356   }
-357 
-358   // Write content to temporary file
-359   // Write content_len + 1 to include the null terminator.
-360   // The embedded string is content_len + 1 bytes (content_len chars + null terminator).
-361   // platform_getline() needs the null terminator to properly handle EOF.
-362   size_t bytes_to_write = content_len + 1;
-363   size_t written = fwrite(content, 1, bytes_to_write, tmp);
-364   if (written != bytes_to_write) {
-365     fclose(tmp);
-366     return SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to write complete content to temporary file&quot;);
-367   }
-368 
-369   // Rewind to beginning for reading
-370   rewind(tmp);
-371 
-372   // Parse using common function
-373   asciichat_error_t err = parse_sections_internal(tmp, out_sections, out_count);
-374   fclose(tmp);
+<p class="Pp">Definition at line <b>347</b> of file <b>parser.c</b>.</p>
+<pre>348                                                                  {
+349   if (!content || content_len == 0 || !out_sections || !out_count) {
+350     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for manpage_parser_parse_memory&quot;);
+351   }
+352 
+353   // Create temporary file from memory
+354   FILE *tmp = platform_tmpfile();
+355   if (!tmp) {
+356     return SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to create temporary file for memory parsing&quot;);
+357   }
+358 
+359   // Write content to temporary file
+360   // Write content_len + 1 to include the null terminator.
+361   // The embedded string is content_len + 1 bytes (content_len chars + null terminator).
+362   // platform_getline() needs the null terminator to properly handle EOF.
+363   size_t bytes_to_write = content_len + 1;
+364   size_t written = fwrite(content, 1, bytes_to_write, tmp);
+365   if (written != bytes_to_write) {
+366     fclose(tmp);
+367     return SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to write complete content to temporary file&quot;);
+368   }
+369 
+370   // Rewind to beginning for reading
+371   if (fseek(tmp, 0, SEEK_SET) != 0) {
+372     fclose(tmp);
+373     return SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to rewind temporary file&quot;);
+374   }
 375 
-376   return err;
-377 }</pre>
+376   // Parse using common function
+377   asciichat_error_t err = parse_sections_internal(tmp, out_sections, out_count);
+378   fclose(tmp);
+379 
+380   return err;
+381 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_PARAM</b>,

@@ -184,11 +184,11 @@
   check</div>
 <p class="Pp">Called by the status screen loop to detect signal-initiated
     cancellation.</p>
-<p class="Pp">Definition at line <b>385</b> of file <b>search.c</b>.</p>
-<pre>385                                           {
-386   bool expected = true;
-387   return atomic_cas_bool(&amp;g_search_state.signal_cancelled, &amp;expected, false);
-388 }</pre>
+<p class="Pp">Definition at line <b>380</b> of file <b>search.c</b>.</p>
+<pre>380                                           {
+381   bool expected = true;
+382   return atomic_cas_bool(&amp;g_search_state.signal_cancelled, &amp;expected, false);
+383 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_cas_bool()</b>.</p>
@@ -198,24 +198,24 @@
   log_search_destroy (void )</a></h2>
 <p class="Pp">Clean up interactive grep subsystem. Frees all allocated
     resources. Safe to call multiple times.</p>
-<p class="Pp">Definition at line <b>197</b> of file <b>search.c</b>.</p>
-<pre>197                               {
-198   if (!lifecycle_shutdown(&amp;g_log_search_lifecycle)) {
-199     return; // Already shut down or never initialized
-200   }
-201 
-202   mutex_lock(&amp;g_search_state.mutex);
-203 
-204   // Free active patterns
-205   for (int i = 0; i &lt; g_search_state.active_pattern_count; i++) {
-206     if (g_search_state.active_patterns[i]) {
-207       // Note: pcre2_singleton handles its own reference counting
-208       g_search_state.active_patterns[i] = NULL;
-209     }
-210   }
-211 
-212   mutex_unlock(&amp;g_search_state.mutex);
-213 }</pre>
+<p class="Pp">Definition at line <b>192</b> of file <b>search.c</b>.</p>
+<pre>192                               {
+193   if (!lifecycle_shutdown(&amp;g_log_search_lifecycle)) {
+194     return; // Already shut down or never initialized
+195   }
+196 
+197   mutex_lock(&amp;g_search_state.mutex);
+198 
+199   // Free active patterns
+200   for (int i = 0; i &lt; g_search_state.active_pattern_count; i++) {
+201     if (g_search_state.active_patterns[i]) {
+202       // Note: pcre2_singleton handles its own reference counting
+203       g_search_state.active_patterns[i] = NULL;
+204     }
+205   }
+206 
+207   mutex_unlock(&amp;g_search_state.mutex);
+208 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_shutdown()</b>, <b>mutex_lock</b>, and
@@ -227,79 +227,79 @@
 <p class="Pp">Enter search mode (user pressed '/'). Saves current CLI --grep
     patterns, activates input mode, and prepares for interactive pattern
   entry.</p>
-<p class="Pp">Definition at line <b>219</b> of file <b>search.c</b>.</p>
-<pre>219                                  {
-220   // Ensure cursor is visible for user typing
-221   (void)terminal_cursor_show();
-222 
-223   mutex_lock(&amp;g_search_state.mutex);
-224 
-225   // Save current patterns (CLI --grep patterns)
-226   asciichat_error_t result = grep_save_patterns();
-227   if (result != ASCIICHAT_OK) {
-228     log_warn(&quot;Failed to save filter patterns&quot;);
-229   }
+<p class="Pp">Definition at line <b>214</b> of file <b>search.c</b>.</p>
+<pre>214                                  {
+215   // Ensure cursor is visible for user typing
+216   (void)terminal_cursor_show();
+217 
+218   mutex_lock(&amp;g_search_state.mutex);
+219 
+220   // Save current patterns (CLI --grep patterns)
+221   asciichat_error_t result = grep_save_patterns();
+222   if (result != ASCIICHAT_OK) {
+223     log_warn(&quot;Failed to save filter patterns&quot;);
+224   }
+225 
+226   // Clear input buffer
+227   memset(g_search_state.input_buffer, 0, sizeof(g_search_state.input_buffer));
+228   g_search_state.len = 0;
+229   g_search_state.cursor = 0;
 230 
-231   // Clear input buffer
-232   memset(g_search_state.input_buffer, 0, sizeof(g_search_state.input_buffer));
-233   g_search_state.len = 0;
-234   g_search_state.cursor = 0;
-235 
-236   // Pre-populate with CLI --grep pattern if available (only once at startup)
-237   if (!g_search_state.cli_pattern_auto_populated) {
-238     const char *cli_pattern = grep_get_last_pattern();
-239     if (cli_pattern &amp;&amp; cli_pattern[0] != '\0') {
-240       // Skip leading slash if present (prompt already shows &quot;/&quot;)
-241       const char *pattern_to_use = cli_pattern;
-242       if (cli_pattern[0] == '/') {
-243         pattern_to_use = cli_pattern + 1;
-244       }
-245 
-246       size_t pattern_len = strlen(pattern_to_use);
-247       if (pattern_len &lt; sizeof(g_search_state.input_buffer) - 1) {
-248         memcpy(g_search_state.input_buffer, pattern_to_use, pattern_len + 1);
-249         g_search_state.len = pattern_len;
-250         g_search_state.cursor = pattern_len;
-251         g_search_state.cli_pattern_auto_populated = true;
-252 
-253         // Compile and apply the pattern immediately so it starts filtering
-254         grep_parse_result_t parsed = grep_parse_pattern(g_search_state.input_buffer);
-255         if (parsed.valid) {
-256           // Store parsed flags
-257           g_search_state.case_insensitive = parsed.case_insensitive;
-258           g_search_state.fixed_string = parsed.is_fixed_string;
-259           g_search_state.global_highlight = parsed.global_flag;
-260           g_search_state.invert_match = parsed.invert;
-261           g_search_state.context_before = parsed.context_before;
-262           g_search_state.context_after = parsed.context_after;
-263 
-264           // Compile pattern if not fixed string
-265           if (strlen(parsed.pattern) &gt; 0 &amp;&amp; !parsed.is_fixed_string) {
-266             pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
-267             if (singleton) {
-268               pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
-269               if (code) {
-270                 g_search_state.active_patterns[0] = singleton;
-271                 g_search_state.active_pattern_count = 1;
-272               } else {
-273                 g_search_state.fixed_string = true;
-274               }
-275             } else {
-276               g_search_state.fixed_string = true;
-277             }
-278           }
-279         }
-280       }
-281     }
-282   }
+231   // Pre-populate with CLI --grep pattern if available (only once at startup)
+232   if (!g_search_state.cli_pattern_auto_populated) {
+233     const char *cli_pattern = grep_get_last_pattern();
+234     if (cli_pattern &amp;&amp; cli_pattern[0] != '\0') {
+235       // Skip leading slash if present (prompt already shows &quot;/&quot;)
+236       const char *pattern_to_use = cli_pattern;
+237       if (cli_pattern[0] == '/') {
+238         pattern_to_use = cli_pattern + 1;
+239       }
+240 
+241       size_t pattern_len = strlen(pattern_to_use);
+242       if (pattern_len &lt; sizeof(g_search_state.input_buffer) - 1) {
+243         memcpy(g_search_state.input_buffer, pattern_to_use, pattern_len + 1);
+244         g_search_state.len = pattern_len;
+245         g_search_state.cursor = pattern_len;
+246         g_search_state.cli_pattern_auto_populated = true;
+247 
+248         // Compile and apply the pattern immediately so it starts filtering
+249         grep_parse_result_t parsed = grep_parse_pattern(g_search_state.input_buffer);
+250         if (parsed.valid) {
+251           // Store parsed flags
+252           g_search_state.case_insensitive = parsed.case_insensitive;
+253           g_search_state.fixed_string = parsed.is_fixed_string;
+254           g_search_state.global_highlight = parsed.global_flag;
+255           g_search_state.invert_match = parsed.invert;
+256           g_search_state.context_before = parsed.context_before;
+257           g_search_state.context_after = parsed.context_after;
+258 
+259           // Compile pattern if not fixed string
+260           if (strlen(parsed.pattern) &gt; 0 &amp;&amp; !parsed.is_fixed_string) {
+261             pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
+262             if (singleton) {
+263               pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
+264               if (code) {
+265                 g_search_state.active_patterns[0] = singleton;
+266                 g_search_state.active_pattern_count = 1;
+267               } else {
+268                 g_search_state.fixed_string = true;
+269               }
+270             } else {
+271               g_search_state.fixed_string = true;
+272             }
+273           }
+274         }
+275       }
+276     }
+277   }
+278 
+279   // Enter input mode
+280   g_search_state.mode = LOG_SEARCH_MODE_ENTERING;
+281   atomic_store_int(&amp;g_search_state.mode_atomic, LOG_SEARCH_MODE_ENTERING);
+282   atomic_store_bool(&amp;g_search_state.needs_rerender, true);
 283 
-284   // Enter input mode
-285   g_search_state.mode = LOG_SEARCH_MODE_ENTERING;
-286   atomic_store_int(&amp;g_search_state.mode_atomic, LOG_SEARCH_MODE_ENTERING);
-287   atomic_store_bool(&amp;g_search_state.needs_rerender, true);
-288 
-289   mutex_unlock(&amp;g_search_state.mutex);
-290 }</pre>
+284   mutex_unlock(&amp;g_search_state.mutex);
+285 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -329,87 +329,87 @@
 <p class="Pp">If accepting: Parses pattern with /pattern/flags syntax, compiles
     with PCRE2, and activates filtering. If canceling: Restores CLI --grep
     patterns.</p>
-<p class="Pp">Definition at line <b>292</b> of file <b>search.c</b>.</p>
-<pre>292                                        {
-293   mutex_lock(&amp;g_search_state.mutex);
+<p class="Pp">Definition at line <b>287</b> of file <b>search.c</b>.</p>
+<pre>287                                        {
+288   mutex_lock(&amp;g_search_state.mutex);
+289 
+290   if (g_search_state.mode != LOG_SEARCH_MODE_ENTERING) {
+291     mutex_unlock(&amp;g_search_state.mutex);
+292     return;
+293   }
 294 
-295   if (g_search_state.mode != LOG_SEARCH_MODE_ENTERING) {
-296     mutex_unlock(&amp;g_search_state.mutex);
-297     return;
-298   }
-299 
-300   if (!accept) {
-301     // Cancel - restore previous patterns and reset CLI pattern flag so user can re-populate
-302     asciichat_error_t result = grep_restore_patterns();
-303     if (result != ASCIICHAT_OK) {
-304       log_warn(&quot;Failed to restore filter patterns&quot;);
+295   if (!accept) {
+296     // Cancel - restore previous patterns and reset CLI pattern flag so user can re-populate
+297     asciichat_error_t result = grep_restore_patterns();
+298     if (result != ASCIICHAT_OK) {
+299       log_warn(&quot;Failed to restore filter patterns&quot;);
+300     }
+301 
+302     // Clear interactive grep patterns
+303     for (int i = 0; i &lt; g_search_state.active_pattern_count; i++) {
+304       g_search_state.active_patterns[i] = NULL;
 305     }
-306 
-307     // Clear interactive grep patterns
-308     for (int i = 0; i &lt; g_search_state.active_pattern_count; i++) {
-309       g_search_state.active_patterns[i] = NULL;
-310     }
-311     g_search_state.active_pattern_count = 0;
-312 
-313     // Reset the CLI pattern auto-populated flag so user can re-enter grep mode with the pattern again
-314     g_search_state.cli_pattern_auto_populated = false;
-315 
-316     g_search_state.mode = LOG_SEARCH_MODE_INACTIVE;
-317     atomic_store_int(&amp;g_search_state.mode_atomic, LOG_SEARCH_MODE_INACTIVE);
-318     atomic_store_bool(&amp;g_search_state.needs_rerender, true);
-319     mutex_unlock(&amp;g_search_state.mutex);
-320     return;
-321   }
-322 
-323   // Accept - parse and compile pattern
-324   grep_parse_result_t parsed = grep_parse_pattern(g_search_state.input_buffer);
-325 
-326   if (!parsed.valid) {
-327     log_error(&quot;Invalid pattern format&quot;);
-328     mutex_unlock(&amp;g_search_state.mutex);
-329     return; // Stay in input mode
+306     g_search_state.active_pattern_count = 0;
+307 
+308     // Reset the CLI pattern auto-populated flag so user can re-enter grep mode with the pattern again
+309     g_search_state.cli_pattern_auto_populated = false;
+310 
+311     g_search_state.mode = LOG_SEARCH_MODE_INACTIVE;
+312     atomic_store_int(&amp;g_search_state.mode_atomic, LOG_SEARCH_MODE_INACTIVE);
+313     atomic_store_bool(&amp;g_search_state.needs_rerender, true);
+314     mutex_unlock(&amp;g_search_state.mutex);
+315     return;
+316   }
+317 
+318   // Accept - parse and compile pattern
+319   grep_parse_result_t parsed = grep_parse_pattern(g_search_state.input_buffer);
+320 
+321   if (!parsed.valid) {
+322     log_error(&quot;Invalid pattern format&quot;);
+323     mutex_unlock(&amp;g_search_state.mutex);
+324     return; // Stay in input mode
+325   }
+326 
+327   // Clear old regex patterns
+328   for (int i = 0; i &lt; g_search_state.active_pattern_count; i++) {
+329     g_search_state.active_patterns[i] = NULL;
 330   }
-331 
-332   // Clear old regex patterns
-333   for (int i = 0; i &lt; g_search_state.active_pattern_count; i++) {
-334     g_search_state.active_patterns[i] = NULL;
-335   }
-336   g_search_state.active_pattern_count = 0;
-337 
-338   // Store parsed flags first
-339   g_search_state.case_insensitive = parsed.case_insensitive;
-340   g_search_state.fixed_string = parsed.is_fixed_string;
-341   g_search_state.global_highlight = parsed.global_flag;
-342   g_search_state.invert_match = parsed.invert;
-343   g_search_state.context_before = parsed.context_before;
-344   g_search_state.context_after = parsed.context_after;
-345 
-346   // Compile and store new pattern (if not fixed string)
-347   if (strlen(parsed.pattern) &gt; 0 &amp;&amp; !parsed.is_fixed_string) {
-348     pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
-349     if (singleton) {
-350       // Verify the pattern actually compiles
-351       pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
-352       if (code) {
-353         g_search_state.active_patterns[0] = singleton;
-354         g_search_state.active_pattern_count = 1;
-355       } else {
-356         // Compilation failed - fall back to fixed string matching
-357         g_search_state.fixed_string = true; // Override to use fixed string instead
-358       }
-359     } else {
-360       // Malloc failed - fall back to fixed string
-361       g_search_state.fixed_string = true;
-362     }
-363   }
-364   // For fixed strings, pattern stays in input_buffer and fixed_string=true
-365 
-366   g_search_state.mode = LOG_SEARCH_MODE_ACTIVE;
-367   atomic_store_int(&amp;g_search_state.mode_atomic, LOG_SEARCH_MODE_ACTIVE);
-368   atomic_store_bool(&amp;g_search_state.needs_rerender, true);
-369 
-370   mutex_unlock(&amp;g_search_state.mutex);
-371 }</pre>
+331   g_search_state.active_pattern_count = 0;
+332 
+333   // Store parsed flags first
+334   g_search_state.case_insensitive = parsed.case_insensitive;
+335   g_search_state.fixed_string = parsed.is_fixed_string;
+336   g_search_state.global_highlight = parsed.global_flag;
+337   g_search_state.invert_match = parsed.invert;
+338   g_search_state.context_before = parsed.context_before;
+339   g_search_state.context_after = parsed.context_after;
+340 
+341   // Compile and store new pattern (if not fixed string)
+342   if (strlen(parsed.pattern) &gt; 0 &amp;&amp; !parsed.is_fixed_string) {
+343     pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
+344     if (singleton) {
+345       // Verify the pattern actually compiles
+346       pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
+347       if (code) {
+348         g_search_state.active_patterns[0] = singleton;
+349         g_search_state.active_pattern_count = 1;
+350       } else {
+351         // Compilation failed - fall back to fixed string matching
+352         g_search_state.fixed_string = true; // Override to use fixed string instead
+353       }
+354     } else {
+355       // Malloc failed - fall back to fixed string
+356       g_search_state.fixed_string = true;
+357     }
+358   }
+359   // For fixed strings, pattern stays in input_buffer and fixed_string=true
+360 
+361   g_search_state.mode = LOG_SEARCH_MODE_ACTIVE;
+362   atomic_store_int(&amp;g_search_state.mode_atomic, LOG_SEARCH_MODE_ACTIVE);
+363   atomic_store_bool(&amp;g_search_state.needs_rerender, true);
+364 
+365   mutex_unlock(&amp;g_search_state.mutex);
+366 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -456,163 +456,163 @@
 </dl>
 <p class="Pp">If no log file or read error: Falls back to in-memory buffer
   only.</p>
-<p class="Pp">Definition at line <b>535</b> of file <b>search.c</b>.</p>
-<pre>535                                                                                                           {
-536   if (!out_entries || !out_count) {
-537     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_entries and out_count must not be NULL&quot;);
-538   }
-539 
-540   // Get logs from in-memory buffer
-541   session_log_entry_t *buffer_entries =
-542       SAFE_MALLOC(SESSION_LOG_BUFFER_SIZE * sizeof(session_log_entry_t), session_log_entry_t *);
-543   if (!buffer_entries) {
-544     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate log buffer&quot;);
-545   }
-546 
-547   session_log_buffer_t *log_buf = log_get_session_log_buffer();
-548   size_t buffer_count = session_log_buffer_get_recent(log_buf, buffer_entries, SESSION_LOG_BUFFER_SIZE);
-549 
-550   // Check if filtering is active (either regex patterns or fixed string)
-551   mutex_lock(&amp;g_search_state.mutex);
-552   bool has_regex_patterns = (g_search_state.active_pattern_count &gt; 0);
-553   bool has_fixed_string = (g_search_state.fixed_string &amp;&amp; g_search_state.len &gt; 0);
-554   bool filtering_active = has_regex_patterns || has_fixed_string;
-555 
-556   if (!filtering_active) {
-557     // No filtering active - return all entries
-558     mutex_unlock(&amp;g_search_state.mutex);
-559     *out_entries = buffer_entries;
-560     *out_count = buffer_count;
-561     return ASCIICHAT_OK;
-562   }
-563 
-564   // Filter entries with PCRE2
-565   session_log_entry_t *filtered =
-566       SAFE_MALLOC(SESSION_LOG_BUFFER_SIZE * sizeof(session_log_entry_t), session_log_entry_t *);
-567   if (!filtered) {
-568     mutex_unlock(&amp;g_search_state.mutex);
-569     SAFE_FREE(buffer_entries);
-570     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate filtered buffer&quot;);
-571   }
-572 
-573   size_t filtered_count = 0;
-574 
-575   // Create match data for PCRE2 matching
-576   pcre2_match_data *match_data = NULL;
-577   for (int p = 0; p &lt; g_search_state.active_pattern_count; p++) {
-578     if (g_search_state.active_patterns[p]) {
-579       pcre2_code *code = asciichat_pcre2_singleton_get_code(g_search_state.active_patterns[p]);
-580       if (code) {
-581         match_data = pcre2_match_data_create_from_pattern(code, NULL);
-582         break;
-583       }
-584     }
-585   }
-586 
-587   if (!match_data &amp;&amp; g_search_state.active_pattern_count &gt; 0) {
-588     // Couldn't create match data - fall back to returning all entries
-589     mutex_unlock(&amp;g_search_state.mutex);
-590     SAFE_FREE(filtered);
-591     *out_entries = buffer_entries;
-592     *out_count = buffer_count;
-593     return ASCIICHAT_OK;
-594   }
-595 
-596   // Parse pattern once before loop (for fixed string mode)
-597   grep_parse_result_t parsed = {0};
-598   if (has_fixed_string) {
-599     parsed = grep_parse_pattern(g_search_state.input_buffer);
-600   }
-601 
-602   for (size_t i = 0; i &lt; buffer_count; i++) {
-603     const char *original_message = buffer_entries[i].message;
-604     bool matches = false;
-605 
-606     // Strip ANSI codes to match against plain text (consistent with highlighting)
-607     char plain_message[SESSION_LOG_LINE_MAX] = {0};
-608     const char *strip_ansi_codes_fn(const char *src, char *dst, size_t dst_size);
-609     // Use inline stripping to avoid function call overhead
-610     {
-611       size_t pos = 0;
-612       const char *src = original_message;
-613       char *dst = plain_message;
-614       size_t dst_size = sizeof(plain_message);
-615 
-616       while (*src &amp;&amp; pos &lt; dst_size - 1) {
-617         if (*src == '\x1b' &amp;&amp; src[1] != '\0' &amp;&amp; src[1] == '[') {
-618           // CSI sequence - skip until final byte
-619           src += 2;
-620           while (*src &amp;&amp; pos &lt; dst_size - 1 &amp;&amp; !(*src &gt;= 0x40 &amp;&amp; *src &lt;= 0x7E)) {
-621             src++;
-622           }
-623           if (*src)
-624             src++; // Skip final byte
-625         } else {
-626           dst[pos++] = *src++;
-627         }
-628       }
-629       dst[pos] = '\0';
-630     }
-631 
-632     size_t message_len = strlen(plain_message);
-633 
-634     // Fixed string matching
-635     if (has_fixed_string) {
-636       const char *search_pattern = parsed.pattern;
-637 
-638       if (g_search_state.case_insensitive) {
-639         // Unicode-aware case-insensitive fixed string search
-640         matches = (utf8_strcasestr(plain_message, search_pattern) != NULL);
-641       } else {
-642         // Case-sensitive fixed string search
-643         matches = (strstr(plain_message, search_pattern) != NULL);
-644       }
-645     }
-646     // Regex pattern matching
-647     else if (has_regex_patterns) {
-648       // Check against all active patterns (OR logic)
-649       for (int p = 0; p &lt; g_search_state.active_pattern_count; p++) {
-650         pcre2_singleton_t *singleton = g_search_state.active_patterns[p];
-651         if (!singleton) {
+<p class="Pp">Definition at line <b>530</b> of file <b>search.c</b>.</p>
+<pre>530                                                                                                           {
+531   if (!out_entries || !out_count) {
+532     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_entries and out_count must not be NULL&quot;);
+533   }
+534 
+535   // Get logs from in-memory buffer
+536   session_log_entry_t *buffer_entries =
+537       SAFE_MALLOC(SESSION_LOG_BUFFER_SIZE * sizeof(session_log_entry_t), session_log_entry_t *);
+538   if (!buffer_entries) {
+539     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate log buffer&quot;);
+540   }
+541 
+542   session_log_buffer_t *log_buf = log_get_session_log_buffer();
+543   size_t buffer_count = session_log_buffer_get_recent(log_buf, buffer_entries, SESSION_LOG_BUFFER_SIZE);
+544 
+545   // Check if filtering is active (either regex patterns or fixed string)
+546   mutex_lock(&amp;g_search_state.mutex);
+547   bool has_regex_patterns = (g_search_state.active_pattern_count &gt; 0);
+548   bool has_fixed_string = (g_search_state.fixed_string &amp;&amp; g_search_state.len &gt; 0);
+549   bool filtering_active = has_regex_patterns || has_fixed_string;
+550 
+551   if (!filtering_active) {
+552     // No filtering active - return all entries
+553     mutex_unlock(&amp;g_search_state.mutex);
+554     *out_entries = buffer_entries;
+555     *out_count = buffer_count;
+556     return ASCIICHAT_OK;
+557   }
+558 
+559   // Filter entries with PCRE2
+560   session_log_entry_t *filtered =
+561       SAFE_MALLOC(SESSION_LOG_BUFFER_SIZE * sizeof(session_log_entry_t), session_log_entry_t *);
+562   if (!filtered) {
+563     mutex_unlock(&amp;g_search_state.mutex);
+564     SAFE_FREE(buffer_entries);
+565     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate filtered buffer&quot;);
+566   }
+567 
+568   size_t filtered_count = 0;
+569 
+570   // Create match data for PCRE2 matching
+571   pcre2_match_data *match_data = NULL;
+572   for (int p = 0; p &lt; g_search_state.active_pattern_count; p++) {
+573     if (g_search_state.active_patterns[p]) {
+574       pcre2_code *code = asciichat_pcre2_singleton_get_code(g_search_state.active_patterns[p]);
+575       if (code) {
+576         match_data = pcre2_match_data_create_from_pattern(code, NULL);
+577         break;
+578       }
+579     }
+580   }
+581 
+582   if (!match_data &amp;&amp; g_search_state.active_pattern_count &gt; 0) {
+583     // Couldn't create match data - fall back to returning all entries
+584     mutex_unlock(&amp;g_search_state.mutex);
+585     SAFE_FREE(filtered);
+586     *out_entries = buffer_entries;
+587     *out_count = buffer_count;
+588     return ASCIICHAT_OK;
+589   }
+590 
+591   // Parse pattern once before loop (for fixed string mode)
+592   grep_parse_result_t parsed = {0};
+593   if (has_fixed_string) {
+594     parsed = grep_parse_pattern(g_search_state.input_buffer);
+595   }
+596 
+597   for (size_t i = 0; i &lt; buffer_count; i++) {
+598     const char *original_message = buffer_entries[i].message;
+599     bool matches = false;
+600 
+601     // Strip ANSI codes to match against plain text (consistent with highlighting)
+602     char plain_message[SESSION_LOG_LINE_MAX] = {0};
+603     const char *strip_ansi_codes_fn(const char *src, char *dst, size_t dst_size);
+604     // Use inline stripping to avoid function call overhead
+605     {
+606       size_t pos = 0;
+607       const char *src = original_message;
+608       char *dst = plain_message;
+609       size_t dst_size = sizeof(plain_message);
+610 
+611       while (*src &amp;&amp; pos &lt; dst_size - 1) {
+612         if (*src == '\x1b' &amp;&amp; src[1] != '\0' &amp;&amp; src[1] == '[') {
+613           // CSI sequence - skip until final byte
+614           src += 2;
+615           while (*src &amp;&amp; pos &lt; dst_size - 1 &amp;&amp; !(*src &gt;= 0x40 &amp;&amp; *src &lt;= 0x7E)) {
+616             src++;
+617           }
+618           if (*src)
+619             src++; // Skip final byte
+620         } else {
+621           dst[pos++] = *src++;
+622         }
+623       }
+624       dst[pos] = '\0';
+625     }
+626 
+627     size_t message_len = strlen(plain_message);
+628 
+629     // Fixed string matching
+630     if (has_fixed_string) {
+631       const char *search_pattern = parsed.pattern;
+632 
+633       if (g_search_state.case_insensitive) {
+634         // Unicode-aware case-insensitive fixed string search
+635         matches = (utf8_strcasestr(plain_message, search_pattern) != NULL);
+636       } else {
+637         // Case-sensitive fixed string search
+638         matches = (strstr(plain_message, search_pattern) != NULL);
+639       }
+640     }
+641     // Regex pattern matching
+642     else if (has_regex_patterns) {
+643       // Check against all active patterns (OR logic)
+644       for (int p = 0; p &lt; g_search_state.active_pattern_count; p++) {
+645         pcre2_singleton_t *singleton = g_search_state.active_patterns[p];
+646         if (!singleton) {
+647           continue;
+648         }
+649 
+650         pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
+651         if (!code) {
 652           continue;
 653         }
 654 
-655         pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
-656         if (!code) {
-657           continue;
-658         }
-659 
-660         // Match against plain message (without ANSI codes)
-661         int rc = pcre2_jit_match(code, (PCRE2_SPTR)plain_message, message_len, 0, 0, match_data, NULL);
-662         if (rc &gt;= 0) {
-663           matches = true;
-664           break;
-665         }
-666       }
+655         // Match against plain message (without ANSI codes)
+656         int rc = pcre2_jit_match(code, (PCRE2_SPTR)plain_message, message_len, 0, 0, match_data, NULL);
+657         if (rc &gt;= 0) {
+658           matches = true;
+659           break;
+660         }
+661       }
+662     }
+663 
+664     // Apply invert logic
+665     if (g_search_state.invert_match) {
+666       matches = !matches;
 667     }
 668 
-669     // Apply invert logic
-670     if (g_search_state.invert_match) {
-671       matches = !matches;
-672     }
+669     if (matches) {
+670       filtered[filtered_count++] = buffer_entries[i];
+671     }
+672   }
 673 
-674     if (matches) {
-675       filtered[filtered_count++] = buffer_entries[i];
-676     }
+674   // Free match data
+675   if (match_data) {
+676     pcre2_match_data_free(match_data);
 677   }
 678 
-679   // Free match data
-680   if (match_data) {
-681     pcre2_match_data_free(match_data);
-682   }
-683 
-684   mutex_unlock(&amp;g_search_state.mutex);
-685 
-686   SAFE_FREE(buffer_entries);
-687   *out_entries = filtered;
-688   *out_count = filtered_count;
-689   return ASCIICHAT_OK;
-690 }</pre>
+679   mutex_unlock(&amp;g_search_state.mutex);
+680 
+681   SAFE_FREE(buffer_entries);
+682   *out_entries = filtered;
+683   *out_count = filtered_count;
+684   return ASCIICHAT_OK;
+685 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -633,10 +633,10 @@
 <div class="Bd-indent">true if /i flag is set, false otherwise</div>
 <p class="Pp">Must be called while holding the mutex from
     <b>log_search_get_mutex()</b>.</p>
-<p class="Pp">Definition at line <b>956</b> of file <b>search.c</b>.</p>
-<pre>956                                            {
-957   return g_search_state.case_insensitive;
-958 }</pre>
+<p class="Pp">Definition at line <b>951</b> of file <b>search.c</b>.</p>
+<pre>951                                            {
+952   return g_search_state.case_insensitive;
+953 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>grep_highlight_colored()</b>.</p>
@@ -649,10 +649,10 @@
 <div class="Bd-indent">Cursor position (0-based index within input buffer)</div>
 <p class="Pp">Must be called while holding the mutex from
     <b>log_search_get_mutex()</b>.</p>
-<p class="Pp">Definition at line <b>948</b> of file <b>search.c</b>.</p>
-<pre>948                                          {
-949   return (int)g_search_state.cursor;
-950 }</pre>
+<p class="Pp">Definition at line <b>943</b> of file <b>search.c</b>.</p>
+<pre>943                                          {
+944   return (int)g_search_state.cursor;
+945 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>terminal_screen_render()</b>.</p>
@@ -667,21 +667,21 @@
 <p class="Pp">Used by filter highlighting code to determine if all matches
     should be highlighted or just the first match. Returns false when
     interactive grep is inactive.</p>
-<p class="Pp">Definition at line <b>900</b> of file <b>search.c</b>.</p>
-<pre>900                                            {
-901   // Use atomic read to avoid mutex contention with keyboard handler
-902   int mode = atomic_load_int(&amp;g_search_state.mode_atomic);
-903   if (mode == LOG_SEARCH_MODE_INACTIVE) {
-904     return false;
-905   }
+<p class="Pp">Definition at line <b>895</b> of file <b>search.c</b>.</p>
+<pre>895                                            {
+896   // Use atomic read to avoid mutex contention with keyboard handler
+897   int mode = atomic_load_int(&amp;g_search_state.mode_atomic);
+898   if (mode == LOG_SEARCH_MODE_INACTIVE) {
+899     return false;
+900   }
+901 
+902   // Safe read under mutex (quick operation)
+903   mutex_lock(&amp;g_search_state.mutex);
+904   bool result = g_search_state.global_highlight;
+905   mutex_unlock(&amp;g_search_state.mutex);
 906 
-907   // Safe read under mutex (quick operation)
-908   mutex_lock(&amp;g_search_state.mutex);
-909   bool result = g_search_state.global_highlight;
-910   mutex_unlock(&amp;g_search_state.mutex);
-911 
-912   return result;
-913 }</pre>
+907   return result;
+908 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_int()</b>,
@@ -698,10 +698,10 @@
   mutex)</div>
 <p class="Pp">Must be called while holding the mutex from
     <b>log_search_get_mutex()</b>.</p>
-<p class="Pp">Definition at line <b>952</b> of file <b>search.c</b>.</p>
-<pre>952                                               {
-953   return g_search_state.input_buffer;
-954 }</pre>
+<p class="Pp">Definition at line <b>947</b> of file <b>search.c</b>.</p>
+<pre>947                                               {
+948   return g_search_state.input_buffer;
+949 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>grep_highlight_colored()</b>, and
@@ -715,10 +715,10 @@
 <div class="Bd-indent">Length of the current grep input pattern</div>
 <p class="Pp">Must be called while holding the mutex from
     <b>log_search_get_mutex()</b>.</p>
-<p class="Pp">Definition at line <b>944</b> of file <b>search.c</b>.</p>
-<pre>944                                    {
-945   return (int)g_search_state.len;
-946 }</pre>
+<p class="Pp">Definition at line <b>939</b> of file <b>search.c</b>.</p>
+<pre>939                                    {
+940   return (int)g_search_state.len;
+941 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>grep_highlight_colored()</b>, and
@@ -739,157 +739,157 @@
   otherwise</div>
 <p class="Pp">Used by display code to apply highlighting to matching portions of
     logs. Returns match position for use with log_filter_highlight().</p>
-<p class="Pp">Definition at line <b>733</b> of file <b>search.c</b>.</p>
-<pre>733                                                                                                     {
-734   if (!message || !out_match_start || !out_match_len) {
-735     return false;
-736   }
-737 
-738   *out_match_start = 0;
-739   *out_match_len = 0;
-740 
-741   // Use atomic read to avoid mutex contention with keyboard handler
-742   int mode = atomic_load_int(&amp;g_search_state.mode_atomic);
-743   if (mode == LOG_SEARCH_MODE_INACTIVE) {
-744     return false;
-745   }
-746 
-747   // Make a safe copy of state under mutex, then release before doing expensive work
-748   mutex_lock(&amp;g_search_state.mutex);
-749 
-750   bool has_fixed_string = g_search_state.fixed_string &amp;&amp; g_search_state.len &gt; 0;
-751   bool case_insensitive = g_search_state.case_insensitive;
-752   char pattern_copy[LOG_SEARCH_INPUT_BUFFER_SIZE];
-753   size_t pattern_len = g_search_state.len;
-754   int pattern_count = g_search_state.active_pattern_count;
-755   pcre2_singleton_t *patterns_copy[MAX_LOG_SEARCH_PATTERNS];
-756 
-757   if (has_fixed_string) {
-758     // Parse the input buffer to extract just the pattern part (without flags)
-759     grep_parse_result_t parsed = grep_parse_pattern(g_search_state.input_buffer);
-760     const char *src = parsed.valid ? parsed.pattern : g_search_state.input_buffer;
-761     SAFE_STRNCPY(pattern_copy, src, sizeof(pattern_copy) - 1);
-762     pattern_copy[sizeof(pattern_copy) - 1] = '\0';
-763     pattern_len = strlen(pattern_copy); // Update pattern_len for the actual parsed pattern
-764   }
-765 
-766   for (int i = 0; i &lt; pattern_count &amp;&amp; i &lt; MAX_LOG_SEARCH_PATTERNS; i++) {
-767     patterns_copy[i] = g_search_state.active_patterns[i];
-768   }
-769 
-770   mutex_unlock(&amp;g_search_state.mutex);
-771 
-772   // Now do matching without holding mutex
-773   size_t message_len = strlen(message);
-774   bool matches = false;
-775 
-776   // Fixed string matching
-777   if (has_fixed_string) {
-778     const char *found = NULL;
-779 
-780     if (case_insensitive) {
-781       found = utf8_strcasestr(message, pattern_copy);
-782     } else {
-783       found = strstr(message, pattern_copy);
-784     }
-785 
-786     if (found) {
-787       matches = true;
-788 
-789       // Convert byte position to character position (UTF-8 aware)
-790       size_t byte_pos = (size_t)(found - message);
-791       size_t char_pos = 0;
-792       for (size_t i = 0; i &lt; byte_pos &amp;&amp; message[i] != '\0';) {
-793         uint32_t codepoint;
-794         int utf8_len = utf8_decode((const uint8_t *)(message + i), &amp;codepoint);
-795         if (utf8_len &lt;= 0)
-796           utf8_len = 1;
-797         i += utf8_len;
-798         char_pos++;
-799       }
-800 
-801       // Count characters in the match (pattern_len is in bytes for the pattern)
-802       size_t match_char_len = 0;
-803       for (size_t i = 0; i &lt; pattern_len &amp;&amp; found[i] != '\0';) {
-804         uint32_t codepoint;
-805         int utf8_len = utf8_decode((const uint8_t *)(found + i), &amp;codepoint);
-806         if (utf8_len &lt;= 0)
-807           utf8_len = 1;
-808         i += utf8_len;
-809         match_char_len++;
-810       }
-811 
-812       *out_match_start = char_pos;
-813       *out_match_len = match_char_len;
-814     }
-815   }
-816   // Regex pattern matching
-817   else if (pattern_count &gt; 0) {
-818     pcre2_match_data *match_data = NULL;
-819     for (int p = 0; p &lt; pattern_count; p++) {
-820       if (patterns_copy[p]) {
-821         pcre2_code *code = asciichat_pcre2_singleton_get_code(patterns_copy[p]);
-822         if (code) {
-823           match_data = pcre2_match_data_create_from_pattern(code, NULL);
-824           break;
-825         }
-826       }
-827     }
-828 
-829     if (match_data) {
-830       for (int p = 0; p &lt; pattern_count; p++) {
-831         pcre2_singleton_t *singleton = patterns_copy[p];
-832         if (!singleton) {
+<p class="Pp">Definition at line <b>728</b> of file <b>search.c</b>.</p>
+<pre>728                                                                                                     {
+729   if (!message || !out_match_start || !out_match_len) {
+730     return false;
+731   }
+732 
+733   *out_match_start = 0;
+734   *out_match_len = 0;
+735 
+736   // Use atomic read to avoid mutex contention with keyboard handler
+737   int mode = atomic_load_int(&amp;g_search_state.mode_atomic);
+738   if (mode == LOG_SEARCH_MODE_INACTIVE) {
+739     return false;
+740   }
+741 
+742   // Make a safe copy of state under mutex, then release before doing expensive work
+743   mutex_lock(&amp;g_search_state.mutex);
+744 
+745   bool has_fixed_string = g_search_state.fixed_string &amp;&amp; g_search_state.len &gt; 0;
+746   bool case_insensitive = g_search_state.case_insensitive;
+747   char pattern_copy[LOG_SEARCH_INPUT_BUFFER_SIZE];
+748   size_t pattern_len = g_search_state.len;
+749   int pattern_count = g_search_state.active_pattern_count;
+750   pcre2_singleton_t *patterns_copy[MAX_LOG_SEARCH_PATTERNS];
+751 
+752   if (has_fixed_string) {
+753     // Parse the input buffer to extract just the pattern part (without flags)
+754     grep_parse_result_t parsed = grep_parse_pattern(g_search_state.input_buffer);
+755     const char *src = parsed.valid ? parsed.pattern : g_search_state.input_buffer;
+756     SAFE_STRNCPY(pattern_copy, src, sizeof(pattern_copy) - 1);
+757     pattern_copy[sizeof(pattern_copy) - 1] = '\0';
+758     pattern_len = strlen(pattern_copy); // Update pattern_len for the actual parsed pattern
+759   }
+760 
+761   for (int i = 0; i &lt; pattern_count &amp;&amp; i &lt; MAX_LOG_SEARCH_PATTERNS; i++) {
+762     patterns_copy[i] = g_search_state.active_patterns[i];
+763   }
+764 
+765   mutex_unlock(&amp;g_search_state.mutex);
+766 
+767   // Now do matching without holding mutex
+768   size_t message_len = strlen(message);
+769   bool matches = false;
+770 
+771   // Fixed string matching
+772   if (has_fixed_string) {
+773     const char *found = NULL;
+774 
+775     if (case_insensitive) {
+776       found = utf8_strcasestr(message, pattern_copy);
+777     } else {
+778       found = strstr(message, pattern_copy);
+779     }
+780 
+781     if (found) {
+782       matches = true;
+783 
+784       // Convert byte position to character position (UTF-8 aware)
+785       size_t byte_pos = (size_t)(found - message);
+786       size_t char_pos = 0;
+787       for (size_t i = 0; i &lt; byte_pos &amp;&amp; message[i] != '\0';) {
+788         uint32_t codepoint;
+789         int utf8_len = utf8_decode((const uint8_t *)(message + i), &amp;codepoint);
+790         if (utf8_len &lt;= 0)
+791           utf8_len = 1;
+792         i += utf8_len;
+793         char_pos++;
+794       }
+795 
+796       // Count characters in the match (pattern_len is in bytes for the pattern)
+797       size_t match_char_len = 0;
+798       for (size_t i = 0; i &lt; pattern_len &amp;&amp; found[i] != '\0';) {
+799         uint32_t codepoint;
+800         int utf8_len = utf8_decode((const uint8_t *)(found + i), &amp;codepoint);
+801         if (utf8_len &lt;= 0)
+802           utf8_len = 1;
+803         i += utf8_len;
+804         match_char_len++;
+805       }
+806 
+807       *out_match_start = char_pos;
+808       *out_match_len = match_char_len;
+809     }
+810   }
+811   // Regex pattern matching
+812   else if (pattern_count &gt; 0) {
+813     pcre2_match_data *match_data = NULL;
+814     for (int p = 0; p &lt; pattern_count; p++) {
+815       if (patterns_copy[p]) {
+816         pcre2_code *code = asciichat_pcre2_singleton_get_code(patterns_copy[p]);
+817         if (code) {
+818           match_data = pcre2_match_data_create_from_pattern(code, NULL);
+819           break;
+820         }
+821       }
+822     }
+823 
+824     if (match_data) {
+825       for (int p = 0; p &lt; pattern_count; p++) {
+826         pcre2_singleton_t *singleton = patterns_copy[p];
+827         if (!singleton) {
+828           continue;
+829         }
+830 
+831         pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
+832         if (!code) {
 833           continue;
 834         }
 835 
-836         pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
-837         if (!code) {
-838           continue;
-839         }
+836         int rc = pcre2_jit_match(code, (PCRE2_SPTR)message, message_len, 0, 0, match_data, NULL);
+837         if (rc &gt;= 0) {
+838           matches = true;
+839           PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
 840 
-841         int rc = pcre2_jit_match(code, (PCRE2_SPTR)message, message_len, 0, 0, match_data, NULL);
-842         if (rc &gt;= 0) {
-843           matches = true;
-844           PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
-845 
-846           // Convert byte positions to character positions (UTF-8 aware)
-847           size_t byte_start = (size_t)ovector[0];
-848           size_t byte_end = (size_t)ovector[1];
-849 
-850           // Count characters up to byte_start
-851           size_t char_start = 0;
-852           for (size_t i = 0; i &lt; byte_start &amp;&amp; message[i] != '\0';) {
-853             uint32_t codepoint;
-854             int utf8_len = utf8_decode((const uint8_t *)(message + i), &amp;codepoint);
-855             if (utf8_len &lt;= 0)
-856               utf8_len = 1;
-857             i += utf8_len;
-858             char_start++;
-859           }
-860 
-861           // Count characters up to byte_end
-862           size_t char_end = char_start;
-863           for (size_t i = byte_start; i &lt; byte_end &amp;&amp; message[i] != '\0';) {
-864             uint32_t codepoint;
-865             int utf8_len = utf8_decode((const uint8_t *)(message + i), &amp;codepoint);
-866             if (utf8_len &lt;= 0)
-867               utf8_len = 1;
-868             i += utf8_len;
-869             char_end++;
-870           }
-871 
-872           *out_match_start = char_start;
-873           *out_match_len = char_end - char_start;
-874           break;
-875         }
-876       }
-877       pcre2_match_data_free(match_data);
-878     }
-879   }
-880 
-881   return matches;
-882 }</pre>
+841           // Convert byte positions to character positions (UTF-8 aware)
+842           size_t byte_start = (size_t)ovector[0];
+843           size_t byte_end = (size_t)ovector[1];
+844 
+845           // Count characters up to byte_start
+846           size_t char_start = 0;
+847           for (size_t i = 0; i &lt; byte_start &amp;&amp; message[i] != '\0';) {
+848             uint32_t codepoint;
+849             int utf8_len = utf8_decode((const uint8_t *)(message + i), &amp;codepoint);
+850             if (utf8_len &lt;= 0)
+851               utf8_len = 1;
+852             i += utf8_len;
+853             char_start++;
+854           }
+855 
+856           // Count characters up to byte_end
+857           size_t char_end = char_start;
+858           for (size_t i = byte_start; i &lt; byte_end &amp;&amp; message[i] != '\0';) {
+859             uint32_t codepoint;
+860             int utf8_len = utf8_decode((const uint8_t *)(message + i), &amp;codepoint);
+861             if (utf8_len &lt;= 0)
+862               utf8_len = 1;
+863             i += utf8_len;
+864             char_end++;
+865           }
+866 
+867           *out_match_start = char_start;
+868           *out_match_len = char_end - char_start;
+869           break;
+870         }
+871       }
+872       pcre2_match_data_free(match_data);
+873     }
+874   }
+875 
+876   return matches;
+877 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_pcre2_singleton_get_code()</b>,
@@ -909,10 +909,10 @@
 <div class="Bd-indent">Pointer to the grep state mutex (internal use only)</div>
 <p class="Pp">Used by terminal rendering to perform atomic read of grep input
     for consistent rendering without flicker.</p>
-<p class="Pp">Definition at line <b>940</b> of file <b>search.c</b>.</p>
-<pre>940                                  {
-941   return (void *)&amp;g_search_state.mutex;
-942 }</pre>
+<p class="Pp">Definition at line <b>935</b> of file <b>search.c</b>.</p>
+<pre>935                                  {
+936   return (void *)&amp;g_search_state.mutex;
+937 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>terminal_screen_render()</b>.</p>
@@ -928,27 +928,27 @@
 <p class="Pp">Internal function used by filter highlighting code to enable
     global match highlighting in interactive grep mode. Returns NULL when not in
     active mode or if pattern is fixed string type (no regex compilation).</p>
-<p class="Pp">Definition at line <b>915</b> of file <b>search.c</b>.</p>
-<pre>915                                              {
-916   // Use atomic read to check if active
-917   int mode = atomic_load_int(&amp;g_search_state.mode_atomic);
-918   if (mode == LOG_SEARCH_MODE_INACTIVE) {
-919     return NULL;
-920   }
-921 
-922   // Safe read under mutex
-923   mutex_lock(&amp;g_search_state.mutex);
-924 
-925   // Return the compiled pattern if we have one (not fixed string)
-926   void *result = NULL;
-927   if (g_search_state.active_pattern_count &gt; 0 &amp;&amp; !g_search_state.fixed_string) {
-928     result = (void *)g_search_state.active_patterns[0];
-929   }
-930 
-931   mutex_unlock(&amp;g_search_state.mutex);
-932 
-933   return result;
-934 }</pre>
+<p class="Pp">Definition at line <b>910</b> of file <b>search.c</b>.</p>
+<pre>910                                              {
+911   // Use atomic read to check if active
+912   int mode = atomic_load_int(&amp;g_search_state.mode_atomic);
+913   if (mode == LOG_SEARCH_MODE_INACTIVE) {
+914     return NULL;
+915   }
+916 
+917   // Safe read under mutex
+918   mutex_lock(&amp;g_search_state.mutex);
+919 
+920   // Return the compiled pattern if we have one (not fixed string)
+921   void *result = NULL;
+922   if (g_search_state.active_pattern_count &gt; 0 &amp;&amp; !g_search_state.fixed_string) {
+923     result = (void *)g_search_state.active_patterns[0];
+924   }
+925 
+926   mutex_unlock(&amp;g_search_state.mutex);
+927 
+928   return result;
+929 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_int()</b>,
@@ -970,118 +970,118 @@
 <p class="Pp">Pattern validation happens live via validator callback. Enter
     compiles and activates pattern. Escape cancels and restores previous
     patterns.</p>
-<p class="Pp">Definition at line <b>419</b> of file <b>search.c</b>.</p>
-<pre>419                                                             {
-420   mutex_lock(&amp;g_search_state.mutex);
-421 
-422   // If not in input mode, check if user pressed '/'
-423   if (g_search_state.mode != LOG_SEARCH_MODE_ENTERING) {
-424     mutex_unlock(&amp;g_search_state.mutex);
-425 
-426     // Check for '/' key (key already passed as parameter, don't read again!)
-427     if (key == '/') {
-428       log_search_enter_mode();
-429     }
-430     return ASCIICHAT_OK;
-431   }
-432 
-433   // In input mode - use keyboard_read_line_interactive()
-434   // CRITICAL: Keep mutex held during keyboard_read_line_interactive() to prevent races
-435   // with the rendering thread. The validator callback and buffer modifications must be
-436   // synchronized with readers in log_search_gather_and_filter_logs().
-437   keyboard_line_edit_opts_t opts = {
-438       .buffer = g_search_state.input_buffer,
-439       .max_len = sizeof(g_search_state.input_buffer),
-440       .len = &amp;g_search_state.len,
-441       .cursor = &amp;g_search_state.cursor,
-442       .echo = false,                       // We handle rendering ourselves
-443       .mask_char = 0,                      // No masking
-444       .prefix = NULL,                      // Don't render prefix - log_search_render_input_line() handles it
-445       .validator = validate_pcre2_pattern, // Live validation
-446       .key = key                           // Pass the pre-read key
-447   };
-448 
-449   keyboard_line_edit_result_t result = keyboard_read_line_interactive(&amp;opts);
-450 
-451   switch (result) {
-452   case LINE_EDIT_ACCEPTED:
+<p class="Pp">Definition at line <b>414</b> of file <b>search.c</b>.</p>
+<pre>414                                                             {
+415   mutex_lock(&amp;g_search_state.mutex);
+416 
+417   // If not in input mode, check if user pressed '/'
+418   if (g_search_state.mode != LOG_SEARCH_MODE_ENTERING) {
+419     mutex_unlock(&amp;g_search_state.mutex);
+420 
+421     // Check for '/' key (key already passed as parameter, don't read again!)
+422     if (key == '/') {
+423       log_search_enter_mode();
+424     }
+425     return ASCIICHAT_OK;
+426   }
+427 
+428   // In input mode - use keyboard_read_line_interactive()
+429   // CRITICAL: Keep mutex held during keyboard_read_line_interactive() to prevent races
+430   // with the rendering thread. The validator callback and buffer modifications must be
+431   // synchronized with readers in log_search_gather_and_filter_logs().
+432   keyboard_line_edit_opts_t opts = {
+433       .buffer = g_search_state.input_buffer,
+434       .max_len = sizeof(g_search_state.input_buffer),
+435       .len = &amp;g_search_state.len,
+436       .cursor = &amp;g_search_state.cursor,
+437       .echo = false,                       // We handle rendering ourselves
+438       .mask_char = 0,                      // No masking
+439       .prefix = NULL,                      // Don't render prefix - log_search_render_input_line() handles it
+440       .validator = validate_pcre2_pattern, // Live validation
+441       .key = key                           // Pass the pre-read key
+442   };
+443 
+444   keyboard_line_edit_result_t result = keyboard_read_line_interactive(&amp;opts);
+445 
+446   switch (result) {
+447   case LINE_EDIT_ACCEPTED:
+448     // Unlock before exit_mode since it acquires the mutex
+449     mutex_unlock(&amp;g_search_state.mutex);
+450     log_search_exit_mode(true); // Parse and accept pattern
+451     break;
+452   case LINE_EDIT_CANCELLED:
 453     // Unlock before exit_mode since it acquires the mutex
 454     mutex_unlock(&amp;g_search_state.mutex);
-455     log_search_exit_mode(true); // Parse and accept pattern
+455     log_search_exit_mode(false); // Restore previous
 456     break;
-457   case LINE_EDIT_CANCELLED:
-458     // Unlock before exit_mode since it acquires the mutex
-459     mutex_unlock(&amp;g_search_state.mutex);
-460     log_search_exit_mode(false); // Restore previous
-461     break;
-462   case LINE_EDIT_CONTINUE:
-463     // Still editing - compile pattern for live filtering
-464     // Mutex is still held here
-465 
-466     // If buffer is empty, clear patterns to show all logs (don't exit grep mode)
-467     if (g_search_state.len == 0) {
-468       g_search_state.active_pattern_count = 0;
-469       mutex_unlock(&amp;g_search_state.mutex);
-470       atomic_store_bool(&amp;g_search_state.needs_rerender, true);
-471       break;
-472     }
-473 
-474     // Parse and compile pattern for live filtering
-475     grep_parse_result_t parsed = grep_parse_pattern(g_search_state.input_buffer);
-476 
-477     if (!parsed.valid) {
-478       // Invalid pattern - keep previous patterns active (don't clear)
-479       mutex_unlock(&amp;g_search_state.mutex);
-480       atomic_store_bool(&amp;g_search_state.needs_rerender, true);
-481       break;
-482     }
-483 
-484     // Valid pattern - update filtering state
-485     if (parsed.is_fixed_string) {
-486       // Fixed string matching - no regex compilation needed
-487       g_search_state.active_pattern_count = 0;
-488       g_search_state.case_insensitive = parsed.case_insensitive;
-489       g_search_state.fixed_string = true;
-490     } else {
-491       // Regex pattern - compile with full pcre2_options
-492       pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
-493       if (singleton) {
-494         pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
-495         if (code) {
-496           g_search_state.active_patterns[0] = singleton;
-497           g_search_state.active_pattern_count = 1;
-498           g_search_state.case_insensitive = parsed.case_insensitive;
-499           g_search_state.fixed_string = false;
-500         } else {
-501           // Compilation failed - fall back to fixed string matching
-502           g_search_state.active_pattern_count = 0;
-503           g_search_state.fixed_string = true;
-504           g_search_state.case_insensitive = parsed.case_insensitive;
-505         }
-506       } else {
-507         g_search_state.active_pattern_count = 0;
-508         g_search_state.fixed_string = true;
-509         g_search_state.case_insensitive = parsed.case_insensitive;
-510       }
-511     }
-512 
-513     // Store parsed flags
-514     g_search_state.global_highlight = parsed.global_flag;
-515     g_search_state.invert_match = parsed.invert;
-516     g_search_state.context_before = parsed.context_before;
-517     g_search_state.context_after = parsed.context_after;
-518 
+457   case LINE_EDIT_CONTINUE:
+458     // Still editing - compile pattern for live filtering
+459     // Mutex is still held here
+460 
+461     // If buffer is empty, clear patterns to show all logs (don't exit grep mode)
+462     if (g_search_state.len == 0) {
+463       g_search_state.active_pattern_count = 0;
+464       mutex_unlock(&amp;g_search_state.mutex);
+465       atomic_store_bool(&amp;g_search_state.needs_rerender, true);
+466       break;
+467     }
+468 
+469     // Parse and compile pattern for live filtering
+470     grep_parse_result_t parsed = grep_parse_pattern(g_search_state.input_buffer);
+471 
+472     if (!parsed.valid) {
+473       // Invalid pattern - keep previous patterns active (don't clear)
+474       mutex_unlock(&amp;g_search_state.mutex);
+475       atomic_store_bool(&amp;g_search_state.needs_rerender, true);
+476       break;
+477     }
+478 
+479     // Valid pattern - update filtering state
+480     if (parsed.is_fixed_string) {
+481       // Fixed string matching - no regex compilation needed
+482       g_search_state.active_pattern_count = 0;
+483       g_search_state.case_insensitive = parsed.case_insensitive;
+484       g_search_state.fixed_string = true;
+485     } else {
+486       // Regex pattern - compile with full pcre2_options
+487       pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
+488       if (singleton) {
+489         pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
+490         if (code) {
+491           g_search_state.active_patterns[0] = singleton;
+492           g_search_state.active_pattern_count = 1;
+493           g_search_state.case_insensitive = parsed.case_insensitive;
+494           g_search_state.fixed_string = false;
+495         } else {
+496           // Compilation failed - fall back to fixed string matching
+497           g_search_state.active_pattern_count = 0;
+498           g_search_state.fixed_string = true;
+499           g_search_state.case_insensitive = parsed.case_insensitive;
+500         }
+501       } else {
+502         g_search_state.active_pattern_count = 0;
+503         g_search_state.fixed_string = true;
+504         g_search_state.case_insensitive = parsed.case_insensitive;
+505       }
+506     }
+507 
+508     // Store parsed flags
+509     g_search_state.global_highlight = parsed.global_flag;
+510     g_search_state.invert_match = parsed.invert;
+511     g_search_state.context_before = parsed.context_before;
+512     g_search_state.context_after = parsed.context_after;
+513 
+514     mutex_unlock(&amp;g_search_state.mutex);
+515     atomic_store_bool(&amp;g_search_state.needs_rerender, true);
+516     break;
+517   case LINE_EDIT_NO_INPUT:
+518     // No input available
 519     mutex_unlock(&amp;g_search_state.mutex);
-520     atomic_store_bool(&amp;g_search_state.needs_rerender, true);
-521     break;
-522   case LINE_EDIT_NO_INPUT:
-523     // No input available
-524     mutex_unlock(&amp;g_search_state.mutex);
-525     break;
-526   }
-527 
-528   return ASCIICHAT_OK;
-529 }</pre>
+520     break;
+521   }
+522 
+523   return ASCIICHAT_OK;
+524 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -1107,73 +1107,73 @@
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Must be called before using any other log_search functions.
     Initializes state, mutex, and loads CLI --grep patterns if any.</p>
-<p class="Pp">Definition at line <b>130</b> of file <b>search.c</b>.</p>
-<pre>130                                         {
-131   // Use lifecycle API for unified initialization
-132   if (!lifecycle_init_once(&amp;g_log_search_lifecycle)) {
-133     // Already initialized, acquire mutex lock and return
-134     mutex_lock(&amp;g_search_state.mutex);
-135     return ASCIICHAT_OK;
-136   }
+<p class="Pp">Definition at line <b>125</b> of file <b>search.c</b>.</p>
+<pre>125                                         {
+126   // Use lifecycle API for unified initialization
+127   if (!lifecycle_init_once(&amp;g_log_search_lifecycle)) {
+128     // Already initialized, acquire mutex lock and return
+129     mutex_lock(&amp;g_search_state.mutex);
+130     return ASCIICHAT_OK;
+131   }
+132 
+133   // Winner of init_once - initialize mutex and state
+134   g_log_search_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
+135   g_log_search_lifecycle.sync.mutex = &amp;g_search_state.mutex;
+136   lifecycle_init(&amp;g_log_search_lifecycle, &quot;log_search&quot;);
 137 
-138   // Winner of init_once - initialize mutex and state
-139   g_log_search_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
-140   g_log_search_lifecycle.sync.mutex = &amp;g_search_state.mutex;
-141   lifecycle_init(&amp;g_log_search_lifecycle, &quot;log_search&quot;);
-142 
-143   mutex_lock(&amp;g_search_state.mutex);
-144 
-145   // Initialize state (careful not to destroy the mutex!)
-146   // Save the mutex before clearing state
-147   mutex_t saved_mutex = g_search_state.mutex;
-148   memset(&amp;g_search_state, 0, sizeof(g_search_state));
-149   // Restore the mutex
-150   g_search_state.mutex = saved_mutex;
-151 
-152   // Check if there are CLI --grep patterns to use
-153   const char *cli_pattern = grep_get_last_pattern();
-154 
-155   // Start in INACTIVE mode if no CLI pattern is provided.
-156   // Only use patterns from CLI --grep arguments, not default patterns.
-157   // This ensures logs are visible by default and only filtered if explicitly requested.
-158   if (!cli_pattern || cli_pattern[0] == '\0') {
-159     // No CLI pattern - start inactive
-160     g_search_state.mode = LOG_SEARCH_MODE_INACTIVE;
-161     atomic_store_int(&amp;g_search_state.mode_atomic, LOG_SEARCH_MODE_INACTIVE);
-162     lifecycle_init_commit(&amp;g_log_search_lifecycle);
-163     mutex_unlock(&amp;g_search_state.mutex);
-164     return ASCIICHAT_OK;
-165   }
-166 
-167   // Load CLI pattern into input buffer
-168   SAFE_STRNCPY(g_search_state.input_buffer, cli_pattern, LOG_SEARCH_INPUT_BUFFER_SIZE - 1);
-169   g_search_state.len = strlen(cli_pattern);
-170   g_search_state.cursor = g_search_state.len;
-171   g_search_state.mode = LOG_SEARCH_MODE_ACTIVE;
-172   atomic_store_int(&amp;g_search_state.mode_atomic, LOG_SEARCH_MODE_ACTIVE);
-173 
-174   // Compile the initial pattern
-175   grep_parse_result_t parsed = grep_parse_pattern(cli_pattern);
-176   if (parsed.valid) {
-177     pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
-178     if (singleton) {
-179       g_search_state.active_patterns[0] = singleton;
-180       g_search_state.active_pattern_count = 1;
-181     }
-182     g_search_state.case_insensitive = parsed.case_insensitive;
-183     g_search_state.fixed_string = parsed.is_fixed_string;
-184     g_search_state.global_highlight = parsed.global_flag;
-185     g_search_state.invert_match = parsed.invert;
-186     g_search_state.context_before = parsed.context_before;
-187     g_search_state.context_after = parsed.context_after;
-188   }
-189 
-190   atomic_store_bool(&amp;g_search_state.needs_rerender, true);
-191   lifecycle_init_commit(&amp;g_log_search_lifecycle);
-192 
-193   mutex_unlock(&amp;g_search_state.mutex);
-194   return ASCIICHAT_OK;
-195 }</pre>
+138   mutex_lock(&amp;g_search_state.mutex);
+139 
+140   // Initialize state (careful not to destroy the mutex!)
+141   // Save the mutex before clearing state
+142   mutex_t saved_mutex = g_search_state.mutex;
+143   memset(&amp;g_search_state, 0, sizeof(g_search_state));
+144   // Restore the mutex
+145   g_search_state.mutex = saved_mutex;
+146 
+147   // Check if there are CLI --grep patterns to use
+148   const char *cli_pattern = grep_get_last_pattern();
+149 
+150   // Start in INACTIVE mode if no CLI pattern is provided.
+151   // Only use patterns from CLI --grep arguments, not default patterns.
+152   // This ensures logs are visible by default and only filtered if explicitly requested.
+153   if (!cli_pattern || cli_pattern[0] == '\0') {
+154     // No CLI pattern - start inactive
+155     g_search_state.mode = LOG_SEARCH_MODE_INACTIVE;
+156     atomic_store_int(&amp;g_search_state.mode_atomic, LOG_SEARCH_MODE_INACTIVE);
+157     lifecycle_init_commit(&amp;g_log_search_lifecycle);
+158     mutex_unlock(&amp;g_search_state.mutex);
+159     return ASCIICHAT_OK;
+160   }
+161 
+162   // Load CLI pattern into input buffer
+163   SAFE_STRNCPY(g_search_state.input_buffer, cli_pattern, LOG_SEARCH_INPUT_BUFFER_SIZE - 1);
+164   g_search_state.len = strlen(cli_pattern);
+165   g_search_state.cursor = g_search_state.len;
+166   g_search_state.mode = LOG_SEARCH_MODE_ACTIVE;
+167   atomic_store_int(&amp;g_search_state.mode_atomic, LOG_SEARCH_MODE_ACTIVE);
+168 
+169   // Compile the initial pattern
+170   grep_parse_result_t parsed = grep_parse_pattern(cli_pattern);
+171   if (parsed.valid) {
+172     pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
+173     if (singleton) {
+174       g_search_state.active_patterns[0] = singleton;
+175       g_search_state.active_pattern_count = 1;
+176     }
+177     g_search_state.case_insensitive = parsed.case_insensitive;
+178     g_search_state.fixed_string = parsed.is_fixed_string;
+179     g_search_state.global_highlight = parsed.global_flag;
+180     g_search_state.invert_match = parsed.invert;
+181     g_search_state.context_before = parsed.context_before;
+182     g_search_state.context_after = parsed.context_after;
+183   }
+184 
+185   atomic_store_bool(&amp;g_search_state.needs_rerender, true);
+186   lifecycle_init_commit(&amp;g_log_search_lifecycle);
+187 
+188   mutex_unlock(&amp;g_search_state.mutex);
+189   return ASCIICHAT_OK;
+190 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -1198,11 +1198,11 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if in GREP_MODE_ENTERING or GREP_MODE_ACTIVE, false
   if INACTIVE</div>
-<p class="Pp">Definition at line <b>395</b> of file <b>search.c</b>.</p>
-<pre>395                                 {
-396   // Use atomic read (async-signal-safe) to avoid mutex issues when called from signal handlers
-397   return atomic_load_int(&amp;g_search_state.mode_atomic) != LOG_SEARCH_MODE_INACTIVE;
-398 }</pre>
+<p class="Pp">Definition at line <b>390</b> of file <b>search.c</b>.</p>
+<pre>390                                 {
+391   // Use atomic read (async-signal-safe) to avoid mutex issues when called from signal handlers
+392   return atomic_load_int(&amp;g_search_state.mode_atomic) != LOG_SEARCH_MODE_INACTIVE;
+393 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_int()</b>, and
@@ -1216,11 +1216,11 @@
 <p class="Pp">Check if currently in input mode (typing pattern).</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if in GREP_MODE_ENTERING, false otherwise</div>
-<p class="Pp">Definition at line <b>390</b> of file <b>search.c</b>.</p>
-<pre>390                                   {
-391   // Use atomic read (async-signal-safe) to avoid mutex issues when called from signal handlers
-392   return atomic_load_int(&amp;g_search_state.mode_atomic) == LOG_SEARCH_MODE_ENTERING;
-393 }</pre>
+<p class="Pp">Definition at line <b>385</b> of file <b>search.c</b>.</p>
+<pre>385                                   {
+386   // Use atomic read (async-signal-safe) to avoid mutex issues when called from signal handlers
+387   return atomic_load_int(&amp;g_search_state.mode_atomic) == LOG_SEARCH_MODE_ENTERING;
+388 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_int()</b>, and
@@ -1234,10 +1234,10 @@
 <div class="Bd-indent">true if in GREP_MODE_ENTERING</div>
 <p class="Pp">Uses atomic load only (no mutex). Safe to call from signal
     handlers.</p>
-<p class="Pp">Definition at line <b>377</b> of file <b>search.c</b>.</p>
-<pre>377                                          {
-378   return atomic_load_int(&amp;g_search_state.mode_atomic) == LOG_SEARCH_MODE_ENTERING;
-379 }</pre>
+<p class="Pp">Definition at line <b>372</b> of file <b>search.c</b>.</p>
+<pre>372                                          {
+373   return atomic_load_int(&amp;g_search_state.mode_atomic) == LOG_SEARCH_MODE_ENTERING;
+374 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_int()</b>, and
@@ -1251,14 +1251,14 @@
   otherwise</div>
 <p class="Pp">Uses atomic flag for lock-free checking in render loops.
     Automatically clears flag after returning true.</p>
-<p class="Pp">Definition at line <b>888</b> of file <b>search.c</b>.</p>
-<pre>888                                      {
-889   bool needs = atomic_load_bool(&amp;g_search_state.needs_rerender);
-890   if (needs) {
-891     atomic_store_bool(&amp;g_search_state.needs_rerender, false);
-892   }
-893   return needs;
-894 }</pre>
+<p class="Pp">Definition at line <b>883</b> of file <b>search.c</b>.</p>
+<pre>883                                      {
+884   bool needs = atomic_load_bool(&amp;g_search_state.needs_rerender);
+885   if (needs) {
+886     atomic_store_bool(&amp;g_search_state.needs_rerender, false);
+887   }
+888   return needs;
+889 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>, and
@@ -1276,39 +1276,39 @@
 <p class="Pp"></p>
 <p class="Pp">If pattern is invalid (validator returns false), shows red
     background.</p>
-<p class="Pp">Definition at line <b>696</b> of file <b>search.c</b>.</p>
-<pre>696                                              {
-697   (void)width; // Reserved for future use (line truncation)
-698 
-699   mutex_lock(&amp;g_search_state.mutex);
+<p class="Pp">Definition at line <b>691</b> of file <b>search.c</b>.</p>
+<pre>691                                              {
+692   (void)width; // Reserved for future use (line truncation)
+693 
+694   mutex_lock(&amp;g_search_state.mutex);
+695 
+696   if (g_search_state.mode != LOG_SEARCH_MODE_ENTERING) {
+697     mutex_unlock(&amp;g_search_state.mutex);
+698     return;
+699   }
 700 
-701   if (g_search_state.mode != LOG_SEARCH_MODE_ENTERING) {
-702     mutex_unlock(&amp;g_search_state.mutex);
-703     return;
-704   }
-705 
-706   // Render the pattern and position terminal cursor at current edit position
-707   char output_buf[512];
-708 
-709   // Build output: &quot;/&quot; + pattern
-710   int pattern_len = snprintf(output_buf, sizeof(output_buf), &quot;/%.*s&quot;, (int)g_search_state.len, g_search_state.input_buffer);
-711 
-712   if (pattern_len &gt; 0 &amp;&amp; pattern_len &lt; (int)sizeof(output_buf)) {
-713     // Write the pattern to terminal
-714     platform_write_all(STDOUT_FILENO, output_buf, pattern_len);
-715 
-716     // After writing, cursor is at: column = 1 (for &quot;/&quot;) + len + 1
-717     // We want it at: column = 1 (for &quot;/&quot;) + cursor_position + 1
-718     // So we need to move back by: len - cursor_position columns
-719     int cursor_offset = (int)g_search_state.len - (int)g_search_state.cursor;
-720     if (cursor_offset &gt; 0) {
-721       // Move left by the difference
-722       terminal_move_cursor_relative(-cursor_offset);
-723     }
-724   }
-725 
-726   mutex_unlock(&amp;g_search_state.mutex);
-727 }</pre>
+701   // Render the pattern and position terminal cursor at current edit position
+702   char output_buf[512];
+703 
+704   // Build output: &quot;/&quot; + pattern
+705   int pattern_len = snprintf(output_buf, sizeof(output_buf), &quot;/%.*s&quot;, (int)g_search_state.len, g_search_state.input_buffer);
+706 
+707   if (pattern_len &gt; 0 &amp;&amp; pattern_len &lt; (int)sizeof(output_buf)) {
+708     // Write the pattern to terminal
+709     platform_write_all(STDOUT_FILENO, output_buf, pattern_len);
+710 
+711     // After writing, cursor is at: column = 1 (for &quot;/&quot;) + len + 1
+712     // We want it at: column = 1 (for &quot;/&quot;) + cursor_position + 1
+713     // So we need to move back by: len - cursor_position columns
+714     int cursor_offset = (int)g_search_state.len - (int)g_search_state.cursor;
+715     if (cursor_offset &gt; 0) {
+716       // Move left by the difference
+717       terminal_move_cursor_relative(-cursor_offset);
+718     }
+719   }
+720 
+721   mutex_unlock(&amp;g_search_state.mutex);
+722 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>LOG_SEARCH_MODE_ENTERING</b>, <b>mutex_lock</b>,
@@ -1329,21 +1329,21 @@
   <li></li>
   <li>All keys when in GREP_MODE_ENTERING (to edit pattern)</li>
 </ul>
-<p class="Pp">Definition at line <b>404</b> of file <b>search.c</b>.</p>
-<pre>404                                        {
-405   mutex_lock(&amp;g_search_state.mutex);
-406 
-407   // If in input mode, handle all keys
-408   if (g_search_state.mode == LOG_SEARCH_MODE_ENTERING) {
-409     mutex_unlock(&amp;g_search_state.mutex);
-410     return true;
-411   }
-412 
-413   // If not in input mode, only handle '/' to enter mode
-414   bool should_handle = (key == '/');
-415   mutex_unlock(&amp;g_search_state.mutex);
-416   return should_handle;
-417 }</pre>
+<p class="Pp">Definition at line <b>399</b> of file <b>search.c</b>.</p>
+<pre>399                                        {
+400   mutex_lock(&amp;g_search_state.mutex);
+401 
+402   // If in input mode, handle all keys
+403   if (g_search_state.mode == LOG_SEARCH_MODE_ENTERING) {
+404     mutex_unlock(&amp;g_search_state.mutex);
+405     return true;
+406   }
+407 
+408   // If not in input mode, only handle '/' to enter mode
+409   bool should_handle = (key == '/');
+410   mutex_unlock(&amp;g_search_state.mutex);
+411   return should_handle;
+412 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>LOG_SEARCH_MODE_ENTERING</b>, <b>mutex_lock</b>, and
@@ -1357,10 +1357,10 @@
 <p class="Pp">Cancel grep mode from a signal handler (async-signal-safe). Sets
     an atomic flag that the status screen loop checks on its next iteration.
     Does not use mutexes or allocate memory.</p>
-<p class="Pp">Definition at line <b>381</b> of file <b>search.c</b>.</p>
-<pre>381                                     {
-382   atomic_store_bool(&amp;g_search_state.signal_cancelled, true);
-383 }</pre>
+<p class="Pp">Definition at line <b>376</b> of file <b>search.c</b>.</p>
+<pre>376                                     {
+377   atomic_store_bool(&amp;g_search_state.signal_cancelled, true);
+378 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_bool()</b>.</p>

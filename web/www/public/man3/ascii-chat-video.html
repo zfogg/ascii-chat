@@ -6943,24 +6943,25 @@ if (img) {
 387       const char *ansi_end = strchr(ansi_start + 7, 'm');
 388       if (ansi_end) {
 389         // Copy the rainbow replacement code
-390         memcpy(dst, rainbow_code, rainbow_code_len);
-391         dst += rainbow_code_len;
-392 
-393         // Move source past the old code
-394         src = ansi_end + 1;
-395       } else {
-396         // Malformed ANSI code, just copy it
-397         *dst++ = *src++;
-398       }
-399     } else {
-400       // No more ANSI codes, copy the rest
-401       memcpy(dst, src, strlen(src) + 1);
-402       break;
-403     }
-404   }
-405 
-406   return new_result;
-407 }</pre>
+390     // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary data
+391         memcpy(dst, rainbow_code, rainbow_code_len);
+392         dst += rainbow_code_len;
+393 
+394         // Move source past the old code
+395         src = ansi_end + 1;
+396       } else {
+397         // Malformed ANSI code, just copy it
+398         *dst++ = *src++;
+399       }
+400     } else {
+401       // No more ANSI codes, copy the rest
+402       memcpy(dst, src, strlen(src) + 1);
+403       break;
+404     }
+405   }
+406 
+407   return new_result;
+408 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>color_filter_calculate_rainbow()</b>, and

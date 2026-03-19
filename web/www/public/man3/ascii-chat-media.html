@@ -524,11 +524,11 @@ media_source_destroy(source);</pre>
 <div class="Bd-indent"><i>decoder</i> Decoder (must not be NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if EOF reached, false otherwise</div>
-<p class="Pp">Definition at line <b>1550</b> of file
+<p class="Pp">Definition at line <b>1544</b> of file
   <b>ffmpeg_decoder.c</b>.</p>
-<pre>1550                                                       {
-1551   return decoder &amp;&amp; decoder-&gt;eof_reached;
-1552 }</pre>
+<pre>1544                                                       {
+1545   return decoder &amp;&amp; decoder-&gt;eof_reached;
+1546 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ffmpeg_decoder_t::eof_reached</b>.</p>
@@ -1293,19 +1293,19 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Duration in seconds, or -1.0 if unknown</div>
 <p class="Pp">Returns the total duration from the container metadata.</p>
-<p class="Pp">Definition at line <b>1554</b> of file
+<p class="Pp">Definition at line <b>1548</b> of file
   <b>ffmpeg_decoder.c</b>.</p>
-<pre>1554                                                               {
-1555   if (!decoder || !decoder-&gt;format_ctx) {
-1556     return -1.0;
-1557   }
-1558 
-1559   if (decoder-&gt;format_ctx-&gt;duration == AV_NOPTS_VALUE) {
-1560     return -1.0;
-1561   }
-1562 
-1563   return (double)decoder-&gt;format_ctx-&gt;duration / AV_TIME_BASE;
-1564 }</pre>
+<pre>1548                                                               {
+1549   if (!decoder || !decoder-&gt;format_ctx) {
+1550     return -1.0;
+1551   }
+1552 
+1553   if (decoder-&gt;format_ctx-&gt;duration == AV_NOPTS_VALUE) {
+1554     return -1.0;
+1555   }
+1556 
+1557   return (double)decoder-&gt;format_ctx-&gt;duration / AV_TIME_BASE;
+1558 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ffmpeg_decoder_t::format_ctx</b>.</p>
@@ -1322,27 +1322,27 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Current position in seconds, or -1.0 if unknown</div>
 <p class="Pp">Returns the presentation timestamp of the last decoded frame.</p>
-<p class="Pp">Definition at line <b>1566</b> of file
+<p class="Pp">Definition at line <b>1560</b> of file
   <b>ffmpeg_decoder.c</b>.</p>
-<pre>1566                                                               {
-1567   if (!decoder) {
-1568     return -1.0;
-1569   }
-1570 
-1571   // Prefer sample-based position tracking (continuous, works before frames are decoded)
-1572   if (decoder-&gt;audio_sample_rate &gt; 0 &amp;&amp; decoder-&gt;audio_samples_read &gt;= 0) {
-1573     return (double)decoder-&gt;audio_samples_read / (double)decoder-&gt;audio_sample_rate;
-1574   }
-1575 
-1576   // Fallback to frame-based position if available
-1577   if (decoder-&gt;last_video_pts &gt;= 0.0) {
-1578     return decoder-&gt;last_video_pts;
-1579   } else if (decoder-&gt;last_audio_pts &gt;= 0.0) {
-1580     return decoder-&gt;last_audio_pts;
-1581   }
-1582 
-1583   return -1.0;
-1584 }</pre>
+<pre>1560                                                               {
+1561   if (!decoder) {
+1562     return -1.0;
+1563   }
+1564 
+1565   // Prefer sample-based position tracking (continuous, works before frames are decoded)
+1566   if (decoder-&gt;audio_sample_rate &gt; 0 &amp;&amp; decoder-&gt;audio_samples_read &gt;= 0) {
+1567     return (double)decoder-&gt;audio_samples_read / (double)decoder-&gt;audio_sample_rate;
+1568   }
+1569 
+1570   // Fallback to frame-based position if available
+1571   if (decoder-&gt;last_video_pts &gt;= 0.0) {
+1572     return decoder-&gt;last_video_pts;
+1573   } else if (decoder-&gt;last_audio_pts &gt;= 0.0) {
+1574     return decoder-&gt;last_audio_pts;
+1575   }
+1576 
+1577   return -1.0;
+1578 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ffmpeg_decoder_t::audio_sample_rate</b>,
@@ -1367,22 +1367,22 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code if no video
   stream</div>
-<p class="Pp">Definition at line <b>1288</b> of file
+<p class="Pp">Definition at line <b>1282</b> of file
   <b>ffmpeg_decoder.c</b>.</p>
-<pre>1288                                                                                                           {
-1289   if (!decoder || decoder-&gt;video_stream_idx &lt; 0) {
-1290     return ERROR_INVALID_PARAM;
-1291   }
-1292 
-1293   if (width) {
-1294     *width = decoder-&gt;video_codec_ctx-&gt;width;
-1295   }
-1296   if (height) {
-1297     *height = decoder-&gt;video_codec_ctx-&gt;height;
-1298   }
-1299 
-1300   return ASCIICHAT_OK;
-1301 }</pre>
+<pre>1282                                                                                                           {
+1283   if (!decoder || decoder-&gt;video_stream_idx &lt; 0) {
+1284     return ERROR_INVALID_PARAM;
+1285   }
+1286 
+1287   if (width) {
+1288     *width = decoder-&gt;video_codec_ctx-&gt;width;
+1289   }
+1290   if (height) {
+1291     *height = decoder-&gt;video_codec_ctx-&gt;height;
+1292   }
+1293 
+1294   return ASCIICHAT_OK;
+1295 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -1400,27 +1400,27 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Frame rate in FPS, or -1.0 if unknown/no video</div>
 <p class="Pp">Returns the average frame rate of the video stream.</p>
-<p class="Pp">Definition at line <b>1303</b> of file
+<p class="Pp">Definition at line <b>1297</b> of file
   <b>ffmpeg_decoder.c</b>.</p>
-<pre>1303                                                                {
-1304   if (!decoder || decoder-&gt;video_stream_idx &lt; 0) {
-1305     return -1.0;
-1306   }
-1307 
-1308   AVStream *stream = decoder-&gt;format_ctx-&gt;streams[decoder-&gt;video_stream_idx];
-1309 
-1310   // Try avg_frame_rate first (average frame rate from entire stream)
-1311   double fps = av_q2d_safe(stream-&gt;avg_frame_rate);
-1312 
-1313   // Fallback to r_frame_rate if avg_frame_rate is invalid or zero
-1314   // r_frame_rate is the &quot;real&quot; frame rate based on codec parameters
-1315   // This is more reliable for YouTube videos and some video codecs
-1316   if (fps &lt;= 0.0) {
-1317     fps = av_q2d_safe(stream-&gt;r_frame_rate);
-1318   }
-1319 
-1320   return fps;
-1321 }</pre>
+<pre>1297                                                                {
+1298   if (!decoder || decoder-&gt;video_stream_idx &lt; 0) {
+1299     return -1.0;
+1300   }
+1301 
+1302   AVStream *stream = decoder-&gt;format_ctx-&gt;streams[decoder-&gt;video_stream_idx];
+1303 
+1304   // Try avg_frame_rate first (average frame rate from entire stream)
+1305   double fps = av_q2d_safe(stream-&gt;avg_frame_rate);
+1306 
+1307   // Fallback to r_frame_rate if avg_frame_rate is invalid or zero
+1308   // r_frame_rate is the &quot;real&quot; frame rate based on codec parameters
+1309   // This is more reliable for YouTube videos and some video codecs
+1310   if (fps &lt;= 0.0) {
+1311     fps = av_q2d_safe(stream-&gt;r_frame_rate);
+1312   }
+1313 
+1314   return fps;
+1315 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ffmpeg_decoder_t::format_ctx</b>, and
@@ -1437,11 +1437,11 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <div class="Bd-indent"><i>decoder</i> Decoder (must not be NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if audio stream exists, false otherwise</div>
-<p class="Pp">Definition at line <b>1440</b> of file
+<p class="Pp">Definition at line <b>1434</b> of file
   <b>ffmpeg_decoder.c</b>.</p>
-<pre>1440                                                          {
-1441   return decoder &amp;&amp; decoder-&gt;audio_stream_idx &gt;= 0;
-1442 }</pre>
+<pre>1434                                                          {
+1435   return decoder &amp;&amp; decoder-&gt;audio_stream_idx &gt;= 0;
+1436 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ffmpeg_decoder_t::audio_stream_idx</b>.</p>
@@ -1457,11 +1457,11 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <div class="Bd-indent"><i>decoder</i> Decoder (must not be NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if video stream exists, false otherwise</div>
-<p class="Pp">Definition at line <b>1284</b> of file
+<p class="Pp">Definition at line <b>1278</b> of file
   <b>ffmpeg_decoder.c</b>.</p>
-<pre>1284                                                          {
-1285   return decoder &amp;&amp; decoder-&gt;video_stream_idx &gt;= 0;
-1286 }</pre>
+<pre>1278                                                          {
+1279   return decoder &amp;&amp; decoder-&gt;video_stream_idx &gt;= 0;
+1280 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ffmpeg_decoder_t::video_stream_idx</b>.</p>
@@ -1480,14 +1480,14 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp">Utility function to check if the prefetch thread is currently
     active. Used during seeking to determine if thread needs to be
     stopped/restarted.</p>
-<p class="Pp">Definition at line <b>1277</b> of file
+<p class="Pp">Definition at line <b>1271</b> of file
   <b>ffmpeg_decoder.c</b>.</p>
-<pre>1277                                                                    {
-1278   if (!decoder) {
-1279     return false;
-1280   }
-1281   return decoder-&gt;prefetch_thread_running;
-1282 }</pre>
+<pre>1271                                                                    {
+1272   if (!decoder) {
+1273     return false;
+1274   }
+1275   return decoder-&gt;prefetch_thread_running;
+1276 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ffmpeg_decoder_t::prefetch_thread_running</b>.</p>
@@ -1535,120 +1535,120 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">May return fewer samples than requested at EOF</p>
 </div>
-<p class="Pp">Definition at line <b>1327</b> of file
+<p class="Pp">Definition at line <b>1321</b> of file
   <b>ffmpeg_decoder.c</b>.</p>
-<pre>1327                                                                                                        {
-1328   if (!decoder || decoder-&gt;audio_stream_idx &lt; 0 || !buffer || num_samples == 0) {
-1329     return 0;
-1330   }
-1331 
-1332   size_t samples_written = 0;
-1333 
-1334   // First, drain any buffered samples
-1335   if (decoder-&gt;audio_buffer_offset &gt; 0) {
-1336     size_t available = decoder-&gt;audio_buffer_offset;
-1337     size_t to_copy = (available &lt; num_samples) ? available : num_samples;
-1338 
-1339     memcpy(buffer, decoder-&gt;audio_buffer, to_copy * sizeof(float));
-1340     samples_written += to_copy;
+<pre>1321                                                                                                        {
+1322   if (!decoder || decoder-&gt;audio_stream_idx &lt; 0 || !buffer || num_samples == 0) {
+1323     return 0;
+1324   }
+1325 
+1326   size_t samples_written = 0;
+1327 
+1328   // First, drain any buffered samples
+1329   if (decoder-&gt;audio_buffer_offset &gt; 0) {
+1330     size_t available = decoder-&gt;audio_buffer_offset;
+1331     size_t to_copy = (available &lt; num_samples) ? available : num_samples;
+1332 
+1333     memcpy(buffer, decoder-&gt;audio_buffer, to_copy * sizeof(float));
+1334     samples_written += to_copy;
+1335 
+1336     // Shift buffer
+1337     if (to_copy &lt; available) {
+1338       memmove(decoder-&gt;audio_buffer, decoder-&gt;audio_buffer + to_copy, (available - to_copy) * sizeof(float));
+1339     }
+1340     decoder-&gt;audio_buffer_offset -= to_copy;
 1341 
-1342     // Shift buffer
-1343     if (to_copy &lt; available) {
-1344       memmove(decoder-&gt;audio_buffer, decoder-&gt;audio_buffer + to_copy, (available - to_copy) * sizeof(float));
-1345     }
-1346     decoder-&gt;audio_buffer_offset -= to_copy;
-1347 
-1348     if (samples_written &gt;= num_samples) {
-1349       return samples_written;
-1350     }
-1351   }
+1342     if (samples_written &gt;= num_samples) {
+1343       return samples_written;
+1344     }
+1345   }
+1346 
+1347   // Read more packets to fill the request
+1348   static uint64_t packet_count = 0;
+1349 
+1350   // Lock read_frame_mutex to prevent concurrent av_read_frame() calls from video prefetch thread
+1351   mutex_lock(&amp;decoder-&gt;read_frame_mutex);
 1352 
-1353   // Read more packets to fill the request
-1354   static uint64_t packet_count = 0;
-1355 
-1356   // Lock read_frame_mutex to prevent concurrent av_read_frame() calls from video prefetch thread
-1357   mutex_lock(&amp;decoder-&gt;read_frame_mutex);
-1358 
-1359   while (samples_written &lt; num_samples) {
-1360     int ret = av_read_frame(decoder-&gt;format_ctx, decoder-&gt;packet);
-1361     if (ret &lt; 0) {
-1362       if (ret == AVERROR_EOF) {
-1363         decoder-&gt;eof_reached = true;
-1364       }
-1365       break;
+1353   while (samples_written &lt; num_samples) {
+1354     int ret = av_read_frame(decoder-&gt;format_ctx, decoder-&gt;packet);
+1355     if (ret &lt; 0) {
+1356       if (ret == AVERROR_EOF) {
+1357         decoder-&gt;eof_reached = true;
+1358       }
+1359       break;
+1360     }
+1361 
+1362     // Check if this is an audio packet
+1363     if (decoder-&gt;packet-&gt;stream_index != decoder-&gt;audio_stream_idx) {
+1364       av_packet_unref(decoder-&gt;packet);
+1365       continue;
 1366     }
 1367 
-1368     // Check if this is an audio packet
-1369     if (decoder-&gt;packet-&gt;stream_index != decoder-&gt;audio_stream_idx) {
-1370       av_packet_unref(decoder-&gt;packet);
-1371       continue;
-1372     }
-1373 
-1374     log_info_every(50 * US_PER_MS_INT, &quot;Audio packet #%lu: pts=%ld dts=%ld duration=%d size=%d&quot;, packet_count++,
-1375                    decoder-&gt;packet-&gt;pts, decoder-&gt;packet-&gt;dts, decoder-&gt;packet-&gt;duration, decoder-&gt;packet-&gt;size);
-1376 
-1377     // Send packet to decoder
-1378     ret = avcodec_send_packet(decoder-&gt;audio_codec_ctx, decoder-&gt;packet);
-1379     av_packet_unref(decoder-&gt;packet);
-1380 
-1381     if (ret &lt; 0) {
-1382       log_warn(&quot;Error sending audio packet to decoder&quot;);
-1383       continue;
-1384     }
-1385 
-1386     // Receive all decoded frames from this packet
-1387     // Important: a single packet can produce multiple frames. Must drain all before next packet.
-1388     while (1) {
-1389       ret = avcodec_receive_frame(decoder-&gt;audio_codec_ctx, decoder-&gt;frame);
-1390       if (ret == AVERROR(EAGAIN)) {
-1391         break; // No more frames from this packet, get next packet
-1392       } else if (ret &lt; 0) {
-1393         log_warn(&quot;Error receiving audio frame from decoder&quot;);
-1394         goto audio_read_done;
-1395       }
-1396 
-1397       // Update position tracking
-1398       decoder-&gt;last_audio_pts =
-1399           get_frame_pts_seconds(decoder-&gt;frame, decoder-&gt;format_ctx-&gt;streams[decoder-&gt;audio_stream_idx]-&gt;time_base);
-1400 
-1401       // Resample to target format
-1402       float *out_buf = buffer + samples_written;
-1403       int out_samples = (int)(num_samples - samples_written);
-1404 
-1405       uint8_t *out_ptr = (uint8_t *)out_buf;
-1406       int converted = swr_convert(decoder-&gt;swr_ctx, &amp;out_ptr, out_samples, (const uint8_t **)decoder-&gt;frame-&gt;data,
-1407                                   decoder-&gt;frame-&gt;nb_samples);
-1408 
-1409       if (converted &gt; 0) {
-1410         samples_written += (size_t)converted;
-1411       }
+1368     log_info_every(50 * US_PER_MS_INT, &quot;Audio packet #%lu: pts=%ld dts=%ld duration=%d size=%d&quot;, packet_count++,
+1369                    decoder-&gt;packet-&gt;pts, decoder-&gt;packet-&gt;dts, decoder-&gt;packet-&gt;duration, decoder-&gt;packet-&gt;size);
+1370 
+1371     // Send packet to decoder
+1372     ret = avcodec_send_packet(decoder-&gt;audio_codec_ctx, decoder-&gt;packet);
+1373     av_packet_unref(decoder-&gt;packet);
+1374 
+1375     if (ret &lt; 0) {
+1376       log_warn(&quot;Error sending audio packet to decoder&quot;);
+1377       continue;
+1378     }
+1379 
+1380     // Receive all decoded frames from this packet
+1381     // Important: a single packet can produce multiple frames. Must drain all before next packet.
+1382     while (1) {
+1383       ret = avcodec_receive_frame(decoder-&gt;audio_codec_ctx, decoder-&gt;frame);
+1384       if (ret == AVERROR(EAGAIN)) {
+1385         break; // No more frames from this packet, get next packet
+1386       } else if (ret &lt; 0) {
+1387         log_warn(&quot;Error receiving audio frame from decoder&quot;);
+1388         goto audio_read_done;
+1389       }
+1390 
+1391       // Update position tracking
+1392       decoder-&gt;last_audio_pts =
+1393           get_frame_pts_seconds(decoder-&gt;frame, decoder-&gt;format_ctx-&gt;streams[decoder-&gt;audio_stream_idx]-&gt;time_base);
+1394 
+1395       // Resample to target format
+1396       float *out_buf = buffer + samples_written;
+1397       int out_samples = (int)(num_samples - samples_written);
+1398 
+1399       uint8_t *out_ptr = (uint8_t *)out_buf;
+1400       int converted = swr_convert(decoder-&gt;swr_ctx, &amp;out_ptr, out_samples, (const uint8_t **)decoder-&gt;frame-&gt;data,
+1401                                   decoder-&gt;frame-&gt;nb_samples);
+1402 
+1403       if (converted &gt; 0) {
+1404         samples_written += (size_t)converted;
+1405       }
+1406 
+1407       if (samples_written &gt;= num_samples) {
+1408         goto audio_read_done;
+1409       }
+1410     }
+1411   }
 1412 
-1413       if (samples_written &gt;= num_samples) {
-1414         goto audio_read_done;
-1415       }
-1416     }
-1417   }
-1418 
-1419 audio_read_done:
-1420   // Release read_frame_mutex now that av_read_frame() is done
-1421   mutex_unlock(&amp;decoder-&gt;read_frame_mutex);
-1422 
-1423   // Flush resampler buffer if we haven't filled the full request
-1424   // The resampler may have buffered samples that need to be output
-1425   if (samples_written &lt; num_samples) {
-1426     int remaining_space = (int)(num_samples - samples_written);
-1427     uint8_t *out_ptr = (uint8_t *)(buffer + samples_written);
-1428     int flushed = swr_convert(decoder-&gt;swr_ctx, &amp;out_ptr, remaining_space, NULL, 0);
-1429     if (flushed &gt; 0) {
-1430       samples_written += (size_t)flushed;
-1431     }
-1432   }
-1433 
-1434   // Update sample-based position tracking
-1435   decoder-&gt;audio_samples_read += samples_written;
-1436 
-1437   return samples_written;
-1438 }</pre>
+1413 audio_read_done:
+1414   // Release read_frame_mutex now that av_read_frame() is done
+1415   mutex_unlock(&amp;decoder-&gt;read_frame_mutex);
+1416 
+1417   // Flush resampler buffer if we haven't filled the full request
+1418   // The resampler may have buffered samples that need to be output
+1419   if (samples_written &lt; num_samples) {
+1420     int remaining_space = (int)(num_samples - samples_written);
+1421     uint8_t *out_ptr = (uint8_t *)(buffer + samples_written);
+1422     int flushed = swr_convert(decoder-&gt;swr_ctx, &amp;out_ptr, remaining_space, NULL, 0);
+1423     if (flushed &gt; 0) {
+1424       samples_written += (size_t)flushed;
+1425     }
+1426   }
+1427 
+1428   // Update sample-based position tracking
+1429   decoder-&gt;audio_samples_read += samples_written;
+1430 
+1431   return samples_written;
+1432 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ffmpeg_decoder_t::audio_buffer</b>,
@@ -1794,38 +1794,38 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">Some formats may not support seeking</p>
 </div>
-<p class="Pp">Definition at line <b>1448</b> of file
+<p class="Pp">Definition at line <b>1442</b> of file
   <b>ffmpeg_decoder.c</b>.</p>
-<pre>1448                                                                    {
-1449   if (!decoder) {
-1450     return ERROR_INVALID_PARAM;
-1451   }
-1452 
-1453   if (decoder-&gt;is_stdin) {
-1454     return ERROR_NOT_SUPPORTED; // Cannot seek stdin
-1455   }
-1456 
-1457   // Flush codec buffers
-1458   if (decoder-&gt;video_codec_ctx) {
-1459     avcodec_flush_buffers(decoder-&gt;video_codec_ctx);
-1460   }
-1461   if (decoder-&gt;audio_codec_ctx) {
-1462     avcodec_flush_buffers(decoder-&gt;audio_codec_ctx);
-1463   }
-1464 
-1465   // Seek to beginning
-1466   if (av_seek_frame(decoder-&gt;format_ctx, -1, 0, AVSEEK_FLAG_BACKWARD) &lt; 0) {
-1467     return SET_ERRNO(ERROR_MEDIA_SEEK, &quot;Failed to seek to beginning&quot;);
-1468   }
+<pre>1442                                                                    {
+1443   if (!decoder) {
+1444     return ERROR_INVALID_PARAM;
+1445   }
+1446 
+1447   if (decoder-&gt;is_stdin) {
+1448     return ERROR_NOT_SUPPORTED; // Cannot seek stdin
+1449   }
+1450 
+1451   // Flush codec buffers
+1452   if (decoder-&gt;video_codec_ctx) {
+1453     avcodec_flush_buffers(decoder-&gt;video_codec_ctx);
+1454   }
+1455   if (decoder-&gt;audio_codec_ctx) {
+1456     avcodec_flush_buffers(decoder-&gt;audio_codec_ctx);
+1457   }
+1458 
+1459   // Seek to beginning
+1460   if (av_seek_frame(decoder-&gt;format_ctx, -1, 0, AVSEEK_FLAG_BACKWARD) &lt; 0) {
+1461     return SET_ERRNO(ERROR_MEDIA_SEEK, &quot;Failed to seek to beginning&quot;);
+1462   }
+1463 
+1464   decoder-&gt;eof_reached = false;
+1465   decoder-&gt;audio_buffer_offset = 0;
+1466   decoder-&gt;last_video_pts = -1.0;
+1467   decoder-&gt;last_audio_pts = -1.0;
+1468   decoder-&gt;audio_samples_read = 0; // Reset sample counter to 0
 1469 
-1470   decoder-&gt;eof_reached = false;
-1471   decoder-&gt;audio_buffer_offset = 0;
-1472   decoder-&gt;last_video_pts = -1.0;
-1473   decoder-&gt;last_audio_pts = -1.0;
-1474   decoder-&gt;audio_samples_read = 0; // Reset sample counter to 0
-1475 
-1476   return ASCIICHAT_OK;
-1477 }</pre>
+1470   return ASCIICHAT_OK;
+1471 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -1871,78 +1871,78 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">Seeks approximately - may land before/after exact timestamp</p>
 </div>
-<p class="Pp">Definition at line <b>1479</b> of file
+<p class="Pp">Definition at line <b>1473</b> of file
   <b>ffmpeg_decoder.c</b>.</p>
-<pre>1479                                                                                                     {
-1480   if (!decoder) {
-1481     return ERROR_INVALID_PARAM;
-1482   }
-1483 
-1484   if (decoder-&gt;is_stdin) {
-1485     return ERROR_NOT_SUPPORTED; // Cannot seek stdin
-1486   }
+<pre>1473                                                                                                     {
+1474   if (!decoder) {
+1475     return ERROR_INVALID_PARAM;
+1476   }
+1477 
+1478   if (decoder-&gt;is_stdin) {
+1479     return ERROR_NOT_SUPPORTED; // Cannot seek stdin
+1480   }
+1481 
+1482   // Hold mutex during entire seek operation to prevent race with prefetch thread
+1483   mutex_lock(&amp;decoder-&gt;prefetch_mutex);
+1484 
+1485   // Set flag to pause prefetch thread via condition variable
+1486   decoder-&gt;seeking_in_progress = true;
 1487 
-1488   // Hold mutex during entire seek operation to prevent race with prefetch thread
-1489   mutex_lock(&amp;decoder-&gt;prefetch_mutex);
+1488   // Convert seconds to FFmpeg time base units (AV_TIME_BASE = 1,000,000)
+1489   int64_t target_ts = (int64_t)(timestamp_sec * AV_TIME_BASE);
 1490 
-1491   // Set flag to pause prefetch thread via condition variable
-1492   decoder-&gt;seeking_in_progress = true;
-1493 
-1494   // Convert seconds to FFmpeg time base units (AV_TIME_BASE = 1,000,000)
-1495   int64_t target_ts = (int64_t)(timestamp_sec * AV_TIME_BASE);
-1496 
-1497   // For HTTP streams, use simple keyframe seeking (faster than frame-accurate seeking)
-1498   // HTTP seeking is expensive and can break stream state, so prefer speed over precision
-1499   int seek_ret = av_seek_frame(decoder-&gt;format_ctx, -1, target_ts, AVSEEK_FLAG_BACKWARD);
-1500   if (seek_ret &lt; 0) {
-1501     // Fallback: try without backward flag
-1502     seek_ret = av_seek_frame(decoder-&gt;format_ctx, -1, target_ts, 0);
-1503   }
-1504 
-1505   if (seek_ret &lt; 0) {
-1506     decoder-&gt;seeking_in_progress = false;
-1507     cond_signal(&amp;decoder-&gt;prefetch_cond);
-1508     mutex_unlock(&amp;decoder-&gt;prefetch_mutex);
-1509     return SET_ERRNO(ERROR_MEDIA_SEEK, &quot;Failed to seek to timestamp %.2f seconds&quot;, timestamp_sec);
-1510   }
-1511 
-1512   // Flush codec buffers AFTER seeking
-1513   if (decoder-&gt;video_codec_ctx) {
-1514     avcodec_flush_buffers(decoder-&gt;video_codec_ctx);
-1515   }
-1516   if (decoder-&gt;audio_codec_ctx) {
-1517     avcodec_flush_buffers(decoder-&gt;audio_codec_ctx);
-1518   }
-1519 
-1520   // Reset state
-1521   decoder-&gt;eof_reached = false;
-1522   decoder-&gt;audio_buffer_offset = 0;
-1523   // Clear any stale audio data in buffer
-1524   if (decoder-&gt;audio_buffer) {
-1525     memset(decoder-&gt;audio_buffer, 0, decoder-&gt;audio_buffer_size * sizeof(float));
-1526   }
-1527   decoder-&gt;last_video_pts = -1.0;
-1528   decoder-&gt;last_audio_pts = -1.0;
-1529   decoder-&gt;prefetch_frame_ready = false;
-1530   // Set audio_samples_read to match the seek target so position tracking works correctly
-1531   decoder-&gt;audio_samples_read = (uint64_t)(timestamp_sec * decoder-&gt;audio_sample_rate);
-1532 
-1533   // Reset current_read_buffer and mark both buffers as not in use
-1534   // After seeking, the prefetch thread may reallocate buffers, so current_read_buffer
-1535   // could point to freed memory. Clear it so the next read doesn't try to release stale pointers.
-1536   decoder-&gt;current_read_buffer = NULL;
-1537   decoder-&gt;buffer_a_in_use = false;
-1538   decoder-&gt;buffer_b_in_use = false;
-1539 
-1540   // Resume prefetch thread
-1541   decoder-&gt;seeking_in_progress = false;
-1542   cond_signal(&amp;decoder-&gt;prefetch_cond);
-1543 
-1544   // Release mutex - prefetch thread can resume
-1545   mutex_unlock(&amp;decoder-&gt;prefetch_mutex);
-1546 
-1547   return ASCIICHAT_OK;
-1548 }</pre>
+1491   // For HTTP streams, use simple keyframe seeking (faster than frame-accurate seeking)
+1492   // HTTP seeking is expensive and can break stream state, so prefer speed over precision
+1493   int seek_ret = av_seek_frame(decoder-&gt;format_ctx, -1, target_ts, AVSEEK_FLAG_BACKWARD);
+1494   if (seek_ret &lt; 0) {
+1495     // Fallback: try without backward flag
+1496     seek_ret = av_seek_frame(decoder-&gt;format_ctx, -1, target_ts, 0);
+1497   }
+1498 
+1499   if (seek_ret &lt; 0) {
+1500     decoder-&gt;seeking_in_progress = false;
+1501     cond_signal(&amp;decoder-&gt;prefetch_cond);
+1502     mutex_unlock(&amp;decoder-&gt;prefetch_mutex);
+1503     return SET_ERRNO(ERROR_MEDIA_SEEK, &quot;Failed to seek to timestamp %.2f seconds&quot;, timestamp_sec);
+1504   }
+1505 
+1506   // Flush codec buffers AFTER seeking
+1507   if (decoder-&gt;video_codec_ctx) {
+1508     avcodec_flush_buffers(decoder-&gt;video_codec_ctx);
+1509   }
+1510   if (decoder-&gt;audio_codec_ctx) {
+1511     avcodec_flush_buffers(decoder-&gt;audio_codec_ctx);
+1512   }
+1513 
+1514   // Reset state
+1515   decoder-&gt;eof_reached = false;
+1516   decoder-&gt;audio_buffer_offset = 0;
+1517   // Clear any stale audio data in buffer
+1518   if (decoder-&gt;audio_buffer) {
+1519     memset(decoder-&gt;audio_buffer, 0, decoder-&gt;audio_buffer_size * sizeof(float));
+1520   }
+1521   decoder-&gt;last_video_pts = -1.0;
+1522   decoder-&gt;last_audio_pts = -1.0;
+1523   decoder-&gt;prefetch_frame_ready = false;
+1524   // Set audio_samples_read to match the seek target so position tracking works correctly
+1525   decoder-&gt;audio_samples_read = (uint64_t)(timestamp_sec * decoder-&gt;audio_sample_rate);
+1526 
+1527   // Reset current_read_buffer and mark both buffers as not in use
+1528   // After seeking, the prefetch thread may reallocate buffers, so current_read_buffer
+1529   // could point to freed memory. Clear it so the next read doesn't try to release stale pointers.
+1530   decoder-&gt;current_read_buffer = NULL;
+1531   decoder-&gt;buffer_a_in_use = false;
+1532   decoder-&gt;buffer_b_in_use = false;
+1533 
+1534   // Resume prefetch thread
+1535   decoder-&gt;seeking_in_progress = false;
+1536   cond_signal(&amp;decoder-&gt;prefetch_cond);
+1537 
+1538   // Release mutex - prefetch thread can resume
+1539   mutex_unlock(&amp;decoder-&gt;prefetch_mutex);
+1540 
+1541   return ASCIICHAT_OK;
+1542 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -1992,15 +1992,15 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Called automatically from media_source layer (no need to
   call manually)</div>
-<p class="Pp">Definition at line <b>1268</b> of file
+<p class="Pp">Definition at line <b>1262</b> of file
   <b>ffmpeg_decoder.c</b>.</p>
-<pre>1269                                                        {
-1270   if (!decoder) {
-1271     return;
-1272   }
-1273   decoder-&gt;should_exit_callback = should_exit_callback;
-1274   decoder-&gt;exit_callback_user_data = user_data;
-1275 }</pre>
+<pre>1263                                                        {
+1264   if (!decoder) {
+1265     return;
+1266   }
+1267   decoder-&gt;should_exit_callback = should_exit_callback;
+1268   decoder-&gt;exit_callback_user_data = user_data;
+1269 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ffmpeg_decoder_t::exit_callback_user_data</b>, and
@@ -2104,18 +2104,12 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 1252   decoder-&gt;prefetch_should_stop = true;
 1253   // Wait up to 2 seconds for thread to stop
 1254   // The interrupt callback should cause av_read_frame to abort quickly
-1255   int join_result = asciichat_thread_join_timeout(&amp;decoder-&gt;prefetch_thread, NULL, 2000 * NS_PER_MS_INT);
+1255   asciichat_thread_join_timeout(&amp;decoder-&gt;prefetch_thread, NULL, 2000 * NS_PER_MS_INT);
 1256 
-1257   if (join_result == 0) {
-1258     // Thread exited successfully
-1259     decoder-&gt;prefetch_thread_running = false;
-1260   } else {
-1261     // Timeout: thread is still running (blocked on I/O)
-1262     // Mark as stopped anyway - we'll create a new thread on restart
-1263     // The old thread will eventually finish and exit
-1264     decoder-&gt;prefetch_thread_running = false;
-1265   }
-1266 }</pre>
+1257   // Mark thread as stopped regardless of join result
+1258   // (if join succeeded: cleanup was done; if timeout: will be cleaned up on restart)
+1259   decoder-&gt;prefetch_thread_running = false;
+1260 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_thread_join_timeout()</b>,

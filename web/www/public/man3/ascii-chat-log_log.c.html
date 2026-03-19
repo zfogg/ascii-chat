@@ -337,33 +337,33 @@
 <h2 class="Ss" id="void_log_console_impl_("><a class="permalink" href="#void_log_console_impl_(">void
   log_console_impl (<b>log_level_t</b> level, const char * file, int line, const
   char * func, const char * message)</a></h2>
-<p class="Pp">Definition at line <b>2111</b> of file <b>log/log.c</b>.</p>
-<pre>2111                                                                                                             {
-2112   if (!message) {
-2113     return;
-2114   }
-2115 
-2116   int fd = terminal_choose_log_fd(level);
-2117   if (fd &lt; 0) {
-2118     return;
-2119   }
-2120 
-2121   // Check if JSON output is enabled (json_file &gt;= 0 means enabled)
-2122   int json_fd = atomic_load_int(&amp;g_log.json_file);
-2123   bool use_json = (json_fd &gt;= 0);
-2124 
-2125   if (use_json) {
-2126     // Use async-safe JSON formatter (safe for signal handlers)
-2127     log_json_async_safe(fd, level, file, line, func, message);
-2128   } else {
-2129     // Text output to console using platform_write_all to handle partial writes
-2130     size_t msg_len = strlen(message);
-2131     platform_write_all(fd, (const uint8_t *)message, msg_len);
-2132     if (msg_len == 0 || message[msg_len - 1] != '\n') {
-2133       platform_write_all(fd, (const uint8_t *)&quot;\n&quot;, 1);
-2134     }
-2135   }
-2136 }</pre>
+<p class="Pp">Definition at line <b>2113</b> of file <b>log/log.c</b>.</p>
+<pre>2113                                                                                                             {
+2114   if (!message) {
+2115     return;
+2116   }
+2117 
+2118   int fd = terminal_choose_log_fd(level);
+2119   if (fd &lt; 0) {
+2120     return;
+2121   }
+2122 
+2123   // Check if JSON output is enabled (json_file &gt;= 0 means enabled)
+2124   int json_fd = atomic_load_int(&amp;g_log.json_file);
+2125   bool use_json = (json_fd &gt;= 0);
+2126 
+2127   if (use_json) {
+2128     // Use async-safe JSON formatter (safe for signal handlers)
+2129     log_json_async_safe(fd, level, file, line, func, message);
+2130   } else {
+2131     // Text output to console using platform_write_all to handle partial writes
+2132     size_t msg_len = strlen(message);
+2133     platform_write_all(fd, (const uint8_t *)message, msg_len);
+2134     if (msg_len == 0 || message[msg_len - 1] != '\n') {
+2135       platform_write_all(fd, (const uint8_t *)&quot;\n&quot;, 1);
+2136     }
+2137   }
+2138 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_int()</b>, <b>log_json_async_safe()</b>,
@@ -381,10 +381,10 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">This function is thread-safe (uses atomic
   operations)</div>
-<p class="Pp">Definition at line <b>726</b> of file <b>log/log.c</b>.</p>
-<pre>726                                  {
-727   atomic_store_int(&amp;g_log.json_file, fd);
-728 }</pre>
+<p class="Pp">Definition at line <b>727</b> of file <b>log/log.c</b>.</p>
+<pre>727                                  {
+728   atomic_store_int(&amp;g_log.json_file, fd);
+729 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_int()</b>.</p>

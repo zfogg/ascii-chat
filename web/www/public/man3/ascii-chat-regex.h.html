@@ -95,46 +95,41 @@
 <p class="Pp">Returns false if regex is not available (caller should use
     fallback manual parsing)</p>
 </div>
-<p class="Pp">Definition at line <b>267</b> of file <b>regex.c</b>.</p>
-<pre>267                                                                             {
-268   if (!line || !keygrip_out) {
-269     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
-270     return false;
-271   }
-272 
-273   pcre2_code *regex = crypto_regex_get_gpg_keygrip();
-274   if (!regex) {
-275     /* Regex not available - caller should use fallback manual parsing */
+<p class="Pp">Definition at line <b>262</b> of file <b>regex.c</b>.</p>
+<pre>262                                                                             {
+263   if (!line || !keygrip_out) {
+264     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+265     return false;
+266   }
+267 
+268   pcre2_code *regex = crypto_regex_get_gpg_keygrip();
+269   if (!regex) {
+270     /* Regex not available - caller should use fallback manual parsing */
+271     return false;
+272   }
+273 
+274   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
+275   if (!match_data) {
 276     return false;
 277   }
 278 
-279   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
-280   if (!match_data) {
-281     return false;
-282   }
+279   /* Perform JIT match (falls back to interpreted if JIT unavailable) */
+280   int rc = pcre2_jit_match(regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
+281                            0,                                        /* options */
+282                            match_data, NULL);                        /* mcontext */
 283 
-284   /* Perform JIT match (falls back to interpreted if JIT unavailable) */
-285   int rc = pcre2_jit_match(regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
-286                            0,                                        /* options */
-287                            match_data, NULL);                        /* mcontext */
+284   if (rc &lt; 0) {
+285     pcre2_match_data_free(match_data);
+286     return false;
+287   }
 288 
-289   if (rc &lt; 0) {
-290     pcre2_match_data_free(match_data);
-291     return false;
-292   }
+289   /* Extract keygrip from named group */
+290   *keygrip_out = asciichat_pcre2_extract_named_group(regex, match_data, &quot;keygrip&quot;, line);
+291 
+292   pcre2_match_data_free(match_data);
 293 
-294   /* Extract keygrip from named group */
-295   *keygrip_out = asciichat_pcre2_extract_named_group(regex, match_data, &quot;keygrip&quot;, line);
-296 
-297   pcre2_match_data_free(match_data);
-298 
-299   /* Verify we got the keygrip */
-300   if (!*keygrip_out) {
-301     return false;
-302   }
-303 
-304   return true;
-305 }</pre>
+294   return *keygrip_out != NULL;
+295 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_pcre2_extract_named_group()</b>,
@@ -196,13 +191,8 @@
 256 
 257   pcre2_match_data_free(match_data);
 258 
-259   /* Verify we got the base64 data */
-260   if (!*base64_data_out) {
-261     return false;
-262   }
-263 
-264   return true;
-265 }</pre>
+259   return *base64_data_out != NULL;
+260 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_pcre2_extract_named_group()</b>,

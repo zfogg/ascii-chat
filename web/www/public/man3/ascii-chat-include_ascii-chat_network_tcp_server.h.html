@@ -615,70 +615,70 @@
 <i></i><b>Config Module</b><i></i><b> Server configuration</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>105</b> of file
+<p class="Pp">Definition at line <b>104</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
-<pre>105                                                                                            {
-106   if (!server || !config) {
-107     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server or config is NULL&quot;);
-108   }
-109 
-110   // Note: client_handler is optional - some users may use tcp_server just for socket setup
-111   // and implement their own accept loop (like ascii-chat server with its cleanup logic)
-112 
-113   // Initialize server state
-114   memset(server, 0, sizeof(*server));
-115   server-&gt;listen_socket = INVALID_SOCKET_VALUE;
-116   server-&gt;listen_socket6 = INVALID_SOCKET_VALUE;
-117   atomic_store_bool(&amp;server-&gt;running, true);
-118   server-&gt;config = *config; // Copy config
-119 
-120   // Initialize client registry
-121   server-&gt;clients = NULL; // uthash starts with NULL
-122   server-&gt;cleanup_fn = NULL;
-123   if (rwlock_init(&amp;server-&gt;clients_rwlock, &quot;clients&quot;) != 0) {
-124     return SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize clients read-write lock&quot;);
-125   }
-126 
-127   // Determine which IP versions to bind
-128   bool should_bind_ipv4 = config-&gt;bind_ipv4;
-129   bool should_bind_ipv6 = config-&gt;bind_ipv6;
-130 
-131   // Bind IPv4 socket if requested
-132   if (should_bind_ipv4) {
-133     const char *ipv4_addr = (config-&gt;ipv4_address &amp;&amp; config-&gt;ipv4_address[0] != '\0') ? config-&gt;ipv4_address : NULL;
-134     server-&gt;listen_socket = bind_and_listen(ipv4_addr, AF_INET, config-&gt;port);
-135 
-136     if (server-&gt;listen_socket == INVALID_SOCKET_VALUE) {
-137       log_warn(&quot;Failed to bind IPv4 socket&quot;);
-138     }
-139   }
-140 
-141   // Bind IPv6 socket if requested
-142   if (should_bind_ipv6) {
-143     const char *ipv6_addr = (config-&gt;ipv6_address &amp;&amp; config-&gt;ipv6_address[0] != '\0') ? config-&gt;ipv6_address : NULL;
-144     server-&gt;listen_socket6 = bind_and_listen(ipv6_addr, AF_INET6, config-&gt;port);
-145 
-146     if (server-&gt;listen_socket6 == INVALID_SOCKET_VALUE) {
-147       log_warn(&quot;Failed to bind IPv6 socket&quot;);
-148     }
-149   }
-150 
-151   // Ensure at least one socket bound successfully
-152   if (server-&gt;listen_socket == INVALID_SOCKET_VALUE &amp;&amp; server-&gt;listen_socket6 == INVALID_SOCKET_VALUE) {
-153     return SET_ERRNO(ERROR_NETWORK_BIND, &quot;Failed to bind any sockets (IPv4 and IPv6 both failed)&quot;);
-154   }
-155 
-156   /* Register server with named registry, identified by port */
-157   char port_name[32];
-158   snprintf(port_name, sizeof(port_name), &quot;server:%d&quot;, server-&gt;config.port);
-159   NAMED_REGISTER(server, port_name, &quot;tcp_server&quot;, &quot;0x%tx&quot;, NULL);
-160 
-161   /* Register server's sync primitives with hierarchical naming */
-162   NAMED_REGISTER_RWLOCK(&amp;server-&gt;clients_rwlock, &quot;clients_rwlock&quot;, (uintptr_t)(const void *)(server));
-163   NAMED_REGISTER_ATOMIC(&amp;server-&gt;running, &quot;is_running&quot;, (uintptr_t)(const void *)(server));
-164 
-165   return ASCIICHAT_OK;
-166 }</pre>
+<pre>104                                                                                            {
+105   if (!server || !config) {
+106     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server or config is NULL&quot;);
+107   }
+108 
+109   // Note: client_handler is optional - some users may use tcp_server just for socket setup
+110   // and implement their own accept loop (like ascii-chat server with its cleanup logic)
+111 
+112   // Initialize server state
+113   memset(server, 0, sizeof(*server));
+114   server-&gt;listen_socket = INVALID_SOCKET_VALUE;
+115   server-&gt;listen_socket6 = INVALID_SOCKET_VALUE;
+116   atomic_store_bool(&amp;server-&gt;running, true);
+117   server-&gt;config = *config; // Copy config
+118 
+119   // Initialize client registry
+120   server-&gt;clients = NULL; // uthash starts with NULL
+121   server-&gt;cleanup_fn = NULL;
+122   if (rwlock_init(&amp;server-&gt;clients_rwlock, &quot;clients&quot;) != 0) {
+123     return SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize clients read-write lock&quot;);
+124   }
+125 
+126   // Determine which IP versions to bind
+127   bool should_bind_ipv4 = config-&gt;bind_ipv4;
+128   bool should_bind_ipv6 = config-&gt;bind_ipv6;
+129 
+130   // Bind IPv4 socket if requested
+131   if (should_bind_ipv4) {
+132     const char *ipv4_addr = (config-&gt;ipv4_address &amp;&amp; config-&gt;ipv4_address[0] != '\0') ? config-&gt;ipv4_address : NULL;
+133     server-&gt;listen_socket = bind_and_listen(ipv4_addr, AF_INET, config-&gt;port);
+134 
+135     if (server-&gt;listen_socket == INVALID_SOCKET_VALUE) {
+136       log_warn(&quot;Failed to bind IPv4 socket&quot;);
+137     }
+138   }
+139 
+140   // Bind IPv6 socket if requested
+141   if (should_bind_ipv6) {
+142     const char *ipv6_addr = (config-&gt;ipv6_address &amp;&amp; config-&gt;ipv6_address[0] != '\0') ? config-&gt;ipv6_address : NULL;
+143     server-&gt;listen_socket6 = bind_and_listen(ipv6_addr, AF_INET6, config-&gt;port);
+144 
+145     if (server-&gt;listen_socket6 == INVALID_SOCKET_VALUE) {
+146       log_warn(&quot;Failed to bind IPv6 socket&quot;);
+147     }
+148   }
+149 
+150   // Ensure at least one socket bound successfully
+151   if (server-&gt;listen_socket == INVALID_SOCKET_VALUE &amp;&amp; server-&gt;listen_socket6 == INVALID_SOCKET_VALUE) {
+152     return SET_ERRNO(ERROR_NETWORK_BIND, &quot;Failed to bind any sockets (IPv4 and IPv6 both failed)&quot;);
+153   }
+154 
+155   /* Register server with named registry, identified by port */
+156   char port_name[32];
+157   snprintf(port_name, sizeof(port_name), &quot;server:%d&quot;, server-&gt;config.port);
+158   NAMED_REGISTER(server, port_name, &quot;tcp_server&quot;, &quot;0x%tx&quot;, NULL);
+159 
+160   /* Register server's sync primitives with hierarchical naming */
+161   NAMED_REGISTER_RWLOCK(&amp;server-&gt;clients_rwlock, &quot;clients_rwlock&quot;, (uintptr_t)(const void *)(server));
+162   NAMED_REGISTER_ATOMIC(&amp;server-&gt;running, &quot;is_running&quot;, (uintptr_t)(const void *)(server));
+163 
+164   return ASCIICHAT_OK;
+165 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
@@ -802,93 +802,94 @@
 <div class="Bd-indent"><i>server</i> Initialized server structure</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>168</b> of file
+<p class="Pp">Definition at line <b>167</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
-<pre>168                                                        {
-169   if (!server) {
-170     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server is NULL&quot;);
-171   }
-172 
-173   if (!server-&gt;config.client_handler) {
-174     return SET_ERRNO(ERROR_INVALID_PARAM,
-175                      &quot;client_handler is required for tcp_server_run() - use custom accept loop if handler is NULL&quot;);
-176   }
-177 
-178   log_debug(&quot;TCP server starting accept loop...&quot;);
-179 
-180   while (atomic_load_bool(&amp;server-&gt;running)) {
-181     // Build fd_set for select()
-182     fd_set read_fds;
-183     socket_fd_zero(&amp;read_fds);
-184     socket_t max_fd = 0;
-185 
-186     // Add IPv4 socket if available
-187     if (server-&gt;listen_socket != INVALID_SOCKET_VALUE) {
-188       socket_fd_set(server-&gt;listen_socket, &amp;read_fds);
-189       max_fd = server-&gt;listen_socket &gt; max_fd ? server-&gt;listen_socket : max_fd;
-190     }
-191 
-192     // Add IPv6 socket if available
-193     if (server-&gt;listen_socket6 != INVALID_SOCKET_VALUE) {
-194       socket_fd_set(server-&gt;listen_socket6, &amp;read_fds);
-195       max_fd = server-&gt;listen_socket6 &gt; max_fd ? server-&gt;listen_socket6 : max_fd;
-196     }
-197 
-198     // Use timeout from config (defaults to 1 second if not set)
-199     // Convert double seconds to tv_sec and tv_usec
-200     double timeout_sec_double = server-&gt;config.accept_timeout_sec &gt; 0 ? server-&gt;config.accept_timeout_sec : 1.0;
-201     time_t timeout_sec = (time_t)timeout_sec_double;
-202     long timeout_usec = (long)((timeout_sec_double - timeout_sec) * (double)US_PER_SEC_INT);
-203     struct timeval timeout = {.tv_sec = timeout_sec, .tv_usec = timeout_usec};
-204 
-205     int select_result = socket_select((int)(max_fd + 1), &amp;read_fds, NULL, NULL, &amp;timeout);
-206 
-207     if (select_result &lt; 0) {
-208       // Check if interrupted by signal (expected during shutdown)
-209       int err = socket_get_last_error();
-210       if (err == EINTR) {
-211         // Signal interrupt (e.g., SIGTERM, SIGINT) - check running flag and continue
-212         log_debug(&quot;select() interrupted by signal&quot;);
-213         continue;
-214       }
-215       // Actual error - socket_get_error_string() returns last socket error
-216       log_error(&quot;select() failed in accept loop: %s (errno=%d)&quot;, socket_get_error_string(), err);
-217       continue;
-218     }
-219 
-220     if (select_result == 0) {
-221       // Timeout - invoke status update callback if configured
-222       if (server-&gt;config.status_update_fn) {
-223         server-&gt;config.status_update_fn(server-&gt;config.status_update_data);
-224       }
-225       continue;
-226     }
-227 
-228     // Check which socket has incoming connection
-229     socket_t ready_socket = INVALID_SOCKET_VALUE;
-230     if (server-&gt;listen_socket != INVALID_SOCKET_VALUE &amp;&amp; socket_fd_isset(server-&gt;listen_socket, &amp;read_fds)) {
-231       ready_socket = server-&gt;listen_socket;
-232     } else if (server-&gt;listen_socket6 != INVALID_SOCKET_VALUE &amp;&amp; socket_fd_isset(server-&gt;listen_socket6, &amp;read_fds)) {
-233       ready_socket = server-&gt;listen_socket6;
-234     }
-235 
-236     if (ready_socket == INVALID_SOCKET_VALUE) {
-237       // Spurious wakeup
-238       continue;
-239     }
-240 
-241     // Accept connection
-242     struct sockaddr_storage client_addr;
-243     socklen_t client_addr_len = sizeof(client_addr);
-244     socket_t client_socket = accept(ready_socket, (struct sockaddr *)&amp;client_addr, &amp;client_addr_len);
-245 
-246     if (client_socket == INVALID_SOCKET_VALUE) {
-247       log_warn(&quot;Failed to accept connection&quot;);
-248       continue;
-249     }
-250 
-251     // Format client IP for logging
-252     char client_ip[INET6_ADDRSTRLEN];
+<pre>167                                                        {
+168   if (!server) {
+169     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server is NULL&quot;);
+170   }
+171 
+172   if (!server-&gt;config.client_handler) {
+173     return SET_ERRNO(ERROR_INVALID_PARAM,
+174                      &quot;client_handler is required for tcp_server_run() - use custom accept loop if handler is NULL&quot;);
+175   }
+176 
+177   log_debug(&quot;TCP server starting accept loop...&quot;);
+178 
+179   while (atomic_load_bool(&amp;server-&gt;running)) {
+180     // Build fd_set for select()
+181     fd_set read_fds;
+182     socket_fd_zero(&amp;read_fds);
+183     socket_t max_fd = 0;
+184 
+185     // Add IPv4 socket if available
+186     if (server-&gt;listen_socket != INVALID_SOCKET_VALUE) {
+187       socket_fd_set(server-&gt;listen_socket, &amp;read_fds);
+188       max_fd = server-&gt;listen_socket &gt; max_fd ? server-&gt;listen_socket : max_fd;
+189     }
+190 
+191     // Add IPv6 socket if available
+192     if (server-&gt;listen_socket6 != INVALID_SOCKET_VALUE) {
+193       socket_fd_set(server-&gt;listen_socket6, &amp;read_fds);
+194       max_fd = server-&gt;listen_socket6 &gt; max_fd ? server-&gt;listen_socket6 : max_fd;
+195     }
+196 
+197     // Use timeout from config (defaults to 1 second if not set)
+198     // Convert double seconds to tv_sec and tv_usec
+199     double timeout_sec_double = server-&gt;config.accept_timeout_sec &gt; 0 ? server-&gt;config.accept_timeout_sec : 1.0;
+200     time_t timeout_sec = (time_t)timeout_sec_double;
+201     long timeout_usec = (long)((timeout_sec_double - timeout_sec) * (double)US_PER_SEC_INT);
+202     struct timeval timeout = {.tv_sec = timeout_sec, .tv_usec = timeout_usec};
+203 
+204     int select_result = socket_select((int)(max_fd + 1), &amp;read_fds, NULL, NULL, &amp;timeout);
+205 
+206     if (select_result &lt; 0) {
+207       // Check if interrupted by signal (expected during shutdown)
+208       int err = socket_get_last_error();
+209       if (err == EINTR) {
+210         // Signal interrupt (e.g., SIGTERM, SIGINT) - check running flag and continue
+211         log_debug(&quot;select() interrupted by signal&quot;);
+212         continue;
+213       }
+214       // Actual error - socket_get_error_string() returns last socket error
+215       log_error(&quot;select() failed in accept loop: %s (errno=%d)&quot;, socket_get_error_string(), err);
+216       continue;
+217     }
+218 
+219     if (select_result == 0) {
+220       // Timeout - invoke status update callback if configured
+221       if (server-&gt;config.status_update_fn) {
+222         server-&gt;config.status_update_fn(server-&gt;config.status_update_data);
+223       }
+224       continue;
+225     }
+226 
+227     // Check which socket has incoming connection
+228     socket_t ready_socket = INVALID_SOCKET_VALUE;
+229     if (server-&gt;listen_socket != INVALID_SOCKET_VALUE &amp;&amp; socket_fd_isset(server-&gt;listen_socket, &amp;read_fds)) {
+230       ready_socket = server-&gt;listen_socket;
+231     } else if (server-&gt;listen_socket6 != INVALID_SOCKET_VALUE &amp;&amp; socket_fd_isset(server-&gt;listen_socket6, &amp;read_fds)) {
+232       ready_socket = server-&gt;listen_socket6;
+233     }
+234 
+235     if (ready_socket == INVALID_SOCKET_VALUE) {
+236       // Spurious wakeup
+237       continue;
+238     }
+239 
+240     // Accept connection
+241     struct sockaddr_storage client_addr;
+242     socklen_t client_addr_len = sizeof(client_addr);
+243     socket_t client_socket = accept(ready_socket, (struct sockaddr *)&amp;client_addr, &amp;client_addr_len);
+244 
+245     if (client_socket == INVALID_SOCKET_VALUE) {
+246       log_warn(&quot;Failed to accept connection&quot;);
+247       continue;
+248     }
+249 
+250     // Format client IP for logging
+251     char client_ip[INET6_ADDRSTRLEN];
+252     // NOLINTNEXTLINE(clang-analyzer-core.UndefinedBinaryOperatorResult) - client_addr filled by accept()
 253     int addr_family = (client_addr.ss_family == AF_INET) ? AF_INET : AF_INET6;
 254     if (format_ip_address(addr_family, (struct sockaddr *)&amp;client_addr, client_ip, sizeof(client_ip)) != ASCIICHAT_OK) {
 255       SAFE_STRNCPY(client_ip, &quot;(unknown)&quot;, sizeof(client_ip));

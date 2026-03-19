@@ -110,19 +110,19 @@
 <p class="Pp">Actual transport cleanup (closing sockets, freeing peer manager)
     should be done by the caller before calling this</p>
 </div>
-<p class="Pp">Definition at line <b>358</b> of file
+<p class="Pp">Definition at line <b>359</b> of file
   <b>src/client/webrtc.c</b>.</p>
-<pre>358                                     {
-359   ensure_mutex_initialized();
-360   mutex_lock(&amp;g_signaling_mutex);
-361 
-362   if (g_webrtc_transport) {
-363     log_debug(&quot;Cleaning up WebRTC data channel transport&quot;);
-364     g_webrtc_transport = NULL;
-365   }
-366 
-367   mutex_unlock(&amp;g_signaling_mutex);
-368 }</pre>
+<pre>359                                     {
+360   ensure_mutex_initialized();
+361   mutex_lock(&amp;g_signaling_mutex);
+362 
+363   if (g_webrtc_transport) {
+364     log_debug(&quot;Cleaning up WebRTC data channel transport&quot;);
+365     g_webrtc_transport = NULL;
+366   }
+367 
+368   mutex_unlock(&amp;g_signaling_mutex);
+369 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_debug</b>, <b>mutex_lock</b>, and
@@ -145,16 +145,16 @@
 <p class="Pp"></p>
 <p class="Pp">Callbacks will fail if ACDS connection is not active.</p>
 </div>
-<p class="Pp">Definition at line <b>258</b> of file
+<p class="Pp">Definition at line <b>259</b> of file
   <b>src/client/webrtc.c</b>.</p>
-<pre>258                                                                   {
-259   ensure_mutex_initialized();
-260 
-261   webrtc_signaling_callbacks_t callbacks = {
-262       .send_sdp = client_send_sdp, .send_ice = client_send_ice, .user_data = NULL};
-263 
-264   return callbacks;
-265 }</pre>
+<pre>259                                                                   {
+260   ensure_mutex_initialized();
+261 
+262   webrtc_signaling_callbacks_t callbacks = {
+263       .send_sdp = client_send_sdp, .send_ice = client_send_ice, .user_data = NULL};
+264 
+265   return callbacks;
+266 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -171,18 +171,18 @@
 <p class="Pp">Pointer is valid only until webrtc_set_transport(NULL) is
   called</p>
 </div>
-<p class="Pp">Definition at line <b>337</b> of file
+<p class="Pp">Definition at line <b>338</b> of file
   <b>src/client/webrtc.c</b>.</p>
-<pre>337                                              {
-338   ensure_mutex_initialized();
-339   mutex_lock(&amp;g_signaling_mutex);
-340 
-341   acip_transport_t *transport = g_webrtc_transport;
-342 
-343   mutex_unlock(&amp;g_signaling_mutex);
-344 
-345   return transport;
-346 }</pre>
+<pre>338                                              {
+339   ensure_mutex_initialized();
+340   mutex_lock(&amp;g_signaling_mutex);
+341 
+342   acip_transport_t *transport = g_webrtc_transport;
+343 
+344   mutex_unlock(&amp;g_signaling_mutex);
+345 
+346   return transport;
+347 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>mutex_lock</b>, and <b>mutex_unlock</b>.</p>
@@ -202,22 +202,22 @@
 <p class="Pp">Callbacks will fail with ERROR_INVALID_STATE if transport is
   NULL.</p>
 </div>
-<p class="Pp">Definition at line <b>267</b> of file
+<p class="Pp">Definition at line <b>268</b> of file
   <b>src/client/webrtc.c</b>.</p>
-<pre>267                                                             {
-268   ensure_mutex_initialized();
-269   mutex_lock(&amp;g_signaling_mutex);
-270 
-271   g_acds_transport = transport;
-272 
-273   if (transport) {
-274     log_debug(&quot;ACDS transport set for WebRTC signaling&quot;);
-275   } else {
-276     log_debug(&quot;ACDS transport cleared for WebRTC signaling&quot;);
-277   }
-278 
-279   mutex_unlock(&amp;g_signaling_mutex);
-280 }</pre>
+<pre>268                                                             {
+269   ensure_mutex_initialized();
+270   mutex_lock(&amp;g_signaling_mutex);
+271 
+272   g_acds_transport = transport;
+273 
+274   if (transport) {
+275     log_debug(&quot;ACDS transport set for WebRTC signaling&quot;);
+276   } else {
+277     log_debug(&quot;ACDS transport cleared for WebRTC signaling&quot;);
+278   }
+279 
+280   mutex_unlock(&amp;g_signaling_mutex);
+281 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_debug</b>, <b>mutex_lock</b>, and
@@ -243,26 +243,26 @@
 <p class="Pp">Callbacks will fail with ERROR_INVALID_STATE if IDs are not
   set.</p>
 </div>
-<p class="Pp">Definition at line <b>282</b> of file
+<p class="Pp">Definition at line <b>283</b> of file
   <b>src/client/webrtc.c</b>.</p>
-<pre>282                                                                                                 {
-283   if (!session_id || !participant_id) {
-284     log_error(&quot;Invalid session context parameters&quot;);
-285     return;
-286   }
-287 
-288   ensure_mutex_initialized();
-289   mutex_lock(&amp;g_signaling_mutex);
-290 
-291   memcpy(g_session_context.session_id, session_id, 16);
-292   memcpy(g_session_context.participant_id, participant_id, 16);
-293   g_session_context.is_set = true;
-294 
-295   log_info(&quot;Session context set for WebRTC signaling (session=%.8s..., participant=%.8s...)&quot;, (const char *)session_id,
-296            (const char *)participant_id);
-297 
-298   mutex_unlock(&amp;g_signaling_mutex);
-299 }</pre>
+<pre>283                                                                                                 {
+284   if (!session_id || !participant_id) {
+285     log_error(&quot;Invalid session context parameters&quot;);
+286     return;
+287   }
+288 
+289   ensure_mutex_initialized();
+290   mutex_lock(&amp;g_signaling_mutex);
+291 
+292   memcpy(g_session_context.session_id, session_id, 16);
+293   memcpy(g_session_context.participant_id, participant_id, 16);
+294   g_session_context.is_set = true;
+295 
+296   log_info(&quot;Session context set for WebRTC signaling (session=%.8s..., participant=%.8s...)&quot;, (const char *)session_id,
+297            (const char *)participant_id);
+298 
+299   mutex_unlock(&amp;g_signaling_mutex);
+300 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_error</b>, <b>log_info</b>, <b>mutex_lock</b>,
@@ -285,22 +285,22 @@
 <p class="Pp">If NULL is passed, the transport is cleared (e.g., on
   disconnect)</p>
 </div>
-<p class="Pp">Definition at line <b>312</b> of file
+<p class="Pp">Definition at line <b>313</b> of file
   <b>src/client/webrtc.c</b>.</p>
-<pre>312                                                        {
-313   ensure_mutex_initialized();
-314   mutex_lock(&amp;g_signaling_mutex);
-315 
-316   g_webrtc_transport = transport;
-317 
-318   if (transport) {
-319     log_debug(&quot;WebRTC data channel transport set&quot;);
-320   } else {
-321     log_debug(&quot;WebRTC data channel transport cleared&quot;);
-322   }
-323 
-324   mutex_unlock(&amp;g_signaling_mutex);
-325 }</pre>
+<pre>313                                                        {
+314   ensure_mutex_initialized();
+315   mutex_lock(&amp;g_signaling_mutex);
+316 
+317   g_webrtc_transport = transport;
+318 
+319   if (transport) {
+320     log_debug(&quot;WebRTC data channel transport set&quot;);
+321   } else {
+322     log_debug(&quot;WebRTC data channel transport cleared&quot;);
+323   }
+324 
+325   mutex_unlock(&amp;g_signaling_mutex);
+326 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_debug</b>, <b>mutex_lock</b>, and

@@ -149,105 +149,105 @@
 <i>detected_count</i> Actual number detected (output)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>687</b> of file <b>sdp.c</b>.</p>
-<pre>688                                                                            {
-689   if (!capabilities || capability_count == 0 || !detected_count) {
-690     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid capability detection parameters&quot;);
-691   }
-692 
-693   *detected_count = 0;
-694   memset(capabilities, 0, capability_count * sizeof(terminal_capability_t));
-695 
-696   // Detect terminal color level using platform terminal module
-697   const char *colorterm = SAFE_GETENV(&quot;COLORTERM&quot;);
-698   const char *term = SAFE_GETENV(&quot;TERM&quot;);
-699   terminal_color_mode_t color_level = TERM_COLOR_NONE;
-700 
-701   if (colorterm &amp;&amp; (strcmp(colorterm, &quot;truecolor&quot;) == 0 || strcmp(colorterm, &quot;24bit&quot;) == 0)) {
-702     color_level = TERM_COLOR_TRUECOLOR;
-703   } else if (term) {
-704     if (strstr(term, &quot;256color&quot;) || strstr(term, &quot;256&quot;)) {
-705       color_level = TERM_COLOR_256;
-706     } else if (strstr(term, &quot;color&quot;) || strcmp(term, &quot;xterm&quot;) == 0) {
-707       color_level = TERM_COLOR_16;
-708     }
-709   }
-710 
-711   // Detect UTF-8 support from LANG environment variable
-712   const char *lang = SAFE_GETENV(&quot;LANG&quot;);
-713   bool has_utf8 = (lang &amp;&amp; (strstr(lang, &quot;UTF-8&quot;) || strstr(lang, &quot;utf8&quot;)));
+<p class="Pp">Definition at line <b>691</b> of file <b>sdp.c</b>.</p>
+<pre>692                                                                            {
+693   if (!capabilities || capability_count == 0 || !detected_count) {
+694     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid capability detection parameters&quot;);
+695   }
+696 
+697   *detected_count = 0;
+698   memset(capabilities, 0, capability_count * sizeof(terminal_capability_t));
+699 
+700   // Detect terminal color level using platform terminal module
+701   const char *colorterm = SAFE_GETENV(&quot;COLORTERM&quot;);
+702   const char *term = SAFE_GETENV(&quot;TERM&quot;);
+703   terminal_color_mode_t color_level = TERM_COLOR_NONE;
+704 
+705   if (colorterm &amp;&amp; (strcmp(colorterm, &quot;truecolor&quot;) == 0 || strcmp(colorterm, &quot;24bit&quot;) == 0)) {
+706     color_level = TERM_COLOR_TRUECOLOR;
+707   } else if (term) {
+708     if (strstr(term, &quot;256color&quot;) || strstr(term, &quot;256&quot;)) {
+709       color_level = TERM_COLOR_256;
+710     } else if (strstr(term, &quot;color&quot;) || strcmp(term, &quot;xterm&quot;) == 0) {
+711       color_level = TERM_COLOR_16;
+712     }
+713   }
 714 
-715   // CSI REP support correlates with UTF-8
-716   bool has_csi_rep = has_utf8;
-717 
-718   // Get terminal size from platform module
-719   uint16_t term_width = 80;  // default
-720   uint16_t term_height = 24; // default
+715   // Detect UTF-8 support from LANG environment variable
+716   const char *lang = SAFE_GETENV(&quot;LANG&quot;);
+717   bool has_utf8 = (lang &amp;&amp; (strstr(lang, &quot;UTF-8&quot;) || strstr(lang, &quot;utf8&quot;)));
+718 
+719   // CSI REP support correlates with UTF-8
+720   bool has_csi_rep = has_utf8;
 721 
-722   terminal_size_t term_size;
-723   asciichat_error_t term_err = terminal_get_size(&amp;term_size);
-724   if (term_err == ASCIICHAT_OK) {
-725     term_width = (uint16_t)term_size.cols;
-726     term_height = (uint16_t)term_size.rows;
-727   } else {
-728     log_debug(&quot;SDP: Using default terminal size %ux%u&quot;, term_width, term_height);
-729   }
-730 
-731   // Fill capabilities array based on detected color level (preference order)
-732   size_t idx = 0;
-733 
-734   if (color_level &gt;= TERM_COLOR_TRUECOLOR &amp;&amp; idx &lt; capability_count) {
-735     capabilities[idx].codec = ACIP_CODEC_TRUECOLOR;
-736     capabilities[idx].format.width = term_width;
-737     capabilities[idx].format.height = term_height;
-738     capabilities[idx].format.renderer = RENDERER_BLOCK;
-739     capabilities[idx].format.charset = has_utf8 ? CHARSET_UTF8 : CHARSET_ASCII;
-740     capabilities[idx].format.compression = COMPRESSION_RLE;
-741     capabilities[idx].format.csi_rep_support = has_csi_rep;
-742     idx++;
-743   }
-744 
-745   if (color_level &gt;= TERM_COLOR_256 &amp;&amp; idx &lt; capability_count) {
-746     capabilities[idx].codec = ACIP_CODEC_256COLOR;
-747     capabilities[idx].format.width = term_width;
-748     capabilities[idx].format.height = term_height;
-749     capabilities[idx].format.renderer = RENDERER_BLOCK;
-750     capabilities[idx].format.charset = has_utf8 ? CHARSET_UTF8 : CHARSET_ASCII;
-751     capabilities[idx].format.compression = COMPRESSION_RLE;
-752     capabilities[idx].format.csi_rep_support = has_csi_rep;
-753     idx++;
-754   }
-755 
-756   if (color_level &gt;= TERM_COLOR_16 &amp;&amp; idx &lt; capability_count) {
-757     capabilities[idx].codec = ACIP_CODEC_16COLOR;
-758     capabilities[idx].format.width = term_width;
-759     capabilities[idx].format.height = term_height;
-760     capabilities[idx].format.renderer = RENDERER_BLOCK;
-761     capabilities[idx].format.charset = has_utf8 ? CHARSET_UTF8 : CHARSET_ASCII;
-762     capabilities[idx].format.compression = COMPRESSION_NONE;
-763     capabilities[idx].format.csi_rep_support = has_csi_rep;
-764     idx++;
-765   }
-766 
-767   // Monochrome always supported
-768   if (idx &lt; capability_count) {
-769     capabilities[idx].codec = ACIP_CODEC_MONO;
-770     capabilities[idx].format.width = term_width;
-771     capabilities[idx].format.height = term_height;
-772     capabilities[idx].format.renderer = RENDERER_BLOCK;
-773     capabilities[idx].format.charset = has_utf8 ? CHARSET_UTF8 : CHARSET_ASCII;
-774     capabilities[idx].format.compression = COMPRESSION_NONE;
-775     capabilities[idx].format.csi_rep_support = has_csi_rep;
-776     idx++;
-777   }
-778 
-779   *detected_count = idx;
-780 
-781   log_debug(&quot;SDP: Detected %zu terminal capabilities (colors=%d, utf8=%s, csi_rep=%s, size=%ux%u)&quot;, *detected_count,
-782             color_level, has_utf8 ? &quot;yes&quot; : &quot;no&quot;, has_csi_rep ? &quot;yes&quot; : &quot;no&quot;, term_width, term_height);
-783 
-784   return ASCIICHAT_OK;
-785 }</pre>
+722   // Get terminal size from platform module
+723   uint16_t term_width = 80;  // default
+724   uint16_t term_height = 24; // default
+725 
+726   terminal_size_t term_size;
+727   asciichat_error_t term_err = terminal_get_size(&amp;term_size);
+728   if (term_err == ASCIICHAT_OK) {
+729     term_width = (uint16_t)term_size.cols;
+730     term_height = (uint16_t)term_size.rows;
+731   } else {
+732     log_debug(&quot;SDP: Using default terminal size %ux%u&quot;, term_width, term_height);
+733   }
+734 
+735   // Fill capabilities array based on detected color level (preference order)
+736   size_t idx = 0;
+737 
+738   if (color_level &gt;= TERM_COLOR_TRUECOLOR &amp;&amp; idx &lt; capability_count) {
+739     capabilities[idx].codec = ACIP_CODEC_TRUECOLOR;
+740     capabilities[idx].format.width = term_width;
+741     capabilities[idx].format.height = term_height;
+742     capabilities[idx].format.renderer = RENDERER_BLOCK;
+743     capabilities[idx].format.charset = has_utf8 ? CHARSET_UTF8 : CHARSET_ASCII;
+744     capabilities[idx].format.compression = COMPRESSION_RLE;
+745     capabilities[idx].format.csi_rep_support = has_csi_rep;
+746     idx++;
+747   }
+748 
+749   if (color_level &gt;= TERM_COLOR_256 &amp;&amp; idx &lt; capability_count) {
+750     capabilities[idx].codec = ACIP_CODEC_256COLOR;
+751     capabilities[idx].format.width = term_width;
+752     capabilities[idx].format.height = term_height;
+753     capabilities[idx].format.renderer = RENDERER_BLOCK;
+754     capabilities[idx].format.charset = has_utf8 ? CHARSET_UTF8 : CHARSET_ASCII;
+755     capabilities[idx].format.compression = COMPRESSION_RLE;
+756     capabilities[idx].format.csi_rep_support = has_csi_rep;
+757     idx++;
+758   }
+759 
+760   if (color_level &gt;= TERM_COLOR_16 &amp;&amp; idx &lt; capability_count) {
+761     capabilities[idx].codec = ACIP_CODEC_16COLOR;
+762     capabilities[idx].format.width = term_width;
+763     capabilities[idx].format.height = term_height;
+764     capabilities[idx].format.renderer = RENDERER_BLOCK;
+765     capabilities[idx].format.charset = has_utf8 ? CHARSET_UTF8 : CHARSET_ASCII;
+766     capabilities[idx].format.compression = COMPRESSION_NONE;
+767     capabilities[idx].format.csi_rep_support = has_csi_rep;
+768     idx++;
+769   }
+770 
+771   // Monochrome always supported
+772   if (idx &lt; capability_count) {
+773     capabilities[idx].codec = ACIP_CODEC_MONO;
+774     capabilities[idx].format.width = term_width;
+775     capabilities[idx].format.height = term_height;
+776     capabilities[idx].format.renderer = RENDERER_BLOCK;
+777     capabilities[idx].format.charset = has_utf8 ? CHARSET_UTF8 : CHARSET_ASCII;
+778     capabilities[idx].format.compression = COMPRESSION_NONE;
+779     capabilities[idx].format.csi_rep_support = has_csi_rep;
+780     idx++;
+781   }
+782 
+783   *detected_count = idx;
+784 
+785   log_debug(&quot;SDP: Detected %zu terminal capabilities (colors=%d, utf8=%s, csi_rep=%s, size=%ux%u)&quot;, *detected_count,
+786             color_level, has_utf8 ? &quot;yes&quot; : &quot;no&quot;, has_csi_rep ? &quot;yes&quot; : &quot;no&quot;, term_width, term_height);
+787 
+788   return ASCIICHAT_OK;
+789 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ACIP_CODEC_16COLOR</b>, <b>ACIP_CODEC_256COLOR</b>,
@@ -674,28 +674,28 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK if valid selection found, error
   otherwise</div>
-<p class="Pp">Definition at line <b>660</b> of file <b>sdp.c</b>.</p>
-<pre>661                                                                                           {
-662   if (!answer || !selected_codec || !selected_format) {
-663     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for codec selection&quot;);
-664   }
-665 
-666   if (!answer-&gt;has_video || !answer-&gt;video_codecs || answer-&gt;video_codec_count == 0) {
-667     return SET_ERRNO(ERROR_NOT_FOUND, &quot;No video codec in answer&quot;);
+<p class="Pp">Definition at line <b>664</b> of file <b>sdp.c</b>.</p>
+<pre>665                                                                                           {
+666   if (!answer || !selected_codec || !selected_format) {
+667     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for codec selection&quot;);
 668   }
 669 
-670   // In SDP answer, server selects only ONE codec (server's preference)
-671   // The first codec in the answer is the selected one
-672   terminal_capability_t *selected_cap = &amp;answer-&gt;video_codecs[0];
+670   if (!answer-&gt;has_video || !answer-&gt;video_codecs || answer-&gt;video_codec_count == 0) {
+671     return SET_ERRNO(ERROR_NOT_FOUND, &quot;No video codec in answer&quot;);
+672   }
 673 
-674   *selected_codec = selected_cap-&gt;codec;
-675   memcpy(selected_format, &amp;selected_cap-&gt;format, sizeof(terminal_format_params_t));
-676 
-677   log_debug(&quot;SDP: Selected video codec %s with resolution %ux%u&quot;, sdp_codec_name(selected_cap-&gt;codec),
-678             selected_cap-&gt;format.width, selected_cap-&gt;format.height);
-679 
-680   return ASCIICHAT_OK;
-681 }</pre>
+674   // In SDP answer, server selects only ONE codec (server's preference)
+675   // The first codec in the answer is the selected one
+676   terminal_capability_t *selected_cap = &amp;answer-&gt;video_codecs[0];
+677 
+678   *selected_codec = selected_cap-&gt;codec;
+679   memcpy(selected_format, &amp;selected_cap-&gt;format, sizeof(terminal_format_params_t));
+680 
+681   log_debug(&quot;SDP: Selected video codec %s with resolution %ux%u&quot;, sdp_codec_name(selected_cap-&gt;codec),
+682             selected_cap-&gt;format.width, selected_cap-&gt;format.height);
+683 
+684   return ASCIICHAT_OK;
+685 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -888,13 +888,17 @@
 645         }
 646       }
 647       break;
-648     }
-649 
-650     line = platform_strtok_r(NULL, &quot;\r\n&quot;, &amp;saveptr);
-651   }
-652 
-653   return ASCIICHAT_OK;
-654 }</pre>
+648 
+649     default:
+650       // Ignore unknown SDP attributes
+651       break;
+652     }
+653 
+654     line = platform_strtok_r(NULL, &quot;\r\n&quot;, &amp;saveptr);
+655   }
+656 
+657   return ASCIICHAT_OK;
+658 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ACIP_CODEC_16COLOR</b>, <b>ACIP_CODEC_256COLOR</b>,
@@ -944,21 +948,21 @@
 <p class="Pp">Free SDP session resources.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i></i><b>Session</b><i></i><b> Session to free</b></div>
-<p class="Pp">Definition at line <b>791</b> of file <b>sdp.c</b>.</p>
-<pre>791                                                  {
-792   if (!session) {
-793     return;
-794   }
-795 
-796   // Free allocated video codec array
-797   if (session-&gt;video_codecs) {
-798     SAFE_FREE(session-&gt;video_codecs);
-799     session-&gt;video_codec_count = 0;
-800   }
-801 
-802   // Zero out the session structure
-803   memset(session, 0, sizeof(sdp_session_t));
-804 }</pre>
+<p class="Pp">Definition at line <b>795</b> of file <b>sdp.c</b>.</p>
+<pre>795                                                  {
+796   if (!session) {
+797     return;
+798   }
+799 
+800   // Free allocated video codec array
+801   if (session-&gt;video_codecs) {
+802     SAFE_FREE(session-&gt;video_codecs);
+803     session-&gt;video_codec_count = 0;
+804   }
+805 
+806   // Zero out the session structure
+807   memset(session, 0, sizeof(sdp_session_t));
+808 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>SAFE_FREE</b>,

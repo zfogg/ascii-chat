@@ -422,13 +422,14 @@
 304 
 305   // Build packet
 306   memcpy(buffer, &amp;header, sizeof(header));
-307   memcpy(buffer + sizeof(header), message, msg_len);
-308 
-309   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_REMOTE_LOG, buffer, total_size, 0);
-310 
-311   buffer_pool_free(NULL, buffer, total_size);
-312   return result;
-313 }</pre>
+307   // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary packet data
+308   memcpy(buffer + sizeof(header), message, msg_len);
+309 
+310   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_REMOTE_LOG, buffer, total_size, 0);
+311 
+312   buffer_pool_free(NULL, buffer, total_size);
+313   return result;
+314 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
@@ -450,14 +451,14 @@
 <i>response</i> Session created response structure</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>319</b> of file <b>send.c</b>.</p>
-<pre>319                                                                                                                  {
-320   if (!transport || !response) {
-321     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or response&quot;);
-322   }
-323 
-324   return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_CREATED, response, sizeof(*response), 0);
-325 }</pre>
+<p class="Pp">Definition at line <b>320</b> of file <b>send.c</b>.</p>
+<pre>320                                                                                                                  {
+321   if (!transport || !response) {
+322     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or response&quot;);
+323   }
+324 
+325   return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_CREATED, response, sizeof(*response), 0);
+326 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_session_created_t</b>,
@@ -475,14 +476,14 @@
 <i>info</i> Session info structure</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>327</b> of file <b>send.c</b>.</p>
-<pre>327                                                                                                        {
-328   if (!transport || !info) {
-329     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or info&quot;);
-330   }
-331 
-332   return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_INFO, info, sizeof(*info), 0);
-333 }</pre>
+<p class="Pp">Definition at line <b>328</b> of file <b>send.c</b>.</p>
+<pre>328                                                                                                        {
+329   if (!transport || !info) {
+330     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or info&quot;);
+331   }
+332 
+333   return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_INFO, info, sizeof(*info), 0);
+334 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_session_info_t</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -500,14 +501,14 @@
 <i>response</i> Session joined response structure</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>335</b> of file <b>send.c</b>.</p>
-<pre>335                                                                                                                {
-336   if (!transport || !response) {
-337     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or response&quot;);
-338   }
-339 
-340   return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(*response), 0);
-341 }</pre>
+<p class="Pp">Definition at line <b>336</b> of file <b>send.c</b>.</p>
+<pre>336                                                                                                                {
+337   if (!transport || !response) {
+338     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or response&quot;);
+339   }
+340 
+341   return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(*response), 0);
+342 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_session_joined_t</b>,

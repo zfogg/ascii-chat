@@ -632,11 +632,11 @@
 244   unsigned short width = size.cols;
 245   unsigned short height = size.rows;
 246 
-247   log_color_t label_color = use_colors ? LOG_COLOR_GREY : LOG_COLOR_GREY;
+247   log_color_t label_color = use_colors ? LOG_COLOR_DEBUG : LOG_COLOR_GREY;
 248   log_color_t string_color = use_colors ? LOG_COLOR_DEBUG : LOG_COLOR_GREY;
 249   log_color_t good_color = use_colors ? LOG_COLOR_INFO : LOG_COLOR_GREY;
 250   log_color_t bad_color = use_colors ? LOG_COLOR_ERROR : LOG_COLOR_GREY;
-251   log_color_t number_color = use_colors ? LOG_COLOR_FATAL : LOG_COLOR_GREY;
+251   log_color_t number_color = use_colors ? LOG_COLOR_DEBUG : LOG_COLOR_GREY;
 252 
 253   printf(&quot;%s\n&quot;, colored_string(LOG_COLOR_WARN, &quot;Terminal Capabilities:&quot;));
 254 
@@ -690,13 +690,13 @@
     <b>terminal_capabilities_t::colorterm</b>, <b>terminal_size_t::cols</b>,
     <b>detect_terminal_capabilities()</b>,
     <b>terminal_capabilities_t::detection_reliable</b>, <b>LOG_COLOR_DEBUG</b>,
-    <b>LOG_COLOR_ERROR</b>, <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_GREY</b>,
-    <b>LOG_COLOR_INFO</b>, <b>LOG_COLOR_WARN</b>,
-    <b>terminal_capabilities_t::render_mode</b>, <b>RENDER_MODE_BACKGROUND</b>,
-    <b>RENDER_MODE_FOREGROUND</b>, <b>RENDER_MODE_HALF_BLOCK</b>,
-    <b>terminal_size_t::rows</b>, <b>TERM_CAP_COLOR_16</b>,
-    <b>TERM_CAP_COLOR_256</b>, <b>TERM_CAP_COLOR_TRUE</b>,
-    <b>TERM_COLOR_NONE</b>, <b>terminal_capabilities_t::term_type</b>,
+    <b>LOG_COLOR_ERROR</b>, <b>LOG_COLOR_GREY</b>, <b>LOG_COLOR_INFO</b>,
+    <b>LOG_COLOR_WARN</b>, <b>terminal_capabilities_t::render_mode</b>,
+    <b>RENDER_MODE_BACKGROUND</b>, <b>RENDER_MODE_FOREGROUND</b>,
+    <b>RENDER_MODE_HALF_BLOCK</b>, <b>terminal_size_t::rows</b>,
+    <b>TERM_CAP_COLOR_16</b>, <b>TERM_CAP_COLOR_256</b>,
+    <b>TERM_CAP_COLOR_TRUE</b>, <b>TERM_COLOR_NONE</b>,
+    <b>terminal_capabilities_t::term_type</b>,
     <b>terminal_color_level_name()</b>, <b>terminal_get_size()</b>,
     <b>terminal_should_color_output()</b>, and
     <b>terminal_capabilities_t::utf8_support</b>.</p>

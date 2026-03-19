@@ -39,8 +39,9 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>completions_generate_zsh</b> (FILE
-    *output)
+<p class="Pp"><b>__attribute__</b> ((unused))
+  <br/>
+  <b>asciichat_error_t</b> <b>completions_generate_zsh</b> (FILE *output)
   <br/>
   Generate zsh completion script.
   <br/>
@@ -59,263 +60,310 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="__attribute___((unused)_)"><a class="permalink" href="#__attribute___((unused)_)">__attribute__
+  ((unused) )</a></h2>
+<p class="Pp">Write options grouped by category using _describe for proper group
+    headers</p>
+<p class="Pp">Definition at line <b>172</b> of file <b>zsh.c</b>.</p>
+<pre>174                                                                {
+175   if (!opts || count == 0)
+176     return;
+177 
+178   size_t group_count = 0;
+179   const char **groups = zsh_collect_groups(opts, count, &amp;group_count);
+180 
+181   // First pass: declare arrays for each group
+182   for (size_t g = 0; g &lt; group_count; g++) {
+183     const char *group = groups[g];
+184     fprintf(output, &quot;  local -a %s_%s_opts=(\n&quot;, func_prefix, group);
+185 
+186     // Write all options in this group (long options only to avoid &quot;corrections&quot; duplicates)
+187     for (size_t i = 0; i &lt; count; i++) {
+188       if (!opts[i].group || strcmp(opts[i].group, group) != 0)
+189         continue;
+190 
+191       // Long option only (short options are less discoverable via TAB)
+192       fprintf(output, &quot;    '--%s:&quot;, opts[i].long_name);
+193       zsh_escape_desc(output, opts[i].help_text);
+194       fprintf(output, &quot;'\n&quot;);
+195     }
+196 
+197     fprintf(output, &quot;  )\n&quot;);
+198   }
+199 
+200   // Second pass: call _describe for each group (with lowercase display)
+201   for (size_t g = 0; g &lt; group_count; g++) {
+202     const char *group = groups[g];
+203     fprintf(output, &quot;  _describe -t %s '&quot;, group);
+204     utf8_write_lowercase(output, group);
+205     fprintf(output, &quot; options' %s_%s_opts\n&quot;, func_prefix, group);
+206   }
+207 
+208   SAFE_FREE(groups);
+209 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>SAFE_FREE</b>, and
+  <b>utf8_write_lowercase()</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> completions_generate_zsh (FILE *
   output)</h2>
 <p class="Pp">Generate zsh completion script.</p>
-<p class="Pp">Definition at line <b>209</b> of file <b>zsh.c</b>.</p>
-<pre>209                                                          {
-210   if (!output) {
-211     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output stream cannot be NULL&quot;);
-212   }
-213 
-214   /* Load binary-level and discovery options for binary-level completion.
-215    * Binary-level completion (options before mode name like --color-mode) uses
-216    * _arguments with -n -S flags to establish proper zsh completion context.
-217    * Without _arguments, completion functions fail with &quot;can only be called from
-218    * completion function&quot; error, causing zsh to display &quot;corrections (errors: N)&quot;
-219    * messages. The -n flag disables defaults and -S disables short option
-220    * processing, allowing safe context establishment. */
-221   size_t binary_count = 0;
-222   const option_descriptor_t *binary_opts = options_registry_get_for_display(MODE_DISCOVERY, true, &amp;binary_count);
-223 
-224   size_t discovery_count = 0;
-225   const option_descriptor_t *discovery_opts = options_registry_get_for_display(MODE_DISCOVERY, false, &amp;discovery_count);
-226 
-227   fprintf(output, &quot;# Zsh completion script for ascii-chat\n&quot;
-228                   &quot;# Generated from options registry - DO NOT EDIT MANUALLY\n&quot;
-229                   &quot;\n&quot;
-230                   &quot;# Configure completion for ascii-chat\n&quot;
-231                   &quot;# Use only _complete (no corrections or approximate matching)\n&quot;
-232                   &quot;zstyle ':completion:*:ascii-chat:*' completer _complete\n&quot;
-233                   &quot;\n&quot;
-234                   &quot;# Device index completion helpers\n&quot;
-235                   &quot;_ascii_chat_webcam_indices() {\n&quot;
-236                   &quot;  local -a indices\n&quot;
-237                   &quot;  local output\n&quot;
-238                   &quot;  output=$(\&quot;${words[1]}\&quot; --list-webcams 2&gt;/dev/null) || return\n&quot;
-239                   &quot;  while IFS= read -r line; do\n&quot;
-240                   &quot;    [[ \&quot;$line\&quot; =~ ^[[:space:]]*([0-9]+)[[:space:]]+(.+)$ ]] &amp;&amp; \\\n&quot;
-241                   &quot;      indices+=(\&quot;${match[1]}:${match[2]}\&quot;)\n&quot;
-242                   &quot;  done &lt;&lt;&lt; \&quot;$output\&quot;\n&quot;
-243                   &quot;  _describe 'webcam' indices\n&quot;
-244                   &quot;}\n&quot;
-245                   &quot;\n&quot;
-246                   &quot;_ascii_chat_microphone_indices() {\n&quot;
-247                   &quot;  local -a indices\n&quot;
-248                   &quot;  local output\n&quot;
-249                   &quot;  output=$(\&quot;${words[1]}\&quot; --list-microphones 2&gt;/dev/null) || return\n&quot;
-250                   &quot;  while IFS= read -r line; do\n&quot;
-251                   &quot;    [[ \&quot;$line\&quot; =~ ^[[:space:]]*([0-9-]+)[[:space:]]+(.+)$ ]] &amp;&amp; \\\n&quot;
-252                   &quot;      indices+=(\&quot;${match[1]}:${match[2]}\&quot;)\n&quot;
-253                   &quot;  done &lt;&lt;&lt; \&quot;$output\&quot;\n&quot;
-254                   &quot;  _describe 'microphone' indices\n&quot;
-255                   &quot;}\n&quot;
-256                   &quot;\n&quot;
-257                   &quot;_ascii_chat_speakers_indices() {\n&quot;
-258                   &quot;  local -a indices\n&quot;
-259                   &quot;  local output\n&quot;
-260                   &quot;  output=$(\&quot;${words[1]}\&quot; --list-speakers 2&gt;/dev/null) || return\n&quot;
-261                   &quot;  while IFS= read -r line; do\n&quot;
-262                   &quot;    [[ \&quot;$line\&quot; =~ ^[[:space:]]*([0-9-]+)[[:space:]]+(.+)$ ]] &amp;&amp; \\\n&quot;
-263                   &quot;      indices+=(\&quot;${match[1]}:${match[2]}\&quot;)\n&quot;
-264                   &quot;  done &lt;&lt;&lt; \&quot;$output\&quot;\n&quot;
-265                   &quot;  _describe 'speakers' indices\n&quot;
-266                   &quot;}\n&quot;
-267                   &quot;\n&quot;
-268                   &quot;_ascii_chat_binary() {\n&quot;
-269                   &quot;  local -a binary_opts=(\n&quot;);
-270 
-271   /* Add discovery options to binary-level completion */
-272   if (discovery_opts) {
-273     for (size_t i = 0; i &lt; discovery_count; i++) {
-274       fprintf(output, &quot;    '--%s:&quot;, discovery_opts[i].long_name);
-275       zsh_escape_desc(output, discovery_opts[i].help_text);
-276       fprintf(output, &quot;'\n&quot;);
-277     }
-278   }
-279 
-280   fprintf(output, &quot;  )\n&quot;
-281                   &quot;  _values 'option' \&quot;${binary_opts[@]}\&quot;\n&quot;
-282                   &quot;}\n&quot;
-283                   &quot;\n&quot;
-284                   &quot;_ascii_chat_binary_grouped() {\n&quot;
-285                   &quot;  local curcontext=$curcontext\n&quot;
-286                   &quot;  local -a context line state state_descr args\n&quot;
-287                   &quot;  local -A opt_args\n\n&quot;);
-288 
-289   /* Write binary-level options in grouped format */
-290   if (binary_opts) {
-291     zsh_write_combined_args(output, binary_opts, binary_count);
-292   }
-293 
-294   fprintf(output, &quot;}\n&quot;
-295                   &quot;\n&quot;
-296                   &quot;_ascii_chat() {\n&quot;
-297                   &quot;  if [[ ${words[2]} == -* ]]; then\n&quot;
-298                   &quot;    # Binary-level options: show both binary and discovery mode options\n&quot;
-299                   &quot;    # (since discovery is the default mode that runs at binary level)\n&quot;
-300                   &quot;    _ascii_chat_binary_grouped\n&quot;
-301                   &quot;    _ascii_chat_discovery\n&quot;
-302                   &quot;    return\n&quot;
-303                   &quot;  fi\n&quot;
-304                   &quot;\n&quot;
-305                   &quot;  # Mode routing: check words[2] to determine which mode function to call\n&quot;
-306                   &quot;  case $words[2] in\n&quot;
-307                   &quot;    # Server-like modes\n&quot;
-308                   &quot;    server)\n&quot;
-309                   &quot;      _ascii_chat_server\n&quot;
-310                   &quot;      return\n&quot;
-311                   &quot;      ;;\n&quot;
-312                   &quot;    discovery-service)\n&quot;
-313                   &quot;      _ascii_chat_discovery_service\n&quot;
-314                   &quot;      return\n&quot;
-315                   &quot;      ;;\n&quot;
-316                   &quot;\n&quot;
-317                   &quot;    # Client-like modes\n&quot;
-318                   &quot;    client)\n&quot;
-319                   &quot;      _ascii_chat_client\n&quot;
-320                   &quot;      return\n&quot;
-321                   &quot;      ;;\n&quot;
-322                   &quot;    mirror)\n&quot;
-323                   &quot;      _ascii_chat_mirror\n&quot;
-324                   &quot;      return\n&quot;
-325                   &quot;      ;;\n&quot;
-326                   &quot;    # Default/unknown input - show mode selection only if truly empty, otherwise discovery\n&quot;
-327                   &quot;    *)\n&quot;
-328                   &quot;      # If words[2] is empty AND we're at position 2, show mode selection\n&quot;
-329                   &quot;      # Otherwise (even for partial input like 'disc'), use discovery mode (the default)\n&quot;
-330                   &quot;      if [[ -z \&quot;${words[2]}\&quot; &amp;&amp; $CURRENT -eq 2 ]]; then\n&quot;
-331                   &quot;        # Completing the mode name itself - show available modes\n&quot;
-332                   &quot;        local -a server_modes client_modes\n&quot;
-333                   &quot;        server_modes=(\n&quot;);
-334 
-335   /* Generate server-like modes from registry */
-336   size_t mode_server_count = 0;
-337   const mode_descriptor_t *mode_server_descs = get_modes_by_group(&quot;server-like&quot;, &amp;mode_server_count);
-338   if (mode_server_descs) {
-339     for (size_t i = 0; i &lt; mode_server_count; i++) {
-340       fprintf(output, &quot;          '%s:%s'\n&quot;, mode_server_descs[i].name, mode_server_descs[i].description);
-341     }
-342     SAFE_FREE(mode_server_descs);
-343   }
-344 
-345   fprintf(output, &quot;        )\n&quot;
-346                   &quot;        client_modes=(\n&quot;);
-347 
-348   /* Generate client-like modes from registry (exclude discovery since it's the default mode) */
-349   size_t mode_client_count = 0;
-350   const mode_descriptor_t *mode_client_descs = get_modes_by_group(&quot;client-like&quot;, &amp;mode_client_count);
-351   if (mode_client_descs) {
-352     for (size_t i = 0; i &lt; mode_client_count; i++) {
-353       /* Skip discovery mode - it's the default when no mode is specified */
-354       if (strcmp(mode_client_descs[i].name, &quot;discovery&quot;) == 0) {
-355         continue;
-356       }
-357       fprintf(output, &quot;          '%s:%s'\n&quot;, mode_client_descs[i].name, mode_client_descs[i].description);
-358     }
-359     SAFE_FREE(mode_client_descs);
-360   }
-361 
-362   fprintf(output, &quot;        )\n&quot;
-363                   &quot;        _describe -t server-modes 'server-like modes' server_modes\n&quot;
-364                   &quot;        _describe -t client-modes 'client-like modes' client_modes\n&quot;
-365                   &quot;      else\n&quot;
-366                   &quot;        # Default mode (discovery) - complete its options\n&quot;
-367                   &quot;        _ascii_chat_discovery\n&quot;
-368                   &quot;      fi\n&quot;
-369                   &quot;      ;;\n&quot;
-370                   &quot;  esac\n&quot;
-371                   &quot;}\n&quot;
-372                   &quot;\n&quot;
-373                   &quot;# Server-like modes: handle incoming connections and stream management\n&quot;
-374                   &quot;_ascii_chat_server() {\n&quot;
-375                   &quot;  local curcontext=$curcontext\n&quot;
-376                   &quot;  local -a context line state state_descr args\n&quot;
-377                   &quot;  local -A opt_args\n\n&quot;);
-378 
-379   /* Server options - grouped by category */
-380   size_t server_count = 0;
-381   const option_descriptor_t *server_opts = options_registry_get_for_display(MODE_SERVER, false, &amp;server_count);
-382 
-383   if (server_opts) {
-384     zsh_write_combined_args(output, server_opts, server_count);
-385     SAFE_FREE(server_opts);
-386   }
-387 
-388   fprintf(output, &quot;}\n&quot;
-389                   &quot;\n&quot;
-390                   &quot;_ascii_chat_discovery_service() {\n&quot;
-391                   &quot;  local curcontext=$curcontext\n&quot;
-392                   &quot;  local -a context line state state_descr args\n&quot;
-393                   &quot;  local -A opt_args\n\n&quot;);
-394 
-395   /* Discovery-service options - grouped by category */
-396   size_t discovery_svc_count = 0;
-397   const option_descriptor_t *discovery_svc_opts =
-398       options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &amp;discovery_svc_count);
-399 
-400   if (discovery_svc_opts) {
-401     zsh_write_combined_args(output, discovery_svc_opts, discovery_svc_count);
-402     SAFE_FREE(discovery_svc_opts);
-403   }
-404 
-405   fprintf(output, &quot;}\n&quot;
-406                   &quot;\n&quot;
-407                   &quot;# Client-like modes: connect to servers or render local media\n&quot;
-408                   &quot;_ascii_chat_client() {\n&quot;
-409                   &quot;  local curcontext=$curcontext\n&quot;
-410                   &quot;  local -a context line state state_descr args\n&quot;
-411                   &quot;  local -A opt_args\n\n&quot;);
-412 
-413   /* Client options - grouped by category */
-414   size_t client_count = 0;
-415   const option_descriptor_t *client_opts = options_registry_get_for_display(MODE_CLIENT, false, &amp;client_count);
-416 
-417   if (client_opts) {
-418     zsh_write_combined_args(output, client_opts, client_count);
-419     SAFE_FREE(client_opts);
-420   }
-421 
-422   fprintf(output, &quot;}\n&quot;
-423                   &quot;\n&quot;
-424                   &quot;_ascii_chat_mirror() {\n&quot;
-425                   &quot;  local curcontext=$curcontext\n&quot;
-426                   &quot;  local -a context line state state_descr args\n&quot;
-427                   &quot;  local -A opt_args\n\n&quot;);
-428 
-429   /* Mirror options - grouped by category */
-430   size_t mirror_count = 0;
-431   const option_descriptor_t *mirror_opts = options_registry_get_for_display(MODE_MIRROR, false, &amp;mirror_count);
-432 
-433   if (mirror_opts) {
-434     zsh_write_combined_args(output, mirror_opts, mirror_count);
-435     SAFE_FREE(mirror_opts);
-436   }
-437 
-438   fprintf(output, &quot;}\n&quot;
-439                   &quot;\n&quot;
-440                   &quot;# Discovery mode: find sessions via discovery service (default mode when no mode specified)\n&quot;
-441                   &quot;_ascii_chat_discovery() {\n&quot;
-442                   &quot;  local curcontext=$curcontext\n&quot;
-443                   &quot;  local -a context line state state_descr args\n&quot;
-444                   &quot;  local -A opt_args\n\n&quot;);
-445 
-446   /* Discovery options - grouped by category (reuse already-loaded options) */
-447   if (discovery_opts) {
-448     zsh_write_combined_args(output, discovery_opts, discovery_count);
-449   }
-450 
-451   fprintf(output, &quot;}\n&quot;
-452                   &quot;\n&quot;
-453                   &quot;# Register completion functions (must come after definitions)\n&quot;
-454                   &quot;compdef _ascii_chat ascii-chat\n&quot;
-455                   &quot;compdef _ascii_chat 'build/bin/ascii-chat'\n&quot;);
-456 
-457   SAFE_FREE(binary_opts);
-458   SAFE_FREE(discovery_opts);
-459 
-460   return ASCIICHAT_OK;
-461 }</pre>
+<p class="Pp">Definition at line <b>211</b> of file <b>zsh.c</b>.</p>
+<pre>211                                                          {
+212   if (!output) {
+213     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output stream cannot be NULL&quot;);
+214   }
+215 
+216   /* Load binary-level and discovery options for binary-level completion.
+217    * Binary-level completion (options before mode name like --color-mode) uses
+218    * _arguments with -n -S flags to establish proper zsh completion context.
+219    * Without _arguments, completion functions fail with &quot;can only be called from
+220    * completion function&quot; error, causing zsh to display &quot;corrections (errors: N)&quot;
+221    * messages. The -n flag disables defaults and -S disables short option
+222    * processing, allowing safe context establishment. */
+223   size_t binary_count = 0;
+224   const option_descriptor_t *binary_opts = options_registry_get_for_display(MODE_DISCOVERY, true, &amp;binary_count);
+225 
+226   size_t discovery_count = 0;
+227   const option_descriptor_t *discovery_opts = options_registry_get_for_display(MODE_DISCOVERY, false, &amp;discovery_count);
+228 
+229   fprintf(output, &quot;# Zsh completion script for ascii-chat\n&quot;
+230                   &quot;# Generated from options registry - DO NOT EDIT MANUALLY\n&quot;
+231                   &quot;\n&quot;
+232                   &quot;# Configure completion for ascii-chat\n&quot;
+233                   &quot;# Use only _complete (no corrections or approximate matching)\n&quot;
+234                   &quot;zstyle ':completion:*:ascii-chat:*' completer _complete\n&quot;
+235                   &quot;\n&quot;
+236                   &quot;# Device index completion helpers\n&quot;
+237                   &quot;_ascii_chat_webcam_indices() {\n&quot;
+238                   &quot;  local -a indices\n&quot;
+239                   &quot;  local output\n&quot;
+240                   &quot;  output=$(\&quot;${words[1]}\&quot; --list-webcams 2&gt;/dev/null) || return\n&quot;
+241                   &quot;  while IFS= read -r line; do\n&quot;
+242                   &quot;    [[ \&quot;$line\&quot; =~ ^[[:space:]]*([0-9]+)[[:space:]]+(.+)$ ]] &amp;&amp; \\\n&quot;
+243                   &quot;      indices+=(\&quot;${match[1]}:${match[2]}\&quot;)\n&quot;
+244                   &quot;  done &lt;&lt;&lt; \&quot;$output\&quot;\n&quot;
+245                   &quot;  _describe 'webcam' indices\n&quot;
+246                   &quot;}\n&quot;
+247                   &quot;\n&quot;
+248                   &quot;_ascii_chat_microphone_indices() {\n&quot;
+249                   &quot;  local -a indices\n&quot;
+250                   &quot;  local output\n&quot;
+251                   &quot;  output=$(\&quot;${words[1]}\&quot; --list-microphones 2&gt;/dev/null) || return\n&quot;
+252                   &quot;  while IFS= read -r line; do\n&quot;
+253                   &quot;    [[ \&quot;$line\&quot; =~ ^[[:space:]]*([0-9-]+)[[:space:]]+(.+)$ ]] &amp;&amp; \\\n&quot;
+254                   &quot;      indices+=(\&quot;${match[1]}:${match[2]}\&quot;)\n&quot;
+255                   &quot;  done &lt;&lt;&lt; \&quot;$output\&quot;\n&quot;
+256                   &quot;  _describe 'microphone' indices\n&quot;
+257                   &quot;}\n&quot;
+258                   &quot;\n&quot;
+259                   &quot;_ascii_chat_speakers_indices() {\n&quot;
+260                   &quot;  local -a indices\n&quot;
+261                   &quot;  local output\n&quot;
+262                   &quot;  output=$(\&quot;${words[1]}\&quot; --list-speakers 2&gt;/dev/null) || return\n&quot;
+263                   &quot;  while IFS= read -r line; do\n&quot;
+264                   &quot;    [[ \&quot;$line\&quot; =~ ^[[:space:]]*([0-9-]+)[[:space:]]+(.+)$ ]] &amp;&amp; \\\n&quot;
+265                   &quot;      indices+=(\&quot;${match[1]}:${match[2]}\&quot;)\n&quot;
+266                   &quot;  done &lt;&lt;&lt; \&quot;$output\&quot;\n&quot;
+267                   &quot;  _describe 'speakers' indices\n&quot;
+268                   &quot;}\n&quot;
+269                   &quot;\n&quot;
+270                   &quot;_ascii_chat_binary() {\n&quot;
+271                   &quot;  local -a binary_opts=(\n&quot;);
+272 
+273   /* Add discovery options to binary-level completion */
+274   if (discovery_opts) {
+275     for (size_t i = 0; i &lt; discovery_count; i++) {
+276       fprintf(output, &quot;    '--%s:&quot;, discovery_opts[i].long_name);
+277       zsh_escape_desc(output, discovery_opts[i].help_text);
+278       fprintf(output, &quot;'\n&quot;);
+279     }
+280   }
+281 
+282   fprintf(output, &quot;  )\n&quot;
+283                   &quot;  _values 'option' \&quot;${binary_opts[@]}\&quot;\n&quot;
+284                   &quot;}\n&quot;
+285                   &quot;\n&quot;
+286                   &quot;_ascii_chat_binary_grouped() {\n&quot;
+287                   &quot;  local curcontext=$curcontext\n&quot;
+288                   &quot;  local -a context line state state_descr args\n&quot;
+289                   &quot;  local -A opt_args\n\n&quot;);
+290 
+291   /* Write binary-level options in grouped format */
+292   if (binary_opts) {
+293     zsh_write_combined_args(output, binary_opts, binary_count);
+294   }
+295 
+296   fprintf(output, &quot;}\n&quot;
+297                   &quot;\n&quot;
+298                   &quot;_ascii_chat() {\n&quot;
+299                   &quot;  if [[ ${words[2]} == -* ]]; then\n&quot;
+300                   &quot;    # Binary-level options: show both binary and discovery mode options\n&quot;
+301                   &quot;    # (since discovery is the default mode that runs at binary level)\n&quot;
+302                   &quot;    _ascii_chat_binary_grouped\n&quot;
+303                   &quot;    _ascii_chat_discovery\n&quot;
+304                   &quot;    return\n&quot;
+305                   &quot;  fi\n&quot;
+306                   &quot;\n&quot;
+307                   &quot;  # Mode routing: check words[2] to determine which mode function to call\n&quot;
+308                   &quot;  case $words[2] in\n&quot;
+309                   &quot;    # Server-like modes\n&quot;
+310                   &quot;    server)\n&quot;
+311                   &quot;      _ascii_chat_server\n&quot;
+312                   &quot;      return\n&quot;
+313                   &quot;      ;;\n&quot;
+314                   &quot;    discovery-service)\n&quot;
+315                   &quot;      _ascii_chat_discovery_service\n&quot;
+316                   &quot;      return\n&quot;
+317                   &quot;      ;;\n&quot;
+318                   &quot;\n&quot;
+319                   &quot;    # Client-like modes\n&quot;
+320                   &quot;    client)\n&quot;
+321                   &quot;      _ascii_chat_client\n&quot;
+322                   &quot;      return\n&quot;
+323                   &quot;      ;;\n&quot;
+324                   &quot;    mirror)\n&quot;
+325                   &quot;      _ascii_chat_mirror\n&quot;
+326                   &quot;      return\n&quot;
+327                   &quot;      ;;\n&quot;
+328                   &quot;    # Default/unknown input - show mode selection only if truly empty, otherwise discovery\n&quot;
+329                   &quot;    *)\n&quot;
+330                   &quot;      # If words[2] is empty AND we're at position 2, show mode selection\n&quot;
+331                   &quot;      # Otherwise (even for partial input like 'disc'), use discovery mode (the default)\n&quot;
+332                   &quot;      if [[ -z \&quot;${words[2]}\&quot; &amp;&amp; $CURRENT -eq 2 ]]; then\n&quot;
+333                   &quot;        # Completing the mode name itself - show available modes\n&quot;
+334                   &quot;        local -a server_modes client_modes\n&quot;
+335                   &quot;        server_modes=(\n&quot;);
+336 
+337   /* Generate server-like modes from registry */
+338   size_t mode_server_count = 0;
+339   const mode_descriptor_t *mode_server_descs = get_modes_by_group(&quot;server-like&quot;, &amp;mode_server_count);
+340   if (mode_server_descs) {
+341     for (size_t i = 0; i &lt; mode_server_count; i++) {
+342       fprintf(output, &quot;          '%s:%s'\n&quot;, mode_server_descs[i].name, mode_server_descs[i].description);
+343     }
+344     SAFE_FREE(mode_server_descs);
+345   }
+346 
+347   fprintf(output, &quot;        )\n&quot;
+348                   &quot;        client_modes=(\n&quot;);
+349 
+350   /* Generate client-like modes from registry (exclude discovery since it's the default mode) */
+351   size_t mode_client_count = 0;
+352   const mode_descriptor_t *mode_client_descs = get_modes_by_group(&quot;client-like&quot;, &amp;mode_client_count);
+353   if (mode_client_descs) {
+354     for (size_t i = 0; i &lt; mode_client_count; i++) {
+355       /* Skip discovery mode - it's the default when no mode is specified */
+356       if (strcmp(mode_client_descs[i].name, &quot;discovery&quot;) == 0) {
+357         continue;
+358       }
+359       fprintf(output, &quot;          '%s:%s'\n&quot;, mode_client_descs[i].name, mode_client_descs[i].description);
+360     }
+361     SAFE_FREE(mode_client_descs);
+362   }
+363 
+364   fprintf(output, &quot;        )\n&quot;
+365                   &quot;        _describe -t server-modes 'server-like modes' server_modes\n&quot;
+366                   &quot;        _describe -t client-modes 'client-like modes' client_modes\n&quot;
+367                   &quot;      else\n&quot;
+368                   &quot;        # Default mode (discovery) - complete its options\n&quot;
+369                   &quot;        _ascii_chat_discovery\n&quot;
+370                   &quot;      fi\n&quot;
+371                   &quot;      ;;\n&quot;
+372                   &quot;  esac\n&quot;
+373                   &quot;}\n&quot;
+374                   &quot;\n&quot;
+375                   &quot;# Server-like modes: handle incoming connections and stream management\n&quot;
+376                   &quot;_ascii_chat_server() {\n&quot;
+377                   &quot;  local curcontext=$curcontext\n&quot;
+378                   &quot;  local -a context line state state_descr args\n&quot;
+379                   &quot;  local -A opt_args\n\n&quot;);
+380 
+381   /* Server options - grouped by category */
+382   size_t server_count = 0;
+383   const option_descriptor_t *server_opts = options_registry_get_for_display(MODE_SERVER, false, &amp;server_count);
+384 
+385   if (server_opts) {
+386     zsh_write_combined_args(output, server_opts, server_count);
+387     SAFE_FREE(server_opts);
+388   }
+389 
+390   fprintf(output, &quot;}\n&quot;
+391                   &quot;\n&quot;
+392                   &quot;_ascii_chat_discovery_service() {\n&quot;
+393                   &quot;  local curcontext=$curcontext\n&quot;
+394                   &quot;  local -a context line state state_descr args\n&quot;
+395                   &quot;  local -A opt_args\n\n&quot;);
+396 
+397   /* Discovery-service options - grouped by category */
+398   size_t discovery_svc_count = 0;
+399   const option_descriptor_t *discovery_svc_opts =
+400       options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &amp;discovery_svc_count);
+401 
+402   if (discovery_svc_opts) {
+403     zsh_write_combined_args(output, discovery_svc_opts, discovery_svc_count);
+404     SAFE_FREE(discovery_svc_opts);
+405   }
+406 
+407   fprintf(output, &quot;}\n&quot;
+408                   &quot;\n&quot;
+409                   &quot;# Client-like modes: connect to servers or render local media\n&quot;
+410                   &quot;_ascii_chat_client() {\n&quot;
+411                   &quot;  local curcontext=$curcontext\n&quot;
+412                   &quot;  local -a context line state state_descr args\n&quot;
+413                   &quot;  local -A opt_args\n\n&quot;);
+414 
+415   /* Client options - grouped by category */
+416   size_t client_count = 0;
+417   const option_descriptor_t *client_opts = options_registry_get_for_display(MODE_CLIENT, false, &amp;client_count);
+418 
+419   if (client_opts) {
+420     zsh_write_combined_args(output, client_opts, client_count);
+421     SAFE_FREE(client_opts);
+422   }
+423 
+424   fprintf(output, &quot;}\n&quot;
+425                   &quot;\n&quot;
+426                   &quot;_ascii_chat_mirror() {\n&quot;
+427                   &quot;  local curcontext=$curcontext\n&quot;
+428                   &quot;  local -a context line state state_descr args\n&quot;
+429                   &quot;  local -A opt_args\n\n&quot;);
+430 
+431   /* Mirror options - grouped by category */
+432   size_t mirror_count = 0;
+433   const option_descriptor_t *mirror_opts = options_registry_get_for_display(MODE_MIRROR, false, &amp;mirror_count);
+434 
+435   if (mirror_opts) {
+436     zsh_write_combined_args(output, mirror_opts, mirror_count);
+437     SAFE_FREE(mirror_opts);
+438   }
+439 
+440   fprintf(output, &quot;}\n&quot;
+441                   &quot;\n&quot;
+442                   &quot;# Discovery mode: find sessions via discovery service (default mode when no mode specified)\n&quot;
+443                   &quot;_ascii_chat_discovery() {\n&quot;
+444                   &quot;  local curcontext=$curcontext\n&quot;
+445                   &quot;  local -a context line state state_descr args\n&quot;
+446                   &quot;  local -A opt_args\n\n&quot;);
+447 
+448   /* Discovery options - grouped by category (reuse already-loaded options) */
+449   if (discovery_opts) {
+450     zsh_write_combined_args(output, discovery_opts, discovery_count);
+451   }
+452 
+453   fprintf(output, &quot;}\n&quot;
+454                   &quot;\n&quot;
+455                   &quot;# Register completion functions (must come after definitions)\n&quot;
+456                   &quot;compdef _ascii_chat ascii-chat\n&quot;
+457                   &quot;compdef _ascii_chat 'build/bin/ascii-chat'\n&quot;);
+458 
+459   SAFE_FREE(binary_opts);
+460   SAFE_FREE(discovery_opts);
+461 
+462   return ASCIICHAT_OK;
+463 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,

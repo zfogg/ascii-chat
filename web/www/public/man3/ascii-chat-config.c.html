@@ -130,13 +130,13 @@
 <p class="Pp"></p>
 <p class="Pp">Print configuration debug message. Debug messages use the logging
     system if it's initialized, otherwise they are silently dropped.</p>
-<p class="Pp">Definition at line <b>57</b> of file <b>config.c</b>.</p>
-<pre>57 #define CONFIG_DEBUG(fmt, ...)                                                                                         \
-58   do {                                                                                                                 \
-59     /* Debug messages are only shown in debug builds after logging is initialized */                                   \
-60     /* Use log_debug which safely checks initialization itself */                                                      \
-61     log_debug(fmt, ##__VA_ARGS__);                                                                                     \
-62   } while (0)</pre>
+<p class="Pp">Definition at line <b>56</b> of file <b>config.c</b>.</p>
+<pre>56 #define CONFIG_DEBUG(fmt, ...)                                                                                         \
+57   do {                                                                                                                 \
+58     /* Debug messages are only shown in debug builds after logging is initialized */                                   \
+59     /* Use log_debug which safely checks initialization itself */                                                      \
+60     log_debug(fmt, ##__VA_ARGS__);                                                                                     \
+61   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>config_load_and_apply()</b>, and
@@ -155,11 +155,11 @@
 <p class="Pp">Print configuration warning using the logging system. Uses
     log_warn so that config warnings respect the --quiet flag and are routed
     through the logging system for proper filtering.</p>
-<p class="Pp">Definition at line <b>46</b> of file <b>config.c</b>.</p>
-<pre>46 #define CONFIG_WARN(fmt, ...)                                                                                          \
-47   do {                                                                                                                 \
-48     log_warn(&quot;Config file: &quot; fmt, ##__VA_ARGS__);                                                                      \
-49   } while (0)</pre>
+<p class="Pp">Definition at line <b>45</b> of file <b>config.c</b>.</p>
+<pre>45 #define CONFIG_WARN(fmt, ...)                                                                                          \
+46   do {                                                                                                                 \
+47     log_warn(&quot;Config file: &quot; fmt, ##__VA_ARGS__);                                                                      \
+48   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>config_load_and_apply()</b>.</p>

@@ -132,30 +132,30 @@
 <i>mid</i> Media stream ID</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>422</b> of file <b>ice.c</b>.</p>
-<pre>423                                                             {
-424   if (!pc || !candidate || !mid) {
-425     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid remote candidate parameters&quot;);
-426   }
-427 
-428   // Validate candidate has required fields
-429   if (candidate-&gt;ip_address[0] == '\0' || candidate-&gt;port == 0) {
-430     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Candidate missing IP address or port&quot;);
-431   }
-432 
-433   log_debug(&quot;ICE: Adding remote candidate %s:%u (type=%s, foundation=%s) on mid=%s&quot;, candidate-&gt;ip_address,
-434             candidate-&gt;port, ice_candidate_type_name(candidate-&gt;type), candidate-&gt;foundation, mid);
-435 
-436   // Format candidate to SDP attribute line for libdatachannel
-437   char candidate_line[512];
-438   asciichat_error_t err = ice_format_candidate(candidate, candidate_line, sizeof(candidate_line));
-439   if (err != ASCIICHAT_OK) {
-440     return err;
-441   }
-442 
-443   // Delegate to WebRTC layer
-444   return webrtc_add_remote_candidate(pc, candidate_line, mid);
-445 }</pre>
+<p class="Pp">Definition at line <b>420</b> of file <b>ice.c</b>.</p>
+<pre>421                                                             {
+422   if (!pc || !candidate || !mid) {
+423     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid remote candidate parameters&quot;);
+424   }
+425 
+426   // Validate candidate has required fields
+427   if (candidate-&gt;ip_address[0] == '\0' || candidate-&gt;port == 0) {
+428     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Candidate missing IP address or port&quot;);
+429   }
+430 
+431   log_debug(&quot;ICE: Adding remote candidate %s:%u (type=%s, foundation=%s) on mid=%s&quot;, candidate-&gt;ip_address,
+432             candidate-&gt;port, ice_candidate_type_name(candidate-&gt;type), candidate-&gt;foundation, mid);
+433 
+434   // Format candidate to SDP attribute line for libdatachannel
+435   char candidate_line[512];
+436   asciichat_error_t err = ice_format_candidate(candidate, candidate_line, sizeof(candidate_line));
+437   if (err != ASCIICHAT_OK) {
+438     return err;
+439   }
+440 
+441   // Delegate to WebRTC layer
+442   return webrtc_add_remote_candidate(pc, candidate_line, mid);
+443 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -202,18 +202,16 @@
 119     type_preference = 110;
 120     break;
 121   case ICE_CANDIDATE_RELAY:
-122     type_preference = 0;
-123     break;
-124   default:
-125     type_preference = 0;
-126     break;
-127   }
-128 
-129   uint32_t priority =
-130       (((uint32_t)type_preference) &lt;&lt; 24) | (((uint32_t)local_preference) &lt;&lt; 8) | (256 - (uint32_t)component_id);
-131 
-132   return priority;
-133 }</pre>
+122   default:
+123     type_preference = 0;
+124     break;
+125   }
+126 
+127   uint32_t priority =
+128       (((uint32_t)type_preference) &lt;&lt; 24) | (((uint32_t)local_preference) &lt;&lt; 8) | (256 - (uint32_t)component_id);
+129 
+130   return priority;
+131 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ICE_CANDIDATE_HOST</b>, <b>ICE_CANDIDATE_PRFLX</b>,
@@ -264,18 +262,18 @@ uint32_t priority = ice_calculate_priority_for_candidate(&amp;candidate);
 // Returns high priority due to LAN address
 </pre>
 </div>
-<p class="Pp">Definition at line <b>135</b> of file <b>ice.c</b>.</p>
-<pre>135                                                                                 {
-136   if (!candidate) {
-137     return 0;
-138   }
-139 
-140   // Calculate local preference based on IP classification
-141   uint16_t local_pref = ice_calculate_local_preference_by_ip(candidate-&gt;ip_address);
-142 
-143   // Use standard RFC 5245 priority formula with IP-aware local preference
-144   return ice_calculate_priority(candidate-&gt;type, local_pref, (uint8_t)candidate-&gt;component_id);
-145 }</pre>
+<p class="Pp">Definition at line <b>133</b> of file <b>ice.c</b>.</p>
+<pre>133                                                                                 {
+134   if (!candidate) {
+135     return 0;
+136   }
+137 
+138   // Calculate local preference based on IP classification
+139   uint16_t local_pref = ice_calculate_local_preference_by_ip(candidate-&gt;ip_address);
+140 
+141   // Use standard RFC 5245 priority formula with IP-aware local preference
+142   return ice_calculate_priority(candidate-&gt;type, local_pref, (uint8_t)candidate-&gt;component_id);
+143 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ice_candidate_t::component_id</b>,
@@ -327,68 +325,68 @@ uint32_t priority = ice_calculate_priority_for_candidate(&amp;candidate);
 <i>line_size</i> Size of output buffer</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>322</b> of file <b>ice.c</b>.</p>
-<pre>322                                                                                                        {
-323   if (!candidate || !line || line_size == 0) {
-324     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid candidate format parameters&quot;);
-325   }
-326 
-327   // Format: foundation component protocol priority ip port typ type [raddr rport] [tcptype type]
-328   // Example: 1 1 udp 2130706431 192.168.1.1 54321 typ host
-329   // Example with raddr: 1 1 udp 2130706431 203.0.113.45 54321 typ srflx raddr 192.168.1.1 rport 12345
-330 
-331   int written = safe_snprintf(line, line_size, &quot;%s %u %s %u %s %u typ %s&quot;, candidate-&gt;foundation,
-332                               candidate-&gt;component_id, ice_protocol_name(candidate-&gt;protocol), candidate-&gt;priority,
-333                               candidate-&gt;ip_address, candidate-&gt;port, ice_candidate_type_name(candidate-&gt;type));
-334 
-335   if (written &lt; 0 || (size_t)written &gt;= line_size) {
-336     return SET_ERRNO(ERROR_BUFFER_FULL, &quot;Candidate line too large for buffer&quot;);
-337   }
-338 
-339   size_t remaining = line_size - (size_t)written;
-340   char *pos = line + written;
-341 
-342   // 2. If srflx/prflx/relay: append raddr and rport
-343   if (candidate-&gt;type == ICE_CANDIDATE_SRFLX || candidate-&gt;type == ICE_CANDIDATE_PRFLX ||
-344       candidate-&gt;type == ICE_CANDIDATE_RELAY) {
-345     if (candidate-&gt;raddr[0] != '\0') {
-346       int appended = safe_snprintf(pos, remaining, &quot; raddr %s rport %u&quot;, candidate-&gt;raddr, candidate-&gt;rport);
-347       if (appended &lt; 0 || (size_t)appended &gt;= remaining) {
-348         return SET_ERRNO(ERROR_BUFFER_FULL, &quot;Cannot append raddr/rport to candidate line&quot;);
-349       }
-350       pos += appended;
-351       remaining -= (size_t)appended;
-352     }
-353   }
-354 
-355   // 3. If TCP: append tcptype
-356   if (candidate-&gt;protocol == ICE_PROTOCOL_TCP) {
-357     const char *tcptype_str = &quot;passive&quot;; // default
-358     if (candidate-&gt;tcp_type == ICE_TCP_TYPE_ACTIVE) {
-359       tcptype_str = &quot;active&quot;;
-360     } else if (candidate-&gt;tcp_type == ICE_TCP_TYPE_SO) {
-361       tcptype_str = &quot;so&quot;;
-362     }
-363 
-364     int appended = safe_snprintf(pos, remaining, &quot; tcptype %s&quot;, tcptype_str);
-365     if (appended &lt; 0 || (size_t)appended &gt;= remaining) {
-366       return SET_ERRNO(ERROR_BUFFER_FULL, &quot;Cannot append tcptype to candidate line&quot;);
-367     }
-368     pos += appended;
-369     remaining -= (size_t)appended;
-370   }
-371 
-372   // 4. Append any extensions
-373   if (candidate-&gt;extensions[0] != '\0') {
-374     int appended = safe_snprintf(pos, remaining, &quot; %s&quot;, candidate-&gt;extensions);
-375     if (appended &lt; 0 || (size_t)appended &gt;= remaining) {
-376       return SET_ERRNO(ERROR_BUFFER_FULL, &quot;Cannot append extensions to candidate line&quot;);
-377     }
-378   }
-379 
-380   // 5. Ensure line is null-terminated (snprintf already does this)
-381   return ASCIICHAT_OK;
-382 }</pre>
+<p class="Pp">Definition at line <b>320</b> of file <b>ice.c</b>.</p>
+<pre>320                                                                                                        {
+321   if (!candidate || !line || line_size == 0) {
+322     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid candidate format parameters&quot;);
+323   }
+324 
+325   // Format: foundation component protocol priority ip port typ type [raddr rport] [tcptype type]
+326   // Example: 1 1 udp 2130706431 192.168.1.1 54321 typ host
+327   // Example with raddr: 1 1 udp 2130706431 203.0.113.45 54321 typ srflx raddr 192.168.1.1 rport 12345
+328 
+329   int written = safe_snprintf(line, line_size, &quot;%s %u %s %u %s %u typ %s&quot;, candidate-&gt;foundation,
+330                               candidate-&gt;component_id, ice_protocol_name(candidate-&gt;protocol), candidate-&gt;priority,
+331                               candidate-&gt;ip_address, candidate-&gt;port, ice_candidate_type_name(candidate-&gt;type));
+332 
+333   if (written &lt; 0 || (size_t)written &gt;= line_size) {
+334     return SET_ERRNO(ERROR_BUFFER_FULL, &quot;Candidate line too large for buffer&quot;);
+335   }
+336 
+337   size_t remaining = line_size - (size_t)written;
+338   char *pos = line + written;
+339 
+340   // 2. If srflx/prflx/relay: append raddr and rport
+341   if (candidate-&gt;type == ICE_CANDIDATE_SRFLX || candidate-&gt;type == ICE_CANDIDATE_PRFLX ||
+342       candidate-&gt;type == ICE_CANDIDATE_RELAY) {
+343     if (candidate-&gt;raddr[0] != '\0') {
+344       int appended = safe_snprintf(pos, remaining, &quot; raddr %s rport %u&quot;, candidate-&gt;raddr, candidate-&gt;rport);
+345       if (appended &lt; 0 || (size_t)appended &gt;= remaining) {
+346         return SET_ERRNO(ERROR_BUFFER_FULL, &quot;Cannot append raddr/rport to candidate line&quot;);
+347       }
+348       pos += appended;
+349       remaining -= (size_t)appended;
+350     }
+351   }
+352 
+353   // 3. If TCP: append tcptype
+354   if (candidate-&gt;protocol == ICE_PROTOCOL_TCP) {
+355     const char *tcptype_str = &quot;passive&quot;; // default
+356     if (candidate-&gt;tcp_type == ICE_TCP_TYPE_ACTIVE) {
+357       tcptype_str = &quot;active&quot;;
+358     } else if (candidate-&gt;tcp_type == ICE_TCP_TYPE_SO) {
+359       tcptype_str = &quot;so&quot;;
+360     }
+361 
+362     int appended = safe_snprintf(pos, remaining, &quot; tcptype %s&quot;, tcptype_str);
+363     if (appended &lt; 0 || (size_t)appended &gt;= remaining) {
+364       return SET_ERRNO(ERROR_BUFFER_FULL, &quot;Cannot append tcptype to candidate line&quot;);
+365     }
+366     pos += appended;
+367     remaining -= (size_t)appended;
+368   }
+369 
+370   // 4. Append any extensions
+371   if (candidate-&gt;extensions[0] != '\0') {
+372     int appended = safe_snprintf(pos, remaining, &quot; %s&quot;, candidate-&gt;extensions);
+373     if (appended &lt; 0 || (size_t)appended &gt;= remaining) {
+374       return SET_ERRNO(ERROR_BUFFER_FULL, &quot;Cannot append extensions to candidate line&quot;);
+375     }
+376   }
+377 
+378   // 5. Ensure line is null-terminated (snprintf already does this)
+379   return ASCIICHAT_OK;
+380 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -422,36 +420,36 @@ uint32_t priority = ice_calculate_priority_for_candidate(&amp;candidate);
   configuration</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>388</b> of file <b>ice.c</b>.</p>
-<pre>388                                                                     {
-389   if (!config) {
-390     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid ICE config&quot;);
-391   }
-392 
-393   if (!config-&gt;send_callback) {
-394     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;ICE config missing send_callback&quot;);
-395   }
+<p class="Pp">Definition at line <b>386</b> of file <b>ice.c</b>.</p>
+<pre>386                                                                     {
+387   if (!config) {
+388     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid ICE config&quot;);
+389   }
+390 
+391   if (!config-&gt;send_callback) {
+392     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;ICE config missing send_callback&quot;);
+393   }
+394 
+395   log_debug(&quot;ICE: Starting candidate gathering (ufrag=%s, pwd=%s)&quot;, config-&gt;ufrag, config-&gt;pwd);
 396 
-397   log_debug(&quot;ICE: Starting candidate gathering (ufrag=%s, pwd=%s)&quot;, config-&gt;ufrag, config-&gt;pwd);
-398 
-399   // NOTE: libdatachannel (juice) handles ICE candidate gathering internally.
-400   // This function is a placeholder for the callback-based API.
-401   // The actual gathering happens in the peer_manager when you:
-402   //   1. Create peer connection with rtcCreatePeerConnection()
-403   //   2. Set ice candidate callback with rtcSetIceCandidateCallback()
-404   //   3. libdatachannel automatically gathers candidates from:
-405   //      - Local interfaces (host candidates)
-406   //      - STUN servers (server-reflexive candidates)
-407   //      - TURN servers (relay candidates)
-408   //   4. When a candidate is found, rtcSetIceCandidateCallback() is called
-409   //   5. Application (webrtc.c) formats and sends via ACDS signaling
-410   //
-411   // This ice_gather_candidates() function may not be called directly -
-412   // the gathering happens automatically when peer connection is created.
-413   // Keeping this for API compatibility.
-414 
-415   return ASCIICHAT_OK;
-416 }</pre>
+397   // NOTE: libdatachannel (juice) handles ICE candidate gathering internally.
+398   // This function is a placeholder for the callback-based API.
+399   // The actual gathering happens in the peer_manager when you:
+400   //   1. Create peer connection with rtcCreatePeerConnection()
+401   //   2. Set ice candidate callback with rtcSetIceCandidateCallback()
+402   //   3. libdatachannel automatically gathers candidates from:
+403   //      - Local interfaces (host candidates)
+404   //      - STUN servers (server-reflexive candidates)
+405   //      - TURN servers (relay candidates)
+406   //   4. When a candidate is found, rtcSetIceCandidateCallback() is called
+407   //   5. Application (webrtc.c) formats and sends via ACDS signaling
+408   //
+409   // This ice_gather_candidates() function may not be called directly -
+410   // the gathering happens automatically when peer connection is created.
+411   // Keeping this for API compatibility.
+412 
+413   return ASCIICHAT_OK;
+414 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -476,11 +474,11 @@ uint32_t priority = ice_calculate_priority_for_candidate(&amp;candidate);
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK if pair selected, ERROR_INVALID_STATE if no
   pair selected yet</div>
-<p class="Pp">Definition at line <b>461</b> of file <b>ice.c</b>.</p>
-<pre>462                                                                            {
-463   // Delegate to C++ implementation which uses libdatachannel's C++ API
-464   return ice_get_selected_pair_impl(pc, local_candidate, remote_candidate);
-465 }</pre>
+<p class="Pp">Definition at line <b>459</b> of file <b>ice.c</b>.</p>
+<pre>460                                                                            {
+461   // Delegate to C++ implementation which uses libdatachannel's C++ API
+462   return ice_get_selected_pair_impl(pc, local_candidate, remote_candidate);
+463 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ice_get_selected_pair_impl()</b>.</p>
@@ -558,16 +556,16 @@ uint32_t priority = ice_calculate_priority_for_candidate(&amp;candidate);
 <div class="Bd-indent"><i>pc</i> Peer connection to check</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if connected, false otherwise</div>
-<p class="Pp">Definition at line <b>447</b> of file <b>ice.c</b>.</p>
-<pre>447                                                     {
-448   if (!pc) {
-449     return false;
-450   }
-451 
-452   // Check peer connection state
-453   webrtc_state_t state = webrtc_get_state(pc);
-454   return (state == WEBRTC_STATE_CONNECTED);
-455 }</pre>
+<p class="Pp">Definition at line <b>445</b> of file <b>ice.c</b>.</p>
+<pre>445                                                     {
+446   if (!pc) {
+447     return false;
+448   }
+449 
+450   // Check peer connection state
+451   webrtc_state_t state = webrtc_get_state(pc);
+452   return (state == WEBRTC_STATE_CONNECTED);
+453 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>webrtc_get_state()</b>, and
@@ -589,10 +587,10 @@ uint32_t priority = ice_calculate_priority_for_candidate(&amp;candidate);
 <i>candidate</i> Parsed candidate (output)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>318</b> of file <b>ice.c</b>.</p>
-<pre>318                                                                                     {
-319   return ice_parse_candidate_pcre2(line, candidate);
-320 }</pre>
+<p class="Pp">Definition at line <b>316</b> of file <b>ice.c</b>.</p>
+<pre>316                                                                                     {
+317   return ice_parse_candidate_pcre2(line, candidate);
+318 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>

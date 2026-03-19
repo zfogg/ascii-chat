@@ -925,63 +925,63 @@ while (running) {
 <i>target_depth</i> Desired queue depth (0 = empty queue target)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Sleep time in nanoseconds</div>
-<p class="Pp">Definition at line <b>622</b> of file <b>util/time.c</b>.</p>
-<pre>622                                                                                                           {
-623   if (!state) {
-624     return 0;
-625   }
-626 
-627   const adaptive_sleep_config_t *cfg = &amp;state-&gt;config;
-628 
-629   // Determine if we need to speed up or slow down
-630   double desired_multiplier;
-631 
-632   if (queue_depth &gt; target_depth) {
-633     // Queue is building up - speed up processing
-634     // The more items in queue, the faster we should process
-635     size_t backlog = queue_depth - target_depth;
-636 
-637     // Calculate desired speed based on backlog
-638     // Each item above target increases speed proportionally
-639     // This ensures we drain the queue faster the more backed up we are
-640     double backlog_factor = 1.0 + ((double)backlog / (double)(target_depth + 1));
-641     desired_multiplier = cfg-&gt;min_speed_multiplier * backlog_factor;
-642 
-643     // Clamp to max speed
-644     if (desired_multiplier &gt; cfg-&gt;max_speed_multiplier) {
-645       desired_multiplier = cfg-&gt;max_speed_multiplier;
-646     }
+<p class="Pp">Definition at line <b>618</b> of file <b>util/time.c</b>.</p>
+<pre>618                                                                                                           {
+619   if (!state) {
+620     return 0;
+621   }
+622 
+623   const adaptive_sleep_config_t *cfg = &amp;state-&gt;config;
+624 
+625   // Determine if we need to speed up or slow down
+626   double desired_multiplier;
+627 
+628   if (queue_depth &gt; target_depth) {
+629     // Queue is building up - speed up processing
+630     // The more items in queue, the faster we should process
+631     size_t backlog = queue_depth - target_depth;
+632 
+633     // Calculate desired speed based on backlog
+634     // Each item above target increases speed proportionally
+635     // This ensures we drain the queue faster the more backed up we are
+636     double backlog_factor = 1.0 + ((double)backlog / (double)(target_depth + 1));
+637     desired_multiplier = cfg-&gt;min_speed_multiplier * backlog_factor;
+638 
+639     // Clamp to max speed
+640     if (desired_multiplier &gt; cfg-&gt;max_speed_multiplier) {
+641       desired_multiplier = cfg-&gt;max_speed_multiplier;
+642     }
+643 
+644     // Ramp up gradually based on speedup_rate
+645     double delta = desired_multiplier - state-&gt;current_speed_multiplier;
+646     state-&gt;current_speed_multiplier += delta * cfg-&gt;speedup_rate;
 647 
-648     // Ramp up gradually based on speedup_rate
-649     double delta = desired_multiplier - state-&gt;current_speed_multiplier;
-650     state-&gt;current_speed_multiplier += delta * cfg-&gt;speedup_rate;
+648   } else {
+649     // Queue is at or below target - slow down to baseline
+650     desired_multiplier = cfg-&gt;min_speed_multiplier;
 651 
-652   } else {
-653     // Queue is at or below target - slow down to baseline
-654     desired_multiplier = cfg-&gt;min_speed_multiplier;
-655 
-656     // Ramp down gradually based on slowdown_rate
-657     double delta = desired_multiplier - state-&gt;current_speed_multiplier;
-658     state-&gt;current_speed_multiplier += delta * cfg-&gt;slowdown_rate;
-659   }
-660 
-661   // Ensure we stay within configured bounds
-662   if (state-&gt;current_speed_multiplier &lt; cfg-&gt;min_speed_multiplier) {
-663     state-&gt;current_speed_multiplier = cfg-&gt;min_speed_multiplier;
-664   }
-665   if (state-&gt;current_speed_multiplier &gt; cfg-&gt;max_speed_multiplier) {
-666     state-&gt;current_speed_multiplier = cfg-&gt;max_speed_multiplier;
-667   }
+652     // Ramp down gradually based on slowdown_rate
+653     double delta = desired_multiplier - state-&gt;current_speed_multiplier;
+654     state-&gt;current_speed_multiplier += delta * cfg-&gt;slowdown_rate;
+655   }
+656 
+657   // Ensure we stay within configured bounds
+658   if (state-&gt;current_speed_multiplier &lt; cfg-&gt;min_speed_multiplier) {
+659     state-&gt;current_speed_multiplier = cfg-&gt;min_speed_multiplier;
+660   }
+661   if (state-&gt;current_speed_multiplier &gt; cfg-&gt;max_speed_multiplier) {
+662     state-&gt;current_speed_multiplier = cfg-&gt;max_speed_multiplier;
+663   }
+664 
+665   // Calculate actual sleep time: baseline / speed_multiplier
+666   // Higher multiplier = shorter sleep = faster processing
+667   uint64_t sleep_ns = (uint64_t)(cfg-&gt;baseline_sleep_ns / state-&gt;current_speed_multiplier);
 668 
-669   // Calculate actual sleep time: baseline / speed_multiplier
-670   // Higher multiplier = shorter sleep = faster processing
-671   uint64_t sleep_ns = (uint64_t)(cfg-&gt;baseline_sleep_ns / state-&gt;current_speed_multiplier);
-672 
-673   // Store for debugging
-674   state-&gt;last_sleep_ns = sleep_ns;
-675 
-676   return sleep_ns;
-677 }</pre>
+669   // Store for debugging
+670   state-&gt;last_sleep_ns = sleep_ns;
+671 
+672   return sleep_ns;
+673 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>adaptive_sleep_config_t::baseline_sleep_ns</b>,
@@ -1011,14 +1011,14 @@ while (running) {
 <i>queue_depth</i> Current number of items in queue/buffer
 <br/>
 <i>target_depth</i> Desired queue depth (0 = empty queue target)</div>
-<p class="Pp">Definition at line <b>679</b> of file <b>util/time.c</b>.</p>
-<pre>679                                                                                                {
-680   uint64_t sleep_ns = adaptive_sleep_calculate(state, queue_depth, target_depth);
-681 
-682   if (sleep_ns &gt; 0) {
-683     platform_sleep_ns(sleep_ns);
-684   }
-685 }</pre>
+<p class="Pp">Definition at line <b>675</b> of file <b>util/time.c</b>.</p>
+<pre>675                                                                                                {
+676   uint64_t sleep_ns = adaptive_sleep_calculate(state, queue_depth, target_depth);
+677 
+678   if (sleep_ns &gt; 0) {
+679     platform_sleep_ns(sleep_ns);
+680   }
+681 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>adaptive_sleep_calculate()</b>, and
@@ -1043,21 +1043,21 @@ while (running) {
 <br/>
 <i></i><b>Config Module</b><i></i><b> Pointer to configuration (will be
   copied)</b></div>
-<p class="Pp">Definition at line <b>607</b> of file <b>util/time.c</b>.</p>
-<pre>607                                                                                                {
-608   if (!state || !config) {
-609     return;
-610   }
-611 
-612   // Copy configuration
-613   state-&gt;config = *config;
-614 
-615   // Start at baseline speed (no speedup initially)
-616   state-&gt;current_speed_multiplier = config-&gt;min_speed_multiplier;
-617 
-618   // Initial sleep is the baseline
-619   state-&gt;last_sleep_ns = config-&gt;baseline_sleep_ns;
-620 }</pre>
+<p class="Pp">Definition at line <b>603</b> of file <b>util/time.c</b>.</p>
+<pre>603                                                                                                {
+604   if (!state || !config) {
+605     return;
+606   }
+607 
+608   // Copy configuration
+609   state-&gt;config = *config;
+610 
+611   // Start at baseline speed (no speedup initially)
+612   state-&gt;current_speed_multiplier = config-&gt;min_speed_multiplier;
+613 
+614   // Initial sleep is the baseline
+615   state-&gt;last_sleep_ns = config-&gt;baseline_sleep_ns;
+616 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>adaptive_sleep_config_t::baseline_sleep_ns</b>,
@@ -1206,81 +1206,81 @@ uint64_t elapsed = time_elapsed_ns(start, time_get_ns());
   <li>Timezone: z (offset), Z (name)</li>
   <li>Weekday: w (0-6), u (1-7)</li>
 </ul>
-<p class="Pp">Definition at line <b>697</b> of file <b>util/time.c</b>.</p>
-<pre>697                                                            {
-698   if (!format_str) {
-699     return false;
-700   }
-701 
-702   for (const char *p = format_str; *p; p++) {
-703     if (*p == '%') {
-704       p++;
-705       if (!*p) {
-706         /* Unterminated % at end of string */
-707         log_error(&quot;Invalid time format: unterminated %% at end&quot;);
-708         return false;
-709       }
-710 
-711       if (*p == '%') {
-712         /* Escaped %% - this is valid, just skip it */
-713         continue;
-714       }
-715 
-716       /* Optional: flag characters (-, 0, +, space) */
-717       if (*p == '-' || *p == '0' || *p == '+' || *p == ' ') {
-718         p++;
-719         if (!*p) {
-720           log_error(&quot;Invalid time format: flag character without specifier&quot;);
-721           return false;
-722         }
-723       }
-724 
-725       /* Optional: width specifier (digits or *) */
-726       if (*p == '*' || isdigit((unsigned char)*p)) {
-727         while (*p &amp;&amp; (isdigit((unsigned char)*p) || *p == '*')) {
-728           p++;
+<p class="Pp">Definition at line <b>693</b> of file <b>util/time.c</b>.</p>
+<pre>693                                                            {
+694   if (!format_str) {
+695     return false;
+696   }
+697 
+698   for (const char *p = format_str; *p; p++) {
+699     if (*p == '%') {
+700       p++;
+701       if (!*p) {
+702         /* Unterminated % at end of string */
+703         log_error(&quot;Invalid time format: unterminated %% at end&quot;);
+704         return false;
+705       }
+706 
+707       if (*p == '%') {
+708         /* Escaped %% - this is valid, just skip it */
+709         continue;
+710       }
+711 
+712       /* Optional: flag characters (-, 0, +, space) */
+713       if (*p == '-' || *p == '0' || *p == '+' || *p == ' ') {
+714         p++;
+715         if (!*p) {
+716           log_error(&quot;Invalid time format: flag character without specifier&quot;);
+717           return false;
+718         }
+719       }
+720 
+721       /* Optional: width specifier (digits or *) */
+722       if (*p == '*' || isdigit((unsigned char)*p)) {
+723         while (*p &amp;&amp; (isdigit((unsigned char)*p) || *p == '*')) {
+724           p++;
+725         }
+726         if (!*p) {
+727           log_error(&quot;Invalid time format: width specifier without specifier character&quot;);
+728           return false;
 729         }
-730         if (!*p) {
-731           log_error(&quot;Invalid time format: width specifier without specifier character&quot;);
-732           return false;
-733         }
-734       }
-735 
-736       /* Optional: precision specifier (.digits or .*) */
-737       if (*p == '.') {
-738         p++;
-739         if (!*p) {
-740           log_error(&quot;Invalid time format: precision specifier incomplete&quot;);
-741           return false;
-742         }
-743         while (*p &amp;&amp; (isdigit((unsigned char)*p) || *p == '*')) {
-744           p++;
+730       }
+731 
+732       /* Optional: precision specifier (.digits or .*) */
+733       if (*p == '.') {
+734         p++;
+735         if (!*p) {
+736           log_error(&quot;Invalid time format: precision specifier incomplete&quot;);
+737           return false;
+738         }
+739         while (*p &amp;&amp; (isdigit((unsigned char)*p) || *p == '*')) {
+740           p++;
+741         }
+742         if (!*p) {
+743           log_error(&quot;Invalid time format: precision specifier without specifier character&quot;);
+744           return false;
 745         }
-746         if (!*p) {
-747           log_error(&quot;Invalid time format: precision specifier without specifier character&quot;);
-748           return false;
-749         }
-750       }
-751 
-752       /* Optional: modifier characters (E for %Ex, O for %Ox) */
-753       if (*p == 'E' || *p == 'O') {
-754         p++;
-755         if (!*p) {
-756           log_error(&quot;Invalid time format: modifier character without specifier&quot;);
-757           return false;
-758         }
-759       }
-760 
-761       /* Validate that the final character is a supported specifier */
-762       if (!strchr(SUPPORTED_SPECIFIERS, *p)) {
-763         log_error(&quot;Invalid time format: unsupported specifier %%%c (at position %ld)&quot;, *p, (p - format_str));
-764         return false;
-765       }
-766     }
-767   }
-768 
-769   return true;
-770 }</pre>
+746       }
+747 
+748       /* Optional: modifier characters (E for %Ex, O for %Ox) */
+749       if (*p == 'E' || *p == 'O') {
+750         p++;
+751         if (!*p) {
+752           log_error(&quot;Invalid time format: modifier character without specifier&quot;);
+753           return false;
+754         }
+755       }
+756 
+757       /* Validate that the final character is a supported specifier */
+758       if (!strchr(SUPPORTED_SPECIFIERS, *p)) {
+759         log_error(&quot;Invalid time format: unsupported specifier %%%c (at position %ld)&quot;, *p, (p - format_str));
+760         return false;
+761       }
+762     }
+763   }
+764 
+765   return true;
+766 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_error</b>.</p>
@@ -1321,42 +1321,42 @@ uint64_t elapsed = time_elapsed_ns(start, time_get_ns());
   <li>Output is locale-aware (UTF-8 safe from strftime)</li>
   <li>Returns 0 on error (strftime failure or buffer overflow)</li>
 </ul>
-<p class="Pp">Definition at line <b>772</b> of file <b>util/time.c</b>.</p>
-<pre>772                                                                         {
-773   if (!format_str || !buf || buf_size &lt; 2) {
-774     SET_ERRNO(ERROR_INVALID_PARAM, &quot;time_format_now: invalid arguments - format_str=%p, buf=%p, buf_size=%zu&quot;,
-775               format_str, buf, buf_size);
-776     return 0;
-777   }
-778 
-779   /* Get current wall-clock time in nanoseconds */
-780   uint64_t ts_ns = time_get_realtime_ns();
-781 
-782   /* Extract seconds and nanoseconds */
-783   time_t seconds = (time_t)(ts_ns / NS_PER_SEC_INT);
+<p class="Pp">Definition at line <b>768</b> of file <b>util/time.c</b>.</p>
+<pre>768                                                                         {
+769   if (!format_str || !buf || buf_size &lt; 2) {
+770     SET_ERRNO(ERROR_INVALID_PARAM, &quot;time_format_now: invalid arguments - format_str=%p, buf=%p, buf_size=%zu&quot;,
+771               format_str, buf, buf_size);
+772     return 0;
+773   }
+774 
+775   /* Get current wall-clock time in nanoseconds */
+776   uint64_t ts_ns = time_get_realtime_ns();
+777 
+778   /* Extract seconds and nanoseconds */
+779   time_t seconds = (time_t)(ts_ns / NS_PER_SEC_INT);
+780 
+781   /* Convert seconds to struct tm */
+782   struct tm tm_info;
+783   platform_localtime(&amp;seconds, &amp;tm_info);
 784 
-785   /* Convert seconds to struct tm */
-786   struct tm tm_info;
-787   platform_localtime(&amp;seconds, &amp;tm_info);
-788 
-789   /* Format using strftime */
-790   size_t len = strftime(buf, buf_size, format_str, &amp;tm_info);
-791 
-792   /* Check for strftime errors or buffer overflow */
-793   if (len == 0) {
-794     /* strftime returned 0 - either error or exact buffer fill */
-795     log_debug(&quot;strftime returned 0 for format: %s&quot;, format_str);
-796     return 0;
-797   }
-798 
-799   if (len &gt;= buf_size - 1) {
-800     /* Buffer would overflow - strftime filled entire buffer or hit exact size */
-801     log_error(&quot;time_format_now: buffer too small (need %zu, have %zu)&quot;, len + 1, buf_size);
-802     return 0;
-803   }
-804 
-805   return (int)len;
-806 }</pre>
+785   /* Format using strftime */
+786   size_t len = strftime(buf, buf_size, format_str, &amp;tm_info);
+787 
+788   /* Check for strftime errors or buffer overflow */
+789   if (len == 0) {
+790     /* strftime returned 0 - either error or exact buffer fill */
+791     log_debug(&quot;strftime returned 0 for format: %s&quot;, format_str);
+792     return 0;
+793   }
+794 
+795   if (len &gt;= buf_size - 1) {
+796     /* Buffer would overflow - strftime filled entire buffer or hit exact size */
+797     log_error(&quot;time_format_now: buffer too small (need %zu, have %zu)&quot;, len + 1, buf_size);
+798     return 0;
+799   }
+800 
+801   return (int)len;
+802 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
@@ -1404,35 +1404,35 @@ if (err != ASCIICHAT_OK) {
 }
 log_info(&quot;Current time: %s&quot;, timebuf);
 </pre>
-<p class="Pp">Definition at line <b>808</b> of file <b>util/time.c</b>.</p>
-<pre>808                                                                                        {
-809   /* Check NULL pointers */
-810   if (!format_str) {
-811     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: format_str is NULL&quot;);
+<p class="Pp">Definition at line <b>804</b> of file <b>util/time.c</b>.</p>
+<pre>804                                                                                        {
+805   /* Check NULL pointers */
+806   if (!format_str) {
+807     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: format_str is NULL&quot;);
+808   }
+809 
+810   if (!buf) {
+811     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: buf is NULL&quot;);
 812   }
 813 
-814   if (!buf) {
-815     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: buf is NULL&quot;);
-816   }
-817 
-818   /* Check minimum buffer size */
-819   if (buf_size &lt; 64) {
-820     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: buffer too small (minimum 64 bytes, got %zu)&quot;, buf_size);
-821   }
-822 
-823   /* Validate format string */
-824   if (!time_format_is_valid_strftime(format_str)) {
-825     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: invalid time format: %s&quot;, format_str);
-826   }
-827 
-828   /* Format the time */
-829   int result = time_format_now(format_str, buf, buf_size);
-830   if (result &lt;= 0) {
-831     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: strftime formatting failed&quot;);
-832   }
-833 
-834   return ASCIICHAT_OK;
-835 }</pre>
+814   /* Check minimum buffer size */
+815   if (buf_size &lt; 64) {
+816     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: buffer too small (minimum 64 bytes, got %zu)&quot;, buf_size);
+817   }
+818 
+819   /* Validate format string */
+820   if (!time_format_is_valid_strftime(format_str)) {
+821     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: invalid time format: %s&quot;, format_str);
+822   }
+823 
+824   /* Format the time */
+825   int result = time_format_now(format_str, buf, buf_size);
+826   if (result &lt;= 0) {
+827     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: strftime formatting failed&quot;);
+828   }
+829 
+830   return ASCIICHAT_OK;
+831 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_STATE</b>,
@@ -1626,34 +1626,34 @@ uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
 <p class="Pp"></p>
 <p class="Pp">Thread-safe (no global state)</p>
 </div>
-<p class="Pp">Definition at line <b>570</b> of file <b>util/time.c</b>.</p>
-<pre>570                                                                                {
-571   if (!buffer || buffer_size == 0) {
-572     return -1;
-573   }
+<p class="Pp">Definition at line <b>566</b> of file <b>util/time.c</b>.</p>
+<pre>566                                                                                {
+567   if (!buffer || buffer_size == 0) {
+568     return -1;
+569   }
+570 
+571   // Determine direction (past vs future)
+572   bool is_future = nanoseconds &lt; 0;
+573   uint64_t abs_ns = is_future ? (uint64_t)(-nanoseconds) : (uint64_t)nanoseconds;
 574 
-575   // Determine direction (past vs future)
-576   bool is_future = nanoseconds &lt; 0;
-577   uint64_t abs_ns = is_future ? (uint64_t)(-nanoseconds) : (uint64_t)nanoseconds;
-578 
-579   // Convert nanoseconds to seconds for threshold checking
-580   double total_seconds = (double)abs_ns / NS_PER_SEC;
-581   int minutes = (int)(total_seconds / 60);
-582   int hours = minutes / 60;
-583   int days = hours / 24;
-584   int months = days / 30; // Approximate
-585   int years = months / 12;
+575   // Convert nanoseconds to seconds for threshold checking
+576   double total_seconds = (double)abs_ns / NS_PER_SEC;
+577   int minutes = (int)(total_seconds / 60);
+578   int hours = minutes / 60;
+579   int days = hours / 24;
+580   int months = days / 30; // Approximate
+581   int years = months / 12;
+582 
+583   const char *suffix = is_future ? &quot;from now&quot; : &quot;ago&quot;;
+584   int written =
+585       format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, suffix, buffer, buffer_size);
 586 
-587   const char *suffix = is_future ? &quot;from now&quot; : &quot;ago&quot;;
-588   int written =
-589       format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, suffix, buffer, buffer_size);
+587   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
+588     return -1;
+589   }
 590 
-591   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
-592     return -1;
-593   }
-594 
-595   return written;
-596 }</pre>
+591   return written;
+592 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_size</b>, and <b>NS_PER_SEC</b>.</p>
@@ -1682,11 +1682,11 @@ uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
 <p class="Pp"></p>
 <p class="Pp">Thread-safe (no global state)</p>
 </div>
-<p class="Pp">Definition at line <b>598</b> of file <b>util/time.c</b>.</p>
-<pre>598                                                               {
-599   int64_t ns = (int64_t)time_get_ns();
-600   return time_human_readable(ns, buffer, buffer_size);
-601 }</pre>
+<p class="Pp">Definition at line <b>594</b> of file <b>util/time.c</b>.</p>
+<pre>594                                                               {
+595   int64_t ns = (int64_t)time_get_ns();
+596   return time_human_readable(ns, buffer, buffer_size);
+597 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_size</b>, <b>time_get_ns()</b>, and
@@ -1726,29 +1726,29 @@ uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
 <p class="Pp"></p>
 <p class="Pp">Thread-safe (no global state)</p>
 </div>
-<p class="Pp">Definition at line <b>547</b> of file <b>util/time.c</b>.</p>
-<pre>547                                                                                          {
-548   if (!buffer || buffer_size == 0) {
-549     return -1;
-550   }
-551 
-552   // Convert nanoseconds to seconds for threshold checking
-553   double total_seconds = (double)nanoseconds / NS_PER_SEC;
-554   int minutes = (int)(total_seconds / 60);
-555   int hours = minutes / 60;
-556   int days = hours / 24;
-557   int months = days / 30; // Approximate
-558   int years = months / 12;
-559 
-560   int written =
-561       format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, &quot;ago&quot;, buffer, buffer_size);
+<p class="Pp">Definition at line <b>543</b> of file <b>util/time.c</b>.</p>
+<pre>543                                                                                          {
+544   if (!buffer || buffer_size == 0) {
+545     return -1;
+546   }
+547 
+548   // Convert nanoseconds to seconds for threshold checking
+549   double total_seconds = (double)nanoseconds / NS_PER_SEC;
+550   int minutes = (int)(total_seconds / 60);
+551   int hours = minutes / 60;
+552   int days = hours / 24;
+553   int months = days / 30; // Approximate
+554   int years = months / 12;
+555 
+556   int written =
+557       format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, &quot;ago&quot;, buffer, buffer_size);
+558 
+559   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
+560     return -1;
+561   }
 562 
-563   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
-564     return -1;
-565   }
-566 
-567   return written;
-568 }</pre>
+563   return written;
+564 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_size</b>, and <b>NS_PER_SEC</b>.</p>
@@ -1847,111 +1847,107 @@ uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
 429   // Determine decimals for this range if not explicitly set
 430   int actual_decimals = decimals;
 431   if (decimals == -1) {
-432     if (nanoseconds &lt; NS_PER_MS_INT) {
-433       actual_decimals = 3; // ns/&#x00B5;s
-434     } else if (nanoseconds &lt; NS_PER_SEC_INT) {
-435       actual_decimals = 3; // ms
-436     } else if (nanoseconds &lt; NS_PER_MIN_INT) {
-437       actual_decimals = 2; // seconds
-438     } else {
-439       actual_decimals = 3; // colon notation
-440     }
-441   }
-442 
-443   // Clamp decimals to valid range
-444   if (actual_decimals &lt; 0)
-445     actual_decimals = 0;
-446   if (actual_decimals &gt; 9)
-447     actual_decimals = 9;
-448 
-449   int written = 0;
-450 
-451   // Nanoseconds (&lt; 1&#x00B5;s)
-452   if (nanoseconds &lt; NS_PER_US_INT) {
-453     written = safe_snprintf(buffer, buffer_size, &quot;%llu ns&quot;, (unsigned long long)nanoseconds);
-454   }
-455   // Microseconds (&lt; 1ms)
-456   else if (nanoseconds &lt; NS_PER_MS_INT) {
-457     double us = (double)nanoseconds / NS_PER_US;
-458     char temp_buf[64];
-459     // Use a direct snprintf with large enough buffer first
-460     snprintf(temp_buf, sizeof(temp_buf), &quot;%.*f &#x00B5;s&quot;, actual_decimals, us);
-461     strip_trailing_zeros(temp_buf);
-462     written = (int)strlen(temp_buf);
-463     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
-464       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
-465     } else {
-466       written = -1;
-467     }
-468   }
-469   // Milliseconds (&lt; 1s)
-470   else if (nanoseconds &lt; NS_PER_SEC_INT) {
-471     double ms = (double)nanoseconds / NS_PER_MS;
-472     char temp_buf[64];
-473     snprintf(temp_buf, sizeof(temp_buf), &quot;%.*f ms&quot;, actual_decimals, ms);
-474     strip_trailing_zeros(temp_buf);
-475     written = (int)strlen(temp_buf);
-476     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
-477       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
-478     } else {
-479       written = -1;
-480     }
-481   }
-482   // Seconds (&lt; 1 minute)
-483   else if (nanoseconds &lt; NS_PER_MIN_INT) {
-484     double s = (double)nanoseconds / NS_PER_SEC;
-485     char temp_buf[64];
-486     snprintf(temp_buf, sizeof(temp_buf), &quot;%.*f s&quot;, actual_decimals, s);
-487     strip_trailing_zeros(temp_buf);
-488     written = (int)strlen(temp_buf);
-489     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
-490       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
-491     } else {
-492       written = -1;
-493     }
-494   }
-495   // Minutes (&lt; 1 hour) - use colon notation: M:SS.frac
-496   else if (nanoseconds &lt; NS_PER_HOUR_INT) {
-497     uint64_t total_seconds = nanoseconds / NS_PER_SEC_INT;
-498     uint64_t minutes = total_seconds / 60;
-499     uint64_t seconds = total_seconds % 60;
-500     uint64_t remainder_ns = nanoseconds % NS_PER_SEC_INT;
-501     double fraction = (double)remainder_ns / NS_PER_SEC;
-502 
-503     char temp_buf[64];
-504     if (actual_decimals == 0) {
-505       snprintf(temp_buf, sizeof(temp_buf), &quot;%llu:%02llu&quot;, (unsigned long long)minutes, (unsigned long long)seconds);
-506     } else {
-507       snprintf(temp_buf, sizeof(temp_buf), &quot;%llu:%02llu.%.*f&quot;, (unsigned long long)minutes, (unsigned long long)seconds,
-508                actual_decimals, fraction);
-509       strip_trailing_zeros(temp_buf);
-510     }
-511 
-512     written = (int)strlen(temp_buf);
-513     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
-514       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
-515     } else {
-516       written = -1;
-517     }
-518   }
-519   // Hours+ - use colon notation: H:MM:SS or HH:MM:SS
-520   else {
-521     uint64_t total_seconds = nanoseconds / NS_PER_SEC_INT;
-522     uint64_t hours = total_seconds / 3600;
-523     uint64_t remaining = total_seconds % 3600;
-524     uint64_t minutes = remaining / 60;
-525     uint64_t seconds = remaining % 60;
+432     if (nanoseconds &lt; NS_PER_MIN_INT) {
+433       actual_decimals = (nanoseconds &lt; NS_PER_SEC_INT) ? 3 : 2; // ns/&#x00B5;s/ms or seconds
+434     } else {
+435       actual_decimals = 3; // colon notation
+436     }
+437   }
+438 
+439   // Clamp decimals to valid range
+440   if (actual_decimals &lt; 0)
+441     actual_decimals = 0;
+442   if (actual_decimals &gt; 9)
+443     actual_decimals = 9;
+444 
+445   int written = 0;
+446 
+447   // Nanoseconds (&lt; 1&#x00B5;s)
+448   if (nanoseconds &lt; NS_PER_US_INT) {
+449     written = safe_snprintf(buffer, buffer_size, &quot;%llu ns&quot;, (unsigned long long)nanoseconds);
+450   }
+451   // Microseconds (&lt; 1ms)
+452   else if (nanoseconds &lt; NS_PER_MS_INT) {
+453     double us = (double)nanoseconds / NS_PER_US;
+454     char temp_buf[64];
+455     // Use a direct snprintf with large enough buffer first
+456     snprintf(temp_buf, sizeof(temp_buf), &quot;%.*f &#x00B5;s&quot;, actual_decimals, us);
+457     strip_trailing_zeros(temp_buf);
+458     written = (int)strlen(temp_buf);
+459     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
+460       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+461     } else {
+462       written = -1;
+463     }
+464   }
+465   // Milliseconds (&lt; 1s)
+466   else if (nanoseconds &lt; NS_PER_SEC_INT) {
+467     double ms = (double)nanoseconds / NS_PER_MS;
+468     char temp_buf[64];
+469     snprintf(temp_buf, sizeof(temp_buf), &quot;%.*f ms&quot;, actual_decimals, ms);
+470     strip_trailing_zeros(temp_buf);
+471     written = (int)strlen(temp_buf);
+472     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
+473       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+474     } else {
+475       written = -1;
+476     }
+477   }
+478   // Seconds (&lt; 1 minute)
+479   else if (nanoseconds &lt; NS_PER_MIN_INT) {
+480     double s = (double)nanoseconds / NS_PER_SEC;
+481     char temp_buf[64];
+482     snprintf(temp_buf, sizeof(temp_buf), &quot;%.*f s&quot;, actual_decimals, s);
+483     strip_trailing_zeros(temp_buf);
+484     written = (int)strlen(temp_buf);
+485     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
+486       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+487     } else {
+488       written = -1;
+489     }
+490   }
+491   // Minutes (&lt; 1 hour) - use colon notation: M:SS.frac
+492   else if (nanoseconds &lt; NS_PER_HOUR_INT) {
+493     uint64_t total_seconds = nanoseconds / NS_PER_SEC_INT;
+494     uint64_t minutes = total_seconds / 60;
+495     uint64_t seconds = total_seconds % 60;
+496     uint64_t remainder_ns = nanoseconds % NS_PER_SEC_INT;
+497     double fraction = (double)remainder_ns / NS_PER_SEC;
+498 
+499     char temp_buf[64];
+500     if (actual_decimals == 0) {
+501       snprintf(temp_buf, sizeof(temp_buf), &quot;%llu:%02llu&quot;, (unsigned long long)minutes, (unsigned long long)seconds);
+502     } else {
+503       snprintf(temp_buf, sizeof(temp_buf), &quot;%llu:%02llu.%.*f&quot;, (unsigned long long)minutes, (unsigned long long)seconds,
+504                actual_decimals, fraction);
+505       strip_trailing_zeros(temp_buf);
+506     }
+507 
+508     written = (int)strlen(temp_buf);
+509     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
+510       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+511     } else {
+512       written = -1;
+513     }
+514   }
+515   // Hours+ - use colon notation: H:MM:SS or HH:MM:SS
+516   else {
+517     uint64_t total_seconds = nanoseconds / NS_PER_SEC_INT;
+518     uint64_t hours = total_seconds / 3600;
+519     uint64_t remaining = total_seconds % 3600;
+520     uint64_t minutes = remaining / 60;
+521     uint64_t seconds = remaining % 60;
+522 
+523     written = safe_snprintf(buffer, buffer_size, &quot;%llu:%02llu:%02llu&quot;, (unsigned long long)hours,
+524                             (unsigned long long)minutes, (unsigned long long)seconds);
+525   }
 526 
-527     written = safe_snprintf(buffer, buffer_size, &quot;%llu:%02llu:%02llu&quot;, (unsigned long long)hours,
-528                             (unsigned long long)minutes, (unsigned long long)seconds);
+527   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
+528     return -1;
 529   }
 530 
-531   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
-532     return -1;
-533   }
-534 
-535   return written;
-536 }</pre>
+531   return written;
+532 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_size</b>, <b>NS_PER_HOUR_INT</b>,
@@ -1997,11 +1993,11 @@ uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
 <p class="Pp"></p>
 <p class="Pp">Thread-safe (no global state)</p>
 </div>
-<p class="Pp">Definition at line <b>538</b> of file <b>util/time.c</b>.</p>
-<pre>538                                                                     {
-539   uint64_t ns = time_get_ns();
-540   return time_pretty(ns, decimals, buffer, buffer_size);
-541 }</pre>
+<p class="Pp">Definition at line <b>534</b> of file <b>util/time.c</b>.</p>
+<pre>534                                                                     {
+535   uint64_t ns = time_get_ns();
+536   return time_pretty(ns, decimals, buffer, buffer_size);
+537 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_size</b>, <b>time_get_ns()</b>, and
