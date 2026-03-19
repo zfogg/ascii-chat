@@ -149,6 +149,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev \
       libabsl-dev \
       libx265-dev \
+      libdatachannel-dev \
       emscripten \
       doxygen \
       dpkg-dev rpm \
@@ -315,6 +316,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       miniupnpc-devel \
       protobuf-c-devel \
       ffmpeg-devel \
+      libdatachannel-devel \
       abseil-cpp-devel \
       yyjson-devel \
       emscripten \
