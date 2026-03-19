@@ -1,46 +1,23 @@
 services:
-  discovery:
-    build:
-      context: ..
-      dockerfile: web/Dockerfile
-      args:
-        TARGET_APP: discovery
-        SOURCE_COMMIT: ${SOURCE_COMMIT:-unknown}
-        SSH_PUBLIC_KEY: ${SSH_PUBLIC_KEY}
-        GPG_PUBLIC_KEY: ${GPG_PUBLIC_KEY}
-    image: zfogg/ascii-chat-web-discovery:latest
-    environment:
-      - API_PORT=3001
-    container_name: ascii-chat-discovery
-    ports:
-      - "5174:80"
-    networks:
-      ascii-chat:
-        aliases:
-          - discovery
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/"]
-      interval: 30s
-      timeout: 1.5s
-      retries: 3
-      start_period: 3s
-
   web:
     build:
       context: ..
       dockerfile: web/Dockerfile
       args:
-        TARGET_APP: web
         SOURCE_COMMIT: ${SOURCE_COMMIT:-unknown}
-    image: zfogg/ascii-chat-web-web:latest
-    environment:
-      - API_PORT=3001
+        VITE_DISCOVERY_API_BASE: ${VITE_DISCOVERY_API_BASE:-http://localhost:3001}
+        SSH_PUBLIC_KEY: ${SSH_PUBLIC_KEY}
+        GPG_PUBLIC_KEY: ${GPG_PUBLIC_KEY}
+        NODE_ENV: ${NODE_ENV:-development}
+    image: zfogg/ascii-chat-web:latest
     container_name: ascii-chat-web
     ports:
-      - "3000:80"
+      - "8088:80"
     networks:
-      ascii-chat:
+      ascii-chat-web:
         aliases:
+          - www
+          - discovery
           - web
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/"]
@@ -49,33 +26,6 @@ services:
       retries: 3
       start_period: 3s
 
-  www:
-    build:
-      context: ..
-      dockerfile: web/Dockerfile
-      args:
-        TARGET_APP: www
-        SOURCE_COMMIT: ${SOURCE_COMMIT:-unknown}
-    image: zfogg/ascii-chat-web-www:latest
-    environment:
-      - API_PORT=3001
-    container_name: ascii-chat-www
-    ports:
-      - "5173:80"
-    networks:
-      ascii-chat:
-        aliases:
-          - www
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/api/health"]
-      interval: 30s
-      timeout: 1.5s
-      retries: 3
-      start_period: 3s
-
-volumes:
-  node_modules:
-
 networks:
-  ascii-chat:
+  ascii-chat-web:
     driver: bridge

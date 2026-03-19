@@ -1,10 +1,6 @@
 # Unified Dockerfile for all web applications (www, discovery, web)
-# Usage:
-#   docker build -f web/Dockerfile --build-arg TARGET_APP=www -t ascii-chat-www .
-#   docker build -f web/Dockerfile --build-arg TARGET_APP=discovery -t ascii-chat-discovery .
-#   docker build -f web/Dockerfile --build-arg TARGET_APP=web -t ascii-chat-web .
+# Builds all three apps in a single image with a single Caddy instance
 
-ARG TARGET_APP=www
 ARG SOURCE_COMMIT
 ARG VITE_DISCOVERY_API_BASE
 ARG NODE_ENV=development
@@ -12,11 +8,10 @@ ARG SSH_PUBLIC_KEY
 ARG GPG_PUBLIC_KEY
 
 # ============================================
-# Build stage - shared for all apps
+# Base stage - install dependencies
 # ============================================
 FROM node:22-slim AS base
 
-ARG TARGET_APP
 ARG SOURCE_COMMIT
 
 # Install bash, curl, git, wget, and pnpm
@@ -43,50 +38,38 @@ COPY . .
 ENV SOURCE_COMMIT=${SOURCE_COMMIT}
 
 # ============================================
-# Builder stage - build the specific app
+# Builder stage - build ALL three apps
 # ============================================
 FROM base AS builder
 
-ARG TARGET_APP
 ARG VITE_DISCOVERY_API_BASE
 ARG SSH_PUBLIC_KEY
 ARG GPG_PUBLIC_KEY
-
-# Set environment variables based on target app
-RUN if [ "$TARGET_APP" = "www" ]; then \
-      echo "Building www app"; \
-      export ENV_VARS="VERCEL=1 VITE_DISCOVERY_API_BASE=${VITE_DISCOVERY_API_BASE:-http://localhost:5173}"; \
-    elif [ "$TARGET_APP" = "discovery" ]; then \
-      echo "Building discovery app"; \
-      export ENV_VARS="VITE_DISCOVERY_API_BASE=${VITE_DISCOVERY_API_BASE:-http://localhost:5173} SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY} GPG_PUBLIC_KEY=${GPG_PUBLIC_KEY}"; \
-    elif [ "$TARGET_APP" = "web" ]; then \
-      echo "Building web app"; \
-      export ENV_VARS="VITE_DISCOVERY_API_BASE=${VITE_DISCOVERY_API_BASE:-http://localhost:5173}"; \
-    else \
-      echo "ERROR: Unknown TARGET_APP=$TARGET_APP"; \
-      exit 1; \
-    fi
 
 ENV VERCEL=1
 ENV VITE_DISCOVERY_API_BASE=${VITE_DISCOVERY_API_BASE:-http://localhost:5173}
 ENV SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY}
 ENV GPG_PUBLIC_KEY=${GPG_PUBLIC_KEY}
 
-# Build the target app
-RUN cd web/${TARGET_APP} && pnpm run build && test -d dist || (echo "ERROR: dist directory not created for ${TARGET_APP}" && ls -la && exit 1)
+# Build www app
+RUN echo "Building www app" && cd web/www && pnpm run build && test -d dist || (echo "ERROR: dist directory not created for www" && ls -la && exit 1)
+
+# Build discovery app
+RUN echo "Building discovery app" && cd web/discovery && pnpm run build && test -d dist || (echo "ERROR: dist directory not created for discovery" && ls -la && exit 1)
+
+# Build web app
+RUN echo "Building web app" && cd web/web && pnpm run build && test -d dist || (echo "ERROR: dist directory not created for web" && ls -la && exit 1)
 
 # ============================================
-# Production stage - serve the built app
+# Production stage - serve all apps with Caddy
 # ============================================
 FROM caddy:alpine AS caddy
 
 FROM node:22-slim
 
-ARG TARGET_APP
 ARG NODE_ENV=development
 
 ENV NODE_ENV=${NODE_ENV}
-ENV TARGET_APP=${TARGET_APP}
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl && npm install -g pnpm@9.15.0 && rm -rf /var/lib/apt/lists/*
 
@@ -94,34 +77,19 @@ COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
 
 WORKDIR /app/web
 
-# Copy built app and dependencies
-COPY --from=builder /app/web/node_modules ./node_modules
-COPY --from=builder /app/web/pnpm-lock.yaml ./pnpm-lock.yaml
-COPY --from=builder /app/web/package.json ./package.json
+# Copy built apps
+COPY --from=builder /app/web/www ./www
+COPY --from=builder /app/web/discovery ./discovery
+COPY --from=builder /app/web/web ./web
 
-# Copy app-specific files
-COPY --from=builder /app/web/${TARGET_APP} ./${TARGET_APP}
-COPY --from=builder /app/web/packages ./packages
+# Copy unified Caddyfile
+COPY web/Caddyfile /etc/caddy/Caddyfile
 
-# Copy app-specific Caddyfile
-COPY --from=builder /app/web/${TARGET_APP}/Caddyfile /etc/caddy/Caddyfile
+# Expose port 80 (Caddy serving all three apps)
+EXPOSE 80
 
-WORKDIR /app/web/${TARGET_APP}
-
-# Set port based on app
-RUN if [ "$TARGET_APP" = "www" ]; then \
-      echo "EXPOSE 80 3001" && export EXPOSE_PORTS="80 3001" && export API_PORT=3001; \
-    elif [ "$TARGET_APP" = "discovery" ]; then \
-      echo "EXPOSE 5174" && export EXPOSE_PORTS="5174"; \
-    elif [ "$TARGET_APP" = "web" ]; then \
-      echo "EXPOSE 3000" && export EXPOSE_PORTS="3000"; \
-    fi
-
-ENV API_PORT=${API_PORT:-3001}
-EXPOSE 80 3000 3001 5174
-
-CMD ["pnpm", "run", "start:caddy"]
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=3s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=1.5s --start-period=3s --retries=3 \
   CMD curl -f http://localhost/ || exit 1

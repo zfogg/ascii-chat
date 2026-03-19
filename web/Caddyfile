@@ -1,0 +1,43 @@
+# Unified Caddyfile for all web applications (www, discovery, web)
+# Caddy serves all three apps by subdomain on port 80
+
+# www.localhost and localhost (no subdomain) -> www app
+:80 {
+  # Match www.localhost or localhost (no subdomain)
+  @www {
+    host www.localhost localhost
+  }
+
+  handle @www {
+    root * /app/web/www/dist
+    file_server
+    try_files {path} /index.html
+  }
+
+  # discovery.localhost -> discovery app
+  @discovery {
+    host discovery.localhost
+  }
+
+  handle @discovery {
+    root * /app/web/discovery/dist
+    file_server
+    try_files {path} /index.html
+  }
+
+  # web.localhost -> web app
+  @web {
+    host web.localhost
+  }
+
+  handle @web {
+    root * /app/web/web/dist
+    file_server
+    try_files {path} /index.html
+  }
+
+  # Default to www app for any other host
+  root * /app/web/www/dist
+  file_server
+  try_files {path} /index.html
+}
