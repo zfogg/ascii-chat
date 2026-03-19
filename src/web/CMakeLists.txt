@@ -552,20 +552,20 @@ set_target_properties(client-web PROPERTIES OUTPUT_NAME "client")
 # Copy outputs to web/src/wasm/dist/ (so Vite can import them)
 if(BUILD_WEB)
     add_custom_command(TARGET mirror-web POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../../web/web/src/wasm/dist
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../web/web/src/wasm/dist
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CMAKE_CURRENT_BINARY_DIR}/mirror.js
             ${CMAKE_CURRENT_BINARY_DIR}/mirror.wasm
-            ${CMAKE_SOURCE_DIR}/../../../web/web/src/wasm/dist/
+            ${CMAKE_SOURCE_DIR}/../../web/web/src/wasm/dist/
         COMMENT "Copying mirror WASM files to web/src/wasm/dist/"
     )
 
     add_custom_command(TARGET client-web POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../../web/web/src/wasm/dist
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../web/web/src/wasm/dist
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CMAKE_CURRENT_BINARY_DIR}/client.js
             ${CMAKE_CURRENT_BINARY_DIR}/client.wasm
-            ${CMAKE_SOURCE_DIR}/../../../web/web/src/wasm/dist/
+            ${CMAKE_SOURCE_DIR}/../../web/web/src/wasm/dist/
         COMMENT "Copying client WASM files to web/src/wasm/dist/"
     )
 

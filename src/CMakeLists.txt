@@ -657,11 +657,18 @@ else()
     endif()
 endif()
 
-find_file(EMSCRIPTEN_TOOLCHAIN_FILE
-    NAMES Emscripten.cmake
-    PATHS ${EMSCRIPTEN_SEARCH_PATHS}
-    PATH_SUFFIXES cmake/Modules/Platform libexec/cmake/Modules/Platform
-)
+# Prefer project's own toolchain file (sets CMAKE_C_COMPILER to emcc).
+# The system Platform/Emscripten.cmake does NOT set the compiler, causing
+# the WASM sub-build to use native clang instead of emcc.
+if(EXISTS "${CMAKE_SOURCE_DIR}/cmake/toolchains/Emscripten.cmake")
+    set(EMSCRIPTEN_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/cmake/toolchains/Emscripten.cmake" CACHE FILEPATH "Emscripten toolchain file" FORCE)
+else()
+    find_file(EMSCRIPTEN_TOOLCHAIN_FILE
+        NAMES Emscripten.cmake
+        PATHS ${EMSCRIPTEN_SEARCH_PATHS}
+        PATH_SUFFIXES cmake/Modules/Platform libexec/cmake/Modules/Platform
+    )
+endif()
 
 if(NOT EMSCRIPTEN_TOOLCHAIN_FILE)
     message(STATUS "Emscripten toolchain not found - WASM targets will not work")
@@ -682,7 +689,7 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
     set(WASM_CONFIG_STAMP "${WASM_BUILD_DIR}/.wasm_src_configured")
     if(NOT EXISTS "${WASM_CONFIG_STAMP}")
         execute_process(
-            COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
+            COMMAND ${CMAKE_COMMAND} --fresh ${WASM_CMAKE_ARGS}
             WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
             RESULT_VARIABLE WASM_CONFIG_RESULT
         )

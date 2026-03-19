@@ -11,8 +11,10 @@ else()
 endif()
 
 # Resolve emcc/em++ from Emscripten SDK or PATH
-# emcmake sets CC/CXX environment variables, but we need to ensure we're using the right emcc
-if(DEFINED ENV{CC})
+# emcmake sets CC=emcc and CXX=em++, so honor those.
+# Ignore non-emscripten CC/CXX (e.g. CC=clang from the shell) to avoid
+# accidentally using the native compiler for WASM cross-compilation.
+if(DEFINED ENV{CC} AND "$ENV{CC}" MATCHES "emcc")
     set(CMAKE_C_COMPILER "$ENV{CC}")
 else()
     find_program(EMCC_EXECUTABLE NAMES emcc PATHS "${EMSCRIPTEN_SDK_ROOT}" NO_DEFAULT_PATH)
@@ -23,7 +25,7 @@ else()
     endif()
 endif()
 
-if(DEFINED ENV{CXX})
+if(DEFINED ENV{CXX} AND "$ENV{CXX}" MATCHES "em\\+\\+")
     set(CMAKE_CXX_COMPILER "$ENV{CXX}")
 else()
     find_program(EMXX_EXECUTABLE NAMES em++ PATHS "${EMSCRIPTEN_SDK_ROOT}" NO_DEFAULT_PATH)
@@ -34,8 +36,8 @@ else()
     endif()
 endif()
 
-# Emscripten-specific linker
-if(DEFINED ENV{AR})
+# Emscripten-specific archiver
+if(DEFINED ENV{AR} AND "$ENV{AR}" MATCHES "emar")
     set(CMAKE_AR "$ENV{AR}")
 else()
     find_program(EMAR_EXECUTABLE NAMES emar PATHS "${EMSCRIPTEN_SDK_ROOT}" NO_DEFAULT_PATH)
