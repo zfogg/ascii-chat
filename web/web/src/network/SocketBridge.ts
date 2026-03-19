@@ -296,7 +296,7 @@ export class SocketBridge {
   /**
    * Send a packet over WebSocket
    */
-  send(packet: Uint8Array): void {
+  send(packet: Uint8Array | ArrayBuffer): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       console.error(
         "[SocketBridge] ERROR: Cannot send - WebSocket state:",
@@ -308,7 +308,16 @@ export class SocketBridge {
     // console.error(
     //   `[SocketBridge] >>> SEND ${packet.length} bytes`,
     // );
-    this.ws.send(packet);
+    if (packet instanceof Uint8Array) {
+      this.ws.send(
+        packet.buffer.slice(
+          packet.byteOffset,
+          packet.byteOffset + packet.byteLength,
+        ),
+      );
+    } else {
+      this.ws.send(packet);
+    }
   }
 
   /**

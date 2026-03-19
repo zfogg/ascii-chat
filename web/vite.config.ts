@@ -112,7 +112,7 @@ export default defineConfig({
       "react/no-unescaped-entities": "error",
       "react/no-unknown-property": "error",
       "react/no-unsafe": "off",
-      "react/react-in-jsx-scope": "error",
+      "react/react-in-jsx-scope": "off",
       "react/require-render-return": "error"
     },
     "overrides": [
@@ -120,6 +120,16 @@ export default defineConfig({
         "files": [
           "**/*.js"
         ],
+        "rules": {
+          "no-unused-vars": [
+            "error",
+            {
+              "argsIgnorePattern": "^_",
+              "caughtErrorsIgnorePattern": "^_",
+              "varsIgnorePattern": "^_"
+            }
+          ]
+        },
         "globals": {
           "__COMMIT_SHA__": "readonly"
         },
@@ -137,10 +147,19 @@ export default defineConfig({
           "react/no-unescaped-entities": "off",
           "react-hooks/rules-of-hooks": "error",
           "react-hooks/exhaustive-deps": "warn",
-          "react/only-export-components": "warn"
+          "react/only-export-components": "warn",
+          "no-unused-vars": [
+            "error",
+            {
+              "argsIgnorePattern": "^_",
+              "caughtErrorsIgnorePattern": "^_",
+              "varsIgnorePattern": "^_"
+            }
+          ]
         },
         "globals": {
-          "__COMMIT_SHA__": "readonly"
+          "__SSH_PUBLIC_KEY__": "readonly",
+          "__GPG_PUBLIC_KEY__": "readonly"
         },
         "env": {
           "es2024": true,
@@ -206,6 +225,14 @@ export default defineConfig({
         ],
         "rules": {
           "no-unused-vars": "off"
+        }
+      },
+      {
+        "files": [
+          "**/vite-env.d.ts"
+        ],
+        "rules": {
+          "no-redeclare": "off"
         }
       }
     ],

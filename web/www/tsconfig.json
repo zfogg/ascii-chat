@@ -1,7 +1,6 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@ascii-chat/shared": ["../packages/shared/src/index.ts"],
       "@ascii-chat/shared/components": [

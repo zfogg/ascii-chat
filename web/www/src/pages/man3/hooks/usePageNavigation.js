@@ -283,7 +283,9 @@ export function usePageNavigation(
           if (trimmed === String(targetLineNumber)) {
             potentialMatches.push({ node, priority: 1, text }); // Push to preserve order
           } // Priority 2: Line number followed by whitespace only
-          else if (new RegExp(`^${String(targetLineNumber)}\\s*$`).test(trimmed)) {
+          else if (
+            new RegExp(`^${String(targetLineNumber)}\\s*$`).test(trimmed)
+          ) {
             potentialMatches.push({ node, priority: 2, text });
           } // Priority 3: Line number in mixed content (fallback)
           else if (
@@ -406,7 +408,7 @@ export function usePageNavigation(
                   });
                 }
               }
-            } catch (e) {
+            } catch (_e) {
               // Silent fail on regex error
             }
           }

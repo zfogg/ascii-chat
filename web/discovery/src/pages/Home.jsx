@@ -20,8 +20,8 @@ import { getGpgFingerprint, getSshFingerprint } from "../utils/keyFingerprints";
 
 function Home() {
   useScrollToHash(100);
-  const [sshKey, setSshKey] = useState(__SSH_PUBLIC_KEY__ || "");
-  const [gpgKey, setGpgKey] = useState(__GPG_PUBLIC_KEY__ || "");
+  const [sshKey, _setSshKey] = useState(__SSH_PUBLIC_KEY__ || "");
+  const [gpgKey, _setGpgKey] = useState(__GPG_PUBLIC_KEY__ || "");
   const [sshFingerprint, setSshFingerprint] = useState("");
   const [gpgFingerprint, setGpgFingerprint] = useState("");
   const [baseUrl] = useState(() => window.location.origin);
@@ -43,7 +43,7 @@ function Home() {
       }
     };
 
-    computeFingerprints();
+    void computeFingerprints();
 
     // Fetch session strings
     fetchSessionStrings(3)
@@ -51,13 +51,13 @@ function Home() {
       .catch((e) => console.error("Failed to load session strings:", e));
   }, [sshKey, gpgKey]);
 
-  const handleSshDownload = () => {
+  const _handleSshDownload = () => {
     if (window.gtag) {
       window.gtag("event", "download_ssh_key");
     }
   };
 
-  const handleGpgDownload = () => {
+  const _handleGpgDownload = () => {
     if (window.gtag) {
       window.gtag("event", "download_gpg_key");
     }

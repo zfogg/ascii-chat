@@ -192,7 +192,7 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
       // Try multiple patterns to handle different HTML formatting
       let definitionRegex =
         /Definition at line <b>(\d+)<\/b> of file\s*<b>([^<]+)<\/b>[.!?]?/g;
-      let matches = Array.from(html.matchAll(definitionRegex));
+      let _matches = Array.from(html.matchAll(definitionRegex));
 
       // Transform "Definition at line X of file Y" text to add GitHub links
       // Use flexible regex to match the actual pattern found (including optional trailing period)
@@ -337,7 +337,7 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
         }
 
         // Check if this P tag contains a function signature (bold name followed by paren or br)
-        if (!/<b>[a-zA-Z_][a-zA-Z0-9_]*<\/b>\s*[\(<br]/.test(content)) {
+        if (!/<b>[a-zA-Z_][a-zA-Z0-9_]*<\/b>\s*[(<br]/.test(content)) {
           return match;
         }
 
@@ -351,7 +351,8 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
 
         // Check if this is the special case: function signature with <br/> delimiters
         // Pattern: bold function name followed by ( and incomplete params, then <br/>
-        const brDelimiterPattern = /<b>([a-zA-Z_][a-zA-Z0-9_]*)<\/b>\s*\([^)]*<br\s*\/?>/;
+        const brDelimiterPattern =
+          /<b>([a-zA-Z_][a-zA-Z0-9_]*)<\/b>\s*\([^)]*<br\s*\/?>/;
         const hasBrDelimiters = brDelimiterPattern.test(content);
 
         const rows = [];
@@ -360,7 +361,8 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
           // Special handling for <br/> delimited functions
           // The uniqueness: function_name(<incomplete_params<br/>description<br/>
           // Find all such patterns to extract complete function signatures
-          const funcPattern = /<b>([a-zA-Z_][a-zA-Z0-9_]*)<\/b>\s*\(([^<]*)<br\s*\/?>\s*([\s\S]*?)<br\s*\/?>/g;
+          const funcPattern =
+            /<b>([a-zA-Z_][a-zA-Z0-9_]*)<\/b>\s*\(([^<]*)<br\s*\/?>\s*([\s\S]*?)<br\s*\/?>/g;
           let funcMatch;
 
           while ((funcMatch = funcPattern.exec(content))) {
@@ -379,7 +381,10 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
             const plainBefore = tempDiv.textContent;
 
             // Extract all non-whitespace tokens and take the last meaningful one(s) as return type
-            const beforeTokens = plainBefore.trim().split(/\s+/).filter(t => t);
+            const beforeTokens = plainBefore
+              .trim()
+              .split(/\s+/)
+              .filter((t) => t);
             let returnType = "";
 
             if (beforeTokens.length > 0) {
@@ -414,7 +419,7 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
             const params = incompleteParams ? `(${incompleteParams}` : "(";
 
             // Build full signature with return type and function name
-            const fullSignature =
+            const _fullSignature =
               (returnType ? returnType + " " : "") + funcName + params;
 
             // For table display, show just the params part without function name
@@ -435,7 +440,7 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
 
           // Find ALL function names in the content (bold text followed by paren or br)
           const funcNameMatches = [];
-          const boldRegex = /<b>([a-zA-Z_][a-zA-Z0-9_]*)<\/b>\s*[\(<br]/g;
+          const boldRegex = /<b>([a-zA-Z_][a-zA-Z0-9_]*)<\/b>\s*[(<br]/g;
           let boldMatch;
           while ((boldMatch = boldRegex.exec(content))) {
             funcNameMatches.push(boldMatch[1]);
@@ -490,8 +495,11 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
             // If closing paren not found, assume rest of content until next keyword
             if (closeParenIdx === -1) {
               // Look for common description starters or end of content
-              const descPattern = /\s+(Calculate|Find|Get|Return|Check|Validate|Parse|Generate|Build|Create|Delete|Update|Process|Handle|Manage|Initialize|Configure|Set|Add|Remove|Extract|Transform|Convert|Encode|Decode|Encrypt|Decrypt|Serialize|Deserialize|Execute|Run|Start|Stop|Close|Open|Read|Write|Send|Receive|Send|Request|Response|Submit|Commit|Rollback|Allocate|Deallocate|Copy|Clone|Merge|Split|Join|Filter|Sort|Search|Lookup|Insert|Replace|Update|Append|Prepend|Reverse|Rotate|Shift|Swap|Compare|Match|Find|Locate|Register|Unregister|Subscribe|Unsubscribe|Attach|Detach|Link|Unlink|Mount|Unmount|Load|Unload|Import|Export|Include|Exclude|Enable|Disable|Activate|Deactivate|Suspend|Resume)/;
-              const descMatch = functionContent.substring(openParenIdx).search(descPattern);
+              const descPattern =
+                /\s+(Calculate|Find|Get|Return|Check|Validate|Parse|Generate|Build|Create|Delete|Update|Process|Handle|Manage|Initialize|Configure|Set|Add|Remove|Extract|Transform|Convert|Encode|Decode|Encrypt|Decrypt|Serialize|Deserialize|Execute|Run|Start|Stop|Close|Open|Read|Write|Send|Receive|Send|Request|Response|Submit|Commit|Rollback|Allocate|Deallocate|Copy|Clone|Merge|Split|Join|Filter|Sort|Search|Lookup|Insert|Replace|Update|Append|Prepend|Reverse|Rotate|Shift|Swap|Compare|Match|Find|Locate|Register|Unregister|Subscribe|Unsubscribe|Attach|Detach|Link|Unlink|Mount|Unmount|Load|Unload|Import|Export|Include|Exclude|Enable|Disable|Activate|Deactivate|Suspend|Resume)/;
+              const descMatch = functionContent
+                .substring(openParenIdx)
+                .search(descPattern);
               if (descMatch > 0) {
                 closeParenIdx = openParenIdx + descMatch - 1;
               } else {

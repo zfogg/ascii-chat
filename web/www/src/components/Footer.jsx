@@ -1,4 +1,3 @@
-import TrackedLink from "./TrackedLink";
 import { Footer as SharedFooter } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
 
