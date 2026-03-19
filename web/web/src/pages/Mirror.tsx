@@ -237,12 +237,11 @@ export function MirrorPage() {
       }
 
       // Expose last ANSI frame for E2E test access
-      // eslint-disable-next-line
-      (window as any).__lastAnsiFrame = asciiArt;
-      // eslint-disable-next-line
-      (window as any).__lastAnsiFrameTime = performance.now();
-      // eslint-disable-next-line
-      (window as any).__lastAnsiFrameCount = ((window as any).__lastAnsiFrameCount || 0) + 1;
+      const win = window as unknown as Record<string, unknown>;
+      win["__lastAnsiFrame"] = asciiArt;
+      win["__lastAnsiFrameTime"] = performance.now();
+      win["__lastAnsiFrameCount"] =
+        ((win["__lastAnsiFrameCount"] as number) || 0) + 1;
 
       rendererRef.current!.writeFrame(asciiArt);
 
