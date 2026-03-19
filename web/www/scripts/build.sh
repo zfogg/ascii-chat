@@ -7,16 +7,16 @@ cd "$(dirname "$0")/.."
 build_commands=()
 
 echo "Type checking with TypeScript..."
-build_commands+=("bun run type-check")
+build_commands+=("pnpm run type-check")
 
 echo "Formatting check with prettier..."
-build_commands+=("bun run format:check")
+build_commands+=("pnpm run format:check")
 
 echo "Linting with eslint..."
-build_commands+=("bun run lint")
+build_commands+=("pnpm run lint")
 
 echo "Building with vite..."
-build_commands+=("bun run vite:build")
+build_commands+=("pnpm run vite:build")
 
 # Build manpage html if not on Vercel and cmake/mandoc are available
 if [ -z "$VERCEL" ] && command -v cmake &> /dev/null && command -v mandoc &> /dev/null; then

@@ -2,7 +2,7 @@
  * Unit tests for AsciiFrameParser
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vite-plus/test";
 import {
   parseAsciiFrame,
   ASCII_FRAME_HEADER_SIZE,

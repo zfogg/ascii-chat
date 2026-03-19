@@ -2,31 +2,24 @@
   "type": "module",
   "name": "ascii-chat-web",
   "private": true,
-  "packageManager": "bun@1.3.10",
-  "workspaces": [
-    "packages/*",
-    "www",
-    "discovery",
-    "web"
-  ],
+  "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "dev": "bun run --filter './www' --filter './discovery' --filter './web' dev",
-    "build": "bun run --filter '*' build",
-    "build:shared": "bun run --filter '@ascii-chat/shared' build",
-    "build:websites": "bun run --filter './www' --filter './discovery' --filter './web' build",
-    "type-check": "bun run --filter './www' --filter './discovery' --filter './web' type-check",
-    "lint": "bun run --filter './www' --filter './discovery' --filter './web' lint",
-    "format": "bun run --filter './www' --filter './discovery' --filter './web' format",
-    "format:check": "bun run --filter './www' --filter './discovery' --filter './web' format:check"
+    "dev": "pnpm -r --filter './www' --filter './discovery' --filter './web' run dev",
+    "build": "pnpm -r run build",
+    "build:shared": "pnpm --filter '@ascii-chat/shared' run build",
+    "build:websites": "pnpm -r --filter './www' --filter './discovery' --filter './web' run build",
+    "type-check": "pnpm -r run type-check",
+    "lint": "pnpm -r run lint",
+    "format": "pnpm -r run format",
+    "format:check": "pnpm -r run format:check"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "eslint": "^10.0.3",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
-    "prettier": "^3.8.1",
-    "typescript-eslint": "^8.57.0"
+    "typescript-eslint": "^8.57.0",
+    "vite-plus": "catalog:"
   }
 }

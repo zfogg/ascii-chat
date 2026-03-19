@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vite-plus/test";
 import { WebSocket as WsWebSocket } from "ws";
 import { ClientConnection } from "../../src/network/ClientConnection";
 import { getConnectionState, ConnectionState } from "../../src/wasm/client";

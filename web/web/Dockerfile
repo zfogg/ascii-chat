@@ -4,12 +4,13 @@ ARG VITE_DISCOVERY_API_BASE
 ARG NODE_ENV=development
 FROM node:22-slim AS base
 
-RUN apt-get update && apt-get install -y --no-install-recommends bash git && npm install -g bun@1.3.10 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends bash git && npm install -g pnpm@9.15.0 && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Copy dependency files first for layer caching
-COPY bun.lock web/bun.lock
+COPY web/pnpm-lock.yaml web/pnpm-lock.yaml
+COPY web/pnpm-workspace.yaml web/pnpm-workspace.yaml
 COPY web/package.json web/
 COPY web/discovery/package.json web/discovery/
 COPY web/web/package.json web/web/
@@ -17,7 +18,7 @@ COPY web/www/package.json web/www/
 COPY web/packages web/packages
 
 # Clean install dependencies (from web root where monorepo is)
-RUN cd web && bun install
+RUN cd web && pnpm install --frozen-lockfile
 
 # Copy entire monorepo (node_modules excluded via .dockerignore)
 COPY . .
@@ -29,7 +30,7 @@ ENV SOURCE_COMMIT=${SOURCE_COMMIT}
 FROM base AS builder
 
 ENV VITE_DISCOVERY_API_BASE=${VITE_DISCOVERY_API_BASE:-http://localhost:5173}
-RUN cd web/web && bun run build
+RUN cd web/web && pnpm run build
 RUN test -d /app/web/web/dist || (echo "ERROR: dist directory not created during build" && ls -la && exit 1)
 
 # Caddy stage
@@ -41,7 +42,7 @@ FROM node:22-alpine
 ARG NODE_ENV=development
 ENV NODE_ENV=${NODE_ENV}
 
-RUN apk add curl && npm install -g bun@1.3.10
+RUN apk add curl && npm install -g pnpm@9.15.0
 
 COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
 COPY web/web/Caddyfile /etc/caddy/Caddyfile
@@ -49,11 +50,11 @@ COPY web/web/Caddyfile /etc/caddy/Caddyfile
 WORKDIR /app/web
 COPY --from=builder /app/web/web/dist ./dist
 COPY --from=builder /app/web/web/package.json ./package.json
-COPY --from=builder /app/web/bun.lock ./bun.lock
+COPY --from=builder /app/web/pnpm-lock.yaml ./pnpm-lock.yaml
 
 EXPOSE 3000
 
-CMD ["bun", "run", "start:caddy"]
+CMD ["pnpm", "run", "start:caddy"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=3s --retries=3 \
   CMD curl -f http://localhost/

@@ -8,16 +8,16 @@ echo "Generating key files from env vars..."
 bash scripts/generate-keys.sh
 
 echo "Type checking with TypeScript..."
-bun run type-check
+pnpm run type-check
 
 echo "Formatting check with prettier..."
-bun run format:check
+pnpm run format:check
 
 echo "Linting with eslint..."
-bun run lint
+pnpm run lint
 
 echo "Building with vite..."
-bun run vite:build
+pnpm run vite:build
 
 echo "Copying index.html to 404.html..."
 cp dist/index.html dist/404.html

@@ -1430,7 +1430,7 @@ export function ClientPage() {
       startRenderLoop();
     }
     // Note: startRenderLoop is NOT in deps array to avoid circular dependency issues
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionState]);
 
   useEffect(() => {
@@ -1439,7 +1439,7 @@ export function ClientPage() {
       startWebcam();
     }
     // Note: startWebcam is NOT in deps array to avoid circular dependency issues
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionState, isWebcamRunning]);
 
   const getStatusDotColor = () => {

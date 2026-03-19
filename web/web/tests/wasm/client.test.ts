@@ -6,7 +6,7 @@
  * and are covered by E2E tests with Playwright.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vite-plus/test";
 import { ConnectionState, PacketType } from "../../src/wasm/client";
 
 describe("Client WASM Module Types", () => {

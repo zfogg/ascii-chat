@@ -183,7 +183,7 @@ export function MirrorPage() {
     }, frameIntervalRef.current);
 
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [isWebcamRunning, captureFrame]);
 
   const startWebcam = useCallback(async () => {

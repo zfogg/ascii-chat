@@ -3,19 +3,19 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "packageManager": "bun@1.3.9",
+  "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "dev": "concurrently \"ls api.js | entr -rdc vite --port 5173 | tee vite.log\" \"bun api.js | tee api.log\" \"scripts/manpage-watch.sh\"",
-    "api": "bun api.js",
-    "start": "concurrently \"vite --port 5173\" \"bun api.js\"",
-    "start:caddy": "concurrently \"bun api.js\" \"caddy run --config /etc/caddy/Caddyfile\"",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "dev": "concurrently \"ls api.js | entr -rdc vite --port 5173 | tee vite.log\" \"node api.js | tee api.log\" \"scripts/manpage-watch.sh\"",
+    "api": "node api.js",
+    "start": "concurrently \"vite --port 5173\" \"node api.js\"",
+    "start:caddy": "concurrently \"node api.js\" \"caddy run --config /etc/caddy/Caddyfile\"",
+    "format": "vp fmt .",
+    "format:check": "vp fmt --check .",
     "build": "bash scripts/build.sh",
-    "lint": "eslint . --max-warnings 0",
-    "type-check": "bun x tsc --noEmit",
-    "preview": "vite preview",
-    "vite:build": "vite build"
+    "lint": "vp lint . --max-warnings 0",
+    "type-check": "pnpm exec tsc --noEmit",
+    "preview": "vp preview",
+    "vite:build": "vp build"
   },
   "dependencies": {
     "@ascii-chat/shared": "workspace:*",
@@ -35,7 +35,6 @@
     "autoprefixer": "^10.4.24",
     "concurrently": "^8.2.2",
     "dotenv": "^16.4.5",
-    "eslint": "^9.7.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.12",
     "express": "^4.18.2",
@@ -43,13 +42,13 @@
     "globals": "^17.3.0",
     "morgan": "^1.10.0",
     "postcss": "^8.5.6",
-    "prettier": "^3.8.1",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.55.0",
-    "vite": "^7.3.1",
+    "vite": "catalog:",
     "vite-plugin-sitemap": "^0.8.2",
-    "winston": "^3.11.0"
+    "winston": "^3.11.0",
+    "vite-plus": "catalog:"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-arm64-gnu": "^4.59.0"
