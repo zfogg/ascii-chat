@@ -1,7 +1,7 @@
 {
   "name": "www",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"ls api.js | entr -rdc vite --port 5173 | tee vite.log\" \"node api.js | tee api.log\" \"scripts/manpage-watch.sh\"",
