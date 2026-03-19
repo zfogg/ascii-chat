@@ -913,21 +913,10 @@ export function ClientPage() {
             H265Encoder.isSupported()
           ) {
             try {
-              if (!canvasRef.current) {
-                throw new Error("Canvas not available for VideoFrame creation");
-              }
-
-              // Create VideoFrame from canvas for H.265 encoding
-              const videoFrame = new VideoFrame(canvasRef.current, {
-                timestamp: now * 1000, // microseconds
-              });
-
-              // Request keyframe every 60 frames
-              const forceKeyframe = captureLoopFrameCountRef.current % 60 === 0;
-              h265EncoderRef.current.encode(videoFrame, forceKeyframe);
-              videoFrame.close();
-
-              // Send any available encoded chunks (may be empty since encoder is async)
+              // Drain chunks encoded from PREVIOUS frame iteration(s).
+              // The encoder is async - when we call encode(), the data arrives
+              // via the output callback in the background. So we must drain
+              // BEFORE calling encode() on the new frame.
               const chunks = h265EncoderRef.current.drain();
               if (chunks.length > 0) {
                 for (const chunk of chunks) {
@@ -941,6 +930,23 @@ export function ClientPage() {
                 }
                 sentH265 = true;
               }
+
+              // Queue current frame for encoding. This returns immediately,
+              // and the encoded data will be available in drain() on the
+              // next iteration.
+              if (!canvasRef.current) {
+                throw new Error("Canvas not available for VideoFrame creation");
+              }
+
+              // Create VideoFrame from canvas for H.265 encoding
+              const videoFrame = new VideoFrame(canvasRef.current, {
+                timestamp: now * 1000, // microseconds
+              });
+
+              // Request keyframe every 60 frames
+              const forceKeyframe = captureLoopFrameCountRef.current % 60 === 0;
+              h265EncoderRef.current.encode(videoFrame, forceKeyframe);
+              videoFrame.close();
             } catch (err) {
               console.error(
                 "[Client] H.265 encoding failed, will use RGBA:",

@@ -18,7 +18,10 @@ interface ClientModuleExports {
   _client_generate_keypair(): number;
   _client_set_server_address(server_host: number, server_port: number): number;
   _client_get_public_key_hex(): number;
-  _client_handle_crypto_parameters(packet_ptr: number, packet_len: number): number;
+  _client_handle_crypto_parameters(
+    packet_ptr: number,
+    packet_len: number,
+  ): number;
   _client_handle_key_exchange_init(
     packet_ptr: number,
     packet_len: number,

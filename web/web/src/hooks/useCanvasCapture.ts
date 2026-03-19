@@ -44,10 +44,7 @@ export function useCanvasCapture(
 
     try {
       // Verify video has data
-      if (
-        video.videoWidth === 0 ||
-        (video.videoHeight === 0 && Math.random() < 0.15)
-      ) {
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
         console.warn(
           "[useCanvasCapture] Video not ready - no dimensions:",
           video.videoWidth,

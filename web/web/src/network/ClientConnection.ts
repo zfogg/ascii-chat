@@ -312,7 +312,9 @@ export class ClientConnection {
       // Handle handshake packets using WASM callbacks
       if (parsed.type === PacketType.CRYPTO_PARAMETERS) {
         // Server sends crypto parameters first to negotiate key sizes
-        console.log("[ClientConnection] Processing CRYPTO_PARAMETERS from server");
+        console.log(
+          "[ClientConnection] Processing CRYPTO_PARAMETERS from server",
+        );
         handleCryptoParameters(rawPacket);
         return;
       }
