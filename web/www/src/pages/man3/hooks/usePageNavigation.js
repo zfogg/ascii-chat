@@ -168,7 +168,7 @@ export function usePageNavigation(
       // Find the snippet element in the left panel and scroll it into view
       setTimeout(() => {
         // Create unique ID: page-name + snippet-index
-        const snippetId = `${selectedPageName}-${targetSnippetIndex}`;
+        const snippetId = `${String(selectedPageName)}-${String(targetSnippetIndex)}`;
         const targetElement = document.querySelector(
           `[data-snippet-id="${snippetId}"]`,
         );
@@ -283,11 +283,11 @@ export function usePageNavigation(
           if (trimmed === String(targetLineNumber)) {
             potentialMatches.push({ node, priority: 1, text }); // Push to preserve order
           } // Priority 2: Line number followed by whitespace only
-          else if (new RegExp(`^${targetLineNumber}\\s*$`).test(trimmed)) {
+          else if (new RegExp(`^${String(targetLineNumber)}\\s*$`).test(trimmed)) {
             potentialMatches.push({ node, priority: 2, text });
           } // Priority 3: Line number in mixed content (fallback)
           else if (
-            new RegExp(`(^|\\D)${targetLineNumber}(?:\\D|$)`).test(text)
+            new RegExp(`(^|\\D)${String(targetLineNumber)}(?:\\D|$)`).test(text)
           ) {
             potentialMatches.push({ node, priority: 3, text });
           }

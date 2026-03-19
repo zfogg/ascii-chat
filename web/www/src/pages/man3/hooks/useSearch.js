@@ -102,13 +102,13 @@ export function useSearch(manPages) {
     }
 
     if (!searchQuery.trim()) {
-      performSearch("");
+      void performSearch("");
       return;
     }
 
     setSearching(true);
     searchTimeoutRef.current = setTimeout(() => {
-      performSearch(searchQuery);
+      void performSearch(searchQuery);
     }, 500);
 
     return () => {

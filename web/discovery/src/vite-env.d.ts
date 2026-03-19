@@ -3,3 +3,11 @@
 declare const __COMMIT_SHA__: string;
 declare const __SSH_PUBLIC_KEY__: string;
 declare const __GPG_PUBLIC_KEY__: string;
+
+interface ImportMetaEnv {
+  readonly VITE_DISCOVERY_API_BASE?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
