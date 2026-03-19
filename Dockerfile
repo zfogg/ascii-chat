@@ -17,17 +17,14 @@ COPY scripts/install-deps.sh /tmp/install-deps.sh
 COPY CMakeLists.txt Makefile /build/
 COPY cmake/ /build/cmake/
 
-# Set up locale and minimal prerequisites with package cache mount
-RUN --mount=type=cache,target=/var/cache/apt \
-    --mount=type=cache,target=/var/lib/apt \
-    apt-get update && \
+# Set up locale and minimal prerequisites
+RUN apt-get update && \
     apt-get install -y --no-install-recommends locales curl wget git gpg ca-certificates lsb-release software-properties-common && \
     localedef -i en_US -f UTF-8 en_US.UTF-8
 
-# Run install-deps.sh with package cache
-RUN --mount=type=cache,target=/var/cache/apt \
-    --mount=type=cache,target=/var/lib/apt \
-    chmod +x /tmp/install-deps.sh && /tmp/install-deps.sh
+# Run install-deps.sh
+RUN chmod +x /tmp/install-deps.sh && /tmp/install-deps.sh && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /var/tmp/*
 
 # Install yyjson via Homebrew with cache mount
 RUN useradd -m -s /bin/bash linuxbrew && \
@@ -50,18 +47,12 @@ ENV CC=clang \
 # Copy remaining source code (changes here only invalidate build step cache)
 COPY . /build/
 
-# Build ascii-chat in Release mode with multiple cache mounts
-# Split into separate build and install steps for better caching
-RUN --mount=type=cache,target=/build/build \
-    --mount=type=cache,target=/build/.deps-cache \
-    --mount=type=cache,target=/build/deps \
-    rm -f /build/build/CMakeCache.txt /build/build/build.ninja && \
+# Build ascii-chat
+RUN rm -f /build/build/CMakeCache.txt /build/build/build.ninja && \
     make CMAKE_BUILD_TYPE=Debug EXTRA_CMAKE_ARGS="-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=0.3.0"
 
 # Install to /usr/local
-RUN --mount=type=cache,target=/build/build \
-    --mount=type=cache,target=/build/.deps-cache \
-    make install CMAKE_BUILD_TYPE=Debug CMAKE_INSTALL_PREFIX=/usr/local
+RUN make install CMAKE_BUILD_TYPE=Debug CMAKE_INSTALL_PREFIX=/usr/local
 
 # ============================================================================
 # Stage 2: Runtime
