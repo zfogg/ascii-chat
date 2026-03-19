@@ -1,5 +1,6 @@
 # Multi-stage Dockerfile for ascii-chat production builds
 # Supports multi-arch: linux/amd64, linux/arm64
+# Build with: DOCKER_BUILDKIT=1 docker build . -t zfogg/ascii-chat
 
 # ============================================================================
 # Stage 1: Builder
@@ -11,21 +12,24 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /build
 
-# Copy source code
-COPY . /build/
-COPY ./scripts/install-deps.sh /tmp/install-deps.sh
+# Copy only deps-related files first (these change rarely)
+COPY scripts/install-deps.sh /tmp/install-deps.sh
+COPY CMakeLists.txt Makefile /build/
+COPY cmake/ /build/cmake/
 
-# Set up locale and minimal prerequisites
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && \
+# Set up locale and minimal prerequisites with package cache mount
+RUN --mount=type=cache,target=/var/cache/apt \
+    --mount=type=cache,target=/var/lib/apt \
+    apt-get update && \
     apt-get install -y --no-install-recommends locales curl wget git gpg ca-certificates lsb-release software-properties-common && \
-    localedef -i en_US -f UTF-8 en_US.UTF-8 && \
-    rm -rf /var/lib/apt/lists/*
+    localedef -i en_US -f UTF-8 en_US.UTF-8
 
-# Run the install-deps.sh script (handles platform-specific dependencies)
-RUN chmod +x /tmp/install-deps.sh && /tmp/install-deps.sh
+# Run install-deps.sh with package cache
+RUN --mount=type=cache,target=/var/cache/apt \
+    --mount=type=cache,target=/var/lib/apt \
+    chmod +x /tmp/install-deps.sh && /tmp/install-deps.sh
 
-# Install yyjson via Homebrew
+# Install yyjson via Homebrew with cache mount
 RUN useradd -m -s /bin/bash linuxbrew && \
     echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >>/etc/sudoers
 
@@ -43,9 +47,21 @@ ENV CC=clang \
     CXX=clang++ \
     CMAKE_GENERATOR=Ninja
 
-# Build ascii-chat in Release mode and install to /usr/local
-# Disable defer tool and analyzers (to speed up emulated builds)
-RUN make install CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX=/usr/local EXTRA_CMAKE_ARGS="-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=0.3.0"
+# Copy remaining source code (changes here only invalidate build step cache)
+COPY . /build/
+
+# Build ascii-chat in Release mode with multiple cache mounts
+# Split into separate build and install steps for better caching
+RUN --mount=type=cache,target=/build/build \
+    --mount=type=cache,target=/build/.deps-cache \
+    --mount=type=cache,target=/build/.git/modules \
+    --mount=type=cache,target=/build/deps \
+    make CMAKE_BUILD_TYPE=Debug EXTRA_CMAKE_ARGS="-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=0.3.0"
+
+# Install to /usr/local
+RUN --mount=type=cache,target=/build/build \
+    --mount=type=cache,target=/build/.deps-cache \
+    make install CMAKE_BUILD_TYPE=Debug CMAKE_INSTALL_PREFIX=/usr/local
 
 # ============================================================================
 # Stage 2: Runtime
