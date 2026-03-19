@@ -1,10 +1,10 @@
 import { Button, Heading } from "@ascii-chat/shared/components";
-import { WebClientHead } from "../components/WebClientHead";
+import { AsciiChatWebHead } from "../components/AsciiChatWebHead";
 
 export function HomePage() {
   return (
     <div className="flex-1 flex items-center justify-center pt-8">
-      <WebClientHead title="ascii-chat Web Client - Video chat in your terminal/browser" />
+      <AsciiChatWebHead title="ascii-chat Web Client - Video chat in your terminal/browser" />
       <div className="text-center max-w-2xl px-8">
         <Heading
           level={1}

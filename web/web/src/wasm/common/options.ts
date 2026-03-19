@@ -1,6 +1,6 @@
 /**
- * @file settings.ts
- * @brief Unified WASM settings API for mirror and client modes
+ * @file options.ts
+ * @brief Unified WASM options API for mirror and client modes
  *
  * Provides a single, mode-agnostic API for all WASM option accessors.
  * Both mirror.ts and client.ts initialize this module with their own
@@ -9,7 +9,7 @@
  * This eliminates code duplication between mirror and client implementations.
  */
 
-import type { OptionAccessor } from "./common/optionsWrapper";
+import type { OptionAccessor } from "./optionsWrapper";
 
 // Enums matching libasciichat definitions
 export enum RenderMode {
@@ -54,19 +54,19 @@ export type Palette =
 let options: OptionAccessor | null = null;
 
 /**
- * Initialize the settings module with an options accessor
+ * Initialize the options module with an options accessor
  * Called by mirror.ts or client.ts after WASM module initialization
  * @internal
  */
-export function initializeSettings(accessor: OptionAccessor): void {
+export function initializeOptions(accessor: OptionAccessor): void {
   options = accessor;
 }
 
 /**
- * Cleanup settings module
+ * Cleanup options module
  * @internal
  */
-export function cleanupSettings(): void {
+export function cleanupOptions(): void {
   options = null;
 }
 
@@ -75,22 +75,22 @@ export function cleanupSettings(): void {
 // ============================================================================
 
 export function setWidth(width: number): void {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   options.setInt("width", width);
 }
 
 export function getWidth(): number {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   return options.getInt("width");
 }
 
 export function setHeight(height: number): void {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   options.setInt("height", height);
 }
 
 export function getHeight(): number {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   return options.getInt("height");
 }
 
@@ -111,12 +111,12 @@ export function getDimensions(): { width: number; height: number } {
 // ============================================================================
 
 export function setColorMode(mode: ColorMode): void {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   options.setInt("color_mode", mode);
 }
 
 export function getColorMode(): ColorMode {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   return options.getInt("color_mode");
 }
 
@@ -125,12 +125,12 @@ export function getColorMode(): ColorMode {
 // ============================================================================
 
 export function setColorFilter(filter: ColorFilter): void {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   options.setInt("color_filter", filter);
 }
 
 export function getColorFilter(): ColorFilter {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   return options.getInt("color_filter");
 }
 
@@ -139,12 +139,12 @@ export function getColorFilter(): ColorFilter {
 // ============================================================================
 
 export function setRenderMode(mode: RenderMode): void {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   options.setInt("render_mode", mode);
 }
 
 export function getRenderMode(): RenderMode {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   return options.getInt("render_mode");
 }
 
@@ -153,12 +153,12 @@ export function getRenderMode(): RenderMode {
 // ============================================================================
 
 export function setPalette(palette: Palette): void {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   options.setString("palette", palette);
 }
 
 export function getPalette(): Palette {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   const paletteNum = options.getInt("palette");
   const paletteMap: Record<number, Palette> = {
     0: "standard",
@@ -172,12 +172,12 @@ export function getPalette(): Palette {
 }
 
 export function setPaletteChars(chars: string): void {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   options.setString("palette_chars", chars);
 }
 
 export function getPaletteChars(): string {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   return options.getString("palette_chars");
 }
 
@@ -186,12 +186,12 @@ export function getPaletteChars(): string {
 // ============================================================================
 
 export function setMatrixRain(enabled: boolean): void {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   options.setBool("matrix_rain", enabled);
 }
 
 export function getMatrixRain(): boolean {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   return options.getBool("matrix_rain");
 }
 
@@ -200,12 +200,12 @@ export function getMatrixRain(): boolean {
 // ============================================================================
 
 export function setFlipX(enabled: boolean): void {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   options.setBool("flip_x", enabled);
 }
 
 export function getFlipX(): boolean {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   return options.getBool("flip_x");
 }
 
@@ -214,11 +214,11 @@ export function getFlipX(): boolean {
 // ============================================================================
 
 export function setTargetFps(fps: number): void {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   options.setInt("target_fps", fps);
 }
 
 export function getTargetFps(): number {
-  if (!options) throw new Error("Settings not initialized");
+  if (!options) throw new Error("Options not initialized");
   return options.getInt("target_fps");
 }

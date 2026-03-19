@@ -3,7 +3,7 @@
 
 import type { Palette } from "../components/Settings";
 import { createOptionAccessor } from "./common/optionsWrapper";
-import { initializeSettings, cleanupSettings } from "./settings";
+import { initializeOptions, cleanupOptions } from "./common/options";
 
 // Type for WASM exports exposed to window.asciiChatWasm
 interface AsciiChatWasmExports {
@@ -359,9 +359,9 @@ export async function initClientWasm(
     }
     console.log("[Client WASM] Initialization complete!");
 
-    // Initialize shared settings module with option accessor
+    // Initialize shared options module with option accessor
     const optionsAccessor = createOptionAccessor(wasmModule);
-    initializeSettings(optionsAccessor);
+    initializeOptions(optionsAccessor);
 
     // Expose WASM module to window for JavaScript access (e.g., tooltips)
     const globalWindow = globalThis as typeof globalThis & {
@@ -385,7 +385,7 @@ export function cleanupClientWasm(): void {
     console.error("[cleanupClientWasm] Calling _client_cleanup()...");
     wasmModule._client_cleanup();
     wasmModule = null;
-    cleanupSettings();
+    cleanupOptions();
     console.error("[cleanupClientWasm] Cleanup complete, module set to null");
   } else {
     console.error("[cleanupClientWasm] No module to cleanup");

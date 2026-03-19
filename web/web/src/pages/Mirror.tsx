@@ -22,13 +22,13 @@ import {
   getFlipX,
   setTargetFps,
   getTargetFps,
-} from "../wasm/settings";
+} from "../wasm/common/options";
 import { SITES } from "@ascii-chat/shared/utils";
 import { Settings, SettingsConfig } from "../components/Settings";
 import { AsciiRenderer } from "../components/AsciiRenderer";
 import { PageControlBar } from "../components/PageControlBar";
 import { PageLayout } from "../components/PageLayout";
-import { WebClientHead } from "../components/WebClientHead";
+import { AsciiChatWebHead } from "../components/AsciiChatWebHead";
 import { AsciiChatMode } from "../utils/optionsHelp";
 import {
   mapColorModeToWasm,
@@ -320,7 +320,7 @@ export function MirrorPage() {
 
   return (
     <>
-      <WebClientHead
+      <AsciiChatWebHead
         title="Mirror Mode - ascii-chat Web Client"
         description="Test your webcam with real-time ASCII art rendering. See yourself in terminal-style graphics."
         url={`${SITES.WEB}/mirror`}

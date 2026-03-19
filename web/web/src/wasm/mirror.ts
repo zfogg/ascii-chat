@@ -3,13 +3,13 @@
 
 import { createOptionAccessor, type WasmModule } from "./common/optionsWrapper";
 import {
-  initializeSettings,
-  cleanupSettings,
+  initializeOptions,
+  cleanupOptions,
   RenderMode,
   ColorMode,
   ColorFilter,
   type Palette,
-} from "./settings";
+} from "./common/options";
 
 // Type for WASM exports exposed to window.asciiChatWasm
 interface AsciiChatWasmExports {
@@ -40,7 +40,7 @@ interface MirrorModule extends WasmModule {
   _get_help_text: MirrorModuleExports["_get_help_text"];
 }
 
-// Re-export enums and types from shared settings module
+// Re-export enums and types from shared options module
 export { RenderMode, ColorMode, ColorFilter };
 export type { Palette };
 
@@ -168,9 +168,9 @@ export async function initMirrorWasm(
     }
     console.log("[WASM] Initialization complete!");
 
-    // Initialize shared settings module with option accessor
+    // Initialize shared options module with option accessor
     const optionsAccessor = createOptionAccessor(wasmModule);
-    initializeSettings(optionsAccessor);
+    initializeOptions(optionsAccessor);
 
     // Expose WASM module to window for JavaScript access (e.g., tooltips)
     const globalWindow = globalThis as typeof globalThis & {
@@ -192,7 +192,7 @@ export function cleanupMirrorWasm(): void {
   if (wasmModule) {
     wasmModule._mirror_cleanup();
     wasmModule = null;
-    cleanupSettings();
+    cleanupOptions();
   }
 }
 

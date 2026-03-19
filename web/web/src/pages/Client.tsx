@@ -42,7 +42,7 @@ import {
   setPalette,
   setPaletteChars,
   setTargetFps,
-} from "../wasm/settings";
+} from "../wasm/common/options";
 import { ClientConnection } from "../network/ClientConnection";
 import { parseAsciiFrame } from "../network/AsciiFrameParser";
 import {
@@ -51,7 +51,7 @@ import {
 } from "../components/AsciiRenderer";
 import { ConnectionPanelModal } from "../components/ConnectionPanelModal";
 import { Settings, SettingsConfig } from "../components/Settings";
-import { WebClientHead } from "../components/WebClientHead";
+import { AsciiChatWebHead } from "../components/AsciiChatWebHead";
 import { AsciiChatMode } from "../utils/optionsHelp";
 import {
   mapColorModeToClient,
@@ -1464,7 +1464,7 @@ export function ClientPage() {
 
   return (
     <>
-      <WebClientHead
+      <AsciiChatWebHead
         title="Client - ascii-chat Web Client"
         description="Connect to an ascii-chat server. Real-time encrypted video chat rendered as ASCII art in your browser."
         url={`${SITES.WEB}/client`}
