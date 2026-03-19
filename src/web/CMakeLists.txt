@@ -372,7 +372,7 @@ add_executable(mirror-web
 target_compile_definitions(mirror-web PRIVATE EMSCRIPTEN_BUILD=1)
 
 # Enable Emscripten's pthread support and SIMD for video processing
-target_compile_options(mirror-web PRIVATE -pthread -msimd128 -mavx2)
+target_compile_options(mirror-web PRIVATE -pthread -msimd128)
 target_link_options(mirror-web PRIVATE -pthread -Wno-error=pthreads-mem-growth)
 
 # Link dependencies (built for WASM via FetchContent)

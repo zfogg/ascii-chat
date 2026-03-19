@@ -127,21 +127,21 @@ export function MirrorPage() {
   // Render loop that captures and converts frames to ASCII
   useEffect(() => {
     if (!isWebcamRunning) return;
+    // CRITICAL: Skip rendering until terminal dimensions are initialized
+    // Without this, WASM tries to render with dst_width=0/dst_height=0, causing memory access out of bounds
+    if (terminalDimensions.cols <= 0 || terminalDimensions.rows <= 0) {
+      if (debugCountRef.current % 300 === 0) {
+        console.log(
+          `[Mirror] Waiting for terminal dimensions: ${terminalDimensions.cols}x${terminalDimensions.rows}`,
+        );
+      }
+      return;
+    }
 
     const isTestMode = new URLSearchParams(window.location.search).has("test");
 
     const renderFrame = () => {
       if (!isWasmReady() || !rendererRef.current) return;
-
-      // Skip rendering if terminal dimensions aren't initialized yet
-      if (terminalDimensions.cols <= 0 || terminalDimensions.rows <= 0) {
-        if (debugCountRef.current % 300 === 0) {
-          console.log(
-            `[Mirror] Skipping frame - terminal dimensions not ready: ${terminalDimensions.cols}x${terminalDimensions.rows}`,
-          );
-        }
-        return;
-      }
 
       const now = performance.now();
       if (firstFrameTimeRef.current === null) {
