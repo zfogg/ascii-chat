@@ -29,6 +29,31 @@ asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx,
 
   int result;
 
+  // Step 1: Send CRYPTO_PARAMETERS packet first (algorithm negotiation)
+  // This tells the client what key sizes and algorithms we're using
+  log_debug("[HANDSHAKE_START] STEP 1: Sending CRYPTO_PARAMETERS to client");
+  crypto_parameters_packet_t params;
+  memset(&params, 0, sizeof(params));
+
+  params.selected_kex = KEX_ALGO_X25519;
+  params.selected_auth = AUTH_ALGO_ED25519;
+  params.selected_cipher = CIPHER_ALGO_XSALSA20_POLY1305;
+  params.verification_enabled = ctx->require_client_auth ? 1 : 0;
+  params.kex_public_key_size = htons(ctx->crypto_ctx.public_key_size);
+  params.auth_public_key_size = htons(ED25519_PUBLIC_KEY_SIZE);
+  params.signature_size = htons(ED25519_SIGNATURE_SIZE);
+  params.shared_secret_size = htons(CRYPTO_SHARED_KEY_SIZE);
+  params.nonce_size = XSALSA20_NONCE_SIZE;
+  params.mac_size = POLY1305_MAC_SIZE;
+  params.hmac_size = 32;  // SHA256 output size
+
+  result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_PARAMETERS, (uint8_t *)&params, sizeof(params), 0);
+  if (result != ASCIICHAT_OK) {
+    log_error("[HANDSHAKE_START] FAILED: Could not send CRYPTO_PARAMETERS packet");
+    return SET_ERRNO(ERROR_NETWORK, "Failed to send CRYPTO_PARAMETERS packet");
+  }
+  log_debug("[HANDSHAKE_START] CRYPTO_PARAMETERS sent successfully");
+
   // Calculate packet size based on negotiated crypto parameters
   size_t expected_packet_size =
       ctx->crypto_ctx.public_key_size + ctx->crypto_ctx.auth_public_key_size + ctx->crypto_ctx.signature_size;

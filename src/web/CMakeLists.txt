@@ -161,7 +161,6 @@ set(PLATFORM_SRC
     ${LIB_ROOT}/platform/wasm/time.c
     ${LIB_ROOT}/platform/wasm/string.c
     ${LIB_ROOT}/platform/wasm/lifecycle.c
-    ${LIB_ROOT}/platform/wasm/backtrace.c
     ${LIB_ROOT}/platform/wasm/log.c
     ${LIB_ROOT}/platform/wasm/stubs/util.c
     ${LIB_ROOT}/platform/wasm/stubs/actions.c
@@ -169,9 +168,10 @@ set(PLATFORM_SRC
     ${LIB_ROOT}/platform/wasm/stubs/manpage.c
     ${LIB_ROOT}/platform/wasm/stubs/filesystem.c
     ${LIB_ROOT}/platform/wasm/stubs/video.c
-    ${LIB_ROOT}/platform/wasm/stubs/log.c
     ${LIB_ROOT}/platform/wasm/stubs/mode_defaults.c
     ${LIB_ROOT}/platform/wasm/stubs/crypto.c
+    ${LIB_ROOT}/platform/wasm/stubs/backtrace.c
+    ${LIB_ROOT}/platform/wasm/stubs/atomic.c
 )
 
 # Third-party dependencies (source-included)
@@ -282,9 +282,8 @@ set(LIB_SRC_COMMON
     # ${LIB_ROOT}/log/grep.c - EXCLUDED for WASM
     # ${LIB_ROOT}/log/interactive_grep.c - EXCLUDED: not needed for web client
 
-    # Debug/memory tracking
+    # Debug/memory tracking (sync/mutex/atomic debugging excluded for WASM)
     ${LIB_ROOT}/debug/memory.c
-    ${LIB_ROOT}/debug/named.c
     ${LIB_ROOT}/atomic.c
 
     # Terminal abstraction (using WASM-specific version from PLATFORM_SRC)
@@ -323,6 +322,7 @@ set(COMMON_WEB_SRC
 
 # Compile shared lib sources once for both WASM targets (OBJECT library)
 add_library(wasm-common OBJECT
+    # Debug features are not available in WASM environment
     ${COMMON_WEB_SRC}
     ${PLATFORM_SRC}
     ${LIB_SRC_COMMON}
@@ -331,7 +331,9 @@ add_library(wasm-common OBJECT
 )
 
 # Apply EMSCRIPTEN_BUILD only to WASM targets (not globally)
-target_compile_definitions(wasm-common PRIVATE EMSCRIPTEN_BUILD=1)
+target_compile_definitions(wasm-common PRIVATE
+    EMSCRIPTEN_BUILD=1
+)
 
 # Enable Emscripten's pthread support
 target_compile_options(wasm-common PRIVATE -pthread)
@@ -341,6 +343,12 @@ target_link_options(wasm-common PRIVATE -pthread -Wno-error=pthreads-mem-growth)
 target_link_libraries(wasm-common PRIVATE
     sodium
     pcre2-8
+)
+
+# Add include directories for wasm-common to find sodium and pcre2 headers
+target_include_directories(wasm-common PRIVATE
+    ${CMAKE_BINARY_DIR}/_deps/sodium-src/libsodium/src/libsodium/include
+    ${CMAKE_BINARY_DIR}/_deps/pcre2-src
 )
 
 # Apply sanitizers
@@ -548,8 +556,7 @@ if(BUILD_WEB)
 
     add_custom_command(TARGET client-web POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../../web/web/src/wasm/dist
-        COMMAND ${CMAKE_COMMAND} -E copy
-            ${CMAKE_CURRENT_BINARY_DIR}/client.js
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${CMAKE_CURRENT_BINARY_DIR}/client.wasm
             ${CMAKE_SOURCE_DIR}/../../../web/web/src/wasm/dist/
         COMMENT "Copying client WASM files to web/src/wasm/dist/"

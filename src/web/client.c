@@ -410,6 +410,73 @@ int client_handle_key_exchange_init(const uint8_t *packet, size_t packet_len) {
 }
 
 /**
+ * Handle CRYPTO_PARAMETERS packet from server
+ * Sets up the key size negotiation before KEY_EXCHANGE_INIT
+ * @param packet Raw packet data including header
+ * @param packet_len Total packet length
+ * @return 0 on success, -1 on error
+ */
+EMSCRIPTEN_KEEPALIVE
+int client_handle_crypto_parameters(const uint8_t *packet, size_t packet_len) {
+  WASM_LOG("=== client_handle_crypto_parameters CALLED ===");
+  WASM_LOG_INT("  packet_len", (int)packet_len);
+  WASM_LOG_INT("  g_crypto_handshake_ctx.state BEFORE", g_crypto_handshake_ctx.state);
+
+  if (!packet || packet_len == 0) {
+    WASM_ERROR("Invalid packet data");
+    return -1;
+  }
+
+  // Extract packet type and payload
+  if (packet_len < sizeof(packet_header_t)) {
+    WASM_ERROR("Packet too small for header");
+    return -1;
+  }
+
+  const packet_header_t *header = (const packet_header_t *)packet;
+  packet_type_t packet_type = ntohs(header->type);
+  const uint8_t *payload_src = packet + sizeof(packet_header_t);
+  size_t payload_len = packet_len - sizeof(packet_header_t);
+
+  WASM_LOG_INT("  packet_type", packet_type);
+  WASM_LOG_INT("  payload_len", (int)payload_len);
+
+  // Allocate payload copy from buffer pool
+  uint8_t *payload = NULL;
+  if (payload_len > 0) {
+    payload = buffer_pool_alloc(NULL, payload_len);
+    if (!payload) {
+      WASM_ERROR("Failed to allocate payload buffer");
+      g_connection_state = CONNECTION_STATE_ERROR;
+      return -1;
+    }
+    memcpy(payload, payload_src, payload_len);
+  }
+
+  // Process crypto parameters
+  asciichat_error_t result = crypto_handshake_set_parameters(&g_crypto_handshake_ctx,
+                                                              (const crypto_parameters_packet_t *)payload);
+
+  WASM_LOG_INT("  result", result);
+  WASM_LOG_INT("  signature_size AFTER", g_crypto_handshake_ctx.crypto_ctx.signature_size);
+  WASM_LOG_INT("  auth_public_key_size AFTER", g_crypto_handshake_ctx.crypto_ctx.auth_public_key_size);
+
+  // Free payload
+  if (payload) {
+    buffer_pool_free(NULL, payload, payload_len);
+  }
+
+  if (result != ASCIICHAT_OK) {
+    WASM_ERROR("Failed to process CRYPTO_PARAMETERS");
+    g_connection_state = CONNECTION_STATE_ERROR;
+    return -1;
+  }
+
+  WASM_LOG("=== CRYPTO_PARAMETERS processed successfully ===");
+  return 0;
+}
+
+/**
  * Handle CRYPTO_AUTH_CHALLENGE packet from server
  * @param packet Raw packet data including header
  * @param packet_len Total packet length

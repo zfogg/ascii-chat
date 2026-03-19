@@ -18,6 +18,7 @@ interface ClientModuleExports {
   _client_generate_keypair(): number;
   _client_set_server_address(server_host: number, server_port: number): number;
   _client_get_public_key_hex(): number;
+  _client_handle_crypto_parameters(packet_ptr: number, packet_len: number): number;
   _client_handle_key_exchange_init(
     packet_ptr: number,
     packet_len: number,
@@ -92,6 +93,7 @@ interface ClientModule {
   _client_generate_keypair: ClientModuleExports["_client_generate_keypair"];
   _client_set_server_address: ClientModuleExports["_client_set_server_address"];
   _client_get_public_key_hex: ClientModuleExports["_client_get_public_key_hex"];
+  _client_handle_crypto_parameters: ClientModuleExports["_client_handle_crypto_parameters"];
   _client_handle_key_exchange_init: ClientModuleExports["_client_handle_key_exchange_init"];
   _client_handle_auth_challenge: ClientModuleExports["_client_handle_auth_challenge"];
   _client_handle_handshake_complete: ClientModuleExports["_client_handle_handshake_complete"];
@@ -439,6 +441,41 @@ export function setServerAddress(serverHost: string, serverPort: number): void {
     }
   } finally {
     wasmModule._free(hostPtr);
+  }
+}
+
+/**
+ * Handle CRYPTO_PARAMETERS packet from server
+ * Negotiates key sizes before KEY_EXCHANGE_INIT
+ */
+export function handleCryptoParameters(rawPacket: Uint8Array): void {
+  if (!wasmModule) {
+    throw new Error("WASM module not initialized");
+  }
+
+  console.log(
+    `[WASM] handleCryptoParameters: Starting, state=${getConnectionState()}, packet_len=${rawPacket.length}`,
+  );
+
+  // Allocate memory for packet
+  const packetPtr = wasmModule._malloc(rawPacket.length);
+  try {
+    // Copy packet to WASM memory
+    wasmModule.HEAPU8.set(rawPacket, packetPtr);
+
+    // Call WASM handler
+    const result = wasmModule._client_handle_crypto_parameters(
+      packetPtr,
+      rawPacket.length,
+    );
+    console.log(
+      `[WASM] handleCryptoParameters: Result=${result}, state after=${getConnectionState()}`,
+    );
+    if (result !== 0) {
+      throw new Error("Failed to handle CRYPTO_PARAMETERS");
+    }
+  } finally {
+    wasmModule._free(packetPtr);
   }
 }
 

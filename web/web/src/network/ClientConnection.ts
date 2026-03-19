@@ -9,6 +9,7 @@ import {
   cleanupClientWasm,
   generateKeypair,
   setServerAddress,
+  handleCryptoParameters,
   handleKeyExchangeInit,
   handleAuthChallenge,
   handleHandshakeComplete,
@@ -292,22 +293,30 @@ export class ClientConnection {
       //   );
       // }
 
-      // console.log(`[ClientConnection] ========== PACKET RECEIVED ==========`);
-      // console.log(`[ClientConnection] Type: ${parsed.type} (${name})`);
-      // console.log(
-      //   `[ClientConnection] Raw packet size: ${rawPacket.length} bytes`,
-      // );
-      // console.log(`[ClientConnection] Payload size: ${parsed.length} bytes`);
-      // console.log(`[ClientConnection] Client ID: ${parsed.client_id}`);
-      // console.error(
-      //   `[ClientConnection] <<< RECV packet type=${parsed.type} (${name}) len=${rawPacket.length} payload_len=${parsed.length} client_id=${parsed.client_id}`,
-      // );
+      const name = packetTypeName(parsed.type);
+      console.log(`[ClientConnection] ========== PACKET RECEIVED ==========`);
+      console.log(`[ClientConnection] Type: ${parsed.type} (${name})`);
+      console.log(
+        `[ClientConnection] Raw packet size: ${rawPacket.length} bytes`,
+      );
+      console.log(`[ClientConnection] Payload size: ${parsed.length} bytes`);
+      console.log(`[ClientConnection] Client ID: ${parsed.client_id}`);
+      console.error(
+        `[ClientConnection] <<< RECV packet type=${parsed.type} (${name}) len=${rawPacket.length} payload_len=${parsed.length} client_id=${parsed.client_id}`,
+      );
 
       // Extract payload (skip header)
       const HEADER_SIZE = 22; // sizeof(packet_header_t): magic(8) + type(2) + length(4) + crc32(4) + client_id(4)
       const payload = rawPacket.slice(HEADER_SIZE);
 
       // Handle handshake packets using WASM callbacks
+      if (parsed.type === PacketType.CRYPTO_PARAMETERS) {
+        // Server sends crypto parameters first to negotiate key sizes
+        console.log("[ClientConnection] Processing CRYPTO_PARAMETERS from server");
+        handleCryptoParameters(rawPacket);
+        return;
+      }
+
       if (parsed.type === PacketType.CRYPTO_KEY_EXCHANGE_INIT) {
         // console.error(
         //   `[ClientConnection] >>> Dispatching ${name} to WASM handleKeyExchangeInit (raw ${rawPacket.length} bytes)`,

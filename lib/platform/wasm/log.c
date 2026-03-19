@@ -94,6 +94,3 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
 
 void log_init_colors(void) {
 }
-
-void debug_sync_print_state(void) {
-}

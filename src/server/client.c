@@ -3345,7 +3345,7 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
       size_t total_size = sizeof(uint32_t) * 2 + rgb_buf_size;
       size_t buffer_capacity = client->incoming_video_buffer->allocated_buffer_size;
 
-      if (total_size < buffer_capacity) {
+      if (total_size <= buffer_capacity) {
         uint32_t width_net = HOST_TO_NET_U32(width);
         uint32_t height_net = HOST_TO_NET_U32(height);
 
@@ -3361,6 +3361,8 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
 
         video_frame_commit(client->incoming_video_buffer);
         log_info("H265_DECODE: Frame committed: seq=%u, %ux%u", vf->sequence_number, width, height);
+      } else {
+        log_error("H265_DECODE: Frame too large - %zu > %zu bytes, skipping", total_size, buffer_capacity);
       }
     }
   }

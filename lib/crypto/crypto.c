@@ -122,8 +122,8 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
   ctx->private_key_size = X25519_KEY_SIZE;
   ctx->shared_key_size = X25519_KEY_SIZE;
   ctx->salt_size = ARGON2ID_SALT_SIZE;
-  ctx->signature_size = ED25519_SIGNATURE_SIZE;
-  ctx->auth_public_key_size = ED25519_PUBLIC_KEY_SIZE;
+  // signature_size and auth_public_key_size remain 0 until set by CRYPTO_PARAMETERS
+  // (must be 0 for unauthenticated format detection in crypto_handshake_client_key_exchange)
 
   // Generate unique session ID to prevent replay attacks across connections
   randombytes_buf(ctx->session_id, sizeof(ctx->session_id));
