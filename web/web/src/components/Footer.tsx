@@ -29,7 +29,7 @@ export function Footer() {
         </>
       }
       authorLinkColor="text-terminal-cyan hover:text-terminal-brightCyan"
-      className="border-t border-terminal-8 pt-6 pb-6 md:pt-8 md:pb-8 text-terminal-8 mt-auto mb-8"
+      className="border-t border-terminal-8 pt-6 md:pt-8 text-terminal-8 mt-auto mb-8"
     />
   );
 }
