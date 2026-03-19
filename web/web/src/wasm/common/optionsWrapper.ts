@@ -82,7 +82,7 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
      */
     setInt(name: string, value: number): void {
       const fn = (module as unknown as Record<string, unknown>)[`_set_${name}`];
-      console.log(
+      console.debug(
         `[OptionAccessor] setInt: name=${name}, value=${value}, fn exists=${typeof fn === "function"}`,
       );
       if (typeof fn !== "function") {
@@ -94,7 +94,7 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
         );
       }
       const result = (fn as (v: number) => number).call(module, value);
-      console.log(
+      console.debug(
         `[OptionAccessor] setInt result: name=${name}, result=${result}`,
       );
       if (result !== 0) {
@@ -129,7 +129,7 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
      */
     setBool(name: string, value: boolean): void {
       const fn = (module as unknown as Record<string, unknown>)[`_set_${name}`];
-      console.log(
+      console.debug(
         `[OptionAccessor] setBool: name=${name}, value=${value}, fn exists=${typeof fn === "function"}`,
       );
       if (typeof fn !== "function") {
@@ -141,7 +141,7 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
         );
       }
       const result = (fn as (v: number) => number).call(module, value ? 1 : 0);
-      console.log(
+      console.debug(
         `[OptionAccessor] setBool result: name=${name}, result=${result}`,
       );
       if (result !== 0) {

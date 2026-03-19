@@ -402,6 +402,7 @@ export async function generateKeypair(): Promise<string> {
     );
   }
 
+  console.log("[Client WASM] Generating keypair...");
   const result = wasmModule._client_generate_keypair();
   if (result !== 0) {
     throw new Error("Failed to generate keypair");
@@ -416,6 +417,9 @@ export async function generateKeypair(): Promise<string> {
   const publicKeyHex = wasmModule.UTF8ToString(pubkeyPtr);
   wasmModule._client_free_string(pubkeyPtr);
 
+  console.log(
+    `[Client WASM] Keypair generated, pubkey=${publicKeyHex.substring(0, 16)}...`,
+  );
   return publicKeyHex;
 }
 
@@ -428,6 +432,10 @@ export function setServerAddress(serverHost: string, serverPort: number): void {
       "WASM module not initialized. Call initClientWasm() first.",
     );
   }
+
+  console.log(
+    `[Client WASM] Setting server address: ${serverHost}:${serverPort}`,
+  );
 
   // Allocate string for server host
   const hostLen = wasmModule.lengthBytesUTF8(serverHost) + 1;
@@ -590,6 +598,7 @@ export function registerSendPacketCallback(
     throw new Error("WASM module not initialized");
   }
 
+  console.log("[Client WASM] Registered sendPacketCallback");
   wasmModule.sendPacketCallback = callback;
 }
 
@@ -600,6 +609,10 @@ export function encryptPacket(plaintext: Uint8Array): Uint8Array {
   if (!wasmModule) {
     throw new Error("WASM module not initialized");
   }
+
+  console.debug(
+    `[Client WASM] encryptPacket: ${plaintext.length} bytes plaintext`,
+  );
 
   // Allocate buffers
   const ptPtr = wasmModule._malloc(plaintext.length);
@@ -638,6 +651,9 @@ export function encryptPacket(plaintext: Uint8Array): Uint8Array {
     const ciphertext = new Uint8Array(outLen);
     ciphertext.set(wasmModule.HEAPU8.subarray(ctPtr, ctPtr + outLen));
 
+    console.debug(
+      `[Client WASM] encryptPacket: ${plaintext.length} -> ${outLen} bytes`,
+    );
     return ciphertext;
   } finally {
     wasmModule._free(ptPtr);
@@ -653,6 +669,10 @@ export function decryptPacket(ciphertext: Uint8Array): Uint8Array {
   if (!wasmModule) {
     throw new Error("WASM module not initialized");
   }
+
+  console.debug(
+    `[Client WASM] decryptPacket: ${ciphertext.length} bytes ciphertext`,
+  );
 
   // Allocate buffers
   const ctPtr = wasmModule._malloc(ciphertext.length);
@@ -691,6 +711,9 @@ export function decryptPacket(ciphertext: Uint8Array): Uint8Array {
     const plaintext = new Uint8Array(outLen);
     plaintext.set(wasmModule.HEAPU8.subarray(ptPtr, ptPtr + outLen));
 
+    console.debug(
+      `[Client WASM] decryptPacket: ${ciphertext.length} -> ${outLen} bytes`,
+    );
     return plaintext;
   } finally {
     wasmModule._free(ctPtr);
@@ -727,7 +750,11 @@ export function parsePacket(rawPacket: Uint8Array): ParsedPacket {
     wasmModule._client_free_string(jsonPtr);
 
     // Parse JSON
-    return JSON.parse(jsonStr) as ParsedPacket;
+    const parsed = JSON.parse(jsonStr) as ParsedPacket;
+    console.debug(
+      `[Client WASM] parsePacket: type=${packetTypeName(parsed.type)}, len=${parsed.length}, client_id=${parsed.client_id}`,
+    );
+    return parsed;
   } finally {
     wasmModule._free(pktPtr);
   }
@@ -784,6 +811,9 @@ export function serializePacket(
     const packet = new Uint8Array(outLen);
     packet.set(wasmModule.HEAPU8.subarray(outputPtr, outputPtr + outLen));
 
+    console.debug(
+      `[Client WASM] serializePacket: type=${packetTypeName(packetType)}, payload=${payload.length}B, total=${outLen}B`,
+    );
     return packet;
   } finally {
     if (payloadPtr) wasmModule._free(payloadPtr);
