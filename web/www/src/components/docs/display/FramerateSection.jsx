@@ -14,8 +14,7 @@ export default function FramerateSection() {
         </Heading>
         <p className="docs-paragraph">
           Control the target framerate for rendering. Higher values give
-          smoother output but use more CPU and bandwidth. Default is 60
-          FPS.
+          smoother output but use more CPU and bandwidth. Default is 60 FPS.
         </p>
         <CodeBlock language="bash">
           {
@@ -23,10 +22,7 @@ export default function FramerateSection() {
           }
         </CodeBlock>
         <div className="card-standard accent-yellow mt-3">
-          <Heading
-            level={4}
-            className="text-yellow-300 font-semibold mb-2"
-          >
+          <Heading level={4} className="text-yellow-300 font-semibold mb-2">
             FPS Guidelines
           </Heading>
           <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
@@ -37,12 +33,10 @@ export default function FramerateSection() {
               <strong>30:</strong> Good balance of quality and performance
             </li>
             <li>
-              <strong>60:</strong> Default, smooth output for modern
-              terminals
+              <strong>60:</strong> Default, smooth output for modern terminals
             </li>
             <li>
-              <strong>144:</strong> Maximum, for high refresh-rate
-              terminals
+              <strong>144:</strong> Maximum, for high refresh-rate terminals
             </li>
           </ul>
         </div>
@@ -53,8 +47,8 @@ export default function FramerateSection() {
           FPS Counter Overlay
         </Heading>
         <p className="docs-paragraph">
-          Show a live FPS counter in the top-right corner of the display.
-          Press <code>-</code> during rendering to toggle.
+          Show a live FPS counter in the top-right corner of the display. Press{" "}
+          <code>-</code> during rendering to toggle.
         </p>
         <CodeBlock language="bash">
           {

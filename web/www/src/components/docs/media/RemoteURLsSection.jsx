@@ -14,8 +14,8 @@ export default function RemoteURLsSection() {
           HTTP/HTTPS Media Files
         </Heading>
         <p className="docs-paragraph">
-          Stream remote video files via HTTP/HTTPS. No local download
-          needed, streams directly from URL:
+          Stream remote video files via HTTP/HTTPS. No local download needed,
+          streams directly from URL:
         </p>
         <CodeBlock language="bash">
           {
@@ -29,8 +29,8 @@ export default function RemoteURLsSection() {
           YouTube Videos
         </Heading>
         <p className="docs-paragraph">
-          Stream YouTube videos directly to terminal as ASCII art
-          (requires yt-dlp):
+          Stream YouTube videos directly to terminal as ASCII art (requires
+          yt-dlp):
         </p>
         <CodeBlock language="bash">
           {

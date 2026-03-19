@@ -13,11 +13,10 @@ export default function ACDSDiscoverySection() {
           What is ACDS?
         </Heading>
         <p className="docs-paragraph">
-          ascii-chat Discovery Service (ACDS) is a rendezvous server that
-          helps clients find each other using memorable session strings.
-          ACDS attempts NAT traversal (UPnP, STUN, TURN) and provides
-          connection metadata. Crucially:{" "}
-          <strong>ACDS never sees media</strong>— only connection
+          ascii-chat Discovery Service (ACDS) is a rendezvous server that helps
+          clients find each other using memorable session strings. ACDS attempts
+          NAT traversal (UPnP, STUN, TURN) and provides connection metadata.
+          Crucially: <strong>ACDS never sees media</strong>— only connection
           information.
         </p>
       </div>
@@ -41,9 +40,8 @@ export default function ACDSDiscoverySection() {
           Discovery Mode: Server Registration
         </Heading>
         <p className="docs-paragraph">
-          Start a server to create a session string and register with
-          ACDS. The session string is auto-generated and printed when the
-          server starts:
+          Start a server to create a session string and register with ACDS. The
+          session string is auto-generated and printed when the server starts:
         </p>
         <CodeBlock language="bash">
           {
@@ -57,8 +55,7 @@ export default function ACDSDiscoverySection() {
           Discovery Mode: Client Connection
         </Heading>
         <p className="docs-paragraph">
-          Connect to a running server using its session string (no IP
-          needed):
+          Connect to a running server using its session string (no IP needed):
         </p>
         <CodeBlock language="bash">
           {

@@ -19,8 +19,8 @@ export default function MediaStreamingSection() {
         </Heading>
         <p className="docs-paragraph">
           Use <code className="text-cyan-300">--file</code> or{" "}
-          <code className="text-cyan-300">-f</code> to stream from video,
-          audio, or image files (also supports stdin with{" "}
+          <code className="text-cyan-300">-f</code> to stream from video, audio,
+          or image files (also supports stdin with{" "}
           <code className="text-cyan-300">-</code>). In mirror mode, use{" "}
           <code className="text-cyan-300">--audio</code> to enable audio
           playback from the file:
@@ -38,10 +38,9 @@ export default function MediaStreamingSection() {
         </Heading>
         <p className="docs-paragraph">
           Use <code className="text-cyan-300">--url</code> or{" "}
-          <code className="text-cyan-300">-u</code> to stream from web
-          URLs including YouTube, RTSP, HTTP, and HTTPS. In mirror mode,
-          add <code className="text-cyan-300">--audio</code> to enable
-          audio:
+          <code className="text-cyan-300">-u</code> to stream from web URLs
+          including YouTube, RTSP, HTTP, and HTTPS. In mirror mode, add{" "}
+          <code className="text-cyan-300">--audio</code> to enable audio:
         </p>
         <CodeBlock language="bash">
           {
@@ -66,8 +65,7 @@ export default function MediaStreamingSection() {
           YouTube & Cookies
         </Heading>
         <p className="docs-paragraph">
-          Use{" "}
-          <code className="text-cyan-300">--cookies-from-browser</code> to
+          Use <code className="text-cyan-300">--cookies-from-browser</code> to
           handle age-restricted or logged-in content:
         </p>
         <CodeBlock language="bash">

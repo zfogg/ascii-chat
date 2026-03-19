@@ -10,12 +10,11 @@ export default function HTTPSnapshotsSection() {
 
       <p className="docs-paragraph">
         Capture ASCII art frames from any media source that ffmpeg
-        supports—including YouTube videos, HTTP(S) streaming, RTMP
-        streams, and remote video files. Use{" "}
-        <code className="text-cyan-300">--url</code> to specify the source
-        and <code className="text-cyan-300">--seek</code> to jump to a
-        specific timestamp (seek works with files; live streams snapshot
-        the current frame):
+        supports—including YouTube videos, HTTP(S) streaming, RTMP streams, and
+        remote video files. Use <code className="text-cyan-300">--url</code> to
+        specify the source and <code className="text-cyan-300">--seek</code> to
+        jump to a specific timestamp (seek works with files; live streams
+        snapshot the current frame):
       </p>
 
       <CodeBlock language="bash">

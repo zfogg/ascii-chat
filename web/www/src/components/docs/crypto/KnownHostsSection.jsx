@@ -14,11 +14,9 @@ export default function KnownHostsSection() {
 
       <p className="text-gray-300 mb-6">
         ascii-chat tracks server identities with an SSH-style{" "}
-        <strong className="text-teal-300">
-          Trust-On-First-Use (TOFU)
-        </strong>{" "}
-        model. The first time you connect to a server, its public key is
-        saved. Subsequent connections verify the key hasn't changed.
+        <strong className="text-teal-300">Trust-On-First-Use (TOFU)</strong>{" "}
+        model. The first time you connect to a server, its public key is saved.
+        Subsequent connections verify the key hasn't changed.
       </p>
 
       <div className="space-y-6">
@@ -26,14 +24,10 @@ export default function KnownHostsSection() {
           <Heading level={3} className="text-cyan-300 font-semibold mb-3">
             File Location
           </Heading>
-          <p className="text-gray-300 mb-2">
-            Known server keys are stored in:
-          </p>
+          <p className="text-gray-300 mb-2">Known server keys are stored in:</p>
           <div className="space-y-2">
             <div>
-              <p className="text-gray-400 text-sm mb-1">
-                Unix/Linux/macOS:
-              </p>
+              <p className="text-gray-400 text-sm mb-1">Unix/Linux/macOS:</p>
               <CodeBlock language="text">{``}</CodeBlock>
               <p className="text-gray-400 text-xs mt-1">
                 (or{" "}
@@ -55,10 +49,7 @@ export default function KnownHostsSection() {
         </div>
 
         <div className="bg-gray-900/50 border border-purple-900/30 rounded-lg p-6">
-          <Heading
-            level={3}
-            className="text-purple-300 font-semibold mb-3"
-          >
+          <Heading level={3} className="text-purple-300 font-semibold mb-3">
             File Format
           </Heading>
           <p className="text-gray-300 mb-3">
@@ -70,13 +61,12 @@ export default function KnownHostsSection() {
 10.0.0.5:27015 x25519 5e6f7890... production-server
 [2001:db8::1]:27015 x25519 12345678... ipv6-server`}</CodeBlock>
           <p className="text-gray-300 text-sm mt-3">
-            <strong className="text-purple-400">Note:</strong> IPv6
-            addresses use bracket notation{" "}
+            <strong className="text-purple-400">Note:</strong> IPv6 addresses
+            use bracket notation{" "}
             <code className="text-pink-400 bg-gray-950 px-2 py-1 rounded">
               [address]:port
             </code>{" "}
-            to distinguish the colons in the address from the port
-            separator.
+            to distinguish the colons in the address from the port separator.
           </p>
         </div>
 
@@ -87,8 +77,8 @@ export default function KnownHostsSection() {
           <ol className="list-decimal list-inside space-y-2 text-gray-300">
             <li>
               <strong className="text-cyan-400">First Connection:</strong>{" "}
-              Server's key is saved to known_hosts automatically.
-              Connection proceeds.
+              Server's key is saved to known_hosts automatically. Connection
+              proceeds.
             </li>
             <li>
               <strong className="text-purple-400">
@@ -97,22 +87,18 @@ export default function KnownHostsSection() {
               Client checks if the server's key matches the saved key.
             </li>
             <li>
-              <strong className="text-teal-400">Key Matches:</strong>{" "}
-              Connection proceeds silently.
+              <strong className="text-teal-400">Key Matches:</strong> Connection
+              proceeds silently.
             </li>
             <li>
               <strong className="text-pink-400">Key Mismatch:</strong>{" "}
-              Connection is rejected with a MITM warning. User must take
-              action.
+              Connection is rejected with a MITM warning. User must take action.
             </li>
           </ol>
         </div>
 
         <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-6">
-          <Heading
-            level={3}
-            className="text-yellow-300 font-semibold mb-3"
-          >
+          <Heading level={3} className="text-yellow-300 font-semibold mb-3">
             ⚠️ When Keys Change (MITM Warning)
           </Heading>
           <p className="text-gray-300 mb-3">
@@ -137,23 +123,20 @@ Connection refused. Remove the old key from known_hosts to continue.`}</CodeBloc
             🔧 What to Do When Keys Change
           </Heading>
           <p className="text-gray-300 mb-4">
-            Key changes happen for legitimate reasons (server reinstalled,
-            key rotated) and malicious reasons (MITM attack). Verify
-            before proceeding.
+            Key changes happen for legitimate reasons (server reinstalled, key
+            rotated) and malicious reasons (MITM attack). Verify before
+            proceeding.
           </p>
 
           <div className="space-y-4">
             <div>
-              <Heading
-                level={4}
-                className="text-cyan-400 font-semibold mb-2"
-              >
+              <Heading level={4} className="text-cyan-400 font-semibold mb-2">
                 Step 1: Verify the Key Change is Legitimate
               </Heading>
               <ul className="list-disc list-inside space-y-1 text-gray-300 text-sm ml-4">
                 <li>
-                  Contact the server administrator through a different
-                  channel (phone, Signal, etc.)
+                  Contact the server administrator through a different channel
+                  (phone, Signal, etc.)
                 </li>
                 <li>
                   Ask them to confirm they changed keys or reinstalled the
@@ -166,10 +149,7 @@ Connection refused. Remove the old key from known_hosts to continue.`}</CodeBloc
             </div>
 
             <div>
-              <Heading
-                level={4}
-                className="text-purple-400 font-semibold mb-2"
-              >
+              <Heading level={4} className="text-purple-400 font-semibold mb-2">
                 Step 2: Remove the Old Entry
               </Heading>
               <p className="text-gray-300 mb-2 text-sm">
@@ -185,8 +165,7 @@ Connection refused. Remove the old key from known_hosts to continue.`}</CodeBloc
 
 # After (line deleted):`}</CodeBlock>
               <p className="text-gray-300 text-sm mt-2">
-                Alternatively, delete the entire file to remove all known
-                hosts:{" "}
+                Alternatively, delete the entire file to remove all known hosts:{" "}
                 <code className="text-pink-400 bg-gray-950 px-2 py-1 rounded">
                   rm ~/.config/ascii-chat/known_hosts
                 </code>
@@ -194,15 +173,12 @@ Connection refused. Remove the old key from known_hosts to continue.`}</CodeBloc
             </div>
 
             <div>
-              <Heading
-                level={4}
-                className="text-teal-400 font-semibold mb-2"
-              >
+              <Heading level={4} className="text-teal-400 font-semibold mb-2">
                 Step 3: Reconnect
               </Heading>
               <p className="text-gray-300 text-sm">
-                Connect again. The new key will be saved automatically
-                (TOFU model).
+                Connect again. The new key will be saved automatically (TOFU
+                model).
               </p>
             </div>
           </div>

@@ -10,8 +10,8 @@ export default function ConfigFileFormatSection() {
       </Heading>
 
       <p className="docs-paragraph">
-        Configuration files use <strong>TOML format</strong>. Each section
-        in the config file corresponds to a section in{" "}
+        Configuration files use <strong>TOML format</strong>. Each section in
+        the config file corresponds to a section in{" "}
         <code className="text-cyan-300">ascii-chat --help</code>.
       </p>
 
@@ -21,17 +21,14 @@ export default function ConfigFileFormatSection() {
         </Heading>
         <div className="space-y-3">
           <div className="card-standard accent-green">
-            <Heading
-              level={4}
-              className="text-green-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-green-300 font-semibold mb-2">
               TOML Sections: Uppercase → Lowercase
             </Heading>
             <p className="text-gray-400 text-sm mb-2">
               Each <code className="text-cyan-300">[section]</code> in the
               config corresponds to a section from{" "}
-              <code className="text-cyan-300">--help</code> output,
-              converted to lowercase:
+              <code className="text-cyan-300">--help</code> output, converted to
+              lowercase:
             </p>
             <ul className="list-disc ml-6 text-gray-300 text-sm">
               <li>
@@ -66,10 +63,7 @@ export default function ConfigFileFormatSection() {
             </ul>
           </div>
           <div className="card-standard accent-green">
-            <Heading
-              level={4}
-              className="text-green-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-green-300 font-semibold mb-2">
               Config Keys: Flags → Underscores
             </Heading>
             <p className="text-gray-400 text-sm mb-2">
@@ -171,8 +165,8 @@ log_file = "/tmp/ascii-chat.log"`}</CodeBlock>
       </div>
 
       <p className="docs-paragraph text-sm mt-4 text-gray-400">
-        <strong>Tip:</strong> Only include the sections and keys you want
-        to customize. All unspecified options use built-in defaults. See{" "}
+        <strong>Tip:</strong> Only include the sections and keys you want to
+        customize. All unspecified options use built-in defaults. See{" "}
         <code className="text-cyan-300">ascii-chat --help</code> for all
         available options.
       </p>

@@ -13,40 +13,34 @@ export default function AdvancedOptionsSection() {
             Frame Rate Control
           </Heading>
           <p className="text-gray-300 text-sm mb-2">
-            <code className="code-inline">--fps N</code> Set target frame
-            rate (default: 30)
+            <code className="code-inline">--fps N</code> Set target frame rate
+            (default: 30)
           </p>
           <p className="text-gray-400 text-xs">
-            Example: <code className="code-inline">--fps 60</code> for
-            smooth playback, <code className="code-inline">--fps 10</code>{" "}
-            for bandwidth-constrained networks
+            Example: <code className="code-inline">--fps 60</code> for smooth
+            playback, <code className="code-inline">--fps 10</code> for
+            bandwidth-constrained networks
           </p>
         </div>
         <div className="card-standard accent-purple">
-          <Heading
-            level={4}
-            className="text-purple-300 font-semibold mb-2"
-          >
+          <Heading level={4} className="text-purple-300 font-semibold mb-2">
             Audio Passthrough
           </Heading>
           <p className="text-gray-300 text-sm mb-2">
-            <code className="code-inline">--audio</code> Enable audio from
-            media file
+            <code className="code-inline">--audio</code> Enable audio from media
+            file
           </p>
           <p className="text-gray-400 text-xs">
             Audio uses Opus codec for efficient low-bandwidth streaming
           </p>
         </div>
         <div className="card-standard accent-green">
-          <Heading
-            level={4}
-            className="text-green-300 font-semibold mb-2"
-          >
+          <Heading level={4} className="text-green-300 font-semibold mb-2">
             Loop Playback
           </Heading>
           <p className="text-gray-300 text-sm mb-2">
-            <code className="code-inline">--loop</code> Repeat media
-            playback continuously
+            <code className="code-inline">--loop</code> Repeat media playback
+            continuously
           </p>
           <p className="text-gray-400 text-xs">
             Useful for presentations or background displays
@@ -67,10 +61,7 @@ export default function AdvancedOptionsSection() {
           </p>
         </div>
         <div className="card-standard accent-orange">
-          <Heading
-            level={4}
-            className="text-orange-300 font-semibold mb-2"
-          >
+          <Heading level={4} className="text-orange-300 font-semibold mb-2">
             Palettes
           </Heading>
           <p className="text-gray-300 text-sm mb-2">
@@ -88,8 +79,8 @@ export default function AdvancedOptionsSection() {
             Seeking
           </Heading>
           <p className="text-gray-300 text-sm mb-2">
-            <code className="code-inline">--seek SECONDS</code> Jump to
-            specific timestamp
+            <code className="code-inline">--seek SECONDS</code> Jump to specific
+            timestamp
           </p>
           <p className="text-gray-400 text-xs">
             Works with local files and HTTP progressive downloads

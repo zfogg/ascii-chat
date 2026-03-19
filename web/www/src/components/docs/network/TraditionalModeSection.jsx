@@ -38,8 +38,7 @@ export default function TraditionalModeSection() {
           mDNS (Zero-Config LAN Discovery)
         </Heading>
         <p className="docs-paragraph">
-          Auto-discover servers on local network without knowing IP
-          addresses:
+          Auto-discover servers on local network without knowing IP addresses:
         </p>
         <CodeBlock language="bash">
           {

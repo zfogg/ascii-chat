@@ -13,9 +13,9 @@ export default function SSHKeyAuthSection() {
       </Heading>
 
       <p className="text-gray-300 mb-6">
-        Use your existing SSH Ed25519 keys for authentication. ascii-chat
-        reads the same keys you use for GitHub, servers, and git.
-        (Configure these in your{" "}
+        Use your existing SSH Ed25519 keys for authentication. ascii-chat reads
+        the same keys you use for GitHub, servers, and git. (Configure these in
+        your{" "}
         <TrackedLink
           to="/docs/configuration"
           label="ssh key config"

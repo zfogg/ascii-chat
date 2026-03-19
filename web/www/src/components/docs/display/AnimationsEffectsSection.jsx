@@ -14,8 +14,8 @@ export default function AnimationsEffectsSection() {
         </Heading>
         <p className="docs-paragraph">
           Enable a Matrix-style digital rain effect that overlays falling
-          characters on the video output. Works best with color filters
-          and truecolor or 256-color mode.
+          characters on the video output. Works best with color filters and
+          truecolor or 256-color mode.
         </p>
         <CodeBlock language="bash">
           {
@@ -24,20 +24,18 @@ export default function AnimationsEffectsSection() {
         </CodeBlock>
         <div className="info-box-info mt-3">
           <p className="text-gray-300 text-sm">
-            <strong>Tip:</strong> The <code>--matrix</code> effect
-            combines well with <code>--color-filter green</code> for the
-            classic Matrix look, or <code>--color-filter cyan</code> for a
-            cyberpunk aesthetic.
+            <strong>Tip:</strong> The <code>--matrix</code> effect combines well
+            with <code>--color-filter green</code> for the classic Matrix look,
+            or <code>--color-filter cyan</code> for a cyberpunk aesthetic.
           </p>
         </div>
         <div className="info-box-note mt-3">
           <p className="text-gray-300 text-sm">
             Using <code>--color-filter</code> together with{" "}
-            <code>--matrix</code> automatically switches the built-in font
-            to a replica of the one used to make{" "}
-            <em>The Matrix Resurrections</em>. This means the ASCII art
-            rendered will have the cool glyphs that rain down as green
-            code from the movies.
+            <code>--matrix</code> automatically switches the built-in font to a
+            replica of the one used to make <em>The Matrix Resurrections</em>.
+            This means the ASCII art rendered will have the cool glyphs that
+            rain down as green code from the movies.
           </p>
         </div>
       </div>

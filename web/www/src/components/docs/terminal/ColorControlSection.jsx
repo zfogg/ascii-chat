@@ -14,8 +14,8 @@ export default function ColorControlSection() {
           Enable/Disable Color
         </Heading>
         <p className="docs-paragraph">
-          The <code>--color</code> flag controls whether colors are
-          displayed at all (independent of color mode):
+          The <code>--color</code> flag controls whether colors are displayed at
+          all (independent of color mode):
         </p>
         <CodeBlock language="bash">
           {
@@ -25,8 +25,8 @@ export default function ColorControlSection() {
         <div className="info-box-info mt-3">
           <p className="text-gray-300 text-sm">
             <strong>When colors are disabled:</strong> Display switches to
-            monochrome (black and white). Piping automatically disables
-            colors unless <code>--color true</code> is used.
+            monochrome (black and white). Piping automatically disables colors
+            unless <code>--color true</code> is used.
           </p>
         </div>
       </div>
@@ -55,28 +55,23 @@ export default function ColorControlSection() {
         </CodeBlock>
         <div className="space-y-2 mt-3">
           <div className="card-standard accent-purple">
-            <Heading
-              level={4}
-              className="text-purple-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-purple-300 font-semibold mb-2">
               Color Mode Details
             </Heading>
             <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
               <li>
-                <strong>auto:</strong> Detects via TERM, terminfo, or
-                queries. May fail over SSH.
+                <strong>auto:</strong> Detects via TERM, terminfo, or queries.
+                May fail over SSH.
               </li>
               <li>
                 <strong>none:</strong> Disables all colors (same as{" "}
                 <code>--color false</code>)
               </li>
               <li>
-                <strong>16:</strong> Basic 16 ANSI colors (slow
-                connections)
+                <strong>16:</strong> Basic 16 ANSI colors (slow connections)
               </li>
               <li>
-                <strong>256:</strong> xterm 256-color palette (most
-                terminals)
+                <strong>256:</strong> xterm 256-color palette (most terminals)
               </li>
               <li>
                 <strong>truecolor:</strong> Full 24-bit RGB color (modern
@@ -92,8 +87,8 @@ export default function ColorControlSection() {
           Logging Color Scheme
         </Heading>
         <p className="docs-paragraph">
-          Control the color scheme for ascii-chat's debug/log output (not
-          video display):
+          Control the color scheme for ascii-chat's debug/log output (not video
+          display):
         </p>
         <CodeBlock language="bash">
           {

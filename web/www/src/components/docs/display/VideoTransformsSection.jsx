@@ -13,8 +13,8 @@ export default function VideoTransformsSection() {
           Flip & Mirror
         </Heading>
         <p className="docs-paragraph">
-          Flip the video horizontally or vertically. Works with webcam,
-          files, and streams.
+          Flip the video horizontally or vertically. Works with webcam, files,
+          and streams.
         </p>
         <CodeBlock language="bash">
           {
@@ -24,8 +24,8 @@ export default function VideoTransformsSection() {
         <div className="info-box-note mt-3">
           <p className="text-gray-300 text-sm">
             <strong>macOS Note:</strong> <code>--flip-x</code> defaults to{" "}
-            <code>true</code> on Apple devices (mirrored, like FaceTime).
-            Set <code>--flip-x=false</code> to disable.
+            <code>true</code> on Apple devices (mirrored, like FaceTime). Set{" "}
+            <code>--flip-x=false</code> to disable.
           </p>
         </div>
       </div>
@@ -35,9 +35,9 @@ export default function VideoTransformsSection() {
           Aspect Ratio
         </Heading>
         <p className="docs-paragraph">
-          By default, ascii-chat preserves aspect ratio (terminal
-          characters are ~2:1 height:width). Use <code>--stretch</code> to
-          ignore aspect ratio and fill the terminal:
+          By default, ascii-chat preserves aspect ratio (terminal characters are
+          ~2:1 height:width). Use <code>--stretch</code> to ignore aspect ratio
+          and fill the terminal:
         </p>
         <CodeBlock language="bash">
           {

@@ -21,8 +21,7 @@ export default function TipsTricksSection() {
             Command-line flags (<code>--width 120</code>)
           </li>
           <li>
-            Environment variables (
-            <code>export ASCII_CHAT_WIDTH=120</code>)
+            Environment variables (<code>export ASCII_CHAT_WIDTH=120</code>)
           </li>
           <li>Auto-detection (terminal queries, COLUMNS/ROWS)</li>
           <li>Defaults (110×70, auto color, etc.)</li>
@@ -46,10 +45,7 @@ export default function TipsTricksSection() {
         </Heading>
         <div className="space-y-2">
           <div className="card-standard accent-purple">
-            <Heading
-              level={4}
-              className="text-purple-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-purple-300 font-semibold mb-2">
               Modern Terminal
             </Heading>
             <p className="text-gray-300 text-sm">
@@ -58,23 +54,16 @@ export default function TipsTricksSection() {
           </div>
 
           <div className="card-standard accent-purple">
-            <Heading
-              level={4}
-              className="text-purple-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-purple-300 font-semibold mb-2">
               Slow Network / SSH
             </Heading>
             <p className="text-gray-300 text-sm">
-              <code>--color-mode 16</code> or{" "}
-              <code>--color-mode 256</code>
+              <code>--color-mode 16</code> or <code>--color-mode 256</code>
             </p>
           </div>
 
           <div className="card-standard accent-purple">
-            <Heading
-              level={4}
-              className="text-purple-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-purple-300 font-semibold mb-2">
               Lightweight / Scripting
             </Heading>
             <p className="text-gray-300 text-sm">

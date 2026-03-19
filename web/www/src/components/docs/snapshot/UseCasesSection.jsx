@@ -8,22 +8,18 @@ export default function UseCasesSection() {
       </Heading>
       <div className="space-y-3">
         <div className="card-standard accent-yellow">
-          <Heading
-            level={4}
-            className="text-yellow-300 font-semibold mb-2"
-          >
+          <Heading level={4} className="text-yellow-300 font-semibold mb-2">
             YouTube, RTMP & Streaming Media
           </Heading>
           <p className="text-gray-300 text-sm mb-2">
             Capture ASCII art frames from any media source—YouTube videos,
             HTTP(S) files, RTMP live streams, and more. Use{" "}
             <code className="text-cyan-300">--url</code> and{" "}
-            <code className="text-cyan-300">--seek</code> to grab frames
-            at specific timestamps for documentation, analysis, or
-            creative projects. Combine{" "}
-            <code className="text-cyan-300">--seek</code> with{" "}
-            <code className="text-cyan-300">--snapshot-delay</code> to
-            save ASCII art segments from URLs or media files.
+            <code className="text-cyan-300">--seek</code> to grab frames at
+            specific timestamps for documentation, analysis, or creative
+            projects. Combine <code className="text-cyan-300">--seek</code> with{" "}
+            <code className="text-cyan-300">--snapshot-delay</code> to save
+            ASCII art segments from URLs or media files.
           </p>
           <p className="text-gray-400 text-xs">
             <strong>Tip:</strong> Use{" "}
@@ -43,29 +39,23 @@ export default function UseCasesSection() {
           </p>
         </div>
         <div className="card-standard accent-green">
-          <Heading
-            level={4}
-            className="text-green-300 font-semibold mb-2"
-          >
+          <Heading level={4} className="text-green-300 font-semibold mb-2">
             Media Processing & Batch Conversion
           </Heading>
           <p className="text-gray-300 text-sm">
-            Batch convert images and videos to ASCII art with custom
-            palettes and dimensions. Process entire directories or create
-            frame sequences for animation
+            Batch convert images and videos to ASCII art with custom palettes
+            and dimensions. Process entire directories or create frame sequences
+            for animation
           </p>
         </div>
         <div className="card-standard accent-purple">
-          <Heading
-            level={4}
-            className="text-purple-300 font-semibold mb-2"
-          >
+          <Heading level={4} className="text-purple-300 font-semibold mb-2">
             Documentation & Creative Projects
           </Heading>
           <p className="text-gray-300 text-sm">
-            Generate ASCII art screenshots for README files,
-            presentations, blog posts, or web pages. Create unique visual
-            content from videos or webcam feeds
+            Generate ASCII art screenshots for README files, presentations, blog
+            posts, or web pages. Create unique visual content from videos or
+            webcam feeds
           </p>
         </div>
         <div className="card-standard accent-teal">
@@ -73,8 +63,7 @@ export default function UseCasesSection() {
             Scripting and Testing
           </Heading>
           <p className="text-gray-300 text-sm">
-            The developer uses it to test that ascii-chat works as he
-            builds it
+            The developer uses it to test that ascii-chat works as he builds it
           </p>
         </div>
         <div className="card-standard accent-cyan">
@@ -82,9 +71,8 @@ export default function UseCasesSection() {
             🤳 Take an ASCII Art Selfie
           </Heading>
           <p className="text-gray-300 text-sm">
-            Capture yourself as ASCII art. Perfect for profile pictures,
-            social media, or just having fun. Use zero delay for an
-            instant snapshot
+            Capture yourself as ASCII art. Perfect for profile pictures, social
+            media, or just having fun. Use zero delay for an instant snapshot
           </p>
         </div>
       </div>

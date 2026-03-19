@@ -10,8 +10,8 @@ export default function PipingRedirectionSection() {
 
       <p className="docs-paragraph">
         ascii-chat automatically detects whether stdout is connected to a
-        terminal (TTY) or being piped/redirected. This enables clean
-        output for scripting:
+        terminal (TTY) or being piped/redirected. This enables clean output for
+        scripting:
       </p>
 
       <div className="docs-subsection-spacing">
@@ -20,23 +20,16 @@ export default function PipingRedirectionSection() {
         </Heading>
         <div className="space-y-3">
           <div className="card-standard accent-cyan">
-            <Heading
-              level={4}
-              className="text-cyan-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-cyan-300 font-semibold mb-2">
               Terminal (TTY)
             </Heading>
             <p className="text-gray-400 text-sm">
-              When stdout is a terminal, ascii-chat outputs with ANSI
-              codes, cursor movement, and terminal optimizations for live
-              display
+              When stdout is a terminal, ascii-chat outputs with ANSI codes,
+              cursor movement, and terminal optimizations for live display
             </p>
           </div>
           <div className="card-standard accent-teal">
-            <Heading
-              level={4}
-              className="text-teal-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-teal-300 font-semibold mb-2">
               Piped/Redirected (Non-TTY)
             </Heading>
             <p className="text-gray-400 text-sm">
@@ -75,12 +68,11 @@ export default function PipingRedirectionSection() {
           Color Snapshots
         </Heading>
         <p className="docs-paragraph">
-          By default, colors are only enabled when stdout is connected to
-          a terminal. When piping or redirecting (when{" "}
-          <code className="text-cyan-300">isatty()</code> returns false),
-          colors are automatically disabled to keep output clean. To
-          capture colored snapshots when piping or redirecting, explicitly
-          enable colors with{" "}
+          By default, colors are only enabled when stdout is connected to a
+          terminal. When piping or redirecting (when{" "}
+          <code className="text-cyan-300">isatty()</code> returns false), colors
+          are automatically disabled to keep output clean. To capture colored
+          snapshots when piping or redirecting, explicitly enable colors with{" "}
           <code className="text-cyan-300">--color</code> or{" "}
           <code className="text-cyan-300">--color=true</code>:
         </p>

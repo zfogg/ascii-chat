@@ -7,8 +7,8 @@ export default function PriorityOverridesSection() {
         📊 Configuration Priority & Override Chain
       </Heading>
       <p className="docs-paragraph">
-        Settings are applied in strict priority order. Each level can
-        override levels below it:
+        Settings are applied in strict priority order. Each level can override
+        levels below it:
       </p>
       <div className="space-y-3 mb-6">
         <div className="card-standard accent-pink">
@@ -53,10 +53,7 @@ export default function PriorityOverridesSection() {
               3️⃣ Medium
             </span>
             <div>
-              <Heading
-                level={4}
-                className="text-purple-300 font-semibold"
-              >
+              <Heading level={4} className="text-purple-300 font-semibold">
                 Config File Values
               </Heading>
               <p className="text-gray-400 text-sm">
@@ -74,9 +71,7 @@ export default function PriorityOverridesSection() {
               <Heading level={4} className="text-teal-300 font-semibold">
                 Built-in Defaults
               </Heading>
-              <p className="text-gray-400 text-sm">
-                Hard-coded default values
-              </p>
+              <p className="text-gray-400 text-sm">Hard-coded default values</p>
             </div>
           </div>
         </div>
@@ -86,11 +81,10 @@ export default function PriorityOverridesSection() {
           <strong>Example Override Chain:</strong>
         </p>
         <p className="text-gray-400 text-sm">
-          Built-in default:{" "}
-          <code className="text-cyan-300">port = 27224</code> → Config
-          file: <code className="text-cyan-300">port = 8080</code> → Env
-          var: <code className="text-cyan-300">ASCII_CHAT_PORT=9000</code>{" "}
-          → CLI flag: <code className="text-cyan-300">--port 9999</code> =
+          Built-in default: <code className="text-cyan-300">port = 27224</code>{" "}
+          → Config file: <code className="text-cyan-300">port = 8080</code> →
+          Env var: <code className="text-cyan-300">ASCII_CHAT_PORT=9000</code> →
+          CLI flag: <code className="text-cyan-300">--port 9999</code> =
           <strong>Final result: 9999</strong>
         </p>
       </div>

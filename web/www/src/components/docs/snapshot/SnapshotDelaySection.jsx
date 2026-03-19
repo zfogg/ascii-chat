@@ -28,8 +28,8 @@ export default function SnapshotDelaySection() {
           Warmup Period
         </Heading>
         <p className="docs-paragraph">
-          By default, <code className="text-cyan-300">--snapshot</code>{" "}
-          waits 4 seconds to allow webcam adjustment. For faster captures:
+          By default, <code className="text-cyan-300">--snapshot</code> waits 4
+          seconds to allow webcam adjustment. For faster captures:
         </p>
         <CodeBlock language="bash">
           {
@@ -44,21 +44,19 @@ export default function SnapshotDelaySection() {
             <strong>⚠️ macOS Webcam Warmup Gotcha</strong>
           </p>
           <p className="text-gray-400 text-sm mb-2">
-            All macOS laptops have a hardware warmup period where the
-            camera shows black frames for 1-3 seconds after being
-            accessed. This is OS-level behavior and{" "}
-            <strong>cannot be bypassed</strong>.
+            All macOS laptops have a hardware warmup period where the camera
+            shows black frames for 1-3 seconds after being accessed. This is
+            OS-level behavior and <strong>cannot be bypassed</strong>.
           </p>
           <p className="text-gray-400 text-sm mb-2">
             <strong>Symptoms:</strong> Using{" "}
-            <code className="text-cyan-300">-D 0</code> or very short
-            delays result in solid black frames instead of your webcam
-            feed.
+            <code className="text-cyan-300">-D 0</code> or very short delays
+            result in solid black frames instead of your webcam feed.
           </p>
           <p className="text-gray-400 text-sm">
-            <strong>Solution:</strong> Use at least 3-4 seconds of warmup
-            time. The default 4 seconds is optimal for most macOS cameras.
-            If you consistently get black frames, increase to{" "}
+            <strong>Solution:</strong> Use at least 3-4 seconds of warmup time.
+            The default 4 seconds is optimal for most macOS cameras. If you
+            consistently get black frames, increase to{" "}
             <code className="text-cyan-300">-D 5</code>.
           </p>
         </div>

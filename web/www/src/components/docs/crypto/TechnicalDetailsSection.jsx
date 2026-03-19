@@ -17,8 +17,8 @@ export default function TechnicalDetailsSection() {
           </Heading>
           <ol className="list-decimal list-inside space-y-2 text-gray-300">
             <li>
-              Client and server exchange Ed25519 public keys (optional
-              identity verification)
+              Client and server exchange Ed25519 public keys (optional identity
+              verification)
             </li>
             <li>Both sides generate ephemeral X25519 keypairs</li>
             <li>Diffie-Hellman key exchange computes shared secret</li>
@@ -31,10 +31,7 @@ export default function TechnicalDetailsSection() {
         </div>
 
         <div className="bg-gray-900/50 border border-purple-900/30 rounded-lg p-6">
-          <Heading
-            level={3}
-            className="text-purple-300 font-semibold mb-3"
-          >
+          <Heading level={3} className="text-purple-300 font-semibold mb-3">
             Encryption Algorithms
           </Heading>
           <ul className="space-y-2 text-gray-300">
@@ -82,10 +79,9 @@ export default function TechnicalDetailsSection() {
             Perfect Forward Secrecy
           </Heading>
           <p className="text-gray-300">
-            Each connection generates new ephemeral keys. Even if your
-            long-term SSH/GPG key is compromised, past sessions cannot be
-            decrypted. Keys are never stored—only used for the duration of
-            the connection.
+            Each connection generates new ephemeral keys. Even if your long-term
+            SSH/GPG key is compromised, past sessions cannot be decrypted. Keys
+            are never stored—only used for the duration of the connection.
           </p>
         </div>
 
@@ -101,10 +97,10 @@ export default function TechnicalDetailsSection() {
             whichever comes first.
           </p>
           <p className="text-gray-300 text-sm">
-            The rekey protocol is transparent: both sides generate new
-            ephemeral keys, perform a new DH exchange, and switch to new
-            session keys without interrupting the connection. Old keys
-            remain active until the new handshake completes successfully.
+            The rekey protocol is transparent: both sides generate new ephemeral
+            keys, perform a new DH exchange, and switch to new session keys
+            without interrupting the connection. Old keys remain active until
+            the new handshake completes successfully.
           </p>
         </div>
 
@@ -121,8 +117,7 @@ export default function TechnicalDetailsSection() {
           </p>
           <ul className="list-disc list-inside space-y-1 text-gray-300 text-sm">
             <li>
-              First 16 bytes: Random session ID (generated at connection
-              start)
+              First 16 bytes: Random session ID (generated at connection start)
             </li>
             <li>
               Remaining 8 bytes: Monotonic packet counter (increments per
@@ -130,23 +125,18 @@ export default function TechnicalDetailsSection() {
             </li>
           </ul>
           <p className="text-gray-300 mt-2 text-sm">
-            This prevents both within-session and cross-session replay
-            attacks. Even if an attacker captures encrypted packets, they
-            can't be replayed because the nonce is unique per packet and
-            per session.
+            This prevents both within-session and cross-session replay attacks.
+            Even if an attacker captures encrypted packets, they can't be
+            replayed because the nonce is unique per packet and per session.
           </p>
         </div>
 
         <div className="bg-gray-900/50 border border-purple-900/30 rounded-lg p-6">
-          <Heading
-            level={3}
-            className="text-purple-300 font-semibold mb-3"
-          >
+          <Heading level={3} className="text-purple-300 font-semibold mb-3">
             Constant-Time Operations
           </Heading>
           <p className="text-gray-300 mb-2">
-            All cryptographic comparisons use constant-time algorithms
-            (via{" "}
+            All cryptographic comparisons use constant-time algorithms (via{" "}
             <code className="text-cyan-400 bg-gray-950 px-2 py-1 rounded">
               sodium_memcmp
             </code>
@@ -158,10 +148,9 @@ export default function TechnicalDetailsSection() {
             <li>Key comparisons (identity verification)</li>
           </ul>
           <p className="text-gray-300 mt-2 text-sm">
-            Constant-time comparison ensures the time taken is independent
-            of where the first difference occurs, preventing attackers
-            from learning partial key/MAC values through timing
-            side-channels.
+            Constant-time comparison ensures the time taken is independent of
+            where the first difference occurs, preventing attackers from
+            learning partial key/MAC values through timing side-channels.
           </p>
         </div>
       </div>

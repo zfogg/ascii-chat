@@ -9,9 +9,8 @@ export default function PipingFFmpegSection() {
       </Heading>
 
       <p className="docs-paragraph">
-        Pipe raw video frames from FFmpeg for advanced streaming
-        scenarios. FFmpeg handles any format conversion, and ascii-chat
-        renders to ASCII:
+        Pipe raw video frames from FFmpeg for advanced streaming scenarios.
+        FFmpeg handles any format conversion, and ascii-chat renders to ASCII:
       </p>
 
       <div className="docs-subsection-spacing">

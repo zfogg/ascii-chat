@@ -10,18 +10,16 @@ export default function DiscoveryModeSection() {
       </Heading>
 
       <p className="docs-paragraph">
-        Discovery Mode is the default mode for ascii-chat, enabling
-        zero-config P2P video calls using memorable session strings (e.g.,{" "}
+        Discovery Mode is the default mode for ascii-chat, enabling zero-config
+        P2P video calls using memorable session strings (e.g.,{" "}
         <code className="code-inline">purple-mountain-lake</code>
-        ). No port forwarding, no technical knowledge required. When you
-        run the server without specifying a connection mode, it
-        automatically generates a session string and registers with the
-        discovery service. Clients connect using that session string. The
-        official ascii-chat discovery-service is hosted at{" "}
-        <code className="code-inline">
-          discovery-service.ascii-chat.com
-        </code>
-        , with keys available at{" "}
+        ). No port forwarding, no technical knowledge required. When you run the
+        server without specifying a connection mode, it automatically generates
+        a session string and registers with the discovery service. Clients
+        connect using that session string. The official ascii-chat
+        discovery-service is hosted at{" "}
+        <code className="code-inline">discovery-service.ascii-chat.com</code>,
+        with keys available at{" "}
         <TrackedLink
           to="https://discover.ascii-chat.com"
           label="discover.ascii-chat.com"
@@ -29,8 +27,8 @@ export default function DiscoveryModeSection() {
         >
           discover.ascii-chat.com
         </TrackedLink>
-        . The ascii-chat client downloads these keys over HTTPS, trusts
-        them, and uses this ACDS server by default.
+        . The ascii-chat client downloads these keys over HTTPS, trusts them,
+        and uses this ACDS server by default.
       </p>
 
       <div className="docs-subsection-spacing">
@@ -38,15 +36,12 @@ export default function DiscoveryModeSection() {
           Phase 1: Instant Host Election (100ms)
         </Heading>
         <p className="docs-paragraph">
-          Two participants exchange NAT information and instantly elect a
-          host. No bandwidth test blocking media startup.
+          Two participants exchange NAT information and instantly elect a host.
+          No bandwidth test blocking media startup.
         </p>
         <div className="space-y-3">
           <div className="card-standard accent-teal">
-            <Heading
-              level={4}
-              className="text-teal-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-teal-300 font-semibold mb-2">
               NAT Priority Tiers (Best to Worst)
             </Heading>
             <p className="text-gray-400 text-sm">
@@ -62,8 +57,8 @@ export default function DiscoveryModeSection() {
             </p>
           </div>
           <p className="text-gray-400 text-sm">
-            <strong>Bandwidth Override:</strong> If one participant has
-            10x+ bandwidth, it becomes host regardless of NAT tier.
+            <strong>Bandwidth Override:</strong> If one participant has 10x+
+            bandwidth, it becomes host regardless of NAT tier.
           </p>
         </div>
       </div>
@@ -73,9 +68,9 @@ export default function DiscoveryModeSection() {
           Phase 2: Media Starts (500ms total)
         </Heading>
         <p className="docs-paragraph">
-          WebRTC DataChannel established. All packets (control + media)
-          flow through single DataChannel. Host begins rendering,
-          participants begin capturing. No connection reset on migration.
+          WebRTC DataChannel established. All packets (control + media) flow
+          through single DataChannel. Host begins rendering, participants begin
+          capturing. No connection reset on migration.
         </p>
       </div>
 
@@ -98,9 +93,8 @@ export default function DiscoveryModeSection() {
           Phase 4: Optional Host Migration
         </Heading>
         <p className="docs-paragraph">
-          If a participant scores 20%+ higher quality, host migration
-          happens transparently over the same DataChannel. Media resumes
-          within ~100ms.
+          If a participant scores 20%+ higher quality, host migration happens
+          transparently over the same DataChannel. Media resumes within ~100ms.
         </p>
       </div>
 
@@ -109,8 +103,7 @@ export default function DiscoveryModeSection() {
           Instant Failover
         </Heading>
         <p className="docs-paragraph">
-          Host broadcasts backup address every 30-60 seconds. If host
-          dies:
+          Host broadcasts backup address every 30-60 seconds. If host dies:
         </p>
         <ul className="space-y-1 text-gray-300 text-sm ml-4 list-disc">
           <li>Backup participant becomes host immediately</li>

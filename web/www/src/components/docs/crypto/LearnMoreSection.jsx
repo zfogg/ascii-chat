@@ -50,10 +50,7 @@ export default function LearnMoreSection() {
           rel="noopener noreferrer"
           className="bg-gray-900/50 border border-purple-900/50 rounded-lg p-4 hover:border-purple-500/50 transition-colors"
         >
-          <Heading
-            level={3}
-            className="text-purple-300 font-semibold mb-1"
-          >
+          <Heading level={3} className="text-purple-300 font-semibold mb-1">
             📖 libsodium Docs
           </Heading>
           <p className="text-gray-400 text-sm">

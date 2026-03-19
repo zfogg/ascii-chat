@@ -6,8 +6,8 @@ export default function AcdsNoteBox() {
     <div className="mb-12 bg-purple-900/20 border border-purple-700/50 rounded-lg p-6">
       <p className="text-gray-300">
         <strong className="text-purple-300">Note:</strong> Looking for
-        ascii-chat Discovery Service (ACDS) cryptography details or public
-        keys? See the{" "}
+        ascii-chat Discovery Service (ACDS) cryptography details or public keys?
+        See the{" "}
         <TrackedLink
           href={SITES.DISCOVERY}
           label="Crypto - ACDS Docs"

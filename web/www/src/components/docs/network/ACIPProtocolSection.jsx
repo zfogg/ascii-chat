@@ -15,16 +15,13 @@ export default function ACIPProtocolSection() {
         </Heading>
         <p className="docs-paragraph">
           ACIP (ascii-chat Internet Protocol) is a custom binary protocol
-          designed specifically for low-latency, encrypted terminal-based
-          video conferencing. Unlike HTTP, RTP, RTSP, or VNC, ACIP is
-          optimized for:
+          designed specifically for low-latency, encrypted terminal-based video
+          conferencing. Unlike HTTP, RTP, RTSP, or VNC, ACIP is optimized for:
         </p>
         <ul className="space-y-1 text-gray-300 text-sm ml-4 list-disc">
           <li>Efficient binary encoding (22-byte headers)</li>
           <li>Encryption by default (XSalsa20-Poly1305 AEAD)</li>
-          <li>
-            Terminal awareness (color depth, dimensions, capabilities)
-          </li>
+          <li>Terminal awareness (color depth, dimensions, capabilities)</li>
           <li>Multi-client conferencing with server-side rendering</li>
           <li>P2P connections with automatic host election</li>
         </ul>
@@ -51,35 +48,28 @@ export default function ACIPProtocolSection() {
         <div className="space-y-4">
           {/* Type 1: Protocol Negotiation */}
           <div className="card-standard accent-blue">
-            <Heading
-              level={4}
-              className="text-blue-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-blue-300 font-semibold mb-2">
               Type 1: Protocol Negotiation
             </Heading>
             <p className="text-gray-400 text-sm">
               <code className="code-inline">1</code> = PROTOCOL_VERSION
               (UNENCRYPTED)
               <br />
-              Version and capabilities negotiation. Exchanged before
-              encryption setup to ensure both peers support compatible
-              features.
+              Version and capabilities negotiation. Exchanged before encryption
+              setup to ensure both peers support compatible features.
             </p>
           </div>
 
           {/* Types 1000-1203: Cryptographic Operations */}
           <div className="card-standard accent-orange">
-            <Heading
-              level={4}
-              className="text-orange-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-orange-300 font-semibold mb-2">
               Types 1000-1109: Crypto Client Hello & Handshake
             </Heading>
             <p className="text-gray-400 text-sm mb-3">
               <strong>🔒 ALWAYS UNENCRYPTED</strong> - Exchanged before
               encryption keys are established. Uses X25519 (ECDH) for key
-              agreement and Ed25519 for authentication. For detailed
-              information about the crypto protocol, see the{" "}
+              agreement and Ed25519 for authentication. For detailed information
+              about the crypto protocol, see the{" "}
               <TrackedLink
                 to="/docs/crypto"
                 label="Cryptography"
@@ -90,20 +80,20 @@ export default function ACIPProtocolSection() {
               documentation.
             </p>
             <p className="text-gray-400 text-sm">
-              <code className="code-inline">1000</code> =
-              CRYPTO_CLIENT_HELLO (Client → Server)
+              <code className="code-inline">1000</code> = CRYPTO_CLIENT_HELLO
+              (Client → Server)
               <br />
               Expected server key fingerprint for multi-key selection
               <br />
               <br />
-              <code className="code-inline">1100</code> =
-              CRYPTO_CAPABILITIES (Client → Server)
+              <code className="code-inline">1100</code> = CRYPTO_CAPABILITIES
+              (Client → Server)
               <br />
               Supported algorithms, compression methods
               <br />
               <br />
-              <code className="code-inline">1101</code> =
-              CRYPTO_PARAMETERS (Server → Client)
+              <code className="code-inline">1101</code> = CRYPTO_PARAMETERS
+              (Server → Client)
               <br />
               Chosen algorithms and cryptographic parameters
               <br />
@@ -120,20 +110,20 @@ export default function ACIPProtocolSection() {
               Client's ephemeral X25519 public key [32 bytes]
               <br />
               <br />
-              <code className="code-inline">1104</code> =
-              CRYPTO_AUTH_CHALLENGE (Server → Client)
+              <code className="code-inline">1104</code> = CRYPTO_AUTH_CHALLENGE
+              (Server → Client)
               <br />
               Random nonce [32 bytes] for authentication
               <br />
               <br />
-              <code className="code-inline">1105</code> =
-              CRYPTO_AUTH_RESPONSE (Client → Server)
+              <code className="code-inline">1105</code> = CRYPTO_AUTH_RESPONSE
+              (Client → Server)
               <br />
               HMAC over shared secret proving client identity
               <br />
               <br />
-              <code className="code-inline">1106</code> =
-              CRYPTO_AUTH_FAILED (Server → Client)
+              <code className="code-inline">1106</code> = CRYPTO_AUTH_FAILED
+              (Server → Client)
               <br />
               Authentication rejected (invalid key or signature)
               <br />
@@ -150,8 +140,8 @@ export default function ACIPProtocolSection() {
               Encryption ready, session begins
               <br />
               <br />
-              <code className="code-inline">1109</code> =
-              CRYPTO_NO_ENCRYPTION (Client → Server)
+              <code className="code-inline">1109</code> = CRYPTO_NO_ENCRYPTION
+              (Client → Server)
               <br />
               Request to proceed without encryption (plaintext mode)
             </p>
@@ -159,36 +149,32 @@ export default function ACIPProtocolSection() {
 
           {/* Types 1200-1203: Crypto Rekeying */}
           <div className="card-standard accent-violet">
-            <Heading
-              level={4}
-              className="text-violet-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-violet-300 font-semibold mb-2">
               Types 1200-1203: Crypto Rekeying & Encryption
             </Heading>
             <p className="text-gray-400 text-sm">
               <code className="code-inline">1200</code> = PACKET_ENCRYPTED
               <br />
-              Encrypted session packet wrapper (XSalsa20-Poly1305 AEAD).
-              After handshake completion, all packet types ≥ 2000 are
-              wrapped in PACKET_ENCRYPTED before transmission. The
-              original packet type is included in the encrypted payload,
-              not the packet header.
+              Encrypted session packet wrapper (XSalsa20-Poly1305 AEAD). After
+              handshake completion, all packet types ≥ 2000 are wrapped in
+              PACKET_ENCRYPTED before transmission. The original packet type is
+              included in the encrypted payload, not the packet header.
               <br />
               <br />
-              <code className="code-inline">1201</code> =
-              CRYPTO_REKEY_REQUEST (Initiator → Responder)
+              <code className="code-inline">1201</code> = CRYPTO_REKEY_REQUEST
+              (Initiator → Responder)
               <br />
               Request new ephemeral key [32 bytes]
               <br />
               <br />
-              <code className="code-inline">1202</code> =
-              CRYPTO_REKEY_RESPONSE (Responder → Initiator)
+              <code className="code-inline">1202</code> = CRYPTO_REKEY_RESPONSE
+              (Responder → Initiator)
               <br />
               New ephemeral key [32 bytes]
               <br />
               <br />
-              <code className="code-inline">1203</code> =
-              CRYPTO_REKEY_COMPLETE (Initiator → Responder)
+              <code className="code-inline">1203</code> = CRYPTO_REKEY_COMPLETE
+              (Initiator → Responder)
               <br />
               Empty packet encrypted with NEW key (signals rekey complete)
             </p>
@@ -196,10 +182,7 @@ export default function ACIPProtocolSection() {
 
           {/* Types 2000-2004: Messages */}
           <div className="card-standard accent-red">
-            <Heading
-              level={4}
-              className="text-red-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-red-300 font-semibold mb-2">
               Types 2000-2004: Message Packets
             </Heading>
             <p className="text-gray-400 text-sm">
@@ -231,22 +214,18 @@ export default function ACIPProtocolSection() {
 
           {/* Types 3000-3001: Media Frames */}
           <div className="card-standard accent-cyan">
-            <Heading
-              level={4}
-              className="text-cyan-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-cyan-300 font-semibold mb-2">
               Types 3000-3001: Media Frames
             </Heading>
             <p className="text-gray-400 text-sm">
-              <code className="code-inline">3000</code> = ASCII_FRAME
-              (Server → Client)
+              <code className="code-inline">3000</code> = ASCII_FRAME (Server →
+              Client)
               <br />
-              Complete terminal frame with ANSI color codes and cursor
-              position
+              Complete terminal frame with ANSI color codes and cursor position
               <br />
               <br />
-              <code className="code-inline">3001</code> = IMAGE_FRAME
-              (Client → Server)
+              <code className="code-inline">3001</code> = IMAGE_FRAME (Client →
+              Server)
               <br />
               RGB image data with dimensions. Auto-compressed with zstd if
               exceeds 16KB
@@ -255,17 +234,14 @@ export default function ACIPProtocolSection() {
 
           {/* Types 4000-4001: Audio */}
           <div className="card-standard accent-yellow">
-            <Heading
-              level={4}
-              className="text-yellow-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-yellow-300 font-semibold mb-2">
               Types 4000-4001: Audio Streaming
             </Heading>
             <p className="text-gray-400 text-sm">
               <code className="code-inline">4000</code> = AUDIO_BATCH
               <br />
-              Multiple raw PCM audio samples bundled together for
-              efficiency (reduces packet overhead ~32x)
+              Multiple raw PCM audio samples bundled together for efficiency
+              (reduces packet overhead ~32x)
               <br />
               <br />
               <code className="code-inline">4001</code> = AUDIO_OPUS_BATCH
@@ -276,15 +252,12 @@ export default function ACIPProtocolSection() {
 
           {/* Types 5000-5008: Control/State */}
           <div className="card-standard accent-green">
-            <Heading
-              level={4}
-              className="text-green-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-green-300 font-semibold mb-2">
               Types 5000-5008: Control/State Packets
             </Heading>
             <p className="text-gray-400 text-sm">
-              <code className="code-inline">5000</code> =
-              CLIENT_CAPABILITIES (Client → Server)
+              <code className="code-inline">5000</code> = CLIENT_CAPABILITIES
+              (Client → Server)
               <br />
               Terminal dimensions, color depth, and feature flags
               <br />
@@ -320,14 +293,14 @@ export default function ACIPProtocolSection() {
               Client stops sending audio/video
               <br />
               <br />
-              <code className="code-inline">5007</code> = CLEAR_CONSOLE
-              (Server → Client)
+              <code className="code-inline">5007</code> = CLEAR_CONSOLE (Server
+              → Client)
               <br />
               Clears entire terminal display
               <br />
               <br />
-              <code className="code-inline">5008</code> = SERVER_STATE
-              (Server → Client)
+              <code className="code-inline">5008</code> = SERVER_STATE (Server →
+              Client)
               <br />
               Broadcasts session state to all clients
             </p>
@@ -335,15 +308,12 @@ export default function ACIPProtocolSection() {
 
           {/* Types 6000-6199: Discovery Mode */}
           <div className="card-standard accent-teal">
-            <Heading
-              level={4}
-              className="text-teal-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-teal-300 font-semibold mb-2">
               Types 6000-6199: ascii-chat Discovery Service (ACDS)
             </Heading>
             <p className="text-gray-400 text-sm mb-3">
-              Used in P2P WebRTC mode to establish connections through
-              discovery service. Find server keys at{" "}
+              Used in P2P WebRTC mode to establish connections through discovery
+              service. Find server keys at{" "}
               <TrackedLink
                 to="https://discover.ascii-chat.com"
                 label="discover.ascii-chat.com"
@@ -357,56 +327,56 @@ export default function ACIPProtocolSection() {
               <strong>Session Management (6000-6008):</strong>
             </p>
             <p className="text-gray-400 text-sm mb-3">
-              <code className="code-inline">6000</code> =
-              ACIP_SESSION_CREATE (Client → ACDS)
+              <code className="code-inline">6000</code> = ACIP_SESSION_CREATE
+              (Client → ACDS)
               <br />
               Create new session
               <br />
               <br />
-              <code className="code-inline">6001</code> =
-              ACIP_SESSION_CREATED (ACDS → Client)
+              <code className="code-inline">6001</code> = ACIP_SESSION_CREATED
+              (ACDS → Client)
               <br />
               Session created response
               <br />
               <br />
-              <code className="code-inline">6002</code> =
-              ACIP_SESSION_LOOKUP (Client → ACDS)
+              <code className="code-inline">6002</code> = ACIP_SESSION_LOOKUP
+              (Client → ACDS)
               <br />
               Find session by string
               <br />
               <br />
-              <code className="code-inline">6003</code> =
-              ACIP_SESSION_INFO (ACDS → Client)
+              <code className="code-inline">6003</code> = ACIP_SESSION_INFO
+              (ACDS → Client)
               <br />
               Session info response
               <br />
               <br />
-              <code className="code-inline">6004</code> =
-              ACIP_SESSION_JOIN (Client → ACDS)
+              <code className="code-inline">6004</code> = ACIP_SESSION_JOIN
+              (Client → ACDS)
               <br />
               Join existing session
               <br />
               <br />
-              <code className="code-inline">6005</code> =
-              ACIP_SESSION_JOINED (ACDS → Client)
+              <code className="code-inline">6005</code> = ACIP_SESSION_JOINED
+              (ACDS → Client)
               <br />
               Joined response
               <br />
               <br />
-              <code className="code-inline">6006</code> =
-              ACIP_SESSION_LEAVE (Client → ACDS)
+              <code className="code-inline">6006</code> = ACIP_SESSION_LEAVE
+              (Client → ACDS)
               <br />
               Graceful disconnect
               <br />
               <br />
-              <code className="code-inline">6007</code> = ACIP_SESSION_END
-              (Host → ACDS)
+              <code className="code-inline">6007</code> = ACIP_SESSION_END (Host
+              → ACDS)
               <br />
               End session (host only)
               <br />
               <br />
-              <code className="code-inline">6008</code> =
-              ACIP_SESSION_RECONNECT (Client → ACDS)
+              <code className="code-inline">6008</code> = ACIP_SESSION_RECONNECT
+              (Client → ACDS)
               <br />
               Reconnect to existing
             </p>
@@ -430,26 +400,26 @@ export default function ACIPProtocolSection() {
               <strong>String Management (6020-6023):</strong>
             </p>
             <p className="text-gray-400 text-sm mb-3">
-              <code className="code-inline">6020</code> =
-              ACIP_STRING_RESERVE (Client → ACDS)
+              <code className="code-inline">6020</code> = ACIP_STRING_RESERVE
+              (Client → ACDS)
               <br />
               Reserve session string
               <br />
               <br />
-              <code className="code-inline">6021</code> =
-              ACIP_STRING_RESERVED (ACDS → Client)
+              <code className="code-inline">6021</code> = ACIP_STRING_RESERVED
+              (ACDS → Client)
               <br />
               Reservation confirmed
               <br />
               <br />
-              <code className="code-inline">6022</code> =
-              ACIP_STRING_RENEW (Client → ACDS)
+              <code className="code-inline">6022</code> = ACIP_STRING_RENEW
+              (Client → ACDS)
               <br />
               Renew expiring reservation
               <br />
               <br />
-              <code className="code-inline">6023</code> =
-              ACIP_STRING_RELEASE (Client → ACDS)
+              <code className="code-inline">6023</code> = ACIP_STRING_RELEASE
+              (Client → ACDS)
               <br />
               Release string reservation
             </p>
@@ -458,14 +428,14 @@ export default function ACIPProtocolSection() {
               <strong>Ring Consensus (6050-6051):</strong>
             </p>
             <p className="text-gray-400 text-sm mb-3">
-              <code className="code-inline">6050</code> =
-              ACIP_PARTICIPANT_LIST (ACDS → Participants)
+              <code className="code-inline">6050</code> = ACIP_PARTICIPANT_LIST
+              (ACDS → Participants)
               <br />
               Ordered participant ring
               <br />
               <br />
-              <code className="code-inline">6051</code> =
-              ACIP_RING_COLLECT (Participant → Next Participant)
+              <code className="code-inline">6051</code> = ACIP_RING_COLLECT
+              (Participant → Next Participant)
               <br />
               Collect votes from participants
             </p>
@@ -474,31 +444,31 @@ export default function ACIPProtocolSection() {
               <strong>Host Negotiation & Migration (6060-6068):</strong>
             </p>
             <p className="text-gray-400 text-sm">
-              <code className="code-inline">6060</code> =
-              ACIP_NETWORK_QUALITY (Participant → ACDS)
+              <code className="code-inline">6060</code> = ACIP_NETWORK_QUALITY
+              (Participant → ACDS)
               <br />
               Bandwidth/RTT/jitter metrics
               <br />
               <br />
-              <code className="code-inline">6061</code> =
-              ACIP_HOST_ANNOUNCEMENT (Participant → ACDS)
+              <code className="code-inline">6061</code> = ACIP_HOST_ANNOUNCEMENT
+              (Participant → ACDS)
               <br />I won host election
               <br />
               <br />
-              <code className="code-inline">6062</code> =
-              ACIP_HOST_DESIGNATED (ACDS → All Participants)
+              <code className="code-inline">6062</code> = ACIP_HOST_DESIGNATED
+              (ACDS → All Participants)
               <br />
               Discovery designates host
               <br />
               <br />
-              <code className="code-inline">6063</code> =
-              ACIP_SETTINGS_SYNC (Initiator → Host → All Participants)
+              <code className="code-inline">6063</code> = ACIP_SETTINGS_SYNC
+              (Initiator → Host → All Participants)
               <br />
               Broadcast settings to peers
               <br />
               <br />
-              <code className="code-inline">6064</code> =
-              ACIP_SETTINGS_ACK (Participant → Initiator)
+              <code className="code-inline">6064</code> = ACIP_SETTINGS_ACK
+              (Participant → Initiator)
               <br />
               Settings acknowledged
               <br />
@@ -521,20 +491,20 @@ export default function ACIPProtocolSection() {
               New peer joined
               <br />
               <br />
-              <code className="code-inline">6068</code> =
-              ACIP_PARTICIPANT_LEFT (ACDS → Remaining Participants)
+              <code className="code-inline">6068</code> = ACIP_PARTICIPANT_LEFT
+              (ACDS → Remaining Participants)
               <br />
               Peer disconnected
               <br />
               <br />
-              <code className="code-inline">6100</code> =
-              ACIP_DISCOVERY_PING (Client → ACDS)
+              <code className="code-inline">6100</code> = ACIP_DISCOVERY_PING
+              (Client → ACDS)
               <br />
               Keepalive to discovery server
               <br />
               <br />
-              <code className="code-inline">6199</code> = ACIP_ERROR (ACDS
-              → Client)
+              <code className="code-inline">6199</code> = ACIP_ERROR (ACDS →
+              Client)
               <br />
               Generic error response from discovery server
             </p>
@@ -548,8 +518,8 @@ export default function ACIPProtocolSection() {
         </Heading>
         <p className="docs-paragraph">
           Frames use zstd compression (configurable levels 1-9) to reduce
-          bandwidth. Large frames are automatically compressed. RLE
-          (Run-Length Encoding) optimizes identical pixels.
+          bandwidth. Large frames are automatically compressed. RLE (Run-Length
+          Encoding) optimizes identical pixels.
         </p>
       </div>
     </section>

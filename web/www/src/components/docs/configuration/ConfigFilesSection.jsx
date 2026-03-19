@@ -9,9 +9,9 @@ export default function ConfigFilesSection() {
       </Heading>
 
       <p className="docs-paragraph">
-        ascii-chat searches for configuration files across multiple
-        standard locations. Files are loaded in order, with later files
-        overriding earlier ones.
+        ascii-chat searches for configuration files across multiple standard
+        locations. Files are loaded in order, with later files overriding
+        earlier ones.
       </p>
 
       <div className="docs-subsection-spacing">
@@ -29,9 +29,8 @@ export default function ConfigFilesSection() {
         <div className="info-box-info mt-3">
           <p className="text-gray-300 text-sm">
             <strong>Tip:</strong> If{" "}
-            <code className="text-cyan-300">XDG_CONFIG_HOME</code> isn't
-            set, it defaults to{" "}
-            <code className="text-cyan-300">~/.config</code>
+            <code className="text-cyan-300">XDG_CONFIG_HOME</code> isn't set, it
+            defaults to <code className="text-cyan-300">~/.config</code>
           </p>
         </div>
       </div>

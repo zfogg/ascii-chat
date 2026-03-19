@@ -8,10 +8,9 @@ export default function LocalFilesSection() {
         💾 Local Files
       </Heading>
       <p className="docs-paragraph">
-        ascii-chat uses <strong>FFmpeg</strong> for media decoding and
-        format conversion, and optionally <strong>yt-dlp</strong> for
-        downloading streams. For detailed information on supported formats
-        and codecs, see{" "}
+        ascii-chat uses <strong>FFmpeg</strong> for media decoding and format
+        conversion, and optionally <strong>yt-dlp</strong> for downloading
+        streams. For detailed information on supported formats and codecs, see{" "}
         <code className="code-inline">man ffmpeg-formats</code>,{" "}
         <code className="code-inline">man ffmpeg-codecs</code>, and{" "}
         <code className="code-inline">man yt-dlp</code>.
@@ -22,8 +21,8 @@ export default function LocalFilesSection() {
           Video Files (All Formats)
         </Heading>
         <p className="docs-paragraph">
-          Stream any video format from disk to ASCII art. Supports MP4,
-          MKV, MOV, WebM, AVI, FLV, and more:
+          Stream any video format from disk to ASCII art. Supports MP4, MKV,
+          MOV, WebM, AVI, FLV, and more:
         </p>
         <CodeBlock language="bash">
           {
@@ -37,8 +36,7 @@ export default function LocalFilesSection() {
           Animated GIFs
         </Heading>
         <p className="docs-paragraph">
-          Play animated GIF files directly with full control over
-          playback:
+          Play animated GIF files directly with full control over playback:
         </p>
         <CodeBlock language="bash">
           {
@@ -52,8 +50,8 @@ export default function LocalFilesSection() {
           Image Formats
         </Heading>
         <p className="docs-paragraph">
-          Display and process individual images. Supports PNG, JPEG, WebP,
-          BMP, TIFF, and more:
+          Display and process individual images. Supports PNG, JPEG, WebP, BMP,
+          TIFF, and more:
         </p>
         <CodeBlock language="bash">
           {
@@ -67,8 +65,8 @@ export default function LocalFilesSection() {
           Seeking & Timestamps
         </Heading>
         <p className="docs-paragraph">
-          Jump to specific timestamps in videos, audio, and streaming URLs
-          using seconds:
+          Jump to specific timestamps in videos, audio, and streaming URLs using
+          seconds:
         </p>
         <CodeBlock language="bash">
           {
@@ -82,8 +80,8 @@ export default function LocalFilesSection() {
           Remote URLs
         </Heading>
         <p className="docs-paragraph">
-          Stream from HTTP/HTTPS, YouTube, and RTMP sources directly
-          without downloading:
+          Stream from HTTP/HTTPS, YouTube, and RTMP sources directly without
+          downloading:
         </p>
         <CodeBlock language="bash">
           {

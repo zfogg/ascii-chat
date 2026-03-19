@@ -28,7 +28,7 @@ export default function Display() {
       <AsciiChatHead
         title="Display - ascii-chat Documentation"
         description="Render modes, ASCII palettes, color filters, animations, framerate, and video transforms for ascii-chat."
-        url={\`\${SITES.MAIN}/docs/display\`}
+        url={`${SITES.MAIN}/docs/display`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col flex-1">
         <div className="flex-1 flex flex-col docs-container">

@@ -24,10 +24,9 @@ export default function ConnectionFlowSection() {
           Perfect Forward Secrecy
         </Heading>
         <p className="docs-paragraph">
-          Each session uses ephemeral X25519 keys that are discarded after
-          use. Even if long-term keys are compromised, past sessions
-          cannot be decrypted. Periodic key rotation for long-lived
-          connections.
+          Each session uses ephemeral X25519 keys that are discarded after use.
+          Even if long-term keys are compromised, past sessions cannot be
+          decrypted. Periodic key rotation for long-lived connections.
         </p>
       </div>
     </section>

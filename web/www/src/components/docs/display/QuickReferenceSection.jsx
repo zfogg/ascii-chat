@@ -58,9 +58,7 @@ export default function QuickReferenceSection() {
               </td>
               <td className="table-body-cell">—</td>
               <td className="table-body-cell">none</td>
-              <td className="table-body-cell">
-                Monochromatic color tint
-              </td>
+              <td className="table-body-cell">Monochromatic color tint</td>
             </tr>
             <tr>
               <td className="table-body-cell">
@@ -68,9 +66,7 @@ export default function QuickReferenceSection() {
               </td>
               <td className="table-body-cell">—</td>
               <td className="table-body-cell">false</td>
-              <td className="table-body-cell">
-                Matrix digital rain effect
-              </td>
+              <td className="table-body-cell">Matrix digital rain effect</td>
             </tr>
             <tr className="table-row-alt">
               <td className="table-body-cell">
@@ -78,9 +74,7 @@ export default function QuickReferenceSection() {
               </td>
               <td className="table-body-cell">—</td>
               <td className="table-body-cell">60</td>
-              <td className="table-body-cell">
-                Target framerate (1-144)
-              </td>
+              <td className="table-body-cell">Target framerate (1-144)</td>
             </tr>
             <tr>
               <td className="table-body-cell">
@@ -126,9 +120,7 @@ export default function QuickReferenceSection() {
                 <code>-S</code>
               </td>
               <td className="table-body-cell">false</td>
-              <td className="table-body-cell">
-                Capture one frame and exit
-              </td>
+              <td className="table-body-cell">Capture one frame and exit</td>
             </tr>
             <tr className="table-row-alt">
               <td className="table-body-cell">

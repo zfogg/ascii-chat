@@ -12,34 +12,27 @@ export default function PerformanceTipsSection() {
             Optimize for Network
           </Heading>
           <p className="text-gray-400 text-sm">
-            Reduce <code className="code-inline">--fps</code> and use
-            lower
+            Reduce <code className="code-inline">--fps</code> and use lower
             <code className="code-inline">--color-mode</code> on slow
             connections. Mono rendering is fastest.
           </p>
         </div>
         <div className="card-standard accent-purple">
-          <Heading
-            level={4}
-            className="text-purple-300 font-semibold mb-2"
-          >
+          <Heading level={4} className="text-purple-300 font-semibold mb-2">
             Bandwidth Usage
           </Heading>
           <p className="text-gray-400 text-sm">
-            Typical usage: monochrome at 10 fps ≈ 10-20 Kbps, truecolor at
-            30 fps ≈ 200-500 Kbps. Add audio for +50-100 Kbps.
+            Typical usage: monochrome at 10 fps ≈ 10-20 Kbps, truecolor at 30
+            fps ≈ 200-500 Kbps. Add audio for +50-100 Kbps.
           </p>
         </div>
         <div className="card-standard accent-green">
-          <Heading
-            level={4}
-            className="text-green-300 font-semibold mb-2"
-          >
+          <Heading level={4} className="text-green-300 font-semibold mb-2">
             CPU Usage
           </Heading>
           <p className="text-gray-400 text-sm">
-            SIMD-accelerated ASCII conversion (1-4x speedup). Smaller
-            output dimensions = lower CPU. Run on weak hardware with
+            SIMD-accelerated ASCII conversion (1-4x speedup). Smaller output
+            dimensions = lower CPU. Run on weak hardware with
             <code className="code-inline">--width 80 --height 24</code>.
           </p>
         </div>

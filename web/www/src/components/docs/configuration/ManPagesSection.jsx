@@ -9,8 +9,8 @@ export default function ManPagesSection() {
       </Heading>
 
       <p className="docs-paragraph">
-        The complete reference documentation for ascii-chat is available
-        as traditional Unix man pages:
+        The complete reference documentation for ascii-chat is available as
+        traditional Unix man pages:
       </p>
 
       <div className="space-y-3 mb-6">
@@ -25,16 +25,12 @@ export default function ManPagesSection() {
             - Command Reference
           </Heading>
           <p className="text-gray-400 text-sm">
-            Complete list of all command-line options, environment
-            variables, modes, examples, security details, and keyboard
-            controls.
+            Complete list of all command-line options, environment variables,
+            modes, examples, security details, and keyboard controls.
           </p>
         </div>
         <div className="card-standard accent-purple">
-          <Heading
-            level={4}
-            className="text-purple-300 font-semibold mb-2"
-          >
+          <Heading level={4} className="text-purple-300 font-semibold mb-2">
             <a
               href="/man5"
               className="text-purple-300 hover:text-purple-200 transition-colors"
@@ -44,8 +40,8 @@ export default function ManPagesSection() {
             - File Formats
           </Heading>
           <p className="text-gray-400 text-sm">
-            Configuration file format (TOML), color scheme files,
-            authentication files, and other data formats.
+            Configuration file format (TOML), color scheme files, authentication
+            files, and other data formats.
           </p>
         </div>
       </div>
@@ -78,8 +74,8 @@ open https://ascii-chat.com/man5  # File formats`}
         <p className="text-gray-400 text-sm mb-4">
           By default, the ascii-chat man page is installed in the standard
           system location. If{" "}
-          <code className="text-cyan-300">man ascii-chat</code> doesn't
-          work, you may need to add the installation directory to your{" "}
+          <code className="text-cyan-300">man ascii-chat</code> doesn't work,
+          you may need to add the installation directory to your{" "}
           <code className="text-cyan-300">MANPATH</code>.
         </p>
 
@@ -88,8 +84,8 @@ open https://ascii-chat.com/man5  # File formats`}
             macOS (Homebrew)
           </Heading>
           <p className="text-gray-400 text-sm mb-2">
-            If you installed ascii-chat via Homebrew, add the man page
-            directory to your shell profile:
+            If you installed ascii-chat via Homebrew, add the man page directory
+            to your shell profile:
           </p>
           <CodeBlock language="bash">{`# Add to ~/.zshrc or ~/.bashrc
 export MANPATH="$(brew --prefix)/share/man:$MANPATH"`}</CodeBlock>
@@ -108,9 +104,9 @@ export MANPATH="$(brew --prefix)/share/man:$MANPATH"`}</CodeBlock>
           <p className="text-gray-400 text-sm mb-2">
             The man page is typically installed to{" "}
             <code className="text-cyan-300">/usr/local/share/man</code> or{" "}
-            <code className="text-cyan-300">/usr/share/man</code>. These
-            are usually in your{" "}
-            <code className="text-cyan-300">MANPATH</code> by default.
+            <code className="text-cyan-300">/usr/share/man</code>. These are
+            usually in your <code className="text-cyan-300">MANPATH</code> by
+            default.
           </p>
           <p className="text-gray-400 text-sm">
             If not, add to your shell profile:

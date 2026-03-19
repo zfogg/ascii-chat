@@ -14,24 +14,17 @@ export default function OptionCombinationsSection() {
         </Heading>
         <div className="space-y-2">
           <div className="card-standard accent-blue">
-            <Heading
-              level={4}
-              className="text-blue-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-blue-300 font-semibold mb-2">
               half-block Requires UTF-8
             </Heading>
             <p className="text-gray-300 text-sm">
               <strong>Combination:</strong>{" "}
-              <code>--render-mode half-block</code> +{" "}
-              <code>--utf8 true</code>
+              <code>--render-mode half-block</code> + <code>--utf8 true</code>
             </p>
           </div>
 
           <div className="card-standard accent-blue">
-            <Heading
-              level={4}
-              className="text-blue-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-blue-300 font-semibold mb-2">
               Piping Affects Color & Dimensions
             </Heading>
             <p className="text-gray-300 text-sm mb-2">
@@ -51,10 +44,7 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
         </Heading>
         <div className="space-y-2">
           <div className="card-standard accent-cyan">
-            <Heading
-              level={4}
-              className="text-cyan-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-cyan-300 font-semibold mb-2">
               Over SSH
             </Heading>
             <CodeBlock language="bash">
@@ -64,10 +54,7 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
           </div>
 
           <div className="card-standard accent-cyan">
-            <Heading
-              level={4}
-              className="text-cyan-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-cyan-300 font-semibold mb-2">
               Capture to File
             </Heading>
             <CodeBlock language="bash">
@@ -77,10 +64,7 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
           </div>
 
           <div className="card-standard accent-cyan">
-            <Heading
-              level={4}
-              className="text-cyan-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-cyan-300 font-semibold mb-2">
               Piped Output
             </Heading>
             <CodeBlock language="bash">

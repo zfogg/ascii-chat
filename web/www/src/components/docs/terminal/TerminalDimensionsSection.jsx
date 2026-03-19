@@ -17,12 +17,11 @@ export default function TerminalDimensionsSection() {
         </p>
         <ul className="list-disc list-inside text-gray-300 text-sm space-y-1 ml-2">
           <li>
-            Terminal queries (ioctl TIOCGWINSZ on Unix, Console API on
-            Windows)
+            Terminal queries (ioctl TIOCGWINSZ on Unix, Console API on Windows)
           </li>
           <li>
-            <code>$COLUMNS</code> and <code>$ROWS</code> environment
-            variables (when set)
+            <code>$COLUMNS</code> and <code>$ROWS</code> environment variables
+            (when set)
           </li>
           <li>Fallback defaults: 110×70 if detection fails</li>
         </ul>
@@ -34,8 +33,8 @@ export default function TerminalDimensionsSection() {
         <div className="info-box-info mt-3">
           <p className="text-gray-300 text-sm">
             <strong>Auto-Update:</strong> When running interactively (not
-            piped), dimensions are updated in real-time when you resize
-            the terminal.
+            piped), dimensions are updated in real-time when you resize the
+            terminal.
           </p>
         </div>
       </div>
@@ -64,8 +63,7 @@ export default function TerminalDimensionsSection() {
           Piping & Non-Interactive Mode
         </Heading>
         <p className="docs-paragraph">
-          When output is piped (
-          <code>ascii-chat mirror | tee file.txt</code>
+          When output is piped (<code>ascii-chat mirror | tee file.txt</code>
           ), dimension detection changes:
         </p>
         <ul className="list-disc list-inside text-gray-300 text-sm space-y-1 ml-2">
@@ -77,8 +75,7 @@ export default function TerminalDimensionsSection() {
           </li>
           <li>Uses defaults (110×70) if env vars not set</li>
           <li>
-            Always use <code>-x</code>/<code>-y</code> for consistent
-            output
+            Always use <code>-x</code>/<code>-y</code> for consistent output
           </li>
         </ul>
         <CodeBlock language="bash">

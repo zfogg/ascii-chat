@@ -15,8 +15,8 @@ export default function EnvironmentVariablesSection() {
         <p className="text-gray-400 text-sm">
           For the complete list of all{" "}
           <code className="text-cyan-300">ASCII_CHAT_*</code> environment
-          variables and their descriptions, see the{" "}
-          <strong>ENVIRONMENT</strong> section of the{" "}
+          variables and their descriptions, see the <strong>ENVIRONMENT</strong>{" "}
+          section of the{" "}
           <a
             href="/man1#ENVIRONMENT"
             className="text-cyan-400 hover:text-cyan-300 transition-colors"
@@ -28,12 +28,11 @@ export default function EnvironmentVariablesSection() {
       </div>
 
       <p className="docs-paragraph">
-        Environment variables provide session-wide configuration and are
-        the second level in the priority chain. CLI flags override
-        environment variables. They serve two purposes:{" "}
-        <strong>(1)</strong> overriding option values (when not overridden
-        by CLI flags), and <strong>(2)</strong> discovering config file
-        locations.
+        Environment variables provide session-wide configuration and are the
+        second level in the priority chain. CLI flags override environment
+        variables. They serve two purposes: <strong>(1)</strong> overriding
+        option values (when not overridden by CLI flags), and{" "}
+        <strong>(2)</strong> discovering config file locations.
       </p>
 
       <div className="docs-subsection-spacing">
@@ -42,12 +41,10 @@ export default function EnvironmentVariablesSection() {
         </Heading>
         <p className="text-gray-400 text-sm mb-3">
           Most CLI options have a corresponding environment variable.
-          Environment variables provide session-wide configuration that
-          can be overridden by explicit CLI flags. For a complete list of
-          all available{" "}
-          <code className="text-cyan-300">ASCII_CHAT_*</code> variables,
-          see the <code className="text-cyan-300">ENVIRONMENT</code>{" "}
-          section of the{" "}
+          Environment variables provide session-wide configuration that can be
+          overridden by explicit CLI flags. For a complete list of all available{" "}
+          <code className="text-cyan-300">ASCII_CHAT_*</code> variables, see the{" "}
+          <code className="text-cyan-300">ENVIRONMENT</code> section of the{" "}
           <a
             href="/man1#ENVIRONMENT"
             className="text-cyan-400 hover:text-cyan-300 transition-colors"
@@ -58,23 +55,18 @@ export default function EnvironmentVariablesSection() {
         </p>
         <div className="space-y-3">
           <div className="card-standard accent-pink">
-            <Heading
-              level={4}
-              className="text-pink-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-pink-300 font-semibold mb-2">
               Naming Convention
             </Heading>
             <p className="text-gray-400 text-sm mb-2">
-              Environment variable names are uppercase option names with
-              hyphens converted to underscores, prefixed with{" "}
+              Environment variable names are uppercase option names with hyphens
+              converted to underscores, prefixed with{" "}
               <code className="text-cyan-300">ASCII_CHAT_</code>:
             </p>
             <ul className="list-disc ml-6 text-gray-300 text-sm space-y-1">
               <li>
                 <code className="text-cyan-300">--port</code> →{" "}
-                <code className="text-cyan-300">
-                  ASCII_CHAT_PORT=8080
-                </code>
+                <code className="text-cyan-300">ASCII_CHAT_PORT=8080</code>
               </li>
               <li>
                 <code className="text-cyan-300">--color-mode</code> →{" "}
@@ -84,9 +76,7 @@ export default function EnvironmentVariablesSection() {
               </li>
               <li>
                 <code className="text-cyan-300">--width</code> →{" "}
-                <code className="text-cyan-300">
-                  ASCII_CHAT_WIDTH=120
-                </code>
+                <code className="text-cyan-300">ASCII_CHAT_WIDTH=120</code>
               </li>
               <li>
                 <code className="text-cyan-300">--fps</code> →{" "}
@@ -94,17 +84,14 @@ export default function EnvironmentVariablesSection() {
               </li>
             </ul>
             <p className="text-gray-400 text-sm mt-3">
-              View <code className="text-cyan-300">man ascii-chat</code>{" "}
-              or the <code className="text-cyan-300">ascii-chat(1)</code>{" "}
-              documentation for the complete list of all supported options
-              and their corresponding environment variables.
+              View <code className="text-cyan-300">man ascii-chat</code> or the{" "}
+              <code className="text-cyan-300">ascii-chat(1)</code> documentation
+              for the complete list of all supported options and their
+              corresponding environment variables.
             </p>
           </div>
           <div className="card-standard accent-pink">
-            <Heading
-              level={4}
-              className="text-pink-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-pink-300 font-semibold mb-2">
               Example: Override Chain in Action
             </Heading>
             <CodeBlock language="bash">{`# config.toml:
@@ -138,10 +125,7 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
         </Heading>
         <div className="space-y-3">
           <div className="card-standard accent-teal">
-            <Heading
-              level={4}
-              className="text-teal-300 font-semibold mb-1"
-            >
+            <Heading level={4} className="text-teal-300 font-semibold mb-1">
               XDG_CONFIG_HOME
             </Heading>
             <p className="text-gray-400 text-sm mb-2">
@@ -152,10 +136,7 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
             </CodeBlock>
           </div>
           <div className="card-standard accent-teal">
-            <Heading
-              level={4}
-              className="text-teal-300 font-semibold mb-1"
-            >
+            <Heading level={4} className="text-teal-300 font-semibold mb-1">
               APPDATA / USERPROFILE
             </Heading>
             <p className="text-gray-400 text-sm mb-2">
@@ -163,15 +144,10 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
             </p>
           </div>
           <div className="card-standard accent-teal">
-            <Heading
-              level={4}
-              className="text-teal-300 font-semibold mb-1"
-            >
+            <Heading level={4} className="text-teal-300 font-semibold mb-1">
               HOME
             </Heading>
-            <p className="text-gray-400 text-sm mb-2">
-              User home directory
-            </p>
+            <p className="text-gray-400 text-sm mb-2">User home directory</p>
           </div>
         </div>
       </div>
@@ -182,54 +158,43 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
         </Heading>
         <p className="text-gray-400 text-sm mb-4">
           Beyond the standard{" "}
-          <code className="text-cyan-300">ASCII_CHAT_*</code> option
-          variables, ascii-chat recognizes these system variables:
+          <code className="text-cyan-300">ASCII_CHAT_*</code> option variables,
+          ascii-chat recognizes these system variables:
         </p>
         <div className="space-y-3">
           <div className="card-standard accent-purple">
-            <Heading
-              level={4}
-              className="text-purple-300 font-semibold mb-1"
-            >
+            <Heading level={4} className="text-purple-300 font-semibold mb-1">
               SSH_AUTH_SOCK
             </Heading>
             <p className="text-gray-400 text-sm mb-2">
-              SSH agent socket for password-free key authentication (Unix
-              only)
+              SSH agent socket for password-free key authentication (Unix only)
             </p>
             <p className="text-gray-400 text-sm">
-              Set by ssh-agent automatically. Required for encrypted SSH
-              keys.
+              Set by ssh-agent automatically. Required for encrypted SSH keys.
             </p>
           </div>
           <div className="card-standard accent-purple">
-            <Heading
-              level={4}
-              className="text-purple-300 font-semibold mb-1"
-            >
+            <Heading level={4} className="text-purple-300 font-semibold mb-1">
               GNUPGHOME
             </Heading>
             <p className="text-gray-400 text-sm mb-2">
               GPG home directory for key management and gpg-agent
             </p>
             <p className="text-gray-400 text-sm">
-              Defaults to <code className="text-cyan-300">~/.gnupg</code>{" "}
-              if not set
+              Defaults to <code className="text-cyan-300">~/.gnupg</code> if not
+              set
             </p>
           </div>
           <div className="card-standard accent-purple">
-            <Heading
-              level={4}
-              className="text-purple-300 font-semibold mb-1"
-            >
+            <Heading level={4} className="text-purple-300 font-semibold mb-1">
               ASCII_CHAT_KEY_PASSWORD
             </Heading>
             <p className="text-gray-400 text-sm mb-2">
               ⚠️ Passphrase for encrypted SSH/GPG keys
             </p>
             <p className="text-gray-400 text-sm text-red-400 mb-2">
-              <strong>SECURITY WARNING:</strong> Only use in CI/CD
-              environments, never commit to version control
+              <strong>SECURITY WARNING:</strong> Only use in CI/CD environments,
+              never commit to version control
             </p>
             <p className="text-gray-400 text-sm">
               Example:{" "}
@@ -239,10 +204,7 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
             </p>
           </div>
           <div className="card-standard accent-purple">
-            <Heading
-              level={4}
-              className="text-purple-300 font-semibold mb-1"
-            >
+            <Heading level={4} className="text-purple-300 font-semibold mb-1">
               WEBCAM_DISABLED
             </Heading>
             <p className="text-gray-400 text-sm mb-2">
@@ -250,15 +212,11 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
             </p>
             <p className="text-gray-400 text-sm">
               Equivalent to{" "}
-              <code className="text-cyan-300">--test-pattern</code> CLI
-              flag
+              <code className="text-cyan-300">--test-pattern</code> CLI flag
             </p>
           </div>
           <div className="card-standard accent-purple">
-            <Heading
-              level={4}
-              className="text-purple-300 font-semibold mb-1"
-            >
+            <Heading level={4} className="text-purple-300 font-semibold mb-1">
               XDG_CONFIG_DIRS
             </Heading>
             <p className="text-gray-400 text-sm mb-2">
@@ -270,41 +228,31 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
             </p>
           </div>
           <div className="card-standard accent-purple">
-            <Heading
-              level={4}
-              className="text-purple-300 font-semibold mb-1"
-            >
+            <Heading level={4} className="text-purple-300 font-semibold mb-1">
               XDG_DATA_HOME
             </Heading>
             <p className="text-gray-400 text-sm mb-2">
               XDG Base Directory data location (Linux/macOS)
             </p>
             <p className="text-gray-400 text-sm">
-              Defaults to{" "}
-              <code className="text-cyan-300">~/.local/share</code> if not
-              set
+              Defaults to <code className="text-cyan-300">~/.local/share</code>{" "}
+              if not set
             </p>
           </div>
           <div className="card-standard accent-purple">
-            <Heading
-              level={4}
-              className="text-purple-300 font-semibold mb-1"
-            >
+            <Heading level={4} className="text-purple-300 font-semibold mb-1">
               USER / USERNAME
             </Heading>
             <p className="text-gray-400 text-sm mb-2">
               Current user identifier (system-set)
             </p>
             <p className="text-gray-400 text-sm">
-              Used for TOFU verification and user identification. Set by
-              OS automatically.
+              Used for TOFU verification and user identification. Set by OS
+              automatically.
             </p>
           </div>
           <div className="card-standard accent-purple">
-            <Heading
-              level={4}
-              className="text-purple-300 font-semibold mb-1"
-            >
+            <Heading level={4} className="text-purple-300 font-semibold mb-1">
               LLVM_SYMBOLIZER_PATH &amp; _NT_SYMBOL_PATH
             </Heading>
             <p className="text-gray-400 text-sm mb-2">

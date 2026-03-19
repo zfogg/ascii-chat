@@ -12,8 +12,8 @@ export default function ServerVerificationSection() {
       </Heading>
 
       <p className="text-gray-300 mb-6">
-        Prevent man-in-the-middle attacks by verifying the server's public
-        key before connecting.
+        Prevent man-in-the-middle attacks by verifying the server's public key
+        before connecting.
       </p>
 
       <div className="space-y-6">

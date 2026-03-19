@@ -22,9 +22,8 @@ export default function UnicodeTextSection() {
         </CodeBlock>
         <div className="info-box-warning mt-3">
           <p className="text-gray-300 text-sm">
-            <strong>⚠️ Warning:</strong> Some palettes (blocks,
-            half-block) require UTF-8. They'll fall back to ASCII if UTF-8
-            is disabled.
+            <strong>⚠️ Warning:</strong> Some palettes (blocks, half-block)
+            require UTF-8. They'll fall back to ASCII if UTF-8 is disabled.
           </p>
         </div>
       </div>

@@ -13,8 +13,8 @@ export default function ASCIIPalettesSection() {
           Built-in Palettes
         </Heading>
         <p className="docs-paragraph">
-          Control which ASCII characters represent different brightness
-          levels. Each palette has a different aesthetic:
+          Control which ASCII characters represent different brightness levels.
+          Each palette has a different aesthetic:
         </p>
         <CodeBlock language="bash">
           {
@@ -23,10 +23,7 @@ export default function ASCIIPalettesSection() {
         </CodeBlock>
         <div className="space-y-2 mt-3">
           <div className="card-standard accent-pink">
-            <Heading
-              level={4}
-              className="text-pink-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-pink-300 font-semibold mb-2">
               Palette Characters
             </Heading>
             <div className="space-y-3 text-sm">
@@ -40,9 +37,7 @@ export default function ASCIIPalettesSection() {
               </div>
               <div>
                 <strong className="text-pink-300">blocks</strong>
-                <span className="text-gray-500 ml-2">
-                  (requires UTF-8)
-                </span>
+                <span className="text-gray-500 ml-2">(requires UTF-8)</span>
                 <pre className="mt-1 font-mono text-lg text-gray-200 bg-gray-950 rounded px-3 py-2 overflow-x-auto">
                   <span className="text-gray-600">···</span>
                   {"░░▒▒▓▓██"}
@@ -50,9 +45,7 @@ export default function ASCIIPalettesSection() {
               </div>
               <div>
                 <strong className="text-pink-300">digital</strong>
-                <span className="text-gray-500 ml-2">
-                  (requires UTF-8)
-                </span>
+                <span className="text-gray-500 ml-2">(requires UTF-8)</span>
                 <pre className="mt-1 font-mono text-lg text-gray-200 bg-gray-950 rounded px-3 py-2 overflow-x-auto">
                   <span className="text-gray-600">···</span>
                   {"-=≡≣▰▱◼"}
@@ -67,9 +60,7 @@ export default function ASCIIPalettesSection() {
               </div>
               <div>
                 <strong className="text-pink-300">cool</strong>
-                <span className="text-gray-500 ml-2">
-                  (requires UTF-8)
-                </span>
+                <span className="text-gray-500 ml-2">(requires UTF-8)</span>
                 <pre className="mt-1 font-mono text-lg text-gray-200 bg-gray-950 rounded px-3 py-2 overflow-x-auto">
                   <span className="text-gray-600">···</span>
                   {"▁▂▃▄▅▆▇█"}
@@ -83,9 +74,8 @@ export default function ASCIIPalettesSection() {
               </div>
             </div>
             <p className="text-gray-500 text-xs mt-3">
-              Darkest → brightest.{" "}
-              <span className="text-gray-600">···</span> = 3 leading
-              spaces (represent black/empty pixels).
+              Darkest → brightest. <span className="text-gray-600">···</span> =
+              3 leading spaces (represent black/empty pixels).
             </p>
           </div>
         </div>
@@ -96,8 +86,8 @@ export default function ASCIIPalettesSection() {
           Custom Palette Characters
         </Heading>
         <p className="docs-paragraph">
-          Define your own character gradient from darkest to brightest.
-          Supports UTF-8 characters when <code>--utf8 true</code> is set.
+          Define your own character gradient from darkest to brightest. Supports
+          UTF-8 characters when <code>--utf8 true</code> is set.
         </p>
         <CodeBlock language="bash">
           {

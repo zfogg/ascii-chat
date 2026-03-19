@@ -12,9 +12,9 @@ export default function KeyWhitelistingSection() {
       </Heading>
 
       <p className="text-gray-300 mb-6">
-        Restrict connections to known peers by maintaining whitelists of
-        trusted public keys. Works both ways: servers can whitelist
-        clients, and clients can whitelist servers.
+        Restrict connections to known peers by maintaining whitelists of trusted
+        public keys. Works both ways: servers can whitelist clients, and clients
+        can whitelist servers.
       </p>
 
       <div className="space-y-8">

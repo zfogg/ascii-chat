@@ -9,8 +9,8 @@ export default function DebuggingVerificationSection() {
       </Heading>
 
       <p className="docs-paragraph">
-        Snapshot mode is perfect for verifying your setup. A successful
-        snapshot means the entire pipeline is working:
+        Snapshot mode is perfect for verifying your setup. A successful snapshot
+        means the entire pipeline is working:
       </p>
 
       <div className="docs-subsection-spacing">
@@ -19,24 +19,20 @@ export default function DebuggingVerificationSection() {
         </Heading>
         <ul className="space-y-1 text-gray-300 text-sm">
           <li>
-            <span className="text-cyan-300">✅ Webcam Access</span> —
-            Webcam is working and accessible to ascii-chat
+            <span className="text-cyan-300">✅ Webcam Access</span> — Webcam is
+            working and accessible to ascii-chat
           </li>
           <li>
-            <span className="text-teal-300">✅ Video Encoding</span> —
-            Image capture, scaling, and ASCII conversion all work
-            correctly
+            <span className="text-teal-300">✅ Video Encoding</span> — Image
+            capture, scaling, and ASCII conversion all work correctly
           </li>
           <li>
-            <span className="text-purple-300">✅ Terminal Rendering</span>{" "}
-            — Terminal capabilities detected and ANSI codes generated
-            correctly
+            <span className="text-purple-300">✅ Terminal Rendering</span> —
+            Terminal capabilities detected and ANSI codes generated correctly
           </li>
           <li>
-            <span className="text-pink-300">
-              ✅ Network (Client Mode)
-            </span>{" "}
-            — Connection to server succeeded and one frame was received
+            <span className="text-pink-300">✅ Network (Client Mode)</span> —
+            Connection to server succeeded and one frame was received
           </li>
           <li>
             <span className="text-green-300">
@@ -45,11 +41,9 @@ export default function DebuggingVerificationSection() {
             — Encryption negotiation succeeded, keys were established
           </li>
           <li>
-            <span className="text-cyan-300">
-              ✅ ACDS (Discovery Mode)
-            </span>{" "}
-            — Discovery service lookup, NAT traversal, and peer connection
-            all worked
+            <span className="text-cyan-300">✅ ACDS (Discovery Mode)</span> —
+            Discovery service lookup, NAT traversal, and peer connection all
+            worked
           </li>
         </ul>
       </div>

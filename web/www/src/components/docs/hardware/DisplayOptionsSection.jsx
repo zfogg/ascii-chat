@@ -13,8 +13,8 @@ export default function DisplayOptionsSection() {
           Render Modes
         </Heading>
         <p className="docs-paragraph">
-          Choose how ASCII characters are rendered (available in client
-          and mirror):
+          Choose how ASCII characters are rendered (available in client and
+          mirror):
         </p>
         <CodeBlock language="bash">
           {
@@ -24,8 +24,8 @@ export default function DisplayOptionsSection() {
         <div className="info-box-info mt-3">
           <p className="text-gray-300 text-sm">
             <strong>Half-Block Mode:</strong> Provides twice the vertical
-            resolution by using Unicode block characters. Great for
-            detailed images or when you want smaller ASCII art.
+            resolution by using Unicode block characters. Great for detailed
+            images or when you want smaller ASCII art.
           </p>
         </div>
       </div>
@@ -44,8 +44,8 @@ export default function DisplayOptionsSection() {
         </CodeBlock>
         <div className="info-box-note mt-3">
           <p className="text-gray-300 text-sm">
-            <strong>Custom Palette:</strong> Characters should be ordered
-            from darkest to brightest. More characters = more detail.
+            <strong>Custom Palette:</strong> Characters should be ordered from
+            darkest to brightest. More characters = more detail.
           </p>
         </div>
       </div>

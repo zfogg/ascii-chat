@@ -12,39 +12,29 @@ export default function SupportedFormatsSection() {
           Video Formats
         </Heading>
         <p className="docs-paragraph">
-          ASCII art rendering supports any video container and codec that
-          FFmpeg supports:
+          ASCII art rendering supports any video container and codec that FFmpeg
+          supports:
         </p>
         <div className="space-y-3">
           <div className="card-standard accent-cyan">
-            <Heading
-              level={4}
-              className="text-cyan-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-cyan-300 font-semibold mb-2">
               Containers
             </Heading>
             <p className="text-gray-400 text-sm">
-              MP4, WebM, MKV, MOV, AVI, FLV, 3GP, WMV, TS, M2TS, MTS, and
-              more
+              MP4, WebM, MKV, MOV, AVI, FLV, 3GP, WMV, TS, M2TS, MTS, and more
             </p>
           </div>
           <div className="card-standard accent-teal">
-            <Heading
-              level={4}
-              className="text-teal-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-teal-300 font-semibold mb-2">
               Video Codecs
             </Heading>
             <p className="text-gray-400 text-sm">
-              H.264, H.265 (HEVC), VP8, VP9, AV1, MPEG-2, MPEG-4, Theora,
-              and more
+              H.264, H.265 (HEVC), VP8, VP9, AV1, MPEG-2, MPEG-4, Theora, and
+              more
             </p>
           </div>
           <div className="card-standard accent-purple">
-            <Heading
-              level={4}
-              className="text-purple-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-purple-300 font-semibold mb-2">
               Audio Codecs
             </Heading>
             <p className="text-gray-400 text-sm">
@@ -52,10 +42,7 @@ export default function SupportedFormatsSection() {
             </p>
           </div>
           <div className="card-standard accent-green">
-            <Heading
-              level={4}
-              className="text-green-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-green-300 font-semibold mb-2">
               Image Formats
             </Heading>
             <p className="text-gray-400 text-sm">

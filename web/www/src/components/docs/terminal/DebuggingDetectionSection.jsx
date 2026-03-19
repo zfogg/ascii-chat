@@ -15,12 +15,10 @@ export default function DebuggingDetectionSection() {
         <p className="docs-paragraph">
           Display detected terminal capabilities and configuration:
         </p>
-        <CodeBlock language="bash">
-          ascii-chat --show-capabilities
-        </CodeBlock>
+        <CodeBlock language="bash">ascii-chat --show-capabilities</CodeBlock>
         <p className="text-gray-400 text-sm mt-2">
-          Output includes: color support, Unicode support, terminal size,
-          isatty status, environment variables, and detected TERM type.
+          Output includes: color support, Unicode support, terminal size, isatty
+          status, environment variables, and detected TERM type.
         </p>
       </div>
 
@@ -30,10 +28,7 @@ export default function DebuggingDetectionSection() {
         </Heading>
         <div className="space-y-3">
           <div className="card-standard accent-purple">
-            <Heading
-              level={4}
-              className="text-purple-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-purple-300 font-semibold mb-2">
               Colors Look Wrong
             </Heading>
             <ol className="list-decimal list-inside text-gray-300 text-sm space-y-1">
@@ -53,10 +48,7 @@ export default function DebuggingDetectionSection() {
           </div>
 
           <div className="card-standard accent-purple">
-            <Heading
-              level={4}
-              className="text-purple-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-purple-300 font-semibold mb-2">
               Unicode Characters Broken
             </Heading>
             <ol className="list-decimal list-inside text-gray-300 text-sm space-y-1">
@@ -73,10 +65,7 @@ export default function DebuggingDetectionSection() {
           </div>
 
           <div className="card-standard accent-purple">
-            <Heading
-              level={4}
-              className="text-purple-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-purple-300 font-semibold mb-2">
               Dimensions Wrong
             </Heading>
             <ol className="list-decimal list-inside text-gray-300 text-sm space-y-1">

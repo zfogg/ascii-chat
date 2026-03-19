@@ -13,8 +13,8 @@ export default function GPGKeyAuthSection() {
 
       <p className="text-gray-300 mb-6">
         GPG Ed25519 keys work via{" "}
-        <strong className="text-teal-300">gpg-agent</strong>. No
-        passphrase prompts.
+        <strong className="text-teal-300">gpg-agent</strong>. No passphrase
+        prompts.
       </p>
 
       <div className="space-y-6">

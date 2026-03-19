@@ -17,27 +17,21 @@ export default function UseCasesSection() {
           </p>
         </div>
         <div className="card-standard accent-green">
-          <Heading
-            level={4}
-            className="text-green-300 font-semibold mb-2"
-          >
+          <Heading level={4} className="text-green-300 font-semibold mb-2">
             Live Presentations
           </Heading>
           <p className="text-gray-300 text-sm">
-            Stream live event feeds, screen recordings, or presentation
-            videos to all participants simultaneously
+            Stream live event feeds, screen recordings, or presentation videos
+            to all participants simultaneously
           </p>
         </div>
         <div className="card-standard accent-purple">
-          <Heading
-            level={4}
-            className="text-purple-300 font-semibold mb-2"
-          >
+          <Heading level={4} className="text-purple-300 font-semibold mb-2">
             Documentation & Tutorials
           </Heading>
           <p className="text-gray-300 text-sm">
-            Create ASCII art clips for README files, blog posts, or
-            tutorial documentation. Capture specific moments with seek
+            Create ASCII art clips for README files, blog posts, or tutorial
+            documentation. Capture specific moments with seek
           </p>
         </div>
         <div className="card-standard accent-teal">
@@ -45,15 +39,12 @@ export default function UseCasesSection() {
             Screen Recording Playback
           </Heading>
           <p className="text-gray-300 text-sm">
-            Replay screen recordings as ASCII art. Great for debugging
-            sessions or demonstrating terminal-based workflows
+            Replay screen recordings as ASCII art. Great for debugging sessions
+            or demonstrating terminal-based workflows
           </p>
         </div>
         <div className="card-standard accent-orange">
-          <Heading
-            level={4}
-            className="text-orange-300 font-semibold mb-2"
-          >
+          <Heading level={4} className="text-orange-300 font-semibold mb-2">
             YouTube Integration
           </Heading>
           <p className="text-gray-300 text-sm">
@@ -66,16 +57,12 @@ export default function UseCasesSection() {
             Live Streaming Events
           </Heading>
           <p className="text-gray-300 text-sm">
-            Connect to live streams (HLS, DASH, RTMP) and display in
-            terminal. Works over satellite, cellular, or constrained
-            networks
+            Connect to live streams (HLS, DASH, RTMP) and display in terminal.
+            Works over satellite, cellular, or constrained networks
           </p>
         </div>
         <div className="card-standard accent-yellow">
-          <Heading
-            level={4}
-            className="text-yellow-300 font-semibold mb-2"
-          >
+          <Heading level={4} className="text-yellow-300 font-semibold mb-2">
             Automated Demonstrations
           </Heading>
           <p className="text-gray-300 text-sm">

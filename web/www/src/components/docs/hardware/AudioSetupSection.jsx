@@ -24,9 +24,9 @@ export default function AudioSetupSection() {
         </CodeBlock>
         <div className="info-box-info mt-3">
           <p className="text-gray-300 text-sm">
-            <strong>Note:</strong> Audio is only for client mode. Server
-            and mirror modes don't have an <code>--audio</code> flag, but
-            support audio volume and source controls.
+            <strong>Note:</strong> Audio is only for client mode. Server and
+            mirror modes don't have an <code>--audio</code> flag, but support
+            audio volume and source controls.
           </p>
         </div>
       </div>
@@ -46,8 +46,8 @@ export default function AudioSetupSection() {
         </CodeBlock>
         <div className="info-box-info mt-3">
           <p className="text-gray-300 text-sm">
-            <strong>Works in:</strong> client mode (with --audio), mirror
-            mode, and server mode
+            <strong>Works in:</strong> client mode (with --audio), mirror mode,
+            and server mode
           </p>
         </div>
       </div>
@@ -65,8 +65,8 @@ export default function AudioSetupSection() {
           }
         </CodeBlock>
         <p className="text-gray-400 text-sm mt-2">
-          Output shows device index, name, number of channels, default
-          sample rate, and system default marker
+          Output shows device index, name, number of channels, default sample
+          rate, and system default marker
         </p>
       </div>
 
@@ -81,8 +81,7 @@ export default function AudioSetupSection() {
         </CodeBlock>
         <div className="info-box-note mt-3">
           <p className="text-gray-300 text-sm">
-            Microphone volume is available in client, mirror, and server
-            modes
+            Microphone volume is available in client, mirror, and server modes
           </p>
         </div>
       </div>

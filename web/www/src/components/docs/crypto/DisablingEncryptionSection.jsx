@@ -13,9 +13,9 @@ export default function DisablingEncryptionSection() {
 
       <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-6 mb-6">
         <p className="text-yellow-200">
-          <strong>⚠️ Warning:</strong> Only disable encryption for local
-          testing on trusted networks. Your video and audio will be sent
-          unencrypted over the network.
+          <strong>⚠️ Warning:</strong> Only disable encryption for local testing
+          on trusted networks. Your video and audio will be sent unencrypted
+          over the network.
         </p>
       </div>
 
@@ -32,8 +32,8 @@ ascii-chat client 127.0.0.1 --no-encrypt`}</CodeBlock>
           <code className="text-pink-400 bg-gray-950 px-2 py-1 rounded">
             --no-encrypt
           </code>{" "}
-          for unencrypted mode to work. If only one side disables
-          encryption, the connection will fail during the handshake.
+          for unencrypted mode to work. If only one side disables encryption,
+          the connection will fail during the handshake.
         </p>
       </div>
     </section>

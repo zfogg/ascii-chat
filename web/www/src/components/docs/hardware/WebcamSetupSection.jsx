@@ -14,8 +14,8 @@ export default function WebcamSetupSection() {
           List Available Webcams
         </Heading>
         <p className="docs-paragraph">
-          See all connected webcam devices and their indices (works in
-          client and mirror modes):
+          See all connected webcam devices and their indices (works in client
+          and mirror modes):
         </p>
         <CodeBlock language="bash">ascii-chat --list-webcams</CodeBlock>
         <p className="text-gray-400 text-sm mt-2">
@@ -28,9 +28,9 @@ export default function WebcamSetupSection() {
           Select Specific Webcam
         </Heading>
         <p className="docs-paragraph">
-          Use <code className="text-cyan-300">--webcam-index</code> (or
-          short form <code className="text-cyan-300">-c</code>) to choose
-          a specific camera. (Save it in your{" "}
+          Use <code className="text-cyan-300">--webcam-index</code> (or short
+          form <code className="text-cyan-300">-c</code>) to choose a specific
+          camera. (Save it in your{" "}
           <TrackedLink
             to="/docs/configuration"
             label="webcam-index config"

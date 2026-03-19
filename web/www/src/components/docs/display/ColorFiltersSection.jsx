@@ -11,8 +11,8 @@ export default function ColorFiltersSection() {
       <div className="docs-subsection-spacing">
         <p className="docs-paragraph">
           Apply a monochromatic color tint to the video output. The filter
-          converts the image to grayscale and applies the chosen color.
-          Using a color filter automatically sets the color mode to mono.
+          converts the image to grayscale and applies the chosen color. Using a
+          color filter automatically sets the color mode to mono.
         </p>
         <CodeBlock language="bash">
           {
@@ -21,10 +21,7 @@ export default function ColorFiltersSection() {
         </CodeBlock>
         <div className="space-y-2 mt-3">
           <div className="card-standard accent-cyan">
-            <Heading
-              level={4}
-              className="text-cyan-300 font-semibold mb-2"
-            >
+            <Heading level={4} className="text-cyan-300 font-semibold mb-2">
               Available Filters
             </Heading>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
