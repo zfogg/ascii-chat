@@ -1,48 +1,68 @@
 /**
  * @file platform/wasm/log.c
- * @brief WASM logging implementation (no-op stubs)
+ * @brief WASM logging implementation using console output
  */
 
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <emscripten.h>
 
 // Forward declare types for stub implementations
 typedef int log_level_t;
 typedef int log_color_t;
 typedef int color_scheme_t;
 
-// Log message functions - all no-op for WASM
+// JavaScript function to log to console
+EM_JS(void, js_console_error, (const char *msg), {
+  console.error(UTF8ToString(msg));
+});
+
+// Log message functions - output to console in WASM
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
-  (void)level;
-  (void)file;
-  (void)line;
-  (void)func;
-  (void)fmt;
+  char buffer[2048];
+  va_list args;
+  va_start(args, fmt);
+  vsnprintf(buffer, sizeof(buffer), fmt, args);
+  va_end(args);
+  js_console_error(buffer);
 }
 
 void log_file_msg(const char *format, ...) {
-  (void)format;
+  char buffer[2048];
+  va_list args;
+  va_start(args, format);
+  vsnprintf(buffer, sizeof(buffer), format, args);
+  va_end(args);
+  js_console_error(buffer);
 }
 
 void log_plain_msg(const char *format, ...) {
-  (void)format;
+  char buffer[2048];
+  va_list args;
+  va_start(args, format);
+  vsnprintf(buffer, sizeof(buffer), format, args);
+  va_end(args);
+  js_console_error(buffer);
 }
 
 void log_msg_internal(const char *level, const char *file, int line, const char *func, const char *format, ...) {
-  (void)level;
-  (void)file;
-  (void)line;
-  (void)func;
-  (void)format;
+  char buffer[2048];
+  va_list args;
+  va_start(args, format);
+  vsnprintf(buffer, sizeof(buffer), format, args);
+  va_end(args);
+  js_console_error(buffer);
 }
 
 void log_terminal_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
-  (void)level;
-  (void)file;
-  (void)line;
-  (void)func;
-  (void)fmt;
+  char buffer[2048];
+  va_list args;
+  va_start(args, fmt);
+  vsnprintf(buffer, sizeof(buffer), fmt, args);
+  va_end(args);
+  js_console_error(buffer);
 }
 
 int log_template_parse(const char *template_str) {

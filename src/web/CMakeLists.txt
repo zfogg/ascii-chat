@@ -171,7 +171,6 @@ set(PLATFORM_SRC
     ${LIB_ROOT}/platform/wasm/stubs/mode_defaults.c
     ${LIB_ROOT}/platform/wasm/stubs/crypto.c
     ${LIB_ROOT}/platform/wasm/stubs/backtrace.c
-    ${LIB_ROOT}/platform/wasm/stubs/atomic.c
 )
 
 # Third-party dependencies (source-included)
@@ -271,6 +270,9 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/discovery/strings.c
     ${LIB_ROOT}/discovery/adjectives.c
     ${LIB_ROOT}/discovery/nouns.c
+
+    # Debug/naming (required by crypto handshake and other modules)
+    ${LIB_ROOT}/debug/named.c
 
     # Note: platform/system.c is NOT included here - it's included by the WASM-specific
     # wasm/system.c file, which follows the same pattern as posix/system.c and windows/system.c
@@ -556,7 +558,8 @@ if(BUILD_WEB)
 
     add_custom_command(TARGET client-web POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../../web/web/src/wasm/dist
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_BINARY_DIR}/client.js
             ${CMAKE_CURRENT_BINARY_DIR}/client.wasm
             ${CMAKE_SOURCE_DIR}/../../../web/web/src/wasm/dist/
         COMMENT "Copying client WASM files to web/src/wasm/dist/"

@@ -82,12 +82,15 @@ static void secure_memzero(void *ptr, size_t len) {
 // =============================================================================
 
 crypto_result_t crypto_init(crypto_context_t *ctx) {
+  log_info("DEBUG: crypto_init START");
   if (!ctx) {
+    log_info("DEBUG: crypto_init ctx is NULL");
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p", ctx);
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
   // Initialize libsodium
+  log_info("DEBUG: crypto_init calling init_libsodium");
   crypto_result_t result = init_libsodium();
   if (result != CRYPTO_OK) {
     return result;
@@ -215,6 +218,7 @@ crypto_result_t crypto_generate_keypair(crypto_context_t *ctx) {
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
+  log_info("DEBUG: About to call crypto_box_keypair");
   // Generate X25519 key pair for key exchange
   if (crypto_box_keypair(ctx->public_key, ctx->private_key) != 0) {
     SET_ERRNO(ERROR_CRYPTO, "Failed to generate X25519 key pair");
