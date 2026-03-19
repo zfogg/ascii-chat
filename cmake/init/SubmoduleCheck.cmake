@@ -53,8 +53,10 @@ function(check_and_init_git_submodules)
             message(STATUS "Docker/Coolify build detected (.git present but not functional), submodules already included")
             return()
         else()
-            message(FATAL_ERROR "Not a functional git repository and critical submodules not found.\n"
-                                "Ensure deps/ascii-chat-deps is included in the build context.")
+            message(WARNING "Docker/Coolify build detected but submodules not found in build context.\n"
+                            "If this build fails due to missing dependencies, ensure deps/ is included in the Docker build context.\n"
+                            "Continuing anyway - CMake will fail with specific missing file errors if needed.")
+            return()
         endif()
     endif()
 
