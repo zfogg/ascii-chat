@@ -16,49 +16,21 @@
 include(${CMAKE_SOURCE_DIR}/cmake/utils/Colors.cmake)
 
 function(check_and_init_git_submodules)
-    # Check if we're in a git repository
+    # Check if we're in a git repository (local development)
     if(NOT EXISTS "${CMAKE_SOURCE_DIR}/.git")
-        # Not a git repo - likely Docker/Coolify build with pre-cloned submodules
-        # Check if critical submodule files exist, otherwise fail
-        if(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl/Makefile")
-            message(STATUS "Docker/Coolify build detected, submodules already included in build context")
-            return()
-        else()
-            message(FATAL_ERROR "Not a git repository and critical submodules not found.\n"
-                                "This typically happens in Docker/Coolify if submodules weren't cloned.\n"
-                                "Ensure deps/ascii-chat-deps is included in the build context.")
+        # Not a git repo - must be Docker/Coolify build with pre-cloned submodules
+        # Verify critical submodule files exist
+        if(NOT EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl/Makefile")
+            message(FATAL_ERROR "Critical submodules not found in build context.\n"
+                                "This is a Docker/Coolify build and deps/ascii-chat-deps must be included.\n"
+                                "Ensure Coolify has 'Submodules' enabled and the build context includes deps/.")
         endif()
-    endif()
-
-    # Find git executable
-    find_program(GIT_EXECUTABLE git)
-    if(NOT GIT_EXECUTABLE)
-        message(WARNING "Git not found - cannot initialize submodules automatically")
+        message(STATUS "Docker/Coolify build detected, submodules already in build context")
         return()
     endif()
 
-    # Try to verify we're in a functional git repository
-    execute_process(
-        COMMAND "${GIT_EXECUTABLE}" rev-parse --git-dir
-        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-        RESULT_VARIABLE GIT_VALID
-        OUTPUT_QUIET
-        ERROR_QUIET
-    )
-
-    # If git command failed (e.g., Docker with .git copied but not functional),
-    # check if submodules are already present
-    if(NOT GIT_VALID EQUAL 0)
-        if(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl/Makefile")
-            message(STATUS "Docker/Coolify build detected (.git present but not functional), submodules already included")
-            return()
-        else()
-            message(WARNING "Docker/Coolify build detected but submodules not found in build context.\n"
-                            "If this build fails due to missing dependencies, ensure deps/ is included in the Docker build context.\n"
-                            "Continuing anyway - CMake will fail with specific missing file errors if needed.")
-            return()
-        endif()
-    endif()
+    # Local development: .git exists, initialize submodules if needed
+    find_program(GIT_EXECUTABLE git REQUIRED)
 
     # Check if any critical submodules are missing (use BearSSL as indicator)
     if(NOT EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl/Makefile")
