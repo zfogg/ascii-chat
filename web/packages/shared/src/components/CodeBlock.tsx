@@ -27,14 +27,6 @@ export function CodeBlock({
 }: CodeBlockProps) {
   const codeRef = useRef<HTMLDivElement>(null);
 
-  if (inline) {
-    return (
-      <code className={`code-inline ${className}`.trim()} {...props}>
-        {children}
-      </code>
-    );
-  }
-
   // Extract text content from children
   const code = typeof children === "string" ? children : String(children);
 
@@ -109,6 +101,14 @@ export function CodeBlock({
       console.error("[CodeBlock] Error:", e);
     }
   }, [searchQuery, children]);
+
+  if (inline) {
+    return (
+      <code className={`code-inline ${className}`.trim()} {...props}>
+        {children}
+      </code>
+    );
+  }
 
   return (
     <div ref={codeRef}>

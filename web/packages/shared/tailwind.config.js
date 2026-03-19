@@ -49,7 +49,7 @@ export default {
     },
   },
   plugins: [
-    function ({ addUtilities, theme }) {
+    function ({ addUtilities, theme: _theme }) {
       const scrollbarColors = {
         ".scrollbar-primary": {
           "--scrollbar-thumb": "rgb(34, 211, 238)",

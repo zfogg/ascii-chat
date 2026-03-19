@@ -15,7 +15,7 @@ FROM node:22-slim AS base
 ARG SOURCE_COMMIT
 
 # Install bash, curl, git, wget, and pnpm
-RUN apt-get update && apt-get install -y --no-install-recommends bash curl git wget && npm install -g pnpm@10.32.1 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends bash curl git wget ca-certificates && npm install -g pnpm@10.32.1 && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -50,6 +50,9 @@ ENV VERCEL=1
 ENV VITE_DISCOVERY_API_BASE=${VITE_DISCOVERY_API_BASE:-http://localhost:5173}
 ENV SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY}
 ENV GPG_PUBLIC_KEY=${GPG_PUBLIC_KEY}
+
+# Run all checks
+RUN cd web && pnpm exec vp check
 
 # Build www app
 RUN echo "Building www app" && cd web/www && pnpm run build && test -d dist || (echo "ERROR: dist directory not created for www" && ls -la && exit 1)

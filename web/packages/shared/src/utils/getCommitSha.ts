@@ -1,6 +1,8 @@
 export function getCommitSha(): string {
-  // Check for Node.js process global via globalThis (cast to any to handle browser/node differences)
-  const proc = (globalThis as any).process as any;
+  // Check for Node.js process global via globalThis (cast to unknown to handle browser/node differences)
+  const proc = (globalThis as unknown as Record<string, unknown>)["process"] as
+    | { env?: Record<string, string | undefined>; versions?: { node?: string } }
+    | undefined;
 
   // Check for deployment platform environment variables
   const envVars = [
@@ -20,7 +22,11 @@ export function getCommitSha(): string {
   if (proc?.versions?.node) {
     try {
       // Use indirect require to get execSync from child_process
-      const mod = (globalThis as any).require as any;
+      const mod = (globalThis as unknown as Record<string, unknown>)[
+        "require"
+      ] as (id: string) => {
+        execSync: (cmd: string) => { toString: () => string };
+      };
       const { execSync } = mod("child_process");
       return execSync("git rev-parse HEAD").toString().trim().substring(0, 8);
     } catch {
