@@ -403,6 +403,70 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
 
     // Final key received - finalize session
     log_info("SESSION_CREATE finalize from %s: received all %zu identity key(s)", client_ip, client_data->num_pending_keys);
+
+    // Auto-detect server's public IP if not provided (empty address)
+    if (client_data->pending_session.server_address[0] == '\0') {
+      log_info("ACDS: Auto-detecting server public IP from connection source: %s", client_ip);
+      SAFE_STRNCPY(client_data->pending_session.server_address, client_ip,
+                   sizeof(client_data->pending_session.server_address));
+      log_info("ACDS: Auto-detected server_address='%s'", client_data->pending_session.server_address);
+    }
+
+    // Create session in database with all collected keys
+    // For now, database_session_create only supports single key, so use first key
+    // TODO: Extend database schema to support multiple keys per session
+    acip_session_created_t resp;
+    memset(&resp, 0, sizeof(resp));
+
+    asciichat_error_t create_result =
+        database_session_create(server->db, &client_data->pending_session, &server->config, &resp);
+    if (create_result == ASCIICHAT_OK) {
+      // Build complete payload: fixed response + variable STUN/TURN servers
+      size_t stun_size = (size_t)resp.stun_count * sizeof(stun_server_t);
+      size_t turn_size = (size_t)resp.turn_count * sizeof(turn_server_t);
+      size_t total_size = sizeof(resp) + stun_size + turn_size;
+
+      uint8_t *payload = SAFE_MALLOC(total_size, uint8_t *);
+      if (!payload) {
+        acip_send_error(transport, ERROR_MEMORY, "Out of memory building response");
+        client_data->in_multikey_session_create = false;
+        client_data->num_pending_keys = 0;
+        ACDS_DESTROY_TRANSPORT(transport);
+        return;
+      }
+
+      // Copy fixed response
+      memcpy(payload, &resp, sizeof(resp));
+
+      // Append STUN servers
+      if (resp.stun_count > 0) {
+        memcpy(payload + sizeof(resp), server->config.stun_servers, stun_size);
+      }
+
+      // Append TURN servers
+      if (resp.turn_count > 0) {
+        memcpy(payload + sizeof(resp) + stun_size, server->config.turn_servers, turn_size);
+      }
+
+      // Send complete response with variable-length data
+      packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_CREATED, payload, total_size, 0);
+      SAFE_FREE(payload);
+
+      log_info("Session created: %.*s (UUID: %02x%02x..., %zu keys, %d STUN, %d TURN servers)", resp.session_string_len,
+               resp.session_string, resp.session_id[0], resp.session_id[1], client_data->num_pending_keys,
+               resp.stun_count, resp.turn_count);
+    } else {
+      // Error - send error response using proper error code
+      acip_send_error(transport, create_result, "Failed to create session");
+      log_warn("Session creation failed for %s: %s", client_ip, asciichat_error_string(create_result));
+    }
+
+    // Clear multi-key state
+    client_data->in_multikey_session_create = false;
+    client_data->num_pending_keys = 0;
+
+    ACDS_DESTROY_TRANSPORT(transport);
+    return;
   } else {
     // Legacy single-key mode (total_keys == 0)
     log_debug("SESSION_CREATE single-key mode from %s", client_ip);
