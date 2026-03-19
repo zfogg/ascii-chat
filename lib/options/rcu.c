@@ -639,8 +639,7 @@ static asciichat_error_t rcu_validate_field(const char *field_name, const option
     }
   }
 
-  // Enum count check (0 <= value < enum_count)
-  // Count enum values by iterating null-terminated array
+  // Enum validation: check value against known enum values
   size_t enum_count = 0;
   if (entry->metadata.enum_values) {
     for (size_t i = 0; entry->metadata.enum_values[i]; i++) {
@@ -650,9 +649,25 @@ static asciichat_error_t rcu_validate_field(const char *field_name, const option
 
   if (enum_count > 0 && entry->metadata.input_type == OPTION_INPUT_ENUM) {
     int val = *(const int *)((const char *)new_opts + entry->offset);
-    if (val < 0 || (size_t)val >= enum_count) {
-      log_error("Option '%s' value %d is not a valid enum (0..%zu)", opt_name, val, enum_count - 1);
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' value %d is not a valid enum", opt_name, val);
+    if (entry->metadata.enum_integer_values) {
+      // Validate against actual enum integer values (handles non-sequential enums like color_mode with AUTO=-1)
+      bool found = false;
+      for (size_t i = 0; i < enum_count; i++) {
+        if (val == entry->metadata.enum_integer_values[i]) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        log_error("Option '%s' value %d is not a valid enum value", opt_name, val);
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' value %d is not a valid enum", opt_name, val);
+      }
+    } else {
+      // Fallback: assume 0-based sequential enum values
+      if (val < 0 || (size_t)val >= enum_count) {
+        log_error("Option '%s' value %d is not a valid enum (0..%zu)", opt_name, val, enum_count - 1);
+        return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' value %d is not a valid enum", opt_name, val);
+      }
     }
   }
 

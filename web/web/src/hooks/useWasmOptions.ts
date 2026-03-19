@@ -57,12 +57,13 @@ export function createWasmOptionsManager(
     getColorMode: () => {
       const mode = getColorModeFn();
       // Map back from WASM enum to ColorMode
+      // Values match terminal_color_mode_t: AUTO=-1, NONE=0, 16=1, 256=2, TRUECOLOR=3
       const modeMap: Record<number, ColorMode> = {
-        0: "auto",
-        1: "none",
-        2: "16",
-        3: "256",
-        4: "truecolor",
+        [-1]: "auto",
+        0: "none",
+        1: "16",
+        2: "256",
+        3: "truecolor",
       };
       return modeMap[mode] || "auto";
     },

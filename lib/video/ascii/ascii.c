@@ -955,10 +955,44 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
     return NULL;
   }
 
-  // Dispatch based on terminal capabilities
-  // For now, use a simple heuristic: if color_level would indicate truecolor, use color
-  // This can be enhanced with proper terminal capability detection
+  terminal_color_mode_t color_level = caps->color_level;
+  render_mode_t render_mode = caps->render_mode;
 
-  // Try color rendering first
-  return image_print_color(image, palette);
+  // Half-block mode: dispatch to halfblock renderers by color depth
+  if (render_mode == RENDER_MODE_HALF_BLOCK) {
+    const uint8_t *rgb_data = (const uint8_t *)image->pixels;
+    switch (color_level) {
+    case TERM_COLOR_TRUECOLOR:
+      return rgb_to_truecolor_halfblocks_scalar(rgb_data, image->w, image->h, 0);
+    case TERM_COLOR_256:
+      return rgb_to_256color_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
+    case TERM_COLOR_16:
+      return rgb_to_16color_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
+    case TERM_COLOR_NONE:
+    case TERM_COLOR_AUTO:
+    default:
+      return rgb_to_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
+    }
+  }
+
+  // Foreground/background modes: dispatch by color depth
+  switch (color_level) {
+  case TERM_COLOR_TRUECOLOR: {
+    bool use_background = (render_mode == RENDER_MODE_BACKGROUND);
+#ifdef SIMD_SUPPORT
+    return image_print_color_simd((image_t *)image, use_background, false, palette);
+#else
+    (void)use_background;
+    return image_print_color(image, palette);
+#endif
+  }
+  case TERM_COLOR_256:
+    return image_print_256color(image, palette);
+  case TERM_COLOR_16:
+    return image_print_16color(image, palette);
+  case TERM_COLOR_NONE:
+  case TERM_COLOR_AUTO:
+  default:
+    return image_print(image, palette);
+  }
 }

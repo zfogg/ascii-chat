@@ -548,8 +548,12 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   // Make a mutable copy of terminal capabilities for ascii_convert_with_capabilities
   terminal_capabilities_t caps_copy = ctx->caps;
 
-  // Re-evaluate render_mode on every frame to pick up live changes
+  // Re-evaluate render_mode and color_level on every frame to pick up live changes
   caps_copy.render_mode = (render_mode_t)GET_OPTION(render_mode);
+  terminal_color_mode_t color_mode_opt = (terminal_color_mode_t)GET_OPTION(color_mode);
+  if (color_mode_opt != TERM_COLOR_AUTO) {
+    caps_copy.color_level = color_mode_opt;
+  }
 
   // MEASURE EVERY OPERATION - Debug systematic timing
   uint64_t t_flip_start = time_get_ns();

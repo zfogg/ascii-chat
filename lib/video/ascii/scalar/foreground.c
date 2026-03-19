@@ -416,14 +416,78 @@ char *image_print_256color(const image_t *image, const char *palette) {
     return NULL;
   }
 
-  // Use the existing optimized SIMD colored printing (no background for 256-color mode)
-#ifdef SIMD_SUPPORT
-  char *result = image_print_color_simd((image_t *)image, false, true, palette);
-#else
-  char *result = image_print_color(image, palette);
-#endif
+  int h = image->h;
+  int w = image->w;
 
-  return result;
+  if (h <= 0 || w <= 0) {
+    SET_ERRNO(ERROR_INVALID_STATE, "image_print_256color: invalid dimensions h=%d, w=%d", h, w);
+    return NULL;
+  }
+
+  ansi_fast_init_256color();
+
+  // Buffer size: 256-color ANSI codes are "\033[38;5;NNNm" (max 13 bytes) + char + reset + newline
+  size_t h_times_w;
+  if (checked_size_mul((size_t)h, (size_t)w, &h_times_w) != ASCIICHAT_OK) {
+    return NULL;
+  }
+
+  size_t h_times_w_times_18;
+  if (checked_size_mul(h_times_w, 18u, &h_times_w_times_18) != ASCIICHAT_OK) {
+    return NULL;
+  }
+
+  size_t buffer_size;
+  if (checked_size_add(h_times_w_times_18, (size_t)h, &buffer_size) != ASCIICHAT_OK) {
+    return NULL;
+  }
+
+  char *buffer = SAFE_MALLOC(buffer_size, char *);
+  char *ptr = buffer;
+  const char *reset_code = "\033[0m";
+
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      rgb_pixel_t pixel = image->pixels[y * w + x];
+
+      uint8_t color_index = rgb_to_256color(pixel.r, pixel.g, pixel.b);
+      ptr = append_256color_fg(ptr, color_index);
+
+      int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
+
+      utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+      if (!utf8_cache) {
+        SET_ERRNO(ERROR_INVALID_STATE, "Failed to get UTF-8 cache");
+        return NULL;
+      }
+
+      uint8_t safe_luminance = clamp_rgb(luminance);
+      uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);
+      uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx];
+
+      char ascii_char = palette[char_idx];
+      const utf8_char_t *char_info = &utf8_cache->cache[(unsigned char)ascii_char];
+
+      if (char_info) {
+        for (int byte_idx = 0; byte_idx < char_info->byte_len; byte_idx++) {
+          *ptr++ = char_info->utf8_bytes[byte_idx];
+        }
+      } else {
+        size_t palette_len = strlen(palette);
+        int palette_index = (luminance * ((int)palette_len - 1) + 127) / 255;
+        *ptr++ = palette[palette_index];
+      }
+    }
+
+    SAFE_STRNCPY(ptr, reset_code, 5);
+    ptr += strlen(reset_code);
+    if (y < h - 1) {
+      *ptr++ = '\n';
+    }
+  }
+
+  *ptr = '\0';
+  return buffer;
 }
 
 // 16-color image printing function using ansi_fast color conversion
