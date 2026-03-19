@@ -87,13 +87,17 @@ COPY --from=builder /app/web/www ./www
 COPY --from=builder /app/web/discovery ./discovery
 COPY --from=builder /app/web/web ./web
 
+# Copy node_modules for www API server runtime deps
+COPY --from=builder /app/web/node_modules ./node_modules
+
 # Copy unified Caddyfile
 COPY web/Caddyfile /etc/caddy/Caddyfile
 
 # Expose port 80 (Caddy serving all three apps)
 EXPOSE 80
 
-CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]
+# Run API server and Caddy together
+CMD ["sh", "-c", "node www/api.js & caddy run --config /etc/caddy/Caddyfile"]
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=1.5s --start-period=3s --retries=3 \

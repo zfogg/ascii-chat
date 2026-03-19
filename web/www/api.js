@@ -41,7 +41,7 @@ const logger = winston.createLogger({
 });
 
 // Trust proxy headers (set by Caddy reverse proxy)
-app.set("trust proxy", true);
+app.set("trust proxy", "loopback, linklocal, uniquelocal");
 
 // HTTP request logging middleware
 app.use(
