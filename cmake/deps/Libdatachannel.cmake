@@ -219,23 +219,12 @@ if(PLATFORM_IOS)
 endif()
 
 # =============================================================================
-# Try system CMake config first (skip for musl and Debug builds with custom OpenSSL)
+# Try system libdatachannel (CMake config or pkg-config)
 # =============================================================================
 set(LIBDATACHANNEL_FOUND FALSE)
 
-# Skip system CMake config if we're building with custom OpenSSL 3.4.0 (Debug/Dev builds)
-# In Debug/Dev mode, we build OpenSSL 3.4.0 from source and need libdatachannel to use it too
-set(_SKIP_SYSTEM_LIBDATACHANNEL FALSE)
-if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
-   AND OPENSSL_ROOT_DIR
-   AND EXISTS "${OPENSSL_ROOT_DIR}/include/openssl/ssl.h"
-   AND OPENSSL_SSL_LIBRARY
-   AND EXISTS "${OPENSSL_SSL_LIBRARY}")
-    set(_SKIP_SYSTEM_LIBDATACHANNEL TRUE)
-    message(STATUS "${BoldCyan}libdatachannel${ColorReset}: Skipping system CMake config (using custom OpenSSL 3.4.0)")
-endif()
-
-if(NOT USE_MUSL AND NOT _SKIP_SYSTEM_LIBDATACHANNEL)
+# Try system CMake config first (works for all builds including Debug with custom OpenSSL)
+if(NOT USE_MUSL)
     message(STATUS "${BoldCyan}libdatachannel${ColorReset}: Checking system CMake config...")
     find_package(LibDataChannel QUIET)
 
@@ -252,6 +241,33 @@ if(NOT USE_MUSL AND NOT _SKIP_SYSTEM_LIBDATACHANNEL)
         # Skip the rest if found
         message(STATUS "${BoldGreen}libdatachannel WebRTC ready${ColorReset}")
         return()
+    endif()
+endif()
+
+# =============================================================================
+# Try pkg-config as fallback (for systems without CMake config)
+# =============================================================================
+if(NOT USE_MUSL AND NOT LIBDATACHANNEL_FOUND)
+    message(STATUS "${BoldCyan}libdatachannel${ColorReset}: Searching via pkg-config...")
+
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(LIBDATACHANNEL_PC libdatachannel QUIET)
+
+        if(LIBDATACHANNEL_PC_FOUND)
+            set(LIBDATACHANNEL_FOUND TRUE)
+            message(STATUS "${BoldGreen}✓${ColorReset} libdatachannel found via pkg-config (version ${LIBDATACHANNEL_PC_VERSION})")
+
+            # Create INTERFACE library wrapper
+            if(NOT TARGET libdatachannel)
+                add_library(libdatachannel INTERFACE)
+                target_link_libraries(libdatachannel INTERFACE ${LIBDATACHANNEL_PC_LINK_LIBRARIES})
+                target_include_directories(libdatachannel INTERFACE ${LIBDATACHANNEL_PC_INCLUDE_DIRS})
+            endif()
+
+            message(STATUS "${BoldGreen}libdatachannel WebRTC ready${ColorReset}")
+            return()
+        endif()
     endif()
 endif()
 
