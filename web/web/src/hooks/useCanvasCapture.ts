@@ -36,6 +36,10 @@ export function useCanvasCapture(
       return null;
     }
 
+    console.log(
+      `[useCanvasCapture] Canvas setup: display=${canvas.width}x${canvas.height}, video=${video.videoWidth}x${video.videoHeight}`,
+    );
+
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) {
       console.error("[useCanvasCapture] Failed to get canvas 2D context");
@@ -53,9 +57,38 @@ export function useCanvasCapture(
         return null;
       }
 
+      // Verify canvas has valid dimensions
+      if (canvas.width === 0 || canvas.height === 0) {
+        console.error(
+          "[useCanvasCapture] Canvas has invalid dimensions after setup:",
+          `${canvas.width}x${canvas.height}. This should have been initialized with video capture dimensions.`,
+        );
+        return null;
+      }
+
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      // Verify imageData has expected size
+      const expectedBytes = canvas.width * canvas.height * 4;
+      if (imageData.data.length !== expectedBytes) {
+        console.error(
+          `[useCanvasCapture] ImageData size mismatch: expected ${expectedBytes} bytes for ${canvas.width}x${canvas.height}, got ${imageData.data.length}`,
+        );
+        return null;
+      }
+
       const rgbaData = new Uint8Array(imageData.data);
+
+      // Verify RGBA data before returning
+      const expectedSize = canvas.width * canvas.height * 4;
+      const actualSize = rgbaData.length;
+      if (actualSize !== expectedSize) {
+        console.error(
+          `[useCanvasCapture] CRITICAL: RGBA data size mismatch - expected ${expectedSize} (${canvas.width}x${canvas.height}*4), got ${actualSize}`,
+        );
+        return null;
+      }
 
       return {
         data: rgbaData,

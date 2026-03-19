@@ -244,34 +244,111 @@ export function convertFrameToAscii(
   }
 
   // Allocate memory for RGBA data
+  console.log(`[WASM] Requesting malloc for ${rgbaData.length} bytes`);
   const dataPtr = wasmModule._malloc(rgbaData.length);
-  if (!dataPtr) {
+
+  // CRITICAL: In WASM, malloc returns 0 on failure (0 is a valid memory address but indicates error)
+  // Accessing memory at address 0 would corrupt the heap
+  if (dataPtr === 0 || dataPtr === null || typeof dataPtr === "undefined") {
+    console.error(
+      `[WASM] CRITICAL: malloc returned ${dataPtr} for ${rgbaData.length} bytes. WASM heap may be exhausted.`,
+    );
     throw new Error(
-      `Failed to allocate WASM memory for RGBA data (${rgbaData.length} bytes)`,
+      `Failed to allocate WASM memory for RGBA data (${rgbaData.length} bytes). WASM heap may be exhausted.`,
+    );
+  }
+
+  if (dataPtr < 0) {
+    console.error(`[WASM] malloc returned negative pointer: ${dataPtr}`);
+    throw new Error(`malloc returned invalid pointer: ${dataPtr}`);
+  }
+
+  console.log(`[WASM] malloc succeeded: dataPtr=${dataPtr}`);
+
+  // Also check that we're not at the start of memory (0 is often heap metadata)
+  if (dataPtr < 1024) {
+    console.warn(
+      `[WASM] WARNING: malloc returned very low address (${dataPtr}), possible heap corruption risk`,
     );
   }
 
   try {
-    // Copy RGBA data to WASM memory
-    wasmModule.HEAPU8.set(rgbaData, dataPtr);
-
-    // Debug: log dimensions before calling C code
-    if (frameCallCount % 30 === 0) {
-      console.log(
-        `[WASM] Calling mirror_convert_frame with srcWidth=${srcWidth}, srcHeight=${srcHeight}, dataPtr=${dataPtr}, rgbaDataLen=${rgbaData.length}`,
+    // Validate RGBA data before copying to WASM
+    if (!rgbaData || rgbaData.length === 0) {
+      throw new Error(
+        `Invalid RGBA data: buffer is ${!rgbaData ? "null/undefined" : "empty"}`,
       );
     }
 
-    // Call WASM function (dimensions come from options set during init)
-    const resultPtr = wasmModule._mirror_convert_frame(
-      dataPtr,
-      srcWidth,
-      srcHeight,
+    // Verify expected size matches actual size
+    const expectedSize = srcWidth * srcHeight * 4;
+    if (rgbaData.length !== expectedSize) {
+      console.error(
+        `[WASM] CRITICAL: RGBA data size mismatch before copy - expected ${expectedSize}, got ${rgbaData.length}`,
+      );
+    }
+
+    // Copy RGBA data to WASM memory - catch any errors during copy
+    let copyError: Error | null = null;
+    try {
+      console.log(
+        `[WASM] Starting HEAPU8.set: copying ${rgbaData.length} bytes to WASM memory at ptr=${dataPtr}`,
+      );
+      wasmModule.HEAPU8.set(rgbaData, dataPtr);
+      console.log(`[WASM] HEAPU8.set completed successfully`);
+    } catch (err) {
+      copyError = err as Error;
+      console.error(`[WASM] ERROR during HEAPU8.set: ${copyError.message}`);
+      // Re-throw with additional context already logged above
+      throw copyError;
+    }
+
+    // Verify data was copied correctly by spot-checking bytes
+    const firstByteAfterCopy = wasmModule.HEAPU8[dataPtr];
+    const lastByteAfterCopy = wasmModule.HEAPU8[dataPtr + rgbaData.length - 1];
+    const lastExpectedPtr = dataPtr + rgbaData.length - 1;
+
+    console.log(
+      `[WASM] Frame ${frameCallCount}: dimensions=${srcWidth}x${srcHeight}, buffer=${rgbaData.length} bytes, dataPtr=${dataPtr}, lastBytePtr=${lastExpectedPtr}, firstByte=${firstByteAfterCopy}, lastByte=${lastByteAfterCopy}`,
     );
 
+    // Validate the C function pointers are available
+    if (!wasmModule._mirror_convert_frame) {
+      throw new Error("WASM function _mirror_convert_frame not found");
+    }
+
+    console.log(
+      `[WASM] About to call _mirror_convert_frame(dataPtr=${dataPtr}, srcWidth=${srcWidth}, srcHeight=${srcHeight})`,
+    );
+
+    // Call WASM function (dimensions come from options set during init)
+    let resultPtr: number;
+    try {
+      resultPtr = wasmModule._mirror_convert_frame(
+        dataPtr,
+        srcWidth,
+        srcHeight,
+      );
+      console.log(`[WASM] _mirror_convert_frame returned: ${resultPtr}`);
+    } catch (err) {
+      const callError = err as Error;
+      console.error(
+        `[WASM] FATAL ERROR calling _mirror_convert_frame: ${callError.message}`,
+      );
+      console.error(
+        `[WASM] Context: srcWidth=${srcWidth}, srcHeight=${srcHeight}, dataPtr=${dataPtr}, bufferSize=${rgbaData.length}`,
+      );
+      // Re-throw with context already logged above
+      throw callError;
+    }
+
     if (!resultPtr) {
-      console.error("[WASM] mirror_convert_frame returned NULL pointer");
-      throw new Error("WASM mirror_convert_frame returned null");
+      console.error(
+        `[WASM] mirror_convert_frame returned NULL pointer for frame ${frameCallCount}`,
+      );
+      throw new Error(
+        `WASM mirror_convert_frame returned null after processing ${srcWidth}x${srcHeight}`,
+      );
     }
 
     let asciiString: string;

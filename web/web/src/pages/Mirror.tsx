@@ -155,9 +155,24 @@ export function MirrorPage() {
         return;
       }
 
+      // Verify frame dimensions match expected RGBA size
+      const expectedSize = frame.width * frame.height * 4;
+      if (frame.data.length !== expectedSize) {
+        console.error(
+          `[Mirror] CRITICAL: Frame data size mismatch - frame is ${frame.width}x${frame.height} but data is ${frame.data.length} bytes (expected ${expectedSize})`,
+        );
+        return;
+      }
+
       if (debugCountRef.current === 0) {
         console.log(
           `[Mirror] First frame captured at ${now - firstFrameTimeRef.current!}ms: ${frame.width}x${frame.height}, ${frame.data.length} bytes`,
+        );
+      }
+
+      if (debugCountRef.current % 100 === 0) {
+        console.log(
+          `[Mirror] Frame #${debugCountRef.current}: ${frame.width}x${frame.height}x4 = ${frame.data.length} bytes`,
         );
       }
 
