@@ -12,7 +12,8 @@ export function NotFound() {
             Page Not Found
           </p>
           <p className="text-base sm:text-lg text-gray-400 mb-6">
-            The page you&apos;re looking for doesn&apos;t exist or has been moved.
+            The page you&apos;re looking for doesn&apos;t exist or has been
+            moved.
           </p>
           <Button
             href="/"

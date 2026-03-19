@@ -1,9 +1,12 @@
 import type { HTMLAttributes } from "react";
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { useRef, useEffect } from 'react';
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { useRef, useEffect } from "react";
 
-interface CodeBlockProps extends Omit<HTMLAttributes<HTMLPreElement>, 'className'> {
+interface CodeBlockProps extends Omit<
+  HTMLAttributes<HTMLPreElement>,
+  "className"
+> {
   inline?: boolean;
   className?: string;
   language?: string;
@@ -16,7 +19,7 @@ export function CodeBlock({
   inline = false,
   children,
   className = "",
-  language = 'bash',
+  language = "bash",
   highlightLines,
   searchQuery,
   showLineNumbers = false,
@@ -33,22 +36,20 @@ export function CodeBlock({
   }
 
   // Extract text content from children
-  const code = typeof children === 'string'
-    ? children
-    : String(children);
+  const code = typeof children === "string" ? children : String(children);
 
   // Apply search highlighting after Prism renders
   useEffect(() => {
     if (!searchQuery || !codeRef.current) return;
 
     try {
-      const codeBlock = codeRef.current.querySelector('code');
+      const codeBlock = codeRef.current.querySelector("code");
       if (!codeBlock) return;
 
       // Use regex to find matches and wrap them with spans
       const createRegex = (searchTerm: string) => {
-        const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        return new RegExp(`(${escaped})`, 'gi');
+        const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return new RegExp(`(${escaped})`, "gi");
       };
 
       const regex = createRegex(searchQuery);
@@ -57,7 +58,7 @@ export function CodeBlock({
       const walker = document.createTreeWalker(
         codeBlock as Node,
         NodeFilter.SHOW_TEXT,
-        null
+        null,
       );
 
       const nodesToProcess: Node[] = [];
@@ -69,7 +70,7 @@ export function CodeBlock({
       // Process nodes in reverse to avoid invalidating references
       for (let i = nodesToProcess.length - 1; i >= 0; i--) {
         const textNode = nodesToProcess[i]!;
-        const text = textNode.textContent || '';
+        const text = textNode.textContent || "";
         const parent = textNode.parentNode;
         if (!parent || !regex.test(text)) continue;
 
@@ -81,13 +82,15 @@ export function CodeBlock({
         while ((match = regex.exec(text)) !== null) {
           // Add text before match
           if (match.index > lastIndex) {
-            fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+            fragment.appendChild(
+              document.createTextNode(text.slice(lastIndex, match.index)),
+            );
           }
 
           // Add highlighted match
-          const span = document.createElement('span');
-          span.style.backgroundColor = 'rgba(120, 53, 15, 0.5)';
-          span.style.color = '#fef08a';
+          const span = document.createElement("span");
+          span.style.backgroundColor = "rgba(120, 53, 15, 0.5)";
+          span.style.color = "#fef08a";
           span.textContent = match[0];
           fragment.appendChild(span);
 
@@ -103,7 +106,7 @@ export function CodeBlock({
         parent.replaceChild(fragment, textNode as Node);
       }
     } catch (e) {
-      console.error('[CodeBlock] Error:', e);
+      console.error("[CodeBlock] Error:", e);
     }
   }, [searchQuery, children]);
 
@@ -113,32 +116,36 @@ export function CodeBlock({
         language={language}
         style={vscDarkPlus}
         customStyle={{
-          backgroundColor: '#111827',
-          border: '1px solid #1f2937',
-          borderRadius: '0.5rem',
-          padding: '1rem',
-          fontSize: '0.875rem',
-          lineHeight: '1.5',
+          backgroundColor: "#111827",
+          border: "1px solid #1f2937",
+          borderRadius: "0.5rem",
+          padding: "1rem",
+          fontSize: "0.875rem",
+          lineHeight: "1.5",
           margin: 0,
         }}
         codeTagProps={{
           style: {
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-          }
+            fontFamily:
+              'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+          },
         }}
         showLineNumbers={showLineNumbers}
         lineProps={(lineNumber) => {
-          const isHighlighted = highlightLines &&
+          const isHighlighted =
+            highlightLines &&
             lineNumber >= highlightLines.start &&
             lineNumber <= highlightLines.end;
 
-          return isHighlighted ? {
-            style: {
-              backgroundColor: '#fbbf24',
-              display: 'block',
-              padding: '0.125rem 0.5rem',
-            }
-          } : {};
+          return isHighlighted
+            ? {
+                style: {
+                  backgroundColor: "#fbbf24",
+                  display: "block",
+                  padding: "0.125rem 0.5rem",
+                },
+              }
+            : {};
         }}
       >
         {code}

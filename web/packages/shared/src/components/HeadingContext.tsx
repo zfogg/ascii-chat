@@ -1,4 +1,12 @@
-import { createContext, useContext, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+  type ReactNode,
+} from "react";
 import { useLocation } from "react-router-dom";
 
 interface HeadingContextType {

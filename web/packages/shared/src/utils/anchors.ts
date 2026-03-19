@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
 /**
  * React hook to handle scroll-to-hash on page load
@@ -14,10 +14,10 @@ export function useScrollToHash(delay = 100): void {
       const element = document.getElementById(id);
 
       if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        element.scrollIntoView({ behavior: "smooth", block: "start" });
         // Optional: briefly highlight the element
         const originalBg = element.style.backgroundColor;
-        element.style.backgroundColor = 'rgba(168, 85, 247, 0.1)'; // Purple highlight
+        element.style.backgroundColor = "rgba(168, 85, 247, 0.1)"; // Purple highlight
         setTimeout(() => {
           element.style.backgroundColor = originalBg;
         }, 1500);

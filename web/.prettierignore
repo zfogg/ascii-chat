@@ -1,3 +1,4 @@
 www/public/man3/
 www/public/*.html
 www/dist/
+web/src/wasm/dist/

@@ -1,5 +1,5 @@
-import { Helmet } from 'react-helmet-async';
-import { ReactNode } from 'react';
+import { Helmet } from "react-helmet-async";
+import { ReactNode } from "react";
 
 export interface HeadProps {
   // Core
@@ -16,7 +16,7 @@ export interface HeadProps {
   ogImageAlt?: string;
 
   // Twitter
-  twitterCard?: 'summary' | 'summary_large_image';
+  twitterCard?: "summary" | "summary_large_image";
   twitterSite?: string;
   twitterCreator?: string;
 
@@ -31,16 +31,16 @@ export function Head({
   title,
   description,
   keywords,
-  author = 'Zach Fogg',
+  author = "Zach Fogg",
   url,
   ogImage,
-  ogImageWidth = '1200',
-  ogImageHeight = '630',
+  ogImageWidth = "1200",
+  ogImageHeight = "630",
   ogImageAlt,
-  twitterCard = 'summary_large_image',
-  twitterSite = '@ascii_chat',
-  twitterCreator = '@zach_fogg',
-  ogType = 'website',
+  twitterCard = "summary_large_image",
+  twitterSite = "@ascii_chat",
+  twitterCreator = "@zach_fogg",
+  ogType = "website",
   children,
 }: HeadProps) {
   return (
@@ -74,7 +74,9 @@ export function Head({
       {ogImage && (
         <>
           <meta property="twitter:image" content={ogImage} />
-          {ogImageAlt && <meta property="twitter:image:alt" content={ogImageAlt} />}
+          {ogImageAlt && (
+            <meta property="twitter:image:alt" content={ogImageAlt} />
+          )}
         </>
       )}
 

@@ -1,12 +1,18 @@
 import type { ButtonHTMLAttributes, AnchorHTMLAttributes } from "react";
 
-type ButtonAsButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className'> & {
+type ButtonAsButtonProps = Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  "className"
+> & {
   variant?: "primary" | "secondary";
   className?: string;
   href?: never;
 };
 
-type ButtonAsLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'className'> & {
+type ButtonAsLinkProps = Omit<
+  AnchorHTMLAttributes<HTMLAnchorElement>,
+  "className"
+> & {
   variant?: "primary" | "secondary";
   className?: string;
   href: string;
@@ -14,11 +20,16 @@ type ButtonAsLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'classNam
 
 type ButtonProps = ButtonAsButtonProps | ButtonAsLinkProps;
 
-export function Button({ variant = "primary", children, className = "", ...props }: ButtonProps) {
+export function Button({
+  variant = "primary",
+  children,
+  className = "",
+  ...props
+}: ButtonProps) {
   const baseClass = `btn-${variant}`;
   const combinedClassName = `${baseClass} ${className}`.trim();
 
-  if ('href' in props && props.href) {
+  if ("href" in props && props.href) {
     const { ...anchorProps } = props as ButtonAsLinkProps;
     return (
       <a className={combinedClassName} {...anchorProps}>

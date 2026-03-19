@@ -23,7 +23,9 @@ declare global {
 
 const isDev = import.meta.env.DEV;
 const baseUrl = isDev ? "http://localhost" : "https://ascii-chat.com";
-const discoveryBaseUrl = isDev ? "http://localhost" : "https://discovery.ascii-chat.com";
+const discoveryBaseUrl = isDev
+  ? "http://localhost"
+  : "https://discovery.ascii-chat.com";
 const webBaseUrl = isDev ? "http://localhost" : "https://web.ascii-chat.com";
 const mainPort = isDev ? 5173 : 443;
 const discoveryPort = isDev ? 5174 : 443;

@@ -1,25 +1,20 @@
-import { defineConfig } from 'vite-plus';
+import { defineConfig } from "vite-plus";
 
 export default defineConfig({
   lint: {
-    "plugins": [
-      "oxc",
-      "typescript",
-      "unicorn",
-      "react"
-    ],
-    "categories": {
-      "correctness": "warn"
+    plugins: ["oxc", "typescript", "unicorn", "react"],
+    categories: {
+      correctness: "warn",
     },
-    "env": {
-      "builtin": true
+    env: {
+      builtin: true,
     },
-    "settings": {
-      "react": {
-        "version": "19.2"
-      }
+    settings: {
+      react: {
+        version: "19.2",
+      },
     },
-    "ignorePatterns": [
+    ignorePatterns: [
       "**/node_modules/**",
       "**/.venv/**",
       "**/.next/**",
@@ -31,9 +26,9 @@ export default defineConfig({
       "**/tests/**",
       "**/playwright.config.ts",
       "**/vite.config.ts",
-      "**/vitest.config.ts"
+      "**/vitest.config.ts",
     ],
-    "rules": {
+    rules: {
       "constructor-super": "error",
       "for-direction": "error",
       "getter-return": "error",
@@ -113,37 +108,33 @@ export default defineConfig({
       "react/no-unknown-property": "error",
       "react/no-unsafe": "off",
       "react/react-in-jsx-scope": "off",
-      "react/require-render-return": "error"
+      "react/require-render-return": "error",
     },
-    "overrides": [
+    overrides: [
       {
-        "files": [
-          "**/*.js"
-        ],
-        "rules": {
+        files: ["**/*.js"],
+        rules: {
           "no-unused-vars": [
             "error",
             {
-              "argsIgnorePattern": "^_",
-              "caughtErrorsIgnorePattern": "^_",
-              "varsIgnorePattern": "^_"
-            }
-          ]
+              argsIgnorePattern: "^_",
+              caughtErrorsIgnorePattern: "^_",
+              varsIgnorePattern: "^_",
+            },
+          ],
         },
-        "globals": {
-          "__COMMIT_SHA__": "readonly"
+        globals: {
+          __COMMIT_SHA__: "readonly",
         },
-        "env": {
-          "es2024": true,
-          "browser": true,
-          "node": true
-        }
+        env: {
+          es2024: true,
+          browser: true,
+          node: true,
+        },
       },
       {
-        "files": [
-          "**/*.jsx"
-        ],
-        "rules": {
+        files: ["**/*.jsx"],
+        rules: {
           "react/no-unescaped-entities": "off",
           "react-hooks/rules-of-hooks": "error",
           "react-hooks/exhaustive-deps": "warn",
@@ -151,52 +142,48 @@ export default defineConfig({
           "no-unused-vars": [
             "error",
             {
-              "argsIgnorePattern": "^_",
-              "caughtErrorsIgnorePattern": "^_",
-              "varsIgnorePattern": "^_"
-            }
-          ]
+              argsIgnorePattern: "^_",
+              caughtErrorsIgnorePattern: "^_",
+              varsIgnorePattern: "^_",
+            },
+          ],
         },
-        "globals": {
-          "__COMMIT_SHA__": "readonly",
-          "__SSH_PUBLIC_KEY__": "readonly",
-          "__GPG_PUBLIC_KEY__": "readonly"
+        globals: {
+          __COMMIT_SHA__: "readonly",
+          __SSH_PUBLIC_KEY__: "readonly",
+          __GPG_PUBLIC_KEY__: "readonly",
         },
-        "env": {
-          "es2024": true,
-          "browser": true,
-          "node": true
-        }
+        env: {
+          es2024: true,
+          browser: true,
+          node: true,
+        },
       },
       {
-        "files": [
-          "**/*.ts"
-        ],
-        "rules": {
+        files: ["**/*.ts"],
+        rules: {
           "@typescript-eslint/no-explicit-any": "error",
           "no-unused-vars": [
             "error",
             {
-              "argsIgnorePattern": "^_",
-              "caughtErrorsIgnorePattern": "^_",
-              "varsIgnorePattern": "^_"
-            }
-          ]
+              argsIgnorePattern: "^_",
+              caughtErrorsIgnorePattern: "^_",
+              varsIgnorePattern: "^_",
+            },
+          ],
         },
-        "globals": {
-          "__COMMIT_SHA__": "readonly"
+        globals: {
+          __COMMIT_SHA__: "readonly",
         },
-        "env": {
-          "es2024": true,
-          "browser": true,
-          "node": true
-        }
+        env: {
+          es2024: true,
+          browser: true,
+          node: true,
+        },
       },
       {
-        "files": [
-          "**/*.tsx"
-        ],
-        "rules": {
+        files: ["**/*.tsx"],
+        rules: {
           "@typescript-eslint/no-explicit-any": "error",
           "react/no-unescaped-entities": "off",
           "react-hooks/rules-of-hooks": "error",
@@ -204,47 +191,43 @@ export default defineConfig({
           "no-unused-vars": [
             "error",
             {
-              "argsIgnorePattern": "^_",
-              "caughtErrorsIgnorePattern": "^_",
-              "varsIgnorePattern": "^_"
-            }
+              argsIgnorePattern: "^_",
+              caughtErrorsIgnorePattern: "^_",
+              varsIgnorePattern: "^_",
+            },
           ],
-          "react/only-export-components": "warn"
+          "react/only-export-components": "warn",
         },
-        "globals": {
-          "__COMMIT_SHA__": "readonly"
+        globals: {
+          __COMMIT_SHA__: "readonly",
         },
-        "env": {
-          "es2024": true,
-          "browser": true,
-          "node": true
-        }
+        env: {
+          es2024: true,
+          browser: true,
+          node: true,
+        },
       },
       {
-        "files": [
-          "**/OpusEncoder.ts"
-        ],
-        "rules": {
-          "no-unused-vars": "off"
-        }
+        files: ["**/OpusEncoder.ts"],
+        rules: {
+          "no-unused-vars": "off",
+        },
       },
       {
-        "files": [
-          "**/vite-env.d.ts"
-        ],
-        "rules": {
-          "no-redeclare": "off"
-        }
-      }
+        files: ["**/vite-env.d.ts"],
+        rules: {
+          "no-redeclare": "off",
+        },
+      },
     ],
-    "options": {
-      "typeAware": true,
-      "typeCheck": true
-    }
+    options: {
+      typeAware: true,
+      typeCheck: true,
+    },
   },
   fmt: {
-    "printWidth": 80,
-    "sortPackageJson": false,
-    "ignorePatterns": []
+    printWidth: 80,
+    sortPackageJson: false,
+    ignorePatterns: [],
   },
 });

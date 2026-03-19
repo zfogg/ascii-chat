@@ -4,10 +4,10 @@ export function getCommitSha(): string {
 
   // Check for deployment platform environment variables
   const envVars = [
-    proc?.env?.["VERCEL_GIT_COMMIT_SHA"],      // Vercel
-    proc?.env?.["SOURCE_COMMIT"],               // Coolify
-    proc?.env?.["GITHUB_SHA"],                  // GitHub Actions
-    proc?.env?.["CI_COMMIT_SHA"],               // GitLab
+    proc?.env?.["VERCEL_GIT_COMMIT_SHA"], // Vercel
+    proc?.env?.["SOURCE_COMMIT"], // Coolify
+    proc?.env?.["GITHUB_SHA"], // GitHub Actions
+    proc?.env?.["CI_COMMIT_SHA"], // GitLab
   ];
 
   for (const envVar of envVars) {

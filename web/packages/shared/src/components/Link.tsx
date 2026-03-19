@@ -1,11 +1,19 @@
 import type { AnchorHTMLAttributes } from "react";
 
-interface LinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'className'> {
+interface LinkProps extends Omit<
+  AnchorHTMLAttributes<HTMLAnchorElement>,
+  "className"
+> {
   underline?: boolean;
   className?: string;
 }
 
-export function Link({ underline = false, children, className = "", ...props }: LinkProps) {
+export function Link({
+  underline = false,
+  children,
+  className = "",
+  ...props
+}: LinkProps) {
   const baseClass = underline ? "link-underline" : "link-standard";
   const combinedClassName = `${baseClass} ${className}`.trim();
 

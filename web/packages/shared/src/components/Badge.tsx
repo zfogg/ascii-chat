@@ -1,11 +1,19 @@
 import type { HTMLAttributes } from "react";
 
-interface BadgeProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'className'> {
+interface BadgeProps extends Omit<
+  HTMLAttributes<HTMLSpanElement>,
+  "className"
+> {
   variant?: "primary" | "secondary" | "warning" | "error";
   className?: string;
 }
 
-export function Badge({ variant = "primary", children, className = "", ...props }: BadgeProps) {
+export function Badge({
+  variant = "primary",
+  children,
+  className = "",
+  ...props
+}: BadgeProps) {
   const baseClass = `badge-${variant}`;
   const combinedClassName = `${baseClass} ${className}`.trim();
 

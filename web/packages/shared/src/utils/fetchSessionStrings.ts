@@ -8,7 +8,9 @@ import { API_RELATIVE, DISCOVERY_API_BASE } from "./urls";
  * @returns Promise<string[]> - Array of session strings
  * @throws Error if the API call fails or count is invalid
  */
-export async function fetchSessionStrings(count: number = 1): Promise<string[]> {
+export async function fetchSessionStrings(
+  count: number = 1,
+): Promise<string[]> {
   try {
     // In production, use discovery service API if configured
     // In dev, use relative URL with local API

@@ -17,7 +17,14 @@ interface FooterProps {
   className?: string;
 }
 
-export function Footer({ links, commitSha, onCommitClick, extraLine, authorLinkColor = "text-cyan-400 hover:text-cyan-300", className = "mt-8 pt-8 border-t-2 border-gray-700" }: FooterProps) {
+export function Footer({
+  links,
+  commitSha,
+  onCommitClick,
+  extraLine,
+  authorLinkColor = "text-cyan-400 hover:text-cyan-300",
+  className = "mt-8 pt-8 border-t-2 border-gray-700",
+}: FooterProps) {
   return (
     <footer
       className={`${className} w-full flex flex-col text-center text-sm md:text-base`}
@@ -38,16 +45,14 @@ export function Footer({ links, commitSha, onCommitClick, extraLine, authorLinkC
         ))}
       </p>
       {extraLine && (
-        <p className="text-xs md:text-sm text-gray-400 mt-4">
-          {extraLine}
-        </p>
+        <p className="text-xs md:text-sm text-gray-400 mt-4">{extraLine}</p>
       )}
       <p className="text-xs md:text-sm text-gray-400 mt-2">
-        made with ❤️ by{' '}
+        made with ❤️ by{" "}
         <Link href="https://zfo.gg" className={authorLinkColor}>
           @zfogg
         </Link>
-        {' · '}
+        {" · "}
         <CommitLink
           commitSha={commitSha}
           onClick={onCommitClick}
