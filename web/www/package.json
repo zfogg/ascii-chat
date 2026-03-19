@@ -4,7 +4,7 @@
   "version": "0.3.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"ls api.js | entr -rc vp dev --port 5173 | tee vite.log\" \"node api.js | tee api.log\" \"scripts/manpage-watch.sh\"",
+    "dev": "concurrently 'ls api.js | entr -dr vp dev --port 5173 | tee vp-dev.log' 'node api.js | tee api.log' 'scripts/manpage-watch.sh'",
     "api": "node api.js",
     "start": "concurrently \"vp dev --port 5173\" \"node api.js\"",
     "start:caddy": "concurrently \"node api.js\" \"caddy run --config /etc/caddy/Caddyfile\"",
