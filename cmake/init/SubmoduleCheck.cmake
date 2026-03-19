@@ -16,17 +16,18 @@
 include(${CMAKE_SOURCE_DIR}/cmake/utils/Colors.cmake)
 
 function(check_and_init_git_submodules)
-    # Skip submodule checks in Docker/Coolify builds where SOURCE_COMMIT is set
-    # (submodules are included in the build context, not via git)
-    if(DEFINED SOURCE_COMMIT)
-        message(STATUS "Docker/Coolify build detected (SOURCE_COMMIT set), submodules already included in build context")
-        return()
-    endif()
-
     # Check if we're in a git repository
     if(NOT EXISTS "${CMAKE_SOURCE_DIR}/.git")
-        message(STATUS "Not a git repository, skipping submodule initialization")
-        return()
+        # Not a git repo - likely Docker/Coolify build with pre-cloned submodules
+        # Check if critical submodule files exist, otherwise fail
+        if(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl/Makefile")
+            message(STATUS "Docker/Coolify build detected, submodules already included in build context")
+            return()
+        else()
+            message(FATAL_ERROR "Not a git repository and critical submodules not found.\n"
+                                "This typically happens in Docker/Coolify if submodules weren't cloned.\n"
+                                "Ensure deps/ascii-chat-deps is included in the build context.")
+        endif()
     endif()
 
     # Find git executable
