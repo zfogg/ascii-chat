@@ -3,7 +3,6 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "concurrently \"ls api.js | entr -rdc vite --port 5173 | tee vite.log\" \"node api.js | tee api.log\" \"scripts/manpage-watch.sh\"",
     "api": "node api.js",

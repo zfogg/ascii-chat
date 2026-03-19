@@ -15,7 +15,7 @@ FROM node:22-slim AS base
 ARG SOURCE_COMMIT
 
 # Install bash, curl, git, wget, and pnpm
-RUN apt-get update && apt-get install -y --no-install-recommends bash curl git wget && npm install -g pnpm@9.15.0 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends bash curl git wget && npm install -g pnpm@10.32.1 && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -71,7 +71,7 @@ ARG NODE_ENV=development
 
 ENV NODE_ENV=${NODE_ENV}
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl && npm install -g pnpm@9.15.0 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends curl && npm install -g pnpm@10.32.1 && rm -rf /var/lib/apt/lists/*
 
 COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
 

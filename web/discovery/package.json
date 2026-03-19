@@ -3,7 +3,6 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "vp dev --port 5174",
     "start:caddy": "caddy run --config /etc/caddy/Caddyfile",

@@ -2,7 +2,7 @@
   "type": "module",
   "name": "ascii-chat-web",
   "private": true,
-  "packageManager": "pnpm@9.15.0",
+  "packageManager": "pnpm@10.32.1",
   "scripts": {
     "dev": "pnpm -r --filter './www' --filter './discovery' --filter './web' run dev",
     "build": "pnpm -r run build",
