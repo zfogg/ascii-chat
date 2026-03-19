@@ -116,191 +116,191 @@ if (!transport_var) {                                                           
 <div class="Bd-indent"><i>arg</i> Pointer to client connection context</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">NULL (thread exit value)</div>
-<p class="Pp">Definition at line <b>832</b> of file
+<p class="Pp">Definition at line <b>896</b> of file
     <b>src/discovery-service/server.c</b>.</p>
-<pre>832                                      {
-833   tcp_client_context_t *ctx = (tcp_client_context_t *)arg;
-834   if (!ctx) {
-835     log_error(&quot;Client handler: NULL context&quot;);
-836     return NULL;
-837   }
-838 
-839   acds_server_t *server = (acds_server_t *)ctx-&gt;user_data;
-840   socket_t client_socket = ctx-&gt;client_socket;
-841 
-842   // Get client IP for logging
-843   char client_ip[INET6_ADDRSTRLEN] = {0};
-844   tcp_client_context_get_ip(ctx, client_ip, sizeof(client_ip));
-845 
-846   log_info(&quot;Client handler started for %s&quot;, client_ip);
-847 
-848   // Register client in TCP server registry with allocated client data
-849   acds_client_data_t *client_data = SAFE_MALLOC(sizeof(acds_client_data_t), acds_client_data_t *);
-850   if (!client_data) {
-851     tcp_server_reject_client(client_socket, &quot;Failed to allocate client data&quot;);
-852     SAFE_FREE(ctx);
-853     return NULL;
-854   }
-855   memset(client_data, 0, sizeof(*client_data));
-856   client_data-&gt;joined_session = false;
-857   client_data-&gt;handshake_complete = false;
-858 
-859   // Initialize crypto handshake context with client IP name
-860   char crypto_name[96];
-861   SAFE_SNPRINTF(crypto_name, sizeof(crypto_name), &quot;crypto_discovery_client_%s&quot;, client_ip);
-862   asciichat_error_t handshake_result = crypto_handshake_init(crypto_name, &amp;client_data-&gt;handshake_ctx, true);
-863   if (handshake_result != ASCIICHAT_OK) {
-864     log_error(&quot;Failed to initialize crypto handshake for client %s&quot;, client_ip);
-865     SAFE_FREE(client_data);
-866     tcp_server_reject_client(client_socket, &quot;Failed to initialize crypto handshake&quot;);
-867     SAFE_FREE(ctx);
-868     return NULL;
-869   }
-870 
-871   // Set server identity keys for handshake
-872   client_data-&gt;handshake_ctx.server_public_key.type = KEY_TYPE_ED25519;
-873   client_data-&gt;handshake_ctx.server_private_key.type = KEY_TYPE_ED25519;
-874   memcpy(client_data-&gt;handshake_ctx.server_public_key.key, server-&gt;identity_public, 32);
-875   memcpy(client_data-&gt;handshake_ctx.server_private_key.key.ed25519, server-&gt;identity_secret, 64);
-876 
-877   if (tcp_server_add_client(&amp;server-&gt;tcp_server, client_socket, client_data) != ASCIICHAT_OK) {
-878     SAFE_FREE(client_data);
-879     tcp_server_reject_client(client_socket, &quot;Failed to register client in registry&quot;);
-880     SAFE_FREE(ctx);
-881     return NULL;
-882   }
-883 
-884   log_debug(&quot;Client %s registered (socket=%d, total=%zu)&quot;, client_ip, client_socket,
-885             tcp_server_get_client_count(&amp;server-&gt;tcp_server));
-886 
-887   // Perform crypto handshake (three-step process)
-888   log_debug(&quot;Performing crypto handshake with client %s&quot;, client_ip);
-889 
-890   // Step 1: Start handshake (send server key, receive client key)
-891   handshake_result = crypto_handshake_server_start_socket(&amp;client_data-&gt;handshake_ctx, client_socket);
-892   if (handshake_result != ASCIICHAT_OK) {
-893     log_warn(&quot;Crypto handshake start failed for client %s&quot;, client_ip);
-894     tcp_server_remove_client(&amp;server-&gt;tcp_server, client_socket);
-895     SAFE_FREE(ctx);
-896     return NULL;
-897   }
-898 
-899   // Step 2: Authentication challenge (if required)
-900   handshake_result = crypto_handshake_server_auth_challenge_socket(&amp;client_data-&gt;handshake_ctx, client_socket);
-901   if (handshake_result != ASCIICHAT_OK) {
-902     log_warn(&quot;Crypto handshake auth challenge failed for client %s&quot;, client_ip);
-903     tcp_server_remove_client(&amp;server-&gt;tcp_server, client_socket);
-904     SAFE_FREE(ctx);
-905     return NULL;
-906   }
-907 
-908   // Step 3: Complete handshake (verify and finalize) - skip if already complete
-909   if (client_data-&gt;handshake_ctx.state != CRYPTO_HANDSHAKE_READY) {
-910     handshake_result = crypto_handshake_server_complete_socket(&amp;client_data-&gt;handshake_ctx, client_socket);
-911     if (handshake_result != ASCIICHAT_OK) {
-912       log_warn(&quot;Crypto handshake complete failed for client %s&quot;, client_ip);
-913       tcp_server_remove_client(&amp;server-&gt;tcp_server, client_socket);
-914       SAFE_FREE(ctx);
-915       return NULL;
-916     }
-917   } else {
-918     log_debug(&quot;Crypto handshake already complete from auth_challenge step for client %s&quot;, client_ip);
-919   }
-920 
-921   client_data-&gt;handshake_complete = true;
-922   log_info(&quot;Crypto handshake complete for client %s&quot;, client_ip);
-923 
-924   // Main packet processing loop
-925   while (atomic_load_bool(&amp;server-&gt;tcp_server.running)) {
-926     packet_type_t packet_type;
-927     void *payload = NULL;
-928     size_t payload_size = 0;
-929 
-930     // Receive packet (blocking with system timeout)
-931     int result = receive_packet(client_socket, &amp;packet_type, &amp;payload, &amp;payload_size);
-932     if (result &lt; 0) {
-933       // Check error context to distinguish timeout from actual disconnect
-934       asciichat_error_context_t err_ctx;
-935       bool has_context = HAS_ERRNO(&amp;err_ctx);
-936 
-937       // Check if this is a timeout (non-fatal) or actual disconnect (fatal)
-938       asciichat_error_t error = GET_ERRNO();
-939       if (error == ERROR_NETWORK_TIMEOUT ||
-940           (error == ERROR_NETWORK &amp;&amp; has_context &amp;&amp; strstr(err_ctx.context_message, &quot;timed out&quot;) != NULL)) {
-941         // Timeout waiting for next packet - this is normal, continue waiting
-942         log_debug(&quot;Client %s: receive timeout, continuing to wait for packets&quot;, client_ip);
-943         if (payload) {
-944           buffer_pool_free(NULL, payload, payload_size);
-945         }
-946         continue;
-947       }
-948 
-949       // Actual disconnect or fatal error
-950       log_info(&quot;Client %s disconnected&quot;, client_ip);
-951       if (payload) {
-952         buffer_pool_free(NULL, payload, payload_size);
-953       }
-954       break;
-955     }
-956 
-957     log_debug(&quot;Received packet type 0x%02X from %s, length=%zu&quot;, packet_type, client_ip, payload_size);
-958 
-959     // Multi-key session creation protocol: block non-PING/PONG/SESSION_CREATE messages
-960     if (client_data-&gt;in_multikey_session_create) {
-961       bool allowed =
-962           (packet_type == PACKET_TYPE_ACIP_SESSION_CREATE || packet_type == PACKET_TYPE_PING || packet_type == PACKET_TYPE_PONG);
-963 
-964       if (!allowed) {
-965         log_warn(&quot;Client %s sent packet type 0x%02X during multi-key session creation - only SESSION_CREATE/PING/PONG &quot;
-966                  &quot;allowed&quot;,
-967                  client_ip, packet_type);
-968 
-969         // Send error response
-970         acip_transport_t *error_transport =
-971             acip_tcp_transport_create(&quot;transport_acds_error_response&quot;, client_socket, NULL);
-972         if (error_transport) {
-973           acip_send_error(error_transport, ERROR_INVALID_PARAM,
-974                           &quot;Only SESSION_CREATE/PING/PONG allowed during multi-key session creation&quot;);
-975           ACDS_DESTROY_TRANSPORT(error_transport);
-976         }
-977 
-978         // Free payload and continue
-979         if (payload) {
-980           buffer_pool_free(NULL, payload, payload_size);
-981         }
-982         continue;
-983       }
-984     }
-985 
-986     // O(1) ACIP array-based dispatch
-987     // Set server context for callbacks
-988     acip_acds_callbacks_t callbacks = g_acds_callbacks;
-989     callbacks.app_ctx = server;
-990 
-991     asciichat_error_t dispatch_result =
-992         acip_handle_acds_packet(NULL, packet_type, payload, payload_size, client_socket, client_ip, &amp;callbacks);
+<pre>896                                      {
+897   tcp_client_context_t *ctx = (tcp_client_context_t *)arg;
+898   if (!ctx) {
+899     log_error(&quot;Client handler: NULL context&quot;);
+900     return NULL;
+901   }
+902 
+903   acds_server_t *server = (acds_server_t *)ctx-&gt;user_data;
+904   socket_t client_socket = ctx-&gt;client_socket;
+905 
+906   // Get client IP for logging
+907   char client_ip[INET6_ADDRSTRLEN] = {0};
+908   tcp_client_context_get_ip(ctx, client_ip, sizeof(client_ip));
+909 
+910   log_info(&quot;Client handler started for %s&quot;, client_ip);
+911 
+912   // Register client in TCP server registry with allocated client data
+913   acds_client_data_t *client_data = SAFE_MALLOC(sizeof(acds_client_data_t), acds_client_data_t *);
+914   if (!client_data) {
+915     tcp_server_reject_client(client_socket, &quot;Failed to allocate client data&quot;);
+916     SAFE_FREE(ctx);
+917     return NULL;
+918   }
+919   memset(client_data, 0, sizeof(*client_data));
+920   client_data-&gt;joined_session = false;
+921   client_data-&gt;handshake_complete = false;
+922 
+923   // Initialize crypto handshake context with client IP name
+924   char crypto_name[96];
+925   SAFE_SNPRINTF(crypto_name, sizeof(crypto_name), &quot;crypto_discovery_client_%s&quot;, client_ip);
+926   asciichat_error_t handshake_result = crypto_handshake_init(crypto_name, &amp;client_data-&gt;handshake_ctx, true);
+927   if (handshake_result != ASCIICHAT_OK) {
+928     log_error(&quot;Failed to initialize crypto handshake for client %s&quot;, client_ip);
+929     SAFE_FREE(client_data);
+930     tcp_server_reject_client(client_socket, &quot;Failed to initialize crypto handshake&quot;);
+931     SAFE_FREE(ctx);
+932     return NULL;
+933   }
+934 
+935   // Set server identity keys for handshake
+936   client_data-&gt;handshake_ctx.server_public_key.type = KEY_TYPE_ED25519;
+937   client_data-&gt;handshake_ctx.server_private_key.type = KEY_TYPE_ED25519;
+938   memcpy(client_data-&gt;handshake_ctx.server_public_key.key, server-&gt;identity_public, 32);
+939   memcpy(client_data-&gt;handshake_ctx.server_private_key.key.ed25519, server-&gt;identity_secret, 64);
+940 
+941   if (tcp_server_add_client(&amp;server-&gt;tcp_server, client_socket, client_data) != ASCIICHAT_OK) {
+942     SAFE_FREE(client_data);
+943     tcp_server_reject_client(client_socket, &quot;Failed to register client in registry&quot;);
+944     SAFE_FREE(ctx);
+945     return NULL;
+946   }
+947 
+948   log_debug(&quot;Client %s registered (socket=%d, total=%zu)&quot;, client_ip, client_socket,
+949             tcp_server_get_client_count(&amp;server-&gt;tcp_server));
+950 
+951   // Perform crypto handshake (three-step process)
+952   log_debug(&quot;Performing crypto handshake with client %s&quot;, client_ip);
+953 
+954   // Step 1: Start handshake (send server key, receive client key)
+955   handshake_result = crypto_handshake_server_start_socket(&amp;client_data-&gt;handshake_ctx, client_socket);
+956   if (handshake_result != ASCIICHAT_OK) {
+957     log_warn(&quot;Crypto handshake start failed for client %s&quot;, client_ip);
+958     tcp_server_remove_client(&amp;server-&gt;tcp_server, client_socket);
+959     SAFE_FREE(ctx);
+960     return NULL;
+961   }
+962 
+963   // Step 2: Authentication challenge (if required)
+964   handshake_result = crypto_handshake_server_auth_challenge_socket(&amp;client_data-&gt;handshake_ctx, client_socket);
+965   if (handshake_result != ASCIICHAT_OK) {
+966     log_warn(&quot;Crypto handshake auth challenge failed for client %s&quot;, client_ip);
+967     tcp_server_remove_client(&amp;server-&gt;tcp_server, client_socket);
+968     SAFE_FREE(ctx);
+969     return NULL;
+970   }
+971 
+972   // Step 3: Complete handshake (verify and finalize) - skip if already complete
+973   if (client_data-&gt;handshake_ctx.state != CRYPTO_HANDSHAKE_READY) {
+974     handshake_result = crypto_handshake_server_complete_socket(&amp;client_data-&gt;handshake_ctx, client_socket);
+975     if (handshake_result != ASCIICHAT_OK) {
+976       log_warn(&quot;Crypto handshake complete failed for client %s&quot;, client_ip);
+977       tcp_server_remove_client(&amp;server-&gt;tcp_server, client_socket);
+978       SAFE_FREE(ctx);
+979       return NULL;
+980     }
+981   } else {
+982     log_debug(&quot;Crypto handshake already complete from auth_challenge step for client %s&quot;, client_ip);
+983   }
+984 
+985   client_data-&gt;handshake_complete = true;
+986   log_info(&quot;Crypto handshake complete for client %s&quot;, client_ip);
+987 
+988   // Main packet processing loop
+989   while (atomic_load_bool(&amp;server-&gt;tcp_server.running)) {
+990     packet_type_t packet_type;
+991     void *payload = NULL;
+992     size_t payload_size = 0;
 993 
-994     if (dispatch_result != ASCIICHAT_OK) {
-995       log_warn(&quot;ACIP handler failed for packet type 0x%02X from %s: %s&quot;, packet_type, client_ip,
-996                asciichat_error_string(dispatch_result));
-997     }
-998 
-999     // Free payload (allocated by receive_packet via buffer_pool_alloc)
-1000     if (payload) {
-1001       buffer_pool_free(NULL, payload, payload_size);
-1002     }
-1003   }
-1004 
-1005   // Cleanup
-1006   tcp_server_remove_client(&amp;server-&gt;tcp_server, client_socket);
-1007   log_debug(&quot;Client %s unregistered (total=%zu)&quot;, client_ip, tcp_server_get_client_count(&amp;server-&gt;tcp_server));
-1008 
-1009   socket_close(client_socket);
-1010   SAFE_FREE(ctx);
-1011 
-1012   log_info(&quot;Client handler finished for %s&quot;, client_ip);
-1013   return NULL;
-1014 }</pre>
+994     // Receive packet (blocking with system timeout)
+995     int result = receive_packet(client_socket, &amp;packet_type, &amp;payload, &amp;payload_size);
+996     if (result &lt; 0) {
+997       // Check error context to distinguish timeout from actual disconnect
+998       asciichat_error_context_t err_ctx;
+999       bool has_context = HAS_ERRNO(&amp;err_ctx);
+1000 
+1001       // Check if this is a timeout (non-fatal) or actual disconnect (fatal)
+1002       asciichat_error_t error = GET_ERRNO();
+1003       if (error == ERROR_NETWORK_TIMEOUT ||
+1004           (error == ERROR_NETWORK &amp;&amp; has_context &amp;&amp; strstr(err_ctx.context_message, &quot;timed out&quot;) != NULL)) {
+1005         // Timeout waiting for next packet - this is normal, continue waiting
+1006         log_debug(&quot;Client %s: receive timeout, continuing to wait for packets&quot;, client_ip);
+1007         if (payload) {
+1008           buffer_pool_free(NULL, payload, payload_size);
+1009         }
+1010         continue;
+1011       }
+1012 
+1013       // Actual disconnect or fatal error
+1014       log_info(&quot;Client %s disconnected&quot;, client_ip);
+1015       if (payload) {
+1016         buffer_pool_free(NULL, payload, payload_size);
+1017       }
+1018       break;
+1019     }
+1020 
+1021     log_debug(&quot;Received packet type 0x%02X from %s, length=%zu&quot;, packet_type, client_ip, payload_size);
+1022 
+1023     // Multi-key session creation protocol: block non-PING/PONG/SESSION_CREATE messages
+1024     if (client_data-&gt;in_multikey_session_create) {
+1025       bool allowed =
+1026           (packet_type == PACKET_TYPE_ACIP_SESSION_CREATE || packet_type == PACKET_TYPE_PING || packet_type == PACKET_TYPE_PONG);
+1027 
+1028       if (!allowed) {
+1029         log_warn(&quot;Client %s sent packet type 0x%02X during multi-key session creation - only SESSION_CREATE/PING/PONG &quot;
+1030                  &quot;allowed&quot;,
+1031                  client_ip, packet_type);
+1032 
+1033         // Send error response
+1034         acip_transport_t *error_transport =
+1035             acip_tcp_transport_create(&quot;transport_acds_error_response&quot;, client_socket, NULL);
+1036         if (error_transport) {
+1037           acip_send_error(error_transport, ERROR_INVALID_PARAM,
+1038                           &quot;Only SESSION_CREATE/PING/PONG allowed during multi-key session creation&quot;);
+1039           ACDS_DESTROY_TRANSPORT(error_transport);
+1040         }
+1041 
+1042         // Free payload and continue
+1043         if (payload) {
+1044           buffer_pool_free(NULL, payload, payload_size);
+1045         }
+1046         continue;
+1047       }
+1048     }
+1049 
+1050     // O(1) ACIP array-based dispatch
+1051     // Set server context for callbacks
+1052     acip_acds_callbacks_t callbacks = g_acds_callbacks;
+1053     callbacks.app_ctx = server;
+1054 
+1055     asciichat_error_t dispatch_result =
+1056         acip_handle_acds_packet(NULL, packet_type, payload, payload_size, client_socket, client_ip, &amp;callbacks);
+1057 
+1058     if (dispatch_result != ASCIICHAT_OK) {
+1059       log_warn(&quot;ACIP handler failed for packet type 0x%02X from %s: %s&quot;, packet_type, client_ip,
+1060                asciichat_error_string(dispatch_result));
+1061     }
+1062 
+1063     // Free payload (allocated by receive_packet via buffer_pool_alloc)
+1064     if (payload) {
+1065       buffer_pool_free(NULL, payload, payload_size);
+1066     }
+1067   }
+1068 
+1069   // Cleanup
+1070   tcp_server_remove_client(&amp;server-&gt;tcp_server, client_socket);
+1071   log_debug(&quot;Client %s unregistered (total=%zu)&quot;, client_ip, tcp_server_get_client_count(&amp;server-&gt;tcp_server));
+1072 
+1073   socket_close(client_socket);
+1074   SAFE_FREE(ctx);
+1075 
+1076   log_info(&quot;Client handler finished for %s&quot;, client_ip);
+1077   return NULL;
+1078 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ACDS_DESTROY_TRANSPORT</b>,

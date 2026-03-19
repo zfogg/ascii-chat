@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>app_client_audio_packet_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">app_client_audio_packet_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">app_client_audio_packet_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">app_client_audio_packet_t - Audio packet for async
+  transmission.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/client.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint8_t</b> <b>data</b> [4096]
+  <br/>
+  Opus-encoded audio data. size_t <b>size</b>
+  <br/>
+  Size of encoded data. <b>uint16_t</b> <b>frame_sizes</b> [48]
+  <br/>
+  Individual frame sizes for Opus batching. int <b>frame_count</b>
+  <br/>
+  Number of frames in packet.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Audio packet for async transmission.</p>
+<p class="Pp">Definition at line <b>211</b> of file
+    <b>include/ascii-chat/network/client.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> app_client_audio_packet_t::data[4096]</h2>
+<p class="Pp">Opus-encoded audio data.</p>
+<p class="Pp">Definition at line <b>212</b> of file
+    <b>include/ascii-chat/network/client.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_app_client_audio_packet_t::frame_count"><a class="permalink" href="#int_app_client_audio_packet_t::frame_count">int
+  app_client_audio_packet_t::frame_count</a></h2>
+<p class="Pp">Number of frames in packet.</p>
+<p class="Pp">Definition at line <b>215</b> of file
+    <b>include/ascii-chat/network/client.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> app_client_audio_packet_t::frame_sizes[48]</h2>
+<p class="Pp">Individual frame sizes for Opus batching.</p>
+<p class="Pp">Definition at line <b>214</b> of file
+    <b>include/ascii-chat/network/client.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_app_client_audio_packet_t::size"><a class="permalink" href="#size_t_app_client_audio_packet_t::size">size_t
+  app_client_audio_packet_t::size</a></h2>
+<p class="Pp">Size of encoded data.</p>
+<p class="Pp">Definition at line <b>213</b> of file
+    <b>include/ascii-chat/network/client.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.4</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

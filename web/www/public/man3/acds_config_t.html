@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>acds_config_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">acds_config_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">acds_config_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">acds_config_t - Discovery server configuration.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/discovery-service/main.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">int <b>port</b>
+  <br/>
+  TCP listen port (default 27225). char <b>address</b> [256]
+  <br/>
+  IPv4 bind address (empty = all interfaces). char <b>address6</b> [256]
+  <br/>
+  IPv6 bind address (empty = all interfaces). char <b>database_path</b> [512]
+  <br/>
+  SQLite database path. char <b>key_path</b> [512]
+  <br/>
+  Ed25519 identity key file path. char <b>log_file</b> [512]
+  <br/>
+  Log file path (empty = stderr). <b>log_level_t</b> <b>log_level</b>
+  <br/>
+  Logging verbosity level. <b>bool</b> <b>require_server_identity</b>
+  <br/>
+  Require servers to provide signed identity when creating sessions. <b>bool</b>
+    <b>require_client_identity</b>
+  <br/>
+  Require clients to provide signed identity when joining sessions. <b>bool</b>
+    <b>require_server_verify</b>
+  <br/>
+  ACDS policy: require servers to verify client identity during handshake.
+    <b>bool</b> <b>require_client_verify</b>
+  <br/>
+  ACDS policy: require clients to verify server identity during handshake.
+    <b>uint8_t</b> <b>stun_count</b>
+  <br/>
+  Number of configured STUN servers (0-4). <b>stun_server_t</b>
+    <b>stun_servers</b> [4]
+  <br/>
+  STUN server configurations. <b>uint8_t</b> <b>turn_count</b>
+  <br/>
+  Number of configured TURN servers (0-4). <b>turn_server_t</b>
+    <b>turn_servers</b> [4]
+  <br/>
+  TURN server configurations. char <b>turn_secret</b> [256]
+  <br/>
+  Shared secret for TURN credential generation (HMAC-SHA1).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Discovery server configuration.</p>
+<p class="Pp">Stores all runtime configuration for the discovery server, parsed
+    from command-line arguments.</p>
+<p class="Pp">Definition at line <b>71</b> of file
+    <b>discovery-service/main.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char_acds_config_t::address_256_"><a class="permalink" href="#char_acds_config_t::address_256_">char
+  acds_config_t::address[256]</a></h2>
+<p class="Pp">IPv4 bind address (empty = all interfaces).</p>
+<p class="Pp">Definition at line <b>73</b> of file
+    <b>discovery-service/main.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, and
+  <b>acds_server_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_acds_config_t::address6_256_"><a class="permalink" href="#char_acds_config_t::address6_256_">char
+  acds_config_t::address6[256]</a></h2>
+<p class="Pp">IPv6 bind address (empty = all interfaces).</p>
+<p class="Pp">Definition at line <b>74</b> of file
+    <b>discovery-service/main.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, and
+  <b>acds_server_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_acds_config_t::database_path_512_"><a class="permalink" href="#char_acds_config_t::database_path_512_">char
+  acds_config_t::database_path[512]</a></h2>
+<p class="Pp">SQLite database path.</p>
+<p class="Pp">Definition at line <b>75</b> of file
+    <b>discovery-service/main.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, and
+  <b>acds_server_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_acds_config_t::key_path_512_"><a class="permalink" href="#char_acds_config_t::key_path_512_">char
+  acds_config_t::key_path[512]</a></h2>
+<p class="Pp">Ed25519 identity key file path.</p>
+<p class="Pp">Definition at line <b>76</b> of file
+    <b>discovery-service/main.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_acds_config_t::log_file_512_"><a class="permalink" href="#char_acds_config_t::log_file_512_">char
+  acds_config_t::log_file[512]</a></h2>
+<p class="Pp">Log file path (empty = stderr).</p>
+<p class="Pp">Definition at line <b>77</b> of file
+    <b>discovery-service/main.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>log_level_t</b> acds_config_t::log_level</h2>
+<p class="Pp">Logging verbosity level.</p>
+<p class="Pp">Definition at line <b>78</b> of file
+    <b>discovery-service/main.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_acds_config_t::port"><a class="permalink" href="#int_acds_config_t::port">int
+  acds_config_t::port</a></h2>
+<p class="Pp">TCP listen port (default 27225).</p>
+<p class="Pp">Definition at line <b>72</b> of file
+    <b>discovery-service/main.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, <b>acds_server_init()</b>, and
+    <b>acds_server_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> acds_config_t::require_client_identity</h2>
+<p class="Pp">Require clients to provide signed identity when joining
+  sessions.</p>
+<p class="Pp">Definition at line <b>80</b> of file
+    <b>discovery-service/main.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> acds_config_t::require_client_verify</h2>
+<p class="Pp">ACDS policy: require clients to verify server identity during
+    handshake.</p>
+<p class="Pp">Definition at line <b>82</b> of file
+    <b>discovery-service/main.h</b>.</p>
+<p class="Pp">Referenced by <b>database_session_lookup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> acds_config_t::require_server_identity</h2>
+<p class="Pp">Require servers to provide signed identity when creating
+  sessions.</p>
+<p class="Pp">Definition at line <b>79</b> of file
+    <b>discovery-service/main.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> acds_config_t::require_server_verify</h2>
+<p class="Pp">ACDS policy: require servers to verify client identity during
+    handshake.</p>
+<p class="Pp">Definition at line <b>81</b> of file
+    <b>discovery-service/main.h</b>.</p>
+<p class="Pp">Referenced by <b>database_session_lookup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> acds_config_t::stun_count</h2>
+<p class="Pp">Number of configured STUN servers (0-4).</p>
+<p class="Pp">Definition at line <b>85</b> of file
+    <b>discovery-service/main.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, and
+    <b>database_session_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>stun_server_t</b> acds_config_t::stun_servers[4]</h2>
+<p class="Pp">STUN server configurations.</p>
+<p class="Pp">Definition at line <b>86</b> of file
+    <b>discovery-service/main.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> acds_config_t::turn_count</h2>
+<p class="Pp">Number of configured TURN servers (0-4).</p>
+<p class="Pp">Definition at line <b>87</b> of file
+    <b>discovery-service/main.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, and
+    <b>database_session_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_acds_config_t::turn_secret_256_"><a class="permalink" href="#char_acds_config_t::turn_secret_256_">char
+  acds_config_t::turn_secret[256]</a></h2>
+<p class="Pp">Shared secret for TURN credential generation (HMAC-SHA1).</p>
+<p class="Pp">Definition at line <b>89</b> of file
+    <b>discovery-service/main.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, and
+    <b>database_session_join()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>turn_server_t</b> acds_config_t::turn_servers[4]</h2>
+<p class="Pp">TURN server configurations.</p>
+<p class="Pp">Definition at line <b>88</b> of file
+    <b>discovery-service/main.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.4</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

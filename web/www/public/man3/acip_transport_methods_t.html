@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>acip_transport_methods_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">acip_transport_methods_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">acip_transport_methods_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">acip_transport_methods_t - Transport method table (virtual
+    function table).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/acip/transport.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b>(* <b>send</b> )(<b>acip_transport_t</b>
+    *transport, const void *data, size_t len)
+  <br/>
+  Send data through this transport. <b>asciichat_error_t</b>(* <b>recv</b>
+    )(<b>acip_transport_t</b> *transport, void **buffer, size_t *out_len, void
+    **out_allocated_buffer)
+  <br/>
+  Receive data from this transport. <b>asciichat_error_t</b>(* <b>close</b>
+    )(<b>acip_transport_t</b> *transport)
+  <br/>
+  Close this transport. <b>acip_transport_type_t</b>(* <b>get_type</b>
+    )(<b>acip_transport_t</b> *transport)
+  <br/>
+  Get transport type. <b>socket_t</b>(* <b>get_socket</b>
+    )(<b>acip_transport_t</b> *transport)
+  <br/>
+  Get underlying socket (if applicable). <b>bool</b>(* <b>is_connected</b>
+    )(<b>acip_transport_t</b> *transport)
+  <br/>
+  Check if transport is connected. void(* <b>destroy_impl</b>
+    )(<b>acip_transport_t</b> *transport)
+  <br/>
+  Custom destroy implementation (optional).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Transport method table (virtual function table).</p>
+<p class="Pp">Each transport implementation provides these methods. ACIP
+    protocol code calls these instead of socket functions.</p>
+<p class="Pp">Definition at line <b>115</b> of file <b>transport.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b>(* acip_transport_methods_t::close)
+  (<b>acip_transport_t</b> *transport)</h2>
+<p class="Pp">Close this transport.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Should be idempotent (safe to call multiple times)
+<p class="Pp"></p>
+<p class="Pp">Does NOT free the transport structure itself</p>
+</div>
+<p class="Pp">Definition at line <b>156</b> of file <b>transport.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_transport_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_transport_methods_t::destroy_impl)_("><a class="permalink" href="#void(*_acip_transport_methods_t::destroy_impl)_(">void(*
+  acip_transport_methods_t::destroy_impl) (<b>acip_transport_t</b>
+  *transport)</a></h2>
+<p class="Pp">Custom destroy implementation (optional).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Called by <b>acip_transport_destroy()</b> before freeing
+  impl_data
+<p class="Pp"></p>
+<p class="Pp">Should free transport-specific resources (peer connections,
+  etc.)</p>
+<p class="Pp"></p>
+<p class="Pp">May be NULL if no custom cleanup needed</p>
+</div>
+<p class="Pp">Definition at line <b>194</b> of file <b>transport.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_transport_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>socket_t</b>(* acip_transport_methods_t::get_socket)
+  (<b>acip_transport_t</b> *transport)</h2>
+<p class="Pp">Get underlying socket (if applicable).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Socket descriptor or INVALID_SOCKET_VALUE</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Returns INVALID_SOCKET_VALUE for transports without
+  sockets
+<p class="Pp"></p>
+<p class="Pp">Useful for select()/poll() integration</p>
+</div>
+<p class="Pp">Definition at line <b>175</b> of file <b>transport.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>, and
+    <b>acip_server_receive_and_dispatch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>acip_transport_type_t</b>(*
+  acip_transport_methods_t::get_type) (<b>acip_transport_t</b> *transport)</h2>
+<p class="Pp">Get transport type.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Transport type enum value</div>
+<p class="Pp">Definition at line <b>164</b> of file <b>transport.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_transport_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b>(* acip_transport_methods_t::is_connected)
+  (<b>acip_transport_t</b> *transport)</h2>
+<p class="Pp">Check if transport is connected.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if connected, false otherwise</div>
+<p class="Pp">Definition at line <b>183</b> of file <b>transport.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
+    <b>acip_server_receive_and_dispatch()</b>, and
+    <b>acip_transport_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b>(* acip_transport_methods_t::recv)
+  (<b>acip_transport_t</b> *transport, void **buffer, size_t *out_len, void
+  **out_allocated_buffer)</h2>
+<p class="Pp">Receive data from this transport.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>buffer</i> Output buffer (allocated by transport)
+<br/>
+<i>out_len</i> Received data length
+<br/>
+<i>out_allocated_buffer</i> Buffer to free (may differ from buffer)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Allocates buffer, caller must free via
+  out_allocated_buffer
+<p class="Pp"></p>
+<p class="Pp">May block until data arrives</p>
+<p class="Pp"></p>
+<p class="Pp">For TCP: calls socket_recv_all()</p>
+<p class="Pp"></p>
+<p class="Pp">For WebSocket: unwraps WebSocket frame</p>
+</div>
+<p class="Pp">Definition at line <b>145</b> of file <b>transport.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
+    <b>acip_server_receive_and_dispatch()</b>, and
+    <b>client_receive_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b>(* acip_transport_methods_t::send)
+  (<b>acip_transport_t</b> *transport, const void *data, size_t len)</h2>
+<p class="Pp">Send data through this transport.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>data</i> Data to send (NOT owned by transport)
+<br/>
+<i>len</i> Data length in bytes</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Does NOT take ownership of data buffer
+<p class="Pp"></p>
+<p class="Pp">May block until send completes</p>
+<p class="Pp"></p>
+<p class="Pp">For TCP: calls socket_send_all()</p>
+<p class="Pp"></p>
+<p class="Pp">For WebSocket: wraps in WebSocket frame</p>
+</div>
+<p class="Pp">Definition at line <b>129</b> of file <b>transport.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.4</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

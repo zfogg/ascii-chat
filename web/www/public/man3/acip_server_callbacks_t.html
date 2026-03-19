@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>acip_server_callbacks_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">acip_server_callbacks_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">acip_server_callbacks_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">acip_server_callbacks_t - Server-side packet handler
+  callbacks.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/acip/handlers.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">void(* <b>on_protocol_version</b> )(const
+    <b>protocol_version_packet_t</b> *version, void *client_ctx, void
+    *<b>app_ctx</b>)
+  <br/>
+  Called when client sends protocol version. void(* <b>on_image_frame</b>
+    )(const <b>image_frame_packet_t</b> *header, const void *pixel_data, size_t
+    data_len, void *client_ctx, void *<b>app_ctx</b>)
+  <br/>
+  Called when client sends image frame. void(* <b>on_image_frame_h265</b>
+    )(<b>uint32_t</b> width, <b>uint32_t</b> height, <b>uint8_t</b> flags, const
+    void *h265_data, size_t data_len, void *client_ctx, void *<b>app_ctx</b>)
+  <br/>
+  Called when client sends H.265-encoded image frame. void(* <b>on_audio</b>
+    )(const void *audio_data, size_t audio_len, void *client_ctx, void
+    *<b>app_ctx</b>)
+  <br/>
+  Called when client sends raw audio. void(* <b>on_audio_batch</b> )(const
+    <b>audio_batch_packet_t</b> *header, const float *samples, size_t
+    num_samples, void *client_ctx, void *<b>app_ctx</b>)
+  <br/>
+  Called when client sends audio batch. void(* <b>on_audio_opus</b> )(const void
+    *opus_data, size_t opus_len, void *client_ctx, void *<b>app_ctx</b>)
+  <br/>
+  Called when client sends Opus audio. void(* <b>on_audio_opus_batch</b> )(const
+    void *batch_data, size_t batch_len, void *client_ctx, void *<b>app_ctx</b>)
+  <br/>
+  Called when client sends Opus batch. void(* <b>on_client_join</b> )(const void
+    *join_data, size_t data_len, void *client_ctx, void *<b>app_ctx</b>)
+  <br/>
+  Called when client joins. void(* <b>on_client_leave</b> )(void *client_ctx,
+    void *<b>app_ctx</b>)
+  <br/>
+  Called when client leaves. void(* <b>on_stream_start</b> )(<b>uint32_t</b>
+    stream_types, void *client_ctx, void *<b>app_ctx</b>)
+  <br/>
+  Called when client starts streaming. void(* <b>on_stream_stop</b>
+    )(<b>uint32_t</b> stream_types, void *client_ctx, void *<b>app_ctx</b>)
+  <br/>
+  Called when client stops streaming. void(* <b>on_capabilities</b> )(const void
+    *cap_data, size_t data_len, void *client_ctx, void *<b>app_ctx</b>)
+  <br/>
+  Called when client sends capabilities. void(* <b>on_ping</b> )(void
+    *client_ctx, void *<b>app_ctx</b>)
+  <br/>
+  Called when ping received (should send pong). void(* <b>on_pong</b> )(void
+    *client_ctx, void *<b>app_ctx</b>)
+  <br/>
+  Called when pong received from client. void(* <b>on_error</b> )(const
+    <b>error_packet_t</b> *header, const char *message, void *client_ctx, void
+    *<b>app_ctx</b>)
+  <br/>
+  Called when error message received from client. void(* <b>on_remote_log</b>
+    )(const <b>remote_log_packet_t</b> *header, const char *message, void
+    *client_ctx, void *<b>app_ctx</b>)
+  <br/>
+  Called when remote log received from client. void(*
+    <b>on_crypto_rekey_request</b> )(const void *payload, size_t payload_len,
+    void *client_ctx, void *<b>app_ctx</b>)
+  <br/>
+  Called when client sends crypto rekey request. void(*
+    <b>on_crypto_rekey_response</b> )(const void *payload, size_t payload_len,
+    void *client_ctx, void *<b>app_ctx</b>)
+  <br/>
+  Called when client sends crypto rekey response. void(*
+    <b>on_crypto_rekey_complete</b> )(const void *payload, size_t payload_len,
+    void *client_ctx, void *<b>app_ctx</b>)
+  <br/>
+  Called when client sends crypto rekey complete. void(*
+    <b>on_crypto_key_exchange_resp</b> )(<b>packet_type_t</b> type, const void
+    *payload, size_t payload_len, void *client_ctx, void *<b>app_ctx</b>)
+  <br/>
+  Called when client sends KEY_EXCHANGE_RESP (crypto handshake). void(*
+    <b>on_crypto_auth_response</b> )(<b>packet_type_t</b> type, const void
+    *payload, size_t payload_len, void *client_ctx, void *<b>app_ctx</b>)
+  <br/>
+  Called when client sends AUTH_RESPONSE (crypto handshake). void(*
+    <b>on_crypto_no_encryption</b> )(<b>packet_type_t</b> type, const void
+    *payload, size_t payload_len, void *client_ctx, void *<b>app_ctx</b>)
+  <br/>
+  Called when client sends NO_ENCRYPTION (crypto handshake rejection). void *
+    <b>app_ctx</b>
+  <br/>
+  Application context (passed to all callbacks).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Server-side packet handler callbacks.</p>
+<p class="Pp">Applications implement these callbacks to handle incoming packets.
+    NULL callbacks are skipped (no-op).</p>
+<p class="Pp">Definition at line <b>145</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void*_acip_server_callbacks_t::app_ctx"><a class="permalink" href="#void*_acip_server_callbacks_t::app_ctx">void*
+  acip_server_callbacks_t::app_ctx</a></h2>
+<p class="Pp">Application context (passed to all callbacks).</p>
+<p class="Pp">Definition at line <b>219</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_audio)_(const_void_*audio_data,_size_t_audio_len,_void_*client_ctx,_void_*"><a class="permalink" href="#void(*_acip_server_callbacks_t::on_audio)_(const_void_*audio_data,_size_t_audio_len,_void_*client_ctx,_void_*">void(*
+  acip_server_callbacks_t::on_audio) (const void *audio_data, size_t audio_len,
+  void *client_ctx, void *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client sends raw audio.</p>
+<p class="Pp">Definition at line <b>158</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_audio_batch)_(const_"><a class="permalink" href="#void(*_acip_server_callbacks_t::on_audio_batch)_(const_">void(*
+  acip_server_callbacks_t::on_audio_batch) (const <b>audio_batch_packet_t</b>
+  *header, const float *samples, size_t num_samples, void *client_ctx, void
+  *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client sends audio batch.</p>
+<p class="Pp">Definition at line <b>161</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_audio_opus)_(const_void_*opus_data,_size_t_opus_len,_void_*client_ctx,_void_*"><a class="permalink" href="#void(*_acip_server_callbacks_t::on_audio_opus)_(const_void_*opus_data,_size_t_opus_len,_void_*client_ctx,_void_*">void(*
+  acip_server_callbacks_t::on_audio_opus) (const void *opus_data, size_t
+  opus_len, void *client_ctx, void *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client sends Opus audio.</p>
+<p class="Pp">Definition at line <b>165</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_audio_opus_batch)_(const_void_*batch_data,_size_t_batch_len,_void_*client_ctx,_void_*"><a class="permalink" href="#void(*_acip_server_callbacks_t::on_audio_opus_batch)_(const_void_*batch_data,_size_t_batch_len,_void_*client_ctx,_void_*">void(*
+  acip_server_callbacks_t::on_audio_opus_batch) (const void *batch_data, size_t
+  batch_len, void *client_ctx, void *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client sends Opus batch.</p>
+<p class="Pp">Definition at line <b>168</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_capabilities)_(const_void_*cap_data,_size_t_data_len,_void_*client_ctx,_void_*"><a class="permalink" href="#void(*_acip_server_callbacks_t::on_capabilities)_(const_void_*cap_data,_size_t_data_len,_void_*client_ctx,_void_*">void(*
+  acip_server_callbacks_t::on_capabilities) (const void *cap_data, size_t
+  data_len, void *client_ctx, void *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client sends capabilities.</p>
+<p class="Pp">Definition at line <b>183</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_client_join)_(const_void_*join_data,_size_t_data_len,_void_*client_ctx,_void_*"><a class="permalink" href="#void(*_acip_server_callbacks_t::on_client_join)_(const_void_*join_data,_size_t_data_len,_void_*client_ctx,_void_*">void(*
+  acip_server_callbacks_t::on_client_join) (const void *join_data, size_t
+  data_len, void *client_ctx, void *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client joins.</p>
+<p class="Pp">Definition at line <b>171</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_client_leave)_(void_*client_ctx,_void_*"><a class="permalink" href="#void(*_acip_server_callbacks_t::on_client_leave)_(void_*client_ctx,_void_*">void(*
+  acip_server_callbacks_t::on_client_leave) (void *client_ctx, void
+  *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client leaves.</p>
+<p class="Pp">Definition at line <b>174</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_crypto_auth_response)_("><a class="permalink" href="#void(*_acip_server_callbacks_t::on_crypto_auth_response)_(">void(*
+  acip_server_callbacks_t::on_crypto_auth_response) (<b>packet_type_t</b> type,
+  const void *payload, size_t payload_len, void *client_ctx, void
+  *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client sends AUTH_RESPONSE (crypto handshake).</p>
+<p class="Pp">Definition at line <b>211</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_crypto_key_exchange_resp)_("><a class="permalink" href="#void(*_acip_server_callbacks_t::on_crypto_key_exchange_resp)_(">void(*
+  acip_server_callbacks_t::on_crypto_key_exchange_resp) (<b>packet_type_t</b>
+  type, const void *payload, size_t payload_len, void *client_ctx, void
+  *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client sends KEY_EXCHANGE_RESP (crypto handshake).</p>
+<p class="Pp">Definition at line <b>207</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_crypto_no_encryption)_("><a class="permalink" href="#void(*_acip_server_callbacks_t::on_crypto_no_encryption)_(">void(*
+  acip_server_callbacks_t::on_crypto_no_encryption) (<b>packet_type_t</b> type,
+  const void *payload, size_t payload_len, void *client_ctx, void
+  *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client sends NO_ENCRYPTION (crypto handshake
+    rejection).</p>
+<p class="Pp">Definition at line <b>215</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_crypto_rekey_complete)_(const_void_*payload,_size_t_payload_len,_void_*client_ctx,_void_*"><a class="permalink" href="#void(*_acip_server_callbacks_t::on_crypto_rekey_complete)_(const_void_*payload,_size_t_payload_len,_void_*client_ctx,_void_*">void(*
+  acip_server_callbacks_t::on_crypto_rekey_complete) (const void *payload,
+  size_t payload_len, void *client_ctx, void *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client sends crypto rekey complete.</p>
+<p class="Pp">Definition at line <b>204</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_crypto_rekey_request)_(const_void_*payload,_size_t_payload_len,_void_*client_ctx,_void_*"><a class="permalink" href="#void(*_acip_server_callbacks_t::on_crypto_rekey_request)_(const_void_*payload,_size_t_payload_len,_void_*client_ctx,_void_*">void(*
+  acip_server_callbacks_t::on_crypto_rekey_request) (const void *payload, size_t
+  payload_len, void *client_ctx, void *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client sends crypto rekey request.</p>
+<p class="Pp">Definition at line <b>198</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_crypto_rekey_response)_(const_void_*payload,_size_t_payload_len,_void_*client_ctx,_void_*"><a class="permalink" href="#void(*_acip_server_callbacks_t::on_crypto_rekey_response)_(const_void_*payload,_size_t_payload_len,_void_*client_ctx,_void_*">void(*
+  acip_server_callbacks_t::on_crypto_rekey_response) (const void *payload,
+  size_t payload_len, void *client_ctx, void *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client sends crypto rekey response.</p>
+<p class="Pp">Definition at line <b>201</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_error)_(const_"><a class="permalink" href="#void(*_acip_server_callbacks_t::on_error)_(const_">void(*
+  acip_server_callbacks_t::on_error) (const <b>error_packet_t</b> *header, const
+  char *message, void *client_ctx, void *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when error message received from client.</p>
+<p class="Pp">Definition at line <b>192</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_image_frame)_(const_"><a class="permalink" href="#void(*_acip_server_callbacks_t::on_image_frame)_(const_">void(*
+  acip_server_callbacks_t::on_image_frame) (const <b>image_frame_packet_t</b>
+  *header, const void *pixel_data, size_t data_len, void *client_ctx, void
+  *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client sends image frame.</p>
+<p class="Pp">Definition at line <b>150</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_image_frame_h265)_("><a class="permalink" href="#void(*_acip_server_callbacks_t::on_image_frame_h265)_(">void(*
+  acip_server_callbacks_t::on_image_frame_h265) (<b>uint32_t</b> width,
+  <b>uint32_t</b> height, <b>uint8_t</b> flags, const void *h265_data, size_t
+  data_len, void *client_ctx, void *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client sends H.265-encoded image frame.</p>
+<p class="Pp">Definition at line <b>154</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_ping)_(void_*client_ctx,_void_*"><a class="permalink" href="#void(*_acip_server_callbacks_t::on_ping)_(void_*client_ctx,_void_*">void(*
+  acip_server_callbacks_t::on_ping) (void *client_ctx, void
+  *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when ping received (should send pong).</p>
+<p class="Pp">Definition at line <b>186</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_pong)_(void_*client_ctx,_void_*"><a class="permalink" href="#void(*_acip_server_callbacks_t::on_pong)_(void_*client_ctx,_void_*">void(*
+  acip_server_callbacks_t::on_pong) (void *client_ctx, void
+  *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when pong received from client.</p>
+<p class="Pp">Definition at line <b>189</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_protocol_version)_(const_"><a class="permalink" href="#void(*_acip_server_callbacks_t::on_protocol_version)_(const_">void(*
+  acip_server_callbacks_t::on_protocol_version) (const
+  <b>protocol_version_packet_t</b> *version, void *client_ctx, void
+  *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client sends protocol version.</p>
+<p class="Pp">Definition at line <b>147</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_remote_log)_(const_"><a class="permalink" href="#void(*_acip_server_callbacks_t::on_remote_log)_(const_">void(*
+  acip_server_callbacks_t::on_remote_log) (const <b>remote_log_packet_t</b>
+  *header, const char *message, void *client_ctx, void *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when remote log received from client.</p>
+<p class="Pp">Definition at line <b>195</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_stream_start)_("><a class="permalink" href="#void(*_acip_server_callbacks_t::on_stream_start)_(">void(*
+  acip_server_callbacks_t::on_stream_start) (<b>uint32_t</b> stream_types, void
+  *client_ctx, void *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client starts streaming.</p>
+<p class="Pp">Definition at line <b>177</b> of file <b>handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_server_callbacks_t::on_stream_stop)_("><a class="permalink" href="#void(*_acip_server_callbacks_t::on_stream_stop)_(">void(*
+  acip_server_callbacks_t::on_stream_stop) (<b>uint32_t</b> stream_types, void
+  *client_ctx, void *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client stops streaming.</p>
+<p class="Pp">Definition at line <b>180</b> of file <b>handlers.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.4</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>app_callbacks_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">app_callbacks_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">app_callbacks_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">app_callbacks_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/app_callbacks.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>bool</b>(* <b>should_exit</b> )(void)
+  <br/>
+  void(* <b>signal_exit</b> )(void)
+  <br/>
+  void(* <b>server_connection_set_ip</b> )(const char *ip)
+  <br/>
+  void(* <b>server_connection_set_port</b> )(int port)
+  <br/>
+  void(* <b>client_crypto_set_mode</b> )(<b>uint8_t</b> mode)
+  <br/>
+  int(* <b>client_crypto_init</b> )(void)
+  <br/>
+  int(* <b>client_crypto_handshake</b> )(<b>socket_t</b> sockfd)
+  <br/>
+  <b>bool</b>(* <b>crypto_client_is_ready</b> )(void)
+  <br/>
+  const <b>crypto_context_t</b> *(* <b>crypto_client_get_context</b> )(void)
+  <br/>
+  void(* <b>audio_stop_thread</b> )(void)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>17</b> of file <b>app_callbacks.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void(*_app_callbacks_t::audio_stop_thread)_(void)"><a class="permalink" href="#void(*_app_callbacks_t::audio_stop_thread)_(void)">void(*
+  app_callbacks_t::audio_stop_thread) (void)</a></h2>
+<p class="Pp">Definition at line <b>32</b> of file <b>app_callbacks.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int(*_app_callbacks_t::client_crypto_handshake)_("><a class="permalink" href="#int(*_app_callbacks_t::client_crypto_handshake)_(">int(*
+  app_callbacks_t::client_crypto_handshake) (<b>socket_t</b> sockfd)</a></h2>
+<p class="Pp">Definition at line <b>27</b> of file <b>app_callbacks.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int(*_app_callbacks_t::client_crypto_init)_(void)"><a class="permalink" href="#int(*_app_callbacks_t::client_crypto_init)_(void)">int(*
+  app_callbacks_t::client_crypto_init) (void)</a></h2>
+<p class="Pp">Definition at line <b>26</b> of file <b>app_callbacks.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_app_callbacks_t::client_crypto_set_mode)_("><a class="permalink" href="#void(*_app_callbacks_t::client_crypto_set_mode)_(">void(*
+  app_callbacks_t::client_crypto_set_mode) (<b>uint8_t</b> mode)</a></h2>
+<p class="Pp">Definition at line <b>25</b> of file <b>app_callbacks.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>crypto_context_t</b> *(* app_callbacks_t::crypto_client_get_context)
+  (void)</a></h2>
+<p class="Pp">Definition at line <b>29</b> of file <b>app_callbacks.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b>(* app_callbacks_t::crypto_client_is_ready)
+  (void)</h2>
+<p class="Pp">Definition at line <b>28</b> of file <b>app_callbacks.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_app_callbacks_t::server_connection_set_ip)_(const_char_*ip)"><a class="permalink" href="#void(*_app_callbacks_t::server_connection_set_ip)_(const_char_*ip)">void(*
+  app_callbacks_t::server_connection_set_ip) (const char *ip)</a></h2>
+<p class="Pp">Definition at line <b>23</b> of file <b>app_callbacks.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_app_callbacks_t::server_connection_set_port)_(int_port)"><a class="permalink" href="#void(*_app_callbacks_t::server_connection_set_port)_(int_port)">void(*
+  app_callbacks_t::server_connection_set_port) (int port)</a></h2>
+<p class="Pp">Definition at line <b>24</b> of file <b>app_callbacks.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b>(* app_callbacks_t::should_exit) (void)</h2>
+<p class="Pp">Definition at line <b>19</b> of file <b>app_callbacks.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_app_callbacks_t::signal_exit)_(void)"><a class="permalink" href="#void(*_app_callbacks_t::signal_exit)_(void)">void(*
+  app_callbacks_t::signal_exit) (void)</a></h2>
+<p class="Pp">Definition at line <b>20</b> of file <b>app_callbacks.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.4</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

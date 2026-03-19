@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>acds_client_config_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">acds_client_config_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">acds_client_config_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">acds_client_config_t - ACDS client connection configuration.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/acip/acds_client.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">char <b>server_address</b> [256]
+  <br/>
+  ACDS server address (e.g.,
+    <i>discovery.ascii.chat&quot;</i>or<i>127.0.0.1</i>).<i></i> <b>uint16_t</b>
+    <b>server_port</b>
+  <br/>
+  ACDS server port (default: 27225). <b>uint32_t</b> <b>timeout_ms</b>
+  <br/>
+  Connection timeout in milliseconds. <b>parallel_connect_should_exit_fn</b>
+    <b>should_exit_callback</b>
+  <br/>
+  void * <b>callback_data</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">ACDS client connection configuration.</p>
+<p class="Pp">Definition at line <b>109</b> of file <b>acds_client.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void*_acds_client_config_t::callback_data"><a class="permalink" href="#void*_acds_client_config_t::callback_data">void*
+  acds_client_config_t::callback_data</a></h2>
+<p class="Pp">Definition at line <b>116</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_acds_client_config_t::server_address_256_"><a class="permalink" href="#char_acds_client_config_t::server_address_256_">char
+  acds_client_config_t::server_address[256]</a></h2>
+<p class="Pp">ACDS server address (e.g., &quot;discovery.ascii.chat&quot; or
+    &quot;127.0.0.1&quot;).</p>
+<p class="Pp">Definition at line <b>110</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_config_init_defaults()</b>,
+    <b>acds_client_connect()</b>, <b>client_crypto_init()</b>, and
+    <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> acds_client_config_t::server_port</h2>
+<p class="Pp">ACDS server port (default: 27225).</p>
+<p class="Pp">Definition at line <b>111</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_config_init_defaults()</b>,
+    <b>acds_client_connect()</b>, <b>client_crypto_init()</b>, and
+    <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>parallel_connect_should_exit_fn</b>
+  acds_client_config_t::should_exit_callback</h2>
+<p class="Pp">Definition at line <b>115</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> acds_client_config_t::timeout_ms</h2>
+<p class="Pp">Connection timeout in milliseconds.</p>
+<p class="Pp">Definition at line <b>112</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_config_init_defaults()</b>,
+    <b>acds_client_connect()</b>, <b>client_crypto_init()</b>, and
+    <b>server_main()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.4</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>
