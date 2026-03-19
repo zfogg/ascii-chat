@@ -12,10 +12,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /build
 
-# Copy git metadata for submodule initialization
-COPY .git /build/.git
-COPY .gitmodules /build/.gitmodules
-
 # Copy only deps-related files first (these change rarely)
 COPY scripts/install-deps.sh /tmp/install-deps.sh
 COPY CMakeLists.txt Makefile /build/
@@ -32,9 +28,6 @@ RUN --mount=type=cache,target=/var/cache/apt \
 RUN --mount=type=cache,target=/var/cache/apt \
     --mount=type=cache,target=/var/lib/apt \
     chmod +x /tmp/install-deps.sh && /tmp/install-deps.sh
-
-# Initialize git submodules (git is now available from apt-get)
-RUN cd /build && git submodule update --init --recursive
 
 # Install yyjson via Homebrew with cache mount
 RUN useradd -m -s /bin/bash linuxbrew && \

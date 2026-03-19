@@ -20,8 +20,10 @@ todo/
 *~
 .DS_Store
 
-# Git (keep .git and .gitmodules for submodule initialization in Docker)
+# Git (exclude everything git-related, submodules must be pre-cloned)
 .gitignore
+.git
+.gitmodules
 
 # Documentation
 docs/
