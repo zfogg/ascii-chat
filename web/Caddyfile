@@ -76,8 +76,8 @@ http://localhost http://www.localhost http://discovery.localhost http://web.loca
   }
 }
 
-# Production: ascii-chat.com subdomains with HTTPS
-ascii-chat.com www.ascii-chat.com {
+# Production: ascii-chat.com subdomains (Cloudflare terminates TLS, Caddy serves HTTP)
+http://ascii-chat.com http://www.ascii-chat.com {
   root * /app/web/www/dist
 
   # Cache static assets with content hashes for 1 year (immutable)
@@ -97,7 +97,7 @@ ascii-chat.com www.ascii-chat.com {
   }
 }
 
-discovery.ascii-chat.com {
+http://discovery.ascii-chat.com {
   root * /app/web/discovery/dist
 
   # Cache static assets with content hashes for 1 year (immutable)
@@ -117,7 +117,7 @@ discovery.ascii-chat.com {
   }
 }
 
-web.ascii-chat.com {
+http://web.ascii-chat.com {
   root * /app/web/web/dist
 
   # Cache static assets with content hashes for 1 year (immutable)
