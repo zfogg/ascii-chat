@@ -1,7 +1,19 @@
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useRef, useEffect } from "react";
+
+function extractText(node: ReactNode): string {
+  if (typeof node === "string") return node;
+  if (typeof node === "number") return node.toString();
+  if (node == null || typeof node === "boolean") return "";
+  if (Array.isArray(node)) return node.map(extractText).join("");
+  if (typeof node === "object" && "props" in node) {
+    const element = node as { props: { children?: ReactNode } };
+    return extractText(element.props.children);
+  }
+  return "";
+}
 
 interface CodeBlockProps extends Omit<
   HTMLAttributes<HTMLPreElement>,
@@ -27,8 +39,7 @@ export function CodeBlock({
 }: CodeBlockProps) {
   const codeRef = useRef<HTMLDivElement>(null);
 
-  // Extract text content from children
-  const code = typeof children === "string" ? children : String(children);
+  const code = extractText(children);
 
   // Apply search highlighting after Prism renders
   useEffect(() => {

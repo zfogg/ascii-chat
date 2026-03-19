@@ -1,6 +1,6 @@
 import type { HTMLAttributes } from "react";
 import { createElement, useEffect, useState } from "react";
-import { useHeadingContext } from "./HeadingContext";
+import { useHeadingContext } from "./useHeadingContext";
 
 /**
  * Convert heading text to a URL-friendly ID

@@ -1,19 +1,6 @@
-import {
-  createContext,
-  useContext,
-  useRef,
-  useEffect,
-  useCallback,
-  useMemo,
-  type ReactNode,
-} from "react";
+import { useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
-
-interface HeadingContextType {
-  registerHeading: (baseId: string) => string;
-}
-
-const HeadingContext = createContext<HeadingContextType | null>(null);
+import { HeadingContext } from "./context";
 
 export function HeadingProvider({ children }: { children: ReactNode }) {
   const usedIdsRef = useRef<Set<string>>(new Set());
@@ -49,12 +36,4 @@ export function HeadingProvider({ children }: { children: ReactNode }) {
       {children}
     </HeadingContext.Provider>
   );
-}
-
-export function useHeadingContext(): HeadingContextType {
-  const context = useContext(HeadingContext);
-  if (!context) {
-    throw new Error("useHeadingContext must be used within a HeadingProvider");
-  }
-  return context;
 }
