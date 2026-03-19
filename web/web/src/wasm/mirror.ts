@@ -190,9 +190,13 @@ export async function initMirrorWasm(
  */
 export function cleanupMirrorWasm(): void {
   if (wasmModule) {
+    console.log("[WASM] Cleaning up mirror module...");
     wasmModule._mirror_cleanup();
     wasmModule = null;
     cleanupOptions();
+    console.log("[WASM] Mirror cleanup complete");
+  } else {
+    console.log("[WASM] Mirror cleanup: no module to clean up");
   }
 }
 
@@ -219,12 +223,27 @@ export function convertFrameToAscii(
     throw new Error("WASM module not fully initialized. HEAPU8 is undefined.");
   }
 
+  // Validate dimensions
+  if (srcWidth <= 0 || srcHeight <= 0) {
+    throw new Error(
+      `Invalid image dimensions: ${srcWidth}x${srcHeight}. Width and height must be > 0.`,
+    );
+  }
+
+  // Validate RGBA data size: must be exactly width * height * 4 bytes
+  const expectedSize = srcWidth * srcHeight * 4;
+  if (rgbaData.length !== expectedSize) {
+    throw new Error(
+      `RGBA data size mismatch: expected ${expectedSize} bytes (${srcWidth}x${srcHeight}*4), got ${rgbaData.length} bytes. This can cause memory access violations in WASM.`,
+    );
+  }
+
   frameCallCount++;
   if (frameCallCount % 300 === 0) {
     console.log(`[WASM] Processed ${frameCallCount} frames`);
   }
 
-  // Allocate WASM memory for input RGBA data
+  // Allocate memory for RGBA data
   const dataPtr = wasmModule._malloc(rgbaData.length);
   if (!dataPtr) {
     throw new Error(
@@ -235,6 +254,13 @@ export function convertFrameToAscii(
   try {
     // Copy RGBA data to WASM memory
     wasmModule.HEAPU8.set(rgbaData, dataPtr);
+
+    // Debug: log dimensions before calling C code
+    if (frameCallCount % 30 === 0) {
+      console.log(
+        `[WASM] Calling mirror_convert_frame with srcWidth=${srcWidth}, srcHeight=${srcHeight}, dataPtr=${dataPtr}, rgbaDataLen=${rgbaData.length}`,
+      );
+    }
 
     // Call WASM function (dimensions come from options set during init)
     const resultPtr = wasmModule._mirror_convert_frame(
@@ -248,26 +274,29 @@ export function convertFrameToAscii(
       throw new Error("WASM mirror_convert_frame returned null");
     }
 
-    // Convert C string to JavaScript string
-    const asciiString = wasmModule.UTF8ToString(resultPtr);
+    let asciiString: string;
+    try {
+      // Convert C string to JavaScript string
+      asciiString = wasmModule.UTF8ToString(resultPtr);
 
-    // Debug: log string length on palette change
-    if (frameCallCount % 30 === 0) {
-      console.log(
-        `[WASM] Frame result: ptr=${resultPtr}, length=${asciiString.length}, first 50 chars:`,
-        asciiString.substring(0, 50),
-      );
+      // Debug: log string length on palette change
+      if (frameCallCount % 30 === 0) {
+        console.log(
+          `[WASM] Frame result: ptr=${resultPtr}, length=${asciiString.length}, first 50 chars:`,
+          asciiString.substring(0, 50),
+        );
+      }
+    } finally {
+      // Always free the result buffer (allocated by WASM), even if UTF8ToString fails
+      wasmModule._mirror_free_string(resultPtr);
     }
-
-    // Free the result buffer (allocated by WASM)
-    wasmModule._mirror_free_string(resultPtr);
 
     return asciiString;
   } catch (err) {
     console.error("[WASM] convertFrameToAscii error:", err);
     throw err;
   } finally {
-    // Always free the input buffer
+    // Always free the input data buffer
     wasmModule._free(dataPtr);
   }
 }

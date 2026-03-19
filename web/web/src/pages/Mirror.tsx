@@ -131,6 +131,16 @@ export function MirrorPage() {
     const renderFrame = () => {
       if (!isWasmReady() || !rendererRef.current) return;
 
+      // Skip rendering if terminal dimensions aren't initialized yet
+      if (terminalDimensions.cols <= 0 || terminalDimensions.rows <= 0) {
+        if (debugCountRef.current % 300 === 0) {
+          console.log(
+            `[Mirror] Skipping frame - terminal dimensions not ready: ${terminalDimensions.cols}x${terminalDimensions.rows}`,
+          );
+        }
+        return;
+      }
+
       const now = performance.now();
       if (firstFrameTimeRef.current === null) {
         firstFrameTimeRef.current = now;
@@ -184,7 +194,7 @@ export function MirrorPage() {
 
     return () => clearInterval(interval);
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [isWebcamRunning, captureFrame]);
+  }, [isWebcamRunning, captureFrame, terminalDimensions]);
 
   const startWebcam = useCallback(async () => {
     const clickTime = performance.now();
@@ -238,10 +248,13 @@ export function MirrorPage() {
             const canvas = canvasRef.current!;
             // Use requested dimensions from settings, not video.videoWidth
             // (which are 2x2 when loadedmetadata fires, before actual stream loads)
-            canvas.width = settings.width;
-            canvas.height = settings.height;
+            // Fallback to 640x480 if settings are invalid (0 or undefined)
+            canvas.width =
+              settings.width && settings.width > 0 ? settings.width : 640;
+            canvas.height =
+              settings.height && settings.height > 0 ? settings.height : 480;
             console.log(
-              `[Mirror] canvas set to ${canvas.width}x${canvas.height} (from settings)`,
+              `[Mirror] canvas set to ${canvas.width}x${canvas.height} (from settings or defaults)`,
             );
             resolve();
           },
