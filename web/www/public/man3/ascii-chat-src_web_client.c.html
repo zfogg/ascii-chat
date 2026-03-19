@@ -80,6 +80,9 @@
   EMSCRIPTEN_KEEPALIVE int <b>client_handle_key_exchange_init</b> (const
     <b>uint8_t</b> *packet, size_t packet_len)
   <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>client_handle_crypto_parameters</b> (const
+    <b>uint8_t</b> *packet, size_t packet_len)
+  <br/>
   EMSCRIPTEN_KEEPALIVE int <b>client_handle_auth_challenge</b> (const
     <b>uint8_t</b> *packet, size_t packet_len)
   <br/>
@@ -226,25 +229,25 @@
 <i>out_len</i> Output parameter for plaintext length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>579</b> of file <b>src/web/client.c</b>.</p>
-<pre>580                                            {
-581   if (!g_handshake_complete) {
-582     WASM_ERROR(&quot;Decryption requires completed handshake&quot;);
-583     return -1;
-584   }
-585 
-586   // Decrypt the packet using handshake context's crypto context
-587   size_t plaintext_len = 0;
-588   crypto_result_t result = crypto_decrypt(&amp;g_crypto_handshake_ctx.crypto_ctx, ciphertext, ciphertext_len, plaintext,
-589                                           plaintext_size, &amp;plaintext_len);
-590   if (result != CRYPTO_OK) {
-591     WASM_ERROR(&quot;Decryption failed&quot;);
-592     return -1;
-593   }
-594 
-595   *out_len = plaintext_len;
-596   return 0;
-597 }</pre>
+<p class="Pp">Definition at line <b>646</b> of file <b>src/web/client.c</b>.</p>
+<pre>647                                            {
+648   if (!g_handshake_complete) {
+649     WASM_ERROR(&quot;Decryption requires completed handshake&quot;);
+650     return -1;
+651   }
+652 
+653   // Decrypt the packet using handshake context's crypto context
+654   size_t plaintext_len = 0;
+655   crypto_result_t result = crypto_decrypt(&amp;g_crypto_handshake_ctx.crypto_ctx, ciphertext, ciphertext_len, plaintext,
+656                                           plaintext_size, &amp;plaintext_len);
+657   if (result != CRYPTO_OK) {
+658     WASM_ERROR(&quot;Decryption failed&quot;);
+659     return -1;
+660   }
+661 
+662   *out_len = plaintext_len;
+663   return 0;
+664 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_decrypt()</b>, <b>CRYPTO_OK</b>, and
@@ -269,25 +272,25 @@
 <i>out_len</i> Output parameter for ciphertext length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>549</b> of file <b>src/web/client.c</b>.</p>
-<pre>550                                            {
-551   if (!g_handshake_complete) {
-552     WASM_ERROR(&quot;Encryption requires completed handshake&quot;);
-553     return -1;
-554   }
-555 
-556   // Encrypt the packet using handshake context's crypto context
-557   size_t ciphertext_len = 0;
-558   crypto_result_t result = crypto_encrypt(&amp;g_crypto_handshake_ctx.crypto_ctx, plaintext, plaintext_len, ciphertext,
-559                                           ciphertext_size, &amp;ciphertext_len);
-560   if (result != CRYPTO_OK) {
-561     WASM_ERROR(&quot;Encryption failed&quot;);
-562     return -1;
-563   }
-564 
-565   *out_len = ciphertext_len;
-566   return 0;
-567 }</pre>
+<p class="Pp">Definition at line <b>616</b> of file <b>src/web/client.c</b>.</p>
+<pre>617                                            {
+618   if (!g_handshake_complete) {
+619     WASM_ERROR(&quot;Encryption requires completed handshake&quot;);
+620     return -1;
+621   }
+622 
+623   // Encrypt the packet using handshake context's crypto context
+624   size_t ciphertext_len = 0;
+625   crypto_result_t result = crypto_encrypt(&amp;g_crypto_handshake_ctx.crypto_ctx, plaintext, plaintext_len, ciphertext,
+626                                           ciphertext_size, &amp;ciphertext_len);
+627   if (result != CRYPTO_OK) {
+628     WASM_ERROR(&quot;Encryption failed&quot;);
+629     return -1;
+630   }
+631 
+632   *out_len = ciphertext_len;
+633   return 0;
+634 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_encrypt()</b>, <b>CRYPTO_OK</b>, and
@@ -296,10 +299,10 @@
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_void_client_free_string_(char_*_ptr)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_void_client_free_string_(char_*_ptr)">EMSCRIPTEN_KEEPALIVE
   void client_free_string (char * ptr)</a></h2>
-<p class="Pp">Definition at line <b>722</b> of file <b>src/web/client.c</b>.</p>
-<pre>722                                    {
-723   SAFE_FREE(ptr);
-724 }</pre>
+<p class="Pp">Definition at line <b>789</b> of file <b>src/web/client.c</b>.</p>
+<pre>789                                    {
+790   SAFE_FREE(ptr);
+791 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>SAFE_FREE</b>.</p>
@@ -360,10 +363,10 @@
 <p class="Pp">Get current connection state</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Connection state enum value</div>
-<p class="Pp">Definition at line <b>713</b> of file <b>src/web/client.c</b>.</p>
-<pre>713                                       {
-714   return (int)g_connection_state;
-715 }</pre>
+<p class="Pp">Definition at line <b>780</b> of file <b>src/web/client.c</b>.</p>
+<pre>780                                       {
+781   return (int)g_connection_state;
+782 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -419,58 +422,58 @@
 <i>packet_len</i> Total packet length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>419</b> of file <b>src/web/client.c</b>.</p>
-<pre>419                                                                            {
-420   WASM_LOG(&quot;=== client_handle_auth_challenge CALLED ===&quot;);
-421   WASM_LOG_INT(&quot;  packet_len&quot;, (int)packet_len);
-422   WASM_LOG_INT(&quot;  g_crypto_handshake_ctx.state&quot;, g_crypto_handshake_ctx.state);
-423 
-424   if (!packet || packet_len == 0) {
-425     WASM_ERROR(&quot;Invalid packet data&quot;);
-426     return -1;
-427   }
-428 
-429   // Extract packet type and payload
-430   if (packet_len &lt; sizeof(packet_header_t)) {
-431     WASM_ERROR(&quot;Packet too small for header&quot;);
-432     return -1;
-433   }
-434 
-435   const packet_header_t *header = (const packet_header_t *)packet;
-436   packet_type_t packet_type = ntohs(header-&gt;type);
-437   const uint8_t *payload_src = packet + sizeof(packet_header_t);
-438   size_t payload_len = packet_len - sizeof(packet_header_t);
-439 
-440   WASM_LOG_INT(&quot;  packet_type&quot;, packet_type);
-441   WASM_LOG_INT(&quot;  payload_len&quot;, (int)payload_len);
-442 
-443   // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
-444   uint8_t *payload = NULL;
-445   if (payload_len &gt; 0) {
-446     payload = buffer_pool_alloc(NULL, payload_len);
-447     if (!payload) {
-448       WASM_ERROR(&quot;Failed to allocate payload buffer&quot;);
-449       g_connection_state = CONNECTION_STATE_ERROR;
-450       return -1;
-451     }
-452     memcpy(payload, payload_src, payload_len);
-453   }
-454 
-455   // Process auth challenge
-456   asciichat_error_t result = crypto_handshake_client_auth_response(&amp;g_crypto_handshake_ctx, &amp;g_wasm_transport,
-457                                                                    packet_type, payload, payload_len);
-458 
-459   WASM_LOG_INT(&quot;  auth_response result&quot;, result);
-460 
-461   if (result != ASCIICHAT_OK) {
-462     WASM_ERROR(&quot;Failed to process AUTH_CHALLENGE&quot;);
-463     g_connection_state = CONNECTION_STATE_ERROR;
-464     return -1;
-465   }
-466 
-467   WASM_LOG(&quot;=== AUTH_CHALLENGE processed successfully ===&quot;);
-468   return 0;
-469 }</pre>
+<p class="Pp">Definition at line <b>486</b> of file <b>src/web/client.c</b>.</p>
+<pre>486                                                                            {
+487   WASM_LOG(&quot;=== client_handle_auth_challenge CALLED ===&quot;);
+488   WASM_LOG_INT(&quot;  packet_len&quot;, (int)packet_len);
+489   WASM_LOG_INT(&quot;  g_crypto_handshake_ctx.state&quot;, g_crypto_handshake_ctx.state);
+490 
+491   if (!packet || packet_len == 0) {
+492     WASM_ERROR(&quot;Invalid packet data&quot;);
+493     return -1;
+494   }
+495 
+496   // Extract packet type and payload
+497   if (packet_len &lt; sizeof(packet_header_t)) {
+498     WASM_ERROR(&quot;Packet too small for header&quot;);
+499     return -1;
+500   }
+501 
+502   const packet_header_t *header = (const packet_header_t *)packet;
+503   packet_type_t packet_type = ntohs(header-&gt;type);
+504   const uint8_t *payload_src = packet + sizeof(packet_header_t);
+505   size_t payload_len = packet_len - sizeof(packet_header_t);
+506 
+507   WASM_LOG_INT(&quot;  packet_type&quot;, packet_type);
+508   WASM_LOG_INT(&quot;  payload_len&quot;, (int)payload_len);
+509 
+510   // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
+511   uint8_t *payload = NULL;
+512   if (payload_len &gt; 0) {
+513     payload = buffer_pool_alloc(NULL, payload_len);
+514     if (!payload) {
+515       WASM_ERROR(&quot;Failed to allocate payload buffer&quot;);
+516       g_connection_state = CONNECTION_STATE_ERROR;
+517       return -1;
+518     }
+519     memcpy(payload, payload_src, payload_len);
+520   }
+521 
+522   // Process auth challenge
+523   asciichat_error_t result = crypto_handshake_client_auth_response(&amp;g_crypto_handshake_ctx, &amp;g_wasm_transport,
+524                                                                    packet_type, payload, payload_len);
+525 
+526   WASM_LOG_INT(&quot;  auth_response result&quot;, result);
+527 
+528   if (result != ASCIICHAT_OK) {
+529     WASM_ERROR(&quot;Failed to process AUTH_CHALLENGE&quot;);
+530     g_connection_state = CONNECTION_STATE_ERROR;
+531     return -1;
+532   }
+533 
+534   WASM_LOG(&quot;=== AUTH_CHALLENGE processed successfully ===&quot;);
+535   return 0;
+536 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
@@ -478,6 +481,84 @@
     <b>crypto_handshake_client_auth_response()</b>,
     <b>packet_header_t::type</b>, <b>WASM_ERROR</b>, <b>WASM_LOG</b>, and
     <b>WASM_LOG_INT</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_handle_crypto_parameters_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_handle_crypto_parameters_(const_">EMSCRIPTEN_KEEPALIVE
+  int client_handle_crypto_parameters (const <b>uint8_t</b> * packet, size_t
+  packet_len)</a></h2>
+<p class="Pp">Handle CRYPTO_PARAMETERS packet from server Sets up the key size
+    negotiation before KEY_EXCHANGE_INIT</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>packet</i> Raw packet data including header
+<br/>
+<i>packet_len</i> Total packet length</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, -1 on error</div>
+<p class="Pp">Definition at line <b>420</b> of file <b>src/web/client.c</b>.</p>
+<pre>420                                                                               {
+421   WASM_LOG(&quot;=== client_handle_crypto_parameters CALLED ===&quot;);
+422   WASM_LOG_INT(&quot;  packet_len&quot;, (int)packet_len);
+423   WASM_LOG_INT(&quot;  g_crypto_handshake_ctx.state BEFORE&quot;, g_crypto_handshake_ctx.state);
+424 
+425   if (!packet || packet_len == 0) {
+426     WASM_ERROR(&quot;Invalid packet data&quot;);
+427     return -1;
+428   }
+429 
+430   // Extract packet type and payload
+431   if (packet_len &lt; sizeof(packet_header_t)) {
+432     WASM_ERROR(&quot;Packet too small for header&quot;);
+433     return -1;
+434   }
+435 
+436   const packet_header_t *header = (const packet_header_t *)packet;
+437   packet_type_t packet_type = ntohs(header-&gt;type);
+438   const uint8_t *payload_src = packet + sizeof(packet_header_t);
+439   size_t payload_len = packet_len - sizeof(packet_header_t);
+440 
+441   WASM_LOG_INT(&quot;  packet_type&quot;, packet_type);
+442   WASM_LOG_INT(&quot;  payload_len&quot;, (int)payload_len);
+443 
+444   // Allocate payload copy from buffer pool
+445   uint8_t *payload = NULL;
+446   if (payload_len &gt; 0) {
+447     payload = buffer_pool_alloc(NULL, payload_len);
+448     if (!payload) {
+449       WASM_ERROR(&quot;Failed to allocate payload buffer&quot;);
+450       g_connection_state = CONNECTION_STATE_ERROR;
+451       return -1;
+452     }
+453     memcpy(payload, payload_src, payload_len);
+454   }
+455 
+456   // Process crypto parameters
+457   asciichat_error_t result = crypto_handshake_set_parameters(&amp;g_crypto_handshake_ctx,
+458                                                               (const crypto_parameters_packet_t *)payload);
+459 
+460   WASM_LOG_INT(&quot;  result&quot;, result);
+461   WASM_LOG_INT(&quot;  signature_size AFTER&quot;, g_crypto_handshake_ctx.crypto_ctx.signature_size);
+462   WASM_LOG_INT(&quot;  auth_public_key_size AFTER&quot;, g_crypto_handshake_ctx.crypto_ctx.auth_public_key_size);
+463 
+464   // Free payload
+465   if (payload) {
+466     buffer_pool_free(NULL, payload, payload_len);
+467   }
+468 
+469   if (result != ASCIICHAT_OK) {
+470     WASM_ERROR(&quot;Failed to process CRYPTO_PARAMETERS&quot;);
+471     g_connection_state = CONNECTION_STATE_ERROR;
+472     return -1;
+473   }
+474 
+475   WASM_LOG(&quot;=== CRYPTO_PARAMETERS processed successfully ===&quot;);
+476   return 0;
+477 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
+    <b>buffer_pool_free()</b>, <b>CONNECTION_STATE_ERROR</b>,
+    <b>crypto_handshake_set_parameters()</b>, <b>packet_header_t::type</b>,
+    <b>WASM_ERROR</b>, <b>WASM_LOG</b>, and <b>WASM_LOG_INT</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_handle_handshake_complete_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_handle_handshake_complete_(const_">EMSCRIPTEN_KEEPALIVE
@@ -490,63 +571,63 @@
 <i>packet_len</i> Total packet length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>478</b> of file <b>src/web/client.c</b>.</p>
-<pre>478                                                                                {
-479   WASM_LOG(&quot;=== client_handle_handshake_complete CALLED ===&quot;);
-480   WASM_LOG_INT(&quot;  packet_len&quot;, (int)packet_len);
-481   WASM_LOG_INT(&quot;  g_crypto_handshake_ctx.state&quot;, g_crypto_handshake_ctx.state);
-482 
-483   if (!packet || packet_len == 0) {
-484     WASM_ERROR(&quot;Invalid packet data&quot;);
-485     return -1;
-486   }
-487 
-488   // Extract packet type and payload
-489   if (packet_len &lt; sizeof(packet_header_t)) {
-490     WASM_ERROR(&quot;Packet too small for header&quot;);
-491     return -1;
-492   }
-493 
-494   const packet_header_t *header = (const packet_header_t *)packet;
-495   packet_type_t packet_type = ntohs(header-&gt;type);
-496   const uint8_t *payload_src = packet + sizeof(packet_header_t);
-497   size_t payload_len = packet_len - sizeof(packet_header_t);
-498 
-499   WASM_LOG_INT(&quot;  packet_type&quot;, packet_type);
-500 
-501   // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
-502   uint8_t *payload = NULL;
-503   if (payload_len &gt; 0) {
-504     payload = buffer_pool_alloc(NULL, payload_len);
-505     if (!payload) {
-506       WASM_ERROR(&quot;Failed to allocate payload buffer&quot;);
-507       g_connection_state = CONNECTION_STATE_ERROR;
-508       return -1;
-509     }
-510     memcpy(payload, payload_src, payload_len);
-511   }
-512 
-513   // Complete handshake (takes ownership of payload and will free it)
-514   asciichat_error_t result =
-515       crypto_handshake_client_complete(&amp;g_crypto_handshake_ctx, &amp;g_wasm_transport, packet_type, payload, payload_len);
-516 
-517   WASM_LOG_INT(&quot;  handshake_complete result&quot;, result);
-518 
-519   if (result != ASCIICHAT_OK) {
-520     WASM_ERROR(&quot;Failed to complete handshake&quot;);
-521     g_connection_state = CONNECTION_STATE_ERROR;
-522     return -1;
-523   }
-524 
-525   g_handshake_complete = true;
-526   g_connection_state = CONNECTION_STATE_CONNECTED;
-527 
-528   // Update transport with the crypto context so ACIP can encrypt/decrypt packets
-529   g_wasm_transport.crypto_ctx = &amp;g_crypto_handshake_ctx.crypto_ctx;
-530 
-531   WASM_LOG(&quot;=== HANDSHAKE COMPLETE - session encrypted ===&quot;);
-532   return 0;
-533 }</pre>
+<p class="Pp">Definition at line <b>545</b> of file <b>src/web/client.c</b>.</p>
+<pre>545                                                                                {
+546   WASM_LOG(&quot;=== client_handle_handshake_complete CALLED ===&quot;);
+547   WASM_LOG_INT(&quot;  packet_len&quot;, (int)packet_len);
+548   WASM_LOG_INT(&quot;  g_crypto_handshake_ctx.state&quot;, g_crypto_handshake_ctx.state);
+549 
+550   if (!packet || packet_len == 0) {
+551     WASM_ERROR(&quot;Invalid packet data&quot;);
+552     return -1;
+553   }
+554 
+555   // Extract packet type and payload
+556   if (packet_len &lt; sizeof(packet_header_t)) {
+557     WASM_ERROR(&quot;Packet too small for header&quot;);
+558     return -1;
+559   }
+560 
+561   const packet_header_t *header = (const packet_header_t *)packet;
+562   packet_type_t packet_type = ntohs(header-&gt;type);
+563   const uint8_t *payload_src = packet + sizeof(packet_header_t);
+564   size_t payload_len = packet_len - sizeof(packet_header_t);
+565 
+566   WASM_LOG_INT(&quot;  packet_type&quot;, packet_type);
+567 
+568   // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
+569   uint8_t *payload = NULL;
+570   if (payload_len &gt; 0) {
+571     payload = buffer_pool_alloc(NULL, payload_len);
+572     if (!payload) {
+573       WASM_ERROR(&quot;Failed to allocate payload buffer&quot;);
+574       g_connection_state = CONNECTION_STATE_ERROR;
+575       return -1;
+576     }
+577     memcpy(payload, payload_src, payload_len);
+578   }
+579 
+580   // Complete handshake (takes ownership of payload and will free it)
+581   asciichat_error_t result =
+582       crypto_handshake_client_complete(&amp;g_crypto_handshake_ctx, &amp;g_wasm_transport, packet_type, payload, payload_len);
+583 
+584   WASM_LOG_INT(&quot;  handshake_complete result&quot;, result);
+585 
+586   if (result != ASCIICHAT_OK) {
+587     WASM_ERROR(&quot;Failed to complete handshake&quot;);
+588     g_connection_state = CONNECTION_STATE_ERROR;
+589     return -1;
+590   }
+591 
+592   g_handshake_complete = true;
+593   g_connection_state = CONNECTION_STATE_CONNECTED;
+594 
+595   // Update transport with the crypto context so ACIP can encrypt/decrypt packets
+596   g_wasm_transport.crypto_ctx = &amp;g_crypto_handshake_ctx.crypto_ctx;
+597 
+598   WASM_LOG(&quot;=== HANDSHAKE COMPLETE - session encrypted ===&quot;);
+599   return 0;
+600 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
@@ -748,21 +829,21 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of samples decoded per channel, or -1 on
   error</div>
-<p class="Pp">Definition at line <b>816</b> of file <b>src/web/client.c</b>.</p>
-<pre>816                                                                                                                     {
-817   if (!g_opus_decoder) {
-818     WASM_ERROR(&quot;Opus decoder not initialized&quot;);
-819     return -1;
-820   }
-821 
-822   int decoded_samples = opus_decode(g_opus_decoder, opus_data, opus_bytes, pcm_data, frame_size, decode_fec);
-823   if (decoded_samples &lt; 0) {
-824     WASM_ERROR(&quot;Opus decoding failed&quot;);
-825     return -1;
-826   }
-827 
-828   return decoded_samples;
-829 }</pre>
+<p class="Pp">Definition at line <b>883</b> of file <b>src/web/client.c</b>.</p>
+<pre>883                                                                                                                     {
+884   if (!g_opus_decoder) {
+885     WASM_ERROR(&quot;Opus decoder not initialized&quot;);
+886     return -1;
+887   }
+888 
+889   int decoded_samples = opus_decode(g_opus_decoder, opus_data, opus_bytes, pcm_data, frame_size, decode_fec);
+890   if (decoded_samples &lt; 0) {
+891     WASM_ERROR(&quot;Opus decoding failed&quot;);
+892     return -1;
+893   }
+894 
+895   return decoded_samples;
+896 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>WASM_ERROR</b>.</p>
@@ -771,14 +852,14 @@
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_void_client_opus_decoder_cleanup_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_void_client_opus_decoder_cleanup_(void_)">EMSCRIPTEN_KEEPALIVE
   void client_opus_decoder_cleanup (void )</a></h2>
 <p class="Pp">Cleanup Opus decoder</p>
-<p class="Pp">Definition at line <b>847</b> of file <b>src/web/client.c</b>.</p>
-<pre>847                                        {
-848   if (g_opus_decoder) {
-849     opus_decoder_destroy(g_opus_decoder);
-850     g_opus_decoder = NULL;
-851     WASM_LOG(&quot;Opus decoder cleaned up&quot;);
-852   }
-853 }</pre>
+<p class="Pp">Definition at line <b>914</b> of file <b>src/web/client.c</b>.</p>
+<pre>914                                        {
+915   if (g_opus_decoder) {
+916     opus_decoder_destroy(g_opus_decoder);
+917     g_opus_decoder = NULL;
+918     WASM_LOG(&quot;Opus decoder cleaned up&quot;);
+919   }
+920 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>WASM_LOG</b>.</p>
@@ -794,23 +875,23 @@
 <i>channels</i> Number of channels (1=mono, 2=stereo)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>765</b> of file <b>src/web/client.c</b>.</p>
-<pre>765                                                             {
-766   if (g_opus_decoder) {
-767     opus_decoder_destroy(g_opus_decoder);
-768     g_opus_decoder = NULL;
-769   }
-770 
-771   int error;
-772   g_opus_decoder = opus_decoder_create(sample_rate, channels, &amp;error);
-773   if (error != OPUS_OK || !g_opus_decoder) {
-774     WASM_ERROR(&quot;Failed to create Opus decoder&quot;);
-775     return -1;
-776   }
-777 
-778   WASM_LOG(&quot;Opus decoder initialized&quot;);
-779   return 0;
-780 }</pre>
+<p class="Pp">Definition at line <b>832</b> of file <b>src/web/client.c</b>.</p>
+<pre>832                                                             {
+833   if (g_opus_decoder) {
+834     opus_decoder_destroy(g_opus_decoder);
+835     g_opus_decoder = NULL;
+836   }
+837 
+838   int error;
+839   g_opus_decoder = opus_decoder_create(sample_rate, channels, &amp;error);
+840   if (error != OPUS_OK || !g_opus_decoder) {
+841     WASM_ERROR(&quot;Failed to create Opus decoder&quot;);
+842     return -1;
+843   }
+844 
+845   WASM_LOG(&quot;Opus decoder initialized&quot;);
+846   return 0;
+847 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>WASM_ERROR</b>, and <b>WASM_LOG</b>.</p>
@@ -830,21 +911,21 @@
 <i>max_opus_bytes</i> Maximum size of output buffer</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of bytes encoded, or -1 on error</div>
-<p class="Pp">Definition at line <b>791</b> of file <b>src/web/client.c</b>.</p>
-<pre>791                                                                                                         {
-792   if (!g_opus_encoder) {
-793     WASM_ERROR(&quot;Opus encoder not initialized&quot;);
-794     return -1;
-795   }
-796 
-797   int encoded_bytes = opus_encode(g_opus_encoder, pcm_data, frame_size, opus_data, max_opus_bytes);
-798   if (encoded_bytes &lt; 0) {
-799     WASM_ERROR(&quot;Opus encoding failed&quot;);
-800     return -1;
-801   }
-802 
-803   return encoded_bytes;
-804 }</pre>
+<p class="Pp">Definition at line <b>858</b> of file <b>src/web/client.c</b>.</p>
+<pre>858                                                                                                         {
+859   if (!g_opus_encoder) {
+860     WASM_ERROR(&quot;Opus encoder not initialized&quot;);
+861     return -1;
+862   }
+863 
+864   int encoded_bytes = opus_encode(g_opus_encoder, pcm_data, frame_size, opus_data, max_opus_bytes);
+865   if (encoded_bytes &lt; 0) {
+866     WASM_ERROR(&quot;Opus encoding failed&quot;);
+867     return -1;
+868   }
+869 
+870   return encoded_bytes;
+871 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>WASM_ERROR</b>.</p>
@@ -853,14 +934,14 @@
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_void_client_opus_encoder_cleanup_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_void_client_opus_encoder_cleanup_(void_)">EMSCRIPTEN_KEEPALIVE
   void client_opus_encoder_cleanup (void )</a></h2>
 <p class="Pp">Cleanup Opus encoder</p>
-<p class="Pp">Definition at line <b>835</b> of file <b>src/web/client.c</b>.</p>
-<pre>835                                        {
-836   if (g_opus_encoder) {
-837     opus_encoder_destroy(g_opus_encoder);
-838     g_opus_encoder = NULL;
-839     WASM_LOG(&quot;Opus encoder cleaned up&quot;);
-840   }
-841 }</pre>
+<p class="Pp">Definition at line <b>902</b> of file <b>src/web/client.c</b>.</p>
+<pre>902                                        {
+903   if (g_opus_encoder) {
+904     opus_encoder_destroy(g_opus_encoder);
+905     g_opus_encoder = NULL;
+906     WASM_LOG(&quot;Opus encoder cleaned up&quot;);
+907   }
+908 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>WASM_LOG</b>.</p>
@@ -879,26 +960,26 @@
 <i>bitrate</i> Target bitrate in bits/sec</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>738</b> of file <b>src/web/client.c</b>.</p>
-<pre>738                                                                          {
-739   if (g_opus_encoder) {
-740     opus_encoder_destroy(g_opus_encoder);
-741     g_opus_encoder = NULL;
-742   }
-743 
-744   int error;
-745   g_opus_encoder = opus_encoder_create(sample_rate, channels, OPUS_APPLICATION_VOIP, &amp;error);
-746   if (error != OPUS_OK || !g_opus_encoder) {
-747     WASM_ERROR(&quot;Failed to create Opus encoder&quot;);
-748     return -1;
-749   }
-750 
-751   // Set bitrate
-752   opus_encoder_ctl(g_opus_encoder, OPUS_SET_BITRATE(bitrate));
-753 
-754   WASM_LOG(&quot;Opus encoder initialized&quot;);
-755   return 0;
-756 }</pre>
+<p class="Pp">Definition at line <b>805</b> of file <b>src/web/client.c</b>.</p>
+<pre>805                                                                          {
+806   if (g_opus_encoder) {
+807     opus_encoder_destroy(g_opus_encoder);
+808     g_opus_encoder = NULL;
+809   }
+810 
+811   int error;
+812   g_opus_encoder = opus_encoder_create(sample_rate, channels, OPUS_APPLICATION_VOIP, &amp;error);
+813   if (error != OPUS_OK || !g_opus_encoder) {
+814     WASM_ERROR(&quot;Failed to create Opus encoder&quot;);
+815     return -1;
+816   }
+817 
+818   // Set bitrate
+819   opus_encoder_ctl(g_opus_encoder, OPUS_SET_BITRATE(bitrate));
+820 
+821   WASM_LOG(&quot;Opus encoder initialized&quot;);
+822   return 0;
+823 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>OPUS_APPLICATION_VOIP</b>, <b>WASM_ERROR</b>, and
@@ -916,40 +997,40 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Allocated JSON string with packet metadata (caller must
   free), or NULL on error</div>
-<p class="Pp">Definition at line <b>606</b> of file <b>src/web/client.c</b>.</p>
-<pre>606                                                                         {
-607   if (!raw_packet || packet_len &lt; sizeof(packet_header_t)) {
-608     WASM_ERROR(&quot;Invalid packet data&quot;);
-609     return NULL;
-610   }
-611 
-612   // Parse packet header directly from bytes
-613   const packet_header_t *header = (const packet_header_t *)raw_packet;
-614 
-615   // Validate magic number (convert from network byte order)
-616   uint64_t magic = NET_TO_HOST_U64(header-&gt;magic);
-617   if (magic != PACKET_MAGIC) {
-618     WASM_ERROR(&quot;Invalid packet magic number&quot;);
-619     return NULL;
-620   }
-621 
-622   // Convert header fields from network byte order
-623   uint16_t type = NET_TO_HOST_U16(header-&gt;type);
-624   uint32_t length = NET_TO_HOST_U32(header-&gt;length);
-625   uint32_t client_id = NET_TO_HOST_U32(header-&gt;client_id);
-626   uint32_t crc32 = NET_TO_HOST_U32(header-&gt;crc32);
-627 
-628   // Build JSON response with packet metadata
-629   char *json = SAFE_MALLOC(1024, char *);
-630   if (!json) {
-631     WASM_ERROR(&quot;Failed to allocate JSON buffer&quot;);
-632     return NULL;
-633   }
-634 
-635   snprintf(json, 1024, &quot;{\&quot;type\&quot;:%u,\&quot;length\&quot;:%u,\&quot;client_id\&quot;:%u,\&quot;crc32\&quot;:%u}&quot;, type, length, client_id, crc32);
-636 
-637   return json;
-638 }</pre>
+<p class="Pp">Definition at line <b>673</b> of file <b>src/web/client.c</b>.</p>
+<pre>673                                                                         {
+674   if (!raw_packet || packet_len &lt; sizeof(packet_header_t)) {
+675     WASM_ERROR(&quot;Invalid packet data&quot;);
+676     return NULL;
+677   }
+678 
+679   // Parse packet header directly from bytes
+680   const packet_header_t *header = (const packet_header_t *)raw_packet;
+681 
+682   // Validate magic number (convert from network byte order)
+683   uint64_t magic = NET_TO_HOST_U64(header-&gt;magic);
+684   if (magic != PACKET_MAGIC) {
+685     WASM_ERROR(&quot;Invalid packet magic number&quot;);
+686     return NULL;
+687   }
+688 
+689   // Convert header fields from network byte order
+690   uint16_t type = NET_TO_HOST_U16(header-&gt;type);
+691   uint32_t length = NET_TO_HOST_U32(header-&gt;length);
+692   uint32_t client_id = NET_TO_HOST_U32(header-&gt;client_id);
+693   uint32_t crc32 = NET_TO_HOST_U32(header-&gt;crc32);
+694 
+695   // Build JSON response with packet metadata
+696   char *json = SAFE_MALLOC(1024, char *);
+697   if (!json) {
+698     WASM_ERROR(&quot;Failed to allocate JSON buffer&quot;);
+699     return NULL;
+700   }
+701 
+702   snprintf(json, 1024, &quot;{\&quot;type\&quot;:%u,\&quot;length\&quot;:%u,\&quot;client_id\&quot;:%u,\&quot;crc32\&quot;:%u}&quot;, type, length, client_id, crc32);
+703 
+704   return json;
+705 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>packet_header_t::client_id</b>,
@@ -971,22 +1052,22 @@
 <i>height</i> Frame height</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>688</b> of file <b>src/web/client.c</b>.</p>
-<pre>688                                                                              {
-689   if (!g_initialized) {
-690     WASM_ERROR(&quot;Client not initialized&quot;);
-691     return -1;
-692   }
-693 
-694   // This is a placeholder - actual implementation would:
-695   // 1. Convert RGBA to target format (e.g., compress with libjpeg-turbo)
-696   // 2. Build frame packet
-697   // 3. Encrypt if handshake complete
-698   // 4. Return serialized packet via callback to JS
-699 
-700   WASM_LOG(&quot;Video frame processing not yet implemented&quot;);
-701   return 0;
-702 }</pre>
+<p class="Pp">Definition at line <b>755</b> of file <b>src/web/client.c</b>.</p>
+<pre>755                                                                              {
+756   if (!g_initialized) {
+757     WASM_ERROR(&quot;Client not initialized&quot;);
+758     return -1;
+759   }
+760 
+761   // This is a placeholder - actual implementation would:
+762   // 1. Convert RGBA to target format (e.g., compress with libjpeg-turbo)
+763   // 2. Build frame packet
+764   // 3. Encrypt if handshake complete
+765   // 4. Return serialized packet via callback to JS
+766 
+767   WASM_LOG(&quot;Video frame processing not yet implemented&quot;);
+768   return 0;
+769 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>WASM_ERROR</b>, and <b>WASM_LOG</b>.</p>
@@ -1011,34 +1092,34 @@
 <i>out_len</i> Output parameter for total packet length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>651</b> of file <b>src/web/client.c</b>.</p>
-<pre>652                                                               {
-653   if (!output || !out_len) {
-654     WASM_ERROR(&quot;Invalid output parameters&quot;);
-655     return -1;
-656   }
-657 
-658   // Calculate CRC32 of payload (use software version for WASM)
-659   uint32_t crc = payload &amp;&amp; payload_len &gt; 0 ? asciichat_crc32_sw(payload, payload_len) : 0;
-660 
-661   // Build packet header (convert to network byte order)
-662   packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
-663                             .type = HOST_TO_NET_U16(packet_type),
-664                             .length = HOST_TO_NET_U32((uint32_t)payload_len),
-665                             .crc32 = HOST_TO_NET_U32(crc),
-666                             .client_id = HOST_TO_NET_U32(client_id)};
-667 
-668   // Copy header to output
-669   memcpy(output, &amp;header, sizeof(packet_header_t));
-670 
-671   // Copy payload to output
-672   if (payload &amp;&amp; payload_len &gt; 0) {
-673     memcpy(output + sizeof(packet_header_t), payload, payload_len);
-674   }
-675 
-676   *out_len = sizeof(packet_header_t) + payload_len;
-677   return 0;
-678 }</pre>
+<p class="Pp">Definition at line <b>718</b> of file <b>src/web/client.c</b>.</p>
+<pre>719                                                               {
+720   if (!output || !out_len) {
+721     WASM_ERROR(&quot;Invalid output parameters&quot;);
+722     return -1;
+723   }
+724 
+725   // Calculate CRC32 of payload (use software version for WASM)
+726   uint32_t crc = payload &amp;&amp; payload_len &gt; 0 ? asciichat_crc32_sw(payload, payload_len) : 0;
+727 
+728   // Build packet header (convert to network byte order)
+729   packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
+730                             .type = HOST_TO_NET_U16(packet_type),
+731                             .length = HOST_TO_NET_U32((uint32_t)payload_len),
+732                             .crc32 = HOST_TO_NET_U32(crc),
+733                             .client_id = HOST_TO_NET_U32(client_id)};
+734 
+735   // Copy header to output
+736   memcpy(output, &amp;header, sizeof(packet_header_t));
+737 
+738   // Copy payload to output
+739   if (payload &amp;&amp; payload_len &gt; 0) {
+740     memcpy(output + sizeof(packet_header_t), payload, payload_len);
+741   }
+742 
+743   *out_len = sizeof(packet_header_t) + payload_len;
+744   return 0;
+745 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_crc32_sw()</b>, <b>HOST_TO_NET_U16</b>,

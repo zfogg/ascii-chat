@@ -130,8 +130,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>backtrace_t::count</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>platform_backtrace()</b>, <b>backtrace_t::ptrs</b>, and
-  <b>SET_ERRNO</b>.</p>
+    <b>platform_backtrace()</b>, <b>backtrace_t::ptrs</b>, <b>SET_ERRNO</b>, and
+    <b>backtrace_t::symbols</b>.</p>
 <p class="Pp">Referenced by <b>backtrace_capture_and_symbolize()</b>.</p>
 </section>
 <section class="Ss">
@@ -155,8 +155,9 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>backtrace_capture()</b>,
-    <b>backtrace_symbolize()</b>, <b>ERROR_INVALID_PARAM</b>, and
-    <b>SET_ERRNO</b>.</p>
+    <b>backtrace_symbolize()</b>, <b>backtrace_t::count</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>SET_ERRNO</b>, and
+    <b>backtrace_t::symbols</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_fatal_with_context()</b>, and
     <b>backtrace_log_frames()</b>.</p>
 </section>
@@ -719,7 +720,7 @@ if (written &gt; 0) {
 54 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
+<p class="Pp">References <b>backtrace_t::count</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>platform_backtrace_symbols_destroy()</b>, <b>SET_ERRNO</b>, and
     <b>backtrace_t::symbols</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_clear_errno()</b>,

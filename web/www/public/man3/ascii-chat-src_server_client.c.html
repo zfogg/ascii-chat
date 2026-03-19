@@ -2565,39 +2565,39 @@
 <i>data</i> Packet data
 <br/>
 <i>len</i> Packet length</div>
-<p class="Pp">Definition at line <b>3749</b> of file
+<p class="Pp">Definition at line <b>3751</b> of file
   <b>src/server/client.c</b>.</p>
-<pre>3749                                                                                                  {
-3750   if (type == 5000) { // CLIENT_CAPABILITIES
-3751     log_debug(&quot;CLIENT: client_id=%s, data=%p, len=%zu&quot;, client-&gt;client_id, data, len);
-3752   }
-3753 
-3754   // Rate limiting: Check and record packet-specific rate limits
-3755   if (g_rate_limiter) {
-3756     if (!check_and_record_packet_rate_limit(g_rate_limiter, client-&gt;client_ip, client-&gt;socket, type)) {
-3757       // Rate limit exceeded - error response already sent by utility function
-3758       return;
-3759     }
-3760   }
-3761 
-3762   // O(1) dispatch via hash table lookup
-3763   int idx = client_dispatch_hash_lookup(g_client_dispatch_hash, type);
-3764   if (type == 5000 || type == 3001) {
-3765     log_error(&quot;DISPATCH_LOOKUP: type=%d, idx=%d (len=%zu)&quot;, type, idx, len);
-3766   }
-3767   if (idx &lt; 0) {
-3768     disconnect_client_for_bad_data(client, &quot;Unknown packet type: %d (len=%zu)&quot;, type, len);
-3769     return;
-3770   }
-3771 
-3772   if (type == 5000 || type == 3001) {
-3773     log_error(&quot;DISPATCH_HANDLER: type=%d, calling handler[%d]...&quot;, type, idx);
-3774   }
-3775   g_client_dispatch_handlers[idx](client, data, len);
-3776   if (type == 5000 || type == 3001) {
-3777     log_error(&quot;DISPATCH_HANDLER: type=%d, handler returned&quot;, type);
-3778   }
-3779 }</pre>
+<pre>3751                                                                                                  {
+3752   if (type == 5000) { // CLIENT_CAPABILITIES
+3753     log_debug(&quot;CLIENT: client_id=%s, data=%p, len=%zu&quot;, client-&gt;client_id, data, len);
+3754   }
+3755 
+3756   // Rate limiting: Check and record packet-specific rate limits
+3757   if (g_rate_limiter) {
+3758     if (!check_and_record_packet_rate_limit(g_rate_limiter, client-&gt;client_ip, client-&gt;socket, type)) {
+3759       // Rate limit exceeded - error response already sent by utility function
+3760       return;
+3761     }
+3762   }
+3763 
+3764   // O(1) dispatch via hash table lookup
+3765   int idx = client_dispatch_hash_lookup(g_client_dispatch_hash, type);
+3766   if (type == 5000 || type == 3001) {
+3767     log_error(&quot;DISPATCH_LOOKUP: type=%d, idx=%d (len=%zu)&quot;, type, idx, len);
+3768   }
+3769   if (idx &lt; 0) {
+3770     disconnect_client_for_bad_data(client, &quot;Unknown packet type: %d (len=%zu)&quot;, type, len);
+3771     return;
+3772   }
+3773 
+3774   if (type == 5000 || type == 3001) {
+3775     log_error(&quot;DISPATCH_HANDLER: type=%d, calling handler[%d]...&quot;, type, idx);
+3776   }
+3777   g_client_dispatch_handlers[idx](client, data, len);
+3778   if (type == 5000 || type == 3001) {
+3779     log_error(&quot;DISPATCH_HANDLER: type=%d, handler returned&quot;, type);
+3780   }
+3781 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>check_and_record_packet_rate_limit()</b>,

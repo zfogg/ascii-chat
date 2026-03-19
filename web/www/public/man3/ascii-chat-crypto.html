@@ -1641,7 +1641,8 @@
 <p class="Pp">Definition at line <b>131</b> of file
     <b>include/ascii-chat/crypto/crypto.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_process_rekey_complete()</b>,
-    and <b>crypto_handshake_rekey_complete()</b>.</p>
+    <b>crypto_handshake_rekey_complete()</b>, and
+    <b>crypto_handshake_server_start()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ED25519_PRIVATE_KEY_SIZE___64"><a class="permalink" href="#_define_ED25519_PRIVATE_KEY_SIZE___64">#define
@@ -1666,7 +1667,7 @@
     <b>crypto_handshake_client_key_exchange()</b>,
     <b>crypto_handshake_server_auth_challenge()</b>,
     <b>crypto_handshake_server_start()</b>,
-    <b>crypto_handshake_validate_packet_size()</b>, <b>crypto_init()</b>,
+    <b>crypto_handshake_validate_packet_size()</b>,
     <b>parse_ssh_ed25519_line()</b>, and <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
@@ -1679,7 +1680,8 @@
     <b>include/ascii-chat/crypto/crypto.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>,
     <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>crypto_handshake_validate_packet_size()</b>, <b>crypto_init()</b>, and
+    <b>crypto_handshake_server_start()</b>,
+    <b>crypto_handshake_validate_packet_size()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
@@ -1857,7 +1859,8 @@
 <p class="Pp">Poly1305 MAC size in bytes.</p>
 <p class="Pp">Definition at line <b>101</b> of file
     <b>include/ascii-chat/crypto/crypto.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_init()</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_server_start()</b>, and
+    <b>crypto_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_REKEY_DEFAULT_PACKET_THRESHOLD___1000000"><a class="permalink" href="#_define_REKEY_DEFAULT_PACKET_THRESHOLD___1000000">#define
@@ -2063,8 +2066,8 @@
 <p class="Pp">XSalsa20 nonce size in bytes.</p>
 <p class="Pp">Definition at line <b>99</b> of file
     <b>include/ascii-chat/crypto/crypto.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_encrypt()</b>, and
-  <b>crypto_init()</b>.</p>
+<p class="Pp">Referenced by <b>crypto_encrypt()</b>,
+    <b>crypto_handshake_server_start()</b>, and <b>crypto_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ZERO_KEY_SIZE___"><a class="permalink" href="#_define_ZERO_KEY_SIZE___">#define
@@ -4117,8 +4120,8 @@
 122   ctx-&gt;private_key_size = X25519_KEY_SIZE;
 123   ctx-&gt;shared_key_size = X25519_KEY_SIZE;
 124   ctx-&gt;salt_size = ARGON2ID_SALT_SIZE;
-125   ctx-&gt;signature_size = ED25519_SIGNATURE_SIZE;
-126   ctx-&gt;auth_public_key_size = ED25519_PUBLIC_KEY_SIZE;
+125   // signature_size and auth_public_key_size remain 0 until set by CRYPTO_PARAMETERS
+126   // (must be 0 for unauthenticated format detection in crypto_handshake_client_key_exchange)
 127 
 128   // Generate unique session ID to prevent replay attacks across connections
 129   randombytes_buf(ctx-&gt;session_id, sizeof(ctx-&gt;session_id));
@@ -4156,12 +4159,10 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>ARGON2ID_SALT_SIZE</b>, <b>AUTH_CHALLENGE_SIZE</b>,
     <b>crypto_context_t::auth_challenge_size</b>,
-    <b>crypto_context_t::auth_public_key_size</b>,
     <b>crypto_context_t::bytes_decrypted</b>,
     <b>crypto_context_t::bytes_encrypted</b>,
     <b>CRYPTO_ERROR_INVALID_PARAMS</b>, <b>crypto_generate_keypair()</b>,
-    <b>CRYPTO_OK</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
-    <b>ED25519_SIGNATURE_SIZE</b>, <b>crypto_context_t::encrypt_data</b>,
+    <b>CRYPTO_OK</b>, <b>crypto_context_t::encrypt_data</b>,
     <b>crypto_context_t::encryption_key_size</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>crypto_context_t::handshake_complete</b>,
     <b>crypto_context_t::has_password</b>,
@@ -4185,8 +4186,7 @@
     <b>crypto_context_t::rekey_time_threshold</b>,
     <b>crypto_context_t::salt_size</b>, <b>SECRETBOX_KEY_SIZE</b>,
     <b>crypto_context_t::session_id</b>, <b>SET_ERRNO</b>,
-    <b>crypto_context_t::shared_key_size</b>,
-    <b>crypto_context_t::signature_size</b>, <b>time_pretty()</b>,
+    <b>crypto_context_t::shared_key_size</b>, <b>time_pretty()</b>,
     <b>X25519_KEY_SIZE</b>, and <b>XSALSA20_NONCE_SIZE</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_init()</b>, and
     <b>crypto_init_with_password()</b>.</p>
