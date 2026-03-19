@@ -75,30 +75,30 @@
 <i>buf</i> Message buffer
 <br/>
 <i>count</i> Message length</div>
-<p class="Pp">Definition at line <b>99</b> of file <b>console.c</b>.</p>
-<pre>99                                                                    {
-100   // For WASM, route stdout/stderr to browser console
-101   if ((fd == 1 || fd == 2) &amp;&amp; buf &amp;&amp; count &gt; 0) {
-102     // Parse log level from formatted message
-103     int level = wasm_parse_log_level(buf, count);
-104     if (level &gt;= 0) {
-105       // Create null-terminated string for console output
-106       // Copy buffer to local array and null-terminate
-107       static char msg_buffer[4096];
-108       size_t copy_len = (count &lt; sizeof(msg_buffer) - 1) ? count : (sizeof(msg_buffer) - 1);
-109       memcpy(msg_buffer, buf, copy_len);
-110       msg_buffer[copy_len] = '\0';
-111 
-112       // Remove trailing newline if present (console adds it automatically)
-113       if (copy_len &gt; 0 &amp;&amp; msg_buffer[copy_len - 1] == '\n') {
-114         msg_buffer[copy_len - 1] = '\0';
-115       }
-116 
-117       // Route to console
-118       js_console_log(level, msg_buffer);
-119     }
-120   }
-121 }</pre>
+<p class="Pp">Definition at line <b>145</b> of file <b>console.c</b>.</p>
+<pre>145                                                                    {
+146   // For WASM, route stdout/stderr to browser console
+147   if ((fd == 1 || fd == 2) &amp;&amp; buf &amp;&amp; count &gt; 0) {
+148     // Parse log level from formatted message
+149     int level = wasm_parse_log_level(buf, count);
+150     if (level &gt;= 0) {
+151       // Create null-terminated string for console output
+152       // Copy buffer to local array and null-terminate
+153       static char msg_buffer[4096];
+154       size_t copy_len = (count &lt; sizeof(msg_buffer) - 1) ? count : (sizeof(msg_buffer) - 1);
+155       memcpy(msg_buffer, buf, copy_len);
+156       msg_buffer[copy_len] = '\0';
+157 
+158       // Remove trailing newline if present (console adds it automatically)
+159       if (copy_len &gt; 0 &amp;&amp; msg_buffer[copy_len - 1] == '\n') {
+160         msg_buffer[copy_len - 1] = '\0';
+161       }
+162 
+163       // Route to console
+164       js_console_log(level, msg_buffer);
+165     }
+166   }
+167 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>wasm_parse_log_level()</b>.</p>
@@ -117,56 +117,56 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent"><b>log_level_t</b> enum value (0-5), or -1 if not
   found</div>
-<p class="Pp">Definition at line <b>48</b> of file <b>console.c</b>.</p>
-<pre>48                                                            {
-49   if (!buf || count &lt; 5) {
-50     return -1; // Too short to contain [LEVEL]
-51   }
-52 
-53   // Check if message starts with [
-54   if (buf[0] != '[') {
-55     return -1;
-56   }
-57 
-58   // Look for closing ]
-59   int bracket_end = -1;
-60   for (size_t i = 1; i &lt; count &amp;&amp; i &lt; 10; i++) {
-61     if (buf[i] == ']') {
-62       bracket_end = (int)i;
-63       break;
-64     }
-65   }
-66 
-67   if (bracket_end &lt; 3) {
-68     return -1; // Too short, minimum is [XX]
-69   }
-70 
-71   // Extract level string
-72   int level_len = bracket_end - 1;
-73   const char *level_start = (const char *)&amp;buf[1];
-74 
-75   // Match against known level strings (from logging.c)
-76   if (level_len == 3 &amp;&amp; strncmp(level_start, &quot;DEV&quot;, 3) == 0) {
-77     return LOG_DEV;
-78   }
-79   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;DEBUG&quot;, 5) == 0) {
-80     return LOG_DEBUG;
-81   }
-82   if (level_len == 4 &amp;&amp; strncmp(level_start, &quot;INFO&quot;, 4) == 0) {
-83     return LOG_INFO;
-84   }
-85   if (level_len == 4 &amp;&amp; strncmp(level_start, &quot;WARN&quot;, 4) == 0) {
-86     return LOG_WARN;
-87   }
-88   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;ERROR&quot;, 5) == 0) {
-89     return LOG_ERROR;
-90   }
-91   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;FATAL&quot;, 5) == 0) {
-92     return LOG_FATAL;
-93   }
-94 
-95   return -1; // Level not recognized
-96 }</pre>
+<p class="Pp">Definition at line <b>94</b> of file <b>console.c</b>.</p>
+<pre>94                                                            {
+95   if (!buf || count &lt; 5) {
+96     return -1; // Too short to contain [LEVEL]
+97   }
+98 
+99   // Check if message starts with [
+100   if (buf[0] != '[') {
+101     return -1;
+102   }
+103 
+104   // Look for closing ]
+105   int bracket_end = -1;
+106   for (size_t i = 1; i &lt; count &amp;&amp; i &lt; 10; i++) {
+107     if (buf[i] == ']') {
+108       bracket_end = (int)i;
+109       break;
+110     }
+111   }
+112 
+113   if (bracket_end &lt; 3) {
+114     return -1; // Too short, minimum is [XX]
+115   }
+116 
+117   // Extract level string
+118   int level_len = bracket_end - 1;
+119   const char *level_start = (const char *)&amp;buf[1];
+120 
+121   // Match against known level strings (from logging.c)
+122   if (level_len == 3 &amp;&amp; strncmp(level_start, &quot;DEV&quot;, 3) == 0) {
+123     return LOG_DEV;
+124   }
+125   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;DEBUG&quot;, 5) == 0) {
+126     return LOG_DEBUG;
+127   }
+128   if (level_len == 4 &amp;&amp; strncmp(level_start, &quot;INFO&quot;, 4) == 0) {
+129     return LOG_INFO;
+130   }
+131   if (level_len == 4 &amp;&amp; strncmp(level_start, &quot;WARN&quot;, 4) == 0) {
+132     return LOG_WARN;
+133   }
+134   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;ERROR&quot;, 5) == 0) {
+135     return LOG_ERROR;
+136   }
+137   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;FATAL&quot;, 5) == 0) {
+138     return LOG_FATAL;
+139   }
+140 
+141   return -1; // Level not recognized
+142 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>LOG_DEBUG</b>, <b>LOG_DEV</b>, <b>LOG_ERROR</b>,

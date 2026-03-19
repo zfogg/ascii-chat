@@ -3758,10 +3758,10 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <div class="Bd-indent">Thread-local value, or NULL if not set</div>
 <p class="Pp">Returns the thread-local value associated with the specified key
     for the calling thread.</p>
-<p class="Pp">Definition at line <b>100</b> of file <b>threading.c</b>.</p>
-<pre>100                                    {
-101   return pthread_getspecific(key);
-102 }</pre>
+<p class="Pp">Definition at line <b>105</b> of file <b>threading.c</b>.</p>
+<pre>105                                    {
+106   return pthread_getspecific(key);
+107 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_get()</b>, and
@@ -3784,10 +3784,10 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp">Creates a new TLS key that can be used to store thread-specific
     data. If a destructor is provided, it will be called with the stored value
     when a thread terminates (if the value is non-NULL).</p>
-<p class="Pp">Definition at line <b>92</b> of file <b>threading.c</b>.</p>
-<pre>92                                                                      {
-93   return pthread_key_create(key, destructor);
-94 }</pre>
+<p class="Pp">Definition at line <b>97</b> of file <b>threading.c</b>.</p>
+<pre>97                                                                      {
+98   return pthread_key_create(key, destructor);
+99 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -3804,10 +3804,10 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp">Deletes the specified TLS key. Does NOT call destructors for
     existing thread-local values. The caller is responsible for cleanup before
     deletion.</p>
-<p class="Pp">Definition at line <b>96</b> of file <b>threading.c</b>.</p>
-<pre>96                                         {
-97   return pthread_key_delete(key);
-98 }</pre>
+<p class="Pp">Definition at line <b>101</b> of file <b>threading.c</b>.</p>
+<pre>101                                         {
+102   return pthread_key_delete(key);
+103 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_global_destroy()</b>, and
@@ -3827,10 +3827,10 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <div class="Bd-indent">0 on success, non-zero on error</div>
 <p class="Pp">Associates the specified value with the key for the calling
     thread.</p>
-<p class="Pp">Definition at line <b>104</b> of file <b>threading.c</b>.</p>
-<pre>104                                               {
-105   return pthread_setspecific(key, value);
-106 }</pre>
+<p class="Pp">Definition at line <b>109</b> of file <b>threading.c</b>.</p>
+<pre>109                                               {
+110   return pthread_setspecific(key, value);
+111 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_get()</b>, and
@@ -3890,10 +3890,10 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
   integer</div>
 <p class="Pp">Returns a unique numeric identifier for the current thread. This
     is more portable than <b>thread_id_t</b> for comparisons.</p>
-<p class="Pp">Definition at line <b>87</b> of file <b>threading.c</b>.</p>
-<pre>87                                            {
-88   return (uint64_t)pthread_self();
-89 }</pre>
+<p class="Pp">Definition at line <b>92</b> of file <b>threading.c</b>.</p>
+<pre>92                                            {
+93   return (uint64_t)pthread_self();
+94 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_get()</b>,
@@ -4080,6 +4080,29 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp">Platform-specific conversion for use with registry systems (e.g.,
     named object registry). On POSIX, pthread_t is cast directly to uintptr_t.
     On Windows, HANDLE is cast directly to uintptr_t.</p>
+<p class="Pp"></p>
+<p class="Pp">Convert a thread handle to a uintptr_t registry key.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>thread</i> Thread handle
+  (<b>asciichat_thread_t</b>)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">uintptr_t suitable for registry lookups</div>
+<p class="Pp">Platform-specific conversion. On POSIX, pthread_t is cast
+    directly. On Windows, HANDLE is cast directly.</p>
+<p class="Pp"></p>
+<p class="Pp">This function is defined in lib/platform/posix/thread.c or
+    lib/platform/windows/thread.c</p>
+<p class="Pp">Definition at line <b>87</b> of file <b>threading.c</b>.</p>
+<pre>87                                                              {
+88   return (uintptr_t)thread;
+89 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>cond_on_wait()</b>, <b>log_template_apply()</b>,
+    <b>mutex_on_lock()</b>, <b>mutex_on_trylock()</b>,
+    <b>named_describe_thread()</b>, <b>rwlock_on_unlock()</b>, and
+    <b>rwlock_on_wrlock()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_*_asciichat_thread_wrapper_impl_(void_*_arg)"><a class="permalink" href="#void_*_asciichat_thread_wrapper_impl_(void_*_arg)">void
@@ -4110,6 +4133,14 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>skip_frames</i> Number of frames to skip from the top
   (0 = include all)</div>
+<p class="Pp">Definition at line <b>54</b> of file
+    <b>platform/wasm/stubs/backtrace.c</b>.</p>
+<pre>54                                              {
+55   (void)skip_frames;
+56   // No-op for WASM
+57 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>main()</b>.</p>
 </section>
 <section class="Ss">

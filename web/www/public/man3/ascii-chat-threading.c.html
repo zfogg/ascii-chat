@@ -83,7 +83,10 @@
   Release a read lock (implementation function). int <b>rwlock_wrunlock_impl</b>
     (<b>rwlock_t</b> *<b>rwlock</b>)
   <br/>
-  Release a write lock (implementation function). <b>uint64_t</b>
+  Release a write lock (implementation function). uintptr_t
+    <b>asciichat_thread_to_key</b> (<b>asciichat_thread_t</b> thread)
+  <br/>
+  Convert a thread handle to a registry key. <b>uint64_t</b>
     <b>asciichat_thread_current_id</b> (void)
   <br/>
   Get the current thread's unique numeric ID. int <b>ascii_tls_key_create</b>

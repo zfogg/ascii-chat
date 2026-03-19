@@ -779,12 +779,12 @@ if (result != OK) {
     <b>handle_audio_batch_packet()</b>, <b>handle_audio_opus_batch_packet()</b>,
     <b>handle_image_frame_h265_packet()</b>, <b>handle_image_frame_packet()</b>,
     <b>https_get()</b>, <b>image_destroy()</b>, <b>image_new()</b>,
-    <b>image_print_16color_dithered()</b>,
+    <b>image_print_16color()</b>, <b>image_print_16color_dithered()</b>,
     <b>image_print_16color_dithered_with_background()</b>,
-    <b>keyboard_help_render()</b>, <b>known_hosts_destroy()</b>,
-    <b>layout_print_two_column_row()</b>, <b>levenshtein()</b>,
-    <b>levenshtein_n()</b>, <b>log_labeled()</b>, <b>log_mmap_write()</b>,
-    <b>log_search_gather_and_filter_logs()</b>,
+    <b>image_print_256color()</b>, <b>keyboard_help_render()</b>,
+    <b>known_hosts_destroy()</b>, <b>layout_print_two_column_row()</b>,
+    <b>levenshtein()</b>, <b>levenshtein_n()</b>, <b>log_labeled()</b>,
+    <b>log_mmap_write()</b>, <b>log_search_gather_and_filter_logs()</b>,
     <b>manpage_content_free_environment()</b>,
     <b>manpage_content_free_examples()</b>,
     <b>manpage_content_free_options()</b>,
@@ -959,8 +959,9 @@ if (result != OK) {
     <b>image_new()</b>, <b>image_print()</b>, <b>image_print_16color()</b>,
     <b>image_print_16color_dithered()</b>,
     <b>image_print_16color_dithered_with_background()</b>,
-    <b>image_print_color()</b>, <b>keyboard_help_render()</b>,
-    <b>levenshtein()</b>, <b>log_search_gather_and_filter_logs()</b>,
+    <b>image_print_256color()</b>, <b>image_print_color()</b>,
+    <b>keyboard_help_render()</b>, <b>levenshtein()</b>,
+    <b>log_search_gather_and_filter_logs()</b>,
     <b>manpage_content_generate_environment()</b>,
     <b>manpage_content_generate_environment_with_manual()</b>,
     <b>manpage_content_generate_examples()</b>,
@@ -1341,9 +1342,9 @@ if (result != OK) {
     <b>handle_client_join_packet()</b>, <b>image_print_16color()</b>,
     <b>image_print_16color_dithered()</b>,
     <b>image_print_16color_dithered_with_background()</b>,
-    <b>is_valid_ipv4()</b>, <b>is_valid_ipv6()</b>,
-    <b>layout_print_wrapped_description()</b>, <b>log_init()</b>,
-    <b>log_mmap_init()</b>, <b>log_recolor_plain_entry()</b>,
+    <b>image_print_256color()</b>, <b>is_valid_ipv4()</b>,
+    <b>is_valid_ipv6()</b>, <b>layout_print_wrapped_description()</b>,
+    <b>log_init()</b>, <b>log_mmap_init()</b>, <b>log_recolor_plain_entry()</b>,
     <b>log_search_get_match_info()</b>, <b>log_search_init()</b>, <b>main()</b>,
     <b>nat_detect_quality()</b>, <b>nat_quality_from_acip()</b>,
     <b>nat_quality_to_acip()</b>, <b>negotiate_determine_result()</b>,
@@ -1597,8 +1598,14 @@ if (result != OK) {
 299   }
 300 #endif
 301 
-302   exit(code);
-303 }</pre>
+302 #ifdef EMSCRIPTEN_BUILD
+303   // In WASM builds, do not call exit() &#x2014; it permanently kills the module runtime.
+304   // Instead, set the error and return so callers can handle it gracefully.
+305   SET_ERRNO(code, &quot;FATAL (non-exit in WASM): code=%d&quot;, (int)code);
+306 #else
+307   exit(code);
+308 #endif
+309 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>, <b>asciichat_errno_context</b>,
@@ -1607,8 +1614,8 @@ if (result != OK) {
     <b>backtrace_t_free()</b>, <b>backtrace_t::count</b>,
     <b>extract_project_relative_path()</b>, <b>format_message()</b>,
     <b>HAS_ERRNO</b>, <b>LOG_COLOR_ERROR</b>, <b>LOG_COLOR_FATAL</b>,
-    <b>log_labeled()</b>, <b>log_plain</b>, <b>safe_fprintf()</b>, and
-    <b>SAFE_FREE</b>.</p>
+    <b>log_labeled()</b>, <b>log_plain</b>, <b>safe_fprintf()</b>,
+    <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_asciichat_shared_destroy_(void_)"><a class="permalink" href="#void_asciichat_shared_destroy_(void_)">void

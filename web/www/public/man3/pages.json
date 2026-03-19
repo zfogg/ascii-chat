@@ -537,7 +537,7 @@
     "name": "atomic.c",
     "title": "atomic.c",
     "file": "ascii-chat-atomic.c.html",
-    "sourcePath": "lib/platform/wasm/stubs/atomic.c"
+    "sourcePath": "lib/debug/atomic.c"
   },
   {
     "name": "atomic.h",
@@ -1299,7 +1299,7 @@
     "name": "atomic.c",
     "title": "atomic.c",
     "file": "ascii-chat-debug_atomic.c.html",
-    "sourcePath": "lib/platform/wasm/stubs/atomic.c"
+    "sourcePath": "lib/debug/atomic.c"
   },
   {
     "name": "atomic.h",
@@ -3945,7 +3945,7 @@
     "name": "atomic.c",
     "title": "atomic.c",
     "file": "ascii-chat-platform_wasm_stubs_atomic.c.html",
-    "sourcePath": "lib/platform/wasm/stubs/atomic.c"
+    "sourcePath": "lib/debug/atomic.c"
   },
   {
     "name": "backtrace.c",

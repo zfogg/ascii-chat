@@ -36,6 +36,16 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>session_log_buffer</b>
+    <b>session_log_buffer_t</b>
+  <br/>
+  Opaque handle to log buffer instance.
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp"><b>asciichat_error_t</b> <b>log_mmap_init_simple</b> (const char
@@ -61,6 +71,10 @@
   int <b>terminal_choose_log_fd</b> (<b>log_level_t</b> level)
   <br/>
   Choose output file descriptor for logging based on level and interactivity.
+    void <b>session_log_buffer_append</b> (<b>session_log_buffer_t</b> *buf,
+    const char *message)
+  <br/>
+  Append a log message to the buffer.
   <br/>
 </p>
 </section>
@@ -213,6 +227,28 @@
 46   (void)message;
 47   // No-op - server status screen not used in WASM mirror mode
 48 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_log_buffer_append_("><a class="permalink" href="#void_session_log_buffer_append_(">void
+  session_log_buffer_append (<b>session_log_buffer_t</b> * buf, const char *
+  message)</a></h2>
+<p class="Pp">Append a log message to the buffer. Thread-safe. Called from
+    logging system to capture messages. Message is copied into circular buffer
+    (oldest entry overwritten if full).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>buf</i> Buffer instance (must not be NULL)
+<br/>
+<i>message</i> Log message text (already formatted with colors)</div>
+<p class="Pp">Definition at line <b>71</b> of file
+    <b>platform/wasm/stubs/log.c</b>.</p>
+<pre>71                                                                                {
+72   (void)buf;
+73   (void)message;
+74   // No-op - session log buffer not used in WASM
+75 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>

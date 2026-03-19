@@ -2801,19 +2801,19 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Format: [HMAC:32][challenge_nonce:32] (64 bytes
   total)</div>
-<p class="Pp">Definition at line <b>1148</b> of file
+<p class="Pp">Definition at line <b>1152</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>1148                                                                                                           {
-1149   if (!hmac || !challenge_nonce || !combined_out) {
-1150     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: hmac=%p, challenge_nonce=%p, combined_out=%p&quot;, hmac,
-1151               challenge_nonce, combined_out);
-1152     return;
-1153   }
-1154 
-1155   // Combine HMAC (32 bytes) + challenge nonce (32 bytes) = 64 bytes total
-1156   memcpy(combined_out, hmac, 32);
-1157   memcpy(combined_out + 32, challenge_nonce, 32);
-1158 }</pre>
+<pre>1152                                                                                                           {
+1153   if (!hmac || !challenge_nonce || !combined_out) {
+1154     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: hmac=%p, challenge_nonce=%p, combined_out=%p&quot;, hmac,
+1155               challenge_nonce, combined_out);
+1156     return;
+1157   }
+1158 
+1159   // Combine HMAC (32 bytes) + challenge nonce (32 bytes) = 64 bytes total
+1160   memcpy(combined_out, hmac, 32);
+1161   memcpy(combined_out + 32, challenge_nonce, 32);
+1162 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
@@ -2854,38 +2854,38 @@
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Context must have completed key exchange before calling
   this function.</div>
-<p class="Pp">Definition at line <b>904</b> of file
+<p class="Pp">Definition at line <b>908</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>905                                                                    {
-906   if (!ctx || !nonce || !hmac_out) {
-907     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_compute_auth_response: Invalid parameters (ctx=%p, nonce=%p, hmac_out=%p)&quot;,
-908               ctx, nonce, hmac_out);
-909     return CRYPTO_ERROR_INVALID_PARAMS;
-910   }
-911 
-912   // Ensure shared secret is derived before computing HMAC
-913   // This is critical for password HMAC which binds to the shared secret
-914   if (!ctx-&gt;key_exchange_complete) {
-915     SET_ERRNO(ERROR_CRYPTO, &quot;Cannot compute auth response - key exchange not complete&quot;);
-916     return CRYPTO_ERROR_INVALID_PARAMS;
-917   }
-918 
-919   // Bind password HMAC to DH shared_secret to prevent MITM
-920   // Combined data: nonce || shared_secret
-921   uint8_t combined_data[64];
-922   memcpy(combined_data, nonce, 32);
-923   memcpy(combined_data + 32, ctx-&gt;shared_key, 32);
-924 
-925   // Use password_key if available, otherwise use shared_key
-926   const uint8_t *auth_key = ctx-&gt;has_password ? ctx-&gt;password_key : ctx-&gt;shared_key;
-927 
-928   crypto_result_t result = crypto_compute_hmac_ex(ctx, auth_key, combined_data, 64, hmac_out);
-929 
-930   // Securely zero sensitive data containing shared secret
-931   sodium_memzero(combined_data, sizeof(combined_data));
-932 
-933   return result;
-934 }</pre>
+<pre>909                                                                    {
+910   if (!ctx || !nonce || !hmac_out) {
+911     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_compute_auth_response: Invalid parameters (ctx=%p, nonce=%p, hmac_out=%p)&quot;,
+912               ctx, nonce, hmac_out);
+913     return CRYPTO_ERROR_INVALID_PARAMS;
+914   }
+915 
+916   // Ensure shared secret is derived before computing HMAC
+917   // This is critical for password HMAC which binds to the shared secret
+918   if (!ctx-&gt;key_exchange_complete) {
+919     SET_ERRNO(ERROR_CRYPTO, &quot;Cannot compute auth response - key exchange not complete&quot;);
+920     return CRYPTO_ERROR_INVALID_PARAMS;
+921   }
+922 
+923   // Bind password HMAC to DH shared_secret to prevent MITM
+924   // Combined data: nonce || shared_secret
+925   uint8_t combined_data[64];
+926   memcpy(combined_data, nonce, 32);
+927   memcpy(combined_data + 32, ctx-&gt;shared_key, 32);
+928 
+929   // Use password_key if available, otherwise use shared_key
+930   const uint8_t *auth_key = ctx-&gt;has_password ? ctx-&gt;password_key : ctx-&gt;shared_key;
+931 
+932   crypto_result_t result = crypto_compute_hmac_ex(ctx, auth_key, combined_data, 64, hmac_out);
+933 
+934   // Securely zero sensitive data containing shared secret
+935   sodium_memzero(combined_data, sizeof(combined_data));
+936 
+937   return result;
+938 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_compute_hmac_ex()</b>,
@@ -2920,23 +2920,23 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Automatically initializes libsodium if not already
   initialized.</div>
-<p class="Pp">Definition at line <b>833</b> of file
+<p class="Pp">Definition at line <b>837</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>834                                                       {
-835   if (!ctx || !key || !data || !hmac) {
-836     return (crypto_result_t)SET_ERRNO(ERROR_INVALID_PARAM,
-837                                       &quot;crypto_compute_hmac: Invalid parameters (ctx=%p, key=%p, data=%p, hmac=%p)&quot;, ctx,
-838                                       key, data, hmac);
-839   }
-840 
-841   crypto_result_t result = init_libsodium();
-842   if (result != CRYPTO_OK) {
-843     return result;
-844   }
-845 
-846   crypto_auth_hmacsha256(hmac, data, 32, key);
-847   return CRYPTO_OK;
-848 }</pre>
+<pre>838                                                       {
+839   if (!ctx || !key || !data || !hmac) {
+840     return (crypto_result_t)SET_ERRNO(ERROR_INVALID_PARAM,
+841                                       &quot;crypto_compute_hmac: Invalid parameters (ctx=%p, key=%p, data=%p, hmac=%p)&quot;, ctx,
+842                                       key, data, hmac);
+843   }
+844 
+845   crypto_result_t result = init_libsodium();
+846   if (result != CRYPTO_OK) {
+847     return result;
+848   }
+849 
+850   crypto_auth_hmacsha256(hmac, data, 32, key);
+851   return CRYPTO_OK;
+852 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>CRYPTO_OK</b>, <b>ERROR_INVALID_PARAM</b>, and
@@ -2968,24 +2968,24 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Automatically initializes libsodium if not already
   initialized.</div>
-<p class="Pp">Definition at line <b>850</b> of file
+<p class="Pp">Definition at line <b>854</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>851                                                                           {
-852   if (!ctx || !key || !data || !hmac || data_len == 0) {
-853     return (crypto_result_t)SET_ERRNO(
-854         ERROR_INVALID_PARAM,
-855         &quot;crypto_compute_hmac_ex: Invalid parameters (ctx=%p, key=%p, data=%p, data_len=%zu, hmac=%p)&quot;, ctx, key, data,
-856         data_len, hmac);
-857   }
-858 
-859   crypto_result_t result = init_libsodium();
-860   if (result != CRYPTO_OK) {
-861     return result;
-862   }
-863 
-864   crypto_auth_hmacsha256(hmac, data, data_len, key);
-865   return CRYPTO_OK;
-866 }</pre>
+<pre>855                                                                           {
+856   if (!ctx || !key || !data || !hmac || data_len == 0) {
+857     return (crypto_result_t)SET_ERRNO(
+858         ERROR_INVALID_PARAM,
+859         &quot;crypto_compute_hmac_ex: Invalid parameters (ctx=%p, key=%p, data=%p, data_len=%zu, hmac=%p)&quot;, ctx, key, data,
+860         data_len, hmac);
+861   }
+862 
+863   crypto_result_t result = init_libsodium();
+864   if (result != CRYPTO_OK) {
+865     return result;
+866   }
+867 
+868   crypto_auth_hmacsha256(hmac, data, data_len, key);
+869   return CRYPTO_OK;
+870 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>CRYPTO_OK</b>, <b>ERROR_INVALID_PARAM</b>, and
@@ -3022,33 +3022,33 @@
 <p class="Pp"></p>
 <p class="Pp">Combined data: nonce || shared_secret (64 bytes total)</p>
 </div>
-<p class="Pp">Definition at line <b>1078</b> of file
+<p class="Pp">Definition at line <b>1082</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>1079                                                                                                 {
-1080   if (!ctx || !password_key || !nonce || !shared_secret || !hmac_out) {
-1081     return SET_ERRNO(ERROR_INVALID_PARAM,
-1082                      &quot;Invalid parameters: ctx=%p, password_key=%p, nonce=%p, shared_secret=%p, hmac_out=%p&quot;, ctx,
-1083                      password_key, nonce, shared_secret, hmac_out);
-1084   }
-1085 
-1086   // Combine nonce and shared_secret for HMAC computation
-1087   // This binds the password to the DH shared secret, preventing MITM attacks
-1088   uint8_t combined_data[64];
-1089   memcpy(combined_data, nonce, 32);
-1090   memcpy(combined_data + 32, shared_secret, 32);
-1091 
-1092   // Compute HMAC using the password-derived key
-1093   if (crypto_compute_hmac_ex(ctx, password_key, combined_data, 64, hmac_out) != 0) {
-1094     // Securely zero sensitive data containing shared secret even on error
-1095     sodium_memzero(combined_data, sizeof(combined_data));
-1096     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to compute password HMAC&quot;);
-1097   }
-1098 
-1099   // Securely zero sensitive data containing shared secret
-1100   sodium_memzero(combined_data, sizeof(combined_data));
-1101 
-1102   return ASCIICHAT_OK;
-1103 }</pre>
+<pre>1083                                                                                                 {
+1084   if (!ctx || !password_key || !nonce || !shared_secret || !hmac_out) {
+1085     return SET_ERRNO(ERROR_INVALID_PARAM,
+1086                      &quot;Invalid parameters: ctx=%p, password_key=%p, nonce=%p, shared_secret=%p, hmac_out=%p&quot;, ctx,
+1087                      password_key, nonce, shared_secret, hmac_out);
+1088   }
+1089 
+1090   // Combine nonce and shared_secret for HMAC computation
+1091   // This binds the password to the DH shared secret, preventing MITM attacks
+1092   uint8_t combined_data[64];
+1093   memcpy(combined_data, nonce, 32);
+1094   memcpy(combined_data + 32, shared_secret, 32);
+1095 
+1096   // Compute HMAC using the password-derived key
+1097   if (crypto_compute_hmac_ex(ctx, password_key, combined_data, 64, hmac_out) != 0) {
+1098     // Securely zero sensitive data containing shared secret even on error
+1099     sodium_memzero(combined_data, sizeof(combined_data));
+1100     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to compute password HMAC&quot;);
+1101   }
+1102 
+1103   // Securely zero sensitive data containing shared secret
+1104   sodium_memzero(combined_data, sizeof(combined_data));
+1105 
+1106   return ASCIICHAT_OK;
+1107 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>crypto_compute_hmac_ex()</b>,
@@ -3083,38 +3083,38 @@
 <p class="Pp">The generated nonce is stored in ctx-&gt;auth_nonce and should be
     used later to verify the authentication response.</p>
 </div>
-<p class="Pp">Definition at line <b>972</b> of file
+<p class="Pp">Definition at line <b>976</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>973                                                                      {
-974   if (!ctx || !ctx-&gt;initialized || !packet_out || !packet_len_out) {
-975     SET_ERRNO(
-976         ERROR_INVALID_PARAM,
-977         &quot;crypto_create_auth_challenge: Invalid parameters (ctx=%p, initialized=%d, packet_out=%p, packet_len_out=%p)&quot;,
-978         ctx, ctx ? ctx-&gt;initialized : 0, packet_out, packet_len_out);
-979     return CRYPTO_ERROR_INVALID_PARAMS;
-980   }
-981 
-982   size_t required_size = sizeof(uint32_t) + ctx-&gt;auth_challenge_size; // type + nonce
-983   if (packet_size &lt; required_size) {
-984     SET_ERRNO(ERROR_BUFFER, &quot;crypto_create_auth_challenge: Buffer too small (size=%zu, required=%zu)&quot;, packet_size,
-985               required_size);
-986     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
-987   }
-988 
-989   // Generate random nonce (stores result in ctx-&gt;auth_nonce)
-990   crypto_result_t result = crypto_generate_nonce(ctx-&gt;auth_nonce);
-991   if (result != CRYPTO_OK) {
-992     return result;
-993   }
-994 
-995   // Pack packet: [type:4][nonce:auth_challenge_size]
-996   uint32_t packet_type = CRYPTO_PACKET_AUTH_CHALLENGE;
-997   SAFE_MEMCPY(packet_out, sizeof(packet_type), &amp;packet_type, sizeof(packet_type));
-998   SAFE_MEMCPY(packet_out + sizeof(packet_type), ctx-&gt;auth_challenge_size, ctx-&gt;auth_nonce, ctx-&gt;auth_challenge_size);
-999 
-1000   *packet_len_out = required_size;
-1001   return CRYPTO_OK;
-1002 }</pre>
+<pre>977                                                                      {
+978   if (!ctx || !ctx-&gt;initialized || !packet_out || !packet_len_out) {
+979     SET_ERRNO(
+980         ERROR_INVALID_PARAM,
+981         &quot;crypto_create_auth_challenge: Invalid parameters (ctx=%p, initialized=%d, packet_out=%p, packet_len_out=%p)&quot;,
+982         ctx, ctx ? ctx-&gt;initialized : 0, packet_out, packet_len_out);
+983     return CRYPTO_ERROR_INVALID_PARAMS;
+984   }
+985 
+986   size_t required_size = sizeof(uint32_t) + ctx-&gt;auth_challenge_size; // type + nonce
+987   if (packet_size &lt; required_size) {
+988     SET_ERRNO(ERROR_BUFFER, &quot;crypto_create_auth_challenge: Buffer too small (size=%zu, required=%zu)&quot;, packet_size,
+989               required_size);
+990     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
+991   }
+992 
+993   // Generate random nonce (stores result in ctx-&gt;auth_nonce)
+994   crypto_result_t result = crypto_generate_nonce(ctx-&gt;auth_nonce);
+995   if (result != CRYPTO_OK) {
+996     return result;
+997   }
+998 
+999   // Pack packet: [type:4][nonce:auth_challenge_size]
+1000   uint32_t packet_type = CRYPTO_PACKET_AUTH_CHALLENGE;
+1001   SAFE_MEMCPY(packet_out, sizeof(packet_type), &amp;packet_type, sizeof(packet_type));
+1002   SAFE_MEMCPY(packet_out + sizeof(packet_type), ctx-&gt;auth_challenge_size, ctx-&gt;auth_nonce, ctx-&gt;auth_challenge_size);
+1003 
+1004   *packet_len_out = required_size;
+1005   return CRYPTO_OK;
+1006 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_context_t::auth_challenge_size</b>,
@@ -3162,68 +3162,68 @@
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Ensure packet_size is large enough for encrypted data +
   headers.</div>
-<p class="Pp">Definition at line <b>711</b> of file
+<p class="Pp">Definition at line <b>715</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>712                                                                                                                 {
-713   if (!ctx || !data || !packet_out || !packet_len_out) {
-714     SET_ERRNO(ERROR_INVALID_PARAM,
-715               &quot;crypto_create_encrypted_packet: Invalid parameters (ctx=%p, data=%p, packet_out=%p, packet_len_out=%p)&quot;,
-716               ctx, data, packet_out, packet_len_out);
-717     return CRYPTO_ERROR_INVALID_PARAMS;
-718   }
-719 
-720   if (!crypto_is_ready(ctx)) {
-721     SET_ERRNO(ERROR_CRYPTO, &quot;crypto_create_encrypted_packet: Crypto context not ready&quot;);
-722     return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
-723   }
-724 
-725   // Validate data_len to prevent integer overflow in size calculations.
-726   if (data_len &gt; CRYPTO_MAX_PLAINTEXT_SIZE) {
-727     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_create_encrypted_packet: data_len %zu exceeds max %d&quot;, data_len,
-728               CRYPTO_MAX_PLAINTEXT_SIZE);
-729     return CRYPTO_ERROR_INVALID_PARAMS;
-730   }
-731 
-732   // Check for integer overflow: data_len + nonce_size + mac_size
-733   if (data_len &gt; SIZE_MAX - ctx-&gt;nonce_size - ctx-&gt;mac_size) {
-734     SET_ERRNO(ERROR_BUFFER, &quot;crypto_create_encrypted_packet: encrypted_size overflow&quot;);
-735     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
-736   }
-737   size_t encrypted_size = data_len + ctx-&gt;nonce_size + ctx-&gt;mac_size;
-738 
-739   // Check for integer overflow: header + encrypted_size
-740   size_t header_size = sizeof(uint32_t) + sizeof(uint32_t);
-741   if (encrypted_size &gt; SIZE_MAX - header_size) {
-742     SET_ERRNO(ERROR_BUFFER, &quot;crypto_create_encrypted_packet: required_size overflow&quot;);
-743     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
-744   }
-745   size_t required_size = header_size + encrypted_size; // type + len + encrypted_data
-746 
-747   if (packet_size &lt; required_size) {
-748     SET_ERRNO(ERROR_BUFFER, &quot;crypto_create_encrypted_packet: Buffer too small (size=%zu, required=%zu)&quot;, packet_size,
-749               required_size);
-750     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
-751   }
-752 
-753   // Encrypt the data
-754   size_t ciphertext_len;
-755   uint8_t *encrypted_data = packet_out + sizeof(uint32_t) + sizeof(uint32_t);
-756   crypto_result_t result = crypto_encrypt(ctx, data, data_len, encrypted_data,
-757                                           packet_size - sizeof(uint32_t) - sizeof(uint32_t), &amp;ciphertext_len);
-758   if (result != CRYPTO_OK) {
-759     return result;
-760   }
-761 
-762   // Pack packet: [type:4][length:4][encrypted_data:var]
-763   uint32_t packet_type = CRYPTO_PACKET_ENCRYPTED_DATA;
-764   uint32_t data_length = (uint32_t)ciphertext_len;
+<pre>716                                                                                                                 {
+717   if (!ctx || !data || !packet_out || !packet_len_out) {
+718     SET_ERRNO(ERROR_INVALID_PARAM,
+719               &quot;crypto_create_encrypted_packet: Invalid parameters (ctx=%p, data=%p, packet_out=%p, packet_len_out=%p)&quot;,
+720               ctx, data, packet_out, packet_len_out);
+721     return CRYPTO_ERROR_INVALID_PARAMS;
+722   }
+723 
+724   if (!crypto_is_ready(ctx)) {
+725     SET_ERRNO(ERROR_CRYPTO, &quot;crypto_create_encrypted_packet: Crypto context not ready&quot;);
+726     return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
+727   }
+728 
+729   // Validate data_len to prevent integer overflow in size calculations.
+730   if (data_len &gt; CRYPTO_MAX_PLAINTEXT_SIZE) {
+731     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_create_encrypted_packet: data_len %zu exceeds max %d&quot;, data_len,
+732               CRYPTO_MAX_PLAINTEXT_SIZE);
+733     return CRYPTO_ERROR_INVALID_PARAMS;
+734   }
+735 
+736   // Check for integer overflow: data_len + nonce_size + mac_size
+737   if (data_len &gt; SIZE_MAX - ctx-&gt;nonce_size - ctx-&gt;mac_size) {
+738     SET_ERRNO(ERROR_BUFFER, &quot;crypto_create_encrypted_packet: encrypted_size overflow&quot;);
+739     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
+740   }
+741   size_t encrypted_size = data_len + ctx-&gt;nonce_size + ctx-&gt;mac_size;
+742 
+743   // Check for integer overflow: header + encrypted_size
+744   size_t header_size = sizeof(uint32_t) + sizeof(uint32_t);
+745   if (encrypted_size &gt; SIZE_MAX - header_size) {
+746     SET_ERRNO(ERROR_BUFFER, &quot;crypto_create_encrypted_packet: required_size overflow&quot;);
+747     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
+748   }
+749   size_t required_size = header_size + encrypted_size; // type + len + encrypted_data
+750 
+751   if (packet_size &lt; required_size) {
+752     SET_ERRNO(ERROR_BUFFER, &quot;crypto_create_encrypted_packet: Buffer too small (size=%zu, required=%zu)&quot;, packet_size,
+753               required_size);
+754     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
+755   }
+756 
+757   // Encrypt the data
+758   size_t ciphertext_len;
+759   uint8_t *encrypted_data = packet_out + sizeof(uint32_t) + sizeof(uint32_t);
+760   crypto_result_t result = crypto_encrypt(ctx, data, data_len, encrypted_data,
+761                                           packet_size - sizeof(uint32_t) - sizeof(uint32_t), &amp;ciphertext_len);
+762   if (result != CRYPTO_OK) {
+763     return result;
+764   }
 765 
-766   SAFE_MEMCPY(packet_out, sizeof(packet_type), &amp;packet_type, sizeof(packet_type));
-767   SAFE_MEMCPY(packet_out + sizeof(packet_type), sizeof(data_length), &amp;data_length, sizeof(data_length));
-768 
-769   *packet_len_out = required_size;
-770   return CRYPTO_OK;
-771 }</pre>
+766   // Pack packet: [type:4][length:4][encrypted_data:var]
+767   uint32_t packet_type = CRYPTO_PACKET_ENCRYPTED_DATA;
+768   uint32_t data_length = (uint32_t)ciphertext_len;
+769 
+770   SAFE_MEMCPY(packet_out, sizeof(packet_type), &amp;packet_type, sizeof(packet_type));
+771   SAFE_MEMCPY(packet_out + sizeof(packet_type), sizeof(data_length), &amp;data_length, sizeof(data_length));
+772 
+773   *packet_len_out = required_size;
+774   return CRYPTO_OK;
+775 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_encrypt()</b>,
@@ -3262,34 +3262,34 @@
 <p class="Pp">This packet is NOT encrypted - it's part of the key exchange
     protocol.</p>
 </div>
-<p class="Pp">Definition at line <b>654</b> of file
+<p class="Pp">Definition at line <b>658</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>655                                                                         {
-656   if (!ctx || !ctx-&gt;initialized || !packet_out || !packet_len_out) {
-657     SET_ERRNO(ERROR_INVALID_PARAM,
-658               &quot;crypto_create_public_key_packet: Invalid parameters (ctx=%p, initialized=%d, packet_out=%p, &quot;
-659               &quot;packet_len_out=%p)&quot;,
-660               ctx, ctx ? ctx-&gt;initialized : 0, packet_out, packet_len_out);
-661     return CRYPTO_ERROR_INVALID_PARAMS;
-662   }
-663 
-664   size_t required_size = sizeof(uint32_t) + ctx-&gt;public_key_size; // type + key
-665   if (packet_size &lt; required_size) {
-666     SET_ERRNO(ERROR_BUFFER, &quot;crypto_create_public_key_packet: Buffer too small (size=%zu, required=%zu)&quot;, packet_size,
-667               required_size);
-668     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
-669   }
-670 
-671   // Pack packet: [type:4][public_key:32]
-672   uint32_t packet_type = CRYPTO_PACKET_PUBLIC_KEY;
-673   SAFE_MEMCPY(packet_out, sizeof(packet_type), &amp;packet_type, sizeof(packet_type));
-674   // Bounds check to prevent buffer overflow
-675   size_t copy_size = (ctx-&gt;public_key_size &lt;= X25519_KEY_SIZE) ? ctx-&gt;public_key_size : X25519_KEY_SIZE;
-676   SAFE_MEMCPY(packet_out + sizeof(packet_type), copy_size, ctx-&gt;public_key, copy_size);
-677 
-678   *packet_len_out = required_size;
-679   return CRYPTO_OK;
-680 }</pre>
+<pre>659                                                                         {
+660   if (!ctx || !ctx-&gt;initialized || !packet_out || !packet_len_out) {
+661     SET_ERRNO(ERROR_INVALID_PARAM,
+662               &quot;crypto_create_public_key_packet: Invalid parameters (ctx=%p, initialized=%d, packet_out=%p, &quot;
+663               &quot;packet_len_out=%p)&quot;,
+664               ctx, ctx ? ctx-&gt;initialized : 0, packet_out, packet_len_out);
+665     return CRYPTO_ERROR_INVALID_PARAMS;
+666   }
+667 
+668   size_t required_size = sizeof(uint32_t) + ctx-&gt;public_key_size; // type + key
+669   if (packet_size &lt; required_size) {
+670     SET_ERRNO(ERROR_BUFFER, &quot;crypto_create_public_key_packet: Buffer too small (size=%zu, required=%zu)&quot;, packet_size,
+671               required_size);
+672     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
+673   }
+674 
+675   // Pack packet: [type:4][public_key:32]
+676   uint32_t packet_type = CRYPTO_PACKET_PUBLIC_KEY;
+677   SAFE_MEMCPY(packet_out, sizeof(packet_type), &amp;packet_type, sizeof(packet_type));
+678   // Bounds check to prevent buffer overflow
+679   size_t copy_size = (ctx-&gt;public_key_size &lt;= X25519_KEY_SIZE) ? ctx-&gt;public_key_size : X25519_KEY_SIZE;
+680   SAFE_MEMCPY(packet_out + sizeof(packet_type), copy_size, ctx-&gt;public_key, copy_size);
+681 
+682   *packet_len_out = required_size;
+683   return CRYPTO_OK;
+684 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>CRYPTO_ERROR_BUFFER_TOO_SMALL</b>,
@@ -3346,73 +3346,73 @@
 <p class="Pp">Always check return value. CRYPTO_ERROR_INVALID_MAC indicates
     tampering or wrong key.</p>
 </div>
-<p class="Pp">Definition at line <b>510</b> of file
+<p class="Pp">Definition at line <b>514</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>511                                                                                                              {
-512   if (!ctx || !ctx-&gt;initialized || !ciphertext || !plaintext_out || !plaintext_len_out) {
-513     SET_ERRNO(ERROR_INVALID_PARAM,
-514               &quot;Invalid parameters: ctx=%p, initialized=%d, ciphertext=%p, plaintext_out=%p, plaintext_len_out=%p&quot;, ctx,
-515               ctx ? ctx-&gt;initialized : 0, ciphertext, plaintext_out, plaintext_len_out);
-516     return CRYPTO_ERROR_INVALID_PARAMS;
-517   }
-518 
-519   if (!crypto_is_ready(ctx)) {
-520     SET_ERRNO(ERROR_CRYPTO, &quot;Crypto context not ready for decryption&quot;);
-521     return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
-522   }
-523 
-524   // Check minimum ciphertext size (nonce + MAC)
-525   size_t min_ciphertext_size = ctx-&gt;nonce_size + ctx-&gt;mac_size;
-526   if (ciphertext_len &lt; min_ciphertext_size) {
-527     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Ciphertext too small: %zu &lt; %zu&quot;, ciphertext_len, min_ciphertext_size);
-528     return CRYPTO_ERROR_INVALID_PARAMS;
-529   }
-530 
-531   size_t plaintext_len = ciphertext_len - ctx-&gt;nonce_size - ctx-&gt;mac_size;
-532   if (plaintext_out_size &lt; plaintext_len) {
-533     SET_ERRNO(ERROR_BUFFER, &quot;Plaintext buffer too small: %zu &lt; %zu&quot;, plaintext_out_size, plaintext_len);
-534     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
-535   }
-536 
-537   // Extract nonce from beginning of ciphertext
-538   const uint8_t *nonce = ciphertext;
-539   const uint8_t *encrypted_data = ciphertext + ctx-&gt;nonce_size;
+<pre>515                                                                                                              {
+516   if (!ctx || !ctx-&gt;initialized || !ciphertext || !plaintext_out || !plaintext_len_out) {
+517     SET_ERRNO(ERROR_INVALID_PARAM,
+518               &quot;Invalid parameters: ctx=%p, initialized=%d, ciphertext=%p, plaintext_out=%p, plaintext_len_out=%p&quot;, ctx,
+519               ctx ? ctx-&gt;initialized : 0, ciphertext, plaintext_out, plaintext_len_out);
+520     return CRYPTO_ERROR_INVALID_PARAMS;
+521   }
+522 
+523   if (!crypto_is_ready(ctx)) {
+524     SET_ERRNO(ERROR_CRYPTO, &quot;Crypto context not ready for decryption&quot;);
+525     return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
+526   }
+527 
+528   // Check minimum ciphertext size (nonce + MAC)
+529   size_t min_ciphertext_size = ctx-&gt;nonce_size + ctx-&gt;mac_size;
+530   if (ciphertext_len &lt; min_ciphertext_size) {
+531     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Ciphertext too small: %zu &lt; %zu&quot;, ciphertext_len, min_ciphertext_size);
+532     return CRYPTO_ERROR_INVALID_PARAMS;
+533   }
+534 
+535   size_t plaintext_len = ciphertext_len - ctx-&gt;nonce_size - ctx-&gt;mac_size;
+536   if (plaintext_out_size &lt; plaintext_len) {
+537     SET_ERRNO(ERROR_BUFFER, &quot;Plaintext buffer too small: %zu &lt; %zu&quot;, plaintext_out_size, plaintext_len);
+538     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
+539   }
 540 
-541   // Choose decryption key (prefer shared key over password key)
-542   const uint8_t *decryption_key = NULL;
-543   if (ctx-&gt;key_exchange_complete) {
-544     decryption_key = ctx-&gt;shared_key;
-545   } else if (ctx-&gt;has_password) {
-546     decryption_key = ctx-&gt;password_key;
-547   } else {
-548     SET_ERRNO(ERROR_CRYPTO, &quot;No decryption key available&quot;);
-549     return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
-550   }
-551 
-552   // Decrypt using NaCl secretbox (XSalsa20 + Poly1305)
-553   if (crypto_secretbox_open_easy(plaintext_out, encrypted_data, ciphertext_len - ctx-&gt;nonce_size, nonce,
-554                                  decryption_key) != 0) {
-555     // Log decryption failure details for debugging
-556     char key_hex[65], nonce_hex[49];
-557     for (int i = 0; i &lt; 32; i++) {
-558       snprintf(&amp;key_hex[i * 2], 3, &quot;%02x&quot;, decryption_key[i]);
-559     }
-560     for (int i = 0; i &lt; 24; i++) {
-561       snprintf(&amp;nonce_hex[i * 2], 3, &quot;%02x&quot;, nonce[i]);
-562     }
-563     key_hex[64] = '\0';
-564     nonce_hex[48] = '\0';
-565     log_error(&quot;DECRYPT_FAILED: cipherlen=%zu key=%s nonce=%s key_exchange_complete=%d has_password=%d&quot;,
-566               ciphertext_len - ctx-&gt;nonce_size, key_hex, nonce_hex, ctx-&gt;key_exchange_complete, ctx-&gt;has_password);
-567     SET_ERRNO(ERROR_CRYPTO, &quot;Decryption failed - invalid MAC or corrupted data&quot;);
-568     return CRYPTO_ERROR_INVALID_MAC;
-569   }
-570 
-571   *plaintext_len_out = plaintext_len;
-572   ctx-&gt;bytes_decrypted += plaintext_len;
-573 
-574   return CRYPTO_OK;
-575 }</pre>
+541   // Extract nonce from beginning of ciphertext
+542   const uint8_t *nonce = ciphertext;
+543   const uint8_t *encrypted_data = ciphertext + ctx-&gt;nonce_size;
+544 
+545   // Choose decryption key (prefer shared key over password key)
+546   const uint8_t *decryption_key = NULL;
+547   if (ctx-&gt;key_exchange_complete) {
+548     decryption_key = ctx-&gt;shared_key;
+549   } else if (ctx-&gt;has_password) {
+550     decryption_key = ctx-&gt;password_key;
+551   } else {
+552     SET_ERRNO(ERROR_CRYPTO, &quot;No decryption key available&quot;);
+553     return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
+554   }
+555 
+556   // Decrypt using NaCl secretbox (XSalsa20 + Poly1305)
+557   if (crypto_secretbox_open_easy(plaintext_out, encrypted_data, ciphertext_len - ctx-&gt;nonce_size, nonce,
+558                                  decryption_key) != 0) {
+559     // Log decryption failure details for debugging
+560     char key_hex[65], nonce_hex[49];
+561     for (int i = 0; i &lt; 32; i++) {
+562       snprintf(&amp;key_hex[i * 2], 3, &quot;%02x&quot;, decryption_key[i]);
+563     }
+564     for (int i = 0; i &lt; 24; i++) {
+565       snprintf(&amp;nonce_hex[i * 2], 3, &quot;%02x&quot;, nonce[i]);
+566     }
+567     key_hex[64] = '\0';
+568     nonce_hex[48] = '\0';
+569     log_error(&quot;DECRYPT_FAILED: cipherlen=%zu key=%s nonce=%s key_exchange_complete=%d has_password=%d&quot;,
+570               ciphertext_len - ctx-&gt;nonce_size, key_hex, nonce_hex, ctx-&gt;key_exchange_complete, ctx-&gt;has_password);
+571     SET_ERRNO(ERROR_CRYPTO, &quot;Decryption failed - invalid MAC or corrupted data&quot;);
+572     return CRYPTO_ERROR_INVALID_MAC;
+573   }
+574 
+575   *plaintext_len_out = plaintext_len;
+576   ctx-&gt;bytes_decrypted += plaintext_len;
+577 
+578   return CRYPTO_OK;
+579 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_context_t::bytes_decrypted</b>,
@@ -3459,46 +3459,46 @@
 <p class="Pp">Same password always produces same key. Only use for handshake
     encryption, not for long-term key storage.</p>
 </div>
-<p class="Pp">Definition at line <b>392</b> of file
+<p class="Pp">Definition at line <b>396</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>393                                                                                                   {
-394   if (!password || !encryption_key) {
-395     SET_ERRNO(ERROR_INVALID_PARAM,
-396               &quot;crypto_derive_password_encryption_key: Invalid parameters (password=%p, encryption_key=%p)&quot;, password,
-397               encryption_key);
-398     return CRYPTO_ERROR_INVALID_PARAMS;
-399   }
-400 
-401   // Validate password length requirements
-402   crypto_result_t validation_result = crypto_validate_password(password);
-403   if (validation_result != CRYPTO_OK) {
-404     return validation_result;
-405   }
-406 
-407   // Use deterministic salt for consistent key derivation across client/server
-408   // Salt must be exactly ARGON2ID_SALT_SIZE (32) bytes
-409   const char *deterministic_salt = &quot;ascii-chat-password-salt-v1&quot;;
-410   uint8_t salt[ARGON2ID_SALT_SIZE]; // Use maximum size for buffer
-411   size_t salt_str_len = strlen(deterministic_salt);
-412 
-413   // Zero-initialize the salt buffer first
-414   memset(salt, 0, ARGON2ID_SALT_SIZE);
-415 
-416   // Copy the salt string (will be padded with zeros to ARGON2ID_SALT_SIZE)
-417   memcpy(salt, deterministic_salt, (salt_str_len &lt; ARGON2ID_SALT_SIZE) ? salt_str_len : ARGON2ID_SALT_SIZE);
-418 
-419   // Derive key using Argon2id (memory-hard, secure against GPU attacks)
-420   if (crypto_pwhash(encryption_key, SECRETBOX_KEY_SIZE, password, strlen(password), salt,
-421                     crypto_pwhash_OPSLIMIT_INTERACTIVE, // ~0.1 seconds
-422                     crypto_pwhash_MEMLIMIT_INTERACTIVE, // ~64MB
-423                     crypto_pwhash_ALG_DEFAULT) != 0) {
-424     SET_ERRNO(ERROR_CRYPTO, &quot;Password encryption key derivation failed - possibly out of memory&quot;);
-425     return CRYPTO_ERROR_PASSWORD_DERIVATION;
-426   }
-427 
-428   log_dev(&quot;Password encryption key derived successfully using Argon2id&quot;);
-429   return CRYPTO_OK;
-430 }</pre>
+<pre>397                                                                                                   {
+398   if (!password || !encryption_key) {
+399     SET_ERRNO(ERROR_INVALID_PARAM,
+400               &quot;crypto_derive_password_encryption_key: Invalid parameters (password=%p, encryption_key=%p)&quot;, password,
+401               encryption_key);
+402     return CRYPTO_ERROR_INVALID_PARAMS;
+403   }
+404 
+405   // Validate password length requirements
+406   crypto_result_t validation_result = crypto_validate_password(password);
+407   if (validation_result != CRYPTO_OK) {
+408     return validation_result;
+409   }
+410 
+411   // Use deterministic salt for consistent key derivation across client/server
+412   // Salt must be exactly ARGON2ID_SALT_SIZE (32) bytes
+413   const char *deterministic_salt = &quot;ascii-chat-password-salt-v1&quot;;
+414   uint8_t salt[ARGON2ID_SALT_SIZE]; // Use maximum size for buffer
+415   size_t salt_str_len = strlen(deterministic_salt);
+416 
+417   // Zero-initialize the salt buffer first
+418   memset(salt, 0, ARGON2ID_SALT_SIZE);
+419 
+420   // Copy the salt string (will be padded with zeros to ARGON2ID_SALT_SIZE)
+421   memcpy(salt, deterministic_salt, (salt_str_len &lt; ARGON2ID_SALT_SIZE) ? salt_str_len : ARGON2ID_SALT_SIZE);
+422 
+423   // Derive key using Argon2id (memory-hard, secure against GPU attacks)
+424   if (crypto_pwhash(encryption_key, SECRETBOX_KEY_SIZE, password, strlen(password), salt,
+425                     crypto_pwhash_OPSLIMIT_INTERACTIVE, // ~0.1 seconds
+426                     crypto_pwhash_MEMLIMIT_INTERACTIVE, // ~64MB
+427                     crypto_pwhash_ALG_DEFAULT) != 0) {
+428     SET_ERRNO(ERROR_CRYPTO, &quot;Password encryption key derivation failed - possibly out of memory&quot;);
+429     return CRYPTO_ERROR_PASSWORD_DERIVATION;
+430   }
+431 
+432   log_dev(&quot;Password encryption key derived successfully using Argon2id&quot;);
+433   return CRYPTO_OK;
+434 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ARGON2ID_SALT_SIZE</b>,
@@ -3538,46 +3538,46 @@
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Deterministic salt: Same password always produces same
   key. Only use for session encryption, not long-term key storage.</div>
-<p class="Pp">Definition at line <b>318</b> of file
+<p class="Pp">Definition at line <b>322</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>318                                                                                         {
-319   if (!ctx || !ctx-&gt;initialized || !password) {
-320     SET_ERRNO(ERROR_INVALID_PARAM,
-321               &quot;crypto_derive_password_key: Invalid parameters (ctx=%p, initialized=%d, password=%p)&quot;, ctx,
-322               ctx ? ctx-&gt;initialized : 0, password);
-323     return CRYPTO_ERROR_INVALID_PARAMS;
-324   }
-325 
-326   // Validate password length requirements
-327   crypto_result_t validation_result = crypto_validate_password(password);
-328   if (validation_result != CRYPTO_OK) {
-329     return validation_result;
-330   }
-331 
-332   // Use deterministic salt for consistent key derivation across client/server
-333   // This ensures the same password produces the same key on both sides
-334   // Salt must be exactly ARGON2ID_SALT_SIZE (32) bytes
-335   const char *deterministic_salt = &quot;ascii-chat-password-salt-v1&quot;;
-336   size_t salt_str_len = strlen(deterministic_salt);
-337 
-338   // Zero-initialize the salt buffer first
-339   memset(ctx-&gt;password_salt, 0, ctx-&gt;salt_size);
-340 
-341   // Copy the salt string (will be padded with zeros to ctx-&gt;salt_size)
-342   memcpy(ctx-&gt;password_salt, deterministic_salt, (salt_str_len &lt; ctx-&gt;salt_size) ? salt_str_len : ctx-&gt;salt_size);
-343 
-344   // Derive key using Argon2id (memory-hard, secure against GPU attacks)
-345   if (crypto_pwhash(ctx-&gt;password_key, ctx-&gt;encryption_key_size, password, strlen(password), ctx-&gt;password_salt,
-346                     crypto_pwhash_OPSLIMIT_INTERACTIVE, // ~0.1 seconds
-347                     crypto_pwhash_MEMLIMIT_INTERACTIVE, // ~64MB
-348                     crypto_pwhash_ALG_DEFAULT) != 0) {
-349     SET_ERRNO(ERROR_CRYPTO, &quot;Password key derivation failed - possibly out of memory&quot;);
-350     return CRYPTO_ERROR_PASSWORD_DERIVATION;
-351   }
-352 
-353   log_dev(&quot;Password key derived successfully using Argon2id with deterministic salt&quot;);
-354   return CRYPTO_OK;
-355 }</pre>
+<pre>322                                                                                         {
+323   if (!ctx || !ctx-&gt;initialized || !password) {
+324     SET_ERRNO(ERROR_INVALID_PARAM,
+325               &quot;crypto_derive_password_key: Invalid parameters (ctx=%p, initialized=%d, password=%p)&quot;, ctx,
+326               ctx ? ctx-&gt;initialized : 0, password);
+327     return CRYPTO_ERROR_INVALID_PARAMS;
+328   }
+329 
+330   // Validate password length requirements
+331   crypto_result_t validation_result = crypto_validate_password(password);
+332   if (validation_result != CRYPTO_OK) {
+333     return validation_result;
+334   }
+335 
+336   // Use deterministic salt for consistent key derivation across client/server
+337   // This ensures the same password produces the same key on both sides
+338   // Salt must be exactly ARGON2ID_SALT_SIZE (32) bytes
+339   const char *deterministic_salt = &quot;ascii-chat-password-salt-v1&quot;;
+340   size_t salt_str_len = strlen(deterministic_salt);
+341 
+342   // Zero-initialize the salt buffer first
+343   memset(ctx-&gt;password_salt, 0, ctx-&gt;salt_size);
+344 
+345   // Copy the salt string (will be padded with zeros to ctx-&gt;salt_size)
+346   memcpy(ctx-&gt;password_salt, deterministic_salt, (salt_str_len &lt; ctx-&gt;salt_size) ? salt_str_len : ctx-&gt;salt_size);
+347 
+348   // Derive key using Argon2id (memory-hard, secure against GPU attacks)
+349   if (crypto_pwhash(ctx-&gt;password_key, ctx-&gt;encryption_key_size, password, strlen(password), ctx-&gt;password_salt,
+350                     crypto_pwhash_OPSLIMIT_INTERACTIVE, // ~0.1 seconds
+351                     crypto_pwhash_MEMLIMIT_INTERACTIVE, // ~64MB
+352                     crypto_pwhash_ALG_DEFAULT) != 0) {
+353     SET_ERRNO(ERROR_CRYPTO, &quot;Password key derivation failed - possibly out of memory&quot;);
+354     return CRYPTO_ERROR_PASSWORD_DERIVATION;
+355   }
+356 
+357   log_dev(&quot;Password key derived successfully using Argon2id with deterministic salt&quot;);
+358   return CRYPTO_OK;
+359 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>CRYPTO_ERROR_INVALID_PARAMS</b>,
@@ -3606,28 +3606,28 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Uses sodium_memzero() to prevent key material from
   persisting in memory.</div>
-<p class="Pp">Definition at line <b>191</b> of file
+<p class="Pp">Definition at line <b>194</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>191                                            {
-192   if (!ctx || !ctx-&gt;initialized) {
-193     return;
-194   }
-195 
-196   // Securely wipe sensitive data
-197   secure_memzero(ctx-&gt;private_key, sizeof(ctx-&gt;private_key));
-198   secure_memzero(ctx-&gt;shared_key, sizeof(ctx-&gt;shared_key));
-199   secure_memzero(ctx-&gt;password_key, sizeof(ctx-&gt;password_key));
-200   secure_memzero(ctx-&gt;password_salt, sizeof(ctx-&gt;password_salt));
-201 
-202   char encrypted_str[32], decrypted_str[32];
-203   format_bytes_pretty(ctx-&gt;bytes_encrypted, encrypted_str, sizeof(encrypted_str));
-204   format_bytes_pretty(ctx-&gt;bytes_decrypted, decrypted_str, sizeof(decrypted_str));
-205 
-206   log_debug(&quot;Crypto context cleaned up (encrypted: %s, decrypted: %s)&quot;, encrypted_str, decrypted_str);
-207 
-208   // Clear entire context
-209   secure_memzero(ctx, sizeof(crypto_context_t));
-210 }</pre>
+<pre>194                                            {
+195   if (!ctx || !ctx-&gt;initialized) {
+196     return;
+197   }
+198 
+199   // Securely wipe sensitive data
+200   secure_memzero(ctx-&gt;private_key, sizeof(ctx-&gt;private_key));
+201   secure_memzero(ctx-&gt;shared_key, sizeof(ctx-&gt;shared_key));
+202   secure_memzero(ctx-&gt;password_key, sizeof(ctx-&gt;password_key));
+203   secure_memzero(ctx-&gt;password_salt, sizeof(ctx-&gt;password_salt));
+204 
+205   char encrypted_str[32], decrypted_str[32];
+206   format_bytes_pretty(ctx-&gt;bytes_encrypted, encrypted_str, sizeof(encrypted_str));
+207   format_bytes_pretty(ctx-&gt;bytes_decrypted, decrypted_str, sizeof(decrypted_str));
+208 
+209   log_debug(&quot;Crypto context cleaned up (encrypted: %s, decrypted: %s)&quot;, encrypted_str, decrypted_str);
+210 
+211   // Clear entire context
+212   secure_memzero(ctx, sizeof(crypto_context_t));
+213 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_context_t::bytes_decrypted</b>,
@@ -3692,80 +3692,80 @@
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Context must be ready (<b>crypto_is_ready()</b> returns
   true) before calling this function.</div>
-<p class="Pp">Definition at line <b>436</b> of file
+<p class="Pp">Definition at line <b>440</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>437                                                                                                                 {
-438   if (!ctx || !ctx-&gt;initialized || !plaintext || !ciphertext_out || !ciphertext_len_out) {
-439     SET_ERRNO(ERROR_INVALID_PARAM,
-440               &quot;Invalid parameters: ctx=%p, initialized=%d, plaintext=%p, ciphertext_out=%p, ciphertext_len_out=%p&quot;, ctx,
-441               ctx ? ctx-&gt;initialized : 0, plaintext, ciphertext_out, ciphertext_len_out);
-442     return CRYPTO_ERROR_INVALID_PARAMS;
-443   }
-444 
-445   if (plaintext_len == 0 || plaintext_len &gt; CRYPTO_MAX_PLAINTEXT_SIZE) {
-446     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid plaintext length: %zu (max: %d)&quot;, plaintext_len, CRYPTO_MAX_PLAINTEXT_SIZE);
-447     return CRYPTO_ERROR_INVALID_PARAMS;
-448   }
-449 
-450   if (!crypto_is_ready(ctx)) {
-451     SET_ERRNO(ERROR_CRYPTO, &quot;Crypto context not ready for encryption&quot;);
-452     return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
-453   }
-454 
-455   // Check output buffer size
-456   size_t required_size = plaintext_len + ctx-&gt;nonce_size + ctx-&gt;mac_size;
-457   if (ciphertext_out_size &lt; required_size) {
-458     SET_ERRNO(ERROR_BUFFER, &quot;Ciphertext buffer too small: %zu &lt; %zu&quot;, ciphertext_out_size, required_size);
-459     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
-460   }
-461 
-462   // Check for nonce counter exhaustion (extremely unlikely in practice)
-463   // Starting from 1, reaching UINT64_MAX would require ~292 billion years at 60 FPS.
-464   // With key rotation required at 1M packets (~16 seconds), exhaustion is virtually impossible.
-465   // This check is a safety fallback that should never trigger in practice.
-466   if (ctx-&gt;nonce_counter == 0 || ctx-&gt;nonce_counter == UINT64_MAX) {
-467     SET_ERRNO(ERROR_CRYPTO, &quot;Nonce counter exhausted - key rotation required&quot;);
-468     return CRYPTO_ERROR_NONCE_EXHAUSTED;
-469   }
-470 
-471   // Choose encryption key BEFORE generating nonce (prevents nonce_counter increment on error)
-472   const uint8_t *encryption_key = NULL;
-473   if (ctx-&gt;key_exchange_complete) {
-474     encryption_key = ctx-&gt;shared_key;
-475   } else if (ctx-&gt;has_password) {
-476     encryption_key = ctx-&gt;password_key;
-477   } else {
-478     SET_ERRNO(ERROR_CRYPTO, &quot;No encryption key available&quot;);
-479     return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
-480   }
-481 
-482   // Generate nonce and place at beginning of ciphertext
-483   uint8_t nonce[XSALSA20_NONCE_SIZE]; // Use maximum nonce size for buffer
-484   generate_nonce(ctx, nonce);
-485   SAFE_MEMCPY(ciphertext_out, ctx-&gt;nonce_size, nonce, ctx-&gt;nonce_size);
-486 
-487   // Log nonce for debugging
-488   char nonce_hex[49];
-489   for (int i = 0; i &lt; 24; i++) {
-490     snprintf(&amp;nonce_hex[i * 2], 3, &quot;%02x&quot;, nonce[i]);
-491   }
-492   nonce_hex[48] = '\0';
-493   log_debug(&quot;ENCRYPT_NONCE: counter=%lu nonce=%s plaintext_len=%zu&quot;, ctx-&gt;nonce_counter - 1, nonce_hex, plaintext_len);
-494 
-495   // Encrypt using NaCl secretbox (XSalsa20 + Poly1305)
-496   if (crypto_secretbox_easy(ciphertext_out + ctx-&gt;nonce_size, plaintext, plaintext_len, nonce, encryption_key) != 0) {
-497     SET_ERRNO(ERROR_CRYPTO, &quot;Encryption failed&quot;);
-498     return CRYPTO_ERROR_ENCRYPTION;
-499   }
-500 
-501   *ciphertext_len_out = required_size;
-502   ctx-&gt;bytes_encrypted += plaintext_len;
-503 
-504   // Increment rekey packet counter for rekeying trigger detection
-505   ctx-&gt;rekey_packet_count++;
-506 
-507   return CRYPTO_OK;
-508 }</pre>
+<pre>441                                                                                                                 {
+442   if (!ctx || !ctx-&gt;initialized || !plaintext || !ciphertext_out || !ciphertext_len_out) {
+443     SET_ERRNO(ERROR_INVALID_PARAM,
+444               &quot;Invalid parameters: ctx=%p, initialized=%d, plaintext=%p, ciphertext_out=%p, ciphertext_len_out=%p&quot;, ctx,
+445               ctx ? ctx-&gt;initialized : 0, plaintext, ciphertext_out, ciphertext_len_out);
+446     return CRYPTO_ERROR_INVALID_PARAMS;
+447   }
+448 
+449   if (plaintext_len == 0 || plaintext_len &gt; CRYPTO_MAX_PLAINTEXT_SIZE) {
+450     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid plaintext length: %zu (max: %d)&quot;, plaintext_len, CRYPTO_MAX_PLAINTEXT_SIZE);
+451     return CRYPTO_ERROR_INVALID_PARAMS;
+452   }
+453 
+454   if (!crypto_is_ready(ctx)) {
+455     SET_ERRNO(ERROR_CRYPTO, &quot;Crypto context not ready for encryption&quot;);
+456     return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
+457   }
+458 
+459   // Check output buffer size
+460   size_t required_size = plaintext_len + ctx-&gt;nonce_size + ctx-&gt;mac_size;
+461   if (ciphertext_out_size &lt; required_size) {
+462     SET_ERRNO(ERROR_BUFFER, &quot;Ciphertext buffer too small: %zu &lt; %zu&quot;, ciphertext_out_size, required_size);
+463     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
+464   }
+465 
+466   // Check for nonce counter exhaustion (extremely unlikely in practice)
+467   // Starting from 1, reaching UINT64_MAX would require ~292 billion years at 60 FPS.
+468   // With key rotation required at 1M packets (~16 seconds), exhaustion is virtually impossible.
+469   // This check is a safety fallback that should never trigger in practice.
+470   if (ctx-&gt;nonce_counter == 0 || ctx-&gt;nonce_counter == UINT64_MAX) {
+471     SET_ERRNO(ERROR_CRYPTO, &quot;Nonce counter exhausted - key rotation required&quot;);
+472     return CRYPTO_ERROR_NONCE_EXHAUSTED;
+473   }
+474 
+475   // Choose encryption key BEFORE generating nonce (prevents nonce_counter increment on error)
+476   const uint8_t *encryption_key = NULL;
+477   if (ctx-&gt;key_exchange_complete) {
+478     encryption_key = ctx-&gt;shared_key;
+479   } else if (ctx-&gt;has_password) {
+480     encryption_key = ctx-&gt;password_key;
+481   } else {
+482     SET_ERRNO(ERROR_CRYPTO, &quot;No encryption key available&quot;);
+483     return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
+484   }
+485 
+486   // Generate nonce and place at beginning of ciphertext
+487   uint8_t nonce[XSALSA20_NONCE_SIZE]; // Use maximum nonce size for buffer
+488   generate_nonce(ctx, nonce);
+489   SAFE_MEMCPY(ciphertext_out, ctx-&gt;nonce_size, nonce, ctx-&gt;nonce_size);
+490 
+491   // Log nonce for debugging
+492   char nonce_hex[49];
+493   for (int i = 0; i &lt; 24; i++) {
+494     snprintf(&amp;nonce_hex[i * 2], 3, &quot;%02x&quot;, nonce[i]);
+495   }
+496   nonce_hex[48] = '\0';
+497   log_debug(&quot;ENCRYPT_NONCE: counter=%lu nonce=%s plaintext_len=%zu&quot;, ctx-&gt;nonce_counter - 1, nonce_hex, plaintext_len);
+498 
+499   // Encrypt using NaCl secretbox (XSalsa20 + Poly1305)
+500   if (crypto_secretbox_easy(ciphertext_out + ctx-&gt;nonce_size, plaintext, plaintext_len, nonce, encryption_key) != 0) {
+501     SET_ERRNO(ERROR_CRYPTO, &quot;Encryption failed&quot;);
+502     return CRYPTO_ERROR_ENCRYPTION;
+503   }
+504 
+505   *ciphertext_len_out = required_size;
+506   ctx-&gt;bytes_encrypted += plaintext_len;
+507 
+508   // Increment rekey packet counter for rekeying trigger detection
+509   ctx-&gt;rekey_packet_count++;
+510 
+511   return CRYPTO_OK;
+512 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_context_t::bytes_encrypted</b>,
@@ -3809,19 +3809,19 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Format: [HMAC:32][challenge_nonce:32] (64 bytes
   total)</div>
-<p class="Pp">Definition at line <b>1160</b> of file
+<p class="Pp">Definition at line <b>1164</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>1160                                                                                                        {
-1161   if (!combined_data || !hmac_out || !challenge_out) {
-1162     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: combined_data=%p, hmac_out=%p, challenge_out=%p&quot;, combined_data,
-1163               hmac_out, challenge_out);
-1164     return;
-1165   }
-1166 
-1167   // Extract HMAC (first 32 bytes) and challenge nonce (last 32 bytes)
-1168   memcpy(hmac_out, combined_data, 32);
-1169   memcpy(challenge_out, combined_data + 32, 32);
-1170 }</pre>
+<pre>1164                                                                                                        {
+1165   if (!combined_data || !hmac_out || !challenge_out) {
+1166     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: combined_data=%p, hmac_out=%p, challenge_out=%p&quot;, combined_data,
+1167               hmac_out, challenge_out);
+1168     return;
+1169   }
+1170 
+1171   // Extract HMAC (first 32 bytes) and challenge nonce (last 32 bytes)
+1172   memcpy(hmac_out, combined_data, 32);
+1173   memcpy(challenge_out, combined_data + 32, 32);
+1174 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
@@ -3839,28 +3839,29 @@
 <p class="Pp">Generates a new ephemeral X25519 key pair. Called automatically by
     <b>crypto_init()</b>. Can be called again to regenerate keys (e.g., for
     rekeying).</p>
-<p class="Pp">Definition at line <b>212</b> of file
+<p class="Pp">Definition at line <b>215</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>212                                                                {
-213   if (!ctx) {
-214     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_generate_keypair: NULL context&quot;);
-215     return CRYPTO_ERROR_INVALID_PARAMS;
-216   }
-217 
-218   // Generate X25519 key pair for key exchange
-219   if (crypto_box_keypair(ctx-&gt;public_key, ctx-&gt;private_key) != 0) {
-220     SET_ERRNO(ERROR_CRYPTO, &quot;Failed to generate X25519 key pair&quot;);
-221     return CRYPTO_ERROR_KEY_GENERATION;
-222   }
-223 
-224   log_debug(&quot;Generated X25519 key pair for key exchange&quot;);
-225   return CRYPTO_OK;
-226 }</pre>
+<pre>215                                                                {
+216   if (!ctx) {
+217     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_generate_keypair: NULL context&quot;);
+218     return CRYPTO_ERROR_INVALID_PARAMS;
+219   }
+220 
+221   log_info(&quot;DEBUG: About to call crypto_box_keypair&quot;);
+222   // Generate X25519 key pair for key exchange
+223   if (crypto_box_keypair(ctx-&gt;public_key, ctx-&gt;private_key) != 0) {
+224     SET_ERRNO(ERROR_CRYPTO, &quot;Failed to generate X25519 key pair&quot;);
+225     return CRYPTO_ERROR_KEY_GENERATION;
+226   }
+227 
+228   log_debug(&quot;Generated X25519 key pair for key exchange&quot;);
+229   return CRYPTO_OK;
+230 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>CRYPTO_ERROR_INVALID_PARAMS</b>,
     <b>CRYPTO_ERROR_KEY_GENERATION</b>, <b>CRYPTO_OK</b>, <b>ERROR_CRYPTO</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>, <b>log_info</b>,
     <b>crypto_context_t::private_key</b>, <b>crypto_context_t::public_key</b>,
     and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_init()</b>.</p>
@@ -3882,22 +3883,22 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Automatically initializes libsodium if not already
   initialized.</div>
-<p class="Pp">Definition at line <b>818</b> of file
+<p class="Pp">Definition at line <b>822</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>818                                                          {
-819   if (!nonce) {
-820     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_generate_nonce: NULL nonce buffer&quot;);
-821     return CRYPTO_ERROR_INVALID_PARAMS;
-822   }
-823 
-824   crypto_result_t result = init_libsodium();
-825   if (result != CRYPTO_OK) {
-826     return result;
-827   }
-828 
-829   randombytes_buf(nonce, 32);
-830   return CRYPTO_OK;
-831 }</pre>
+<pre>822                                                          {
+823   if (!nonce) {
+824     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_generate_nonce: NULL nonce buffer&quot;);
+825     return CRYPTO_ERROR_INVALID_PARAMS;
+826   }
+827 
+828   crypto_result_t result = init_libsodium();
+829   if (result != CRYPTO_OK) {
+830     return result;
+831   }
+832 
+833   randombytes_buf(nonce, 32);
+834   return CRYPTO_OK;
+835 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>CRYPTO_ERROR_INVALID_PARAMS</b>, <b>CRYPTO_OK</b>,
@@ -3920,21 +3921,21 @@
 <div class="Bd-indent">CRYPTO_OK on success, error code on failure</div>
 <p class="Pp">Retrieves our ephemeral public key for transmission to the peer.
     This is the first step in the key exchange handshake.</p>
-<p class="Pp">Definition at line <b>232</b> of file
+<p class="Pp">Definition at line <b>236</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>232                                                                                             {
-233   if (!ctx || !ctx-&gt;initialized || !public_key_out) {
-234     SET_ERRNO(ERROR_INVALID_PARAM,
-235               &quot;crypto_get_public_key: Invalid parameters (ctx=%p, initialized=%d, public_key_out=%p)&quot;, ctx,
-236               ctx ? ctx-&gt;initialized : 0, public_key_out);
-237     return CRYPTO_ERROR_INVALID_PARAMS;
-238   }
-239 
-240   // Bounds check to prevent buffer overflow
-241   size_t copy_size = (ctx-&gt;public_key_size &lt;= X25519_KEY_SIZE) ? ctx-&gt;public_key_size : X25519_KEY_SIZE;
-242   SAFE_MEMCPY(public_key_out, copy_size, ctx-&gt;public_key, copy_size);
-243   return CRYPTO_OK;
-244 }</pre>
+<pre>236                                                                                             {
+237   if (!ctx || !ctx-&gt;initialized || !public_key_out) {
+238     SET_ERRNO(ERROR_INVALID_PARAM,
+239               &quot;crypto_get_public_key: Invalid parameters (ctx=%p, initialized=%d, public_key_out=%p)&quot;, ctx,
+240               ctx ? ctx-&gt;initialized : 0, public_key_out);
+241     return CRYPTO_ERROR_INVALID_PARAMS;
+242   }
+243 
+244   // Bounds check to prevent buffer overflow
+245   size_t copy_size = (ctx-&gt;public_key_size &lt;= X25519_KEY_SIZE) ? ctx-&gt;public_key_size : X25519_KEY_SIZE;
+246   SAFE_MEMCPY(public_key_out, copy_size, ctx-&gt;public_key, copy_size);
+247   return CRYPTO_OK;
+248 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>CRYPTO_ERROR_INVALID_PARAMS</b>, <b>CRYPTO_OK</b>,
@@ -3967,30 +3968,30 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Safe to call with NULL ctx or buffer (does
   nothing).</div>
-<p class="Pp">Definition at line <b>1372</b> of file
+<p class="Pp">Definition at line <b>1376</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>1372                                                                                                    {
-1373   if (!ctx || !status_buffer || buffer_size == 0) {
-1374     return;
-1375   }
-1376 
-1377   time_t now = time(NULL);
-1378   time_t elapsed = now - ctx-&gt;rekey_last_time;
-1379   time_t remaining_time = (ctx-&gt;rekey_time_threshold &gt; elapsed) ? (ctx-&gt;rekey_time_threshold - elapsed) : 0;
-1380   uint64_t remaining_packets = (ctx-&gt;rekey_packet_threshold &gt; ctx-&gt;rekey_packet_count)
-1381                                    ? (ctx-&gt;rekey_packet_threshold - ctx-&gt;rekey_packet_count)
-1382                                    : 0;
-1383 
-1384   safe_snprintf(status_buffer, buffer_size,
-1385                 &quot;Rekey status: %s | &quot;
-1386                 &quot;Packets: %llu/%llu (%llu remaining) | &quot;
-1387                 &quot;Time: %ld/%ld sec (%ld sec remaining) | &quot;
-1388                 &quot;Rekeys: %llu | Failures: %d&quot;,
-1389                 ctx-&gt;rekey_in_progress ? &quot;IN_PROGRESS&quot; : &quot;IDLE&quot;, (unsigned long long)ctx-&gt;rekey_packet_count,
-1390                 (unsigned long long)ctx-&gt;rekey_packet_threshold, (unsigned long long)remaining_packets, (long)elapsed,
-1391                 (long)ctx-&gt;rekey_time_threshold, (long)remaining_time, (unsigned long long)ctx-&gt;rekey_count,
-1392                 ctx-&gt;rekey_failure_count);
-1393 }</pre>
+<pre>1376                                                                                                    {
+1377   if (!ctx || !status_buffer || buffer_size == 0) {
+1378     return;
+1379   }
+1380 
+1381   time_t now = time(NULL);
+1382   time_t elapsed = now - ctx-&gt;rekey_last_time;
+1383   time_t remaining_time = (ctx-&gt;rekey_time_threshold &gt; elapsed) ? (ctx-&gt;rekey_time_threshold - elapsed) : 0;
+1384   uint64_t remaining_packets = (ctx-&gt;rekey_packet_threshold &gt; ctx-&gt;rekey_packet_count)
+1385                                    ? (ctx-&gt;rekey_packet_threshold - ctx-&gt;rekey_packet_count)
+1386                                    : 0;
+1387 
+1388   safe_snprintf(status_buffer, buffer_size,
+1389                 &quot;Rekey status: %s | &quot;
+1390                 &quot;Packets: %llu/%llu (%llu remaining) | &quot;
+1391                 &quot;Time: %ld/%ld sec (%ld sec remaining) | &quot;
+1392                 &quot;Rekeys: %llu | Failures: %d&quot;,
+1393                 ctx-&gt;rekey_in_progress ? &quot;IN_PROGRESS&quot; : &quot;IDLE&quot;, (unsigned long long)ctx-&gt;rekey_packet_count,
+1394                 (unsigned long long)ctx-&gt;rekey_packet_threshold, (unsigned long long)remaining_packets, (long)elapsed,
+1395                 (long)ctx-&gt;rekey_time_threshold, (long)remaining_time, (unsigned long long)ctx-&gt;rekey_count,
+1396                 ctx-&gt;rekey_failure_count);
+1397 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_size</b>,
@@ -4029,25 +4030,25 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Safe to call with NULL ctx or buffer (does
   nothing).</div>
-<p class="Pp">Definition at line <b>610</b> of file
+<p class="Pp">Definition at line <b>614</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>610                                                                                              {
-611   if (!ctx || !status_buffer || buffer_size == 0) {
-612     return;
-613   }
-614 
-615   if (!ctx-&gt;initialized) {
-616     SAFE_SNPRINTF(status_buffer, buffer_size, &quot;Not initialized&quot;);
-617     return;
-618   }
-619 
-620   SAFE_SNPRINTF(status_buffer, buffer_size,
-621                 &quot;Initialized: %s, Password: %s, Key Exchange: %s, Ready: %s, &quot;
-622                 &quot;Encrypted: %&quot; PRIu64 &quot; bytes, Decrypted: %&quot; PRIu64 &quot; bytes, Nonce: %&quot; PRIu64,
-623                 ctx-&gt;initialized ? &quot;yes&quot; : &quot;no&quot;, ctx-&gt;has_password ? &quot;yes&quot; : &quot;no&quot;,
-624                 ctx-&gt;key_exchange_complete ? &quot;complete&quot; : &quot;incomplete&quot;, crypto_is_ready(ctx) ? &quot;yes&quot; : &quot;no&quot;,
-625                 ctx-&gt;bytes_encrypted, ctx-&gt;bytes_decrypted, ctx-&gt;nonce_counter);
-626 }</pre>
+<pre>614                                                                                              {
+615   if (!ctx || !status_buffer || buffer_size == 0) {
+616     return;
+617   }
+618 
+619   if (!ctx-&gt;initialized) {
+620     SAFE_SNPRINTF(status_buffer, buffer_size, &quot;Not initialized&quot;);
+621     return;
+622   }
+623 
+624   SAFE_SNPRINTF(status_buffer, buffer_size,
+625                 &quot;Initialized: %s, Password: %s, Key Exchange: %s, Ready: %s, &quot;
+626                 &quot;Encrypted: %&quot; PRIu64 &quot; bytes, Decrypted: %&quot; PRIu64 &quot; bytes, Nonce: %&quot; PRIu64,
+627                 ctx-&gt;initialized ? &quot;yes&quot; : &quot;no&quot;, ctx-&gt;has_password ? &quot;yes&quot; : &quot;no&quot;,
+628                 ctx-&gt;key_exchange_complete ? &quot;complete&quot; : &quot;incomplete&quot;, crypto_is_ready(ctx) ? &quot;yes&quot; : &quot;no&quot;,
+629                 ctx-&gt;bytes_encrypted, ctx-&gt;bytes_decrypted, ctx-&gt;nonce_counter);
+630 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_size</b>,
@@ -4080,81 +4081,84 @@
 <p class="Pp">Definition at line <b>84</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
 <pre>84                                                    {
-85   if (!ctx) {
-86     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p&quot;, ctx);
-87     return CRYPTO_ERROR_INVALID_PARAMS;
-88   }
-89 
-90   // Initialize libsodium
-91   crypto_result_t result = init_libsodium();
-92   if (result != CRYPTO_OK) {
-93     return result;
-94   }
-95 
-96   // Clear context
-97   secure_memzero(ctx, sizeof(crypto_context_t));
+85   log_info(&quot;DEBUG: crypto_init START&quot;);
+86   if (!ctx) {
+87     log_info(&quot;DEBUG: crypto_init ctx is NULL&quot;);
+88     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p&quot;, ctx);
+89     return CRYPTO_ERROR_INVALID_PARAMS;
+90   }
+91 
+92   // Initialize libsodium
+93   log_info(&quot;DEBUG: crypto_init calling init_libsodium&quot;);
+94   crypto_result_t result = init_libsodium();
+95   if (result != CRYPTO_OK) {
+96     return result;
+97   }
 98 
-99   // Generate key pair for X25519 key exchange
-100   result = crypto_generate_keypair(ctx);
-101   if (result != CRYPTO_OK) {
-102     return result;
-103   }
-104 
-105   ctx-&gt;initialized = true;
-106   ctx-&gt;has_password = false;
-107   ctx-&gt;key_exchange_complete = false;
-108   ctx-&gt;peer_key_received = false;
-109   ctx-&gt;handshake_complete = false;
-110   ctx-&gt;encrypt_data = true; // Default: enable payload encryption
-111   ctx-&gt;nonce_counter = 1;   // Start from 1 (0 reserved for testing)
-112   ctx-&gt;bytes_encrypted = 0;
-113   ctx-&gt;bytes_decrypted = 0;
-114 
-115   // Set default algorithm-specific parameters (can be overridden during handshake)
-116   ctx-&gt;nonce_size = XSALSA20_NONCE_SIZE;
-117   ctx-&gt;mac_size = POLY1305_MAC_SIZE;
-118   ctx-&gt;hmac_size = HMAC_SHA256_SIZE;
-119   ctx-&gt;encryption_key_size = SECRETBOX_KEY_SIZE;
-120   ctx-&gt;auth_challenge_size = AUTH_CHALLENGE_SIZE;
-121   ctx-&gt;public_key_size = X25519_KEY_SIZE;
-122   ctx-&gt;private_key_size = X25519_KEY_SIZE;
-123   ctx-&gt;shared_key_size = X25519_KEY_SIZE;
-124   ctx-&gt;salt_size = ARGON2ID_SALT_SIZE;
-125   // signature_size and auth_public_key_size remain 0 until set by CRYPTO_PARAMETERS
-126   // (must be 0 for unauthenticated format detection in crypto_handshake_client_key_exchange)
-127 
-128   // Generate unique session ID to prevent replay attacks across connections
-129   randombytes_buf(ctx-&gt;session_id, sizeof(ctx-&gt;session_id));
+99   // Clear context
+100   secure_memzero(ctx, sizeof(crypto_context_t));
+101 
+102   // Generate key pair for X25519 key exchange
+103   result = crypto_generate_keypair(ctx);
+104   if (result != CRYPTO_OK) {
+105     return result;
+106   }
+107 
+108   ctx-&gt;initialized = true;
+109   ctx-&gt;has_password = false;
+110   ctx-&gt;key_exchange_complete = false;
+111   ctx-&gt;peer_key_received = false;
+112   ctx-&gt;handshake_complete = false;
+113   ctx-&gt;encrypt_data = true; // Default: enable payload encryption
+114   ctx-&gt;nonce_counter = 1;   // Start from 1 (0 reserved for testing)
+115   ctx-&gt;bytes_encrypted = 0;
+116   ctx-&gt;bytes_decrypted = 0;
+117 
+118   // Set default algorithm-specific parameters (can be overridden during handshake)
+119   ctx-&gt;nonce_size = XSALSA20_NONCE_SIZE;
+120   ctx-&gt;mac_size = POLY1305_MAC_SIZE;
+121   ctx-&gt;hmac_size = HMAC_SHA256_SIZE;
+122   ctx-&gt;encryption_key_size = SECRETBOX_KEY_SIZE;
+123   ctx-&gt;auth_challenge_size = AUTH_CHALLENGE_SIZE;
+124   ctx-&gt;public_key_size = X25519_KEY_SIZE;
+125   ctx-&gt;private_key_size = X25519_KEY_SIZE;
+126   ctx-&gt;shared_key_size = X25519_KEY_SIZE;
+127   ctx-&gt;salt_size = ARGON2ID_SALT_SIZE;
+128   // signature_size and auth_public_key_size remain 0 until set by CRYPTO_PARAMETERS
+129   // (must be 0 for unauthenticated format detection in crypto_handshake_client_key_exchange)
 130 
-131   // Initialize rekeying state
-132   ctx-&gt;rekey_packet_count = 0;
-133   ctx-&gt;rekey_last_time = time(NULL); // Initialize to current time
-134   ctx-&gt;rekey_last_request_time = 0;  // No rekey request yet
-135   ctx-&gt;rekey_in_progress = false;
-136   ctx-&gt;rekey_failure_count = 0;
-137   ctx-&gt;has_temp_key = false;
-138   ctx-&gt;rekey_count = 0;
-139 
-140   // SECURITY: Use production-safe rekey thresholds by default
-141   // Rekey every 1 hour OR 1 million packets (whichever comes first)
-142   // Only use test mode if explicitly requested via environment variable
-143   if (is_test_environment()) {
-144     ctx-&gt;rekey_packet_threshold = REKEY_TEST_PACKET_THRESHOLD; // 1,000 packets
-145     ctx-&gt;rekey_time_threshold = REKEY_TEST_TIME_THRESHOLD;     // 30 seconds
-146     char duration_str[32];
-147     time_pretty(ctx-&gt;rekey_time_threshold, -1, duration_str, sizeof(duration_str));
-148     log_dev(&quot;Crypto context initialized with X25519 key exchange (TEST MODE rekey thresholds: %llu packets, %s)&quot;,
-149             (unsigned long long)ctx-&gt;rekey_packet_threshold, duration_str);
-150   } else {
-151     ctx-&gt;rekey_packet_threshold = REKEY_DEFAULT_PACKET_THRESHOLD; // 1 million packets
-152     ctx-&gt;rekey_time_threshold = REKEY_DEFAULT_TIME_THRESHOLD;     // already in nanoseconds (3600 * NS_PER_SEC_INT)
-153     char duration_str[32];
-154     time_pretty(ctx-&gt;rekey_time_threshold, -1, duration_str, sizeof(duration_str));
-155     log_dev(&quot;Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %s)&quot;,
-156             (unsigned long long)ctx-&gt;rekey_packet_threshold, duration_str);
-157   }
-158   return CRYPTO_OK;
-159 }</pre>
+131   // Generate unique session ID to prevent replay attacks across connections
+132   randombytes_buf(ctx-&gt;session_id, sizeof(ctx-&gt;session_id));
+133 
+134   // Initialize rekeying state
+135   ctx-&gt;rekey_packet_count = 0;
+136   ctx-&gt;rekey_last_time = time(NULL); // Initialize to current time
+137   ctx-&gt;rekey_last_request_time = 0;  // No rekey request yet
+138   ctx-&gt;rekey_in_progress = false;
+139   ctx-&gt;rekey_failure_count = 0;
+140   ctx-&gt;has_temp_key = false;
+141   ctx-&gt;rekey_count = 0;
+142 
+143   // SECURITY: Use production-safe rekey thresholds by default
+144   // Rekey every 1 hour OR 1 million packets (whichever comes first)
+145   // Only use test mode if explicitly requested via environment variable
+146   if (is_test_environment()) {
+147     ctx-&gt;rekey_packet_threshold = REKEY_TEST_PACKET_THRESHOLD; // 1,000 packets
+148     ctx-&gt;rekey_time_threshold = REKEY_TEST_TIME_THRESHOLD;     // 30 seconds
+149     char duration_str[32];
+150     time_pretty(ctx-&gt;rekey_time_threshold, -1, duration_str, sizeof(duration_str));
+151     log_dev(&quot;Crypto context initialized with X25519 key exchange (TEST MODE rekey thresholds: %llu packets, %s)&quot;,
+152             (unsigned long long)ctx-&gt;rekey_packet_threshold, duration_str);
+153   } else {
+154     ctx-&gt;rekey_packet_threshold = REKEY_DEFAULT_PACKET_THRESHOLD; // 1 million packets
+155     ctx-&gt;rekey_time_threshold = REKEY_DEFAULT_TIME_THRESHOLD;     // already in nanoseconds (3600 * NS_PER_SEC_INT)
+156     char duration_str[32];
+157     time_pretty(ctx-&gt;rekey_time_threshold, -1, duration_str, sizeof(duration_str));
+158     log_dev(&quot;Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %s)&quot;,
+159             (unsigned long long)ctx-&gt;rekey_packet_threshold, duration_str);
+160   }
+161   return CRYPTO_OK;
+162 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ARGON2ID_SALT_SIZE</b>, <b>AUTH_CHALLENGE_SIZE</b>,
@@ -4169,8 +4173,8 @@
     <b>crypto_context_t::has_temp_key</b>, <b>HMAC_SHA256_SIZE</b>,
     <b>crypto_context_t::hmac_size</b>, <b>crypto_context_t::initialized</b>,
     <b>crypto_context_t::key_exchange_complete</b>, <b>log_dev</b>,
-    <b>crypto_context_t::mac_size</b>, <b>crypto_context_t::nonce_counter</b>,
-    <b>crypto_context_t::nonce_size</b>,
+    <b>log_info</b>, <b>crypto_context_t::mac_size</b>,
+    <b>crypto_context_t::nonce_counter</b>, <b>crypto_context_t::nonce_size</b>,
     <b>crypto_context_t::peer_key_received</b>, <b>POLY1305_MAC_SIZE</b>,
     <b>crypto_context_t::private_key_size</b>,
     <b>crypto_context_t::public_key_size</b>,
@@ -4210,37 +4214,37 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Password must meet length requirements (8-256
   characters).</div>
-<p class="Pp">Definition at line <b>161</b> of file
+<p class="Pp">Definition at line <b>164</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>161                                                                                        {
-162   if (!ctx || !password) {
-163     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, password=%p&quot;, ctx, password);
-164     return CRYPTO_ERROR_INVALID_PARAMS;
-165   }
-166 
-167   if (strlen(password) == 0) {
-168     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Password cannot be empty&quot;);
-169     return CRYPTO_ERROR_INVALID_PARAMS;
-170   }
-171 
-172   // First initialize basic crypto
-173   crypto_result_t result = crypto_init(ctx);
-174   if (result != CRYPTO_OK) {
-175     return result;
-176   }
-177 
-178   // Derive password key
-179   result = crypto_derive_password_key(ctx, password);
-180   if (result != CRYPTO_OK) {
-181     crypto_destroy(ctx);
-182     return result;
-183   }
-184 
-185   ctx-&gt;has_password = true;
-186 
-187   log_dev(&quot;Crypto context initialized with password-based encryption&quot;);
-188   return CRYPTO_OK;
-189 }</pre>
+<pre>164                                                                                        {
+165   if (!ctx || !password) {
+166     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, password=%p&quot;, ctx, password);
+167     return CRYPTO_ERROR_INVALID_PARAMS;
+168   }
+169 
+170   if (strlen(password) == 0) {
+171     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Password cannot be empty&quot;);
+172     return CRYPTO_ERROR_INVALID_PARAMS;
+173   }
+174 
+175   // First initialize basic crypto
+176   crypto_result_t result = crypto_init(ctx);
+177   if (result != CRYPTO_OK) {
+178     return result;
+179   }
+180 
+181   // Derive password key
+182   result = crypto_derive_password_key(ctx, password);
+183   if (result != CRYPTO_OK) {
+184     crypto_destroy(ctx);
+185     return result;
+186   }
+187 
+188   ctx-&gt;has_password = true;
+189 
+190   log_dev(&quot;Crypto context initialized with password-based encryption&quot;);
+191   return CRYPTO_OK;
+192 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_derive_password_key()</b>,
@@ -4262,16 +4266,16 @@
 <div class="Bd-indent">true if key exchange is complete, false otherwise</div>
 <p class="Pp">Returns true only after both parties have exchanged public keys
     and the shared secret has been computed.</p>
-<p class="Pp">Definition at line <b>282</b> of file
+<p class="Pp">Definition at line <b>286</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>282                                                   {
-283   if (!ctx || !ctx-&gt;initialized) {
-284     return false;
-285   }
-286 
-287   // Ready if either key exchange is complete OR password is set
-288   return ctx-&gt;key_exchange_complete || ctx-&gt;has_password;
-289 }</pre>
+<pre>286                                                   {
+287   if (!ctx || !ctx-&gt;initialized) {
+288     return false;
+289   }
+290 
+291   // Ready if either key exchange is complete OR password is set
+292   return ctx-&gt;key_exchange_complete || ctx-&gt;has_password;
+293 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_context_t::has_password</b>,
@@ -4311,39 +4315,39 @@
     used with <b>crypto_compute_auth_response()</b> to generate the
     authentication response.</p>
 </div>
-<p class="Pp">Definition at line <b>1004</b> of file
+<p class="Pp">Definition at line <b>1008</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>1004                                                                                                                {
-1005   if (!ctx || !ctx-&gt;initialized || !packet) {
-1006     SET_ERRNO(ERROR_INVALID_PARAM,
-1007               &quot;crypto_process_auth_challenge: Invalid parameters (ctx=%p, initialized=%d, packet=%p)&quot;, ctx,
-1008               ctx ? ctx-&gt;initialized : 0, packet);
-1009     return CRYPTO_ERROR_INVALID_PARAMS;
-1010   }
-1011 
-1012   size_t expected_size = sizeof(uint32_t) + ctx-&gt;auth_challenge_size; // type + nonce
-1013   if (packet_len != expected_size) {
-1014     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_process_auth_challenge: Invalid packet size (expected=%zu, got=%zu)&quot;,
-1015               expected_size, packet_len);
-1016     return CRYPTO_ERROR_INVALID_PARAMS;
-1017   }
-1018 
-1019   // Unpack packet: [type:4][nonce:auth_challenge_size]
-1020   uint32_t packet_type;
-1021   SAFE_MEMCPY(&amp;packet_type, sizeof(packet_type), packet, sizeof(packet_type));
+<pre>1008                                                                                                                {
+1009   if (!ctx || !ctx-&gt;initialized || !packet) {
+1010     SET_ERRNO(ERROR_INVALID_PARAM,
+1011               &quot;crypto_process_auth_challenge: Invalid parameters (ctx=%p, initialized=%d, packet=%p)&quot;, ctx,
+1012               ctx ? ctx-&gt;initialized : 0, packet);
+1013     return CRYPTO_ERROR_INVALID_PARAMS;
+1014   }
+1015 
+1016   size_t expected_size = sizeof(uint32_t) + ctx-&gt;auth_challenge_size; // type + nonce
+1017   if (packet_len != expected_size) {
+1018     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_process_auth_challenge: Invalid packet size (expected=%zu, got=%zu)&quot;,
+1019               expected_size, packet_len);
+1020     return CRYPTO_ERROR_INVALID_PARAMS;
+1021   }
 1022 
-1023   if (packet_type != CRYPTO_PACKET_AUTH_CHALLENGE) {
-1024     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_process_auth_challenge: Invalid packet type (expected=%u, got=%u)&quot;,
-1025               CRYPTO_PACKET_AUTH_CHALLENGE, packet_type);
-1026     return CRYPTO_ERROR_INVALID_PARAMS;
-1027   }
-1028 
-1029   // Store the nonce for HMAC computation (use buffer size for memcpy size, actual size from context)
-1030   SAFE_MEMCPY(ctx-&gt;auth_nonce, sizeof(ctx-&gt;auth_nonce), packet + sizeof(packet_type), ctx-&gt;auth_challenge_size);
-1031 
-1032   log_debug(&quot;Auth challenge received and processed&quot;);
-1033   return CRYPTO_OK;
-1034 }</pre>
+1023   // Unpack packet: [type:4][nonce:auth_challenge_size]
+1024   uint32_t packet_type;
+1025   SAFE_MEMCPY(&amp;packet_type, sizeof(packet_type), packet, sizeof(packet_type));
+1026 
+1027   if (packet_type != CRYPTO_PACKET_AUTH_CHALLENGE) {
+1028     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_process_auth_challenge: Invalid packet type (expected=%u, got=%u)&quot;,
+1029               CRYPTO_PACKET_AUTH_CHALLENGE, packet_type);
+1030     return CRYPTO_ERROR_INVALID_PARAMS;
+1031   }
+1032 
+1033   // Store the nonce for HMAC computation (use buffer size for memcpy size, actual size from context)
+1034   SAFE_MEMCPY(ctx-&gt;auth_nonce, sizeof(ctx-&gt;auth_nonce), packet + sizeof(packet_type), ctx-&gt;auth_challenge_size);
+1035 
+1036   log_debug(&quot;Auth challenge received and processed&quot;);
+1037   return CRYPTO_OK;
+1038 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_context_t::auth_challenge_size</b>,
@@ -4381,45 +4385,45 @@
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Context must have completed key exchange before calling
   this function.</div>
-<p class="Pp">Definition at line <b>1036</b> of file
+<p class="Pp">Definition at line <b>1040</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>1036                                                                                                               {
-1037   if (!ctx || !ctx-&gt;initialized || !packet) {
-1038     SET_ERRNO(ERROR_INVALID_PARAM,
-1039               &quot;crypto_process_auth_response: Invalid context or packet (ctx=%p, initialized=%d, packet=%p)&quot;, ctx,
-1040               ctx ? ctx-&gt;initialized : 0, packet);
-1041     return CRYPTO_ERROR_INVALID_PARAMS;
-1042   }
-1043 
-1044   size_t expected_size = sizeof(uint32_t) + 32; // type + hmac
-1045   if (packet_len != expected_size) {
-1046     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_process_auth_response: Invalid packet size (expected=%zu, got=%zu)&quot;,
-1047               expected_size, packet_len);
-1048     return CRYPTO_ERROR_INVALID_PARAMS;
-1049   }
-1050 
-1051   // Unpack packet: [type:4][hmac:32]
-1052   uint32_t packet_type;
-1053   SAFE_MEMCPY(&amp;packet_type, sizeof(packet_type), packet, sizeof(packet_type));
+<pre>1040                                                                                                               {
+1041   if (!ctx || !ctx-&gt;initialized || !packet) {
+1042     SET_ERRNO(ERROR_INVALID_PARAM,
+1043               &quot;crypto_process_auth_response: Invalid context or packet (ctx=%p, initialized=%d, packet=%p)&quot;, ctx,
+1044               ctx ? ctx-&gt;initialized : 0, packet);
+1045     return CRYPTO_ERROR_INVALID_PARAMS;
+1046   }
+1047 
+1048   size_t expected_size = sizeof(uint32_t) + 32; // type + hmac
+1049   if (packet_len != expected_size) {
+1050     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_process_auth_response: Invalid packet size (expected=%zu, got=%zu)&quot;,
+1051               expected_size, packet_len);
+1052     return CRYPTO_ERROR_INVALID_PARAMS;
+1053   }
 1054 
-1055   if (packet_type != CRYPTO_PACKET_AUTH_RESPONSE) {
-1056     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_process_auth_response: Invalid packet type (expected=0x%x, got=0x%x)&quot;,
-1057               CRYPTO_PACKET_AUTH_RESPONSE, packet_type);
-1058     return CRYPTO_ERROR_INVALID_PARAMS;
-1059   }
-1060 
-1061   const uint8_t *received_hmac = packet + sizeof(packet_type);
-1062 
-1063   // Verify HMAC using shared secret
-1064   if (!crypto_verify_hmac(ctx-&gt;shared_key, ctx-&gt;auth_nonce, received_hmac)) {
-1065     SET_ERRNO(ERROR_CRYPTO, &quot;crypto_process_auth_response: HMAC verification failed&quot;);
-1066     return CRYPTO_ERROR_INVALID_MAC;
-1067   }
-1068 
-1069   ctx-&gt;handshake_complete = true;
-1070   log_debug(&quot;Authentication successful - handshake complete&quot;);
-1071   return CRYPTO_OK;
-1072 }</pre>
+1055   // Unpack packet: [type:4][hmac:32]
+1056   uint32_t packet_type;
+1057   SAFE_MEMCPY(&amp;packet_type, sizeof(packet_type), packet, sizeof(packet_type));
+1058 
+1059   if (packet_type != CRYPTO_PACKET_AUTH_RESPONSE) {
+1060     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_process_auth_response: Invalid packet type (expected=0x%x, got=0x%x)&quot;,
+1061               CRYPTO_PACKET_AUTH_RESPONSE, packet_type);
+1062     return CRYPTO_ERROR_INVALID_PARAMS;
+1063   }
+1064 
+1065   const uint8_t *received_hmac = packet + sizeof(packet_type);
+1066 
+1067   // Verify HMAC using shared secret
+1068   if (!crypto_verify_hmac(ctx-&gt;shared_key, ctx-&gt;auth_nonce, received_hmac)) {
+1069     SET_ERRNO(ERROR_CRYPTO, &quot;crypto_process_auth_response: HMAC verification failed&quot;);
+1070     return CRYPTO_ERROR_INVALID_MAC;
+1071   }
+1072 
+1073   ctx-&gt;handshake_complete = true;
+1074   log_debug(&quot;Authentication successful - handshake complete&quot;);
+1075   return CRYPTO_OK;
+1076 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_context_t::auth_nonce</b>,
@@ -4468,47 +4472,47 @@
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Always check return value. CRYPTO_ERROR_INVALID_MAC
   indicates tampering or wrong key.</div>
-<p class="Pp">Definition at line <b>773</b> of file
+<p class="Pp">Definition at line <b>777</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>774                                                                                                            {
-775   if (!ctx || !packet || !data_out || !data_len_out) {
-776     SET_ERRNO(ERROR_INVALID_PARAM,
-777               &quot;crypto_process_encrypted_packet: Invalid parameters (ctx=%p, packet=%p, data_out=%p, data_len_out=%p)&quot;,
-778               ctx, packet, data_out, data_len_out);
-779     return CRYPTO_ERROR_INVALID_PARAMS;
-780   }
-781 
-782   if (!crypto_is_ready(ctx)) {
-783     SET_ERRNO(ERROR_CRYPTO, &quot;crypto_process_encrypted_packet: Crypto context not ready&quot;);
-784     return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
-785   }
-786 
-787   if (packet_len &lt; sizeof(uint32_t) + sizeof(uint32_t)) {
-788     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_process_encrypted_packet: Packet too small (size=%zu)&quot;, packet_len);
-789     return CRYPTO_ERROR_INVALID_PARAMS;
-790   }
-791 
-792   // Unpack packet: [type:4][length:4][encrypted_data:var]
-793   uint32_t packet_type;
-794   uint32_t data_length;
-795   SAFE_MEMCPY(&amp;packet_type, sizeof(packet_type), packet, sizeof(packet_type));
-796   SAFE_MEMCPY(&amp;data_length, sizeof(data_length), packet + sizeof(packet_type), sizeof(data_length));
-797 
-798   if (packet_type != CRYPTO_PACKET_ENCRYPTED_DATA) {
-799     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_process_encrypted_packet: Invalid packet type (expected=%u, got=%u)&quot;,
-800               CRYPTO_PACKET_ENCRYPTED_DATA, packet_type);
-801     return CRYPTO_ERROR_INVALID_PARAMS;
-802   }
-803 
-804   if (packet_len != sizeof(uint32_t) + sizeof(uint32_t) + data_length) {
-805     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_process_encrypted_packet: Packet length mismatch (expected=%zu, got=%zu)&quot;,
-806               sizeof(uint32_t) + sizeof(uint32_t) + data_length, packet_len);
-807     return CRYPTO_ERROR_INVALID_PARAMS;
-808   }
-809 
-810   const uint8_t *encrypted_data = packet + sizeof(uint32_t) + sizeof(uint32_t);
-811   return crypto_decrypt(ctx, encrypted_data, data_length, data_out, data_size, data_len_out);
-812 }</pre>
+<pre>778                                                                                                            {
+779   if (!ctx || !packet || !data_out || !data_len_out) {
+780     SET_ERRNO(ERROR_INVALID_PARAM,
+781               &quot;crypto_process_encrypted_packet: Invalid parameters (ctx=%p, packet=%p, data_out=%p, data_len_out=%p)&quot;,
+782               ctx, packet, data_out, data_len_out);
+783     return CRYPTO_ERROR_INVALID_PARAMS;
+784   }
+785 
+786   if (!crypto_is_ready(ctx)) {
+787     SET_ERRNO(ERROR_CRYPTO, &quot;crypto_process_encrypted_packet: Crypto context not ready&quot;);
+788     return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
+789   }
+790 
+791   if (packet_len &lt; sizeof(uint32_t) + sizeof(uint32_t)) {
+792     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_process_encrypted_packet: Packet too small (size=%zu)&quot;, packet_len);
+793     return CRYPTO_ERROR_INVALID_PARAMS;
+794   }
+795 
+796   // Unpack packet: [type:4][length:4][encrypted_data:var]
+797   uint32_t packet_type;
+798   uint32_t data_length;
+799   SAFE_MEMCPY(&amp;packet_type, sizeof(packet_type), packet, sizeof(packet_type));
+800   SAFE_MEMCPY(&amp;data_length, sizeof(data_length), packet + sizeof(packet_type), sizeof(data_length));
+801 
+802   if (packet_type != CRYPTO_PACKET_ENCRYPTED_DATA) {
+803     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_process_encrypted_packet: Invalid packet type (expected=%u, got=%u)&quot;,
+804               CRYPTO_PACKET_ENCRYPTED_DATA, packet_type);
+805     return CRYPTO_ERROR_INVALID_PARAMS;
+806   }
+807 
+808   if (packet_len != sizeof(uint32_t) + sizeof(uint32_t) + data_length) {
+809     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_process_encrypted_packet: Packet length mismatch (expected=%zu, got=%zu)&quot;,
+810               sizeof(uint32_t) + sizeof(uint32_t) + data_length, packet_len);
+811     return CRYPTO_ERROR_INVALID_PARAMS;
+812   }
+813 
+814   const uint8_t *encrypted_data = packet + sizeof(uint32_t) + sizeof(uint32_t);
+815   return crypto_decrypt(ctx, encrypted_data, data_length, data_out, data_size, data_len_out);
+816 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_decrypt()</b>,
@@ -4545,36 +4549,36 @@
     <b>crypto_set_peer_public_key()</b>. After this call,
     <b>crypto_is_ready()</b> may return true if key exchange is complete.</p>
 </div>
-<p class="Pp">Definition at line <b>682</b> of file
+<p class="Pp">Definition at line <b>686</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>682                                                                                                                   {
-683   if (!ctx || !ctx-&gt;initialized || !packet) {
-684     SET_ERRNO(ERROR_INVALID_PARAM,
-685               &quot;crypto_process_public_key_packet: Invalid parameters (ctx=%p, initialized=%d, packet=%p)&quot;, ctx,
-686               ctx ? ctx-&gt;initialized : 0, packet);
-687     return CRYPTO_ERROR_INVALID_PARAMS;
-688   }
-689 
-690   size_t expected_size = sizeof(uint32_t) + ctx-&gt;public_key_size;
-691   if (packet_len != expected_size) {
-692     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_process_public_key_packet: Invalid packet size (expected=%zu, got=%zu)&quot;,
-693               expected_size, packet_len);
-694     return CRYPTO_ERROR_INVALID_PARAMS;
-695   }
-696 
-697   // Unpack packet: [type:4][public_key:32]
-698   uint32_t packet_type;
-699   SAFE_MEMCPY(&amp;packet_type, sizeof(packet_type), packet, sizeof(packet_type));
+<pre>686                                                                                                                   {
+687   if (!ctx || !ctx-&gt;initialized || !packet) {
+688     SET_ERRNO(ERROR_INVALID_PARAM,
+689               &quot;crypto_process_public_key_packet: Invalid parameters (ctx=%p, initialized=%d, packet=%p)&quot;, ctx,
+690               ctx ? ctx-&gt;initialized : 0, packet);
+691     return CRYPTO_ERROR_INVALID_PARAMS;
+692   }
+693 
+694   size_t expected_size = sizeof(uint32_t) + ctx-&gt;public_key_size;
+695   if (packet_len != expected_size) {
+696     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_process_public_key_packet: Invalid packet size (expected=%zu, got=%zu)&quot;,
+697               expected_size, packet_len);
+698     return CRYPTO_ERROR_INVALID_PARAMS;
+699   }
 700 
-701   if (packet_type != CRYPTO_PACKET_PUBLIC_KEY) {
-702     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_process_public_key_packet: Invalid packet type (expected=%u, got=%u)&quot;,
-703               CRYPTO_PACKET_PUBLIC_KEY, packet_type);
-704     return CRYPTO_ERROR_INVALID_PARAMS;
-705   }
-706 
-707   const uint8_t *peer_public_key = packet + sizeof(packet_type);
-708   return crypto_set_peer_public_key(ctx, peer_public_key);
-709 }</pre>
+701   // Unpack packet: [type:4][public_key:32]
+702   uint32_t packet_type;
+703   SAFE_MEMCPY(&amp;packet_type, sizeof(packet_type), packet, sizeof(packet_type));
+704 
+705   if (packet_type != CRYPTO_PACKET_PUBLIC_KEY) {
+706     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_process_public_key_packet: Invalid packet type (expected=%u, got=%u)&quot;,
+707               CRYPTO_PACKET_PUBLIC_KEY, packet_type);
+708     return CRYPTO_ERROR_INVALID_PARAMS;
+709   }
+710 
+711   const uint8_t *peer_public_key = packet + sizeof(packet_type);
+712   return crypto_set_peer_public_key(ctx, peer_public_key);
+713 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>CRYPTO_ERROR_INVALID_PARAMS</b>,
@@ -4605,22 +4609,22 @@
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Returns CRYPTO_ERROR_INVALID_PARAMS if buffer is NULL or
   len is 0.</div>
-<p class="Pp">Definition at line <b>635</b> of file
+<p class="Pp">Definition at line <b>639</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>635                                                                  {
-636   if (!buffer || len == 0) {
-637     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_random_bytes: Invalid parameters (buffer=%p, len=%zu)&quot;, buffer, len);
-638     return CRYPTO_ERROR_INVALID_PARAMS;
-639   }
-640 
-641   crypto_result_t result = init_libsodium();
-642   if (result != CRYPTO_OK) {
-643     return result;
-644   }
-645 
-646   randombytes_buf(buffer, len);
-647   return CRYPTO_OK;
-648 }</pre>
+<pre>639                                                                  {
+640   if (!buffer || len == 0) {
+641     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_random_bytes: Invalid parameters (buffer=%p, len=%zu)&quot;, buffer, len);
+642     return CRYPTO_ERROR_INVALID_PARAMS;
+643   }
+644 
+645   crypto_result_t result = init_libsodium();
+646   if (result != CRYPTO_OK) {
+647     return result;
+648   }
+649 
+650   randombytes_buf(buffer, len);
+651   return CRYPTO_OK;
+652 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>CRYPTO_ERROR_INVALID_PARAMS</b>, <b>CRYPTO_OK</b>,
@@ -4644,29 +4648,29 @@
 <p class="Pp"></p>
 <p class="Pp">Increments rekey_failure_count for exponential backoff.</p>
 </div>
-<p class="Pp">Definition at line <b>1350</b> of file
+<p class="Pp">Definition at line <b>1354</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>1350                                                {
-1351   if (!ctx) {
-1352     return;
-1353   }
-1354 
-1355   log_warn(&quot;Aborting rekey (attempt %d failed), keeping old encryption key&quot;, ctx-&gt;rekey_failure_count + 1);
-1356 
-1357   // Wipe temporary keys securely
-1358   secure_memzero(ctx-&gt;temp_public_key, sizeof(ctx-&gt;temp_public_key));
-1359   secure_memzero(ctx-&gt;temp_private_key, sizeof(ctx-&gt;temp_private_key));
-1360   secure_memzero(ctx-&gt;temp_shared_key, sizeof(ctx-&gt;temp_shared_key));
-1361 
-1362   // Reset rekey state
-1363   ctx-&gt;has_temp_key = false;
-1364   ctx-&gt;rekey_in_progress = false;
+<pre>1354                                                {
+1355   if (!ctx) {
+1356     return;
+1357   }
+1358 
+1359   log_warn(&quot;Aborting rekey (attempt %d failed), keeping old encryption key&quot;, ctx-&gt;rekey_failure_count + 1);
+1360 
+1361   // Wipe temporary keys securely
+1362   secure_memzero(ctx-&gt;temp_public_key, sizeof(ctx-&gt;temp_public_key));
+1363   secure_memzero(ctx-&gt;temp_private_key, sizeof(ctx-&gt;temp_private_key));
+1364   secure_memzero(ctx-&gt;temp_shared_key, sizeof(ctx-&gt;temp_shared_key));
 1365 
-1366   // Increment failure counter for exponential backoff
-1367   ctx-&gt;rekey_failure_count++;
-1368 
-1369   // Continue using old key - no disruption to connection
-1370 }</pre>
+1366   // Reset rekey state
+1367   ctx-&gt;has_temp_key = false;
+1368   ctx-&gt;rekey_in_progress = false;
+1369 
+1370   // Increment failure counter for exponential backoff
+1371   ctx-&gt;rekey_failure_count++;
+1372 
+1373   // Continue using old key - no disruption to connection
+1374 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_context_t::has_temp_key</b>, <b>log_warn</b>,
@@ -4708,51 +4712,51 @@
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Only call after verifying REKEY_COMPLETE decrypts with
   new key.</div>
-<p class="Pp">Definition at line <b>1306</b> of file
+<p class="Pp">Definition at line <b>1310</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>1306                                                            {
-1307   if (!ctx || !ctx-&gt;initialized) {
-1308     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_rekey_commit: Invalid context&quot;);
-1309     return CRYPTO_ERROR_INVALID_PARAMS;
-1310   }
-1311 
-1312   if (!ctx-&gt;rekey_in_progress || !ctx-&gt;has_temp_key) {
-1313     SET_ERRNO(ERROR_CRYPTO, &quot;No rekey in progress to commit&quot;);
-1314     return CRYPTO_ERROR_REKEY_FAILED;
-1315   }
-1316 
-1317   // Wipe old shared secret securely
-1318   secure_memzero(ctx-&gt;shared_key, sizeof(ctx-&gt;shared_key));
-1319 
-1320   // Switch to new shared secret
-1321   SAFE_MEMCPY(ctx-&gt;shared_key, sizeof(ctx-&gt;shared_key), ctx-&gt;temp_shared_key, sizeof(ctx-&gt;temp_shared_key));
-1322 
-1323   // Reset nonce counter to 1 (fresh start with new key)
-1324   ctx-&gt;nonce_counter = 1;
-1325 
-1326   // Generate new session ID to prevent cross-session replay
-1327   randombytes_buf(ctx-&gt;session_id, sizeof(ctx-&gt;session_id));
-1328 
-1329   // Reset rekey tracking
-1330   ctx-&gt;rekey_packet_count = 0;
-1331   ctx-&gt;rekey_last_time = time(NULL);
-1332   ctx-&gt;rekey_count++;
-1333 
-1334   // Clear rekey state
-1335   secure_memzero(ctx-&gt;temp_public_key, sizeof(ctx-&gt;temp_public_key));
-1336   secure_memzero(ctx-&gt;temp_private_key, sizeof(ctx-&gt;temp_private_key));
-1337   secure_memzero(ctx-&gt;temp_shared_key, sizeof(ctx-&gt;temp_shared_key));
-1338   ctx-&gt;has_temp_key = false;
-1339   ctx-&gt;rekey_in_progress = false;
-1340 
-1341   // Reset failure counter on successful rekey
-1342   ctx-&gt;rekey_failure_count = 0;
-1343 
-1344   log_debug(&quot;Rekey committed successfully (rekey #%llu, nonce reset to 1, new session_id generated)&quot;,
-1345             (unsigned long long)ctx-&gt;rekey_count);
-1346 
-1347   return CRYPTO_OK;
-1348 }</pre>
+<pre>1310                                                            {
+1311   if (!ctx || !ctx-&gt;initialized) {
+1312     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_rekey_commit: Invalid context&quot;);
+1313     return CRYPTO_ERROR_INVALID_PARAMS;
+1314   }
+1315 
+1316   if (!ctx-&gt;rekey_in_progress || !ctx-&gt;has_temp_key) {
+1317     SET_ERRNO(ERROR_CRYPTO, &quot;No rekey in progress to commit&quot;);
+1318     return CRYPTO_ERROR_REKEY_FAILED;
+1319   }
+1320 
+1321   // Wipe old shared secret securely
+1322   secure_memzero(ctx-&gt;shared_key, sizeof(ctx-&gt;shared_key));
+1323 
+1324   // Switch to new shared secret
+1325   SAFE_MEMCPY(ctx-&gt;shared_key, sizeof(ctx-&gt;shared_key), ctx-&gt;temp_shared_key, sizeof(ctx-&gt;temp_shared_key));
+1326 
+1327   // Reset nonce counter to 1 (fresh start with new key)
+1328   ctx-&gt;nonce_counter = 1;
+1329 
+1330   // Generate new session ID to prevent cross-session replay
+1331   randombytes_buf(ctx-&gt;session_id, sizeof(ctx-&gt;session_id));
+1332 
+1333   // Reset rekey tracking
+1334   ctx-&gt;rekey_packet_count = 0;
+1335   ctx-&gt;rekey_last_time = time(NULL);
+1336   ctx-&gt;rekey_count++;
+1337 
+1338   // Clear rekey state
+1339   secure_memzero(ctx-&gt;temp_public_key, sizeof(ctx-&gt;temp_public_key));
+1340   secure_memzero(ctx-&gt;temp_private_key, sizeof(ctx-&gt;temp_private_key));
+1341   secure_memzero(ctx-&gt;temp_shared_key, sizeof(ctx-&gt;temp_shared_key));
+1342   ctx-&gt;has_temp_key = false;
+1343   ctx-&gt;rekey_in_progress = false;
+1344 
+1345   // Reset failure counter on successful rekey
+1346   ctx-&gt;rekey_failure_count = 0;
+1347 
+1348   log_debug(&quot;Rekey committed successfully (rekey #%llu, nonce reset to 1, new session_id generated)&quot;,
+1349             (unsigned long long)ctx-&gt;rekey_count);
+1350 
+1351   return CRYPTO_OK;
+1352 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>CRYPTO_ERROR_INVALID_PARAMS</b>,
@@ -4796,51 +4800,51 @@
 </div>
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Do not call if rekey is already in progress.</div>
-<p class="Pp">Definition at line <b>1210</b> of file
+<p class="Pp">Definition at line <b>1214</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>1210                                                          {
-1211   if (!ctx || !ctx-&gt;initialized) {
-1212     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_rekey_init: Invalid context&quot;);
-1213     return CRYPTO_ERROR_INVALID_PARAMS;
-1214   }
-1215 
-1216   if (ctx-&gt;rekey_in_progress) {
-1217     SET_ERRNO(ERROR_CRYPTO, &quot;Rekey already in progress&quot;);
-1218     return CRYPTO_ERROR_REKEY_IN_PROGRESS;
-1219   }
-1220 
-1221   // Rate limiting: check minimum interval since last rekey
-1222   time_t now = time(NULL);
-1223   time_t since_last_rekey = now - ctx-&gt;rekey_last_time;
-1224   time_t min_interval_seconds = (time_t)(REKEY_MIN_INTERVAL / NS_PER_SEC_INT);
-1225   if (since_last_rekey &lt; min_interval_seconds) {
-1226     char elapsed_str[32], min_str[32];
-1227     time_pretty((uint64_t)(since_last_rekey * 1e9), -1, elapsed_str, sizeof(elapsed_str));
-1228     time_pretty((uint64_t)(min_interval_seconds * 1e9), -1, min_str, sizeof(min_str));
-1229     log_warn(&quot;Rekey rate limited: %s since last rekey (minimum: %s)&quot;, elapsed_str, min_str);
-1230     return CRYPTO_ERROR_REKEY_RATE_LIMITED;
-1231   }
-1232 
-1233   // Check if too many consecutive failures
-1234   if (ctx-&gt;rekey_failure_count &gt;= REKEY_MAX_FAILURE_COUNT) {
-1235     log_error(&quot;Too many consecutive rekey failures (%d), giving up&quot;, ctx-&gt;rekey_failure_count);
-1236     return CRYPTO_ERROR_REKEY_FAILED;
-1237   }
-1238 
-1239   // Generate new ephemeral X25519 keypair for rekeying
-1240   if (crypto_box_keypair(ctx-&gt;temp_public_key, ctx-&gt;temp_private_key) != 0) {
-1241     SET_ERRNO(ERROR_CRYPTO, &quot;Failed to generate rekey ephemeral keypair&quot;);
-1242     return CRYPTO_ERROR_KEY_GENERATION;
-1243   }
-1244 
-1245   ctx-&gt;rekey_in_progress = true;
-1246   ctx-&gt;has_temp_key = true;
-1247 
-1248   log_debug(&quot;Rekey initiated (packets: %llu, time elapsed: %ld sec, attempt %d)&quot;,
-1249             (unsigned long long)ctx-&gt;rekey_packet_count, (long)since_last_rekey, ctx-&gt;rekey_failure_count + 1);
-1250 
-1251   return CRYPTO_OK;
-1252 }</pre>
+<pre>1214                                                          {
+1215   if (!ctx || !ctx-&gt;initialized) {
+1216     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_rekey_init: Invalid context&quot;);
+1217     return CRYPTO_ERROR_INVALID_PARAMS;
+1218   }
+1219 
+1220   if (ctx-&gt;rekey_in_progress) {
+1221     SET_ERRNO(ERROR_CRYPTO, &quot;Rekey already in progress&quot;);
+1222     return CRYPTO_ERROR_REKEY_IN_PROGRESS;
+1223   }
+1224 
+1225   // Rate limiting: check minimum interval since last rekey
+1226   time_t now = time(NULL);
+1227   time_t since_last_rekey = now - ctx-&gt;rekey_last_time;
+1228   time_t min_interval_seconds = (time_t)(REKEY_MIN_INTERVAL / NS_PER_SEC_INT);
+1229   if (since_last_rekey &lt; min_interval_seconds) {
+1230     char elapsed_str[32], min_str[32];
+1231     time_pretty((uint64_t)(since_last_rekey * 1e9), -1, elapsed_str, sizeof(elapsed_str));
+1232     time_pretty((uint64_t)(min_interval_seconds * 1e9), -1, min_str, sizeof(min_str));
+1233     log_warn(&quot;Rekey rate limited: %s since last rekey (minimum: %s)&quot;, elapsed_str, min_str);
+1234     return CRYPTO_ERROR_REKEY_RATE_LIMITED;
+1235   }
+1236 
+1237   // Check if too many consecutive failures
+1238   if (ctx-&gt;rekey_failure_count &gt;= REKEY_MAX_FAILURE_COUNT) {
+1239     log_error(&quot;Too many consecutive rekey failures (%d), giving up&quot;, ctx-&gt;rekey_failure_count);
+1240     return CRYPTO_ERROR_REKEY_FAILED;
+1241   }
+1242 
+1243   // Generate new ephemeral X25519 keypair for rekeying
+1244   if (crypto_box_keypair(ctx-&gt;temp_public_key, ctx-&gt;temp_private_key) != 0) {
+1245     SET_ERRNO(ERROR_CRYPTO, &quot;Failed to generate rekey ephemeral keypair&quot;);
+1246     return CRYPTO_ERROR_KEY_GENERATION;
+1247   }
+1248 
+1249   ctx-&gt;rekey_in_progress = true;
+1250   ctx-&gt;has_temp_key = true;
+1251 
+1252   log_debug(&quot;Rekey initiated (packets: %llu, time elapsed: %ld sec, attempt %d)&quot;,
+1253             (unsigned long long)ctx-&gt;rekey_packet_count, (long)since_last_rekey, ctx-&gt;rekey_failure_count + 1);
+1254 
+1255   return CRYPTO_OK;
+1256 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>CRYPTO_ERROR_INVALID_PARAMS</b>,
@@ -4882,35 +4886,35 @@
 <p class="Pp">Should send REKEY_RESPONSE with our new public key after this
     call.</p>
 </div>
-<p class="Pp">Definition at line <b>1254</b> of file
+<p class="Pp">Definition at line <b>1258</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>1254                                                                                                         {
-1255   if (!ctx || !ctx-&gt;initialized || !peer_new_public_key) {
-1256     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_rekey_process_request: Invalid parameters&quot;);
-1257     return CRYPTO_ERROR_INVALID_PARAMS;
-1258   }
-1259 
-1260   // Generate our own new ephemeral keypair (responder side)
-1261   if (crypto_box_keypair(ctx-&gt;temp_public_key, ctx-&gt;temp_private_key) != 0) {
-1262     SET_ERRNO(ERROR_CRYPTO, &quot;Failed to generate rekey ephemeral keypair&quot;);
-1263     return CRYPTO_ERROR_KEY_GENERATION;
-1264   }
-1265 
-1266   // Compute new shared secret: DH(our_new_private_key, peer_new_public_key)
-1267   if (crypto_scalarmult(ctx-&gt;temp_shared_key, ctx-&gt;temp_private_key, peer_new_public_key) != 0) {
-1268     SET_ERRNO(ERROR_CRYPTO, &quot;Failed to compute rekey shared secret&quot;);
-1269     secure_memzero(ctx-&gt;temp_private_key, sizeof(ctx-&gt;temp_private_key));
-1270     secure_memzero(ctx-&gt;temp_public_key, sizeof(ctx-&gt;temp_public_key));
-1271     return CRYPTO_ERROR_KEY_GENERATION;
-1272   }
-1273 
-1274   ctx-&gt;rekey_in_progress = true;
-1275   ctx-&gt;has_temp_key = true;
-1276 
-1277   log_debug(&quot;Rekey request processed (responder side), new shared secret computed&quot;);
-1278 
-1279   return CRYPTO_OK;
-1280 }</pre>
+<pre>1258                                                                                                         {
+1259   if (!ctx || !ctx-&gt;initialized || !peer_new_public_key) {
+1260     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_rekey_process_request: Invalid parameters&quot;);
+1261     return CRYPTO_ERROR_INVALID_PARAMS;
+1262   }
+1263 
+1264   // Generate our own new ephemeral keypair (responder side)
+1265   if (crypto_box_keypair(ctx-&gt;temp_public_key, ctx-&gt;temp_private_key) != 0) {
+1266     SET_ERRNO(ERROR_CRYPTO, &quot;Failed to generate rekey ephemeral keypair&quot;);
+1267     return CRYPTO_ERROR_KEY_GENERATION;
+1268   }
+1269 
+1270   // Compute new shared secret: DH(our_new_private_key, peer_new_public_key)
+1271   if (crypto_scalarmult(ctx-&gt;temp_shared_key, ctx-&gt;temp_private_key, peer_new_public_key) != 0) {
+1272     SET_ERRNO(ERROR_CRYPTO, &quot;Failed to compute rekey shared secret&quot;);
+1273     secure_memzero(ctx-&gt;temp_private_key, sizeof(ctx-&gt;temp_private_key));
+1274     secure_memzero(ctx-&gt;temp_public_key, sizeof(ctx-&gt;temp_public_key));
+1275     return CRYPTO_ERROR_KEY_GENERATION;
+1276   }
+1277 
+1278   ctx-&gt;rekey_in_progress = true;
+1279   ctx-&gt;has_temp_key = true;
+1280 
+1281   log_debug(&quot;Rekey request processed (responder side), new shared secret computed&quot;);
+1282 
+1283   return CRYPTO_OK;
+1284 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>CRYPTO_ERROR_INVALID_PARAMS</b>,
@@ -4947,31 +4951,31 @@
 <p class="Pp">Should send REKEY_COMPLETE encrypted with NEW key after this
   call.</p>
 </div>
-<p class="Pp">Definition at line <b>1282</b> of file
+<p class="Pp">Definition at line <b>1286</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>1282                                                                                                          {
-1283   if (!ctx || !ctx-&gt;initialized || !peer_new_public_key) {
-1284     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_rekey_process_response: Invalid parameters&quot;);
-1285     return CRYPTO_ERROR_INVALID_PARAMS;
-1286   }
-1287 
-1288   if (!ctx-&gt;rekey_in_progress || !ctx-&gt;has_temp_key) {
-1289     SET_ERRNO(ERROR_CRYPTO, &quot;No rekey in progress&quot;);
-1290     return CRYPTO_ERROR_REKEY_FAILED;
-1291   }
-1292 
-1293   // Compute new shared secret: DH(our_new_private_key, peer_new_public_key)
-1294   // Use crypto_scalarmult to produce raw 32-byte shared secret for crypto_secretbox
-1295   if (crypto_scalarmult(ctx-&gt;temp_shared_key, ctx-&gt;temp_private_key, peer_new_public_key) != 0) {
-1296     SET_ERRNO(ERROR_CRYPTO, &quot;Failed to compute rekey shared secret&quot;);
-1297     crypto_rekey_abort(ctx);
-1298     return CRYPTO_ERROR_KEY_GENERATION;
-1299   }
-1300 
-1301   log_debug(&quot;Rekey response processed (initiator side), new shared secret computed&quot;);
-1302 
-1303   return CRYPTO_OK;
-1304 }</pre>
+<pre>1286                                                                                                          {
+1287   if (!ctx || !ctx-&gt;initialized || !peer_new_public_key) {
+1288     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_rekey_process_response: Invalid parameters&quot;);
+1289     return CRYPTO_ERROR_INVALID_PARAMS;
+1290   }
+1291 
+1292   if (!ctx-&gt;rekey_in_progress || !ctx-&gt;has_temp_key) {
+1293     SET_ERRNO(ERROR_CRYPTO, &quot;No rekey in progress&quot;);
+1294     return CRYPTO_ERROR_REKEY_FAILED;
+1295   }
+1296 
+1297   // Compute new shared secret: DH(our_new_private_key, peer_new_public_key)
+1298   // Use crypto_scalarmult to produce raw 32-byte shared secret for crypto_secretbox
+1299   if (crypto_scalarmult(ctx-&gt;temp_shared_key, ctx-&gt;temp_private_key, peer_new_public_key) != 0) {
+1300     SET_ERRNO(ERROR_CRYPTO, &quot;Failed to compute rekey shared secret&quot;);
+1301     crypto_rekey_abort(ctx);
+1302     return CRYPTO_ERROR_KEY_GENERATION;
+1303   }
+1304 
+1305   log_debug(&quot;Rekey response processed (initiator side), new shared secret computed&quot;);
+1306 
+1307   return CRYPTO_OK;
+1308 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>CRYPTO_ERROR_INVALID_PARAMS</b>,
@@ -4997,15 +5001,15 @@
 <div class="Bd-indent">Human-readable error string (never NULL)</div>
 <p class="Pp">Returns a descriptive string for each <b>crypto_result_t</b>
     value. Useful for logging and error reporting.</p>
-<p class="Pp">Definition at line <b>602</b> of file
+<p class="Pp">Definition at line <b>606</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>602                                                             {
-603   int idx = -result; // CRYPTO_OK=0, errors are negative
-604   if (idx &gt;= 0 &amp;&amp; (size_t)idx &lt; CRYPTO_RESULT_STRING_COUNT) {
-605     return g_crypto_result_strings[idx];
-606   }
-607   return &quot;Unknown error&quot;;
-608 }</pre>
+<pre>606                                                             {
+607   int idx = -result; // CRYPTO_OK=0, errors are negative
+608   if (idx &gt;= 0 &amp;&amp; (size_t)idx &lt; CRYPTO_RESULT_STRING_COUNT) {
+609     return g_crypto_result_strings[idx];
+610   }
+611   return &quot;Unknown error&quot;;
+612 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>CRYPTO_RESULT_STRING_COUNT</b>.</p>
@@ -5048,14 +5052,14 @@
   signatures. Do NOT use regular memcmp() for cryptographic comparisons.</div>
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Returns false if either pointer is NULL.</div>
-<p class="Pp">Definition at line <b>628</b> of file
+<p class="Pp">Definition at line <b>632</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>628                                                                                {
-629   if (!lhs || !rhs) {
-630     return false;
-631   }
-632   return sodium_memcmp(lhs, rhs, len) == 0;
-633 }</pre>
+<pre>632                                                                                {
+633   if (!lhs || !rhs) {
+634     return false;
+635   }
+636   return sodium_memcmp(lhs, rhs, len) == 0;
+637 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -5080,43 +5084,43 @@
 <div class="Bd-indent">This function computes the shared secret immediately. The
   shared secret is used for encryption/decryption after key exchange is
   complete.</div>
-<p class="Pp">Definition at line <b>246</b> of file
+<p class="Pp">Definition at line <b>250</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>246                                                                                                   {
-247   if (!ctx || !ctx-&gt;initialized || !peer_public_key) {
-248     SET_ERRNO(ERROR_INVALID_PARAM,
-249               &quot;crypto_set_peer_public_key: Invalid parameters (ctx=%p, initialized=%d, peer_public_key=%p)&quot;, ctx,
-250               ctx ? ctx-&gt;initialized : 0, peer_public_key);
-251     return CRYPTO_ERROR_INVALID_PARAMS;
-252   }
-253 
-254   // Store peer's public key
-255   // Bounds check to prevent buffer overflow
-256   size_t copy_size = (ctx-&gt;public_key_size &lt;= X25519_KEY_SIZE) ? ctx-&gt;public_key_size : X25519_KEY_SIZE;
-257   SAFE_MEMCPY(ctx-&gt;peer_public_key, copy_size, peer_public_key, copy_size);
-258   ctx-&gt;peer_key_received = true;
-259 
-260   // Compute shared secret using X25519 and crypto_scalarmult (compatible with secretbox)
-261   // This produces a raw 32-byte shared secret suitable for crypto_secretbox
-262   if (crypto_scalarmult(ctx-&gt;shared_key, ctx-&gt;private_key, peer_public_key) != 0) {
-263     SET_ERRNO(ERROR_CRYPTO, &quot;Failed to compute shared secret from peer public key&quot;);
-264     return CRYPTO_ERROR_KEY_GENERATION;
-265   }
-266 
-267   ctx-&gt;key_exchange_complete = true;
-268 
-269   // Log keys for debugging crypto failures
-270   char priv_hex[65], peer_hex[65], shared_hex[65];
-271   for (int i = 0; i &lt; 32; i++) {
-272     snprintf(&amp;priv_hex[i * 2], 3, &quot;%02x&quot;, ctx-&gt;private_key[i]);
-273     snprintf(&amp;peer_hex[i * 2], 3, &quot;%02x&quot;, peer_public_key[i]);
-274     snprintf(&amp;shared_hex[i * 2], 3, &quot;%02x&quot;, ctx-&gt;shared_key[i]);
-275   }
-276   priv_hex[64] = peer_hex[64] = shared_hex[64] = '\0';
-277 
-278   log_info(&quot;KEY_EXCHANGE_COMPLETE: privkey=%s peerkey=%s secret=%s&quot;, priv_hex, peer_hex, shared_hex);
-279   return CRYPTO_OK;
-280 }</pre>
+<pre>250                                                                                                   {
+251   if (!ctx || !ctx-&gt;initialized || !peer_public_key) {
+252     SET_ERRNO(ERROR_INVALID_PARAM,
+253               &quot;crypto_set_peer_public_key: Invalid parameters (ctx=%p, initialized=%d, peer_public_key=%p)&quot;, ctx,
+254               ctx ? ctx-&gt;initialized : 0, peer_public_key);
+255     return CRYPTO_ERROR_INVALID_PARAMS;
+256   }
+257 
+258   // Store peer's public key
+259   // Bounds check to prevent buffer overflow
+260   size_t copy_size = (ctx-&gt;public_key_size &lt;= X25519_KEY_SIZE) ? ctx-&gt;public_key_size : X25519_KEY_SIZE;
+261   SAFE_MEMCPY(ctx-&gt;peer_public_key, copy_size, peer_public_key, copy_size);
+262   ctx-&gt;peer_key_received = true;
+263 
+264   // Compute shared secret using X25519 and crypto_scalarmult (compatible with secretbox)
+265   // This produces a raw 32-byte shared secret suitable for crypto_secretbox
+266   if (crypto_scalarmult(ctx-&gt;shared_key, ctx-&gt;private_key, peer_public_key) != 0) {
+267     SET_ERRNO(ERROR_CRYPTO, &quot;Failed to compute shared secret from peer public key&quot;);
+268     return CRYPTO_ERROR_KEY_GENERATION;
+269   }
+270 
+271   ctx-&gt;key_exchange_complete = true;
+272 
+273   // Log keys for debugging crypto failures
+274   char priv_hex[65], peer_hex[65], shared_hex[65];
+275   for (int i = 0; i &lt; 32; i++) {
+276     snprintf(&amp;priv_hex[i * 2], 3, &quot;%02x&quot;, ctx-&gt;private_key[i]);
+277     snprintf(&amp;peer_hex[i * 2], 3, &quot;%02x&quot;, peer_public_key[i]);
+278     snprintf(&amp;shared_hex[i * 2], 3, &quot;%02x&quot;, ctx-&gt;shared_key[i]);
+279   }
+280   priv_hex[64] = peer_hex[64] = shared_hex[64] = '\0';
+281 
+282   log_info(&quot;KEY_EXCHANGE_COMPLETE: privkey=%s peerkey=%s secret=%s&quot;, priv_hex, peer_hex, shared_hex);
+283   return CRYPTO_OK;
+284 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>CRYPTO_ERROR_INVALID_PARAMS</b>,
@@ -5159,41 +5163,41 @@
 <p class="Pp">DDoS protection: Requires at least REKEY_MIN_REQUEST_INTERVAL
     seconds between requests.</p>
 </div>
-<p class="Pp">Definition at line <b>1176</b> of file
+<p class="Pp">Definition at line <b>1180</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>1176                                                       {
-1177   if (!ctx || !ctx-&gt;initialized) {
-1178     return false;
-1179   }
-1180 
-1181   // Don't trigger rekey if one is already in progress
-1182   if (ctx-&gt;rekey_in_progress) {
-1183     return false;
-1184   }
-1185 
-1186   // Don't trigger rekey if handshake isn't complete yet
-1187   if (!ctx-&gt;handshake_complete) {
-1188     return false;
-1189   }
-1190 
-1191   // Check packet count threshold
-1192   if (ctx-&gt;rekey_packet_count &gt;= ctx-&gt;rekey_packet_threshold) {
-1193     log_debug(&quot;Rekey triggered: packet count (%llu) &gt;= threshold (%llu)&quot;, (unsigned long long)ctx-&gt;rekey_packet_count,
-1194               (unsigned long long)ctx-&gt;rekey_packet_threshold);
-1195     return true;
-1196   }
-1197 
-1198   // Check time threshold
-1199   time_t now = time(NULL);
-1200   time_t elapsed = now - ctx-&gt;rekey_last_time;
-1201   if (elapsed &gt;= ctx-&gt;rekey_time_threshold) {
-1202     log_debug(&quot;Rekey triggered: time elapsed (%ld sec) &gt;= threshold (%ld sec)&quot;, (long)elapsed,
-1203               (long)ctx-&gt;rekey_time_threshold);
-1204     return true;
-1205   }
-1206 
-1207   return false;
-1208 }</pre>
+<pre>1180                                                       {
+1181   if (!ctx || !ctx-&gt;initialized) {
+1182     return false;
+1183   }
+1184 
+1185   // Don't trigger rekey if one is already in progress
+1186   if (ctx-&gt;rekey_in_progress) {
+1187     return false;
+1188   }
+1189 
+1190   // Don't trigger rekey if handshake isn't complete yet
+1191   if (!ctx-&gt;handshake_complete) {
+1192     return false;
+1193   }
+1194 
+1195   // Check packet count threshold
+1196   if (ctx-&gt;rekey_packet_count &gt;= ctx-&gt;rekey_packet_threshold) {
+1197     log_debug(&quot;Rekey triggered: packet count (%llu) &gt;= threshold (%llu)&quot;, (unsigned long long)ctx-&gt;rekey_packet_count,
+1198               (unsigned long long)ctx-&gt;rekey_packet_threshold);
+1199     return true;
+1200   }
+1201 
+1202   // Check time threshold
+1203   time_t now = time(NULL);
+1204   time_t elapsed = now - ctx-&gt;rekey_last_time;
+1205   if (elapsed &gt;= ctx-&gt;rekey_time_threshold) {
+1206     log_debug(&quot;Rekey triggered: time elapsed (%ld sec) &gt;= threshold (%ld sec)&quot;, (long)elapsed,
+1207               (long)ctx-&gt;rekey_time_threshold);
+1208     return true;
+1209   }
+1210 
+1211   return false;
+1212 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_context_t::handshake_complete</b>,
@@ -5233,30 +5237,30 @@
 <p class="Pp">Used in authenticated key exchange format (ephemeral + identity +
     signature).</p>
 </div>
-<p class="Pp">Definition at line <b>1124</b> of file
+<p class="Pp">Definition at line <b>1128</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>1125                                                                                                {
-1126   if (!private_key || !ephemeral_key || !signature_out) {
-1127     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: private_key=%p, ephemeral_key=%p, signature_out=%p&quot;,
-1128                      private_key, ephemeral_key, signature_out);
-1129   }
-1130 
-1131   if (ephemeral_key_size == 0) {
-1132     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid ephemeral key size: %zu&quot;, ephemeral_key_size);
-1133     return ERROR_INVALID_PARAM;
-1134   }
-1135 
-1136   // Sign the ephemeral key with our Ed25519 private key
-1137   if (private_key-&gt;type == KEY_TYPE_ED25519) {
-1138     if (crypto_sign_detached(signature_out, NULL, ephemeral_key, ephemeral_key_size, private_key-&gt;key.ed25519) != 0) {
-1139       return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to sign ephemeral key&quot;);
-1140     }
-1141   } else {
-1142     return SET_ERRNO(ERROR_CRYPTO, &quot;Unsupported private key type for signing&quot;);
-1143   }
-1144 
-1145   return ASCIICHAT_OK;
-1146 }</pre>
+<pre>1129                                                                                                {
+1130   if (!private_key || !ephemeral_key || !signature_out) {
+1131     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: private_key=%p, ephemeral_key=%p, signature_out=%p&quot;,
+1132                      private_key, ephemeral_key, signature_out);
+1133   }
+1134 
+1135   if (ephemeral_key_size == 0) {
+1136     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid ephemeral key size: %zu&quot;, ephemeral_key_size);
+1137     return ERROR_INVALID_PARAM;
+1138   }
+1139 
+1140   // Sign the ephemeral key with our Ed25519 private key
+1141   if (private_key-&gt;type == KEY_TYPE_ED25519) {
+1142     if (crypto_sign_detached(signature_out, NULL, ephemeral_key, ephemeral_key_size, private_key-&gt;key.ed25519) != 0) {
+1143       return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to sign ephemeral key&quot;);
+1144     }
+1145   } else {
+1146     return SET_ERRNO(ERROR_CRYPTO, &quot;Unsupported private key type for signing&quot;);
+1147   }
+1148 
+1149   return ASCIICHAT_OK;
+1150 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>private_key_t::ed25519</b>,
@@ -5281,30 +5285,30 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Password must be between MIN_PASSWORD_LENGTH (8) and
   MAX_PASSWORD_LENGTH (256) characters.</div>
-<p class="Pp">Definition at line <b>295</b> of file
+<p class="Pp">Definition at line <b>299</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>295                                                                {
-296   if (!password) {
-297     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_validate_password: Password is NULL&quot;);
-298     return CRYPTO_ERROR_INVALID_PARAMS;
-299   }
-300 
-301   size_t password_len = strlen(password);
-302 
-303   if (password_len &lt; MIN_PASSWORD_LENGTH) {
-304     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Password too short (minimum %d characters, got %zu)&quot;, MIN_PASSWORD_LENGTH,
-305               password_len);
-306     return CRYPTO_ERROR_INVALID_PARAMS;
-307   }
-308 
-309   if (password_len &gt; MAX_PASSWORD_LENGTH) {
-310     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Password too long (maximum %d characters, got %zu)&quot;, MAX_PASSWORD_LENGTH,
-311               password_len);
-312     return CRYPTO_ERROR_INVALID_PARAMS;
-313   }
-314 
-315   return CRYPTO_OK;
-316 }</pre>
+<pre>299                                                                {
+300   if (!password) {
+301     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_validate_password: Password is NULL&quot;);
+302     return CRYPTO_ERROR_INVALID_PARAMS;
+303   }
+304 
+305   size_t password_len = strlen(password);
+306 
+307   if (password_len &lt; MIN_PASSWORD_LENGTH) {
+308     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Password too short (minimum %d characters, got %zu)&quot;, MIN_PASSWORD_LENGTH,
+309               password_len);
+310     return CRYPTO_ERROR_INVALID_PARAMS;
+311   }
+312 
+313   if (password_len &gt; MAX_PASSWORD_LENGTH) {
+314     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Password too long (maximum %d characters, got %zu)&quot;, MAX_PASSWORD_LENGTH,
+315               password_len);
+316     return CRYPTO_ERROR_INVALID_PARAMS;
+317   }
+318 
+319   return CRYPTO_OK;
+320 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>CRYPTO_ERROR_INVALID_PARAMS</b>, <b>CRYPTO_OK</b>,
@@ -5342,42 +5346,42 @@
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Always check return value. False indicates authentication
   failure or wrong key.</div>
-<p class="Pp">Definition at line <b>936</b> of file
+<p class="Pp">Definition at line <b>940</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>937                                                                   {
-938   if (!ctx || !nonce || !expected_hmac) {
-939     SET_ERRNO(ERROR_INVALID_PARAM,
-940               &quot;crypto_verify_auth_response: Invalid parameters (ctx=%p, nonce=%p, expected_hmac=%p)&quot;, ctx, nonce,
-941               expected_hmac);
-942     return false;
-943   }
-944 
-945   // Ensure shared secret is derived before verifying HMAC
-946   // This is critical for password HMAC verification which binds to the shared secret
-947   if (!ctx-&gt;key_exchange_complete) {
-948     SET_ERRNO(ERROR_CRYPTO, &quot;Cannot verify auth response - key exchange not complete&quot;);
-949     return false;
-950   }
-951 
-952   // Bind password HMAC to DH shared_secret to prevent MITM
-953   // Combined data: nonce || shared_secret
-954   uint8_t combined_data[64];
-955   memcpy(combined_data, nonce, 32);
-956   memcpy(combined_data + 32, ctx-&gt;shared_key, 32);
-957 
-958   // Use password_key if available, otherwise use shared_key
-959   const uint8_t *auth_key = ctx-&gt;has_password ? ctx-&gt;password_key : ctx-&gt;shared_key;
-960 
-961   log_debug(&quot;Verifying auth response: has_password=%d, key_exchange_complete=%d, using_password_key=%d&quot;,
-962             ctx-&gt;has_password, ctx-&gt;key_exchange_complete, (auth_key == ctx-&gt;password_key));
-963 
-964   bool result = crypto_verify_hmac_ex(auth_key, combined_data, 64, expected_hmac);
-965 
-966   // Securely zero sensitive data containing shared secret
-967   sodium_memzero(combined_data, sizeof(combined_data));
-968 
-969   return result;
-970 }</pre>
+<pre>941                                                                   {
+942   if (!ctx || !nonce || !expected_hmac) {
+943     SET_ERRNO(ERROR_INVALID_PARAM,
+944               &quot;crypto_verify_auth_response: Invalid parameters (ctx=%p, nonce=%p, expected_hmac=%p)&quot;, ctx, nonce,
+945               expected_hmac);
+946     return false;
+947   }
+948 
+949   // Ensure shared secret is derived before verifying HMAC
+950   // This is critical for password HMAC verification which binds to the shared secret
+951   if (!ctx-&gt;key_exchange_complete) {
+952     SET_ERRNO(ERROR_CRYPTO, &quot;Cannot verify auth response - key exchange not complete&quot;);
+953     return false;
+954   }
+955 
+956   // Bind password HMAC to DH shared_secret to prevent MITM
+957   // Combined data: nonce || shared_secret
+958   uint8_t combined_data[64];
+959   memcpy(combined_data, nonce, 32);
+960   memcpy(combined_data + 32, ctx-&gt;shared_key, 32);
+961 
+962   // Use password_key if available, otherwise use shared_key
+963   const uint8_t *auth_key = ctx-&gt;has_password ? ctx-&gt;password_key : ctx-&gt;shared_key;
+964 
+965   log_debug(&quot;Verifying auth response: has_password=%d, key_exchange_complete=%d, using_password_key=%d&quot;,
+966             ctx-&gt;has_password, ctx-&gt;key_exchange_complete, (auth_key == ctx-&gt;password_key));
+967 
+968   bool result = crypto_verify_hmac_ex(auth_key, combined_data, 64, expected_hmac);
+969 
+970   // Securely zero sensitive data containing shared secret
+971   sodium_memzero(combined_data, sizeof(combined_data));
+972 
+973   return result;
+974 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_verify_hmac_ex()</b>, <b>ERROR_CRYPTO</b>,
@@ -5407,22 +5411,22 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Returns false if any parameter is NULL.</div>
-<p class="Pp">Definition at line <b>868</b> of file
+<p class="Pp">Definition at line <b>872</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>868                                                                                                         {
-869   if (!key || !data || !expected_hmac) {
-870     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_verify_hmac: Invalid parameters (key=%p, data=%p, expected_hmac=%p)&quot;, key,
-871               data, expected_hmac);
-872     return false;
-873   }
-874 
-875   uint8_t computed_hmac[32];
-876   if (crypto_auth_hmacsha256(computed_hmac, data, 32, key) != 0) {
-877     return false;
-878   }
-879 
-880   return sodium_memcmp(computed_hmac, expected_hmac, 32) == 0;
-881 }</pre>
+<pre>872                                                                                                         {
+873   if (!key || !data || !expected_hmac) {
+874     SET_ERRNO(ERROR_INVALID_PARAM, &quot;crypto_verify_hmac: Invalid parameters (key=%p, data=%p, expected_hmac=%p)&quot;, key,
+875               data, expected_hmac);
+876     return false;
+877   }
+878 
+879   uint8_t computed_hmac[32];
+880   if (crypto_auth_hmacsha256(computed_hmac, data, 32, key) != 0) {
+881     return false;
+882   }
+883 
+884   return sodium_memcmp(computed_hmac, expected_hmac, 32) == 0;
+885 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
@@ -5451,23 +5455,23 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Returns false if any parameter is NULL or data_len is
   0.</div>
-<p class="Pp">Definition at line <b>883</b> of file
+<p class="Pp">Definition at line <b>887</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>884                                                             {
-885   if (!key || !data || !expected_hmac || data_len == 0) {
-886     SET_ERRNO(ERROR_INVALID_PARAM,
-887               &quot;crypto_verify_hmac_ex: Invalid parameters (key=%p, data=%p, data_len=%zu, expected_hmac=%p)&quot;, key, data,
-888               data_len, expected_hmac);
-889     return false;
-890   }
-891 
-892   uint8_t computed_hmac[32];
-893   if (crypto_auth_hmacsha256(computed_hmac, data, data_len, key) != 0) {
-894     return false;
-895   }
-896 
-897   return sodium_memcmp(computed_hmac, expected_hmac, 32) == 0;
-898 }</pre>
+<pre>888                                                             {
+889   if (!key || !data || !expected_hmac || data_len == 0) {
+890     SET_ERRNO(ERROR_INVALID_PARAM,
+891               &quot;crypto_verify_hmac_ex: Invalid parameters (key=%p, data=%p, data_len=%zu, expected_hmac=%p)&quot;, key, data,
+892               data_len, expected_hmac);
+893     return false;
+894   }
+895 
+896   uint8_t computed_hmac[32];
+897   if (crypto_auth_hmacsha256(computed_hmac, data, data_len, key) != 0) {
+898     return false;
+899   }
+900 
+901   return sodium_memcmp(computed_hmac, expected_hmac, 32) == 0;
+902 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
@@ -5495,41 +5499,41 @@
 <p class="Pp">Salt: Uses same deterministic salt as
     <b>crypto_derive_password_key()</b>.</p>
 </div>
-<p class="Pp">Definition at line <b>357</b> of file
+<p class="Pp">Definition at line <b>361</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>357                                                                                {
-358   if (!ctx || !ctx-&gt;initialized || !ctx-&gt;has_password || !password) {
-359     return false;
-360   }
-361 
-362   uint8_t test_key[SECRETBOX_KEY_SIZE]; // Use maximum size for buffer
-363 
-364   // Use the same deterministic salt for verification
-365   // Salt must be exactly ARGON2ID_SALT_SIZE (32) bytes
-366   const char *deterministic_salt = &quot;ascii-chat-password-salt-v1&quot;;
-367   uint8_t salt[ARGON2ID_SALT_SIZE]; // Use maximum size for buffer
-368   size_t salt_str_len = strlen(deterministic_salt);
-369 
-370   // Zero-initialize the salt buffer first
-371   memset(salt, 0, ARGON2ID_SALT_SIZE);
-372 
-373   // Copy the salt string (will be padded with zeros to ctx-&gt;salt_size)
-374   memcpy(salt, deterministic_salt, (salt_str_len &lt; ctx-&gt;salt_size) ? salt_str_len : ctx-&gt;salt_size);
-375 
-376   // Derive key with same salt
-377   if (crypto_pwhash(test_key, ctx-&gt;encryption_key_size, password, strlen(password), salt,
-378                     crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE,
-379                     crypto_pwhash_ALG_DEFAULT) != 0) {
-380     secure_memzero(test_key, sizeof(test_key));
-381     return false;
-382   }
-383 
-384   // Constant-time comparison
-385   bool match = (sodium_memcmp(test_key, ctx-&gt;password_key, ctx-&gt;encryption_key_size) == 0);
-386 
-387   secure_memzero(test_key, sizeof(test_key));
-388   return match;
-389 }</pre>
+<pre>361                                                                                {
+362   if (!ctx || !ctx-&gt;initialized || !ctx-&gt;has_password || !password) {
+363     return false;
+364   }
+365 
+366   uint8_t test_key[SECRETBOX_KEY_SIZE]; // Use maximum size for buffer
+367 
+368   // Use the same deterministic salt for verification
+369   // Salt must be exactly ARGON2ID_SALT_SIZE (32) bytes
+370   const char *deterministic_salt = &quot;ascii-chat-password-salt-v1&quot;;
+371   uint8_t salt[ARGON2ID_SALT_SIZE]; // Use maximum size for buffer
+372   size_t salt_str_len = strlen(deterministic_salt);
+373 
+374   // Zero-initialize the salt buffer first
+375   memset(salt, 0, ARGON2ID_SALT_SIZE);
+376 
+377   // Copy the salt string (will be padded with zeros to ctx-&gt;salt_size)
+378   memcpy(salt, deterministic_salt, (salt_str_len &lt; ctx-&gt;salt_size) ? salt_str_len : ctx-&gt;salt_size);
+379 
+380   // Derive key with same salt
+381   if (crypto_pwhash(test_key, ctx-&gt;encryption_key_size, password, strlen(password), salt,
+382                     crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE,
+383                     crypto_pwhash_ALG_DEFAULT) != 0) {
+384     secure_memzero(test_key, sizeof(test_key));
+385     return false;
+386   }
+387 
+388   // Constant-time comparison
+389   bool match = (sodium_memcmp(test_key, ctx-&gt;password_key, ctx-&gt;encryption_key_size) == 0);
+390 
+391   secure_memzero(test_key, sizeof(test_key));
+392   return match;
+393 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ARGON2ID_SALT_SIZE</b>,
@@ -5568,25 +5572,25 @@
 <p class="Pp">Used in authenticated key exchange format (ephemeral + identity +
     signature).</p>
 </div>
-<p class="Pp">Definition at line <b>1105</b> of file
+<p class="Pp">Definition at line <b>1109</b> of file
   <b>lib/crypto/crypto.c</b>.</p>
-<pre>1106                                                                                                     {
-1107   if (!peer_public_key || !ephemeral_key || !signature) {
-1108     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: peer_public_key=%p, ephemeral_key=%p, signature=%p&quot;,
-1109                      peer_public_key, ephemeral_key, signature);
-1110   }
-1111 
-1112   if (ephemeral_key_size == 0) {
-1113     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid ephemeral key size: %zu&quot;, ephemeral_key_size);
+<pre>1110                                                                                                     {
+1111   if (!peer_public_key || !ephemeral_key || !signature) {
+1112     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: peer_public_key=%p, ephemeral_key=%p, signature=%p&quot;,
+1113                      peer_public_key, ephemeral_key, signature);
 1114   }
 1115 
-1116   // Verify the signature using Ed25519
-1117   if (crypto_sign_verify_detached(signature, ephemeral_key, ephemeral_key_size, peer_public_key) != 0) {
-1118     return SET_ERRNO(ERROR_CRYPTO, &quot;Peer signature verification failed&quot;);
-1119   }
-1120 
-1121   return ASCIICHAT_OK;
-1122 }</pre>
+1116   if (ephemeral_key_size == 0) {
+1117     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid ephemeral key size: %zu&quot;, ephemeral_key_size);
+1118   }
+1119 
+1120   // Verify the signature using Ed25519
+1121   if (crypto_sign_verify_detached(signature, ephemeral_key, ephemeral_key_size, peer_public_key) != 0) {
+1122     return SET_ERRNO(ERROR_CRYPTO, &quot;Peer signature verification failed&quot;);
+1123   }
+1124 
+1125   return ASCIICHAT_OK;
+1126 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CRYPTO</b>,

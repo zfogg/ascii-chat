@@ -139,27 +139,13 @@
 <div class="Bd-indent"><i>buf</i> Buffer instance (must not be NULL)
 <br/>
 <i>message</i> Log message text (already formatted with colors)</div>
-<p class="Pp">Definition at line <b>65</b> of file
-  <b>session_log_buffer.c</b>.</p>
-<pre>65                                                                                {
-66   if (!buf || !message) {
-67     // Fail silently - this is called FROM the logging system
-68     // Using SET_ERRNO here would cause infinite recursion
-69     return;
-70   }
-71 
-72   mutex_lock(&amp;buf-&gt;mutex);
-73 
-74   size_t pos = atomic_load_u64(&amp;buf-&gt;write_pos);
-75   uint64_t seq = atomic_fetch_add_u64(&amp;buf-&gt;sequence, 1);
-76 
-77   SAFE_STRNCPY(buf-&gt;entries[pos].message, message, SESSION_LOG_LINE_MAX);
-78   buf-&gt;entries[pos].sequence = seq;
-79 
-80   atomic_store_u64(&amp;buf-&gt;write_pos, (pos + 1) % SESSION_LOG_BUFFER_SIZE);
-81 
-82   mutex_unlock(&amp;buf-&gt;mutex);
-83 }</pre>
+<p class="Pp">Definition at line <b>71</b> of file
+    <b>platform/wasm/stubs/log.c</b>.</p>
+<pre>71                                                                                {
+72   (void)buf;
+73   (void)message;
+74   // No-op - session log buffer not used in WASM
+75 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_fetch_add_u64()</b>,
