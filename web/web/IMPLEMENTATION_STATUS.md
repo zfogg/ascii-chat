@@ -238,7 +238,11 @@ warning: passing 'const options_config_t *' to parameter of type
 ## 🚀 Usage Example
 
 ```typescript
-import { initClientWasm, generateKeypair, ConnectionState } from "./wasm/client";
+import {
+  initClientWasm,
+  generateKeypair,
+  ConnectionState,
+} from "./wasm/client";
 import { ClientConnection } from "./network/ClientConnection";
 
 // Initialize WASM

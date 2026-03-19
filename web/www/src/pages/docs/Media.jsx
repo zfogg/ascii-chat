@@ -399,9 +399,9 @@ export default function Media() {
             </Heading>
 
             <p className="docs-paragraph">
-              Export ASCII art rendering to video files, GIFs, images, or stdout.
-              Perfect for creating clips, GIFs for documentation, or piping to
-              other tools:
+              Export ASCII art rendering to video files, GIFs, images, or
+              stdout. Perfect for creating clips, GIFs for documentation, or
+              piping to other tools:
             </p>
 
             <div className="docs-subsection-spacing">
@@ -410,8 +410,8 @@ export default function Media() {
               </Heading>
               <p className="docs-paragraph">
                 Render ASCII art directly to MP4, WebM, MOV, AVI, or other video
-                formats. Works with files, URLs, live streams, or webcam. Includes
-                custom fonts, themes, and sizing:
+                formats. Works with files, URLs, live streams, or webcam.
+                Includes custom fonts, themes, and sizing:
               </p>
               <CodeBlock language="bash">
                 {
@@ -425,8 +425,9 @@ export default function Media() {
                 Export to GIF
               </Heading>
               <p className="docs-paragraph">
-                Create animated GIFs from ASCII rendering. Works with files, URLs,
-                streams, or webcam. Great for README files and documentation:
+                Create animated GIFs from ASCII rendering. Works with files,
+                URLs, streams, or webcam. Great for README files and
+                documentation:
               </p>
               <CodeBlock language="bash">
                 {
@@ -440,8 +441,8 @@ export default function Media() {
                 Export to Images
               </Heading>
               <p className="docs-paragraph">
-                Capture a single frame as PNG or JPEG. Works with any input source
-                (files, URLs, streams, webcam):
+                Capture a single frame as PNG or JPEG. Works with any input
+                source (files, URLs, streams, webcam):
               </p>
               <CodeBlock language="bash">
                 {
@@ -456,9 +457,9 @@ export default function Media() {
               </Heading>
               <p className="docs-paragraph">
                 Render ASCII art to MP4 video format on stdout using{" "}
-                <code className="code-inline">--render-file '-'</code>. Perfect for
-                piping to FFmpeg, saving to file, or streaming. Works with files,
-                URLs, streams, or webcam:
+                <code className="code-inline">--render-file '-'</code>. Perfect
+                for piping to FFmpeg, saving to file, or streaming. Works with
+                files, URLs, streams, or webcam:
               </p>
               <CodeBlock language="bash">
                 {
@@ -495,22 +496,27 @@ export default function Media() {
                     Theme
                   </Heading>
                   <p className="text-gray-300 text-sm mb-2">
-                    <code className="code-inline">--render-theme dark|light|auto</code>{" "}
+                    <code className="code-inline">
+                      --render-theme dark|light|auto
+                    </code>{" "}
                     Color scheme for rendered output (default: dark)
                   </p>
                 </div>
                 <div className="card-standard accent-pink">
-                  <Heading level={4} className="text-pink-300 font-semibold mb-2">
+                  <Heading
+                    level={4}
+                    className="text-pink-300 font-semibold mb-2"
+                  >
                     Font
                   </Heading>
                   <p className="text-gray-300 text-sm mb-2">
-                    <code className="code-inline">--render-font NAME</code> Font to
-                    use (matrix, default, system fonts, or .ttf/.otf path)
+                    <code className="code-inline">--render-font NAME</code> Font
+                    to use (matrix, default, system fonts, or .ttf/.otf path)
                   </p>
                   <p className="text-gray-400 text-xs">
                     Options: <code className="code-inline">matrix</code>,{" "}
-                    <code className="code-inline">default</code>, JetBrains Mono,
-                    Courier New, or path to custom font file
+                    <code className="code-inline">default</code>, JetBrains
+                    Mono, Courier New, or path to custom font file
                   </p>
                 </div>
                 <div className="card-standard accent-indigo">
@@ -521,8 +527,9 @@ export default function Media() {
                     Font Size
                   </Heading>
                   <p className="text-gray-300 text-sm mb-2">
-                    <code className="code-inline">--render-font-size N</code> Size
-                    in points (default: 12.0, supports fractional sizes like 10.5)
+                    <code className="code-inline">--render-font-size N</code>{" "}
+                    Size in points (default: 12.0, supports fractional sizes
+                    like 10.5)
                   </p>
                 </div>
               </div>

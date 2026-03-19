@@ -515,8 +515,7 @@ export default function Network() {
                     <br />
                     <code className="code-inline">6061</code> =
                     ACIP_HOST_ANNOUNCEMENT (Participant → ACDS)
-                    <br />
-                    I won host election
+                    <br />I won host election
                     <br />
                     <br />
                     <code className="code-inline">6062</code> =
