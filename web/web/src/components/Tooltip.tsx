@@ -57,6 +57,14 @@ export function Tooltip({ text, children }: TooltipProps) {
     setIsVisible(false);
   }, []);
 
+  const handleFocusCapture = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setIsVisible(false);
+  }, []);
+
   if (!text) {
     return <>{children}</>;
   }
@@ -78,6 +86,7 @@ export function Tooltip({ text, children }: TooltipProps) {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onMouseMove={handleMouseMove}
+        onFocusCapture={handleFocusCapture}
       >
         {children}
       </div>
