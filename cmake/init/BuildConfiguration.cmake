@@ -151,11 +151,32 @@ if(ASCIICHAT_ENABLE_ANALYZERS)
     if(NOT DEFINED ENV{ASCIICHAT_ANALYZER_SUPPRESS_WARNINGS})
         set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
     endif()
+
+    # Save analyzer settings for later restoration in project targets
+    set(_ASCIICHAT_CMAKE_C_CLANG_TIDY "${CMAKE_C_CLANG_TIDY}")
+    set(_ASCIICHAT_CMAKE_C_CPPCHECK "${CMAKE_C_CPPCHECK}")
 else()
     # Clear stale analyzer settings when analyzers are disabled
     set(CMAKE_C_CLANG_TIDY "" CACHE STRING "" FORCE)
     set(CMAKE_C_CPPCHECK "" CACHE STRING "" FORCE)
 endif()
+
+# Helper function to disable analyzers for external dependencies
+function(asciichat_disable_analyzers)
+    set(CMAKE_C_CLANG_TIDY "" CACHE STRING "" FORCE)
+    set(CMAKE_C_CPPCHECK "" CACHE STRING "" FORCE)
+    set(CMAKE_CXX_CLANG_TIDY "" CACHE STRING "" FORCE)
+    message(STATUS "Analyzers: ${BoldYellow}disabled for dependencies${ColorReset}")
+endfunction()
+
+# Helper function to re-enable analyzers for project targets
+function(asciichat_enable_analyzers_for_targets)
+    if(ASCIICHAT_ENABLE_ANALYZERS)
+        set(CMAKE_C_CLANG_TIDY "${_ASCIICHAT_CMAKE_C_CLANG_TIDY}" CACHE STRING "" FORCE)
+        set(CMAKE_C_CPPCHECK "${_ASCIICHAT_CMAKE_C_CPPCHECK}" CACHE STRING "" FORCE)
+        message(STATUS "Analyzers: ${BoldGreen}re-enabled for project targets${ColorReset}")
+    endif()
+endfunction()
 
 # Output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

@@ -242,6 +242,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/PkgConfigSetup.cmake)
 # This must run before Dependencies.cmake so musl-built libraries (like OpenSSL)
 # are available when dependency files (like Libdatachannel.cmake) try to find them
 
+# Disable analyzers for external dependencies to keep build clean
+asciichat_disable_analyzers()
+
 # Common musl setup (kernel headers, compiler validation, variables)
 # This must come BEFORE Dependencies.cmake which includes all modular dependency files
 include(${CMAKE_SOURCE_DIR}/cmake/utils/MuslDep.cmake)
@@ -270,6 +273,9 @@ configure_include_directories()
 if(USE_MUSL)
     set(CMAKE_PREFIX_PATH "${MUSL_PREFIX}" ${CMAKE_PREFIX_PATH})
 endif()
+
+# Re-enable analyzers for project targets (was disabled for dependencies)
+asciichat_enable_analyzers_for_targets()
 
 # =============================================================================
 # ascii-chat-Specific Stuff: Source code, Library modules, Headers, and Executable Config
