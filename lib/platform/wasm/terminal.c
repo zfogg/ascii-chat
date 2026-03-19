@@ -145,9 +145,9 @@ asciichat_error_t terminal_flush(int fd) {
 // Terminal capabilities detection stub
 terminal_capabilities_t detect_terminal_capabilities(void) {
   terminal_capabilities_t caps = {0};
-  caps.color_level = TERM_COLOR_256; // xterm.js supports 256 colors
+  caps.color_level = TERM_COLOR_TRUECOLOR; // xterm.js supports truecolor
   caps.capabilities = 0;
-  caps.color_count = 256;
+  caps.color_count = 16777216;
   caps.utf8_support = true; // xterm.js supports UTF-8
   caps.detection_reliable = true;
   caps.render_mode = RENDER_MODE_FOREGROUND; // Default to foreground mode

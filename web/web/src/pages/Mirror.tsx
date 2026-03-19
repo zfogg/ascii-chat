@@ -38,56 +38,63 @@ import { createWasmOptionsManager } from "../hooks/useWasmOptions";
 import { useClientLike } from "../hooks/useClientLike";
 
 export function MirrorPage() {
-  // Create options manager
+  // Memoize WASM callbacks to prevent infinite re-render loops.
+  // These are module-level functions that never change, so empty deps are correct.
+  const initWasm = useCallback(() => initMirrorWasm({}), []);
+
+  const applyWasmSettings = useCallback((settings: SettingsConfig) => {
+    const om = createWasmOptionsManager(
+      setColorMode,
+      getColorMode,
+      setColorFilter,
+      getColorFilter,
+      setPalette,
+      getPalette,
+      setPaletteChars,
+      getPaletteChars,
+      setMatrixRain,
+      getMatrixRain,
+      setFlipX,
+      getFlipX,
+      setDimensions,
+      getDimensions,
+      setTargetFps,
+      getTargetFps,
+      mapColorModeToWasm,
+      mapColorFilterToWasm,
+    );
+    om?.applySettings(settings);
+  }, []);
+
+  const setWasmDimensions = useCallback((cols: number, rows: number) => {
+    const om = createWasmOptionsManager(
+      setColorMode,
+      getColorMode,
+      setColorFilter,
+      getColorFilter,
+      setPalette,
+      getPalette,
+      setPaletteChars,
+      getPaletteChars,
+      setMatrixRain,
+      getMatrixRain,
+      setFlipX,
+      getFlipX,
+      setDimensions,
+      getDimensions,
+      setTargetFps,
+      getTargetFps,
+      mapColorModeToWasm,
+      mapColorFilterToWasm,
+    );
+    om?.setDimensions(cols, rows);
+  }, []);
+
   const optionsManager = useClientLike({
-    initWasm: () => initMirrorWasm({}),
+    initWasm,
     isWasmReady,
-    applyWasmSettings: (settings) => {
-      const om = createWasmOptionsManager(
-        setColorMode,
-        getColorMode,
-        setColorFilter,
-        getColorFilter,
-        setPalette,
-        getPalette,
-        setPaletteChars,
-        getPaletteChars,
-        setMatrixRain,
-        getMatrixRain,
-        setFlipX,
-        getFlipX,
-        setDimensions,
-        getDimensions,
-        setTargetFps,
-        getTargetFps,
-        mapColorModeToWasm,
-        mapColorFilterToWasm,
-      );
-      om?.applySettings(settings);
-    },
-    setWasmDimensions: (cols, rows) => {
-      const om = createWasmOptionsManager(
-        setColorMode,
-        getColorMode,
-        setColorFilter,
-        getColorFilter,
-        setPalette,
-        getPalette,
-        setPaletteChars,
-        getPaletteChars,
-        setMatrixRain,
-        getMatrixRain,
-        setFlipX,
-        getFlipX,
-        setDimensions,
-        getDimensions,
-        setTargetFps,
-        getTargetFps,
-        mapColorModeToWasm,
-        mapColorFilterToWasm,
-      );
-      om?.setDimensions(cols, rows);
-    },
+    applyWasmSettings,
+    setWasmDimensions,
   });
 
   const {
@@ -229,6 +236,14 @@ export function MirrorPage() {
         );
       }
 
+      // Expose last ANSI frame for E2E test access
+      // eslint-disable-next-line
+      (window as any).__lastAnsiFrame = asciiArt;
+      // eslint-disable-next-line
+      (window as any).__lastAnsiFrameTime = performance.now();
+      // eslint-disable-next-line
+      (window as any).__lastAnsiFrameCount = ((window as any).__lastAnsiFrameCount || 0) + 1;
+
       rendererRef.current!.writeFrame(asciiArt);
 
       if (debugCountRef.current === 0) {
@@ -239,7 +254,11 @@ export function MirrorPage() {
     };
 
     const interval = setInterval(() => {
-      renderFrame();
+      try {
+        renderFrame();
+      } catch (err) {
+        console.error("[Mirror] Render error:", err);
+      }
     }, frameIntervalRef.current);
 
     return () => clearInterval(interval);
@@ -402,10 +421,14 @@ export function MirrorPage() {
       terminalDimensions.cols > 0 &&
       terminalDimensions.rows > 0
     ) {
-      optionsManager.setWasmDimensions(
-        terminalDimensions.cols,
-        terminalDimensions.rows,
-      );
+      try {
+        optionsManager.setWasmDimensions(
+          terminalDimensions.cols,
+          terminalDimensions.rows,
+        );
+      } catch (err) {
+        console.error("Failed to sync dimensions to WASM:", err);
+      }
     }
   }, [terminalDimensions, wasmInitialized, optionsManager]);
 

@@ -31,6 +31,9 @@ static char *g_last_rain_output = NULL;
 static double g_last_rain_update_time = 0.0;
 #define RAIN_UPDATE_INTERVAL_MS 100.0 // Update every 100ms for smooth animation
 
+// Frame counter for time-based effects (emscripten_get_now is unreliable in pthreads builds)
+static uint32_t g_frame_count = 0;
+
 // ============================================================================
 // Initialization
 // ============================================================================
@@ -118,11 +121,25 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
     return NULL;
   }
 
+  g_frame_count++;
+  // Derive a time value from frame count using actual target FPS from options
+  int target_fps = (int)GET_OPTION(fps);
+  if (target_fps <= 0) {
+    target_fps = 60; // Default to 60 FPS if not set
+  }
+  float time_seconds = (float)g_frame_count / (float)target_fps;
+
   // Get current settings from options or terminal detection
   int dst_width = (int)terminal_get_effective_width();
   int dst_height = (int)terminal_get_effective_height();
   color_filter_t filter = (color_filter_t)GET_OPTION(color_filter);
   terminal_color_mode_t color_mode = (terminal_color_mode_t)GET_OPTION(color_mode);
+  if (g_frame_count <= 3 || g_frame_count % 120 == 0) {
+    log_debug("frame=%u color_filter=%d color_mode=%d", g_frame_count, (int)filter, (int)color_mode);
+  }
+  if (color_mode == TERM_COLOR_AUTO) {
+    color_mode = TERM_COLOR_TRUECOLOR; // xterm.js supports truecolor
+  }
   palette_type_t palette_type = (palette_type_t)GET_OPTION(palette_type);
   bool aspect_ratio = true; // Preserve webcam aspect ratio
   bool stretch = false;     // Don't stretch - maintain proportions
@@ -169,7 +186,6 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
     // color_filter operates on packed RGB24 format
     uint8_t *rgb24 = (uint8_t *)rgb_pixels;
     int stride = src_width * 3;
-    float time_seconds = (float)(emscripten_get_now() / 1000.0); // Convert ms to seconds
     apply_color_filter(rgb24, src_width, src_height, stride, filter, time_seconds);
   }
 
@@ -219,7 +235,6 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   // Apply rainbow color filter to ANSI output by replacing RGB values
   // This preserves character selection while applying rainbow colors
   if (filter == COLOR_FILTER_RAINBOW) {
-    float time_seconds = (float)(emscripten_get_now() / 1000.0); // Convert ms to seconds
     char *rainbow_output = rainbow_replace_ansi_colors(ascii_output, time_seconds);
     if (rainbow_output) {
       SAFE_FREE(ascii_output);
