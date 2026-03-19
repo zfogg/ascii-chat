@@ -178,6 +178,7 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
   write_u32_be(buf + pos, len);
   pos += 4;
   // Binary protocol: intentionally not null-terminated
+  // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary data
   memcpy(buf + pos, "ssh-ed25519", 11);
   pos += 11;
 
@@ -310,6 +311,7 @@ asciichat_error_t ssh_agent_sign(const public_key_t *public_key, const uint8_t *
   write_u32_be(buf + offset, key_type_len);
   offset += 4;
   memcpy(buf + offset, key_type, key_type_len);
+  // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary data
   offset += key_type_len;
 
   // Write key_blob: string(public_key)

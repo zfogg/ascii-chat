@@ -1502,6 +1502,7 @@ static void acip_on_error(const error_packet_t *header, const char *message, voi
 
   memcpy(packet, header, sizeof(*header));
   if (msg_len > 0) {
+    // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary packet data
     memcpy(packet + sizeof(*header), message, msg_len);
   }
 
@@ -1559,6 +1560,7 @@ static void acip_on_remote_log(const remote_log_packet_t *header, const char *me
 
   memcpy(packet, header, sizeof(*header));
   memcpy(packet + sizeof(*header), message, msg_len);
+  // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary packet data
 
   handle_remote_log_packet(packet, total_len);
   SAFE_FREE(packet);

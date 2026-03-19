@@ -246,6 +246,7 @@ static inline void cleanup_client_all_buffers(client_info_t *client);
  *
  * @param client Pointer to the client_info_t structure
  */
+// NOLINTNEXTLINE(misc-unused-function) - Used for debug sync inspection, may be disabled in some builds
 static void register_client_info_atomics(client_info_t *client) {
   if (!client || !client->client_id[0]) {
     return;
@@ -1007,6 +1008,9 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   log_info("[TCP_DBG] BROADCAST_SERVER_STATE_START: About to broadcast to all clients");
   broadcast_server_state_to_all_clients();
   log_info("[TCP_DBG] BROADCAST_SERVER_STATE_DONE");
+
+  // Register client atomics for debug sync inspection
+  register_client_info_atomics(client);
 
   log_info("[TCP_DBG] ADD_CLIENT_RETURNING: client_id=%s, client=%p", client->client_id, (void *)client);
   return client;
@@ -3537,6 +3541,7 @@ static void acip_server_on_error(const error_packet_t *header, const char *messa
   }
 
   memcpy(full_packet, header, sizeof(*header));
+  // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary packet data, not string
   memcpy(full_packet + sizeof(*header), message, msg_len);
 
   handle_client_error_packet(client, full_packet, total_len);
@@ -3558,6 +3563,7 @@ static void acip_server_on_remote_log(const remote_log_packet_t *header, const c
   }
 
   memcpy(full_packet, header, sizeof(*header));
+  // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary packet data, not string
   memcpy(full_packet + sizeof(*header), message, msg_len);
 
   handle_remote_log_packet_from_client(client, full_packet, total_len);

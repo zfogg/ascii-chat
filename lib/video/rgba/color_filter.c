@@ -387,6 +387,7 @@ char *rainbow_replace_ansi_colors(const char *ansi_string, float time_seconds) {
       const char *ansi_end = strchr(ansi_start + 7, 'm');
       if (ansi_end) {
         // Copy the rainbow replacement code
+    // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary data
         memcpy(dst, rainbow_code, rainbow_code_len);
         dst += rainbow_code_len;
 

@@ -304,6 +304,7 @@ asciichat_error_t acip_send_remote_log(acip_transport_t *transport, uint8_t log_
 
   // Build packet
   memcpy(buffer, &header, sizeof(header));
+  // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary packet data
   memcpy(buffer + sizeof(header), message, msg_len);
 
   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_REMOTE_LOG, buffer, total_size, 0);

@@ -703,6 +703,7 @@ static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[16
   memcpy(sdp_msg->recipient_id, recipient_id, 16);
   sdp_msg->sdp_type = (strcmp(sdp_type, "offer") == 0) ? 0 : 1;
   sdp_msg->sdp_len = HOST_TO_NET_U16(sdp_len);
+  // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary packet data
   memcpy(packet_data + sizeof(acip_webrtc_sdp_t), sdp, sdp_len);
 
   // Send to ACDS

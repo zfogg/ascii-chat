@@ -50,22 +50,12 @@ static time_t g_discovery_start_time = 0;
 static time_t g_last_status_update = 0;
 
 /**
- * @brief Atomic flag for shutdown request
+ * @brief Flag for shutdown request (volatile for signal handler safety)
  */
-static atomic_t g_acds_should_exit = {0};
+static volatile sig_atomic_t g_shutdown_requested = 0;
 
-/**
- * @brief Check if discovery mode should exit
- */
 static bool acds_should_exit(void) {
-  return atomic_load_bool(&g_acds_should_exit);
-}
-
-/**
- * @brief Signal discovery mode to exit
- */
-static void acds_signal_exit(void) {
-  atomic_store_bool(&g_acds_should_exit, true);
+  return g_shutdown_requested != 0;
 }
 
 /**
@@ -73,12 +63,7 @@ static void acds_signal_exit(void) {
  */
 static void acds_handle_signal(int sig) {
   (void)sig;
-  log_console(LOG_INFO, "Signal received - shutting down discovery service...");
-  if (g_server) {
-    atomic_store_bool(&g_server->tcp_server.running, false);
-  }
-  acds_signal_exit();
-  // UPnP context will be cleaned up after server shutdown
+  g_shutdown_requested = 1;
 }
 
 int acds_main(void) {

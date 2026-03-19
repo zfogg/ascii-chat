@@ -151,6 +151,7 @@ static asciichat_error_t client_send_sdp(const uint8_t session_id[16], const uin
             g_session_context.participant_id[3], recipient_id[0], recipient_id[1], recipient_id[2], recipient_id[3]);
 
   // Copy SDP string after header
+  // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary packet data
   memcpy(packet + sizeof(acip_webrtc_sdp_t), sdp, sdp_len);
 
   log_info("Sending WebRTC SDP %s to participant (%.8s...) via ACDS", sdp_type, (const char *)recipient_id);

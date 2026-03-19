@@ -256,12 +256,7 @@ bool crypto_regex_extract_pem_base64(const char *file_content, char **base64_dat
 
   pcre2_match_data_free(match_data);
 
-  /* Verify we got the base64 data */
-  if (!*base64_data_out) {
-    return false;
-  }
-
-  return true;
+  return *base64_data_out != NULL;
 }
 
 bool crypto_regex_extract_gpg_keygrip(const char *line, char **keygrip_out) {
@@ -296,10 +291,5 @@ bool crypto_regex_extract_gpg_keygrip(const char *line, char **keygrip_out) {
 
   pcre2_match_data_free(match_data);
 
-  /* Verify we got the keygrip */
-  if (!*keygrip_out) {
-    return false;
-  }
-
-  return true;
+  return *keygrip_out != NULL;
 }

@@ -689,7 +689,8 @@ static asciichat_error_t server_send_sdp(const uint8_t session_id[16], const uin
   header->sdp_type = (strcmp(sdp_type, "offer") == 0) ? 0 : 1;
   header->sdp_len = HOST_TO_NET_U16((uint16_t)sdp_len);
 
-  // Copy SDP string after header
+  // Copy SDP string after header (binary data, not null-terminated)
+  // NOLINTNEXTLINE(bugprone-not-null-terminated-result)
   memcpy(packet + sizeof(acip_webrtc_sdp_t), sdp, sdp_len);
 
   log_debug("Server sending WebRTC SDP %s to participant (sender=%02x%02x..., recipient=%02x%02x...) via ACDS",

@@ -90,13 +90,8 @@ bool terminal_should_color_output(int fd) {
   }
 
   // Check if output is a TTY (pipe detection)
-  int is_tty = platform_isatty(fd);
-  if (!is_tty) {
-    return false; // NO colors when piping/redirecting
-  }
-
-  // Default: Use colors (we have TTY and no environment overrides)
-  return true;
+  // Default: Use colors only if we have TTY and no environment overrides
+  return platform_isatty(fd);
 }
 
 /**
@@ -209,7 +204,8 @@ bool terminal_should_force_stderr(void) {
     // Unless in TESTING environment where test framework may capture stdout
     const char *testing = SAFE_GETENV("TESTING");
     if (testing && strcmp(testing, "1") == 0) {
-      return false; // Allow stdout in test environments
+      // NOLINTNEXTLINE(readability-simplify-boolean-expr) - Intentional logic for test environment override
+      return false;
     }
     return true; // Force stderr when piped
   }
@@ -230,7 +226,8 @@ bool terminal_can_prompt_user(void) {
   // Must not have automated prompt responses configured
   const char *auto_response = SAFE_GETENV("ASCII_CHAT_QUESTION_PROMPT_RESPONSE");
   if (auto_response && *auto_response != '\0') {
-    return false; // Automated responses configured, not interactive
+    // NOLINTNEXTLINE(readability-simplify-boolean-expr) - Intentional check for configured automated responses
+    return false;
   }
 
   // All checks passed, interactive prompts are appropriate
