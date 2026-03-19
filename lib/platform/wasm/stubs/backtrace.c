@@ -50,3 +50,8 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
   (void)filter;
   // No-op for WASM
 }
+
+void backtrace_print_simple(int skip_frames) {
+  (void)skip_frames;
+  // No-op for WASM
+}

@@ -65,3 +65,11 @@ int terminal_choose_log_fd(log_level_t level) {
   (void)level;
   return 2; // Stub: return stderr-like fd
 }
+
+// Session log buffer stub (session screens not used in WASM)
+typedef struct session_log_buffer session_log_buffer_t;
+void session_log_buffer_append(session_log_buffer_t *buf, const char *message) {
+  (void)buf;
+  (void)message;
+  // No-op - session log buffer not used in WASM
+}

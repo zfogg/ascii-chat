@@ -83,6 +83,11 @@ int rwlock_wrunlock_impl(rwlock_t *rwlock) {
   return pthread_rwlock_unlock((pthread_rwlock_t *)rwlock);
 }
 
+// Convert thread handle to unique key for named registry lookups
+uintptr_t asciichat_thread_to_key(asciichat_thread_t thread) {
+  return (uintptr_t)thread;
+}
+
 // Thread ID function
 uint64_t asciichat_thread_current_id(void) {
   return (uint64_t)pthread_self();

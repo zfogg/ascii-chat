@@ -10,8 +10,10 @@
 bool lifecycle_init(lifecycle_t *lc, const char *name) {
   (void)name;
   if (!lc) return false;
-  atomic_store_int(&lc->state, LIFECYCLE_INITIALIZED);
-  return true;
+
+  // Only initialize if not already initialized (matches native CAS behavior)
+  int expected = LIFECYCLE_UNINITIALIZED;
+  return atomic_cas_int(&lc->state, &expected, LIFECYCLE_INITIALIZED);
 }
 
 bool lifecycle_init_once(lifecycle_t *lc) {

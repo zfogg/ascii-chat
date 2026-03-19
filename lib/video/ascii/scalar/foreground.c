@@ -446,6 +446,13 @@ char *image_print_256color(const image_t *image, const char *palette) {
   char *ptr = buffer;
   const char *reset_code = "\033[0m";
 
+  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+  if (!utf8_cache) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Failed to get UTF-8 cache for 256-color rendering");
+    SAFE_FREE(buffer);
+    return NULL;
+  }
+
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       rgb_pixel_t pixel = image->pixels[y * w + x];
@@ -454,12 +461,6 @@ char *image_print_256color(const image_t *image, const char *palette) {
       ptr = append_256color_fg(ptr, color_index);
 
       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
-
-      utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
-      if (!utf8_cache) {
-        SET_ERRNO(ERROR_INVALID_STATE, "Failed to get UTF-8 cache");
-        return NULL;
-      }
 
       uint8_t safe_luminance = clamp_rgb(luminance);
       uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);
@@ -555,6 +556,13 @@ char *image_print_16color(const image_t *image, const char *palette) {
   char *ptr = buffer;
   const char *reset_code = "\033[0m";
 
+  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+  if (!utf8_cache) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Failed to get UTF-8 cache for 16-color rendering");
+    SAFE_FREE(buffer);
+    return NULL;
+  }
+
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       rgb_pixel_t pixel = image->pixels[y * w + x];
@@ -565,13 +573,6 @@ char *image_print_16color(const image_t *image, const char *palette) {
 
       // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
-
-      // Use UTF-8 cache which contains character index ramp
-      utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
-      if (!utf8_cache) {
-        SET_ERRNO(ERROR_INVALID_STATE, "Failed to get UTF-8 cache");
-        return NULL;
-      }
 
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       uint8_t safe_luminance = clamp_rgb(luminance);
@@ -680,6 +681,14 @@ char *image_print_16color_dithered(const image_t *image, const char *palette) {
   char *ptr = buffer;
   const char *reset_code = "\033[0m";
 
+  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+  if (!utf8_cache) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Failed to get UTF-8 cache for 16-color dithered rendering");
+    SAFE_FREE(buffer);
+    SAFE_FREE(error_buffer);
+    return NULL;
+  }
+
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       rgb_pixel_t pixel = image->pixels[y * w + x];
@@ -690,13 +699,6 @@ char *image_print_16color_dithered(const image_t *image, const char *palette) {
 
       // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
-
-      // Use UTF-8 cache which contains character index ramp
-      utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
-      if (!utf8_cache) {
-        SET_ERRNO(ERROR_INVALID_STATE, "Failed to get UTF-8 cache");
-        return NULL;
-      }
 
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       uint8_t safe_luminance = clamp_rgb(luminance);
@@ -765,6 +767,14 @@ char *image_print_16color_dithered_with_background(const image_t *image, bool us
   char *ptr = buffer;
   const char *reset_code = "\033[0m";
 
+  utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+  if (!utf8_cache) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Failed to get UTF-8 cache for 16-color dithered bg rendering");
+    SAFE_FREE(buffer);
+    SAFE_FREE(error_buffer);
+    return NULL;
+  }
+
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       rgb_pixel_t pixel = image->pixels[y * w + x];
@@ -791,17 +801,10 @@ char *image_print_16color_dithered_with_background(const image_t *image, bool us
       // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
 
-      // Use UTF-8 cache which contains character index ramp
-      utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
-      if (!utf8_cache) {
-        SET_ERRNO(ERROR_INVALID_STATE, "Failed to get UTF-8 cache");
-        return NULL;
-      }
-
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       uint8_t safe_luminance = clamp_rgb(luminance);
-      uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);        // 0-63 index (same as SIMD)
-      uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
+      uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);
+      uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx];
 
       // Use direct palette character lookup (same as SIMD would do)
       char ascii_char = palette[char_idx];

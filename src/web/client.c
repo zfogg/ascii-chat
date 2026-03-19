@@ -179,6 +179,8 @@ int client_init_with_args(const char *args_json) {
   // Initialize logging to stderr (console.error in browser)
   WASM_LOG("Calling log_init...");
   log_init(NULL, LOG_DEBUG, true, false);
+  // Use debug-style format in WASM so browser console shows full log headers
+  log_set_format(OPT_LOG_TEMPLATE_DEFAULT_DEBUG, false);
   WASM_LOG("log_init OK");
   log_info("WASM client initialized via logging system");
 

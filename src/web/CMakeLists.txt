@@ -161,7 +161,6 @@ set(PLATFORM_SRC
     ${LIB_ROOT}/platform/wasm/time.c
     ${LIB_ROOT}/platform/wasm/string.c
     ${LIB_ROOT}/platform/wasm/lifecycle.c
-    ${LIB_ROOT}/platform/wasm/log.c
     ${LIB_ROOT}/platform/wasm/stubs/util.c
     ${LIB_ROOT}/platform/wasm/stubs/actions.c
     ${LIB_ROOT}/platform/wasm/stubs/terminal.c
@@ -171,6 +170,7 @@ set(PLATFORM_SRC
     ${LIB_ROOT}/platform/wasm/stubs/mode_defaults.c
     ${LIB_ROOT}/platform/wasm/stubs/crypto.c
     ${LIB_ROOT}/platform/wasm/stubs/backtrace.c
+    ${LIB_ROOT}/platform/wasm/stubs/log.c
 )
 
 # Third-party dependencies (source-included)
@@ -277,12 +277,14 @@ set(LIB_SRC_COMMON
     # Note: platform/system.c is NOT included here - it's included by the WASM-specific
     # wasm/system.c file, which follows the same pattern as posix/system.c and windows/system.c
 
-    # Logging
-    # ${LIB_ROOT}/log/log.c - EXCLUDED for WASM (depends on log_template_parse and other functions)
-    # ${LIB_ROOT}/log/format.c - EXCLUDED for WASM (depends on lifecycle)
-    # ${LIB_ROOT}/log/colorize.c - EXCLUDED for WASM
-    # ${LIB_ROOT}/log/grep.c - EXCLUDED for WASM
-    # ${LIB_ROOT}/log/interactive_grep.c - EXCLUDED: not needed for web client
+    # Logging (real logging system with full header formatting)
+    ${LIB_ROOT}/log/log.c
+    ${LIB_ROOT}/log/format.c
+    ${LIB_ROOT}/log/colorize.c
+    ${LIB_ROOT}/log/named.c
+    ${LIB_ROOT}/log/grep.c
+    ${LIB_ROOT}/log/search.c
+    ${LIB_ROOT}/log/io.c
 
     # Debug/memory tracking (sync/mutex/atomic debugging excluded for WASM)
     ${LIB_ROOT}/debug/memory.c
@@ -514,6 +516,7 @@ target_link_options(mirror-web PRIVATE
     -sALLOW_MEMORY_GROWTH=1
     -sINITIAL_MEMORY=32MB
     -sMAXIMUM_MEMORY=128MB
+    -sSTACK_SIZE=1048576
     -sWASM_BIGINT=1
     -msimd128
     -O3
@@ -533,6 +536,7 @@ target_link_options(client-web PRIVATE
     -sALLOW_MEMORY_GROWTH=1
     -sINITIAL_MEMORY=32MB
     -sMAXIMUM_MEMORY=128MB
+    -sSTACK_SIZE=1048576
     -sWASM_BIGINT=1
     -msimd128
     -O3

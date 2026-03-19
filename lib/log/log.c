@@ -952,6 +952,12 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     }
   }
 
+  // Platform log hook runs unconditionally (e.g., WASM browser console routing)
+  // Uses plain_log_line which has the full formatted header without ANSI codes
+  if (plain_len > 0 && plain_len < (int)sizeof(plain_log_line)) {
+    platform_log_hook(level, plain_log_line);
+  }
+
   // Check if terminal output is enabled (atomic load)
   bool is_enabled = atomic_load_u64(&g_log.terminal_output_enabled);
   if (!is_enabled) {
@@ -1072,9 +1078,6 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
                                          use_colors, time_ns);
 
       if (header_len >= 0 && header_len < (int)sizeof(header_buffer)) {
-        // Platform-specific log hook (e.g., for WASM browser console)
-        platform_log_hook(level, msg_buffer);
-
         if (use_colors) {
           const char *colorized_msg = colorize_log_message(msg_buffer);
           const char **colors = log_get_color_array();

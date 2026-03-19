@@ -299,7 +299,13 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   }
 #endif
 
+#ifdef EMSCRIPTEN_BUILD
+  // In WASM builds, do not call exit() — it permanently kills the module runtime.
+  // Instead, set the error and return so callers can handle it gracefully.
+  SET_ERRNO(code, "FATAL (non-exit in WASM): code=%d", (int)code);
+#else
   exit(code);
+#endif
 }
 
 /* ============================================================================
