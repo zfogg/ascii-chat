@@ -29,7 +29,7 @@ test("Browser receives multiple ENCRYPTED packets from server", async ({
   page,
   context,
 }) => {
-  test.setTimeout(10000);
+  test.setTimeout(4000);
 
   const encryptedPackets: number[] = [];
   const asciiFrames: number[] = [];
@@ -69,6 +69,19 @@ test("Browser receives multiple ENCRYPTED packets from server", async ({
 
   page.on("console", (msg) => {
     const text = msg.text();
+
+    // Log all ClientConnection, Client, and WASM messages for diagnostics
+    if (
+      text.includes("[ClientConnection]") ||
+      text.includes("[Client]") ||
+      text.includes("[useCanvasCapture]") ||
+      text.includes("WASM") ||
+      text.includes("handleKey") ||
+      text.includes("handleAuth") ||
+      text.includes("handleHandshake")
+    ) {
+      console.log(`[BROWSER] ${text}`);
+    }
 
     // Count ENCRYPTED packet receives (packet type 1200 = ENCRYPTED)
     if (

@@ -27,6 +27,13 @@ export default defineConfig({
         headless: process.env.HEADED !== "true",
         // Grant permissions for camera/microphone access
         permissions: ["camera", "microphone"],
+        // Use Playwright's fake/test webcam and microphone devices
+        launchOptions: {
+          args: [
+            "--use-fake-device-for-media-stream",
+            "--use-fake-ui-for-media-stream",
+          ],
+        },
       },
     },
   ],
