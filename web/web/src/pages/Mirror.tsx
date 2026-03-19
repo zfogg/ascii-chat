@@ -128,6 +128,8 @@ export function MirrorPage() {
   useEffect(() => {
     if (!isWebcamRunning) return;
 
+    const isTestMode = new URLSearchParams(window.location.search).has("test");
+
     const renderFrame = () => {
       if (!isWasmReady() || !rendererRef.current) return;
 
@@ -147,7 +149,40 @@ export function MirrorPage() {
         console.time("[Mirror] Time to first frame render");
       }
 
-      const frame = captureFrame();
+      let frame;
+
+      if (isTestMode) {
+        // Generate synthetic test frame
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (!ctx) return;
+
+        // Create gradient pattern for testing
+        const time = (Date.now() % 10000) / 10000; // Cycle every 10 seconds
+        const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+        gradient.addColorStop(0, `hsl(${time * 360}, 100%, 50%)`);
+        gradient.addColorStop(1, `hsl(${(time + 0.5) * 360}, 100%, 50%)`);
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Add some animated bars
+        ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+        const barHeight = canvas.height * 0.1;
+        ctx.fillRect(0, canvas.height * time, canvas.width, barHeight);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        frame = {
+          data: new Uint8Array(imageData.data),
+          width: canvas.width,
+          height: canvas.height,
+        };
+      } else {
+        frame = captureFrame();
+      }
+
       if (!frame) {
         if (debugCountRef.current % 300 === 0) {
           console.log("[Mirror] captureFrame returned null");
@@ -235,6 +270,27 @@ export function MirrorPage() {
         setFlipX(settings.flipX ?? isMacOS);
       }
       console.timeEnd("[Mirror] WASM settings");
+
+      // Check for test mode via query parameter
+      const isTestMode = new URLSearchParams(window.location.search).has(
+        "test",
+      );
+
+      if (isTestMode) {
+        console.log("[Mirror] Test mode enabled - generating synthetic frames");
+        const canvas = canvasRef.current!;
+        canvas.width =
+          settings.width && settings.width > 0 ? settings.width : 640;
+        canvas.height =
+          settings.height && settings.height > 0 ? settings.height : 480;
+        console.log(
+          `[Mirror] canvas set to ${canvas.width}x${canvas.height} (test mode)`,
+        );
+        lastFrameTimeRef.current = performance.now();
+        setIsWebcamRunning(true);
+        console.timeEnd("[Mirror] Total startWebcam time");
+        return;
+      }
 
       console.log("[Mirror] Calling getUserMedia...");
       console.time("[Mirror] getUserMedia (incl browser permission)");
@@ -338,6 +394,20 @@ export function MirrorPage() {
       void Promise.resolve().then(() => startWebcam());
     }
   }, [wasmInitialized, permissionGranted, isWebcamRunning, startWebcam]);
+
+  // Sync terminal dimensions to WASM module when they change
+  useEffect(() => {
+    if (
+      wasmInitialized &&
+      terminalDimensions.cols > 0 &&
+      terminalDimensions.rows > 0
+    ) {
+      optionsManager.setWasmDimensions(
+        terminalDimensions.cols,
+        terminalDimensions.rows,
+      );
+    }
+  }, [terminalDimensions, wasmInitialized, optionsManager]);
 
   // Cleanup on unmount
   useEffect(() => {

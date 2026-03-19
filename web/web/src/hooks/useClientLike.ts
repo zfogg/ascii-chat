@@ -57,6 +57,7 @@ export interface UseClientLikeReturn {
   // Handlers
   handleDimensionsChange: (dims: { cols: number; rows: number }) => void;
   stopWebcam: () => void;
+  setWasmDimensions: (cols: number, rows: number) => void;
 
   // Debug refs
   debugCountRef: RefObject<number>;
@@ -217,6 +218,7 @@ export function useClientLike(
     // Handlers
     handleDimensionsChange,
     stopWebcam,
+    setWasmDimensions,
 
     // Debug refs
     debugCountRef,

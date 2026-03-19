@@ -373,8 +373,10 @@ export function convertFrameToAscii(
     console.error("[WASM] convertFrameToAscii error:", err);
     throw err;
   } finally {
-    // Always free the input data buffer
-    wasmModule._free(dataPtr);
+    // Only free the input data buffer if malloc succeeded (dataPtr is not 0 or null)
+    if (dataPtr && dataPtr > 0) {
+      wasmModule._free(dataPtr);
+    }
   }
 }
 
