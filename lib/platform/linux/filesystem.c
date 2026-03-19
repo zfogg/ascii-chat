@@ -33,6 +33,7 @@ bool platform_get_executable_path(char *exe_path, size_t path_size) {
               path_size);
     return false;
   }
+  // NOLINTNEXTLINE(clang-analyzer-security.ArrayBound) - len bounded by path_size check above
   exe_path[len] = '\0';
   return true;
 }

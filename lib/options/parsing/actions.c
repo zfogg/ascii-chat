@@ -244,11 +244,11 @@ void action_show_capabilities_immediate(void) {
   unsigned short width = size.cols;
   unsigned short height = size.rows;
 
-  log_color_t label_color = use_colors ? LOG_COLOR_GREY : LOG_COLOR_GREY;
+  log_color_t label_color = use_colors ? LOG_COLOR_DEBUG : LOG_COLOR_GREY;
   log_color_t string_color = use_colors ? LOG_COLOR_DEBUG : LOG_COLOR_GREY;
   log_color_t good_color = use_colors ? LOG_COLOR_INFO : LOG_COLOR_GREY;
   log_color_t bad_color = use_colors ? LOG_COLOR_ERROR : LOG_COLOR_GREY;
-  log_color_t number_color = use_colors ? LOG_COLOR_FATAL : LOG_COLOR_GREY;
+  log_color_t number_color = use_colors ? LOG_COLOR_DEBUG : LOG_COLOR_GREY;
 
   printf("%s\n", colored_string(LOG_COLOR_WARN, "Terminal Capabilities:"));
 
@@ -366,11 +366,11 @@ static void execute_show_capabilities(void) {
   // - Affirmative values (Yes, true): green (INFO)
   // - Bad/negative values (No, false, error): red (ERROR)
   // - Numbers and hex: magenta (FATAL)
-  log_color_t label_color = use_colors ? LOG_COLOR_GREY : LOG_COLOR_GREY;
+  log_color_t label_color = use_colors ? LOG_COLOR_DEBUG : LOG_COLOR_GREY;
   log_color_t string_color = use_colors ? LOG_COLOR_DEBUG : LOG_COLOR_GREY;
   log_color_t good_color = use_colors ? LOG_COLOR_INFO : LOG_COLOR_GREY;
   log_color_t bad_color = use_colors ? LOG_COLOR_ERROR : LOG_COLOR_GREY;
-  log_color_t number_color = use_colors ? LOG_COLOR_FATAL : LOG_COLOR_GREY;
+  log_color_t number_color = use_colors ? LOG_COLOR_DEBUG : LOG_COLOR_GREY;
 
   printf("%s\n", colored_string(LOG_COLOR_WARN, "Terminal Capabilities:"));
 

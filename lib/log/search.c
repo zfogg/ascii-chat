@@ -114,13 +114,8 @@ static bool validate_pcre2_pattern(const char *input) {
   }
 
   // Try to compile pattern with full pcre2_options (includes UTF, UCP, CASELESS, etc.)
-  pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
-  if (!singleton) {
-    return false; // Compilation failed
-  }
-
-  // Pattern is valid (singleton cached, will be reused later)
-  return true;
+  // Pattern is valid if singleton cached and reusable
+  return asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options) != NULL;
 }
 
 /* ============================================================================

@@ -645,6 +645,10 @@ asciichat_error_t sdp_parse(const char *sdp_string, sdp_session_t *session) {
         }
       }
       break;
+
+    default:
+      // Ignore unknown SDP attributes
+      break;
     }
 
     line = platform_strtok_r(NULL, "\r\n", &saveptr);

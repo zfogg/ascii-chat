@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <errno.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -250,6 +249,7 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
 
     // Format client IP for logging
     char client_ip[INET6_ADDRSTRLEN];
+    // NOLINTNEXTLINE(clang-analyzer-core.UndefinedBinaryOperatorResult) - client_addr filled by accept()
     int addr_family = (client_addr.ss_family == AF_INET) ? AF_INET : AF_INET6;
     if (format_ip_address(addr_family, (struct sockaddr *)&client_addr, client_ip, sizeof(client_ip)) != ASCIICHAT_OK) {
       SAFE_STRNCPY(client_ip, "(unknown)", sizeof(client_ip));

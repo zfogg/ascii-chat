@@ -198,6 +198,7 @@ static asciichat_error_t parse_sections_internal(FILE *f, parsed_section_t **out
   parsed_section_t *sections = NULL;
   size_t capacity = 16;
   size_t count = 0;
+  // NOLINTNEXTLINE(clang-analyzer-unix.Errno) - SAFE_MALLOC handles error
   sections = SAFE_MALLOC(capacity * sizeof(parsed_section_t), parsed_section_t *);
 
   char *line = NULL;
@@ -367,7 +368,10 @@ asciichat_error_t manpage_parser_parse_memory(const char *content, size_t conten
   }
 
   // Rewind to beginning for reading
-  rewind(tmp);
+  if (fseek(tmp, 0, SEEK_SET) != 0) {
+    fclose(tmp);
+    return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to rewind temporary file");
+  }
 
   // Parse using common function
   asciichat_error_t err = parse_sections_internal(tmp, out_sections, out_count);

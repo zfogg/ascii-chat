@@ -119,8 +119,6 @@ uint32_t ice_calculate_priority(ice_candidate_type_t type, uint16_t local_prefer
     type_preference = 110;
     break;
   case ICE_CANDIDATE_RELAY:
-    type_preference = 0;
-    break;
   default:
     type_preference = 0;
     break;

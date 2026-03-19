@@ -168,7 +168,8 @@ static void zsh_write_combined_args(FILE *output, const option_descriptor_t *opt
 /**
  * Write options grouped by category using _describe for proper group headers
  */
-// NOLINTNEXTLINE(misc-unused-function) - May be used for future completion improvements
+// NOLINTNEXTLINE(unused-function) - May be used for future completion improvements
+__attribute__((unused))
 static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *opts, size_t count,
                                       const char *func_prefix) {
   if (!opts || count == 0)

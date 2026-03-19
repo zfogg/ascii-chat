@@ -297,6 +297,7 @@ static int truncate_at_whole_line(char *buffer, int current_len, size_t max_len)
   // If we found a newline, truncate after it
   if (truncate_pos > 0 && buffer[truncate_pos] == '\n') {
     truncate_pos++; // Include the newline
+    // NOLINTNEXTLINE(clang-analyzer-security.ArrayBound) - truncate_pos validated by max_len
     buffer[truncate_pos] = '\0';
     return truncate_pos;
   }
@@ -1143,6 +1144,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     // before we added it on line 1067. We can check this by looking at msg_len - 1
     // If msg_len >= header_len + 2, then msg_len - 2 would be the char before the newline
     int msg_content_len = msg_len - header_len;
+    // NOLINTNEXTLINE(clang-analyzer-security.ArrayBound) - msg_content_len > 1 bounds check above
     if (msg_content_len > 1 && log_buffer[msg_len - 2] != '\n') {
       // Newline was added automatically - strip it for JSON
       if (user_msg_len - 1 < sizeof(json_message_buf)) {

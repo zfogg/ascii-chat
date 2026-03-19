@@ -153,9 +153,7 @@ static size_t get_field_size(option_type_t type, size_t offset) {
     return sizeof(int);
   case OPTION_TYPE_DOUBLE:
     // Check if this is a float field instead of double
-    if (offset == offsetof(options_t, microphone_sensitivity)) {
-      return sizeof(float);
-    } else if (offset == offsetof(options_t, speakers_volume)) {
+    if (offset == offsetof(options_t, microphone_sensitivity) || offset == offsetof(options_t, speakers_volume)) {
       return sizeof(float);
     }
     // Check field_size at runtime to distinguish float from double

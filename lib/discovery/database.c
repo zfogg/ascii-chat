@@ -636,14 +636,9 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
             resp->initiator_id[1], resp->host_established, resp->peer_count);
 
   // IP disclosure logic
-  bool reveal_ip = false;
   log_info("DATABASE_SESSION_JOIN: has_password=%d, expose_ip_publicly=%d, server_address='%s'", session->has_password,
            session->expose_ip_publicly, session->server_address);
-  if (session->has_password) {
-    reveal_ip = true; // Password was verified
-  } else if (session->expose_ip_publicly) {
-    reveal_ip = true; // Explicit opt-in
-  }
+  bool reveal_ip = session->has_password || session->expose_ip_publicly;
   log_info("DATABASE_SESSION_JOIN: reveal_ip=%d", reveal_ip);
 
   if (reveal_ip) {

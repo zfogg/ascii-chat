@@ -1559,8 +1559,8 @@ static void acip_on_remote_log(const remote_log_packet_t *header, const char *me
   }
 
   memcpy(packet, header, sizeof(*header));
+  // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary packet data, not string
   memcpy(packet + sizeof(*header), message, msg_len);
-  // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary packet data
 
   handle_remote_log_packet(packet, total_len);
   SAFE_FREE(packet);

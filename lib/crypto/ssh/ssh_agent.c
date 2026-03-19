@@ -310,8 +310,8 @@ asciichat_error_t ssh_agent_sign(const public_key_t *public_key, const uint8_t *
   // Write key_blob: string(key_type)
   write_u32_be(buf + offset, key_type_len);
   offset += 4;
-  memcpy(buf + offset, key_type, key_type_len);
   // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary data
+  memcpy(buf + offset, key_type, key_type_len);
   offset += key_type_len;
 
   // Write key_blob: string(public_key)

@@ -632,6 +632,10 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
 
   // Read the decrypted key data
   *decrypted_out = SAFE_MALLOC((size_t)output_size + 1, char *);
+  if (!*decrypted_out) {
+    fclose(output_file);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for decrypted GPG output");
+  }
   size_t bytes_read = fread(*decrypted_out, 1, (size_t)output_size, output_file);
   (*decrypted_out)[bytes_read] = '\0';
   fclose(output_file);

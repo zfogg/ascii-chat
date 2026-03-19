@@ -251,18 +251,15 @@ static bool is_file_path(const char *str, size_t pos, size_t *end_pos) {
   bool found = false;
 
   // Check for Windows absolute path (C:\...)
+  // NOLINTNEXTLINE(bugprone-branch-clone)
+  // NOLINTNEXTLINE(bugprone-branch-clone) - Each path type requires distinct handling
   if (pos > 0 && isalpha(str[pos]) && str[pos + 1] == ':' && str[pos + 2] == '\\') {
     i = pos + 2; // Start after the colon
     found = true;
   }
-  // Check for Windows UNC path (\\server\share)
-  else if (str[pos] == '\\' && str[pos + 1] == '\\') {
-    i = pos + 2;
-    found = true;
-  }
-  // Check for Unix absolute path (/)
-  else if (str[pos] == '/') {
-    i = pos;
+  // Check for Windows UNC path (\\server\share) or Unix absolute path (/)
+  else if ((str[pos] == '\\' && str[pos + 1] == '\\') || str[pos] == '/') {
+    i = (str[pos] == '\\' && str[pos + 1] == '\\') ? pos + 2 : pos;
     found = true;
   }
   // Check for relative path (., .., or alphanumeric followed by /)

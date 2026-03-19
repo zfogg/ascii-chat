@@ -1364,6 +1364,7 @@ asciichat_error_t options_init(int argc, char **argv) {
       // Check if this is a binary-level option
       if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
         // Skip argument if needed
+        // NOLINTNEXTLINE(bugprone-branch-clone)
         if (takes_arg && i + 1 < argc) {
           i++; // Skip required argument
         } else if (takes_optional_arg && i + 1 < argc && argv[i + 1][0] != '-') {
@@ -1415,10 +1416,8 @@ asciichat_error_t options_init(int argc, char **argv) {
       // Check if this is a binary-level option
       if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
         // Skip argument if needed
-        if (takes_arg && i + 1 < mode_index) {
-          i++; // Skip required argument
-        } else if (takes_optional_arg && i + 1 < mode_index && argv[i + 1][0] != '-') {
-          i++; // Skip optional argument
+        if ((takes_arg || (takes_optional_arg && argv[i + 1][0] != '-')) && i + 1 < mode_index) {
+          i++; // Skip argument
         }
         continue;
       }
@@ -1434,10 +1433,8 @@ asciichat_error_t options_init(int argc, char **argv) {
       // Check if this is a binary-level option (shouldn't appear after mode)
       if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
         // Skip binary-level option and its argument if needed
-        if (takes_arg && i + 1 < argc) {
-          i++; // Skip required argument
-        } else if (takes_optional_arg && i + 1 < argc && argv[i + 1][0] != '-') {
-          i++; // Skip optional argument (note: removed isdigit check for consistency)
+        if ((takes_arg || (takes_optional_arg && argv[i + 1][0] != '-')) && i + 1 < argc) {
+          i++; // Skip argument
         }
         continue; // Skip this option
       }
@@ -1514,9 +1511,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Publish options to RCU before config loading so that config logs get proper colors
   // from the parsed --color setting (e.g., --color=true)
   asciichat_error_t config_publish_result = options_state_set(&opts);
-  if (config_publish_result != ASCIICHAT_OK) {
-  } else {
-  }
+  (void)config_publish_result; // Suppress unused variable warning
   // Load config files - now uses detected_mode directly for bitmask validation
   // Save flip_x and flip_y as they should not be reset by config files
   // Also save encryption settings - they should only be controlled via CLI, not config file

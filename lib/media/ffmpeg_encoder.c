@@ -84,6 +84,7 @@ static void get_audio_codec_from_extension(const char *path, const char **audio_
 
   const char *ext = dot + 1;
   // Video formats with audio support
+  // NOLINTNEXTLINE(bugprone-branch-clone) - Each format requires distinct codec configuration
   if (strcmp(ext, "mp4") == 0 || strcmp(ext, "mov") == 0) {
     *has_audio = 1;
     *audio_codec = "aac";
@@ -140,15 +141,18 @@ static void get_codec_from_extension(const char *path, const char **codec, const
 
   const char *ext = dot + 1;
   // Video formats
+  // NOLINTNEXTLINE(bugprone-branch-clone) - Each format requires distinct codec setup
   if (strcmp(ext, "mp4") == 0 || strcmp(ext, "mov") == 0) {
     *codec = "libx264";
     *format = "mp4";
     *pix_fmt = AV_PIX_FMT_YUV420P;
-  } else if (strcmp(ext, "mkv") == 0) {
+  } // NOLINTNEXTLINE(bugprone-branch-clone)
+  else if (strcmp(ext, "mkv") == 0) {
     *codec = "libx264";
     *format = "matroska";
     *pix_fmt = AV_PIX_FMT_YUV420P;
-  } else if (strcmp(ext, "mka") == 0) {
+  } // NOLINTNEXTLINE(bugprone-branch-clone)
+  else if (strcmp(ext, "mka") == 0) {
     // MKA is audio-only Matroska
     *codec = "libx264";
     *format = "matroska";
@@ -654,15 +658,8 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
     log_info("ffmpeg_encoder_write_frame: frame 0, snapshot_mode=%d", snapshot_mode);
   }
 
-  if (snapshot_mode) {
-    // Snapshot mode: use placeholder durations that will be adjusted in destroy()
-    // Each frame gets a nominal duration; destroy() will redistribute to match snapshot_delay
-    // This ensures total video duration matches snapshot_delay regardless of actual capture speed
-    frame_duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
-  } else {
-    // Normal mode: use FPS-based frame duration
-    frame_duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
-  }
+  // Use FPS-based frame duration (snapshot mode adjusts total duration in destroy())
+  frame_duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
 
   enc->frame_encoded->duration = frame_duration;
 

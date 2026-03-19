@@ -20,7 +20,6 @@
 #include <ascii-chat/log/log.h>
 #include <stdio.h>
 #include <string.h>
-#include <ctype.h>
 
 // ============================================================================
 // Programmatic Section Printers for Help Output
@@ -242,10 +241,8 @@ static int calculate_section_max_col_width(const options_config_t *config, const
         mode_name = "discovery-service";
         break;
       case MODE_DISCOVERY:
-        mode_name = NULL; // Binary help uses MODE_DISCOVERY but shows all usage lines
-        break;
       default:
-        mode_name = NULL;
+        mode_name = NULL; // Binary help uses MODE_DISCOVERY but shows all usage lines
         break;
       }
     }
@@ -1172,10 +1169,8 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
       mode_name = "discovery-service";
       break;
     case MODE_DISCOVERY:
-      mode_name = NULL; // Binary help shows all usage lines
-      break;
     default:
-      mode_name = NULL;
+      mode_name = NULL; // Binary help shows all usage lines
       break;
     }
 

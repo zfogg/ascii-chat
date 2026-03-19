@@ -163,12 +163,8 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
       const char *next = p + 1;
       while (*next == ' ')
         next++;
-      // Check if next is a metadata marker - this is a good break point to prefer
-      if (is_metadata_start(next)) {
-        // Update last_space to this position (prefer breaking before metadata)
-        last_space = p;
-      } else if (!last_space || *next != '(') {
-        // Otherwise track normal spaces, but skip spaces before non-short parentheticals
+      // Track space as break point if it's before metadata or a normal space (not before parenthetical)
+      if (is_metadata_start(next) || !last_space || *next != '(') {
         last_space = p;
       }
     }

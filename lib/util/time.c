@@ -429,12 +429,8 @@ int time_pretty(uint64_t nanoseconds, int decimals, char *buffer, size_t buffer_
   // Determine decimals for this range if not explicitly set
   int actual_decimals = decimals;
   if (decimals == -1) {
-    if (nanoseconds < NS_PER_MS_INT) {
-      actual_decimals = 3; // ns/µs
-    } else if (nanoseconds < NS_PER_SEC_INT) {
-      actual_decimals = 3; // ms
-    } else if (nanoseconds < NS_PER_MIN_INT) {
-      actual_decimals = 2; // seconds
+    if (nanoseconds < NS_PER_MIN_INT) {
+      actual_decimals = (nanoseconds < NS_PER_SEC_INT) ? 3 : 2; // ns/µs/ms or seconds
     } else {
       actual_decimals = 3; // colon notation
     }

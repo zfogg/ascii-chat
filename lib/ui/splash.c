@@ -212,6 +212,7 @@ static void build_connection_target(char *buffer, size_t buffer_size) {
     // Use IP utility to classify the connection type
     const char *ip_type = get_ip_type_string(addr);
 
+    // NOLINTNEXTLINE(bugprone-branch-clone)
     if (strcmp(ip_type, "Localhost") == 0) {
       snprintf(buffer, buffer_size, "Connecting to localhost...");
     } else if (strcmp(ip_type, "LAN") == 0) {

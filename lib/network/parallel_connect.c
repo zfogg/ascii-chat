@@ -8,7 +8,6 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
-#include <errno.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -282,9 +281,7 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
       if (ipv4_attempt.done && ipv6_attempt.done) {
         break;
       }
-    } else if (ipv4_addr && ipv4_attempt.done) {
-      break;
-    } else if (ipv6_addr && ipv6_attempt.done) {
+    } else if ((ipv4_addr && ipv4_attempt.done) || (ipv6_addr && ipv6_attempt.done)) {
       break;
     }
   }

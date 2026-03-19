@@ -499,14 +499,9 @@ int main(int argc, char *argv[]) {
       g_color_flag_passed = true;
       g_color_flag_value = true;
       break;
-    } else if (strcmp(argv[i], "--color=false") == 0) {
-      g_color_flag_passed = true;
-      g_color_flag_value = false;
-      break;
     } else if (strncmp(argv[i], "--color=", 8) == 0) {
       g_color_flag_passed = true;
-      // Default to true for any other --color=X value
-      g_color_flag_value = true;
+      g_color_flag_value = strcmp(argv[i], "--color=false") != 0;
       break;
     }
   }

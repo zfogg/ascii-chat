@@ -406,9 +406,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           log_info("SNAPSHOT: RENDER_DONE at iteration %lu - elapsed=%.3f target=%.2f (setting snapshot_done=true)",
                    frames_rendered_since_first, elapsed_sec, snapshot_delay);
           // We don't end frames with newlines so the next log would print on the same line as the frame's
-          // last row without an \n here. We only need this \n in stdout in snapshot mode and when interactive,
+          // last row without an \n here. We only need this \n in stdout when interactive,
           // so piped snapshots don't have a weird newline in stdout that they don't need.
-          if (snapshot_mode && terminal_is_interactive()) {
+          if (terminal_is_interactive()) {
             printf("\n");
           }
           snapshot_done = true;

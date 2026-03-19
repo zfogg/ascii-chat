@@ -780,7 +780,12 @@ static asciichat_error_t discovery_send_ice_via_acds(const uint8_t session_id[16
  * Examples: 0→1s, 1→2s, 2→4s, 3→8s, 4→16s, 5→30s (capped)
  */
 static uint32_t calculate_backoff_delay_ms(int attempt) {
-  // Base delay: 2^attempt seconds
+  // Base delay: 2^attempt seconds (clamp attempt to valid range)
+  if (attempt < 0) {
+    attempt = 0;
+  } else if (attempt > 30) {
+    attempt = 30; // Prevent overflow
+  }
   uint32_t base_delay_ms = 1000U << attempt; // 1s, 2s, 4s, 8s, 16s...
 
   // Cap at 30 seconds

@@ -91,13 +91,7 @@ bool ansi_is_already_colorized(const char *message, size_t pos) {
       if (message[j] == 'm') {
         // Extract the color code part (between [ and m)
         // Check if it's a reset code: \x1b[0m or \x1b[m
-        if ((j == i + 3 && message[i + 2] == '0') || (j == i + 2)) {
-          // Reset code
-          in_reset = true;
-        } else {
-          // Color code (anything else)
-          in_reset = false;
-        }
+        in_reset = ((j == i + 3 && message[i + 2] == '0') || (j == i + 2));
       }
     }
   }
