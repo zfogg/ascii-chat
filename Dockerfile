@@ -17,6 +17,21 @@ COPY scripts/install-deps.sh /tmp/install-deps.sh
 COPY CMakeLists.txt Makefile /build/
 COPY cmake/ /build/cmake/
 
+# Clone git submodules directly from GitHub
+# This works even if .git/submodules aren't available in the build context
+RUN mkdir -p /build/deps/ascii-chat-deps && \
+    git clone --depth 1 https://github.com/zfogg/BearSSL.git /build/deps/ascii-chat-deps/bearssl && \
+    git clone --depth 1 https://github.com/cktan/tomlc17 /build/deps/ascii-chat-deps/tomlc17 && \
+    git clone --depth 1 https://github.com/zfogg/libsodium-bcrypt-pbkdf.git /build/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf && \
+    git clone --depth 1 https://github.com/floooh/sokol /build/deps/ascii-chat-deps/sokol && \
+    git clone --depth 1 https://github.com/jothepro/doxygen-awesome-css.git /build/deps/doxygen-awesome-css && \
+    git clone --depth 1 https://github.com/mjansson/mdns.git /build/deps/ascii-chat-deps/mdns && \
+    git clone --depth 1 https://github.com/troydhanson/uthash.git /build/deps/ascii-chat-deps/uthash && \
+    git clone --depth 1 https://github.com/JuliaStrings/utf8proc.git /build/deps/ascii-chat-deps/utf8proc && \
+    git clone --depth 1 https://github.com/strukturag/libde265.git /build/deps/ascii-chat-deps/libde265 && \
+    git clone --depth 1 https://github.com/videolan/x265.git /build/deps/ascii-chat-deps/x265 && \
+    git clone --depth 1 https://github.com/ibireme/yyjson.git /build/deps/ascii-chat-deps/yyjson
+
 # Set up locale and minimal prerequisites with package cache mount
 RUN --mount=type=cache,target=/var/cache/apt \
     --mount=type=cache,target=/var/lib/apt \
