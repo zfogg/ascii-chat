@@ -135,14 +135,18 @@ test.describe("Rainbow Color Filter Cycling", () => {
         const frameCount = w.__lastAnsiFrameCount as number | undefined;
         const frameTime = w.__lastAnsiFrameTime as number | undefined;
         if (!frame) {
-          console.log(`[rainbow-test] No frame yet (count=${frameCount}, time=${frameTime})`);
+          console.log(
+            `[rainbow-test] No frame yet (count=${frameCount}, time=${frameTime})`,
+          );
           return null;
         }
 
         // Find first truecolor ANSI code: ESC[38;2;R;G;Bm
         const match = frame.match(/\x1b\[38;2;(\d+);(\d+);(\d+)m/);
         if (!match) {
-          console.log(`[rainbow-test] No truecolor code in frame (count=${frameCount}, len=${frame.length})`);
+          console.log(
+            `[rainbow-test] No truecolor code in frame (count=${frameCount}, len=${frame.length})`,
+          );
           return null;
         }
 
@@ -159,7 +163,9 @@ test.describe("Rainbow Color Filter Cycling", () => {
           }
         }
         // Log always so we can see the data
-        console.log(`[rainbow-test] Frame #${frameCount} colors(${allColors.length}): ${allColors.join(' | ')} first80: ${JSON.stringify(frame.substring(0, 80))}`);
+        console.log(
+          `[rainbow-test] Frame #${frameCount} colors(${allColors.length}): ${allColors.join(" | ")} first80: ${JSON.stringify(frame.substring(0, 80))}`,
+        );
 
         return {
           r: parseInt(match[1], 10),
@@ -174,7 +180,9 @@ test.describe("Rainbow Color Filter Cycling", () => {
       if (sample && sample.sampleCount > 0) {
         const hue = rgbToHue(sample.r, sample.g, sample.b);
         if (i === 0) {
-          console.log(`[rainbow-debug] First sample: r=${sample.r} g=${sample.g} b=${sample.b} hue=${hue} distinct=${sample.distinctColors}`);
+          console.log(
+            `[rainbow-debug] First sample: r=${sample.r} g=${sample.g} b=${sample.b} hue=${hue} distinct=${sample.distinctColors}`,
+          );
         }
         if (hue !== null) {
           const sector = hueSector(hue);
@@ -197,7 +205,9 @@ test.describe("Rainbow Color Filter Cycling", () => {
     );
     console.log(
       "Hue samples:",
-      sampledHues.map((s) => `${s.time}ms: ${s.hue}° (${s.sector}) frame#${s.frameCount}`),
+      sampledHues.map(
+        (s) => `${s.time}ms: ${s.hue}° (${s.sector}) frame#${s.frameCount}`,
+      ),
     );
 
     // We should have gotten a reasonable number of samples
