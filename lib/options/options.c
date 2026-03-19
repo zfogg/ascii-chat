@@ -419,7 +419,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   // Try to match against known modes
   const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", "discovery", "default", NULL};
   const asciichat_mode_t mode_values[] = {MODE_SERVER,  MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE,
-                                          MODE_INVALID, MODE_INVALID};
+                                          MODE_DISCOVERY, MODE_INVALID};
 
   for (int i = 0; mode_names[i] != NULL; i++) {
     if (strcmp(positional, mode_names[i]) == 0) {
