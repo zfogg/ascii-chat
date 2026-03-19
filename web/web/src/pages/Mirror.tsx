@@ -253,7 +253,7 @@ export function MirrorPage() {
       setIsWebcamRunning(true);
       console.timeEnd("[Mirror] Total startWebcam time");
     } catch (err) {
-      setError(`Failed to start webcam: ${err}`);
+      setError(`Failed to start webcam: ${String(err)}`);
     }
   }, [
     settings,
@@ -293,7 +293,7 @@ export function MirrorPage() {
         setPermissionGranted(true);
       }
     };
-    requestPermission();
+    void requestPermission();
   }, []);
 
   // Auto-start webcam in development mode
@@ -307,7 +307,7 @@ export function MirrorPage() {
     ) {
       devAutoStartRef.current = true;
       console.log("[Mirror] Auto-starting webcam in development mode");
-      Promise.resolve().then(() => startWebcam());
+      void Promise.resolve().then(() => startWebcam());
     }
   }, [wasmInitialized, permissionGranted, isWebcamRunning, startWebcam]);
 

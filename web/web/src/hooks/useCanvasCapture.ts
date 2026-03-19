@@ -74,7 +74,7 @@ export function useCanvasCapture(
       }
       return null;
     }
-  }, []);
+  }, [videoRef, canvasRef]);
 
   return { captureFrame, capturedDataRef };
 }

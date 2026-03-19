@@ -698,7 +698,7 @@ export function ClientPage() {
         console.log(`[Client] Public key set: ${pubKey.substring(0, 20)}...`);
         setPublicKey(pubKey);
       } catch (err) {
-        const errMsg = `${err}`;
+        const errMsg = `${String(err)}`;
         console.error("[Client] Connection failed:", errMsg);
         console.error("[Client] Error object:", err);
         console.error(
@@ -1326,7 +1326,7 @@ export function ClientPage() {
       }
       console.log("[Client] Webcam started successfully");
     } catch (err) {
-      const errMsg = `Failed to start webcam: ${err}`;
+      const errMsg = `Failed to start webcam: ${String(err)}`;
       console.error("[Client]", errMsg);
       console.error("[Client] Error:", err);
       setError(errMsg);
@@ -1436,7 +1436,7 @@ export function ClientPage() {
   useEffect(() => {
     if (connectionState === ConnectionState.CONNECTED && !isWebcamRunning) {
       console.log("[Client] Connected and ready, auto-starting webcam...");
-      startWebcam();
+      void startWebcam();
     }
     // Note: startWebcam is NOT in deps array to avoid circular dependency issues
     // oxlint-disable-next-line react-hooks/exhaustive-deps

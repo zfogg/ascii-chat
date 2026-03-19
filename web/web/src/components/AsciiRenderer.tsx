@@ -124,7 +124,9 @@ export const AsciiRenderer = forwardRef<
             try {
               renderService._renderRows(0, terminal.rows);
             } catch (e) {
-              console.error(`[AsciiRenderer] Error calling _renderRows: ${e}`);
+              console.error(
+                `[AsciiRenderer] Error calling _renderRows: ${String(e)}`,
+              );
             }
           }
         }

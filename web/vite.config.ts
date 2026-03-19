@@ -158,6 +158,7 @@ export default defineConfig({
           ]
         },
         "globals": {
+          "__COMMIT_SHA__": "readonly",
           "__SSH_PUBLIC_KEY__": "readonly",
           "__GPG_PUBLIC_KEY__": "readonly"
         },

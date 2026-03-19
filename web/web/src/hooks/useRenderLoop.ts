@@ -1,4 +1,4 @@
-import { useCallback, MutableRefObject } from "react";
+import { useCallback, useRef, MutableRefObject } from "react";
 
 interface UseRenderLoopReturn {
   startRenderLoop: () => void;
@@ -14,33 +14,31 @@ export function useRenderLoop(
   lastFrameTimeRef: MutableRefObject<number>,
   onError?: (error: unknown) => void,
 ): UseRenderLoopReturn {
-  const loopDebugRef = { count: 0, lastLog: 0, skipped: 0 };
+  const loopDebugRef = useRef({ count: 0, lastLog: 0, skipped: 0 });
 
   const animationFrameRef = useCallback(
     (time: number) => {
       try {
         const elapsed = time - lastFrameTimeRef.current;
         const interval = frameIntervalRef.current;
+        const debug = loopDebugRef.current;
 
-        loopDebugRef.count++;
+        debug.count++;
 
         if (elapsed >= interval) {
           lastFrameTimeRef.current = time;
           renderFrame();
         } else {
-          loopDebugRef.skipped++;
+          debug.skipped++;
         }
 
         // Log every 60 cycles
-        if (loopDebugRef.count - loopDebugRef.lastLog >= 60) {
-          const skipRate = (
-            (loopDebugRef.skipped / loopDebugRef.count) *
-            100
-          ).toFixed(1);
+        if (debug.count - debug.lastLog >= 60) {
+          const skipRate = ((debug.skipped / debug.count) * 100).toFixed(1);
           console.log(
-            `[RenderLoop] ${loopDebugRef.count} RAF cycles, ${skipRate}% skipped (interval=${interval.toFixed(2)}ms)`,
+            `[RenderLoop] ${debug.count} RAF cycles, ${skipRate}% skipped (interval=${interval.toFixed(2)}ms)`,
           );
-          loopDebugRef.lastLog = loopDebugRef.count;
+          debug.lastLog = debug.count;
         }
 
         // Schedule next frame
@@ -53,13 +51,13 @@ export function useRenderLoop(
         }
       }
     },
-    [renderFrame, onError],
+    [renderFrame, onError, frameIntervalRef, lastFrameTimeRef, loopDebugRef],
   );
 
   const startRenderLoop = useCallback(() => {
     lastFrameTimeRef.current = performance.now();
     requestAnimationFrame(animationFrameRef);
-  }, [animationFrameRef]);
+  }, [lastFrameTimeRef, animationFrameRef]);
 
   return { startRenderLoop };
 }

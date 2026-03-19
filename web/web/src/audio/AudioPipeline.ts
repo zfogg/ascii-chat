@@ -157,7 +157,7 @@ export class AudioPipeline {
     }
 
     if (this.audioContext) {
-      this.audioContext.close();
+      void this.audioContext.close();
       this.audioContext = null;
     }
 
