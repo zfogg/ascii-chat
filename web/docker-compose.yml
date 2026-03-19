@@ -2,8 +2,9 @@ services:
   discovery:
     build:
       context: ..
-      dockerfile: web/discovery/Dockerfile
+      dockerfile: web/Dockerfile
       args:
+        TARGET_APP: discovery
         SOURCE_COMMIT: ${SOURCE_COMMIT:-unknown}
         SSH_PUBLIC_KEY: ${SSH_PUBLIC_KEY}
         GPG_PUBLIC_KEY: ${GPG_PUBLIC_KEY}
@@ -27,8 +28,9 @@ services:
   web:
     build:
       context: ..
-      dockerfile: web/web/Dockerfile
+      dockerfile: web/Dockerfile
       args:
+        TARGET_APP: web
         SOURCE_COMMIT: ${SOURCE_COMMIT:-unknown}
     image: zfogg/ascii-chat-web-web:latest
     environment:
@@ -50,8 +52,9 @@ services:
   www:
     build:
       context: ..
-      dockerfile: web/www/Dockerfile
+      dockerfile: web/Dockerfile
       args:
+        TARGET_APP: www
         SOURCE_COMMIT: ${SOURCE_COMMIT:-unknown}
     image: zfogg/ascii-chat-web-www:latest
     environment:
