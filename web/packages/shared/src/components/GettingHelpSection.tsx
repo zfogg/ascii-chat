@@ -33,6 +33,11 @@ export function GettingHelpSection({
       ? `ascii-chat <mode> --help`
       : `ascii-chat ${modeExample} --help`;
 
+  const modeHelpComment =
+    modeExample === "<mode>"
+      ? "# Get help for specific modes"
+      : `# Get help for ${modeExample} mode`;
+
   return (
     <div>
       <Heading level={3} className={headingClassName}>
@@ -45,7 +50,7 @@ ascii-chat --help
 # Read the full man page
 man ascii-chat
 
-# Get help for specific modes
+${modeHelpComment}
 ${modeHelpCmd}
 
 # Enable shell completions (bash, fish, zsh, and powershell available)
