@@ -42,15 +42,50 @@ EM_JS(void, js_console_log, (int level, const char *message), {
   }
 });
 
+// Strip ANSI escape codes from message for browser console
+// Removes patterns like \033[...m, \033[0m, \033[38;5;Nm, etc.
+static void strip_ansi_codes(const char *input, char *output, size_t output_size) {
+  if (!input || !output || output_size == 0) return;
+
+  size_t out_idx = 0;
+  size_t in_idx = 0;
+
+  while (input[in_idx] != '\0' && out_idx < output_size - 1) {
+    // Check for ANSI escape sequence: ESC[
+    // Standard ANSI codes use escape character (0x1B or \033) followed by [
+    if (input[in_idx] == '\033' && input[in_idx + 1] == '[') {
+      in_idx += 2; // Skip \033[
+
+      // Skip until we find the terminating letter (m is most common, also H, J, K, etc.)
+      // This handles patterns like: 38;5;74m, 0m, 38;2;255;0;0m, 2J, H, etc.
+      while (input[in_idx] != '\0') {
+        if ((input[in_idx] >= 'A' && input[in_idx] <= 'Z') ||
+            (input[in_idx] >= 'a' && input[in_idx] <= 'z')) {
+          in_idx++; // Skip the terminating letter
+          break;
+        }
+        in_idx++;
+      }
+    } else {
+      // Regular character (including [ in normal text), copy to output
+      output[out_idx++] = input[in_idx++];
+    }
+  }
+
+  output[out_idx] = '\0';
+}
+
 // Platform hook called by logging system
 // This is called after each log message is formatted, before printing to stderr/stdout
-// The message parameter contains the COMPLETE formatted log line:
+// The message parameter contains the COMPLETE formatted log line with ANSI codes:
 // [HH:MM:SS.microseconds] [LEVEL] [thread/name] file:line@function(): message
+// We strip the ANSI codes before sending to browser console for clean output
 void platform_log_hook(log_level_t level, const char *message) {
   if (message) {
-    // Pass the complete formatted message to browser console
-    // The logging system has already applied the full template format
-    js_console_log((int)level, message);
+    // Strip ANSI codes for clean browser console output
+    static char clean_message[4096];
+    strip_ansi_codes(message, clean_message, sizeof(clean_message));
+    js_console_log((int)level, clean_message);
   }
 }
 
