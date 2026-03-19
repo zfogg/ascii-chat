@@ -12,33 +12,44 @@
 
 // EM_JS bridge: route to appropriate console method based on log level
 // level: 0=DEV, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL
+// Message contains the COMPLETE formatted log line with timestamp, level, thread, file:line, etc.
 EM_JS(void, js_console_log, (int level, const char *message), {
-  const msg = UTF8ToString($1);
+  const msg = UTF8ToString(message);
+  const levelNames = ['DEV', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'];
+  const levelName = (level >= 0 && level <= 5) ? levelNames[level] : '?????';
 
-  switch ($0) {
+  // Debug: show message length to verify content is being passed
+  const msgLen = msg.length;
+  const hasTimestamp = msg.startsWith('[') && msg.includes(':') && msg.includes('.') && msg[msg.indexOf(']')+1] === ' ';
+  const debugInfo = `[WASM_MSG_LEN=${msgLen}, HAS_TS=${hasTimestamp}]`;
+
+  // Route to appropriate console method
+  switch (level) {
   case 0: // LOG_DEV
   case 1: // LOG_DEBUG
-    console.debug(msg);
-    break;
   case 2: // LOG_INFO
-    console.log(msg);
+    console.log(debugInfo, msg);
     break;
   case 3: // LOG_WARN
-    console.warn(msg);
+    console.warn(debugInfo, msg);
     break;
   case 4: // LOG_ERROR
   case 5: // LOG_FATAL
-    console.error(msg);
+    console.error(debugInfo, msg);
     break;
   default:
-    console.log(msg);
+    console.log(debugInfo, msg);
   }
 });
 
 // Platform hook called by logging system
 // This is called after each log message is formatted, before printing to stderr/stdout
+// The message parameter contains the COMPLETE formatted log line:
+// [HH:MM:SS.microseconds] [LEVEL] [thread/name] file:line@function(): message
 void platform_log_hook(log_level_t level, const char *message) {
   if (message) {
+    // Pass the complete formatted message to browser console
+    // The logging system has already applied the full template format
     js_console_log((int)level, message);
   }
 }
