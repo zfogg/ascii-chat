@@ -31,10 +31,31 @@ function(check_and_init_git_submodules)
     endif()
 
     # Find git executable
-    find_program(GIT_EXECUTABLE git REQUIRED)
+    find_program(GIT_EXECUTABLE git)
     if(NOT GIT_EXECUTABLE)
         message(WARNING "Git not found - cannot initialize submodules automatically")
         return()
+    endif()
+
+    # Try to verify we're in a functional git repository
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" rev-parse --git-dir
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        RESULT_VARIABLE GIT_VALID
+        OUTPUT_QUIET
+        ERROR_QUIET
+    )
+
+    # If git command failed (e.g., Docker with .git copied but not functional),
+    # check if submodules are already present
+    if(NOT GIT_VALID EQUAL 0)
+        if(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl/Makefile")
+            message(STATUS "Docker/Coolify build detected (.git present but not functional), submodules already included")
+            return()
+        else()
+            message(FATAL_ERROR "Not a functional git repository and critical submodules not found.\n"
+                                "Ensure deps/ascii-chat-deps is included in the build context.")
+        endif()
     endif()
 
     # Check if any critical submodules are missing (use BearSSL as indicator)
