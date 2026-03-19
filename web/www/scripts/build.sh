@@ -4,8 +4,6 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-vp check
-
 echo "Building with vite..."
 build_commands=("pnpm run vite:build")
 
