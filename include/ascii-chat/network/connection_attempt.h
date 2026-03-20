@@ -195,7 +195,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
  * - ACIP transport creation
  *
  * @param ctx Connection context (initialized via connection_context_init)
- * @param ws_url WebSocket URL (e.g., "ws://localhost:27226" or "wss://server.com:27226")
+ * @param ws_url WebSocket URL (e.g., "ws://localhost:27226" or "wss://server.com")
  * @return ASCIICHAT_OK on successful connection
  * @return ERROR_* code on failure
  *

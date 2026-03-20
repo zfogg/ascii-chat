@@ -31,8 +31,10 @@
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/network/tcp/server.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/endian.h>
 #include <string.h>
 
 /**

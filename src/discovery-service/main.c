@@ -291,8 +291,10 @@ int acds_main(void) {
   // Initialize WebSocket server (for browser clients)
   websocket_server_config_t ws_config = {
       .port = GET_OPTION(websocket_port),
-      .client_handler = NULL, // TODO: Implement WebSocket client handler for discovery-service
+      .client_handler = acds_websocket_client_handler,
       .user_data = &server,
+      .tls_cert_path = GET_OPTION(websocket_tls_cert),
+      .tls_key_path = GET_OPTION(websocket_tls_key),
   };
 
   memset(&g_websocket_server, 0, sizeof(g_websocket_server));

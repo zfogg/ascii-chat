@@ -204,4 +204,13 @@ void apply_mode_specific_defaults(options_t *opts) {
       opts->websocket_port = *mode_websocket_port;
     }
   }
+
+  // If TLS cert+key are provided and websocket-port was not explicitly set,
+  // default to 443 (standard HTTPS/WSS port) instead of the mode default.
+  if (opts->websocket_tls_cert[0] != '\0' && opts->websocket_tls_key[0] != '\0') {
+    if (opts->websocket_port == OPT_WEBSOCKET_PORT_SERVER_DEFAULT ||
+        opts->websocket_port == OPT_WEBSOCKET_PORT_ACDS_DEFAULT) {
+      opts->websocket_port = 443;
+    }
+  }
 }

@@ -45,7 +45,7 @@ const registry_entry_t g_network_entries[] = {
      offsetof(options_t, websocket_port),
      NULL, // Use mode_default_getter instead
      sizeof(int),
-     "WebSocket server port (default: 27226 for server, 27227 for discovery-service).",
+     "WebSocket server port (default: 27226 for server, 27227 for discovery-service, 443 when TLS cert+key provided).",
      "NETWORK",
      NULL,
      false,
