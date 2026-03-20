@@ -708,3 +708,46 @@ jobs:
           files: dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  notify:
+    name: Send release notification
+    if: always() && needs.create-release.result != 'skipped'
+    needs: [create-release, package-linux, package-macos, package-windows]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Determine overall result
+        id: result
+        run: |
+          if [[ "${{ needs.create-release.result }}" == "failure" || \
+                "${{ needs.package-linux.result }}" == "failure" || \
+                "${{ needs.package-macos.result }}" == "failure" || \
+                "${{ needs.package-windows.result }}" == "failure" ]]; then
+            echo "status=FAILED" >> $GITHUB_OUTPUT
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+          else
+            echo "status=SUCCESS" >> $GITHUB_OUTPUT
+            echo "emoji=✅" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send email notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "${{ steps.result.outputs.emoji }} ascii-chat release ${{ needs.create-release.outputs.version }} - ${{ steps.result.outputs.status }}"
+          to: ${{ secrets.SMTP_TO_EMAIL }}
+          from: ${{ secrets.SMTP_FROM_EMAIL }}
+          body: |
+            ascii-chat release ${{ needs.create-release.outputs.version }}: ${{ steps.result.outputs.status }}
+
+            Release: https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.version }}
+            Workflow: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Job Results:
+              create-release: ${{ needs.create-release.result }}
+              package-linux:  ${{ needs.package-linux.result }}
+              package-macos:  ${{ needs.package-macos.result }}
+              package-windows: ${{ needs.package-windows.result }}
