@@ -283,160 +283,162 @@
 291   // Initialize WebSocket server (for browser clients)
 292   websocket_server_config_t ws_config = {
 293       .port = GET_OPTION(websocket_port),
-294       .client_handler = NULL, // TODO: Implement WebSocket client handler for discovery-service
+294       .client_handler = acds_websocket_client_handler,
 295       .user_data = &amp;server,
-296   };
-297 
-298   memset(&amp;g_websocket_server, 0, sizeof(g_websocket_server));
-299   asciichat_error_t ws_init_result = websocket_server_init(&amp;g_websocket_server, &amp;ws_config);
-300   if (ws_init_result != ASCIICHAT_OK) {
-301     log_warn(&quot;Failed to initialize WebSocket server - browser clients will not be supported&quot;);
-302   } else {
-303     log_info(&quot;WebSocket server initialized on port %d&quot;, GET_OPTION(websocket_port));
-304   }
-305 
-306   // Initialize status tracking variables
-307   g_discovery_start_time = time(NULL);
-308   g_last_status_update = g_discovery_start_time;
-309 
-310   // Check if shutdown was requested during initialization
-311   if (acds_should_exit()) {
-312     log_info(&quot;Shutdown signal received during initialization, skipping server startup&quot;);
-313     return 0;
-314   }
-315 
-316   // =========================================================================
-317   // UPnP Port Mapping (Quick Win for Direct TCP)
+296       .tls_cert_path = GET_OPTION(websocket_tls_cert),
+297       .tls_key_path = GET_OPTION(websocket_tls_key),
+298   };
+299 
+300   memset(&amp;g_websocket_server, 0, sizeof(g_websocket_server));
+301   asciichat_error_t ws_init_result = websocket_server_init(&amp;g_websocket_server, &amp;ws_config);
+302   if (ws_init_result != ASCIICHAT_OK) {
+303     log_warn(&quot;Failed to initialize WebSocket server - browser clients will not be supported&quot;);
+304   } else {
+305     log_info(&quot;WebSocket server initialized on port %d&quot;, GET_OPTION(websocket_port));
+306   }
+307 
+308   // Initialize status tracking variables
+309   g_discovery_start_time = time(NULL);
+310   g_last_status_update = g_discovery_start_time;
+311 
+312   // Check if shutdown was requested during initialization
+313   if (acds_should_exit()) {
+314     log_info(&quot;Shutdown signal received during initialization, skipping server startup&quot;);
+315     return 0;
+316   }
+317 
 318   // =========================================================================
-319   // Try to open port via UPnP so direct TCP works for ~70% of home users.
-320   // If this fails, clients fall back to WebRTC automatically - not fatal.
-321   //
-322   // Strategy:
-323   //   1. UPnP (works on ~90% of home routers)
-324   //   2. NAT-PMP fallback (Apple routers)
-325   //   3. If both fail: use ACDS + WebRTC (reliable, but slightly higher latency)
-326 
-327   // Check again before expensive UPnP initialization (might timeout trying to reach router)
-328   if (acds_should_exit()) {
-329     log_info(&quot;Shutdown signal received before UPnP initialization&quot;);
-330     result = ASCIICHAT_OK;
-331     goto cleanup_resources;
-332   }
-333 
-334   if (GET_OPTION(enable_upnp)) {
-335     asciichat_error_t upnp_result = nat_upnp_open(config.port, &quot;ascii-chat ACDS&quot;, &amp;g_upnp_ctx);
-336 
-337     if (upnp_result == ASCIICHAT_OK &amp;&amp; g_upnp_ctx) {
-338       char public_addr[22];
-339       if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
-340         char msg[256];
-341         safe_snprintf(msg, sizeof(msg), &quot;&#x1F310; Public endpoint: %s (direct TCP)&quot;, public_addr);
-342         log_console(LOG_INFO, msg);
-343         log_info(&quot;UPnP: Port mapping successful, public endpoint: %s&quot;, public_addr);
-344       }
-345     } else {
-346       log_info(&quot;UPnP: Port mapping unavailable or failed - will use WebRTC fallback&quot;);
-347       log_console(LOG_INFO, &quot;&#x1F4E1; Clients behind strict NATs will use WebRTC fallback&quot;);
-348     }
-349   } else {
-350     log_debug(&quot;UPnP: Disabled (use --upnp to enable automatic port mapping)&quot;);
-351   }
-352 
-353   // Check if shutdown was requested before initializing mDNS
-354   if (acds_should_exit()) {
-355     log_info(&quot;Shutdown signal received before mDNS initialization&quot;);
-356     result = ASCIICHAT_OK;
-357     goto cleanup_resources;
-358   }
-359 
-360   // Initialize mDNS for LAN discovery of ACDS server
-361   // This allows clients on the local network to discover the discovery service itself
-362 
-363   log_debug(&quot;Initializing mDNS for ACDS LAN service discovery...&quot;);
-364   g_mdns_ctx = asciichat_mdns_init();
-365   if (!g_mdns_ctx) {
-366     LOG_ERRNO_IF_SET(&quot;Failed to initialize mDNS (non-fatal, LAN discovery disabled)&quot;);
-367     log_warn(&quot;mDNS disabled for ACDS - LAN discovery of discovery service will not be available&quot;);
-368   } else {
-369     // Advertise ACDS service on the LAN
-370     // Build hostname if available
-371     char hostname[256] = {0};
-372     gethostname(hostname, sizeof(hostname) - 1);
-373 
-374     asciichat_mdns_service_t service = {
-375         .name = &quot;ascii-chat-Discovery-Service&quot;,
-376         .type = &quot;_ascii-chat-discovery-service._tcp&quot;,
-377         .host = hostname,
-378         .port = config.port,
-379         .txt_records = NULL,
-380         .txt_count = 0,
-381     };
-382 
-383     asciichat_error_t mdns_advertise_result = asciichat_mdns_advertise(g_mdns_ctx, &amp;service);
-384     if (mdns_advertise_result != ASCIICHAT_OK) {
-385       LOG_ERRNO_IF_SET(&quot;Failed to advertise ACDS mDNS service&quot;);
-386       log_warn(&quot;mDNS advertising failed for ACDS - LAN discovery disabled&quot;);
-387       asciichat_mdns_destroy(g_mdns_ctx);
-388       g_mdns_ctx = NULL;
-389     } else {
-390       log_console(LOG_INFO, &quot;&#x1F310; mDNS: ACDS advertised as '_ascii-chat-discovery-service._tcp.local' on LAN&quot;);
-391       log_info(&quot;mDNS: ACDS advertised as '_ascii-chat-discovery-service._tcp.local' (port=%d)&quot;, config.port);
-392     }
-393   }
-394 
-395   // Install signal handlers for clean shutdown
-396   signal(SIGINT, acds_handle_signal);
-397   signal(SIGTERM, acds_handle_signal);
-398 
-399 
-400   // Run server
-401   result = acds_server_run(&amp;server);
-402   if (result != ASCIICHAT_OK) {
-403     log_error(&quot;Server run failed&quot;);
-404   }
-405 
-406 cleanup_resources:
-407   // Cleanup
-408   // Disable keepawake before exit
-409   platform_disable_keepawake();
-410 
-411   log_info(&quot;Shutting down discovery server...&quot;);
-412   acds_server_shutdown(&amp;server);
-413   g_server = NULL;
-414 
-415   // Destroy WebSocket server
-416   websocket_server_destroy(&amp;g_websocket_server);
-417   log_debug(&quot;WebSocket server destroyed&quot;);
-418 
-419   // Clean up UPnP port mapping
-420   if (g_upnp_ctx) {
-421     nat_upnp_close(&amp;g_upnp_ctx);
-422     log_debug(&quot;UPnP port mapping closed&quot;);
-423   }
-424 
-425   // Clean up mDNS context
-426   if (g_mdns_ctx) {
-427     asciichat_mdns_destroy(g_mdns_ctx);
-428     g_mdns_ctx = NULL;
-429     log_debug(&quot;mDNS context shut down&quot;);
-430   }
-431 
-432   log_info(&quot;Discovery server stopped&quot;);
-433   return result;
-434 }</pre>
+319   // UPnP Port Mapping (Quick Win for Direct TCP)
+320   // =========================================================================
+321   // Try to open port via UPnP so direct TCP works for ~70% of home users.
+322   // If this fails, clients fall back to WebRTC automatically - not fatal.
+323   //
+324   // Strategy:
+325   //   1. UPnP (works on ~90% of home routers)
+326   //   2. NAT-PMP fallback (Apple routers)
+327   //   3. If both fail: use ACDS + WebRTC (reliable, but slightly higher latency)
+328 
+329   // Check again before expensive UPnP initialization (might timeout trying to reach router)
+330   if (acds_should_exit()) {
+331     log_info(&quot;Shutdown signal received before UPnP initialization&quot;);
+332     result = ASCIICHAT_OK;
+333     goto cleanup_resources;
+334   }
+335 
+336   if (GET_OPTION(enable_upnp)) {
+337     asciichat_error_t upnp_result = nat_upnp_open(config.port, &quot;ascii-chat ACDS&quot;, &amp;g_upnp_ctx);
+338 
+339     if (upnp_result == ASCIICHAT_OK &amp;&amp; g_upnp_ctx) {
+340       char public_addr[22];
+341       if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
+342         char msg[256];
+343         safe_snprintf(msg, sizeof(msg), &quot;&#x1F310; Public endpoint: %s (direct TCP)&quot;, public_addr);
+344         log_console(LOG_INFO, msg);
+345         log_info(&quot;UPnP: Port mapping successful, public endpoint: %s&quot;, public_addr);
+346       }
+347     } else {
+348       log_info(&quot;UPnP: Port mapping unavailable or failed - will use WebRTC fallback&quot;);
+349       log_console(LOG_INFO, &quot;&#x1F4E1; Clients behind strict NATs will use WebRTC fallback&quot;);
+350     }
+351   } else {
+352     log_debug(&quot;UPnP: Disabled (use --upnp to enable automatic port mapping)&quot;);
+353   }
+354 
+355   // Check if shutdown was requested before initializing mDNS
+356   if (acds_should_exit()) {
+357     log_info(&quot;Shutdown signal received before mDNS initialization&quot;);
+358     result = ASCIICHAT_OK;
+359     goto cleanup_resources;
+360   }
+361 
+362   // Initialize mDNS for LAN discovery of ACDS server
+363   // This allows clients on the local network to discover the discovery service itself
+364 
+365   log_debug(&quot;Initializing mDNS for ACDS LAN service discovery...&quot;);
+366   g_mdns_ctx = asciichat_mdns_init();
+367   if (!g_mdns_ctx) {
+368     LOG_ERRNO_IF_SET(&quot;Failed to initialize mDNS (non-fatal, LAN discovery disabled)&quot;);
+369     log_warn(&quot;mDNS disabled for ACDS - LAN discovery of discovery service will not be available&quot;);
+370   } else {
+371     // Advertise ACDS service on the LAN
+372     // Build hostname if available
+373     char hostname[256] = {0};
+374     gethostname(hostname, sizeof(hostname) - 1);
+375 
+376     asciichat_mdns_service_t service = {
+377         .name = &quot;ascii-chat-Discovery-Service&quot;,
+378         .type = &quot;_ascii-chat-discovery-service._tcp&quot;,
+379         .host = hostname,
+380         .port = config.port,
+381         .txt_records = NULL,
+382         .txt_count = 0,
+383     };
+384 
+385     asciichat_error_t mdns_advertise_result = asciichat_mdns_advertise(g_mdns_ctx, &amp;service);
+386     if (mdns_advertise_result != ASCIICHAT_OK) {
+387       LOG_ERRNO_IF_SET(&quot;Failed to advertise ACDS mDNS service&quot;);
+388       log_warn(&quot;mDNS advertising failed for ACDS - LAN discovery disabled&quot;);
+389       asciichat_mdns_destroy(g_mdns_ctx);
+390       g_mdns_ctx = NULL;
+391     } else {
+392       log_console(LOG_INFO, &quot;&#x1F310; mDNS: ACDS advertised as '_ascii-chat-discovery-service._tcp.local' on LAN&quot;);
+393       log_info(&quot;mDNS: ACDS advertised as '_ascii-chat-discovery-service._tcp.local' (port=%d)&quot;, config.port);
+394     }
+395   }
+396 
+397   // Install signal handlers for clean shutdown
+398   signal(SIGINT, acds_handle_signal);
+399   signal(SIGTERM, acds_handle_signal);
+400 
+401 
+402   // Run server
+403   result = acds_server_run(&amp;server);
+404   if (result != ASCIICHAT_OK) {
+405     log_error(&quot;Server run failed&quot;);
+406   }
+407 
+408 cleanup_resources:
+409   // Cleanup
+410   // Disable keepawake before exit
+411   platform_disable_keepawake();
+412 
+413   log_info(&quot;Shutting down discovery server...&quot;);
+414   acds_server_shutdown(&amp;server);
+415   g_server = NULL;
+416 
+417   // Destroy WebSocket server
+418   websocket_server_destroy(&amp;g_websocket_server);
+419   log_debug(&quot;WebSocket server destroyed&quot;);
+420 
+421   // Clean up UPnP port mapping
+422   if (g_upnp_ctx) {
+423     nat_upnp_close(&amp;g_upnp_ctx);
+424     log_debug(&quot;UPnP port mapping closed&quot;);
+425   }
+426 
+427   // Clean up mDNS context
+428   if (g_mdns_ctx) {
+429     asciichat_mdns_destroy(g_mdns_ctx);
+430     g_mdns_ctx = NULL;
+431     log_debug(&quot;mDNS context shut down&quot;);
+432   }
+433 
+434   log_info(&quot;Discovery server stopped&quot;);
+435   return result;
+436 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acds_identity_fingerprint()</b>,
     <b>acds_identity_generate()</b>, <b>acds_identity_load()</b>,
     <b>acds_identity_save()</b>, <b>acds_server_init()</b>,
     <b>acds_server_run()</b>, <b>acds_server_shutdown()</b>,
-    <b>acds_string_init()</b>, <b>acds_config_t::address</b>,
-    <b>options_state::address</b>, <b>acds_config_t::address6</b>,
-    <b>options_state::address6</b>, <b>ASCII_CHAT_BUILD_DATE</b>,
-    <b>ASCII_CHAT_BUILD_TYPE</b>, <b>ASCII_CHAT_VERSION_FULL</b>,
-    <b>asciichat_mdns_advertise()</b>, <b>asciichat_mdns_destroy()</b>,
-    <b>asciichat_mdns_init()</b>, <b>ASCIICHAT_OK</b>,
-    <b>acds_config_t::database_path</b>, <b>errno</b>,
+    <b>acds_string_init()</b>, <b>acds_websocket_client_handler()</b>,
+    <b>acds_config_t::address</b>, <b>options_state::address</b>,
+    <b>acds_config_t::address6</b>, <b>options_state::address6</b>,
+    <b>ASCII_CHAT_BUILD_DATE</b>, <b>ASCII_CHAT_BUILD_TYPE</b>,
+    <b>ASCII_CHAT_VERSION_FULL</b>, <b>asciichat_mdns_advertise()</b>,
+    <b>asciichat_mdns_destroy()</b>, <b>asciichat_mdns_init()</b>,
+    <b>ASCIICHAT_OK</b>, <b>acds_config_t::database_path</b>, <b>errno</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>get_config_dir()</b>, <b>GET_OPTION</b>,
     <b>acds_config_t::key_path</b>, <b>log_console</b>, <b>log_debug</b>,
     <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>, <b>acds_config_t::log_file</b>,

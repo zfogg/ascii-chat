@@ -29,6 +29,8 @@
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/network/tcp/server.h>
 #include <ascii-chat/network/acip/acds.h>
+#include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/websocket/server.h>
 #include <ascii-chat/options/options.h> // For MAX_IDENTITY_KEYS
 #include <ascii-chat/thread_pool.h>
 #include <ascii-chat/crypto/handshake/common.h>
@@ -69,6 +71,10 @@ typedef struct {
   acip_session_create_t pending_session;               ///< Pending session data (from first SESSION_CREATE)
   uint8_t pending_session_keys[MAX_IDENTITY_KEYS][32]; ///< Array of identity public keys
   size_t num_pending_keys;                             ///< Number of keys received so far
+
+  // Transport abstraction
+  acip_transport_t *transport; ///< Persistent transport for this client connection
+  int registry_id;             ///< Socket or synthetic ID used in tcp_server registry
 } acds_client_data_t;
 
 /**
@@ -160,3 +166,14 @@ void acds_server_shutdown(acds_server_t *server);
  * @return NULL (thread exit value)
  */
 void *acds_client_handler(void *arg);
+
+/**
+ * @brief WebSocket client handler (thread entry point)
+ *
+ * Processes ACIP packets from a WebSocket client connection.
+ * Similar to TCP handler but uses transport-based APIs for crypto handshake.
+ *
+ * @param arg Pointer to websocket_client_context_t
+ * @return NULL (thread exit value)
+ */
+void *acds_websocket_client_handler(void *arg);

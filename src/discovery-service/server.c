@@ -316,19 +316,9 @@ void acds_server_shutdown(acds_server_t *server) {
 }
 
 // =============================================================================
-// ACIP Transport Helper Macros for ACDS
+// ACIP Transport Helper Macros for ACDS - REMOVED
 // =============================================================================
-// ACDS uses plain TCP without encryption (discovery service)
-// These macros simplify creating temporary transports for responses
-
-#define ACDS_CREATE_TRANSPORT(socket, transport_var)                                                                   \
-  acip_transport_t *transport_var = acip_tcp_transport_create("transport_acds_discovery", socket, NULL);               \
-  if (!transport_var) {                                                                                                \
-    log_error("Failed to create ACDS transport");                                                                      \
-    return;                                                                                                            \
-  }
-
-#define ACDS_DESTROY_TRANSPORT(transport_var) acip_transport_destroy(transport_var)
+// Transport is now passed to callbacks as a parameter, no need for temp creation
 
 // =============================================================================
 // ACIP Callback Wrappers for ACDS
@@ -336,23 +326,17 @@ void acds_server_shutdown(acds_server_t *server) {
 // These callbacks are invoked by acip_handle_acds_packet() via O(1) array dispatch.
 // Each callback implements: Rate Limit → Crypto Verify → Business Logic → DB Save
 
-static void acds_on_session_create(const acip_session_create_t *req, int client_socket, const char *client_ip,
+static void acds_on_session_create(const acip_session_create_t *req, acip_transport_t *transport, const char *client_ip,
                                    void *app_ctx) {
   acds_server_t *server = (acds_server_t *)app_ctx;
+  acds_client_data_t *client_data = (acds_client_data_t *)transport->user_data;
 
   log_debug("SESSION_CREATE packet from %s", client_ip);
 
-  // Create ACIP transport for responses
-  ACDS_CREATE_TRANSPORT(client_socket, transport);
-
-  // Get client data for multi-key session state tracking
-  void *client_data_ptr = NULL;
-  if (tcp_server_get_client(&server->tcp_server, client_socket, &client_data_ptr) != ASCIICHAT_OK || !client_data_ptr) {
+  if (!client_data) {
     acip_send_error(transport, ERROR_INVALID_PARAM, "Client data not found");
-    ACDS_DESTROY_TRANSPORT(transport);
     return;
   }
-  acds_client_data_t *client_data = (acds_client_data_t *)client_data_ptr;
 
   // === MULTI-KEY PROTOCOL: Handle key by key_index ===
   // total_keys > 0 indicates multi-key mode
@@ -371,7 +355,6 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
       if (req->total_keys > MAX_IDENTITY_KEYS) {
         log_error("Too many keys: %u (max %u)", req->total_keys, MAX_IDENTITY_KEYS);
         acip_send_error(transport, ERROR_INVALID_PARAM, "Too many keys");
-        ACDS_DESTROY_TRANSPORT(transport);
         return;
       }
 
@@ -385,7 +368,6 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
       acip_send_error(transport, ERROR_INVALID_PARAM, "Invalid key index");
       client_data->in_multikey_session_create = false;
       client_data->num_pending_keys = 0;
-      ACDS_DESTROY_TRANSPORT(transport);
       return;
     }
 
@@ -399,7 +381,6 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
     if (!is_final_key) {
       // More keys expected - wait for next packet
       log_debug("Waiting for remaining %u key(s)", req->total_keys - client_data->num_pending_keys);
-      ACDS_DESTROY_TRANSPORT(transport);
       return;
     }
 
@@ -433,7 +414,6 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
         acip_send_error(transport, ERROR_MEMORY, "Out of memory building response");
         client_data->in_multikey_session_create = false;
         client_data->num_pending_keys = 0;
-        ACDS_DESTROY_TRANSPORT(transport);
         return;
       }
 
@@ -467,7 +447,6 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
     client_data->in_multikey_session_create = false;
     client_data->num_pending_keys = 0;
 
-    ACDS_DESTROY_TRANSPORT(transport);
     return;
   } else {
     // Legacy single-key mode (total_keys == 0)
@@ -505,7 +484,6 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
         acip_send_error(transport, ERROR_MEMORY, "Out of memory building response");
         client_data->in_multikey_session_create = false;
         client_data->num_pending_keys = 0;
-        ACDS_DESTROY_TRANSPORT(transport);
         return;
       }
 
@@ -539,7 +517,6 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
     client_data->in_multikey_session_create = false;
     client_data->num_pending_keys = 0;
 
-    ACDS_DESTROY_TRANSPORT(transport);
     return;
   }
 
@@ -550,7 +527,6 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
     // Validate we haven't exceeded max keys
     if (client_data->num_pending_keys >= MAX_IDENTITY_KEYS) {
       acip_send_error(transport, ERROR_INVALID_PARAM, "Maximum identity keys exceeded");
-      ACDS_DESTROY_TRANSPORT(transport);
       return;
     }
 
@@ -558,7 +534,6 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
     for (size_t i = 0; i < client_data->num_pending_keys; i++) {
       if (memcmp(client_data->pending_session_keys[i], req->identity_pubkey, 32) == 0) {
         acip_send_error(transport, ERROR_INVALID_PARAM, "Duplicate identity key");
-        ACDS_DESTROY_TRANSPORT(transport);
         return;
       }
     }
@@ -571,7 +546,6 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
               req->identity_pubkey[0], req->identity_pubkey[1]);
 
     // Don't send response yet - client will send more keys or zero-key to finalize
-    ACDS_DESTROY_TRANSPORT(transport);
     return;
   }
 
@@ -579,10 +553,15 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
   // First SESSION_CREATE with non-zero key - start multi-key mode
 
   // Rate limiting check (only on first SESSION_CREATE)
-  if (!check_and_record_rate_limit(server->rate_limiter, client_ip, RATE_EVENT_SESSION_CREATE, client_socket,
-                                   "SESSION_CREATE")) {
-    ACDS_DESTROY_TRANSPORT(transport);
-    return;
+  {
+    bool allowed = false;
+    asciichat_error_t rate_check = rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_CREATE, NULL, &allowed);
+    if (rate_check != ASCIICHAT_OK || !allowed) {
+      acip_send_error(transport, ERROR_RATE_LIMITED, "Rate limit exceeded. Please try again later.");
+      log_warn("Rate limit exceeded for SESSION_CREATE from %s", client_ip);
+      return;
+    }
+    rate_limiter_record(server->rate_limiter, client_ip, RATE_EVENT_SESSION_CREATE);
   }
 
   // Cryptographic identity verification (if required)
@@ -591,7 +570,6 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
     if (!acds_validate_timestamp(req->timestamp, 300)) {
       log_warn("SESSION_CREATE rejected from %s: invalid timestamp (replay attack protection)", client_ip);
       acip_send_error(transport, ERROR_CRYPTO_VERIFICATION, "Timestamp validation failed - too old or in the future");
-      ACDS_DESTROY_TRANSPORT(transport);
       return;
     }
 
@@ -602,7 +580,6 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
     if (verify_result != ASCIICHAT_OK) {
       log_warn("SESSION_CREATE rejected from %s: invalid signature (identity verification failed)", client_ip);
       acip_send_error(transport, ERROR_CRYPTO_VERIFICATION, "Identity signature verification failed");
-      ACDS_DESTROY_TRANSPORT(transport);
       return;
     }
 
@@ -624,7 +601,6 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
                req->server_address);
       acip_send_error(transport, ERROR_INVALID_PARAM,
                       "Direct TCP sessions require server_address to match your actual IP");
-      ACDS_DESTROY_TRANSPORT(transport);
       return;
     }
     log_debug("SESSION_CREATE reachability verified: %s matches connection source", req->server_address);
@@ -640,22 +616,24 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
            client_ip);
 
   // Don't send response yet - wait for more keys or zero-key finalize
-  ACDS_DESTROY_TRANSPORT(transport);
 }
 
-static void acds_on_session_lookup(const acip_session_lookup_t *req, int client_socket, const char *client_ip,
+static void acds_on_session_lookup(const acip_session_lookup_t *req, acip_transport_t *transport, const char *client_ip,
                                    void *app_ctx) {
   acds_server_t *server = (acds_server_t *)app_ctx;
 
   log_debug("SESSION_LOOKUP packet from %s", client_ip);
 
-  // Create ACIP transport for responses
-  ACDS_CREATE_TRANSPORT(client_socket, transport);
-
   // Rate limiting check
-  if (!check_and_record_rate_limit(server->rate_limiter, client_ip, RATE_EVENT_SESSION_LOOKUP, client_socket,
-                                   "SESSION_LOOKUP")) {
-    return;
+  {
+    bool allowed = false;
+    asciichat_error_t rate_check = rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_LOOKUP, NULL, &allowed);
+    if (rate_check != ASCIICHAT_OK || !allowed) {
+      acip_send_error(transport, ERROR_RATE_LIMITED, "Rate limit exceeded. Please try again later.");
+      log_warn("Rate limit exceeded for SESSION_LOOKUP from %s", client_ip);
+      return;
+    }
+    rate_limiter_record(server->rate_limiter, client_ip, RATE_EVENT_SESSION_LOOKUP);
   }
 
   acip_session_info_t resp;
@@ -677,19 +655,23 @@ static void acds_on_session_lookup(const acip_session_lookup_t *req, int client_
   }
 }
 
-static void acds_on_session_join(const acip_session_join_t *req, int client_socket, const char *client_ip,
+static void acds_on_session_join(const acip_session_join_t *req, acip_transport_t *transport, const char *client_ip,
                                  void *app_ctx) {
   acds_server_t *server = (acds_server_t *)app_ctx;
+  acds_client_data_t *client_data = (acds_client_data_t *)transport->user_data;
 
   log_debug("SESSION_JOIN packet from %s", client_ip);
 
-  // Create ACIP transport for responses
-  ACDS_CREATE_TRANSPORT(client_socket, transport);
-
   // Rate limiting check
-  if (!check_and_record_rate_limit(server->rate_limiter, client_ip, RATE_EVENT_SESSION_JOIN, client_socket,
-                                   "SESSION_JOIN")) {
-    return;
+  {
+    bool allowed = false;
+    asciichat_error_t rate_check = rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_JOIN, NULL, &allowed);
+    if (rate_check != ASCIICHAT_OK || !allowed) {
+      acip_send_error(transport, ERROR_RATE_LIMITED, "Rate limit exceeded. Please try again later.");
+      log_warn("Rate limit exceeded for SESSION_JOIN from %s", client_ip);
+      return;
+    }
+    rate_limiter_record(server->rate_limiter, client_ip, RATE_EVENT_SESSION_JOIN);
   }
 
   // Cryptographic identity verification (if required)
@@ -733,10 +715,8 @@ static void acds_on_session_join(const acip_session_join_t *req, int client_sock
   if (join_result == ASCIICHAT_OK && resp.success) {
     acip_send_session_joined(transport, &resp);
 
-    // Update client data in registry (update in place)
-    void *retrieved_data = NULL;
-    if (tcp_server_get_client(&server->tcp_server, client_socket, &retrieved_data) == ASCIICHAT_OK && retrieved_data) {
-      acds_client_data_t *client_data = (acds_client_data_t *)retrieved_data;
+    // Update client data (accessed via transport->user_data)
+    if (client_data) {
       memcpy(client_data->session_id, resp.session_id, 16);
       memcpy(client_data->participant_id, resp.participant_id, 16);
       client_data->joined_session = true;
@@ -750,23 +730,19 @@ static void acds_on_session_join(const acip_session_join_t *req, int client_sock
   }
 }
 
-static void acds_on_session_leave(const acip_session_leave_t *req, int client_socket, const char *client_ip,
+static void acds_on_session_leave(const acip_session_leave_t *req, acip_transport_t *transport, const char *client_ip,
                                   void *app_ctx) {
   acds_server_t *server = (acds_server_t *)app_ctx;
+  acds_client_data_t *client_data = (acds_client_data_t *)transport->user_data;
 
   log_debug("SESSION_LEAVE packet from %s", client_ip);
-
-  // Create ACIP transport for responses
-  ACDS_CREATE_TRANSPORT(client_socket, transport);
 
   asciichat_error_t leave_result = database_session_leave(server->db, req->session_id, req->participant_id);
   if (leave_result == ASCIICHAT_OK) {
     log_info("Client %s left session", client_ip);
 
     // Update client data to mark as not joined
-    void *retrieved_data = NULL;
-    if (tcp_server_get_client(&server->tcp_server, client_socket, &retrieved_data) == ASCIICHAT_OK && retrieved_data) {
-      acds_client_data_t *client_data = (acds_client_data_t *)retrieved_data;
+    if (client_data) {
       client_data->joined_session = false;
     }
   } else {
@@ -775,14 +751,12 @@ static void acds_on_session_leave(const acip_session_leave_t *req, int client_so
   }
 }
 
-static void acds_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t payload_len, int client_socket,
+static void acds_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t payload_len, acip_transport_t *transport,
                                const char *client_ip, void *app_ctx) {
   acds_server_t *server = (acds_server_t *)app_ctx;
+  (void)transport; // Transport not needed for relay
 
   log_debug("WEBRTC_SDP packet from %s", client_ip);
-
-  // Create ACIP transport for responses
-  ACDS_CREATE_TRANSPORT(client_socket, transport);
 
   // Validation is done in the library handler (lib/network/acip/acds_handlers.c)
   asciichat_error_t relay_result = signaling_relay_sdp(server->db, &server->tcp_server, sdp, payload_len);
@@ -792,14 +766,12 @@ static void acds_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t payload_len,
   }
 }
 
-static void acds_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t payload_len, int client_socket,
+static void acds_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t payload_len, acip_transport_t *transport,
                                const char *client_ip, void *app_ctx) {
   acds_server_t *server = (acds_server_t *)app_ctx;
+  (void)transport; // Transport not needed for relay
 
   log_debug("WEBRTC_ICE packet from %s", client_ip);
-
-  // Create ACIP transport for responses
-  ACDS_CREATE_TRANSPORT(client_socket, transport);
 
   // Validation is done in the library handler (lib/network/acip/acds_handlers.c)
   asciichat_error_t relay_result = signaling_relay_ice(server->db, &server->tcp_server, ice, payload_len);
@@ -809,16 +781,13 @@ static void acds_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t payload_len,
   }
 }
 
-static void acds_on_host_announcement(const acip_host_announcement_t *announcement, int client_socket,
+static void acds_on_host_announcement(const acip_host_announcement_t *announcement, acip_transport_t *transport,
                                       const char *client_ip, void *app_ctx) {
   acds_server_t *server = (acds_server_t *)app_ctx;
 
   log_info("HOST_ANNOUNCEMENT from %s: host_id=%02x%02x..., address=%s:%u, conn_type=%d", client_ip,
            announcement->host_id[0], announcement->host_id[1], announcement->host_address, announcement->host_port,
            announcement->connection_type);
-
-  // Create ACIP transport for responses
-  ACDS_CREATE_TRANSPORT(client_socket, transport);
 
   // Update session host in database
   asciichat_error_t result =
@@ -828,7 +797,6 @@ static void acds_on_host_announcement(const acip_host_announcement_t *announceme
   if (result != ASCIICHAT_OK) {
     acip_send_error(transport, result, "Failed to update session host");
     log_warn("HOST_ANNOUNCEMENT failed from %s: %s", client_ip, asciichat_error_string(result));
-    ACDS_DESTROY_TRANSPORT(transport);
     return;
   }
 
@@ -837,10 +805,9 @@ static void acds_on_host_announcement(const acip_host_announcement_t *announceme
   // For now, new participants will get host info when they join
 
   log_info("Session host updated via HOST_ANNOUNCEMENT from %s", client_ip);
-  ACDS_DESTROY_TRANSPORT(transport);
 }
 
-static void acds_on_host_lost(const acip_host_lost_t *host_lost, int client_socket, const char *client_ip,
+static void acds_on_host_lost(const acip_host_lost_t *host_lost, acip_transport_t *transport, const char *client_ip,
                               void *app_ctx) {
   acds_server_t *server = (acds_server_t *)app_ctx;
 
@@ -849,15 +816,11 @@ static void acds_on_host_lost(const acip_host_lost_t *host_lost, int client_sock
            host_lost->participant_id[1], host_lost->last_host_id[0], host_lost->last_host_id[1],
            host_lost->disconnect_reason);
 
-  // Create ACIP transport for responses
-  ACDS_CREATE_TRANSPORT(client_socket, transport);
-
   // Start host migration (set in_migration flag in database for bookkeeping)
   asciichat_error_t result = database_session_start_migration(server->db, host_lost->session_id);
   if (result != ASCIICHAT_OK) {
     acip_send_error(transport, result, "Failed to start host migration");
     log_warn("HOST_LOST failed from %s: %s", client_ip, asciichat_error_string(result));
-    ACDS_DESTROY_TRANSPORT(transport);
     return;
   }
 
@@ -867,7 +830,6 @@ static void acds_on_host_lost(const acip_host_lost_t *host_lost, int client_sock
   if (!migration) {
     acip_send_error(transport, ERROR_MEMORY, "Failed to track migration");
     log_warn("HOST_LOST: Failed to create migration context from %s", client_ip);
-    ACDS_DESTROY_TRANSPORT(transport);
     return;
   }
 
@@ -879,7 +841,6 @@ static void acds_on_host_lost(const acip_host_lost_t *host_lost, int client_sock
   // They will instantly failover to the pre-elected host.
   // ACDS just tracks migration timeout for cleanup.
 
-  ACDS_DESTROY_TRANSPORT(transport);
 }
 
 // Global ACIP callback structure for ACDS
@@ -996,6 +957,21 @@ void *acds_client_handler(void *arg) {
   client_data->handshake_complete = true;
   log_info("Crypto handshake complete for client %s", client_ip);
 
+  // Create persistent TCP transport for this client
+  acip_transport_t *transport = acip_tcp_transport_create("acds_tcp_client", client_socket, NULL);
+  if (!transport) {
+    log_error("Failed to create TCP transport for client %s", client_ip);
+    tcp_server_remove_client(&server->tcp_server, client_socket);
+    socket_close(client_socket);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+
+  // Store transport and registry ID in client data, and link back from transport
+  client_data->transport = transport;
+  client_data->registry_id = client_socket;
+  transport->user_data = client_data;
+
   // Main packet processing loop
   while (atomic_load_bool(&server->tcp_server.running)) {
     packet_type_t packet_type;
@@ -1041,14 +1017,9 @@ void *acds_client_handler(void *arg) {
                  "allowed",
                  client_ip, packet_type);
 
-        // Send error response
-        acip_transport_t *error_transport =
-            acip_tcp_transport_create("transport_acds_error_response", client_socket, NULL);
-        if (error_transport) {
-          acip_send_error(error_transport, ERROR_INVALID_PARAM,
-                          "Only SESSION_CREATE/PING/PONG allowed during multi-key session creation");
-          ACDS_DESTROY_TRANSPORT(error_transport);
-        }
+        // Send error response using persistent transport
+        acip_send_error(transport, ERROR_INVALID_PARAM,
+                        "Only SESSION_CREATE/PING/PONG allowed during multi-key session creation");
 
         // Free payload and continue
         if (payload) {
@@ -1064,7 +1035,7 @@ void *acds_client_handler(void *arg) {
     callbacks.app_ctx = server;
 
     asciichat_error_t dispatch_result =
-        acip_handle_acds_packet(NULL, packet_type, payload, payload_size, client_socket, client_ip, &callbacks);
+        acip_handle_acds_packet(transport, packet_type, payload, payload_size, client_ip, &callbacks);
 
     if (dispatch_result != ASCIICHAT_OK) {
       log_warn("ACIP handler failed for packet type 0x%02X from %s: %s", packet_type, client_ip,
@@ -1081,9 +1052,162 @@ void *acds_client_handler(void *arg) {
   tcp_server_remove_client(&server->tcp_server, client_socket);
   log_debug("Client %s unregistered (total=%zu)", client_ip, tcp_server_get_client_count(&server->tcp_server));
 
+  // Destroy transport before closing socket
+  acip_transport_destroy(transport);
+
   socket_close(client_socket);
   SAFE_FREE(ctx);
 
   log_info("Client handler finished for %s", client_ip);
+  return NULL;
+}
+
+// =============================================================================
+// WebSocket Client Handler
+// =============================================================================
+
+void *acds_websocket_client_handler(void *arg) {
+  websocket_client_context_t *ctx = (websocket_client_context_t *)arg;
+  if (!ctx) {
+    log_error("WebSocket client handler: NULL context");
+    return NULL;
+  }
+
+  acds_server_t *server = (acds_server_t *)ctx->user_data;
+  acip_transport_t *transport = ctx->transport;
+  char *client_ip = ctx->client_ip;
+
+  log_info("WebSocket client handler started for %s", client_ip);
+
+  // Allocate client_data
+  acds_client_data_t *client_data = SAFE_CALLOC(1, sizeof(acds_client_data_t), acds_client_data_t *);
+  if (!client_data) {
+    log_error("Failed to allocate client data for WebSocket client %s", client_ip);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+
+  client_data->transport = transport;
+  client_data->joined_session = false;
+  client_data->handshake_complete = false;
+  transport->user_data = client_data;
+
+  // Generate synthetic socket ID for tcp_server registry
+  static _Atomic int g_ws_synthetic_id = INT_MAX;
+  int synthetic_id = atomic_fetch_sub(&g_ws_synthetic_id, 1);
+  client_data->registry_id = synthetic_id;
+
+  // Register in tcp_server with synthetic ID (so callbacks can find client_data)
+  if (tcp_server_add_client(&server->tcp_server, synthetic_id, client_data) != ASCIICHAT_OK) {
+    log_error("Failed to register WebSocket client %s in registry", client_ip);
+    SAFE_FREE(client_data);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+
+  log_debug("WebSocket client %s registered (synthetic_id=%d, total=%zu)", client_ip, synthetic_id,
+            tcp_server_get_client_count(&server->tcp_server));
+
+  // For WebSocket with TLS (wss://), skip crypto handshake since TLS already provides encryption
+  // For plain ws://, we should still do crypto handshake, but for now we skip it
+  // TODO: Add crypto handshake support for plain ws:// connections
+  client_data->handshake_complete = true;
+  log_info("WebSocket connection from %s - skipping crypto handshake (TLS encryption assumed)", client_ip);
+
+  // Main packet processing loop using transport recv
+  while (atomic_load_bool(&server->tcp_server.running)) {
+    void *recv_buffer = NULL;
+    size_t recv_len = 0;
+    void *alloc_buffer = NULL;
+
+    asciichat_error_t recv_result = acip_transport_recv(transport, &recv_buffer, &recv_len, &alloc_buffer);
+    if (recv_result != ASCIICHAT_OK) {
+      // Check if this is a timeout or disconnect
+      if (recv_result == ERROR_NETWORK_TIMEOUT) {
+        log_debug("WebSocket client %s: receive timeout, continuing to wait for packets", client_ip);
+        if (alloc_buffer) {
+          SAFE_FREE(alloc_buffer);
+        }
+        continue;
+      }
+
+      // Actual disconnect or fatal error
+      log_info("WebSocket client %s disconnected", client_ip);
+      if (alloc_buffer) {
+        SAFE_FREE(alloc_buffer);
+      }
+      break;
+    }
+
+    // Parse packet header from received data
+    if (recv_len < sizeof(packet_header_t)) {
+      log_warn("WebSocket client %s: received packet too small (%zu bytes)", client_ip, recv_len);
+      if (alloc_buffer) {
+        SAFE_FREE(alloc_buffer);
+      }
+      continue;
+    }
+
+    const packet_header_t *header = (const packet_header_t *)recv_buffer;
+    packet_type_t packet_type = (packet_type_t)NET_TO_HOST_U16(header->type);
+    size_t payload_size = NET_TO_HOST_U32(header->length);
+    const void *payload = (const uint8_t *)recv_buffer + sizeof(packet_header_t);
+
+    // Validate payload size
+    if (recv_len < sizeof(packet_header_t) + payload_size) {
+      log_warn("WebSocket client %s: packet size mismatch (expected %zu, got %zu)", client_ip,
+               sizeof(packet_header_t) + payload_size, recv_len);
+      if (alloc_buffer) {
+        SAFE_FREE(alloc_buffer);
+      }
+      continue;
+    }
+
+    log_debug("Received packet type 0x%02X from WebSocket client %s, length=%zu", packet_type, client_ip, payload_size);
+
+    // Multi-key session creation protocol: block non-PING/PONG/SESSION_CREATE messages
+    if (client_data->in_multikey_session_create) {
+      bool allowed =
+          (packet_type == PACKET_TYPE_ACIP_SESSION_CREATE || packet_type == PACKET_TYPE_PING || packet_type == PACKET_TYPE_PONG);
+
+      if (!allowed) {
+        log_warn("WebSocket client %s sent packet type 0x%02X during multi-key session creation - only "
+                 "SESSION_CREATE/PING/PONG allowed",
+                 client_ip, packet_type);
+        acip_send_error(transport, ERROR_INVALID_PARAM,
+                        "Only SESSION_CREATE/PING/PONG allowed during multi-key session creation");
+        if (alloc_buffer) {
+          SAFE_FREE(alloc_buffer);
+        }
+        continue;
+      }
+    }
+
+    // O(1) ACIP array-based dispatch
+    acip_acds_callbacks_t callbacks = g_acds_callbacks;
+    callbacks.app_ctx = server;
+
+    asciichat_error_t dispatch_result =
+        acip_handle_acds_packet(transport, packet_type, payload, payload_size, client_ip, &callbacks);
+
+    if (dispatch_result != ASCIICHAT_OK) {
+      log_warn("ACIP handler failed for packet type 0x%02X from WebSocket client %s: %s", packet_type, client_ip,
+               asciichat_error_string(dispatch_result));
+    }
+
+    if (alloc_buffer) {
+      SAFE_FREE(alloc_buffer);
+    }
+  }
+
+  // Cleanup
+  tcp_server_remove_client(&server->tcp_server, synthetic_id);
+  log_debug("WebSocket client %s unregistered (total=%zu)", client_ip, tcp_server_get_client_count(&server->tcp_server));
+
+  // Transport is owned by WebSocket server, don't destroy it here
+
+  SAFE_FREE(ctx);
+
+  log_info("WebSocket client handler finished for %s", client_ip);
   return NULL;
 }

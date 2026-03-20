@@ -46,7 +46,9 @@
   <br/>
   Optional encryption context. void * <b>impl_data</b>
   <br/>
-  Transport-specific state.
+  Transport-specific state. void * <b>user_data</b>
+  <br/>
+  Application-specific context (e.g., per-client data).
   <br/>
 </p>
 </section>
@@ -95,6 +97,14 @@
     <b>acip_websocket_client_transport_create()</b>,
     <b>acip_websocket_server_transport_create()</b>, and
     <b>client_receive_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_acip_transport::user_data"><a class="permalink" href="#void*_acip_transport::user_data">void*
+  acip_transport::user_data</a></h2>
+<p class="Pp">Application-specific context (e.g., per-client data).</p>
+<p class="Pp">Definition at line <b>207</b> of file <b>transport.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_handler()</b>, and
+    <b>acds_websocket_client_handler()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>

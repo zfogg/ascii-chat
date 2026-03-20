@@ -353,8 +353,8 @@
     <b>SAFE_MALLOC</b>, <b>SAFE_SNPRINTF</b>, <b>SET_ERRNO</b>,
     <b>tcp_client_entry::socket</b>, <b>thread_pool_create()</b>, and
     <b>tcp_client_entry::threads</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_handler()</b>, and
-    <b>add_client()</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_handler()</b>,
+    <b>acds_websocket_client_handler()</b>, and <b>add_client()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_tcp_server_destroy_("><a class="permalink" href="#void_tcp_server_destroy_(">void
@@ -544,7 +544,8 @@
     <b>tcp_server::clients_rwlock</b>, <b>rwlock_rdlock</b>, and
     <b>rwlock_rdunlock</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>acds_server_shutdown()</b>, and <b>ui_status_gather()</b>.</p>
+    <b>acds_server_shutdown()</b>, <b>acds_websocket_client_handler()</b>, and
+    <b>ui_status_gather()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> tcp_server_get_thread_count
@@ -786,7 +787,8 @@
     <b>log_debug</b>, <b>rwlock_wrlock</b>, <b>rwlock_wrunlock</b>,
     <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, <b>thread_pool_destroy()</b>, and
     <b>tcp_client_entry::threads</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_handler()</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_handler()</b>, and
+    <b>acds_websocket_client_handler()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> tcp_server_run (<b>tcp_server_t</b> *

@@ -291,7 +291,8 @@ packet.magic = HOST_TO_NET_U64(magic);
 uint16_t port = NET_TO_HOST_U16(addr-&gt;sin_port);
 </pre>
 <p class="Pp">Definition at line <b>111</b> of file <b>endian.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
+<p class="Pp">Referenced by <b>acds_websocket_client_handler()</b>,
+    <b>acip_client_receive_and_dispatch()</b>,
     <b>acip_server_receive_and_dispatch()</b>, <b>client_crypto_handshake()</b>,
     <b>client_dispatch_thread()</b>, <b>client_parse_packet()</b>,
     <b>client_receive_thread()</b>, <b>client_send_thread_func()</b>,
@@ -326,7 +327,8 @@ uint16_t port = NET_TO_HOST_U16(addr-&gt;sin_port);
 uint32_t count = NET_TO_HOST_U32(pkt-&gt;count);
 </pre>
 <p class="Pp">Definition at line <b>81</b> of file <b>endian.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
+<p class="Pp">Referenced by <b>acds_websocket_client_handler()</b>,
+    <b>acip_client_receive_and_dispatch()</b>,
     <b>acip_server_receive_and_dispatch()</b>,
     <b>audio_dequantize_samples()</b>, <b>client_dispatch_thread()</b>,
     <b>client_parse_packet()</b>, <b>client_receive_thread()</b>,

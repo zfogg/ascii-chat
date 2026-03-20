@@ -63,8 +63,8 @@
 <br/>
 <p class="Pp">typedef <b>asciichat_error_t</b>(*
     <b>acip_acds_handler_func_t</b>) (const void *payload, size_t payload_len,
-    int client_socket, const char *client_ip, const <b>acip_acds_callbacks_t</b>
-    *callbacks)
+    <b>acip_transport_t</b> *transport, const char *client_ip, const
+    <b>acip_acds_callbacks_t</b> *callbacks)
   <br/>
   <br/>
 </p>
@@ -74,8 +74,8 @@
 <br/>
 <p class="Pp"><b>asciichat_error_t</b> <b>acip_handle_acds_packet</b>
     (<b>acip_transport_t</b> *transport, <b>packet_type_t</b> type, const void
-    *payload, size_t payload_len, int client_socket, const char *client_ip,
-    const <b>acip_acds_callbacks_t</b> *callbacks)
+    *payload, size_t payload_len, const char *client_ip, const
+    <b>acip_acds_callbacks_t</b> *callbacks)
   <br/>
   Handle incoming ACDS packet with O(1) dispatch.
   <br/>
@@ -126,8 +126,8 @@
 <section class="Ss">
 <h2 class="Ss" id="typedef_"><a class="permalink" href="#typedef_">typedef
   <b>asciichat_error_t</b>(* acip_acds_handler_func_t) (const void *payload,
-  size_t payload_len, int client_socket, const char *client_ip, const
-  <b>acip_acds_callbacks_t</b> *callbacks)</a></h2>
+  size_t payload_len, <b>acip_transport_t</b> *transport, const char *client_ip,
+  const <b>acip_acds_callbacks_t</b> *callbacks)</a></h2>
 <p class="Pp">Definition at line <b>28</b> of file <b>acds_handlers.c</b>.</p>
 </section>
 </section>
@@ -137,23 +137,21 @@
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> acip_handle_acds_packet
   (<b>acip_transport_t</b> * transport, <b>packet_type_t</b> type, const void *
-  payload, size_t payload_len, int client_socket, const char * client_ip, const
+  payload, size_t payload_len, const char * client_ip, const
   <b>acip_acds_callbacks_t</b> * callbacks)</h2>
 <p class="Pp">Handle incoming ACDS packet with O(1) dispatch. Dispatches packet
     to appropriate callback based on type. Uses array-based lookup for
     constant-time handler selection.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>transport</i> Transport instance (unused, for API
-  consistency)
+<div class="Bd-indent"><i>transport</i> Transport instance for sending responses
+  and accessing per-client state
 <br/>
 <i>type</i> Packet type
 <br/>
 <i>payload</i> Packet payload
 <br/>
 <i>payload_len</i> Payload length
-<br/>
-<i>client_socket</i> Client socket file descriptor
 <br/>
 <i>client_ip</i> Client IP address string
 <br/>
@@ -165,20 +163,20 @@
 119   if (!callbacks) {
 120     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid callbacks&quot;);
 121   }
-122   (void)transport;
-123 
-124   // O(1) dispatch via hash table lookup
-125   int idx = acds_handler_hash_lookup(g_acds_handler_hash, type);
-126   if (idx &lt; 0) {
-127     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled ACDS packet type: %d from %s&quot;, type, client_ip);
-128   }
-129 
-130   return g_acds_handlers[idx](payload, payload_len, client_socket, client_ip, callbacks);
-131 }</pre>
+122 
+123   // O(1) dispatch via hash table lookup
+124   int idx = acds_handler_hash_lookup(g_acds_handler_hash, type);
+125   if (idx &lt; 0) {
+126     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled ACDS packet type: %d from %s&quot;, type, client_ip);
+127   }
+128 
+129   return g_acds_handlers[idx](payload, payload_len, transport, client_ip, callbacks);
+130 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_handler()</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_handler()</b>, and
+    <b>acds_websocket_client_handler()</b>.</p>
 </section>
 </section>
 <section class="Sh">

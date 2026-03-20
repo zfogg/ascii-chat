@@ -73,7 +73,7 @@
 <p class="Pp">Contains all runtime state for the discovery server including
     network sockets, identity keys, and database. Sessions are stored directly
     in SQLite as the single source of truth.</p>
-<p class="Pp">Definition at line <b>95</b> of file
+<p class="Pp">Definition at line <b>101</b> of file
     <b>src/discovery-service/server.h</b>.</p>
 </section>
 <section class="Sh">
@@ -83,13 +83,13 @@
 <h2 class="Ss"><b>migration_context_t</b>
   acds_server_t::active_migrations[32]</h2>
 <p class="Pp">Slots for up to 32 concurrent migrations.</p>
-<p class="Pp">Definition at line <b>109</b> of file
+<p class="Pp">Definition at line <b>115</b> of file
     <b>src/discovery-service/server.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>acds_config_t</b> acds_server_t::config</h2>
 <p class="Pp">Runtime configuration.</p>
-<p class="Pp">Definition at line <b>117</b> of file
+<p class="Pp">Definition at line <b>123</b> of file
     <b>src/discovery-service/server.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_server_init()</b>, and
     <b>acds_server_run()</b>.</p>
@@ -98,7 +98,7 @@
 <h2 class="Ss" id="sqlite3*_acds_server_t::db"><a class="permalink" href="#sqlite3*_acds_server_t::db">sqlite3*
   acds_server_t::db</a></h2>
 <p class="Pp">SQLite database handle.</p>
-<p class="Pp">Definition at line <b>103</b> of file
+<p class="Pp">Definition at line <b>109</b> of file
     <b>src/discovery-service/server.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_server_init()</b>, and
     <b>acds_server_shutdown()</b>.</p>
@@ -106,14 +106,14 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> acds_server_t::identity_public[32]</h2>
 <p class="Pp">Ed25519 public key.</p>
-<p class="Pp">Definition at line <b>99</b> of file
+<p class="Pp">Definition at line <b>105</b> of file
     <b>src/discovery-service/server.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> acds_server_t::identity_secret[64]</h2>
 <p class="Pp">Ed25519 secret key.</p>
-<p class="Pp">Definition at line <b>100</b> of file
+<p class="Pp">Definition at line <b>106</b> of file
     <b>src/discovery-service/server.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>.</p>
 </section>
@@ -121,14 +121,14 @@
 <h2 class="Ss" id="size_t_acds_server_t::num_active_migrations"><a class="permalink" href="#size_t_acds_server_t::num_active_migrations">size_t
   acds_server_t::num_active_migrations</a></h2>
 <p class="Pp">Number of active migrations.</p>
-<p class="Pp">Definition at line <b>110</b> of file
+<p class="Pp">Definition at line <b>116</b> of file
     <b>src/discovery-service/server.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
   <b>rate_limiter_s</b>* acds_server_t::rate_limiter</a></h2>
 <p class="Pp">SQLite-backed rate limiter.</p>
-<p class="Pp">Definition at line <b>106</b> of file
+<p class="Pp">Definition at line <b>112</b> of file
     <b>src/discovery-service/server.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_server_init()</b>, and
     <b>acds_server_shutdown()</b>.</p>
@@ -136,7 +136,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> acds_server_t::shutdown</h2>
 <p class="Pp">Shutdown flag for worker threads.</p>
-<p class="Pp">Definition at line <b>114</b> of file
+<p class="Pp">Definition at line <b>120</b> of file
     <b>src/discovery-service/server.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_server_init()</b>, and
     <b>acds_server_shutdown()</b>.</p>
@@ -144,16 +144,17 @@
 <section class="Ss">
 <h2 class="Ss"><b>tcp_server_t</b> acds_server_t::tcp_server</h2>
 <p class="Pp">TCP server abstraction.</p>
-<p class="Pp">Definition at line <b>96</b> of file
+<p class="Pp">Definition at line <b>102</b> of file
     <b>src/discovery-service/server.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>acds_server_init()</b>, <b>acds_server_run()</b>, and
-    <b>acds_server_shutdown()</b>.</p>
+    <b>acds_server_init()</b>, <b>acds_server_run()</b>,
+    <b>acds_server_shutdown()</b>, and
+  <b>acds_websocket_client_handler()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>thread_pool_t</b>* acds_server_t::worker_pool</h2>
 <p class="Pp">Thread pool for background workers.</p>
-<p class="Pp">Definition at line <b>113</b> of file
+<p class="Pp">Definition at line <b>119</b> of file
     <b>src/discovery-service/server.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_server_init()</b>, and
     <b>acds_server_shutdown()</b>.</p>
