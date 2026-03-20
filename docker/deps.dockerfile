@@ -1,6 +1,8 @@
 # vim: set ft=dockerfile:
 # Dependencies stage for ascii-chat
-# Builds the development environment with all build dependencies
+# Builds the development environment with all build dependencies and pre-downloads
+# CMake FetchContent deps into .deps-cache/ so the main Dockerfile skips downloads.
+#
 # Build with: docker build -f docker/deps.dockerfile -t zfogg/ascii-chat-deps:latest .
 # Push with: docker push zfogg/ascii-chat-deps:latest
 
@@ -11,10 +13,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /build
 
-# Copy only deps-related files first (these change rarely)
+# Copy install-deps script first (changes rarely, good cache layer)
 COPY scripts/install-deps.sh /tmp/install-deps.sh
-COPY CMakeLists.txt Makefile /build/
-COPY cmake/ /build/cmake/
 
 # Set up locale and minimal prerequisites
 RUN apt-get update && \
@@ -41,4 +41,17 @@ ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}" \
     CC=clang \
     CXX=clang++ \
     CMAKE_GENERATOR=Ninja
+
+# Copy full source tree needed for cmake configure (downloads FetchContent deps).
+# .dockerignore excludes .deps-cache/, build/, .git, tests/, etc.
+COPY . /build/
+
+# Run cmake configure to populate .deps-cache/ with all FetchContent downloads.
+# Uses the default preset (Debug build type).
+# After configure, remove the build/ artifacts (CMakeCache, ninja files, object files)
+# but keep .deps-cache/ which persists outside build/.
+RUN cmake --preset default \
+        -DUSE_MUSL=OFF \
+        -DASCIICHAT_ENABLE_ANALYZERS=OFF && \
+    rm -rf build/
 

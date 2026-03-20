@@ -11,15 +11,15 @@ FROM zfogg/ascii-chat-deps:latest AS builder
 # Ensure we have the environment set (inherited from deps image)
 ENV SOURCE_COMMIT="docker-build"
 
-# Copy remaining source code (changes here only invalidate build step cache)
+# Copy source code (.dockerignore excludes .deps-cache/ so pre-cached deps from
+# the deps image are preserved)
 COPY . /build/
 
-# Build ascii-chat (Dev build without sanitizers for Docker runtime compatibility)
-RUN rm -f /build/build/CMakeCache.txt /build/build/build.ninja && \
-    make CMAKE_BUILD_TYPE=Dev EXTRA_CMAKE_ARGS="-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=0.3.0"
+# Build ascii-chat (Debug build, configure is fast because .deps-cache/ is pre-populated)
+RUN make CMAKE_BUILD_TYPE=Debug EXTRA_CMAKE_ARGS="-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=0.3.0"
 
 # Install to /usr/local
-RUN make install CMAKE_BUILD_TYPE=Dev CMAKE_INSTALL_PREFIX=/usr/local
+RUN make install CMAKE_BUILD_TYPE=Debug CMAKE_INSTALL_PREFIX=/usr/local
 
 # ============================================================================
 # Stage 2: Runtime
@@ -35,7 +35,7 @@ RUN apt-get update && \
     localedef -i en_US -f UTF-8 en_US.UTF-8 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install minimal runtime dependencies for dynamically-linked Dev build
+# Install minimal runtime dependencies for dynamically-linked Debug build
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       ca-certificates curl unzip openssh-client gpg \
@@ -48,6 +48,10 @@ COPY --from=builder /usr/local /usr/local
 COPY --from=builder /home/linuxbrew/.linuxbrew /home/linuxbrew/.linuxbrew
 # Copy all system libraries from builder to get all runtime dependencies
 COPY --from=builder /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu
+# Copy clang sanitizer runtime libraries (ASan, UBSan) needed by Debug builds
+COPY --from=builder /usr/lib/llvm-20/lib/clang/20/lib/linux/libclang_rt.asan-x86_64.so /usr/lib/llvm-20/lib/clang/20/lib/linux/
+COPY --from=builder /usr/lib/llvm-20/lib/clang/20/lib/linux/libclang_rt.ubsan_standalone-x86_64.so /usr/lib/llvm-20/lib/clang/20/lib/linux/
+COPY --from=builder /usr/lib/llvm-20/lib/clang/20/lib/linux/libclang_rt.ubsan_minimal-x86_64.so /usr/lib/llvm-20/lib/clang/20/lib/linux/
 
 # Copy entrypoint script
 COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
