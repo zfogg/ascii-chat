@@ -1157,7 +1157,7 @@ void *acds_websocket_client_handler(void *arg) {
       if (recv_result == ERROR_NETWORK_TIMEOUT) {
         log_debug("WebSocket client %s: receive timeout, continuing to wait for packets", client_ip);
         if (alloc_buffer) {
-          SAFE_FREE(alloc_buffer);
+          buffer_pool_free(NULL, alloc_buffer, 0);
         }
         continue;
       }
@@ -1165,7 +1165,7 @@ void *acds_websocket_client_handler(void *arg) {
       // Actual disconnect or fatal error
       log_info("WebSocket client %s disconnected", client_ip);
       if (alloc_buffer) {
-        SAFE_FREE(alloc_buffer);
+        buffer_pool_free(NULL, alloc_buffer, 0);
       }
       break;
     }
@@ -1174,7 +1174,7 @@ void *acds_websocket_client_handler(void *arg) {
     if (recv_len < sizeof(packet_header_t)) {
       log_warn("WebSocket client %s: received packet too small (%zu bytes)", client_ip, recv_len);
       if (alloc_buffer) {
-        SAFE_FREE(alloc_buffer);
+        buffer_pool_free(NULL, alloc_buffer, 0);
       }
       continue;
     }
@@ -1189,7 +1189,7 @@ void *acds_websocket_client_handler(void *arg) {
       log_warn("WebSocket client %s: packet size mismatch (expected %zu, got %zu)", client_ip,
                sizeof(packet_header_t) + payload_size, recv_len);
       if (alloc_buffer) {
-        SAFE_FREE(alloc_buffer);
+        buffer_pool_free(NULL, alloc_buffer, 0);
       }
       continue;
     }
@@ -1208,7 +1208,7 @@ void *acds_websocket_client_handler(void *arg) {
         acip_send_error(transport, ERROR_INVALID_PARAM,
                         "Only SESSION_CREATE/PING/PONG allowed during multi-key session creation");
         if (alloc_buffer) {
-          SAFE_FREE(alloc_buffer);
+          buffer_pool_free(NULL, alloc_buffer, 0);
         }
         continue;
       }
@@ -1227,7 +1227,7 @@ void *acds_websocket_client_handler(void *arg) {
     }
 
     if (alloc_buffer) {
-      SAFE_FREE(alloc_buffer);
+      buffer_pool_free(NULL, alloc_buffer, 0);
     }
   }
 

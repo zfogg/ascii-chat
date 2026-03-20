@@ -644,11 +644,10 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
       return PACKET_RECV_ERROR;
     }
 
-    // Decrypt - allocate plaintext buffer with extra space.
-    // Use SAFE_MALLOC (not buffer_pool_alloc) so callers can free with SAFE_FREE.
+    // Decrypt - allocate plaintext buffer with extra space
     // pkt_len is already validated to be <= MAX_PACKET_SIZE, so adding 1024 cannot overflow
     size_t plaintext_size = (size_t)pkt_len + 1024;
-    uint8_t *plaintext = SAFE_MALLOC(plaintext_size, uint8_t *);
+    uint8_t *plaintext = buffer_pool_alloc(NULL, plaintext_size);
     if (!plaintext) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for plaintext");
       buffer_pool_free(NULL, ciphertext, pkt_len);
@@ -661,13 +660,13 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
 
     if (result != CRYPTO_OK) {
       SET_ERRNO(ERROR_CRYPTO, "Failed to decrypt packet: %s", crypto_result_to_string(result));
-      SAFE_FREE(plaintext);
+      buffer_pool_free(NULL, plaintext, plaintext_size);
       return PACKET_RECV_ERROR;
     }
 
     if (plaintext_len < sizeof(packet_header_t)) {
       SET_ERRNO(ERROR_CRYPTO, "Decrypted packet too small: %zu < %zu", plaintext_len, sizeof(packet_header_t));
-      SAFE_FREE(plaintext);
+      buffer_pool_free(NULL, plaintext, plaintext_size);
       return PACKET_RECV_ERROR;
     }
 
@@ -685,7 +684,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
     size_t payload_len = plaintext_len - sizeof(packet_header_t);
     if (payload_len != pkt_len) {
       SET_ERRNO(ERROR_CRYPTO, "Decrypted payload size mismatch: %zu != %u", payload_len, pkt_len);
-      SAFE_FREE(plaintext);
+      buffer_pool_free(NULL, plaintext, plaintext_size);
       return PACKET_RECV_ERROR;
     }
 
@@ -694,7 +693,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
       uint32_t actual_crc = asciichat_crc32(plaintext + sizeof(packet_header_t), pkt_len);
       if (actual_crc != expected_crc) {
         SET_ERRNO(ERROR_CRYPTO, "Decrypted packet CRC mismatch: 0x%x != 0x%x", actual_crc, expected_crc);
-        SAFE_FREE(plaintext);
+        buffer_pool_free(NULL, plaintext, plaintext_size);
         return PACKET_RECV_ERROR;
       }
     }
@@ -715,10 +714,9 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
     return PACKET_RECV_ERROR;
   }
 
-  // Read payload and return header+payload in envelope (matching encrypted path format).
-  // Use SAFE_MALLOC (not buffer_pool_alloc) so callers can free with SAFE_FREE.
+  // Read payload and return header+payload in envelope (matching encrypted path format)
   size_t total_size = sizeof(packet_header_t) + pkt_len;
-  uint8_t *packet_buf = SAFE_MALLOC(total_size, uint8_t *);
+  uint8_t *packet_buf = buffer_pool_alloc(NULL, total_size);
   if (!packet_buf) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for packet");
     return PACKET_RECV_ERROR;
@@ -732,7 +730,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
     received = recv_with_timeout(sockfd, packet_buf + sizeof(packet_header_t), pkt_len, recv_timeout);
     if (received != (ssize_t)pkt_len) {
       SET_ERRNO(ERROR_NETWORK, "Failed to receive payload: %zd/%u bytes", received, pkt_len);
-      SAFE_FREE(packet_buf);
+      buffer_pool_free(NULL, packet_buf, total_size);
       return PACKET_RECV_ERROR;
     }
 
@@ -740,7 +738,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
     uint32_t actual_crc = asciichat_crc32(packet_buf + sizeof(packet_header_t), pkt_len);
     if (actual_crc != expected_crc) {
       SET_ERRNO(ERROR_NETWORK, "Packet CRC mismatch: 0x%x != 0x%x", actual_crc, expected_crc);
-      SAFE_FREE(packet_buf);
+      buffer_pool_free(NULL, packet_buf, total_size);
       return PACKET_RECV_ERROR;
     }
   }

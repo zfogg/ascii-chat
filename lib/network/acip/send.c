@@ -143,7 +143,7 @@ asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, pack
     log_warn("packet_receive_via_transport: packet too small (%zu bytes, need %zu)", recv_len,
              sizeof(packet_header_t));
     if (*alloc_buffer) {
-      SAFE_FREE(*alloc_buffer);
+      buffer_pool_free(NULL, *alloc_buffer, recv_len);
       *alloc_buffer = NULL;
     }
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Received packet smaller than header");
@@ -156,7 +156,7 @@ asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, pack
   if (recv_len < sizeof(packet_header_t) + plen) {
     log_warn("packet_receive_via_transport: truncated packet (header says %zu payload, got %zu total)", plen, recv_len);
     if (*alloc_buffer) {
-      SAFE_FREE(*alloc_buffer);
+      buffer_pool_free(NULL, *alloc_buffer, recv_len);
       *alloc_buffer = NULL;
     }
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Truncated packet payload");
