@@ -1,5 +1,5 @@
 import { Button, Heading } from "@ascii-chat/shared/components";
-import { AsciiChatWebHead } from "../components/AsciiChatWebHead";
+import { AsciiChatWebHead } from "../components";
 
 function LinkedItemWithDescription({
   mode_name,

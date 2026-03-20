@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { trackLinkClick } from "../utils/analytics";
+import { trackLinkClick } from "../utils";
 
 export default function TrackedLink({ to, href, label, children, ...props }) {
   const url = to || href;

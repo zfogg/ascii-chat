@@ -1,4 +1,4 @@
-import type { SettingsConfig } from "../components/Settings";
+import type { SettingsConfig } from "../components";
 
 export const DEFAULT_SETTINGS: SettingsConfig = {
   width: 640,

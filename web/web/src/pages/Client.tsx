@@ -45,26 +45,28 @@ import {
 } from "../wasm/common/options";
 import {
   AsciiRenderer,
-  AsciiRendererHandle,
-} from "../components/AsciiRenderer";
-import { ConnectionPanelModal } from "../components/ConnectionPanelModal";
-import { Settings, SettingsConfig } from "../components/Settings";
-import { AsciiChatWebHead } from "../components/AsciiChatWebHead";
-import { AsciiChatMode } from "../utils/optionsHelp";
+  ConnectionPanelModal,
+  Settings,
+  AsciiChatWebHead,
+  PageControlBar,
+  PageLayout,
+} from "../components";
+import type { AsciiRendererHandle, SettingsConfig } from "../components";
 import {
+  AsciiChatMode,
   mapColorModeToClient,
   mapColorFilterToClient,
-} from "../utils/colorMappers";
-import { PageControlBar } from "../components/PageControlBar";
-import { PageLayout } from "../components/PageLayout";
+  DEFAULT_SETTINGS,
+} from "../utils";
 import { DISCOVERY_SERVICE_URL, SITES } from "@ascii-chat/shared/utils";
-import { createWasmOptionsManager } from "../hooks/useWasmOptions";
-import { useCanvasCapture } from "../hooks/useCanvasCapture";
-import { useRenderLoop } from "../hooks/useRenderLoop";
-import { useClientConnection } from "../hooks/useClientConnection";
-import { useWebcamStream } from "../hooks/useWebcamStream";
-import { buildCapabilitiesPacket } from "../network/packetBuilders";
-import { DEFAULT_SETTINGS } from "../utils/defaultSettings";
+import {
+  createWasmOptionsManager,
+  useCanvasCapture,
+  useRenderLoop,
+  useClientConnection,
+  useWebcamStream,
+} from "../hooks";
+import { buildCapabilitiesPacket } from "../network";
 
 export function ClientPage() {
   const rendererRef = useRef<AsciiRendererHandle>(null);

@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import Footer from "../../components/Footer";
-import { AsciiChatHead } from "../../components/AsciiChatHead";
 import { SITES } from "@ascii-chat/shared/utils";
+import { Footer, AsciiChatHead } from "../../components";
 import "../../styles/man.css";
-import { useManPages } from "./hooks/useManPages";
-import { useHtmlTransforms } from "./hooks/useHtmlTransforms";
-import { useSearch } from "./hooks/useSearch";
-import { usePageNavigation } from "./hooks/usePageNavigation";
-import { Man3Header } from "./components/Man3Header";
-import { Man3LeftPanel } from "./components/Man3LeftPanel";
-import { Man3RightPanel } from "./components/Man3RightPanel";
-import { highlightMatches } from "./utils/highlight.jsx";
+import {
+  useManPages,
+  useHtmlTransforms,
+  useSearch,
+  usePageNavigation,
+} from "./hooks";
+import { Man3Header, Man3LeftPanel, Man3RightPanel } from "./components";
+import { highlightMatches } from "./utils";
 
 /**
  * Man3 - API documentation page for ascii-chat library

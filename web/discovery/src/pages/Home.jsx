@@ -6,15 +6,17 @@ import {
   SITES,
   useScrollToHash,
 } from "@ascii-chat/shared/utils";
-import { ACDSHead } from "../components/ACDSHead";
+import { ACDSHead } from "../components";
 import { getGpgFingerprint, getSshFingerprint } from "../utils/keyFingerprints";
-import HeroHeader from "../components/home/HeroHeader";
-import AboutSection from "../components/home/AboutSection";
-import PublicKeysSection from "../components/home/PublicKeysSection";
-import GettingHelpWrapper from "../components/home/GettingHelpWrapper";
-import UsageExamplesWrapper from "../components/home/UsageExamplesWrapper";
-import SelfHostingSection from "../components/home/SelfHostingSection";
-import SecuritySection from "../components/home/SecuritySection";
+import {
+  HeroHeader,
+  AboutSection,
+  PublicKeysSection,
+  GettingHelpWrapper,
+  UsageExamplesWrapper,
+  SelfHostingSection,
+  SecuritySection,
+} from "../components/home";
 
 function Home() {
   useScrollToHash(100);

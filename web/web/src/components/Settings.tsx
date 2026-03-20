@@ -1,5 +1,5 @@
 import { Heading } from "@ascii-chat/shared/components";
-import { getOptionHelp, AsciiChatMode } from "../utils/optionsHelp";
+import { getOptionHelp, AsciiChatMode } from "../utils";
 import { Tooltip } from "./Tooltip";
 
 export type ColorMode = "auto" | "none" | "16" | "256" | "truecolor";

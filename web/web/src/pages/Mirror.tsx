@@ -20,20 +20,25 @@ import {
   getTargetFps,
 } from "../wasm/common/options";
 import { SITES } from "@ascii-chat/shared/utils";
-import { Settings, SettingsConfig } from "../components/Settings";
-import { AsciiRenderer } from "../components/AsciiRenderer";
-import { PageControlBar } from "../components/PageControlBar";
-import { PageLayout } from "../components/PageLayout";
-import { AsciiChatWebHead } from "../components/AsciiChatWebHead";
-import { AsciiChatMode } from "../utils/optionsHelp";
 import {
+  Settings,
+  AsciiRenderer,
+  PageControlBar,
+  PageLayout,
+  AsciiChatWebHead,
+} from "../components";
+import type { SettingsConfig } from "../components";
+import {
+  AsciiChatMode,
   mapColorModeToWasm,
   mapColorFilterToWasm,
-} from "../utils/colorMappers";
-import { createWasmOptionsManager } from "../hooks/useWasmOptions";
-import { useClientLike } from "../hooks/useClientLike";
-import { useMirrorRenderLoop } from "../hooks/useMirrorRenderLoop";
-import { useMirrorWebcam } from "../hooks/useMirrorWebcam";
+} from "../utils";
+import {
+  createWasmOptionsManager,
+  useClientLike,
+  useMirrorRenderLoop,
+  useMirrorWebcam,
+} from "../hooks";
 
 export function MirrorPage() {
   // Memoize WASM callbacks to prevent infinite re-render loops.

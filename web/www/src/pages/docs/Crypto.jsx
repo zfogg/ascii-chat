@@ -1,22 +1,22 @@
 import { useEffect } from "react";
-import Footer from "../../components/Footer";
 import { Heading } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
-import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
-import { useScrollToHash } from "../../utils/hooks";
-import { AsciiChatHead } from "../../components/AsciiChatHead";
-import AcdsNoteBox from "../../components/docs/crypto/AcdsNoteBox";
-import DesignPhilosophySection from "../../components/docs/crypto/DesignPhilosophySection";
-import HowItWorksSection from "../../components/docs/crypto/HowItWorksSection";
-import TechnicalDetailsSection from "../../components/docs/crypto/TechnicalDetailsSection";
-import SSHKeyAuthSection from "../../components/docs/crypto/SSHKeyAuthSection";
-import GPGKeyAuthSection from "../../components/docs/crypto/GPGKeyAuthSection";
-import PasswordEncryptionSection from "../../components/docs/crypto/PasswordEncryptionSection";
-import ServerVerificationSection from "../../components/docs/crypto/ServerVerificationSection";
-import KnownHostsSection from "../../components/docs/crypto/KnownHostsSection";
-import KeyWhitelistingSection from "../../components/docs/crypto/KeyWhitelistingSection";
-import DisablingEncryptionSection from "../../components/docs/crypto/DisablingEncryptionSection";
-import LearnMoreSection from "../../components/docs/crypto/LearnMoreSection";
+import { Footer, AsciiChatHead } from "../../components";
+import { setBreadcrumbSchema, useScrollToHash } from "../../utils";
+import {
+  AcdsNoteBox,
+  DesignPhilosophySection,
+  HowItWorksSection,
+  TechnicalDetailsSection,
+  SSHKeyAuthSection,
+  GPGKeyAuthSection,
+  PasswordEncryptionSection,
+  ServerVerificationSection,
+  KnownHostsSection,
+  KeyWhitelistingSection,
+  DisablingEncryptionSection,
+  LearnMoreSection,
+} from "../../components/docs/crypto";
 
 export default function Crypto() {
   useScrollToHash(100);

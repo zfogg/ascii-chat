@@ -1,18 +1,17 @@
 import { Heading } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
 import { useEffect } from "react";
-import Footer from "../../components/Footer";
-import TrackedLink from "../../components/TrackedLink";
-import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
-import { useScrollToHash } from "../../utils/hooks";
-import { AsciiChatHead } from "../../components/AsciiChatHead";
-import ImportantNotesSection from "../../components/docs/terminal/ImportantNotesSection";
-import ColorControlSection from "../../components/docs/terminal/ColorControlSection";
-import TerminalDimensionsSection from "../../components/docs/terminal/TerminalDimensionsSection";
-import UnicodeTextSection from "../../components/docs/terminal/UnicodeTextSection";
-import DebuggingDetectionSection from "../../components/docs/terminal/DebuggingDetectionSection";
-import OptionCombinationsSection from "../../components/docs/terminal/OptionCombinationsSection";
-import TipsTricksSection from "../../components/docs/terminal/TipsTricksSection";
+import { Footer, TrackedLink, AsciiChatHead } from "../../components";
+import { setBreadcrumbSchema, useScrollToHash } from "../../utils";
+import {
+  ImportantNotesSection,
+  ColorControlSection,
+  TerminalDimensionsSection,
+  UnicodeTextSection,
+  DebuggingDetectionSection,
+  OptionCombinationsSection,
+  TipsTricksSection,
+} from "../../components/docs/terminal";
 
 export default function Terminal() {
   useScrollToHash(100);

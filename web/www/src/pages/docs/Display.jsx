@@ -1,18 +1,18 @@
 import { Heading } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
 import { useEffect } from "react";
-import Footer from "../../components/Footer";
-import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
-import { useScrollToHash } from "../../utils/hooks";
-import { AsciiChatHead } from "../../components/AsciiChatHead";
-import ImportantNotesSection from "../../components/docs/display/ImportantNotesSection";
-import RenderModesSection from "../../components/docs/display/RenderModesSection";
-import ASCIIPalettesSection from "../../components/docs/display/ASCIIPalettesSection";
-import ColorFiltersSection from "../../components/docs/display/ColorFiltersSection";
-import AnimationsEffectsSection from "../../components/docs/display/AnimationsEffectsSection";
-import FramerateSection from "../../components/docs/display/FramerateSection";
-import VideoTransformsSection from "../../components/docs/display/VideoTransformsSection";
-import QuickReferenceSection from "../../components/docs/display/QuickReferenceSection";
+import { Footer, AsciiChatHead } from "../../components";
+import { setBreadcrumbSchema, useScrollToHash } from "../../utils";
+import {
+  ImportantNotesSection,
+  RenderModesSection,
+  ASCIIPalettesSection,
+  ColorFiltersSection,
+  AnimationsEffectsSection,
+  FramerateSection,
+  VideoTransformsSection,
+  QuickReferenceSection,
+} from "../../components/docs/display";
 
 export default function Display() {
   useScrollToHash(100);

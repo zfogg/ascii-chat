@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
 import { fetchSessionStrings } from "@ascii-chat/shared/utils";
-import { useAnchorNavigation } from "../hooks/useAnchorNavigation";
-import { AsciiChatHead } from "../components/AsciiChatHead";
-import Footer from "../components/Footer";
-import HeroHeader from "../components/home/HeroHeader";
-import InstallationSection from "../components/home/InstallationSection";
-import FeaturesSection from "../components/home/FeaturesSection";
-import QuickStartSection from "../components/home/QuickStartSection";
-import DocumentationSection from "../components/home/DocumentationSection";
-import UsageExamplesSection from "../components/home/UsageExamplesSection";
-import OpenSourceSection from "../components/home/OpenSourceSection";
+import { useAnchorNavigation } from "../hooks";
+import { AsciiChatHead, Footer } from "../components";
+import {
+  HeroHeader,
+  InstallationSection,
+  FeaturesSection,
+  QuickStartSection,
+  DocumentationSection,
+  UsageExamplesSection,
+  OpenSourceSection,
+} from "../components/home";
 
 export default function Home() {
   const [sessionStrings, setSessionStrings] = useState([

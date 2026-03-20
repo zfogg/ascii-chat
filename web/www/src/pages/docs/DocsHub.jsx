@@ -1,11 +1,8 @@
 import { useEffect } from "react";
 import { Heading } from "@ascii-chat/shared/components";
-import Footer from "../../components/Footer";
-import TrackedLink from "../../components/TrackedLink";
 import { SITES } from "@ascii-chat/shared/utils";
-import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
-import { useScrollToHash } from "../../utils/hooks";
-import { AsciiChatHead } from "../../components/AsciiChatHead";
+import { Footer, TrackedLink, AsciiChatHead } from "../../components";
+import { setBreadcrumbSchema, useScrollToHash } from "../../utils";
 
 export default function DocsHub() {
   useScrollToHash(100);

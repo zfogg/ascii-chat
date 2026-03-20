@@ -6,7 +6,7 @@ import {
   type RefObject,
   type MutableRefObject,
 } from "react";
-import type { SettingsConfig } from "../components/Settings";
+import type { SettingsConfig } from "../components";
 import { isWasmReady } from "../wasm/mirror";
 import {
   setColorMode,
@@ -17,10 +17,7 @@ import {
   setFlipX,
   isOptionsInitialized,
 } from "../wasm/common/options";
-import {
-  mapColorModeToWasm,
-  mapColorFilterToWasm,
-} from "../utils/colorMappers";
+import { mapColorModeToWasm, mapColorFilterToWasm } from "../utils";
 
 interface UseMirrorWebcamParams {
   settings: SettingsConfig;

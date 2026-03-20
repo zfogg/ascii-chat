@@ -1,19 +1,19 @@
 import { Heading } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
 import { useEffect } from "react";
-import Footer from "../../components/Footer";
-import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
-import { useScrollToHash } from "../../utils/hooks";
-import { AsciiChatHead } from "../../components/AsciiChatHead";
-import SupportedFormatsSection from "../../components/docs/media/SupportedFormatsSection";
-import LocalFilesSection from "../../components/docs/media/LocalFilesSection";
-import BroadcastingSection from "../../components/docs/media/BroadcastingSection";
-import RemoteURLsSection from "../../components/docs/media/RemoteURLsSection";
-import PipingFFmpegSection from "../../components/docs/media/PipingFFmpegSection";
-import RenderingExportSection from "../../components/docs/media/RenderingExportSection";
-import AdvancedOptionsSection from "../../components/docs/media/AdvancedOptionsSection";
-import UseCasesSection from "../../components/docs/media/UseCasesSection";
-import PerformanceTipsSection from "../../components/docs/media/PerformanceTipsSection";
+import { Footer, AsciiChatHead } from "../../components";
+import { setBreadcrumbSchema, useScrollToHash } from "../../utils";
+import {
+  SupportedFormatsSection,
+  LocalFilesSection,
+  BroadcastingSection,
+  RemoteURLsSection,
+  PipingFFmpegSection,
+  RenderingExportSection,
+  AdvancedOptionsSection,
+  UseCasesSection,
+  PerformanceTipsSection,
+} from "../../components/docs/media";
 
 export default function Media() {
   useScrollToHash(100);

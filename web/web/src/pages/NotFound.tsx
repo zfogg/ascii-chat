@@ -1,6 +1,6 @@
 import { NotFound } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
-import { AsciiChatWebHead } from "../components/AsciiChatWebHead";
+import { AsciiChatWebHead } from "../components";
 
 export function NotFoundPage() {
   return (

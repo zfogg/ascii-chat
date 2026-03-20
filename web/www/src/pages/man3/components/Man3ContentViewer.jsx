@@ -1,4 +1,4 @@
-import { renderContentWithCodeBlocks } from "../utils/renderContent";
+import { renderContentWithCodeBlocks } from "../utils";
 
 /**
  * Displays the content of a selected man page with code block rendering

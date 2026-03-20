@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionState, PacketType } from "../wasm/client";
-import { ClientConnection } from "../network/ClientConnection";
-import { H265Encoder } from "../network/H265Encoder";
 import {
+  ClientConnection,
+  H265Encoder,
   buildStreamStartPacket,
   buildImageFramePayload,
   buildImageFrameH265Payload,
-} from "../network/packetBuilders";
-import type { SettingsConfig } from "../components/Settings";
+} from "../network";
+import type { SettingsConfig } from "../components";
 
 // Helper to compute simple frame hash
 const computeFrameHash = (data: Uint8Array): number => {

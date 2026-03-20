@@ -2,7 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { HeadingProvider } from "@ascii-chat/shared/components";
-import Navigation from "./components/Navigation";
+import { Navigation } from "./components";
 import Home from "./pages/Home";
 
 const Crypto = lazy(() => import("./pages/docs/Crypto"));

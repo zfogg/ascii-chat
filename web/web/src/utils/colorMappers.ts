@@ -6,7 +6,7 @@ import {
   ColorMode as ClientColorMode,
   ColorFilter as ClientColorFilter,
 } from "../wasm/client";
-import { ColorMode, ColorFilter } from "../components/Settings";
+import type { ColorMode, ColorFilter } from "../components";
 
 /**
  * Map Settings ColorMode to WASM mirror module enum

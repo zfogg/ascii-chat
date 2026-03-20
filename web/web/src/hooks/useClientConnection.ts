@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionState, PacketType } from "../wasm/client";
-import { ClientConnection } from "../network/ClientConnection";
-import { parseAsciiFrame } from "../network/AsciiFrameParser";
 import {
+  ClientConnection,
+  parseAsciiFrame,
   buildCapabilitiesPacket,
   buildStreamStartPacket,
-} from "../network/packetBuilders";
-import type { AsciiRendererHandle } from "../components/AsciiRenderer";
-import type { SettingsConfig } from "../components/Settings";
+} from "../network";
+import type { AsciiRendererHandle, SettingsConfig } from "../components";
 
 const STATE_NAMES: Record<number, string> = {
   [ConnectionState.DISCONNECTED]: "Disconnected",

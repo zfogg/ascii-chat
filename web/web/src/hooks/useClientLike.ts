@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState, RefObject } from "react";
-import { SettingsConfig } from "../components/Settings";
-import { AsciiRendererHandle } from "../components/AsciiRenderer";
+import type { SettingsConfig, AsciiRendererHandle } from "../components";
 import { useCanvasCapture } from "./useCanvasCapture";
-import { getDefaultSettings } from "../utils/defaultSettings";
+import { getDefaultSettings } from "../utils";
 
 /**
  * Shared hook for client-like modes (Mirror, Client)

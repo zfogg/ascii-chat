@@ -1,5 +1,5 @@
 import { SITES } from "@ascii-chat/shared/utils";
-import { AsciiChatWebHead } from "../components/AsciiChatWebHead";
+import { AsciiChatWebHead } from "../components";
 
 export function DiscoveryPage() {
   return (

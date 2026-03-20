@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
-import Footer from "../components/Footer";
-import Man from "../components/Man";
 import { SITES } from "@ascii-chat/shared/utils";
-import { setBreadcrumbSchema } from "../utils/breadcrumbs";
-import { useAnchorNavigation } from "../hooks/useAnchorNavigation";
-import { AsciiChatHead } from "../components/AsciiChatHead";
+import { Footer, Man, AsciiChatHead } from "../components";
+import { setBreadcrumbSchema } from "../utils";
+import { useAnchorNavigation } from "../hooks";
 import "../styles/man.css";
 
 export default function Man5() {

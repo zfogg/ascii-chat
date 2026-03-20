@@ -1,4 +1,4 @@
-import { highlightMatches } from "../utils/highlight.jsx";
+import { highlightMatches } from "../utils";
 
 /**
  * Left panel showing search results and man pages list

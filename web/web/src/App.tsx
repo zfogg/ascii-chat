@@ -1,10 +1,12 @@
 import { Routes, Route } from "react-router-dom";
-import { HomePage } from "./pages/Home";
-import { MirrorPage } from "./pages/Mirror";
-import { NotFoundPage } from "./pages/NotFound";
-import { ClientPage } from "./pages/Client";
-import { DiscoveryPage } from "./pages/Discovery";
-import { Layout } from "./components/Layout";
+import {
+  HomePage,
+  MirrorPage,
+  NotFoundPage,
+  ClientPage,
+  DiscoveryPage,
+} from "./pages";
+import { Layout } from "./components";
 
 export function App() {
   return (

@@ -1,7 +1,7 @@
 // TypeScript wrapper for Client WASM module
 // Provides type-safe interface to libasciichat client mode
 
-import type { Palette } from "../components/Settings";
+import type { Palette } from "../components";
 import { createOptionAccessor } from "./common/optionsWrapper";
 import { initializeOptions, cleanupOptions } from "./common/options";
 

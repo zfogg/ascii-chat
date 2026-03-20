@@ -1,18 +1,18 @@
 import { Heading } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
 import { useEffect } from "react";
-import Footer from "../../components/Footer";
-import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
-import { useScrollToHash } from "../../utils/hooks";
-import { AsciiChatHead } from "../../components/AsciiChatHead";
-import QuickStartSection from "../../components/docs/snapshot/QuickStartSection";
-import PipingRedirectionSection from "../../components/docs/snapshot/PipingRedirectionSection";
-import SnapshotDelaySection from "../../components/docs/snapshot/SnapshotDelaySection";
-import HTTPSnapshotsSection from "../../components/docs/snapshot/HTTPSnapshotsSection";
-import DebuggingVerificationSection from "../../components/docs/snapshot/DebuggingVerificationSection";
-import TipsGotchasSection from "../../components/docs/snapshot/TipsGotchasSection";
-import ScriptingTestingSection from "../../components/docs/snapshot/ScriptingTestingSection";
-import UseCasesSection from "../../components/docs/snapshot/UseCasesSection";
+import { Footer, AsciiChatHead } from "../../components";
+import { setBreadcrumbSchema, useScrollToHash } from "../../utils";
+import {
+  QuickStartSection,
+  PipingRedirectionSection,
+  SnapshotDelaySection,
+  HTTPSnapshotsSection,
+  DebuggingVerificationSection,
+  TipsGotchasSection,
+  ScriptingTestingSection,
+  UseCasesSection,
+} from "../../components/docs/snapshot";
 
 export default function Snapshot() {
   useScrollToHash(100);

@@ -1,16 +1,16 @@
 import { useEffect } from "react";
 import { Heading } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
-import Footer from "../../components/Footer";
-import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
-import { useScrollToHash } from "../../utils/hooks";
-import { AsciiChatHead } from "../../components/AsciiChatHead";
-import PriorityOverridesSection from "../../components/docs/configuration/PriorityOverridesSection";
-import ConfigFilesSection from "../../components/docs/configuration/ConfigFilesSection";
-import ConfigFileFormatSection from "../../components/docs/configuration/ConfigFileFormatSection";
-import EnvironmentVariablesSection from "../../components/docs/configuration/EnvironmentVariablesSection";
-import ManPagesSection from "../../components/docs/configuration/ManPagesSection";
-import ShellCompletionsSection from "../../components/docs/configuration/ShellCompletionsSection";
+import { Footer, AsciiChatHead } from "../../components";
+import { setBreadcrumbSchema, useScrollToHash } from "../../utils";
+import {
+  PriorityOverridesSection,
+  ConfigFilesSection,
+  ConfigFileFormatSection,
+  EnvironmentVariablesSection,
+  ManPagesSection,
+  ShellCompletionsSection,
+} from "../../components/docs/configuration";
 
 export default function Configuration() {
   useScrollToHash(100);

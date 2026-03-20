@@ -1,17 +1,17 @@
 import { useEffect } from "react";
-import Footer from "../../components/Footer";
 import { Heading } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
-import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
-import { useScrollToHash } from "../../utils/hooks";
-import { AsciiChatHead } from "../../components/AsciiChatHead";
-import ACIPProtocolSection from "../../components/docs/network/ACIPProtocolSection";
-import ConnectionFlowSection from "../../components/docs/network/ConnectionFlowSection";
-import DiscoveryModeSection from "../../components/docs/network/DiscoveryModeSection";
-import TraditionalModeSection from "../../components/docs/network/TraditionalModeSection";
-import ACDSDiscoverySection from "../../components/docs/network/ACDSDiscoverySection";
-import NATTraversalSection from "../../components/docs/network/NATTraversalSection";
-import TroubleshootingSection from "../../components/docs/network/TroubleshootingSection";
+import { Footer, AsciiChatHead } from "../../components";
+import { setBreadcrumbSchema, useScrollToHash } from "../../utils";
+import {
+  ACIPProtocolSection,
+  ConnectionFlowSection,
+  DiscoveryModeSection,
+  TraditionalModeSection,
+  ACDSDiscoverySection,
+  NATTraversalSection,
+  TroubleshootingSection,
+} from "../../components/docs/network";
 
 export default function Network() {
   useScrollToHash(100);

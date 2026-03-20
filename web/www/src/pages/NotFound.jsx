@@ -1,6 +1,5 @@
 import { NotFound } from "@ascii-chat/shared/components";
-import Footer from "../components/Footer";
-import { AsciiChatHead } from "../components/AsciiChatHead";
+import { Footer, AsciiChatHead } from "../components";
 import { SITES } from "@ascii-chat/shared/utils";
 
 export default function NotFoundPage() {
