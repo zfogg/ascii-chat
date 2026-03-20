@@ -8,13 +8,15 @@
 # For Release builds: Built from source with minimal codec set
 # For other builds: Uses system package manager (pkg-config)
 
+set(FFMPEG_VERSION "7.1.3")
+set(FFMPEG_HASH "f0bf043299db9e3caacb435a712fc541fbb07df613c4b893e8b77e67baf3adbe")
+
 # iOS build: Build from source for iOS cross-compilation
 if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}FFmpeg${ColorReset} from source (iOS cross-compile)...")
 
     include(ExternalProject)
 
-    set(FFMPEG_VERSION "7.1")
     set(FFMPEG_PREFIX "${IOS_DEPS_CACHE_DIR}/ffmpeg")
     set(FFMPEG_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/ffmpeg-build")
 
@@ -37,7 +39,7 @@ if(PLATFORM_IOS)
 
         ExternalProject_Add(ffmpeg-ios
             URL https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz
-            URL_HASH SHA256=40973d44970dbc83ef302b0609f2e74982be2d85916dd2ee7472d30678a7abe6
+            URL_HASH SHA256=${FFMPEG_HASH}
             DOWNLOAD_EXTRACT_TIMESTAMP TRUE
             PREFIX ${FFMPEG_BUILD_DIR}
             STAMP_DIR ${FFMPEG_BUILD_DIR}/stamps
@@ -140,13 +142,13 @@ if(USE_MUSL)
         file(MAKE_DIRECTORY "${FFMPEG_SOURCE_DIR}")
 
         # Download FFmpeg source
-        set(FFMPEG_TARBALL "${FFMPEG_BUILD_DIR}/ffmpeg-7.1.tar.xz")
+        set(FFMPEG_TARBALL "${FFMPEG_BUILD_DIR}/ffmpeg-${FFMPEG_VERSION}.tar.xz")
         if(NOT EXISTS "${FFMPEG_TARBALL}")
-            message(STATUS "  Downloading FFmpeg 7.1...")
+            message(STATUS "  Downloading FFmpeg ${FFMPEG_VERSION}...")
             file(DOWNLOAD
-                "https://ffmpeg.org/releases/ffmpeg-7.1.tar.xz"
+                "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
                 "${FFMPEG_TARBALL}"
-                EXPECTED_HASH SHA256=40973d44970dbc83ef302b0609f2e74982be2d85916dd2ee7472d30678a7abe6
+                EXPECTED_HASH SHA256=${FFMPEG_HASH}
                 STATUS DOWNLOAD_STATUS
                 SHOW_PROGRESS
             )
@@ -168,8 +170,8 @@ if(USE_MUSL)
             if(NOT EXTRACT_RESULT EQUAL 0)
                 message(FATAL_ERROR "Failed to extract FFmpeg tarball")
             endif()
-            # Move from ffmpeg-7.1/ to src/ffmpeg/
-            file(RENAME "${FFMPEG_BUILD_DIR}/ffmpeg-7.1" "${FFMPEG_SOURCE_DIR}")
+            # Move from ffmpeg-${FFMPEG_VERSION}/ to src/ffmpeg/
+            file(RENAME "${FFMPEG_BUILD_DIR}/ffmpeg-${FFMPEG_VERSION}" "${FFMPEG_SOURCE_DIR}")
         endif()
 
         # Configure FFmpeg
@@ -303,7 +305,6 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
         set(NPROC 4)
     endif()
 
-    set(FFMPEG_VERSION "7.1")
     set(FFMPEG_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg")
     set(FFMPEG_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg-build")
     set(FFMPEG_SOURCE_DIR "${FFMPEG_BUILD_DIR}/ffmpeg-${FFMPEG_VERSION}")
@@ -327,7 +328,7 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
             file(DOWNLOAD
                 "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
                 "${FFMPEG_TARBALL}"
-                EXPECTED_HASH SHA256=40973d44970dbc83ef302b0609f2e74982be2d85916dd2ee7472d30678a7abe6
+                EXPECTED_HASH SHA256=${FFMPEG_HASH}
                 STATUS DOWNLOAD_STATUS
             )
             list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
