@@ -47,12 +47,12 @@ ENV CC=clang \
 # Copy remaining source code (changes here only invalidate build step cache)
 COPY . /build/
 
-# Build ascii-chat
+# Build ascii-chat (Dev build without sanitizers for Docker runtime compatibility)
 RUN rm -f /build/build/CMakeCache.txt /build/build/build.ninja && \
-    make CMAKE_BUILD_TYPE=Debug EXTRA_CMAKE_ARGS="-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=0.3.0"
+    make CMAKE_BUILD_TYPE=Dev EXTRA_CMAKE_ARGS="-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=0.3.0"
 
 # Install to /usr/local
-RUN make install CMAKE_BUILD_TYPE=Debug CMAKE_INSTALL_PREFIX=/usr/local
+RUN make install CMAKE_BUILD_TYPE=Dev CMAKE_INSTALL_PREFIX=/usr/local
 
 # ============================================================================
 # Stage 2: Runtime
@@ -76,8 +76,6 @@ RUN apt-get update && \
 # Copy installed files from builder
 COPY --from=builder /usr/local /usr/local
 COPY --from=builder /home/linuxbrew/.linuxbrew /home/linuxbrew/.linuxbrew
-# Copy LLVM libraries from builder (installed by install-deps.sh for sanitizer runtimes)
-COPY --from=builder /usr/lib/llvm-* /usr/lib/
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
@@ -104,7 +102,7 @@ RUN useradd -m -u 1001 -s /bin/bash ascii && \
 USER ascii
 WORKDIR /home/ascii
 
-# Set library path to include Homebrew libraries, local lib, and LLVM sanitizer runtimes
+# Set library path to include Homebrew libraries and local lib directory
 ENV LD_LIBRARY_PATH="/home/linuxbrew/.linuxbrew/lib:/usr/local/lib:/usr/lib/x86_64-linux-gnu"
 
 # Expose default ports
