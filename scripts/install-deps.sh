@@ -149,7 +149,6 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev \
       libabsl-dev \
       libx265-dev \
-      libdatachannel-dev \
       emscripten \
       doxygen \
       dpkg-dev rpm \

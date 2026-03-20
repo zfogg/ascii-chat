@@ -62,33 +62,16 @@ FROM ubuntu:24.04
 # Prevent interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Set up locale
+# Set up locale and minimal runtime dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends locales ca-certificates && \
     localedef -i en_US -f UTF-8 en_US.UTF-8 && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install runtime dependencies split across 3 RUN commands to avoid layer overflow
-# Part 1: System and audio libraries
+# Install minimal runtime dependencies (static linking from builder, plus ca-certs and curl)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      ca-certificates curl unzip \
-      libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev \
-    && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /var/tmp/*
-
-# Part 2: Audio and media libraries
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      portaudio19-dev libopus-dev libsystemd-dev libssl-dev \
-      libminiupnpc-dev libavformat-dev libavcodec-dev libavutil-dev \
-    && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /var/tmp/*
-
-# Part 3: Display and text rendering libraries
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      libswscale-dev libswresample-dev libwebsockets-dev \
-      libvterm-dev libfreetype6-dev libfontconfig1-dev \
-    && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /var/tmp/*
+    apt-get install -y --no-install-recommends curl unzip && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /var/tmp/*
 
 # Copy installed files from builder
 COPY --from=builder /usr/local /usr/local
