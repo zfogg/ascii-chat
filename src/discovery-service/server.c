@@ -911,31 +911,58 @@ void *acds_client_handler(void *arg) {
   log_debug("Client %s registered (socket=%d, total=%zu)", client_ip, client_socket,
             tcp_server_get_client_count(&server->tcp_server));
 
+  // Create transport for handshake and subsequent client communication
+  acip_transport_t *transport = acip_tcp_transport_create("acds_tcp_client", client_socket, NULL);
+  if (!transport) {
+    log_error("Failed to create TCP transport for client %s", client_ip);
+    tcp_server_remove_client(&server->tcp_server, client_socket);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+
   // Perform crypto handshake (three-step process)
   log_debug("Performing crypto handshake with client %s", client_ip);
 
   // Step 0: Send crypto parameters
-  handshake_result = crypto_handshake_server_send_parameters_socket(&client_data->handshake_ctx, client_socket);
+  handshake_result = crypto_handshake_server_send_parameters(&client_data->handshake_ctx, transport);
   if (handshake_result != ASCIICHAT_OK) {
     log_warn("Crypto parameters send failed for client %s", client_ip);
+    acip_transport_destroy(transport);
     tcp_server_remove_client(&server->tcp_server, client_socket);
     SAFE_FREE(ctx);
     return NULL;
   }
 
   // Step 1: Start handshake (send server key, receive client key)
-  handshake_result = crypto_handshake_server_start_socket(&client_data->handshake_ctx, client_socket);
+  handshake_result = crypto_handshake_server_start(&client_data->handshake_ctx, transport);
   if (handshake_result != ASCIICHAT_OK) {
     log_warn("Crypto handshake start failed for client %s", client_ip);
+    acip_transport_destroy(transport);
     tcp_server_remove_client(&server->tcp_server, client_socket);
     SAFE_FREE(ctx);
     return NULL;
   }
 
   // Step 2: Authentication challenge (if required)
-  handshake_result = crypto_handshake_server_auth_challenge_socket(&client_data->handshake_ctx, client_socket);
+  {
+    packet_type_t packet_type;
+    uint8_t *payload = NULL;
+    size_t payload_len = 0;
+    int recv_result = receive_packet(client_socket, &packet_type, (void **)&payload, &payload_len);
+    if (recv_result != ASCIICHAT_OK) {
+      log_warn("Failed to receive KEY_EXCHANGE_RESPONSE from client %s", client_ip);
+      acip_transport_destroy(transport);
+      tcp_server_remove_client(&server->tcp_server, client_socket);
+      SAFE_FREE(ctx);
+      return NULL;
+    }
+    handshake_result =
+        crypto_handshake_server_auth_challenge(&client_data->handshake_ctx, transport, packet_type, payload, payload_len);
+    buffer_pool_free(NULL, payload, payload_len);
+  }
   if (handshake_result != ASCIICHAT_OK) {
     log_warn("Crypto handshake auth challenge failed for client %s", client_ip);
+    acip_transport_destroy(transport);
     tcp_server_remove_client(&server->tcp_server, client_socket);
     SAFE_FREE(ctx);
     return NULL;
@@ -943,9 +970,23 @@ void *acds_client_handler(void *arg) {
 
   // Step 3: Complete handshake (verify and finalize) - skip if already complete
   if (client_data->handshake_ctx.state != CRYPTO_HANDSHAKE_READY) {
-    handshake_result = crypto_handshake_server_complete_socket(&client_data->handshake_ctx, client_socket);
+    packet_type_t packet_type = 0;
+    uint8_t *payload = NULL;
+    size_t payload_len = 0;
+    int recv_result = receive_packet(client_socket, &packet_type, (void **)&payload, &payload_len);
+    if (recv_result != ASCIICHAT_OK) {
+      log_warn("Failed to receive AUTH_RESPONSE from client %s", client_ip);
+      acip_transport_destroy(transport);
+      tcp_server_remove_client(&server->tcp_server, client_socket);
+      SAFE_FREE(ctx);
+      return NULL;
+    }
+    handshake_result =
+        crypto_handshake_server_complete(&client_data->handshake_ctx, transport, packet_type, payload, payload_len);
+    buffer_pool_free(NULL, payload, payload_len);
     if (handshake_result != ASCIICHAT_OK) {
       log_warn("Crypto handshake complete failed for client %s", client_ip);
+      acip_transport_destroy(transport);
       tcp_server_remove_client(&server->tcp_server, client_socket);
       SAFE_FREE(ctx);
       return NULL;
@@ -956,16 +997,6 @@ void *acds_client_handler(void *arg) {
 
   client_data->handshake_complete = true;
   log_info("Crypto handshake complete for client %s", client_ip);
-
-  // Create persistent TCP transport for this client
-  acip_transport_t *transport = acip_tcp_transport_create("acds_tcp_client", client_socket, NULL);
-  if (!transport) {
-    log_error("Failed to create TCP transport for client %s", client_ip);
-    tcp_server_remove_client(&server->tcp_server, client_socket);
-    socket_close(client_socket);
-    SAFE_FREE(ctx);
-    return NULL;
-  }
 
   // Store transport and registry ID in client data, and link back from transport
   client_data->transport = transport;

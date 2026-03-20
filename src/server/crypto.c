@@ -62,7 +62,7 @@
  * When client whitelist is enabled:
  * - Server requires client authentication during handshake
  * - Client public key must be in whitelist array
- * - Verification happens in crypto_handshake_server_auth_challenge_socket()
+ * - Verification happens in crypto_handshake_server_auth_challenge()
  * - Clients not in whitelist are rejected during handshake
  *
  * ENCRYPTION/DECRYPTION OPERATIONS:
@@ -141,6 +141,7 @@
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/network/mdns/discovery.h> // For pubkey_to_hex
 #include <ascii-chat/util/time.h>
@@ -591,9 +592,19 @@ int server_crypto_handshake(client_info_t *client) {
     }
   }
 
+  // Use the client's persistent transport for handshake (created in add_client before this call).
+  // The transport starts with NULL crypto_ctx; after handshake we set it.
+  acip_transport_t *transport = client->transport;
+  if (!transport) {
+    log_error("No transport available for client %u handshake", client->client_id);
+    client->crypto_initialized = false;
+    STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
+    return -1;
+  }
+
   // Step 1: Send our public key to client
   log_debug("About to call crypto_handshake_server_start");
-  result = crypto_handshake_server_start_socket(&client->crypto_handshake_ctx, socket);
+  result = crypto_handshake_server_start(&client->crypto_handshake_ctx, transport);
   if (result != ASCIICHAT_OK) {
     log_error("Crypto handshake start failed for client %u: %s", client->client_id, asciichat_error_string(result));
     LOG_ERRNO_IF_SET("Crypto handshake: failed to send KEY_EXCHANGE_INIT");
@@ -603,7 +614,21 @@ int server_crypto_handshake(client_info_t *client) {
   }
 
   // Step 2: Receive client's public key and send auth challenge
-  result = crypto_handshake_server_auth_challenge_socket(&client->crypto_handshake_ctx, socket);
+  {
+    packet_type_t step2_type;
+    uint8_t *step2_payload = NULL;
+    size_t step2_len = 0;
+    int recv_result = receive_packet(socket, &step2_type, (void **)&step2_payload, &step2_len);
+    if (recv_result != ASCIICHAT_OK) {
+      log_error("Failed to receive KEY_EXCHANGE_RESPONSE from client %u", client->client_id);
+      client->crypto_initialized = false;
+      STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
+      return -1;
+    }
+    result = crypto_handshake_server_auth_challenge(&client->crypto_handshake_ctx, transport, step2_type, step2_payload,
+                                                    step2_len);
+    buffer_pool_free(NULL, step2_payload, step2_len);
+  }
   if (result != ASCIICHAT_OK) {
     log_error("Crypto authentication challenge failed for client %u: %s", client->client_id,
               asciichat_error_string(result));
@@ -618,13 +643,29 @@ int server_crypto_handshake(client_info_t *client) {
     client->crypto_initialized = true;
     // Propagate encryption flag to crypto context
     client->crypto_handshake_ctx.crypto_ctx.encrypt_data = client->encrypt_data;
+    // Set crypto context on the persistent transport now that handshake is complete
+    transport->crypto_ctx = (crypto_context_t *)crypto_handshake_get_context(&client->crypto_handshake_ctx);
     STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "server_crypto_handshake_client_%s",
                        "Crypto handshake completed successfully for client %s (no authentication)", cid);
     return 0;
   }
 
   // Step 3: Receive auth response and complete handshake
-  result = crypto_handshake_server_complete_socket(&client->crypto_handshake_ctx, socket);
+  {
+    packet_type_t step3_type = 0;
+    uint8_t *step3_payload = NULL;
+    size_t step3_len = 0;
+    int recv_result = receive_packet(socket, &step3_type, (void **)&step3_payload, &step3_len);
+    if (recv_result != ASCIICHAT_OK) {
+      log_info("Client %s disconnected during authentication", client->client_id);
+      client->crypto_initialized = false;
+      STOP_TIMER("server_crypto_handshake_client_%s", client->client_id);
+      return -1;
+    }
+    result = crypto_handshake_server_complete(&client->crypto_handshake_ctx, transport, step3_type, step3_payload,
+                                              step3_len);
+    buffer_pool_free(NULL, step3_payload, step3_len);
+  }
   if (result != ASCIICHAT_OK) {
     if (result == ERROR_NETWORK || result == ERROR_NETWORK_PROTOCOL || result == ERROR_CRYPTO_AUTH ||
         result == ERROR_CRYPTO_VERIFICATION || result == ERROR_CRYPTO) {
@@ -648,6 +689,8 @@ int server_crypto_handshake(client_info_t *client) {
   client->crypto_initialized = true;
   // Propagate encryption flag to crypto context
   client->crypto_handshake_ctx.crypto_ctx.encrypt_data = client->encrypt_data;
+  // Set crypto context on the persistent transport now that handshake is complete
+  transport->crypto_ctx = (crypto_context_t *)crypto_handshake_get_context(&client->crypto_handshake_ctx);
   STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "server_crypto_handshake_client_%s",
                      "Crypto handshake completed successfully for client %s", cid);
 

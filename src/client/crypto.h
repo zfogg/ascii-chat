@@ -54,6 +54,7 @@
 
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/platform/socket.h>
+#include <ascii-chat/network/acip/transport.h>
 
 /**
  * @brief Set crypto mode for handshake (encryption + authentication)
@@ -156,7 +157,7 @@ int client_crypto_init(void);
  * @see client_crypto_init "Initialize crypto context"
  * @see server_connection_establish "Which calls this handshake"
  */
-int client_crypto_handshake(socket_t socket);
+int client_crypto_handshake(acip_transport_t *transport);
 
 /**
  * @brief Check if crypto handshake is ready

@@ -78,7 +78,7 @@
 </ul>
 <p class="Pp">Participants just need to store the pre-elected future host info.
     No ring topology, no quorum leader rotation, no P2P collection.</p>
-<p class="Pp">Definition at line <b>50</b> of file
+<p class="Pp">Definition at line <b>51</b> of file
     <b>src/discovery/session.h</b>.</p>
 </section>
 <section class="Sh">
@@ -87,7 +87,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> ring_consensus_t::am_future_host</h2>
 <p class="Pp">Am I the elected future host?</p>
-<p class="Pp">Definition at line <b>56</b> of file
+<p class="Pp">Definition at line <b>57</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_handle_host_disconnect()</b>,
     <b>discovery_session_init_ring()</b>, and
@@ -97,7 +97,7 @@
 <h2 class="Ss" id="char_ring_consensus_t::future_host_address_64_"><a class="permalink" href="#char_ring_consensus_t::future_host_address_64_">char
   ring_consensus_t::future_host_address[64]</a></h2>
 <p class="Pp">Where to connect.</p>
-<p class="Pp">Definition at line <b>53</b> of file
+<p class="Pp">Definition at line <b>54</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_connect_to_future_host()</b>,
     <b>discovery_session_get_future_host()</b>, and
@@ -106,7 +106,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> ring_consensus_t::future_host_connection_type</h2>
 <p class="Pp"><b>acip_connection_type_t</b> (DIRECT, UPNP, STUN, TURN)</p>
-<p class="Pp">Definition at line <b>55</b> of file
+<p class="Pp">Definition at line <b>56</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_connect_to_future_host()</b>,
     and <b>discovery_session_get_future_host()</b>.</p>
@@ -114,13 +114,13 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> ring_consensus_t::future_host_elected_round</h2>
 <p class="Pp">Which 5-minute round this was elected in.</p>
-<p class="Pp">Definition at line <b>57</b> of file
+<p class="Pp">Definition at line <b>58</b> of file
     <b>src/discovery/session.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> ring_consensus_t::future_host_id[16]</h2>
 <p class="Pp">Who will host if current host dies.</p>
-<p class="Pp">Definition at line <b>52</b> of file
+<p class="Pp">Definition at line <b>53</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_connect_to_future_host()</b>,
     <b>discovery_session_get_future_host()</b>,
@@ -130,7 +130,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> ring_consensus_t::future_host_port</h2>
 <p class="Pp">Port number.</p>
-<p class="Pp">Definition at line <b>54</b> of file
+<p class="Pp">Definition at line <b>55</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_connect_to_future_host()</b>,
     <b>discovery_session_get_future_host()</b>, and
@@ -139,7 +139,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> ring_consensus_t::last_ring_round_ms</h2>
 <p class="Pp">When host last ran election (for 5-min timer).</p>
-<p class="Pp">Definition at line <b>60</b> of file
+<p class="Pp">Definition at line <b>61</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_init_ring()</b>, and
     <b>discovery_session_start_ring_round()</b>.</p>

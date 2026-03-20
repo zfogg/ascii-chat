@@ -13,6 +13,7 @@
 #include <ascii-chat/crypto/crypto.h>
 
 typedef int socket_t;
+typedef struct acip_transport acip_transport_t;
 
 typedef struct {
   // Exit signals
@@ -24,7 +25,7 @@ typedef struct {
   void (*server_connection_set_port)(int port);
   void (*client_crypto_set_mode)(uint8_t mode);
   int (*client_crypto_init)(void);
-  int (*client_crypto_handshake)(socket_t sockfd);
+  int (*client_crypto_handshake)(acip_transport_t *transport);
   bool (*crypto_client_is_ready)(void);
   const crypto_context_t *(*crypto_client_get_context)(void);
 
@@ -79,13 +80,13 @@ const app_callbacks_t *app_callbacks_get(void);
   })
 
 /**
- * Call a int(socket_t) callback
- * Usage: int result = APP_CALLBACK_INT_SOCKET(client_crypto_handshake, sockfd)
+ * Call a int(acip_transport_t *) callback
+ * Usage: int result = APP_CALLBACK_INT_TRANSPORT(client_crypto_handshake, transport)
  */
-#define APP_CALLBACK_INT_SOCKET(callback_name, sockfd)                                                                 \
+#define APP_CALLBACK_INT_TRANSPORT(callback_name, transport)                                                           \
   ({                                                                                                                   \
     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-    (__cb && __cb->callback_name) ? __cb->callback_name(sockfd) : -1;                                                  \
+    (__cb && __cb->callback_name) ? __cb->callback_name(transport) : -1;                                                  \
   })
 
 /**

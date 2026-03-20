@@ -853,8 +853,21 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   }
   log_info("[TCP_DBG] MIXER_ADD_SOURCE_DONE");
 
+  // Create the client's persistent transport early (before handshake).
+  // It starts with NULL crypto; server_crypto_handshake() sets crypto_ctx after success.
+  client->transport = acip_tcp_transport_create(new_client_id, socket, NULL);
+  if (!client->transport) {
+    log_error("Failed to create ACIP transport for client %s", new_client_id);
+    if (remove_client(server_ctx, new_client_id) != 0) {
+      log_error("Failed to remove client after transport creation failure");
+    }
+    return NULL;
+  }
+  log_debug("Created ACIP transport for client %s (crypto pending handshake)", new_client_id);
+
   // Perform crypto handshake before starting threads.
   // This ensures the handshake uses the socket directly without interference from receive thread.
+  // The handshake uses client->transport and sets its crypto_ctx on success.
   log_info("[TCP_DBG] CRYPTO_INIT_START: About to call server_crypto_init()");
   if (server_crypto_init() == 0) {
     log_info("[TCP_DBG] CRYPTO_INIT_DONE: server_crypto_init() returned 0");
@@ -890,19 +903,6 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
     }
 
     log_debug("Crypto handshake completed successfully for client %s", new_client_id);
-
-    // Create ACIP transport for protocol-agnostic packet sending
-    // The transport wraps the socket with encryption context from the handshake
-    const crypto_context_t *crypto_ctx = crypto_server_get_context(new_client_id);
-    client->transport = acip_tcp_transport_create(new_client_id, socket, (crypto_context_t *)crypto_ctx);
-    if (!client->transport) {
-      log_error("Failed to create ACIP transport for client %s", new_client_id);
-      if (remove_client(server_ctx, new_client_id) != 0) {
-        log_error("Failed to remove client after transport creation failure");
-      }
-      return NULL;
-    }
-    log_debug("Created ACIP transport for client %s with crypto context", new_client_id);
 
     // After handshake completes, the client immediately sends PACKET_TYPE_CLIENT_CAPABILITIES
     // We must read and process this packet BEFORE starting the receive thread to avoid a race condition

@@ -49,6 +49,23 @@
 asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_type_t type, const void *payload,
                                             size_t payload_len, uint32_t client_id);
 
+/**
+ * @brief Receive a packet via transport with header parsing and validation
+ *
+ * Transport counterpart to packet_receive(). Receives raw bytes via transport,
+ * parses the packet header, validates magic/CRC32, and returns the packet type
+ * and payload separately.
+ *
+ * @param transport Transport instance
+ * @param[out] type Packet type from header
+ * @param[out] payload Pointer to payload data within the received buffer
+ * @param[out] payload_len Payload length from header
+ * @param[out] alloc_buffer Buffer to free when done (caller must free with SAFE_FREE)
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, packet_type_t *type, void **payload,
+                                               size_t *payload_len, void **alloc_buffer);
+
 // Video/ASCII frame functions moved to:
 // - acip_send_ascii_frame → lib/network/acip/server.h
 // - acip_send_image_frame → lib/network/acip/client.h

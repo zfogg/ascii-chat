@@ -156,6 +156,7 @@
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/crypto/discovery_keys.h>
 #include <ascii-chat/buffer_pool.h>
@@ -425,12 +426,13 @@ int client_crypto_init(void) {
 /**
  * Perform crypto handshake with server
  *
- * @param socket Connected socket to server
+ * @param transport Client's persistent transport (wraps the connected socket)
  * @return 0 on success, -1 on failure
  *
  * @ingroup client_crypto
  */
-int client_crypto_handshake(socket_t socket) {
+int client_crypto_handshake(acip_transport_t *transport) {
+  socket_t socket = acip_transport_get_socket(transport);
   // If client has --no-encrypt, skip handshake entirely
   if (GET_OPTION(no_encrypt)) {
     log_debug("Client has --no-encrypt, skipping crypto handshake");
@@ -640,7 +642,17 @@ int client_crypto_handshake(socket_t socket) {
 
   // Step 1: Receive server's public key and send our public key
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Starting key exchange");
-  result = crypto_handshake_client_key_exchange_socket(&g_crypto_ctx, socket);
+  {
+    packet_type_t packet_type;
+    uint8_t *payload = NULL;
+    size_t payload_len = 0;
+    int recv_result = receive_packet(socket, &packet_type, (void **)&payload, &payload_len);
+    if (recv_result != ASCIICHAT_OK) {
+      FATAL(recv_result, "Failed to receive KEY_EXCHANGE_INIT from server");
+    }
+    // Client handshake functions take ownership of payload
+    result = crypto_handshake_client_key_exchange(&g_crypto_ctx, transport, packet_type, payload, payload_len);
+  }
   if (result != ASCIICHAT_OK) {
 #ifdef _WIN32
     // On Windows: Cleanup capture resources before exiting to prevent Media Foundation threads from hanging exit()
@@ -702,7 +714,17 @@ int client_crypto_handshake(socket_t socket) {
   // Step 2: Receive auth challenge and send response
   log_debug("CLIENT_CRYPTO: Sending auth response to server...");
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Starting auth response");
-  result = crypto_handshake_client_auth_response_socket(&g_crypto_ctx, socket);
+  {
+    packet_type_t packet_type;
+    uint8_t *payload = NULL;
+    size_t payload_len = 0;
+    int recv_result = receive_packet(socket, &packet_type, (void **)&payload, &payload_len);
+    if (recv_result != ASCIICHAT_OK) {
+      FATAL(recv_result, "Failed to receive auth challenge from server");
+    }
+    // Client handshake functions take ownership of payload
+    result = crypto_handshake_client_auth_response(&g_crypto_ctx, transport, packet_type, payload, payload_len);
+  }
   if (result != ASCIICHAT_OK) {
     FATAL(result, "Crypto authentication failed");
   }
@@ -713,6 +735,8 @@ int client_crypto_handshake(socket_t socket) {
   if (g_crypto_ctx.state == CRYPTO_HANDSHAKE_READY) {
     // Propagate encryption flag to crypto context
     g_crypto_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode);
+    // Set crypto context on the persistent transport now that handshake is complete
+    transport->crypto_ctx = (crypto_context_t *)crypto_client_get_context();
     STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "client_crypto_handshake",
                        "Crypto handshake completed successfully (no authentication)");
     return 0;
@@ -720,13 +744,25 @@ int client_crypto_handshake(socket_t socket) {
 
   // Step 3: Receive handshake complete message
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Waiting for handshake complete message");
-  result = crypto_handshake_client_complete_socket(&g_crypto_ctx, socket);
+  {
+    packet_type_t packet_type;
+    uint8_t *payload = NULL;
+    size_t payload_len = 0;
+    int recv_result = receive_packet(socket, &packet_type, (void **)&payload, &payload_len);
+    if (recv_result != ASCIICHAT_OK) {
+      FATAL(recv_result, "Failed to receive handshake completion from server");
+    }
+    // Client handshake functions take ownership of payload
+    result = crypto_handshake_client_complete(&g_crypto_ctx, transport, packet_type, payload, payload_len);
+  }
   if (result != ASCIICHAT_OK) {
     FATAL(result, "Crypto handshake completion failed");
   }
 
   // Propagate encryption flag to crypto context
   g_crypto_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode);
+  // Set crypto context on the persistent transport now that handshake is complete
+  transport->crypto_ctx = (crypto_context_t *)crypto_client_get_context();
 
   STOP_TIMER_AND_LOG(debug, 100 * NS_PER_MS_INT, "client_crypto_handshake", "Crypto handshake completed successfully");
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Handshake completed successfully, state=%d", g_crypto_ctx.state);

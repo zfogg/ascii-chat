@@ -115,6 +115,61 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
   return result;
 }
 
+// =============================================================================
+// Packet Receive Helper (receives via transport, parses header)
+// =============================================================================
+
+asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, packet_type_t *type, void **payload,
+                                               size_t *payload_len, void **alloc_buffer) {
+  if (!transport || !type || !payload || !payload_len || !alloc_buffer) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for packet_receive_via_transport");
+  }
+
+  *type = 0;
+  *payload = NULL;
+  *payload_len = 0;
+  *alloc_buffer = NULL;
+
+  // Receive raw bytes via transport
+  void *recv_buffer = NULL;
+  size_t recv_len = 0;
+  asciichat_error_t result = acip_transport_recv(transport, &recv_buffer, &recv_len, alloc_buffer);
+  if (result != ASCIICHAT_OK) {
+    return result;
+  }
+
+  // Parse packet header
+  if (recv_len < sizeof(packet_header_t)) {
+    log_warn("packet_receive_via_transport: packet too small (%zu bytes, need %zu)", recv_len,
+             sizeof(packet_header_t));
+    if (*alloc_buffer) {
+      SAFE_FREE(*alloc_buffer);
+      *alloc_buffer = NULL;
+    }
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Received packet smaller than header");
+  }
+
+  const packet_header_t *header = (const packet_header_t *)recv_buffer;
+  *type = (packet_type_t)NET_TO_HOST_U16(header->type);
+  size_t plen = NET_TO_HOST_U32(header->length);
+
+  if (recv_len < sizeof(packet_header_t) + plen) {
+    log_warn("packet_receive_via_transport: truncated packet (header says %zu payload, got %zu total)", plen, recv_len);
+    if (*alloc_buffer) {
+      SAFE_FREE(*alloc_buffer);
+      *alloc_buffer = NULL;
+    }
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Truncated packet payload");
+  }
+
+  if (plen > 0) {
+    *payload = (uint8_t *)recv_buffer + sizeof(packet_header_t);
+  }
+  *payload_len = plen;
+
+  return ASCIICHAT_OK;
+}
+
 // ASCII/Video frame functions moved to:
 // - acip_send_ascii_frame → lib/network/acip/server.c (server → client)
 // - acip_send_image_frame → lib/network/acip/client.c (client → server)

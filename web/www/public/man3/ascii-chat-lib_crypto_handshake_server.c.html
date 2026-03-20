@@ -58,25 +58,7 @@
     <b>packet_type_t</b> packet_type, const <b>uint8_t</b> *payload, size_t
     payload_len)
   <br/>
-  Server: Process auth response and complete handshake. <b>asciichat_error_t</b>
-    <b>crypto_handshake_server_start_socket</b>
-    (<b>crypto_handshake_context_t</b> *ctx, <b>socket_t</b> client_socket)
-  <br/>
-  Legacy wrapper: Start handshake using socket (TCP clients only).
-    <b>asciichat_error_t</b>
-    <b>crypto_handshake_server_send_parameters_socket</b>
-    (<b>crypto_handshake_context_t</b> *ctx, <b>socket_t</b> client_socket)
-  <br/>
-  Legacy wrapper: Send parameters using socket (TCP clients only).
-    <b>asciichat_error_t</b>
-    <b>crypto_handshake_server_auth_challenge_socket</b>
-    (<b>crypto_handshake_context_t</b> *ctx, <b>socket_t</b> client_socket)
-  <br/>
-  Legacy wrapper: Auth challenge using socket (TCP clients only).
-    <b>asciichat_error_t</b> <b>crypto_handshake_server_complete_socket</b>
-    (<b>crypto_handshake_context_t</b> *ctx, <b>socket_t</b> client_socket)
-  <br/>
-  Legacy wrapper: Complete handshake using socket (TCP clients only).
+  Server: Process auth response and complete handshake.
   <br/>
 </p>
 </section>
@@ -435,61 +417,6 @@
     <b>crypto_handshake_context_t::require_client_auth</b>, <b>SAFE_FREE</b>,
     <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>, <b>SET_ERRNO</b>,
     <b>crypto_handshake_context_t::state</b>, and <b>public_key_t::type</b>.</p>
-<p class="Pp">Referenced by
-    <b>crypto_handshake_server_auth_challenge_socket()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b>
-  crypto_handshake_server_auth_challenge_socket
-  (<b>crypto_handshake_context_t</b> * ctx, <b>socket_t</b> client_socket)</h2>
-<p class="Pp">Legacy wrapper: Auth challenge using socket (TCP clients
-  only).</p>
-<p class="Pp"><b>Deprecated</b></p>
-<div class="Bd-indent">Use <b>crypto_handshake_server_auth_challenge()</b> with
-  <b>acip_transport_t</b> instead</div>
-<p class="Pp">Definition at line <b>691</b> of file
-    <b>lib/crypto/handshake/server.c</b>.</p>
-<pre>692                                                                                         {
-693   // Receive packet using old method
-694   packet_type_t packet_type;
-695   uint8_t *payload = NULL;
-696   size_t payload_len = 0;
-697   int result = receive_packet(client_socket, &amp;packet_type, (void **)&amp;payload, &amp;payload_len);
-698   if (result != ASCIICHAT_OK) {
-699     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive KEY_EXCHANGE_RESPONSE packet&quot;);
-700   }
-701 
-702   // Create temporary TCP transport
-703   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_handshake_temp_socket&quot;, client_socket, NULL);
-704   if (!temp_transport) {
-705     // Payload will be freed below since we own it from receive_packet()
-706     if (payload) {
-707       buffer_pool_free(NULL, payload, payload_len);
-708     }
-709     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
-710   }
-711 
-712   // Call new function
-713   asciichat_error_t handshake_result =
-714       crypto_handshake_server_auth_challenge(ctx, temp_transport, packet_type, payload, payload_len);
-715 
-716   // Free payload (handshake function makes copies of what it needs)
-717   // We own the payload from receive_packet(), so we must free it
-718   if (payload) {
-719     buffer_pool_free(NULL, payload, payload_len);
-720   }
-721 
-722   // Destroy temporary transport
-723   acip_transport_destroy(temp_transport);
-724 
-725   return handshake_result;
-726 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_tcp_transport_create()</b>,
-    <b>acip_transport_destroy()</b>, <b>ASCIICHAT_OK</b>,
-    <b>buffer_pool_free()</b>, <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>ERROR_NETWORK</b>, <b>receive_packet()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>
@@ -751,60 +678,6 @@
     <b>crypto_handshake_context_t::require_client_auth</b>, <b>SET_ERRNO</b>,
     <b>crypto_context_t::signature_size</b>,
     <b>crypto_handshake_context_t::state</b>, and <b>public_key_t::type</b>.</p>
-<p class="Pp">Referenced by
-  <b>crypto_handshake_server_complete_socket()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_server_complete_socket
-  (<b>crypto_handshake_context_t</b> * ctx, <b>socket_t</b> client_socket)</h2>
-<p class="Pp">Legacy wrapper: Complete handshake using socket (TCP clients
-    only).</p>
-<p class="Pp"><b>Deprecated</b></p>
-<div class="Bd-indent">Use <b>crypto_handshake_server_complete()</b> with
-  <b>acip_transport_t</b> instead</div>
-<p class="Pp">Definition at line <b>731</b> of file
-    <b>lib/crypto/handshake/server.c</b>.</p>
-<pre>731                                                                                                                    {
-732   // Receive packet using old method
-733   packet_type_t packet_type = 0;
-734   uint8_t *payload = NULL;
-735   size_t payload_len = 0;
-736   int result = receive_packet(client_socket, &amp;packet_type, (void **)&amp;payload, &amp;payload_len);
-737   if (result != ASCIICHAT_OK) {
-738     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive AUTH_RESPONSE packet&quot;);
-739   }
-740 
-741   // Create temporary TCP transport
-742   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_handshake_temp_socket&quot;, client_socket, NULL);
-743   if (!temp_transport) {
-744     // Payload will be freed below since we own it from receive_packet()
-745     if (payload) {
-746       buffer_pool_free(NULL, payload, payload_len);
-747     }
-748     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
-749   }
-750 
-751   // Call new function
-752   asciichat_error_t handshake_result =
-753       crypto_handshake_server_complete(ctx, temp_transport, packet_type, payload, payload_len);
-754 
-755   // Free payload (handshake function makes copies of what it needs)
-756   // We own the payload from receive_packet(), so we must free it
-757   if (payload) {
-758     buffer_pool_free(NULL, payload, payload_len);
-759   }
-760 
-761   // Destroy temporary transport
-762   acip_transport_destroy(temp_transport);
-763 
-764   return handshake_result;
-765 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_tcp_transport_create()</b>,
-    <b>acip_transport_destroy()</b>, <b>ASCIICHAT_OK</b>,
-    <b>buffer_pool_free()</b>, <b>crypto_handshake_server_complete()</b>,
-    <b>ERROR_NETWORK</b>, <b>receive_packet()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>
@@ -907,37 +780,6 @@
     <b>private_key_t::type</b>,
     <b>crypto_parameters_packet_t::verification_enabled</b>, and
     <b>XSALSA20_NONCE_SIZE</b>.</p>
-<p class="Pp">Referenced by
-    <b>crypto_handshake_server_send_parameters_socket()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b>
-  crypto_handshake_server_send_parameters_socket
-  (<b>crypto_handshake_context_t</b> * ctx, <b>socket_t</b> client_socket)</h2>
-<p class="Pp">Legacy wrapper: Send parameters using socket (TCP clients only).
-    Legacy wrapper: Start handshake using socket (TCP clients only).</p>
-<p class="Pp">Definition at line <b>672</b> of file
-    <b>lib/crypto/handshake/server.c</b>.</p>
-<pre>673                                                                                           {
-674   if (!ctx) {
-675     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Context cannot be NULL&quot;);
-676   }
-677 
-678   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_params_temp_socket&quot;, client_socket, NULL);
-679   if (!temp_transport) {
-680     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
-681   }
-682 
-683   asciichat_error_t result = crypto_handshake_server_send_parameters(ctx, temp_transport);
-684   acip_transport_destroy(temp_transport);
-685   return result;
-686 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_tcp_transport_create()</b>,
-    <b>acip_transport_destroy()</b>,
-    <b>crypto_handshake_server_send_parameters()</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>.</p>
 </section>
 <section class="Ss">
@@ -1085,38 +927,6 @@
     <b>crypto_context_t::signature_size</b>,
     <b>crypto_handshake_context_t::state</b>, and
   <b>private_key_t::type</b>.</p>
-<p class="Pp">Referenced by <b>crypto_handshake_server_start_socket()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_server_start_socket
-  (<b>crypto_handshake_context_t</b> * ctx, <b>socket_t</b> client_socket)</h2>
-<p class="Pp">Legacy wrapper: Start handshake using socket (TCP clients
-  only).</p>
-<p class="Pp">Definition at line <b>650</b> of file
-    <b>lib/crypto/handshake/server.c</b>.</p>
-<pre>650                                                                                                                 {
-651   if (!ctx) {
-652     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Context cannot be NULL&quot;);
-653   }
-654 
-655   // Create temporary TCP transport for handshake
-656   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_handshake_temp_socket&quot;, client_socket, NULL);
-657   if (!temp_transport) {
-658     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
-659   }
-660 
-661   asciichat_error_t result = crypto_handshake_server_start(ctx, temp_transport);
-662 
-663   // Destroy temporary transport (socket remains open)
-664   acip_transport_destroy(temp_transport);
-665 
-666   return result;
-667 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_tcp_transport_create()</b>,
-    <b>acip_transport_destroy()</b>, <b>crypto_handshake_server_start()</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>

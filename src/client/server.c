@@ -694,32 +694,31 @@ connection_success:
     return CONNECTION_ERROR_AUTH_FAILED; // SSH key password was wrong - no retry
   }
 
-  // Perform crypto handshake if encryption is enabled
-  log_debug("CLIENT_CONNECT: Calling client_crypto_handshake()");
-  int handshake_result = client_crypto_handshake(g_sockfd);
-  if (handshake_result != 0) {
-    log_error("Crypto handshake failed");
-    log_debug("CLIENT_CONNECT: client_crypto_handshake() failed with code %d", handshake_result);
-    close_socket(g_sockfd);
-    g_sockfd = INVALID_SOCKET_VALUE;
-    FATAL(ERROR_CRYPTO_HANDSHAKE,
-          "Crypto handshake failed with server - this usually indicates a protocol mismatch or network issue");
-  }
-  log_debug("CLIENT_CONNECT: client_crypto_handshake() succeeded");
-
-  // Create ACIP transport for protocol-agnostic packet sending
-  // The transport wraps the socket with encryption context from the handshake
-  const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
-
-  // Create TCP transport (WebSocket is handled earlier in the function)
-  g_client_transport = acip_tcp_transport_create("client", g_sockfd, (crypto_context_t *)crypto_ctx);
+  // Create the persistent TCP transport before handshake.
+  // It starts with NULL crypto; client_crypto_handshake() sets crypto_ctx on success.
+  g_client_transport = acip_tcp_transport_create("client", g_sockfd, NULL);
   if (!g_client_transport) {
     log_error("Failed to create TCP ACIP transport");
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
     return -1;
   }
-  log_debug("CLIENT_CONNECT: Created TCP ACIP transport with crypto context");
+  log_debug("CLIENT_CONNECT: Created TCP ACIP transport (crypto pending handshake)");
+
+  // Perform crypto handshake if encryption is enabled
+  log_debug("CLIENT_CONNECT: Calling client_crypto_handshake()");
+  int handshake_result = client_crypto_handshake(g_client_transport);
+  if (handshake_result != 0) {
+    log_error("Crypto handshake failed");
+    log_debug("CLIENT_CONNECT: client_crypto_handshake() failed with code %d", handshake_result);
+    acip_transport_destroy(g_client_transport);
+    g_client_transport = NULL;
+    close_socket(g_sockfd);
+    g_sockfd = INVALID_SOCKET_VALUE;
+    FATAL(ERROR_CRYPTO_HANDSHAKE,
+          "Crypto handshake failed with server - this usually indicates a protocol mismatch or network issue");
+  }
+  log_debug("CLIENT_CONNECT: client_crypto_handshake() succeeded");
 
   // Turn OFF terminal logging when successfully connected to server
   // First connection - we'll disable logging after main.c shows the "Connected successfully" message

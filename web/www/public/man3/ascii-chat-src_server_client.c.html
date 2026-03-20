@@ -606,56 +606,56 @@
 853   }
 854   log_info(&quot;[TCP_DBG] MIXER_ADD_SOURCE_DONE&quot;);
 855 
-856   // Perform crypto handshake before starting threads.
-857   // This ensures the handshake uses the socket directly without interference from receive thread.
-858   log_info(&quot;[TCP_DBG] CRYPTO_INIT_START: About to call server_crypto_init()&quot;);
-859   if (server_crypto_init() == 0) {
-860     log_info(&quot;[TCP_DBG] CRYPTO_INIT_DONE: server_crypto_init() returned 0&quot;);
-861     // Set timeout for crypto handshake to prevent indefinite blocking
-862     // This prevents clients from connecting but never completing the handshake
-863     const uint64_t HANDSHAKE_TIMEOUT_NS = 30ULL * NS_PER_SEC_INT;
-864     asciichat_error_t timeout_result = set_socket_timeout(socket, HANDSHAKE_TIMEOUT_NS);
-865     if (timeout_result != ASCIICHAT_OK) {
-866       log_warn(&quot;Failed to set handshake timeout for client %s: %s&quot;, new_client_id,
-867                asciichat_error_string(timeout_result));
-868       // Continue anyway - timeout is a safety feature, not critical
-869     }
-870 
-871     log_info(&quot;[TCP_DBG] SERVER_CRYPTO_HANDSHAKE_START: About to call server_crypto_handshake()&quot;);
-872     int crypto_result = server_crypto_handshake(client);
-873     log_info(&quot;[TCP_DBG] SERVER_CRYPTO_HANDSHAKE_DONE: result=%d&quot;, crypto_result);
-874     if (crypto_result != 0) {
-875       log_error(&quot;Crypto handshake failed for client %s: %s&quot;, new_client_id, network_error_string());
-876       if (remove_client(server_ctx, new_client_id) != 0) {
-877         log_error(&quot;Failed to remove client after crypto handshake failure&quot;);
-878       }
-879       return NULL;
-880     }
-881 
-882     // Clear socket timeout after handshake completes successfully
-883     // This allows normal operation without timeouts on data transfer
-884     log_info(&quot;[TCP_DBG] CLEAR_SOCKET_TIMEOUT_START&quot;);
-885     asciichat_error_t clear_timeout_result = set_socket_timeout(socket, 0);
-886     if (clear_timeout_result != ASCIICHAT_OK) {
-887       log_warn(&quot;Failed to clear handshake timeout for client %s: %s&quot;, new_client_id,
-888                asciichat_error_string(clear_timeout_result));
-889       // Continue anyway - we can still communicate even with timeout set
-890     }
-891 
-892     log_debug(&quot;Crypto handshake completed successfully for client %s&quot;, new_client_id);
-893 
-894     // Create ACIP transport for protocol-agnostic packet sending
-895     // The transport wraps the socket with encryption context from the handshake
-896     const crypto_context_t *crypto_ctx = crypto_server_get_context(new_client_id);
-897     client-&gt;transport = acip_tcp_transport_create(new_client_id, socket, (crypto_context_t *)crypto_ctx);
-898     if (!client-&gt;transport) {
-899       log_error(&quot;Failed to create ACIP transport for client %s&quot;, new_client_id);
-900       if (remove_client(server_ctx, new_client_id) != 0) {
-901         log_error(&quot;Failed to remove client after transport creation failure&quot;);
-902       }
-903       return NULL;
-904     }
-905     log_debug(&quot;Created ACIP transport for client %s with crypto context&quot;, new_client_id);
+856   // Create the client's persistent transport early (before handshake).
+857   // It starts with NULL crypto; server_crypto_handshake() sets crypto_ctx after success.
+858   client-&gt;transport = acip_tcp_transport_create(new_client_id, socket, NULL);
+859   if (!client-&gt;transport) {
+860     log_error(&quot;Failed to create ACIP transport for client %s&quot;, new_client_id);
+861     if (remove_client(server_ctx, new_client_id) != 0) {
+862       log_error(&quot;Failed to remove client after transport creation failure&quot;);
+863     }
+864     return NULL;
+865   }
+866   log_debug(&quot;Created ACIP transport for client %s (crypto pending handshake)&quot;, new_client_id);
+867 
+868   // Perform crypto handshake before starting threads.
+869   // This ensures the handshake uses the socket directly without interference from receive thread.
+870   // The handshake uses client-&gt;transport and sets its crypto_ctx on success.
+871   log_info(&quot;[TCP_DBG] CRYPTO_INIT_START: About to call server_crypto_init()&quot;);
+872   if (server_crypto_init() == 0) {
+873     log_info(&quot;[TCP_DBG] CRYPTO_INIT_DONE: server_crypto_init() returned 0&quot;);
+874     // Set timeout for crypto handshake to prevent indefinite blocking
+875     // This prevents clients from connecting but never completing the handshake
+876     const uint64_t HANDSHAKE_TIMEOUT_NS = 30ULL * NS_PER_SEC_INT;
+877     asciichat_error_t timeout_result = set_socket_timeout(socket, HANDSHAKE_TIMEOUT_NS);
+878     if (timeout_result != ASCIICHAT_OK) {
+879       log_warn(&quot;Failed to set handshake timeout for client %s: %s&quot;, new_client_id,
+880                asciichat_error_string(timeout_result));
+881       // Continue anyway - timeout is a safety feature, not critical
+882     }
+883 
+884     log_info(&quot;[TCP_DBG] SERVER_CRYPTO_HANDSHAKE_START: About to call server_crypto_handshake()&quot;);
+885     int crypto_result = server_crypto_handshake(client);
+886     log_info(&quot;[TCP_DBG] SERVER_CRYPTO_HANDSHAKE_DONE: result=%d&quot;, crypto_result);
+887     if (crypto_result != 0) {
+888       log_error(&quot;Crypto handshake failed for client %s: %s&quot;, new_client_id, network_error_string());
+889       if (remove_client(server_ctx, new_client_id) != 0) {
+890         log_error(&quot;Failed to remove client after crypto handshake failure&quot;);
+891       }
+892       return NULL;
+893     }
+894 
+895     // Clear socket timeout after handshake completes successfully
+896     // This allows normal operation without timeouts on data transfer
+897     log_info(&quot;[TCP_DBG] CLEAR_SOCKET_TIMEOUT_START&quot;);
+898     asciichat_error_t clear_timeout_result = set_socket_timeout(socket, 0);
+899     if (clear_timeout_result != ASCIICHAT_OK) {
+900       log_warn(&quot;Failed to clear handshake timeout for client %s: %s&quot;, new_client_id,
+901                asciichat_error_string(clear_timeout_result));
+902       // Continue anyway - we can still communicate even with timeout set
+903     }
+904 
+905     log_debug(&quot;Crypto handshake completed successfully for client %s&quot;, new_client_id);
 906 
 907     // After handshake completes, the client immediately sends PACKET_TYPE_CLIENT_CAPABILITIES
 908     // We must read and process this packet BEFORE starting the receive thread to avoid a race condition

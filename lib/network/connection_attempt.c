@@ -427,6 +427,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
 
   // Setup crypto operations via callbacks
   const crypto_context_t *crypto_ctx = NULL;
+  acip_transport_t *transport = NULL;
 
   if (crypto_mode != ACIP_CRYPTO_NONE) {
     APP_CALLBACK_VOID_UINT8(client_crypto_set_mode, crypto_mode);
@@ -443,10 +444,21 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     }
     log_debug("Crypto context initialized successfully");
 
+    // Create transport before handshake (starts with NULL crypto, set after)
+    transport = acip_tcp_transport_create("connection", sockfd, NULL);
+    if (!transport) {
+      log_error("Failed to create ACIP transport for TCP");
+      if (created_tcp_client) {
+        tcp_client_destroy(&tcp_client);
+      }
+      return SET_ERRNO(ERROR_NETWORK, "Failed to create ACIP transport");
+    }
+
     // Perform crypto handshake with server
     log_debug("Performing crypto handshake with server...");
-    if (APP_CALLBACK_INT_SOCKET(client_crypto_handshake, sockfd) != 0) {
+    if (APP_CALLBACK_INT_TRANSPORT(client_crypto_handshake, transport) != 0) {
       log_error("Crypto handshake failed");
+      acip_transport_destroy(transport);
       if (created_tcp_client) {
         tcp_client_destroy(&tcp_client);
       }
@@ -454,20 +466,21 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     }
     log_debug("Crypto handshake completed successfully");
 
-    // Get crypto context after handshake
+    // Get crypto context after handshake and set it on the transport
     if (APP_CALLBACK_BOOL(crypto_client_is_ready)) {
       crypto_ctx = APP_CALLBACK_PTR(crypto_client_get_context);
+      transport->crypto_ctx = (crypto_context_t *)crypto_ctx;
     }
-  }
-
-  // Create ACIP transport for protocol-agnostic packet sending/receiving
-  acip_transport_t *transport = acip_tcp_transport_create("connection", sockfd, (crypto_context_t *)crypto_ctx);
-  if (!transport) {
-    log_error("Failed to create ACIP transport for TCP");
-    if (created_tcp_client) {
-      tcp_client_destroy(&tcp_client);
+  } else {
+    // No crypto — create transport without encryption
+    transport = acip_tcp_transport_create("connection", sockfd, NULL);
+    if (!transport) {
+      log_error("Failed to create ACIP transport for TCP");
+      if (created_tcp_client) {
+        tcp_client_destroy(&tcp_client);
+      }
+      return SET_ERRNO(ERROR_NETWORK, "Failed to create ACIP transport");
     }
-    return SET_ERRNO(ERROR_NETWORK, "Failed to create ACIP transport");
   }
 
   log_info("TCP connection established to %s:%u", effective_address, effective_port);

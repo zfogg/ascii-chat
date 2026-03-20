@@ -74,32 +74,4 @@ asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *c
                                                    packet_type_t packet_type, const uint8_t *payload,
                                                    size_t payload_len);
 
-/**
- * @name Legacy TCP Socket Wrappers (Backward Compatibility)
- * @{
- *
- * These wrappers maintain the old socket-based interface for TCP clients.
- * They will be removed in Phase 5 when TCP client code is refactored.
- */
-
-/**
- * @brief Legacy wrapper: Key exchange using socket (TCP clients only)
- * @deprecated Use crypto_handshake_client_key_exchange() with acip_transport_t instead
- */
-asciichat_error_t crypto_handshake_client_key_exchange_socket(crypto_handshake_context_t *ctx, socket_t client_socket);
-
-/**
- * @brief Legacy wrapper: Auth response using socket (TCP clients only)
- * @deprecated Use crypto_handshake_client_auth_response() with acip_transport_t instead
- */
-asciichat_error_t crypto_handshake_client_auth_response_socket(crypto_handshake_context_t *ctx, socket_t client_socket);
-
-/**
- * @brief Legacy wrapper: Complete handshake using socket (TCP clients only)
- * @deprecated Use crypto_handshake_client_complete() with acip_transport_t instead
- */
-asciichat_error_t crypto_handshake_client_complete_socket(crypto_handshake_context_t *ctx, socket_t client_socket);
-
-/** @} */
-
 /** @} */

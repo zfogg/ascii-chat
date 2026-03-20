@@ -27,6 +27,7 @@
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/crypto/handshake/client.h>
+#include <ascii-chat/network/acip/transport.h>
 
 #ifdef _WIN32
 #include <ws2tcpip.h> // For getaddrinfo on Windows
@@ -61,6 +62,7 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
 
   session->state = DISCOVERY_STATE_INIT;
   session->acds_socket = INVALID_SOCKET_VALUE;
+  session->acds_transport = NULL;
   session->peer_manager = NULL;
   session->webrtc_transport_ready = false;
   session->webrtc_connection_initiated = false;
@@ -171,6 +173,10 @@ void discovery_session_destroy(discovery_session_t *session) {
   }
 
   // Close ACDS connection
+  if (session->acds_transport) {
+    acip_transport_destroy(session->acds_transport);
+    session->acds_transport = NULL;
+  }
   if (session->acds_socket != INVALID_SOCKET_VALUE) {
     socket_close(session->acds_socket);
     session->acds_socket = INVALID_SOCKET_VALUE;
@@ -296,8 +302,8 @@ static asciichat_error_t gather_nat_quality(nat_quality_t *quality) {
  * Sends our NAT quality metrics to ACDS so peers can receive them.
  */
 static asciichat_error_t send_network_quality_to_acds(discovery_session_t *session) {
-  if (!session || session->acds_socket == INVALID_SOCKET_VALUE) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session or ACDS socket");
+  if (!session || !session->acds_transport) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session or ACDS transport");
   }
 
   // Gather our NAT quality
@@ -314,7 +320,7 @@ static asciichat_error_t send_network_quality_to_acds(discovery_session_t *sessi
 
   // Send via ACDS
   asciichat_error_t send_result =
-      packet_send(session->acds_socket, PACKET_TYPE_ACIP_NETWORK_QUALITY, &wire_quality, sizeof(wire_quality));
+      packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_NETWORK_QUALITY, &wire_quality, sizeof(wire_quality), 0);
 
   if (send_result == ASCIICHAT_OK) {
     log_debug("Sent NETWORK_QUALITY to ACDS (NAT tier: %d, upload: %u Kbps)", nat_compute_tier(&our_quality),
@@ -336,35 +342,33 @@ static asciichat_error_t send_network_quality_to_acds(discovery_session_t *sessi
  * Stores result in session->negotiate.peer_quality
  */
 static asciichat_error_t receive_network_quality_from_acds(discovery_session_t *session) {
-  if (!session || session->acds_socket == INVALID_SOCKET_VALUE) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid session or ACDS socket");
+  if (!session || !session->acds_transport) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "invalid session or ACDS transport");
   }
 
   // Receive packet
   packet_type_t ptype;
   void *data = NULL;
   size_t len = 0;
-  asciichat_error_t result = packet_receive(session->acds_socket, &ptype, &data, &len);
+  void *alloc_buffer = NULL;
+  asciichat_error_t result = packet_receive_via_transport(session->acds_transport, &ptype, &data, &len, &alloc_buffer);
 
   if (result != ASCIICHAT_OK) {
-    if (data)
-      SAFE_FREE(data);
+    SAFE_FREE(alloc_buffer);
     return result;
   }
 
   // Check if it's a NETWORK_QUALITY packet
   if (ptype != PACKET_TYPE_ACIP_NETWORK_QUALITY) {
     log_debug("Received packet type %u (expected NETWORK_QUALITY)", ptype);
-    if (data)
-      SAFE_FREE(data);
+    SAFE_FREE(alloc_buffer);
     return ERROR_NETWORK_PROTOCOL;
   }
 
   // Parse NETWORK_QUALITY
   if (len < sizeof(acip_nat_quality_t)) {
     log_error("NETWORK_QUALITY packet too small: %zu bytes", len);
-    if (data)
-      SAFE_FREE(data);
+    SAFE_FREE(alloc_buffer);
     return ERROR_NETWORK_SIZE;
   }
 
@@ -377,8 +381,7 @@ static asciichat_error_t receive_network_quality_from_acds(discovery_session_t *
   log_debug("Received NETWORK_QUALITY from peer (NAT tier: %d, upload: %u Kbps)",
             nat_compute_tier(&session->negotiate.peer_quality), session->negotiate.peer_quality.upload_kbps);
 
-  if (data)
-    SAFE_FREE(data);
+  SAFE_FREE(alloc_buffer);
   return ASCIICHAT_OK;
 }
 
@@ -440,6 +443,16 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
     socket_set_blocking(session->acds_socket);
     freeaddrinfo(result);
     log_info("Connected to ACDS");
+
+    // Create ACDS transport
+    session->acds_transport = acip_tcp_transport_create("discovery_acds", session->acds_socket, NULL);
+    if (!session->acds_transport) {
+      log_error("Failed to create ACDS transport");
+      socket_close(session->acds_socket);
+      session->acds_socket = INVALID_SOCKET_VALUE;
+      return ERROR_NETWORK;
+    }
+
     return ASCIICHAT_OK;
   }
 
@@ -525,6 +538,16 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
         socket_set_blocking(session->acds_socket);
         freeaddrinfo(result);
         log_info("Connected to ACDS");
+
+        // Create ACDS transport
+        session->acds_transport = acip_tcp_transport_create("discovery_acds", session->acds_socket, NULL);
+        if (!session->acds_transport) {
+          log_error("Failed to create ACDS transport");
+          socket_close(session->acds_socket);
+          session->acds_socket = INVALID_SOCKET_VALUE;
+          return ERROR_NETWORK;
+        }
+
         return ASCIICHAT_OK;
       }
 
@@ -607,7 +630,7 @@ static asciichat_error_t create_session(discovery_session_t *session) {
 
     // Send SESSION_CREATE with this identity key
     asciichat_error_t result =
-        packet_send(session->acds_socket, PACKET_TYPE_ACIP_SESSION_CREATE, &create_msg, sizeof(create_msg));
+        packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_SESSION_CREATE, &create_msg, sizeof(create_msg), 0);
     if (result != ASCIICHAT_OK) {
       log_error("Failed to send SESSION_CREATE for key %zu/%zu", key_idx + 1, session->num_identity_keys);
       set_error(session, result, "Failed to send SESSION_CREATE");
@@ -621,9 +644,10 @@ static asciichat_error_t create_session(discovery_session_t *session) {
   packet_type_t type;
   void *data = NULL;
   size_t len = 0;
+  void *alloc_buffer = NULL;
   asciichat_error_t result;
 
-  result = packet_receive(session->acds_socket, &type, &data, &len);
+  result = packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
   if (result != ASCIICHAT_OK) {
     set_error(session, result, "Failed to receive SESSION_CREATED");
     return result;
@@ -633,7 +657,7 @@ static asciichat_error_t create_session(discovery_session_t *session) {
     acip_error_t *error = (acip_error_t *)data;
     log_error("ACDS error: %s", error->error_message);
     set_error(session, ERROR_NETWORK_PROTOCOL, error->error_message);
-    POOL_FREE(data, len);
+    SAFE_FREE(alloc_buffer);
     return ERROR_NETWORK_PROTOCOL;
   }
 
@@ -644,7 +668,7 @@ static asciichat_error_t create_session(discovery_session_t *session) {
     log_debug("Response mismatch: type_match=%d, len_match=%d",
              type == PACKET_TYPE_ACIP_SESSION_CREATED, len >= sizeof(acip_session_created_t));
     set_error(session, ERROR_NETWORK_PROTOCOL, "Unexpected response to SESSION_CREATE");
-    POOL_FREE(data, len);
+    SAFE_FREE(alloc_buffer);
     return ERROR_NETWORK_PROTOCOL;
   }
 
@@ -660,7 +684,7 @@ static asciichat_error_t create_session(discovery_session_t *session) {
 
   log_info("Session created: %s", session->session_string);
 
-  POOL_FREE(data, len);
+  SAFE_FREE(alloc_buffer);
 
   // Notify that session is ready
   if (session->on_session_ready) {
@@ -684,8 +708,8 @@ static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[16
                                                      const char *sdp_type, const char *sdp, void *user_data) {
   discovery_session_t *session = (discovery_session_t *)user_data;
 
-  if (!session || session->acds_socket == INVALID_SOCKET_VALUE) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session or ACDS socket");
+  if (!session || !session->acds_transport) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session or ACDS transport");
   }
 
   // Build ACIP SDP packet
@@ -707,7 +731,7 @@ static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[16
   memcpy(packet_data + sizeof(acip_webrtc_sdp_t), sdp, sdp_len);
 
   // Send to ACDS
-  asciichat_error_t result = packet_send(session->acds_socket, PACKET_TYPE_ACIP_WEBRTC_SDP, packet_data, total_len);
+  asciichat_error_t result = packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, packet_data, total_len, 0);
 
   SAFE_FREE(packet_data);
 
@@ -726,8 +750,8 @@ static asciichat_error_t discovery_send_ice_via_acds(const uint8_t session_id[16
                                                      const char *candidate, const char *mid, void *user_data) {
   discovery_session_t *session = (discovery_session_t *)user_data;
 
-  if (!session || session->acds_socket == INVALID_SOCKET_VALUE) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session or ACDS socket");
+  if (!session || !session->acds_transport) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session or ACDS transport");
   }
 
   // Calculate payload length (candidate + null + mid + null)
@@ -759,7 +783,7 @@ static asciichat_error_t discovery_send_ice_via_acds(const uint8_t session_id[16
   log_debug("Sending ICE candidate to ACDS (candidate_len=%zu, mid=%s)", candidate_len, mid);
 
   // Send to ACDS
-  asciichat_error_t result = packet_send(session->acds_socket, PACKET_TYPE_ACIP_WEBRTC_ICE, packet_data, total_len);
+  asciichat_error_t result = packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, packet_data, total_len, 0);
 
   SAFE_FREE(packet_data);
 
@@ -1180,7 +1204,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
 
   // Send SESSION_JOIN
   asciichat_error_t result =
-      packet_send(session->acds_socket, PACKET_TYPE_ACIP_SESSION_JOIN, &join_msg, sizeof(join_msg));
+      packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_SESSION_JOIN, &join_msg, sizeof(join_msg), 0);
   if (result != ASCIICHAT_OK) {
     set_error(session, result, "Failed to send SESSION_JOIN");
     return result;
@@ -1190,8 +1214,9 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   packet_type_t type;
   void *data = NULL;
   size_t len = 0;
+  void *alloc_buffer = NULL;
 
-  result = packet_receive(session->acds_socket, &type, &data, &len);
+  result = packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
   if (result != ASCIICHAT_OK) {
     set_error(session, result, "Failed to receive SESSION_JOINED");
     return result;
@@ -1201,13 +1226,13 @@ static asciichat_error_t join_session(discovery_session_t *session) {
     acip_error_t *error = (acip_error_t *)data;
     log_error("ACDS error: %s", error->error_message);
     set_error(session, ERROR_NETWORK_PROTOCOL, error->error_message);
-    POOL_FREE(data, len);
+    SAFE_FREE(alloc_buffer);
     return ERROR_NETWORK_PROTOCOL;
   }
 
   if (type != PACKET_TYPE_ACIP_SESSION_JOINED || len < sizeof(acip_session_joined_t)) {
     set_error(session, ERROR_NETWORK_PROTOCOL, "Unexpected response to SESSION_JOIN");
-    POOL_FREE(data, len);
+    SAFE_FREE(alloc_buffer);
     return ERROR_NETWORK_PROTOCOL;
   }
 
@@ -1216,7 +1241,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   if (!joined->success) {
     log_error("Failed to join session: %s", joined->error_message);
     set_error(session, ERROR_NETWORK_PROTOCOL, joined->error_message);
-    POOL_FREE(data, len);
+    SAFE_FREE(alloc_buffer);
     return ERROR_NETWORK_PROTOCOL;
   }
 
@@ -1235,7 +1260,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
     asciichat_error_t webrtc_result = initialize_webrtc_peer_manager(session);
     if (webrtc_result != ASCIICHAT_OK) {
       log_error("Failed to initialize WebRTC peer manager: %d", webrtc_result);
-      POOL_FREE(data, len);
+      SAFE_FREE(alloc_buffer);
       return webrtc_result;
     }
     log_info("WebRTC peer manager initialized successfully");
@@ -1250,7 +1275,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
 
     log_info("Host already established: %s:%u (session_type=%u, participant_ctx=%p before transition)",
              session->host_address, session->host_port, session->session_type, session->participant_ctx);
-    POOL_FREE(data, len);
+    SAFE_FREE(alloc_buffer);
 
     log_info("join_session: About to transition to CONNECTING_HOST - participant_ctx=%p", session->participant_ctx);
     set_state(session, DISCOVERY_STATE_CONNECTING_HOST);
@@ -1262,7 +1287,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   // No host yet - need to negotiate
   log_info("No host established (server_address='%s' port=%u), starting negotiation...", joined->server_address,
            joined->server_port);
-  POOL_FREE(data, len);
+  SAFE_FREE(alloc_buffer);
 
   set_state(session, DISCOVERY_STATE_NEGOTIATING);
   return ASCIICHAT_OK;
@@ -1317,28 +1342,73 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
   memcpy(handshake_ctx.client_public_key.key, session->identity_pubkey, 32);
   memcpy(handshake_ctx.client_private_key.key.ed25519, session->identity_seckey, 64);
 
-  // Step 1: Key exchange
-  result = crypto_handshake_client_key_exchange_socket(&handshake_ctx, session->acds_socket);
-  if (result != ASCIICHAT_OK) {
-    log_error("discovery_session_start: Handshake key exchange failed");
-    set_error(session, result, "Handshake key exchange failed");
-    return result;
+  // Step 1: Key exchange - receive KEY_EXCHANGE_INIT and respond
+  {
+    packet_type_t pkt_type;
+    void *pkt_data = NULL;
+    size_t pkt_len = 0;
+    void *alloc_buffer = NULL;
+
+    result = packet_receive_via_transport(session->acds_transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
+    if (result != ASCIICHAT_OK) {
+      log_error("discovery_session_start: Failed to receive KEY_EXCHANGE_INIT");
+      set_error(session, result, "Handshake key exchange recv failed");
+      return result;
+    }
+
+    result = crypto_handshake_client_key_exchange(&handshake_ctx, session->acds_transport, pkt_type, pkt_data, pkt_len);
+    SAFE_FREE(alloc_buffer);
+
+    if (result != ASCIICHAT_OK) {
+      log_error("discovery_session_start: Handshake key exchange failed");
+      set_error(session, result, "Handshake key exchange failed");
+      return result;
+    }
   }
 
-  // Step 2: Auth response
-  // Note: For ACDS servers without authentication, auth_response completes the handshake
-  result = crypto_handshake_client_auth_response_socket(&handshake_ctx, session->acds_socket);
-  if (result != ASCIICHAT_OK) {
-    log_error("discovery_session_start: Handshake auth response failed");
-    set_error(session, result, "Handshake auth response failed");
-    return result;
+  // Step 2: Auth response - receive AUTH_CHALLENGE and respond
+  {
+    packet_type_t pkt_type;
+    void *pkt_data = NULL;
+    size_t pkt_len = 0;
+    void *alloc_buffer = NULL;
+
+    result = packet_receive_via_transport(session->acds_transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
+    if (result != ASCIICHAT_OK) {
+      log_error("discovery_session_start: Failed to receive AUTH_CHALLENGE");
+      set_error(session, result, "Handshake auth response recv failed");
+      return result;
+    }
+
+    result = crypto_handshake_client_auth_response(&handshake_ctx, session->acds_transport, pkt_type, pkt_data, pkt_len);
+    SAFE_FREE(alloc_buffer);
+
+    if (result != ASCIICHAT_OK) {
+      log_error("discovery_session_start: Handshake auth response failed");
+      set_error(session, result, "Handshake auth response failed");
+      return result;
+    }
   }
 
   // Step 3: Complete handshake
   // Note: Some servers (like ACDS without auth) complete the handshake in step 2,
   // so check if we're already done before trying to receive another packet
   if (handshake_ctx.state != CRYPTO_HANDSHAKE_READY) {
-    result = crypto_handshake_client_complete_socket(&handshake_ctx, session->acds_socket);
+    packet_type_t pkt_type;
+    void *pkt_data = NULL;
+    size_t pkt_len = 0;
+    void *alloc_buffer = NULL;
+
+    result = packet_receive_via_transport(session->acds_transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
+    if (result != ASCIICHAT_OK) {
+      log_error("discovery_session_start: Failed to receive HANDSHAKE_COMPLETE");
+      set_error(session, result, "Handshake complete recv failed");
+      return result;
+    }
+
+    result = crypto_handshake_client_complete(&handshake_ctx, session->acds_transport, pkt_type, pkt_data, pkt_len);
+    SAFE_FREE(alloc_buffer);
+
     if (result != ASCIICHAT_OK) {
       log_error("discovery_session_start: Handshake complete failed");
       set_error(session, result, "Handshake complete failed");
@@ -1381,24 +1451,25 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
   switch (session->state) {
   case DISCOVERY_STATE_WAITING_PEER: {
     // Wait for PARTICIPANT_JOINED notification from ACDS
-    if (session->acds_socket != INVALID_SOCKET_VALUE && timeout_ns > 0) {
+    if (session->acds_transport && timeout_ns > 0) {
       // Set socket timeout
       if (socket_set_timeout(session->acds_socket, timeout_ns) == 0) {
         packet_type_t type;
         void *data = NULL;
         size_t len = 0;
+        void *alloc_buffer = NULL;
 
         // Try to receive a packet (non-blocking with timeout)
-        asciichat_error_t recv_result = packet_receive(session->acds_socket, &type, &data, &len);
+        asciichat_error_t recv_result = packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
         if (recv_result == ASCIICHAT_OK) {
           if (type == PACKET_TYPE_ACIP_PARTICIPANT_JOINED) {
             log_info("Peer joined session, transitioning to negotiation");
             set_state(session, DISCOVERY_STATE_NEGOTIATING);
-            POOL_FREE(data, len);
+            SAFE_FREE(alloc_buffer);
           } else {
             // Got some other packet, handle it or ignore
             log_debug("Received packet type %d while waiting for peer", type);
-            POOL_FREE(data, len);
+            SAFE_FREE(alloc_buffer);
           }
         } else if (recv_result == ERROR_NETWORK_TIMEOUT) {
           // Timeout is normal, just return
@@ -1407,7 +1478,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
         }
       }
     } else {
-      // Fallback to sleep if no timeout or invalid socket
+      // Fallback to sleep if no timeout or invalid transport
       platform_sleep_us(timeout_ns / 1000);
     }
     break;
@@ -1622,7 +1693,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
 
       // Poll ACDS for WebRTC signaling messages (SDP answer, ICE candidates)
       // while waiting for DataChannel to open
-      if (session->acds_socket != INVALID_SOCKET_VALUE) {
+      if (session->acds_transport) {
         // Check if data available (non-blocking with timeout_ns)
         struct timeval tv_timeout;
         tv_timeout.tv_sec = timeout_ns / NS_PER_SEC_INT;
@@ -1638,13 +1709,14 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
           packet_type_t type;
           void *data = NULL;
           size_t len = 0;
+          void *alloc_buffer = NULL;
 
-          asciichat_error_t recv_result = packet_receive(session->acds_socket, &type, &data, &len);
+          asciichat_error_t recv_result = packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
 
           if (recv_result == ASCIICHAT_OK) {
             // Dispatch to appropriate handler
             handle_acds_webrtc_packet(session, type, data, len);
-            POOL_FREE(data, len);
+            SAFE_FREE(alloc_buffer);
           } else {
             log_debug("Failed to receive ACDS packet: %d", recv_result);
           }
@@ -1797,7 +1869,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
 
   case DISCOVERY_STATE_ACTIVE:
     // Receive and handle ACDS packets for WebRTC signaling (NEW)
-    if (session->session_type == SESSION_TYPE_WEBRTC && session->acds_socket != INVALID_SOCKET_VALUE) {
+    if (session->session_type == SESSION_TYPE_WEBRTC && session->acds_transport) {
       // Use non-blocking polling to check for incoming ACDS packets
       struct pollfd pfd = {.fd = session->acds_socket, .events = POLLIN, .revents = 0};
 
@@ -1808,13 +1880,14 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
         packet_type_t type;
         void *data = NULL;
         size_t len = 0;
+        void *alloc_buffer = NULL;
 
-        asciichat_error_t recv_result = packet_receive(session->acds_socket, &type, &data, &len);
+        asciichat_error_t recv_result = packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
 
         if (recv_result == ASCIICHAT_OK) {
           // Dispatch to appropriate handler
           handle_acds_webrtc_packet(session, type, data, len);
-          POOL_FREE(data, len);
+          SAFE_FREE(alloc_buffer);
         }
       }
     }
@@ -1877,13 +1950,13 @@ void discovery_session_stop(discovery_session_t *session) {
   log_info("Stopping discovery session...");
 
   // Send SESSION_LEAVE if connected
-  if (session->acds_socket != INVALID_SOCKET_VALUE && session->session_id[0] != 0) {
+  if (session->acds_transport && session->session_id[0] != 0) {
     acip_session_leave_t leave_msg;
     memset(&leave_msg, 0, sizeof(leave_msg));
     memcpy(leave_msg.session_id, session->session_id, 16);
     memcpy(leave_msg.participant_id, session->participant_id, 16);
 
-    packet_send(session->acds_socket, PACKET_TYPE_ACIP_SESSION_LEAVE, &leave_msg, sizeof(leave_msg));
+    packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_SESSION_LEAVE, &leave_msg, sizeof(leave_msg), 0);
   }
 
   set_state(session, DISCOVERY_STATE_ENDED);
@@ -2020,7 +2093,7 @@ static asciichat_error_t discovery_session_run_election(discovery_session_t *ses
   msg.connection_type = session->ring.future_host_connection_type;
   msg.elected_at_round = session->ring.future_host_elected_round;
 
-  packet_send(session->acds_socket, PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED, &msg, sizeof(msg));
+  packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED, &msg, sizeof(msg), 0);
 
   log_info("Broadcasted FUTURE_HOST_ELECTED: participant_id=%.*s, round=%llu", 16, (char *)future_host_id,
            (unsigned long long)msg.elected_at_round);
@@ -2168,7 +2241,7 @@ asciichat_error_t discovery_session_handle_host_disconnect(discovery_session_t *
   host_lost.disconnect_reason = disconnect_reason;
   host_lost.disconnect_time_ms = session->migration.detection_time_ms;
 
-  packet_send(session->acds_socket, PACKET_TYPE_ACIP_HOST_LOST, &host_lost, sizeof(host_lost));
+  packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_LOST, &host_lost, sizeof(host_lost), 0);
 
   // Check if we have a pre-elected future host (from last 5-minute ring round)
   if (session->ring.future_host_id[0] == 0) {
@@ -2246,8 +2319,8 @@ asciichat_error_t discovery_session_become_host(discovery_session_t *session) {
   announcement.connection_type = ACIP_CONNECTION_TYPE_DIRECT_PUBLIC;
   // TODO: Use actual connection type based on NAT quality
 
-  if (session->acds_socket != INVALID_SOCKET_VALUE) {
-    packet_send(session->acds_socket, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &announcement, sizeof(announcement));
+  if (session->acds_transport) {
+    packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &announcement, sizeof(announcement), 0);
     log_info("Sent HOST_ANNOUNCEMENT to ACDS for new host %02x%02x... at %s:%u", announcement.host_id[0],
              announcement.host_id[1], announcement.host_address, announcement.host_port);
   }

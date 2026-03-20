@@ -52,6 +52,11 @@
     *payload, size_t payload_len, <b>uint32_t</b> client_id)
   <br/>
   Send packet via transport with proper header (exported for generic wrappers).
+    <b>asciichat_error_t</b> <b>packet_receive_via_transport</b>
+    (<b>acip_transport_t</b> *transport, <b>packet_type_t</b> *type, void
+    **payload, size_t *payload_len, void **alloc_buffer)
+  <br/>
+  Receive a packet via transport with header parsing and validation.
     <b>asciichat_error_t</b> <b>acip_send_audio_batch</b>
     (<b>acip_transport_t</b> *transport, const float *samples, <b>uint32_t</b>
     num_samples, <b>uint32_t</b> batch_count)
@@ -136,37 +141,37 @@
 <i>batch_count</i> Number of batches aggregated</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>126</b> of file <b>send.c</b>.</p>
-<pre>127                                                               {
-128   if (!transport || !samples || num_samples == 0) {
-129     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
-130   }
-131 
-132   // Build batch header
-133   audio_batch_packet_t header;
-134   header.batch_count = batch_count;
-135   header.total_samples = (uint32_t)num_samples;
-136   header.sample_rate = (uint32_t)AUDIO_SAMPLE_RATE;
-137   header.channels = 1;
-138 
-139   // Calculate total size (header + float samples)
-140   size_t samples_size = num_samples * sizeof(float);
-141   size_t total_size = sizeof(header) + samples_size;
-142 
-143   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
-144   if (!buffer) {
-145     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer&quot;);
-146   }
-147 
-148   // Copy header and samples
-149   memcpy(buffer, &amp;header, sizeof(header));
-150   memcpy(buffer + sizeof(header), samples, samples_size);
-151 
-152   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_BATCH, buffer, total_size, 0);
-153 
-154   buffer_pool_free(NULL, buffer, total_size);
-155   return result;
-156 }</pre>
+<p class="Pp">Definition at line <b>181</b> of file <b>send.c</b>.</p>
+<pre>182                                                               {
+183   if (!transport || !samples || num_samples == 0) {
+184     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+185   }
+186 
+187   // Build batch header
+188   audio_batch_packet_t header;
+189   header.batch_count = batch_count;
+190   header.total_samples = (uint32_t)num_samples;
+191   header.sample_rate = (uint32_t)AUDIO_SAMPLE_RATE;
+192   header.channels = 1;
+193 
+194   // Calculate total size (header + float samples)
+195   size_t samples_size = num_samples * sizeof(float);
+196   size_t total_size = sizeof(header) + samples_size;
+197 
+198   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
+199   if (!buffer) {
+200     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer&quot;);
+201   }
+202 
+203   // Copy header and samples
+204   memcpy(buffer, &amp;header, sizeof(header));
+205   memcpy(buffer + sizeof(header), samples, samples_size);
+206 
+207   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_BATCH, buffer, total_size, 0);
+208 
+209   buffer_pool_free(NULL, buffer, total_size);
+210   return result;
+211 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>AUDIO_SAMPLE_RATE</b>,
@@ -192,17 +197,17 @@
 <i>opus_len</i> Length of encoded data</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>158</b> of file <b>send.c</b>.</p>
-<pre>158                                                                                                             {
-159   if (!transport || !opus_data || opus_len == 0) {
-160     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
-161   }
-162 
-163   // Convert single opus frame to batch format (frame_count=1) with standard parameters
-164   // Standard: 48kHz sample rate, 20ms frame duration
-165   uint16_t frame_sizes[1] = {(uint16_t)opus_len};
-166   return acip_send_audio_opus_batch(transport, opus_data, opus_len, frame_sizes, 1, 48000, 20);
-167 }</pre>
+<p class="Pp">Definition at line <b>213</b> of file <b>send.c</b>.</p>
+<pre>213                                                                                                             {
+214   if (!transport || !opus_data || opus_len == 0) {
+215     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+216   }
+217 
+218   // Convert single opus frame to batch format (frame_count=1) with standard parameters
+219   // Standard: 48kHz sample rate, 20ms frame duration
+220   uint16_t frame_sizes[1] = {(uint16_t)opus_len};
+221   return acip_send_audio_opus_batch(transport, opus_data, opus_len, frame_sizes, 1, 48000, 20);
+222 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_send_audio_opus_batch()</b>,
@@ -230,48 +235,48 @@
 <i>frame_duration</i> Duration per frame in milliseconds</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>169</b> of file <b>send.c</b>.</p>
-<pre>171                                                                       {
-172   if (!transport || !opus_data || !frame_sizes || frame_count == 0) {
-173     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
-174   }
-175 
-176   // Build batch header (16 bytes)
-177   uint8_t header[16];
-178   *(uint32_t *)(header + 0) = HOST_TO_NET_U32(sample_rate);
-179   *(uint32_t *)(header + 4) = HOST_TO_NET_U32(frame_duration);
-180   *(uint32_t *)(header + 8) = HOST_TO_NET_U32(frame_count);
-181   *(uint32_t *)(header + 12) = 0; // reserved
-182 
-183   // Calculate sizes array size
-184   size_t sizes_len = frame_count * sizeof(uint16_t);
-185   size_t total_size = sizeof(header) + sizes_len + opus_len;
-186 
-187   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
-188   if (!buffer) {
-189     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer&quot;);
-190   }
-191 
-192   // Build packet: header + sizes + opus_data
-193   memcpy(buffer, header, sizeof(header));
-194 
-195   // Convert frame sizes to network byte order before copying
-196   // IMPORTANT: Server expects network byte order and will apply NET_TO_HOST_U16()
-197   uint16_t *sizes_buf = (uint16_t *)(buffer + sizeof(header));
-198   for (uint32_t i = 0; i &lt; frame_count; i++) {
-199     sizes_buf[i] = HOST_TO_NET_U16(frame_sizes[i]);
-200   }
-201 
-202   memcpy(buffer + sizeof(header) + sizes_len, opus_data, opus_len);
-203 
-204   log_info(&quot;&#x2605; OPUS_BATCH_SEND_DEBUG: header=16, frame_count=%u, sizes_len=%zu, opus_len=%zu, TOTAL=%zu&quot;, frame_count,
-205            sizes_len, opus_len, total_size);
-206 
-207   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS_BATCH, buffer, total_size, 0);
-208 
-209   buffer_pool_free(NULL, buffer, total_size);
-210   return result;
-211 }</pre>
+<p class="Pp">Definition at line <b>224</b> of file <b>send.c</b>.</p>
+<pre>226                                                                       {
+227   if (!transport || !opus_data || !frame_sizes || frame_count == 0) {
+228     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+229   }
+230 
+231   // Build batch header (16 bytes)
+232   uint8_t header[16];
+233   *(uint32_t *)(header + 0) = HOST_TO_NET_U32(sample_rate);
+234   *(uint32_t *)(header + 4) = HOST_TO_NET_U32(frame_duration);
+235   *(uint32_t *)(header + 8) = HOST_TO_NET_U32(frame_count);
+236   *(uint32_t *)(header + 12) = 0; // reserved
+237 
+238   // Calculate sizes array size
+239   size_t sizes_len = frame_count * sizeof(uint16_t);
+240   size_t total_size = sizeof(header) + sizes_len + opus_len;
+241 
+242   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
+243   if (!buffer) {
+244     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer&quot;);
+245   }
+246 
+247   // Build packet: header + sizes + opus_data
+248   memcpy(buffer, header, sizeof(header));
+249 
+250   // Convert frame sizes to network byte order before copying
+251   // IMPORTANT: Server expects network byte order and will apply NET_TO_HOST_U16()
+252   uint16_t *sizes_buf = (uint16_t *)(buffer + sizeof(header));
+253   for (uint32_t i = 0; i &lt; frame_count; i++) {
+254     sizes_buf[i] = HOST_TO_NET_U16(frame_sizes[i]);
+255   }
+256 
+257   memcpy(buffer + sizeof(header) + sizes_len, opus_data, opus_len);
+258 
+259   log_info(&quot;&#x2605; OPUS_BATCH_SEND_DEBUG: header=16, frame_count=%u, sizes_len=%zu, opus_len=%zu, TOTAL=%zu&quot;, frame_count,
+260            sizes_len, opus_len, total_size);
+261 
+262   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS_BATCH, buffer, total_size, 0);
+263 
+264   buffer_pool_free(NULL, buffer, total_size);
+265   return result;
+266 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
@@ -296,43 +301,43 @@
   MAX_ERROR_MESSAGE_LENGTH)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>247</b> of file <b>send.c</b>.</p>
-<pre>247                                                                                                          {
-248   if (!transport) {
-249     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
-250   }
-251 
-252   // Calculate message length (max MAX_ERROR_MESSAGE_LENGTH)
-253   size_t msg_len = 0;
-254   if (message) {
-255     msg_len = strlen(message);
-256     if (msg_len &gt; MAX_ERROR_MESSAGE_LENGTH) {
-257       msg_len = MAX_ERROR_MESSAGE_LENGTH;
-258     }
-259   }
-260 
-261   error_packet_t header;
-262   header.error_code = HOST_TO_NET_U32(error_code);
-263   header.message_length = HOST_TO_NET_U32((uint32_t)msg_len);
-264 
-265   // Allocate buffer for header + message
-266   size_t total_size = sizeof(header) + msg_len;
-267   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
-268   if (!buffer) {
-269     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer&quot;);
-270   }
-271 
-272   // Build packet
-273   memcpy(buffer, &amp;header, sizeof(header));
-274   if (msg_len &gt; 0) {
-275     memcpy(buffer + sizeof(header), message, msg_len);
-276   }
-277 
-278   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_ERROR_MESSAGE, buffer, total_size, 0);
-279 
-280   buffer_pool_free(NULL, buffer, total_size);
-281   return result;
-282 }</pre>
+<p class="Pp">Definition at line <b>302</b> of file <b>send.c</b>.</p>
+<pre>302                                                                                                          {
+303   if (!transport) {
+304     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
+305   }
+306 
+307   // Calculate message length (max MAX_ERROR_MESSAGE_LENGTH)
+308   size_t msg_len = 0;
+309   if (message) {
+310     msg_len = strlen(message);
+311     if (msg_len &gt; MAX_ERROR_MESSAGE_LENGTH) {
+312       msg_len = MAX_ERROR_MESSAGE_LENGTH;
+313     }
+314   }
+315 
+316   error_packet_t header;
+317   header.error_code = HOST_TO_NET_U32(error_code);
+318   header.message_length = HOST_TO_NET_U32((uint32_t)msg_len);
+319 
+320   // Allocate buffer for header + message
+321   size_t total_size = sizeof(header) + msg_len;
+322   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
+323   if (!buffer) {
+324     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer&quot;);
+325   }
+326 
+327   // Build packet
+328   memcpy(buffer, &amp;header, sizeof(header));
+329   if (msg_len &gt; 0) {
+330     memcpy(buffer + sizeof(header), message, msg_len);
+331   }
+332 
+333   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_ERROR_MESSAGE, buffer, total_size, 0);
+334 
+335   buffer_pool_free(NULL, buffer, total_size);
+336   return result;
+337 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
@@ -353,15 +358,15 @@
 <div class="Bd-indent"><i>transport</i> Transport instance</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>217</b> of file <b>send.c</b>.</p>
-<pre>217                                                               {
-218   if (!transport) {
-219     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
-220   }
-221 
-222   // Ping has no payload
-223   return packet_send_via_transport(transport, PACKET_TYPE_PING, NULL, 0, 0);
-224 }</pre>
+<p class="Pp">Definition at line <b>272</b> of file <b>send.c</b>.</p>
+<pre>272                                                               {
+273   if (!transport) {
+274     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
+275   }
+276 
+277   // Ping has no payload
+278   return packet_send_via_transport(transport, PACKET_TYPE_PING, NULL, 0, 0);
+279 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
@@ -376,15 +381,15 @@
 <div class="Bd-indent"><i>transport</i> Transport instance</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>226</b> of file <b>send.c</b>.</p>
-<pre>226                                                               {
-227   if (!transport) {
-228     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
-229   }
-230 
-231   // Pong has no payload
-232   return packet_send_via_transport(transport, PACKET_TYPE_PONG, NULL, 0, 0);
-233 }</pre>
+<p class="Pp">Definition at line <b>281</b> of file <b>send.c</b>.</p>
+<pre>281                                                               {
+282   if (!transport) {
+283     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
+284   }
+285 
+286   // Pong has no payload
+287   return packet_send_via_transport(transport, PACKET_TYPE_PONG, NULL, 0, 0);
+288 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
@@ -407,37 +412,37 @@
 <i>message</i> Log message</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>284</b> of file <b>send.c</b>.</p>
-<pre>285                                                             {
-286   if (!transport || !message) {
-287     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or message&quot;);
-288   }
-289 
-290   size_t msg_len = strlen(message);
-291 
-292   remote_log_packet_t header;
-293   header.log_level = log_level;
-294   header.direction = direction;
-295   header.flags = 0;
-296   header.message_length = HOST_TO_NET_U32((uint32_t)msg_len);
-297 
-298   size_t total_size = sizeof(header) + msg_len;
-299 
-300   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
-301   if (!buffer) {
-302     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer&quot;);
-303   }
-304 
-305   // Build packet
-306   memcpy(buffer, &amp;header, sizeof(header));
-307   // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary packet data
-308   memcpy(buffer + sizeof(header), message, msg_len);
-309 
-310   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_REMOTE_LOG, buffer, total_size, 0);
-311 
-312   buffer_pool_free(NULL, buffer, total_size);
-313   return result;
-314 }</pre>
+<p class="Pp">Definition at line <b>339</b> of file <b>send.c</b>.</p>
+<pre>340                                                             {
+341   if (!transport || !message) {
+342     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or message&quot;);
+343   }
+344 
+345   size_t msg_len = strlen(message);
+346 
+347   remote_log_packet_t header;
+348   header.log_level = log_level;
+349   header.direction = direction;
+350   header.flags = 0;
+351   header.message_length = HOST_TO_NET_U32((uint32_t)msg_len);
+352 
+353   size_t total_size = sizeof(header) + msg_len;
+354 
+355   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
+356   if (!buffer) {
+357     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer&quot;);
+358   }
+359 
+360   // Build packet
+361   memcpy(buffer, &amp;header, sizeof(header));
+362   // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary packet data
+363   memcpy(buffer + sizeof(header), message, msg_len);
+364 
+365   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_REMOTE_LOG, buffer, total_size, 0);
+366 
+367   buffer_pool_free(NULL, buffer, total_size);
+368   return result;
+369 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
@@ -459,14 +464,14 @@
 <i>response</i> Session created response structure</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>320</b> of file <b>send.c</b>.</p>
-<pre>320                                                                                                                  {
-321   if (!transport || !response) {
-322     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or response&quot;);
-323   }
-324 
-325   return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_CREATED, response, sizeof(*response), 0);
-326 }</pre>
+<p class="Pp">Definition at line <b>375</b> of file <b>send.c</b>.</p>
+<pre>375                                                                                                                  {
+376   if (!transport || !response) {
+377     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or response&quot;);
+378   }
+379 
+380   return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_CREATED, response, sizeof(*response), 0);
+381 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_session_created_t</b>,
@@ -484,14 +489,14 @@
 <i>info</i> Session info structure</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>328</b> of file <b>send.c</b>.</p>
-<pre>328                                                                                                        {
-329   if (!transport || !info) {
-330     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or info&quot;);
-331   }
-332 
-333   return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_INFO, info, sizeof(*info), 0);
-334 }</pre>
+<p class="Pp">Definition at line <b>383</b> of file <b>send.c</b>.</p>
+<pre>383                                                                                                        {
+384   if (!transport || !info) {
+385     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or info&quot;);
+386   }
+387 
+388   return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_INFO, info, sizeof(*info), 0);
+389 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_session_info_t</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -509,19 +514,100 @@
 <i>response</i> Session joined response structure</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>336</b> of file <b>send.c</b>.</p>
-<pre>336                                                                                                                {
-337   if (!transport || !response) {
-338     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or response&quot;);
-339   }
-340 
-341   return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(*response), 0);
-342 }</pre>
+<p class="Pp">Definition at line <b>391</b> of file <b>send.c</b>.</p>
+<pre>391                                                                                                                {
+392   if (!transport || !response) {
+393     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or response&quot;);
+394   }
+395 
+396   return packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(*response), 0);
+397 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_session_joined_t</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>packet_send_via_transport()</b>,
     <b>PACKET_TYPE_ACIP_SESSION_JOINED</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> packet_receive_via_transport
+  (<b>acip_transport_t</b> * transport, <b>packet_type_t</b> * type, void **
+  payload, size_t * payload_len, void ** alloc_buffer)</h2>
+<p class="Pp">Receive a packet via transport with header parsing and validation.
+    Transport counterpart to <b>packet_receive()</b>. Receives raw bytes via
+    transport, parses the packet header, validates magic/CRC32, and returns the
+    packet type and payload separately.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>type</i> Packet type from header
+<br/>
+<i>payload</i> Pointer to payload data within the received buffer
+<br/>
+<i>payload_len</i> Payload length from header
+<br/>
+<i>alloc_buffer</i> Buffer to free when done (caller must free with
+  SAFE_FREE)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>122</b> of file <b>send.c</b>.</p>
+<pre>123                                                                                          {
+124   if (!transport || !type || !payload || !payload_len || !alloc_buffer) {
+125     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for packet_receive_via_transport&quot;);
+126   }
+127 
+128   *type = 0;
+129   *payload = NULL;
+130   *payload_len = 0;
+131   *alloc_buffer = NULL;
+132 
+133   // Receive raw bytes via transport
+134   void *recv_buffer = NULL;
+135   size_t recv_len = 0;
+136   asciichat_error_t result = acip_transport_recv(transport, &amp;recv_buffer, &amp;recv_len, alloc_buffer);
+137   if (result != ASCIICHAT_OK) {
+138     return result;
+139   }
+140 
+141   // Parse packet header
+142   if (recv_len &lt; sizeof(packet_header_t)) {
+143     log_warn(&quot;packet_receive_via_transport: packet too small (%zu bytes, need %zu)&quot;, recv_len,
+144              sizeof(packet_header_t));
+145     if (*alloc_buffer) {
+146       SAFE_FREE(*alloc_buffer);
+147       *alloc_buffer = NULL;
+148     }
+149     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Received packet smaller than header&quot;);
+150   }
+151 
+152   const packet_header_t *header = (const packet_header_t *)recv_buffer;
+153   *type = (packet_type_t)NET_TO_HOST_U16(header-&gt;type);
+154   size_t plen = NET_TO_HOST_U32(header-&gt;length);
+155 
+156   if (recv_len &lt; sizeof(packet_header_t) + plen) {
+157     log_warn(&quot;packet_receive_via_transport: truncated packet (header says %zu payload, got %zu total)&quot;, plen, recv_len);
+158     if (*alloc_buffer) {
+159       SAFE_FREE(*alloc_buffer);
+160       *alloc_buffer = NULL;
+161     }
+162     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Truncated packet payload&quot;);
+163   }
+164 
+165   if (plen &gt; 0) {
+166     *payload = (uint8_t *)recv_buffer + sizeof(packet_header_t);
+167   }
+168   *payload_len = plen;
+169 
+170   return ASCIICHAT_OK;
+171 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_NETWORK_PROTOCOL</b>, <b>packet_header_t::length</b>,
+    <b>log_warn</b>, <b>NET_TO_HOST_U16</b>, <b>NET_TO_HOST_U32</b>,
+    <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, and <b>packet_header_t::type</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_process()</b>, and
+    <b>discovery_session_start()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> packet_send_via_transport
@@ -646,7 +732,10 @@
     <b>crypto_handshake_server_auth_challenge()</b>,
     <b>crypto_handshake_server_complete()</b>,
     <b>crypto_handshake_server_send_parameters()</b>,
-    <b>crypto_handshake_server_start()</b>, <b>threaded_send_audio_opus()</b>,
+    <b>crypto_handshake_server_start()</b>,
+    <b>discovery_session_become_host()</b>,
+    <b>discovery_session_handle_host_disconnect()</b>,
+    <b>discovery_session_stop()</b>, <b>threaded_send_audio_opus()</b>,
     <b>threaded_send_image_frame_h265()</b>, <b>threaded_send_packet()</b>, and
     <b>websocket_client_send_packet()</b>.</p>
 </section>

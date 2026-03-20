@@ -302,9 +302,10 @@ uint16_t port = NET_TO_HOST_U16(addr-&gt;sin_port);
     <b>handle_protocol_version_packet()</b>, <b>handle_size_packet()</b>,
     <b>packet_decrypt_envelope()</b>, <b>packet_parse_remote_log()</b>,
     <b>packet_queue_try_dequeue()</b>, <b>packet_queue_validate_packet()</b>,
-    <b>process_encrypted_packet()</b>, <b>receive_packet_secure()</b>,
-    <b>server_connection_establish()</b>, <b>server_crypto_handshake()</b>,
-    <b>tcp_client_connect()</b>, <b>webrtc_peer_manager_handle_ice()</b>, and
+    <b>packet_receive_via_transport()</b>, <b>process_encrypted_packet()</b>,
+    <b>receive_packet_secure()</b>, <b>server_connection_establish()</b>,
+    <b>server_crypto_handshake()</b>, <b>tcp_client_connect()</b>,
+    <b>webrtc_peer_manager_handle_ice()</b>, and
     <b>webrtc_peer_manager_handle_sdp()</b>.</p>
 </section>
 <section class="Ss">
@@ -340,7 +341,8 @@ uint32_t count = NET_TO_HOST_U32(pkt-&gt;count);
     <b>packet_decrypt_envelope()</b>, <b>packet_parse_error_message()</b>,
     <b>packet_parse_opus_batch()</b>, <b>packet_parse_remote_log()</b>,
     <b>packet_queue_try_dequeue()</b>, <b>packet_queue_validate_packet()</b>,
-    <b>process_encrypted_packet()</b>, and <b>receive_packet_secure()</b>.</p>
+    <b>packet_receive_via_transport()</b>, <b>process_encrypted_packet()</b>,
+    and <b>receive_packet_secure()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_NET_TO_HOST_U64(_val)"><a class="permalink" href="#_define_NET_TO_HOST_U64(_val)">#define

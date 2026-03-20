@@ -16,6 +16,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include "negotiate.h"
 #include <ascii-chat/platform/socket.h>
+#include <ascii-chat/network/acip/transport.h>
 #include "session/host.h"
 #include "session/participant.h"
 #include <ascii-chat/discovery/strings.h>
@@ -154,7 +155,8 @@ typedef struct {
   size_t num_identity_keys;                         ///< Number of identity keys loaded
 
   // ACDS connection
-  socket_t acds_socket;
+  acip_transport_t *acds_transport;  ///< Persistent transport for ACDS communication
+  socket_t acds_socket;              ///< Raw socket (owned by transport after creation)
   char acds_address[64];
   uint16_t acds_port;
 

@@ -55,19 +55,7 @@
     *ctx, <b>acip_transport_t</b> *transport, <b>packet_type_t</b> packet_type,
     const <b>uint8_t</b> *payload, size_t payload_len)
   <br/>
-  Client: Wait for handshake complete confirmation. <b>asciichat_error_t</b>
-    <b>crypto_handshake_client_key_exchange_socket</b>
-    (<b>crypto_handshake_context_t</b> *ctx, <b>socket_t</b> client_socket)
-  <br/>
-  Legacy wrapper: Key exchange using socket (TCP clients only).
-    <b>asciichat_error_t</b> <b>crypto_handshake_client_auth_response_socket</b>
-    (<b>crypto_handshake_context_t</b> *ctx, <b>socket_t</b> client_socket)
-  <br/>
-  Legacy wrapper: Auth response using socket (TCP clients only).
-    <b>asciichat_error_t</b> <b>crypto_handshake_client_complete_socket</b>
-    (<b>crypto_handshake_context_t</b> *ctx, <b>socket_t</b> client_socket)
-  <br/>
-  Legacy wrapper: Complete handshake using socket (TCP clients only).
+  Client: Wait for handshake complete confirmation.
   <br/>
 </p>
 </section>
@@ -290,52 +278,9 @@
     <b>prompt_password()</b>, <b>SET_ERRNO</b>,
     <b>crypto_handshake_context_t::state</b>, and
   <b>private_key_t::type</b>.</p>
-<p class="Pp">Referenced by <b>client_handle_auth_challenge()</b>, and
-    <b>crypto_handshake_client_auth_response_socket()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b>
-  crypto_handshake_client_auth_response_socket
-  (<b>crypto_handshake_context_t</b> * ctx, <b>socket_t</b> client_socket)</h2>
-<p class="Pp">Legacy wrapper: Auth response using socket (TCP clients only).</p>
-<p class="Pp"><b>Deprecated</b></p>
-<div class="Bd-indent">Use <b>crypto_handshake_client_auth_response()</b> with
-  <b>acip_transport_t</b> instead</div>
-<p class="Pp">Definition at line <b>911</b> of file
-    <b>lib/crypto/handshake/client.c</b>.</p>
-<pre>912                                                                                        {
-913   // Receive packet using old method
-914   packet_type_t packet_type;
-915   uint8_t *payload = NULL;
-916   size_t payload_len = 0;
-917   int result = receive_packet(client_socket, &amp;packet_type, (void **)&amp;payload, &amp;payload_len);
-918   if (result != ASCIICHAT_OK) {
-919     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive packet from server&quot;);
-920   }
-921 
-922   // Create temporary TCP transport
-923   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_handshake_temp_socket&quot;, client_socket, NULL);
-924   if (!temp_transport) {
-925     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
-926   }
-927 
-928   // Call new function (takes ownership of payload and will free it)
-929   asciichat_error_t handshake_result =
-930       crypto_handshake_client_auth_response(ctx, temp_transport, packet_type, payload, payload_len);
-931 
-932   // Destroy temporary transport
-933   acip_transport_destroy(temp_transport);
-934 
-935   return handshake_result;
-936 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_tcp_transport_create()</b>,
-    <b>acip_transport_destroy()</b>, <b>ASCIICHAT_OK</b>,
-    <b>crypto_handshake_client_auth_response()</b>, <b>ERROR_NETWORK</b>,
-    <b>receive_packet()</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
-    <b>discovery_session_start()</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>client_handle_auth_challenge()</b>, and
+  <b>discovery_session_start()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_client_complete
@@ -483,51 +428,8 @@
     <b>PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP</b>,
     <b>auth_failure_packet_t::reason_flags</b>, <b>SET_ERRNO</b>, and
     <b>crypto_handshake_context_t::state</b>.</p>
-<p class="Pp">Referenced by <b>client_handle_handshake_complete()</b>, and
-    <b>crypto_handshake_client_complete_socket()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_client_complete_socket
-  (<b>crypto_handshake_context_t</b> * ctx, <b>socket_t</b> client_socket)</h2>
-<p class="Pp">Legacy wrapper: Complete handshake using socket (TCP clients
-    only).</p>
-<p class="Pp"><b>Deprecated</b></p>
-<div class="Bd-indent">Use <b>crypto_handshake_client_complete()</b> with
-  <b>acip_transport_t</b> instead</div>
-<p class="Pp">Definition at line <b>941</b> of file
-    <b>lib/crypto/handshake/client.c</b>.</p>
-<pre>941                                                                                                                    {
-942   // Receive packet using old method
-943   packet_type_t packet_type;
-944   uint8_t *payload = NULL;
-945   size_t payload_len = 0;
-946   int result = receive_packet(client_socket, &amp;packet_type, (void **)&amp;payload, &amp;payload_len);
-947   if (result != ASCIICHAT_OK) {
-948     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive handshake completion packet&quot;);
-949   }
-950 
-951   // Create temporary TCP transport
-952   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_handshake_temp_socket&quot;, client_socket, NULL);
-953   if (!temp_transport) {
-954     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
-955   }
-956 
-957   // Call new function (takes ownership of payload and will free it)
-958   asciichat_error_t handshake_result =
-959       crypto_handshake_client_complete(ctx, temp_transport, packet_type, payload, payload_len);
-960 
-961   // Destroy temporary transport
-962   acip_transport_destroy(temp_transport);
-963 
-964   return handshake_result;
-965 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_tcp_transport_create()</b>,
-    <b>acip_transport_destroy()</b>, <b>ASCIICHAT_OK</b>,
-    <b>crypto_handshake_client_complete()</b>, <b>ERROR_NETWORK</b>,
-    <b>receive_packet()</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>client_handle_handshake_complete()</b>, and
     <b>discovery_session_start()</b>.</p>
 </section>
 <section class="Ss">
@@ -1072,55 +974,8 @@
     <b>private_key_t::type</b>,
     <b>crypto_handshake_context_t::verify_server_key</b>, and
     <b>ZERO_KEY_SIZE</b>.</p>
-<p class="Pp">Referenced by <b>client_handle_key_exchange_init()</b>, and
-    <b>crypto_handshake_client_key_exchange_socket()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b>
-  crypto_handshake_client_key_exchange_socket (<b>crypto_handshake_context_t</b>
-  * ctx, <b>socket_t</b> client_socket)</h2>
-<p class="Pp">Legacy wrapper: Key exchange using socket (TCP clients only).</p>
-<p class="Pp"><b>Deprecated</b></p>
-<div class="Bd-indent">Use <b>crypto_handshake_client_key_exchange()</b> with
-  <b>acip_transport_t</b> instead</div>
-<p class="Pp">Definition at line <b>878</b> of file
-    <b>lib/crypto/handshake/client.c</b>.</p>
-<pre>878                                                                                                                        {
-879   if (!ctx) {
-880     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Context cannot be NULL&quot;);
-881   }
-882 
-883   // Receive packet using old method
-884   packet_type_t packet_type;
-885   uint8_t *payload = NULL;
-886   size_t payload_len = 0;
-887   int result = receive_packet(client_socket, &amp;packet_type, (void **)&amp;payload, &amp;payload_len);
-888   if (result != ASCIICHAT_OK) {
-889     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive KEY_EXCHANGE_INIT packet&quot;);
-890   }
-891 
-892   // Create temporary TCP transport
-893   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_handshake_temp_socket&quot;, client_socket, NULL);
-894   if (!temp_transport) {
-895     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
-896   }
-897 
-898   // Call new function (takes ownership of payload and will free it)
-899   asciichat_error_t handshake_result =
-900       crypto_handshake_client_key_exchange(ctx, temp_transport, packet_type, payload, payload_len);
-901 
-902   // Destroy temporary transport
-903   acip_transport_destroy(temp_transport);
-904 
-905   return handshake_result;
-906 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_tcp_transport_create()</b>,
-    <b>acip_transport_destroy()</b>, <b>ASCIICHAT_OK</b>,
-    <b>crypto_handshake_client_key_exchange()</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>ERROR_NETWORK</b>, <b>receive_packet()</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>client_handle_key_exchange_init()</b>, and
     <b>discovery_session_start()</b>.</p>
 </section>
 </section>
