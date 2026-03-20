@@ -6253,134 +6253,150 @@ if (help) {
   field_name, <b>bool</b> value)</h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>874</b> of file <b>rcu.c</b>.</p>
-<pre>874                                                                        {
-875   if (!field_name) {
-876     SET_ERRNO(ERROR_INVALID_PARAM, &quot;field_name is NULL&quot;);
-877     return ERROR_INVALID_PARAM;
-878   }
-879 
-880   // Validate field exists
-881   if (strcmp(field_name, &quot;no_compress&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;encode_audio&quot;) != 0 &amp;&amp;
-882       strcmp(field_name, &quot;flip_x&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;flip_y&quot;) != 0 &amp;&amp;
-883       strcmp(field_name, &quot;test_pattern&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;no_audio_mixer&quot;) != 0 &amp;&amp;
-884       strcmp(field_name, &quot;show_capabilities&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;force_utf8&quot;) != 0 &amp;&amp;
-885       strcmp(field_name, &quot;audio_enabled&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;audio_analysis_enabled&quot;) != 0 &amp;&amp;
-886       strcmp(field_name, &quot;audio_no_playback&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;stretch&quot;) != 0 &amp;&amp;
-887       strcmp(field_name, &quot;snapshot_mode&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;strip_ansi&quot;) != 0 &amp;&amp;
-888       strcmp(field_name, &quot;quiet&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;encrypt_enabled&quot;) != 0 &amp;&amp;
-889       strcmp(field_name, &quot;no_encrypt&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;discovery&quot;) != 0 &amp;&amp;
-890       strcmp(field_name, &quot;discovery_expose_ip&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;discovery_insecure&quot;) != 0 &amp;&amp;
-891       strcmp(field_name, &quot;webrtc&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;lan_discovery&quot;) != 0 &amp;&amp;
-892       strcmp(field_name, &quot;no_mdns_advertise&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;prefer_webrtc&quot;) != 0 &amp;&amp;
-893       strcmp(field_name, &quot;no_webrtc&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;webrtc_skip_stun&quot;) != 0 &amp;&amp;
-894       strcmp(field_name, &quot;webrtc_disable_turn&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;enable_upnp&quot;) != 0 &amp;&amp;
-895       strcmp(field_name, &quot;require_server_identity&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;require_client_identity&quot;) != 0 &amp;&amp;
-896       strcmp(field_name, &quot;require_server_verify&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;require_client_verify&quot;) != 0 &amp;&amp;
-897       strcmp(field_name, &quot;palette_custom_set&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;media_loop&quot;) != 0 &amp;&amp;
-898       strcmp(field_name, &quot;media_from_stdin&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;auto_width&quot;) != 0 &amp;&amp;
-899       strcmp(field_name, &quot;auto_height&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;splash_screen&quot;) != 0 &amp;&amp;
-900       strcmp(field_name, &quot;status_screen&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;matrix_rain&quot;) != 0 &amp;&amp;
-901       strcmp(field_name, &quot;fps_counter&quot;) != 0) {
-902     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown boolean field: %s&quot;, field_name);
-903     return ERROR_INVALID_PARAM;
-904   }
-905 
-906   // Pre-validate against registry metadata (for cross-field validators)
-907   {
-908     const options_t *cur = options_get();
-909     options_t temp = *cur;
-910     // Manually set the field in temp to validate
-911     if (strcmp(field_name, &quot;no_compress&quot;) == 0)
-912       temp.no_compress = value;
-913     else if (strcmp(field_name, &quot;encode_audio&quot;) == 0)
-914       temp.encode_audio = value;
-915     else if (strcmp(field_name, &quot;flip_x&quot;) == 0)
-916       temp.flip_x = value;
-917     else if (strcmp(field_name, &quot;flip_y&quot;) == 0)
-918       temp.flip_y = value;
-919     else if (strcmp(field_name, &quot;test_pattern&quot;) == 0)
-920       temp.test_pattern = value;
-921     else if (strcmp(field_name, &quot;no_audio_mixer&quot;) == 0)
-922       temp.no_audio_mixer = value;
-923     else if (strcmp(field_name, &quot;show_capabilities&quot;) == 0)
-924       temp.show_capabilities = value;
-925     else if (strcmp(field_name, &quot;force_utf8&quot;) == 0)
-926       temp.force_utf8 = value;
-927     else if (strcmp(field_name, &quot;audio_enabled&quot;) == 0)
-928       temp.audio_enabled = value;
-929     else if (strcmp(field_name, &quot;audio_analysis_enabled&quot;) == 0)
-930       temp.audio_analysis_enabled = value;
-931     else if (strcmp(field_name, &quot;audio_no_playback&quot;) == 0)
-932       temp.audio_no_playback = value;
-933     else if (strcmp(field_name, &quot;stretch&quot;) == 0)
-934       temp.stretch = value;
-935     else if (strcmp(field_name, &quot;snapshot_mode&quot;) == 0)
-936       temp.snapshot_mode = value;
-937     else if (strcmp(field_name, &quot;strip_ansi&quot;) == 0)
-938       temp.strip_ansi = value;
-939     else if (strcmp(field_name, &quot;quiet&quot;) == 0)
-940       temp.quiet = value;
-941     else if (strcmp(field_name, &quot;encrypt_enabled&quot;) == 0)
-942       temp.encrypt_enabled = value;
-943     else if (strcmp(field_name, &quot;no_encrypt&quot;) == 0)
-944       temp.no_encrypt = value;
-945     else if (strcmp(field_name, &quot;discovery&quot;) == 0)
-946       temp.discovery = value;
-947     else if (strcmp(field_name, &quot;discovery_expose_ip&quot;) == 0)
-948       temp.discovery_expose_ip = value;
-949     else if (strcmp(field_name, &quot;discovery_insecure&quot;) == 0)
-950       temp.discovery_insecure = value;
-951     else if (strcmp(field_name, &quot;webrtc&quot;) == 0)
-952       temp.webrtc = value;
-953     else if (strcmp(field_name, &quot;lan_discovery&quot;) == 0)
-954       temp.lan_discovery = value;
-955     else if (strcmp(field_name, &quot;no_mdns_advertise&quot;) == 0)
-956       temp.no_mdns_advertise = value;
-957     else if (strcmp(field_name, &quot;prefer_webrtc&quot;) == 0)
-958       temp.prefer_webrtc = value;
-959     else if (strcmp(field_name, &quot;no_webrtc&quot;) == 0)
-960       temp.no_webrtc = value;
-961     else if (strcmp(field_name, &quot;webrtc_skip_stun&quot;) == 0)
-962       temp.webrtc_skip_stun = value;
-963     else if (strcmp(field_name, &quot;webrtc_disable_turn&quot;) == 0)
-964       temp.webrtc_disable_turn = value;
-965     else if (strcmp(field_name, &quot;enable_upnp&quot;) == 0)
-966       temp.enable_upnp = value;
-967     else if (strcmp(field_name, &quot;require_server_identity&quot;) == 0)
-968       temp.require_server_identity = value;
-969     else if (strcmp(field_name, &quot;require_client_identity&quot;) == 0)
-970       temp.require_client_identity = value;
-971     else if (strcmp(field_name, &quot;require_server_verify&quot;) == 0)
-972       temp.require_server_verify = value;
-973     else if (strcmp(field_name, &quot;require_client_verify&quot;) == 0)
-974       temp.require_client_verify = value;
-975     else if (strcmp(field_name, &quot;palette_custom_set&quot;) == 0)
-976       temp.palette_custom_set = value;
-977     else if (strcmp(field_name, &quot;media_loop&quot;) == 0)
-978       temp.media_loop = value;
-979     else if (strcmp(field_name, &quot;media_from_stdin&quot;) == 0)
-980       temp.media_from_stdin = value;
-981     else if (strcmp(field_name, &quot;auto_width&quot;) == 0)
-982       temp.auto_width = value;
-983     else if (strcmp(field_name, &quot;auto_height&quot;) == 0)
-984       temp.auto_height = value;
-985     else if (strcmp(field_name, &quot;splash_screen&quot;) == 0)
-986       temp.splash_screen = value;
-987     else if (strcmp(field_name, &quot;status_screen&quot;) == 0)
-988       temp.status_screen = value;
-989     else if (strcmp(field_name, &quot;matrix_rain&quot;) == 0)
-990       temp.matrix_rain = value;
-991     else if (strcmp(field_name, &quot;fps_counter&quot;) == 0)
-992       temp.fps_counter = value;
-993 
-994     asciichat_error_t err = rcu_validate_field(field_name, &amp;temp);
-995     if (err != ASCIICHAT_OK) return err;
-996   }
-997 
-998   bool_field_ctx_t ctx = {.field_name = field_name, .value = value};
-999   return options_update(bool_field_updater, &amp;ctx);
-1000 }</pre>
+<p class="Pp">Definition at line <b>894</b> of file <b>rcu.c</b>.</p>
+<pre>894                                                                        {
+895   if (!field_name) {
+896     SET_ERRNO(ERROR_INVALID_PARAM, &quot;field_name is NULL&quot;);
+897     return ERROR_INVALID_PARAM;
+898   }
+899 
+900   // Validate field exists
+901   if (strcmp(field_name, &quot;no_compress&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;encode_audio&quot;) != 0 &amp;&amp;
+902       strcmp(field_name, &quot;flip_x&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;flip_y&quot;) != 0 &amp;&amp;
+903       strcmp(field_name, &quot;test_pattern&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;no_audio_mixer&quot;) != 0 &amp;&amp;
+904       strcmp(field_name, &quot;show_capabilities&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;force_utf8&quot;) != 0 &amp;&amp;
+905       strcmp(field_name, &quot;audio_enabled&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;audio_analysis_enabled&quot;) != 0 &amp;&amp;
+906       strcmp(field_name, &quot;audio_no_playback&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;stretch&quot;) != 0 &amp;&amp;
+907       strcmp(field_name, &quot;snapshot_mode&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;strip_ansi&quot;) != 0 &amp;&amp;
+908       strcmp(field_name, &quot;quiet&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;encrypt_enabled&quot;) != 0 &amp;&amp;
+909       strcmp(field_name, &quot;no_encrypt&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;discovery&quot;) != 0 &amp;&amp;
+910       strcmp(field_name, &quot;discovery_expose_ip&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;discovery_insecure&quot;) != 0 &amp;&amp;
+911       strcmp(field_name, &quot;webrtc&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;lan_discovery&quot;) != 0 &amp;&amp;
+912       strcmp(field_name, &quot;no_mdns_advertise&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;prefer_webrtc&quot;) != 0 &amp;&amp;
+913       strcmp(field_name, &quot;no_webrtc&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;webrtc_skip_stun&quot;) != 0 &amp;&amp;
+914       strcmp(field_name, &quot;webrtc_disable_turn&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;enable_upnp&quot;) != 0 &amp;&amp;
+915       strcmp(field_name, &quot;require_server_identity&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;require_client_identity&quot;) != 0 &amp;&amp;
+916       strcmp(field_name, &quot;require_server_verify&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;require_client_verify&quot;) != 0 &amp;&amp;
+917       strcmp(field_name, &quot;palette_custom_set&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;media_loop&quot;) != 0 &amp;&amp;
+918       strcmp(field_name, &quot;media_from_stdin&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;auto_width&quot;) != 0 &amp;&amp;
+919       strcmp(field_name, &quot;auto_height&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;splash_screen&quot;) != 0 &amp;&amp;
+920       strcmp(field_name, &quot;status_screen&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;matrix_rain&quot;) != 0 &amp;&amp;
+921       strcmp(field_name, &quot;fps_counter&quot;) != 0) {
+922     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown boolean field: %s&quot;, field_name);
+923     return ERROR_INVALID_PARAM;
+924   }
+925 
+926   // Pre-validate against registry metadata (for cross-field validators)
+927   {
+928     const options_t *cur = options_get();
+929 
+930     // Skip RCU update if value is already set
+931     bool cur_value = false;
+932     if (strcmp(field_name, &quot;no_compress&quot;) == 0) cur_value = cur-&gt;no_compress;
+933     else if (strcmp(field_name, &quot;encode_audio&quot;) == 0) cur_value = cur-&gt;encode_audio;
+934     else if (strcmp(field_name, &quot;flip_x&quot;) == 0) cur_value = cur-&gt;flip_x;
+935     else if (strcmp(field_name, &quot;flip_y&quot;) == 0) cur_value = cur-&gt;flip_y;
+936     else if (strcmp(field_name, &quot;test_pattern&quot;) == 0) cur_value = cur-&gt;test_pattern;
+937     else if (strcmp(field_name, &quot;matrix_rain&quot;) == 0) cur_value = cur-&gt;matrix_rain;
+938     else if (strcmp(field_name, &quot;fps_counter&quot;) == 0) cur_value = cur-&gt;fps_counter;
+939     else if (strcmp(field_name, &quot;splash_screen&quot;) == 0) cur_value = cur-&gt;splash_screen;
+940     else if (strcmp(field_name, &quot;status_screen&quot;) == 0) cur_value = cur-&gt;status_screen;
+941     // For less common fields, always update (safe default)
+942     else cur_value = !value;
+943     if (cur_value == value) return ASCIICHAT_OK;
+944 
+945     options_t temp = *cur;
+946     // Manually set the field in temp to validate
+947     if (strcmp(field_name, &quot;no_compress&quot;) == 0)
+948       temp.no_compress = value;
+949     else if (strcmp(field_name, &quot;encode_audio&quot;) == 0)
+950       temp.encode_audio = value;
+951     else if (strcmp(field_name, &quot;flip_x&quot;) == 0)
+952       temp.flip_x = value;
+953     else if (strcmp(field_name, &quot;flip_y&quot;) == 0)
+954       temp.flip_y = value;
+955     else if (strcmp(field_name, &quot;test_pattern&quot;) == 0)
+956       temp.test_pattern = value;
+957     else if (strcmp(field_name, &quot;no_audio_mixer&quot;) == 0)
+958       temp.no_audio_mixer = value;
+959     else if (strcmp(field_name, &quot;show_capabilities&quot;) == 0)
+960       temp.show_capabilities = value;
+961     else if (strcmp(field_name, &quot;force_utf8&quot;) == 0)
+962       temp.force_utf8 = value;
+963     else if (strcmp(field_name, &quot;audio_enabled&quot;) == 0)
+964       temp.audio_enabled = value;
+965     else if (strcmp(field_name, &quot;audio_analysis_enabled&quot;) == 0)
+966       temp.audio_analysis_enabled = value;
+967     else if (strcmp(field_name, &quot;audio_no_playback&quot;) == 0)
+968       temp.audio_no_playback = value;
+969     else if (strcmp(field_name, &quot;stretch&quot;) == 0)
+970       temp.stretch = value;
+971     else if (strcmp(field_name, &quot;snapshot_mode&quot;) == 0)
+972       temp.snapshot_mode = value;
+973     else if (strcmp(field_name, &quot;strip_ansi&quot;) == 0)
+974       temp.strip_ansi = value;
+975     else if (strcmp(field_name, &quot;quiet&quot;) == 0)
+976       temp.quiet = value;
+977     else if (strcmp(field_name, &quot;encrypt_enabled&quot;) == 0)
+978       temp.encrypt_enabled = value;
+979     else if (strcmp(field_name, &quot;no_encrypt&quot;) == 0)
+980       temp.no_encrypt = value;
+981     else if (strcmp(field_name, &quot;discovery&quot;) == 0)
+982       temp.discovery = value;
+983     else if (strcmp(field_name, &quot;discovery_expose_ip&quot;) == 0)
+984       temp.discovery_expose_ip = value;
+985     else if (strcmp(field_name, &quot;discovery_insecure&quot;) == 0)
+986       temp.discovery_insecure = value;
+987     else if (strcmp(field_name, &quot;webrtc&quot;) == 0)
+988       temp.webrtc = value;
+989     else if (strcmp(field_name, &quot;lan_discovery&quot;) == 0)
+990       temp.lan_discovery = value;
+991     else if (strcmp(field_name, &quot;no_mdns_advertise&quot;) == 0)
+992       temp.no_mdns_advertise = value;
+993     else if (strcmp(field_name, &quot;prefer_webrtc&quot;) == 0)
+994       temp.prefer_webrtc = value;
+995     else if (strcmp(field_name, &quot;no_webrtc&quot;) == 0)
+996       temp.no_webrtc = value;
+997     else if (strcmp(field_name, &quot;webrtc_skip_stun&quot;) == 0)
+998       temp.webrtc_skip_stun = value;
+999     else if (strcmp(field_name, &quot;webrtc_disable_turn&quot;) == 0)
+1000       temp.webrtc_disable_turn = value;
+1001     else if (strcmp(field_name, &quot;enable_upnp&quot;) == 0)
+1002       temp.enable_upnp = value;
+1003     else if (strcmp(field_name, &quot;require_server_identity&quot;) == 0)
+1004       temp.require_server_identity = value;
+1005     else if (strcmp(field_name, &quot;require_client_identity&quot;) == 0)
+1006       temp.require_client_identity = value;
+1007     else if (strcmp(field_name, &quot;require_server_verify&quot;) == 0)
+1008       temp.require_server_verify = value;
+1009     else if (strcmp(field_name, &quot;require_client_verify&quot;) == 0)
+1010       temp.require_client_verify = value;
+1011     else if (strcmp(field_name, &quot;palette_custom_set&quot;) == 0)
+1012       temp.palette_custom_set = value;
+1013     else if (strcmp(field_name, &quot;media_loop&quot;) == 0)
+1014       temp.media_loop = value;
+1015     else if (strcmp(field_name, &quot;media_from_stdin&quot;) == 0)
+1016       temp.media_from_stdin = value;
+1017     else if (strcmp(field_name, &quot;auto_width&quot;) == 0)
+1018       temp.auto_width = value;
+1019     else if (strcmp(field_name, &quot;auto_height&quot;) == 0)
+1020       temp.auto_height = value;
+1021     else if (strcmp(field_name, &quot;splash_screen&quot;) == 0)
+1022       temp.splash_screen = value;
+1023     else if (strcmp(field_name, &quot;status_screen&quot;) == 0)
+1024       temp.status_screen = value;
+1025     else if (strcmp(field_name, &quot;matrix_rain&quot;) == 0)
+1026       temp.matrix_rain = value;
+1027     else if (strcmp(field_name, &quot;fps_counter&quot;) == 0)
+1028       temp.fps_counter = value;
+1029 
+1030     asciichat_error_t err = rcu_validate_field(field_name, &amp;temp);
+1031     if (err != ASCIICHAT_OK) return err;
+1032   }
+1033 
+1034   bool_field_ctx_t ctx = {.field_name = field_name, .value = value};
+1035   return options_update(bool_field_updater, &amp;ctx);
+1036 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -6419,46 +6435,46 @@ if (help) {
   field_name, double value)</h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>1148</b> of file <b>rcu.c</b>.</p>
-<pre>1148                                                                            {
-1149   if (!field_name) {
-1150     SET_ERRNO(ERROR_INVALID_PARAM, &quot;field_name is NULL&quot;);
-1151     return ERROR_INVALID_PARAM;
-1152   }
-1153 
-1154   // Normalize option names to internal field names
-1155   const char *internal_name = field_name;
-1156   if (strcmp(field_name, &quot;microphone-volume&quot;) == 0 || strcmp(field_name, &quot;ivolume&quot;) == 0) {
-1157     internal_name = &quot;microphone_sensitivity&quot;;
-1158   } else if (strcmp(field_name, &quot;speakers-volume&quot;) == 0 || strcmp(field_name, &quot;volume&quot;) == 0) {
-1159     internal_name = &quot;speakers_volume&quot;;
-1160   }
-1161 
-1162   if (strcmp(internal_name, &quot;snapshot_delay&quot;) != 0 &amp;&amp; strcmp(internal_name, &quot;microphone_sensitivity&quot;) != 0 &amp;&amp;
-1163       strcmp(internal_name, &quot;speakers_volume&quot;) != 0) {
-1164     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown double field: %s&quot;, field_name);
-1165     return ERROR_INVALID_PARAM;
-1166   }
-1167 
-1168   // Pre-validate against registry metadata (if available)
-1169   {
-1170     const options_t *cur = options_get();
-1171     options_t temp = *cur;
-1172     // Manually set the field in temp to validate
-1173     if (strcmp(internal_name, &quot;snapshot_delay&quot;) == 0)
-1174       temp.snapshot_delay = value;
-1175     else if (strcmp(internal_name, &quot;microphone_sensitivity&quot;) == 0)
-1176       temp.microphone_sensitivity = value;
-1177     else if (strcmp(internal_name, &quot;speakers_volume&quot;) == 0)
-1178       temp.speakers_volume = value;
-1179 
-1180     asciichat_error_t err = rcu_validate_field(internal_name, &amp;temp);
-1181     if (err != ASCIICHAT_OK) return err;
-1182   }
-1183 
-1184   double_field_ctx_t ctx = {.field_name = internal_name, .value = value};
-1185   return options_update(double_field_updater, &amp;ctx);
-1186 }</pre>
+<p class="Pp">Definition at line <b>1184</b> of file <b>rcu.c</b>.</p>
+<pre>1184                                                                            {
+1185   if (!field_name) {
+1186     SET_ERRNO(ERROR_INVALID_PARAM, &quot;field_name is NULL&quot;);
+1187     return ERROR_INVALID_PARAM;
+1188   }
+1189 
+1190   // Normalize option names to internal field names
+1191   const char *internal_name = field_name;
+1192   if (strcmp(field_name, &quot;microphone-volume&quot;) == 0 || strcmp(field_name, &quot;ivolume&quot;) == 0) {
+1193     internal_name = &quot;microphone_sensitivity&quot;;
+1194   } else if (strcmp(field_name, &quot;speakers-volume&quot;) == 0 || strcmp(field_name, &quot;volume&quot;) == 0) {
+1195     internal_name = &quot;speakers_volume&quot;;
+1196   }
+1197 
+1198   if (strcmp(internal_name, &quot;snapshot_delay&quot;) != 0 &amp;&amp; strcmp(internal_name, &quot;microphone_sensitivity&quot;) != 0 &amp;&amp;
+1199       strcmp(internal_name, &quot;speakers_volume&quot;) != 0) {
+1200     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown double field: %s&quot;, field_name);
+1201     return ERROR_INVALID_PARAM;
+1202   }
+1203 
+1204   // Pre-validate against registry metadata (if available)
+1205   {
+1206     const options_t *cur = options_get();
+1207     options_t temp = *cur;
+1208     // Manually set the field in temp to validate
+1209     if (strcmp(internal_name, &quot;snapshot_delay&quot;) == 0)
+1210       temp.snapshot_delay = value;
+1211     else if (strcmp(internal_name, &quot;microphone_sensitivity&quot;) == 0)
+1212       temp.microphone_sensitivity = value;
+1213     else if (strcmp(internal_name, &quot;speakers_volume&quot;) == 0)
+1214       temp.speakers_volume = value;
+1215 
+1216     asciichat_error_t err = rcu_validate_field(internal_name, &amp;temp);
+1217     if (err != ASCIICHAT_OK) return err;
+1218   }
+1219 
+1220   double_field_ctx_t ctx = {.field_name = internal_name, .value = value};
+1221   return options_update(double_field_updater, &amp;ctx);
+1222 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -6537,46 +6553,66 @@ options_set_bool(&quot;audio_enabled&quot;, true);
 736   // Pre-validate against registry metadata
 737   {
 738     const options_t *cur = options_get();
-739     options_t temp = *cur;
-740     // Manually set the field in temp to validate
-741     if (strcmp(field_name, &quot;width&quot;) == 0)
-742       temp.width = value;
-743     else if (strcmp(field_name, &quot;height&quot;) == 0)
-744       temp.height = value;
-745     else if (strcmp(field_name, &quot;max_clients&quot;) == 0)
-746       temp.max_clients = value;
-747     else if (strcmp(field_name, &quot;compression_level&quot;) == 0)
-748       temp.compression_level = value;
-749     else if (strcmp(field_name, &quot;reconnect_attempts&quot;) == 0)
-750       temp.reconnect_attempts = value;
-751     else if (strcmp(field_name, &quot;microphone_index&quot;) == 0)
-752       temp.microphone_index = value;
-753     else if (strcmp(field_name, &quot;speakers_index&quot;) == 0)
-754       temp.speakers_index = value;
-755     else if (strcmp(field_name, &quot;discovery_port&quot;) == 0)
-756       temp.discovery_port = value;
-757     else if (strcmp(field_name, &quot;port&quot;) == 0)
-758       temp.port = value;
-759     else if (strcmp(field_name, &quot;fps&quot;) == 0)
-760       temp.fps = value;
-761     else if (strcmp(field_name, &quot;color_mode&quot;) == 0)
-762       temp.color_mode = (terminal_color_mode_t)value;
-763     else if (strcmp(field_name, &quot;color_filter&quot;) == 0)
-764       temp.color_filter = (color_filter_t)value;
-765     else if (strcmp(field_name, &quot;render_mode&quot;) == 0)
-766       temp.render_mode = (render_mode_t)value;
-767     else if (strcmp(field_name, &quot;log_level&quot;) == 0)
-768       temp.log_level = (log_level_t)value;
-769     else if (strcmp(field_name, &quot;palette_type&quot;) == 0)
-770       temp.palette_type = (palette_type_t)value;
-771 
-772     asciichat_error_t err = rcu_validate_field(field_name, &amp;temp);
-773     if (err != ASCIICHAT_OK) return err;
-774   }
-775 
-776   int_field_ctx_t ctx = {.field_name = field_name, .value = value};
-777   return options_update(int_field_updater, &amp;ctx);
-778 }</pre>
+739 
+740     // Skip RCU update if value is already set (avoids unnecessary alloc+deferred-free)
+741     int cur_value = 0;
+742     if (strcmp(field_name, &quot;width&quot;) == 0) cur_value = cur-&gt;width;
+743     else if (strcmp(field_name, &quot;height&quot;) == 0) cur_value = cur-&gt;height;
+744     else if (strcmp(field_name, &quot;max_clients&quot;) == 0) cur_value = cur-&gt;max_clients;
+745     else if (strcmp(field_name, &quot;compression_level&quot;) == 0) cur_value = cur-&gt;compression_level;
+746     else if (strcmp(field_name, &quot;reconnect_attempts&quot;) == 0) cur_value = cur-&gt;reconnect_attempts;
+747     else if (strcmp(field_name, &quot;microphone_index&quot;) == 0) cur_value = cur-&gt;microphone_index;
+748     else if (strcmp(field_name, &quot;speakers_index&quot;) == 0) cur_value = cur-&gt;speakers_index;
+749     else if (strcmp(field_name, &quot;discovery_port&quot;) == 0) cur_value = cur-&gt;discovery_port;
+750     else if (strcmp(field_name, &quot;port&quot;) == 0) cur_value = cur-&gt;port;
+751     else if (strcmp(field_name, &quot;fps&quot;) == 0) cur_value = cur-&gt;fps;
+752     else if (strcmp(field_name, &quot;color_mode&quot;) == 0) cur_value = (int)cur-&gt;color_mode;
+753     else if (strcmp(field_name, &quot;color_filter&quot;) == 0) cur_value = (int)cur-&gt;color_filter;
+754     else if (strcmp(field_name, &quot;render_mode&quot;) == 0) cur_value = (int)cur-&gt;render_mode;
+755     else if (strcmp(field_name, &quot;log_level&quot;) == 0) cur_value = (int)cur-&gt;log_level;
+756     else if (strcmp(field_name, &quot;palette_type&quot;) == 0) cur_value = (int)cur-&gt;palette_type;
+757     if (cur_value == value) return ASCIICHAT_OK;
+758 
+759     options_t temp = *cur;
+760     // Manually set the field in temp to validate
+761     if (strcmp(field_name, &quot;width&quot;) == 0)
+762       temp.width = value;
+763     else if (strcmp(field_name, &quot;height&quot;) == 0)
+764       temp.height = value;
+765     else if (strcmp(field_name, &quot;max_clients&quot;) == 0)
+766       temp.max_clients = value;
+767     else if (strcmp(field_name, &quot;compression_level&quot;) == 0)
+768       temp.compression_level = value;
+769     else if (strcmp(field_name, &quot;reconnect_attempts&quot;) == 0)
+770       temp.reconnect_attempts = value;
+771     else if (strcmp(field_name, &quot;microphone_index&quot;) == 0)
+772       temp.microphone_index = value;
+773     else if (strcmp(field_name, &quot;speakers_index&quot;) == 0)
+774       temp.speakers_index = value;
+775     else if (strcmp(field_name, &quot;discovery_port&quot;) == 0)
+776       temp.discovery_port = value;
+777     else if (strcmp(field_name, &quot;port&quot;) == 0)
+778       temp.port = value;
+779     else if (strcmp(field_name, &quot;fps&quot;) == 0)
+780       temp.fps = value;
+781     else if (strcmp(field_name, &quot;color_mode&quot;) == 0)
+782       temp.color_mode = (terminal_color_mode_t)value;
+783     else if (strcmp(field_name, &quot;color_filter&quot;) == 0)
+784       temp.color_filter = (color_filter_t)value;
+785     else if (strcmp(field_name, &quot;render_mode&quot;) == 0)
+786       temp.render_mode = (render_mode_t)value;
+787     else if (strcmp(field_name, &quot;log_level&quot;) == 0)
+788       temp.log_level = (log_level_t)value;
+789     else if (strcmp(field_name, &quot;palette_type&quot;) == 0)
+790       temp.palette_type = (palette_type_t)value;
+791 
+792     asciichat_error_t err = rcu_validate_field(field_name, &amp;temp);
+793     if (err != ASCIICHAT_OK) return err;
+794   }
+795 
+796   int_field_ctx_t ctx = {.field_name = field_name, .value = value};
+797   return options_update(int_field_updater, &amp;ctx);
+798 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -6601,84 +6637,84 @@ options_set_bool(&quot;audio_enabled&quot;, true);
   field_name, const char * value)</h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/options/options.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>1052</b> of file <b>rcu.c</b>.</p>
-<pre>1052                                                                                 {
-1053   if (!field_name) {
-1054     SET_ERRNO(ERROR_INVALID_PARAM, &quot;field_name is NULL&quot;);
-1055     return ERROR_INVALID_PARAM;
-1056   }
-1057 
-1058   if (!value) {
-1059     SET_ERRNO(ERROR_INVALID_PARAM, &quot;value is NULL&quot;);
-1060     return ERROR_INVALID_PARAM;
-1061   }
-1062 
-1063   // Validate field exists
-1064   if (strcmp(field_name, &quot;address&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;address6&quot;) != 0 &amp;&amp;
-1065       strcmp(field_name, &quot;encrypt_key&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;password&quot;) != 0 &amp;&amp;
-1066       strcmp(field_name, &quot;encrypt_keyfile&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;server_key&quot;) != 0 &amp;&amp;
-1067       strcmp(field_name, &quot;client_keys&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;discovery_server&quot;) != 0 &amp;&amp;
-1068       strcmp(field_name, &quot;discovery_service_key&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;discovery_database_path&quot;) != 0 &amp;&amp;
-1069       strcmp(field_name, &quot;log_file&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;media_file&quot;) != 0 &amp;&amp;
-1070       strcmp(field_name, &quot;palette_custom&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;stun_servers&quot;) != 0 &amp;&amp;
-1071       strcmp(field_name, &quot;turn_servers&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;turn_username&quot;) != 0 &amp;&amp;
-1072       strcmp(field_name, &quot;turn_credential&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;turn_secret&quot;) != 0 &amp;&amp;
-1073       strcmp(field_name, &quot;session_string&quot;) != 0) {
-1074     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown string field: %s&quot;, field_name);
-1075     return ERROR_INVALID_PARAM;
-1076   }
-1077 
-1078   // Pre-validate against registry metadata (for cross-field validators)
-1079   {
-1080     const options_t *cur = options_get();
-1081     options_t temp = *cur;
-1082     // Manually set the field in temp to validate
-1083     if (strcmp(field_name, &quot;address&quot;) == 0)
-1084       SAFE_STRNCPY(temp.address, value, sizeof(temp.address));
-1085     else if (strcmp(field_name, &quot;address6&quot;) == 0)
-1086       SAFE_STRNCPY(temp.address6, value, sizeof(temp.address6));
-1087     else if (strcmp(field_name, &quot;encrypt_key&quot;) == 0)
-1088       SAFE_STRNCPY(temp.encrypt_key, value, sizeof(temp.encrypt_key));
-1089     else if (strcmp(field_name, &quot;password&quot;) == 0)
-1090       SAFE_STRNCPY(temp.password, value, sizeof(temp.password));
-1091     else if (strcmp(field_name, &quot;encrypt_keyfile&quot;) == 0)
-1092       SAFE_STRNCPY(temp.encrypt_keyfile, value, sizeof(temp.encrypt_keyfile));
-1093     else if (strcmp(field_name, &quot;server_key&quot;) == 0)
-1094       SAFE_STRNCPY(temp.server_key, value, sizeof(temp.server_key));
-1095     else if (strcmp(field_name, &quot;client_keys&quot;) == 0)
-1096       SAFE_STRNCPY(temp.client_keys, value, sizeof(temp.client_keys));
-1097     else if (strcmp(field_name, &quot;discovery_server&quot;) == 0)
-1098       SAFE_STRNCPY(temp.discovery_server, value, sizeof(temp.discovery_server));
-1099     else if (strcmp(field_name, &quot;discovery_service_key&quot;) == 0)
-1100       SAFE_STRNCPY(temp.discovery_service_key, value, sizeof(temp.discovery_service_key));
-1101     else if (strcmp(field_name, &quot;discovery_database_path&quot;) == 0)
-1102       SAFE_STRNCPY(temp.discovery_database_path, value, sizeof(temp.discovery_database_path));
-1103     else if (strcmp(field_name, &quot;log_file&quot;) == 0)
-1104       SAFE_STRNCPY(temp.log_file, value, sizeof(temp.log_file));
-1105     else if (strcmp(field_name, &quot;media_file&quot;) == 0)
-1106       SAFE_STRNCPY(temp.media_file, value, sizeof(temp.media_file));
-1107     else if (strcmp(field_name, &quot;palette_custom&quot;) == 0)
-1108       SAFE_STRNCPY(temp.palette_custom, value, sizeof(temp.palette_custom));
-1109     else if (strcmp(field_name, &quot;stun_servers&quot;) == 0)
-1110       SAFE_STRNCPY(temp.stun_servers, value, sizeof(temp.stun_servers));
-1111     else if (strcmp(field_name, &quot;turn_servers&quot;) == 0)
-1112       SAFE_STRNCPY(temp.turn_servers, value, sizeof(temp.turn_servers));
-1113     else if (strcmp(field_name, &quot;turn_username&quot;) == 0)
-1114       SAFE_STRNCPY(temp.turn_username, value, sizeof(temp.turn_username));
-1115     else if (strcmp(field_name, &quot;turn_credential&quot;) == 0)
-1116       SAFE_STRNCPY(temp.turn_credential, value, sizeof(temp.turn_credential));
-1117     else if (strcmp(field_name, &quot;turn_secret&quot;) == 0)
-1118       SAFE_STRNCPY(temp.turn_secret, value, sizeof(temp.turn_secret));
-1119     else if (strcmp(field_name, &quot;session_string&quot;) == 0)
-1120       SAFE_STRNCPY(temp.session_string, value, sizeof(temp.session_string));
-1121 
-1122     asciichat_error_t err = rcu_validate_field(field_name, &amp;temp);
-1123     if (err != ASCIICHAT_OK) return err;
-1124   }
-1125 
-1126   string_field_ctx_t ctx = {.field_name = field_name, .value = value};
-1127   return options_update(string_field_updater, &amp;ctx);
-1128 }</pre>
+<p class="Pp">Definition at line <b>1088</b> of file <b>rcu.c</b>.</p>
+<pre>1088                                                                                 {
+1089   if (!field_name) {
+1090     SET_ERRNO(ERROR_INVALID_PARAM, &quot;field_name is NULL&quot;);
+1091     return ERROR_INVALID_PARAM;
+1092   }
+1093 
+1094   if (!value) {
+1095     SET_ERRNO(ERROR_INVALID_PARAM, &quot;value is NULL&quot;);
+1096     return ERROR_INVALID_PARAM;
+1097   }
+1098 
+1099   // Validate field exists
+1100   if (strcmp(field_name, &quot;address&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;address6&quot;) != 0 &amp;&amp;
+1101       strcmp(field_name, &quot;encrypt_key&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;password&quot;) != 0 &amp;&amp;
+1102       strcmp(field_name, &quot;encrypt_keyfile&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;server_key&quot;) != 0 &amp;&amp;
+1103       strcmp(field_name, &quot;client_keys&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;discovery_server&quot;) != 0 &amp;&amp;
+1104       strcmp(field_name, &quot;discovery_service_key&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;discovery_database_path&quot;) != 0 &amp;&amp;
+1105       strcmp(field_name, &quot;log_file&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;media_file&quot;) != 0 &amp;&amp;
+1106       strcmp(field_name, &quot;palette_custom&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;stun_servers&quot;) != 0 &amp;&amp;
+1107       strcmp(field_name, &quot;turn_servers&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;turn_username&quot;) != 0 &amp;&amp;
+1108       strcmp(field_name, &quot;turn_credential&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;turn_secret&quot;) != 0 &amp;&amp;
+1109       strcmp(field_name, &quot;session_string&quot;) != 0) {
+1110     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown string field: %s&quot;, field_name);
+1111     return ERROR_INVALID_PARAM;
+1112   }
+1113 
+1114   // Pre-validate against registry metadata (for cross-field validators)
+1115   {
+1116     const options_t *cur = options_get();
+1117     options_t temp = *cur;
+1118     // Manually set the field in temp to validate
+1119     if (strcmp(field_name, &quot;address&quot;) == 0)
+1120       SAFE_STRNCPY(temp.address, value, sizeof(temp.address));
+1121     else if (strcmp(field_name, &quot;address6&quot;) == 0)
+1122       SAFE_STRNCPY(temp.address6, value, sizeof(temp.address6));
+1123     else if (strcmp(field_name, &quot;encrypt_key&quot;) == 0)
+1124       SAFE_STRNCPY(temp.encrypt_key, value, sizeof(temp.encrypt_key));
+1125     else if (strcmp(field_name, &quot;password&quot;) == 0)
+1126       SAFE_STRNCPY(temp.password, value, sizeof(temp.password));
+1127     else if (strcmp(field_name, &quot;encrypt_keyfile&quot;) == 0)
+1128       SAFE_STRNCPY(temp.encrypt_keyfile, value, sizeof(temp.encrypt_keyfile));
+1129     else if (strcmp(field_name, &quot;server_key&quot;) == 0)
+1130       SAFE_STRNCPY(temp.server_key, value, sizeof(temp.server_key));
+1131     else if (strcmp(field_name, &quot;client_keys&quot;) == 0)
+1132       SAFE_STRNCPY(temp.client_keys, value, sizeof(temp.client_keys));
+1133     else if (strcmp(field_name, &quot;discovery_server&quot;) == 0)
+1134       SAFE_STRNCPY(temp.discovery_server, value, sizeof(temp.discovery_server));
+1135     else if (strcmp(field_name, &quot;discovery_service_key&quot;) == 0)
+1136       SAFE_STRNCPY(temp.discovery_service_key, value, sizeof(temp.discovery_service_key));
+1137     else if (strcmp(field_name, &quot;discovery_database_path&quot;) == 0)
+1138       SAFE_STRNCPY(temp.discovery_database_path, value, sizeof(temp.discovery_database_path));
+1139     else if (strcmp(field_name, &quot;log_file&quot;) == 0)
+1140       SAFE_STRNCPY(temp.log_file, value, sizeof(temp.log_file));
+1141     else if (strcmp(field_name, &quot;media_file&quot;) == 0)
+1142       SAFE_STRNCPY(temp.media_file, value, sizeof(temp.media_file));
+1143     else if (strcmp(field_name, &quot;palette_custom&quot;) == 0)
+1144       SAFE_STRNCPY(temp.palette_custom, value, sizeof(temp.palette_custom));
+1145     else if (strcmp(field_name, &quot;stun_servers&quot;) == 0)
+1146       SAFE_STRNCPY(temp.stun_servers, value, sizeof(temp.stun_servers));
+1147     else if (strcmp(field_name, &quot;turn_servers&quot;) == 0)
+1148       SAFE_STRNCPY(temp.turn_servers, value, sizeof(temp.turn_servers));
+1149     else if (strcmp(field_name, &quot;turn_username&quot;) == 0)
+1150       SAFE_STRNCPY(temp.turn_username, value, sizeof(temp.turn_username));
+1151     else if (strcmp(field_name, &quot;turn_credential&quot;) == 0)
+1152       SAFE_STRNCPY(temp.turn_credential, value, sizeof(temp.turn_credential));
+1153     else if (strcmp(field_name, &quot;turn_secret&quot;) == 0)
+1154       SAFE_STRNCPY(temp.turn_secret, value, sizeof(temp.turn_secret));
+1155     else if (strcmp(field_name, &quot;session_string&quot;) == 0)
+1156       SAFE_STRNCPY(temp.session_string, value, sizeof(temp.session_string));
+1157 
+1158     asciichat_error_t err = rcu_validate_field(field_name, &amp;temp);
+1159     if (err != ASCIICHAT_OK) return err;
+1160   }
+1161 
+1162   string_field_ctx_t ctx = {.field_name = field_name, .value = value};
+1163   return options_update(string_field_updater, &amp;ctx);
+1164 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_state::address</b>,

@@ -784,7 +784,7 @@
 178 
 179   // Initialize logging to stderr (console.error in browser)
 180   WASM_LOG(&quot;Calling log_init...&quot;);
-181   log_init(NULL, LOG_DEV, true, false);
+181   log_init(NULL, LOG_DEBUG, true, false);
 182   // Use debug-style format in WASM so browser console shows full log headers
 183   log_set_format(OPT_LOG_TEMPLATE_DEFAULT_DEBUG, false);
 184   WASM_LOG(&quot;log_init OK&quot;);
@@ -810,7 +810,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_fast_init()</b>, <b>ASCIICHAT_OK</b>,
-    <b>CONNECTION_STATE_DISCONNECTED</b>, <b>LOG_DEV</b>, <b>log_info</b>,
+    <b>CONNECTION_STATE_DISCONNECTED</b>, <b>LOG_DEBUG</b>, <b>log_info</b>,
     <b>log_init()</b>, <b>log_set_format()</b>,
     <b>OPT_LOG_TEMPLATE_DEFAULT_DEBUG</b>, <b>options_init()</b>,
     <b>platform_init()</b>, <b>WASM_ERROR</b>, <b>WASM_LOG</b>,

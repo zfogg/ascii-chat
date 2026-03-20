@@ -257,7 +257,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_cas_int_impl()</b>, and
     <b>atomic_on_cas()</b>.</p>
-<p class="Pp">Referenced by <b>lifecycle_init_once()</b>.</p>
+<p class="Pp">Referenced by <b>lifecycle_init()</b>, and
+    <b>lifecycle_init_once()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> atomic_cas_int_impl (<b>atomic_t</b> * a, int64_t *
@@ -1118,10 +1119,9 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_on_store()</b>.</p>
-<p class="Pp">Referenced by <b>lifecycle_init()</b>,
-    <b>lifecycle_init_abort()</b>, <b>lifecycle_init_commit()</b>,
-    <b>lifecycle_shutdown()</b>, <b>log_destroy()</b>,
-    <b>log_disable_file_output()</b>, <b>log_init()</b>,
+<p class="Pp">Referenced by <b>lifecycle_init_abort()</b>,
+    <b>lifecycle_init_commit()</b>, <b>lifecycle_shutdown()</b>,
+    <b>log_destroy()</b>, <b>log_disable_file_output()</b>, <b>log_init()</b>,
     <b>log_search_enter_mode()</b>, <b>log_search_exit_mode()</b>,
     <b>log_search_init()</b>, <b>log_set_json_output()</b>, and
     <b>mutex_stack_cleanup()</b>.</p>

@@ -624,9 +624,9 @@
     <b>platform/wasm/terminal.c</b>.</p>
 <pre>146                                                            {
 147   terminal_capabilities_t caps = {0};
-148   caps.color_level = TERM_COLOR_256; // xterm.js supports 256 colors
+148   caps.color_level = TERM_COLOR_TRUECOLOR; // xterm.js supports truecolor
 149   caps.capabilities = 0;
-150   caps.color_count = 256;
+150   caps.color_count = 16777216;
 151   caps.utf8_support = true; // xterm.js supports UTF-8
 152   caps.detection_reliable = true;
 153   caps.render_mode = RENDER_MODE_FOREGROUND; // Default to foreground mode
@@ -649,7 +649,7 @@
     <b>terminal_capabilities_t::detection_reliable</b>,
     <b>terminal_capabilities_t::palette_type</b>, <b>platform_strlcpy()</b>,
     <b>terminal_capabilities_t::render_mode</b>, <b>RENDER_MODE_FOREGROUND</b>,
-    <b>TERM_COLOR_256</b>, <b>terminal_capabilities_t::term_type</b>,
+    <b>TERM_COLOR_TRUECOLOR</b>, <b>terminal_capabilities_t::term_type</b>,
     <b>terminal_capabilities_t::utf8_support</b>, and
     <b>terminal_capabilities_t::wants_background</b>.</p>
 <p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,

@@ -1,13 +1,15 @@
 import { Button, Heading } from "@ascii-chat/shared/components";
 import { AsciiChatWebHead } from "../components/AsciiChatWebHead";
 
-function Thing(
-  { mode_name, description, color }: {
-    mode_name: string;
-    description: string;
-    color: string;
-  },
-) {
+function LinkedItemWithDescription({
+  mode_name,
+  description,
+  color,
+}: {
+  mode_name: string;
+  description: string;
+  color: string;
+}) {
   return (
     <div className="flex gap-4 w-full justify-center">
       <Button
@@ -46,17 +48,17 @@ export function HomePage() {
         </p>
 
         <div className="space-y-4 flex flex-col items-center max-w-4xl">
-          <Thing
+          <LinkedItemWithDescription
             mode_name="mirror"
             description="Chat with yourself! Render ASCII art of your webcam webcam, files, or URLs, without any network activity."
             color="cyan"
           />
-          <Thing
+          <LinkedItemWithDescription
             mode_name="client"
             description="Connect to ascii-chat servers via WebSocket and URL or IP over WebSocket."
             color="green"
           />
-          <Thing
+          <LinkedItemWithDescription
             mode_name="discovery"
             description="Create or join a linkable session where someone can see your ASCII art face over WebSocket."
             color="magenta"

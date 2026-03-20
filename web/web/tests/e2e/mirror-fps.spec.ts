@@ -11,13 +11,13 @@
 import { test, expect } from "@playwright/test";
 
 const MIRROR_TEST_URL = "http://localhost:3000/mirror?test";
-const TEST_TIMEOUT = 60000;
+const TEST_TIMEOUT = 30000;
 
 // Minimum acceptable FPS for any setting
-const MIN_FPS = 20;
+const MIN_FPS = 58;
 
 // How long to measure FPS for each configuration (ms)
-const MEASURE_DURATION_MS = 3000;
+const MEASURE_DURATION_MS = 2000;
 
 /**
  * Wait for mirror to start rendering, then measure FPS over a duration
@@ -81,8 +81,8 @@ async function startMirror(page: import("@playwright/test").Page) {
   }
 
   await waitForRendering(page);
-  // Let it stabilize
-  await page.waitForTimeout(500);
+  // Let WASM/xterm.js JIT warmup stabilize before measuring
+  await page.waitForTimeout(3000);
 }
 
 /**
@@ -99,8 +99,8 @@ async function setColorFilter(
   await colorFilterSelect.selectOption(filter);
   await expect(colorFilterSelect).toHaveValue(filter);
   await page.click('button:text("Settings")');
-  // Let the new setting take effect
-  await page.waitForTimeout(300);
+  // Let the new setting take effect and RCU deferred frees settle
+  await page.waitForTimeout(1000);
 }
 
 /**
