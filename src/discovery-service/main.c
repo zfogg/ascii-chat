@@ -45,6 +45,19 @@ static nat_upnp_context_t *g_upnp_ctx = NULL;
 // Allows clients on local network to discover the ACDS server without knowing its IP
 static asciichat_mdns_t *g_mdns_ctx = NULL;
 
+// WebSocket event loop thread
+static asciichat_thread_t g_ws_thread;
+static bool g_ws_thread_started = false;
+
+static void *websocket_server_thread_wrapper(void *arg) {
+  websocket_server_t *server = (websocket_server_t *)arg;
+  asciichat_error_t result = websocket_server_run(server);
+  if (result != ASCIICHAT_OK) {
+    log_error("WebSocket server thread exited with error");
+  }
+  return NULL;
+}
+
 // Status screen tracking
 static time_t g_discovery_start_time = 0;
 static time_t g_last_status_update = 0;
@@ -303,6 +316,14 @@ int acds_main(void) {
     log_warn("Failed to initialize WebSocket server - browser clients will not be supported");
   } else {
     log_info("WebSocket server initialized on port %d", GET_OPTION(websocket_port));
+    // Start WebSocket event loop in background thread (services lws callbacks)
+    if (asciichat_thread_create(&g_ws_thread, "websocket_event_loop", websocket_server_thread_wrapper,
+                                &g_websocket_server) == 0) {
+      g_ws_thread_started = true;
+      log_info("WebSocket event loop thread started");
+    } else {
+      log_error("Failed to start WebSocket event loop thread");
+    }
   }
 
   // Initialize status tracking variables
@@ -414,7 +435,12 @@ cleanup_resources:
   acds_server_shutdown(&server);
   g_server = NULL;
 
-  // Destroy WebSocket server
+  // Stop and join WebSocket event loop thread
+  if (g_ws_thread_started) {
+    atomic_store_bool(&g_websocket_server.running, false);
+    asciichat_thread_join(&g_ws_thread, NULL);
+    g_ws_thread_started = false;
+  }
   websocket_server_destroy(&g_websocket_server);
   log_debug("WebSocket server destroyed");
 

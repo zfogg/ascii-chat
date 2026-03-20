@@ -17,10 +17,13 @@
  * ============================================================================ */
 
 /** @brief Major protocol version number */
-#define PROTOCOL_VERSION_MAJOR 1
+#define PROTOCOL_VERSION_MAJOR 2
 
 /** @brief Minor protocol version number */
-#define PROTOCOL_VERSION_MINOR 0
+#define PROTOCOL_VERSION_MINOR 2
+
+/** @brief Patch protocol version number */
+#define PROTOCOL_VERSION_PATCH 1
 
 /* ============================================================================
  * Feature Flags

@@ -8,6 +8,9 @@
  */
 
 #include <ascii-chat/network/websocket/server.h>
+#include <ascii-chat/version.h>
+#include <ascii-chat/common/protocol_constants.h>
+#include <yyjson.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/websocket.h>
@@ -557,6 +560,56 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     break;
   }
 
+  case LWS_CALLBACK_HTTP: {
+    // Serve /health endpoint for container health checks
+    const char *path = (const char *)in;
+    if (path && (strcmp(path, "/health") == 0 || strcmp(path, "health") == 0)) {
+      yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+      yyjson_mut_val *root = yyjson_mut_obj(doc);
+      yyjson_mut_doc_set_root(doc, root);
+      yyjson_mut_obj_add_str(doc, root, "status", "ok");
+      yyjson_mut_obj_add_str(doc, root, "version", ASCII_CHAT_VERSION_FULL);
+      char proto_ver[16];
+      snprintf(proto_ver, sizeof(proto_ver), "%d.%d.%d", PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR, PROTOCOL_VERSION_PATCH);
+      yyjson_mut_obj_add_str(doc, root, "protocol", proto_ver);
+
+      size_t json_len = 0;
+      char *json = yyjson_mut_write(doc, 0, &json_len);
+      yyjson_mut_doc_free(doc);
+      if (!json)
+        return -1;
+
+      unsigned char buf[LWS_PRE + 1024];
+      unsigned char *start = buf + LWS_PRE;
+      unsigned char *p = start;
+      unsigned char *end = buf + sizeof(buf);
+
+      if (lws_add_http_header_status(wsi, HTTP_STATUS_OK, &p, end) ||
+          lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE,
+                                       (const unsigned char *)"application/json", 16, &p, end) ||
+          lws_add_http_header_content_length(wsi, (lws_filepos_t)json_len, &p, end) ||
+          lws_finalize_http_header(wsi, &p, end)) {
+        free(json);
+        return -1;
+      }
+
+      memcpy(p, json, json_len);
+      p += json_len;
+      free(json);
+
+      if (lws_write(wsi, start, (size_t)(p - start), LWS_WRITE_HTTP_HEADERS) < 0)
+        return -1;
+      if (lws_http_transaction_completed(wsi))
+        return -1;
+      return 0;
+    }
+    // Reject other HTTP requests
+    lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, "Not Found");
+    if (lws_http_transaction_completed(wsi))
+      return -1;
+    return 0;
+  }
+
   case LWS_CALLBACK_FILTER_HTTP_CONNECTION: {
     // WebSocket upgrade handshake - allow all connections
     log_info("[FILTER_HTTP_CONNECTION] WebSocket upgrade request (allow protocol upgrade)");
@@ -692,10 +745,22 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   // Enable libwebsockets logging through centralized logging system
   lws_log_init_server();
 
+  // HTTP mount for /health endpoint (required for LWS_CALLBACK_HTTP to fire)
+  static const struct lws_http_mount health_mount = {
+      .mount_next = NULL,
+      .mountpoint = "/",
+      .mountpoint_len = 1,
+      .origin = "http",
+      .def = NULL,
+      .protocol = "http",
+      .origin_protocol = LWSMPRO_CALLBACK,
+  };
+
   // Configure libwebsockets context
   struct lws_context_creation_info info = {0};
   info.port = config->port;
   info.protocols = websocket_protocols;
+  info.mounts = &health_mount;
   info.gid = (gid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
   info.uid = (uid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT; // Initialize SSL/TLS support (required for server binding)

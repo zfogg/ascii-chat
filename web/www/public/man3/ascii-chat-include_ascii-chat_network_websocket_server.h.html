@@ -194,13 +194,13 @@ if (websocket_server_init(&amp;server, &amp;config) == ASCIICHAT_OK) {
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>server</i> Server instance (must have a valid
   context)</div>
-<p class="Pp">Definition at line <b>827</b> of file
+<p class="Pp">Definition at line <b>850</b> of file
     <b>lib/network/websocket/server.c</b>.</p>
-<pre>827                                                                  {
-828   if (server &amp;&amp; server-&gt;context) {
-829     lws_cancel_service(server-&gt;context);
-830   }
-831 }</pre>
+<pre>850                                                                  {
+851   if (server &amp;&amp; server-&gt;context) {
+852     lws_cancel_service(server-&gt;context);
+853   }
+854 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>websocket_server::context</b>.</p>
@@ -212,43 +212,43 @@ if (websocket_server_init(&amp;server, &amp;config) == ASCIICHAT_OK) {
 <p class="Pp">Destroy WebSocket server and free resources.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>server</i> Server instance to destroy</div>
-<p class="Pp">Definition at line <b>833</b> of file
+<p class="Pp">Definition at line <b>856</b> of file
     <b>lib/network/websocket/server.c</b>.</p>
-<pre>833                                                           {
-834   if (!server) {
-835     return;
-836   }
-837 
-838   atomic_store_bool(&amp;server-&gt;running, false);
-839 
-840   // Cancel any pending libwebsockets service calls to interrupt blocking lws_service()
-841   // This prevents the event loop from getting stuck in lws_service()
-842   if (server-&gt;context) {
-843     log_debug(&quot;[WEBSOCKET_SERVER_DESTROY] Cancelling libwebsockets service&quot;);
-844     lws_cancel_service(server-&gt;context);
-845   }
-846 
-847   // Unregister atomic fields
-848   NAMED_UNREGISTER(&amp;server-&gt;running);
-849 
-850   // Destroy handler thread pool (waits for pending work to complete)
-851   if (server-&gt;handler_pool) {
-852     thread_pool_destroy(server-&gt;handler_pool);
-853     server-&gt;handler_pool = NULL;
-854   }
-855 
-856   // Context is normally destroyed by websocket_server_run (from the event loop
-857   // thread) for fast shutdown. This handles the case where run() wasn't called
-858   // or didn't complete normally.
-859   if (server-&gt;context) {
-860     NAMED_UNREGISTER(server-&gt;context);
-861     log_debug(&quot;WebSocket context still alive in destroy, cleaning up&quot;);
-862     lws_context_destroy(server-&gt;context);
-863     server-&gt;context = NULL;
-864   }
-865 
-866   log_debug(&quot;WebSocket server destroyed&quot;);
-867 }</pre>
+<pre>856                                                           {
+857   if (!server) {
+858     return;
+859   }
+860 
+861   atomic_store_bool(&amp;server-&gt;running, false);
+862 
+863   // Cancel any pending libwebsockets service calls to interrupt blocking lws_service()
+864   // This prevents the event loop from getting stuck in lws_service()
+865   if (server-&gt;context) {
+866     log_debug(&quot;[WEBSOCKET_SERVER_DESTROY] Cancelling libwebsockets service&quot;);
+867     lws_cancel_service(server-&gt;context);
+868   }
+869 
+870   // Unregister atomic fields
+871   NAMED_UNREGISTER(&amp;server-&gt;running);
+872 
+873   // Destroy handler thread pool (waits for pending work to complete)
+874   if (server-&gt;handler_pool) {
+875     thread_pool_destroy(server-&gt;handler_pool);
+876     server-&gt;handler_pool = NULL;
+877   }
+878 
+879   // Context is normally destroyed by websocket_server_run (from the event loop
+880   // thread) for fast shutdown. This handles the case where run() wasn't called
+881   // or didn't complete normally.
+882   if (server-&gt;context) {
+883     NAMED_UNREGISTER(server-&gt;context);
+884     log_debug(&quot;WebSocket context still alive in destroy, cleaning up&quot;);
+885     lws_context_destroy(server-&gt;context);
+886     server-&gt;context = NULL;
+887   }
+888 
+889   log_debug(&quot;WebSocket server destroyed&quot;);
+890 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_bool()</b>,
@@ -270,120 +270,132 @@ if (websocket_server_init(&amp;server, &amp;config) == ASCIICHAT_OK) {
 <i></i><b>Config Module</b><i></i><b> Server configuration</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>677</b> of file
+<p class="Pp">Definition at line <b>688</b> of file
     <b>lib/network/websocket/server.c</b>.</p>
-<pre>677                                                                                                              {
-678   if (!server || !config || !config-&gt;client_handler) {
-679     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
-680   }
-681 
-682   memset(server, 0, sizeof(*server));
-683   server-&gt;handler = config-&gt;client_handler;
-684   server-&gt;user_data = config-&gt;user_data;
-685   server-&gt;port = config-&gt;port;
-686   atomic_store_bool(&amp;server-&gt;running, true);
-687 
-688   // Store server pointer in protocol user data so callbacks can access it
-689   websocket_protocols[0].user = server; // http protocol
-690   websocket_protocols[1].user = server; // acip protocol
-691 
-692   // Enable libwebsockets logging through centralized logging system
-693   lws_log_init_server();
-694 
-695   // Configure libwebsockets context
-696   struct lws_context_creation_info info = {0};
-697   info.port = config-&gt;port;
-698   info.protocols = websocket_protocols;
-699   info.gid = (gid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
-700   info.uid = (uid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
-701   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT; // Initialize SSL/TLS support (required for server binding)
-702   info.extensions = NULL;                              // Disable permessage-deflate - causing connection issues
-703   info.retry_and_idle_policy = &amp;keep_alive_policy; // Configure keep-alive to prevent idle disconnects during handshake
-704 
-705   // Configure TLS/WSS support if certificates are provided (check for non-empty strings)
-706   if (config-&gt;tls_cert_path &amp;&amp; config-&gt;tls_cert_path[0] != '\0' &amp;&amp; config-&gt;tls_key_path &amp;&amp;
-707       config-&gt;tls_key_path[0] != '\0') {
-708 #ifdef LWS_WITH_TLS
-709     // Validate certificate and key files are readable
-710     if (access(config-&gt;tls_cert_path, R_OK) != 0) {
-711       return SET_ERRNO(ERROR_NETWORK_BIND, &quot;TLS certificate file not readable: %s (errno=%d)&quot;, config-&gt;tls_cert_path,
-712                        errno);
-713     }
-714     if (access(config-&gt;tls_key_path, R_OK) != 0) {
-715       return SET_ERRNO(ERROR_NETWORK_BIND, &quot;TLS key file not readable: %s (errno=%d)&quot;, config-&gt;tls_key_path, errno);
-716     }
-717 
-718     info.ssl_cert_filepath = config-&gt;tls_cert_path;
-719     info.ssl_private_key_filepath = config-&gt;tls_key_path;
-720     log_info(&quot;WebSocket server configured for WSS (TLS): cert=%s, key=%s&quot;, config-&gt;tls_cert_path, config-&gt;tls_key_path);
-721 #else
-722     log_warn(&quot;WebSocket server: TLS support not compiled in libwebsockets; WSS unavailable&quot;);
-723 #endif
-724   } else if ((config-&gt;tls_cert_path &amp;&amp; config-&gt;tls_cert_path[0] != '\0') ||
-725              (config-&gt;tls_key_path &amp;&amp; config-&gt;tls_key_path[0] != '\0')) {
-726     log_warn(&quot;WebSocket server: Both TLS certificate and key must be provided for WSS; using plain WS&quot;);
-727   }
-728 
-729   // Increase per-thread service buffer to prevent fragmentation of large messages
-730   // Default is 4KB, causing large frames to fragment into many chunks
-731   // Video frames are 921KB, so increase to 2MB to handle them without fragmentation
-732   info.pt_serv_buf_size = 2 * 1024 * 1024; // 2MB per-thread service buffer
-733 
-734   // Disable ALL default timeouts and keep-alive mechanisms
-735   // Use only the explicit retry_and_idle_policy we set above (30/35 seconds)
-736   info.ka_time = 0;           // Disable TCP keep-alive probes (use WebSocket pings instead)
-737   info.ka_probes = 0;         // Disable TCP probes
-738   info.ka_interval = 0;       // Disable TCP probe intervals
-739   info.keepalive_timeout = 0; // Disable HTTP keep-alive timeout entirely
+<pre>688                                                                                                              {
+689   if (!server || !config || !config-&gt;client_handler) {
+690     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+691   }
+692 
+693   memset(server, 0, sizeof(*server));
+694   server-&gt;handler = config-&gt;client_handler;
+695   server-&gt;user_data = config-&gt;user_data;
+696   server-&gt;port = config-&gt;port;
+697   atomic_store_bool(&amp;server-&gt;running, true);
+698 
+699   // Store server pointer in protocol user data so callbacks can access it
+700   websocket_protocols[0].user = server; // http protocol
+701   websocket_protocols[1].user = server; // acip protocol
+702 
+703   // Enable libwebsockets logging through centralized logging system
+704   lws_log_init_server();
+705 
+706   // HTTP mount for /health endpoint (required for LWS_CALLBACK_HTTP to fire)
+707   static const struct lws_http_mount health_mount = {
+708       .mount_next = NULL,
+709       .mountpoint = &quot;/&quot;,
+710       .mountpoint_len = 1,
+711       .origin = &quot;http&quot;,
+712       .def = NULL,
+713       .protocol = &quot;http&quot;,
+714       .origin_protocol = LWSMPRO_CALLBACK,
+715   };
+716 
+717   // Configure libwebsockets context
+718   struct lws_context_creation_info info = {0};
+719   info.port = config-&gt;port;
+720   info.protocols = websocket_protocols;
+721   info.mounts = &amp;health_mount;
+722   info.gid = (gid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
+723   info.uid = (uid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
+724   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT; // Initialize SSL/TLS support (required for server binding)
+725   info.extensions = NULL;                              // Disable permessage-deflate - causing connection issues
+726   info.retry_and_idle_policy = &amp;keep_alive_policy; // Configure keep-alive to prevent idle disconnects during handshake
+727 
+728   // Configure TLS/WSS support if certificates are provided (check for non-empty strings)
+729   if (config-&gt;tls_cert_path &amp;&amp; config-&gt;tls_cert_path[0] != '\0' &amp;&amp; config-&gt;tls_key_path &amp;&amp;
+730       config-&gt;tls_key_path[0] != '\0') {
+731 #ifdef LWS_WITH_TLS
+732     // Validate certificate and key files are readable
+733     if (access(config-&gt;tls_cert_path, R_OK) != 0) {
+734       return SET_ERRNO(ERROR_NETWORK_BIND, &quot;TLS certificate file not readable: %s (errno=%d)&quot;, config-&gt;tls_cert_path,
+735                        errno);
+736     }
+737     if (access(config-&gt;tls_key_path, R_OK) != 0) {
+738       return SET_ERRNO(ERROR_NETWORK_BIND, &quot;TLS key file not readable: %s (errno=%d)&quot;, config-&gt;tls_key_path, errno);
+739     }
 740 
-741   // Explicitly set a very large idle timeout to prevent early disconnection
-742   // Without this, libwebsockets defaults to 5 seconds for HTTP connections
-743   // Set to effectively infinite (100 hours) since we use retry_and_idle_policy instead
-744   info.timeout_secs = 360000; // 100 hours - effectively disabled
-745 
-746   // Create libwebsockets context
-747   // Log diagnostic info before attempting creation
-748   log_debug(&quot;lws_create_context: port=%u, protocols=%p, options=0x%x&quot;, info.port, (void *)info.protocols, info.options);
-749 
-750   server-&gt;context = lws_create_context(&amp;info);
-751   if (!server-&gt;context) {
-752     // Capture any OpenSSL errors that may have occurred during context creation
-753     unsigned long ssl_err = 0;
-754     char ssl_err_str[256] = &quot;no OpenSSL errors in queue&quot;;
-755 
-756     // Extract all errors from OpenSSL error queue
-757     while ((ssl_err = ERR_get_error()) != 0) {
-758       ERR_error_string_n(ssl_err, ssl_err_str, sizeof(ssl_err_str));
-759       log_error(&quot;OpenSSL error: %lu: %s&quot;, ssl_err, ssl_err_str);
-760     }
-761 
-762     return SET_ERRNO(ERROR_NETWORK_BIND, &quot;Failed to create libwebsockets context (last OpenSSL error: %s)&quot;,
-763                      ssl_err_str);
-764   }
-765 
-766   // Create thread pool for handling client connections
-767   // Use 4 worker threads to handle concurrent client handlers without blocking LWS event loop
-768   server-&gt;handler_pool = thread_pool_create_with_workers(&quot;websocket_handlers&quot;, 4);
-769   if (!server-&gt;handler_pool) {
-770     lws_context_destroy(server-&gt;context);
-771     server-&gt;context = NULL;
-772     return SET_ERRNO(ERROR_THREAD, &quot;Failed to create WebSocket handler thread pool&quot;);
-773   }
-774 
-775   /* Register WebSocket server with named registry */
-776   char ws_port_name[32];
-777   snprintf(ws_port_name, sizeof(ws_port_name), &quot;ws:%d&quot;, server-&gt;port);
-778   NAMED_REGISTER(server, ws_port_name, &quot;websocket_server&quot;, &quot;0x%tx&quot;, NULL);
-779 
-780   /* Register server's sync primitives with hierarchical naming */
-781   NAMED_REGISTER_ATOMIC(&amp;server-&gt;running, &quot;is_running&quot;, (uintptr_t)(const void *)(server));
-782 
-783   /* Register WebSocket context as child of server */
-784   NAMED_REGISTER_WEBSOCKET(server-&gt;context, &quot;context&quot;, (uintptr_t)(const void *)(server));
-785 
-786   log_info(&quot;WebSocket server initialized on port %d with static file serving&quot;, config-&gt;port);
-787   return ASCIICHAT_OK;
-788 }</pre>
+741     info.ssl_cert_filepath = config-&gt;tls_cert_path;
+742     info.ssl_private_key_filepath = config-&gt;tls_key_path;
+743     log_info(&quot;WebSocket server configured for WSS (TLS): cert=%s, key=%s&quot;, config-&gt;tls_cert_path, config-&gt;tls_key_path);
+744 #else
+745     log_warn(&quot;WebSocket server: TLS support not compiled in libwebsockets; WSS unavailable&quot;);
+746 #endif
+747   } else if ((config-&gt;tls_cert_path &amp;&amp; config-&gt;tls_cert_path[0] != '\0') ||
+748              (config-&gt;tls_key_path &amp;&amp; config-&gt;tls_key_path[0] != '\0')) {
+749     log_warn(&quot;WebSocket server: Both TLS certificate and key must be provided for WSS; using plain WS&quot;);
+750   }
+751 
+752   // Increase per-thread service buffer to prevent fragmentation of large messages
+753   // Default is 4KB, causing large frames to fragment into many chunks
+754   // Video frames are 921KB, so increase to 2MB to handle them without fragmentation
+755   info.pt_serv_buf_size = 2 * 1024 * 1024; // 2MB per-thread service buffer
+756 
+757   // Disable ALL default timeouts and keep-alive mechanisms
+758   // Use only the explicit retry_and_idle_policy we set above (30/35 seconds)
+759   info.ka_time = 0;           // Disable TCP keep-alive probes (use WebSocket pings instead)
+760   info.ka_probes = 0;         // Disable TCP probes
+761   info.ka_interval = 0;       // Disable TCP probe intervals
+762   info.keepalive_timeout = 0; // Disable HTTP keep-alive timeout entirely
+763 
+764   // Explicitly set a very large idle timeout to prevent early disconnection
+765   // Without this, libwebsockets defaults to 5 seconds for HTTP connections
+766   // Set to effectively infinite (100 hours) since we use retry_and_idle_policy instead
+767   info.timeout_secs = 360000; // 100 hours - effectively disabled
+768 
+769   // Create libwebsockets context
+770   // Log diagnostic info before attempting creation
+771   log_debug(&quot;lws_create_context: port=%u, protocols=%p, options=0x%x&quot;, info.port, (void *)info.protocols, info.options);
+772 
+773   server-&gt;context = lws_create_context(&amp;info);
+774   if (!server-&gt;context) {
+775     // Capture any OpenSSL errors that may have occurred during context creation
+776     unsigned long ssl_err = 0;
+777     char ssl_err_str[256] = &quot;no OpenSSL errors in queue&quot;;
+778 
+779     // Extract all errors from OpenSSL error queue
+780     while ((ssl_err = ERR_get_error()) != 0) {
+781       ERR_error_string_n(ssl_err, ssl_err_str, sizeof(ssl_err_str));
+782       log_error(&quot;OpenSSL error: %lu: %s&quot;, ssl_err, ssl_err_str);
+783     }
+784 
+785     return SET_ERRNO(ERROR_NETWORK_BIND, &quot;Failed to create libwebsockets context (last OpenSSL error: %s)&quot;,
+786                      ssl_err_str);
+787   }
+788 
+789   // Create thread pool for handling client connections
+790   // Use 4 worker threads to handle concurrent client handlers without blocking LWS event loop
+791   server-&gt;handler_pool = thread_pool_create_with_workers(&quot;websocket_handlers&quot;, 4);
+792   if (!server-&gt;handler_pool) {
+793     lws_context_destroy(server-&gt;context);
+794     server-&gt;context = NULL;
+795     return SET_ERRNO(ERROR_THREAD, &quot;Failed to create WebSocket handler thread pool&quot;);
+796   }
+797 
+798   /* Register WebSocket server with named registry */
+799   char ws_port_name[32];
+800   snprintf(ws_port_name, sizeof(ws_port_name), &quot;ws:%d&quot;, server-&gt;port);
+801   NAMED_REGISTER(server, ws_port_name, &quot;websocket_server&quot;, &quot;0x%tx&quot;, NULL);
+802 
+803   /* Register server's sync primitives with hierarchical naming */
+804   NAMED_REGISTER_ATOMIC(&amp;server-&gt;running, &quot;is_running&quot;, (uintptr_t)(const void *)(server));
+805 
+806   /* Register WebSocket context as child of server */
+807   NAMED_REGISTER_WEBSOCKET(server-&gt;context, &quot;context&quot;, (uintptr_t)(const void *)(server));
+808 
+809   log_info(&quot;WebSocket server initialized on port %d with static file serving&quot;, config-&gt;port);
+810   return ASCIICHAT_OK;
+811 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
@@ -413,44 +425,44 @@ if (websocket_server_init(&amp;server, &amp;config) == ASCIICHAT_OK) {
 <div class="Bd-indent"><i>server</i> Server instance</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>790</b> of file
+<p class="Pp">Definition at line <b>813</b> of file
     <b>lib/network/websocket/server.c</b>.</p>
-<pre>790                                                                    {
-791   if (!server || !server-&gt;context) {
-792     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid server&quot;);
-793   }
-794 
-795   log_info(&quot;WebSocket server starting event loop on port %d&quot;, server-&gt;port);
-796 
-797   // Run libwebsockets event loop
-798   uint64_t last_service_ns = 0;
-799   int service_call_count = 0;
-800   while (atomic_load_bool(&amp;server-&gt;running)) {
-801     // Service libwebsockets with 16ms timeout to match 60 FPS frame rate.
-802     // This provides frequent event processing (~60 callback invocations per second) so that
-803     // WebSocket frames queued by the render loop are sent promptly, matching TCP performance.
-804     // All client connections share this single server context, so a single lws_service() call
-805     // services fragments and events for all clients simultaneously.
-806     uint64_t service_start_ns = time_get_ns();
-807     if (last_service_ns &amp;&amp; service_start_ns - last_service_ns &gt; 30 * US_PER_MS_INT) {
-808       // &gt; 30ms gap between service calls
-809       double gap_ms = (double)(service_start_ns - last_service_ns) / 1e6;
-810       log_info_every(1 * US_PER_MS_INT, &quot;[LWS_SERVICE_GAP] %.1fms gap between lws_service calls&quot;, gap_ms);
-811     }
-812     service_call_count++;
-813     log_debug_every(500 * US_PER_MS_INT, &quot;[LWS_SERVICE] Call #%d, context=%s&quot;, service_call_count,
-814                     NAMED_DESCRIBE(server-&gt;context, &quot;websocket_server&quot;));
-815     int result = lws_service(server-&gt;context, 1);
-816     if (result &lt; 0) {
-817       log_error(&quot;libwebsockets service error: %d&quot;, result);
-818       break;
-819     }
-820   }
-821 
-822   log_info(
-823       &quot;WebSocket server event loop exited (context will be destroyed by main thread after handler threads complete)&quot;);
-824   return ASCIICHAT_OK;
-825 }</pre>
+<pre>813                                                                    {
+814   if (!server || !server-&gt;context) {
+815     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid server&quot;);
+816   }
+817 
+818   log_info(&quot;WebSocket server starting event loop on port %d&quot;, server-&gt;port);
+819 
+820   // Run libwebsockets event loop
+821   uint64_t last_service_ns = 0;
+822   int service_call_count = 0;
+823   while (atomic_load_bool(&amp;server-&gt;running)) {
+824     // Service libwebsockets with 16ms timeout to match 60 FPS frame rate.
+825     // This provides frequent event processing (~60 callback invocations per second) so that
+826     // WebSocket frames queued by the render loop are sent promptly, matching TCP performance.
+827     // All client connections share this single server context, so a single lws_service() call
+828     // services fragments and events for all clients simultaneously.
+829     uint64_t service_start_ns = time_get_ns();
+830     if (last_service_ns &amp;&amp; service_start_ns - last_service_ns &gt; 30 * US_PER_MS_INT) {
+831       // &gt; 30ms gap between service calls
+832       double gap_ms = (double)(service_start_ns - last_service_ns) / 1e6;
+833       log_info_every(1 * US_PER_MS_INT, &quot;[LWS_SERVICE_GAP] %.1fms gap between lws_service calls&quot;, gap_ms);
+834     }
+835     service_call_count++;
+836     log_debug_every(500 * US_PER_MS_INT, &quot;[LWS_SERVICE] Call #%d, context=%s&quot;, service_call_count,
+837                     NAMED_DESCRIBE(server-&gt;context, &quot;websocket_server&quot;));
+838     int result = lws_service(server-&gt;context, 1);
+839     if (result &lt; 0) {
+840       log_error(&quot;libwebsockets service error: %d&quot;, result);
+841       break;
+842     }
+843   }
+844 
+845   log_info(
+846       &quot;WebSocket server event loop exited (context will be destroyed by main thread after handler threads complete)&quot;);
+847   return ASCIICHAT_OK;
+848 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
