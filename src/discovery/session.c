@@ -1342,6 +1342,45 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
   memcpy(handshake_ctx.client_public_key.key, session->identity_pubkey, 32);
   memcpy(handshake_ctx.client_private_key.key.ed25519, session->identity_seckey, 64);
 
+  // Step 0: Receive CRYPTO_PARAMETERS from ACDS
+  {
+    packet_type_t pkt_type;
+    void *pkt_data = NULL;
+    size_t pkt_len = 0;
+    void *alloc_buffer = NULL;
+
+    result = packet_receive_via_transport(session->acds_transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
+    if (result != ASCIICHAT_OK || pkt_type != PACKET_TYPE_CRYPTO_PARAMETERS) {
+      log_error("discovery_session_start: Failed to receive CRYPTO_PARAMETERS (got type %u)", pkt_type);
+      SAFE_FREE(alloc_buffer);
+      set_error(session, result != ASCIICHAT_OK ? result : ERROR_NETWORK_PROTOCOL,
+                "Failed to receive CRYPTO_PARAMETERS");
+      return result != ASCIICHAT_OK ? result : ERROR_NETWORK_PROTOCOL;
+    }
+
+    if (pkt_len != sizeof(crypto_parameters_packet_t)) {
+      log_error("discovery_session_start: Invalid CRYPTO_PARAMETERS size: %zu (expected %zu)", pkt_len,
+                sizeof(crypto_parameters_packet_t));
+      SAFE_FREE(alloc_buffer);
+      set_error(session, ERROR_NETWORK_PROTOCOL, "Invalid CRYPTO_PARAMETERS size");
+      return ERROR_NETWORK_PROTOCOL;
+    }
+
+    crypto_parameters_packet_t server_params;
+    memcpy(&server_params, pkt_data, sizeof(crypto_parameters_packet_t));
+    SAFE_FREE(alloc_buffer);
+
+    // Pass params in network byte order — crypto_handshake_set_parameters
+    // handles conversion internally for client (is_server=false)
+    result = crypto_handshake_set_parameters(&handshake_ctx, &server_params);
+    if (result != ASCIICHAT_OK) {
+      log_error("discovery_session_start: Failed to set crypto parameters");
+      set_error(session, result, "Failed to set crypto parameters");
+      return result;
+    }
+    log_info("discovery_session_start: CRYPTO_PARAMETERS received and applied");
+  }
+
   // Step 1: Key exchange - receive KEY_EXCHANGE_INIT and respond
   {
     packet_type_t pkt_type;
