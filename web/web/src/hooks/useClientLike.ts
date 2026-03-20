@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, RefObject } from "react";
 import { SettingsConfig } from "../components/Settings";
 import { AsciiRendererHandle } from "../components/AsciiRenderer";
 import { useCanvasCapture } from "./useCanvasCapture";
+import { getDefaultSettings } from "../utils/defaultSettings";
 
 /**
  * Shared hook for client-like modes (Mirror, Client)
@@ -98,17 +99,9 @@ export function useClientLike(
   const [fps, setFps] = useState<number | undefined>();
   const [wasmInitialized, setWasmInitialized] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [settings, setSettings] = useState<SettingsConfig>({
-    width: 640,
-    height: 480,
-    targetFps: 60,
-    colorMode: "none",
-    colorFilter: "none",
-    palette: "standard",
-    paletteChars: " =#░░▒▒▓▓██",
-    matrixRain: false,
-    flipX: isMacOS,
-  });
+  const [settings, setSettings] = useState<SettingsConfig>(
+    getDefaultSettings(isMacOS),
+  );
 
   // Debug refs
   const debugCountRef = useRef(0);

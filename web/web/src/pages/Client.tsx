@@ -64,6 +64,7 @@ import { useRenderLoop } from "../hooks/useRenderLoop";
 import { useClientConnection } from "../hooks/useClientConnection";
 import { useWebcamStream } from "../hooks/useWebcamStream";
 import { buildCapabilitiesPacket } from "../network/packetBuilders";
+import { DEFAULT_SETTINGS } from "../utils/defaultSettings";
 
 export function ClientPage() {
   const rendererRef = useRef<AsciiRendererHandle>(null);
@@ -84,17 +85,7 @@ export function ClientPage() {
   const [fps, setFps] = useState<number | undefined>();
 
   // Settings state (must be declared before hooks that use it)
-  const [settings, setSettings] = useState<SettingsConfig>({
-    width: 640,
-    height: 480,
-    targetFps: 60,
-    colorMode: "none",
-    colorFilter: "none",
-    palette: "standard",
-    paletteChars: " =#░░▒▒▓▓██",
-    matrixRain: false,
-    flipX: false,
-  });
+  const [settings, setSettings] = useState<SettingsConfig>(DEFAULT_SETTINGS);
 
   // Render loop for displaying received frames at target FPS (decoupled from network arrival rate)
   const frameQueueRef = useRef<string[]>([]);
