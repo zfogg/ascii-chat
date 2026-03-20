@@ -87,17 +87,30 @@ export async function initMirrorWasm(): Promise<void> {
     // This must be called before using any getter/setter functions
     if (wasmModule._mirror_init_with_args) {
       console.log("[WASM] Calling _mirror_init_with_args to initialize C options...");
-      const initResult = wasmModule._mirror_init_with_args("mirror");
-      if (initResult !== 0) {
-        console.error(
-          "[WASM] _mirror_init_with_args failed with code:",
-          initResult,
-        );
-        throw new Error(
-          `Failed to initialize mirror C code: ${initResult}`,
-        );
+      // Pass JSON array of arguments: ["mirror"]
+      const argsJson = '["mirror"]';
+      const strLen = wasmModule.lengthBytesUTF8(argsJson) + 1;
+      const strPtr = wasmModule._malloc(strLen);
+      if (!strPtr) {
+        throw new Error("Failed to allocate memory for args");
       }
-      console.log("[WASM] C options initialized successfully");
+
+      try {
+        wasmModule.stringToUTF8(argsJson, strPtr, strLen);
+        const initResult = wasmModule._mirror_init_with_args(strPtr);
+        if (initResult !== 0) {
+          console.error(
+            "[WASM] _mirror_init_with_args failed with code:",
+            initResult,
+          );
+          throw new Error(
+            `Failed to initialize mirror C code: ${initResult}`,
+          );
+        }
+        console.log("[WASM] C options initialized successfully");
+      } finally {
+        wasmModule._free(strPtr);
+      }
     } else {
       console.warn("[WASM] _mirror_init_with_args not found in WASM module");
     }
