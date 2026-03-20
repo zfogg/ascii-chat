@@ -287,8 +287,9 @@
     <b>crypto_client_process_rekey_response()</b>,
     <b>crypto_client_send_rekey_complete()</b>,
     <b>crypto_client_send_rekey_response()</b>,
-    <b>crypto_client_should_rekey()</b>, <b>server_connection_establish()</b>,
-    and <b>threaded_send_client_join_packet()</b>.</p>
+    <b>crypto_client_should_rekey()</b>, <b>protocol_start_connection()</b>,
+    <b>server_connection_establish()</b>, and
+    <b>threaded_send_client_join_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> protocol_connection_lost ()</h2>
@@ -298,11 +299,11 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if protocol detected connection loss, false
   otherwise</div>
-<p class="Pp">Definition at line <b>1385</b> of file
+<p class="Pp">Definition at line <b>1435</b> of file
   <b>client/protocol.c</b>.</p>
-<pre>1385                                 {
-1386   return atomic_load_bool(&amp;g_data_thread_exited) || server_connection_is_lost();
-1387 }</pre>
+<pre>1435                                 {
+1436   return atomic_load_bool(&amp;g_data_thread_exited) || server_connection_is_lost();
+1437 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>, and
@@ -317,11 +318,11 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to client callbacks (never NULL)</div>
-<p class="Pp">Definition at line <b>980</b> of file
+<p class="Pp">Definition at line <b>982</b> of file
   <b>client/protocol.c</b>.</p>
-<pre>980                                                              {
-981   return &amp;g_acip_client_callbacks;
-982 }</pre>
+<pre>982                                                              {
+983   return &amp;g_acip_client_callbacks;
+984 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -336,107 +337,159 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, negative on error</div>
-<p class="Pp">Definition at line <b>1178</b> of file
+<p class="Pp">Definition at line <b>1180</b> of file
   <b>client/protocol.c</b>.</p>
-<pre>1178                                 {
-1179   log_warn(&quot;[FRAME_RECV_INIT] &#x1F7E2; PROTOCOL_START: Starting client protocol initialization&quot;);
-1180 
-1181   // Register protocol atomics with named debug registry
-1182   static bool protocol_atomics_registered = false;
-1183   if (!protocol_atomics_registered) {
-1184     NAMED_REGISTER_ATOMIC(&amp;g_data_thread_exited, &quot;protocol_data_reception_thread_exit_confirmation&quot;, NULL);
-1185     NAMED_REGISTER_ATOMIC(&amp;g_frames_rendered, &quot;protocol_frames_successfully_rendered&quot;, NULL);
-1186     protocol_atomics_registered = true;
-1187   }
-1188 
-1189   // Reset protocol state for new connection
-1190   g_server_state_initialized = false;
-1191   g_last_active_count = 0;
-1192   g_should_clear_before_next_frame = false;
-1193 
-1194   log_info(&quot;[FRAME_RECV_INIT] &#x2705; STATE_RESET: server_initialized=false, active_count=0, clear_flag=false&quot;);
+<pre>1180                                 {
+1181   log_warn(&quot;[FRAME_RECV_INIT] &#x1F7E2; PROTOCOL_START: Starting client protocol initialization&quot;);
+1182 
+1183   // Register protocol atomics with named debug registry
+1184   static bool protocol_atomics_registered = false;
+1185   if (!protocol_atomics_registered) {
+1186     NAMED_REGISTER_ATOMIC(&amp;g_data_thread_exited, &quot;protocol_data_reception_thread_exit_confirmation&quot;, NULL);
+1187     NAMED_REGISTER_ATOMIC(&amp;g_frames_rendered, &quot;protocol_frames_successfully_rendered&quot;, NULL);
+1188     protocol_atomics_registered = true;
+1189   }
+1190 
+1191   // Reset protocol state for new connection
+1192   g_server_state_initialized = false;
+1193   g_last_active_count = 0;
+1194   g_should_clear_before_next_frame = false;
 1195 
-1196   // Reset display state for new connection
-1197   display_reset_for_new_connection();
-1198 
-1199   // Send CLIENT_CAPABILITIES packet FIRST before starting any threads
-1200   // Server expects this as the first packet after crypto handshake
-1201   log_debug(&quot;[FRAME_RECV_INIT] &#x1F4E4; SENDING_CAPABILITIES: terminal_size negotiation&quot;);
-1202   asciichat_error_t cap_result = threaded_send_terminal_size_with_auto_detect((int)terminal_get_effective_width(),
-1203                                                                               (int)terminal_get_effective_height());
-1204   if (cap_result != ASCIICHAT_OK) {
-1205     log_error(&quot;[FRAME_RECV_INIT] &#x274C; CAPABILITIES_FAILED: cannot send terminal size&quot;);
-1206     return -1;
-1207   }
-1208   log_debug(&quot;[FRAME_RECV_INIT] &#x2705; CAPABILITIES_SENT: terminal_size sent successfully&quot;);
-1209 
-1210   // Send STREAM_START packet with combined stream types BEFORE starting worker threads
-1211   // This tells the server what streams to expect before any data arrives
-1212   uint32_t stream_types = STREAM_TYPE_VIDEO; // Always have video
-1213   if (GET_OPTION(audio_enabled)) {
-1214     stream_types |= STREAM_TYPE_AUDIO; // Add audio if enabled
-1215   }
-1216   log_info(&quot;[FRAME_RECV_INIT] &#x1F4E4; SENDING_STREAM_START: types=0x%x (video%s)&quot;, stream_types,
-1217            (stream_types &amp; STREAM_TYPE_AUDIO) ? &quot;+audio&quot; : &quot;&quot;);
-1218   asciichat_error_t stream_result = threaded_send_stream_start_packet(stream_types);
-1219   if (stream_result != ASCIICHAT_OK) {
-1220     log_error(&quot;[FRAME_RECV_INIT] &#x274C; STREAM_START_FAILED: cannot send stream types&quot;);
-1221     return -1;
-1222   }
-1223   log_info(&quot;[FRAME_RECV_INIT] &#x2705; STREAM_START_SENT: stream_types=0x%x, server will send frames&quot;, stream_types);
-1224 
-1225   // Start data reception thread
-1226   log_warn(&quot;[FRAME_RECV_INIT] &#x1F504; STARTING_DATA_THREAD: callbacks registered, about to spawn thread&quot;);
-1227   atomic_store_bool(&amp;g_data_thread_exited, false);
-1228   if (thread_pool_spawn(g_client_worker_pool, data_reception_thread_func, NULL, 1, &quot;data_reception&quot;) != ASCIICHAT_OK) {
-1229     log_error(&quot;[FRAME_RECV_INIT] &#x274C; DATA_THREAD_SPAWN_FAILED: cannot start frame receive thread&quot;);
-1230     LOG_ERRNO_IF_SET(&quot;Data reception thread creation failed&quot;);
-1231     return -1;
-1232   }
-1233   log_warn(&quot;[FRAME_RECV_INIT] &#x2705; DATA_THREAD_SPAWNED: frame receive thread is now running, waiting for frames...&quot;);
-1234 
-1235   // Start webcam capture thread
-1236   log_debug(&quot;Starting webcam capture thread...&quot;);
-1237   if (capture_start_thread() != 0) {
-1238     log_error(&quot;Failed to start webcam capture thread&quot;);
-1239     return -1;
-1240   }
-1241   log_debug(&quot;Webcam capture thread started successfully&quot;);
-1242 
-1243   // Initialize audio sender thread BEFORE starting audio capture
-1244   // This ensures sender is ready when capture thread starts queueing packets
-1245   // Must happen after connection succeeds to prevent deadlock if connection fails
-1246   audio_sender_init();
-1247 
-1248   // Start audio capture thread if audio is enabled
-1249   log_debug(&quot;Starting audio capture thread...&quot;);
-1250   if (audio_start_thread() != 0) {
-1251     log_error(&quot;Failed to start audio capture thread&quot;);
-1252     return -1;
-1253   }
-1254   log_debug(&quot;Audio capture thread started successfully (or skipped if audio disabled)&quot;);
-1255 
-1256   // Start keepalive/ping thread to prevent server timeout
-1257   log_debug(&quot;Starting keepalive/ping thread...&quot;);
-1258   if (keepalive_start_thread() != 0) {
-1259     log_error(&quot;Failed to start keepalive/ping thread&quot;);
-1260     return -1;
-1261   }
-1262   log_debug(&quot;Keepalive/ping thread started successfully&quot;);
-1263 
-1264   g_data_thread_created = true;
-1265   return 0;
-1266 }</pre>
+1196   log_info(&quot;[FRAME_RECV_INIT] &#x2705; STATE_RESET: server_initialized=false, active_count=0, clear_flag=false&quot;);
+1197 
+1198   // Reset display state for new connection
+1199   display_reset_for_new_connection();
+1200 
+1201   // Check if we're on a WebSocket transport (crypto handshake is async via ACIP callbacks)
+1202   // For WS/WSS, we must start data_reception FIRST so it can handle the crypto handshake,
+1203   // then wait for crypto to complete before sending CAPABILITIES/STREAM_START.
+1204   // For TCP, crypto is already done synchronously before this function is called.
+1205   acip_transport_t *init_transport = server_connection_get_transport();
+1206   bool is_websocket = init_transport &amp;&amp;
+1207                       acip_transport_get_type(init_transport) == ACIP_TRANSPORT_WEBSOCKET;
+1208 
+1209   if (is_websocket) {
+1210     // WebSocket: start data reception thread FIRST to handle async crypto handshake.
+1211     // TCP does crypto synchronously in connection_attempt.c, but WS crypto flows
+1212     // asynchronously via ACIP callbacks in the data_reception thread.
+1213     log_debug(&quot;[FRAME_RECV_INIT] WS: Starting data_reception for async crypto handshake&quot;);
+1214     atomic_store_bool(&amp;g_data_thread_exited, false);
+1215     if (thread_pool_spawn(g_client_worker_pool, data_reception_thread_func, NULL, 1, &quot;data_reception&quot;) != ASCIICHAT_OK) {
+1216       log_error(&quot;[FRAME_RECV_INIT] Failed to start data reception thread&quot;);
+1217       LOG_ERRNO_IF_SET(&quot;Data reception thread creation failed&quot;);
+1218       return -1;
+1219     }
+1220     log_debug(&quot;[FRAME_RECV_INIT] WS: Data thread spawned, waiting for crypto handshake&quot;);
+1221 
+1222     // Wait for crypto handshake to complete (CRYPTO_PARAMETERS &#x2192; KEY_EXCHANGE &#x2192; HANDSHAKE_COMPLETE)
+1223     // Skip waiting if encryption is disabled (no_encrypt mode)
+1224     if (!GET_OPTION(no_encrypt)) {
+1225       const int MAX_CRYPTO_WAIT_MS = 10000; // 10 seconds
+1226       const int POLL_INTERVAL_MS = 10;
+1227       int waited_ms = 0;
+1228       while (!crypto_client_is_ready() &amp;&amp; !should_exit() &amp;&amp; server_connection_is_active() &amp;&amp;
+1229              waited_ms &lt; MAX_CRYPTO_WAIT_MS) {
+1230         platform_sleep_us(POLL_INTERVAL_MS * 1000);
+1231         waited_ms += POLL_INTERVAL_MS;
+1232         if (waited_ms % 1000 == 0) {
+1233           log_info(&quot;[FRAME_RECV_INIT] WS_CRYPTO: Waiting for handshake... (%d ms elapsed)&quot;, waited_ms);
+1234         }
+1235       }
+1236 
+1237       if (!crypto_client_is_ready()) {
+1238         if (should_exit() || !server_connection_is_active()) {
+1239           log_error(&quot;[FRAME_RECV_INIT] WS: Connection lost during crypto handshake&quot;);
+1240         } else {
+1241           log_error(&quot;[FRAME_RECV_INIT] WS: Crypto handshake timed out after %d ms&quot;, MAX_CRYPTO_WAIT_MS);
+1242         }
+1243         return -1;
+1244       }
+1245       log_info(&quot;[FRAME_RECV_INIT] WS: Crypto handshake completed after %d ms&quot;, waited_ms);
+1246     } else {
+1247       log_info(&quot;[FRAME_RECV_INIT] WS: Encryption disabled, skipping handshake wait&quot;);
+1248     }
+1249   }
+1250 
+1251   // Send CLIENT_CAPABILITIES packet (after crypto is ready for both TCP and WS)
+1252   // Server expects this as the first packet after crypto handshake
+1253   log_debug(&quot;[FRAME_RECV_INIT] Sending CLIENT_CAPABILITIES (terminal size)&quot;);
+1254   asciichat_error_t cap_result = threaded_send_terminal_size_with_auto_detect((int)terminal_get_effective_width(),
+1255                                                                               (int)terminal_get_effective_height());
+1256   if (cap_result != ASCIICHAT_OK) {
+1257     log_error(&quot;[FRAME_RECV_INIT] Failed to send terminal size capabilities&quot;);
+1258     return -1;
+1259   }
+1260 
+1261   // Send STREAM_START packet with combined stream types
+1262   uint32_t stream_types = STREAM_TYPE_VIDEO; // Always have video
+1263   if (GET_OPTION(audio_enabled)) {
+1264     stream_types |= STREAM_TYPE_AUDIO; // Add audio if enabled
+1265   }
+1266   log_debug(&quot;[FRAME_RECV_INIT] Sending STREAM_START: types=0x%x (video%s)&quot;, stream_types,
+1267             (stream_types &amp; STREAM_TYPE_AUDIO) ? &quot;+audio&quot; : &quot;&quot;);
+1268   asciichat_error_t stream_result = threaded_send_stream_start_packet(stream_types);
+1269   if (stream_result != ASCIICHAT_OK) {
+1270     log_error(&quot;[FRAME_RECV_INIT] Failed to send stream start&quot;);
+1271     return -1;
+1272   }
+1273 
+1274   // Start data reception thread (TCP only - WS already started it above for crypto)
+1275   if (!is_websocket) {
+1276     log_debug(&quot;[FRAME_RECV_INIT] TCP: Starting data reception thread&quot;);
+1277     atomic_store_bool(&amp;g_data_thread_exited, false);
+1278     if (thread_pool_spawn(g_client_worker_pool, data_reception_thread_func, NULL, 1, &quot;data_reception&quot;) != ASCIICHAT_OK) {
+1279       log_error(&quot;[FRAME_RECV_INIT] Failed to start data reception thread&quot;);
+1280       LOG_ERRNO_IF_SET(&quot;Data reception thread creation failed&quot;);
+1281       return -1;
+1282     }
+1283   }
+1284 
+1285   // Start webcam capture thread
+1286   log_debug(&quot;Starting webcam capture thread...&quot;);
+1287   if (capture_start_thread() != 0) {
+1288     log_error(&quot;Failed to start webcam capture thread&quot;);
+1289     return -1;
+1290   }
+1291   log_debug(&quot;Webcam capture thread started successfully&quot;);
+1292 
+1293   // Initialize audio sender thread BEFORE starting audio capture
+1294   // This ensures sender is ready when capture thread starts queueing packets
+1295   // Must happen after connection succeeds to prevent deadlock if connection fails
+1296   audio_sender_init();
+1297 
+1298   // Start audio capture thread if audio is enabled
+1299   log_debug(&quot;Starting audio capture thread...&quot;);
+1300   if (audio_start_thread() != 0) {
+1301     log_error(&quot;Failed to start audio capture thread&quot;);
+1302     return -1;
+1303   }
+1304   log_debug(&quot;Audio capture thread started successfully (or skipped if audio disabled)&quot;);
+1305 
+1306   // Start keepalive/ping thread to prevent server timeout
+1307   log_debug(&quot;Starting keepalive/ping thread...&quot;);
+1308   if (keepalive_start_thread() != 0) {
+1309     log_error(&quot;Failed to start keepalive/ping thread&quot;);
+1310     return -1;
+1311   }
+1312   log_debug(&quot;Keepalive/ping thread started successfully&quot;);
+1313 
+1314   g_data_thread_created = true;
+1315   return 0;
+1316 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
-    <b>audio_sender_init()</b>, <b>audio_start_thread()</b>,
-    <b>capture_start_thread()</b>, <b>display_reset_for_new_connection()</b>,
+<p class="Pp">References <b>ACIP_TRANSPORT_WEBSOCKET</b>, <b>ASCIICHAT_OK</b>,
+    <b>atomic_store_bool()</b>, <b>audio_sender_init()</b>,
+    <b>audio_start_thread()</b>, <b>capture_start_thread()</b>,
+    <b>crypto_client_is_ready()</b>, <b>display_reset_for_new_connection()</b>,
     <b>g_client_worker_pool</b>, <b>GET_OPTION</b>,
     <b>keepalive_start_thread()</b>, <b>log_debug</b>, <b>LOG_ERRNO_IF_SET</b>,
     <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
-    <b>NAMED_REGISTER_ATOMIC</b>, <b>STREAM_TYPE_AUDIO</b>,
-    <b>STREAM_TYPE_VIDEO</b>, <b>terminal_get_effective_height()</b>,
+    <b>NAMED_REGISTER_ATOMIC</b>, <b>platform_sleep_us()</b>,
+    <b>server_connection_get_transport()</b>,
+    <b>server_connection_is_active()</b>, <b>should_exit()</b>,
+    <b>STREAM_TYPE_AUDIO</b>, <b>STREAM_TYPE_VIDEO</b>,
+    <b>terminal_get_effective_height()</b>,
     <b>terminal_get_effective_width()</b>, <b>thread_pool_spawn()</b>,
     <b>threaded_send_stream_start_packet()</b>, and
     <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
@@ -449,109 +502,109 @@
 <p class="Pp"></p>
 <p class="Pp">Gracefully shuts down the data reception thread and cleans up
     protocol state. Safe to call multiple times.</p>
-<p class="Pp">Definition at line <b>1276</b> of file
+<p class="Pp">Definition at line <b>1326</b> of file
   <b>client/protocol.c</b>.</p>
-<pre>1276                                 {
-1277   // Log final frame count before shutting down (always log for diagnostic purposes)
-1278   int final_frame_count = atomic_load_u64(&amp;g_frames_rendered);
-1279   log_info(&quot;&#x1F4CA; CLIENT SESSION STATS: %d unique frames rendered during connection&quot;, final_frame_count);
-1280 
-1281   log_debug(&quot;[PROTOCOL_STOP] 1. Starting protocol_stop_connection&quot;);
-1282 
-1283   // In snapshot mode, data reception thread was never started, but capture thread may still be running
-1284   // Always stop the capture thread to prevent use-after-free when transport is destroyed
-1285   if (GET_OPTION(snapshot_mode)) {
-1286     log_debug(&quot;[PROTOCOL_STOP] Snapshot mode: flushing H.265 encoder before stopping capture thread&quot;);
-1287     // Flush the encoder to output any buffered frames before exiting
-1288     if (g_h265_encoder) {
-1289       // Allocate buffer large enough for worst-case H.265 encoded frame
-1290       // Using 320x240 (typical test resolution) * 2x multiplier + header
-1291       size_t flush_buf_size = 5 + (320 * 240 * 2);
-1292       uint8_t *flush_buf = SAFE_MALLOC(flush_buf_size, uint8_t *);
-1293       size_t flush_size = flush_buf_size;
-1294       asciichat_error_t flush_result = h265_encoder_flush(g_h265_encoder, flush_buf, &amp;flush_size);
-1295       if (flush_result == ASCIICHAT_OK &amp;&amp; flush_size &gt; 0) {
-1296         log_info(&quot;[PROTOCOL_STOP] Flushed H.265 encoder: got %zu bytes of buffered frames&quot;, flush_size);
-1297         // Send the flushed frame if we got one
-1298         acip_transport_t *transport = server_connection_get_transport();
-1299         if (transport &amp;&amp; server_connection_is_active()) {
-1300           uint32_t width = 320, height = 240; // TODO: track actual dimensions
-1301           log_debug(&quot;[PROTOCOL_STOP] Sending flushed frame: %ux%u, %zu bytes&quot;, width, height, flush_size);
-1302         }
-1303       }
-1304       SAFE_FREE(flush_buf);
-1305     }
-1306     log_debug(&quot;[PROTOCOL_STOP] Snapshot mode: stopping capture thread before returning&quot;);
-1307     capture_stop_thread();
-1308     return;
-1309   }
-1310 
-1311   // Don't call signal_exit() here - that's for global shutdown only!
-1312   // We just want to stop threads for this connection, not exit the entire client
-1313 
-1314   // Shutdown the socket FIRST to interrupt any blocking network operations in worker threads
-1315   // This must happen BEFORE audio_stop_thread() so audio sender thread unblocks from network send
-1316   log_debug(&quot;[PROTOCOL_STOP] 2. About to call server_connection_shutdown&quot;);
-1317   server_connection_shutdown();
-1318   log_debug(&quot;[PROTOCOL_STOP] 3. server_connection_shutdown() returned&quot;);
-1319 
-1320   // Signal audio sender thread to exit
-1321   // Must happen after socket shutdown so any blocked network calls fail
-1322   // Audio sender is created in ALL modes except snapshot mode
-1323   log_debug(&quot;[PROTOCOL_STOP] 4. About to call audio_stop_thread&quot;);
-1324   audio_stop_thread();
-1325   log_debug(&quot;[PROTOCOL_STOP] 5. audio_stop_thread() returned&quot;);
-1326 
-1327   // Early return if data thread was never created (e.g., mirror mode)
-1328   // In mirror mode, we only need to stop the audio sender (done above)
-1329   if (!g_data_thread_created) {
-1330     log_debug(&quot;[PROTOCOL_STOP] 6. Data thread not created, returning&quot;);
-1331     return;
-1332   }
-1333 
-1334   // Stop keepalive/ping thread - it checks connection status and will exit
-1335   log_debug(&quot;[PROTOCOL_STOP] 7. About to call keepalive_stop_thread&quot;);
-1336   keepalive_stop_thread();
-1337   log_debug(&quot;[PROTOCOL_STOP] 8. keepalive_stop_thread() returned&quot;);
-1338 
-1339   // Stop webcam capture thread
-1340   log_debug(&quot;[PROTOCOL_STOP] 9. About to call capture_stop_thread&quot;);
-1341   capture_stop_thread();
-1342   log_debug(&quot;[PROTOCOL_STOP] 10. capture_stop_thread() returned&quot;);
-1343 
-1344   // Wait for data reception thread to exit gracefully
-1345   log_debug(&quot;[PROTOCOL_STOP] 11. Waiting for data thread to exit&quot;);
-1346   // Thread checks should_exit() every read cycle (typically &lt;1-5ms), so timeout can be much shorter
-1347   int wait_count = 0;
-1348   while (wait_count &lt; 5 &amp;&amp; !atomic_load_bool(&amp;g_data_thread_exited)) {
-1349     platform_sleep_us(10 * US_PER_MS_INT); // 10ms * 5 = 50ms max wait
-1350     wait_count++;
-1351   }
-1352 
-1353   if (!atomic_load_bool(&amp;g_data_thread_exited)) {
-1354     log_warn(&quot;Data thread not responding after 50ms - will be joined by thread pool&quot;);
-1355   }
-1356   log_debug(&quot;[PROTOCOL_STOP] 12. Data thread wait complete&quot;);
-1357 
-1358   // Join all threads in the client worker pool (in stop_id order)
-1359   // This handles the data reception thread and (eventually) all other worker threads
-1360   log_debug(&quot;[PROTOCOL_STOP] 13. About to call thread_pool_stop_all&quot;);
-1361   if (g_client_worker_pool) {
-1362     asciichat_error_t result = thread_pool_stop_all(g_client_worker_pool);
-1363     if (result != ASCIICHAT_OK) {
-1364       log_error(&quot;Failed to stop client worker threads&quot;);
-1365       LOG_ERRNO_IF_SET(&quot;Thread pool stop failed&quot;);
-1366     }
-1367   }
-1368   log_debug(&quot;[PROTOCOL_STOP] 14. thread_pool_stop_all() returned&quot;);
+<pre>1326                                 {
+1327   // Log final frame count before shutting down (always log for diagnostic purposes)
+1328   int final_frame_count = atomic_load_u64(&amp;g_frames_rendered);
+1329   log_info(&quot;&#x1F4CA; CLIENT SESSION STATS: %d unique frames rendered during connection&quot;, final_frame_count);
+1330 
+1331   log_debug(&quot;[PROTOCOL_STOP] 1. Starting protocol_stop_connection&quot;);
+1332 
+1333   // In snapshot mode, data reception thread was never started, but capture thread may still be running
+1334   // Always stop the capture thread to prevent use-after-free when transport is destroyed
+1335   if (GET_OPTION(snapshot_mode)) {
+1336     log_debug(&quot;[PROTOCOL_STOP] Snapshot mode: flushing H.265 encoder before stopping capture thread&quot;);
+1337     // Flush the encoder to output any buffered frames before exiting
+1338     if (g_h265_encoder) {
+1339       // Allocate buffer large enough for worst-case H.265 encoded frame
+1340       // Using 320x240 (typical test resolution) * 2x multiplier + header
+1341       size_t flush_buf_size = 5 + (320 * 240 * 2);
+1342       uint8_t *flush_buf = SAFE_MALLOC(flush_buf_size, uint8_t *);
+1343       size_t flush_size = flush_buf_size;
+1344       asciichat_error_t flush_result = h265_encoder_flush(g_h265_encoder, flush_buf, &amp;flush_size);
+1345       if (flush_result == ASCIICHAT_OK &amp;&amp; flush_size &gt; 0) {
+1346         log_info(&quot;[PROTOCOL_STOP] Flushed H.265 encoder: got %zu bytes of buffered frames&quot;, flush_size);
+1347         // Send the flushed frame if we got one
+1348         acip_transport_t *transport = server_connection_get_transport();
+1349         if (transport &amp;&amp; server_connection_is_active()) {
+1350           uint32_t width = 320, height = 240; // TODO: track actual dimensions
+1351           log_debug(&quot;[PROTOCOL_STOP] Sending flushed frame: %ux%u, %zu bytes&quot;, width, height, flush_size);
+1352         }
+1353       }
+1354       SAFE_FREE(flush_buf);
+1355     }
+1356     log_debug(&quot;[PROTOCOL_STOP] Snapshot mode: stopping capture thread before returning&quot;);
+1357     capture_stop_thread();
+1358     return;
+1359   }
+1360 
+1361   // Don't call signal_exit() here - that's for global shutdown only!
+1362   // We just want to stop threads for this connection, not exit the entire client
+1363 
+1364   // Shutdown the socket FIRST to interrupt any blocking network operations in worker threads
+1365   // This must happen BEFORE audio_stop_thread() so audio sender thread unblocks from network send
+1366   log_debug(&quot;[PROTOCOL_STOP] 2. About to call server_connection_shutdown&quot;);
+1367   server_connection_shutdown();
+1368   log_debug(&quot;[PROTOCOL_STOP] 3. server_connection_shutdown() returned&quot;);
 1369 
-1370   g_data_thread_created = false;
-1371 
-1372 #ifdef DEBUG_THREADS
-1373   log_debug(&quot;Data reception thread stopped and joined by thread pool&quot;);
-1374 #endif
-1375   log_debug(&quot;[PROTOCOL_STOP] 15. protocol_stop_connection complete&quot;);
-1376 }</pre>
+1370   // Signal audio sender thread to exit
+1371   // Must happen after socket shutdown so any blocked network calls fail
+1372   // Audio sender is created in ALL modes except snapshot mode
+1373   log_debug(&quot;[PROTOCOL_STOP] 4. About to call audio_stop_thread&quot;);
+1374   audio_stop_thread();
+1375   log_debug(&quot;[PROTOCOL_STOP] 5. audio_stop_thread() returned&quot;);
+1376 
+1377   // Early return if data thread was never created (e.g., mirror mode)
+1378   // In mirror mode, we only need to stop the audio sender (done above)
+1379   if (!g_data_thread_created) {
+1380     log_debug(&quot;[PROTOCOL_STOP] 6. Data thread not created, returning&quot;);
+1381     return;
+1382   }
+1383 
+1384   // Stop keepalive/ping thread - it checks connection status and will exit
+1385   log_debug(&quot;[PROTOCOL_STOP] 7. About to call keepalive_stop_thread&quot;);
+1386   keepalive_stop_thread();
+1387   log_debug(&quot;[PROTOCOL_STOP] 8. keepalive_stop_thread() returned&quot;);
+1388 
+1389   // Stop webcam capture thread
+1390   log_debug(&quot;[PROTOCOL_STOP] 9. About to call capture_stop_thread&quot;);
+1391   capture_stop_thread();
+1392   log_debug(&quot;[PROTOCOL_STOP] 10. capture_stop_thread() returned&quot;);
+1393 
+1394   // Wait for data reception thread to exit gracefully
+1395   log_debug(&quot;[PROTOCOL_STOP] 11. Waiting for data thread to exit&quot;);
+1396   // Thread checks should_exit() every read cycle (typically &lt;1-5ms), so timeout can be much shorter
+1397   int wait_count = 0;
+1398   while (wait_count &lt; 5 &amp;&amp; !atomic_load_bool(&amp;g_data_thread_exited)) {
+1399     platform_sleep_us(10 * US_PER_MS_INT); // 10ms * 5 = 50ms max wait
+1400     wait_count++;
+1401   }
+1402 
+1403   if (!atomic_load_bool(&amp;g_data_thread_exited)) {
+1404     log_warn(&quot;Data thread not responding after 50ms - will be joined by thread pool&quot;);
+1405   }
+1406   log_debug(&quot;[PROTOCOL_STOP] 12. Data thread wait complete&quot;);
+1407 
+1408   // Join all threads in the client worker pool (in stop_id order)
+1409   // This handles the data reception thread and (eventually) all other worker threads
+1410   log_debug(&quot;[PROTOCOL_STOP] 13. About to call thread_pool_stop_all&quot;);
+1411   if (g_client_worker_pool) {
+1412     asciichat_error_t result = thread_pool_stop_all(g_client_worker_pool);
+1413     if (result != ASCIICHAT_OK) {
+1414       log_error(&quot;Failed to stop client worker threads&quot;);
+1415       LOG_ERRNO_IF_SET(&quot;Thread pool stop failed&quot;);
+1416     }
+1417   }
+1418   log_debug(&quot;[PROTOCOL_STOP] 14. thread_pool_stop_all() returned&quot;);
+1419 
+1420   g_data_thread_created = false;
+1421 
+1422 #ifdef DEBUG_THREADS
+1423   log_debug(&quot;Data reception thread stopped and joined by thread pool&quot;);
+1424 #endif
+1425   log_debug(&quot;[PROTOCOL_STOP] 15. protocol_stop_connection complete&quot;);
+1426 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,

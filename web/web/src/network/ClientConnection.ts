@@ -98,7 +98,8 @@ export class ClientConnection {
     // Set server address for known_hosts verification
     const url = new URL(this.options.serverUrl);
     const serverHost = url.hostname;
-    const serverPort = parseInt(url.port) || 27226; // Default WebSocket port
+    const serverPort =
+      parseInt(url.port) || (url.protocol === "wss:" ? 443 : 27226);
     console.log(
       "[ClientConnection] Setting server address:",
       serverHost,
@@ -160,7 +161,8 @@ export class ClientConnection {
             // Extract server address BEFORE async operations
             const url = new URL(this.options.serverUrl);
             const serverHost = url.hostname;
-            const serverPort = parseInt(url.port) || 27226;
+            const serverPort =
+              parseInt(url.port) || (url.protocol === "wss:" ? 443 : 27226);
 
             const reinitOptions: { width?: number; height?: number } = {};
             if (this.options.width !== undefined)

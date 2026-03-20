@@ -7,7 +7,7 @@
  * - discovery.ascii-chat.com (port 5174 / discovery subdomain)
  * - web.ascii-chat.com (port 3000 / web subdomain)
  * - API server (port 3001 / api.ascii-chat.com or main domain)
- * - Discovery service (port 27226 / discovery-service.ascii-chat.com for WebSocket)
+ * - Discovery service (port 27226 ws:// / 443 wss:// / discovery-service.ascii-chat.com for WebSocket)
  */
 
 declare global {
@@ -83,10 +83,10 @@ export const API_RELATIVE = {
 /**
  * Discovery service WebSocket connection URL
  * In dev: ws://localhost:27226 (local ACDS server)
- * In prod: wss://discovery-service.ascii-chat.com:27226 (production ACDS)
+ * In prod: wss://discovery-service.ascii-chat.com (production ACDS, default port 443)
  */
 export const DISCOVERY_SERVICE_URL = isDev
   ? "ws://localhost:27226"
-  : "wss://discovery-service.ascii-chat.com:27226";
+  : "wss://discovery-service.ascii-chat.com";
 
 export type SiteKey = keyof typeof SITES;

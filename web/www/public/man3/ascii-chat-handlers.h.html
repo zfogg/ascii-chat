@@ -129,22 +129,22 @@ acip_handle_client_packet(transport, type, payload, payload_len, &amp;callbacks)
 <i>callbacks</i> Application callbacks</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>196</b> of file
+<p class="Pp">Definition at line <b>200</b> of file
     <b>network/acip/handlers.c</b>.</p>
-<pre>197                                                                                                           {
-198   if (!transport || !callbacks) {
-199     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or callbacks&quot;);
-200   }
-201   (void)transport;
-202 
-203   // O(1) dispatch via hash table lookup
-204   int idx = handler_hash_lookup(g_client_handler_hash, type);
-205   if (idx &lt; 0) {
-206     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled client packet type: %d&quot;, type);
-207   }
-208 
-209   return g_client_handlers[idx](payload, payload_len, callbacks);
-210 }</pre>
+<pre>201                                                                                                           {
+202   if (!transport || !callbacks) {
+203     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or callbacks&quot;);
+204   }
+205   (void)transport;
+206 
+207   // O(1) dispatch via hash table lookup
+208   int idx = handler_hash_lookup(g_client_handler_hash, type);
+209   if (idx &lt; 0) {
+210     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled client packet type: %d&quot;, type);
+211   }
+212 
+213   return g_client_handlers[idx](payload, payload_len, callbacks);
+214 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
@@ -173,38 +173,38 @@ acip_handle_client_packet(transport, type, payload, payload_len, &amp;callbacks)
 <i>callbacks</i> Application callbacks</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>687</b> of file
+<p class="Pp">Definition at line <b>702</b> of file
     <b>network/acip/handlers.c</b>.</p>
-<pre>689                                                                                       {
-690   if (!transport || !callbacks) {
-691     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or callbacks&quot;);
-692   }
-693   (void)transport;
-694 
-695   // DEBUG: Log all packet types received
-696   log_info(&quot;ACIP_HANDLE: Received packet type=%d (0x%04x), payload_len=%zu&quot;, type, type, payload_len);
-697 
-698   // O(1) dispatch via hash table lookup
-699   int idx = handler_hash_lookup(g_server_handler_hash, type);
-700   if (idx &lt; 0) {
-701     log_error(&quot;ACIP_HANDLER_NOT_FOUND: No handler for packet type=%d (0x%04x, name=%s)&quot;, type, type,
-702               g_packet_type_name(type));
-703     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled server packet type: %d&quot;, type);
-704   }
-705 
-706   log_info(&quot;&#x1F4E5; [HANDLER_DISPATCH] Calling handler: type=%d (%s), handler_idx=%d, payload=%zu bytes, client_ctx=%p&quot;,
-707            type, g_packet_type_name(type), idx, payload_len, client_ctx);
-708   asciichat_error_t result = g_server_handlers[idx](payload, payload_len, client_ctx, callbacks);
+<pre>704                                                                                       {
+705   if (!transport || !callbacks) {
+706     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or callbacks&quot;);
+707   }
+708   (void)transport;
 709 
-710   if (result != ASCIICHAT_OK) {
-711     log_error(&quot;&#x274C; [HANDLER_ERROR] Handler failed: type=%d (%s), result=%d&quot;, type, g_packet_type_name(type), result);
-712   } else {
-713     log_info(&quot;&#x2705; [HANDLER_COMPLETE] Handler succeeded: type=%d (%s), payload=%zu bytes processed&quot;, type,
-714              g_packet_type_name(type), payload_len);
-715   }
-716 
-717   return result;
-718 }</pre>
+710   // DEBUG: Log all packet types received
+711   log_info(&quot;ACIP_HANDLE: Received packet type=%d (0x%04x), payload_len=%zu&quot;, type, type, payload_len);
+712 
+713   // O(1) dispatch via hash table lookup
+714   int idx = handler_hash_lookup(g_server_handler_hash, type);
+715   if (idx &lt; 0) {
+716     log_error(&quot;ACIP_HANDLER_NOT_FOUND: No handler for packet type=%d (0x%04x, name=%s)&quot;, type, type,
+717               g_packet_type_name(type));
+718     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled server packet type: %d&quot;, type);
+719   }
+720 
+721   log_info(&quot;&#x1F4E5; [HANDLER_DISPATCH] Calling handler: type=%d (%s), handler_idx=%d, payload=%zu bytes, client_ctx=%p&quot;,
+722            type, g_packet_type_name(type), idx, payload_len, client_ctx);
+723   asciichat_error_t result = g_server_handlers[idx](payload, payload_len, client_ctx, callbacks);
+724 
+725   if (result != ASCIICHAT_OK) {
+726     log_error(&quot;&#x274C; [HANDLER_ERROR] Handler failed: type=%d (%s), result=%d&quot;, type, g_packet_type_name(type), result);
+727   } else {
+728     log_info(&quot;&#x2705; [HANDLER_COMPLETE] Handler succeeded: type=%d (%s), payload=%zu bytes processed&quot;, type,
+729              g_packet_type_name(type), payload_len);
+730   }
+731 
+732   return result;
+733 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,

@@ -250,7 +250,7 @@ await initClientWasm({ width: 80, height: 40 });
 
 // Create connection
 const client = new ClientConnection({
-  serverUrl: "wss://server.ascii-chat.com:27224",
+  serverUrl: "wss://server.ascii-chat.com",
   width: 80,
   height: 40,
 });

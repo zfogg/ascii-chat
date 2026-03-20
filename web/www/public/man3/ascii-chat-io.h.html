@@ -129,8 +129,7 @@
     <b>ffmpeg_decoder_create()</b>, <b>ffmpeg_decoder_create_stdin()</b>,
     <b>ffmpeg_encoder_create()</b>, <b>ffmpeg_encoder_destroy()</b>,
     <b>gpg_sign_with_key()</b>, <b>h265_decoder_create()</b>,
-    <b>h265_encoder_create()</b>, <b>h265_encoder_destroy()</b>, and
-    <b>yt_dlp_is_available()</b>.</p>
+    <b>h265_encoder_destroy()</b>, and <b>yt_dlp_is_available()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -178,26 +177,36 @@
 39   int write_fd = pipefd[1];
 40   capture.pipe_fd = pipefd[0];
 41 
-42   // Make the read end non-blocking so we can read without hanging
+42   // Make the read end non-blocking so we can drain without hanging
 43   int flags = fcntl(capture.pipe_fd, F_GETFL, 0);
 44   if (flags &gt;= 0) {
 45     fcntl(capture.pipe_fd, F_SETFL, flags | O_NONBLOCK);
 46   }
 47 
-48   // Redirect both stdout and stderr to the pipe
-49   if (dup2(write_fd, STDOUT_FILENO) &lt; 0 || dup2(write_fd, STDERR_FILENO) &lt; 0) {
-50     close(write_fd);
-51     close(capture.pipe_fd);
-52     close(capture.saved_stdout_fd);
-53     close(capture.saved_stderr_fd);
-54     return (log_io_t){.saved_stdout_fd = -1, .saved_stderr_fd = -1, .pipe_fd = -1};
-55   }
-56 
-57   // Close the write end in the parent process (we only need it in redirected streams)
-58   close(write_fd);
-59 
-60   return capture;
-61 }</pre>
+48   // Make the write end non-blocking. LOG_IO redirects the process-global stderr,
+49   // so ALL threads write to this pipe. If the pipe buffer fills (64KB on Linux),
+50   // blocking writes would stall other threads and potentially deadlock (e.g. x265
+51   // internal threads block on stderr while avcodec_open2 can't return). Non-blocking
+52   // writes silently drop excess output (EAGAIN) which is acceptable for diagnostics.
+53   int wflags = fcntl(write_fd, F_GETFL, 0);
+54   if (wflags &gt;= 0) {
+55     fcntl(write_fd, F_SETFL, wflags | O_NONBLOCK);
+56   }
+57 
+58   // Redirect both stdout and stderr to the pipe
+59   if (dup2(write_fd, STDOUT_FILENO) &lt; 0 || dup2(write_fd, STDERR_FILENO) &lt; 0) {
+60     close(write_fd);
+61     close(capture.pipe_fd);
+62     close(capture.saved_stdout_fd);
+63     close(capture.saved_stderr_fd);
+64     return (log_io_t){.saved_stdout_fd = -1, .saved_stderr_fd = -1, .pipe_fd = -1};
+65   }
+66 
+67   // Close the write end in the parent process (we only need it in redirected streams)
+68   close(write_fd);
+69 
+70   return capture;
+71 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_io_t::pipe_fd</b>,
@@ -221,65 +230,65 @@
 <p class="Pp"></p>
 <p class="Pp">After calling this, the capture handle is invalidated</p>
 </div>
-<p class="Pp">Definition at line <b>63</b> of file <b>io.c</b>.</p>
-<pre>63                                                        {
-64   if (capture.saved_stdout_fd &lt; 0 || capture.saved_stderr_fd &lt; 0) {
-65     return;  // Capture was not started successfully
-66   }
-67 
-68   // Flush stdout/stderr BEFORE restoring to ensure all output is in the pipe
-69   fflush(stdout);
-70   fflush(stderr);
-71 
-72   // Restore stdout and stderr
-73   dup2(capture.saved_stdout_fd, STDOUT_FILENO);
-74   dup2(capture.saved_stderr_fd, STDERR_FILENO);
-75   close(capture.saved_stdout_fd);
-76   close(capture.saved_stderr_fd);
+<p class="Pp">Definition at line <b>73</b> of file <b>io.c</b>.</p>
+<pre>73                                                        {
+74   if (capture.saved_stdout_fd &lt; 0 || capture.saved_stderr_fd &lt; 0) {
+75     return;  // Capture was not started successfully
+76   }
 77 
-78   // Read and log the captured output
-79   if (capture.pipe_fd &gt;= 0) {
-80     char buffer[LOG_IO_BUFFER_SIZE];
-81     ssize_t bytes_read;
-82 
-83     // Read all available data from the pipe
-84     while ((bytes_read = read(capture.pipe_fd, buffer, sizeof(buffer) - 1)) &gt; 0) {
-85       buffer[bytes_read] = '\0';
-86 
-87       // Split by lines and log each line
-88       char *line_start = buffer;
-89       char *line_end;
-90 
-91       while ((line_end = strchr(line_start, '\n')) != NULL) {
-92         // Null-terminate the line (overwriting the newline)
-93         *line_end = '\0';
-94 
-95         // Log the line if it's not empty
-96         if (line_start[0] != '\0') {
-97           if (prefix) {
-98             log_debug(&quot;[%s] %s&quot;, prefix, line_start);
-99           } else {
-100             log_debug(&quot;%s&quot;, line_start);
-101           }
-102         }
-103 
-104         // Move to the next line
-105         line_start = line_end + 1;
-106       }
-107 
-108       // Log any remaining partial line
-109       if (line_start[0] != '\0') {
-110         if (prefix) {
-111           log_debug(&quot;[%s] %s&quot;, prefix, line_start);
-112         } else {
-113           log_debug(&quot;%s&quot;, line_start);
-114         }
-115       }
-116     }
+78   // Flush stdout/stderr BEFORE restoring to ensure all output is in the pipe
+79   fflush(stdout);
+80   fflush(stderr);
+81 
+82   // Restore stdout and stderr
+83   dup2(capture.saved_stdout_fd, STDOUT_FILENO);
+84   dup2(capture.saved_stderr_fd, STDERR_FILENO);
+85   close(capture.saved_stdout_fd);
+86   close(capture.saved_stderr_fd);
+87 
+88   // Read and log the captured output
+89   if (capture.pipe_fd &gt;= 0) {
+90     char buffer[LOG_IO_BUFFER_SIZE];
+91     ssize_t bytes_read;
+92 
+93     // Read all available data from the pipe
+94     while ((bytes_read = read(capture.pipe_fd, buffer, sizeof(buffer) - 1)) &gt; 0) {
+95       buffer[bytes_read] = '\0';
+96 
+97       // Split by lines and log each line
+98       char *line_start = buffer;
+99       char *line_end;
+100 
+101       while ((line_end = strchr(line_start, '\n')) != NULL) {
+102         // Null-terminate the line (overwriting the newline)
+103         *line_end = '\0';
+104 
+105         // Log the line if it's not empty
+106         if (line_start[0] != '\0') {
+107           if (prefix) {
+108             log_debug(&quot;[%s] %s&quot;, prefix, line_start);
+109           } else {
+110             log_debug(&quot;%s&quot;, line_start);
+111           }
+112         }
+113 
+114         // Move to the next line
+115         line_start = line_end + 1;
+116       }
 117 
-118     close(capture.pipe_fd);
-119   }
-120 }</pre>
+118       // Log any remaining partial line
+119       if (line_start[0] != '\0') {
+120         if (prefix) {
+121           log_debug(&quot;[%s] %s&quot;, prefix, line_start);
+122         } else {
+123           log_debug(&quot;%s&quot;, line_start);
+124         }
+125       }
+126     }
+127 
+128     close(capture.pipe_fd);
+129   }
+130 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_debug</b>, <b>LOG_IO_BUFFER_SIZE</b>,

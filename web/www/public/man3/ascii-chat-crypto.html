@@ -1642,7 +1642,7 @@
     <b>include/ascii-chat/crypto/crypto.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_process_rekey_complete()</b>,
     <b>crypto_handshake_rekey_complete()</b>, and
-    <b>crypto_handshake_server_start()</b>.</p>
+    <b>crypto_handshake_server_send_parameters()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ED25519_PRIVATE_KEY_SIZE___64"><a class="permalink" href="#_define_ED25519_PRIVATE_KEY_SIZE___64">#define
@@ -1666,6 +1666,7 @@
     <b>compute_key_fingerprint()</b>,
     <b>crypto_handshake_client_key_exchange()</b>,
     <b>crypto_handshake_server_auth_challenge()</b>,
+    <b>crypto_handshake_server_send_parameters()</b>,
     <b>crypto_handshake_server_start()</b>,
     <b>crypto_handshake_validate_packet_size()</b>,
     <b>parse_ssh_ed25519_line()</b>, and <b>server_crypto_handshake()</b>.</p>
@@ -1680,7 +1681,7 @@
     <b>include/ascii-chat/crypto/crypto.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>,
     <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>crypto_handshake_server_start()</b>,
+    <b>crypto_handshake_server_send_parameters()</b>,
     <b>crypto_handshake_validate_packet_size()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>
@@ -1859,8 +1860,8 @@
 <p class="Pp">Poly1305 MAC size in bytes.</p>
 <p class="Pp">Definition at line <b>101</b> of file
     <b>include/ascii-chat/crypto/crypto.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_handshake_server_start()</b>, and
-    <b>crypto_init()</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_server_send_parameters()</b>,
+    and <b>crypto_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_REKEY_DEFAULT_PACKET_THRESHOLD___1000000"><a class="permalink" href="#_define_REKEY_DEFAULT_PACKET_THRESHOLD___1000000">#define
@@ -2067,7 +2068,8 @@
 <p class="Pp">Definition at line <b>99</b> of file
     <b>include/ascii-chat/crypto/crypto.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_encrypt()</b>,
-    <b>crypto_handshake_server_start()</b>, and <b>crypto_init()</b>.</p>
+    <b>crypto_handshake_server_send_parameters()</b>, and
+  <b>crypto_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ZERO_KEY_SIZE___"><a class="permalink" href="#_define_ZERO_KEY_SIZE___">#define

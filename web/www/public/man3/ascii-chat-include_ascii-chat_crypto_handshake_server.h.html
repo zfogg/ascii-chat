@@ -45,7 +45,11 @@
     (<b>crypto_handshake_context_t</b> *ctx, <b>acip_transport_t</b> *transport)
   <br/>
   Server: Start crypto handshake by sending public key. <b>asciichat_error_t</b>
-    <b>crypto_handshake_server_auth_challenge</b>
+    <b>crypto_handshake_server_send_parameters</b>
+    (<b>crypto_handshake_context_t</b> *ctx, <b>acip_transport_t</b> *transport)
+  <br/>
+  Server: Send CRYPTO_PARAMETERS and set handshake context sizes.
+    <b>asciichat_error_t</b> <b>crypto_handshake_server_auth_challenge</b>
     (<b>crypto_handshake_context_t</b> *ctx, <b>acip_transport_t</b> *transport,
     <b>packet_type_t</b> packet_type, const <b>uint8_t</b> *payload, size_t
     payload_len)
@@ -67,7 +71,11 @@
 <p class="Pp">
   <br/>
   <br/>
-  <b>asciichat_error_t</b> <b>crypto_handshake_server_start_socket</b>
+  <b>asciichat_error_t</b> <b>crypto_handshake_server_send_parameters_socket</b>
+    (<b>crypto_handshake_context_t</b> *ctx, <b>socket_t</b> client_socket)
+  <br/>
+  Legacy wrapper: Start handshake using socket (TCP clients only).
+    <b>asciichat_error_t</b> <b>crypto_handshake_server_start_socket</b>
     (<b>crypto_handshake_context_t</b> *ctx, <b>socket_t</b> client_socket)
   <br/>
   Legacy wrapper: Start handshake using socket (TCP clients only).
@@ -128,283 +136,283 @@
 <p class="Pp">State transition: CRYPTO_HANDSHAKE_KEY_EXCHANGE -&gt;
     CRYPTO_HANDSHAKE_AUTHENTICATING</p>
 </div>
-<p class="Pp">Definition at line <b>139</b> of file
+<p class="Pp">Definition at line <b>164</b> of file
     <b>lib/crypto/handshake/server.c</b>.</p>
-<pre>141                                                                              {
-142   if (!ctx || ctx-&gt;state != CRYPTO_HANDSHAKE_KEY_EXCHANGE) {
-143     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid state: ctx=%p, state=%d&quot;, ctx, ctx ? ctx-&gt;state : -1);
-144   }
-145   if (!transport) {
-146     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;transport is NULL&quot;);
-147   }
-148 
-149   // Note: Packet already received by ACIP handler
-150   int result;
-151 
-152   // Check if client sent NO_ENCRYPTION response
-153   if (packet_type == PACKET_TYPE_CRYPTO_NO_ENCRYPTION) {
-154 
-155     // Send AUTH_FAILED to inform client (though they already know)
-156     auth_failure_packet_t failure = {0};
-157     failure.reason_flags = 0; // No specific auth failure, just encryption mismatch
-158     int send_result =
-159         packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &amp;failure, sizeof(failure), 0);
-160     if (send_result != 0) {
-161       return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send AUTH_FAILED packet&quot;);
-162     }
-163 
-164     return SET_ERRNO(ERROR_CRYPTO, &quot;SECURITY: Client sent NO_ENCRYPTION response - encryption mode &quot;
-165                                    &quot;mismatch. Server requires encryption, but &quot;
-166                                    &quot;client has --no-encrypt. Use matching encryption settings on &quot;
-167                                    &quot;both client and server&quot;);
-168   }
-169 
-170   // Verify packet type
-171   if (packet_type != PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP) {
-172     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Expected KEY_EXCHANGE_RESPONSE, got packet type %d&quot;, packet_type);
-173   }
-174 
-175   // Verify payload size - client can send either simple or authenticated format
-176   // Simple: kex_public_key_size bytes
-177   // Authenticated: public_key_size + client_auth_key_size + client_sig_size bytes
-178   size_t simple_size = ctx-&gt;crypto_ctx.public_key_size;
-179   // Ed25519 public key is always 32 bytes
-180   // Ed25519 signature is always 64 bytes
-181   size_t authenticated_size = ctx-&gt;crypto_ctx.public_key_size + ED25519_PUBLIC_KEY_SIZE + ED25519_SIGNATURE_SIZE;
-182 
-183   bool client_sent_identity = false;
-184   uint8_t *client_ephemeral_key = SAFE_MALLOC(ctx-&gt;crypto_ctx.public_key_size, uint8_t *);
-185   uint8_t *client_identity_key = SAFE_MALLOC(ED25519_PUBLIC_KEY_SIZE, uint8_t *);
-186   uint8_t *client_signature = SAFE_MALLOC(ED25519_SIGNATURE_SIZE, uint8_t *);
-187 
-188   if (!client_ephemeral_key || !client_identity_key || !client_signature) {
-189     if (client_ephemeral_key)
-190       SAFE_FREE(client_ephemeral_key);
-191     if (client_identity_key)
-192       SAFE_FREE(client_identity_key);
-193     if (client_signature)
-194       SAFE_FREE(client_signature);
-195     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate memory for client keys&quot;);
-196   }
-197 
-198   // Validate packet size using session parameters
-199   asciichat_error_t validation_result =
-200       crypto_handshake_validate_packet_size(ctx, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, payload_len);
-201   if (validation_result != ASCIICHAT_OK) {
-202     // Payload ownership remains with caller
-203     SAFE_FREE(client_ephemeral_key);
-204     SAFE_FREE(client_identity_key);
-205     SAFE_FREE(client_signature);
-206     return validation_result;
-207   }
-208 
-209   // Handle both authenticated and non-authenticated responses
-210   // authenticated_size is now a minimum - packet may be larger with GPG key ID
-211   if (payload_len &gt;= authenticated_size) {
-212     // Authenticated format (may have optional GPG key ID):
-213     // [ephemeral:kex_size][identity:auth_size][signature:sig_size][gpg_key_id_len:1][gpg_key_id:0-16]
-214     memcpy(client_ephemeral_key, payload, ctx-&gt;crypto_ctx.public_key_size);
-215     memcpy(client_identity_key, payload + ctx-&gt;crypto_ctx.public_key_size, ED25519_PUBLIC_KEY_SIZE);
-216     memcpy(client_signature, payload + ctx-&gt;crypto_ctx.public_key_size + ED25519_PUBLIC_KEY_SIZE,
-217            ED25519_SIGNATURE_SIZE);
-218     client_sent_identity = true;
-219     ctx-&gt;client_sent_identity = true;
-220 
-221     // Extract GPG key ID if present
-222     const char *client_gpg_key_id = NULL;
-223     char gpg_key_id_buffer[41] = {0};
-224     size_t gpg_offset = ctx-&gt;crypto_ctx.public_key_size + ED25519_PUBLIC_KEY_SIZE + ED25519_SIGNATURE_SIZE;
-225     if (payload_len &gt; gpg_offset) {
-226       uint8_t gpg_key_id_len = payload[gpg_offset];
-227       if (gpg_key_id_len &gt; 0 &amp;&amp; gpg_key_id_len &lt;= 40 &amp;&amp; payload_len &gt;= gpg_offset + 1 + gpg_key_id_len) {
-228         memcpy(gpg_key_id_buffer, payload + gpg_offset + 1, gpg_key_id_len);
-229         gpg_key_id_buffer[gpg_key_id_len] = '\0';
-230         client_gpg_key_id = gpg_key_id_buffer;
-231         log_debug(&quot;Extracted client GPG key ID from KEY_EXCHANGE_RESPONSE: %s&quot;, client_gpg_key_id);
-232       }
-233     }
-234 
-235     // Check if client sent a null identity key (all zeros)
-236     bool client_has_null_identity = true;
-237     for (size_t i = 0; i &lt; ED25519_PUBLIC_KEY_SIZE; i++) {
-238       if (client_identity_key[i] != 0) {
-239         client_has_null_identity = false;
-240         break;
-241       }
-242     }
-243 
-244     if (client_has_null_identity) {
-245       // Client has no identity key - this is allowed for servers without client authentication
-246       log_debug(&quot;Client sent null identity key - no client authentication required&quot;);
-247       client_sent_identity = false;
-248       ctx-&gt;client_sent_identity = false;
-249       log_warn(&quot;Client connected without identity authentication&quot;);
-250     } else {
-251       // Client has a real identity key
-252       // If server didn't specify --client-keys, skip signature verification
-253       // (server doesn't care about client identity verification)
-254       if (!ctx-&gt;require_client_auth) {
-255         log_info(&quot;Skipping client signature verification (no --client-keys specified)&quot;);
-256         log_warn(&quot;Connection is encrypted but client identity is NOT verified&quot;);
-257       } else {
-258         // Verify client's signature
-259         log_debug(&quot;Verifying client's signature&quot;);
-260         // Pass client's GPG key ID if available
-261         if (ed25519_verify_signature(client_identity_key, client_ephemeral_key, ctx-&gt;crypto_ctx.public_key_size,
-262                                      client_signature, client_gpg_key_id) != 0) {
-263           // Send AUTH_FAILED with specific reason
-264           auth_failure_packet_t failure = {0};
-265           failure.reason_flags = AUTH_FAIL_SIGNATURE_INVALID;
-266           int send_result =
-267               packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &amp;failure, sizeof(failure), 0);
-268           if (send_result != 0) {
-269             return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send AUTH_FAILED packet&quot;);
-270           }
-271 
-272           return SET_ERRNO(ERROR_CRYPTO, &quot;Client signature verification FAILED - rejecting connection&quot;);
-273         }
-274       }
-275     }
-276 
-277     // Store the verified client identity for whitelist checking (only if client has identity)
-278     if (client_sent_identity) {
-279       ctx-&gt;client_ed25519_key.type = KEY_TYPE_ED25519;
-280       memcpy(ctx-&gt;client_ed25519_key.key, client_identity_key, ctx-&gt;crypto_ctx.public_key_size);
-281     }
-282   } else if (payload_len == simple_size) {
-283     // Non-authenticated format: [ephemeral:public_key_size] only
-284     log_debug(&quot;Client sent non-authenticated response (%zu bytes)&quot;, payload_len);
-285     memcpy(client_ephemeral_key, payload, ctx-&gt;crypto_ctx.public_key_size);
-286     client_sent_identity = false;
-287     ctx-&gt;client_sent_identity = false;
-288     log_warn(&quot;Client connected without identity authentication&quot;);
-289   } else {
-290     // Payload ownership remains with caller
-291     SAFE_FREE(client_ephemeral_key);
-292     SAFE_FREE(client_identity_key);
-293     SAFE_FREE(client_signature);
-294     return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
-295                      &quot;Invalid client key response size: %zu bytes (expected %zu for &quot;
-296                      &quot;authenticated or %zu for simple)&quot;,
-297                      payload_len, authenticated_size, simple_size);
-298   }
-299 
-300   // Extract pointers for compatibility with existing code
-301   const uint8_t *client_x25519 = client_ephemeral_key;
-302   const uint8_t *client_ed25519 = client_sent_identity ? client_identity_key : NULL;
-303 
-304   // Check client Ed25519 key against whitelist if client provided one and
-305   // whitelist is enabled
-306   if (client_sent_identity &amp;&amp; ctx-&gt;require_client_auth &amp;&amp; ctx-&gt;client_whitelist &amp;&amp; ctx-&gt;num_whitelisted_clients &gt; 0) {
-307     bool key_found = false;
-308 
-309     // Debug: print client's Ed25519 identity key
-310     char client_ed25519_hex[HEX_STRING_SIZE_32];
-311     for (int i = 0; i &lt; ED25519_PUBLIC_KEY_SIZE; i++) {
-312       safe_snprintf(client_ed25519_hex + i * 2, 3, &quot;%02x&quot;, client_ed25519[i]);
-313     }
-314     log_debug(&quot;Client Ed25519 identity key: %s&quot;, client_ed25519_hex);
-315 
-316     // Compare against whitelist (direct Ed25519 comparison - no conversion!)
-317     for (size_t i = 0; i &lt; ctx-&gt;num_whitelisted_clients; i++) {
-318       // Debug: print whitelist Ed25519 key
-319       char whitelist_ed25519_hex[HEX_STRING_SIZE_32];
-320       for (int j = 0; j &lt; ED25519_PUBLIC_KEY_SIZE; j++) {
-321         safe_snprintf(whitelist_ed25519_hex + j * 2, 3, &quot;%02x&quot;, ctx-&gt;client_whitelist[i].key[j]);
-322       }
-323       log_debug(&quot;Whitelist[%zu] Ed25519 key: %s&quot;, i, whitelist_ed25519_hex);
+<pre>166                                                                              {
+167   if (!ctx || ctx-&gt;state != CRYPTO_HANDSHAKE_KEY_EXCHANGE) {
+168     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid state: ctx=%p, state=%d&quot;, ctx, ctx ? ctx-&gt;state : -1);
+169   }
+170   if (!transport) {
+171     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;transport is NULL&quot;);
+172   }
+173 
+174   // Note: Packet already received by ACIP handler
+175   int result;
+176 
+177   // Check if client sent NO_ENCRYPTION response
+178   if (packet_type == PACKET_TYPE_CRYPTO_NO_ENCRYPTION) {
+179 
+180     // Send AUTH_FAILED to inform client (though they already know)
+181     auth_failure_packet_t failure = {0};
+182     failure.reason_flags = 0; // No specific auth failure, just encryption mismatch
+183     int send_result =
+184         packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &amp;failure, sizeof(failure), 0);
+185     if (send_result != 0) {
+186       return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send AUTH_FAILED packet&quot;);
+187     }
+188 
+189     return SET_ERRNO(ERROR_CRYPTO, &quot;SECURITY: Client sent NO_ENCRYPTION response - encryption mode &quot;
+190                                    &quot;mismatch. Server requires encryption, but &quot;
+191                                    &quot;client has --no-encrypt. Use matching encryption settings on &quot;
+192                                    &quot;both client and server&quot;);
+193   }
+194 
+195   // Verify packet type
+196   if (packet_type != PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP) {
+197     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Expected KEY_EXCHANGE_RESPONSE, got packet type %d&quot;, packet_type);
+198   }
+199 
+200   // Verify payload size - client can send either simple or authenticated format
+201   // Simple: kex_public_key_size bytes
+202   // Authenticated: public_key_size + client_auth_key_size + client_sig_size bytes
+203   size_t simple_size = ctx-&gt;crypto_ctx.public_key_size;
+204   // Ed25519 public key is always 32 bytes
+205   // Ed25519 signature is always 64 bytes
+206   size_t authenticated_size = ctx-&gt;crypto_ctx.public_key_size + ED25519_PUBLIC_KEY_SIZE + ED25519_SIGNATURE_SIZE;
+207 
+208   bool client_sent_identity = false;
+209   uint8_t *client_ephemeral_key = SAFE_MALLOC(ctx-&gt;crypto_ctx.public_key_size, uint8_t *);
+210   uint8_t *client_identity_key = SAFE_MALLOC(ED25519_PUBLIC_KEY_SIZE, uint8_t *);
+211   uint8_t *client_signature = SAFE_MALLOC(ED25519_SIGNATURE_SIZE, uint8_t *);
+212 
+213   if (!client_ephemeral_key || !client_identity_key || !client_signature) {
+214     if (client_ephemeral_key)
+215       SAFE_FREE(client_ephemeral_key);
+216     if (client_identity_key)
+217       SAFE_FREE(client_identity_key);
+218     if (client_signature)
+219       SAFE_FREE(client_signature);
+220     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate memory for client keys&quot;);
+221   }
+222 
+223   // Validate packet size using session parameters
+224   asciichat_error_t validation_result =
+225       crypto_handshake_validate_packet_size(ctx, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, payload_len);
+226   if (validation_result != ASCIICHAT_OK) {
+227     // Payload ownership remains with caller
+228     SAFE_FREE(client_ephemeral_key);
+229     SAFE_FREE(client_identity_key);
+230     SAFE_FREE(client_signature);
+231     return validation_result;
+232   }
+233 
+234   // Handle both authenticated and non-authenticated responses
+235   // authenticated_size is now a minimum - packet may be larger with GPG key ID
+236   if (payload_len &gt;= authenticated_size) {
+237     // Authenticated format (may have optional GPG key ID):
+238     // [ephemeral:kex_size][identity:auth_size][signature:sig_size][gpg_key_id_len:1][gpg_key_id:0-16]
+239     memcpy(client_ephemeral_key, payload, ctx-&gt;crypto_ctx.public_key_size);
+240     memcpy(client_identity_key, payload + ctx-&gt;crypto_ctx.public_key_size, ED25519_PUBLIC_KEY_SIZE);
+241     memcpy(client_signature, payload + ctx-&gt;crypto_ctx.public_key_size + ED25519_PUBLIC_KEY_SIZE,
+242            ED25519_SIGNATURE_SIZE);
+243     client_sent_identity = true;
+244     ctx-&gt;client_sent_identity = true;
+245 
+246     // Extract GPG key ID if present
+247     const char *client_gpg_key_id = NULL;
+248     char gpg_key_id_buffer[41] = {0};
+249     size_t gpg_offset = ctx-&gt;crypto_ctx.public_key_size + ED25519_PUBLIC_KEY_SIZE + ED25519_SIGNATURE_SIZE;
+250     if (payload_len &gt; gpg_offset) {
+251       uint8_t gpg_key_id_len = payload[gpg_offset];
+252       if (gpg_key_id_len &gt; 0 &amp;&amp; gpg_key_id_len &lt;= 40 &amp;&amp; payload_len &gt;= gpg_offset + 1 + gpg_key_id_len) {
+253         memcpy(gpg_key_id_buffer, payload + gpg_offset + 1, gpg_key_id_len);
+254         gpg_key_id_buffer[gpg_key_id_len] = '\0';
+255         client_gpg_key_id = gpg_key_id_buffer;
+256         log_debug(&quot;Extracted client GPG key ID from KEY_EXCHANGE_RESPONSE: %s&quot;, client_gpg_key_id);
+257       }
+258     }
+259 
+260     // Check if client sent a null identity key (all zeros)
+261     bool client_has_null_identity = true;
+262     for (size_t i = 0; i &lt; ED25519_PUBLIC_KEY_SIZE; i++) {
+263       if (client_identity_key[i] != 0) {
+264         client_has_null_identity = false;
+265         break;
+266       }
+267     }
+268 
+269     if (client_has_null_identity) {
+270       // Client has no identity key - this is allowed for servers without client authentication
+271       log_debug(&quot;Client sent null identity key - no client authentication required&quot;);
+272       client_sent_identity = false;
+273       ctx-&gt;client_sent_identity = false;
+274       log_warn(&quot;Client connected without identity authentication&quot;);
+275     } else {
+276       // Client has a real identity key
+277       // If server didn't specify --client-keys, skip signature verification
+278       // (server doesn't care about client identity verification)
+279       if (!ctx-&gt;require_client_auth) {
+280         log_info(&quot;Skipping client signature verification (no --client-keys specified)&quot;);
+281         log_warn(&quot;Connection is encrypted but client identity is NOT verified&quot;);
+282       } else {
+283         // Verify client's signature
+284         log_debug(&quot;Verifying client's signature&quot;);
+285         // Pass client's GPG key ID if available
+286         if (ed25519_verify_signature(client_identity_key, client_ephemeral_key, ctx-&gt;crypto_ctx.public_key_size,
+287                                      client_signature, client_gpg_key_id) != 0) {
+288           // Send AUTH_FAILED with specific reason
+289           auth_failure_packet_t failure = {0};
+290           failure.reason_flags = AUTH_FAIL_SIGNATURE_INVALID;
+291           int send_result =
+292               packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &amp;failure, sizeof(failure), 0);
+293           if (send_result != 0) {
+294             return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send AUTH_FAILED packet&quot;);
+295           }
+296 
+297           return SET_ERRNO(ERROR_CRYPTO, &quot;Client signature verification FAILED - rejecting connection&quot;);
+298         }
+299       }
+300     }
+301 
+302     // Store the verified client identity for whitelist checking (only if client has identity)
+303     if (client_sent_identity) {
+304       ctx-&gt;client_ed25519_key.type = KEY_TYPE_ED25519;
+305       memcpy(ctx-&gt;client_ed25519_key.key, client_identity_key, ctx-&gt;crypto_ctx.public_key_size);
+306     }
+307   } else if (payload_len == simple_size) {
+308     // Non-authenticated format: [ephemeral:public_key_size] only
+309     log_debug(&quot;Client sent non-authenticated response (%zu bytes)&quot;, payload_len);
+310     memcpy(client_ephemeral_key, payload, ctx-&gt;crypto_ctx.public_key_size);
+311     client_sent_identity = false;
+312     ctx-&gt;client_sent_identity = false;
+313     log_warn(&quot;Client connected without identity authentication&quot;);
+314   } else {
+315     // Payload ownership remains with caller
+316     SAFE_FREE(client_ephemeral_key);
+317     SAFE_FREE(client_identity_key);
+318     SAFE_FREE(client_signature);
+319     return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
+320                      &quot;Invalid client key response size: %zu bytes (expected %zu for &quot;
+321                      &quot;authenticated or %zu for simple)&quot;,
+322                      payload_len, authenticated_size, simple_size);
+323   }
 324 
-325       // Direct comparison of Ed25519 keys (constant-time to prevent timing
-326       // attacks)
-327       if (sodium_memcmp(client_ed25519, ctx-&gt;client_whitelist[i].key, ED25519_PUBLIC_KEY_SIZE) == 0) {
-328         key_found = true;
-329         ctx-&gt;client_ed25519_key_verified = true;
-330 
-331         // Store the client's Ed25519 key for signature verification
-332         memcpy(&amp;ctx-&gt;client_ed25519_key, &amp;ctx-&gt;client_whitelist[i], sizeof(public_key_t));
+325   // Extract pointers for compatibility with existing code
+326   const uint8_t *client_x25519 = client_ephemeral_key;
+327   const uint8_t *client_ed25519 = client_sent_identity ? client_identity_key : NULL;
+328 
+329   // Check client Ed25519 key against whitelist if client provided one and
+330   // whitelist is enabled
+331   if (client_sent_identity &amp;&amp; ctx-&gt;require_client_auth &amp;&amp; ctx-&gt;client_whitelist &amp;&amp; ctx-&gt;num_whitelisted_clients &gt; 0) {
+332     bool key_found = false;
 333 
-334         log_debug(&quot;Client Ed25519 key authorized (whitelist entry %zu)&quot;, i);
-335         if (strlen(ctx-&gt;client_whitelist[i].comment) &gt; 0) {
-336           log_info(&quot;Client identity: %s&quot;, ctx-&gt;client_whitelist[i].comment);
-337         }
-338         break;
-339       }
-340     }
-341 
-342     if (!key_found) {
-343       SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Client Ed25519 key not in whitelist - rejecting connection&quot;);
-344       // Don't send AUTH_FAILED here - wait until server_complete
-345       // Just mark that the key was rejected
-346       ctx-&gt;client_ed25519_key_verified = false;
-347     }
-348   } else if (client_sent_identity) {
-349     // No whitelist checking - just store the client's Ed25519 key for later
-350     // (Already stored at line 313-314, but keep this for clarity)
-351     ctx-&gt;client_ed25519_key_verified = false;
-352   }
-353 
-354   // Set peer's X25519 encryption key - this also derives the shared secret
-355   crypto_result_t crypto_result = crypto_set_peer_public_key(&amp;ctx-&gt;crypto_ctx, client_x25519);
-356   if (crypto_result != CRYPTO_OK) {
-357     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to set peer public key and derive shared secret: %s&quot;,
-358                      crypto_result_to_string(crypto_result));
-359   }
-360 
-361   // Clean up allocated memory
-362   SAFE_FREE(client_ephemeral_key);
-363   SAFE_FREE(client_identity_key);
-364   SAFE_FREE(client_signature);
-365 
-366   // Do authentication challenge if client provided identity key OR server
-367   // requires password
-368   if (client_sent_identity || ctx-&gt;crypto_ctx.has_password || ctx-&gt;require_client_auth) {
-369     // Generate nonce and store it in the context
-370     crypto_result = crypto_generate_nonce(ctx-&gt;crypto_ctx.auth_nonce);
-371     if (crypto_result != CRYPTO_OK) {
-372       return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to generate nonce: %s&quot;, crypto_result_to_string(crypto_result));
-373     }
-374 
-375     // Prepare AUTH_CHALLENGE packet: 1 byte flags + auth_challenge_size byte nonce
-376     size_t challenge_packet_size = AUTH_CHALLENGE_FLAGS_SIZE + ctx-&gt;crypto_ctx.auth_challenge_size;
-377     uint8_t challenge_packet[1 + HMAC_SHA256_SIZE]; // Maximum size buffer
-378     uint8_t auth_flags = 0;
-379 
-380     // Set flags based on server requirements
-381     if (ctx-&gt;crypto_ctx.has_password) {
-382       auth_flags |= AUTH_REQUIRE_PASSWORD;
-383     }
-384     if (ctx-&gt;require_client_auth) {
-385       auth_flags |= AUTH_REQUIRE_CLIENT_KEY;
-386     }
-387 
-388     challenge_packet[0] = auth_flags;
-389     memcpy(challenge_packet + 1, ctx-&gt;crypto_ctx.auth_nonce, ctx-&gt;crypto_ctx.auth_challenge_size);
+334     // Debug: print client's Ed25519 identity key
+335     char client_ed25519_hex[HEX_STRING_SIZE_32];
+336     for (int i = 0; i &lt; ED25519_PUBLIC_KEY_SIZE; i++) {
+337       safe_snprintf(client_ed25519_hex + i * 2, 3, &quot;%02x&quot;, client_ed25519[i]);
+338     }
+339     log_debug(&quot;Client Ed25519 identity key: %s&quot;, client_ed25519_hex);
+340 
+341     // Compare against whitelist (direct Ed25519 comparison - no conversion!)
+342     for (size_t i = 0; i &lt; ctx-&gt;num_whitelisted_clients; i++) {
+343       // Debug: print whitelist Ed25519 key
+344       char whitelist_ed25519_hex[HEX_STRING_SIZE_32];
+345       for (int j = 0; j &lt; ED25519_PUBLIC_KEY_SIZE; j++) {
+346         safe_snprintf(whitelist_ed25519_hex + j * 2, 3, &quot;%02x&quot;, ctx-&gt;client_whitelist[i].key[j]);
+347       }
+348       log_debug(&quot;Whitelist[%zu] Ed25519 key: %s&quot;, i, whitelist_ed25519_hex);
+349 
+350       // Direct comparison of Ed25519 keys (constant-time to prevent timing
+351       // attacks)
+352       if (sodium_memcmp(client_ed25519, ctx-&gt;client_whitelist[i].key, ED25519_PUBLIC_KEY_SIZE) == 0) {
+353         key_found = true;
+354         ctx-&gt;client_ed25519_key_verified = true;
+355 
+356         // Store the client's Ed25519 key for signature verification
+357         memcpy(&amp;ctx-&gt;client_ed25519_key, &amp;ctx-&gt;client_whitelist[i], sizeof(public_key_t));
+358 
+359         log_debug(&quot;Client Ed25519 key authorized (whitelist entry %zu)&quot;, i);
+360         if (strlen(ctx-&gt;client_whitelist[i].comment) &gt; 0) {
+361           log_info(&quot;Client identity: %s&quot;, ctx-&gt;client_whitelist[i].comment);
+362         }
+363         break;
+364       }
+365     }
+366 
+367     if (!key_found) {
+368       SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Client Ed25519 key not in whitelist - rejecting connection&quot;);
+369       // Don't send AUTH_FAILED here - wait until server_complete
+370       // Just mark that the key was rejected
+371       ctx-&gt;client_ed25519_key_verified = false;
+372     }
+373   } else if (client_sent_identity) {
+374     // No whitelist checking - just store the client's Ed25519 key for later
+375     // (Already stored at line 313-314, but keep this for clarity)
+376     ctx-&gt;client_ed25519_key_verified = false;
+377   }
+378 
+379   // Set peer's X25519 encryption key - this also derives the shared secret
+380   crypto_result_t crypto_result = crypto_set_peer_public_key(&amp;ctx-&gt;crypto_ctx, client_x25519);
+381   if (crypto_result != CRYPTO_OK) {
+382     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to set peer public key and derive shared secret: %s&quot;,
+383                      crypto_result_to_string(crypto_result));
+384   }
+385 
+386   // Clean up allocated memory
+387   SAFE_FREE(client_ephemeral_key);
+388   SAFE_FREE(client_identity_key);
+389   SAFE_FREE(client_signature);
 390 
-391     // Send AUTH_CHALLENGE with flags + nonce (challenge_packet_size bytes)
-392     result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_CHALLENGE, challenge_packet,
-393                                        challenge_packet_size, 0);
-394     if (result != 0) {
-395       return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send AUTH_CHALLENGE packet&quot;);
-396     }
-397 
-398     ctx-&gt;state = CRYPTO_HANDSHAKE_AUTHENTICATING;
-399   } else {
-400     // No authentication needed - skip to completion
-401     log_debug(&quot;Skipping authentication (no password and client has no identity key)&quot;);
-402 
-403     // Send HANDSHAKE_COMPLETE immediately
-404     result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE, NULL, 0, 0);
-405     if (result != 0) {
-406       return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send HANDSHAKE_COMPLETE packet&quot;);
-407     }
-408 
-409     ctx-&gt;state = CRYPTO_HANDSHAKE_READY;
-410     ctx-&gt;crypto_ctx.handshake_complete = true; // Mark crypto context as ready for rekeying
-411     log_debug(&quot;Crypto handshake completed successfully (no authentication)&quot;);
-412   }
-413 
-414   return ASCIICHAT_OK;
-415 }</pre>
+391   // Do authentication challenge if client provided identity key OR server
+392   // requires password
+393   if (client_sent_identity || ctx-&gt;crypto_ctx.has_password || ctx-&gt;require_client_auth) {
+394     // Generate nonce and store it in the context
+395     crypto_result = crypto_generate_nonce(ctx-&gt;crypto_ctx.auth_nonce);
+396     if (crypto_result != CRYPTO_OK) {
+397       return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to generate nonce: %s&quot;, crypto_result_to_string(crypto_result));
+398     }
+399 
+400     // Prepare AUTH_CHALLENGE packet: 1 byte flags + auth_challenge_size byte nonce
+401     size_t challenge_packet_size = AUTH_CHALLENGE_FLAGS_SIZE + ctx-&gt;crypto_ctx.auth_challenge_size;
+402     uint8_t challenge_packet[1 + HMAC_SHA256_SIZE]; // Maximum size buffer
+403     uint8_t auth_flags = 0;
+404 
+405     // Set flags based on server requirements
+406     if (ctx-&gt;crypto_ctx.has_password) {
+407       auth_flags |= AUTH_REQUIRE_PASSWORD;
+408     }
+409     if (ctx-&gt;require_client_auth) {
+410       auth_flags |= AUTH_REQUIRE_CLIENT_KEY;
+411     }
+412 
+413     challenge_packet[0] = auth_flags;
+414     memcpy(challenge_packet + 1, ctx-&gt;crypto_ctx.auth_nonce, ctx-&gt;crypto_ctx.auth_challenge_size);
+415 
+416     // Send AUTH_CHALLENGE with flags + nonce (challenge_packet_size bytes)
+417     result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_CHALLENGE, challenge_packet,
+418                                        challenge_packet_size, 0);
+419     if (result != 0) {
+420       return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send AUTH_CHALLENGE packet&quot;);
+421     }
+422 
+423     ctx-&gt;state = CRYPTO_HANDSHAKE_AUTHENTICATING;
+424   } else {
+425     // No authentication needed - skip to completion
+426     log_debug(&quot;Skipping authentication (no password and client has no identity key)&quot;);
+427 
+428     // Send HANDSHAKE_COMPLETE immediately
+429     result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE, NULL, 0, 0);
+430     if (result != 0) {
+431       return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send HANDSHAKE_COMPLETE packet&quot;);
+432     }
+433 
+434     ctx-&gt;state = CRYPTO_HANDSHAKE_READY;
+435     ctx-&gt;crypto_ctx.handshake_complete = true; // Mark crypto context as ready for rekeying
+436     log_debug(&quot;Crypto handshake completed successfully (no authentication)&quot;);
+437   }
+438 
+439   return ASCIICHAT_OK;
+440 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>AUTH_CHALLENGE_FLAGS_SIZE</b>,
@@ -452,43 +460,43 @@
 <p class="Pp"><b>Deprecated</b></p>
 <div class="Bd-indent">Use <b>crypto_handshake_server_auth_challenge()</b> with
   <b>acip_transport_t</b> instead</div>
-<p class="Pp">Definition at line <b>647</b> of file
+<p class="Pp">Definition at line <b>691</b> of file
     <b>lib/crypto/handshake/server.c</b>.</p>
-<pre>648                                                                                         {
-649   // Receive packet using old method
-650   packet_type_t packet_type;
-651   uint8_t *payload = NULL;
-652   size_t payload_len = 0;
-653   int result = receive_packet(client_socket, &amp;packet_type, (void **)&amp;payload, &amp;payload_len);
-654   if (result != ASCIICHAT_OK) {
-655     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive KEY_EXCHANGE_RESPONSE packet&quot;);
-656   }
-657 
-658   // Create temporary TCP transport
-659   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_handshake_temp_socket&quot;, client_socket, NULL);
-660   if (!temp_transport) {
-661     // Payload will be freed below since we own it from receive_packet()
-662     if (payload) {
-663       buffer_pool_free(NULL, payload, payload_len);
-664     }
-665     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
-666   }
-667 
-668   // Call new function
-669   asciichat_error_t handshake_result =
-670       crypto_handshake_server_auth_challenge(ctx, temp_transport, packet_type, payload, payload_len);
-671 
-672   // Free payload (handshake function makes copies of what it needs)
-673   // We own the payload from receive_packet(), so we must free it
-674   if (payload) {
-675     buffer_pool_free(NULL, payload, payload_len);
-676   }
-677 
-678   // Destroy temporary transport
-679   acip_transport_destroy(temp_transport);
-680 
-681   return handshake_result;
-682 }</pre>
+<pre>692                                                                                         {
+693   // Receive packet using old method
+694   packet_type_t packet_type;
+695   uint8_t *payload = NULL;
+696   size_t payload_len = 0;
+697   int result = receive_packet(client_socket, &amp;packet_type, (void **)&amp;payload, &amp;payload_len);
+698   if (result != ASCIICHAT_OK) {
+699     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive KEY_EXCHANGE_RESPONSE packet&quot;);
+700   }
+701 
+702   // Create temporary TCP transport
+703   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_handshake_temp_socket&quot;, client_socket, NULL);
+704   if (!temp_transport) {
+705     // Payload will be freed below since we own it from receive_packet()
+706     if (payload) {
+707       buffer_pool_free(NULL, payload, payload_len);
+708     }
+709     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
+710   }
+711 
+712   // Call new function
+713   asciichat_error_t handshake_result =
+714       crypto_handshake_server_auth_challenge(ctx, temp_transport, packet_type, payload, payload_len);
+715 
+716   // Free payload (handshake function makes copies of what it needs)
+717   // We own the payload from receive_packet(), so we must free it
+718   if (payload) {
+719     buffer_pool_free(NULL, payload, payload_len);
+720   }
+721 
+722   // Destroy temporary transport
+723   acip_transport_destroy(temp_transport);
+724 
+725   return handshake_result;
+726 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_tcp_transport_create()</b>,
@@ -529,204 +537,204 @@
 <p class="Pp">State transition: CRYPTO_HANDSHAKE_AUTHENTICATING -&gt;
     CRYPTO_HANDSHAKE_READY</p>
 </div>
-<p class="Pp">Definition at line <b>417</b> of file
+<p class="Pp">Definition at line <b>442</b> of file
     <b>lib/crypto/handshake/server.c</b>.</p>
-<pre>419                                                                        {
-420   if (!ctx || ctx-&gt;state != CRYPTO_HANDSHAKE_AUTHENTICATING) {
-421     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid state: ctx=%p, state=%d&quot;, ctx, ctx ? ctx-&gt;state : -1);
-422   }
-423   if (!transport) {
-424     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;transport is NULL&quot;);
-425   }
-426 
-427   // Note: Packet already received by ACIP handler
-428   int result;
-429 
-430   // Verify packet type
-431   if (packet_type != PACKET_TYPE_CRYPTO_AUTH_RESPONSE) {
-432     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Expected AUTH_RESPONSE, got packet type %d&quot;, packet_type);
-433   }
-434 
-435   // Verify password if required
-436   if (ctx-&gt;crypto_ctx.has_password) {
-437     // Validate packet size using session parameters
-438     asciichat_error_t validation_result =
-439         crypto_handshake_validate_packet_size(ctx, PACKET_TYPE_CRYPTO_AUTH_RESPONSE, payload_len);
-440     if (validation_result != ASCIICHAT_OK) {
-441       return validation_result;
-442     }
-443 
-444     // Ensure shared secret is derived before password verification
-445     // This is critical for password HMAC verification which binds to the shared secret
-446     if (!ctx-&gt;crypto_ctx.key_exchange_complete) {
-447       SET_ERRNO(ERROR_CRYPTO, &quot;Password authentication failed - key exchange not complete&quot;);
-448 
-449       // Send AUTH_FAILED with specific reason
-450       auth_failure_packet_t failure = {0};
-451       failure.reason_flags = AUTH_FAIL_PASSWORD_INCORRECT;
-452       if (ctx-&gt;require_client_auth) {
-453         failure.reason_flags |= AUTH_FAIL_CLIENT_KEY_REQUIRED;
-454       }
-455       packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &amp;failure, sizeof(failure), 0);
-456       return ERROR_NETWORK;
-457     }
-458 
-459     // Verify password HMAC (binds to DH shared_secret to prevent MITM)
-460     log_debug(&quot;Verifying password HMAC: has_password=%d, key_exchange_complete=%d&quot;, ctx-&gt;crypto_ctx.has_password,
-461               ctx-&gt;crypto_ctx.key_exchange_complete);
-462     if (!payload) {
-463       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Payload is NULL in password authentication&quot;);
-464       return ERROR_CRYPTO;
-465     }
-466     if (!crypto_verify_auth_response(&amp;ctx-&gt;crypto_ctx, ctx-&gt;crypto_ctx.auth_nonce, payload)) {
-467       log_debug(&quot;Password HMAC verification failed&quot;);
-468       // Enhanced error message when both password and whitelist are required
-469       if (ctx-&gt;require_client_auth) {
-470         SET_ERRNO(ERROR_CRYPTO,
-471                   &quot;Password authentication failed - incorrect password (server also requires whitelisted client key)&quot;);
-472       } else {
-473         SET_ERRNO(ERROR_CRYPTO, &quot;Password authentication failed - incorrect password&quot;);
-474       }
-475 
-476       // Send AUTH_FAILED with specific reason
-477       auth_failure_packet_t failure = {0};
-478       failure.reason_flags = AUTH_FAIL_PASSWORD_INCORRECT;
-479       if (ctx-&gt;require_client_auth) {
-480         failure.reason_flags |= AUTH_FAIL_CLIENT_KEY_REQUIRED;
-481       }
-482       packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &amp;failure, sizeof(failure), 0);
-483       return ERROR_NETWORK;
-484     }
-485 
-486     // Extract client challenge nonce for mutual authentication
-487     // Use ctx-&gt;crypto_ctx.hmac_size and ctx-&gt;crypto_ctx.auth_challenge_size (negotiated during handshake)
-488     memcpy(ctx-&gt;client_challenge_nonce, payload + ctx-&gt;crypto_ctx.hmac_size, ctx-&gt;crypto_ctx.auth_challenge_size);
-489     log_info(&quot;Password authentication successful&quot;);
-490   } else {
-491     // Ed25519 signature auth (payload format: signature + client_nonce + gpg_key_id_len + gpg_key_id)
-492     size_t expected_min_signature_size =
-493         ctx-&gt;crypto_ctx.signature_size + ctx-&gt;crypto_ctx.auth_challenge_size + 1; // +1 for gpg_key_id_len byte
-494     size_t expected_password_size = ctx-&gt;crypto_ctx.hmac_size + ctx-&gt;crypto_ctx.auth_challenge_size;
-495     if (!payload) {
-496       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Payload is NULL in signature authentication&quot;);
-497       return ERROR_CRYPTO;
-498     }
-499     if (payload_len &gt;= expected_min_signature_size) {
-500       // Signature + client nonce + optional GPG key ID - VERIFY the signature on the challenge nonce
-501       const uint8_t *signature = payload;
-502       const uint8_t *client_nonce = payload + ctx-&gt;crypto_ctx.signature_size;
-503 
-504       // Extract GPG key ID if present
-505       size_t gpg_offset = ctx-&gt;crypto_ctx.signature_size + ctx-&gt;crypto_ctx.auth_challenge_size;
-506       uint8_t gpg_key_id_len = payload[gpg_offset];
-507       const char *client_gpg_key_id = NULL;
-508       char gpg_key_id_buffer[41] = {0};
-509 
-510       if (gpg_key_id_len &gt; 0 &amp;&amp; gpg_key_id_len &lt;= 40) {
-511         // Validate packet has enough bytes for GPG key ID
-512         if (payload_len &gt;= gpg_offset + 1 + gpg_key_id_len) {
-513           memcpy(gpg_key_id_buffer, payload + gpg_offset + 1, gpg_key_id_len);
-514           gpg_key_id_buffer[gpg_key_id_len] = '\0';
-515           client_gpg_key_id = gpg_key_id_buffer;
-516           log_debug(&quot;Extracted client GPG key ID from AUTH_RESPONSE: %s&quot;, client_gpg_key_id);
-517         }
-518       }
-519 
-520       // Actually verify the Ed25519/GPG signature on the challenge nonce
-521       // This was missing, allowing authentication bypass
-522       if (ctx-&gt;client_ed25519_key_verified) {
-523         // Use unified verification function that handles both Ed25519 and GPG keys
-524         // This matches the KEY_EXCHANGE verification path
-525         log_debug(&quot;Verifying %s signature on challenge nonce&quot;,
-526                   ctx-&gt;client_ed25519_key.type == KEY_TYPE_GPG ? &quot;GPG&quot; : &quot;Ed25519&quot;);
-527 
-528         asciichat_error_t verify_result = ed25519_verify_signature(
-529             ctx-&gt;client_ed25519_key.key, ctx-&gt;crypto_ctx.auth_nonce, ctx-&gt;crypto_ctx.auth_challenge_size, signature,
-530             client_gpg_key_id // GPG key ID for fallback verification
-531         );
-532 
-533         if (verify_result != ASCIICHAT_OK) {
-534           auth_failure_packet_t failure = {0};
-535           failure.reason_flags = AUTH_FAIL_CLIENT_KEY_REJECTED;
-536           SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;%s signature verification failed on challenge nonce&quot;,
-537                     ctx-&gt;client_ed25519_key.type == KEY_TYPE_GPG ? &quot;GPG&quot; : &quot;Ed25519&quot;);
-538           packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &amp;failure, sizeof(failure), 0);
-539           return ERROR_CRYPTO_AUTH;
-540         }
-541         log_debug(&quot;%s signature on challenge nonce verified successfully&quot;,
-542                   ctx-&gt;client_ed25519_key.type == KEY_TYPE_GPG ? &quot;GPG&quot; : &quot;Ed25519&quot;);
+<pre>444                                                                        {
+445   if (!ctx || ctx-&gt;state != CRYPTO_HANDSHAKE_AUTHENTICATING) {
+446     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid state: ctx=%p, state=%d&quot;, ctx, ctx ? ctx-&gt;state : -1);
+447   }
+448   if (!transport) {
+449     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;transport is NULL&quot;);
+450   }
+451 
+452   // Note: Packet already received by ACIP handler
+453   int result;
+454 
+455   // Verify packet type
+456   if (packet_type != PACKET_TYPE_CRYPTO_AUTH_RESPONSE) {
+457     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Expected AUTH_RESPONSE, got packet type %d&quot;, packet_type);
+458   }
+459 
+460   // Verify password if required
+461   if (ctx-&gt;crypto_ctx.has_password) {
+462     // Validate packet size using session parameters
+463     asciichat_error_t validation_result =
+464         crypto_handshake_validate_packet_size(ctx, PACKET_TYPE_CRYPTO_AUTH_RESPONSE, payload_len);
+465     if (validation_result != ASCIICHAT_OK) {
+466       return validation_result;
+467     }
+468 
+469     // Ensure shared secret is derived before password verification
+470     // This is critical for password HMAC verification which binds to the shared secret
+471     if (!ctx-&gt;crypto_ctx.key_exchange_complete) {
+472       SET_ERRNO(ERROR_CRYPTO, &quot;Password authentication failed - key exchange not complete&quot;);
+473 
+474       // Send AUTH_FAILED with specific reason
+475       auth_failure_packet_t failure = {0};
+476       failure.reason_flags = AUTH_FAIL_PASSWORD_INCORRECT;
+477       if (ctx-&gt;require_client_auth) {
+478         failure.reason_flags |= AUTH_FAIL_CLIENT_KEY_REQUIRED;
+479       }
+480       packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &amp;failure, sizeof(failure), 0);
+481       return ERROR_NETWORK;
+482     }
+483 
+484     // Verify password HMAC (binds to DH shared_secret to prevent MITM)
+485     log_debug(&quot;Verifying password HMAC: has_password=%d, key_exchange_complete=%d&quot;, ctx-&gt;crypto_ctx.has_password,
+486               ctx-&gt;crypto_ctx.key_exchange_complete);
+487     if (!payload) {
+488       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Payload is NULL in password authentication&quot;);
+489       return ERROR_CRYPTO;
+490     }
+491     if (!crypto_verify_auth_response(&amp;ctx-&gt;crypto_ctx, ctx-&gt;crypto_ctx.auth_nonce, payload)) {
+492       log_debug(&quot;Password HMAC verification failed&quot;);
+493       // Enhanced error message when both password and whitelist are required
+494       if (ctx-&gt;require_client_auth) {
+495         SET_ERRNO(ERROR_CRYPTO,
+496                   &quot;Password authentication failed - incorrect password (server also requires whitelisted client key)&quot;);
+497       } else {
+498         SET_ERRNO(ERROR_CRYPTO, &quot;Password authentication failed - incorrect password&quot;);
+499       }
+500 
+501       // Send AUTH_FAILED with specific reason
+502       auth_failure_packet_t failure = {0};
+503       failure.reason_flags = AUTH_FAIL_PASSWORD_INCORRECT;
+504       if (ctx-&gt;require_client_auth) {
+505         failure.reason_flags |= AUTH_FAIL_CLIENT_KEY_REQUIRED;
+506       }
+507       packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &amp;failure, sizeof(failure), 0);
+508       return ERROR_NETWORK;
+509     }
+510 
+511     // Extract client challenge nonce for mutual authentication
+512     // Use ctx-&gt;crypto_ctx.hmac_size and ctx-&gt;crypto_ctx.auth_challenge_size (negotiated during handshake)
+513     memcpy(ctx-&gt;client_challenge_nonce, payload + ctx-&gt;crypto_ctx.hmac_size, ctx-&gt;crypto_ctx.auth_challenge_size);
+514     log_info(&quot;Password authentication successful&quot;);
+515   } else {
+516     // Ed25519 signature auth (payload format: signature + client_nonce + gpg_key_id_len + gpg_key_id)
+517     size_t expected_min_signature_size =
+518         ctx-&gt;crypto_ctx.signature_size + ctx-&gt;crypto_ctx.auth_challenge_size + 1; // +1 for gpg_key_id_len byte
+519     size_t expected_password_size = ctx-&gt;crypto_ctx.hmac_size + ctx-&gt;crypto_ctx.auth_challenge_size;
+520     if (!payload) {
+521       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Payload is NULL in signature authentication&quot;);
+522       return ERROR_CRYPTO;
+523     }
+524     if (payload_len &gt;= expected_min_signature_size) {
+525       // Signature + client nonce + optional GPG key ID - VERIFY the signature on the challenge nonce
+526       const uint8_t *signature = payload;
+527       const uint8_t *client_nonce = payload + ctx-&gt;crypto_ctx.signature_size;
+528 
+529       // Extract GPG key ID if present
+530       size_t gpg_offset = ctx-&gt;crypto_ctx.signature_size + ctx-&gt;crypto_ctx.auth_challenge_size;
+531       uint8_t gpg_key_id_len = payload[gpg_offset];
+532       const char *client_gpg_key_id = NULL;
+533       char gpg_key_id_buffer[41] = {0};
+534 
+535       if (gpg_key_id_len &gt; 0 &amp;&amp; gpg_key_id_len &lt;= 40) {
+536         // Validate packet has enough bytes for GPG key ID
+537         if (payload_len &gt;= gpg_offset + 1 + gpg_key_id_len) {
+538           memcpy(gpg_key_id_buffer, payload + gpg_offset + 1, gpg_key_id_len);
+539           gpg_key_id_buffer[gpg_key_id_len] = '\0';
+540           client_gpg_key_id = gpg_key_id_buffer;
+541           log_debug(&quot;Extracted client GPG key ID from AUTH_RESPONSE: %s&quot;, client_gpg_key_id);
+542         }
 543       }
 544 
-545       memcpy(ctx-&gt;client_challenge_nonce, client_nonce, ctx-&gt;crypto_ctx.auth_challenge_size);
-546     } else if (payload_len == expected_password_size) {
-547       // Just client nonce (legacy or password-only mode without password enabled)
-548       // Use ctx-&gt;crypto_ctx.hmac_size and ctx-&gt;crypto_ctx.auth_challenge_size (negotiated during handshake)
-549       memcpy(ctx-&gt;client_challenge_nonce, payload + ctx-&gt;crypto_ctx.hmac_size, ctx-&gt;crypto_ctx.auth_challenge_size);
-550     } else {
-551       // Validate packet size using session parameters
-552       asciichat_error_t validation_result =
-553           crypto_handshake_validate_packet_size(ctx, PACKET_TYPE_CRYPTO_AUTH_RESPONSE, payload_len);
-554       if (validation_result != ASCIICHAT_OK) {
-555         return validation_result;
-556       }
-557     }
-558   }
-559 
-560   // Verify client key if required (whitelist)
-561   if (ctx-&gt;require_client_auth) {
-562     if (!ctx-&gt;client_ed25519_key_verified) {
-563       // Send AUTH_FAILED with specific reason
-564       auth_failure_packet_t failure = {0};
-565 
-566       // Check if client provided a key but it wasn't in whitelist
-567       if (ctx-&gt;client_sent_identity) {
-568         SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Client key authentication failed - your key is not in the server's whitelist&quot;);
-569         failure.reason_flags = AUTH_FAIL_CLIENT_KEY_REJECTED;
-570       } else {
-571         SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Client key authentication failed - client did not provide a key&quot;);
-572         failure.reason_flags = AUTH_FAIL_CLIENT_KEY_REQUIRED;
-573       }
-574 
-575       if (ctx-&gt;crypto_ctx.has_password) {
-576         // Password was verified, but key was not
-577         SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Note: Password was correct, but client key is required&quot;);
-578       }
-579       packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &amp;failure, sizeof(failure), 0);
-580       return ERROR_NETWORK;
-581     }
-582     log_info(&quot;Client key authentication successful (whitelist verified)&quot;);
-583     if (strlen(ctx-&gt;client_ed25519_key.comment) &gt; 0) {
-584       log_info(&quot;Authenticated client: %s&quot;, ctx-&gt;client_ed25519_key.comment);
-585     }
-586   }
-587 
-588   // Send SERVER_AUTH_RESPONSE with server's HMAC for mutual authentication
-589   // Bind to DH shared_secret to prevent MITM (even if attacker knows password)
-590   // Allocate buffer using negotiated hmac_size (should match AUTH_HMAC_SIZE)
-591   uint8_t server_hmac[HMAC_SHA256_SIZE]; // Maximum size, actual size is ctx-&gt;hmac_size
-592   crypto_result_t crypto_result =
-593       crypto_compute_auth_response(&amp;ctx-&gt;crypto_ctx, ctx-&gt;client_challenge_nonce, server_hmac);
-594   if (crypto_result != CRYPTO_OK) {
-595     SET_ERRNO(ERROR_CRYPTO, &quot;Failed to compute server HMAC for mutual authentication: %s&quot;,
-596               crypto_result_to_string(crypto_result));
-597     return ERROR_NETWORK;
-598   }
+545       // Actually verify the Ed25519/GPG signature on the challenge nonce
+546       // This was missing, allowing authentication bypass
+547       if (ctx-&gt;client_ed25519_key_verified) {
+548         // Use unified verification function that handles both Ed25519 and GPG keys
+549         // This matches the KEY_EXCHANGE verification path
+550         log_debug(&quot;Verifying %s signature on challenge nonce&quot;,
+551                   ctx-&gt;client_ed25519_key.type == KEY_TYPE_GPG ? &quot;GPG&quot; : &quot;Ed25519&quot;);
+552 
+553         asciichat_error_t verify_result = ed25519_verify_signature(
+554             ctx-&gt;client_ed25519_key.key, ctx-&gt;crypto_ctx.auth_nonce, ctx-&gt;crypto_ctx.auth_challenge_size, signature,
+555             client_gpg_key_id // GPG key ID for fallback verification
+556         );
+557 
+558         if (verify_result != ASCIICHAT_OK) {
+559           auth_failure_packet_t failure = {0};
+560           failure.reason_flags = AUTH_FAIL_CLIENT_KEY_REJECTED;
+561           SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;%s signature verification failed on challenge nonce&quot;,
+562                     ctx-&gt;client_ed25519_key.type == KEY_TYPE_GPG ? &quot;GPG&quot; : &quot;Ed25519&quot;);
+563           packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &amp;failure, sizeof(failure), 0);
+564           return ERROR_CRYPTO_AUTH;
+565         }
+566         log_debug(&quot;%s signature on challenge nonce verified successfully&quot;,
+567                   ctx-&gt;client_ed25519_key.type == KEY_TYPE_GPG ? &quot;GPG&quot; : &quot;Ed25519&quot;);
+568       }
+569 
+570       memcpy(ctx-&gt;client_challenge_nonce, client_nonce, ctx-&gt;crypto_ctx.auth_challenge_size);
+571     } else if (payload_len == expected_password_size) {
+572       // Just client nonce (legacy or password-only mode without password enabled)
+573       // Use ctx-&gt;crypto_ctx.hmac_size and ctx-&gt;crypto_ctx.auth_challenge_size (negotiated during handshake)
+574       memcpy(ctx-&gt;client_challenge_nonce, payload + ctx-&gt;crypto_ctx.hmac_size, ctx-&gt;crypto_ctx.auth_challenge_size);
+575     } else {
+576       // Validate packet size using session parameters
+577       asciichat_error_t validation_result =
+578           crypto_handshake_validate_packet_size(ctx, PACKET_TYPE_CRYPTO_AUTH_RESPONSE, payload_len);
+579       if (validation_result != ASCIICHAT_OK) {
+580         return validation_result;
+581       }
+582     }
+583   }
+584 
+585   // Verify client key if required (whitelist)
+586   if (ctx-&gt;require_client_auth) {
+587     if (!ctx-&gt;client_ed25519_key_verified) {
+588       // Send AUTH_FAILED with specific reason
+589       auth_failure_packet_t failure = {0};
+590 
+591       // Check if client provided a key but it wasn't in whitelist
+592       if (ctx-&gt;client_sent_identity) {
+593         SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Client key authentication failed - your key is not in the server's whitelist&quot;);
+594         failure.reason_flags = AUTH_FAIL_CLIENT_KEY_REJECTED;
+595       } else {
+596         SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Client key authentication failed - client did not provide a key&quot;);
+597         failure.reason_flags = AUTH_FAIL_CLIENT_KEY_REQUIRED;
+598       }
 599 
-600   log_debug(&quot;Sending SERVER_AUTH_RESPONSE packet with server HMAC (%u bytes) &quot;
-601             &quot;for mutual authentication&quot;,
-602             ctx-&gt;crypto_ctx.hmac_size);
-603   result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP, server_hmac,
-604                                      ctx-&gt;crypto_ctx.hmac_size, 0);
-605   if (result != ASCIICHAT_OK) {
-606     SET_ERRNO(ERROR_NETWORK, &quot;Failed to send SERVER_AUTH_RESPONSE packet&quot;);
-607     return ERROR_NETWORK;
-608   }
-609 
-610   ctx-&gt;state = CRYPTO_HANDSHAKE_READY;
-611   log_debug(&quot;Crypto handshake completed successfully (mutual authentication)&quot;);
+600       if (ctx-&gt;crypto_ctx.has_password) {
+601         // Password was verified, but key was not
+602         SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Note: Password was correct, but client key is required&quot;);
+603       }
+604       packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_AUTH_FAILED, &amp;failure, sizeof(failure), 0);
+605       return ERROR_NETWORK;
+606     }
+607     log_info(&quot;Client key authentication successful (whitelist verified)&quot;);
+608     if (strlen(ctx-&gt;client_ed25519_key.comment) &gt; 0) {
+609       log_info(&quot;Authenticated client: %s&quot;, ctx-&gt;client_ed25519_key.comment);
+610     }
+611   }
 612 
-613   return ASCIICHAT_OK;
-614 }</pre>
+613   // Send SERVER_AUTH_RESPONSE with server's HMAC for mutual authentication
+614   // Bind to DH shared_secret to prevent MITM (even if attacker knows password)
+615   // Allocate buffer using negotiated hmac_size (should match AUTH_HMAC_SIZE)
+616   uint8_t server_hmac[HMAC_SHA256_SIZE]; // Maximum size, actual size is ctx-&gt;hmac_size
+617   crypto_result_t crypto_result =
+618       crypto_compute_auth_response(&amp;ctx-&gt;crypto_ctx, ctx-&gt;client_challenge_nonce, server_hmac);
+619   if (crypto_result != CRYPTO_OK) {
+620     SET_ERRNO(ERROR_CRYPTO, &quot;Failed to compute server HMAC for mutual authentication: %s&quot;,
+621               crypto_result_to_string(crypto_result));
+622     return ERROR_NETWORK;
+623   }
+624 
+625   log_debug(&quot;Sending SERVER_AUTH_RESPONSE packet with server HMAC (%u bytes) &quot;
+626             &quot;for mutual authentication&quot;,
+627             ctx-&gt;crypto_ctx.hmac_size);
+628   result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP, server_hmac,
+629                                      ctx-&gt;crypto_ctx.hmac_size, 0);
+630   if (result != ASCIICHAT_OK) {
+631     SET_ERRNO(ERROR_NETWORK, &quot;Failed to send SERVER_AUTH_RESPONSE packet&quot;);
+632     return ERROR_NETWORK;
+633   }
+634 
+635   ctx-&gt;state = CRYPTO_HANDSHAKE_READY;
+636   log_debug(&quot;Crypto handshake completed successfully (mutual authentication)&quot;);
+637 
+638   return ASCIICHAT_OK;
+639 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -767,43 +775,43 @@
 <p class="Pp"><b>Deprecated</b></p>
 <div class="Bd-indent">Use <b>crypto_handshake_server_complete()</b> with
   <b>acip_transport_t</b> instead</div>
-<p class="Pp">Definition at line <b>687</b> of file
+<p class="Pp">Definition at line <b>731</b> of file
     <b>lib/crypto/handshake/server.c</b>.</p>
-<pre>687                                                                                                                    {
-688   // Receive packet using old method
-689   packet_type_t packet_type = 0;
-690   uint8_t *payload = NULL;
-691   size_t payload_len = 0;
-692   int result = receive_packet(client_socket, &amp;packet_type, (void **)&amp;payload, &amp;payload_len);
-693   if (result != ASCIICHAT_OK) {
-694     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive AUTH_RESPONSE packet&quot;);
-695   }
-696 
-697   // Create temporary TCP transport
-698   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_handshake_temp_socket&quot;, client_socket, NULL);
-699   if (!temp_transport) {
-700     // Payload will be freed below since we own it from receive_packet()
-701     if (payload) {
-702       buffer_pool_free(NULL, payload, payload_len);
-703     }
-704     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
-705   }
-706 
-707   // Call new function
-708   asciichat_error_t handshake_result =
-709       crypto_handshake_server_complete(ctx, temp_transport, packet_type, payload, payload_len);
-710 
-711   // Free payload (handshake function makes copies of what it needs)
-712   // We own the payload from receive_packet(), so we must free it
-713   if (payload) {
-714     buffer_pool_free(NULL, payload, payload_len);
-715   }
-716 
-717   // Destroy temporary transport
-718   acip_transport_destroy(temp_transport);
-719 
-720   return handshake_result;
-721 }</pre>
+<pre>731                                                                                                                    {
+732   // Receive packet using old method
+733   packet_type_t packet_type = 0;
+734   uint8_t *payload = NULL;
+735   size_t payload_len = 0;
+736   int result = receive_packet(client_socket, &amp;packet_type, (void **)&amp;payload, &amp;payload_len);
+737   if (result != ASCIICHAT_OK) {
+738     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive AUTH_RESPONSE packet&quot;);
+739   }
+740 
+741   // Create temporary TCP transport
+742   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_handshake_temp_socket&quot;, client_socket, NULL);
+743   if (!temp_transport) {
+744     // Payload will be freed below since we own it from receive_packet()
+745     if (payload) {
+746       buffer_pool_free(NULL, payload, payload_len);
+747     }
+748     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
+749   }
+750 
+751   // Call new function
+752   asciichat_error_t handshake_result =
+753       crypto_handshake_server_complete(ctx, temp_transport, packet_type, payload, payload_len);
+754 
+755   // Free payload (handshake function makes copies of what it needs)
+756   // We own the payload from receive_packet(), so we must free it
+757   if (payload) {
+758     buffer_pool_free(NULL, payload, payload_len);
+759   }
+760 
+761   // Destroy temporary transport
+762   acip_transport_destroy(temp_transport);
+763 
+764   return handshake_result;
+765 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_tcp_transport_create()</b>,
@@ -812,6 +820,143 @@
     <b>ERROR_NETWORK</b>, <b>receive_packet()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>, and
     <b>server_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_server_send_parameters
+  (<b>crypto_handshake_context_t</b> * ctx, <b>acip_transport_t</b> *
+  transport)</h2>
+<p class="Pp">Server: Send CRYPTO_PARAMETERS and set handshake context
+  sizes.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Handshake context
+<br/>
+<i>transport</i> ACIP transport to send on</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Must be called before <b>crypto_handshake_server_start()</b>.
+    Builds crypto parameters based on server state (identity key presence),
+    sends them to the client, and updates context sizes to match.</p>
+<p class="Pp"></p>
+<p class="Pp">TCP server path calls this indirectly via its own negotiation in
+    <b>src/server/crypto.c</b> (which customizes parameters based on client
+    capabilities). WebSocket and discovery-service paths call this directly.
+    &lt;X25519 key exchange (Curve25519)</p>
+<p class="Pp"></p>
+<p class="Pp">&lt;Ed25519 authentication (Edwards-curve signatures)</p>
+<p class="Pp"></p>
+<p class="Pp">&lt;No authentication (plaintext mode)</p>
+<p class="Pp"></p>
+<p class="Pp">&lt;XSalsa20-Poly1305 authenticated encryption</p>
+<p class="Pp">Definition at line <b>20</b> of file
+    <b>lib/crypto/handshake/server.c</b>.</p>
+<pre>20                                                                                                                         {
+21   if (!ctx || !transport) {
+22     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, transport=%p&quot;, (void *)ctx, (void *)transport);
+23   }
+24 
+25   bool has_identity_key = (ctx-&gt;server_private_key.type == KEY_TYPE_ED25519);
+26 
+27   crypto_parameters_packet_t params;
+28   memset(&amp;params, 0, sizeof(params));
+29 
+30   params.selected_kex = KEX_ALGO_X25519;
+31   params.selected_auth = has_identity_key ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
+32   params.selected_cipher = CIPHER_ALGO_XSALSA20_POLY1305;
+33   params.verification_enabled = ctx-&gt;require_client_auth ? 1 : 0;
+34   params.kex_public_key_size = ctx-&gt;crypto_ctx.public_key_size;
+35   params.shared_secret_size = CRYPTO_SHARED_KEY_SIZE;
+36   params.nonce_size = XSALSA20_NONCE_SIZE;
+37   params.mac_size = POLY1305_MAC_SIZE;
+38   params.hmac_size = 32; // SHA256 output size
+39 
+40   if (has_identity_key) {
+41     params.auth_public_key_size = ED25519_PUBLIC_KEY_SIZE;
+42     params.signature_size = ED25519_SIGNATURE_SIZE;
+43   }
+44 
+45   // Set context sizes to match what we send (host byte order)
+46   crypto_handshake_set_parameters(ctx, &amp;params);
+47 
+48   // Convert to network byte order for the wire
+49   params.kex_public_key_size = htons(params.kex_public_key_size);
+50   params.auth_public_key_size = htons(params.auth_public_key_size);
+51   params.signature_size = htons(params.signature_size);
+52   params.shared_secret_size = htons(params.shared_secret_size);
+53 
+54   int result =
+55       packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_PARAMETERS, (uint8_t *)&amp;params, sizeof(params), 0);
+56   if (result != ASCIICHAT_OK) {
+57     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send CRYPTO_PARAMETERS packet&quot;);
+58   }
+59 
+60   log_debug(&quot;[HANDSHAKE] CRYPTO_PARAMETERS sent: auth=%s, cipher=XSALSA20_POLY1305&quot;,
+61             has_identity_key ? &quot;ED25519&quot; : &quot;NONE&quot;);
+62   return ASCIICHAT_OK;
+63 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>AUTH_ALGO_ED25519</b>,
+    <b>AUTH_ALGO_NONE</b>,
+    <b>crypto_parameters_packet_t::auth_public_key_size</b>,
+    <b>CIPHER_ALGO_XSALSA20_POLY1305</b>,
+    <b>crypto_handshake_context_t::crypto_ctx</b>,
+    <b>crypto_handshake_set_parameters()</b>, <b>CRYPTO_SHARED_KEY_SIZE</b>,
+    <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ED25519_SIGNATURE_SIZE</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>,
+    <b>crypto_parameters_packet_t::hmac_size</b>, <b>KEX_ALGO_X25519</b>,
+    <b>crypto_parameters_packet_t::kex_public_key_size</b>,
+    <b>KEY_TYPE_ED25519</b>, <b>log_debug</b>,
+    <b>crypto_parameters_packet_t::mac_size</b>,
+    <b>crypto_parameters_packet_t::nonce_size</b>,
+    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_CRYPTO_PARAMETERS</b>,
+    <b>POLY1305_MAC_SIZE</b>, <b>crypto_context_t::public_key_size</b>,
+    <b>crypto_handshake_context_t::require_client_auth</b>,
+    <b>crypto_parameters_packet_t::selected_auth</b>,
+    <b>crypto_parameters_packet_t::selected_cipher</b>,
+    <b>crypto_parameters_packet_t::selected_kex</b>,
+    <b>crypto_handshake_context_t::server_private_key</b>, <b>SET_ERRNO</b>,
+    <b>crypto_parameters_packet_t::shared_secret_size</b>,
+    <b>crypto_parameters_packet_t::signature_size</b>,
+    <b>private_key_t::type</b>,
+    <b>crypto_parameters_packet_t::verification_enabled</b>, and
+    <b>XSALSA20_NONCE_SIZE</b>.</p>
+<p class="Pp">Referenced by
+    <b>crypto_handshake_server_send_parameters_socket()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b>
+  crypto_handshake_server_send_parameters_socket
+  (<b>crypto_handshake_context_t</b> * ctx, <b>socket_t</b> client_socket)</h2>
+<p class="Pp">Legacy wrapper: Start handshake using socket (TCP clients
+  only).</p>
+<p class="Pp"><b>Deprecated</b></p>
+<div class="Bd-indent">Use <b>crypto_handshake_server_start()</b> with
+  <b>acip_transport_t</b> instead</div>
+<p class="Pp">Legacy wrapper: Start handshake using socket (TCP clients
+  only).</p>
+<p class="Pp">Definition at line <b>672</b> of file
+    <b>lib/crypto/handshake/server.c</b>.</p>
+<pre>673                                                                                           {
+674   if (!ctx) {
+675     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Context cannot be NULL&quot;);
+676   }
+677 
+678   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_params_temp_socket&quot;, client_socket, NULL);
+679   if (!temp_transport) {
+680     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
+681   }
+682 
+683   asciichat_error_t result = crypto_handshake_server_send_parameters(ctx, temp_transport);
+684   acip_transport_destroy(temp_transport);
+685   return result;
+686 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_tcp_transport_create()</b>,
+    <b>acip_transport_destroy()</b>,
+    <b>crypto_handshake_server_send_parameters()</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_handler()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_server_start
@@ -841,165 +986,123 @@
 <p class="Pp">State transition: CRYPTO_HANDSHAKE_INIT -&gt;
     CRYPTO_HANDSHAKE_KEY_EXCHANGE</p>
 </div>
-<p class="Pp">&lt;X25519 key exchange (Curve25519)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt;Ed25519 authentication (Edwards-curve signatures)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt;XSalsa20-Poly1305 authenticated encryption</p>
-<p class="Pp">Definition at line <b>20</b> of file
+<p class="Pp">Definition at line <b>66</b> of file
     <b>lib/crypto/handshake/server.c</b>.</p>
-<pre>20                                                                                                               {
-21   log_debug(&quot;[HANDSHAKE_START] ===== ENTRY: crypto_handshake_server_start called =====&quot;);
-22   log_debug(&quot;[HANDSHAKE_START] ctx=%p, transport=%p&quot;, (void *)ctx, (void *)transport);
-23 
-24   if (!ctx || ctx-&gt;state != CRYPTO_HANDSHAKE_INIT) {
-25     log_error(&quot;[HANDSHAKE_START] FAILED: Invalid state - ctx=%p, state=%d&quot;, (void *)ctx, ctx ? (int)ctx-&gt;state : -1);
-26     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid state: ctx=%p, state=%d&quot;, (void *)ctx, ctx ? (int)ctx-&gt;state : -1);
-27   }
-28   log_debug(&quot;[HANDSHAKE_START] State check OK: state=%d (CRYPTO_HANDSHAKE_INIT)&quot;, ctx-&gt;state);
-29 
-30   int result;
-31 
-32   // Step 1: Send CRYPTO_PARAMETERS packet first (algorithm negotiation)
-33   // This tells the client what key sizes and algorithms we're using
-34   log_debug(&quot;[HANDSHAKE_START] STEP 1: Sending CRYPTO_PARAMETERS to client&quot;);
-35   crypto_parameters_packet_t params;
-36   memset(&amp;params, 0, sizeof(params));
-37 
-38   params.selected_kex = KEX_ALGO_X25519;
-39   params.selected_auth = AUTH_ALGO_ED25519;
-40   params.selected_cipher = CIPHER_ALGO_XSALSA20_POLY1305;
-41   params.verification_enabled = ctx-&gt;require_client_auth ? 1 : 0;
-42   params.kex_public_key_size = htons(ctx-&gt;crypto_ctx.public_key_size);
-43   params.auth_public_key_size = htons(ED25519_PUBLIC_KEY_SIZE);
-44   params.signature_size = htons(ED25519_SIGNATURE_SIZE);
-45   params.shared_secret_size = htons(CRYPTO_SHARED_KEY_SIZE);
-46   params.nonce_size = XSALSA20_NONCE_SIZE;
-47   params.mac_size = POLY1305_MAC_SIZE;
-48   params.hmac_size = 32;  // SHA256 output size
-49 
-50   result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_PARAMETERS, (uint8_t *)&amp;params, sizeof(params), 0);
-51   if (result != ASCIICHAT_OK) {
-52     log_error(&quot;[HANDSHAKE_START] FAILED: Could not send CRYPTO_PARAMETERS packet&quot;);
-53     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send CRYPTO_PARAMETERS packet&quot;);
-54   }
-55   log_debug(&quot;[HANDSHAKE_START] CRYPTO_PARAMETERS sent successfully&quot;);
-56 
-57   // Calculate packet size based on negotiated crypto parameters
-58   size_t expected_packet_size =
-59       ctx-&gt;crypto_ctx.public_key_size + ctx-&gt;crypto_ctx.auth_public_key_size + ctx-&gt;crypto_ctx.signature_size;
-60 
-61   log_debug(&quot;SERVER_KEY_EXCHANGE: kex_size=%u, auth_size=%u, sig_size=%u, expected_size=%zu&quot;,
-62             ctx-&gt;crypto_ctx.public_key_size, ctx-&gt;crypto_ctx.auth_public_key_size, ctx-&gt;crypto_ctx.signature_size,
-63             expected_packet_size);
-64 
-65   // Check if we have an identity key to send authenticated packet
-66   if (ctx-&gt;server_private_key.type == KEY_TYPE_ED25519) {
-67     // Extended packet format:
-68     // [ephemeral_key:kex_size][identity_key:auth_size][signature:sig_size]
-69     uint8_t *extended_packet;
-70     extended_packet = SAFE_MALLOC(expected_packet_size, uint8_t *);
-71     if (!extended_packet) {
-72       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate memory for extended packet&quot;);
-73     }
-74 
-75     // Copy ephemeral public key
-76     memcpy(extended_packet, ctx-&gt;crypto_ctx.public_key, ctx-&gt;crypto_ctx.public_key_size);
+<pre>66                                                                                                               {
+67   log_debug(&quot;[HANDSHAKE_START] ===== ENTRY: crypto_handshake_server_start called =====&quot;);
+68   log_debug(&quot;[HANDSHAKE_START] ctx=%p, transport=%p&quot;, (void *)ctx, (void *)transport);
+69 
+70   if (!ctx || ctx-&gt;state != CRYPTO_HANDSHAKE_INIT) {
+71     log_error(&quot;[HANDSHAKE_START] FAILED: Invalid state - ctx=%p, state=%d&quot;, (void *)ctx, ctx ? (int)ctx-&gt;state : -1);
+72     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid state: ctx=%p, state=%d&quot;, (void *)ctx, ctx ? (int)ctx-&gt;state : -1);
+73   }
+74   log_debug(&quot;[HANDSHAKE_START] State check OK: state=%d (CRYPTO_HANDSHAKE_INIT)&quot;, ctx-&gt;state);
+75 
+76   int result;
 77 
-78     // Copy identity public key
-79     memcpy(extended_packet + ctx-&gt;crypto_ctx.public_key_size, ctx-&gt;server_private_key.public_key,
-80            ctx-&gt;crypto_ctx.auth_public_key_size);
+78   // Caller is responsible for sending CRYPTO_PARAMETERS and calling
+79   // crypto_handshake_set_parameters() before this function. This function
+80   // only handles KEY_EXCHANGE_INIT.
 81 
-82     // DEBUG: Print identity key being sent
-83     char hex[HEX_STRING_SIZE_32];
-84     for (int i = 0; i &lt; ED25519_PUBLIC_KEY_SIZE; i++) {
-85       safe_snprintf(hex + i * 2, 3, &quot;%02x&quot;, ctx-&gt;server_private_key.public_key[i]);
-86     }
-87     hex[HEX_STRING_SIZE_32 - 1] = '\0';
-88 
-89     // Sign the ephemeral key with our identity key
-90     log_debug(&quot;Signing ephemeral key with server identity key&quot;);
-91 
-92     // Log key details in debug mode
-93     char hex_ephemeral[65], hex_identity[65];
-94     for (int i = 0; i &lt; 32; i++) {
-95       safe_snprintf(hex_ephemeral + i * 2, 3, &quot;%02x&quot;, ctx-&gt;crypto_ctx.public_key[i]);
-96       safe_snprintf(hex_identity + i * 2, 3, &quot;%02x&quot;, ctx-&gt;server_private_key.public_key[i]);
-97     }
-98     hex_ephemeral[64] = hex_identity[64] = '\0';
-99     log_debug(&quot;SERVER: Ephemeral key (32 bytes): %s&quot;, hex_ephemeral);
-100     log_debug(&quot;SERVER: Identity public key: %s&quot;, hex_identity);
-101 
-102     if (ed25519_sign_message(&amp;ctx-&gt;server_private_key, ctx-&gt;crypto_ctx.public_key, ctx-&gt;crypto_ctx.public_key_size,
-103                              extended_packet + ctx-&gt;crypto_ctx.public_key_size +
-104                                  ctx-&gt;crypto_ctx.auth_public_key_size) != 0) {
-105       SAFE_FREE(extended_packet);
-106       return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to sign ephemeral key with identity key&quot;);
-107     }
-108 
-109     log_debug(&quot;Sending authenticated KEY_EXCHANGE_INIT (%zu bytes: ephemeral + &quot;
-110               &quot;identity + signature)&quot;,
-111               expected_packet_size);
-112     log_debug(&quot;[HANDSHAKE_START] Calling packet_send_via_transport(type=%d, payload_len=%zu, 0)...&quot;,
-113               PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, expected_packet_size);
-114     result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, extended_packet,
-115                                        expected_packet_size, 0);
-116     log_debug(&quot;[HANDSHAKE_START] packet_send_via_transport returned %d&quot;, result);
-117     SAFE_FREE(extended_packet);
-118   } else {
-119     // No identity key - send just the ephemeral key
-120     log_debug(&quot;Sending simple KEY_EXCHANGE_INIT (%zu bytes: ephemeral key only)&quot;, ctx-&gt;crypto_ctx.public_key_size);
-121     log_debug(&quot;[HANDSHAKE_START] Calling packet_send_via_transport(type=%d, payload_len=%zu, 0)...&quot;,
-122               PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, ctx-&gt;crypto_ctx.public_key_size);
-123     result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, ctx-&gt;crypto_ctx.public_key,
-124                                        ctx-&gt;crypto_ctx.public_key_size, 0);
-125     log_debug(&quot;[HANDSHAKE_START] packet_send_via_transport returned %d&quot;, result);
-126   }
-127 
-128   if (result != ASCIICHAT_OK) {
-129     log_error(&quot;[HANDSHAKE_START] FAILED: packet_send returned %d&quot;, result);
-130     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send KEY_EXCHANGE_INIT packet&quot;);
-131   }
-132   log_debug(&quot;[HANDSHAKE_START] ===== SUCCESS: KEY_EXCHANGE_INIT sent =====&quot;);
+82   // Calculate packet size based on negotiated crypto parameters
+83   size_t expected_packet_size =
+84       ctx-&gt;crypto_ctx.public_key_size + ctx-&gt;crypto_ctx.auth_public_key_size + ctx-&gt;crypto_ctx.signature_size;
+85 
+86   log_debug(&quot;SERVER_KEY_EXCHANGE: kex_size=%u, auth_size=%u, sig_size=%u, expected_size=%zu&quot;,
+87             ctx-&gt;crypto_ctx.public_key_size, ctx-&gt;crypto_ctx.auth_public_key_size, ctx-&gt;crypto_ctx.signature_size,
+88             expected_packet_size);
+89 
+90   // Check if we have an identity key to send authenticated packet
+91   if (ctx-&gt;server_private_key.type == KEY_TYPE_ED25519) {
+92     // Extended packet format:
+93     // [ephemeral_key:kex_size][identity_key:auth_size][signature:sig_size]
+94     uint8_t *extended_packet;
+95     extended_packet = SAFE_MALLOC(expected_packet_size, uint8_t *);
+96     if (!extended_packet) {
+97       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate memory for extended packet&quot;);
+98     }
+99 
+100     // Copy ephemeral public key
+101     memcpy(extended_packet, ctx-&gt;crypto_ctx.public_key, ctx-&gt;crypto_ctx.public_key_size);
+102 
+103     // Copy identity public key
+104     memcpy(extended_packet + ctx-&gt;crypto_ctx.public_key_size, ctx-&gt;server_private_key.public_key,
+105            ctx-&gt;crypto_ctx.auth_public_key_size);
+106 
+107     // DEBUG: Print identity key being sent
+108     char hex[HEX_STRING_SIZE_32];
+109     for (int i = 0; i &lt; ED25519_PUBLIC_KEY_SIZE; i++) {
+110       safe_snprintf(hex + i * 2, 3, &quot;%02x&quot;, ctx-&gt;server_private_key.public_key[i]);
+111     }
+112     hex[HEX_STRING_SIZE_32 - 1] = '\0';
+113 
+114     // Sign the ephemeral key with our identity key
+115     log_debug(&quot;Signing ephemeral key with server identity key&quot;);
+116 
+117     // Log key details in debug mode
+118     char hex_ephemeral[65], hex_identity[65];
+119     for (int i = 0; i &lt; 32; i++) {
+120       safe_snprintf(hex_ephemeral + i * 2, 3, &quot;%02x&quot;, ctx-&gt;crypto_ctx.public_key[i]);
+121       safe_snprintf(hex_identity + i * 2, 3, &quot;%02x&quot;, ctx-&gt;server_private_key.public_key[i]);
+122     }
+123     hex_ephemeral[64] = hex_identity[64] = '\0';
+124     log_debug(&quot;SERVER: Ephemeral key (32 bytes): %s&quot;, hex_ephemeral);
+125     log_debug(&quot;SERVER: Identity public key: %s&quot;, hex_identity);
+126 
+127     if (ed25519_sign_message(&amp;ctx-&gt;server_private_key, ctx-&gt;crypto_ctx.public_key, ctx-&gt;crypto_ctx.public_key_size,
+128                              extended_packet + ctx-&gt;crypto_ctx.public_key_size +
+129                                  ctx-&gt;crypto_ctx.auth_public_key_size) != 0) {
+130       SAFE_FREE(extended_packet);
+131       return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to sign ephemeral key with identity key&quot;);
+132     }
 133 
-134   ctx-&gt;state = CRYPTO_HANDSHAKE_KEY_EXCHANGE;
-135 
-136   return ASCIICHAT_OK;
-137 }</pre>
+134     log_debug(&quot;Sending authenticated KEY_EXCHANGE_INIT (%zu bytes: ephemeral + &quot;
+135               &quot;identity + signature)&quot;,
+136               expected_packet_size);
+137     log_debug(&quot;[HANDSHAKE_START] Calling packet_send_via_transport(type=%d, payload_len=%zu, 0)...&quot;,
+138               PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, expected_packet_size);
+139     result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, extended_packet,
+140                                        expected_packet_size, 0);
+141     log_debug(&quot;[HANDSHAKE_START] packet_send_via_transport returned %d&quot;, result);
+142     SAFE_FREE(extended_packet);
+143   } else {
+144     // No identity key - send just the ephemeral key
+145     log_debug(&quot;Sending simple KEY_EXCHANGE_INIT (%zu bytes: ephemeral key only)&quot;, ctx-&gt;crypto_ctx.public_key_size);
+146     log_debug(&quot;[HANDSHAKE_START] Calling packet_send_via_transport(type=%d, payload_len=%zu, 0)...&quot;,
+147               PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, ctx-&gt;crypto_ctx.public_key_size);
+148     result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, ctx-&gt;crypto_ctx.public_key,
+149                                        ctx-&gt;crypto_ctx.public_key_size, 0);
+150     log_debug(&quot;[HANDSHAKE_START] packet_send_via_transport returned %d&quot;, result);
+151   }
+152 
+153   if (result != ASCIICHAT_OK) {
+154     log_error(&quot;[HANDSHAKE_START] FAILED: packet_send returned %d&quot;, result);
+155     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send KEY_EXCHANGE_INIT packet&quot;);
+156   }
+157   log_debug(&quot;[HANDSHAKE_START] ===== SUCCESS: KEY_EXCHANGE_INIT sent =====&quot;);
+158 
+159   ctx-&gt;state = CRYPTO_HANDSHAKE_KEY_EXCHANGE;
+160 
+161   return ASCIICHAT_OK;
+162 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>AUTH_ALGO_ED25519</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
     <b>crypto_context_t::auth_public_key_size</b>,
-    <b>crypto_parameters_packet_t::auth_public_key_size</b>,
-    <b>CIPHER_ALGO_XSALSA20_POLY1305</b>,
     <b>crypto_handshake_context_t::crypto_ctx</b>, <b>CRYPTO_HANDSHAKE_INIT</b>,
-    <b>CRYPTO_HANDSHAKE_KEY_EXCHANGE</b>, <b>CRYPTO_SHARED_KEY_SIZE</b>,
-    <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ed25519_sign_message()</b>,
-    <b>ED25519_SIGNATURE_SIZE</b>, <b>ERROR_CRYPTO</b>,
+    <b>CRYPTO_HANDSHAKE_KEY_EXCHANGE</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+    <b>ed25519_sign_message()</b>, <b>ERROR_CRYPTO</b>,
     <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>,
-    <b>HEX_STRING_SIZE_32</b>, <b>crypto_parameters_packet_t::hmac_size</b>,
-    <b>KEX_ALGO_X25519</b>,
-    <b>crypto_parameters_packet_t::kex_public_key_size</b>,
-    <b>KEY_TYPE_ED25519</b>, <b>log_debug</b>, <b>log_error</b>,
-    <b>crypto_parameters_packet_t::mac_size</b>,
-    <b>crypto_parameters_packet_t::nonce_size</b>,
-    <b>packet_send_via_transport()</b>,
+    <b>HEX_STRING_SIZE_32</b>, <b>KEY_TYPE_ED25519</b>, <b>log_debug</b>,
+    <b>log_error</b>, <b>packet_send_via_transport()</b>,
     <b>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT</b>,
-    <b>PACKET_TYPE_CRYPTO_PARAMETERS</b>, <b>POLY1305_MAC_SIZE</b>,
     <b>crypto_context_t::public_key</b>, <b>private_key_t::public_key</b>,
-    <b>crypto_context_t::public_key_size</b>,
-    <b>crypto_handshake_context_t::require_client_auth</b>, <b>SAFE_FREE</b>,
+    <b>crypto_context_t::public_key_size</b>, <b>SAFE_FREE</b>,
     <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>,
-    <b>crypto_parameters_packet_t::selected_auth</b>,
-    <b>crypto_parameters_packet_t::selected_cipher</b>,
-    <b>crypto_parameters_packet_t::selected_kex</b>,
     <b>crypto_handshake_context_t::server_private_key</b>, <b>SET_ERRNO</b>,
-    <b>crypto_parameters_packet_t::shared_secret_size</b>,
     <b>crypto_context_t::signature_size</b>,
-    <b>crypto_parameters_packet_t::signature_size</b>,
-    <b>crypto_handshake_context_t::state</b>, <b>private_key_t::type</b>,
-    <b>crypto_parameters_packet_t::verification_enabled</b>, and
-    <b>XSALSA20_NONCE_SIZE</b>.</p>
+    <b>crypto_handshake_context_t::state</b>, and
+  <b>private_key_t::type</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_server_start_socket()</b>.</p>
 </section>
 <section class="Ss">
@@ -1007,29 +1110,26 @@
   (<b>crypto_handshake_context_t</b> * ctx, <b>socket_t</b> client_socket)</h2>
 <p class="Pp">Legacy wrapper: Start handshake using socket (TCP clients
   only).</p>
-<p class="Pp"><b>Deprecated</b></p>
-<div class="Bd-indent">Use <b>crypto_handshake_server_start()</b> with
-  <b>acip_transport_t</b> instead</div>
-<p class="Pp">Definition at line <b>625</b> of file
+<p class="Pp">Definition at line <b>650</b> of file
     <b>lib/crypto/handshake/server.c</b>.</p>
-<pre>625                                                                                                                 {
-626   if (!ctx) {
-627     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Context cannot be NULL&quot;);
-628   }
-629 
-630   // Create temporary TCP transport for handshake
-631   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_handshake_temp_socket&quot;, client_socket, NULL);
-632   if (!temp_transport) {
-633     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
-634   }
-635 
-636   asciichat_error_t result = crypto_handshake_server_start(ctx, temp_transport);
-637 
-638   // Destroy temporary transport (socket remains open)
-639   acip_transport_destroy(temp_transport);
-640 
-641   return result;
-642 }</pre>
+<pre>650                                                                                                                 {
+651   if (!ctx) {
+652     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Context cannot be NULL&quot;);
+653   }
+654 
+655   // Create temporary TCP transport for handshake
+656   acip_transport_t *temp_transport = acip_tcp_transport_create(&quot;crypto_handshake_temp_socket&quot;, client_socket, NULL);
+657   if (!temp_transport) {
+658     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create temporary transport&quot;);
+659   }
+660 
+661   asciichat_error_t result = crypto_handshake_server_start(ctx, temp_transport);
+662 
+663   // Destroy temporary transport (socket remains open)
+664   acip_transport_destroy(temp_transport);
+665 
+666   return result;
+667 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_tcp_transport_create()</b>,

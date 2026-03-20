@@ -103,7 +103,7 @@
     1952 for Dilithium3).</p>
 <p class="Pp">Definition at line <b>993</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
-    <b>crypto_handshake_server_start()</b>,
+    <b>crypto_handshake_server_send_parameters()</b>,
     <b>crypto_handshake_set_parameters()</b>,
     <b>send_crypto_parameters_packet()</b>, and
     <b>server_crypto_handshake()</b>.</p>
@@ -112,7 +112,7 @@
 <h2 class="Ss"><b>uint8_t</b> crypto_parameters_packet_t::hmac_size</h2>
 <p class="Pp">HMAC size in bytes (e.g., 32 for HMAC-SHA256).</p>
 <p class="Pp">Definition at line <b>1003</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_handshake_server_start()</b>,
+<p class="Pp">Referenced by <b>crypto_handshake_server_send_parameters()</b>,
     <b>crypto_handshake_set_parameters()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>
@@ -123,7 +123,7 @@
     for Kyber1024).</p>
 <p class="Pp">Definition at line <b>991</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
-    <b>crypto_handshake_server_start()</b>,
+    <b>crypto_handshake_server_send_parameters()</b>,
     <b>crypto_handshake_set_parameters()</b>,
     <b>send_crypto_parameters_packet()</b>, and
     <b>server_crypto_handshake()</b>.</p>
@@ -132,7 +132,7 @@
 <h2 class="Ss"><b>uint8_t</b> crypto_parameters_packet_t::mac_size</h2>
 <p class="Pp">MAC size in bytes (e.g., 16 for Poly1305).</p>
 <p class="Pp">Definition at line <b>1001</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_handshake_server_start()</b>,
+<p class="Pp">Referenced by <b>crypto_handshake_server_send_parameters()</b>,
     <b>crypto_handshake_set_parameters()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>
@@ -140,7 +140,7 @@
 <h2 class="Ss"><b>uint8_t</b> crypto_parameters_packet_t::nonce_size</h2>
 <p class="Pp">Nonce size in bytes (e.g., 24 for XSalsa20).</p>
 <p class="Pp">Definition at line <b>999</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>crypto_handshake_server_start()</b>,
+<p class="Pp">Referenced by <b>crypto_handshake_server_send_parameters()</b>,
     <b>crypto_handshake_set_parameters()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>
@@ -154,7 +154,7 @@
 <p class="Pp">Selected authentication algorithm (AUTH_ALGO_*).</p>
 <p class="Pp">Definition at line <b>985</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
-    <b>crypto_handshake_server_start()</b>, and
+    <b>crypto_handshake_server_send_parameters()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
@@ -162,7 +162,7 @@
 <p class="Pp">Selected cipher algorithm (CIPHER_ALGO_*).</p>
 <p class="Pp">Definition at line <b>987</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
-    <b>crypto_handshake_server_start()</b>, and
+    <b>crypto_handshake_server_send_parameters()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
@@ -170,7 +170,7 @@
 <p class="Pp">Selected key exchange algorithm (KEX_ALGO_*).</p>
 <p class="Pp">Definition at line <b>983</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
-    <b>crypto_handshake_server_start()</b>, and
+    <b>crypto_handshake_server_send_parameters()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
@@ -179,7 +179,7 @@
 <p class="Pp">Shared secret size in bytes (e.g., 32 for X25519).</p>
 <p class="Pp">Definition at line <b>997</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
-    <b>crypto_handshake_server_start()</b>,
+    <b>crypto_handshake_server_send_parameters()</b>,
     <b>crypto_handshake_set_parameters()</b>,
     <b>send_crypto_parameters_packet()</b>, and
     <b>server_crypto_handshake()</b>.</p>
@@ -190,7 +190,7 @@
     Dilithium3).</p>
 <p class="Pp">Definition at line <b>995</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
-    <b>crypto_handshake_server_start()</b>,
+    <b>crypto_handshake_server_send_parameters()</b>,
     <b>crypto_handshake_set_parameters()</b>,
     <b>send_crypto_parameters_packet()</b>, and
     <b>server_crypto_handshake()</b>.</p>
@@ -201,7 +201,7 @@
 <p class="Pp">Server verification enabled flag (1=enabled, 0=disabled).</p>
 <p class="Pp">Definition at line <b>989</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
-    <b>crypto_handshake_server_start()</b>, and
+    <b>crypto_handshake_server_send_parameters()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 <p class="Pp"></p>
 </section>

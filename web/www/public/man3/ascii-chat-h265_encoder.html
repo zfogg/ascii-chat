@@ -52,6 +52,8 @@
   <br/>
   size_t <b>yuv_buf_size</b>
   <br/>
+  <b>bool</b> <b>codec_opened</b>
+  <br/>
   <b>bool</b> <b>request_keyframe</b>
   <br/>
   <b>uint64_t</b> <b>total_frames</b>
@@ -67,58 +69,62 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">Definition at line <b>21</b> of file <b>encoder.c</b>.</p>
+<p class="Pp">Definition at line <b>29</b> of file <b>encoder.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> h265_encoder::avg_bitrate</h2>
-<p class="Pp">Definition at line <b>36</b> of file <b>encoder.c</b>.</p>
+<p class="Pp">Definition at line <b>45</b> of file <b>encoder.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="AVCodecContext*_h265_encoder::codec_ctx"><a class="permalink" href="#AVCodecContext*_h265_encoder::codec_ctx">AVCodecContext*
   h265_encoder::codec_ctx</a></h2>
-<p class="Pp">Definition at line <b>22</b> of file <b>encoder.c</b>.</p>
+<p class="Pp">Definition at line <b>30</b> of file <b>encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> h265_encoder::codec_opened</h2>
+<p class="Pp">Definition at line <b>40</b> of file <b>encoder.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> h265_encoder::current_height</h2>
-<p class="Pp">Definition at line <b>27</b> of file <b>encoder.c</b>.</p>
+<p class="Pp">Definition at line <b>35</b> of file <b>encoder.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> h265_encoder::current_width</h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>encoder.c</b>.</p>
+<p class="Pp">Definition at line <b>34</b> of file <b>encoder.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="AVFrame*_h265_encoder::frame"><a class="permalink" href="#AVFrame*_h265_encoder::frame">AVFrame*
   h265_encoder::frame</a></h2>
-<p class="Pp">Definition at line <b>23</b> of file <b>encoder.c</b>.</p>
+<p class="Pp">Definition at line <b>31</b> of file <b>encoder.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> h265_encoder::keyframes</h2>
-<p class="Pp">Definition at line <b>35</b> of file <b>encoder.c</b>.</p>
+<p class="Pp">Definition at line <b>44</b> of file <b>encoder.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="AVPacket*_h265_encoder::packet"><a class="permalink" href="#AVPacket*_h265_encoder::packet">AVPacket*
   h265_encoder::packet</a></h2>
-<p class="Pp">Definition at line <b>24</b> of file <b>encoder.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> h265_encoder::request_keyframe</h2>
 <p class="Pp">Definition at line <b>32</b> of file <b>encoder.c</b>.</p>
 </section>
 <section class="Ss">
+<h2 class="Ss"><b>bool</b> h265_encoder::request_keyframe</h2>
+<p class="Pp">Definition at line <b>41</b> of file <b>encoder.c</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> h265_encoder::total_frames</h2>
-<p class="Pp">Definition at line <b>34</b> of file <b>encoder.c</b>.</p>
+<p class="Pp">Definition at line <b>43</b> of file <b>encoder.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b>* h265_encoder::yuv_buf</h2>
-<p class="Pp">Definition at line <b>29</b> of file <b>encoder.c</b>.</p>
+<p class="Pp">Definition at line <b>37</b> of file <b>encoder.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_h265_encoder::yuv_buf_size"><a class="permalink" href="#size_t_h265_encoder::yuv_buf_size">size_t
   h265_encoder::yuv_buf_size</a></h2>
-<p class="Pp">Definition at line <b>30</b> of file <b>encoder.c</b>.</p>
+<p class="Pp">Definition at line <b>38</b> of file <b>encoder.c</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
