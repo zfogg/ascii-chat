@@ -14,10 +14,10 @@ function LinkedItemWithDescription({
   const bg_terminal_class = "bg-terminal-" + color;
   console.log(bg_terminal_class);
   return (
-    <div className="flex gap-4 w-full justify-center">
+    <div className="flex flex-col sm:flex-row gap-4 w-full justify-center items-center">
       <Button
         href={`/${mode_name}`}
-        className={`flex flex-col justify-center w-56 px-6 py-3 ${bg_terminal_class} text-terminal-bg rounded hover:opacity-80 transition-opacity`}
+        className={`flex flex-col justify-center w-56 px-6 py-3 ${bg_terminal_class} text-terminal-bg rounded hover:opacity-80 transition-opacity order-last sm:order-first`}
       >
         <span className="">
           {mode_name.slice(0, 1).toUpperCase()}
@@ -46,11 +46,11 @@ export function HomePage() {
         <p className="text-sm md:text-base text-terminal-8 font-normal mb-6">
           (Web Client)
         </p>
-        <p className="text-xl text-terminal-fg mb-8">
+        <p className="text-xl text-terminal-fg mb-16 sm:mb-8">
           Video chat in your <del className="opacity-60">terminal</del> browser
         </p>
 
-        <div className="space-y-4 flex flex-col items-center max-w-4xl">
+        <div className="space-y-10 sm:space-y-4 flex flex-col items-center max-w-4xl">
           <LinkedItemWithDescription
             mode_name="mirror"
             description="Chat with yourself! Render ASCII art of your webcam webcam, files, or URLs, without any network activity."
