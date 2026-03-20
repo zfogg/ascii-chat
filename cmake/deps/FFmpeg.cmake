@@ -271,7 +271,8 @@ if(USE_MUSL)
         "${FFMPEG_PREFIX}/lib/libavcodec.a"
         "${FFMPEG_PREFIX}/lib/libavutil.a"
         "${FFMPEG_PREFIX}/lib/libswscale.a"
-        "${FFMPEG_PREFIX}/lib/libswresample.a")
+        "${FFMPEG_PREFIX}/lib/libswresample.a"
+        "${X265_PREFIX}/lib/libx265.a")
 
     # Create a custom target for musl builds (libraries are pre-built/cached)
     add_custom_target(ffmpeg-musl)

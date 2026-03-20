@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <errno.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
