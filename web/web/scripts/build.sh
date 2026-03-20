@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 echo "Type checking with TypeScript..."
 pnpm run type-check
 
-echo "Formatting check with prettier..."
+echo "Formatting check..."
 pnpm run format:check
 
 echo "Linting with eslint..."
