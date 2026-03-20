@@ -80,7 +80,7 @@ ENV LD_LIBRARY_PATH="/home/linuxbrew/.linuxbrew/lib:/usr/local/lib:/usr/lib/x86_
 # Expose default ports
 # 27224: ascii-chat server
 # 27225: ACDS discovery service
-EXPOSE 27224 27225
+EXPOSE 27224 27225 27226 27227 443
 
 # Set entrypoint script (generates keys if not provided, then runs ascii-chat)
 # Users can override the command in their deployment platform (Coolify, etc)
