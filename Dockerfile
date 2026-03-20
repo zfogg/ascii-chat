@@ -76,6 +76,8 @@ RUN apt-get update && \
 # Copy installed files from builder
 COPY --from=builder /usr/local /usr/local
 COPY --from=builder /home/linuxbrew/.linuxbrew /home/linuxbrew/.linuxbrew
+# Copy LLVM libraries from builder (installed by install-deps.sh for sanitizer runtimes)
+COPY --from=builder /usr/lib/llvm-* /usr/lib/
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
@@ -102,7 +104,7 @@ RUN useradd -m -u 1001 -s /bin/bash ascii && \
 USER ascii
 WORKDIR /home/ascii
 
-# Set library path to include Homebrew libraries from builder and local lib directory
+# Set library path to include Homebrew libraries, local lib, and LLVM sanitizer runtimes
 ENV LD_LIBRARY_PATH="/home/linuxbrew/.linuxbrew/lib:/usr/local/lib:/usr/lib/x86_64-linux-gnu"
 
 # Expose default ports
