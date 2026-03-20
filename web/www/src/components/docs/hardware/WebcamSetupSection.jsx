@@ -1,6 +1,6 @@
 import { Heading } from "@ascii-chat/shared/components";
 import { CodeBlock } from "@ascii-chat/shared/components/CodeBlock";
-import TrackedLink from "../../../TrackedLink";
+import TrackedLink from "../../TrackedLink";
 
 export default function WebcamSetupSection() {
   return (

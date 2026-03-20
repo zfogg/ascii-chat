@@ -2,6 +2,7 @@ import { defineConfig } from "vite-plus";
 import react from "@vitejs/plugin-react";
 import sitemap from "vite-plugin-sitemap";
 import { execSync } from "child_process";
+import { mkdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -59,6 +60,12 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    {
+      name: "ensure-outdir",
+      closeBundle() {
+        mkdirSync("dist", { recursive: true });
+      },
+    },
     sitemap({
       hostname: "https://ascii-chat.com",
       dynamicRoutes: [
