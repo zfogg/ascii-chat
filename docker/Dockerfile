@@ -11,9 +11,16 @@ FROM zfogg/ascii-chat-deps:latest AS builder
 # Ensure we have the environment set (inherited from deps image)
 ENV SOURCE_COMMIT="docker-build"
 
+# Preserve submodules from deps image before COPY overwrites them
+RUN mv /build/deps /tmp/deps-preserve
+
 # Copy source code (.dockerignore excludes .deps-cache/ so pre-cached deps from
 # the deps image are preserved)
 COPY . /build/
+
+# Restore submodules from deps image (overwrite empty dirs from build context)
+RUN rm -rf /build/deps/ascii-chat-deps /build/deps/doxygen-awesome-css && \
+    mv /tmp/deps-preserve/* /build/deps/ && rm -rf /tmp/deps-preserve
 
 # Build ascii-chat (Debug build, configure is fast because .deps-cache/ is pre-populated)
 RUN make CMAKE_BUILD_TYPE=Debug EXTRA_CMAKE_ARGS="-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=0.3.0"
