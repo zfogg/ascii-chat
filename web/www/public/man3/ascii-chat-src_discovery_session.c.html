@@ -1009,11 +1009,11 @@
 1504           if (type == PACKET_TYPE_ACIP_PARTICIPANT_JOINED) {
 1505             log_info(&quot;Peer joined session, transitioning to negotiation&quot;);
 1506             set_state(session, DISCOVERY_STATE_NEGOTIATING);
-1507             SAFE_FREE(alloc_buffer);
+1507             buffer_pool_free(NULL, alloc_buffer, 0);
 1508           } else {
 1509             // Got some other packet, handle it or ignore
 1510             log_debug(&quot;Received packet type %d while waiting for peer&quot;, type);
-1511             SAFE_FREE(alloc_buffer);
+1511             buffer_pool_free(NULL, alloc_buffer, 0);
 1512           }
 1513         } else if (recv_result == ERROR_NETWORK_TIMEOUT) {
 1514           // Timeout is normal, just return
@@ -1260,7 +1260,7 @@
 1755           if (recv_result == ASCIICHAT_OK) {
 1756             // Dispatch to appropriate handler
 1757             handle_acds_webrtc_packet(session, type, data, len);
-1758             SAFE_FREE(alloc_buffer);
+1758             buffer_pool_free(NULL, alloc_buffer, 0);
 1759           } else {
 1760             log_debug(&quot;Failed to receive ACDS packet: %d&quot;, recv_result);
 1761           }
@@ -1431,7 +1431,7 @@
 1926         if (recv_result == ASCIICHAT_OK) {
 1927           // Dispatch to appropriate handler
 1928           handle_acds_webrtc_packet(session, type, data, len);
-1929           SAFE_FREE(alloc_buffer);
+1929           buffer_pool_free(NULL, alloc_buffer, 0);
 1930         }
 1931       }
 1932     }
@@ -1530,8 +1530,7 @@
     <b>protocol_version_packet_t::protocol_revision</b>,
     <b>protocol_version_packet_t::protocol_version</b>, <b>receive_packet()</b>,
     <b>crypto_capabilities_packet_t::requires_verification</b>,
-    <b>SAFE_FREE</b>, <b>SAFE_STRNCPY</b>,
-    <b>send_crypto_capabilities_packet()</b>,
+    <b>SAFE_STRNCPY</b>, <b>send_crypto_capabilities_packet()</b>,
     <b>send_protocol_version_packet()</b>, <b>session_host_create()</b>,
     <b>session_host_start()</b>, <b>discovery_session_t::session_id</b>,
     <b>session_participant_connect()</b>, <b>session_participant_create()</b>,
@@ -1626,7 +1625,7 @@
 1352     result = packet_receive_via_transport(session-&gt;acds_transport, &amp;pkt_type, &amp;pkt_data, &amp;pkt_len, &amp;alloc_buffer);
 1353     if (result != ASCIICHAT_OK || pkt_type != PACKET_TYPE_CRYPTO_PARAMETERS) {
 1354       log_error(&quot;discovery_session_start: Failed to receive CRYPTO_PARAMETERS (got type %u)&quot;, pkt_type);
-1355       SAFE_FREE(alloc_buffer);
+1355       buffer_pool_free(NULL, alloc_buffer, 0);
 1356       set_error(session, result != ASCIICHAT_OK ? result : ERROR_NETWORK_PROTOCOL,
 1357                 &quot;Failed to receive CRYPTO_PARAMETERS&quot;);
 1358       return result != ASCIICHAT_OK ? result : ERROR_NETWORK_PROTOCOL;
@@ -1635,14 +1634,14 @@
 1361     if (pkt_len != sizeof(crypto_parameters_packet_t)) {
 1362       log_error(&quot;discovery_session_start: Invalid CRYPTO_PARAMETERS size: %zu (expected %zu)&quot;, pkt_len,
 1363                 sizeof(crypto_parameters_packet_t));
-1364       SAFE_FREE(alloc_buffer);
+1364       buffer_pool_free(NULL, alloc_buffer, 0);
 1365       set_error(session, ERROR_NETWORK_PROTOCOL, &quot;Invalid CRYPTO_PARAMETERS size&quot;);
 1366       return ERROR_NETWORK_PROTOCOL;
 1367     }
 1368 
 1369     crypto_parameters_packet_t server_params;
 1370     memcpy(&amp;server_params, pkt_data, sizeof(crypto_parameters_packet_t));
-1371     SAFE_FREE(alloc_buffer);
+1371     buffer_pool_free(NULL, alloc_buffer, 0);
 1372 
 1373     // Pass params in network byte order &#x2014; crypto_handshake_set_parameters
 1374     // handles conversion internally for client (is_server=false)
@@ -1670,7 +1669,7 @@
 1396     }
 1397 
 1398     result = crypto_handshake_client_key_exchange(&amp;handshake_ctx, session-&gt;acds_transport, pkt_type, pkt_data, pkt_len);
-1399     SAFE_FREE(alloc_buffer);
+1399     buffer_pool_free(NULL, alloc_buffer, 0);
 1400 
 1401     if (result != ASCIICHAT_OK) {
 1402       log_error(&quot;discovery_session_start: Handshake key exchange failed&quot;);
@@ -1694,7 +1693,7 @@
 1420     }
 1421 
 1422     result = crypto_handshake_client_auth_response(&amp;handshake_ctx, session-&gt;acds_transport, pkt_type, pkt_data, pkt_len);
-1423     SAFE_FREE(alloc_buffer);
+1423     buffer_pool_free(NULL, alloc_buffer, 0);
 1424 
 1425     if (result != ASCIICHAT_OK) {
 1426       log_error(&quot;discovery_session_start: Handshake auth response failed&quot;);
@@ -1720,7 +1719,7 @@
 1446     }
 1447 
 1448     result = crypto_handshake_client_complete(&amp;handshake_ctx, session-&gt;acds_transport, pkt_type, pkt_data, pkt_len);
-1449     SAFE_FREE(alloc_buffer);
+1449     buffer_pool_free(NULL, alloc_buffer, 0);
 1450 
 1451     if (result != ASCIICHAT_OK) {
 1452       log_error(&quot;discovery_session_start: Handshake complete failed&quot;);
@@ -1757,7 +1756,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>discovery_session_t::acds_transport</b>,
-    <b>ASCIICHAT_OK</b>, <b>crypto_handshake_context_t::client_private_key</b>,
+    <b>ASCIICHAT_OK</b>, <b>buffer_pool_free()</b>,
+    <b>crypto_handshake_context_t::client_private_key</b>,
     <b>crypto_handshake_context_t::client_public_key</b>,
     <b>crypto_handshake_client_auth_response()</b>,
     <b>crypto_handshake_client_complete()</b>,
@@ -1772,7 +1772,7 @@
     <b>public_key_t::key</b>, <b>KEY_TYPE_ED25519</b>, <b>log_error</b>,
     <b>log_info</b>, <b>packet_receive_via_transport()</b>,
     <b>PACKET_TYPE_CRYPTO_PARAMETERS</b>,
-    <b>discovery_session_t::participant_ctx</b>, <b>SAFE_FREE</b>,
+    <b>discovery_session_t::participant_ctx</b>,
     <b>discovery_session_t::session_string</b>, <b>SET_ERRNO</b>,
     <b>discovery_session_t::should_exit_callback</b>,
     <b>crypto_handshake_context_t::state</b>, <b>discovery_session_t::state</b>,

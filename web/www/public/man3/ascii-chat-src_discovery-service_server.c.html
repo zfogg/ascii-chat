@@ -618,7 +618,7 @@
 1157       if (recv_result == ERROR_NETWORK_TIMEOUT) {
 1158         log_debug(&quot;WebSocket client %s: receive timeout, continuing to wait for packets&quot;, client_ip);
 1159         if (alloc_buffer) {
-1160           SAFE_FREE(alloc_buffer);
+1160           buffer_pool_free(NULL, alloc_buffer, 0);
 1161         }
 1162         continue;
 1163       }
@@ -626,7 +626,7 @@
 1165       // Actual disconnect or fatal error
 1166       log_info(&quot;WebSocket client %s disconnected&quot;, client_ip);
 1167       if (alloc_buffer) {
-1168         SAFE_FREE(alloc_buffer);
+1168         buffer_pool_free(NULL, alloc_buffer, 0);
 1169       }
 1170       break;
 1171     }
@@ -635,7 +635,7 @@
 1174     if (recv_len &lt; sizeof(packet_header_t)) {
 1175       log_warn(&quot;WebSocket client %s: received packet too small (%zu bytes)&quot;, client_ip, recv_len);
 1176       if (alloc_buffer) {
-1177         SAFE_FREE(alloc_buffer);
+1177         buffer_pool_free(NULL, alloc_buffer, 0);
 1178       }
 1179       continue;
 1180     }
@@ -650,7 +650,7 @@
 1189       log_warn(&quot;WebSocket client %s: packet size mismatch (expected %zu, got %zu)&quot;, client_ip,
 1190                sizeof(packet_header_t) + payload_size, recv_len);
 1191       if (alloc_buffer) {
-1192         SAFE_FREE(alloc_buffer);
+1192         buffer_pool_free(NULL, alloc_buffer, 0);
 1193       }
 1194       continue;
 1195     }
@@ -669,7 +669,7 @@
 1208         acip_send_error(transport, ERROR_INVALID_PARAM,
 1209                         &quot;Only SESSION_CREATE/PING/PONG allowed during multi-key session creation&quot;);
 1210         if (alloc_buffer) {
-1211           SAFE_FREE(alloc_buffer);
+1211           buffer_pool_free(NULL, alloc_buffer, 0);
 1212         }
 1213         continue;
 1214       }
@@ -688,7 +688,7 @@
 1227     }
 1228 
 1229     if (alloc_buffer) {
-1230       SAFE_FREE(alloc_buffer);
+1230       buffer_pool_free(NULL, alloc_buffer, 0);
 1231     }
 1232   }
 1233 
@@ -707,7 +707,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_handle_acds_packet()</b>,
     <b>acip_send_error()</b>, <b>acip_acds_callbacks_t::app_ctx</b>,
-    <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
+    <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>, <b>buffer_pool_free()</b>,
     <b>websocket_client_context_t::client_ip</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>ERROR_NETWORK_TIMEOUT</b>, <b>acds_client_data_t::handshake_complete</b>,
     <b>acds_client_data_t::in_multikey_session_create</b>,
