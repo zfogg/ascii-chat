@@ -11,6 +11,7 @@ FROM zfogg/ascii-chat-deps:latest AS builder
 # Ensure we have the environment set (inherited from deps image)
 ENV SOURCE_COMMIT="docker-build"
 
+# Submodules are baked into the deps image — no git clone needed at build time.
 # Preserve submodules from deps image before COPY overwrites them
 RUN mv /build/deps /tmp/deps-preserve
 
