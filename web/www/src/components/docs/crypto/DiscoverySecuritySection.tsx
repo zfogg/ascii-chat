@@ -49,8 +49,7 @@ ascii-chat server --discovery-service --discovery-service-key github:acds-operat
           <div className="bg-cyan-900/20 border border-cyan-700/50 rounded-lg p-4 mt-4">
             <p className="text-gray-300 text-sm">
               <strong className="text-cyan-300">Gotcha:</strong> This flag is
-              available in{" "}
-              <strong className="text-cyan-300">server</strong>,{" "}
+              available in <strong className="text-cyan-300">server</strong>,{" "}
               <strong className="text-purple-300">client</strong>, and{" "}
               <strong className="text-teal-300">discovery</strong> modes — but
               not discovery-service mode (the ACDS server doesn't verify
@@ -82,9 +81,9 @@ ascii-chat --discovery-insecure happy-sunset-ocean`}</CodeBlock>
               </code>{" "}
               only affects the discovery channel. The actual peer-to-peer
               connection still uses normal encryption and authentication. An
-              attacker on the discovery channel could redirect you to a different
-              server, but they can't decrypt your actual chat session (unless
-              you also skip server key verification).
+              attacker on the discovery channel could redirect you to a
+              different server, but they can't decrypt your actual chat session
+              (unless you also skip server key verification).
             </p>
           </div>
         </div>
@@ -99,7 +98,9 @@ ascii-chat --discovery-insecure happy-sunset-ocean`}</CodeBlock>
           </Heading>
           <p className="text-gray-300 mb-4">
             These flags are for{" "}
-            <strong className="text-pink-300">discovery-service operators</strong>{" "}
+            <strong className="text-pink-300">
+              discovery-service operators
+            </strong>{" "}
             running their own ACDS instance. They force participants to
             cryptographically prove their identity before the discovery service
             will let them register or discover sessions.

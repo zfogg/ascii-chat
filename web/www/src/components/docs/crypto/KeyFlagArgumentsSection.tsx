@@ -41,7 +41,6 @@ ascii-chat server --key ~/.ssh/id_ed25519
 # GPG Ed25519 key by fingerprint (uses gpg-agent)
 ascii-chat server --key gpg:897607FA43DC66F6
 ascii-chat server --key gpg:7FE90A79F2E80ED3`}</CodeBlock>
-
         </div>
 
         <div>

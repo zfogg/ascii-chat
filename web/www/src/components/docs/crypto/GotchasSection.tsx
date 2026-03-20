@@ -68,8 +68,8 @@ ascii-chat client 192.168.1.100 --no-encrypt`}</CodeBlock>
             Passwords must be 8–256 characters. Shorter passwords are rejected
             at startup. The password is processed through Argon2 key derivation,
             so the actual key material is always strong regardless of password
-            entropy — but short passwords are still vulnerable to brute-force
-            on the Argon2 output.
+            entropy — but short passwords are still vulnerable to brute-force on
+            the Argon2 output.
           </p>
         </div>
 
@@ -108,8 +108,7 @@ ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_ascii_chat`}</CodeBlock>
 
         <div className="bg-gray-900/50 border border-green-900/30 rounded-lg p-6">
           <Heading level={3} className="text-green-300 font-semibold mb-3">
-            --require-server-identity and --require-client-identity are
-            DS-only
+            --require-server-identity and --require-client-identity are DS-only
           </Heading>
           <p className="text-gray-300 text-sm">
             These flags only apply to the{" "}
@@ -125,7 +124,6 @@ ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_ascii_chat`}</CodeBlock>
             .
           </p>
         </div>
-
       </div>
     </section>
   );

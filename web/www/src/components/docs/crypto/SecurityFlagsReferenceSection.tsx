@@ -26,7 +26,9 @@ export default function SecurityFlagsReferenceSection() {
               <th className="text-left text-gray-400 py-2 pr-3">Flag</th>
               <th className="text-left text-gray-400 py-2 pr-3">Short</th>
               <th className="text-left text-gray-400 py-2 pr-3">Modes</th>
-              <th className="text-left text-gray-400 py-2 pr-3">Env Variable</th>
+              <th className="text-left text-gray-400 py-2 pr-3">
+                Env Variable
+              </th>
               <th className="text-left text-gray-400 py-2">Description</th>
             </tr>
           </thead>
@@ -49,7 +51,9 @@ export default function SecurityFlagsReferenceSection() {
                 <span className="text-pink-300">DS</span>
               </td>
               <td className="py-2 pr-3">
-                <code className="text-gray-400 text-xs">ASCII_CHAT_ENCRYPT</code>
+                <code className="text-gray-400 text-xs">
+                  ASCII_CHAT_ENCRYPT
+                </code>
               </td>
               <td className="py-2 text-xs">
                 Enable E2E encryption (on by default)
@@ -76,8 +80,8 @@ export default function SecurityFlagsReferenceSection() {
                 <code className="text-gray-400 text-xs">ASCII_CHAT_KEY</code>
               </td>
               <td className="py-2 text-xs">
-                SSH Ed25519 or GPG key file, gpg:ID, github:USER, gitlab:USER, or
-                HTTPS URL
+                SSH Ed25519 or GPG key file, gpg:ID, github:USER, gitlab:USER,
+                or HTTPS URL
               </td>
             </tr>
             <tr className="border-b border-gray-800/50">
@@ -94,7 +98,9 @@ export default function SecurityFlagsReferenceSection() {
                 <span className="text-pink-300">DS</span>
               </td>
               <td className="py-2 pr-3">
-                <code className="text-gray-400 text-xs">ASCII_CHAT_PASSWORD</code>
+                <code className="text-gray-400 text-xs">
+                  ASCII_CHAT_PASSWORD
+                </code>
               </td>
               <td className="py-2 text-xs">
                 Shared password for authentication (8–256 characters)
@@ -136,11 +142,13 @@ export default function SecurityFlagsReferenceSection() {
                 <span className="text-pink-300">DS</span>
               </td>
               <td className="py-2 pr-3">
-                <code className="text-gray-400 text-xs">ASCII_CHAT_NO_AUTH</code>
+                <code className="text-gray-400 text-xs">
+                  ASCII_CHAT_NO_AUTH
+                </code>
               </td>
               <td className="py-2 text-xs">
-                Disable authentication layer. Use with --no-encrypt to bypass ACIP
-                entirely.
+                Disable authentication layer. Use with --no-encrypt to bypass
+                ACIP entirely.
               </td>
             </tr>
             <tr className="border-b border-gray-800/50">
@@ -224,8 +232,8 @@ export default function SecurityFlagsReferenceSection() {
                 </code>
               </td>
               <td className="py-2 text-xs">
-                Discovery server public key for verification. Same key formats as
-                --key.
+                Discovery server public key for verification. Same key formats
+                as --key.
               </td>
             </tr>
             <tr className="border-b border-gray-800/50">
