@@ -187,8 +187,14 @@ set(PLATFORM_SRC
     ${LIB_ROOT}/platform/wasm/stubs/mode_defaults.c
     ${LIB_ROOT}/platform/wasm/stubs/crypto.c
     ${LIB_ROOT}/platform/wasm/stubs/backtrace.c
-    ${LIB_ROOT}/platform/wasm/stubs/log.c     # Provides session_log_buffer_append stub
-    # TODO: ${LIB_ROOT}/video/webcam/wasm/webcam_wasm.c  # WASM webcam backend - needs fixes
+    ${LIB_ROOT}/platform/wasm/stubs/log.c
+    ${LIB_ROOT}/platform/wasm/stubs/audio.c
+    ${LIB_ROOT}/platform/wasm/stubs/network.c
+    ${LIB_ROOT}/platform/wasm/stubs/threading.c
+    ${LIB_ROOT}/platform/wasm/stubs/misc.c
+    ${LIB_ROOT}/platform/wasm/stubs/comprehensive.c
+    ${LIB_ROOT}/platform/wasm/ffmpeg_decoder.c
+    ${LIB_ROOT}/video/webcam/wasm/webcam_wasm.c
 )
 
 # Third-party dependencies (source-included)
@@ -283,6 +289,7 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/util/url.c
     ${LIB_ROOT}/util/ip.c
     ${LIB_ROOT}/util/parsing.c
+    ${LIB_ROOT}/util/fps.c
 
     # Discovery (for session string validation)
     ${LIB_ROOT}/discovery/strings.c
@@ -313,8 +320,13 @@ set(LIB_SRC_COMMON
 
     # Media source handling (webcam, files, URLs)
     ${LIB_ROOT}/media/source.c
-    # NOTE: ffmpeg_decoder.c and ffmpeg_encoder.c excluded - FFmpeg not available in WASM
+    # FFmpeg support not available in Emscripten - would require ffmpeg.wasm integration
+    # ${LIB_ROOT}/media/ffmpeg_decoder.c
+    # ${LIB_ROOT}/media/ffmpeg_encoder.c
     ${LIB_ROOT}/media/yt_dlp.c
+
+    # Video/image handling (needed by webcam and ffmpeg backends)
+    ${LIB_ROOT}/video/rgba/image.c
 
     # UI components (splash screen, status screen, keyboard help)
     ${LIB_ROOT}/ui/splash.c
@@ -323,13 +335,14 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/ui/terminal_screen.c
     ${LIB_ROOT}/ui/frame_buffer.c
     ${LIB_ROOT}/ui/fps_counter.c
+
+    # Video animations (used by display.c in both mirror and client modes)
+    ${LIB_ROOT}/video/anim/digital_rain.c
 )
 
 # Mirror-specific sources (not needed by client mode)
 set(LIB_SRC_MIRROR_ONLY
-    ${LIB_ROOT}/video/rgba/image.c          # Image file I/O (JPEG/PNG) - mirror only
     ${LIB_ROOT}/video/ascii/rle.c            # RLE codec for server ASCII frames - mirror only
-    ${LIB_ROOT}/video/anim/digital_rain.c   # Matrix rain effect - mirror only
     ${LIB_ROOT}/util/aspect_ratio.c    # Video scaling - mirror only
 )
 
@@ -341,6 +354,8 @@ set(LIB_SRC_CLIENT_CRYPTO
 )
 
 set(LIB_SRC_CLIENT_NETWORK
+    ${LIB_ROOT}/network/network.c
+    ${LIB_ROOT}/network/packet/packet.c
     ${LIB_ROOT}/network/packet/parsing.c
     ${LIB_ROOT}/network/crc32.c
     ${LIB_ROOT}/network/compression.c

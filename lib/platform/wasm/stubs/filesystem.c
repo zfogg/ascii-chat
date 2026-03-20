@@ -57,16 +57,8 @@ void config_file_list_destroy(config_file_list_t *list) {
 }
 
 // File descriptor operations
-ssize_t platform_write(int fd, const void *buf, size_t count) {
-  // For WASM, route stdout/stderr to browser console
-  if ((fd == 1 || fd == 2) && buf && count > 0) {
-    wasm_log_to_console(fd, (const uint8_t *)buf, count);
-    return (ssize_t)count; // Report all bytes as written
-  }
-
-  // Fallback: use standard write for other fds
-  return write(fd, buf, count);
-}
+// NOTE: platform_write is NOT defined here - it's provided by lib/platform/wasm/system.c
+// which has the xterm.js override for browser output
 
 ssize_t platform_read(int fd, void *buf, size_t count) {
   return read(fd, buf, count);

@@ -96,7 +96,7 @@ elseif(EMSCRIPTEN)
         ${CMAKE_CURRENT_SOURCE_DIR}/wasm/string.c
         ${CMAKE_CURRENT_SOURCE_DIR}/wasm/threading.c
         ${CMAKE_CURRENT_SOURCE_DIR}/wasm/time.c
-        # TODO: lib/video/webcam/wasm/webcam_wasm.c - needs completion
+        ${CMAKE_SOURCE_DIR}/lib/video/webcam/wasm/webcam_wasm.c
     )
 endif()
 

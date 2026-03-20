@@ -67,9 +67,39 @@ int terminal_choose_log_fd(log_level_t level) {
 }
 
 // Session log buffer stub (session screens not used in WASM)
+#include <ascii-chat/session/session_log_buffer.h>
+
 typedef struct session_log_buffer session_log_buffer_t;
+
+session_log_buffer_t *session_log_buffer_create(void) {
+  return NULL;  // No-op - session log buffer not used in WASM
+}
+
+void session_log_buffer_destroy(session_log_buffer_t *buf) {
+  (void)buf;
+  // No-op - session log buffer not used in WASM
+}
+
+void session_log_buffer_clear(session_log_buffer_t *buf) {
+  (void)buf;
+  // No-op - session log buffer not used in WASM
+}
+
 void session_log_buffer_append(session_log_buffer_t *buf, const char *message) {
   (void)buf;
   (void)message;
   // No-op - session log buffer not used in WASM
+}
+
+size_t session_log_buffer_get_recent(session_log_buffer_t *buf,
+                                      session_log_entry_t *out_entries,
+                                      size_t max_count) {
+  (void)buf;
+  (void)out_entries;
+  (void)max_count;
+  return 0; // No entries in WASM
+}
+
+void log_mmap_destroy(void) {
+  // No-op - mmap logging not used in WASM
 }

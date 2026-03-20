@@ -73,3 +73,11 @@ keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_op
   (void)opts;
   return LINE_EDIT_NO_INPUT;  // No input available in WASM
 }
+
+keyboard_key_t keyboard_read_nonblocking(void) {
+  return KEY_NONE;  // No input available in WASM
+}
+
+void keyboard_destroy(void) {
+  // No-op - no keyboard to destroy in WASM
+}

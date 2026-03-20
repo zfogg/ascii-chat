@@ -46,3 +46,10 @@ uint64_t platform_get_monotonic_time_us(void) {
   clock_gettime(CLOCK_MONOTONIC, &ts);
   return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
 }
+
+void platform_sleep_ns(uint64_t ns) {
+  struct timespec ts;
+  ts.tv_sec = ns / 1000000000ULL;
+  ts.tv_nsec = ns % 1000000000ULL;
+  nanosleep(&ts, NULL);
+}

@@ -187,9 +187,9 @@ asciichat_error_t webcam_list_devices(webcam_device_info_t **devices, unsigned i
 
     // In browser, we report a single "Browser Webcam" device
     // (actual enumeration would require async Promise handling)
-    *devices = SAFE_MALLOC(1, webcam_device_info_t);
+    *devices = SAFE_MALLOC(sizeof(webcam_device_info_t), webcam_device_info_t *);
     if (!*devices) {
-        return SET_ERRNO(ERROR_OUT_OF_MEMORY, "Failed to allocate device list");
+        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate device list");
     }
 
     (*devices)[0].index = 0;
@@ -210,13 +210,13 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
     // Only support device 0 in browser
     if (device_index != 0) {
-        return SET_ERRNO(ERROR_DEVICE_NOT_FOUND, "Browser webcam only supports device index 0");
+        return SET_ERRNO(ERROR_WEBCAM, "Browser webcam only supports device index 0");
     }
 
     // Allocate context
-    *ctx = SAFE_MALLOC(1, struct webcam_context_t);
+    *ctx = SAFE_MALLOC(sizeof(struct webcam_context_t), struct webcam_context_t *);
     if (!*ctx) {
-        return SET_ERRNO(ERROR_OUT_OF_MEMORY, "Failed to allocate webcam context");
+        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate webcam context");
     }
 
     // Default resolution
@@ -236,10 +236,10 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
     // Allocate RGBA staging buffer (4 bytes per pixel)
     size_t rgba_size = (size_t)width * height * 4;
-    (*ctx)->rgba_buf = SAFE_MALLOC(rgba_size, uint8_t);
+    (*ctx)->rgba_buf = SAFE_MALLOC(rgba_size, uint8_t *);
     if (!(*ctx)->rgba_buf) {
         SAFE_FREE(*ctx);
-        return SET_ERRNO(ERROR_OUT_OF_MEMORY, "Failed to allocate RGBA buffer");
+        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate RGBA buffer");
     }
 
     // Allocate RGB24 output image
@@ -247,7 +247,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     if (!(*ctx)->cached_frame) {
         SAFE_FREE((*ctx)->rgba_buf);
         SAFE_FREE(*ctx);
-        return SET_ERRNO(ERROR_OUT_OF_MEMORY, "Failed to allocate output image");
+        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate output image");
     }
 
     // Initialize browser webcam (synchronous call wrapping async promise)
