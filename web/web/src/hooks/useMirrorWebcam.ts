@@ -97,7 +97,9 @@ export function useMirrorWebcam({
           console.warn("[Mirror] Failed to set flip X:", err);
         }
       } else if (!isOptionsInitialized()) {
-        console.warn("[Mirror] WASM options not yet initialized, skipping settings");
+        console.warn(
+          "[Mirror] WASM options not yet initialized, skipping settings",
+        );
       }
       console.timeEnd("[Mirror] WASM settings");
 
