@@ -16,6 +16,52 @@
 #include <stdio.h>
 #include <string.h>
 
+// Server: Send CRYPTO_PARAMETERS packet and set context sizes
+asciichat_error_t crypto_handshake_server_send_parameters(crypto_handshake_context_t *ctx, acip_transport_t *transport) {
+  if (!ctx || !transport) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, transport=%p", (void *)ctx, (void *)transport);
+  }
+
+  bool has_identity_key = (ctx->server_private_key.type == KEY_TYPE_ED25519);
+
+  crypto_parameters_packet_t params;
+  memset(&params, 0, sizeof(params));
+
+  params.selected_kex = KEX_ALGO_X25519;
+  params.selected_auth = has_identity_key ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
+  params.selected_cipher = CIPHER_ALGO_XSALSA20_POLY1305;
+  params.verification_enabled = ctx->require_client_auth ? 1 : 0;
+  params.kex_public_key_size = ctx->crypto_ctx.public_key_size;
+  params.shared_secret_size = CRYPTO_SHARED_KEY_SIZE;
+  params.nonce_size = XSALSA20_NONCE_SIZE;
+  params.mac_size = POLY1305_MAC_SIZE;
+  params.hmac_size = 32; // SHA256 output size
+
+  if (has_identity_key) {
+    params.auth_public_key_size = ED25519_PUBLIC_KEY_SIZE;
+    params.signature_size = ED25519_SIGNATURE_SIZE;
+  }
+
+  // Set context sizes to match what we send (host byte order)
+  crypto_handshake_set_parameters(ctx, &params);
+
+  // Convert to network byte order for the wire
+  params.kex_public_key_size = htons(params.kex_public_key_size);
+  params.auth_public_key_size = htons(params.auth_public_key_size);
+  params.signature_size = htons(params.signature_size);
+  params.shared_secret_size = htons(params.shared_secret_size);
+
+  int result =
+      packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_PARAMETERS, (uint8_t *)&params, sizeof(params), 0);
+  if (result != ASCIICHAT_OK) {
+    return SET_ERRNO(ERROR_NETWORK, "Failed to send CRYPTO_PARAMETERS packet");
+  }
+
+  log_debug("[HANDSHAKE] CRYPTO_PARAMETERS sent: auth=%s, cipher=XSALSA20_POLY1305",
+            has_identity_key ? "ED25519" : "NONE");
+  return ASCIICHAT_OK;
+}
+
 // Server: Start crypto handshake by sending public key
 asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx, acip_transport_t *transport) {
   log_debug("[HANDSHAKE_START] ===== ENTRY: crypto_handshake_server_start called =====");
@@ -29,30 +75,9 @@ asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx,
 
   int result;
 
-  // Step 1: Send CRYPTO_PARAMETERS packet first (algorithm negotiation)
-  // This tells the client what key sizes and algorithms we're using
-  log_debug("[HANDSHAKE_START] STEP 1: Sending CRYPTO_PARAMETERS to client");
-  crypto_parameters_packet_t params;
-  memset(&params, 0, sizeof(params));
-
-  params.selected_kex = KEX_ALGO_X25519;
-  params.selected_auth = AUTH_ALGO_ED25519;
-  params.selected_cipher = CIPHER_ALGO_XSALSA20_POLY1305;
-  params.verification_enabled = ctx->require_client_auth ? 1 : 0;
-  params.kex_public_key_size = htons(ctx->crypto_ctx.public_key_size);
-  params.auth_public_key_size = htons(ED25519_PUBLIC_KEY_SIZE);
-  params.signature_size = htons(ED25519_SIGNATURE_SIZE);
-  params.shared_secret_size = htons(CRYPTO_SHARED_KEY_SIZE);
-  params.nonce_size = XSALSA20_NONCE_SIZE;
-  params.mac_size = POLY1305_MAC_SIZE;
-  params.hmac_size = 32;  // SHA256 output size
-
-  result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_PARAMETERS, (uint8_t *)&params, sizeof(params), 0);
-  if (result != ASCIICHAT_OK) {
-    log_error("[HANDSHAKE_START] FAILED: Could not send CRYPTO_PARAMETERS packet");
-    return SET_ERRNO(ERROR_NETWORK, "Failed to send CRYPTO_PARAMETERS packet");
-  }
-  log_debug("[HANDSHAKE_START] CRYPTO_PARAMETERS sent successfully");
+  // Caller is responsible for sending CRYPTO_PARAMETERS and calling
+  // crypto_handshake_set_parameters() before this function. This function
+  // only handles KEY_EXCHANGE_INIT.
 
   // Calculate packet size based on negotiated crypto parameters
   size_t expected_packet_size =
@@ -638,6 +663,25 @@ asciichat_error_t crypto_handshake_server_start_socket(crypto_handshake_context_
   // Destroy temporary transport (socket remains open)
   acip_transport_destroy(temp_transport);
 
+  return result;
+}
+
+/**
+ * @brief Legacy wrapper: Send parameters using socket (TCP clients only)
+ */
+asciichat_error_t crypto_handshake_server_send_parameters_socket(crypto_handshake_context_t *ctx,
+                                                                  socket_t client_socket) {
+  if (!ctx) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Context cannot be NULL");
+  }
+
+  acip_transport_t *temp_transport = acip_tcp_transport_create("crypto_params_temp_socket", client_socket, NULL);
+  if (!temp_transport) {
+    return SET_ERRNO(ERROR_NETWORK, "Failed to create temporary transport");
+  }
+
+  asciichat_error_t result = crypto_handshake_server_send_parameters(ctx, temp_transport);
+  acip_transport_destroy(temp_transport);
   return result;
 }
 

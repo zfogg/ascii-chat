@@ -951,6 +951,15 @@ void *acds_client_handler(void *arg) {
   // Perform crypto handshake (three-step process)
   log_debug("Performing crypto handshake with client %s", client_ip);
 
+  // Step 0: Send crypto parameters
+  handshake_result = crypto_handshake_server_send_parameters_socket(&client_data->handshake_ctx, client_socket);
+  if (handshake_result != ASCIICHAT_OK) {
+    log_warn("Crypto parameters send failed for client %s", client_ip);
+    tcp_server_remove_client(&server->tcp_server, client_socket);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+
   // Step 1: Start handshake (send server key, receive client key)
   handshake_result = crypto_handshake_server_start_socket(&client_data->handshake_ctx, client_socket);
   if (handshake_result != ASCIICHAT_OK) {

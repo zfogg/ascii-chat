@@ -128,6 +128,7 @@ esac
 timeout -k0.5 "$((SNAPSHOT_DELAY + 1))" "$STRACE_CMD" -f -o "$client_strace" \
   "$BUILD_DIR"/bin/ascii-chat \
   --log-level debug --log-file "$client_log" --sync-state 1 \
+  --color true --color-mode truecolor \
   client "${PROTO_PREFIX}://localhost:$PROTO_PORT" \
   --test-pattern \
   --snapshot --snapshot-delay "$SNAPSHOT_DELAY" \

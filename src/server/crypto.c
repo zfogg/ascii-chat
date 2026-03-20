@@ -481,6 +481,7 @@ int server_crypto_handshake(client_info_t *client) {
   server_params.mac_size = CRYPTO_MAC_SIZE;                  // Poly1305 MAC size
   server_params.hmac_size = CRYPTO_HMAC_SIZE;                // HMAC-SHA256 size
 
+  // Send negotiated crypto parameters to client
   log_debug("SERVER_CRYPTO_HANDSHAKE: Sending crypto parameters to client %s", client->client_id);
   result = send_crypto_parameters_packet(socket, &server_params);
   if (result != 0) {
@@ -492,7 +493,8 @@ int server_crypto_handshake(client_info_t *client) {
   log_debug("Server selected crypto for client %s: KEX=%u, Auth=%u, Cipher=%u", client->client_id,
             server_params.selected_kex, server_params.selected_auth, server_params.selected_cipher);
 
-  // Set the crypto parameters in the handshake context
+  // Set the crypto parameters in the handshake context so that
+  // crypto_handshake_server_start knows parameters were already sent
   result = crypto_handshake_set_parameters(&client->crypto_handshake_ctx, &server_params);
   if (result != ASCIICHAT_OK) {
     client->crypto_initialized = false;

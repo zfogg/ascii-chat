@@ -34,6 +34,22 @@
 asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx, acip_transport_t *transport);
 
 /**
+ * @brief Server: Send CRYPTO_PARAMETERS and set handshake context sizes
+ * @param ctx Handshake context
+ * @param transport ACIP transport to send on
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Must be called before crypto_handshake_server_start(). Builds crypto
+ * parameters based on server state (identity key presence), sends them
+ * to the client, and updates context sizes to match.
+ *
+ * TCP server path calls this indirectly via its own negotiation in
+ * src/server/crypto.c (which customizes parameters based on client
+ * capabilities). WebSocket and discovery-service paths call this directly.
+ */
+asciichat_error_t crypto_handshake_server_send_parameters(crypto_handshake_context_t *ctx, acip_transport_t *transport);
+
+/**
  * @brief Server: Process client's public key and send auth challenge
  * @param ctx Handshake context (must be in CRYPTO_HANDSHAKE_KEY_EXCHANGE state)
  * @param transport ACIP transport to send on
@@ -84,6 +100,8 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
  * @brief Legacy wrapper: Start handshake using socket (TCP clients only)
  * @deprecated Use crypto_handshake_server_start() with acip_transport_t instead
  */
+asciichat_error_t crypto_handshake_server_send_parameters_socket(crypto_handshake_context_t *ctx,
+                                                                 socket_t client_socket);
 asciichat_error_t crypto_handshake_server_start_socket(crypto_handshake_context_t *ctx, socket_t client_socket);
 
 /**

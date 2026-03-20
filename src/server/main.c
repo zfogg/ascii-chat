@@ -1544,13 +1544,19 @@ static void *websocket_client_handler(void *arg) {
   log_debug("Initialized crypto handshake context for WebSocket client %s", client->client_id);
   log_debug("[WS_HANDLER] crypto_initialized now = %d", client->crypto_initialized);
 
-  // STEP 3: Now send KEY_EXCHANGE_INIT to start the handshake
+  // STEP 3: Send CRYPTO_PARAMETERS then KEY_EXCHANGE_INIT to start the handshake
   // The receive thread is already running, but it will use the properly initialized context
-  log_info("[WS_HANDLER] STEP 3: Calling crypto_handshake_server_start()...");
-  log_info("[WS_HANDLER] Arguments: ctx=%p (state=%d), transport=%p (type=%d)", (void *)&client->crypto_handshake_ctx,
-           client->crypto_handshake_ctx.state, (void *)client->transport,
-           client->transport ? client->transport->methods->get_type(client->transport) : -1);
+  log_info("[WS_HANDLER] STEP 3: Sending CRYPTO_PARAMETERS + KEY_EXCHANGE_INIT...");
   asciichat_error_t handshake_start_result =
+      crypto_handshake_server_send_parameters(&client->crypto_handshake_ctx, client->transport);
+  if (handshake_start_result != ASCIICHAT_OK) {
+    log_error("[WS_HANDLER] FAILED: crypto_handshake_server_send_parameters returned %d: %s", handshake_start_result,
+              asciichat_error_string(handshake_start_result));
+    remove_client(server_ctx, client->client_id);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+  handshake_start_result =
       crypto_handshake_server_start(&client->crypto_handshake_ctx, client->transport);
   if (handshake_start_result != ASCIICHAT_OK) {
     log_error("[WS_HANDLER] FAILED: crypto_handshake_server_start returned %d: %s", handshake_start_result,
