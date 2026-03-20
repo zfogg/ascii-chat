@@ -47,9 +47,6 @@
   --color-terminal-15: #f2f2f2;
 }
 
-
-
-
 @layer base {
   /* Define terminal colors for xterm.js - using shared design colors for main bg/fg */
   /* Custom styles for web.ascii-chat.com */
@@ -71,7 +68,6 @@
   a {
     text-decoration: underline;
   }
-
 }
 
 /* TODO/FIXME: tailwind should  generate 
@@ -89,4 +85,3 @@
 .bg-terminal-green {
   @apply bg-terminal-green;
 }
-
