@@ -51,52 +51,10 @@ import MirrorModuleFactory from "./dist/mirror.js";
 let wasmModule: MirrorModule | null = null;
 let frameCallCount = 0;
 
-export interface MirrorInitOptions {
-  width?: number;
-  height?: number;
-  colorMode?: ColorMode;
-  colorFilter?: ColorFilter;
-  renderMode?: RenderMode;
-  palette?: Palette;
-}
-
-// Map enum values to CLI option strings
-const colorModeNames: Record<ColorMode, string> = {
-  [ColorMode.AUTO]: "auto",
-  [ColorMode.NONE]: "none",
-  [ColorMode.COLOR_16]: "16",
-  [ColorMode.COLOR_256]: "256",
-  [ColorMode.TRUECOLOR]: "truecolor",
-};
-
-const colorFilterNames: Record<ColorFilter, string> = {
-  [ColorFilter.NONE]: "none",
-  [ColorFilter.BLACK]: "black",
-  [ColorFilter.WHITE]: "white",
-  [ColorFilter.GREEN]: "green",
-  [ColorFilter.MAGENTA]: "magenta",
-  [ColorFilter.FUCHSIA]: "fuchsia",
-  [ColorFilter.ORANGE]: "orange",
-  [ColorFilter.TEAL]: "teal",
-  [ColorFilter.CYAN]: "cyan",
-  [ColorFilter.PINK]: "pink",
-  [ColorFilter.RED]: "red",
-  [ColorFilter.YELLOW]: "yellow",
-  [ColorFilter.RAINBOW]: "rainbow",
-};
-
-const renderModeNames: Record<RenderMode, string> = {
-  [RenderMode.FOREGROUND]: "foreground",
-  [RenderMode.BACKGROUND]: "background",
-  [RenderMode.HALF_BLOCK]: "half-block",
-};
-
 /**
  * Initialize the WASM module (call once at app start)
  */
-export async function initMirrorWasm(
-  options: MirrorInitOptions = {},
-): Promise<void> {
+export async function initMirrorWasm(): Promise<void> {
   if (wasmModule) return;
 
   console.log("[WASM] Starting module factory...");

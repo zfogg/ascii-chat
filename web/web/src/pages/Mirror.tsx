@@ -38,7 +38,7 @@ import { useMirrorWebcam } from "../hooks/useMirrorWebcam";
 export function MirrorPage() {
   // Memoize WASM callbacks to prevent infinite re-render loops.
   // These are module-level functions that never change, so empty deps are correct.
-  const initWasm = useCallback(() => initMirrorWasm({}), []);
+  const initWasm = useCallback(() => initMirrorWasm(), []);
 
   const applyWasmSettings = useCallback((settings: SettingsConfig) => {
     const om = createWasmOptionsManager(
