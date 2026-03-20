@@ -56,3 +56,20 @@ void action_check_update(void) {
 void action_check_update_immediate(void) {
   // No-op - update checking not supported in WASM
 }
+
+// Additional platform stubs
+asciichat_error_t platform_enable_keepawake(void) {
+  return ASCIICHAT_OK;  // No-op in browser (browser manages power)
+}
+
+void platform_disable_keepawake(void) {
+  // No-op in browser
+}
+
+// Keyboard input stubs
+#include <ascii-chat/platform/keyboard.h>
+
+keyboard_line_edit_result_t keyboard_read_line_interactive(keyboard_line_edit_opts_t *opts) {
+  (void)opts;
+  return LINE_EDIT_NO_INPUT;  // No input available in WASM
+}
