@@ -270,8 +270,9 @@ char *image_print_color(const image_t *p, const char *palette) {
       // In WASM/xterm.js builds, quantize RGB to reduce unique colors.
       // xterm.js batches consecutive same-colored cells into single draw calls,
       // so fewer unique colors = fewer batches = dramatically faster rendering.
-      // 16 levels per channel (4K colors) is visually imperceptible.
-      int r = pixel.r & 0xF0, g = pixel.g & 0xF0, b = pixel.b & 0xF0;
+      // 4 levels per channel (64 colors) keeps good visual quality since
+      // luminance-based character selection uses full-precision values.
+      int r = pixel.r & 0xC0, g = pixel.g & 0xC0, b = pixel.b & 0xC0;
 #else
       int r = pixel.r, g = pixel.g, b = pixel.b;
 #endif

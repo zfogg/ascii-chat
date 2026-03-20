@@ -135,6 +135,9 @@ async function getFrameLength(page: import("@playwright/test").Page) {
 }
 
 test.describe("Mirror FPS Performance", () => {
+  // Use a large viewport to match real-world fullscreen usage
+  test.use({ viewport: { width: 1920, height: 1080 } });
+
   test("should maintain acceptable FPS across different color filters", async ({
     page,
   }) => {
