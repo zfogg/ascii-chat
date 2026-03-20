@@ -257,7 +257,7 @@ export const transition = {
  * Combine multiple style classes safely
  * Usage: combineStyles(card.standard, accent.cyan, 'custom-class')
  */
-export function combineStyles(...classes) {
+export function combineStyles(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
 }
 
@@ -275,7 +275,7 @@ export function createAccentCard(accentColor = "cyan") {
  * Create colored section heading
  * Usage: createSectionHeading('purple', 'Section Title')
  */
-export function createSectionHeading(color = "cyan", title) {
+export function createSectionHeading(color = "cyan", title: string) {
   return {
     text: title,
     className: combineStyles(heading.h2, `text-${color}-400`),

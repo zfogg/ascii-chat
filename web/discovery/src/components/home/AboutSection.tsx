@@ -1,7 +1,13 @@
 import { Heading, Link } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
 
-export default function AboutSection({ sessionStrings, handleLinkClick }) {
+export default function AboutSection({
+  sessionStrings,
+  handleLinkClick,
+}: {
+  sessionStrings: string[];
+  handleLinkClick: (url: string, text: string) => void;
+}) {
   return (
     <section className="mb-12">
       <Heading

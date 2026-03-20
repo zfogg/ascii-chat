@@ -1,4 +1,13 @@
 import { renderContentWithCodeBlocks } from "../utils";
+import type { RefObject } from "react";
+
+interface Man3ContentViewerProps {
+  contentViewerRef: RefObject<HTMLDivElement | null>;
+  selectedPageName: string | null;
+  selectedPageContent: string | null;
+  searchQuery: string;
+  targetLineNumber: number | null;
+}
 
 /**
  * Displays the content of a selected man page with code block rendering
@@ -9,7 +18,7 @@ export function Man3ContentViewer({
   selectedPageContent,
   searchQuery,
   targetLineNumber,
-}) {
+}: Man3ContentViewerProps) {
   const isSourcePage =
     selectedPageName?.endsWith("_source") || selectedPageName?.endsWith(".c");
 
@@ -25,7 +34,7 @@ export function Man3ContentViewer({
       </div>
       <div className="man-page-content">
         {renderContentWithCodeBlocks(
-          selectedPageContent,
+          selectedPageContent ?? "",
           isSourcePage,
           searchQuery,
           targetLineNumber,

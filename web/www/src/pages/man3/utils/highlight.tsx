@@ -11,7 +11,7 @@
  * @param {string} query - The search query
  * @returns {{ regex: RegExp | null, isValid: boolean }}
  */
-export function buildSearchRegex(query) {
+export function buildSearchRegex(query: string) {
   if (!query?.trim()) {
     return { regex: null, isValid: true };
   }
@@ -47,7 +47,7 @@ export function buildSearchRegex(query) {
  * @param {string} query - The search query
  * @returns {JSX.Element[] | string} - Array of spans or original text if no query
  */
-export function highlightMatches(text, query) {
+export function highlightMatches(text: string, query: string) {
   if (!query?.trim()) return text;
 
   const { regex, isValid } = buildSearchRegex(query);
@@ -56,7 +56,7 @@ export function highlightMatches(text, query) {
   try {
     const parts = text.split(regex);
 
-    return parts.map((part, i) => {
+    return parts.map((part: string, i: number) => {
       // Every other part (odd indices) is the matched text
       if (i % 2 === 1) {
         return (
@@ -80,7 +80,7 @@ export function highlightMatches(text, query) {
  * @param {string} query - The search query
  * @returns {string} - HTML string with highlights added
  */
-export function highlightMatchesInHTML(html, query) {
+export function highlightMatchesInHTML(html: string, query: string) {
   if (!query?.trim()) return html;
 
   const { regex, isValid } = buildSearchRegex(query);

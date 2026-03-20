@@ -1,3 +1,12 @@
+interface Man3HeaderProps {
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  regexError: string | null;
+  searching: boolean;
+  filesMatched: number;
+  totalMatches: number;
+}
+
 /**
  * Header section with title, search input, and status
  */
@@ -8,7 +17,7 @@ export function Man3Header({
   searching,
   filesMatched,
   totalMatches,
-}) {
+}: Man3HeaderProps) {
   return (
     <header className="flex-shrink-0 px-4 sm:px-6 pb-4 pt-8 sm:pt-12 max-w-4xl mx-auto w-full">
       <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">

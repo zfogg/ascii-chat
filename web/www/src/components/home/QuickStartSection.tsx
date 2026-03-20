@@ -1,6 +1,10 @@
 import { Heading, UsageExamplesSection } from "@ascii-chat/shared/components";
 
-export default function QuickStartSection({ sessionString }) {
+export default function QuickStartSection({
+  sessionString,
+}: {
+  sessionString: string;
+}) {
   return (
     <section className="mb-12 sm:mb-16">
       <Heading

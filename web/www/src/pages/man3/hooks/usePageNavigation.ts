@@ -1,40 +1,57 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { setBreadcrumbSchema } from "../../../utils/breadcrumbs";
 
+interface ManPage {
+  name: string;
+  title: string;
+  file?: string;
+  sourcePath?: string;
+}
+
 /**
  * Hook for managing page navigation, loading, history, and scrolling
- *
- * @param {Array} manPages - Full page index
- * @param {Function} processPageContent - HTML preprocessing function (includes GitHub link processing)
- * @param {Function} processDefinitionLinks - Transform Definition at line references to GitHub links
- * @param {string} searchQuery - Current search query (optional, defaults to empty string)
- * @param {string} providedCommitSha - Git commit SHA for GitHub links
- * @returns {{ selectedPageContent, selectedPageName, pageNotFound, targetLineNumber, targetSnippetIndex, targetSnippetText, contentViewerRef, loadPageContent, and state setters }}
  */
 export function usePageNavigation(
-  manPages,
-  processPageContent,
-  processDefinitionLinks,
+  manPages: ManPage[],
+  processPageContent: (
+    html: string,
+    searchQuery: string,
+    sourcePath: string | undefined,
+    isSourcePage: boolean,
+  ) => string,
+  processDefinitionLinks: (
+    html: string,
+    sourcePath: string | undefined,
+    commitSha: string,
+    isSourcePage: boolean,
+    pageName: string | null,
+  ) => string,
   searchQuery = "",
-  providedCommitSha = null,
+  providedCommitSha: string | null = null,
 ) {
-  const [selectedPageContent, setSelectedPageContent] = useState(null);
-  const [selectedPageName, setSelectedPageName] = useState(null);
+  const [selectedPageContent, setSelectedPageContent] = useState<string | null>(
+    null,
+  );
+  const [selectedPageName, setSelectedPageName] = useState<string | null>(null);
   const [pageNotFound, setPageNotFound] = useState(false);
-  const [targetLineNumber, setTargetLineNumber] = useState(null);
-  const [targetSnippetIndex, setTargetSnippetIndex] = useState(null);
-  const [targetSnippetText, setTargetSnippetText] = useState(null);
-  const contentViewerRef = useRef(null);
+  const [targetLineNumber, setTargetLineNumber] = useState<number | null>(null);
+  const [targetSnippetIndex, setTargetSnippetIndex] = useState<number | null>(
+    null,
+  );
+  const [targetSnippetText, setTargetSnippetText] = useState<string | null>(
+    null,
+  );
+  const contentViewerRef = useRef<HTMLDivElement | null>(null);
   const commitSha = providedCommitSha || "master";
 
   // Load page content from file and update state
   const loadPageContent = useCallback(
     (
-      pageName,
-      lineNumber = null,
-      snippetIndex = null,
+      pageName: string,
+      lineNumber: number | null = null,
+      snippetIndex: number | null = null,
       skipHistoryPush = false,
-      snippetText = null,
+      snippetText: string | null = null,
     ) => {
       if (!pageName) {
         return;
@@ -194,33 +211,29 @@ export function usePageNavigation(
         '[style*="background-color"]',
       );
       for (const el of allHighlighted) {
+        const htmlEl = el as HTMLElement;
         if (
-          el.style.backgroundColor === "rgb(255, 191, 36)" ||
-          el.style.backgroundColor === "#fbbf24"
+          htmlEl.style.backgroundColor === "rgb(255, 191, 36)" ||
+          htmlEl.style.backgroundColor === "#fbbf24"
         ) {
-          el.style.backgroundColor = "";
+          htmlEl.style.backgroundColor = "";
         }
       }
 
       // First, try to find and scroll to snippet text in non-codeblock content
       if (targetSnippetText && !targetLineNumber) {
-        const walker = document.createTreeWalker(
-          viewer,
-          NodeFilter.SHOW_TEXT,
-          null,
-          false,
-        );
+        const walker = document.createTreeWalker(viewer, NodeFilter.SHOW_TEXT);
 
         let foundNode = null;
         let node;
 
         // Find first text node containing significant portion of the snippet
         // Extract just the matched text (first line of snippet usually has the match)
-        const firstLine = targetSnippetText.split("\n")[0];
+        const firstLine = targetSnippetText.split("\n")[0] ?? "";
         const searchTerm = firstLine.trim();
 
         while ((node = walker.nextNode())) {
-          if (node.textContent.includes(searchTerm)) {
+          if (node.textContent?.includes(searchTerm)) {
             foundNode = node;
             break;
           }
@@ -261,12 +274,7 @@ export function usePageNavigation(
       // Scroll to target line if set (when clicking search snippets)
       if (targetLineNumber) {
         // Search for any element that contains the target line number
-        const walker = document.createTreeWalker(
-          viewer,
-          NodeFilter.SHOW_TEXT,
-          null,
-          false,
-        );
+        const walker = document.createTreeWalker(viewer, NodeFilter.SHOW_TEXT);
 
         let foundElement = null;
         let node;
@@ -299,7 +307,7 @@ export function usePageNavigation(
         if (potentialMatches.length > 0) {
           // Sort by priority (lower is better, preserves document order for same priority)
           potentialMatches.sort((a, b) => a.priority - b.priority);
-          node = potentialMatches[0].node;
+          node = potentialMatches[0]!.node;
           foundElement = node.parentElement;
 
           // Walk up to find a reasonable scrollable/visible parent
@@ -322,10 +330,11 @@ export function usePageNavigation(
             const targetTop = foundElement.offsetTop;
 
             // Find all spans/elements in the code block
-            const allSpans = codeBlock.querySelectorAll("span, div, *");
+            const allSpans =
+              codeBlock.querySelectorAll<HTMLElement>("span, div, *");
 
             // Collect all spans on this line that have non-whitespace content
-            const lineSpans = [];
+            const lineSpans: HTMLElement[] = [];
             for (const span of allSpans) {
               if (
                 span.offsetTop === targetTop &&
@@ -359,7 +368,7 @@ export function usePageNavigation(
                 }
               }
 
-              lineSpans[0].scrollIntoView({
+              lineSpans[0]!.scrollIntoView({
                 behavior: "auto",
                 block: "center",
               });
@@ -373,8 +382,6 @@ export function usePageNavigation(
               const tw = document.createTreeWalker(
                 contentViewerRef.current,
                 NodeFilter.SHOW_TEXT,
-                null,
-                false,
               );
 
               let foundN = null;
@@ -382,7 +389,7 @@ export function usePageNavigation(
 
               // Find first text node matching the search query
               while ((nd = tw.nextNode())) {
-                if (searchRegex.test(nd.textContent)) {
+                if (nd.textContent && searchRegex.test(nd.textContent)) {
                   foundN = nd;
                   break;
                 }
@@ -428,8 +435,8 @@ export function usePageNavigation(
     const viewer = contentViewerRef.current;
     if (!viewer) return;
 
-    const handleLinkClick = (e) => {
-      const link = e.target.closest("a");
+    const handleLinkClick = (e: MouseEvent) => {
+      const link = (e.target as HTMLElement).closest("a");
       if (!link) return;
 
       const href = link.getAttribute("href");
@@ -441,11 +448,11 @@ export function usePageNavigation(
       );
       if (newMatch) {
         e.preventDefault();
-        const pn = decodeURIComponent(newMatch[1]);
+        const pn = decodeURIComponent(newMatch[1]!);
         let ln = null;
         if (newMatch[2]) {
           // Extract number from "l00046" format
-          const numStr = newMatch[2].replace(/^l/, "").split("-")[0];
+          const numStr = newMatch[2].replace(/^l/, "").split("-")[0]!;
           ln = parseInt(numStr, 10);
         }
         loadPageContent(pn, ln);
@@ -456,7 +463,7 @@ export function usePageNavigation(
       const doxygenMatch = href.match(/\/man3\/(.+?)\.html(#l\d+)?$/);
       if (doxygenMatch) {
         e.preventDefault();
-        const pn = doxygenMatch[1];
+        const pn = doxygenMatch[1]!;
         const lineAnchor = doxygenMatch[2] || "";
 
         // Load the page and scroll to line if specified
@@ -483,7 +490,7 @@ export function usePageNavigation(
   }, [loadPageContent]);
 
   // Helper function to scroll to hash target
-  const scrollToHash = (hash) => {
+  const scrollToHash = (hash: string) => {
     if (!hash || !contentViewerRef.current) return;
     const container = contentViewerRef.current;
     const elementId = hash.substring(1); // Remove the # prefix
@@ -552,7 +559,7 @@ export function usePageNavigation(
       pTag = pTag.nextElementSibling;
     }
 
-    if (!pTag || !pTag.textContent.includes("(")) return;
+    if (!pTag || !pTag.textContent?.includes("(")) return;
 
     // Split the HTML by <br> tags
     const html = pTag.innerHTML;
@@ -562,15 +569,15 @@ export function usePageNavigation(
 
     // Process sections in pairs: signature + description
     for (let i = 0; i < sections.length - 1; i += 2) {
-      const sig = sections[i].trim();
-      const desc = i + 1 < sections.length ? sections[i + 1].trim() : "";
+      const sig = sections[i]!.trim();
+      const desc = i + 1 < sections.length ? sections[i + 1]!.trim() : "";
 
       if (!sig) continue;
 
       // Check if sig section looks like a function signature
       const tempDiv = document.createElement("div");
       tempDiv.innerHTML = sig;
-      const sigText = tempDiv.textContent.trim();
+      const sigText = (tempDiv.textContent ?? "").trim();
 
       // It's a signature if it contains parentheses and likely starts with a type or contains a bold function name
       if (sigText.includes("(") && sigText.includes(")")) {

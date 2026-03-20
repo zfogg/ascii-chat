@@ -1,4 +1,3 @@
-/* global __SSH_PUBLIC_KEY__, __GPG_PUBLIC_KEY__ */
 import { useEffect, useState } from "react";
 import { Footer } from "@ascii-chat/shared/components";
 import {
@@ -9,19 +8,23 @@ import {
 import { ACDSHead } from "../components";
 import { getGpgFingerprint, getSshFingerprint } from "../utils/keyFingerprints";
 import {
-  HeroHeader,
   AboutSection,
-  PublicKeysSection,
   GettingHelpWrapper,
-  UsageExamplesWrapper,
-  SelfHostingSection,
+  HeroHeader,
+  PublicKeysSection,
   SecuritySection,
+  SelfHostingSection,
+  UsageExamplesWrapper,
 } from "../components/home";
 
 function Home() {
   useScrollToHash(100);
-  const [sshKey, _setSshKey] = useState(__SSH_PUBLIC_KEY__ || "");
-  const [gpgKey, _setGpgKey] = useState(__GPG_PUBLIC_KEY__ || "");
+  const [sshKey, _setSshKey] = useState(
+    import.meta.env.VITE_SSH_PUBLIC_KEY || "",
+  );
+  const [gpgKey, _setGpgKey] = useState(
+    import.meta.env.VITE_GPG_PUBLIC_KEY || "",
+  );
   const [sshFingerprint, setSshFingerprint] = useState("");
   const [gpgFingerprint, setGpgFingerprint] = useState("");
   const [baseUrl] = useState(() => window.location.origin);
@@ -51,19 +54,7 @@ function Home() {
       .catch((e) => console.error("Failed to load session strings:", e));
   }, [sshKey, gpgKey]);
 
-  const _handleSshDownload = () => {
-    if (window.gtag) {
-      window.gtag("event", "download_ssh_key");
-    }
-  };
-
-  const _handleGpgDownload = () => {
-    if (window.gtag) {
-      window.gtag("event", "download_gpg_key");
-    }
-  };
-
-  const handleLinkClick = (url, text) => {
+  const handleLinkClick = (url: string, text: string) => {
     if (window.gtag) {
       window.gtag("event", "link_click", {
         link_url: url,
@@ -75,6 +66,7 @@ function Home() {
   return (
     <>
       <ACDSHead />
+
       <div className="max-w-4xl mx-auto px-4 md:px-8 py-8 md:py-16">
         <HeroHeader handleLinkClick={handleLinkClick} />
 

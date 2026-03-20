@@ -1,7 +1,11 @@
 import { Heading, Link } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
 
-export default function HeroHeader({ handleLinkClick }) {
+export default function HeroHeader({
+  handleLinkClick,
+}: {
+  handleLinkClick: (url: string, text: string) => void;
+}) {
   return (
     <header className="text-center mb-12 pb-8 border-b-2 border-gray-700">
       <Heading level={1} className="mb-2 text-blue-400 text-3xl md:text-4xl">

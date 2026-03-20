@@ -48,7 +48,7 @@ export default function Home() {
         <HeroHeader />
         <InstallationSection />
         <FeaturesSection sessionStrings={sessionStrings} />
-        <QuickStartSection sessionString={sessionStrings[0]} />
+        <QuickStartSection sessionString={sessionStrings[0] ?? ""} />
         <DocumentationSection />
         <UsageExamplesSection sessionStrings={sessionStrings} />
         <OpenSourceSection />

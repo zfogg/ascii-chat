@@ -1,6 +1,10 @@
 import { Heading, UsageExamplesSection } from "@ascii-chat/shared/components";
 
-export default function UsageExamplesWrapper({ sessionStrings }) {
+export default function UsageExamplesWrapper({
+  sessionStrings,
+}: {
+  sessionStrings: string[];
+}) {
   return (
     <section className="mb-12">
       <Heading
@@ -10,7 +14,7 @@ export default function UsageExamplesWrapper({ sessionStrings }) {
         💻 Usage Examples
       </Heading>
       <UsageExamplesSection
-        sessionString={sessionStrings[1]}
+        sessionString={sessionStrings[1] || "jumbo-slayer-sergeant"}
         headingClassName="sr-only"
       />
     </section>

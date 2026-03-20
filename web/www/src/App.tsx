@@ -28,7 +28,7 @@ export default function App() {
             <Navigation />
             <main className="pt-[var(--header-height)] flex flex-col flex-1">
               <Suspense fallback={null}>
-                <Routes className="flex-1">
+                <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/docs" element={<DocsHub />} />
                   <Route path="/docs/" element={<DocsHub />} />

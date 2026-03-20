@@ -1,6 +1,17 @@
 import { Man3NotFound } from "./Man3NotFound";
 import { Man3ContentViewer } from "./Man3ContentViewer";
 import { Man3EmptyState } from "./Man3EmptyState";
+import type { RefObject } from "react";
+
+interface Man3RightPanelProps {
+  pageNotFound: boolean;
+  selectedPageContent: string | null;
+  selectedPageName: string | null;
+  contentViewerRef: RefObject<HTMLDivElement | null>;
+  searchQuery: string;
+  targetLineNumber: number | null;
+  searchResults: unknown[];
+}
 
 /**
  * Right panel dispatcher - shows NotFound, ContentViewer, or EmptyState
@@ -13,7 +24,7 @@ export function Man3RightPanel({
   searchQuery,
   targetLineNumber,
   searchResults,
-}) {
+}: Man3RightPanelProps) {
   return (
     <div className="flex-1 flex min-w-0">
       {pageNotFound ? (

@@ -38,8 +38,12 @@ const getCommitSha = () => {
 export default defineConfig({
   define: {
     __COMMIT_SHA__: JSON.stringify(getCommitSha()),
-    __SSH_PUBLIC_KEY__: JSON.stringify(process.env.SSH_PUBLIC_KEY || ""),
-    __GPG_PUBLIC_KEY__: JSON.stringify(process.env.GPG_PUBLIC_KEY || ""),
+    "import.meta.env.VITE_SSH_PUBLIC_KEY": JSON.stringify(
+      process.env.SSH_PUBLIC_KEY || "",
+    ),
+    "import.meta.env.VITE_GPG_PUBLIC_KEY": JSON.stringify(
+      process.env.GPG_PUBLIC_KEY || "",
+    ),
   },
   resolve: {
     alias: {

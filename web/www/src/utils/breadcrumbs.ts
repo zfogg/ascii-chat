@@ -1,8 +1,12 @@
+interface Breadcrumb {
+  name: string;
+  path: string;
+}
+
 /**
  * Add breadcrumb schema to page head
- * @param {Array} breadcrumbs - Array of {name, path} objects
  */
-export function setBreadcrumbSchema(breadcrumbs) {
+export function setBreadcrumbSchema(breadcrumbs: Breadcrumb[]): void {
   // Remove any existing breadcrumb script
   const existing = document.querySelector("script[data-breadcrumb]");
   if (existing) {
@@ -12,7 +16,7 @@ export function setBreadcrumbSchema(breadcrumbs) {
   const breadcrumbList = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    itemListElement: breadcrumbs.map((item, index) => ({
+    itemListElement: breadcrumbs.map((item: Breadcrumb, index: number) => ({
       "@type": "ListItem",
       position: index + 1,
       name: item.name,

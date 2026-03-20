@@ -14,7 +14,6 @@ export default function GettingHelpWrapper() {
       </p>
       <GettingHelpSection
         modeExample="discovery-service"
-        introText=""
         headingClassName="sr-only"
       />
     </section>

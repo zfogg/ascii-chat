@@ -1,7 +1,11 @@
+interface Man3NotFoundProps {
+  selectedPageName: string | null;
+}
+
 /**
  * 404 Not Found state for Man3 pages
  */
-export function Man3NotFound({ selectedPageName }) {
+export function Man3NotFound({ selectedPageName }: Man3NotFoundProps) {
   return (
     <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto flex-1 flex flex-col items-center justify-center">
       <div className="text-center">

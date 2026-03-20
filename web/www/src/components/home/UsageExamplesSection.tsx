@@ -1,8 +1,12 @@
 import { GettingHelpSection, Heading } from "@ascii-chat/shared/components";
-import { CodeBlock } from "@ascii-chat/shared/components/CodeBlock";
+import { CodeBlock } from "@ascii-chat/shared/components";
 import TrackedLink from "../TrackedLink";
 
-export default function UsageExamplesSection({ sessionStrings }) {
+export default function UsageExamplesSection({
+  sessionStrings,
+}: {
+  sessionStrings: string[];
+}) {
   return (
     <section className="mb-12 sm:mb-16">
       <Heading
@@ -31,7 +35,6 @@ export default function UsageExamplesSection({ sessionStrings }) {
         <div>
           <GettingHelpSection
             modeExample="<mode>"
-            introText=""
             headingClassName="text-xl font-semibold text-cyan-300 mb-3"
           />
         </div>

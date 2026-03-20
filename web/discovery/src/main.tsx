@@ -4,10 +4,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { HeadingProvider } from "@ascii-chat/shared/components";
 import "./index.css";
-import Home from "./pages/Home.jsx";
-import NotFound from "./pages/NotFound.jsx";
+import Home from "./pages/Home";
+import NotFound from "./pages/NotFound";
 
-createRoot(document.getElementById("root")).render(
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <HelmetProvider>

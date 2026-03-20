@@ -1,5 +1,5 @@
 import { Heading } from "@ascii-chat/shared/components";
-import { CodeBlock } from "@ascii-chat/shared/components/CodeBlock";
+import { CodeBlock } from "@ascii-chat/shared/components";
 
 export default function AudioSetupSection() {
   return (

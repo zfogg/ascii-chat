@@ -1,47 +1,58 @@
 import { useCallback } from "react";
 import { highlightMatchesInHTML } from "../utils";
+import type { MutableRefObject } from "react";
+
+interface ManPage {
+  name: string;
+  sourcePath?: string;
+}
+
+interface MacroRow {
+  name: string;
+  value: string;
+  description: string;
+}
 
 /**
  * Hook for all HTML string transformation functions
  * Used in the preprocessing pipeline to convert raw Doxygen HTML to clean documentation
- *
- * @param {React.MutableRefObject<Set>} validPagesRef - Set of valid page names for link detection
- * @param {Array} manPages - Full pages array with sourcePath information
- * @param {string} commitSha - Git commit SHA for GitHub links
- * @returns {{ processPageContent, preprocessPageHTML, processDefinitionLinks }}
  */
-export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
+export function useHtmlTransforms(
+  validPagesRef: MutableRefObject<Set<string>>,
+  manPages: ManPage[],
+  commitSha: string,
+) {
   /**
    * Parse a macro match and convert to HTML table
    */
-  const parseMacroMatch = useCallback((match) => {
+  const parseMacroMatch = useCallback((match: string): string | null => {
     const content = match.replace(/<p[^>]*>/, "").replace(/<\/p>/, "");
     const sections = content.split(/<br\s*\/?>/i);
     if (sections.length < 1) return null;
 
-    const rows = [];
-    let previousMacro = null;
+    const rows: MacroRow[] = [];
+    let previousMacro: MacroRow | null = null;
 
     for (let i = 0; i < sections.length; i++) {
-      const section = sections[i].trim();
+      const section = sections[i]!.trim();
       if (!section) continue;
 
       // Extract bold tags and text
       const boldRegex = /<b>([^<]+)<\/b>/g;
-      const bolds = [];
+      const bolds: string[] = [];
       let boldMatch;
       while ((boldMatch = boldRegex.exec(section))) {
-        bolds.push(boldMatch[1]);
+        bolds.push(boldMatch[1]!);
       }
 
       if (bolds.length === 0) continue;
 
-      let name,
-        value,
+      let name: string | undefined,
+        value: string | undefined,
         description = "";
 
       if (bolds.length >= 1) {
-        name = bolds[0];
+        name = bolds[0]!;
 
         if (bolds.length >= 2) {
           value = bolds[1];
@@ -121,18 +132,18 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
    * Transform macro P tags into tables
    */
   const transformMacrosInHTML = useCallback(
-    (html) => {
+    (html: string): string => {
       // Pattern 1: Standard sections that start with <br> (Password Requirements, etc.)
       let result = html.replace(
         /<p[^>]*class="Pp"[^>]*>\s*<br[^>]*>[\s\S]*?#define[\s\S]*?<\/p>/g,
-        (match) => parseMacroMatch(match) || match,
+        (match: string) => parseMacroMatch(match) || match,
       );
 
       // Pattern 2: Initial Macros section (starts directly with #define, allowing optional whitespace)
       // Only match if it contains #define statements
       result = result.replace(
         /<p[^>]*class="Pp"[^>]*>\s*#define[\s\S]*?<\/p>/g,
-        (match) => {
+        (match: string) => {
           // Skip if this is just a header (contains only bold text without #define)
           if (!match.includes("#define")) return match;
           return parseMacroMatch(match) || match;
@@ -148,10 +159,10 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
    * Transform filename references to man3 links
    */
   const transformFilenameLinksInHTML = useCallback(
-    (html) => {
+    (html: string): string => {
       const fileRegex = /\b([a-zA-Z0-9_\-./]+\.(c|h|cpp|m|hpp))\b/g;
 
-      return html.replace(fileRegex, (match, filename) => {
+      return html.replace(fileRegex, (match: string, filename: string) => {
         // Check if already inside a link
         const beforeMatch = html.substring(0, html.indexOf(match));
         const openLinks = (beforeMatch.match(/<a[^>]*>/g) || []).length;
@@ -178,21 +189,21 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
    */
   const processDefinitionLinks = useCallback(
     (
-      html,
-      sourcePath,
-      passedCommitSha,
+      html: string,
+      sourcePath: string | undefined,
+      passedCommitSha: string,
       isSourcePage = false,
-      selectedPageName = null,
-    ) => {
+      selectedPageName: string | null = null,
+    ): string => {
       // Get the commit SHA - use passed value, then hook value, finally default to master
       const sha = passedCommitSha || commitSha;
       const githubRef = sha && sha !== "unknown" ? sha : "master";
 
       // Create fresh regex for each call to avoid state issues
       // Try multiple patterns to handle different HTML formatting
-      let definitionRegex =
+      const definitionRegex =
         /Definition at line <b>(\d+)<\/b> of file\s*<b>([^<]+)<\/b>[.!?]?/g;
-      let _matches = Array.from(html.matchAll(definitionRegex));
+      Array.from(html.matchAll(definitionRegex));
 
       // Transform "Definition at line X of file Y" text to add GitHub links
       // Use flexible regex to match the actual pattern found (including optional trailing period)
@@ -201,103 +212,109 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
 
       transformRegex.lastIndex = 0; // Reset lastIndex after test
 
-      let result = html.replace(transformRegex, (match, lineNum, filename) => {
-        let filepath = sourcePath || filename.trim();
+      let result = html.replace(
+        transformRegex,
+        (_match: string, lineNum: string, filename: string) => {
+          let filepath = sourcePath || filename.trim();
 
-        // Extract basename for lookup (works whether filepath is basename or full path)
-        const basename = filepath.includes("/")
-          ? filepath.substring(filepath.lastIndexOf("/") + 1)
-          : filepath;
+          // Extract basename for lookup (works whether filepath is basename or full path)
+          const basename = filepath.includes("/")
+            ? filepath.substring(filepath.lastIndexOf("/") + 1)
+            : filepath;
 
-        // Look it up in manPages if available
-        if (manPages && manPages.length > 0) {
-          // Find all pages with this basename
-          const candidatePages = manPages.filter((p) => p.name === basename);
-          let page = null;
+          // Look it up in manPages if available
+          if (manPages && manPages.length > 0) {
+            // Find all pages with this basename
+            const candidatePages = manPages.filter(
+              (p: ManPage) => p.name === basename,
+            );
+            let page: ManPage | null = null;
 
-          if (candidatePages.length === 1) {
-            // Only one file with this name - but check if content suggests a different file
-            page = candidatePages[0];
+            if (candidatePages.length === 1) {
+              // Only one file with this name - but check if content suggests a different file
+              page = candidatePages[0] ?? null;
 
-            // Special case: if it's agent.c and content contains GPG markers, use GPG version
-            const hasGPGMarkers =
-              html.includes("GPG_AGENT") || html.includes("gpg_agent_");
-            if (basename === "agent.c" && hasGPGMarkers) {
-              // pages.json is incomplete - it doesn't have the GPG agent.c entry
-              // So we hardcode the path when we detect GPG content
-              filepath = "lib/crypto/gpg/agent.c";
-              page = null; // Skip the lookup since we already set filepath
-            }
-          } else if (candidatePages.length > 1) {
-            // Multiple files with same name - try to pick the right one
-            // First, check if current page has the same basename
-            if (selectedPageName) {
-              const currentPage = manPages.find(
-                (p) => p.name === selectedPageName,
-              );
-              if (currentPage && currentPage.name.endsWith(filepath)) {
-                // Current page has matching basename, use it
-                page = currentPage;
-              } else if (currentPage && currentPage.sourcePath) {
-                // Try to find a page from the same directory as current page
-                const currentDir = currentPage.sourcePath.substring(
-                  0,
-                  currentPage.sourcePath.lastIndexOf("/"),
+              // Special case: if it's agent.c and content contains GPG markers, use GPG version
+              const hasGPGMarkers =
+                html.includes("GPG_AGENT") || html.includes("gpg_agent_");
+              if (basename === "agent.c" && hasGPGMarkers) {
+                // pages.json is incomplete - it doesn't have the GPG agent.c entry
+                // So we hardcode the path when we detect GPG content
+                filepath = "lib/crypto/gpg/agent.c";
+                page = null; // Skip the lookup since we already set filepath
+              }
+            } else if (candidatePages.length > 1) {
+              // Multiple files with same name - try to pick the right one
+              // First, check if current page has the same basename
+              if (selectedPageName) {
+                const currentPage = manPages.find(
+                  (p: ManPage) => p.name === selectedPageName,
                 );
-                page = candidatePages.find((p) =>
-                  p.sourcePath.startsWith(currentDir + "/"),
-                );
+                if (currentPage && currentPage.name.endsWith(filepath)) {
+                  // Current page has matching basename, use it
+                  page = currentPage;
+                } else if (currentPage && currentPage.sourcePath) {
+                  // Try to find a page from the same directory as current page
+                  const currentDir = currentPage.sourcePath.substring(
+                    0,
+                    currentPage.sourcePath.lastIndexOf("/"),
+                  );
+                  page =
+                    candidatePages.find((p: ManPage) =>
+                      p.sourcePath?.startsWith(currentDir + "/"),
+                    ) ?? null;
+                }
+              }
+
+              // If still not found, use the first candidate (fallback)
+              if (!page) {
+                page = candidatePages[0] ?? null;
               }
             }
 
-            // If still not found, use the first candidate (fallback)
-            if (!page) {
-              page = candidatePages[0];
+            if (page && page.sourcePath && !filepath.includes("/")) {
+              // Only update filepath from page if it wasn't already set above
+              filepath = page.sourcePath;
+            } else if (!filepath.includes("/")) {
+              // Map Doxygen file paths to GitHub paths if not found
+              // video/rgba/image.h -> include/ascii-chat/video/rgba/image.h
+              filepath = `include/ascii-chat/${filepath}`;
+            } else if (
+              filepath.includes("/") &&
+              !filepath.startsWith("src/") &&
+              !filepath.startsWith("include/") &&
+              !filepath.startsWith("lib/")
+            ) {
+              // If it's a relative path like video/rgba/image.h, prepend include/ascii-chat/
+              filepath = `include/ascii-chat/${filepath}`;
+            }
+          } else {
+            // Fallback if manPages not available
+            if (
+              filepath &&
+              !filepath.includes("/") &&
+              (!manPages || manPages.length === 0)
+            ) {
+              // Fallback if manPages not available
+              filepath = `include/ascii-chat/${filepath}`;
+            } else if (
+              filepath &&
+              filepath.includes("/") &&
+              !filepath.startsWith("src/") &&
+              !filepath.startsWith("include/") &&
+              !filepath.startsWith("lib/")
+            ) {
+              filepath = `include/ascii-chat/${filepath}`;
             }
           }
 
-          if (page && page.sourcePath && !filepath.includes("/")) {
-            // Only update filepath from page if it wasn't already set above
-            filepath = page.sourcePath;
-          } else if (!filepath.includes("/")) {
-            // Map Doxygen file paths to GitHub paths if not found
-            // video/rgba/image.h -> include/ascii-chat/video/rgba/image.h
-            filepath = `include/ascii-chat/${filepath}`;
-          } else if (
-            filepath.includes("/") &&
-            !filepath.startsWith("src/") &&
-            !filepath.startsWith("include/") &&
-            !filepath.startsWith("lib/")
-          ) {
-            // If it's a relative path like video/rgba/image.h, prepend include/ascii-chat/
-            filepath = `include/ascii-chat/${filepath}`;
-          }
-        } else {
-          // Fallback if manPages not available
-          if (
-            filepath &&
-            !filepath.includes("/") &&
-            (!manPages || manPages.length === 0)
-          ) {
-            // Fallback if manPages not available
-            filepath = `include/ascii-chat/${filepath}`;
-          } else if (
-            filepath &&
-            filepath.includes("/") &&
-            !filepath.startsWith("src/") &&
-            !filepath.startsWith("include/") &&
-            !filepath.startsWith("lib/")
-          ) {
-            filepath = `include/ascii-chat/${filepath}`;
-          }
-        }
-
-        const link =
-          `<a href="https://github.com/zfogg/ascii-chat/blob/${githubRef}/${filepath}#L${lineNum}" ` +
-          `target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300 underline">` +
-          `Definition at line <b>${lineNum}</b> of file <b>${filename}</b></a>`;
-        return link;
-      });
+          const link =
+            `<a href="https://github.com/zfogg/ascii-chat/blob/${githubRef}/${filepath}#L${lineNum}" ` +
+            `target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300 underline">` +
+            `Definition at line <b>${lineNum}</b> of file <b>${filename}</b></a>`;
+          return link;
+        },
+      );
 
       // On source pages, transform line number anchors to GitHub links
       // e.g., <a id="l00022">22</a> becomes <a href="...#L22" ...>22</a>
@@ -320,7 +337,7 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
    * Handles multiple functions in a single P tag by splitting at function boundaries
    * Handles malformed HTML where signatures span multiple lines with <br/> tags
    */
-  const transformFunctionsInHTML = (html) => {
+  const transformFunctionsInHTML = (html: string) => {
     // First, remove __attribute__ tags to clean up the HTML for regex matching
     let cleaned = html.replace(
       /<b>__attribute__<\/b>\s*\(\([^)]*\)\)+\s*/g,
@@ -330,7 +347,7 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
     // Find ALL P tags first, then check if they contain function signatures
     const result = cleaned.replace(
       /<p\s[^>]*>([\s\S]*?)<\/p>/g,
-      (match, content) => {
+      (match: string, content: string) => {
         // Skip P tags with macro definitions - let them render as plain text to preserve grouping
         if (match.includes("#define")) {
           return match;
@@ -367,8 +384,8 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
 
           while ((funcMatch = funcPattern.exec(content))) {
             const funcName = funcMatch[1];
-            const incompleteParams = funcMatch[2].trim();
-            const description = funcMatch[3].trim();
+            const incompleteParams = (funcMatch[2] ?? "").trim();
+            const description = (funcMatch[3] ?? "").trim();
             const boldTagStartIdx = funcMatch.index; // Position of <b> in content
 
             // Extract the COMPLETE return type by looking at everything before <b>funcName</b>
@@ -378,7 +395,7 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
             // Remove all HTML tags from the before text to get pure content
             const tempDiv = document.createElement("div");
             tempDiv.innerHTML = beforeBold;
-            const plainBefore = tempDiv.textContent;
+            const plainBefore = tempDiv.textContent ?? "";
 
             // Extract all non-whitespace tokens and take the last meaningful one(s) as return type
             const beforeTokens = plainBefore
@@ -389,7 +406,7 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
 
             if (beforeTokens.length > 0) {
               // Take last token(s) as return type, handling multi-word types
-              returnType = beforeTokens[beforeTokens.length - 1];
+              returnType = beforeTokens[beforeTokens.length - 1] ?? "";
 
               // Check if we need to combine with previous token (for cases like "char *")
               if (beforeTokens.length > 1) {
@@ -419,8 +436,7 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
             const params = incompleteParams ? `(${incompleteParams}` : "(";
 
             // Build full signature with return type and function name
-            const _fullSignature =
-              (returnType ? returnType + " " : "") + funcName + params;
+            void ((returnType ? returnType + " " : "") + funcName + params);
 
             // For table display, show just the params part without function name
             const signatureWithoutName = params;
@@ -436,7 +452,7 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
           // Extract plain text for parsing, replacing <br> with space
           const tempDiv = document.createElement("div");
           tempDiv.innerHTML = content.replace(/<br\s*\/?>/gi, " ");
-          const fullPlainText = tempDiv.textContent.trim();
+          const fullPlainText = (tempDiv.textContent ?? "").trim();
 
           // Find ALL function names in the content (bold text followed by paren or br)
           const funcNameMatches = [];
@@ -457,14 +473,14 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
           let fnMatch;
           while ((fnMatch = funcNamePattern.exec(fullPlainText))) {
             funcMatches.push({
-              name: fnMatch[1],
+              name: fnMatch[1]!,
               startIdx: fnMatch.index,
             });
           }
 
           // For each function match, extract the full signature and description
           for (let i = 0; i < funcMatches.length; i++) {
-            const currentMatch = funcMatches[i];
+            const currentMatch = funcMatches[i]!;
             const nextMatch = funcMatches[i + 1];
 
             // Find where this function's content ends (start of next function or end of text)
@@ -532,7 +548,7 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
                 // Take the last part(s) that look like a return type
                 if (parts.length > 0) {
                   // Simple heuristic: last 1-2 parts are the return type (e.g., "char" or "char *")
-                  returnType = parts[parts.length - 1];
+                  returnType = parts[parts.length - 1] ?? "";
                   // If it's just a pointer symbol or continuation, get the previous part too
                   if (
                     parts.length > 1 &&
@@ -607,7 +623,7 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
    */
   const preprocessPageHTML = useCallback(
     (
-      html,
+      html: string,
       searchQuery = "",
       sourcePath = "",
       commitSha = "",
@@ -650,7 +666,7 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
       // Step 3: Convert HTML file links to man3 links
       processed = processed.replace(
         /href="(?:https?:\/\/[^/]+)?([^"]*\/)?([^/".]+\.html)(#l\d+)?"/gi,
-        (match, path, htmlFile, anchor) => {
+        (_match, _path, htmlFile, anchor) => {
           const newPageName = htmlFile.replace(".html", "");
           const newHref = `/man3?page=${newPageName}${anchor || ""}`;
           return `href="${newHref}"`;
@@ -682,9 +698,14 @@ export function useHtmlTransforms(validPagesRef, manPages, commitSha) {
    * Process HTML content: extract body and apply preprocessing pipeline
    */
   const processPageContent = useCallback(
-    (html, searchQuery, sourcePath = "", isSourcePage = false) => {
+    (
+      html: string,
+      searchQuery: string,
+      sourcePath = "",
+      isSourcePage = false,
+    ) => {
       const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-      let content = bodyMatch ? bodyMatch[1] : html;
+      let content = bodyMatch ? (bodyMatch[1] ?? html) : html;
 
       // Apply comprehensive preprocessing pipeline
       return preprocessPageHTML(

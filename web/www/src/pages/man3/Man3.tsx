@@ -65,9 +65,19 @@ export default function Man3() {
   // Compute highlighted results (names and titles with query matches highlighted)
   const highlightedResults = useMemo(() => {
     return search.searchResults.map((page) => ({
-      ...page,
+      name: page.name,
+      title: page.title,
+      file: page.name,
       highlightedName: highlightMatches(page.name, search.searchQuery),
       highlightedTitle: highlightMatches(page.title, search.searchQuery),
+      ...(page.snippets
+        ? {
+            snippets: page.snippets.map((s) => ({
+              text: s.snippet,
+              lineNumbers: [s.lineNumber],
+            })),
+          }
+        : {}),
     }));
   }, [search.searchResults, search.searchQuery]);
 

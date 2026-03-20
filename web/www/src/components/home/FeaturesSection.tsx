@@ -1,6 +1,10 @@
 import { Heading } from "@ascii-chat/shared/components";
 
-export default function FeaturesSection({ sessionStrings }) {
+export default function FeaturesSection({
+  sessionStrings,
+}: {
+  sessionStrings: string[];
+}) {
   return (
     <section className="mb-12 sm:mb-16">
       <Heading

@@ -6,6 +6,12 @@ export default function PublicKeysSection({
   sshFingerprint,
   gpgFingerprint,
   baseUrl,
+}: {
+  sshKey: string;
+  gpgKey: string;
+  sshFingerprint: string;
+  gpgFingerprint: string;
+  baseUrl: string;
 }) {
   return (
     <section className="mb-12">

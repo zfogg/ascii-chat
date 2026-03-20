@@ -1,46 +1,59 @@
 import { useMemo } from "react";
-import { CodeBlock } from "@ascii-chat/shared/components/CodeBlock";
+import { CodeBlock } from "@ascii-chat/shared/components";
+
+interface ManProps {
+  html: string;
+  isSourcePage?: boolean;
+  showLineNumbers?: boolean;
+}
+
+interface CodeLine {
+  text: string;
+  number: number | null;
+}
 
 export default function Man({
   html,
   isSourcePage = false,
   showLineNumbers = false,
-}) {
-  const decodeHtmlEntities = (text) => {
+}: ManProps) {
+  const decodeHtmlEntities = (text: string): string => {
     const textarea = document.createElement("textarea");
     textarea.innerHTML = text;
     return textarea.value;
   };
 
-  const extractCodeFromFragment = (fragmentHtml) => {
+  const extractCodeFromFragment = (fragmentHtml: string): CodeLine[] => {
     const temp = document.createElement("div");
     temp.innerHTML = fragmentHtml;
 
-    const lines = [];
+    const lines: CodeLine[] = [];
     temp.querySelectorAll("div.line").forEach((lineDiv) => {
       const anchor = lineDiv.querySelector('a[id^="l"]');
-      let lineNum = null;
+      let lineNum: number | null = null;
       if (anchor) {
         const id = anchor.id;
         lineNum = parseInt(id.substring(1), 10);
       }
 
-      const lineClone = lineDiv.cloneNode(true);
-      lineClone
+      const lineClone = lineDiv.cloneNode(true) as HTMLElement;
+      (lineClone as HTMLElement)
         .querySelectorAll('span.lineno, a[id^="l"], a[name^="l"]')
         .forEach((el) => el.remove());
 
-      lineClone
+      (lineClone as HTMLElement)
         .querySelectorAll("div.foldopen, div.foldclose")
         .forEach((el) => {
           const parent = el.parentNode;
-          while (el.firstChild) {
-            parent.insertBefore(el.firstChild, el);
+          if (parent) {
+            while (el.firstChild) {
+              parent.insertBefore(el.firstChild, el);
+            }
+            parent.removeChild(el);
           }
-          parent.removeChild(el);
         });
 
-      const lineText = lineClone.textContent.trimEnd();
+      const lineText = (lineClone.textContent || "").trimEnd();
       if (lineText) {
         lines.push({ text: lineText, number: lineNum });
       }
@@ -49,7 +62,7 @@ export default function Man({
     return lines;
   };
 
-  const codeHasLineNumbers = (lines) => {
+  const codeHasLineNumbers = (lines: string[]): boolean => {
     if (lines.length === 0) return false;
     const lineNumberPattern = /^\s*\d{1,5}\s{1,3}\S/;
     let checkedLines = 0;
@@ -65,7 +78,7 @@ export default function Man({
     return checkedLines > 0;
   };
 
-  const fragmentHasLineNumbers = (codeLines) => {
+  const fragmentHasLineNumbers = (codeLines: CodeLine[]): boolean => {
     if (codeLines.length === 0) return false;
     const linesWithNumbers = codeLines.filter(
       (line) => line.number !== null,
@@ -81,7 +94,7 @@ export default function Man({
       while (remaining.length > 0) {
         const preMatch = remaining.match(/^([\s\S]*?)<pre>([\s\S]*?)<\/pre>/);
         if (preMatch) {
-          if (preMatch[1].trim()) {
+          if (preMatch[1] && preMatch[1].trim()) {
             elements.push(
               <div
                 key={`html-${elements.length}`}
@@ -91,17 +104,17 @@ export default function Man({
             );
           }
 
-          let codeContent = preMatch[2];
+          let codeContent = preMatch[2]!;
           codeContent = decodeHtmlEntities(codeContent);
           // Remove leading/trailing whitespace from entire code block
           codeContent = codeContent.trim();
           if (codeContent) {
             let lines = codeContent.split("\n");
             // Remove any empty lines from start and end
-            while (lines.length > 0 && lines[0].trim() === "") {
+            while (lines.length > 0 && lines[0]!.trim() === "") {
               lines.shift();
             }
-            while (lines.length > 0 && lines[lines.length - 1].trim() === "") {
+            while (lines.length > 0 && lines[lines.length - 1]!.trim() === "") {
               lines.pop();
             }
             const hasExistingLineNumbers = codeHasLineNumbers(lines);
@@ -114,7 +127,7 @@ export default function Man({
             if (isSourcePage) {
               const rangeMatch = hash.match(/^#l(\d+)(?:-(\d+))?$/);
               if (rangeMatch) {
-                targetLineStart = parseInt(rangeMatch[1], 10);
+                targetLineStart = parseInt(rangeMatch[1]!, 10);
                 targetLineEnd = rangeMatch[2]
                   ? parseInt(rangeMatch[2], 10)
                   : targetLineStart;
@@ -123,11 +136,11 @@ export default function Man({
 
             if (targetLineStart !== null && isSourcePage) {
               const highlightedHtml = lines
-                .map((text, idx) => {
+                .map((text: string, idx: number) => {
                   const lineNum = idx + 1;
                   const paddedNum = String(lineNum).padStart(maxLineNum, " ");
                   const isTarget =
-                    lineNum >= targetLineStart && lineNum <= targetLineEnd;
+                    lineNum >= targetLineStart! && lineNum <= targetLineEnd!;
 
                   if (isTarget) {
                     return `<div style="background-color: var(--highlight-color); padding: 0.125rem 0.5rem;"><span style="font-family: monospace;">${paddedNum}  ${text}</span></div>`;
@@ -153,7 +166,7 @@ export default function Man({
               );
             } else {
               const codeWithLineNumbers = lines
-                .map((text, idx) => {
+                .map((text: string, idx: number) => {
                   const lineNum = idx + 1;
                   const paddedNum = String(lineNum).padStart(maxLineNum, " ");
                   if (hasExistingLineNumbers) {
@@ -242,7 +255,7 @@ export default function Man({
             if (isSourcePage) {
               const rangeMatch = hash.match(/^#l(\d+)(?:-(\d+))?$/);
               if (rangeMatch) {
-                targetLineStart = parseInt(rangeMatch[1], 10);
+                targetLineStart = parseInt(rangeMatch[1]!, 10);
                 targetLineEnd = rangeMatch[2]
                   ? parseInt(rangeMatch[2], 10)
                   : targetLineStart;
@@ -251,7 +264,9 @@ export default function Man({
                   !codeLines.some((line) => {
                     const lineNum = line.number;
                     return (
-                      lineNum >= targetLineStart && lineNum <= targetLineEnd
+                      lineNum !== null &&
+                      lineNum >= targetLineStart! &&
+                      lineNum <= targetLineEnd!
                     );
                   })
                 ) {
@@ -317,23 +332,25 @@ export default function Man({
                   const allSpans = Array.from(block.querySelectorAll("span"));
 
                   allSpans.forEach((span, spanIdx) => {
-                    if (span.textContent.includes("⟹")) {
+                    if (span.textContent?.includes("⟹")) {
                       span.style.backgroundColor = "var(--highlight-color)";
                       span.style.color = "var(--text-highlight)";
 
                       for (let i = spanIdx + 1; i < allSpans.length; i++) {
                         const nextSpan = allSpans[i];
-                        if (nextSpan.textContent.includes("\n")) {
-                          if (nextSpan.textContent.includes("⟸")) {
+                        if (nextSpan && nextSpan.textContent?.includes("\n")) {
+                          if (nextSpan.textContent?.includes("⟸")) {
                             nextSpan.style.backgroundColor =
                               "var(--highlight-color)";
                             nextSpan.style.color = "var(--text-highlight)";
                           }
                           break;
                         }
-                        nextSpan.style.backgroundColor =
-                          "var(--highlight-color)";
-                        nextSpan.style.color = "var(--text-highlight)";
+                        if (nextSpan) {
+                          nextSpan.style.backgroundColor =
+                            "var(--highlight-color)";
+                          nextSpan.style.color = "var(--text-highlight)";
+                        }
                       }
                     }
                   });

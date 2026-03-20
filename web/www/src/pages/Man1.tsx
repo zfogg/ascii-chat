@@ -21,7 +21,7 @@ export default function Man1() {
         // Extract just the body content
         const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
         if (bodyMatch) {
-          setManHtml(bodyMatch[1]);
+          setManHtml(bodyMatch[1] ?? "");
         } else {
           setManHtml(html);
         }
@@ -29,7 +29,7 @@ export default function Man1() {
       .catch((e) => console.error("Failed to load man page:", e));
   }, []);
 
-  useAnchorNavigation(manHtml);
+  useAnchorNavigation(!!manHtml);
 
   return (
     <>

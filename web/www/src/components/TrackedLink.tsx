@@ -1,11 +1,32 @@
 import { Link } from "react-router-dom";
 import { trackLinkClick } from "../utils";
+import type { ReactNode } from "react";
 
-export default function TrackedLink({ to, href, label, children, ...props }) {
+interface TrackedLinkProps {
+  to?: string;
+  href?: string;
+  label: string;
+  children: ReactNode;
+  className?: string;
+  target?: string;
+  rel?: string;
+  onClick?: () => void;
+}
+
+export default function TrackedLink({
+  to,
+  href,
+  label,
+  children,
+  ...props
+}: TrackedLinkProps) {
   const url = to || href;
 
   const handleClick = () => {
-    trackLinkClick(url, label);
+    trackLinkClick(url!, label);
+    if (props.onClick) {
+      props.onClick();
+    }
   };
 
   if (to) {

@@ -1,9 +1,9 @@
-import { CodeBlock } from "@ascii-chat/shared/components/CodeBlock";
+import { CodeBlock } from "@ascii-chat/shared/components";
 
 /**
  * Decode HTML entities using browser's HTML parser
  */
-function decodeHtmlEntities(text) {
+function decodeHtmlEntities(text: string): string {
   const textarea = document.createElement("textarea");
   textarea.innerHTML = text;
   return textarea.value;
@@ -13,13 +13,13 @@ function decodeHtmlEntities(text) {
  * Extract code lines from a Doxygen fragment div
  * Returns array of { text, number } objects where number is the source line number
  */
-function extractCodeFromFragment(fragmentHtml) {
+function extractCodeFromFragment(fragmentHtml: string) {
   // Create a temporary DOM element to parse the HTML
   const temp = document.createElement("div");
   temp.innerHTML = fragmentHtml;
 
   // Extract line numbers and code together
-  const lines = [];
+  const lines: { text: string; number: number | null }[] = [];
   temp.querySelectorAll("div.line").forEach((lineDiv) => {
     // Get the anchor ID if present (e.g., "l00044")
     const anchor = lineDiv.querySelector('a[id^="l"]');
@@ -31,21 +31,24 @@ function extractCodeFromFragment(fragmentHtml) {
     }
 
     // Clone the line and remove anchors/line numbers for text extraction
-    const lineClone = lineDiv.cloneNode(true);
+    const lineClone = lineDiv.cloneNode(true) as HTMLElement;
     lineClone
       .querySelectorAll('span.lineno, a[id^="l"], a[name^="l"]')
-      .forEach((el) => el.remove());
+      .forEach((el: Element) => el.remove());
 
     // Unwrap fold divs in the clone
-    lineClone.querySelectorAll("div.foldopen, div.foldclose").forEach((el) => {
-      const parent = el.parentNode;
-      while (el.firstChild) {
-        parent.insertBefore(el.firstChild, el);
-      }
-      parent.removeChild(el);
-    });
+    lineClone
+      .querySelectorAll("div.foldopen, div.foldclose")
+      .forEach((el: Element) => {
+        const parent = el.parentNode;
+        if (!parent) return;
+        while (el.firstChild) {
+          parent.insertBefore(el.firstChild, el);
+        }
+        parent.removeChild(el);
+      });
 
-    const lineText = lineClone.textContent.trimEnd();
+    const lineText = (lineClone.textContent ?? "").trimEnd();
     if (lineText) {
       lines.push({ text: lineText, number: lineNum });
     }
@@ -64,10 +67,10 @@ function extractCodeFromFragment(fragmentHtml) {
  * @returns {JSX.Element[]} - Array of React elements
  */
 export function renderContentWithCodeBlocks(
-  html,
+  html: string,
   isSourcePage = false,
   searchQuery = "",
-  targetLineNum = null,
+  targetLineNum: number | null = null,
 ) {
   const elements = [];
   let remaining = html;
@@ -77,18 +80,18 @@ export function renderContentWithCodeBlocks(
     const preMatch = remaining.match(/^([\s\S]*?)<pre>([\s\S]*?)<\/pre>/);
     if (preMatch) {
       // Add HTML before pre tag
-      if (preMatch[1].trim()) {
+      if (preMatch[1]?.trim()) {
         elements.push(
           <div
             key={`html-${elements.length}`}
             className="man-page-html"
-            dangerouslySetInnerHTML={{ __html: preMatch[1] }}
+            dangerouslySetInnerHTML={{ __html: preMatch[1]! }}
           />,
         );
       }
 
       // Add code block with line numbers
-      let codeContent = preMatch[2];
+      const codeContent = preMatch[2] ?? "";
 
       // Strip search highlighting to allow CodeBlock to tokenize properly
       const cleanedContent = codeContent
@@ -104,17 +107,17 @@ export function renderContentWithCodeBlocks(
       if (decodedContent.trim()) {
         // Check if the pre tag contains source line numbers
         // and extract requested line based on hash anchor or targetLineNum parameter
-        let targetLineStart = null;
-        let targetLineEnd = null;
+        let targetLineStart: number | null = null;
+        let targetLineEnd: number | null = null;
 
         // Use targetLineNum parameter if provided, otherwise check hash
-        let requestedLineNum = targetLineNum;
+        let requestedLineNum: number | null = targetLineNum;
         if (!requestedLineNum && isSourcePage) {
           const hash = window.location.hash;
           if (hash.match(/^#l(\d+)/)) {
             const rangeMatch = hash.match(/^#l(\d+)(?:-(\d+))?$/);
             if (rangeMatch) {
-              requestedLineNum = parseInt(rangeMatch[1], 10);
+              requestedLineNum = parseInt(rangeMatch[1]!, 10);
             }
           }
         }
@@ -128,9 +131,9 @@ export function renderContentWithCodeBlocks(
           if (firstLineMatch) {
             // Try to find the requested line
             for (let i = 0; i < lines.length; i++) {
-              const match = lines[i].match(lineNumPattern);
+              const match = lines[i]!.match(lineNumPattern);
               if (match) {
-                const lineNum = parseInt(match[1], 10);
+                const lineNum = parseInt(match[1]!, 10);
                 if (lineNum === requestedLineNum) {
                   targetLineStart = i + 1; // 1-indexed position in this code block
                   targetLineEnd = i + 1; // Highlight just the one line
@@ -150,7 +153,7 @@ export function renderContentWithCodeBlocks(
         for (const line of lines) {
           const match = line.match(lineNumPattern);
           if (match) {
-            const lineNum = parseInt(match[1], 10);
+            const lineNum = parseInt(match[1]!, 10);
             if (firstSourceLineNum === null) {
               firstSourceLineNum = lineNum;
             }
@@ -175,11 +178,14 @@ export function renderContentWithCodeBlocks(
             data-last-line={lastSourceLineNum}
           >
             <CodeBlock
-              highlightLines={
-                targetLineStart
-                  ? { start: targetLineStart, end: targetLineEnd }
-                  : undefined
-              }
+              {...(targetLineStart && targetLineEnd
+                ? {
+                    highlightLines: {
+                      start: targetLineStart,
+                      end: targetLineEnd,
+                    },
+                  }
+                : {})}
               searchQuery={searchQuery}
               showLineNumbers={true}
             >
@@ -242,14 +248,14 @@ export function renderContentWithCodeBlocks(
       if (codeLines.length > 0) {
         // Extract target line number(s) from hash if present
         const hash = window.location.hash;
-        let targetLineStart = null;
-        let targetLineEnd = null;
+        let targetLineStart: number | null = null;
+        let targetLineEnd: number | null = null;
 
         if (isSourcePage) {
           // Match both single line (#l00423) and range (#l00423-00458)
           const rangeMatch = hash.match(/^#l(\d+)(?:-(\d+))?$/);
           if (rangeMatch) {
-            targetLineStart = parseInt(rangeMatch[1], 10);
+            targetLineStart = parseInt(rangeMatch[1]!, 10);
             targetLineEnd = rangeMatch[2]
               ? parseInt(rangeMatch[2], 10)
               : targetLineStart;
@@ -258,7 +264,13 @@ export function renderContentWithCodeBlocks(
             if (
               !codeLines.some((line) => {
                 const lineNum = line.number;
-                return lineNum >= targetLineStart && lineNum <= targetLineEnd;
+                return (
+                  lineNum !== null &&
+                  targetLineStart !== null &&
+                  targetLineEnd !== null &&
+                  lineNum >= targetLineStart &&
+                  lineNum <= targetLineEnd
+                );
               })
             ) {
               targetLineStart = null;
@@ -277,9 +289,9 @@ export function renderContentWithCodeBlocks(
           ? `code-block-${targetLineStart}`
           : undefined;
         // Also add data attribute to track which source lines are in this block
-        const firstLineNum = codeLines.length > 0 ? codeLines[0].number : null;
+        const firstLineNum = codeLines.length > 0 ? codeLines[0]!.number : null;
         const lastLineNum =
-          codeLines.length > 0 ? codeLines[codeLines.length - 1].number : null;
+          codeLines.length > 0 ? codeLines[codeLines.length - 1]!.number : null;
 
         elements.push(
           <div

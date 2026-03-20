@@ -1,5 +1,4 @@
-import { Heading } from "@ascii-chat/shared/components";
-import { CodeBlock } from "@ascii-chat/shared/components/CodeBlock";
+import { Heading, CodeBlock } from "@ascii-chat/shared/components";
 
 export default function SelfHostingSection() {
   return (

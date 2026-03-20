@@ -3,7 +3,7 @@ import { ACDSHead, Header } from "../components";
 import { SITES } from "@ascii-chat/shared/utils";
 
 function NotFoundPage() {
-  const handleLinkClick = (url, text) => {
+  const handleLinkClick = (url: string, text: string) => {
     if (window.gtag) {
       window.gtag("event", "link_click", {
         link_url: url,

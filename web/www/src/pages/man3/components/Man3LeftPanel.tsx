@@ -1,4 +1,35 @@
 import { highlightMatches } from "../utils";
+import type { ReactNode } from "react";
+
+interface Snippet {
+  text: string;
+  lineNumbers: number[];
+}
+
+interface HighlightedResult {
+  name: string;
+  file: string;
+  highlightedName: ReactNode;
+  highlightedTitle: ReactNode;
+  snippets?: Snippet[];
+  totalMatchesInFile?: number;
+}
+
+interface Man3LeftPanelProps {
+  loading: boolean;
+  searching: boolean;
+  searchQuery: string;
+  highlightedResults: HighlightedResult[];
+  selectedPageName: string | null;
+  loadPageContent: (
+    pageName: string,
+    lineNumber?: number | null,
+    snippetIndex?: number | null,
+    skipHistoryPush?: boolean,
+    snippetText?: string | null,
+  ) => void;
+  moreFilesCount: number;
+}
 
 /**
  * Left panel showing search results and man pages list
@@ -11,7 +42,7 @@ export function Man3LeftPanel({
   selectedPageName,
   loadPageContent,
   moreFilesCount,
-}) {
+}: Man3LeftPanelProps) {
   return (
     <div className="h-[600px] lg:h-auto lg:w-2/7 flex-shrink-0 flex flex-col">
       <h3 className="lg:hidden text-xs font-semibold text-gray-400 px-4 py-2 flex-shrink-0">
@@ -55,7 +86,7 @@ export function Man3LeftPanel({
                 {/* Snippets in nested boxes */}
                 {page.snippets && page.snippets.length > 0 && (
                   <div className="px-4 pb-3 space-y-2">
-                    {page.snippets.map((snippet, idx) => {
+                    {page.snippets.map((snippet: Snippet, idx: number) => {
                       const snippetLines = snippet.text.split("\n");
                       return (
                         <div
@@ -64,7 +95,7 @@ export function Man3LeftPanel({
                           onClick={() =>
                             loadPageContent(
                               page.name,
-                              snippet.lineNumbers[1],
+                              snippet.lineNumbers[1]!,
                               idx,
                               false,
                               snippet.text,
@@ -75,41 +106,51 @@ export function Man3LeftPanel({
                           <div className="flex gap-2">
                             {/* Line numbers column */}
                             <div className="text-white text-right flex-shrink-0 select-none">
-                              {snippet.lineNumbers.map((lineNum, lineIdx) => (
-                                <div key={lineIdx}>{lineNum}</div>
-                              ))}
+                              {snippet.lineNumbers.map(
+                                (lineNum: number, lineIdx: number) => (
+                                  <div key={lineIdx}>{lineNum}</div>
+                                ),
+                              )}
                             </div>
                             {/* Code content */}
                             <div className="whitespace-nowrap overflow-x-auto flex-1">
-                              {snippetLines.map((line, lineIdx) => {
-                                const cleanedLine = line.replace(
-                                  /^\s*\d+\s+/,
-                                  "",
-                                );
-                                return (
-                                  <div
-                                    key={lineIdx}
-                                    className={
-                                      lineIdx ===
-                                      Math.floor(snippetLines.length / 2)
-                                        ? "bg-gray-800/50 px-1 -mx-1"
-                                        : ""
-                                    }
-                                  >
-                                    {highlightMatches(cleanedLine, searchQuery)}
-                                  </div>
-                                );
-                              })}
+                              {snippetLines.map(
+                                (line: string, lineIdx: number) => {
+                                  const cleanedLine = line.replace(
+                                    /^\s*\d+\s+/,
+                                    "",
+                                  );
+                                  return (
+                                    <div
+                                      key={lineIdx}
+                                      className={
+                                        lineIdx ===
+                                        Math.floor(snippetLines.length / 2)
+                                          ? "bg-gray-800/50 px-1 -mx-1"
+                                          : ""
+                                      }
+                                    >
+                                      {highlightMatches(
+                                        cleanedLine,
+                                        searchQuery,
+                                      )}
+                                    </div>
+                                  );
+                                },
+                              )}
                             </div>
                           </div>
                         </div>
                       );
                     })}
-                    {page.totalMatchesInFile > page.snippets.length && (
+                    {(page.totalMatchesInFile ?? 0) > page.snippets.length && (
                       <div className="bg-yellow-900/50 border border-yellow-700/50 rounded px-3 py-2 text-sm font-semibold text-yellow-200">
-                        ... {page.totalMatchesInFile - page.snippets.length}{" "}
+                        ...{" "}
+                        {(page.totalMatchesInFile ?? 0) - page.snippets.length}{" "}
                         more matching result
-                        {page.totalMatchesInFile - page.snippets.length !== 1
+                        {(page.totalMatchesInFile ?? 0) -
+                          page.snippets.length !==
+                        1
                           ? "s"
                           : ""}{" "}
                         for this file

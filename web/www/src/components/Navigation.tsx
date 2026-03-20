@@ -7,9 +7,9 @@ export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path: string): boolean => location.pathname === path;
 
-  const getDesktopNavLinkClass = (paths) => {
+  const getDesktopNavLinkClass = (paths: string | string[]): string => {
     const active = Array.isArray(paths)
       ? paths.some((p) => isActive(p))
       : isActive(paths);
@@ -20,7 +20,10 @@ export default function Navigation() {
     }`;
   };
 
-  const getMobileNavLinkClass = (paths) => {
+  const getMobileNavLinkClass = (paths?: string | string[]): string => {
+    if (!paths) {
+      return "block py-3 px-4 transition-colors rounded text-gray-400 hover:text-fuchsia-300 hover:bg-gray-800/50";
+    }
     const active = Array.isArray(paths)
       ? paths.some((p) => isActive(p))
       : isActive(paths);
