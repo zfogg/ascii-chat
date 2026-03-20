@@ -1,48 +1,15 @@
 # Multi-stage Dockerfile for ascii-chat production builds
 # Supports multi-arch: linux/amd64, linux/arm64
-# Build with: DOCKER_BUILDKIT=1 docker build . -t zfogg/ascii-chat
+# Requires dependencies image: docker pull zfogg/ascii-chat-deps:latest
+# Build with: DOCKER_BUILDKIT=1 docker build -f docker/Dockerfile -t zfogg/ascii-chat .
 
 # ============================================================================
-# Stage 1: Builder
+# Stage 1: Builder (based on deps image with all build tools)
 # ============================================================================
-FROM ubuntu:24.04 AS builder
+FROM zfogg/ascii-chat-deps:latest AS builder
 
-# Prevent interactive prompts during package installation
-ENV DEBIAN_FRONTEND=noninteractive
-
-WORKDIR /build
-
-# Copy only deps-related files first (these change rarely)
-COPY scripts/install-deps.sh /tmp/install-deps.sh
-COPY CMakeLists.txt Makefile /build/
-COPY cmake/ /build/cmake/
-
-# Set up locale and minimal prerequisites
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends locales curl wget git gpg ca-certificates lsb-release software-properties-common && \
-    localedef -i en_US -f UTF-8 en_US.UTF-8
-
-# Run install-deps.sh
-RUN chmod +x /tmp/install-deps.sh && /tmp/install-deps.sh && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /var/tmp/*
-
-# Install yyjson via Homebrew with cache mount
-RUN useradd -m -s /bin/bash linuxbrew && \
-    echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >>/etc/sudoers
-
-USER linuxbrew
-RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"
-RUN /home/linuxbrew/.linuxbrew/bin/brew install yyjson
-
-USER root
-ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}" \
-    LD_LIBRARY_PATH="/home/linuxbrew/.linuxbrew/lib:/build/build/lib" \
-    SOURCE_COMMIT="docker-build"
-
-# Set compiler environment variables
-ENV CC=clang \
-    CXX=clang++ \
-    CMAKE_GENERATOR=Ninja
+# Ensure we have the environment set (inherited from deps image)
+ENV SOURCE_COMMIT="docker-build"
 
 # Copy remaining source code (changes here only invalidate build step cache)
 COPY . /build/
@@ -71,7 +38,7 @@ RUN apt-get update && \
 # Install minimal runtime dependencies for dynamically-linked Dev build
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      ca-certificates curl unzip \
+      ca-certificates curl unzip openssh-client gpg \
       libportaudio2 libopus0 libsodium23 libzstd1 \
       libssl3 libfreetype6 libfontconfig1 libvterm0 && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /var/tmp/*
@@ -83,7 +50,7 @@ COPY --from=builder /home/linuxbrew/.linuxbrew /home/linuxbrew/.linuxbrew
 COPY --from=builder /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu
 
 # Copy entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Create ACDS directory for keys
