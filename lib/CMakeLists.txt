@@ -634,6 +634,9 @@ endif()
 create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
 # Exclude main() function from mdns library
 target_compile_definitions(ascii-chat-network PRIVATE MDNS_NO_MAIN)
+# yyjson for /health JSON endpoint
+target_include_directories(ascii-chat-network PRIVATE ${YYJSON_INCLUDE_DIRS})
+target_link_libraries(ascii-chat-network ${YYJSON_LIBRARIES})
 
 # PCRE2: Add include directory and define PCRE2_CODE_UNIT_WIDTH=8
 # Network module uses PCRE2 in sdp.c and ice.c
