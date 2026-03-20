@@ -20,7 +20,7 @@ export function PageLayout({
   modal,
 }: PageLayoutProps) {
   return (
-    <div className="flex-1 bg-terminal-bg text-terminal-fg flex flex-col">
+    <div className="flex-1 min-h-0 bg-terminal-bg text-terminal-fg flex flex-col">
       {/* Hidden video and canvas for capture */}
       <div
         style={{
