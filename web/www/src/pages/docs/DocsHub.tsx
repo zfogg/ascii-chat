@@ -84,8 +84,8 @@ export default function DocsHub() {
     },
     {
       icon: "🔐",
-      title: "Cryptography",
-      description: "Encryption, authentication, SSH keys, TOFU",
+      title: "Crypto & Security",
+      description: "Encryption, authentication, SSH keys, security flags, TOFU",
       to: "/docs/crypto",
       ...getRandomColor(),
     },

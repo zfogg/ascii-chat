@@ -36,10 +36,10 @@ ascii-chat happy-sunset-ocean --server-key ~/.ssh/server1.pub`}</CodeBlock>
             Verify with GitHub/GitLab GPG keys
           </Heading>
           <CodeBlock language="bash">{`# Fetches server's GPG keys from GitHub
-ascii-chat happy-sunset-ocean --server-key github:zfogg.gpg
+ascii-chat happy-sunset-ocean --server-key github:ethernetdan.gpg
 
 # Or from GitLab
-ascii-chat happy-sunset-ocean --server-key gitlab:zfogg.gpg`}</CodeBlock>
+ascii-chat happy-sunset-ocean --server-key gitlab:agentwaj.gpg`}</CodeBlock>
         </div>
 
         <div>

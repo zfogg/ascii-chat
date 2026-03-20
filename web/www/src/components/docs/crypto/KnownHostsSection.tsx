@@ -28,7 +28,7 @@ export default function KnownHostsSection() {
           <div className="space-y-2">
             <div>
               <p className="text-gray-400 text-sm mb-1">Unix/Linux/macOS:</p>
-              <CodeBlock language="text">{``}</CodeBlock>
+              <CodeBlock language="text">{`~/.config/ascii-chat/known_hosts`}</CodeBlock>
               <p className="text-gray-400 text-xs mt-1">
                 (or{" "}
                 <code className="text-purple-400 bg-gray-950 px-1 py-0.5 rounded">
@@ -39,7 +39,7 @@ export default function KnownHostsSection() {
             </div>
             <div>
               <p className="text-gray-400 text-sm mb-1">Windows:</p>
-              <CodeBlock language="text">{``}</CodeBlock>
+              <CodeBlock language="text">{`%APPDATA%\\ascii-chat\\known_hosts`}</CodeBlock>
             </div>
           </div>
           <p className="text-gray-300 text-sm mt-3">
@@ -52,21 +52,17 @@ export default function KnownHostsSection() {
           <Heading level={3} className="text-purple-300 font-semibold mb-3">
             File Format
           </Heading>
-          <p className="text-gray-300 mb-3">
-            Each line represents one known server:
-          </p>
-          <CodeBlock language="text">{`<IP:port> x25519 <hex_public_key> [optional comment]`}</CodeBlock>
-          <p className="text-gray-300 mb-3 mt-3">Example entries:</p>
-          <CodeBlock language="text">{`192.168.1.100:27015 x25519 a1b2c3d4... server-laptop
-10.0.0.5:27015 x25519 5e6f7890... production-server
-[2001:db8::1]:27015 x25519 12345678... ipv6-server`}</CodeBlock>
-          <p className="text-gray-300 text-sm mt-3">
-            <strong className="text-purple-400">Note:</strong> IPv6 addresses
-            use bracket notation{" "}
-            <code className="text-pink-400 bg-gray-950 px-2 py-1 rounded">
-              [address]:port
-            </code>{" "}
-            to distinguish the colons in the address from the port separator.
+          <p className="text-gray-300">
+            See the{" "}
+            <TrackedLink
+              to="/man5#KNOWN_HOSTS_FORMAT"
+              label="Crypto - Known Hosts Format"
+              className="text-purple-400 hover:text-purple-300 underline"
+            >
+              ascii-chat(5) KNOWN_HOSTS_FORMAT
+            </TrackedLink>{" "}
+            man page for the full file format specification, including IPv6
+            bracket notation and example entries.
           </p>
         </div>
 

@@ -8,13 +8,18 @@ import {
   DesignPhilosophySection,
   HowItWorksSection,
   TechnicalDetailsSection,
+  SecurityFlagsReferenceSection,
   SSHKeyAuthSection,
   GPGKeyAuthSection,
+  KeyFlagArgumentsSection,
   PasswordEncryptionSection,
   ServerVerificationSection,
   KnownHostsSection,
   KeyWhitelistingSection,
+  DiscoverySecuritySection,
   DisablingEncryptionSection,
+  DisablingAuthSection,
+  GotchasSection,
   LearnMoreSection,
 } from "../../components/docs/crypto";
 
@@ -23,29 +28,27 @@ export default function Crypto() {
   useEffect(() => {
     setBreadcrumbSchema([
       { name: "Home", path: "/" },
-      { name: "Cryptography", path: "/crypto" },
+      { name: "Documentation", path: "/docs" },
+      { name: "Crypto & Security", path: "/docs/crypto" },
     ]);
   }, []);
   return (
     <>
       <AsciiChatHead
-        title="Cryptography - ascii-chat"
-        description="Encryption, keys, and authentication in ascii-chat. Learn about Ed25519, X25519, and end-to-end encryption."
-        url={`${SITES.MAIN}/crypto`}
+        title="Crypto & Security - ascii-chat"
+        description="Encryption, keys, authentication, and security flags in ascii-chat. Ed25519, X25519, end-to-end encryption, and discovery service security."
+        url={`${SITES.MAIN}/docs/crypto`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col flex-1">
-        <div className="flex-1 flex flex-col max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 w-full">
+        <div className="flex-1 flex flex-col docs-container">
           {/* Header */}
           <header className="mb-12 sm:mb-16">
-            <Heading
-              level={1}
-              className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4"
-            >
-              <span className="text-purple-400">🔐</span> Cryptography
+            <Heading level={1} className="heading-1 mb-4">
+              <span className="text-purple-400">🔐</span> Crypto & Security
             </Heading>
             <p className="text-lg sm:text-xl text-gray-300">
-              End-to-end encryption with Ed25519 authentication and X25519 key
-              exchange
+              End-to-end encryption with Ed25519 authentication, X25519 key
+              exchange, and comprehensive security controls
             </p>
           </header>
 
@@ -53,13 +56,18 @@ export default function Crypto() {
           <DesignPhilosophySection />
           <HowItWorksSection />
           <TechnicalDetailsSection />
+          <SecurityFlagsReferenceSection />
           <SSHKeyAuthSection />
           <GPGKeyAuthSection />
+          <KeyFlagArgumentsSection />
           <PasswordEncryptionSection />
           <ServerVerificationSection />
           <KnownHostsSection />
           <KeyWhitelistingSection />
+          <DiscoverySecuritySection />
           <DisablingEncryptionSection />
+          <DisablingAuthSection />
+          <GotchasSection />
           <LearnMoreSection />
 
           <Footer />

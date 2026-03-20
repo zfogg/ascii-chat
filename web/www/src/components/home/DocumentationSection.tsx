@@ -57,10 +57,10 @@ export default function DocumentationSection() {
             className="text-purple-300 font-semibold mb-1"
             anchorLink={false}
           >
-            🔐 Cryptography
+            🔐 Crypto & Security
           </Heading>
           <p className="text-gray-400 text-sm">
-            Encryption, keys, and authentication
+            Encryption, keys, authentication, and security flags
           </p>
         </TrackedLink>
 

@@ -54,7 +54,7 @@ ascii-chat server --key ~/.ssh/id_ed25519 --client-keys allowed_clients.txt`}</C
                 Whitelist GitHub user's GPG keys
               </Heading>
               <CodeBlock language="bash">{`# Fetch all GPG keys from GitHub user
-ascii-chat server --key gpg:MYKEYID --client-keys github:zfogg.gpg
+ascii-chat server --key gpg:MYKEYID --client-keys github:ethernetdan.gpg
 
 # Client must authenticate with their GPG key
 ascii-chat happy-sunset-ocean --key gpg:897607FA43DC66F6`}</CodeBlock>
@@ -93,7 +93,7 @@ ascii-chat happy-sunset-ocean --server-key ~/.ssh/known_server.pub`}</CodeBlock>
                 Verify with GitHub SSH keys
               </Heading>
               <CodeBlock language="bash">{`# Fetches server's SSH keys from GitHub
-ascii-chat happy-sunset-ocean --server-key github:zfogg.keys`}</CodeBlock>
+ascii-chat happy-sunset-ocean --server-key github:agentwaj.keys`}</CodeBlock>
             </div>
 
             <div>
