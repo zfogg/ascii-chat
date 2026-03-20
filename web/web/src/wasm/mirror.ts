@@ -86,7 +86,9 @@ export async function initMirrorWasm(): Promise<void> {
     // Initialize C options system with basic mirror mode arguments
     // This must be called before using any getter/setter functions
     if (wasmModule._mirror_init_with_args) {
-      console.log("[WASM] Calling _mirror_init_with_args to initialize C options...");
+      console.log(
+        "[WASM] Calling _mirror_init_with_args to initialize C options...",
+      );
       // Pass JSON array of arguments: ["mirror"]
       const argsJson = '["mirror"]';
       const strLen = wasmModule.lengthBytesUTF8(argsJson) + 1;
@@ -103,9 +105,7 @@ export async function initMirrorWasm(): Promise<void> {
             "[WASM] _mirror_init_with_args failed with code:",
             initResult,
           );
-          throw new Error(
-            `Failed to initialize mirror C code: ${initResult}`,
-          );
+          throw new Error(`Failed to initialize mirror C code: ${initResult}`);
         }
         console.log("[WASM] C options initialized successfully");
       } finally {
