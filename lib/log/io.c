@@ -39,10 +39,20 @@ log_io_t log_io_start(void) {
   int write_fd = pipefd[1];
   capture.pipe_fd = pipefd[0];
 
-  // Make the read end non-blocking so we can read without hanging
+  // Make the read end non-blocking so we can drain without hanging
   int flags = fcntl(capture.pipe_fd, F_GETFL, 0);
   if (flags >= 0) {
     fcntl(capture.pipe_fd, F_SETFL, flags | O_NONBLOCK);
+  }
+
+  // Make the write end non-blocking. LOG_IO redirects the process-global stderr,
+  // so ALL threads write to this pipe. If the pipe buffer fills (64KB on Linux),
+  // blocking writes would stall other threads and potentially deadlock (e.g. x265
+  // internal threads block on stderr while avcodec_open2 can't return). Non-blocking
+  // writes silently drop excess output (EAGAIN) which is acceptable for diagnostics.
+  int wflags = fcntl(write_fd, F_GETFL, 0);
+  if (wflags >= 0) {
+    fcntl(write_fd, F_SETFL, wflags | O_NONBLOCK);
   }
 
   // Redirect both stdout and stderr to the pipe
