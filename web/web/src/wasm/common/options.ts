@@ -74,6 +74,14 @@ export function cleanupOptions(): void {
   options = null;
 }
 
+/**
+ * Check if the options module has been initialized
+ * @returns true if options are ready, false otherwise
+ */
+export function isOptionsInitialized(): boolean {
+  return options !== null;
+}
+
 // ============================================================================
 // Dimension Accessors
 // ============================================================================

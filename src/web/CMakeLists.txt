@@ -157,6 +157,7 @@ include_directories(
 # are already provided by wasm-common and should not be duplicated here.
 set(WEB_SRC_MIRROR
     ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mirror.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/mirror/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/client_like.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/capture.c
@@ -442,6 +443,7 @@ apply_sanitizers_to_target(mirror-web)
 # are already provided by wasm-common and should not be duplicated here.
 set(WEB_SRC_CLIENT
     ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/client.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/server.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/protocol.c
@@ -498,6 +500,12 @@ apply_sanitizers_to_target(client-web)
 # Exported functions for mirror module (main() entry point via main_wasm.c)
 set(EXPORTED_FUNCTIONS_MIRROR
     _main
+    # Frame processing for JavaScript control
+    _mirror_init_with_args
+    _mirror_cleanup
+    _mirror_convert_frame
+    _mirror_free_string
+    _get_help_text
     # Option getters/setters for live option updates (no restart needed)
     _set_width
     _set_height

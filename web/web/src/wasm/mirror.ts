@@ -124,53 +124,12 @@ export async function initMirrorWasm(
   }
   console.log("[WASM] Module loaded successfully");
 
-  // Build argument string for options_init()
-  const args: string[] = ["mirror"];
-
-  if (options.width !== undefined) {
-    args.push("--width", options.width.toString());
-  }
-  if (options.height !== undefined) {
-    args.push("--height", options.height.toString());
-  }
-  if (options.colorMode !== undefined) {
-    args.push("--color-mode", colorModeNames[options.colorMode]);
-  }
-  if (options.colorFilter !== undefined) {
-    args.push("--color-filter", colorFilterNames[options.colorFilter]);
-  }
-  if (options.renderMode !== undefined) {
-    args.push("--render-mode", renderModeNames[options.renderMode]);
-  }
-  if (options.palette !== undefined) {
-    args.push("--palette", options.palette);
-  }
-
-  const argsString = args.join(" ");
-  console.log("[WASM] Initializing with args:", argsString);
-
-  // Allocate string in WASM memory
-  const strLen = wasmModule.lengthBytesUTF8(argsString) + 1;
-  const strPtr = wasmModule._malloc(strLen);
-  if (!strPtr) {
-    throw new Error("Failed to allocate memory for args string");
-  }
-
   try {
-    wasmModule.stringToUTF8(argsString, strPtr, strLen);
-
-    console.log("[WASM] Calling _mirror_init_with_args...");
-    // Initialize libasciichat with parsed arguments
-    const result = wasmModule._mirror_init_with_args(strPtr);
-    console.log("[WASM] _mirror_init_with_args returned:", result);
-    if (result !== 0) {
-      throw new Error("Failed to initialize mirror WASM module");
-    }
-    console.log("[WASM] Initialization complete!");
-
     // Initialize shared options module with option accessor
+    // This allows React components to call setColorMode, setPalette, etc.
     const optionsAccessor = createOptionAccessor(wasmModule);
     initializeOptions(optionsAccessor);
+    console.log("[WASM] Options module initialized");
 
     // Expose WASM module to window for JavaScript access (e.g., tooltips)
     const globalWindow = globalThis as typeof globalThis & {
@@ -178,10 +137,12 @@ export async function initMirrorWasm(
     };
     globalWindow.asciiChatWasm = {
       _wasmModule: wasmModule,
-      get_help_text: wasmModule._get_help_text.bind(wasmModule),
     };
-  } finally {
-    wasmModule._free(strPtr);
+
+    console.log("[WASM] Initialization complete!");
+  } catch (err) {
+    console.error("[WASM] Failed to initialize options:", err);
+    throw err;
   }
 }
 

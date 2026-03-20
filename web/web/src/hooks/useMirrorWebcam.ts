@@ -15,6 +15,7 @@ import {
   setPaletteChars,
   setMatrixRain,
   setFlipX,
+  isOptionsInitialized,
 } from "../wasm/common/options";
 import {
   mapColorModeToWasm,
@@ -59,16 +60,44 @@ export function useMirrorWebcam({
 
     try {
       console.time("[Mirror] WASM settings");
-      if (isWasmReady()) {
-        setColorMode(mapColorModeToWasm(settings.colorMode));
-        setColorFilter(mapColorFilterToWasm(settings.colorFilter));
-        setPalette(settings.palette);
-        if (settings.palette === "custom" && settings.paletteChars) {
-          setPaletteChars(settings.paletteChars);
+      if (isWasmReady() && isOptionsInitialized()) {
+        // Apply WASM settings but don't fail if any individual setter fails
+        // The webcam should start regardless of color settings
+        try {
+          setColorMode(mapColorModeToWasm(settings.colorMode));
+        } catch (err) {
+          console.warn("[Mirror] Failed to set color mode:", err);
         }
-        setMatrixRain(settings.matrixRain ?? false);
-        const isMacOS = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
-        setFlipX(settings.flipX ?? isMacOS);
+        try {
+          setColorFilter(mapColorFilterToWasm(settings.colorFilter));
+        } catch (err) {
+          console.warn("[Mirror] Failed to set color filter:", err);
+        }
+        try {
+          setPalette(settings.palette);
+        } catch (err) {
+          console.warn("[Mirror] Failed to set palette:", err);
+        }
+        if (settings.palette === "custom" && settings.paletteChars) {
+          try {
+            setPaletteChars(settings.paletteChars);
+          } catch (err) {
+            console.warn("[Mirror] Failed to set palette chars:", err);
+          }
+        }
+        try {
+          setMatrixRain(settings.matrixRain ?? false);
+        } catch (err) {
+          console.warn("[Mirror] Failed to set matrix rain:", err);
+        }
+        try {
+          const isMacOS = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+          setFlipX(settings.flipX ?? isMacOS);
+        } catch (err) {
+          console.warn("[Mirror] Failed to set flip X:", err);
+        }
+      } else if (!isOptionsInitialized()) {
+        console.warn("[Mirror] WASM options not yet initialized, skipping settings");
       }
       console.timeEnd("[Mirror] WASM settings");
 
