@@ -171,3 +171,62 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
     *bg_b = 0;
   return true;
 }
+
+// ============================================================================
+// Terminal Control Implementation (ANSI escape sequences)
+// ============================================================================
+
+#include <unistd.h>
+#include <stdio.h>
+
+asciichat_error_t terminal_set_echo(bool enabled) {
+  // Send ANSI escape sequence for echo control (xterm ignores but passes through)
+  if (!enabled) {
+    write(STDOUT_FILENO, "\033[?25l", 6);  // Hide cursor
+  } else {
+    write(STDOUT_FILENO, "\033[?25h", 6);  // Show cursor
+  }
+  return ASCIICHAT_OK;
+}
+
+bool terminal_should_use_control_sequences(int fd) {
+  (void)fd;
+  return true;  // Always use ANSI sequences in browser
+}
+
+asciichat_error_t terminal_clear_screen(void) {
+  // Send ANSI clear screen escape sequence
+  write(STDOUT_FILENO, "\033[2J", 4);
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t terminal_cursor_home(int fd) {
+  (void)fd;
+  // Send ANSI cursor home escape sequence
+  write(STDOUT_FILENO, "\033[H", 3);
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t terminal_move_cursor_relative(int offset) {
+  if (offset == 0) {
+    return ASCIICHAT_OK;
+  }
+
+  if (offset > 0) {
+    // Move right: \x1b[<n>C
+    char buf[32];
+    int len = snprintf(buf, sizeof(buf), "\033[%dC", offset);
+    if (len > 0 && len < (int)sizeof(buf)) {
+      write(STDOUT_FILENO, buf, len);
+    }
+  } else {
+    // Move left: \x1b[<n>D
+    char buf[32];
+    int len = snprintf(buf, sizeof(buf), "\033[%dD", -offset);
+    if (len > 0 && len < (int)sizeof(buf)) {
+      write(STDOUT_FILENO, buf, len);
+    }
+  }
+
+  return ASCIICHAT_OK;
+}
