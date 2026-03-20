@@ -33,7 +33,7 @@ interface MirrorModuleExports {
 }
 
 interface MirrorModule extends WasmModule {
-  _mirror_init_with_args: MirrorModuleExports["_mirror_init_with_args"];
+  _mirror_init_with_args?: MirrorModuleExports["_mirror_init_with_args"];
   _mirror_cleanup: MirrorModuleExports["_mirror_cleanup"];
   _mirror_convert_frame: MirrorModuleExports["_mirror_convert_frame"];
   _mirror_free_string: MirrorModuleExports["_mirror_free_string"];
@@ -83,6 +83,25 @@ export async function initMirrorWasm(): Promise<void> {
   console.log("[WASM] Module loaded successfully");
 
   try {
+    // Initialize C options system with basic mirror mode arguments
+    // This must be called before using any getter/setter functions
+    if (wasmModule._mirror_init_with_args) {
+      console.log("[WASM] Calling _mirror_init_with_args to initialize C options...");
+      const initResult = wasmModule._mirror_init_with_args("mirror");
+      if (initResult !== 0) {
+        console.error(
+          "[WASM] _mirror_init_with_args failed with code:",
+          initResult,
+        );
+        throw new Error(
+          `Failed to initialize mirror C code: ${initResult}`,
+        );
+      }
+      console.log("[WASM] C options initialized successfully");
+    } else {
+      console.warn("[WASM] _mirror_init_with_args not found in WASM module");
+    }
+
     // Initialize shared options module with option accessor
     // This allows React components to call setColorMode, setPalette, etc.
     const optionsAccessor = createOptionAccessor(wasmModule);
