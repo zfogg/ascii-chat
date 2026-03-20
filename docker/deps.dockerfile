@@ -1,3 +1,4 @@
+# vim: set ft=dockerfile:
 # Dependencies stage for ascii-chat
 # Builds the development environment with all build dependencies
 # Build with: docker build -f docker/deps.dockerfile -t zfogg/ascii-chat-deps:latest .
@@ -40,3 +41,4 @@ ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}" \
     CC=clang \
     CXX=clang++ \
     CMAKE_GENERATOR=Ninja
+
