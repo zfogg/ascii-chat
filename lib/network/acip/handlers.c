@@ -39,7 +39,7 @@ typedef asciichat_error_t (*acip_server_handler_func_t)(const void *payload, siz
 // Stores handler_idx+1 so that 0 can indicate "not found" after lookup.
 
 #define HANDLER_HASH_SIZE 32    // ~50% load factor for 14-16 entries
-#define CLIENT_HANDLER_COUNT 19 // Added 5 crypto handshake handlers
+#define CLIENT_HANDLER_COUNT 20 // Added 6 crypto handshake handlers
 #define SERVER_HANDLER_COUNT 20 // Added 1 H.265 image frame handler
 
 /**
@@ -81,11 +81,12 @@ static const handler_hash_entry_t g_client_handler_hash[HANDLER_HASH_SIZE] = {
    [0]  = {PACKET_TYPE_AUDIO_BATCH,                 1},   // hash(4000)=0
    [1]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,            2},   // hash(4001)=1
    [7]  = {PACKET_TYPE_CRYPTO_AUTH_CHALLENGE,       15},  // hash(1104)=16, probed->7
-   [8]  = {PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP,     16},  // hash(1107)=11, probed->8
+   [8]  = {PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP,     16},  // hash(1107)=19, probed->8
    [9]  = {PACKET_TYPE_PING,                        6},   // hash(5001)=9
    [10] = {PACKET_TYPE_PONG,                        7},   // hash(5002)=10
-   [11] = {PACKET_TYPE_CRYPTO_AUTH_FAILED,          17},  // hash(1108)=12, probed->11
-   [14] = {PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE,   18},  // hash(1106)=18, probed->14
+   [11] = {PACKET_TYPE_CRYPTO_AUTH_FAILED,          17},  // hash(1106)=18, probed->11
+   [13] = {PACKET_TYPE_CRYPTO_PARAMETERS,            19},  // hash(1101)=13
+   [14] = {PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE,   18},  // hash(1108)=20, probed->14
    [15] = {PACKET_TYPE_CLEAR_CONSOLE,               8},   // hash(5007)=15
    [16] = {PACKET_TYPE_SERVER_STATE,                3},   // hash(5008)=16
    [17] = {PACKET_TYPE_CRYPTO_REKEY_REQUEST,        9},   // hash(1201)=17
@@ -169,6 +170,8 @@ static asciichat_error_t handle_client_crypto_auth_failed(const void *payload, s
                                                           const acip_client_callbacks_t *callbacks);
 static asciichat_error_t handle_client_crypto_handshake_complete(const void *payload, size_t payload_len,
                                                                  const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_crypto_parameters(const void *payload, size_t payload_len,
+                                                          const acip_client_callbacks_t *callbacks);
 
 // Client handler dispatch table (indexed by client_handler_index())
 static const acip_client_handler_func_t g_client_handlers[CLIENT_HANDLER_COUNT] = {
@@ -191,6 +194,7 @@ static const acip_client_handler_func_t g_client_handlers[CLIENT_HANDLER_COUNT] 
     handle_client_crypto_server_auth_resp,   // 16
     handle_client_crypto_auth_failed,        // 17
     handle_client_crypto_handshake_complete, // 18
+    handle_client_crypto_parameters,         // 19
 };
 
 asciichat_error_t acip_handle_client_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
@@ -562,6 +566,17 @@ static asciichat_error_t handle_client_crypto_handshake_complete(const void *pay
   // Dispatch to application callback with packet type
   callbacks->on_crypto_handshake_complete(PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE, payload, payload_len,
                                           callbacks->app_ctx);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t handle_client_crypto_parameters(const void *payload, size_t payload_len,
+                                                          const acip_client_callbacks_t *callbacks) {
+  if (!callbacks->on_crypto_parameters) {
+    return ASCIICHAT_OK;
+  }
+
+  // Dispatch to application callback with packet type
+  callbacks->on_crypto_parameters(PACKET_TYPE_CRYPTO_PARAMETERS, payload, payload_len, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
 

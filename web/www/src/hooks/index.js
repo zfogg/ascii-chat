@@ -1,1 +1,0 @@
-export { useAnchorNavigation } from "./useAnchorNavigation";

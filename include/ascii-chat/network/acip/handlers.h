@@ -97,6 +97,9 @@ typedef struct {
   /** @brief Called when ACDS session join response received (Phase 3 WebRTC integration) */
   void (*on_session_joined)(const acip_session_joined_t *joined, void *ctx);
 
+  /** @brief Called when server sends CRYPTO_PARAMETERS (algorithm negotiation) */
+  void (*on_crypto_parameters)(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
+
   /** @brief Called when server sends KEY_EXCHANGE_INIT (crypto handshake) */
   void (*on_crypto_key_exchange_init)(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
 

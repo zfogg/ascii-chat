@@ -17,6 +17,14 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
+
+static int h265_thread_count(void) {
+  long cores = sysconf(_SC_NPROCESSORS_ONLN);
+  if (cores <= 0) cores = 4;
+  int half = (int)(cores / 2);
+  return half > 4 ? half : 4;
+}
 
 typedef struct h265_encoder {
   AVCodecContext *codec_ctx;
@@ -95,6 +103,8 @@ h265_encoder_t *h265_encoder_create(uint16_t initial_width, uint16_t initial_hei
   if (av_opt_set(enc->codec_ctx->priv_data, "tune", "zerolatency", 0) < 0) {
     log_warn("Failed to set tune to zerolatency, using default");
   }
+
+  enc->codec_ctx->thread_count = h265_thread_count();
 
   // Open codec (capture x265 library output during initialization)
   int codec_open_result = 0;
@@ -194,7 +204,11 @@ static asciichat_error_t h265_encoder_reconfigure(h265_encoder_t *encoder, uint1
     log_warn("Failed to set preset on reconfigure");
   }
 
+  encoder->codec_ctx->thread_count = h265_thread_count();
+
   // Open codec (capture x265 library output during reconfiguration)
+  log_dev("[H265_RECONFIG] avcodec_open2 for %ux%u (threads=%d)", new_width, new_height,
+          encoder->codec_ctx->thread_count);
   int codec_open_result = 0;
   LOG_IO("hevc", {
     codec_open_result = avcodec_open2(encoder->codec_ctx, codec, NULL);
@@ -278,9 +292,8 @@ asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t 
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Output buffer too small (minimum 5 bytes)");
   }
 
-  log_dev("[H265_ENCODE_2] Calling h265_encoder_reconfigure");
+  log_dev("[H265_ENCODE] Reconfigure %ux%u -> %ux%u", encoder->current_width, encoder->current_height, width, height);
   asciichat_error_t result = h265_encoder_reconfigure(encoder, width, height);
-  log_dev("[H265_ENCODE_2b] h265_encoder_reconfigure returned: %d", result);
   if (result != ASCIICHAT_OK) {
     return result;
   }

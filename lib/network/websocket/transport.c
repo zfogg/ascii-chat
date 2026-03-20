@@ -206,11 +206,11 @@ static void *websocket_service_thread(void *arg) {
         // This is a CLIENT transport - request WRITEABLE callback to send queued messages
         // lws_write() must be called from within LWS callbacks, not from external threads
 
-        // CRITICAL FIX: Always request writeable callback on every loop iteration
-        // Race condition: If we only request callback when queue is not empty,
-        // messages queued after the check but before lws_service() completes
-        // will never be sent (callback was never requested).
-        // Solution: Always request callback - lws handles duplicates gracefully.
+        // Only request writeable callback when there is data queued to send.
+        // Unconditionally requesting on every loop iteration causes a tight spam loop
+        // of LWS_CALLBACK_CLIENT_WRITEABLE callbacks (~300/s), flooding logs and causing
+        // deadlocks when stderr pipe fills and blocks the service thread while holding
+        // the log mutex (other threads that try to log then deadlock).
         mutex_lock(&ws_data->send_mutex);
         bool has_data = !ringbuffer_is_empty(ws_data->send_queue);
 
@@ -218,9 +218,9 @@ static void *websocket_service_thread(void *arg) {
           log_info("[LOOP %d] Queue check: has_data=%d", loop_count, has_data);
         }
 
-        // Always request writeable callback, not just when queue has data
-        // This ensures messages added concurrently are picked up
-        lws_callback_on_writable(ws_data->wsi);
+        if (has_data) {
+          lws_callback_on_writable(ws_data->wsi);
+        }
 
         mutex_unlock(&ws_data->send_mutex);
 
@@ -490,8 +490,8 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     // CRITICAL FIX: Fragment large messages into ~4KB chunks to avoid internal buffering
     // libwebsockets #464: Sending messages > rx_buffer_size causes ultra-slow buffering
     uint64_t now_ns = time_get_ns();
-    log_info("🟡 LWS_CALLBACK_CLIENT_WRITEABLE FIRED for wsi=%p, ws_data=%p, is_connected=%d, timestamp=%llu",
-             (void *)wsi, (void *)ws_data, ws_data ? ws_data->is_connected : -1, (unsigned long long)now_ns);
+    log_dev("LWS_CALLBACK_CLIENT_WRITEABLE FIRED for wsi=%p, ws_data=%p, is_connected=%d, timestamp=%llu",
+            (void *)wsi, (void *)ws_data, ws_data ? ws_data->is_connected : -1, (unsigned long long)now_ns);
 
     if (!ws_data || atomic_load_bool(&ws_data->is_destroying)) {
       break;

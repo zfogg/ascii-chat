@@ -938,6 +938,7 @@ static void acip_on_crypto_auth_challenge(packet_type_t type, const void *payloa
 static void acip_on_crypto_server_auth_resp(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
 static void acip_on_crypto_auth_failed(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
 static void acip_on_crypto_handshake_complete(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
+static void acip_on_crypto_parameters(packet_type_t type, const void *payload, size_t payload_len, void *ctx);
 
 /**
  * @brief Global ACIP client callbacks structure
@@ -967,6 +968,7 @@ static const acip_client_callbacks_t g_acip_client_callbacks = {
     .on_crypto_server_auth_resp = acip_on_crypto_server_auth_resp,
     .on_crypto_auth_failed = acip_on_crypto_auth_failed,
     .on_crypto_handshake_complete = acip_on_crypto_handshake_complete,
+    .on_crypto_parameters = acip_on_crypto_parameters,
     .app_ctx = NULL};
 
 /**
@@ -1196,41 +1198,89 @@ int protocol_start_connection() {
   // Reset display state for new connection
   display_reset_for_new_connection();
 
-  // Send CLIENT_CAPABILITIES packet FIRST before starting any threads
+  // Check if we're on a WebSocket transport (crypto handshake is async via ACIP callbacks)
+  // For WS/WSS, we must start data_reception FIRST so it can handle the crypto handshake,
+  // then wait for crypto to complete before sending CAPABILITIES/STREAM_START.
+  // For TCP, crypto is already done synchronously before this function is called.
+  acip_transport_t *init_transport = server_connection_get_transport();
+  bool is_websocket = init_transport &&
+                      acip_transport_get_type(init_transport) == ACIP_TRANSPORT_WEBSOCKET;
+
+  if (is_websocket) {
+    // WebSocket: start data reception thread FIRST to handle async crypto handshake.
+    // TCP does crypto synchronously in connection_attempt.c, but WS crypto flows
+    // asynchronously via ACIP callbacks in the data_reception thread.
+    log_debug("[FRAME_RECV_INIT] WS: Starting data_reception for async crypto handshake");
+    atomic_store_bool(&g_data_thread_exited, false);
+    if (thread_pool_spawn(g_client_worker_pool, data_reception_thread_func, NULL, 1, "data_reception") != ASCIICHAT_OK) {
+      log_error("[FRAME_RECV_INIT] Failed to start data reception thread");
+      LOG_ERRNO_IF_SET("Data reception thread creation failed");
+      return -1;
+    }
+    log_debug("[FRAME_RECV_INIT] WS: Data thread spawned, waiting for crypto handshake");
+
+    // Wait for crypto handshake to complete (CRYPTO_PARAMETERS → KEY_EXCHANGE → HANDSHAKE_COMPLETE)
+    // Skip waiting if encryption is disabled (no_encrypt mode)
+    if (!GET_OPTION(no_encrypt)) {
+      const int MAX_CRYPTO_WAIT_MS = 10000; // 10 seconds
+      const int POLL_INTERVAL_MS = 10;
+      int waited_ms = 0;
+      while (!crypto_client_is_ready() && !should_exit() && server_connection_is_active() &&
+             waited_ms < MAX_CRYPTO_WAIT_MS) {
+        platform_sleep_us(POLL_INTERVAL_MS * 1000);
+        waited_ms += POLL_INTERVAL_MS;
+        if (waited_ms % 1000 == 0) {
+          log_info("[FRAME_RECV_INIT] WS_CRYPTO: Waiting for handshake... (%d ms elapsed)", waited_ms);
+        }
+      }
+
+      if (!crypto_client_is_ready()) {
+        if (should_exit() || !server_connection_is_active()) {
+          log_error("[FRAME_RECV_INIT] WS: Connection lost during crypto handshake");
+        } else {
+          log_error("[FRAME_RECV_INIT] WS: Crypto handshake timed out after %d ms", MAX_CRYPTO_WAIT_MS);
+        }
+        return -1;
+      }
+      log_info("[FRAME_RECV_INIT] WS: Crypto handshake completed after %d ms", waited_ms);
+    } else {
+      log_info("[FRAME_RECV_INIT] WS: Encryption disabled, skipping handshake wait");
+    }
+  }
+
+  // Send CLIENT_CAPABILITIES packet (after crypto is ready for both TCP and WS)
   // Server expects this as the first packet after crypto handshake
-  log_debug("[FRAME_RECV_INIT] 📤 SENDING_CAPABILITIES: terminal_size negotiation");
+  log_debug("[FRAME_RECV_INIT] Sending CLIENT_CAPABILITIES (terminal size)");
   asciichat_error_t cap_result = threaded_send_terminal_size_with_auto_detect((int)terminal_get_effective_width(),
                                                                               (int)terminal_get_effective_height());
   if (cap_result != ASCIICHAT_OK) {
-    log_error("[FRAME_RECV_INIT] ❌ CAPABILITIES_FAILED: cannot send terminal size");
+    log_error("[FRAME_RECV_INIT] Failed to send terminal size capabilities");
     return -1;
   }
-  log_debug("[FRAME_RECV_INIT] ✅ CAPABILITIES_SENT: terminal_size sent successfully");
 
-  // Send STREAM_START packet with combined stream types BEFORE starting worker threads
-  // This tells the server what streams to expect before any data arrives
+  // Send STREAM_START packet with combined stream types
   uint32_t stream_types = STREAM_TYPE_VIDEO; // Always have video
   if (GET_OPTION(audio_enabled)) {
     stream_types |= STREAM_TYPE_AUDIO; // Add audio if enabled
   }
-  log_info("[FRAME_RECV_INIT] 📤 SENDING_STREAM_START: types=0x%x (video%s)", stream_types,
-           (stream_types & STREAM_TYPE_AUDIO) ? "+audio" : "");
+  log_debug("[FRAME_RECV_INIT] Sending STREAM_START: types=0x%x (video%s)", stream_types,
+            (stream_types & STREAM_TYPE_AUDIO) ? "+audio" : "");
   asciichat_error_t stream_result = threaded_send_stream_start_packet(stream_types);
   if (stream_result != ASCIICHAT_OK) {
-    log_error("[FRAME_RECV_INIT] ❌ STREAM_START_FAILED: cannot send stream types");
+    log_error("[FRAME_RECV_INIT] Failed to send stream start");
     return -1;
   }
-  log_info("[FRAME_RECV_INIT] ✅ STREAM_START_SENT: stream_types=0x%x, server will send frames", stream_types);
 
-  // Start data reception thread
-  log_warn("[FRAME_RECV_INIT] 🔄 STARTING_DATA_THREAD: callbacks registered, about to spawn thread");
-  atomic_store_bool(&g_data_thread_exited, false);
-  if (thread_pool_spawn(g_client_worker_pool, data_reception_thread_func, NULL, 1, "data_reception") != ASCIICHAT_OK) {
-    log_error("[FRAME_RECV_INIT] ❌ DATA_THREAD_SPAWN_FAILED: cannot start frame receive thread");
-    LOG_ERRNO_IF_SET("Data reception thread creation failed");
-    return -1;
+  // Start data reception thread (TCP only - WS already started it above for crypto)
+  if (!is_websocket) {
+    log_debug("[FRAME_RECV_INIT] TCP: Starting data reception thread");
+    atomic_store_bool(&g_data_thread_exited, false);
+    if (thread_pool_spawn(g_client_worker_pool, data_reception_thread_func, NULL, 1, "data_reception") != ASCIICHAT_OK) {
+      log_error("[FRAME_RECV_INIT] Failed to start data reception thread");
+      LOG_ERRNO_IF_SET("Data reception thread creation failed");
+      return -1;
+    }
   }
-  log_warn("[FRAME_RECV_INIT] ✅ DATA_THREAD_SPAWNED: frame receive thread is now running, waiting for frames...");
 
   // Start webcam capture thread
   log_debug("Starting webcam capture thread...");
@@ -1911,4 +1961,55 @@ static void acip_on_crypto_handshake_complete(packet_type_t type, const void *pa
     // Link crypto context to transport for automatic encryption
     transport->crypto_ctx = &g_crypto_ctx.crypto_ctx;
   }
+}
+
+/**
+ * @brief Handle CRYPTO_PARAMETERS from server (algorithm negotiation)
+ *
+ * Server sent its selected crypto algorithms and key sizes.
+ * Must be processed before KEY_EXCHANGE_INIT arrives so that the handshake
+ * context knows the expected packet sizes.
+ */
+static void acip_on_crypto_parameters(packet_type_t type, const void *payload, size_t payload_len, void *ctx) {
+  (void)ctx;
+  (void)type;
+
+  log_debug("Received CRYPTO_PARAMETERS from server (payload_len=%zu)", payload_len);
+
+  if (payload_len != sizeof(crypto_parameters_packet_t)) {
+    log_error("Invalid CRYPTO_PARAMETERS size: %zu (expected %zu)", payload_len, sizeof(crypto_parameters_packet_t));
+    server_connection_lost();
+    return;
+  }
+
+  crypto_parameters_packet_t server_params;
+  memcpy(&server_params, payload, sizeof(crypto_parameters_packet_t));
+
+  // Log parameters (fields are still in network byte order for set_parameters)
+  uint16_t kex_pubkey_size = NET_TO_HOST_U16(server_params.kex_public_key_size);
+  uint16_t auth_pubkey_size = NET_TO_HOST_U16(server_params.auth_public_key_size);
+  uint16_t signature_size = NET_TO_HOST_U16(server_params.signature_size);
+  uint16_t shared_secret_size = NET_TO_HOST_U16(server_params.shared_secret_size);
+
+  log_debug("Server crypto parameters: KEX=%u, Auth=%u, Cipher=%u (key_size=%u, auth_size=%u, sig_size=%u, "
+            "secret_size=%u, verification=%u)",
+            server_params.selected_kex, server_params.selected_auth, server_params.selected_cipher, kex_pubkey_size,
+            auth_pubkey_size, signature_size, shared_secret_size, server_params.verification_enabled);
+
+  // Set the crypto parameters in the handshake context so KEY_EXCHANGE_INIT knows sizes
+  asciichat_error_t result = crypto_handshake_set_parameters(&g_crypto_ctx, &server_params);
+  if (result != ASCIICHAT_OK) {
+    log_error("Failed to set crypto parameters: %d", result);
+    server_connection_lost();
+    return;
+  }
+
+  // Store verification flag
+  if (server_params.verification_enabled) {
+    g_crypto_ctx.server_uses_client_auth = true;
+    g_crypto_ctx.require_client_auth = true;
+    log_info("Server will verify client identity (whitelist enabled)");
+  }
+
+  log_info("CRYPTO_PARAMETERS processed - ready for KEY_EXCHANGE_INIT");
 }
