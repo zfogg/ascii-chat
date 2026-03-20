@@ -726,12 +726,15 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
 
     log_debug(">>> SERVER FRAME QUEUED: %zu bytes for wsi=%p", send_len, (void *)ws_data->wsi);
 
-    // Notify libwebsockets that there's data to send - triggers LWS_CALLBACK_SERVER_WRITEABLE
-    // This is essential! Without this, the queued frames never get transmitted.
+    // Wake the LWS service thread so it processes the queued data.
+    // lws_callback_on_writable() is NOT safe from non-service threads. Instead, use
+    // lws_cancel_service() which safely interrupts the blocking lws_service() poll.
+    // The service thread handles LWS_CALLBACK_EVENT_WAIT_CANCELLED by calling
+    // lws_callback_on_writable_all_protocol() for all protocols.
     START_TIMER("ws_callback");
-    lws_callback_on_writable(ws_data->wsi);
-    STOP_TIMER_AND_LOG(info, 0, "ws_callback", "[WEBSOCKET] lws_callback_on_writable");
-    log_debug(">>> REQUESTED SERVER_WRITEABLE CALLBACK for wsi=%p", (void *)ws_data->wsi);
+    lws_cancel_service(ws_data->context);
+    STOP_TIMER_AND_LOG(info, 0, "ws_callback", "[WEBSOCKET] lws_cancel_service");
+    log_debug(">>> CANCELLED SERVICE to wake event loop for wsi=%p", (void *)ws_data->wsi);
 
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
@@ -780,6 +783,11 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
 
   log_debug(">>> QUEUED CLIENT MESSAGE: %zu bytes queued at %p for service thread (wsi=%p)", send_len,
             (void *)ws_data->wsi, (void *)ws_data->wsi);
+
+  // Wake the client's service thread from its blocking lws_service() call.
+  // Without this, the service thread may block in poll() for up to its timeout
+  // duration before checking the send queue, causing multi-second send delays.
+  lws_cancel_service(ws_data->context);
 
   log_dev_every(1000000, "WebSocket client: queued %zu bytes for service thread to send", send_len);
   SAFE_FREE(send_buffer);
