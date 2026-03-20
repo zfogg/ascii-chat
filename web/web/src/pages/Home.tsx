@@ -11,11 +11,13 @@ function LinkedItemWithDescription({
   color: string;
 }) {
   console.log(color);
+  const bg_terminal_class = "bg-terminal-" + color;
+  console.log(bg_terminal_class);
   return (
     <div className="flex gap-4 w-full justify-center">
       <Button
         href={`/${mode_name}`}
-        className={`flex flex-col justify-center w-56 px-6 py-3 bg-terminal-${color} text-terminal-bg rounded hover:opacity-80 transition-opacity`}
+        className={`flex flex-col justify-center w-56 px-6 py-3 ${bg_terminal_class} text-terminal-bg rounded hover:opacity-80 transition-opacity`}
       >
         <span className="">
           {mode_name.slice(0, 1).toUpperCase()}
