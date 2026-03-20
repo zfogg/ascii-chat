@@ -88,7 +88,7 @@ export function ClientPage() {
     width: 640,
     height: 480,
     targetFps: 60,
-    colorMode: "truecolor",
+    colorMode: "none",
     colorFilter: "none",
     palette: "standard",
     paletteChars: " =#░░▒▒▓▓██",
