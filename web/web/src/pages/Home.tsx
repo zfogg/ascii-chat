@@ -10,6 +10,7 @@ function LinkedItemWithDescription({
   description: string;
   color: string;
 }) {
+  console.log(color);
   return (
     <div className="flex gap-4 w-full justify-center">
       <Button
@@ -21,7 +22,7 @@ function LinkedItemWithDescription({
           {mode_name.slice(1)} Mode
         </span>
       </Button>
-      <p className="text-sm text-terminal-cyan flex-1 text-left">
+      <p className={`text-sm text-terminal-${color} flex-1 text-left`}>
         {description}
       </p>
     </div>
