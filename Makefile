@@ -188,7 +188,7 @@ cloc:
 	@printf $(Purple)"documentation:\n"$(Reset)
 	@cloc $(CLOC_ARGS) --force-lang='Markdown,dox' --force-lang='XML,in' "$(DOCS_DIR)"
 	@printf $(Purple)"\n\nbuild configuration:\n"$(Reset)
-	@cloc $(CLOC_ARGS) cmake/ CMakeLists.txt Makefile
+	@cloc $(CLOC_ARGS) cmake/
 	@printf $(Purple)"\n\ntests:\n"$(Reset)
 	@cloc $(CLOC_ARGS) --include-lang='C,C/C++ Header,Bash,Bourne Shell,PowerShell,Dockerfile,YAML' tests/unit tests/performance tests/integration
 	@printf $(Purple)"\n\nlibasciichat:\n"$(Reset)
@@ -196,7 +196,7 @@ cloc:
 	@printf $(Purple)"\n\nascii-chat executable:\n"$(Reset)
 	@cloc $(CLOC_ARGS) --include-lang='C,C/C++ Header,Objective-C' "$(SRC_DIR)"
 	@printf $(Purple)"\n\nwebsites:\n"$(Reset)
-	@cloc $(CLOC_ARGS) "./web"
+	@cloc $(CLOC_ARGS) ./web/*/src
 
 cloc-all-code:
 	@printf $(Purple)"All of ascii-chat repo's code (only code and real code, no TODOs or cmake config):\n"$(Reset)
@@ -204,7 +204,7 @@ cloc-all-code:
 		tests/unit tests/performance tests/integration \
 		"$(LIB_DIR)" \
  		"$(SRC_DIR)" \
- 		"./web"
+ 		./web/*/src
 
 # =============================================================================
 # Extra Makefile stuff
@@ -218,3 +218,8 @@ compile_commands.json: build
 	else \
 		echo "CMake did not generate compile_commands.json (is CMAKE_EXPORT_COMPILE_COMMANDS enabled?)"; \
 	fi
+
+just_cloned: build
+	touch .env
+	cp web/.env.example web/.env
+	cd web && pnpm install && cd ..
