@@ -266,16 +266,7 @@ char *image_print_color(const image_t *p, const char *palette) {
 
     for (int x = 0; x < w; x++) {
       const rgb_pixel_t pixel = pix[row_offset + x];
-#ifdef __EMSCRIPTEN__
-      // In WASM/xterm.js builds, quantize RGB to reduce unique colors.
-      // xterm.js batches consecutive same-colored cells into single draw calls,
-      // so fewer unique colors = fewer batches = dramatically faster rendering.
-      // 4 levels per channel (64 colors) keeps good visual quality since
-      // luminance-based character selection uses full-precision values.
-      int r = pixel.r & 0xC0, g = pixel.g & 0xC0, b = pixel.b & 0xC0;
-#else
       int r = pixel.r, g = pixel.g, b = pixel.b;
-#endif
       // Standard ITU-R BT.601 luminance calculation (uses original values for accuracy)
       const int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
 
