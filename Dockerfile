@@ -68,14 +68,19 @@ RUN apt-get update && \
     localedef -i en_US -f UTF-8 en_US.UTF-8 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install minimal runtime dependencies (static linking from builder, plus ca-certs and curl)
+# Install minimal runtime dependencies for dynamically-linked Dev build
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl unzip && \
+    apt-get install -y --no-install-recommends \
+      ca-certificates curl unzip \
+      libportaudio2 libopus0 libsodium23 libzstd1 \
+      libssl3 libfreetype6 libfontconfig1 libvterm0 && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /var/tmp/*
 
 # Copy installed files from builder
 COPY --from=builder /usr/local /usr/local
 COPY --from=builder /home/linuxbrew/.linuxbrew /home/linuxbrew/.linuxbrew
+# Copy all system libraries from builder to get all runtime dependencies
+COPY --from=builder /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
