@@ -1,10 +1,36 @@
 import { Button, Heading } from "@ascii-chat/shared/components";
 import { AsciiChatWebHead } from "../components/AsciiChatWebHead";
 
+function Thing(
+  { mode_name, description, color }: {
+    mode_name: string;
+    description: string;
+    color: string;
+  },
+) {
+  return (
+    <div className="flex gap-4 w-full justify-center">
+      <Button
+        href={`/${mode_name}`}
+        className={`flex flex-col justify-center w-56 px-6 py-3 bg-terminal-${color} text-terminal-bg rounded hover:opacity-80 transition-opacity`}
+      >
+        <span className="">
+          {mode_name.slice(0, 1).toUpperCase()}
+          {mode_name.slice(1)} Mode
+        </span>
+      </Button>
+      <p className="text-sm text-terminal-cyan flex-1 text-left">
+        {description}
+      </p>
+    </div>
+  );
+}
+
 export function HomePage() {
   return (
     <div className="flex-1 flex items-center justify-center pt-8">
-      <AsciiChatWebHead title="ascii-chat Web Client - Video chat in your terminal/browser" />
+      <AsciiChatWebHead title='ascii-chat Web Client - Video chat in your browser* (* originally "terminal")' />
+
       <div className="text-center max-w-2xl px-8">
         <Heading
           level={1}
@@ -18,41 +44,23 @@ export function HomePage() {
         <p className="text-xl text-terminal-fg mb-8">
           Video chat in your <del className="opacity-60">terminal</del> browser
         </p>
+
         <div className="space-y-4 flex flex-col items-center max-w-4xl">
-          <div className="flex items-center gap-4 w-full justify-center">
-            <Button
-              href="/mirror"
-              className="w-56 px-6 py-3 bg-terminal-cyan text-terminal-bg rounded hover:opacity-80 transition-opacity"
-            >
-              Mirror Mode
-            </Button>
-            <p className="text-sm text-terminal-cyan flex-1 text-left">
-              Chat with yourself! Use your webcam, files, or URLs without
-              network activity
-            </p>
-          </div>
-          <div className="flex items-center gap-4 w-full justify-center">
-            <Button
-              href="/client"
-              className="w-56 px-6 py-3 bg-terminal-green text-terminal-bg rounded hover:opacity-80 transition-opacity"
-            >
-              Client Mode
-            </Button>
-            <p className="text-sm text-terminal-green flex-1 text-left">
-              Connect to ascii-chat servers via WebSocket and URL or IP
-            </p>
-          </div>
-          <div className="flex items-center gap-4 w-full justify-center">
-            <Button
-              href="/discovery"
-              className="w-56 px-6 py-3 bg-terminal-magenta text-terminal-bg rounded hover:opacity-80 transition-opacity"
-            >
-              Discovery Mode
-            </Button>
-            <p className="text-sm text-terminal-magenta flex-1 text-left">
-              Get a shareable link for someone to see your ASCII art face
-            </p>
-          </div>
+          <Thing
+            mode_name="mirror"
+            description="Chat with yourself! Render ASCII art of your webcam webcam, files, or URLs, without any network activity."
+            color="cyan"
+          />
+          <Thing
+            mode_name="client"
+            description="Connect to ascii-chat servers via WebSocket and URL or IP over WebSocket."
+            color="green"
+          />
+          <Thing
+            mode_name="discovery"
+            description="Create or join a linkable session where someone can see your ASCII art face over WebSocket."
+            color="magenta"
+          />
         </div>
       </div>
     </div>
