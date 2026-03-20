@@ -15,6 +15,8 @@ import {
   setPaletteChars,
   setMatrixRain,
   setFlipX,
+  setWidth,
+  setHeight,
   isOptionsInitialized,
 } from "../wasm/common/options";
 import {
@@ -118,6 +120,18 @@ export function useMirrorWebcam({
         console.log(
           `[Mirror] canvas set to ${canvas.width}x${canvas.height} (test mode)`,
         );
+        // Sync canvas dimensions to WASM options so ASCII rendering uses correct dimensions
+        if (isWasmReady() && isOptionsInitialized()) {
+          try {
+            setWidth(canvas.width);
+            setHeight(canvas.height);
+          } catch (err) {
+            console.warn(
+              "[Mirror] Failed to sync canvas dimensions to WASM:",
+              err,
+            );
+          }
+        }
         lastFrameTimeRef.current = performance.now();
         setIsWebcamRunning(true);
         console.timeEnd("[Mirror] Total startWebcam time");
@@ -159,6 +173,18 @@ export function useMirrorWebcam({
             console.log(
               `[Mirror] canvas set to ${canvas.width}x${canvas.height} (from settings or defaults)`,
             );
+            // Sync canvas dimensions to WASM options so ASCII rendering uses correct dimensions
+            if (isWasmReady() && isOptionsInitialized()) {
+              try {
+                setWidth(canvas.width);
+                setHeight(canvas.height);
+              } catch (err) {
+                console.warn(
+                  "[Mirror] Failed to sync canvas dimensions to WASM:",
+                  err,
+                );
+              }
+            }
             resolve();
           },
           { once: true },
