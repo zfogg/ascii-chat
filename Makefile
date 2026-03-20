@@ -219,7 +219,7 @@ compile_commands.json: build
 		echo "CMake did not generate compile_commands.json (is CMAKE_EXPORT_COMPILE_COMMANDS enabled?)"; \
 	fi
 
-just_cloned: build
+fresh-clone: build
 	touch .env
 	cp web/.env.example web/.env
 	cd web && pnpm install && cd ..
