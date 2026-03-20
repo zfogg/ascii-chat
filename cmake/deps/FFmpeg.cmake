@@ -176,14 +176,29 @@ if(USE_MUSL)
 
         # Configure FFmpeg
         message(STATUS "  Configuring FFmpeg...")
+        # Find GCC's lib directories for libstdc++/libgcc (needed for x265 C++ link test)
+        execute_process(
+            COMMAND ${REAL_GCC} -print-file-name=libgcc.a
+            OUTPUT_VARIABLE _GCC_LIBGCC_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+        execute_process(
+            COMMAND ${REAL_GCC} -print-file-name=libstdc++.a
+            OUTPUT_VARIABLE _GCC_LIBSTDCXX_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+        get_filename_component(GCC_LIB_DIR "${_GCC_LIBGCC_PATH}" DIRECTORY)
+        get_filename_component(GCC_STDCXX_DIR "${_GCC_LIBSTDCXX_PATH}" REALPATH)
+        get_filename_component(GCC_STDCXX_DIR "${GCC_STDCXX_DIR}" DIRECTORY)
         execute_process(
             COMMAND ${CMAKE_COMMAND} -E env
                 CC=${MUSL_GCC}
                 REALGCC=${REAL_GCC}
                 CFLAGS=${MUSL_KERNEL_CFLAGS}\ -fPIC
+                PKG_CONFIG_PATH=${X265_PREFIX}/lib/pkgconfig
+                ASAN_OPTIONS=
                 "${FFMPEG_SOURCE_DIR}/configure"
                 --prefix=${FFMPEG_PREFIX}
                 --cc=${MUSL_GCC}
+                --extra-cflags=-I${X265_PREFIX}/include
+                "--extra-ldflags=-L${X265_PREFIX}/lib -L${GCC_STDCXX_DIR} -L${GCC_LIB_DIR}"
+                "--extra-libs=-lm -Wl,-Bstatic -lstdc++ -lgcc -lgcc_eh -Wl,-Bdynamic"
                 --enable-static
                 --disable-shared
                 --enable-pic
@@ -213,7 +228,7 @@ if(USE_MUSL)
             ERROR_VARIABLE CONFIG_ERROR
         )
         if(NOT CONFIG_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to configure FFmpeg:\n${CONFIG_ERROR}")
+            message(FATAL_ERROR "Failed to configure FFmpeg:\n${CONFIG_OUTPUT}\n${CONFIG_ERROR}")
         endif()
 
         # Build FFmpeg

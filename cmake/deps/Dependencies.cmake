@@ -98,6 +98,9 @@ configure_mdns()
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Yyjson.cmake)
 configure_yyjson()
 
+# x265 - HEVC encoder (needed by FFmpeg for libx265 support)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/X265.cmake)
+
 # FFmpeg - Media file decoding (includes HEVC codec support)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/FFmpeg.cmake)
 
