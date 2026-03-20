@@ -262,9 +262,7 @@ websocket_client_destroy(&amp;ws_client);</pre>
 148 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>,
-    <b>websocket_client::connection_active</b>, <b>log_debug</b>, and
-    <b>websocket_client::transport</b>.</p>
+<p class="Pp">References <b>atomic_store_bool()</b>, and <b>log_debug</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>acip_transport_t</b> * websocket_client_connect
@@ -345,12 +343,8 @@ websocket_client_destroy(&amp;ws_client);</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_websocket_client_transport_create()</b>,
-    <b>atomic_store_bool()</b>, <b>websocket_client::connection_active</b>,
-    <b>websocket_client::connection_lost</b>,
-    <b>websocket_client::encryption_enabled</b>, <b>log_error</b>,
-    <b>log_info</b>, <b>websocket_client::my_client_id</b>,
-    <b>named_update_name()</b>, <b>SAFE_SNPRINTF</b>,
-    <b>websocket_client::transport</b>, and <b>websocket_client::url</b>.</p>
+    <b>atomic_store_bool()</b>, <b>log_error</b>, <b>log_info</b>,
+    <b>named_update_name()</b>, and <b>SAFE_SNPRINTF</b>.</p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>, and
     <b>connection_attempt_websocket()</b>.</p>
 </section>
@@ -420,16 +414,10 @@ websocket_client_destroy(&amp;ws_client);</pre>
 68 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>,
-    <b>websocket_client::connection_active</b>,
-    <b>websocket_client::connection_lost</b>,
-    <b>websocket_client::encryption_enabled</b>, <b>log_debug</b>,
-    <b>log_error</b>, <b>mutex_init()</b>,
-    <b>websocket_client::my_client_id</b>, <b>NAMED_REGISTER_ATOMIC</b>,
-    <b>NAMED_REGISTER_WEBSOCKET</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>websocket_client::send_mutex</b>,
-    <b>websocket_client::should_reconnect</b>, and
-    <b>websocket_client::transport</b>.</p>
+<p class="Pp">References <b>atomic_store_bool()</b>, <b>log_debug</b>,
+    <b>log_error</b>, <b>mutex_init()</b>, <b>NAMED_REGISTER_ATOMIC</b>,
+    <b>NAMED_REGISTER_WEBSOCKET</b>, <b>SAFE_FREE</b>, and
+  <b>SAFE_MALLOC</b>.</p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>, and
     <b>connection_attempt_websocket()</b>.</p>
 </section>
@@ -480,12 +468,8 @@ websocket_client_destroy(&amp;ws_client);</pre>
 99 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>websocket_client::connection_active</b>,
-    <b>websocket_client::connection_lost</b>, <b>log_debug</b>,
-    <b>mutex_destroy()</b>, <b>NAMED_UNREGISTER</b>, <b>SAFE_FREE</b>,
-    <b>websocket_client::send_mutex</b>,
-    <b>websocket_client::should_reconnect</b>, and
-    <b>websocket_client::transport</b>.</p>
+<p class="Pp">References <b>log_debug</b>, <b>mutex_destroy()</b>,
+    <b>NAMED_UNREGISTER</b>, and <b>SAFE_FREE</b>.</p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
     <b>connection_attempt_websocket()</b>, and
   <b>session_client_like_run()</b>.</p>
@@ -524,7 +508,6 @@ websocket_client_destroy(&amp;ws_client);</pre>
 294 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>websocket_client::my_client_id</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>acip_transport_t</b> * websocket_client_get_transport (const
@@ -545,7 +528,6 @@ websocket_client_destroy(&amp;ws_client);</pre>
 230 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>websocket_client::transport</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> websocket_client_is_active (const
@@ -565,8 +547,7 @@ websocket_client_destroy(&amp;ws_client);</pre>
 109 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, and
-    <b>websocket_client::connection_active</b>.</p>
+<p class="Pp">References <b>atomic_load_bool()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> websocket_client_is_encrypted (const
@@ -585,7 +566,6 @@ websocket_client_destroy(&amp;ws_client);</pre>
 303 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>websocket_client::encryption_enabled</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> websocket_client_is_encryption_enabled (const
@@ -615,8 +595,7 @@ websocket_client_destroy(&amp;ws_client);</pre>
 119 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, and
-    <b>websocket_client::connection_lost</b>.</p>
+<p class="Pp">References <b>atomic_load_bool()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_websocket_client_send_packet_("><a class="permalink" href="#int_websocket_client_send_packet_(">int
@@ -677,11 +656,9 @@ websocket_client_destroy(&amp;ws_client);</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
-    <b>websocket_client::connection_active</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK</b>, <b>log_debug</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>websocket_client::my_client_id</b>,
-    <b>packet_send_via_transport()</b>, <b>websocket_client::send_mutex</b>,
-    <b>SET_ERRNO</b>, and <b>websocket_client::transport</b>.</p>
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>, <b>log_debug</b>,
+    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>packet_send_via_transport()</b>,
+    and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>websocket_client_send_ping()</b>, and
     <b>websocket_client_send_pong()</b>.</p>
 </section>
@@ -774,10 +751,7 @@ websocket_client_destroy(&amp;ws_client);</pre>
 167 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>,
-    <b>websocket_client::connection_active</b>,
-    <b>websocket_client::connection_lost</b>, <b>log_debug</b>, and
-    <b>websocket_client::transport</b>.</p>
+<p class="Pp">References <b>atomic_store_bool()</b>, and <b>log_debug</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_websocket_client_signal_lost_("><a class="permalink" href="#void_websocket_client_signal_lost_(">void
@@ -798,9 +772,7 @@ websocket_client_destroy(&amp;ws_client);</pre>
 131 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>,
-    <b>websocket_client::connection_active</b>,
-    <b>websocket_client::connection_lost</b>, and <b>log_debug</b>.</p>
+<p class="Pp">References <b>atomic_store_bool()</b>, and <b>log_debug</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_websocket_client_signal_reconnect_("><a class="permalink" href="#void_websocket_client_signal_reconnect_(">void

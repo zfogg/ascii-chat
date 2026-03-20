@@ -171,7 +171,6 @@
     <b>session_log_buffer::sequence</b>, <b>session_log_entry_t::sequence</b>,
     <b>SESSION_LOG_BUFFER_SIZE</b>, and
   <b>session_log_buffer::write_pos</b>.</p>
-<p class="Pp">Referenced by <b>terminal_screen_log_clear()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>session_log_buffer_t</b> * session_log_buffer_create (void
@@ -203,7 +202,6 @@
     <b>session_log_buffer::mutex</b>, <b>mutex_init()</b>, <b>SAFE_CALLOC</b>,
     <b>session_log_buffer::sequence</b>, and
     <b>session_log_buffer::write_pos</b>.</p>
-<p class="Pp">Referenced by <b>terminal_screen_log_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_session_log_buffer_destroy_("><a class="permalink" href="#void_session_log_buffer_destroy_(">void
@@ -227,7 +225,6 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>session_log_buffer::mutex</b>,
     <b>mutex_destroy()</b>, and <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>terminal_screen_log_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_session_log_buffer_get_recent_("><a class="permalink" href="#size_t_session_log_buffer_get_recent_(">size_t
@@ -287,8 +284,6 @@
     <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>session_log_buffer::sequence</b>,
     <b>session_log_entry_t::sequence</b>, <b>SESSION_LOG_BUFFER_SIZE</b>,
     <b>session_log_buffer::write_pos</b>, and <b>write_pos</b>.</p>
-<p class="Pp">Referenced by <b>log_search_gather_and_filter_logs()</b>, and
-    <b>terminal_screen_render()</b>.</p>
 </section>
 </section>
 <section class="Sh">

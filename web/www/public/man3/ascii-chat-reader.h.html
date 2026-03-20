@@ -87,30 +87,14 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success</div>
 <p class="Pp">Width is auto-detected from the first frame's line length.</p>
-<p class="Pp">Definition at line <b>28</b> of file <b>reader.c</b>.</p>
-<pre>28                                                                                                   {
-29   if (fd &lt; 0 || frame_height &lt;= 0) {
-30     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid fd or frame height: fd=%d, height=%d&quot;, fd, frame_height);
-31   }
-32 
-33   FILE *fp = fdopen(fd, &quot;r&quot;);
-34   if (!fp) {
-35     return SET_ERRNO_SYS(ERROR_INVALID_PARAM, &quot;fdopen failed for FD %d&quot;, fd);
-36   }
-37 
-38   terminal_fd_reader_t *reader = SAFE_CALLOC(1, sizeof(*reader), terminal_fd_reader_t *);
-39   reader-&gt;fp = fp;
-40   reader-&gt;frame_height = frame_height;
-41   reader-&gt;frame_width = 0; // Will be detected from first frame
-42   reader-&gt;line_buffer = SAFE_MALLOC(LINE_BUFFER_SIZE, char *);
-43   reader-&gt;line_buffer_size = LINE_BUFFER_SIZE;
-44   reader-&gt;eof_reached = false;
-45   reader-&gt;first_frame_processed = false;
-46 
-47   log_debug(&quot;terminal_fd_reader: created with fd=%d, frame height %d (width auto-detect)&quot;, fd, frame_height);
-48   *out = reader;
-49   return ASCIICHAT_OK;
-50 }</pre>
+<p class="Pp">Definition at line <b>52</b> of file
+    <b>platform/wasm/stubs/terminal.c</b>.</p>
+<pre>52                                                                                                   {
+53   (void)fd;
+54   (void)frame_height;
+55   if (out) *out = NULL;
+56   return ASCIICHAT_OK;  // Stub - no stdin available in WASM
+57 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -130,17 +114,12 @@
 <p class="Pp">Destroy terminal FD reader.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>reader</i> Reader context to destroy</div>
-<p class="Pp">Definition at line <b>142</b> of file <b>reader.c</b>.</p>
-<pre>142                                                               {
-143   if (!reader)
-144     return;
-145   if (reader-&gt;fp) {
-146     fclose(reader-&gt;fp);
-147     reader-&gt;fp = NULL;
-148   }
-149   SAFE_FREE(reader-&gt;line_buffer);
-150   SAFE_FREE(reader);
-151 }</pre>
+<p class="Pp">Definition at line <b>59</b> of file
+    <b>platform/wasm/stubs/terminal.c</b>.</p>
+<pre>59                                                               {
+60   (void)reader;
+61   // No-op
+62 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>terminal_fd_reader_s::fp</b>,
@@ -161,96 +140,13 @@
   SAFE_FREE)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success (including EOF)</div>
-<p class="Pp">Definition at line <b>52</b> of file <b>reader.c</b>.</p>
-<pre>52                                                                                           {
-53   if (!reader || !out_frame) {
-54     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters to terminal_fd_reader_next&quot;);
-55   }
-56 
-57   if (reader-&gt;eof_reached) {
-58     *out_frame = NULL;
-59     return ASCIICHAT_OK; // EOF, but no error
-60   }
-61 
-62   // Allocate buffer for complete frame (frame_height lines)
-63   // Estimate: 16KB per line should be enough for ANSI + ASCII
-64   size_t frame_capacity = reader-&gt;frame_height * LINE_BUFFER_SIZE;
-65   char *frame_data = SAFE_MALLOC(frame_capacity, char *);
-66   size_t frame_pos = 0;
-67 
-68   // Read exactly frame_height lines from FD
-69   for (int line_num = 0; line_num &lt; reader-&gt;frame_height; line_num++) {
-70     // Read one line from FD
-71     char *line = fgets(reader-&gt;line_buffer, (int)reader-&gt;line_buffer_size, reader-&gt;fp);
-72 
-73     if (!line) {
-74       // EOF reached
-75       reader-&gt;eof_reached = true;
-76 
-77       // If we read some lines but not a complete frame, that's ok - return partial
-78       if (frame_pos &gt; 0) {
-79         log_debug(&quot;terminal_fd_reader: EOF reached after %d/%d lines, returning partial frame&quot;, line_num,
-80                   reader-&gt;frame_height);
-81         // Remove trailing newline from last line if present
-82         if (frame_pos &gt; 0 &amp;&amp; frame_data[frame_pos - 1] == '\n') {
-83           frame_pos--;
-84         }
-85         *out_frame = frame_data;
-86         return ASCIICHAT_OK;
-87       }
-88 
-89       SAFE_FREE(frame_data);
-90       *out_frame = NULL;
-91       return ASCIICHAT_OK; // EOF
-92     }
-93 
-94     // Append line to frame
-95     size_t line_len = strlen(line);
-96     if (frame_pos + line_len &gt;= frame_capacity) {
-97       log_warn(&quot;terminal_fd_reader: frame buffer overflow, line %d too large&quot;, line_num);
-98       // Realloc and continue
-99       frame_capacity *= 2;
-100       char *new_frame = SAFE_MALLOC(frame_capacity, char *);
-101       memcpy(new_frame, frame_data, frame_pos);
-102       SAFE_FREE(frame_data);
-103       frame_data = new_frame;
-104     }
-105 
-106     memcpy(frame_data + frame_pos, line, line_len);
-107     frame_pos += line_len;
-108   }
-109 
-110   // Remove trailing newline from last line (we'll add it back in display)
-111   if (frame_pos &gt; 0 &amp;&amp; frame_data[frame_pos - 1] == '\n') {
-112     frame_data[frame_pos - 1] = '\0';
-113     frame_pos--;
-114   }
-115 
-116   // Detect frame width from first frame (count visible chars in first line)
-117   if (!reader-&gt;first_frame_processed &amp;&amp; frame_pos &gt; 0) {
-118     reader-&gt;first_frame_processed = true;
-119 
-120     // Find first line by looking for newline
-121     char *first_newline = strchr(frame_data, '\n');
-122     if (first_newline) {
-123       // Null-terminate first line temporarily for width calculation
-124       char saved_char = *first_newline;
-125       *first_newline = '\0';
-126       reader-&gt;frame_width = display_width(frame_data);
-127       *first_newline = saved_char; // Restore
-128     } else {
-129       // Only one line in frame, use it for width
-130       reader-&gt;frame_width = display_width(frame_data);
-131     }
-132 
-133     log_info(&quot;terminal_fd_reader: detected frame width %d from first frame&quot;, reader-&gt;frame_width);
-134   }
-135 
-136   *out_frame = frame_data;
-137   log_debug_every(NS_PER_SEC_INT, &quot;terminal_fd_reader: read frame (%zu bytes, %dx%d)&quot;, frame_pos, reader-&gt;frame_width,
-138                   reader-&gt;frame_height);
-139   return ASCIICHAT_OK;
-140 }</pre>
+<p class="Pp">Definition at line <b>64</b> of file
+    <b>platform/wasm/stubs/terminal.c</b>.</p>
+<pre>64                                                                                           {
+65   (void)reader;
+66   if (out_frame) *out_frame = NULL;  // Signal EOF immediately
+67   return ASCIICHAT_OK;
+68 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>display_width()</b>,

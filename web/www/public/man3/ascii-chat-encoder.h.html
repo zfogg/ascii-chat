@@ -237,18 +237,11 @@
 364 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>h265_encoder::codec_ctx</b>,
-    <b>h265_encoder::current_height</b>, <b>h265_encoder::current_width</b>,
-    <b>EAGAIN</b>, <b>ERROR_INTERNAL</b>, <b>ERROR_MEDIA_DECODE</b>,
-    <b>ERROR_NETWORK_SIZE</b>, <b>h265_encoder::frame</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>EAGAIN</b>,
+    <b>ERROR_INTERNAL</b>, <b>ERROR_MEDIA_DECODE</b>, <b>ERROR_NETWORK_SIZE</b>,
     <b>H265_ENCODER_FLAG_KEYFRAME</b>, <b>H265_ENCODER_FLAG_SIZE_CHANGE</b>,
-    <b>h265_encoder::keyframes</b>, <b>log_debug</b>, <b>log_dev</b>,
-    <b>log_error</b>, <b>h265_encoder::packet</b>,
-    <b>h265_encoder::request_keyframe</b>, <b>SET_ERRNO</b>,
-    <b>h265_encoder::total_frames</b>, and <b>h265_encoder::yuv_buf</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_image_frame_h265()</b>,
-    <b>h265_client_capture_and_encode()</b>, and
-    <b>threaded_send_image_frame_h265()</b>.</p>
+    <b>log_debug</b>, <b>log_dev</b>, <b>log_error</b>, and
+  <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>h265_encoder_t</b> * h265_encoder_create (<b>uint16_t</b>
@@ -375,14 +368,10 @@
 149 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>h265_encoder::codec_ctx</b>,
-    <b>h265_encoder::current_height</b>, <b>h265_encoder::current_width</b>,
-    <b>ERROR_MEDIA_INIT</b>, <b>ERROR_MEMORY</b>, <b>h265_encoder::frame</b>,
+<p class="Pp">References <b>ERROR_MEDIA_INIT</b>, <b>ERROR_MEMORY</b>,
     <b>log_info</b>, <b>LOG_IO</b>, <b>log_warn</b>,
-    <b>NAMED_REGISTER_H265_ENCODER</b>, <b>h265_encoder::packet</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
-    <b>h265_encoder::yuv_buf</b>, and <b>h265_encoder::yuv_buf_size</b>.</p>
-<p class="Pp">Referenced by <b>h265_client_context_create()</b>.</p>
+    <b>NAMED_REGISTER_H265_ENCODER</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_h265_encoder_destroy_("><a class="permalink" href="#void_h265_encoder_destroy_(">void
@@ -391,33 +380,13 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>encoder</i> Encoder to destroy (may be NULL)</div>
-<p class="Pp">Definition at line <b>151</b> of file <b>encoder.c</b>.</p>
-<pre>151                                                    {
-152   if (!encoder)
-153     return;
-154 
-155   if (encoder-&gt;frame) {
-156     av_frame_free(&amp;encoder-&gt;frame);
-157   }
-158   if (encoder-&gt;packet) {
-159     av_packet_free(&amp;encoder-&gt;packet);
-160   }
-161   if (encoder-&gt;codec_ctx) {
-162     // Capture x265 encoder cleanup output (final frame stats, etc.)
-163     LOG_IO(&quot;hevc&quot;, {
-164       avcodec_free_context(&amp;encoder-&gt;codec_ctx);
-165     });
-166   }
-167   if (encoder-&gt;yuv_buf) {
-168     SAFE_FREE(encoder-&gt;yuv_buf);
-169   }
-170   SAFE_FREE(encoder);
-171 }</pre>
+<p class="Pp">Definition at line <b>94</b> of file <b>comprehensive.c</b>.</p>
+<pre>94                                                    {
+95   (void)encoder;
+96 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>h265_encoder::codec_ctx</b>,
-    <b>h265_encoder::frame</b>, <b>LOG_IO</b>, <b>h265_encoder::packet</b>,
-    <b>SAFE_FREE</b>, and <b>h265_encoder::yuv_buf</b>.</p>
+<p class="Pp">References <b>LOG_IO</b>, and <b>SAFE_FREE</b>.</p>
 <p class="Pp">Referenced by <b>h265_client_context_create()</b>, and
     <b>h265_client_context_destroy()</b>.</p>
 </section>
@@ -443,86 +412,19 @@
 <p class="Pp">USAGE: // After final <b>h265_encode()</b> call, flush remaining
     frames while (size &gt; 0) { size = max_size; h265_encoder_flush(encoder,
     buf, &amp;size); if (size &gt; 0) { // Send the flushed frame... } }</p>
-<p class="Pp">Definition at line <b>372</b> of file <b>encoder.c</b>.</p>
-<pre>372                                                                                                         {
-373   if (!encoder || !output_buf || !output_size) {
-374     return SET_ERRNO(ERROR_INTERNAL, &quot;Invalid encoder or output parameters for flush&quot;);
-375   }
-376 
-377   if (*output_size &lt; 5) {
-378     return SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Output buffer too small (minimum 5 bytes)&quot;);
-379   }
-380 
-381   // Send NULL frame to signal end of stream (flushes encoder)
-382   log_debug(&quot;H265_FLUSH: Sending NULL frame to encoder to flush buffered data&quot;);
-383   int send_ret = avcodec_send_frame(encoder-&gt;codec_ctx, NULL);
-384   if (send_ret &lt; 0) {
-385     log_error(&quot;H265_FLUSH: avcodec_send_frame(NULL) failed: %d&quot;, send_ret);
-386     return SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to flush encoder&quot;);
-387   }
-388 
-389   // Try to receive a packet
-390   log_debug(&quot;H265_FLUSH: Attempting to receive flushed packet...&quot;);
-391   int recv_ret = avcodec_receive_packet(encoder-&gt;codec_ctx, encoder-&gt;packet);
-392   if (recv_ret == AVERROR(EAGAIN)) {
-393     log_dev(&quot;H265_FLUSH: EAGAIN - no more frames available&quot;);
-394     *output_size = 0;
-395     return ASCIICHAT_OK;
-396   }
-397   if (recv_ret == AVERROR_EOF) {
-398     log_debug(&quot;H265_FLUSH: EOF - encoder is flushed&quot;);
-399     *output_size = 0;
-400     return ASCIICHAT_OK;
-401   }
-402   if (recv_ret &lt; 0) {
-403     log_error(&quot;H265_FLUSH: avcodec_receive_packet failed: %d&quot;, recv_ret);
-404     return SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to receive flushed packet&quot;);
-405   }
-406 
-407   log_debug(&quot;H265_FLUSH: Got flushed packet: size=%d&quot;, (int)encoder-&gt;packet-&gt;size);
-408 
-409   // Check if packet size exceeds output buffer
-410   size_t header_size = 5;
-411   size_t packet_size = encoder-&gt;packet-&gt;size;
-412   size_t required_size = header_size + packet_size;
-413 
-414   if (required_size &gt; *output_size) {
-415     return SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Output buffer too small: need %zu, have %zu&quot;, required_size, *output_size);
-416   }
-417 
-418   // Write header: [flags][width:u16][height:u16]
-419   uint8_t flags = 0;
-420   if (encoder-&gt;frame-&gt;pict_type == AV_PICTURE_TYPE_I) {
-421     flags |= H265_ENCODER_FLAG_KEYFRAME;
-422     encoder-&gt;keyframes++;
-423   }
-424 
-425   output_buf[0] = flags;
-426   output_buf[1] = (encoder-&gt;current_width &gt;&gt; 8) &amp; 0xFF;
-427   output_buf[2] = encoder-&gt;current_width &amp; 0xFF;
-428   output_buf[3] = (encoder-&gt;current_height &gt;&gt; 8) &amp; 0xFF;
-429   output_buf[4] = encoder-&gt;current_height &amp; 0xFF;
-430 
-431   // Write encoded data
-432   if (packet_size &gt; 0) {
-433     memcpy(output_buf + header_size, encoder-&gt;packet-&gt;data, packet_size);
-434   }
-435 
-436   *output_size = required_size;
-437   encoder-&gt;total_frames++;
-438 
-439   return ASCIICHAT_OK;
-440 }</pre>
+<p class="Pp">Definition at line <b>98</b> of file <b>comprehensive.c</b>.</p>
+<pre>98                                                                                                   {
+99   (void)encoder;
+100   (void)out_data;
+101   (void)out_len;
+102   return ASCIICHAT_OK;
+103 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>h265_encoder::codec_ctx</b>,
-    <b>h265_encoder::current_height</b>, <b>h265_encoder::current_width</b>,
-    <b>EAGAIN</b>, <b>ERROR_INTERNAL</b>, <b>ERROR_MEDIA_DECODE</b>,
-    <b>ERROR_NETWORK_SIZE</b>, <b>h265_encoder::frame</b>,
-    <b>H265_ENCODER_FLAG_KEYFRAME</b>, <b>h265_encoder::keyframes</b>,
-    <b>log_debug</b>, <b>log_dev</b>, <b>log_error</b>,
-    <b>h265_encoder::packet</b>, <b>SET_ERRNO</b>, and
-    <b>h265_encoder::total_frames</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>EAGAIN</b>,
+    <b>ERROR_INTERNAL</b>, <b>ERROR_MEDIA_DECODE</b>, <b>ERROR_NETWORK_SIZE</b>,
+    <b>H265_ENCODER_FLAG_KEYFRAME</b>, <b>log_debug</b>, <b>log_dev</b>,
+    <b>log_error</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>protocol_stop_connection()</b>.</p>
 </section>
 <section class="Ss">
@@ -554,8 +456,6 @@
 453 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>h265_encoder::avg_bitrate</b>,
-    <b>h265_encoder::keyframes</b>, and <b>h265_encoder::total_frames</b>.</p>
 <p class="Pp">Referenced by <b>h265_client_get_stats()</b>.</p>
 </section>
 <section class="Ss">
@@ -569,15 +469,12 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>encoder</i> Encoder handle</div>
-<p class="Pp">Definition at line <b>366</b> of file <b>encoder.c</b>.</p>
-<pre>366                                                             {
-367   if (encoder) {
-368     encoder-&gt;request_keyframe = true;
-369   }
-370 }</pre>
+<p class="Pp">Definition at line <b>105</b> of file <b>comprehensive.c</b>.</p>
+<pre>105                                                             {
+106   (void)encoder;
+107 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>h265_encoder::request_keyframe</b>.</p>
 <p class="Pp">Referenced by <b>h265_client_request_keyframe()</b>.</p>
 </section>
 </section>

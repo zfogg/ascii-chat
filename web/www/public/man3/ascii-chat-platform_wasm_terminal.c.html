@@ -45,7 +45,7 @@
   <b>EM_JS</b> (int, js_get_terminal_rows,(), { return Module.xterm ?
     Module.xterm.rows :24;})
   <br/>
-  <b>EM_JS</b> (void, js_terminal_write,(const char *data, int len), {
+  <b>EM_JS</b> (void, <b>js_terminal_write</b>,(const char *data, int len), {
     if(Module.xterm) { Module.xterm.write(UTF8ToString(data, len));} })
   <br/>
   int <b>platform_get_terminal_size</b> (int *cols, int *rows)
@@ -106,6 +106,22 @@
     *bg_g, <b>uint8_t</b> *bg_b)
   <br/>
   Query terminal background color using OSC 11 escape sequence.
+    <b>asciichat_error_t</b> <b>terminal_set_echo</b> (<b>bool</b>
+    <b>enabled</b>)
+  <br/>
+  Set terminal echo mode. <b>bool</b>
+    <b>terminal_should_use_control_sequences</b> (int fd)
+  <br/>
+  Check if terminal control sequences should be used for the given fd.
+    <b>asciichat_error_t</b> <b>terminal_clear_screen</b> (void)
+  <br/>
+  Clear the terminal screen. <b>asciichat_error_t</b>
+    <b>terminal_cursor_home</b> (int fd)
+  <br/>
+  Move cursor to home position (top-left). <b>asciichat_error_t</b>
+    <b>terminal_move_cursor_relative</b> (int offset)
+  <br/>
+  Move cursor relative to current position.
   <br/>
 </p>
 </section>
@@ -200,9 +216,10 @@
   :24;} )</a></h2>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EM_JS_(void_,_js_terminal_write_,_(const_char_*data,_int_len)_,___if(Module"><a class="permalink" href="#EM_JS_(void_,_js_terminal_write_,_(const_char_*data,_int_len)_,___if(Module">EM_JS
-  (void , js_terminal_write , (const char *data, int len) , { if(Module.xterm) {
-  Module.xterm.write(UTF8ToString(data, len));} } )</a></h2>
+<h2 class="Ss" id="EM_JS_(void_,_"><a class="permalink" href="#EM_JS_(void_,_">EM_JS
+  (void , <b>js_terminal_write</b> , (const char *data, int len) , {
+  if(Module.xterm) { Module.xterm.write(UTF8ToString(data, len));} } )</a></h2>
+<p class="Pp">References <b>js_terminal_write()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> get_terminal_size (unsigned short int *
@@ -346,6 +363,7 @@
 48 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>js_terminal_write()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_can_prompt_user (void )</h2>
@@ -715,6 +733,61 @@
 <pre>126                                         {
 127   return false; // Don't force stderr in WASM
 128 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> terminal_should_use_control_sequences (int fd)</h2>
+<p class="Pp">Check if terminal control sequences should be used for the given
+    fd.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>fd</i> File descriptor to check (must be valid or
+  -1)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if terminal control sequences should be used, false
+  otherwise</div>
+<p class="Pp">Determines whether terminal control sequences (cursor home, clear
+    screen, etc.) should be sent to the given file descriptor. Checks:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>File descriptor is valid (&gt;= 0)</dd>
+  <dt>2.</dt>
+  <dd>Not in snapshot mode</dd>
+  <dt>3.</dt>
+  <dd>Not in TESTING environment</dd>
+  <dt>4.</dt>
+  <dd>File descriptor is connected to a TTY (not piped/redirected)</dd>
+</dl>
+<p class="Pp">This is useful for deciding whether to send ANSI escape sequences
+    to output. When piped or redirected, escape sequences should not be
+  sent.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Returns false if fd is invalid (-1) to be safe.
+<p class="Pp"></p>
+<p class="Pp">Returns false in snapshot mode to provide clean output.</p>
+<p class="Pp"></p>
+<p class="Pp">Checks TESTING environment variable for test/CI environments.</p>
+<p class="Pp"></p>
+<p class="Pp">Primary use case: determining if output is going to a TTY.</p>
+</div>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>fd</i> File descriptor to check</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if terminal control sequences should be used, false
+  otherwise</div>
+<p class="Pp">This function determines whether to send terminal POSITIONING and
+    CONTROL sequences (cursor home, clear screen, hide cursor, etc.) which
+    should only be sent to TTY and never to pipes/redirected output.</p>
+<p class="Pp"></p>
+<p class="Pp">Note: This does NOT control ANSI COLOR CODES, which are controlled
+    by --color-mode option and may be sent to pipes if explicitly requested.</p>
+<p class="Pp">Definition at line <b>192</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>192                                                    {
+193   (void)fd;
+194   return true;  // Always use ANSI sequences in browser
+195 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>

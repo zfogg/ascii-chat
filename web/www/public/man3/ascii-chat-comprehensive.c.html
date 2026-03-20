@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>comprehensive.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">comprehensive.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">comprehensive.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">comprehensive.c - Comprehensive stubs for WASM build - network,
+    encoding, analysis.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef void <b>h265_encoder_t</b>
+  <br/>
+  typedef void <b>video_frame_t</b>
+  <br/>
+  typedef void <b>acds_client_config_t</b>
+  <br/>
+  typedef void <b>acds_client_t</b>
+  <br/>
+  typedef struct <b>audio_ring_buffer</b> <b>audio_ring_buffer_t</b>
+  <br/>
+  typedef struct audio_pipeline <b>audio_pipeline_t</b>
+  <br/>
+  typedef struct client_audio_pipeline <b>client_audio_pipeline_t</b>
+  <br/>
+  typedef void <b>tcp_client_t</b>
+  <br/>
+  typedef void <b>webrtc_peer_manager_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>socket_is_valid</b> (<b>socket_t</b> sock)
+  <br/>
+  Check if a socket handle is valid. int <b>socket_close</b> (<b>socket_t</b>
+    sock)
+  <br/>
+  Close a socket. int <b>socket_shutdown</b> (<b>socket_t</b> sock, int how)
+  <br/>
+  Shutdown socket I/O. ssize_t <b>socket_send</b> (<b>socket_t</b> sock, const
+    void *buf, size_t len, int flags)
+  <br/>
+  Send data on a socket. ssize_t <b>socket_recv</b> (<b>socket_t</b> sock, void
+    *buf, size_t len, int flags)
+  <br/>
+  Receive data from a socket. int <b>socket_poll</b> (struct pollfd *fds,
+    unsigned long nfds, int64_t timeout_ns)
+  <br/>
+  <b>bool</b> <b>socket_is_would_block_error</b> (int <b>error_code</b>)
+  <br/>
+  Check if error code indicates
+    <i>would</i>block&quot;<i>(non-blocking</i>socket<i>would</i>wait).<i></i>
+    <b>bool</b> <b>socket_is_invalid_socket_error</b> (int <b>error_code</b>)
+  <br/>
+  Check if error code indicates a closed/invalid socket. const char *
+    <b>socket_get_error_string</b> (void)
+  <br/>
+  Get last socket error as string. int <b>socket_get_last_error</b> (void)
+  <br/>
+  Get last socket error code. <b>asciichat_error_t</b> <b>h265_encode</b>
+    (<b>h265_encoder_t</b> *encoder, const <b>video_frame_t</b> *<b>frame</b>,
+    <b>uint8_t</b> *out_data, size_t *out_len)
+  <br/>
+  void <b>h265_encoder_destroy</b> (<b>h265_encoder_t</b> *encoder)
+  <br/>
+  <b>asciichat_error_t</b> <b>h265_encoder_flush</b> (<b>h265_encoder_t</b>
+    *encoder, <b>uint8_t</b> *out_data, size_t *out_len)
+  <br/>
+  void <b>h265_encoder_request_keyframe</b> (<b>h265_encoder_t</b> *encoder)
+  <br/>
+  void <b>audio_analysis_destroy</b> (void)
+  <br/>
+  Cleanup audio analysis. void <b>audio_analysis_print_report</b> (void)
+  <br/>
+  Print audio analysis report. void <b>audio_analysis_track_received_packet</b>
+    (<b>uint32_t</b> timestamp)
+  <br/>
+  void <b>audio_analysis_track_sent_packet</b> (<b>uint32_t</b> timestamp)
+  <br/>
+  void <b>audio_analysis_track_sent_sample</b> (float sample)
+  <br/>
+  Track sent audio sample. void <b>audio_analysis_init</b> (void)
+  <br/>
+  Initialize audio analysis. void <b>audio_analysis_track_received_sample</b>
+    (float sample)
+  <br/>
+  Track received audio sample. size_t <b>audio_ring_buffer_available_read</b>
+    (<b>audio_ring_buffer_t</b> *rb)
+  <br/>
+  Get number of samples available for reading. void <b>audio_set_pipeline</b>
+    (<b>audio_pipeline_t</b> *pipeline)
+  <br/>
+  <b>asciichat_error_t</b> <b>audio_write_samples</b> (void *ctx, const float
+    *samples, int count)
+  <br/>
+  <b>asciichat_error_t</b> <b>audio_read_samples</b> (void *ctx, float *buffer,
+    int count)
+  <br/>
+  <b>client_audio_pipeline_t</b> * <b>client_audio_pipeline_create</b> (void)
+  <br/>
+  void <b>client_audio_pipeline_default_config</b> (void)
+  <br/>
+  Get default configuration. void <b>client_audio_pipeline_destroy</b>
+    (<b>client_audio_pipeline_t</b> *pipeline)
+  <br/>
+  Destroy a client audio pipeline. void <b>client_audio_pipeline_capture</b>
+    (<b>client_audio_pipeline_t</b> *pipeline, const float *samples, size_t
+    count)
+  <br/>
+  void <b>client_audio_pipeline_playback</b> (<b>client_audio_pipeline_t</b>
+    *pipeline, const float *samples, size_t count)
+  <br/>
+  <b>asciichat_error_t</b> <b>acip_send_image_frame</b> (<b>acip_transport_t</b>
+    *transport, const void *pixel_data, <b>uint32_t</b> width, <b>uint32_t</b>
+    height, <b>uint32_t</b> pixel_format)
+  <br/>
+  Send image frame to server (client &#x2192; server). <b>asciichat_error_t</b>
+    <b>acip_client_receive_and_dispatch</b> (void *transport)
+  <br/>
+  void <b>acip_transport_destroy</b> (<b>acip_transport_t</b> *transport)
+  <br/>
+  Destroy transport and free all resources. <b>acip_transport_t</b> *
+    <b>acip_tcp_transport_create</b> (const char *name, <b>socket_t</b> sockfd,
+    <b>crypto_context_t</b> *crypto_ctx)
+  <br/>
+  Create TCP transport from existing socket. <b>asciichat_error_t</b>
+    <b>connection_attempt_tcp</b> (const char *address, int port,
+    <b>tcp_client_t</b> **out_client)
+  <br/>
+  <b>bool</b> <b>wav_dump_enabled</b> (void)
+  <br/>
+  Check if audio dumping is enabled via environment. void *
+    <b>wav_writer_open</b> (const char *path)
+  <br/>
+  void <b>wav_writer_write</b> (void *wav, const float *samples, size_t count)
+  <br/>
+  void <b>wav_writer_close</b> (void *wav)
+  <br/>
+  void <b>webrtc_peer_manager_handle_sdp</b> (<b>webrtc_peer_manager_t</b> *mgr,
+    const char *sdp)
+  <br/>
+  int <b>webrtc_peer_manager_handle_ice</b> (<b>webrtc_peer_manager_t</b> *mgr,
+    const char *candidate)
+  <br/>
+  void <b>lifecycle_destroy_commit</b> (<b>lifecycle_t</b> *lc)
+  <br/>
+  <b>bool</b> <b>lifecycle_destroy_once</b> (<b>lifecycle_t</b> *lc)
+  <br/>
+  <b>bool</b> <b>lifecycle_reset</b> (<b>lifecycle_t</b> *lc)
+  <br/>
+  void <b>acds_client_config_init_defaults</b> (<b>acds_client_config_t</b>
+    *config)
+  <br/>
+  Initialize ACDS client configuration with defaults. <b>acds_client_t</b> *
+    <b>acds_client_connect</b> (const <b>acds_client_config_t</b> *config, void
+    *ctx)
+  <br/>
+  void <b>acds_client_disconnect</b> (<b>acds_client_t</b> *client)
+  <br/>
+  Disconnect from ACDS server. void * <b>acds_session_lookup</b>
+    (<b>acds_client_t</b> *client, const char *session_string)
+  <br/>
+  <b>asciichat_error_t</b> <b>parse_private_key</b> (const char *key_data,
+    size_t key_len)
+  <br/>
+  <b>bool</b> <b>validate_ssh_key_file</b> (const char *path)
+  <br/>
+  Validate SSH key file before parsing. int <b>discovery_keys_verify</b> (const
+    <b>uint8_t</b> *data, size_t len)
+  <br/>
+  void <b>pubkey_to_hex</b> (const <b>uint8_t</b> pubkey[32], char hex_out[65])
+  <br/>
+  Convert Ed25519 public key to hex string. <b>asciichat_error_t</b>
+    <b>thread_pool_spawn</b> (void *<b>pool</b>, void *(*thread_func)(void *),
+    void *thread_arg, int stop_id, const char *name)
+  <br/>
+  Spawn a worker thread in the pool. <b>asciichat_error_t</b>
+    <b>thread_pool_stop_all</b> (void *<b>pool</b>)
+  <br/>
+  Stop all threads in the pool in stop_id order. <b>bool</b>
+    <b>platform_is_interactive</b> (void)
+  <br/>
+  Check if interactive prompting is available.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Comprehensive stubs for WASM build - network, encoding,
+  analysis.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>comprehensive.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_void_acds_client_config_t"><a class="permalink" href="#typedef_void_acds_client_config_t">typedef
+  void acds_client_config_t</a></h2>
+<p class="Pp">Definition at line <b>23</b> of file <b>comprehensive.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="typedef_void_acds_client_t"><a class="permalink" href="#typedef_void_acds_client_t">typedef
+  void acds_client_t</a></h2>
+<p class="Pp">Definition at line <b>24</b> of file <b>comprehensive.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_audio_pipeline_"><a class="permalink" href="#typedef_struct_audio_pipeline_">typedef
+  struct audio_pipeline <b>audio_pipeline_t</b></a></h2>
+<p class="Pp">Definition at line <b>139</b> of file <b>comprehensive.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
+  struct <b>audio_ring_buffer</b> <b>audio_ring_buffer_t</b></a></h2>
+<p class="Pp">Definition at line <b>138</b> of file <b>comprehensive.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_client_audio_pipeline_client_audio_pipeline_t"><a class="permalink" href="#typedef_struct_client_audio_pipeline_client_audio_pipeline_t">typedef
+  struct client_audio_pipeline client_audio_pipeline_t</a></h2>
+<p class="Pp">Definition at line <b>140</b> of file <b>comprehensive.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef void <b>h265_encoder_t</b></h2>
+<p class="Pp">Definition at line <b>21</b> of file <b>comprehensive.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef void <b>tcp_client_t</b></h2>
+<p class="Pp">Definition at line <b>220</b> of file <b>comprehensive.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="typedef_void_video_frame_t"><a class="permalink" href="#typedef_void_video_frame_t">typedef
+  void video_frame_t</a></h2>
+<p class="Pp">Definition at line <b>22</b> of file <b>comprehensive.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef void <b>webrtc_peer_manager_t</b></h2>
+<p class="Pp">Definition at line <b>254</b> of file <b>comprehensive.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_acds_client_config_init_defaults_("><a class="permalink" href="#void_acds_client_config_init_defaults_(">void
+  acds_client_config_init_defaults (<b>acds_client_config_t</b> *
+  config)</a></h2>
+<p class="Pp">Initialize ACDS client configuration with defaults. Sets default
+    values:</p>
+<ul class="Bl-bullet">
+  <li>server_address: &quot;127.0.0.1&quot;</li>
+  <li>server_port: 27225</li>
+  <li>timeout_ms: 5000</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Configuration to
+  initialize</b></div>
+<p class="Pp">Definition at line <b>285</b> of file <b>comprehensive.c</b>.</p>
+<pre>285                                                                     {
+286   (void)config;
+287 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>acds_client_t</b> * acds_client_connect (const
+  <b>acds_client_config_t</b> * config, void * ctx)</h2>
+<p class="Pp">Definition at line <b>289</b> of file <b>comprehensive.c</b>.</p>
+<pre>289                                                                                   {
+290   (void)config;
+291   (void)ctx;
+292   return NULL;
+293 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_acds_client_disconnect_("><a class="permalink" href="#void_acds_client_disconnect_(">void
+  acds_client_disconnect (<b>acds_client_t</b> * client)</a></h2>
+<p class="Pp">Disconnect from ACDS server. Closes the connection and cleans up
+    resources.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>client</i> Client handle</div>
+<p class="Pp">Definition at line <b>295</b> of file <b>comprehensive.c</b>.</p>
+<pre>295                                                    {
+296   (void)client;
+297 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_*_acds_session_lookup_("><a class="permalink" href="#void_*_acds_session_lookup_(">void
+  * acds_session_lookup (<b>acds_client_t</b> * client, const char *
+  session_string)</a></h2>
+<p class="Pp">Definition at line <b>299</b> of file <b>comprehensive.c</b>.</p>
+<pre>299                                                                              {
+300   (void)client;
+301   (void)session_string;
+302   return NULL;
+303 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> acip_client_receive_and_dispatch (void *
+  transport)</h2>
+<p class="Pp">Definition at line <b>202</b> of file <b>comprehensive.c</b>.</p>
+<pre>202                                                                     {
+203   (void)transport;
+204   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;ACIP not supported in WASM&quot;);
+205 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_NOT_SUPPORTED</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> acip_send_image_frame
+  (<b>acip_transport_t</b> * transport, const void * pixel_data, <b>uint32_t</b>
+  width, <b>uint32_t</b> height, <b>uint32_t</b> pixel_format)</h2>
+<p class="Pp">Send image frame to server (client &#x2192; server). Sends webcam
+    video frame as RGB24 pixel data.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance
+<br/>
+<i>pixel_data</i> RGB24 pixel data (width * height * 3 bytes)
+<br/>
+<i>width</i> Frame width in pixels
+<br/>
+<i>height</i> Frame height in pixels
+<br/>
+<i>pixel_format</i> Pixel format (e.g., RGB24)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>192</b> of file <b>comprehensive.c</b>.</p>
+<pre>193                                                                                 {
+194   (void)transport;
+195   (void)pixel_data;
+196   (void)width;
+197   (void)height;
+198   (void)pixel_format;
+199   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;ACIP not supported in WASM&quot;);
+200 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_NOT_SUPPORTED</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>acip_transport_t</b> * acip_tcp_transport_create (const char *
+  name, <b>socket_t</b> sockfd, <b>crypto_context_t</b> * crypto_ctx)</h2>
+<p class="Pp">Create TCP transport from existing socket.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name</i> Debug name for tracking this transport
+  (required, e.g., &quot;transport_client_5&quot;)
+<br/>
+<i>sockfd</i> Connected socket descriptor
+<br/>
+<i>crypto_ctx</i> Optional crypto context (may be NULL)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Transport instance or NULL on error</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller retains socket ownership (transport doesn't close
+  on destroy)</div>
+<p class="Pp">Definition at line <b>211</b> of file <b>comprehensive.c</b>.</p>
+<pre>211                                                                                                              {
+212   (void)name;
+213   (void)sockfd;
+214   (void)crypto_ctx;
+215   return NULL;
+216 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_acip_transport_destroy_("><a class="permalink" href="#void_acip_transport_destroy_(">void
+  acip_transport_destroy (<b>acip_transport_t</b> * transport)</a></h2>
+<p class="Pp">Destroy transport and free all resources.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport to destroy (may be NULL)</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Calls close() first if still connected
+<p class="Pp"></p>
+<p class="Pp">Frees the transport structure itself</p>
+<p class="Pp"></p>
+<p class="Pp">Safe to pass NULL</p>
+</div>
+<p class="Pp">Definition at line <b>207</b> of file <b>comprehensive.c</b>.</p>
+<pre>207                                                          {
+208   (void)transport;
+209 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_audio_analysis_destroy_(void_)"><a class="permalink" href="#void_audio_analysis_destroy_(void_)">void
+  audio_analysis_destroy (void )</a></h2>
+<p class="Pp">Cleanup audio analysis.</p>
+<p class="Pp">Definition at line <b>111</b> of file <b>comprehensive.c</b>.</p>
+<pre>111                                   {
+112 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_audio_analysis_init_(void_)"><a class="permalink" href="#void_audio_analysis_init_(void_)">void
+  audio_analysis_init (void )</a></h2>
+<p class="Pp">Initialize audio analysis.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Definition at line <b>129</b> of file <b>comprehensive.c</b>.</p>
+<pre>129                                {
+130 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_audio_analysis_print_report_(void_)"><a class="permalink" href="#void_audio_analysis_print_report_(void_)">void
+  audio_analysis_print_report (void )</a></h2>
+<p class="Pp">Print audio analysis report.</p>
+<p class="Pp">Definition at line <b>114</b> of file <b>comprehensive.c</b>.</p>
+<pre>114                                        {
+115 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_audio_analysis_track_received_packet_("><a class="permalink" href="#void_audio_analysis_track_received_packet_(">void
+  audio_analysis_track_received_packet (<b>uint32_t</b> timestamp)</a></h2>
+<p class="Pp">Definition at line <b>117</b> of file <b>comprehensive.c</b>.</p>
+<pre>117                                                               {
+118   (void)timestamp;
+119 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_audio_analysis_track_received_sample_(float_sample)"><a class="permalink" href="#void_audio_analysis_track_received_sample_(float_sample)">void
+  audio_analysis_track_received_sample (float sample)</a></h2>
+<p class="Pp">Track received audio sample.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>sample</i> Audio sample value</div>
+<p class="Pp">Definition at line <b>132</b> of file <b>comprehensive.c</b>.</p>
+<pre>132                                                         {
+133   (void)sample;
+134 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_audio_analysis_track_sent_packet_("><a class="permalink" href="#void_audio_analysis_track_sent_packet_(">void
+  audio_analysis_track_sent_packet (<b>uint32_t</b> timestamp)</a></h2>
+<p class="Pp">Definition at line <b>121</b> of file <b>comprehensive.c</b>.</p>
+<pre>121                                                           {
+122   (void)timestamp;
+123 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_audio_analysis_track_sent_sample_(float_sample)"><a class="permalink" href="#void_audio_analysis_track_sent_sample_(float_sample)">void
+  audio_analysis_track_sent_sample (float sample)</a></h2>
+<p class="Pp">Track sent audio sample.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>sample</i> Audio sample value</div>
+<p class="Pp">Definition at line <b>125</b> of file <b>comprehensive.c</b>.</p>
+<pre>125                                                     {
+126   (void)sample;
+127 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> audio_read_samples (void * ctx, float *
+  buffer, int count)</h2>
+<p class="Pp">Definition at line <b>158</b> of file <b>comprehensive.c</b>.</p>
+<pre>158                                                                           {
+159   (void)ctx;
+160   (void)buffer;
+161   (void)count;
+162   return ASCIICHAT_OK;
+163 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_audio_set_pipeline_("><a class="permalink" href="#void_audio_set_pipeline_(">void
+  audio_set_pipeline (<b>audio_pipeline_t</b> * pipeline)</a></h2>
+<p class="Pp">Definition at line <b>147</b> of file <b>comprehensive.c</b>.</p>
+<pre>147                                                     {
+148   (void)pipeline;
+149 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> audio_write_samples (void * ctx, const
+  float * samples, int count)</h2>
+<p class="Pp">Definition at line <b>151</b> of file <b>comprehensive.c</b>.</p>
+<pre>151                                                                                   {
+152   (void)ctx;
+153   (void)samples;
+154   (void)count;
+155   return ASCIICHAT_OK;
+156 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_client_audio_pipeline_capture_("><a class="permalink" href="#void_client_audio_pipeline_capture_(">void
+  client_audio_pipeline_capture (<b>client_audio_pipeline_t</b> * pipeline,
+  const float * samples, size_t count)</a></h2>
+<p class="Pp">Definition at line <b>178</b> of file <b>comprehensive.c</b>.</p>
+<pre>178                                                                                                           {
+179   (void)pipeline;
+180   (void)samples;
+181   (void)count;
+182 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>client_audio_pipeline_t</b> * client_audio_pipeline_create
+  (void )</h2>
+<p class="Pp">Definition at line <b>167</b> of file <b>comprehensive.c</b>.</p>
+<pre>167                                                             {
+168   return NULL;
+169 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>audio_client_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_client_audio_pipeline_default_config_(void_)"><a class="permalink" href="#void_client_audio_pipeline_default_config_(void_)">void
+  client_audio_pipeline_default_config (void )</a></h2>
+<p class="Pp">Get default configuration.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Configuration with sensible defaults for voice chat</div>
+<p class="Pp">Definition at line <b>171</b> of file <b>comprehensive.c</b>.</p>
+<pre>171                                                 {
+172 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_client_audio_pipeline_destroy_("><a class="permalink" href="#void_client_audio_pipeline_destroy_(">void
+  client_audio_pipeline_destroy (<b>client_audio_pipeline_t</b> *
+  pipeline)</a></h2>
+<p class="Pp">Destroy a client audio pipeline.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pipeline</i> Pipeline to destroy (can be NULL)</div>
+<p class="Pp">Frees all resources including SpeexDSP states, Opus codec, and all
+    work buffers.</p>
+<p class="Pp">Definition at line <b>174</b> of file <b>comprehensive.c</b>.</p>
+<pre>174                                                                       {
+175   (void)pipeline;
+176 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_client_audio_pipeline_playback_("><a class="permalink" href="#void_client_audio_pipeline_playback_(">void
+  client_audio_pipeline_playback (<b>client_audio_pipeline_t</b> * pipeline,
+  const float * samples, size_t count)</a></h2>
+<p class="Pp">Definition at line <b>184</b> of file <b>comprehensive.c</b>.</p>
+<pre>184                                                                                                            {
+185   (void)pipeline;
+186   (void)samples;
+187   (void)count;
+188 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> connection_attempt_tcp (const char *
+  address, int port, <b>tcp_client_t</b> ** out_client)</h2>
+<p class="Pp">Definition at line <b>222</b> of file <b>comprehensive.c</b>.</p>
+<pre>222                                                                                                    {
+223   (void)address;
+224   (void)port;
+225   (void)out_client;
+226   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;TCP not supported in WASM&quot;);
+227 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_NOT_SUPPORTED</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_discovery_keys_verify_(const_"><a class="permalink" href="#int_discovery_keys_verify_(const_">int
+  discovery_keys_verify (const <b>uint8_t</b> * data, size_t len)</a></h2>
+<p class="Pp">Definition at line <b>318</b> of file <b>comprehensive.c</b>.</p>
+<pre>318                                                            {
+319   (void)data;
+320   (void)len;
+321   return 1;
+322 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> h265_encode (<b>h265_encoder_t</b> *
+  encoder, const <b>video_frame_t</b> * frame, <b>uint8_t</b> * out_data, size_t
+  * out_len)</h2>
+<p class="Pp">Definition at line <b>86</b> of file <b>comprehensive.c</b>.</p>
+<pre>86                                                                                                                        {
+87   (void)encoder;
+88   (void)frame;
+89   (void)out_data;
+90   (void)out_len;
+91   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;H.265 encoding not supported in WASM&quot;);
+92 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_NOT_SUPPORTED</b>, <b>frame</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_image_frame_h265()</b>,
+    <b>h265_client_capture_and_encode()</b>, and
+    <b>threaded_send_image_frame_h265()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_h265_encoder_destroy_("><a class="permalink" href="#void_h265_encoder_destroy_(">void
+  h265_encoder_destroy (<b>h265_encoder_t</b> * encoder)</a></h2>
+<p class="Pp">Destroy an x265 encoder</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>encoder</i> Encoder to destroy (may be NULL)</div>
+<p class="Pp">Definition at line <b>94</b> of file <b>comprehensive.c</b>.</p>
+<pre>94                                                    {
+95   (void)encoder;
+96 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>h265_client_context_create()</b>, and
+    <b>h265_client_context_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> h265_encoder_flush
+  (<b>h265_encoder_t</b> * encoder, <b>uint8_t</b> * output_buf, size_t *
+  output_size)</h2>
+<p class="Pp">Flush remaining buffered frames from encoder</p>
+<p class="Pp"></p>
+<p class="Pp">Sends a NULL frame to the encoder to flush all buffered frames.
+    This should be called before destroying the encoder or when you need to
+    ensure all encoded data is retrieved.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>encoder</i> Encoder handle
+<br/>
+<i>output_buf</i> Buffer for encoded output
+<br/>
+<i>output_size</i> Input: buffer size, Output: actual encoded size</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Error code (ASCIICHAT_OK on success, ASCIICHAT_OK with
+  size=0 when no more data)</div>
+<p class="Pp">USAGE: // After final <b>h265_encode()</b> call, flush remaining
+    frames while (size &gt; 0) { size = max_size; h265_encoder_flush(encoder,
+    buf, &amp;size); if (size &gt; 0) { // Send the flushed frame... } }</p>
+<p class="Pp">Definition at line <b>98</b> of file <b>comprehensive.c</b>.</p>
+<pre>98                                                                                                   {
+99   (void)encoder;
+100   (void)out_data;
+101   (void)out_len;
+102   return ASCIICHAT_OK;
+103 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
+<p class="Pp">Referenced by <b>protocol_stop_connection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_h265_encoder_request_keyframe_("><a class="permalink" href="#void_h265_encoder_request_keyframe_(">void
+  h265_encoder_request_keyframe (<b>h265_encoder_t</b> * encoder)</a></h2>
+<p class="Pp">Request a keyframe on the next encode</p>
+<p class="Pp"></p>
+<p class="Pp">Forces the encoder to produce an I-frame (keyframe) on the next
+    call to h265_encoder_encode(). Useful for error recovery or stream
+    synchronization.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>encoder</i> Encoder handle</div>
+<p class="Pp">Definition at line <b>105</b> of file <b>comprehensive.c</b>.</p>
+<pre>105                                                             {
+106   (void)encoder;
+107 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>h265_client_request_keyframe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_lifecycle_destroy_commit_("><a class="permalink" href="#void_lifecycle_destroy_commit_(">void
+  lifecycle_destroy_commit (<b>lifecycle_t</b> * lc)</a></h2>
+<p class="Pp">Commit successful destruction: DESTROYING &#x2192; UNINITIALIZED.
+    Call this after <b>lifecycle_destroy_once()</b> returns true and destroy
+    work completes.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state</div>
+<p class="Pp">Returns the module to UNINITIALIZED state, allowing future
+    re-initialization.</p>
+<p class="Pp">Definition at line <b>269</b> of file <b>comprehensive.c</b>.</p>
+<pre>269                                                {
+270   (void)lc;
+271 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> lifecycle_destroy_once (<b>lifecycle_t</b> * lc)</h2>
+<p class="Pp">Lock-free concurrent destruction: CAS INITIALIZED &#x2192;
+    DESTROYING.</p>
+<p class="Pp"></p>
+<p class="Pp">Winner receives true and must complete the two-phase sequence:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Do actual destroy work</dd>
+  <dt>2.</dt>
+  <dd>Call <b>lifecycle_destroy_commit()</b> on completion</dd>
+</dl>
+<p class="Pp">Losing callers return false and should skip cleanup work. Once
+    destruction begins, no further operations are possible until the winner
+    completes.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if THIS caller won the destroy race and should do
+  work
+<p class="Pp"></p>
+<p class="Pp">false if not INITIALIZED, already being destroyed, or in DEAD
+    state</p>
+</div>
+<p class="Pp">Safe for concurrent callers. Exactly one caller gets true (the CAS
+    winner). Prevents double-join and other double-cleanup issues when multiple
+    threads call cleanup functions concurrently.</p>
+<p class="Pp">Definition at line <b>273</b> of file <b>comprehensive.c</b>.</p>
+<pre>273                                              {
+274   (void)lc;
+275   return true;
+276 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> lifecycle_reset (<b>lifecycle_t</b> * lc)</h2>
+<p class="Pp">Reset initialized module: INITIALIZED &#x2192; UNINITIALIZED.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>lc</i> lifecycle state (may include sync_type and sync
+  pointer)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if THIS caller should do reset work
+<p class="Pp"></p>
+<p class="Pp">false if not INITIALIZED or in DEAD state</p>
+</div>
+<p class="Pp">Allows re-initialization after reset (like shutdown, but keeps
+    sync primitives). If lc-&gt;sync_type != SYNC_NONE, destroys the sync
+    primitive (will be recreated on next init). Used for modules that support
+    reset/reinit cycles (e.g., client crypto reconnect).</p>
+<p class="Pp">Definition at line <b>278</b> of file <b>comprehensive.c</b>.</p>
+<pre>278                                       {
+279   (void)lc;
+280   return true;
+281 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> parse_private_key (const char *
+  key_data, size_t key_len)</h2>
+<p class="Pp">Definition at line <b>307</b> of file <b>comprehensive.c</b>.</p>
+<pre>307                                                                           {
+308   (void)key_data;
+309   (void)key_len;
+310   return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Private key parsing not supported in WASM&quot;);
+311 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_CRYPTO_KEY</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_pubkey_to_hex_(const_"><a class="permalink" href="#void_pubkey_to_hex_(const_">void
+  pubkey_to_hex (const <b>uint8_t</b> pubkey[32], char hex_out[65])</a></h2>
+<p class="Pp">Convert Ed25519 public key to hex string. Converts 32-byte binary
+    pubkey to lowercase hex (64 characters).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pubkey</i> Binary public key (32 bytes)
+<br/>
+<i>hex_out</i> Output hex string buffer (must be at least 65 bytes)</div>
+<p class="Pp">Definition at line <b>324</b> of file <b>comprehensive.c</b>.</p>
+<pre>324                                                                {
+325   (void)pubkey;
+326   if (hex_out) {
+327     hex_out[0] = '\0';
+328   }
+329 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_socket_poll_(struct_pollfd_*_fds,_unsigned_long_nfds,_int64_t_timeout_ns)"><a class="permalink" href="#int_socket_poll_(struct_pollfd_*_fds,_unsigned_long_nfds,_int64_t_timeout_ns)">int
+  socket_poll (struct pollfd * fds, unsigned long nfds, int64_t
+  timeout_ns)</a></h2>
+<p class="Pp">Definition at line <b>59</b> of file <b>comprehensive.c</b>.</p>
+<pre>59                                                                             {
+60   (void)fds;
+61   (void)nfds;
+62   (void)timeout_ns;
+63   return 0;
+64 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>accept_with_timeout()</b>,
+    <b>discovery_session_process()</b>, <b>recv_with_timeout()</b>, and
+    <b>send_with_timeout()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> thread_pool_spawn (<b>thread_pool_t</b>
+  * pool, void *(* thread_func )(void *), void * thread_arg, int stop_id, const
+  char * thread_name)</h2>
+<p class="Pp">Spawn a worker thread in the pool. Creates and tracks a new worker
+    thread with optional ordered cleanup. Threads are inserted into the pool's
+    linked list in sorted order by stop_id (ascending). When the pool is
+    stopped, threads with lower stop_id values are stopped first.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Stop ID Ordering Guidelines:</b></p>
+<ul class="Bl-bullet">
+  <li>stop_id &lt; 0: Unordered (stopped last, order undefined)</li>
+  <li>stop_id = 0: General background workers</li>
+  <li>stop_id = 1: Data source threads (e.g., receive, capture)</li>
+  <li>stop_id = 2: Processing threads (e.g., render, encode)</li>
+  <li>stop_id = 3: Data sink threads (e.g., send, write)</li>
+</ul>
+<p class="Pp"><b>Example (Server Per-Client Threads):</b></p>
+<ul class="Bl-bullet">
+  <li>stop_id=1: Receive thread (stop first to prevent new data)</li>
+  <li>stop_id=2: Render threads (stop after receive)</li>
+  <li>stop_id=3: Send thread (stop last after all processing)</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>pool</b><i></i><b> Thread pool to spawn
+  into</b>
+<br/>
+<i>thread_func</i> Thread function to execute
+<br/>
+<i>thread_arg</i> Argument passed to thread function
+<br/>
+<i>stop_id</i> Cleanup order (-1=unordered, 0+=ordered)
+<br/>
+<i>thread_name</i> Thread name for debugging (max 63 chars,
+  NULL=auto-generate)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>336</b> of file <b>comprehensive.c</b>.</p>
+<pre>336                                                                                                                                {
+337   (void)pool;
+338   (void)thread_func;
+339   (void)thread_arg;
+340   (void)stop_id;
+341   (void)name;
+342   return ASCIICHAT_OK;  // No-op in WASM (no real threads)
+343 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, and <b>pool</b>.</p>
+<p class="Pp">Referenced by <b>acds_server_init()</b>,
+    <b>audio_sender_init()</b>, <b>audio_start_thread()</b>,
+    <b>capture_start_thread()</b>, <b>keepalive_start_thread()</b>,
+    <b>protocol_start_connection()</b>, <b>server_main()</b>, and
+    <b>tcp_server_spawn_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> thread_pool_stop_all
+  (<b>thread_pool_t</b> * pool)</h2>
+<p class="Pp">Stop all threads in the pool in stop_id order. Joins all threads
+    in ascending stop_id order (lower values first). Threads with negative
+    stop_id are stopped last in undefined order. This function blocks until all
+    threads have exited.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Shutdown Sequence:</b></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Threads with stop_id &gt;= 0 are joined in ascending order</dd>
+  <dt>2.</dt>
+  <dd>Threads with stop_id &lt; 0 are joined in any order</dd>
+  <dt>3.</dt>
+  <dd>All thread entries are freed</dd>
+</dl>
+<p class="Pp">After this call, the pool is empty but still valid - you can spawn
+    new threads or destroy the pool.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>pool</b><i></i><b> Thread pool to
+  stop</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>345</b> of file <b>comprehensive.c</b>.</p>
+<pre>345                                                    {
+346   (void)pool;
+347   return ASCIICHAT_OK;  // No-op in WASM
+348 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, and <b>pool</b>.</p>
+<p class="Pp">Referenced by <b>protocol_stop_connection()</b>, and
+    <b>tcp_server_stop_client_threads()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> wav_dump_enabled (void )</h2>
+<p class="Pp">Check if audio dumping is enabled via environment.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if ASCIICHAT_DUMP_AUDIO=1</div>
+<p class="Pp">Definition at line <b>233</b> of file <b>comprehensive.c</b>.</p>
+<pre>233                             {
+234   return false;
+235 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_wav_writer_close_(void_*_wav)"><a class="permalink" href="#void_wav_writer_close_(void_*_wav)">void
+  wav_writer_close (void * wav)</a></h2>
+<p class="Pp">Definition at line <b>248</b> of file <b>comprehensive.c</b>.</p>
+<pre>248                                  {
+249   (void)wav;
+250 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_*_wav_writer_open_(const_char_*_path)"><a class="permalink" href="#void_*_wav_writer_open_(const_char_*_path)">void
+  * wav_writer_open (const char * path)</a></h2>
+<p class="Pp">Definition at line <b>237</b> of file <b>comprehensive.c</b>.</p>
+<pre>237                                         {
+238   (void)path;
+239   return NULL;
+240 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_wav_writer_write_(void_*_wav,_const_float_*_samples,_size_t_count)"><a class="permalink" href="#void_wav_writer_write_(void_*_wav,_const_float_*_samples,_size_t_count)">void
+  wav_writer_write (void * wav, const float * samples, size_t count)</a></h2>
+<p class="Pp">Definition at line <b>242</b> of file <b>comprehensive.c</b>.</p>
+<pre>242                                                                      {
+243   (void)wav;
+244   (void)samples;
+245   (void)count;
+246 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_webrtc_peer_manager_handle_ice_("><a class="permalink" href="#int_webrtc_peer_manager_handle_ice_(">int
+  webrtc_peer_manager_handle_ice (<b>webrtc_peer_manager_t</b> * mgr, const char
+  * candidate)</a></h2>
+<p class="Pp">Definition at line <b>261</b> of file <b>comprehensive.c</b>.</p>
+<pre>261                                                                                       {
+262   (void)mgr;
+263   (void)candidate;
+264   return -1;
+265 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_webrtc_peer_manager_handle_sdp_("><a class="permalink" href="#void_webrtc_peer_manager_handle_sdp_(">void
+  webrtc_peer_manager_handle_sdp (<b>webrtc_peer_manager_t</b> * mgr, const char
+  * sdp)</a></h2>
+<p class="Pp">Definition at line <b>256</b> of file <b>comprehensive.c</b>.</p>
+<pre>256                                                                                  {
+257   (void)mgr;
+258   (void)sdp;
+259 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.4</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

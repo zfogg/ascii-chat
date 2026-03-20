@@ -73,6 +73,19 @@
     <b>action_check_update_immediate</b> (void)
   <br/>
   Execute update check immediately (for binary-level execution).
+    <b>asciichat_error_t</b> <b>platform_enable_keepawake</b> (void)
+  <br/>
+  Enable system sleep prevention (keepawake mode). void
+    <b>platform_disable_keepawake</b> (void)
+  <br/>
+  Disable system sleep prevention (allow OS to sleep).
+    keyboard_line_edit_result_t <b>keyboard_read_line_interactive</b>
+    (keyboard_line_edit_opts_t *opts)
+  <br/>
+  keyboard_key_t <b>keyboard_read_nonblocking</b> (void)
+  <br/>
+  void <b>keyboard_destroy</b> (void)
+  <br/>
   <br/>
 </p>
 </section>
@@ -279,6 +292,47 @@
 42 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_keyboard_destroy_(void_)"><a class="permalink" href="#void_keyboard_destroy_(void_)">void
+  keyboard_destroy (void )</a></h2>
+<p class="Pp">Definition at line <b>81</b> of file
+    <b>platform/wasm/stubs/actions.c</b>.</p>
+<pre>81                             {
+82   // No-op - no keyboard to destroy in WASM
+83 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
+    <b>display_cleanup()</b>, <b>session_render_loop()</b>, and
+    <b>ui_status_display_interactive()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="keyboard_line_edit_result_t_keyboard_read_line_interactive_(keyboard_line_edit_opts_t_*_opts)"><a class="permalink" href="#keyboard_line_edit_result_t_keyboard_read_line_interactive_(keyboard_line_edit_opts_t_*_opts)">keyboard_line_edit_result_t
+  keyboard_read_line_interactive (keyboard_line_edit_opts_t * opts)</a></h2>
+<p class="Pp">Definition at line <b>72</b> of file
+    <b>platform/wasm/stubs/actions.c</b>.</p>
+<pre>72                                                                                             {
+73   (void)opts;
+74   return LINE_EDIT_NO_INPUT;  // No input available in WASM
+75 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>log_search_handle_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="keyboard_key_t_keyboard_read_nonblocking_(void_)"><a class="permalink" href="#keyboard_key_t_keyboard_read_nonblocking_(void_)">keyboard_key_t
+  keyboard_read_nonblocking (void )</a></h2>
+<p class="Pp">Definition at line <b>77</b> of file
+    <b>platform/wasm/stubs/actions.c</b>.</p>
+<pre>77                                                {
+78   return KEY_NONE;  // No input available in WASM
+79 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>display_render_frame()</b>,
+    <b>session_pipeline_run_main()</b>, <b>session_render_loop()</b>, and
+    <b>ui_status_display_interactive()</b>.</p>
 </section>
 </section>
 <section class="Sh">

@@ -219,18 +219,11 @@
 364 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>h265_encoder::codec_ctx</b>,
-    <b>h265_encoder::current_height</b>, <b>h265_encoder::current_width</b>,
-    <b>EAGAIN</b>, <b>ERROR_INTERNAL</b>, <b>ERROR_MEDIA_DECODE</b>,
-    <b>ERROR_NETWORK_SIZE</b>, <b>h265_encoder::frame</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>EAGAIN</b>,
+    <b>ERROR_INTERNAL</b>, <b>ERROR_MEDIA_DECODE</b>, <b>ERROR_NETWORK_SIZE</b>,
     <b>H265_ENCODER_FLAG_KEYFRAME</b>, <b>H265_ENCODER_FLAG_SIZE_CHANGE</b>,
-    <b>h265_encoder::keyframes</b>, <b>log_debug</b>, <b>log_dev</b>,
-    <b>log_error</b>, <b>h265_encoder::packet</b>,
-    <b>h265_encoder::request_keyframe</b>, <b>SET_ERRNO</b>,
-    <b>h265_encoder::total_frames</b>, and <b>h265_encoder::yuv_buf</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_image_frame_h265()</b>,
-    <b>h265_client_capture_and_encode()</b>, and
-    <b>threaded_send_image_frame_h265()</b>.</p>
+    <b>log_debug</b>, <b>log_dev</b>, <b>log_error</b>, and
+  <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>h265_encoder_t</b> * h265_encoder_create (<b>uint16_t</b>
@@ -357,14 +350,10 @@
 149 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>h265_encoder::codec_ctx</b>,
-    <b>h265_encoder::current_height</b>, <b>h265_encoder::current_width</b>,
-    <b>ERROR_MEDIA_INIT</b>, <b>ERROR_MEMORY</b>, <b>h265_encoder::frame</b>,
+<p class="Pp">References <b>ERROR_MEDIA_INIT</b>, <b>ERROR_MEMORY</b>,
     <b>log_info</b>, <b>LOG_IO</b>, <b>log_warn</b>,
-    <b>NAMED_REGISTER_H265_ENCODER</b>, <b>h265_encoder::packet</b>,
-    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
-    <b>h265_encoder::yuv_buf</b>, and <b>h265_encoder::yuv_buf_size</b>.</p>
-<p class="Pp">Referenced by <b>h265_client_context_create()</b>.</p>
+    <b>NAMED_REGISTER_H265_ENCODER</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_h265_encoder_destroy_("><a class="permalink" href="#void_h265_encoder_destroy_(">void
@@ -397,11 +386,7 @@
 171 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>h265_encoder::codec_ctx</b>,
-    <b>h265_encoder::frame</b>, <b>LOG_IO</b>, <b>h265_encoder::packet</b>,
-    <b>SAFE_FREE</b>, and <b>h265_encoder::yuv_buf</b>.</p>
-<p class="Pp">Referenced by <b>h265_client_context_create()</b>, and
-    <b>h265_client_context_destroy()</b>.</p>
+<p class="Pp">References <b>LOG_IO</b>, and <b>SAFE_FREE</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> h265_encoder_flush
@@ -497,15 +482,10 @@
 440 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>h265_encoder::codec_ctx</b>,
-    <b>h265_encoder::current_height</b>, <b>h265_encoder::current_width</b>,
-    <b>EAGAIN</b>, <b>ERROR_INTERNAL</b>, <b>ERROR_MEDIA_DECODE</b>,
-    <b>ERROR_NETWORK_SIZE</b>, <b>h265_encoder::frame</b>,
-    <b>H265_ENCODER_FLAG_KEYFRAME</b>, <b>h265_encoder::keyframes</b>,
-    <b>log_debug</b>, <b>log_dev</b>, <b>log_error</b>,
-    <b>h265_encoder::packet</b>, <b>SET_ERRNO</b>, and
-    <b>h265_encoder::total_frames</b>.</p>
-<p class="Pp">Referenced by <b>protocol_stop_connection()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>EAGAIN</b>,
+    <b>ERROR_INTERNAL</b>, <b>ERROR_MEDIA_DECODE</b>, <b>ERROR_NETWORK_SIZE</b>,
+    <b>H265_ENCODER_FLAG_KEYFRAME</b>, <b>log_debug</b>, <b>log_dev</b>,
+    <b>log_error</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_h265_encoder_get_stats_("><a class="permalink" href="#void_h265_encoder_get_stats_(">void
@@ -536,8 +516,6 @@
 453 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>h265_encoder::avg_bitrate</b>,
-    <b>h265_encoder::keyframes</b>, and <b>h265_encoder::total_frames</b>.</p>
 <p class="Pp">Referenced by <b>h265_client_get_stats()</b>.</p>
 </section>
 <section class="Ss">
@@ -559,8 +537,6 @@
 370 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>h265_encoder::request_keyframe</b>.</p>
-<p class="Pp">Referenced by <b>h265_client_request_keyframe()</b>.</p>
 </section>
 </section>
 <section class="Sh">

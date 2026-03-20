@@ -96,10 +96,10 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>cb</i> Function to call on exit signal, or NULL to
   unregister</div>
-<p class="Pp">Definition at line <b>218</b> of file <b>main.c</b>.</p>
-<pre>218                                               {
-219   g_interrupt_callback = cb;
-220 }</pre>
+<p class="Pp">Definition at line <b>137</b> of file <b>misc.c</b>.</p>
+<pre>137                                                     {
+138   (void)callback;
+139 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_main()</b>, and
@@ -155,10 +155,10 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if shutdown has been requested, false
   otherwise</div>
-<p class="Pp">Definition at line <b>202</b> of file <b>main.c</b>.</p>
-<pre>202                        {
-203   return atomic_load_bool(&amp;g_should_exit);
-204 }</pre>
+<p class="Pp">Definition at line <b>144</b> of file <b>misc.c</b>.</p>
+<pre>144                        {
+145   return false;
+146 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>, and
@@ -178,18 +178,9 @@
     callback if set. Safe to call from signal handlers (uses only atomics and
     function pointers). Called by signal handlers (SIGTERM, Ctrl+C) and normal
     code (errors, timeouts).</p>
-<p class="Pp">Definition at line <b>206</b> of file <b>main.c</b>.</p>
-<pre>206                        {
-207   // Note: This function may be called from a signal handler context where
-208   // other threads may hold mutex locks. We avoid log_console() here to prevent
-209   // deadlock (render loop holds terminal lock, signal handler can't acquire it).
-210   // The shutdown will be logged by normal thread context later.
-211   atomic_store_bool(&amp;g_should_exit, true);
-212   void (*cb)(void) = g_interrupt_callback;
-213   if (cb) {
-214     cb();
-215   }
-216 }</pre>
+<p class="Pp">Definition at line <b>141</b> of file <b>misc.c</b>.</p>
+<pre>141                        {
+142 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_bool()</b>, and

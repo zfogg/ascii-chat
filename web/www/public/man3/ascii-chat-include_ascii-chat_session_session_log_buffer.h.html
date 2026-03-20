@@ -110,18 +110,12 @@
   SESSION_LOG_BUFFER_SIZE 8192</a></h2>
 <p class="Pp">Definition at line <b>24</b> of file
     <b>include/ascii-chat/session/session_log_buffer.h</b>.</p>
-<p class="Pp">Referenced by <b>log_search_gather_and_filter_logs()</b>,
-    <b>session_log_buffer_append()</b>, <b>session_log_buffer_clear()</b>,
-    <b>session_log_buffer_get_recent()</b>, and
-  <b>terminal_screen_render()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_SESSION_LOG_LINE_MAX___1024"><a class="permalink" href="#_define_SESSION_LOG_LINE_MAX___1024">#define
   SESSION_LOG_LINE_MAX 1024</a></h2>
 <p class="Pp">Definition at line <b>25</b> of file
     <b>include/ascii-chat/session/session_log_buffer.h</b>.</p>
-<p class="Pp">Referenced by <b>log_search_gather_and_filter_logs()</b>,
-    <b>session_log_buffer_append()</b>, and <b>terminal_screen_render()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -139,13 +133,13 @@
 <div class="Bd-indent"><i>buf</i> Buffer instance (must not be NULL)
 <br/>
 <i>message</i> Log message text (already formatted with colors)</div>
-<p class="Pp">Definition at line <b>71</b> of file
+<p class="Pp">Definition at line <b>88</b> of file
     <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>71                                                                                {
-72   (void)buf;
-73   (void)message;
-74   // No-op - session log buffer not used in WASM
-75 }</pre>
+<pre>88                                                                                {
+89   (void)buf;
+90   (void)message;
+91   // No-op - session log buffer not used in WASM
+92 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_fetch_add_u64()</b>,
@@ -165,27 +159,12 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>buf</i> Buffer instance (must not be NULL)</div>
-<p class="Pp">Definition at line <b>45</b> of file
-  <b>session_log_buffer.c</b>.</p>
-<pre>45                                                          {
-46   if (!buf) {
-47     return;
-48   }
-49 
-50   mutex_lock(&amp;buf-&gt;mutex);
-51 
-52   // Reset write position and sequence
-53   atomic_store_u64(&amp;buf-&gt;write_pos, 0);
-54   atomic_store_u64(&amp;buf-&gt;sequence, 0);
-55 
-56   // Clear all entries
-57   for (size_t i = 0; i &lt; SESSION_LOG_BUFFER_SIZE; i++) {
-58     buf-&gt;entries[i].message[0] = '\0';
-59     buf-&gt;entries[i].sequence = 0;
-60   }
-61 
-62   mutex_unlock(&amp;buf-&gt;mutex);
-63 }</pre>
+<p class="Pp">Definition at line <b>83</b> of file
+    <b>platform/wasm/stubs/log.c</b>.</p>
+<pre>83                                                          {
+84   (void)buf;
+85   // No-op - session log buffer not used in WASM
+86 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_u64()</b>,
@@ -206,20 +185,11 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to new buffer instance, or NULL on allocation
   failure</div>
-<p class="Pp">Definition at line <b>23</b> of file
-  <b>session_log_buffer.c</b>.</p>
-<pre>23                                                       {
-24   session_log_buffer_t *buf = SAFE_CALLOC(1, sizeof(session_log_buffer_t), session_log_buffer_t *);
-25   if (!buf) {
-26     return NULL;
-27   }
-28 
-29   atomic_store_u64(&amp;buf-&gt;write_pos, 0);
-30   atomic_store_u64(&amp;buf-&gt;sequence, 0);
-31   mutex_init(&amp;buf-&gt;mutex, &quot;log_buffer&quot;);
-32 
-33   return buf;
-34 }</pre>
+<p class="Pp">Definition at line <b>74</b> of file
+    <b>platform/wasm/stubs/log.c</b>.</p>
+<pre>74                                                       {
+75   return NULL;  // No-op - session log buffer not used in WASM
+76 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_u64()</b>,
@@ -236,16 +206,12 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>buf</i> Buffer instance to destroy (can be NULL)</div>
-<p class="Pp">Definition at line <b>36</b> of file
-  <b>session_log_buffer.c</b>.</p>
-<pre>36                                                            {
-37   if (!buf) {
-38     return;
-39   }
-40 
-41   mutex_destroy(&amp;buf-&gt;mutex);
-42   SAFE_FREE(buf);
-43 }</pre>
+<p class="Pp">Definition at line <b>78</b> of file
+    <b>platform/wasm/stubs/log.c</b>.</p>
+<pre>78                                                            {
+79   (void)buf;
+80   // No-op - session log buffer not used in WASM
+81 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_log_buffer::mutex</b>,
@@ -269,40 +235,14 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of entries actually copied (may be less than
   max_count)</div>
-<p class="Pp">Definition at line <b>85</b> of file
-  <b>session_log_buffer.c</b>.</p>
-<pre>85                                                                                                                     {
-86   if (!buf || !out_entries || max_count == 0) {
-87     // Fail silently - called from display code that handles 0 gracefully
-88     // Using SET_ERRNO here could cause recursion if error logging is enabled
-89     return 0;
-90   }
-91 
-92   mutex_lock(&amp;buf-&gt;mutex);
-93 
-94   size_t write_pos = atomic_load_u64(&amp;buf-&gt;write_pos);
-95   uint64_t total_entries = atomic_load_u64(&amp;buf-&gt;sequence);
-96 
-97   size_t start_pos = write_pos;
-98   size_t entries_to_check = SESSION_LOG_BUFFER_SIZE;
-99 
-100   if (total_entries &lt; SESSION_LOG_BUFFER_SIZE) {
-101     start_pos = 0;
-102     entries_to_check = write_pos;
-103   }
-104 
-105   size_t count = 0;
-106   for (size_t i = 0; i &lt; entries_to_check &amp;&amp; count &lt; max_count; i++) {
-107     size_t idx = (start_pos + i) % SESSION_LOG_BUFFER_SIZE;
-108     if (buf-&gt;entries[idx].sequence &gt; 0) {
-109       memcpy(&amp;out_entries[count], &amp;buf-&gt;entries[idx], sizeof(session_log_entry_t));
-110       count++;
-111     }
-112   }
-113 
-114   mutex_unlock(&amp;buf-&gt;mutex);
-115   return count;
-116 }</pre>
+<p class="Pp">Definition at line <b>94</b> of file
+    <b>platform/wasm/stubs/log.c</b>.</p>
+<pre>96                                                         {
+97   (void)buf;
+98   (void)out_entries;
+99   (void)max_count;
+100   return 0; // No entries in WASM
+101 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_u64()</b>,

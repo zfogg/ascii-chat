@@ -134,7 +134,6 @@
 <h2 class="Ss"><b>acip_transport_t</b>* app_client::active_transport</h2>
 <p class="Pp">Definition at line <b>232</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_thread_t</b> app_client::audio_capture_thread</h2>
@@ -145,68 +144,54 @@
 <h2 class="Ss"><b>bool</b> app_client::audio_capture_thread_created</h2>
 <p class="Pp">Definition at line <b>251</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> app_client::audio_capture_thread_exited</h2>
 <p class="Pp">Definition at line <b>253</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>, and
-    <b>app_client_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>audio_context_t</b> app_client::audio_ctx</h2>
 <p class="Pp">Definition at line <b>241</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>app_client_audio_packet_t</b>
   app_client::audio_send_queue[256]</h2>
 <p class="Pp">Definition at line <b>242</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>cond_t</b> app_client::audio_send_queue_cond</h2>
 <p class="Pp">Definition at line <b>246</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>, and
-    <b>app_client_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_app_client::audio_send_queue_head"><a class="permalink" href="#int_app_client::audio_send_queue_head">int
   app_client::audio_send_queue_head</a></h2>
 <p class="Pp">Definition at line <b>243</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> app_client::audio_send_queue_initialized</h2>
 <p class="Pp">Definition at line <b>247</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>mutex_t</b> app_client::audio_send_queue_mutex</h2>
 <p class="Pp">Definition at line <b>245</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>, and
-    <b>app_client_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_app_client::audio_send_queue_tail"><a class="permalink" href="#int_app_client::audio_send_queue_tail">int
   app_client::audio_send_queue_tail</a></h2>
 <p class="Pp">Definition at line <b>244</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> app_client::audio_sender_should_exit</h2>
 <p class="Pp">Definition at line <b>248</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>, and
-    <b>app_client_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_thread_t</b> app_client::audio_sender_thread</h2>
@@ -217,7 +202,6 @@
 <h2 class="Ss"><b>bool</b> app_client::audio_sender_thread_created</h2>
 <p class="Pp">Definition at line <b>252</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_thread_t</b> app_client::capture_thread</h2>
@@ -228,26 +212,21 @@
 <h2 class="Ss"><b>bool</b> app_client::capture_thread_created</h2>
 <p class="Pp">Definition at line <b>273</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> app_client::capture_thread_exited</h2>
 <p class="Pp">Definition at line <b>274</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>, and
-    <b>app_client_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>crypto_handshake_context_t</b> app_client::crypto_ctx</h2>
 <p class="Pp">Definition at line <b>296</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> app_client::crypto_initialized</h2>
 <p class="Pp">Definition at line <b>297</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_thread_t</b> app_client::data_reception_thread</h2>
@@ -258,45 +237,36 @@
 <h2 class="Ss"><b>bool</b> app_client::data_thread_created</h2>
 <p class="Pp">Definition at line <b>260</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> app_client::data_thread_exited</h2>
 <p class="Pp">Definition at line <b>261</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>, and
-    <b>app_client_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> app_client::encryption_enabled</h2>
 <p class="Pp">Definition at line <b>266</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> app_client::has_tty</h2>
 <p class="Pp">Definition at line <b>288</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> app_client::is_first_frame_of_connection</h2>
 <p class="Pp">Definition at line <b>289</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>, and
-    <b>app_client_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> app_client::last_active_count</h2>
 <p class="Pp">Definition at line <b>262</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> app_client::my_client_id</h2>
 <p class="Pp">Definition at line <b>265</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_thread_t</b> app_client::ping_thread</h2>
@@ -307,50 +277,41 @@
 <h2 class="Ss"><b>bool</b> app_client::ping_thread_created</h2>
 <p class="Pp">Definition at line <b>281</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> app_client::ping_thread_exited</h2>
 <p class="Pp">Definition at line <b>282</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>, and
-    <b>app_client_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> app_client::server_state_initialized</h2>
 <p class="Pp">Definition at line <b>263</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> app_client::should_clear_before_next_frame</h2>
 <p class="Pp">Definition at line <b>264</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">struct <b>tcp_client</b>* app_client::tcp_client</h2>
 <p class="Pp">Definition at line <b>234</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>acip_transport_type_t</b> app_client::transport_type</h2>
 <p class="Pp">Definition at line <b>233</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>tty_info_t</b> app_client::tty_info</h2>
 <p class="Pp">Definition at line <b>290</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">struct <b>websocket_client</b>* app_client::ws_client</h2>
 <p class="Pp">Definition at line <b>235</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
-<p class="Pp">Referenced by <b>app_client_create()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>

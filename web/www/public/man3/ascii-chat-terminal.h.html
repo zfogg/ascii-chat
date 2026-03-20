@@ -587,6 +587,12 @@
 <p class="Pp"></p>
 <p class="Pp">Overrides take precedence over detected capabilities.</p>
 </div>
+<p class="Pp">Definition at line <b>45</b> of file <b>misc.c</b>.</p>
+<pre>45                                                                                 {
+46   return caps;
+47 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>main()</b>, <b>session_display_create()</b>, and
     <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
 </section>
@@ -673,6 +679,13 @@
 <p class="Pp">TTY path is platform-specific (Unix: /dev/tty, Windows: CON,
     etc.).</p>
 </div>
+<p class="Pp">Definition at line <b>40</b> of file <b>misc.c</b>.</p>
+<pre>40                                  {
+41   tty_info_t tty = {0};
+42   return tty;
+43 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>session_display_create()</b>.</p>
 </section>
 <section class="Ss">
@@ -1801,6 +1814,11 @@ unsigned short int width = terminal_get_effective_width();
 <h2 class="Ss" id="void_terminal_stop_resize_detection_(void_)"><a class="permalink" href="#void_terminal_stop_resize_detection_(void_)">void
   terminal_stop_resize_detection (void )</a></h2>
 <p class="Pp">No-op stub on POSIX platforms (no resize detection thread).</p>
+<p class="Pp">Definition at line <b>100</b> of file <b>misc.c</b>.</p>
+<pre>100                                           {
+101 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
 </section>
 <section class="Ss">

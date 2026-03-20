@@ -30,8 +30,8 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">terminal.c - Terminal function stubs for WASM (not needed for
-    mirror mode).</p>
+<p class="Pp">terminal.c - Terminal function stubs for WASM (functions not
+    needed for mirror mode).</p>
 <p class="Pp"></p>
 </section>
 <section class="Sh">
@@ -53,7 +53,18 @@
   Get effective terminal width with fallback priority. unsigned short int
     <b>terminal_get_effective_height</b> (void)
   <br/>
-  Get effective terminal height with fallback priority.
+  Get effective terminal height with fallback priority. <b>asciichat_error_t</b>
+    <b>terminal_fd_reader_create</b> (int fd, int frame_height,
+    <b>terminal_fd_reader_t</b> **out)
+  <br/>
+  Create a terminal FD reader from a file descriptor. void
+    <b>terminal_fd_reader_destroy</b> (<b>terminal_fd_reader_t</b> *reader)
+  <br/>
+  Destroy terminal FD reader. <b>asciichat_error_t</b>
+    <b>terminal_fd_reader_next</b> (<b>terminal_fd_reader_t</b> *reader, char
+    **out_frame)
+  <br/>
+  Read next frame from file descriptor.
   <br/>
 </p>
 </section>
@@ -61,14 +72,86 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">Terminal function stubs for WASM (not needed for mirror mode).</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
+<p class="Pp">Terminal function stubs for WASM (functions not needed for mirror
+    mode).</p>
+<p class="Pp">Terminal control and cursor movement functions are implemented in
+    <b>wasm/terminal.c</b> via ANSI escape sequences. This file contains only
+    the stubs that return errors or no-ops for operations not supported in the
+    browser environment.</p>
 <p class="Pp">Definition in file <b>platform/wasm/stubs/terminal.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> terminal_fd_reader_create (int fd, int
+  frame_height, <b>terminal_fd_reader_t</b> ** out)</h2>
+<p class="Pp">Create a terminal FD reader from a file descriptor.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>fd</i> File descriptor to read from (e.g.,
+  STDIN_FILENO, open file)
+<br/>
+<i>frame_height</i> Number of lines per frame (required - used for frame
+  boundaries)
+<br/>
+<i>out</i> Pointer to store reader context</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success</div>
+<p class="Pp">Width is auto-detected from the first frame's line length.</p>
+<p class="Pp">Definition at line <b>52</b> of file
+    <b>platform/wasm/stubs/terminal.c</b>.</p>
+<pre>52                                                                                                   {
+53   (void)fd;
+54   (void)frame_height;
+55   if (out) *out = NULL;
+56   return ASCIICHAT_OK;  // Stub - no stdin available in WASM
+57 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_terminal_fd_reader_destroy_("><a class="permalink" href="#void_terminal_fd_reader_destroy_(">void
+  terminal_fd_reader_destroy (<b>terminal_fd_reader_t</b> * reader)</a></h2>
+<p class="Pp">Destroy terminal FD reader.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>reader</i> Reader context to destroy</div>
+<p class="Pp">Definition at line <b>59</b> of file
+    <b>platform/wasm/stubs/terminal.c</b>.</p>
+<pre>59                                                               {
+60   (void)reader;
+61   // No-op
+62 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> terminal_fd_reader_next
+  (<b>terminal_fd_reader_t</b> * reader, char ** out_frame)</h2>
+<p class="Pp">Read next frame from file descriptor. Reads frame_height lines
+    from the FD and returns them as a single frame string. Returns NULL in
+    out_frame when EOF is reached.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>reader</i> Reader context
+<br/>
+<i>out_frame</i> Pointer to store frame data (NULL when EOF, must free with
+  SAFE_FREE)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success (including EOF)</div>
+<p class="Pp">Definition at line <b>64</b> of file
+    <b>platform/wasm/stubs/terminal.c</b>.</p>
+<pre>64                                                                                           {
+65   (void)reader;
+66   if (out_frame) *out_frame = NULL;  // Signal EOF immediately
+67   return ASCIICHAT_OK;
+68 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
+</section>
 <section class="Ss">
 <h2 class="Ss" id="unsigned_short_int_terminal_get_effective_height_(void_)"><a class="permalink" href="#unsigned_short_int_terminal_get_effective_height_(void_)">unsigned
   short int terminal_get_effective_height (void )</a></h2>
@@ -133,16 +216,16 @@ unsigned short int height = terminal_get_effective_height();
   <dt>3.</dt>
   <dd>OPT_HEIGHT_DEFAULT fallback</dd>
 </dl>
-<p class="Pp">Definition at line <b>35</b> of file
+<p class="Pp">Definition at line <b>39</b> of file
     <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>35                                                        {
-36   int height = GET_OPTION(height);
-37   if (height &gt; 0) {
-38     return (unsigned short int)height;
-39   }
-40   // For WASM, use default since terminal detection is stubbed
-41   return OPT_HEIGHT_DEFAULT;
-42 }</pre>
+<pre>39                                                        {
+40   int height = GET_OPTION(height);
+41   if (height &gt; 0) {
+42     return (unsigned short int)height;
+43   }
+44   // For WASM, use default since terminal detection is stubbed
+45   return OPT_HEIGHT_DEFAULT;
+46 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>GET_OPTION</b>, and <b>OPT_HEIGHT_DEFAULT</b>.</p>
@@ -211,16 +294,16 @@ unsigned short int width = terminal_get_effective_width();
   <dt>3.</dt>
   <dd>OPT_WIDTH_DEFAULT fallback</dd>
 </dl>
-<p class="Pp">Definition at line <b>25</b> of file
+<p class="Pp">Definition at line <b>29</b> of file
     <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>25                                                       {
-26   int width = GET_OPTION(width);
-27   if (width &gt; 0) {
-28     return (unsigned short int)width;
-29   }
-30   // For WASM, use default since terminal detection is stubbed
-31   return OPT_WIDTH_DEFAULT;
-32 }</pre>
+<pre>29                                                       {
+30   int width = GET_OPTION(width);
+31   if (width &gt; 0) {
+32     return (unsigned short int)width;
+33   }
+34   // For WASM, use default since terminal detection is stubbed
+35   return OPT_WIDTH_DEFAULT;
+36 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>GET_OPTION</b>, and <b>OPT_WIDTH_DEFAULT</b>.</p>

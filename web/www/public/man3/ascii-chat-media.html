@@ -525,7 +525,7 @@ media_source_destroy(source);</pre>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if EOF reached, false otherwise</div>
 <p class="Pp">Definition at line <b>1544</b> of file
-  <b>ffmpeg_decoder.c</b>.</p>
+    <b>media/ffmpeg_decoder.c</b>.</p>
 <pre>1544                                                       {
 1545   return decoder &amp;&amp; decoder-&gt;eof_reached;
 1546 }</pre>
@@ -567,7 +567,8 @@ media_source_destroy(source);</pre>
 <p class="Pp"></p>
 <p class="Pp">Call <b>ffmpeg_decoder_destroy()</b> to cleanup</p>
 </div>
-<p class="Pp">Definition at line <b>590</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Definition at line <b>590</b> of file
+    <b>media/ffmpeg_decoder.c</b>.</p>
 <pre>590                                                           {
 591   if (!path) {
 592     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Path is NULL&quot;);
@@ -861,7 +862,8 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">Call <b>ffmpeg_decoder_destroy()</b> to cleanup</p>
 </div>
-<p class="Pp">Definition at line <b>826</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Definition at line <b>826</b> of file
+    <b>media/ffmpeg_decoder.c</b>.</p>
 <pre>826                                                     {
 827   // Buffer entire stdin on first call (shared between video and audio decoders)
 828   if (!g_stdin_buffer) {
@@ -1173,7 +1175,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
   <dd>Free decoder structure</dd>
 </dl>
 <p class="Pp">Definition at line <b>1078</b> of file
-  <b>ffmpeg_decoder.c</b>.</p>
+    <b>media/ffmpeg_decoder.c</b>.</p>
 <pre>1078                                                        {
 1079   if (!decoder) {
 1080     return;
@@ -1294,7 +1296,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <div class="Bd-indent">Duration in seconds, or -1.0 if unknown</div>
 <p class="Pp">Returns the total duration from the container metadata.</p>
 <p class="Pp">Definition at line <b>1548</b> of file
-  <b>ffmpeg_decoder.c</b>.</p>
+    <b>media/ffmpeg_decoder.c</b>.</p>
 <pre>1548                                                               {
 1549   if (!decoder || !decoder-&gt;format_ctx) {
 1550     return -1.0;
@@ -1323,7 +1325,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <div class="Bd-indent">Current position in seconds, or -1.0 if unknown</div>
 <p class="Pp">Returns the presentation timestamp of the last decoded frame.</p>
 <p class="Pp">Definition at line <b>1560</b> of file
-  <b>ffmpeg_decoder.c</b>.</p>
+    <b>media/ffmpeg_decoder.c</b>.</p>
 <pre>1560                                                               {
 1561   if (!decoder) {
 1562     return -1.0;
@@ -1368,7 +1370,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <div class="Bd-indent">ASCIICHAT_OK on success, error code if no video
   stream</div>
 <p class="Pp">Definition at line <b>1282</b> of file
-  <b>ffmpeg_decoder.c</b>.</p>
+    <b>media/ffmpeg_decoder.c</b>.</p>
 <pre>1282                                                                                                           {
 1283   if (!decoder || decoder-&gt;video_stream_idx &lt; 0) {
 1284     return ERROR_INVALID_PARAM;
@@ -1401,7 +1403,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <div class="Bd-indent">Frame rate in FPS, or -1.0 if unknown/no video</div>
 <p class="Pp">Returns the average frame rate of the video stream.</p>
 <p class="Pp">Definition at line <b>1297</b> of file
-  <b>ffmpeg_decoder.c</b>.</p>
+    <b>media/ffmpeg_decoder.c</b>.</p>
 <pre>1297                                                                {
 1298   if (!decoder || decoder-&gt;video_stream_idx &lt; 0) {
 1299     return -1.0;
@@ -1438,7 +1440,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if audio stream exists, false otherwise</div>
 <p class="Pp">Definition at line <b>1434</b> of file
-  <b>ffmpeg_decoder.c</b>.</p>
+    <b>media/ffmpeg_decoder.c</b>.</p>
 <pre>1434                                                          {
 1435   return decoder &amp;&amp; decoder-&gt;audio_stream_idx &gt;= 0;
 1436 }</pre>
@@ -1458,7 +1460,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if video stream exists, false otherwise</div>
 <p class="Pp">Definition at line <b>1278</b> of file
-  <b>ffmpeg_decoder.c</b>.</p>
+    <b>media/ffmpeg_decoder.c</b>.</p>
 <pre>1278                                                          {
 1279   return decoder &amp;&amp; decoder-&gt;video_stream_idx &gt;= 0;
 1280 }</pre>
@@ -1481,7 +1483,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
     active. Used during seeking to determine if thread needs to be
     stopped/restarted.</p>
 <p class="Pp">Definition at line <b>1271</b> of file
-  <b>ffmpeg_decoder.c</b>.</p>
+    <b>media/ffmpeg_decoder.c</b>.</p>
 <pre>1271                                                                    {
 1272   if (!decoder) {
 1273     return false;
@@ -1536,7 +1538,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp">May return fewer samples than requested at EOF</p>
 </div>
 <p class="Pp">Definition at line <b>1321</b> of file
-  <b>ffmpeg_decoder.c</b>.</p>
+    <b>media/ffmpeg_decoder.c</b>.</p>
 <pre>1321                                                                                                        {
 1322   if (!decoder || decoder-&gt;audio_stream_idx &lt; 0 || !buffer || num_samples == 0) {
 1323     return 0;
@@ -1709,7 +1711,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp">Skips non-video packets automatically</p>
 </div>
 <p class="Pp">Definition at line <b>1167</b> of file
-  <b>ffmpeg_decoder.c</b>.</p>
+    <b>media/ffmpeg_decoder.c</b>.</p>
 <pre>1167                                                                     {
 1168   if (!decoder || decoder-&gt;video_stream_idx &lt; 0) {
 1169     return NULL;
@@ -1795,7 +1797,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp">Some formats may not support seeking</p>
 </div>
 <p class="Pp">Definition at line <b>1442</b> of file
-  <b>ffmpeg_decoder.c</b>.</p>
+    <b>media/ffmpeg_decoder.c</b>.</p>
 <pre>1442                                                                    {
 1443   if (!decoder) {
 1444     return ERROR_INVALID_PARAM;
@@ -1872,7 +1874,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp">Seeks approximately - may land before/after exact timestamp</p>
 </div>
 <p class="Pp">Definition at line <b>1473</b> of file
-  <b>ffmpeg_decoder.c</b>.</p>
+    <b>media/ffmpeg_decoder.c</b>.</p>
 <pre>1473                                                                                                     {
 1474   if (!decoder) {
 1475     return ERROR_INVALID_PARAM;
@@ -1993,7 +1995,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <div class="Bd-indent">Called automatically from media_source layer (no need to
   call manually)</div>
 <p class="Pp">Definition at line <b>1262</b> of file
-  <b>ffmpeg_decoder.c</b>.</p>
+    <b>media/ffmpeg_decoder.c</b>.</p>
 <pre>1263                                                        {
 1264   if (!decoder) {
 1265     return;
@@ -2042,7 +2044,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
     pulls frames from these buffers. This prevents the render thread from
     blocking on YouTube HTTP requests.</p>
 <p class="Pp">Definition at line <b>1217</b> of file
-  <b>ffmpeg_decoder.c</b>.</p>
+    <b>media/ffmpeg_decoder.c</b>.</p>
 <pre>1217                                                                            {
 1218   if (!decoder || decoder-&gt;video_stream_idx &lt; 0) {
 1219     return ERROR_INVALID_PARAM;
@@ -2095,7 +2097,7 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">Stop background frame prefetching thread.</p>
 <p class="Pp">Definition at line <b>1247</b> of file
-  <b>ffmpeg_decoder.c</b>.</p>
+    <b>media/ffmpeg_decoder.c</b>.</p>
 <pre>1247                                                              {
 1248   if (!decoder || !decoder-&gt;prefetch_thread_running) {
 1249     return;

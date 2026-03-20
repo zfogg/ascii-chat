@@ -169,7 +169,7 @@
     <b>acip_send_error()</b>, <b>acip_server_send_error()</b>,
     <b>connect_with_timeout()</b>, <b>packet_send_error()</b>,
     <b>send_error_packet()</b>, <b>send_error_packet_message()</b>,
-    <b>socket_is_connection_reset_error()</b>,
+    <b>socket_get_fd()</b>, <b>socket_is_connection_reset_error()</b>,
     <b>socket_is_in_progress_error()</b>,
     <b>socket_is_invalid_socket_error()</b>,
     <b>socket_is_would_block_error()</b>, and
@@ -182,15 +182,15 @@
 <section class="Ss">
 <h2 class="Ss"><b>mutex_t</b> mutex</h2>
 <p class="Pp">Definition at line <b>55</b> of file <b>asciichat_errno.c</b>.</p>
-<p class="Pp">Referenced by <b>cond_broadcast()</b>, <b>cond_on_wait()</b>,
-    <b>cond_timedwait_impl()</b>, <b>cond_wait_impl()</b>,
-    <b>debug_sync_cond_timedwait()</b>, <b>debug_sync_cond_wait()</b>,
-    <b>debug_sync_mutex_lock()</b>, <b>debug_sync_mutex_trylock()</b>,
-    <b>debug_sync_mutex_unlock()</b>, <b>mutex_destroy()</b>,
-    <b>mutex_format_state()</b>, <b>mutex_init()</b>, <b>mutex_lock_impl()</b>,
-    <b>mutex_log_state()</b>, <b>mutex_on_lock()</b>, <b>mutex_on_trylock()</b>,
-    <b>mutex_on_unlock()</b>, <b>mutex_trylock_impl()</b>,
-    <b>mutex_unlock_impl()</b>, and <b>outputRegistryMutex()</b>.</p>
+<p class="Pp">Referenced by <b>cond_on_wait()</b>, <b>cond_timedwait_impl()</b>,
+    <b>cond_wait_impl()</b>, <b>debug_sync_cond_timedwait()</b>,
+    <b>debug_sync_cond_wait()</b>, <b>debug_sync_mutex_lock()</b>,
+    <b>debug_sync_mutex_trylock()</b>, <b>debug_sync_mutex_unlock()</b>,
+    <b>mutex_destroy()</b>, <b>mutex_format_state()</b>, <b>mutex_init()</b>,
+    <b>mutex_lock_impl()</b>, <b>mutex_log_state()</b>, <b>mutex_on_lock()</b>,
+    <b>mutex_on_trylock()</b>, <b>mutex_on_unlock()</b>,
+    <b>mutex_trylock_impl()</b>, <b>mutex_unlock_impl()</b>, and
+    <b>outputRegistryMutex()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_stats_t</b> stats</h2>

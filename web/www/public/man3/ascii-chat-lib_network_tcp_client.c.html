@@ -133,9 +133,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_bool()</b>,
-    <b>tcp_client::connection_active</b>, <b>INVALID_SOCKET_VALUE</b>,
-    <b>log_debug</b>, <b>tcp_client::my_client_id</b>, <b>socket_is_valid()</b>,
-    and <b>tcp_client::sockfd</b>.</p>
+    <b>INVALID_SOCKET_VALUE</b>, <b>log_debug</b>, and
+  <b>socket_is_valid()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_tcp_client_connect_("><a class="permalink" href="#int_tcp_client_connect_(">int
@@ -372,18 +371,14 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
     <b>CONNECT_TIMEOUT</b>, <b>connect_with_timeout()</b>,
-    <b>tcp_client::connection_active</b>, <b>tcp_client::connection_lost</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>format_ip_address()</b>,
     <b>INVALID_SOCKET_VALUE</b>, <b>is_localhost_ipv4()</b>,
     <b>is_localhost_ipv6()</b>, <b>log_debug</b>, <b>log_error</b>,
-    <b>log_warn</b>, <b>tcp_client::my_client_id</b>,
-    <b>named_update_name()</b>, <b>NET_TO_HOST_U16</b>,
+    <b>log_warn</b>, <b>named_update_name()</b>, <b>NET_TO_HOST_U16</b>,
     <b>network_error_string()</b>, <b>platform_sleep_ns()</b>,
-    <b>SAFE_SNPRINTF</b>, <b>SAFE_STRNCPY</b>, <b>tcp_client::server_ip</b>,
-    <b>SET_ERRNO</b>, <b>tcp_client::should_reconnect</b>,
+    <b>SAFE_SNPRINTF</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
     <b>socket_configure_buffers()</b>, <b>socket_create()</b>,
-    <b>socket_is_valid()</b>, <b>socket_set_keepalive()</b>, and
-    <b>tcp_client::sockfd</b>.</p>
+    <b>socket_is_valid()</b>, and <b>socket_set_keepalive()</b>.</p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>.</p>
 </section>
 <section class="Ss">
@@ -431,13 +426,9 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_bool()</b>,
-    <b>tcp_client::connection_active</b>, <b>tcp_client::connection_lost</b>,
-    <b>tcp_client::encryption_enabled</b>, <b>INVALID_SOCKET_VALUE</b>,
-    <b>log_debug</b>, <b>log_error</b>, <b>mutex_init()</b>,
-    <b>tcp_client::my_client_id</b>, <b>NAMED_REGISTER_ATOMIC</b>,
-    <b>NAMED_REGISTER_CLIENT</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>tcp_client::send_mutex</b>, <b>tcp_client::server_ip</b>,
-    <b>tcp_client::should_reconnect</b>, and <b>tcp_client::sockfd</b>.</p>
+    <b>INVALID_SOCKET_VALUE</b>, <b>log_debug</b>, <b>log_error</b>,
+    <b>mutex_init()</b>, <b>NAMED_REGISTER_ATOMIC</b>,
+    <b>NAMED_REGISTER_CLIENT</b>, <b>SAFE_FREE</b>, and <b>SAFE_MALLOC</b>.</p>
 <p class="Pp">Referenced by <b>client_main()</b>, and
     <b>connection_attempt_tcp()</b>.</p>
 </section>
@@ -475,12 +466,9 @@
 157 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>tcp_client::connection_active</b>,
-    <b>tcp_client::connection_lost</b>, <b>INVALID_SOCKET_VALUE</b>,
-    <b>log_debug</b>, <b>mutex_destroy()</b>, <b>NAMED_UNREGISTER</b>,
-    <b>SAFE_FREE</b>, <b>tcp_client::send_mutex</b>,
-    <b>tcp_client::should_reconnect</b>, <b>socket_is_valid()</b>, and
-    <b>tcp_client::sockfd</b>.</p>
+<p class="Pp">References <b>INVALID_SOCKET_VALUE</b>, <b>log_debug</b>,
+    <b>mutex_destroy()</b>, <b>NAMED_UNREGISTER</b>, <b>SAFE_FREE</b>, and
+    <b>socket_is_valid()</b>.</p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
     <b>connection_context_cleanup()</b>, and
   <b>session_client_like_run()</b>.</p>
@@ -500,7 +488,6 @@
 193 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>tcp_client::my_client_id</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>socket_t</b> tcp_client_get_socket (const <b>tcp_client_t</b>
@@ -518,8 +505,7 @@
 186 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>INVALID_SOCKET_VALUE</b>, and
-    <b>tcp_client::sockfd</b>.</p>
+<p class="Pp">References <b>INVALID_SOCKET_VALUE</b>.</p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>.</p>
 </section>
 <section class="Ss">
@@ -539,8 +525,7 @@
 170 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, and
-    <b>tcp_client::connection_active</b>.</p>
+<p class="Pp">References <b>atomic_load_bool()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> tcp_client_is_lost (const <b>tcp_client_t</b> *
@@ -560,8 +545,7 @@
 179 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, and
-    <b>tcp_client::connection_lost</b>.</p>
+<p class="Pp">References <b>atomic_load_bool()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_tcp_client_send_packet_("><a class="permalink" href="#int_tcp_client_send_packet_(">int
@@ -599,10 +583,9 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
-    <b>tcp_client::connection_active</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK</b>, <b>log_debug</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>tcp_client::send_mutex</b>, <b>send_packet()</b>,
-    <b>SET_ERRNO</b>, and <b>tcp_client::sockfd</b>.</p>
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>, <b>log_debug</b>,
+    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>send_packet()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>tcp_client_send_ping()</b>, and
     <b>tcp_client_send_pong()</b>.</p>
 </section>
@@ -667,9 +650,8 @@
 248 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>,
-    <b>tcp_client::connection_active</b>, <b>socket_is_valid()</b>,
-    <b>socket_shutdown()</b>, and <b>tcp_client::sockfd</b>.</p>
+<p class="Pp">References <b>atomic_store_bool()</b>, <b>socket_is_valid()</b>,
+    and <b>socket_shutdown()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_tcp_client_signal_lost_("><a class="permalink" href="#void_tcp_client_signal_lost_(">void
@@ -692,7 +674,6 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
-    <b>tcp_client::connection_active</b>, <b>tcp_client::connection_lost</b>,
     and <b>log_info</b>.</p>
 </section>
 </section>

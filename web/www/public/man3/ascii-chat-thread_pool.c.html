@@ -149,8 +149,6 @@
     <b>log_debug</b>, <b>mutex_init()</b>, <b>NAMED_REGISTER_MUTEX</b>,
     <b>NAMED_REGISTER_THREAD_POOL</b>, <b>pool</b>, <b>SAFE_FREE</b>,
     <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acds_server_init()</b>, <b>server_main()</b>, and
-    <b>tcp_server_add_client()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>thread_pool_t</b> * thread_pool_create_with_workers (const
@@ -347,10 +345,7 @@
     <b>mutex_destroy()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
     <b>NAMED_UNREGISTER</b>, <b>thread_pool_work_entry::next</b>, <b>pool</b>,
     <b>SAFE_FREE</b>, and <b>thread_pool_stop_all()</b>.</p>
-<p class="Pp">Referenced by <b>acds_server_shutdown()</b>, <b>server_main()</b>,
-    <b>tcp_server_destroy()</b>, <b>tcp_server_remove_client()</b>,
-    <b>thread_pool_create_with_workers()</b>, and
-    <b>websocket_server_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>thread_pool_create_with_workers()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_thread_pool_get_count_(const_"><a class="permalink" href="#size_t_thread_pool_get_count_(const_">size_t
@@ -686,11 +681,6 @@
     <b>SET_ERRNO</b>, <b>thread_pool_entry::stop_id</b>,
     <b>thread_pool_entry::thread</b>, <b>thread_pool_entry::thread_arg</b>, and
     <b>thread_pool_entry::thread_func</b>.</p>
-<p class="Pp">Referenced by <b>acds_server_init()</b>,
-    <b>audio_sender_init()</b>, <b>audio_start_thread()</b>,
-    <b>capture_start_thread()</b>, <b>keepalive_start_thread()</b>,
-    <b>protocol_start_connection()</b>, <b>server_main()</b>, and
-    <b>tcp_server_spawn_thread()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> thread_pool_stop_all
@@ -792,9 +782,7 @@
     <b>thread_pool_entry::name</b>, <b>thread_pool_entry::next</b>, <b>pool</b>,
     <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, <b>thread_pool_entry::stop_id</b>, and
     <b>thread_pool_entry::thread</b>.</p>
-<p class="Pp">Referenced by <b>protocol_stop_connection()</b>,
-    <b>tcp_server_stop_client_threads()</b>, and
-  <b>thread_pool_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>thread_pool_destroy()</b>.</p>
 </section>
 </section>
 <section class="Sh">

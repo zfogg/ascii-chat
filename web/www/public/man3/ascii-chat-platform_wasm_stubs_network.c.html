@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>network.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">network.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">network.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">network.c - Network function stubs for WASM.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>websocket_client_t</b> <b>websocket_client_t</b>
+  <br/>
+  typedef struct <b>tcp_client_t</b> <b>tcp_client_t</b>
+  <br/>
+  typedef struct app_callbacks_t <b>app_callbacks_t</b>
+  <br/>
+  typedef void <b>app_callbacks_reg_t</b>
+  <br/>
+  typedef void <b>app_client_t</b>
+  <br/>
+  typedef void <b>connection_context_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">FILE * <b>platform_popen</b> (const char *cmd, const char *mode)
+  <br/>
+  int <b>platform_pclose</b> (FILE *stream)
+  <br/>
+  void <b>websocket_client_destroy</b> (<b>websocket_client_t</b> *client)
+  <br/>
+  void <b>tcp_client_destroy</b> (<b>tcp_client_t</b> *client)
+  <br/>
+  <b>app_callbacks_t</b> * <b>app_callbacks_get</b> (void)
+  <br/>
+  void <b>app_callbacks_register</b> (<b>app_callbacks_reg_t</b> *callbacks)
+  <br/>
+  <b>app_client_t</b> * <b>app_client_create</b> (void)
+  <br/>
+  Create and initialize client application context. void
+    <b>app_client_destroy</b> (<b>app_client_t</b> *client)
+  <br/>
+  <b>connection_context_t</b> * <b>connection_context_init</b> (void)
+  <br/>
+  void <b>connection_context_cleanup</b> (<b>connection_context_t</b> *ctx)
+  <br/>
+  <b>tcp_client_t</b> * <b>tcp_client_create</b> (void)
+  <br/>
+  Create and initialize a TCP client instance.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Network function stubs for WASM.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>platform/wasm/stubs/network.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">typedef void <b>app_callbacks_reg_t</b></h2>
+<p class="Pp">Definition at line <b>39</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_app_callbacks_t_app_callbacks_t"><a class="permalink" href="#typedef_struct_app_callbacks_t_app_callbacks_t">typedef
+  struct app_callbacks_t app_callbacks_t</a></h2>
+<p class="Pp">Definition at line <b>23</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef void <b>app_client_t</b></h2>
+<p class="Pp">Definition at line <b>40</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef void <b>connection_context_t</b></h2>
+<p class="Pp">Definition at line <b>41</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef struct <b>tcp_client_t</b> <b>tcp_client_t</b></h2>
+<p class="Pp">Definition at line <b>22</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef struct <b>websocket_client_t</b>
+  <b>websocket_client_t</b></h2>
+<p class="Pp">Definition at line <b>21</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>app_callbacks_t</b> * app_callbacks_get (void )</h2>
+<p class="Pp">Get registered callbacks (returns NULL if not registered)</p>
+<p class="Pp">Definition at line <b>35</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+<pre>35                                          {
+36   return NULL; // No app callbacks in WASM
+37 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_app_callbacks_register_("><a class="permalink" href="#void_app_callbacks_register_(">void
+  app_callbacks_register (<b>app_callbacks_reg_t</b> * callbacks)</a></h2>
+<p class="Pp">Definition at line <b>43</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+<pre>43                                                             {
+44   (void)callbacks;
+45 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>app_client_t</b> * app_client_create (void )</h2>
+<p class="Pp">Create and initialize client application context.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to initialized context, or NULL on failure</div>
+<p class="Pp">Definition at line <b>47</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+<pre>47                                       {
+48   return NULL;
+49 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_app_client_destroy_("><a class="permalink" href="#void_app_client_destroy_(">void
+  app_client_destroy (<b>app_client_t</b> * client)</a></h2>
+<p class="Pp">Definition at line <b>51</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+<pre>51                                               {
+52   (void)client;
+53 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_connection_context_cleanup_("><a class="permalink" href="#void_connection_context_cleanup_(">void
+  connection_context_cleanup (<b>connection_context_t</b> * ctx)</a></h2>
+<p class="Pp">Definition at line <b>59</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+<pre>59                                                            {
+60   (void)ctx;
+61 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>connection_context_t</b> * connection_context_init (void
+  )</h2>
+<p class="Pp">Definition at line <b>55</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+<pre>55                                                     {
+56   return NULL;
+57 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>client_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_platform_pclose_(FILE_*_stream)"><a class="permalink" href="#int_platform_pclose_(FILE_*_stream)">int
+  platform_pclose (FILE * stream)</a></h2>
+<p class="Pp">Definition at line <b>15</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+<pre>15                                   {
+16   (void)stream;
+17   return -1;
+18 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>check_gpg_key_expiry()</b>,
+    <b>gpg_get_public_key()</b>, <b>gpg_verify_detached_ed25519()</b>,
+    <b>gpg_verify_signature_with_binary()</b>,
+    <b>parse_gpg_keys_from_response()</b>, and
+    <b>yt_dlp_extract_stream_url()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="FILE_*_platform_popen_(const_char_*_cmd,_const_char_*_mode)"><a class="permalink" href="#FILE_*_platform_popen_(const_char_*_cmd,_const_char_*_mode)">FILE
+  * platform_popen (const char * cmd, const char * mode)</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+<pre>9                                                         {
+10   (void)cmd;
+11   (void)mode;
+12   return NULL; // No subprocess support in WASM
+13 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>check_gpg_key_expiry()</b>,
+    <b>gpg_get_public_key()</b>, <b>gpg_verify_detached_ed25519()</b>,
+    <b>gpg_verify_signature_with_binary()</b>,
+    <b>parse_gpg_keys_from_response()</b>, and
+    <b>yt_dlp_extract_stream_url()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>tcp_client_t</b> * tcp_client_create (void )</h2>
+<p class="Pp">Create and initialize a TCP client instance. Allocates a new
+    <b>tcp_client_t</b> structure and initializes all fields to safe defaults.
+    This function must be called before starting any worker threads.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Initialization_Steps"><a class="permalink" href="#Initialization_Steps">Initialization
+  Steps</a></h2>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Allocate <b>tcp_client_t</b> structure</dd>
+  <dt>2.</dt>
+  <dd>Zero-initialize all fields</dd>
+  <dt>3.</dt>
+  <dd>Set atomic flags to initial states</dd>
+  <dt>4.</dt>
+  <dd>Initialize mutexes and condition variables</dd>
+  <dt>5.</dt>
+  <dd>Set socket to INVALID_SOCKET_VALUE</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Error_Handling"><a class="permalink" href="#Error_Handling">Error
+  Handling</a></h2>
+<p class="Pp">Returns NULL if allocation fails or mutex initialization fails.
+    Check errno or use <b>HAS_ERRNO()</b> for detailed error information.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to initialized client, or NULL on failure</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller must call <b>tcp_client_destroy()</b> when
+  done</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>tcp_client_destroy()</b> For proper cleanup</div>
+<p class="Pp">Create and initialize a TCP client instance.</p>
+<p class="Pp"></p>
+<p class="Pp">Allocates <b>tcp_client_t</b> and initializes all fields to safe
+    defaults.</p>
+<p class="Pp">Definition at line <b>63</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+<pre>63                                       {
+64   return NULL;
+65 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_tcp_client_destroy_("><a class="permalink" href="#void_tcp_client_destroy_(">void
+  tcp_client_destroy (<b>tcp_client_t</b> * client)</a></h2>
+<p class="Pp">Definition at line <b>30</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+<pre>30                                               {
+31   (void)client;
+32   // No-op - TCP client not used in WASM mirror mode
+33 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_websocket_client_destroy_("><a class="permalink" href="#void_websocket_client_destroy_(">void
+  websocket_client_destroy (<b>websocket_client_t</b> * client)</a></h2>
+<p class="Pp">Definition at line <b>25</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+<pre>25                                                           {
+26   (void)client;
+27   // No-op - websocket client not used in WASM mirror mode
+28 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.4</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

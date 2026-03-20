@@ -996,6 +996,12 @@
     "sourcePath": "include/ascii-chat/options/completions/completions.h"
   },
   {
+    "name": "comprehensive.c",
+    "title": "comprehensive.c",
+    "file": "ascii-chat-comprehensive.c.html",
+    "sourcePath": "lib/platform/wasm/stubs/comprehensive.c"
+  },
+  {
     "name": "compression.c",
     "title": "compression.c",
     "file": "ascii-chat-compression.c.html",
@@ -1731,7 +1737,7 @@
     "name": "ffmpeg_decoder.c",
     "title": "ffmpeg_decoder.c",
     "file": "ascii-chat-ffmpeg_decoder.c.html",
-    "sourcePath": "lib/media/ffmpeg_decoder.c"
+    "sourcePath": "lib/platform/wasm/ffmpeg_decoder.c"
   },
   {
     "name": "ffmpeg_decoder.h",
@@ -2604,6 +2610,12 @@
     "sourcePath": "src/web/common/init.c"
   },
   {
+    "name": "audio.c",
+    "title": "audio.c",
+    "file": "ascii-chat-lib_platform_wasm_stubs_audio.c.html",
+    "sourcePath": "src/common/session/audio.c"
+  },
+  {
     "name": "audio.h",
     "title": "audio.h",
     "file": "ascii-chat-lib_platform_wasm_stubs_audio.h.html",
@@ -2856,6 +2868,12 @@
     "sourcePath": "src/server/main.h"
   },
   {
+    "name": "main_wasm.c",
+    "title": "main_wasm.c",
+    "file": "ascii-chat-main_wasm.c.html",
+    "sourcePath": "src/web/main_wasm.c"
+  },
+  {
     "name": "manpage.h",
     "title": "manpage.h",
     "file": "ascii-chat-manpage.h.html",
@@ -2896,6 +2914,12 @@
     "title": "media",
     "file": "ascii-chat-media.html",
     "sourcePath": "lib/options/registry/media.c"
+  },
+  {
+    "name": "ffmpeg_decoder.c",
+    "title": "ffmpeg_decoder.c",
+    "file": "ascii-chat-media_ffmpeg_decoder.c.html",
+    "sourcePath": "lib/platform/wasm/ffmpeg_decoder.c"
   },
   {
     "name": "font.c",
@@ -2992,6 +3016,12 @@
     "title": "main.h",
     "file": "ascii-chat-mirror_main.h.html",
     "sourcePath": "src/server/main.h"
+  },
+  {
+    "name": "misc.c",
+    "title": "misc.c",
+    "file": "ascii-chat-misc.c.html",
+    "sourcePath": "lib/platform/wasm/stubs/misc.c"
   },
   {
     "name": "mixer.c",
@@ -3165,7 +3195,7 @@
     "name": "network",
     "title": "network",
     "file": "ascii-chat-network.html",
-    "sourcePath": "lib/options/registry/network.c"
+    "sourcePath": "lib/platform/wasm/stubs/network.c"
   },
   {
     "name": "handlers.c",
@@ -3207,7 +3237,7 @@
     "name": "network.c",
     "title": "network.c",
     "file": "ascii-chat-network_network.c.html",
-    "sourcePath": "lib/options/registry/network.c"
+    "sourcePath": "lib/platform/wasm/stubs/network.c"
   },
   {
     "name": "network.h",
@@ -3423,7 +3453,7 @@
     "name": "network.c",
     "title": "network.c",
     "file": "ascii-chat-options_registry_network.c.html",
-    "sourcePath": "lib/options/registry/network.c"
+    "sourcePath": "lib/platform/wasm/stubs/network.c"
   },
   {
     "name": "terminal.c",
@@ -3906,6 +3936,12 @@
     "sourcePath": "lib/platform/windows/backtrace.c"
   },
   {
+    "name": "ffmpeg_decoder.c",
+    "title": "ffmpeg_decoder.c",
+    "file": "ascii-chat-platform_wasm_ffmpeg_decoder.c.html",
+    "sourcePath": "lib/platform/wasm/ffmpeg_decoder.c"
+  },
+  {
     "name": "lifecycle.c",
     "title": "lifecycle.c",
     "file": "ascii-chat-platform_wasm_lifecycle.c.html",
@@ -3946,6 +3982,12 @@
     "title": "mode_defaults.c",
     "file": "ascii-chat-platform_wasm_stubs_mode_defaults.c.html",
     "sourcePath": "lib/platform/wasm/stubs/mode_defaults.c"
+  },
+  {
+    "name": "network.c",
+    "title": "network.c",
+    "file": "ascii-chat-platform_wasm_stubs_network.c.html",
+    "sourcePath": "lib/platform/wasm/stubs/network.c"
   },
   {
     "name": "terminal.c",
@@ -5178,6 +5220,12 @@
     "sourcePath": "src/strings/main.c"
   },
   {
+    "name": "threading.c",
+    "title": "threading.c",
+    "file": "ascii-chat-stubs_threading.c.html",
+    "sourcePath": "lib/platform/wasm/threading.c"
+  },
+  {
     "name": "stun.c",
     "title": "stun.c",
     "file": "ascii-chat-stun.c.html",
@@ -6040,6 +6088,12 @@
     "title": "webcam_v4l2.c",
     "file": "ascii-chat-webcam_v4l2.c.html",
     "sourcePath": "lib/video/webcam/linux/webcam_v4l2.c"
+  },
+  {
+    "name": "webcam_wasm.c",
+    "title": "webcam_wasm.c",
+    "file": "ascii-chat-webcam_wasm.c.html",
+    "sourcePath": "lib/video/webcam/wasm/webcam_wasm.c"
   },
   {
     "name": "webrtc",

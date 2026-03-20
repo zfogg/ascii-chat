@@ -964,8 +964,9 @@
 <div class="Bd-indent"><i>key</i> The keyboard key to process</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Uses keyboard_read_line_interactive() to handle text editing.
-    Supports backspace, delete, arrows, home, end, enter, escape, UTF-8.</p>
+<p class="Pp">Uses <b>keyboard_read_line_interactive()</b> to handle text
+    editing. Supports backspace, delete, arrows, home, end, enter, escape,
+    UTF-8.</p>
 <p class="Pp"></p>
 <p class="Pp">Pattern validation happens live via validator callback. Enter
     compiles and activates pattern. Escape cancels and restores previous
@@ -1092,7 +1093,8 @@
     <b>grep_parse_result_t::context_before</b>,
     <b>grep_parse_result_t::global_flag</b>, <b>grep_parse_pattern()</b>,
     <b>grep_parse_result_t::invert</b>,
-    <b>grep_parse_result_t::is_fixed_string</b>, <b>log_search_enter_mode()</b>,
+    <b>grep_parse_result_t::is_fixed_string</b>,
+    <b>keyboard_read_line_interactive()</b>, <b>log_search_enter_mode()</b>,
     <b>log_search_exit_mode()</b>, <b>LOG_SEARCH_MODE_ENTERING</b>,
     <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>grep_parse_result_t::pattern</b>,
     <b>grep_parse_result_t::pcre2_options</b>, and

@@ -254,34 +254,10 @@
 120 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ACIP_TRANSPORT_TCP</b>,
-    <b>app_client::active_transport</b>, <b>atomic_store_bool()</b>,
-    <b>app_client::audio_capture_thread_created</b>,
-    <b>app_client::audio_capture_thread_exited</b>,
-    <b>app_client::audio_ctx</b>, <b>app_client::audio_send_queue</b>,
-    <b>app_client::audio_send_queue_cond</b>,
-    <b>app_client::audio_send_queue_head</b>,
-    <b>app_client::audio_send_queue_initialized</b>,
-    <b>app_client::audio_send_queue_mutex</b>,
-    <b>app_client::audio_send_queue_tail</b>,
-    <b>app_client::audio_sender_should_exit</b>,
-    <b>app_client::audio_sender_thread_created</b>,
-    <b>app_client::capture_thread_created</b>,
-    <b>app_client::capture_thread_exited</b>, <b>cond_init()</b>,
-    <b>app_client::crypto_ctx</b>, <b>app_client::crypto_initialized</b>,
-    <b>app_client::data_thread_created</b>,
-    <b>app_client::data_thread_exited</b>,
-    <b>app_client::encryption_enabled</b>, <b>app_client::has_tty</b>,
-    <b>app_client::is_first_frame_of_connection</b>,
-    <b>app_client::last_active_count</b>, <b>log_debug</b>, <b>log_error</b>,
-    <b>mutex_destroy()</b>, <b>mutex_init()</b>,
-    <b>app_client::my_client_id</b>, <b>NAMED_REGISTER_ATOMIC</b>,
-    <b>app_client::ping_thread_created</b>,
-    <b>app_client::ping_thread_exited</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>app_client::server_state_initialized</b>,
-    <b>app_client::should_clear_before_next_frame</b>,
-    <b>app_client::tcp_client</b>, <b>app_client::transport_type</b>,
-    <b>app_client::tty_info</b>, and <b>app_client::ws_client</b>.</p>
+<p class="Pp">References <b>ACIP_TRANSPORT_TCP</b>, <b>atomic_store_bool()</b>,
+    <b>cond_init()</b>, <b>log_debug</b>, <b>log_error</b>,
+    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>NAMED_REGISTER_ATOMIC</b>,
+    <b>SAFE_FREE</b>, and <b>SAFE_MALLOC</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_app_client_destroy_("><a class="permalink" href="#void_app_client_destroy_(">void
@@ -321,15 +297,8 @@
 151 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>app_client::audio_capture_thread_exited</b>,
-    <b>app_client::audio_send_queue_cond</b>,
-    <b>app_client::audio_send_queue_mutex</b>,
-    <b>app_client::audio_sender_should_exit</b>,
-    <b>app_client::capture_thread_exited</b>, <b>cond_destroy()</b>,
-    <b>app_client::data_thread_exited</b>,
-    <b>app_client::is_first_frame_of_connection</b>, <b>log_debug</b>,
-    <b>mutex_destroy()</b>, <b>NAMED_UNREGISTER</b>,
-    <b>app_client::ping_thread_exited</b>, and <b>SAFE_FREE</b>.</p>
+<p class="Pp">References <b>cond_destroy()</b>, <b>log_debug</b>,
+    <b>mutex_destroy()</b>, <b>NAMED_UNREGISTER</b>, and <b>SAFE_FREE</b>.</p>
 </section>
 </section>
 <section class="Sh">

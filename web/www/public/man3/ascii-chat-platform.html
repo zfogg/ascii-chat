@@ -93,24 +93,36 @@
   String utility functions for WASM/Emscripten. file <b>actions.c</b>
   <br/>
   Action function stubs for WASM (not needed for mirror mode). file
+    <b>audio.c</b>
+  <br/>
+  Audio stubs for WASM (audio not supported in browser environment). file
     <b>audio.h</b>
   <br/>
   Stub audio types for WASM builds (uses Web Audio API instead of PortAudio).
-    file <b>filesystem.c</b>
+    file <b>comprehensive.c</b>
+  <br/>
+  Comprehensive stubs for WASM build - network, encoding, analysis. file
+    <b>filesystem.c</b>
   <br/>
   File operation stubs for WASM. file <b>log.c</b>
   <br/>
   Logging utility stubs for WASM. file <b>manpage.c</b>
   <br/>
   Manpage resource stubs for WASM (not needed for mirror mode). file
-    <b>mode_defaults.c</b>
+    <b>misc.c</b>
   <br/>
-  Mode-specific default stubs for WASM. file <b>portaudio.h</b>
+  Miscellaneous stubs for WASM. file <b>mode_defaults.c</b>
+  <br/>
+  Mode-specific default stubs for WASM. file <b>network.c</b>
+  <br/>
+  Network function stubs for WASM. file <b>portaudio.h</b>
   <br/>
   Stub PortAudio header for WASM builds. file <b>terminal.c</b>
   <br/>
-  Terminal function stubs for WASM (not needed for mirror mode). file
-    <b>util.c</b>
+  Terminal function stubs for WASM (functions not needed for mirror mode). file
+    <b>threading.c</b>
+  <br/>
+  Threading stubs for WASM. file <b>util.c</b>
   <br/>
   Utility stubs for WASM/Emscripten (backtrace, localtime). file <b>video.c</b>
   <br/>
@@ -3958,6 +3970,13 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <div class="Bd-indent"><i>thread</i> Pointer to thread handle</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if thread is initialized, false otherwise</div>
+<p class="Pp">Definition at line <b>18</b> of file <b>stubs/threading.c</b>.</p>
+<pre>18                                                                  {
+19   (void)thread;
+20   return true;
+21 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>discover_session_parallel()</b>,
     <b>parallel_connect()</b>, <b>remove_client()</b>,
     <b>session_pipeline_destroy()</b>, <b>stop_client_render_threads()</b>, and
@@ -4013,6 +4032,15 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp">Waits for the specified thread to terminate, with a maximum wait
     time. Returns non-zero if the timeout expires before the thread
   completes.</p>
+<p class="Pp">Definition at line <b>11</b> of file <b>stubs/threading.c</b>.</p>
+<pre>11                                                                                                   {
+12   (void)thread;
+13   (void)retval;
+14   (void)timeout_ns;
+15   return 0; // Success - no-op in WASM
+16 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>audio_start_thread()</b>,
     <b>debug_sync_cleanup_thread()</b>, <b>ffmpeg_decoder_stop_prefetch()</b>,
     <b>server_main()</b>, <b>splash_wait_for_animation()</b>, and
@@ -4173,7 +4201,13 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <div class="Bd-indent">0 on success, non-zero on error</div>
 <p class="Pp">Wakes up all threads that are waiting on the condition variable.
     If no threads are waiting, the broadcast has no effect.</p>
-<p class="Pp">References <b>mutex</b>.</p>
+<p class="Pp">Definition at line <b>52</b> of file <b>stubs/threading.c</b>.</p>
+<pre>52                                  {
+53   (void)cond;
+54   return 0;
+55 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>debug_sync_cond_broadcast()</b>,
     <b>session_pipeline_destroy()</b>, and <b>thread_pool_stop_all()</b>.</p>
 </section>
@@ -4191,6 +4225,13 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp">Destroys the condition variable and frees any associated
     resources. No threads should be waiting on the condition variable when this
     is called.</p>
+<p class="Pp">Definition at line <b>42</b> of file <b>stubs/threading.c</b>.</p>
+<pre>42                                {
+43   (void)cond;
+44   return 0;
+45 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>,
     <b>acip_websocket_client_transport_create()</b>,
     <b>acip_websocket_server_transport_create()</b>,
@@ -4288,6 +4329,14 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp">Initializes the condition variable for use. Must be called before
     any other condition variable operations. The name is stored for debugging
     and automatically suffixed with a unique counter.</p>
+<p class="Pp">Definition at line <b>36</b> of file <b>stubs/threading.c</b>.</p>
+<pre>36                                               {
+37   (void)cond;
+38   (void)name;
+39   return 0;
+40 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>,
     <b>acip_websocket_client_transport_create()</b>,
     <b>acip_websocket_server_transport_create()</b>, <b>add_webrtc_client()</b>,
@@ -4469,6 +4518,13 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <div class="Bd-indent">0 on success, non-zero on error</div>
 <p class="Pp">Wakes up one thread that is waiting on the condition variable. If
     no threads are waiting, the signal is lost.</p>
+<p class="Pp">Definition at line <b>47</b> of file <b>stubs/threading.c</b>.</p>
+<pre>47                               {
+48   (void)cond;
+49   return 0;
+50 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>audio_destroy()</b>,
     <b>audio_sender_cleanup()</b>, <b>audio_stop_duplex()</b>,
     <b>audio_stop_thread()</b>, <b>client_receive_thread()</b>,
@@ -4506,6 +4562,15 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Use <b>cond_timedwait()</b> macro instead of calling this
   directly</div>
+<p class="Pp">Definition at line <b>63</b> of file <b>stubs/threading.c</b>.</p>
+<pre>63                                                                            {
+64   (void)cond;
+65   (void)mutex;
+66   (void)timeout_ns;
+67   return 0;
+68 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">References <b>mutex</b>.</p>
 <p class="Pp">Referenced by <b>debug_sync_cond_timedwait()</b>.</p>
 </section>
@@ -4533,6 +4598,14 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Use <b>cond_wait()</b> macro instead of calling this
   directly</div>
+<p class="Pp">Definition at line <b>57</b> of file <b>stubs/threading.c</b>.</p>
+<pre>57                                                  {
+58   (void)cond;
+59   (void)mutex;
+60   return 0;
+61 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">References <b>mutex</b>.</p>
 <p class="Pp">Referenced by <b>debug_sync_cond_wait()</b>.</p>
 </section>
@@ -5384,13 +5457,13 @@ for (int i = 0; i &lt; count; i++) {
 }
 </pre>
 </div>
-<p class="Pp">Definition at line <b>105</b> of file
+<p class="Pp">Definition at line <b>97</b> of file
     <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>105                                                     {
-106   (void)pathname;
-107   (void)mode;
-108   return -1; // Not accessible in WASM
-109 }</pre>
+<pre>97                                                     {
+98   (void)pathname;
+99   (void)mode;
+100   return -1; // Not accessible in WASM
+101 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>get_discovery_database_dir()</b>,
@@ -5616,11 +5689,11 @@ for (int i = 0; i &lt; count; i++) {
 <div class="Bd-indent"><i>fd</i> File descriptor to close</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>101</b> of file
+<p class="Pp">Definition at line <b>93</b> of file
     <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>101                            {
-102   return close(fd);
-103 }</pre>
+<pre>93                            {
+94   return close(fd);
+95 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_destroy()</b>,
@@ -6068,6 +6141,12 @@ if (platform_find_config_file(&quot;config.toml&quot;, &amp;list) == ASCIICHAT_O
 <p class="Pp"></p>
 <p class="Pp">Use this sparingly - prefer normal exit() whenever possible.</p>
 </div>
+<p class="Pp">Definition at line <b>133</b> of file <b>misc.c</b>.</p>
+<pre>133                                         {
+134   (void)exit_code;
+135 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_main()</b>.</p>
 </section>
 <section class="Ss">
@@ -6198,11 +6277,11 @@ if (data_dir) {
 }
 </pre>
 </div>
-<p class="Pp">Definition at line <b>111</b> of file
+<p class="Pp">Definition at line <b>103</b> of file
     <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>111                                   {
-112   return NULL; // No data directory in WASM
-113 }</pre>
+<pre>103                                   {
+104   return NULL; // No data directory in WASM
+105 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>get_data_dir()</b>.</p>
@@ -6787,6 +6866,12 @@ platform_install_crash_handler(my_crash_handler);
   possible</div>
 <p class="Pp">Use this to check before calling prompt functions in contexts
     where non-interactive operation is acceptable (e.g., scripted usage).</p>
+<p class="Pp">Definition at line <b>352</b> of file <b>comprehensive.c</b>.</p>
+<pre>352                                    {
+353   return false;
+354 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
     <b>prompt_password()</b>, and <b>prompt_password_simple()</b>.</p>
 </section>
@@ -7269,33 +7354,33 @@ if (platform_mmap_open(&quot;/tmp/log.mmap&quot;, 1024 * 1024, &amp;mapping) == 
 <i>...</i> Variable arguments (mode for PLATFORM_O_CREAT)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">File descriptor, or -1 on error</div>
-<p class="Pp">Definition at line <b>75</b> of file
+<p class="Pp">Definition at line <b>67</b> of file
     <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>75                                                                           {
-76   if (!name) {
-77     return -1;
-78   }
-79 
-80   // Handle optional mode parameter for O_CREAT
-81   int fd = -1;
-82   int mode = 0;
-83   if (flags &amp; 0x0200) { // O_CREAT flag value
-84     va_list args;
-85     va_start(args, flags);
-86     mode = va_arg(args, int);
-87     va_end(args);
-88     fd = open(pathname, flags, mode);
-89   } else {
-90     fd = open(pathname, flags);
-91   }
-92 
-93   if (fd &gt;= 0) {
-94     NAMED_REGISTER_FD(fd, name);
-95     log_dev(&quot;Opened file descriptor %d for %s at path %s&quot;, fd, name, pathname);
-96   }
-97 
-98   return fd;
-99 }</pre>
+<pre>67                                                                           {
+68   if (!name) {
+69     return -1;
+70   }
+71 
+72   // Handle optional mode parameter for O_CREAT
+73   int fd = -1;
+74   int mode = 0;
+75   if (flags &amp; 0x0200) { // O_CREAT flag value
+76     va_list args;
+77     va_start(args, flags);
+78     mode = va_arg(args, int);
+79     va_end(args);
+80     fd = open(pathname, flags, mode);
+81   } else {
+82     fd = open(pathname, flags);
+83   }
+84 
+85   if (fd &gt;= 0) {
+86     NAMED_REGISTER_FD(fd, name);
+87     log_dev(&quot;Opened file descriptor %d for %s at path %s&quot;, fd, name, pathname);
+88   }
+89 
+90   return fd;
+91 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>, <b>log_dev</b>, and
@@ -7427,11 +7512,6 @@ if (platform_mmap_open(&quot;/tmp/log.mmap&quot;, 1024 * 1024, &amp;mapping) == 
 <p class="Pp"></p>
 <p class="Pp">Always sets errno context on failure for debugging.</p>
 </div>
-<p class="Pp">Referenced by <b>check_gpg_key_expiry()</b>,
-    <b>gpg_get_public_key()</b>, <b>gpg_verify_detached_ed25519()</b>,
-    <b>gpg_verify_signature_with_binary()</b>,
-    <b>parse_gpg_keys_from_response()</b>, and
-    <b>yt_dlp_extract_stream_url()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_pipe_close_("><a class="permalink" href="#int_platform_pipe_close_(">int
@@ -7594,11 +7674,6 @@ if (platform_popen(&quot;ssh-keygen -l -f key.pub&quot;, &quot;r&quot;, &amp;str
 }
 </pre>
 </div>
-<p class="Pp">Referenced by <b>check_gpg_key_expiry()</b>,
-    <b>gpg_get_public_key()</b>, <b>gpg_verify_detached_ed25519()</b>,
-    <b>gpg_verify_signature_with_binary()</b>,
-    <b>parse_gpg_keys_from_response()</b>, and
-    <b>yt_dlp_extract_stream_url()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_platform_process_destroy_("><a class="permalink" href="#void_platform_process_destroy_(">void
@@ -7798,11 +7873,11 @@ if (platform_popen(&quot;ssh-keygen -l -f key.pub&quot;, &quot;r&quot;, &amp;str
 <i>count</i> Number of bytes to read</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of bytes read, or -1 on error</div>
-<p class="Pp">Definition at line <b>71</b> of file
+<p class="Pp">Definition at line <b>63</b> of file
     <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>71                                                        {
-72   return read(fd, buf, count);
-73 }</pre>
+<pre>63                                                        {
+64   return read(fd, buf, count);
+65 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -7914,6 +7989,13 @@ platform_register_signal_handlers(handlers, 2);
 <p class="Pp"></p>
 <p class="Pp">POSIX systems return ASCIICHAT_OK but do nothing</p>
 </div>
+<p class="Pp">Definition at line <b>111</b> of file <b>misc.c</b>.</p>
+<pre>111                                                           {
+112   return ASCIICHAT_OK;
+113 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
 </section>
 <section class="Ss">
@@ -7976,6 +8058,14 @@ platform_register_signal_handlers(handlers, 2);
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Previous signal handler, or SIG_ERR on error</div>
 <p class="Pp">Registers a signal handler for the specified signal.</p>
+<p class="Pp">Definition at line <b>127</b> of file <b>misc.c</b>.</p>
+<pre>127                                                                     {
+128   (void)sig;
+129   (void)handler;
+130   return NULL;
+131 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_main()</b>, <b>main()</b>,
     <b>server_main()</b>, and <b>session_server_like_run()</b>.</p>
 </section>
@@ -8044,6 +8134,16 @@ platform_register_signal_handlers(handlers, 2);
 <pre>platform_sleep_ns(16666667);  // Sleep for 16.67ms (60 FPS)
 </pre>
 </div>
+<p class="Pp">Definition at line <b>50</b> of file
+  <b>platform/wasm/time.c</b>.</p>
+<pre>50                                     {
+51   struct timespec ts;
+52   ts.tv_sec = ns / 1000000000ULL;
+53   ts.tv_nsec = ns % 1000000000ULL;
+54   nanosleep(&amp;ts, NULL);
+55 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>adaptive_sleep_do()</b>,
     <b>client_audio_render_thread()</b>, <b>keepalive_stop_thread()</b>, and
     <b>tcp_client_connect()</b>.</p>
@@ -8694,6 +8794,10 @@ platform_stderr_restore(handle);        // stderr restored
 </div>
 <p class="Pp">Safe file write (write replacement).</p>
 <p class="Pp"></p>
+<p class="Pp">Override platform_write to route STDOUT to xterm.js This allows
+    the native C render pipeline (session_display_write_ascii) to output ASCII
+    frames directly to the browser's xterm.js terminal.</p>
+<p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>fd</i> File descriptor to write to
 <br/>
@@ -8712,21 +8816,26 @@ platform_stderr_restore(handle);        // stderr restored
 <p class="Pp"></p>
 <p class="Pp">On POSIX, equivalent to standard write().</p>
 </div>
-<p class="Pp">Definition at line <b>60</b> of file
-    <b>wasm/stubs/filesystem.c</b>.</p>
-<pre>60                                                               {
-61   // For WASM, route stdout/stderr to browser console
-62   if ((fd == 1 || fd == 2) &amp;&amp; buf &amp;&amp; count &gt; 0) {
-63     wasm_log_to_console(fd, (const uint8_t *)buf, count);
-64     return (ssize_t)count; // Report all bytes as written
-65   }
-66 
-67   // Fallback: use standard write for other fds
-68   return write(fd, buf, count);
-69 }</pre>
+<p class="Pp">Definition at line <b>77</b> of file <b>wasm/system.c</b>.</p>
+<pre>77                                                               {
+78   if (!buf || count == 0) {
+79     // Don't warn about these - it's a valid case (empty write)
+80     return 0;
+81   }
+82 
+83   if (fd == STDOUT_FILENO) {
+84     // Route STDOUT to xterm.js
+85     // Cast to avoid alignment warnings on pointer conversion
+86     js_terminal_write((const char *)buf, (int)count);
+87     return (ssize_t)count;
+88   }
+89 
+90   // For stderr and other fds, use the default write()
+91   return write(fd, buf, count);
+92 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>wasm_log_to_console()</b>.</p>
+<p class="Pp">References <b>js_terminal_write()</b>.</p>
 <p class="Pp">Referenced by <b>log_json_write()</b>, and
     <b>platform_write_all()</b>.</p>
 </section>
@@ -9486,6 +9595,13 @@ platform_stderr_restore(handle);        // stderr restored
 <div class="Bd-indent"><i>sock</i> Socket to close</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, non-zero on error</div>
+<p class="Pp">Definition at line <b>32</b> of file <b>comprehensive.c</b>.</p>
+<pre>32                                 {
+33   (void)sock;
+34   return 0;
+35 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>acds_client_disconnect()</b>,
     <b>acds_client_handler()</b>, <b>disconnect_client_for_bad_data()</b>,
     <b>discovery_session_destroy()</b>, <b>https_get()</b>,
@@ -9659,6 +9775,12 @@ if (!socket_is_valid(sock)) {
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">The returned string may be a static buffer. Do not modify
   or free it.</div>
+<p class="Pp">Definition at line <b>76</b> of file <b>comprehensive.c</b>.</p>
+<pre>76                                           {
+77   return &quot;Socket error&quot;;
+78 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>accept_with_timeout()</b>,
     <b>network_error_string()</b>, and <b>tcp_server_run()</b>.</p>
 </section>
@@ -9673,6 +9795,7 @@ if (!socket_is_valid(sock)) {
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">File descriptor value (on POSIX, same as socket
   handle)</div>
+<p class="Pp">References <b>error_code</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_socket_get_last_error_(void_)"><a class="permalink" href="#int_socket_get_last_error_(void_)">int
@@ -9682,6 +9805,12 @@ if (!socket_is_valid(sock)) {
 <p class="Pp">Get last socket error code.</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Error code (platform-specific)</div>
+<p class="Pp">Definition at line <b>80</b> of file <b>comprehensive.c</b>.</p>
+<pre>80                                 {
+81   return 0;
+82 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>accept_with_timeout()</b>,
     <b>connect_with_timeout()</b>, and <b>tcp_server_run()</b>.</p>
 </section>
@@ -9853,6 +9982,13 @@ if (result &lt; 0 &amp;&amp; socket_is_in_progress_error(socket_get_last_error()
 <div class="Bd-indent">true if error indicates socket is closed or invalid</div>
 <p class="Pp">Detects errors like EBADF (bad file descriptor) on POSIX or
     WSAENOTSOCK (socket operation on non-socket) on Windows.</p>
+<p class="Pp">Definition at line <b>71</b> of file <b>comprehensive.c</b>.</p>
+<pre>71                                                     {
+72   (void)error_code;
+73   return false;
+74 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">References <b>error_code</b>.</p>
 <p class="Pp">Referenced by <b>accept_with_timeout()</b>.</p>
 </section>
@@ -9865,6 +10001,12 @@ if (result &lt; 0 &amp;&amp; socket_is_in_progress_error(socket_get_last_error()
 <div class="Bd-indent"><i>sock</i> Socket handle to check</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if socket is valid, false otherwise</div>
+<p class="Pp">Definition at line <b>28</b> of file <b>comprehensive.c</b>.</p>
+<pre>28                                     {
+29   return sock &gt;= 0;
+30 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>packet_send()</b>, <b>tcp_client_close()</b>,
     <b>tcp_client_connect()</b>, <b>tcp_client_destroy()</b>, and
     <b>tcp_client_shutdown()</b>.</p>
@@ -9971,6 +10113,13 @@ while (total_sent &lt; len) {
     }
 }
 </pre>
+<p class="Pp">Definition at line <b>66</b> of file <b>comprehensive.c</b>.</p>
+<pre>66                                                  {
+67   (void)error_code;
+68   return false;
+69 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">References <b>error_code</b>.</p>
 <p class="Pp">Referenced by <b>connect_with_timeout()</b>.</p>
 </section>
@@ -10150,9 +10299,6 @@ if (ready &lt; 0) {
 <p class="Pp"><b>Works with both IPv4 and IPv6:</b> <b>socket_poll()</b> works
     transparently with both IPv4 and IPv6 sockets created with AF_INET and
     AF_INET6 respectively.</p>
-<p class="Pp">Referenced by <b>accept_with_timeout()</b>,
-    <b>discovery_session_process()</b>, <b>recv_with_timeout()</b>, and
-    <b>send_with_timeout()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="ssize_t_socket_recv_("><a class="permalink" href="#ssize_t_socket_recv_(">ssize_t
@@ -10222,6 +10368,16 @@ if (received == 0) {
 </pre>
 <p class="Pp"><b>For UDP (datagram) sockets:</b> Use <b>socket_recvfrom()</b>
     instead to receive data with source address information.</p>
+<p class="Pp">Definition at line <b>51</b> of file <b>comprehensive.c</b>.</p>
+<pre>51                                                                      {
+52   (void)sock;
+53   (void)buf;
+54   (void)len;
+55   (void)flags;
+56   return -1;
+57 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>recv_with_timeout()</b>.</p>
 </section>
 <section class="Ss">
@@ -10333,6 +10489,16 @@ while (total_sent &lt; len) {
       write())</li>
   <li>Partial sends are normal and should be handled</li>
 </ul>
+<p class="Pp">Definition at line <b>43</b> of file <b>comprehensive.c</b>.</p>
+<pre>43                                                                            {
+44   (void)sock;
+45   (void)buf;
+46   (void)len;
+47   (void)flags;
+48   return -1;
+49 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>add_client()</b>, and
   <b>send_with_timeout()</b>.</p>
 </section>
@@ -10646,6 +10812,14 @@ while (total_sent &lt; len) {
 <i>how</i> Shutdown mode (SHUT_RD, SHUT_WR, SHUT_RDWR)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, non-zero on error</div>
+<p class="Pp">Definition at line <b>37</b> of file <b>comprehensive.c</b>.</p>
+<pre>37                                             {
+38   (void)sock;
+39   (void)how;
+40   return 0;
+41 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>disconnect_client_for_bad_data()</b>,
     <b>server_connection_shutdown()</b>, and <b>tcp_client_shutdown()</b>.</p>
 </section>
@@ -11261,6 +11435,16 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">Screen clearing does not affect scrollback buffer.</p>
 </div>
+<p class="Pp">Definition at line <b>197</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>197                                               {
+198   // Send ANSI clear screen escape sequence
+199   write(STDOUT_FILENO, &quot;\033[2J&quot;, 4);
+200   return ASCIICHAT_OK;
+201 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
 <p class="Pp">Referenced by <b>session_display_clear()</b>,
     <b>session_display_write_ascii()</b>,
     <b>session_handle_keyboard_input()</b>, <b>session_render_loop()</b>,
@@ -11287,6 +11471,14 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">On Windows, clears console screen buffer.</p>
 </div>
+<p class="Pp">Definition at line <b>83</b> of file <b>misc.c</b>.</p>
+<pre>83                                                     {
+84   (void)fd;
+85   return ASCIICHAT_OK;
+86 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
 <p class="Pp">Referenced by <b>session_display_write_ascii()</b>.</p>
 </section>
 <section class="Ss">
@@ -11306,11 +11498,11 @@ while (total_sent &lt; len) {
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Cursor should be restored with
   <b>terminal_cursor_show()</b> before exit.</div>
-<p class="Pp">Definition at line <b>16</b> of file
+<p class="Pp">Definition at line <b>20</b> of file
     <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>16                                              {
-17   return ASCIICHAT_OK;
-18 }</pre>
+<pre>20                                              {
+21   return ASCIICHAT_OK;
+22 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
@@ -11336,6 +11528,17 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">Useful for starting new frame rendering at top-left.</p>
 </div>
+<p class="Pp">Definition at line <b>203</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>203                                                {
+204   (void)fd;
+205   // Send ANSI cursor home escape sequence
+206   write(STDOUT_FILENO, &quot;\033[H&quot;, 3);
+207   return ASCIICHAT_OK;
+208 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
 <p class="Pp">Referenced by <b>session_display_clear()</b>,
     <b>session_display_cursor_home()</b>, <b>session_display_write_ascii()</b>,
     and <b>splash_wait_for_animation()</b>.</p>
@@ -11350,11 +11553,11 @@ while (total_sent &lt; len) {
 <p class="Pp">Restores the terminal cursor on stdout. No-op when not
     interactive. Uses ESC[?25h. On Windows, tries VT processing first and falls
     back to SetConsoleCursorInfo for older consoles.</p>
-<p class="Pp">Definition at line <b>20</b> of file
+<p class="Pp">Definition at line <b>24</b> of file
     <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>20                                              {
-21   return ASCIICHAT_OK;
-22 }</pre>
+<pre>24                                              {
+25   return ASCIICHAT_OK;
+26 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
@@ -11462,12 +11665,12 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">Terminal size may change if terminal is resized.</p>
 </div>
-<p class="Pp">Definition at line <b>11</b> of file
+<p class="Pp">Definition at line <b>15</b> of file
     <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>11                                                            {
-12   (void)size;
-13   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;Terminal operations not supported in WASM&quot;);
-14 }</pre>
+<pre>15                                                            {
+16   (void)size;
+17   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;Terminal operations not supported in WASM&quot;);
+18 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_NOT_SUPPORTED</b>, and <b>SET_ERRNO</b>.</p>
@@ -11524,6 +11727,34 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">This function is a no-op if stdout is not a TTY</p>
 </div>
+<p class="Pp">Definition at line <b>210</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>210                                                             {
+211   if (offset == 0) {
+212     return ASCIICHAT_OK;
+213   }
+214 
+215   if (offset &gt; 0) {
+216     // Move right: \x1b[&lt;n&gt;C
+217     char buf[32];
+218     int len = snprintf(buf, sizeof(buf), &quot;\033[%dC&quot;, offset);
+219     if (len &gt; 0 &amp;&amp; len &lt; (int)sizeof(buf)) {
+220       write(STDOUT_FILENO, buf, len);
+221     }
+222   } else {
+223     // Move left: \x1b[&lt;n&gt;D
+224     char buf[32];
+225     int len = snprintf(buf, sizeof(buf), &quot;\033[%dD&quot;, -offset);
+226     if (len &gt; 0 &amp;&amp; len &lt; (int)sizeof(buf)) {
+227       write(STDOUT_FILENO, buf, len);
+228     }
+229   }
+230 
+231   return ASCIICHAT_OK;
+232 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
 <p class="Pp">Referenced by <b>log_search_render_input_line()</b>.</p>
 </section>
 <section class="Ss">
@@ -11551,6 +11782,14 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">Terminal state is reset immediately.</p>
 </div>
+<p class="Pp">Definition at line <b>88</b> of file <b>misc.c</b>.</p>
+<pre>88                                          {
+89   (void)fd;
+90   return ASCIICHAT_OK;
+91 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
 <p class="Pp">Referenced by <b>session_display_reset()</b>, and
     <b>session_display_write_ascii()</b>.</p>
 </section>
@@ -11650,6 +11889,20 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">Disabling echo is useful for password prompts.</p>
 </div>
+<p class="Pp">Definition at line <b>182</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>182                                                   {
+183   // Send ANSI escape sequence for echo control (xterm ignores but passes through)
+184   if (!enabled) {
+185     write(STDOUT_FILENO, &quot;\033[?25l&quot;, 6);  // Hide cursor
+186   } else {
+187     write(STDOUT_FILENO, &quot;\033[?25h&quot;, 6);  // Show cursor
+188   }
+189   return ASCIICHAT_OK;
+190 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, and <b>enabled</b>.</p>
 <p class="Pp">Referenced by <b>ascii_write_destroy()</b>, and
     <b>ascii_write_init()</b>.</p>
 </section>

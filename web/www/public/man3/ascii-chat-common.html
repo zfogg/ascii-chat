@@ -1808,12 +1808,13 @@ if (result != OK) {
     <b>debug_atomic_shutdown()</b>, <b>debug_memory_report()</b>,
     <b>debug_memory_thread_cleanup()</b>, <b>debug_sync_cleanup_thread()</b>,
     <b>debug_sync_destroy()</b>, <b>debug_sync_final_cleanup()</b>,
-    <b>known_hosts_destroy()</b>, <b>log_cleanup_colors()</b>,
-    <b>log_destroy()</b>, <b>log_shutdown_begin()</b>,
-    <b>log_shutdown_end()</b>, <b>log_system_destroy()</b>,
-    <b>mutex_stack_cleanup()</b>, <b>named_destroy()</b>,
-    <b>options_state_destroy()</b>, <b>platform_cleanup_binary_path_cache()</b>,
-    <b>platform_destroy()</b>, <b>platform_restore_timer_resolution()</b>,
+    <b>keyboard_destroy()</b>, <b>known_hosts_destroy()</b>,
+    <b>log_cleanup_colors()</b>, <b>log_destroy()</b>,
+    <b>log_shutdown_begin()</b>, <b>log_shutdown_end()</b>,
+    <b>log_system_destroy()</b>, <b>mutex_stack_cleanup()</b>,
+    <b>named_destroy()</b>, <b>options_state_destroy()</b>,
+    <b>platform_cleanup_binary_path_cache()</b>, <b>platform_destroy()</b>,
+    <b>platform_restore_timer_resolution()</b>,
     <b>simd_caches_destroy_all()</b>, <b>symbol_cache_destroy()</b>,
     <b>terminal_screen_cleanup()</b>, <b>terminal_stop_resize_detection()</b>,
     and <b>timer_system_destroy()</b>.</p>
@@ -2003,9 +2004,6 @@ fps_frame_ns(&amp;tracker, now, &quot;frame rendered&quot;);
     <b>fps_t::last_fps_report_ns</b>, <b>fps_t::last_frame_time_ns</b>,
     <b>NS_PER_SEC_INT</b>, <b>fps_t::report_interval_ns</b>,
     <b>time_elapsed_ns()</b>, and <b>fps_t::tracker_name</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_render_thread()</b>,
-    <b>client_video_render_thread()</b>, and
-    <b>session_capture_read_frame()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_fps_init_("><a class="permalink" href="#void_fps_init_(">void
@@ -2033,9 +2031,6 @@ fps_frame_ns(&amp;tracker, now, &quot;frame rendered&quot;);
 <p class="Pp"></p>
 <p class="Pp">References <b>fps_init_with_interval()</b>, and
     <b>NS_PER_SEC_INT</b>.</p>
-<p class="Pp">Referenced by <b>client_audio_render_thread()</b>,
-    <b>client_video_render_thread()</b>, <b>session_capture_create()</b>, and
-    <b>session_network_capture_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_fps_init_with_interval_("><a class="permalink" href="#void_fps_init_with_interval_(">void

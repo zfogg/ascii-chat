@@ -17,60 +17,41 @@
     code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
       font-family: inherit; }
   </style>
-  <title>stdin_buffer_t(3)</title>
+  <title>webcam_wasm.c(3)</title>
 </head>
 <body>
 <table class="head">
   <tr>
-    <td class="head-ltitle">stdin_buffer_t(3)</td>
+    <td class="head-ltitle">webcam_wasm.c(3)</td>
     <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">stdin_buffer_t(3)</td>
+    <td class="head-rtitle">webcam_wasm.c(3)</td>
   </tr>
 </table>
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">stdin_buffer_t</p>
+<p class="Pp">webcam_wasm.c - WebAssembly (browser) webcam capture backend.</p>
+<p class="Pp"></p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>uint8_t</b> * <b>data</b>
-  <br/>
-  Buffered data (shared between decoders). size_t <b>size</b>
-  <br/>
-  Total size of buffered data.
-  <br/>
-</p>
-</section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">Structure to track buffered stdin data</p>
-<p class="Pp">Definition at line <b>144</b> of file
-    <b>media/ffmpeg_decoder.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b>* stdin_buffer_t::data</h2>
-<p class="Pp">Buffered data (shared between decoders).</p>
-<p class="Pp">Definition at line <b>145</b> of file
-    <b>media/ffmpeg_decoder.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_stdin_buffer_t::size"><a class="permalink" href="#size_t_stdin_buffer_t::size">size_t
-  stdin_buffer_t::size</a></h2>
-<p class="Pp">Total size of buffered data.</p>
-<p class="Pp">Definition at line <b>146</b> of file
-    <b>media/ffmpeg_decoder.c</b>.</p>
+<p class="Pp">WebAssembly (browser) webcam capture backend.</p>
+<p class="Pp">This module provides webcam access in WebAssembly builds by
+    bridging the browser's getUserMedia API to the cross-platform
+    <b>webcam_context_t</b> interface.</p>
 <p class="Pp"></p>
-</section>
+<p class="Pp">The implementation:</p>
+<ul class="Bl-bullet">
+  <li>Uses EM_JS to call getUserMedia() in the browser</li>
+  <li>Captures frames via canvas.drawImage() + getImageData()</li>
+  <li>Converts RGBA to RGB24 in C</li>
+  <li>Runs frame capture on the main thread (browser requirement)</li>
+</ul>
+<p class="Pp">Definition in file <b>webcam_wasm.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>

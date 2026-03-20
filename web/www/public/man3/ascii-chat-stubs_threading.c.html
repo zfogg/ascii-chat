@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>threading.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">threading.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">threading.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">threading.c - Threading stubs for WASM.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef void <b>thread_pool_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>asciichat_thread_join_timeout</b>
+    (<b>asciichat_thread_t</b> *thread, void **retval, <b>uint64_t</b>
+    timeout_ns)
+  <br/>
+  Wait for a thread to complete with timeout. <b>bool</b>
+    <b>asciichat_thread_is_initialized</b> (<b>asciichat_thread_t</b> *thread)
+  <br/>
+  Check if a thread handle has been initialized. <b>thread_pool_t</b> *
+    <b>thread_pool_create</b> (int num_threads)
+  <br/>
+  void <b>thread_pool_destroy</b> (<b>thread_pool_t</b> *<b>pool</b>)
+  <br/>
+  Destroy a thread pool. int <b>cond_init</b> (<b>cond_t</b> *cond, const char
+    *name)
+  <br/>
+  Initialize a condition variable with a name. int <b>cond_destroy</b>
+    (<b>cond_t</b> *cond)
+  <br/>
+  Destroy a condition variable. int <b>cond_signal</b> (<b>cond_t</b> *cond)
+  <br/>
+  Signal a condition variable (wake one waiting thread). int
+    <b>cond_broadcast</b> (<b>cond_t</b> *cond)
+  <br/>
+  Broadcast to a condition variable (wake all waiting threads). int
+    <b>cond_wait_impl</b> (<b>cond_t</b> *cond, <b>mutex_t</b> *<b>mutex</b>)
+  <br/>
+  Wait on a condition variable (blocking) - implementation function. int
+    <b>cond_timedwait_impl</b> (<b>cond_t</b> *cond, <b>mutex_t</b>
+    *<b>mutex</b>, <b>uint64_t</b> timeout_ns)
+  <br/>
+  Wait on a condition variable with timeout - implementation function.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Threading stubs for WASM.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>stubs/threading.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_void_"><a class="permalink" href="#typedef_void_">typedef
+  void <b>thread_pool_t</b></a></h2>
+<p class="Pp">Definition at line <b>24</b> of file <b>stubs/threading.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>thread_pool_t</b> * thread_pool_create (int num_threads)</h2>
+<p class="Pp">Definition at line <b>26</b> of file <b>stubs/threading.c</b>.</p>
+<pre>26                                                    {
+27   (void)num_threads;
+28   return NULL;
+29 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>acds_server_init()</b>, <b>server_main()</b>, and
+    <b>tcp_server_add_client()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_thread_pool_destroy_("><a class="permalink" href="#void_thread_pool_destroy_(">void
+  thread_pool_destroy (<b>thread_pool_t</b> * pool)</a></h2>
+<p class="Pp">Destroy a thread pool. Stops all threads (if not already stopped),
+    waits for them to exit, and frees all pool resources. It's safe to call this
+    even if threads are still running - they will be stopped first.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>pool</b><i></i><b> Thread pool to destroy (NULL
+  is safe, does nothing)</b></div>
+<p class="Pp">Definition at line <b>31</b> of file <b>stubs/threading.c</b>.</p>
+<pre>31                                               {
+32   (void)pool;
+33 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>pool</b>.</p>
+<p class="Pp">Referenced by <b>acds_server_shutdown()</b>, <b>server_main()</b>,
+    <b>tcp_server_destroy()</b>, <b>tcp_server_remove_client()</b>, and
+    <b>websocket_server_destroy()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.4</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

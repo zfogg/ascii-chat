@@ -252,8 +252,6 @@ thread_pool_destroy(server_pool);</pre>
     <b>log_debug</b>, <b>mutex_init()</b>, <b>NAMED_REGISTER_MUTEX</b>,
     <b>NAMED_REGISTER_THREAD_POOL</b>, <b>pool</b>, <b>SAFE_FREE</b>,
     <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acds_server_init()</b>, <b>server_main()</b>, and
-    <b>tcp_server_add_client()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>thread_pool_t</b> * thread_pool_create_with_workers (const
@@ -399,51 +397,10 @@ thread_pool_destroy(server_pool);</pre>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i></i><b>pool</b><i></i><b> Thread pool to destroy (NULL
   is safe, does nothing)</b></div>
-<p class="Pp">Definition at line <b>208</b> of file <b>thread_pool.c</b>.</p>
-<pre>208                                               {
-209   if (!pool) {
-210     return;
-211   }
-212 
-213   log_debug(&quot;Destroying thread pool '%s' (thread_count=%zu, work_queue_mode=%d)&quot;, pool-&gt;name, pool-&gt;thread_count,
-214             pool-&gt;is_work_queue_mode);
-215 
-216   // Stop all threads first (if not already stopped)
-217   if (pool-&gt;thread_count &gt; 0) {
-218     log_debug(&quot;Thread pool '%s' has %zu threads, stopping them first&quot;, pool-&gt;name, pool-&gt;thread_count);
-219     thread_pool_stop_all(pool);
-220     log_debug(&quot;After thread_pool_stop_all: pool-&gt;threads=%p, pool-&gt;thread_count=%zu&quot;, (void *)pool-&gt;threads,
-221               pool-&gt;thread_count);
-222   }
-223 
-224   // Clean up work queue (in case there's pending work)
-225   if (pool-&gt;is_work_queue_mode) {
-226     mutex_lock(&amp;pool-&gt;work_queue_mutex);
-227     thread_pool_work_entry_t *entry = pool-&gt;work_queue;
-228     while (entry) {
-229       thread_pool_work_entry_t *next = entry-&gt;next;
-230       SAFE_FREE(entry);
-231       entry = next;
-232     }
-233     pool-&gt;work_queue = NULL;
-234     mutex_unlock(&amp;pool-&gt;work_queue_mutex);
-235 
-236     // Destroy condition variable and work queue mutex
-237     cond_destroy(&amp;pool-&gt;work_available);
-238     mutex_destroy(&amp;pool-&gt;work_queue_mutex);
-239   }
-240 
-241   // Destroy threads mutex
-242   mutex_destroy(&amp;pool-&gt;threads_mutex);
-243 
-244   NAMED_UNREGISTER(pool);
-245 
-246   // Free pool
-247   log_debug(&quot;About to free thread pool '%s' at %p&quot;, pool-&gt;name, (void *)pool);
-248   SAFE_FREE(pool);
-249 
-250   log_debug(&quot;Thread pool destroyed (freed memory)&quot;);
-251 }</pre>
+<p class="Pp">Definition at line <b>31</b> of file <b>stubs/threading.c</b>.</p>
+<pre>31                                               {
+32   (void)pool;
+33 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>cond_destroy()</b>, <b>log_debug</b>,
@@ -710,74 +667,15 @@ thread_pool_destroy(server_pool);</pre>
   NULL=auto-generate)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>307</b> of file <b>thread_pool.c</b>.</p>
-<pre>308                                                              {
-309   if (!pool) {
-310     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;pool is NULL&quot;);
-311   }
-312 
-313   if (pool-&gt;is_work_queue_mode) {
-314     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Cannot spawn threads in work queue mode. Use thread_pool_queue_work()&quot;);
-315   }
-316 
-317   if (!thread_func) {
-318     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;thread_func is NULL&quot;);
-319   }
-320 
-321   // Allocate thread entry
-322   thread_pool_entry_t *entry = SAFE_MALLOC(sizeof(thread_pool_entry_t), thread_pool_entry_t *);
-323   if (!entry) {
-324     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate thread pool entry&quot;);
-325   }
-326 
-327   memset(entry, 0, sizeof(*entry));
-328   entry-&gt;stop_id = stop_id;
-329   entry-&gt;thread_func = thread_func;
-330   entry-&gt;thread_arg = thread_arg;
-331   entry-&gt;next = NULL;
-332 
-333   // Copy thread name (truncate if necessary)
-334   if (thread_name) {
-335     SAFE_STRNCPY(entry-&gt;name, thread_name, sizeof(entry-&gt;name));
-336   } else {
-337     // Auto-generate name
-338     SAFE_SNPRINTF(entry-&gt;name, sizeof(entry-&gt;name), &quot;%s_worker_%d&quot;, pool-&gt;name, stop_id);
-339   }
-340 
-341   // Create thread
-342   if (asciichat_thread_create(&amp;entry-&gt;thread, entry-&gt;name, thread_func, thread_arg) != 0) {
-343     // Save name before freeing entry
-344     char thread_name_copy[64];
-345     SAFE_STRNCPY(thread_name_copy, entry-&gt;name, sizeof(thread_name_copy));
-346     SAFE_FREE(entry);
-347     return SET_ERRNO(ERROR_THREAD, &quot;Failed to create thread '%s' in pool '%s'&quot;, thread_name_copy, pool-&gt;name);
-348   }
-349 
-350   // Add to thread list (sorted by stop_id)
-351   mutex_lock(&amp;pool-&gt;threads_mutex);
-352 
-353   if (!pool-&gt;threads || pool-&gt;threads-&gt;stop_id &gt; stop_id) {
-354     // Insert at head
-355     entry-&gt;next = pool-&gt;threads;
-356     pool-&gt;threads = entry;
-357   } else {
-358     // Find insertion point (maintain sorted order by stop_id)
-359     thread_pool_entry_t *prev = pool-&gt;threads;
-360     while (prev-&gt;next &amp;&amp; prev-&gt;next-&gt;stop_id &lt;= stop_id) {
-361       prev = prev-&gt;next;
-362     }
-363     entry-&gt;next = prev-&gt;next;
-364     prev-&gt;next = entry;
-365   }
-366 
-367   pool-&gt;thread_count++;
-368   mutex_unlock(&amp;pool-&gt;threads_mutex);
-369 
-370   log_debug(&quot;Spawned thread '%s' (stop_id=%d) in pool '%s' (total_threads=%zu)&quot;, entry-&gt;name, stop_id, pool-&gt;name,
-371             pool-&gt;thread_count);
-372 
-373   return ASCIICHAT_OK;
-374 }</pre>
+<p class="Pp">Definition at line <b>336</b> of file <b>comprehensive.c</b>.</p>
+<pre>336                                                                                                                                {
+337   (void)pool;
+338   (void)thread_func;
+339   (void)thread_arg;
+340   (void)stop_id;
+341   (void)name;
+342   return ASCIICHAT_OK;  // No-op in WASM (no real threads)
+343 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
@@ -820,72 +718,11 @@ thread_pool_destroy(server_pool);</pre>
   stop</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>376</b> of file <b>thread_pool.c</b>.</p>
-<pre>376                                                             {
-377   if (!pool) {
-378     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;pool is NULL&quot;);
-379   }
-380 
-381   mutex_lock(&amp;pool-&gt;threads_mutex);
-382 
-383   if (pool-&gt;thread_count == 0) {
-384     mutex_unlock(&amp;pool-&gt;threads_mutex);
-385     log_debug(&quot;Thread pool '%s' has no threads to stop&quot;, pool-&gt;name);
-386     return ASCIICHAT_OK;
-387   }
-388 
-389   log_debug(&quot;Stopping %zu threads in pool '%s' in stop_id order&quot;, pool-&gt;thread_count, pool-&gt;name);
-390 
-391   // For work queue mode, signal workers to shutdown (BEFORE releasing the mutex to prevent new work)
-392   if (pool-&gt;is_work_queue_mode) {
-393     mutex_lock(&amp;pool-&gt;work_queue_mutex);
-394     pool-&gt;shutdown_requested = true;
-395     cond_broadcast(&amp;pool-&gt;work_available);
-396     mutex_unlock(&amp;pool-&gt;work_queue_mutex);
-397   }
-398 
-399   // Save thread list and clear it (WHILE holding mutex to prevent worker state changes)
-400   thread_pool_entry_t *threads_to_join = pool-&gt;threads;
-401   pool-&gt;threads = NULL;
-402   pool-&gt;thread_count = 0;
-403 
-404   // Release mutex BEFORE joining threads to prevent deadlock if workers need to acquire it
-405   mutex_unlock(&amp;pool-&gt;threads_mutex);
-406 
-407   // Now join threads (WITHOUT holding the mutex to prevent deadlock)
-408   thread_pool_entry_t *entry = threads_to_join;
-409   int joined_count = 0, freed_count = 0;
-410   const uint64_t THREAD_JOIN_TIMEOUT_NS = 2 * 1000000000ULL; // 2 second timeout per thread
-411 
-412   while (entry) {
-413     log_debug(&quot;Joining thread '%s' (stop_id=%d) in pool '%s' with 2s timeout&quot;, entry-&gt;name, entry-&gt;stop_id, pool-&gt;name);
-414 
-415     // Join thread with timeout to prevent hanging on stuck threads
-416     // If thread doesn't exit in 2 seconds, log warning and continue anyway
-417     // This prevents reconnection loop from being blocked by deadlocked workers
-418     int join_result = asciichat_thread_join_timeout(&amp;entry-&gt;thread, NULL, THREAD_JOIN_TIMEOUT_NS);
-419     if (join_result != 0) {
-420       if (join_result == ETIMEDOUT) {
-421         log_warn(&quot;Thread '%s' (stop_id=%d) did not exit within 2s timeout - may be stuck. Continuing anyway.&quot;,
-422                  entry-&gt;name, entry-&gt;stop_id);
-423       } else {
-424         log_warn(&quot;Failed to join thread '%s' in pool '%s' (error %d)&quot;, entry-&gt;name, pool-&gt;name, join_result);
-425       }
-426     } else {
-427       joined_count++;
-428     }
-429 
-430     thread_pool_entry_t *next = entry-&gt;next;
-431     log_debug(&quot;Freeing thread_pool_entry '%s' at %p&quot;, entry-&gt;name, (void *)entry);
-432     SAFE_FREE(entry);
-433     freed_count++;
-434     entry = next;
-435   }
-436   log_debug(&quot;thread_pool_stop_all: joined=%d, freed=%d&quot;, joined_count, freed_count);
-437 
-438   log_debug(&quot;All threads stopped in pool '%s'&quot;, pool-&gt;name);
-439   return ASCIICHAT_OK;
-440 }</pre>
+<p class="Pp">Definition at line <b>345</b> of file <b>comprehensive.c</b>.</p>
+<pre>345                                                    {
+346   (void)pool;
+347   return ASCIICHAT_OK;  // No-op in WASM
+348 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,

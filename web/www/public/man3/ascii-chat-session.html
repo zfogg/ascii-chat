@@ -1173,7 +1173,7 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>capture</i> Capture context (may be NULL for client
   mode)
 <br/>
-<i>key</i> Keyboard key code from keyboard_read_nonblocking()
+<i>key</i> Keyboard key code from <b>keyboard_read_nonblocking()</b>
 <br/>
 <i>user_data</i> Opaque pointer provided by caller</div>
 <p class="Pp">Definition at line <b>87</b> of file
@@ -8386,10 +8386,12 @@ int main(void) {
     <b>auto_height</b>, <b>auto_width</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>g_snapshot_first_capture_ns</b>, <b>g_snapshot_first_frame_rendered</b>,
     <b>g_snapshot_first_frame_rendered_ns</b>, <b>GET_OPTION</b>,
-    <b>get_terminal_size()</b>, <b>keyboard_help_check_signal_cancel()</b>,
+    <b>get_terminal_size()</b>, <b>keyboard_destroy()</b>,
+    <b>keyboard_help_check_signal_cancel()</b>,
     <b>keyboard_help_is_active()</b>, <b>keyboard_help_render()</b>,
-    <b>keyboard_help_toggle()</b>, <b>log_debug</b>, <b>log_debug_every</b>,
-    <b>log_dev</b>, <b>log_dev_every</b>, <b>log_error</b>, <b>log_info</b>,
+    <b>keyboard_help_toggle()</b>, <b>keyboard_read_nonblocking()</b>,
+    <b>log_debug</b>, <b>log_debug_every</b>, <b>log_dev</b>,
+    <b>log_dev_every</b>, <b>log_error</b>, <b>log_info</b>,
     <b>log_info_every</b>, <b>log_search_handle_key()</b>,
     <b>log_search_should_handle()</b>, <b>log_set_terminal_output()</b>,
     <b>log_warn</b>, <b>NS_PER_MS_INT</b>, <b>NS_PER_SEC_INT</b>,

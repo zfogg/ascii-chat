@@ -30,21 +30,149 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">session_log_buffer.h - WASM stub for session log buffer (not used
-    in WASM).</p>
+<p class="Pp">session_log_buffer.h - WASM stub for session log buffer.</p>
 <p class="Pp"></p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>session_log_entry_t</b>
+  <br/>
+  Single log entry with sequence number for ordering.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>SESSION_LOG_BUFFER_SIZE</b> 8192
+  <br/>
+  #define <b>SESSION_LOG_LINE_MAX</b> 1024
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>session_log_buffer_t</b> * <b>session_log_buffer_create</b>
+    (void)
+  <br/>
+  void <b>session_log_buffer_destroy</b> (<b>session_log_buffer_t</b> *buf)
+  <br/>
+  void <b>session_log_buffer_clear</b> (<b>session_log_buffer_t</b> *buf)
+  <br/>
+  void <b>session_log_buffer_append</b> (<b>session_log_buffer_t</b> *buf, const
+    char *message)
+  <br/>
+  size_t <b>session_log_buffer_get_recent</b> (<b>session_log_buffer_t</b> *buf,
+    <b>session_log_entry_t</b> *out_entries, size_t max_count)
+  <br/>
+  <br/>
+</p>
+</section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">WASM stub for session log buffer (not used in WASM).</p>
+<p class="Pp">WASM stub for session log buffer.</p>
 <p class="Pp"></p>
 <p class="Pp"></p>
 <p class="Pp">Definition in file
     <b>lib/platform/wasm/stubs/session_log_buffer.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_SESSION_LOG_BUFFER_SIZE___8192"><a class="permalink" href="#_define_SESSION_LOG_BUFFER_SIZE___8192">#define
+  SESSION_LOG_BUFFER_SIZE 8192</a></h2>
+<p class="Pp">Definition at line <b>14</b> of file
+    <b>lib/platform/wasm/stubs/session_log_buffer.h</b>.</p>
+<p class="Pp">Referenced by <b>log_search_gather_and_filter_logs()</b>,
+    <b>session_log_buffer_append()</b>, <b>session_log_buffer_clear()</b>,
+    <b>session_log_buffer_get_recent()</b>, and
+  <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SESSION_LOG_LINE_MAX___1024"><a class="permalink" href="#_define_SESSION_LOG_LINE_MAX___1024">#define
+  SESSION_LOG_LINE_MAX 1024</a></h2>
+<p class="Pp">Definition at line <b>15</b> of file
+    <b>lib/platform/wasm/stubs/session_log_buffer.h</b>.</p>
+<p class="Pp">Referenced by <b>log_search_gather_and_filter_logs()</b>,
+    <b>session_log_buffer_append()</b>, and <b>terminal_screen_render()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_session_log_buffer_append_("><a class="permalink" href="#void_session_log_buffer_append_(">void
+  session_log_buffer_append (<b>session_log_buffer_t</b> * buf, const char *
+  message)</a></h2>
+<p class="Pp">Definition at line <b>88</b> of file
+    <b>platform/wasm/stubs/log.c</b>.</p>
+<pre>88                                                                                {
+89   (void)buf;
+90   (void)message;
+91   // No-op - session log buffer not used in WASM
+92 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_log_buffer_clear_("><a class="permalink" href="#void_session_log_buffer_clear_(">void
+  session_log_buffer_clear (<b>session_log_buffer_t</b> * buf)</a></h2>
+<p class="Pp">Definition at line <b>83</b> of file
+    <b>platform/wasm/stubs/log.c</b>.</p>
+<pre>83                                                          {
+84   (void)buf;
+85   // No-op - session log buffer not used in WASM
+86 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>session_log_buffer_t</b> * session_log_buffer_create (void
+  )</h2>
+<p class="Pp">Definition at line <b>74</b> of file
+    <b>platform/wasm/stubs/log.c</b>.</p>
+<pre>74                                                       {
+75   return NULL;  // No-op - session log buffer not used in WASM
+76 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_log_buffer_destroy_("><a class="permalink" href="#void_session_log_buffer_destroy_(">void
+  session_log_buffer_destroy (<b>session_log_buffer_t</b> * buf)</a></h2>
+<p class="Pp">Definition at line <b>78</b> of file
+    <b>platform/wasm/stubs/log.c</b>.</p>
+<pre>78                                                            {
+79   (void)buf;
+80   // No-op - session log buffer not used in WASM
+81 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_session_log_buffer_get_recent_("><a class="permalink" href="#size_t_session_log_buffer_get_recent_(">size_t
+  session_log_buffer_get_recent (<b>session_log_buffer_t</b> * buf,
+  <b>session_log_entry_t</b> * out_entries, size_t max_count)</a></h2>
+<p class="Pp">Definition at line <b>94</b> of file
+    <b>platform/wasm/stubs/log.c</b>.</p>
+<pre>96                                                         {
+97   (void)buf;
+98   (void)out_entries;
+99   (void)max_count;
+100   return 0; // No entries in WASM
+101 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>

@@ -71,10 +71,24 @@
   int <b>terminal_choose_log_fd</b> (<b>log_level_t</b> level)
   <br/>
   Choose output file descriptor for logging based on level and interactivity.
-    void <b>session_log_buffer_append</b> (<b>session_log_buffer_t</b> *buf,
-    const char *message)
+    <b>session_log_buffer_t</b> * <b>session_log_buffer_create</b> (void)
   <br/>
-  Append a log message to the buffer.
+  Create a new session log buffer instance. void
+    <b>session_log_buffer_destroy</b> (<b>session_log_buffer_t</b> *buf)
+  <br/>
+  Cleanup session log buffer instance. void <b>session_log_buffer_clear</b>
+    (<b>session_log_buffer_t</b> *buf)
+  <br/>
+  Clear all log entries from buffer. void <b>session_log_buffer_append</b>
+    (<b>session_log_buffer_t</b> *buf, const char *message)
+  <br/>
+  Append a log message to the buffer. size_t
+    <b>session_log_buffer_get_recent</b> (<b>session_log_buffer_t</b> *buf,
+    <b>session_log_entry_t</b> *out_entries, size_t max_count)
+  <br/>
+  Get recent log entries from buffer. void <b>log_mmap_destroy</b> (void)
+  <br/>
+  Shutdown mmap logging.
   <br/>
 </p>
 </section>
@@ -106,6 +120,18 @@
 59   (void)json_msg;
 60   // No-op - JSON logging in WASM uses console output instead
 61 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_mmap_destroy_(void_)"><a class="permalink" href="#void_log_mmap_destroy_(void_)">void
+  log_mmap_destroy (void )</a></h2>
+<p class="Pp">Shutdown mmap logging. Syncs and unmaps the log file.</p>
+<p class="Pp">Definition at line <b>103</b> of file
+    <b>platform/wasm/stubs/log.c</b>.</p>
+<pre>103                             {
+104   // No-op - mmap logging not used in WASM
+105 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -242,15 +268,101 @@
 <div class="Bd-indent"><i>buf</i> Buffer instance (must not be NULL)
 <br/>
 <i>message</i> Log message text (already formatted with colors)</div>
-<p class="Pp">Definition at line <b>71</b> of file
+<p class="Pp">Definition at line <b>88</b> of file
     <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>71                                                                                {
-72   (void)buf;
-73   (void)message;
-74   // No-op - session log buffer not used in WASM
-75 }</pre>
+<pre>88                                                                                {
+89   (void)buf;
+90   (void)message;
+91   // No-op - session log buffer not used in WASM
+92 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_log_buffer_clear_("><a class="permalink" href="#void_session_log_buffer_clear_(">void
+  session_log_buffer_clear (<b>session_log_buffer_t</b> * buf)</a></h2>
+<p class="Pp">Clear all log entries from buffer. Thread-safe. Resets buffer to
+    empty state, discarding all captured logs. Useful for clearing
+    initialization logs before screen starts rendering.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>buf</i> Buffer instance (must not be NULL)</div>
+<p class="Pp">Definition at line <b>83</b> of file
+    <b>platform/wasm/stubs/log.c</b>.</p>
+<pre>83                                                          {
+84   (void)buf;
+85   // No-op - session log buffer not used in WASM
+86 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>terminal_screen_log_clear()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>session_log_buffer_t</b> * session_log_buffer_create (void
+  )</h2>
+<p class="Pp">Create a new session log buffer instance. Allocates and
+    initializes a circular buffer for log capture. Caller is responsible for
+    calling <b>session_log_buffer_destroy()</b> when done.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to new buffer instance, or NULL on allocation
+  failure</div>
+<p class="Pp">Definition at line <b>74</b> of file
+    <b>platform/wasm/stubs/log.c</b>.</p>
+<pre>74                                                       {
+75   return NULL;  // No-op - session log buffer not used in WASM
+76 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>terminal_screen_log_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_log_buffer_destroy_("><a class="permalink" href="#void_session_log_buffer_destroy_(">void
+  session_log_buffer_destroy (<b>session_log_buffer_t</b> * buf)</a></h2>
+<p class="Pp">Cleanup session log buffer instance. Frees the buffer and all
+    internal resources. Safe to call with NULL.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>buf</i> Buffer instance to destroy (can be NULL)</div>
+<p class="Pp">Definition at line <b>78</b> of file
+    <b>platform/wasm/stubs/log.c</b>.</p>
+<pre>78                                                            {
+79   (void)buf;
+80   // No-op - session log buffer not used in WASM
+81 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>terminal_screen_log_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_session_log_buffer_get_recent_("><a class="permalink" href="#size_t_session_log_buffer_get_recent_(">size_t
+  session_log_buffer_get_recent (<b>session_log_buffer_t</b> * buf,
+  <b>session_log_entry_t</b> * out_entries, size_t max_count)</a></h2>
+<p class="Pp">Get recent log entries from buffer. Thread-safe. Copies up to
+    max_count recent entries into out_entries. Entries are returned in
+    chronological order (oldest first).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>buf</i> Buffer instance (must not be NULL)
+<br/>
+<i>out_entries</i> Output array to fill with log entries
+<br/>
+<i>max_count</i> Maximum number of entries to return</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of entries actually copied (may be less than
+  max_count)</div>
+<p class="Pp">Definition at line <b>94</b> of file
+    <b>platform/wasm/stubs/log.c</b>.</p>
+<pre>96                                                         {
+97   (void)buf;
+98   (void)out_entries;
+99   (void)max_count;
+100   return 0; // No entries in WASM
+101 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>log_search_gather_and_filter_logs()</b>, and
+    <b>terminal_screen_render()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_terminal_choose_log_fd_("><a class="permalink" href="#int_terminal_choose_log_fd_(">int

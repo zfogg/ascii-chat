@@ -111,44 +111,30 @@
 <p class="Pp">Connection is active and ready for I/O operations</p>
 <p class="Pp">Definition at line <b>76</b> of file
     <b>include/ascii-chat/network/tcp/client.h</b>.</p>
-<p class="Pp">Referenced by <b>tcp_client_close()</b>,
-    <b>tcp_client_connect()</b>, <b>tcp_client_create()</b>,
-    <b>tcp_client_destroy()</b>, <b>tcp_client_is_active()</b>,
-    <b>tcp_client_send_packet()</b>, <b>tcp_client_shutdown()</b>, and
-    <b>tcp_client_signal_lost()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> tcp_client::connection_lost</h2>
 <p class="Pp">Connection was lost (triggers reconnection logic)</p>
 <p class="Pp">Definition at line <b>79</b> of file
     <b>include/ascii-chat/network/tcp/client.h</b>.</p>
-<p class="Pp">Referenced by <b>tcp_client_connect()</b>,
-    <b>tcp_client_create()</b>, <b>tcp_client_destroy()</b>,
-    <b>tcp_client_is_lost()</b>, and <b>tcp_client_signal_lost()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> tcp_client::encryption_enabled</h2>
 <p class="Pp">Encryption is enabled for this connection</p>
 <p class="Pp">Definition at line <b>94</b> of file
     <b>include/ascii-chat/network/tcp/client.h</b>.</p>
-<p class="Pp">Referenced by <b>tcp_client_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> tcp_client::my_client_id</h2>
 <p class="Pp">Client ID assigned by server during initial handshake</p>
 <p class="Pp">Definition at line <b>85</b> of file
     <b>include/ascii-chat/network/tcp/client.h</b>.</p>
-<p class="Pp">Referenced by <b>tcp_client_close()</b>,
-    <b>tcp_client_connect()</b>, <b>tcp_client_create()</b>, and
-    <b>tcp_client_get_id()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>mutex_t</b> tcp_client::send_mutex</h2>
 <p class="Pp">Mutex protecting concurrent socket send operations</p>
 <p class="Pp">Definition at line <b>91</b> of file
     <b>include/ascii-chat/network/tcp/client.h</b>.</p>
-<p class="Pp">Referenced by <b>tcp_client_create()</b>,
-    <b>tcp_client_destroy()</b>, and <b>tcp_client_send_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_tcp_client::server_ip_256_"><a class="permalink" href="#char_tcp_client::server_ip_256_">char
@@ -156,26 +142,19 @@
 <p class="Pp">Server IP address (for display and reconnection)</p>
 <p class="Pp">Definition at line <b>88</b> of file
     <b>include/ascii-chat/network/tcp/client.h</b>.</p>
-<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
-    <b>tcp_client_connect()</b>, and <b>tcp_client_create()</b>.</p>
+<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> tcp_client::should_reconnect</h2>
 <p class="Pp">Reconnection should be attempted</p>
 <p class="Pp">Definition at line <b>82</b> of file
     <b>include/ascii-chat/network/tcp/client.h</b>.</p>
-<p class="Pp">Referenced by <b>tcp_client_connect()</b>,
-    <b>tcp_client_create()</b>, and <b>tcp_client_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>socket_t</b> tcp_client::sockfd</h2>
 <p class="Pp">Socket file descriptor for server connection</p>
 <p class="Pp">Definition at line <b>73</b> of file
     <b>include/ascii-chat/network/tcp/client.h</b>.</p>
-<p class="Pp">Referenced by <b>tcp_client_close()</b>,
-    <b>tcp_client_connect()</b>, <b>tcp_client_create()</b>,
-    <b>tcp_client_destroy()</b>, <b>tcp_client_get_socket()</b>,
-    <b>tcp_client_send_packet()</b>, and <b>tcp_client_shutdown()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
