@@ -50,11 +50,13 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>PROTOCOL_VERSION_MAJOR</b> 1
+<p class="Pp">#define <b>PROTOCOL_VERSION_MAJOR</b> 2
   <br/>
-  Major protocol version number. #define <b>PROTOCOL_VERSION_MINOR</b> 0
+  Major protocol version number. #define <b>PROTOCOL_VERSION_MINOR</b> 2
   <br/>
-  Minor protocol version number. #define <b>FEATURE_RLE_ENCODING</b> 0x01
+  Minor protocol version number. #define <b>PROTOCOL_VERSION_PATCH</b> 1
+  <br/>
+  Patch protocol version number. #define <b>FEATURE_RLE_ENCODING</b> 0x01
   <br/>
   Run-length encoding support flag. #define <b>FEATURE_DELTA_FRAMES</b> 0x02
   <br/>
@@ -104,7 +106,7 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
 <p class="Pp">LZ4 fast compression algorithm.</p>
-<p class="Pp">Definition at line <b>46</b> of file
+<p class="Pp">Definition at line <b>49</b> of file
   <b>protocol_constants.h</b>.</p>
 </section>
 <section class="Ss">
@@ -113,7 +115,7 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
 <p class="Pp">No compression algorithm.</p>
-<p class="Pp">Definition at line <b>40</b> of file
+<p class="Pp">Definition at line <b>43</b> of file
   <b>protocol_constants.h</b>.</p>
 </section>
 <section class="Ss">
@@ -122,7 +124,7 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
 <p class="Pp">zlib deflate compression algorithm</p>
-<p class="Pp">Definition at line <b>43</b> of file
+<p class="Pp">Definition at line <b>46</b> of file
   <b>protocol_constants.h</b>.</p>
 </section>
 <section class="Ss">
@@ -131,7 +133,7 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
 <p class="Pp">zstd algorithm</p>
-<p class="Pp">Definition at line <b>49</b> of file
+<p class="Pp">Definition at line <b>52</b> of file
   <b>protocol_constants.h</b>.</p>
 </section>
 <section class="Ss">
@@ -140,7 +142,7 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
 <p class="Pp">Delta frame encoding support flag.</p>
-<p class="Pp">Definition at line <b>33</b> of file
+<p class="Pp">Definition at line <b>36</b> of file
   <b>protocol_constants.h</b>.</p>
 </section>
 <section class="Ss">
@@ -149,7 +151,7 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
 <p class="Pp">Run-length encoding support flag.</p>
-<p class="Pp">Definition at line <b>30</b> of file
+<p class="Pp">Definition at line <b>33</b> of file
   <b>protocol_constants.h</b>.</p>
 </section>
 <section class="Ss">
@@ -158,7 +160,7 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
 <p class="Pp">Frame includes ANSI color codes.</p>
-<p class="Pp">Definition at line <b>56</b> of file
+<p class="Pp">Definition at line <b>59</b> of file
   <b>protocol_constants.h</b>.</p>
 </section>
 <section class="Ss">
@@ -167,7 +169,7 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
 <p class="Pp">Frame data is compressed.</p>
-<p class="Pp">Definition at line <b>59</b> of file
+<p class="Pp">Definition at line <b>62</b> of file
   <b>protocol_constants.h</b>.</p>
 </section>
 <section class="Ss">
@@ -176,7 +178,7 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
 <p class="Pp">Frame was stretched (aspect adjusted).</p>
-<p class="Pp">Definition at line <b>65</b> of file
+<p class="Pp">Definition at line <b>68</b> of file
   <b>protocol_constants.h</b>.</p>
 </section>
 <section class="Ss">
@@ -185,7 +187,7 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
 <p class="Pp">Frame data is RLE compressed.</p>
-<p class="Pp">Definition at line <b>62</b> of file
+<p class="Pp">Definition at line <b>65</b> of file
   <b>protocol_constants.h</b>.</p>
 </section>
 <section class="Ss">
@@ -194,7 +196,7 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
 <p class="Pp">BGR pixel format.</p>
-<p class="Pp">Definition at line <b>78</b> of file
+<p class="Pp">Definition at line <b>81</b> of file
   <b>protocol_constants.h</b>.</p>
 </section>
 <section class="Ss">
@@ -203,7 +205,7 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
 <p class="Pp">BGRA pixel format.</p>
-<p class="Pp">Definition at line <b>81</b> of file
+<p class="Pp">Definition at line <b>84</b> of file
   <b>protocol_constants.h</b>.</p>
 </section>
 <section class="Ss">
@@ -212,7 +214,7 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
 <p class="Pp">RGB pixel format.</p>
-<p class="Pp">Definition at line <b>72</b> of file
+<p class="Pp">Definition at line <b>75</b> of file
   <b>protocol_constants.h</b>.</p>
 </section>
 <section class="Ss">
@@ -221,12 +223,12 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
 <p class="Pp">RGBA pixel format.</p>
-<p class="Pp">Definition at line <b>75</b> of file
+<p class="Pp">Definition at line <b>78</b> of file
   <b>protocol_constants.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="_define_PROTOCOL_VERSION_MAJOR___1"><a class="permalink" href="#_define_PROTOCOL_VERSION_MAJOR___1">#define
-  PROTOCOL_VERSION_MAJOR 1</a></h2>
+<h2 class="Ss" id="_define_PROTOCOL_VERSION_MAJOR___2"><a class="permalink" href="#_define_PROTOCOL_VERSION_MAJOR___2">#define
+  PROTOCOL_VERSION_MAJOR 2</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
 <p class="Pp">Major protocol version number.</p>
@@ -235,14 +237,23 @@
 <p class="Pp">Referenced by <b>handle_protocol_version_packet()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="_define_PROTOCOL_VERSION_MINOR___0"><a class="permalink" href="#_define_PROTOCOL_VERSION_MINOR___0">#define
-  PROTOCOL_VERSION_MINOR 0</a></h2>
+<h2 class="Ss" id="_define_PROTOCOL_VERSION_MINOR___2"><a class="permalink" href="#_define_PROTOCOL_VERSION_MINOR___2">#define
+  PROTOCOL_VERSION_MINOR 2</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
 <p class="Pp">Minor protocol version number.</p>
 <p class="Pp">Definition at line <b>23</b> of file
   <b>protocol_constants.h</b>.</p>
 <p class="Pp">Referenced by <b>handle_protocol_version_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_PROTOCOL_VERSION_PATCH___1"><a class="permalink" href="#_define_PROTOCOL_VERSION_PATCH___1">#define
+  PROTOCOL_VERSION_PATCH 1</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
+<p class="Pp">Patch protocol version number.</p>
+<p class="Pp">Definition at line <b>26</b> of file
+  <b>protocol_constants.h</b>.</p>
 </section>
 </section>
 <section class="Sh">

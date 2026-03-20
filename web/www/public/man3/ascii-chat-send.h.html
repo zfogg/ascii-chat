@@ -567,7 +567,7 @@
 143     log_warn(&quot;packet_receive_via_transport: packet too small (%zu bytes, need %zu)&quot;, recv_len,
 144              sizeof(packet_header_t));
 145     if (*alloc_buffer) {
-146       SAFE_FREE(*alloc_buffer);
+146       buffer_pool_free(NULL, *alloc_buffer, recv_len);
 147       *alloc_buffer = NULL;
 148     }
 149     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Received packet smaller than header&quot;);
@@ -580,7 +580,7 @@
 156   if (recv_len &lt; sizeof(packet_header_t) + plen) {
 157     log_warn(&quot;packet_receive_via_transport: truncated packet (header says %zu payload, got %zu total)&quot;, plen, recv_len);
 158     if (*alloc_buffer) {
-159       SAFE_FREE(*alloc_buffer);
+159       buffer_pool_free(NULL, *alloc_buffer, recv_len);
 160       *alloc_buffer = NULL;
 161     }
 162     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Truncated packet payload&quot;);
@@ -595,10 +595,11 @@
 171 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK_PROTOCOL</b>, <b>packet_header_t::length</b>,
-    <b>log_warn</b>, <b>NET_TO_HOST_U16</b>, <b>NET_TO_HOST_U32</b>,
-    <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, and <b>packet_header_t::type</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_free()</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
+    <b>packet_header_t::length</b>, <b>log_warn</b>, <b>NET_TO_HOST_U16</b>,
+    <b>NET_TO_HOST_U32</b>, <b>SET_ERRNO</b>, and
+  <b>packet_header_t::type</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_process()</b>, and
     <b>discovery_session_start()</b>.</p>
 </section>

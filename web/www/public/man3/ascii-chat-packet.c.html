@@ -141,46 +141,46 @@
   sender</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>939</b> of file <b>packet.c</b>.</p>
-<pre>941                                                                          {
-942   if (!data || len &lt; sizeof(error_packet_t) || !out_error_code || !message_buffer || message_buffer_size == 0) {
-943     return SET_ERRNO(ERROR_INVALID_PARAM,
-944                      &quot;Invalid parameters: data=%p len=%zu out_error_code=%p message_buffer=%p buffer_size=%zu&quot;, data,
-945                      len, out_error_code, message_buffer, message_buffer_size);
-946   }
-947 
-948   const error_packet_t *packet = (const error_packet_t *)data;
-949   uint32_t raw_error_code = NET_TO_HOST_U32(packet-&gt;error_code);
-950   uint32_t raw_message_length = NET_TO_HOST_U32(packet-&gt;message_length);
-951 
-952   if (raw_message_length &gt; MAX_ERROR_MESSAGE_LENGTH) {
-953     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Error message length too large: %u&quot;, raw_message_length);
-954   }
-955 
-956   size_t total_required = sizeof(error_packet_t) + (size_t)raw_message_length;
-957   if (total_required &gt; len) {
-958     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Error packet truncated: expected %zu bytes, have %zu&quot;, total_required,
-959                      len);
-960   }
-961 
-962   const uint8_t *message_bytes = (const uint8_t *)data + sizeof(error_packet_t);
-963   size_t copy_len = raw_message_length;
-964   if (copy_len &gt;= message_buffer_size) {
-965     copy_len = message_buffer_size - 1;
-966   }
-967 
-968   if (copy_len &gt; 0) {
-969     memcpy(message_buffer, message_bytes, copy_len);
-970   }
-971   message_buffer[copy_len] = '\0';
-972 
-973   if (out_message_length) {
-974     *out_message_length = raw_message_length;
-975   }
-976 
-977   *out_error_code = (asciichat_error_t)raw_error_code;
-978   return ASCIICHAT_OK;
-979 }</pre>
+<p class="Pp">Definition at line <b>942</b> of file <b>packet.c</b>.</p>
+<pre>944                                                                          {
+945   if (!data || len &lt; sizeof(error_packet_t) || !out_error_code || !message_buffer || message_buffer_size == 0) {
+946     return SET_ERRNO(ERROR_INVALID_PARAM,
+947                      &quot;Invalid parameters: data=%p len=%zu out_error_code=%p message_buffer=%p buffer_size=%zu&quot;, data,
+948                      len, out_error_code, message_buffer, message_buffer_size);
+949   }
+950 
+951   const error_packet_t *packet = (const error_packet_t *)data;
+952   uint32_t raw_error_code = NET_TO_HOST_U32(packet-&gt;error_code);
+953   uint32_t raw_message_length = NET_TO_HOST_U32(packet-&gt;message_length);
+954 
+955   if (raw_message_length &gt; MAX_ERROR_MESSAGE_LENGTH) {
+956     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Error message length too large: %u&quot;, raw_message_length);
+957   }
+958 
+959   size_t total_required = sizeof(error_packet_t) + (size_t)raw_message_length;
+960   if (total_required &gt; len) {
+961     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Error packet truncated: expected %zu bytes, have %zu&quot;, total_required,
+962                      len);
+963   }
+964 
+965   const uint8_t *message_bytes = (const uint8_t *)data + sizeof(error_packet_t);
+966   size_t copy_len = raw_message_length;
+967   if (copy_len &gt;= message_buffer_size) {
+968     copy_len = message_buffer_size - 1;
+969   }
+970 
+971   if (copy_len &gt; 0) {
+972     memcpy(message_buffer, message_bytes, copy_len);
+973   }
+974   message_buffer[copy_len] = '\0';
+975 
+976   if (out_message_length) {
+977     *out_message_length = raw_message_length;
+978   }
+979 
+980   *out_error_code = (asciichat_error_t)raw_error_code;
+981   return ASCIICHAT_OK;
+982 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>error_packet_t::error_code</b>,
@@ -214,60 +214,60 @@
   sender</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>1038</b> of file <b>packet.c</b>.</p>
-<pre>1041                                                                       {
-1042   if (!data || len &lt; sizeof(remote_log_packet_t) || !out_level || !out_direction || !out_flags || !message_buffer ||
-1043       message_buffer_size == 0) {
-1044     return SET_ERRNO(
-1045         ERROR_INVALID_PARAM,
-1046         &quot;Invalid parameters: data=%p len=%zu out_level=%p out_direction=%p out_flags=%p buffer=%p size=%zu&quot;, data, len,
-1047         out_level, out_direction, out_flags, message_buffer, message_buffer_size);
-1048   }
-1049 
-1050   const remote_log_packet_t *packet = (const remote_log_packet_t *)data;
-1051   uint8_t raw_level = packet-&gt;log_level;
-1052   if (raw_level &gt; LOG_FATAL) {
-1053     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid remote log level: %u&quot;, raw_level);
-1054   }
-1055   *out_level = (log_level_t)raw_level;
-1056 
-1057   uint8_t raw_direction = packet-&gt;direction;
-1058   if (raw_direction &gt; REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER) {
-1059     raw_direction = REMOTE_LOG_DIRECTION_UNKNOWN;
-1060   }
-1061   *out_direction = (remote_log_direction_t)raw_direction;
-1062 
-1063   uint16_t raw_flags = NET_TO_HOST_U16(packet-&gt;flags);
-1064   *out_flags = raw_flags;
+<p class="Pp">Definition at line <b>1041</b> of file <b>packet.c</b>.</p>
+<pre>1044                                                                       {
+1045   if (!data || len &lt; sizeof(remote_log_packet_t) || !out_level || !out_direction || !out_flags || !message_buffer ||
+1046       message_buffer_size == 0) {
+1047     return SET_ERRNO(
+1048         ERROR_INVALID_PARAM,
+1049         &quot;Invalid parameters: data=%p len=%zu out_level=%p out_direction=%p out_flags=%p buffer=%p size=%zu&quot;, data, len,
+1050         out_level, out_direction, out_flags, message_buffer, message_buffer_size);
+1051   }
+1052 
+1053   const remote_log_packet_t *packet = (const remote_log_packet_t *)data;
+1054   uint8_t raw_level = packet-&gt;log_level;
+1055   if (raw_level &gt; LOG_FATAL) {
+1056     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid remote log level: %u&quot;, raw_level);
+1057   }
+1058   *out_level = (log_level_t)raw_level;
+1059 
+1060   uint8_t raw_direction = packet-&gt;direction;
+1061   if (raw_direction &gt; REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER) {
+1062     raw_direction = REMOTE_LOG_DIRECTION_UNKNOWN;
+1063   }
+1064   *out_direction = (remote_log_direction_t)raw_direction;
 1065 
-1066   uint32_t raw_message_length = NET_TO_HOST_U32(packet-&gt;message_length);
-1067   if (raw_message_length &gt; MAX_REMOTE_LOG_MESSAGE_LENGTH) {
-1068     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Remote log message length too large: %u&quot;, raw_message_length);
-1069   }
-1070 
-1071   size_t total_required = sizeof(remote_log_packet_t) + (size_t)raw_message_length;
-1072   if (total_required &gt; len) {
-1073     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Remote log packet truncated: expected %zu bytes, have %zu&quot;,
-1074                      total_required, len);
-1075   }
-1076 
-1077   const uint8_t *message_bytes = (const uint8_t *)data + sizeof(remote_log_packet_t);
-1078   size_t copy_len = raw_message_length;
-1079   if (copy_len &gt;= message_buffer_size) {
-1080     copy_len = message_buffer_size - 1;
-1081   }
-1082 
-1083   if (copy_len &gt; 0) {
-1084     memcpy(message_buffer, message_bytes, copy_len);
-1085   }
-1086   message_buffer[copy_len] = '\0';
-1087 
-1088   if (out_message_length) {
-1089     *out_message_length = raw_message_length;
-1090   }
-1091 
-1092   return ASCIICHAT_OK;
-1093 }</pre>
+1066   uint16_t raw_flags = NET_TO_HOST_U16(packet-&gt;flags);
+1067   *out_flags = raw_flags;
+1068 
+1069   uint32_t raw_message_length = NET_TO_HOST_U32(packet-&gt;message_length);
+1070   if (raw_message_length &gt; MAX_REMOTE_LOG_MESSAGE_LENGTH) {
+1071     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Remote log message length too large: %u&quot;, raw_message_length);
+1072   }
+1073 
+1074   size_t total_required = sizeof(remote_log_packet_t) + (size_t)raw_message_length;
+1075   if (total_required &gt; len) {
+1076     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Remote log packet truncated: expected %zu bytes, have %zu&quot;,
+1077                      total_required, len);
+1078   }
+1079 
+1080   const uint8_t *message_bytes = (const uint8_t *)data + sizeof(remote_log_packet_t);
+1081   size_t copy_len = raw_message_length;
+1082   if (copy_len &gt;= message_buffer_size) {
+1083     copy_len = message_buffer_size - 1;
+1084   }
+1085 
+1086   if (copy_len &gt; 0) {
+1087     memcpy(message_buffer, message_bytes, copy_len);
+1088   }
+1089   message_buffer[copy_len] = '\0';
+1090 
+1091   if (out_message_length) {
+1092     *out_message_length = raw_message_length;
+1093   }
+1094 
+1095   return ASCIICHAT_OK;
+1096 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -301,52 +301,52 @@
     automatically. During the handshake (or when encryption is disabled), the
     packet is sent in plaintext so protocol errors can be delivered before
     encryption is active.</p>
-<p class="Pp">Definition at line <b>892</b> of file <b>packet.c</b>.</p>
-<pre>893                                                          {
-894   if (sockfd == INVALID_SOCKET_VALUE) {
-895     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket descriptor&quot;);
-896   }
-897 
-898   if (!message) {
-899     message = &quot;&quot;;
-900   }
-901 
-902   size_t message_len = strnlen(message, MAX_ERROR_MESSAGE_LENGTH);
-903   if (message_len == MAX_ERROR_MESSAGE_LENGTH) {
-904     log_warn(&quot;Error message truncated to %zu bytes&quot;, (size_t)MAX_ERROR_MESSAGE_LENGTH);
-905   }
-906 
-907   size_t payload_len = sizeof(error_packet_t) + message_len;
-908   uint8_t *payload = SAFE_MALLOC(payload_len, uint8_t *);
-909   if (!payload) {
-910     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate %zu bytes for error packet&quot;, payload_len);
-911   }
-912 
-913   error_packet_t *packet = (error_packet_t *)payload;
-914   packet-&gt;error_code = HOST_TO_NET_U32((uint32_t)error_code);
-915   packet-&gt;message_length = HOST_TO_NET_U32((uint32_t)message_len);
-916 
-917   if (message_len &gt; 0) {
-918     memcpy(payload + sizeof(error_packet_t), message, message_len);
-919   }
-920 
-921   bool encryption_ready = crypto_ctx &amp;&amp; crypto_is_ready(crypto_ctx);
-922   asciichat_error_t send_result;
+<p class="Pp">Definition at line <b>895</b> of file <b>packet.c</b>.</p>
+<pre>896                                                          {
+897   if (sockfd == INVALID_SOCKET_VALUE) {
+898     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket descriptor&quot;);
+899   }
+900 
+901   if (!message) {
+902     message = &quot;&quot;;
+903   }
+904 
+905   size_t message_len = strnlen(message, MAX_ERROR_MESSAGE_LENGTH);
+906   if (message_len == MAX_ERROR_MESSAGE_LENGTH) {
+907     log_warn(&quot;Error message truncated to %zu bytes&quot;, (size_t)MAX_ERROR_MESSAGE_LENGTH);
+908   }
+909 
+910   size_t payload_len = sizeof(error_packet_t) + message_len;
+911   uint8_t *payload = SAFE_MALLOC(payload_len, uint8_t *);
+912   if (!payload) {
+913     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate %zu bytes for error packet&quot;, payload_len);
+914   }
+915 
+916   error_packet_t *packet = (error_packet_t *)payload;
+917   packet-&gt;error_code = HOST_TO_NET_U32((uint32_t)error_code);
+918   packet-&gt;message_length = HOST_TO_NET_U32((uint32_t)message_len);
+919 
+920   if (message_len &gt; 0) {
+921     memcpy(payload + sizeof(error_packet_t), message, message_len);
+922   }
 923 
-924   if (encryption_ready) {
-925     send_result =
-926         send_packet_secure(sockfd, PACKET_TYPE_ERROR_MESSAGE, payload, payload_len, (crypto_context_t *)crypto_ctx);
-927   } else {
-928     send_result = packet_send(sockfd, PACKET_TYPE_ERROR_MESSAGE, payload, payload_len);
-929   }
-930   SAFE_FREE(payload);
-931 
-932   if (send_result != ASCIICHAT_OK) {
-933     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send error packet: %s&quot;, asciichat_error_string(send_result));
-934   }
-935 
-936   return ASCIICHAT_OK;
-937 }</pre>
+924   bool encryption_ready = crypto_ctx &amp;&amp; crypto_is_ready(crypto_ctx);
+925   asciichat_error_t send_result;
+926 
+927   if (encryption_ready) {
+928     send_result =
+929         send_packet_secure(sockfd, PACKET_TYPE_ERROR_MESSAGE, payload, payload_len, (crypto_context_t *)crypto_ctx);
+930   } else {
+931     send_result = packet_send(sockfd, PACKET_TYPE_ERROR_MESSAGE, payload, payload_len);
+932   }
+933   SAFE_FREE(payload);
+934 
+935   if (send_result != ASCIICHAT_OK) {
+936     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send error packet: %s&quot;, asciichat_error_string(send_result));
+937   }
+938 
+939   return ASCIICHAT_OK;
+940 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>crypto_is_ready()</b>,
@@ -379,62 +379,62 @@
 <i>message</i> Log message text</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>981</b> of file <b>packet.c</b>.</p>
-<pre>982                                                                                                                 {
-983   if (sockfd == INVALID_SOCKET_VALUE) {
-984     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket descriptor&quot;);
-985   }
-986 
-987   if (level &lt; LOG_DEV || level &gt; LOG_FATAL) {
-988     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid log level: %d&quot;, level);
-989   }
-990 
-991   const char *safe_message = message ? message : &quot;&quot;;
-992   bool truncated = false;
-993   size_t message_len = strnlen(safe_message, MAX_REMOTE_LOG_MESSAGE_LENGTH);
-994   if (message_len == MAX_REMOTE_LOG_MESSAGE_LENGTH &amp;&amp; safe_message[message_len] != '\0') {
-995     truncated = true;
-996   }
-997 
-998   size_t payload_len = sizeof(remote_log_packet_t) + message_len;
-999   uint8_t *payload = SAFE_MALLOC(payload_len, uint8_t *);
-1000   if (!payload) {
-1001     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate %zu bytes for remote log packet&quot;, payload_len);
-1002   }
-1003 
-1004   remote_log_packet_t *packet = (remote_log_packet_t *)payload;
-1005   packet-&gt;log_level = (uint8_t)level;
-1006   packet-&gt;direction = (uint8_t)direction;
-1007   uint16_t final_flags = flags;
-1008   if (truncated) {
-1009     final_flags |= REMOTE_LOG_FLAG_TRUNCATED;
-1010   }
-1011   packet-&gt;flags = HOST_TO_NET_U16(final_flags);
-1012   packet-&gt;message_length = HOST_TO_NET_U32((uint32_t)message_len);
-1013 
-1014   if (message_len &gt; 0) {
-1015     memcpy(payload + sizeof(remote_log_packet_t), safe_message, message_len);
-1016   }
-1017 
-1018   bool encryption_ready = crypto_ctx &amp;&amp; crypto_is_ready(crypto_ctx);
-1019   asciichat_error_t send_result;
+<p class="Pp">Definition at line <b>984</b> of file <b>packet.c</b>.</p>
+<pre>985                                                                                                                 {
+986   if (sockfd == INVALID_SOCKET_VALUE) {
+987     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket descriptor&quot;);
+988   }
+989 
+990   if (level &lt; LOG_DEV || level &gt; LOG_FATAL) {
+991     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid log level: %d&quot;, level);
+992   }
+993 
+994   const char *safe_message = message ? message : &quot;&quot;;
+995   bool truncated = false;
+996   size_t message_len = strnlen(safe_message, MAX_REMOTE_LOG_MESSAGE_LENGTH);
+997   if (message_len == MAX_REMOTE_LOG_MESSAGE_LENGTH &amp;&amp; safe_message[message_len] != '\0') {
+998     truncated = true;
+999   }
+1000 
+1001   size_t payload_len = sizeof(remote_log_packet_t) + message_len;
+1002   uint8_t *payload = SAFE_MALLOC(payload_len, uint8_t *);
+1003   if (!payload) {
+1004     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate %zu bytes for remote log packet&quot;, payload_len);
+1005   }
+1006 
+1007   remote_log_packet_t *packet = (remote_log_packet_t *)payload;
+1008   packet-&gt;log_level = (uint8_t)level;
+1009   packet-&gt;direction = (uint8_t)direction;
+1010   uint16_t final_flags = flags;
+1011   if (truncated) {
+1012     final_flags |= REMOTE_LOG_FLAG_TRUNCATED;
+1013   }
+1014   packet-&gt;flags = HOST_TO_NET_U16(final_flags);
+1015   packet-&gt;message_length = HOST_TO_NET_U32((uint32_t)message_len);
+1016 
+1017   if (message_len &gt; 0) {
+1018     memcpy(payload + sizeof(remote_log_packet_t), safe_message, message_len);
+1019   }
 1020 
-1021   if (encryption_ready) {
-1022     int secure_result =
-1023         send_packet_secure(sockfd, PACKET_TYPE_REMOTE_LOG, payload, payload_len, (crypto_context_t *)crypto_ctx);
-1024     send_result = secure_result == 0 ? ASCIICHAT_OK : ERROR_NETWORK;
-1025   } else {
-1026     send_result = packet_send(sockfd, PACKET_TYPE_REMOTE_LOG, payload, payload_len);
-1027   }
-1028 
-1029   SAFE_FREE(payload);
-1030 
-1031   if (send_result != ASCIICHAT_OK) {
-1032     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send remote log packet: %d&quot;, send_result);
-1033   }
-1034 
-1035   return ASCIICHAT_OK;
-1036 }</pre>
+1021   bool encryption_ready = crypto_ctx &amp;&amp; crypto_is_ready(crypto_ctx);
+1022   asciichat_error_t send_result;
+1023 
+1024   if (encryption_ready) {
+1025     int secure_result =
+1026         send_packet_secure(sockfd, PACKET_TYPE_REMOTE_LOG, payload, payload_len, (crypto_context_t *)crypto_ctx);
+1027     send_result = secure_result == 0 ? ASCIICHAT_OK : ERROR_NETWORK;
+1028   } else {
+1029     send_result = packet_send(sockfd, PACKET_TYPE_REMOTE_LOG, payload, payload_len);
+1030   }
+1031 
+1032   SAFE_FREE(payload);
+1033 
+1034   if (send_result != ASCIICHAT_OK) {
+1035     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send remote log packet: %d&quot;, send_result);
+1036   }
+1037 
+1038   return ASCIICHAT_OK;
+1039 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>crypto_is_ready()</b>,
