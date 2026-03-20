@@ -84,6 +84,20 @@ elseif(PLATFORM_POSIX)
     else()
         message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
     endif()
+elseif(EMSCRIPTEN)
+    # WebAssembly / Emscripten build
+    set(PLATFORM_SRCS
+        ${PLATFORM_SRCS_COMMON}
+        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/system.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/console.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/backtrace.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/init.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/lifecycle.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/string.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/threading.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/time.c
+        # TODO: lib/video/webcam/wasm/webcam_wasm.c - needs completion
+    )
 endif()
 
 set(PLATFORM_SRCS ${PLATFORM_SRCS} PARENT_SCOPE)

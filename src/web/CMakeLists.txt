@@ -124,6 +124,10 @@ if(BUILD_WEB AND NOT zstd_POPULATED)
     FetchContent_MakeAvailable(zstd)
 endif()
 
+# FFmpeg - using pre-built ffmpeg.wasm (npm package)
+# JavaScript side will load ffmpeg.wasm from CDN/node_modules
+# C side uses stub implementations that bridge to ffmpeg.wasm via EM_JS
+
 # Restore original message log level
 set(CMAKE_MESSAGE_LOG_LEVEL "${CMAKE_MESSAGE_LOG_LEVEL_BACKUP}")
 
@@ -141,14 +145,27 @@ include_directories(
     ${LIB_ROOT}/platform/wasm/stubs  # WASM stub headers (override native)
     ${INCLUDE_ROOT}
     ${LIB_ROOT}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common  # For session/*.h relative includes
     ${DEPS_ROOT}
     ${DEPS_ROOT}/ascii-chat-deps/tomlc17/src
     ${DEPS_ROOT}/ascii-chat-deps/utf8proc
 )
 
-# Source files for WASM mirror entry point
+# Source files for WASM mirror entry point (native C pipeline)
+# Note: We use session files directly rather than stubs, so stub versions
+# (session_log_buffer_append in stubs/log.c, platform_write in stubs/filesystem.c)
+# are already provided by wasm-common and should not be duplicated here.
 set(WEB_SRC_MIRROR
-    ${CMAKE_CURRENT_SOURCE_DIR}/mirror.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/mirror/main.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/client_like.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/capture.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/display.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/render.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/keyboard_handler.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/pipeline.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/audio.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/settings.c
 )
 
 # Platform abstraction layer for WASM
@@ -157,7 +174,7 @@ set(PLATFORM_SRC
     ${LIB_ROOT}/platform/wasm/console.c
     ${LIB_ROOT}/platform/wasm/terminal.c
     ${LIB_ROOT}/platform/wasm/threading.c
-    ${LIB_ROOT}/platform/wasm/system.c
+    ${LIB_ROOT}/platform/wasm/system.c        # Provides real platform_write() override for xterm.js
     ${LIB_ROOT}/platform/wasm/time.c
     ${LIB_ROOT}/platform/wasm/string.c
     ${LIB_ROOT}/platform/wasm/lifecycle.c
@@ -165,12 +182,13 @@ set(PLATFORM_SRC
     ${LIB_ROOT}/platform/wasm/stubs/actions.c
     ${LIB_ROOT}/platform/wasm/stubs/terminal.c
     ${LIB_ROOT}/platform/wasm/stubs/manpage.c
-    ${LIB_ROOT}/platform/wasm/stubs/filesystem.c
+    ${LIB_ROOT}/platform/wasm/stubs/filesystem.c  # Provides filesystem stubs (platform_write removed)
     ${LIB_ROOT}/platform/wasm/stubs/video.c
     ${LIB_ROOT}/platform/wasm/stubs/mode_defaults.c
     ${LIB_ROOT}/platform/wasm/stubs/crypto.c
     ${LIB_ROOT}/platform/wasm/stubs/backtrace.c
-    ${LIB_ROOT}/platform/wasm/stubs/log.c
+    ${LIB_ROOT}/platform/wasm/stubs/log.c     # Provides session_log_buffer_append stub
+    # TODO: ${LIB_ROOT}/video/webcam/wasm/webcam_wasm.c  # WASM webcam backend - needs fixes
 )
 
 # Third-party dependencies (source-included)
@@ -292,6 +310,19 @@ set(LIB_SRC_COMMON
 
     # Terminal abstraction (using WASM-specific version from PLATFORM_SRC)
     # ${LIB_ROOT}/platform/terminal.c - EXCLUDED: using wasm/terminal.c instead
+
+    # Media source handling (webcam, files, URLs)
+    ${LIB_ROOT}/media/source.c
+    # NOTE: ffmpeg_decoder.c and ffmpeg_encoder.c excluded - FFmpeg not available in WASM
+    ${LIB_ROOT}/media/yt_dlp.c
+
+    # UI components (splash screen, status screen, keyboard help)
+    ${LIB_ROOT}/ui/splash.c
+    ${LIB_ROOT}/ui/status.c
+    ${LIB_ROOT}/ui/keyboard_help.c
+    ${LIB_ROOT}/ui/terminal_screen.c
+    ${LIB_ROOT}/ui/frame_buffer.c
+    ${LIB_ROOT}/ui/fps_counter.c
 )
 
 # Mirror-specific sources (not needed by client mode)
@@ -349,6 +380,9 @@ target_link_libraries(wasm-common PRIVATE
     pcre2-8
 )
 
+# NOTE: FFmpeg is loaded at runtime via ffmpeg.wasm (npm package)
+# See web/web/package.json for ffmpeg.wasm dependency
+
 # Add include directories for wasm-common to find sodium and pcre2 headers
 target_include_directories(wasm-common PRIVATE
     ${CMAKE_BINARY_DIR}/_deps/sodium-src/libsodium/src/libsodium/include
@@ -368,8 +402,11 @@ add_executable(mirror-web
     $<TARGET_OBJECTS:wasm-common>
 )
 
-# Apply EMSCRIPTEN_BUILD only to WASM targets (not globally)
-target_compile_definitions(mirror-web PRIVATE EMSCRIPTEN_BUILD=1)
+# Apply EMSCRIPTEN_BUILD and mode-specific define
+target_compile_definitions(mirror-web PRIVATE
+    EMSCRIPTEN_BUILD=1
+    BUILD_WASM_MIRROR=1
+)
 
 # Enable Emscripten's pthread support and SIMD for video processing
 target_compile_options(mirror-web PRIVATE -pthread -msimd128)
@@ -384,9 +421,28 @@ target_link_libraries(mirror-web PRIVATE
 # Apply sanitizers
 apply_sanitizers_to_target(mirror-web)
 
-# Source files for WASM client entry point
+# Source files for WASM client entry point (native C pipeline)
+# Note: We use session files directly rather than stubs, so stub versions
+# (session_log_buffer_append in stubs/log.c, platform_write in stubs/filesystem.c)
+# are already provided by wasm-common and should not be duplicated here.
 set(WEB_SRC_CLIENT
-    ${CMAKE_CURRENT_SOURCE_DIR}/client.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/main.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/server.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/protocol.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/capture.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/display.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/audio.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/crypto.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/client/keepalive.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/client_like.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/capture.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/display.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/render.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/keyboard_handler.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/pipeline.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/audio.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common/session/settings.c
 )
 
 # Create WASM client module
@@ -397,8 +453,11 @@ add_executable(client-web
     $<TARGET_OBJECTS:wasm-common>
 )
 
-# Apply EMSCRIPTEN_BUILD only to WASM targets (not globally)
-target_compile_definitions(client-web PRIVATE EMSCRIPTEN_BUILD=1)
+# Apply EMSCRIPTEN_BUILD and mode-specific define
+target_compile_definitions(client-web PRIVATE
+    EMSCRIPTEN_BUILD=1
+    BUILD_WASM_CLIENT=1
+)
 
 # Enable Emscripten's pthread support
 target_compile_options(client-web PRIVATE -pthread)
@@ -421,10 +480,10 @@ target_include_directories(client-web PRIVATE
 # Apply sanitizers
 apply_sanitizers_to_target(client-web)
 
-# Exported functions for mirror module (all EMSCRIPTEN_KEEPALIVE functions from mirror.c and common/options.c)
+# Exported functions for mirror module (main() entry point via main_wasm.c)
 set(EXPORTED_FUNCTIONS_MIRROR
-    _mirror_init_with_args
-    _mirror_cleanup
+    _main
+    # Option getters/setters for live option updates (no restart needed)
     _set_width
     _set_height
     _get_width
@@ -445,34 +504,14 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _get_flip_x
     _set_target_fps
     _get_target_fps
-    _mirror_convert_frame
-    _mirror_free_string
-    _get_help_text
     _malloc
     _free
 )
 
-# Exported functions for client module (all EMSCRIPTEN_KEEPALIVE functions from client.c and common/options.c)
+# Exported functions for client module (main() entry point via main_wasm.c)
 set(EXPORTED_FUNCTIONS_CLIENT
-    _client_init_with_args
-    _client_cleanup
-    _client_generate_keypair
-    _client_get_public_key_hex
-    _client_handle_key_exchange_init
-    _client_handle_auth_challenge
-    _client_handle_handshake_complete
-    _client_encrypt_packet
-    _client_decrypt_packet
-    _client_parse_packet
-    _client_serialize_packet
-    _client_send_video_frame
-    _client_get_connection_state
-    _client_opus_encoder_init
-    _client_opus_decoder_init
-    _client_opus_encode
-    _client_opus_decode
-    _client_opus_encoder_cleanup
-    _client_opus_decoder_cleanup
+    _main
+    # Option getters/setters for live option updates (no restart needed)
     _set_width
     _set_height
     _get_width
@@ -491,8 +530,6 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _get_flip_x
     _set_target_fps
     _get_target_fps
-    _client_free_string
-    _get_help_text
     _malloc
     _free
 )
@@ -516,8 +553,9 @@ target_link_options(mirror-web PRIVATE
     -sALLOW_MEMORY_GROWTH=1
     -sINITIAL_MEMORY=32MB
     -sMAXIMUM_MEMORY=128MB
-    -sSTACK_SIZE=1048576
+    -sSTACK_SIZE=2097152
     -sWASM_BIGINT=1
+    -sPROXY_TO_PTHREAD=1
     -msimd128
     -O3
     --no-entry
@@ -535,9 +573,10 @@ target_link_options(client-web PRIVATE
     -sENVIRONMENT=web
     -sALLOW_MEMORY_GROWTH=1
     -sINITIAL_MEMORY=32MB
-    -sMAXIMUM_MEMORY=128MB
-    -sSTACK_SIZE=1048576
+    -sMAXIMUM_MEMORY=256MB
+    -sSTACK_SIZE=2097152
     -sWASM_BIGINT=1
+    -sPROXY_TO_PTHREAD=1
     -msimd128
     -O3
     --no-entry
