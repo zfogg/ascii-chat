@@ -388,46 +388,43 @@ export function useHtmlTransforms(
             const description = (funcMatch[3] ?? "").trim();
             const boldTagStartIdx = funcMatch.index; // Position of <b> in content
 
-            // Extract the COMPLETE return type by looking at everything before <b>funcName</b>
-            // This includes multi-word types like "const char *" or "__attribute__(...) size_t"
+            // Extract the return type by looking for the first <b> tag before the function name
+            // In Doxygen HTML, the pattern is: <b>returnType</b> <b>funcName</b> (...)
             const beforeBold = content.substring(0, boldTagStartIdx);
+            const boldMatch = beforeBold.match(/<b>([^<]+)<\/b>\s*$/);
+            let returnType = boldMatch ? boldMatch[1] ?? "" : "";
 
-            // Remove all HTML tags from the before text to get pure content
-            const tempDiv = document.createElement("div");
-            tempDiv.innerHTML = beforeBold;
-            const plainBefore = tempDiv.textContent ?? "";
+            // Fallback: if no bold tag found, extract from plain text as before
+            if (!returnType) {
+              const tempDiv = document.createElement("div");
+              tempDiv.innerHTML = beforeBold;
+              const plainBefore = tempDiv.textContent ?? "";
 
-            // Extract all non-whitespace tokens and take the last meaningful one(s) as return type
-            const beforeTokens = plainBefore
-              .trim()
-              .split(/\s+/)
-              .filter((t) => t);
-            let returnType = "";
+              const beforeTokens = plainBefore
+                .trim()
+                .split(/\s+/)
+                .filter((t) => t);
 
-            if (beforeTokens.length > 0) {
-              // Take last token(s) as return type, handling multi-word types
-              returnType = beforeTokens[beforeTokens.length - 1] ?? "";
+              if (beforeTokens.length > 0) {
+                returnType = beforeTokens[beforeTokens.length - 1] ?? "";
 
-              // Check if we need to combine with previous token (for cases like "char *")
-              if (beforeTokens.length > 1) {
-                const lastToken = beforeTokens[beforeTokens.length - 1];
-                // If last token is * or const, combine with previous
-                if (lastToken === "*" || lastToken === "const") {
-                  returnType =
-                    beforeTokens[beforeTokens.length - 2] + " " + lastToken;
-                }
-                // Also handle "const char *" pattern
-                else if (
-                  beforeTokens.length > 2 &&
-                  beforeTokens[beforeTokens.length - 2] === "char" &&
-                  beforeTokens[beforeTokens.length - 3] === "const"
-                ) {
-                  returnType =
-                    beforeTokens[beforeTokens.length - 3] +
-                    " " +
-                    beforeTokens[beforeTokens.length - 2] +
-                    " " +
-                    lastToken;
+                if (beforeTokens.length > 1) {
+                  const lastToken = beforeTokens[beforeTokens.length - 1];
+                  if (lastToken === "*" || lastToken === "const") {
+                    returnType =
+                      beforeTokens[beforeTokens.length - 2] + " " + lastToken;
+                  } else if (
+                    beforeTokens.length > 2 &&
+                    beforeTokens[beforeTokens.length - 2] === "char" &&
+                    beforeTokens[beforeTokens.length - 3] === "const"
+                  ) {
+                    returnType =
+                      beforeTokens[beforeTokens.length - 3] +
+                      " " +
+                      beforeTokens[beforeTokens.length - 2] +
+                      " " +
+                      lastToken;
+                  }
                 }
               }
             }
@@ -563,12 +560,16 @@ export function useHtmlTransforms(
               description = functionContent.substring(closeParenIdx + 1);
 
               // The description may be followed by the return type of the next function
-              // Remove return type patterns that appear at the end of the description
+              // Multiple functions can be in one P tag, so the next function's return type may appear
+              // Remove any bold tags and their content from the end (these are return types of next function)
+              description = description.replace(/<b>[^<]*<\/b>\s*$/g, "").trim();
+
+              // Also remove common return type patterns that appear at the end of the description
               // Return types include: void, char *, int, bool, uint8_t, struct X, const char *, etc.
-              // Pattern: optional whitespace + return type (including pointer types) + optional whitespace at end
+              // This catches return types that weren't wrapped in <b> tags
               description = description
                 .replace(
-                  /\s*(?:void|bool|int|char\s*\*?|size_t|uint\d+_t|struct\s+\w+(?:\s*\*)?|const\s+\w+(?:\s+\*)?|unsigned\s+\w+|static\s+\w+(?:\s*\*)?)\s*$/i,
+                  /\s*(?:void|bool|int|char\s*\*?|size_t|uint\d+_t|struct\s+\w+(?:\s*\*)?|const\s+\w+(?:\s+\*)?|unsigned\s+\w+|static\s+\w+(?:\s*\*)?|asciichat_error_t)\s*$/i,
                   "",
                 )
                 .trim();
