@@ -1520,6 +1520,14 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
     result = create_session(session);
     log_info("discovery_session_start: create_session returned - participant_ctx after=%p, result=%d",
              session->participant_ctx, result);
+
+    if (result == ASCIICHAT_OK) {
+      // Initiator also needs to register itself as a participant so it can receive PARTICIPANT_JOINED notifications
+      // when other peers join. This makes the initiator discoverable to other participants.
+      log_info("Initiator: now registering self as participant in created session");
+      result = join_session(session);
+      log_info("Initiator: join_session result=%d", result);
+    }
     return result;
   } else {
     log_info("discovery_session_start: Calling join_session - participant_ctx before=%p", session->participant_ctx);
