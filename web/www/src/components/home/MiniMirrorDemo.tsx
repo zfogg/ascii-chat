@@ -212,6 +212,9 @@ export default function MiniMirrorDemo() {
 
   return (
     <section className="mb-12 sm:mb-16">
+      <h2 className="text-2xl sm:text-3xl font-bold text-green-300 mb-4">
+        🎬 Demo it right now
+      </h2>
       {/* Hidden video and canvas for frame capture (matches PageLayout pattern) */}
       <div
         style={{
@@ -248,8 +251,8 @@ export default function MiniMirrorDemo() {
         {/* Overlay: buttons before start, stop button after */}
         {!source ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 z-10">
-            <p className="text-gray-400 text-sm sm:text-base">
-              Try ascii-chat in your browser
+            <p className="text-gray-200 text-sm sm:text-base bg-gray-800 px-2 py-1 rounded">
+              Select an option
             </p>
             <div className="flex gap-3">
               <button
@@ -278,6 +281,18 @@ export default function MiniMirrorDemo() {
           </button>
         )}
       </div>
+      <p className="text-gray-500 text-xs mt-2">
+        Want to play with this more? The web client{" "}
+        <a
+          href={`${SITES.WEB}/mirror`}
+          className="text-cyan-400 hover:text-cyan-300 underline"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          has a /mirror page
+        </a>{" "}
+        with all the options.
+      </p>
     </section>
   );
 }
