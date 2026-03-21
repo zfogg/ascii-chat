@@ -1,5 +1,5 @@
 import { Heading, Link } from "@ascii-chat/shared/components";
-import { SITES } from "@ascii-chat/shared/utils";
+import { SITES, ACDS_ENDPOINTS } from "@ascii-chat/shared/utils";
 
 export default function AboutSection({
   sessionStrings,
@@ -46,7 +46,7 @@ export default function AboutSection({
         🏗️ Official ACDS Infrastructure
       </Heading>
       <p className="leading-relaxed mb-4 text-base md:text-lg">
-        The official ACDS deployment consists of two components:
+        The official ACDS deployment consists of three components:
       </p>
       <ul className="leading-relaxed ml-0 pl-4 space-y-2">
         <li>
@@ -57,11 +57,12 @@ export default function AboutSection({
           ) - Serves public keys over HTTPS
         </li>
         <li>
-          <strong>Official ACDS server instance</strong> (
-          <code className="bg-gray-800 px-1 rounded">
-            tcp://discovery-service.ascii-chat.com:27225
-          </code>
-          ) - Handles session management (TCP)
+          <strong>ACDS server (TCP):</strong>{" "}
+          <code className="bg-gray-800 px-1 rounded">{ACDS_ENDPOINTS.TCP}</code>
+        </li>
+        <li>
+          <strong>ACDS server (WebSocket):</strong>{" "}
+          <code className="bg-gray-800 px-1 rounded">{ACDS_ENDPOINTS.WSS}</code>
         </li>
       </ul>
     </section>

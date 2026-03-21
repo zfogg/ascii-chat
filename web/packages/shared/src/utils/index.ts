@@ -7,5 +7,6 @@ export {
   API_RELATIVE,
   API_BASE,
   DISCOVERY_SERVICE_URL,
+  ACDS_ENDPOINTS,
   type SiteKey,
 } from "./urls";

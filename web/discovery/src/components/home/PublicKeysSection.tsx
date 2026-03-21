@@ -22,20 +22,13 @@ export default function PublicKeysSection({
         🔑 Public Keys
       </Heading>
       <p className="leading-relaxed mb-4 text-base md:text-lg">
-        These Ed25519 public keys are used to verify the identity of the
-        official ACDS server at{" "}
-        <code className="bg-gray-800 px-1 rounded">
-          tcp://discovery-service.ascii-chat.com:27225
-        </code>
-        . You may download and verify these keys before connecting.
-      </p>
-      <p className="leading-relaxed mb-4 text-base md:text-lg">
-        The ascii-chat client is programmed to automatically download public
-        keys over HTTPS from this site and connect to{" "}
-        <code className="bg-gray-800 px-1 rounded">
-          tcp://discovery-service.ascii-chat.com:27225
-        </code>{" "}
-        and trust it.
+        These Ed25519 public keys verify the identity of the official ACDS
+        server at the endpoints listed in the{" "}
+        <Link href="#infrastructure">Official ACDS Infrastructure</Link>{" "}
+        section. The ascii-chat client automatically downloads and trusts these
+        keys, establishing a secure connection to the ACDS server without
+        requiring manual verification. You may also download and verify these
+        keys yourself if preferred.
       </p>
       <p className="leading-relaxed mb-4 text-base md:text-lg">
         Keys are available at:
