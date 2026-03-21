@@ -122,13 +122,31 @@ function initializeCache() {
         `Index loaded successfully with ${indexCache.length} entries`,
       );
 
-      // Build minisearch index
+      // Build minisearch index with content from HTML files
       miniSearch = new MiniSearch({
-        fields: ["name", "title"],
+        fields: ["name", "title", "content"],
         storeFields: ["name", "title", "file"],
+        idField: "name",
       });
-      miniSearch.addAll(indexCache);
-      logger.info(`MiniSearch index built with ${indexCache.length} documents`);
+
+      // Add pages with their HTML content
+      const docsWithContent = indexCache.map((page) => {
+        const filePath = path.join(man3Dir, page.file);
+        let content = "";
+        if (fs.existsSync(filePath)) {
+          try {
+            const html = fs.readFileSync(filePath, "utf-8");
+            // Extract text content from HTML
+            content = extractTextContent(html).substring(0, 50000); // Limit to 50k chars per page
+          } catch (err) {
+            logger.debug(`Failed to read content for ${page.name}: ${(err as Error).message}`);
+          }
+        }
+        return { ...page, content };
+      });
+
+      miniSearch.addAll(docsWithContent);
+      logger.info(`MiniSearch index built with ${indexCache.length} documents and full-text search`);
     } catch (err) {
       logger.error(`Failed to parse index.json: ${(err as Error).message}`);
     }
