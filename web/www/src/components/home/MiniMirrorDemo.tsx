@@ -175,6 +175,14 @@ export default function MiniMirrorDemo() {
     }
   }, []);
 
+  const restart = useCallback(() => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      void videoRef.current.play();
+      setPaused(false);
+    }
+  }, []);
+
   const toggleMute = useCallback(() => {
     if (videoRef.current) {
       videoRef.current.muted = !videoRef.current.muted;
@@ -315,6 +323,12 @@ export default function MiniMirrorDemo() {
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${paused ? "bg-green-600/80 hover:bg-green-500 text-white" : "bg-gray-800/80 hover:bg-gray-700 text-gray-300"}`}
                 >
                   {paused ? "Play" : "Pause"}
+                </button>
+                <button
+                  onClick={restart}
+                  className="px-3 py-1 rounded text-xs font-medium transition-colors bg-gray-800/80 hover:bg-gray-700 text-gray-300"
+                >
+                  Restart
                 </button>
                 <button
                   onClick={toggleMute}
