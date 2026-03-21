@@ -15,7 +15,6 @@ deploy
 # Node/package managers
 npm-debug.log
 bun.lockb
-pnpm-lock.yaml
 
 # Version control
 .git
@@ -35,11 +34,7 @@ pnpm-lock.yaml
 .env.local
 .env.*.local
 
-# Build outputs
-dist
-*/dist
-build
-*/build
+# Build outputs (but keep wasm dist)
 coverage
 */coverage
 .turbo

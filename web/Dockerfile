@@ -22,18 +22,18 @@ RUN curl -fsSL "https://vite.plus" | bash && cp ~/.vite-plus/bin/vp /usr/local/b
 WORKDIR /app
 
 # Copy dependency files first for layer caching
-COPY web/pnpm-lock.yaml web/pnpm-lock.yaml
-COPY web/pnpm-workspace.yaml web/pnpm-workspace.yaml
+COPY pnpm-lock.yaml pnpm-lock.yaml
+COPY pnpm-workspace.yaml pnpm-workspace.yaml
+COPY package.json ./
+COPY discovery/package.json discovery/
 COPY web/package.json web/
-COPY web/discovery/package.json web/discovery/
-COPY web/web/package.json web/web/
-COPY web/www/package.json web/www/
-COPY web/packages web/packages
+COPY www/package.json www/
+COPY packages packages
 
-# Clean install dependencies with no cache (from web root where monorepo is)
-RUN cd web && pnpm install --frozen-lockfile
+# Clean install dependencies
+RUN pnpm install --frozen-lockfile
 
-# Copy entire monorepo (node_modules excluded via .dockerignore)
+# Copy everything (node_modules excluded via .dockerignore)
 COPY . .
 
 # Pass SOURCE_COMMIT as environment variable for build-time use
@@ -54,16 +54,16 @@ ENV SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY}
 ENV GPG_PUBLIC_KEY=${GPG_PUBLIC_KEY}
 
 # Run all checks
-RUN cd web && vp check
+RUN vp check
 
 # Build www app
-RUN echo "Building www app" && cd web/www && pnpm run build && test -d dist || (echo "ERROR: dist directory not created for www" && ls -la && exit 1)
+RUN echo "Building www app" && cd www && pnpm run build && test -d dist || (echo "ERROR: dist directory not created for www" && ls -la && exit 1)
 
 # Build discovery app
-RUN echo "Building discovery app" && cd web/discovery && pnpm run build && test -d dist || (echo "ERROR: dist directory not created for discovery" && ls -la && exit 1)
+RUN echo "Building discovery app" && cd discovery && pnpm run build && test -d dist || (echo "ERROR: dist directory not created for discovery" && ls -la && exit 1)
 
 # Build web app
-RUN echo "Building web app" && cd web/web && pnpm run build && test -d dist || (echo "ERROR: dist directory not created for web" && ls -la && exit 1)
+RUN echo "Building web app" && cd web && pnpm run build && test -d dist || (echo "ERROR: dist directory not created for web" && ls -la && exit 1)
 
 # ============================================
 # Production stage - serve all apps with Caddy
@@ -83,15 +83,15 @@ COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
 WORKDIR /app/web
 
 # Copy built apps
-COPY --from=builder /app/web/www ./www
-COPY --from=builder /app/web/discovery ./discovery
-COPY --from=builder /app/web/web ./web
+COPY --from=builder /app/www ./www
+COPY --from=builder /app/discovery ./discovery
+COPY --from=builder /app/web ./web
 
 # Copy node_modules for www API server runtime deps
-COPY --from=builder /app/web/node_modules ./node_modules
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy unified Caddyfile
-COPY web/Caddyfile /etc/caddy/Caddyfile
+COPY Caddyfile /etc/caddy/Caddyfile
 
 # Expose port 80 (Caddy serving all three apps)
 EXPOSE 80
