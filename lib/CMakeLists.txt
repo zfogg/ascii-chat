@@ -1259,6 +1259,24 @@ endif()
 endif()  # End if(NOT USE_MUSL) - closes shared library configuration
 
 # =============================================================================
+# Required Symbol Definitions (musl builds skip shared lib but still need these for static lib)
+# =============================================================================
+if(NOT ASCIICHAT_REQUIRED_SYMBOLS)
+    set(ASCIICHAT_REQUIRED_SYMBOLS
+        "log_msg"
+        "asciichat_thread_create"
+        "asciichat_thread_join"
+        "mutex_init"
+        "mutex_lock"
+        "mutex_unlock"
+        "send_packet"
+        "receive_packet"
+        "crypto_init"
+    )
+    string(REPLACE ";" "," ASCIICHAT_SYMBOLS_CSV "${ASCIICHAT_REQUIRED_SYMBOLS}")
+endif()
+
+# =============================================================================
 # Combined Static Library (built from OBJECT libraries with custom archiver)
 # =============================================================================
 # Create libasciichat.a from same OBJECT files used for shared library
