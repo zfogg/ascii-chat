@@ -1316,7 +1316,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   // No host yet - need to negotiate
   log_info("No host established (server_address='%s' port=%u), starting negotiation...", joined->server_address,
            joined->server_port);
-  SAFE_FREE(alloc_buffer);
+  buffer_pool_free(NULL, alloc_buffer, 0);
 
   set_state(session, DISCOVERY_STATE_NEGOTIATING);
   return ASCIICHAT_OK;

@@ -724,6 +724,26 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
 
     log_info("Client %s joined session (participant %02x%02x...)", client_ip, resp.participant_id[0],
              resp.participant_id[1]);
+
+    // Broadcast PARTICIPANT_JOINED notification to all other participants in the session
+    acip_participant_joined_t participant_joined;
+    memset(&participant_joined, 0, sizeof(participant_joined));
+    memcpy(participant_joined.session_id, resp.session_id, 16);
+    memcpy(participant_joined.new_participant_id, resp.participant_id, 16);
+    memcpy(participant_joined.new_participant_pubkey, req->identity_pubkey, 32);
+    // peer_count is the number of OTHER participants; total = peer_count + 1 (the new one)
+    participant_joined.current_participant_count = resp.peer_count + 1;
+
+    asciichat_error_t broadcast_result = signaling_broadcast(
+        server->db, &server->tcp_server, resp.session_id, PACKET_TYPE_ACIP_PARTICIPANT_JOINED,
+        &participant_joined, sizeof(participant_joined), resp.participant_id);
+
+    if (broadcast_result != ASCIICHAT_OK) {
+      log_warn("Failed to broadcast PARTICIPANT_JOINED for session %02x%02x...: %d",
+               resp.session_id[0], resp.session_id[1], broadcast_result);
+    } else {
+      log_debug("Broadcasted PARTICIPANT_JOINED to other participants in session");
+    }
   } else {
     acip_send_session_joined(transport, &resp);
     log_warn("Session join failed for %s: %s", client_ip, resp.error_message);
