@@ -1,55 +1,44 @@
 # Multi-stage Dockerfile for ascii-chat release builds (static musl binary)
-# Supports multi-arch: linux/amd64, linux/arm64
-# Requires dependencies image: docker pull zfogg/ascii-chat-deps:latest
 # Build with: DOCKER_BUILDKIT=1 docker build -f docker/release.dockerfile -t zfogg/ascii-chat:release .
 
 # ============================================================================
-# Stage 1: Builder (based on deps image with all build tools)
+# Stage 1: Builder (deps image with all build tools and cached dependencies)
 # ============================================================================
 FROM zfogg/ascii-chat-deps:latest AS builder
 
-# Ensure we have the environment set (inherited from deps image)
 ENV SOURCE_COMMIT="docker-build"
 
-# Submodules are baked into the deps image — no git clone needed at build time.
-# Preserve submodules from deps image before COPY overwrites them
+# Preserve submodules from deps image
 RUN mv /build/deps /tmp/deps-preserve
 
-# Copy source code (.dockerignore excludes .deps-cache/ so pre-cached deps from
-# the deps image are preserved)
+# Copy fresh source (excludes .deps-cache/ via .dockerignore)
 COPY . /build/
 
-# Restore submodules from deps image (overwrite empty dirs from build context)
+# Restore submodules
 RUN rm -rf /build/deps/ascii-chat-deps /build/deps/doxygen-awesome-css && \
     mv /tmp/deps-preserve/* /build/deps/ && rm -rf /tmp/deps-preserve
 
-# Build ascii-chat (Release build with musl static linking)
-RUN make CMAKE_BUILD_TYPE=Release EXTRA_CMAKE_ARGS="-DUSE_MUSL=ON -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=0.3.0"
-
-# Install to /usr/local (will be minimal since statically linked)
-RUN make install CMAKE_BUILD_TYPE=Release CMAKE_INSTALL_PREFIX=/usr/local
+# Build release-musl static binary
+RUN cd /build && \
+    cmake --preset release-musl \
+        -DASCIICHAT_LIB_VERSION=0.3.0 && \
+    cmake --build build_release && \
+    cmake --install build_release --prefix /tmp/install && \
+    strip /tmp/install/bin/ascii-chat
 
 # ============================================================================
-# Stage 2: Runtime (minimal - just the static binary and essentials)
+# Stage 2: Runtime (minimal Alpine for static binary)
 # ============================================================================
 FROM alpine:latest
 
-# Prevent interactive prompts
 ENV DOCKERFILE_DEBIAN_FRONTEND=noninteractive
 
-# Install minimal runtime dependencies for static binary
-# Alpine is lightweight; musl static binary needs only basics
+# Install only what's needed for static binary
 RUN apk add --no-cache \
-      ca-certificates \
-      curl \
-      wget \
-      unzip \
-      openssh-client \
-      gpg
+      ca-certificates curl wget unzip openssh-client gpg bash
 
-# Copy installed binary and libraries from builder (static binary)
-COPY --from=builder /usr/local/bin/ascii-chat /usr/local/bin/ascii-chat
-COPY --from=builder /usr/local/bin/acds /usr/local/bin/acds
+# Copy only the static binary - no dependencies needed
+COPY --from=builder /tmp/install/bin/ascii-chat /usr/local/bin/ascii-chat
 
 # Copy entrypoint script
 COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
@@ -66,25 +55,16 @@ RUN --mount=type=secret,id=KEY_SSH,target=/run/secrets/KEY_SSH \
     cp /run/secrets/KEY_GPG /acds/key.gpg 2>/dev/null || true && \
     chmod 600 /acds/key.gpg 2>/dev/null || true
 
-# Create non-root user for running ascii-chat
+# Create non-root user
 RUN adduser -D -u 1001 -s /bin/sh ascii && \
     mkdir -p /home/ascii/.config /home/ascii/.local/share && \
     chown -R ascii:ascii /home/ascii && \
     chown -R ascii:ascii /acds 2>/dev/null || true
 
-# Switch to non-root user
 USER ascii
 WORKDIR /home/ascii
 
-# Expose default ports
-# 27224: ascii-chat server
-# 27225: ACDS discovery service
 EXPOSE 27224 27225 27226 27227 443
 
-# Set entrypoint script (generates keys if not provided, then runs ascii-chat)
-# Users can override the command in their deployment platform (Coolify, etc)
-# Example: discovery-service 0.0.0.0 :: --key /acds/key
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-
-# Default command shows help
 CMD ["--help"]

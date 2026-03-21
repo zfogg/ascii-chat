@@ -8,10 +8,11 @@ if [ ! -f /acds/key ]; then
     chmod 600 /acds/key
 fi
 
-# Generate GPG key if not provided via build secret
+# Generate GPG key if not provided via build secret (optional - gpg-agent may not be available)
 if [ ! -f /acds/key.gpg ]; then
-    echo "Generating GPG key..."
-    gpg --batch --generate-key <<EOF
+    if command -v gpg &>/dev/null; then
+        echo "Generating GPG key..."
+        gpg --batch --generate-key <<EOF 2>/dev/null || true
 %no-protection
 Key-Type: eddsa
 Key-Curve: ed25519
@@ -19,9 +20,10 @@ Name-Real: ascii-chat-discovery-service
 Name-Email: discovery@ascii-chat.local
 Expire-Date: 0
 EOF
-    # Export the private key to a file
-    gpg --batch --export-secret-keys > /acds/key.gpg
-    chmod 600 /acds/key.gpg
+        # Export the private key to a file (may fail if gpg-agent unavailable)
+        gpg --batch --export-secret-keys > /acds/key.gpg 2>/dev/null || true
+        chmod 600 /acds/key.gpg 2>/dev/null || true
+    fi
 fi
 
 # Run the ascii-chat binary with provided arguments
