@@ -87,7 +87,7 @@ export function Man3LeftPanel({
                 {page.snippets && page.snippets.length > 0 && (
                   <div className="px-4 pb-3 space-y-2">
                     {page.snippets.map((snippet: Snippet, idx: number) => {
-                      const snippetLines = snippet.text.split("\n");
+                      const snippetLines = snippet.text?.split("\n") || [];
                       return (
                         <div
                           key={idx}
