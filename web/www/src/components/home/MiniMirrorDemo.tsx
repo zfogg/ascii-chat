@@ -278,7 +278,7 @@ export default function MiniMirrorDemo() {
         ) : (
           <button
             onClick={stop}
-            className="absolute top-2 right-2 px-3 py-1 rounded bg-gray-800/80 hover:bg-gray-700 text-gray-300 text-xs font-medium transition-colors z-10"
+            className="absolute top-2 right-2 px-3 py-1 rounded bg-red-700/80 hover:bg-red-600 text-white text-xs font-medium transition-colors z-10"
           >
             Stop
           </button>
