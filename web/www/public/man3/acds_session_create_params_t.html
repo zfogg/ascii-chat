@@ -1,181 +1,207 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>acds_session_create_params_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">acds_session_create_params_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">acds_session_create_params_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">acds_session_create_params_t - Session creation request
-    parameters.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;include/ascii-chat/network/acip/acds_client.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>uint8_t</b> <b>identity_pubkey</b> [32]
-  <br/>
-  Ed25519 public key (host identity). <b>uint8_t</b> <b>identity_seckey</b> [64]
-  <br/>
-  Ed25519 secret key (for signing). <b>uint8_t</b> <b>capabilities</b>
-  <br/>
-  Bit 0: video, Bit 1: audio. <b>uint8_t</b> <b>max_participants</b>
-  <br/>
-  Maximum participants (1-8). <b>bool</b> <b>has_password</b>
-  <br/>
-  Password protection enabled. char <b>password</b> [128]
-  <br/>
-  Optional password (if has_password). <b>bool</b> <b>acds_expose_ip</b>
-  <br/>
-  Explicitly allow public IP disclosure (--acds-expose-ip opt-in).
-    <b>uint8_t</b> <b>session_type</b>
-  <br/>
-  <b>acds_session_type_t</b>: 0=DIRECT_TCP (default), 1=WEBRTC const char *
-    <b>reserved_string</b>
-  <br/>
-  Optional reserved string (NULL = auto-generate). char <b>server_address</b>
-    [64]
-  <br/>
-  Server address where clients should connect. <b>uint16_t</b>
-    <b>server_port</b>
-  <br/>
-  Server port where clients should connect.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Session creation request parameters.</p>
-<p class="Pp">Definition at line <b>159</b> of file <b>acds_client.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> acds_session_create_params_t::acds_expose_ip</h2>
-<p class="Pp">Explicitly allow public IP disclosure (--acds-expose-ip
-  opt-in).</p>
-<p class="Pp">Definition at line <b>166</b> of file <b>acds_client.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_session_create()</b>, and
-    <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> acds_session_create_params_t::capabilities</h2>
-<p class="Pp">Bit 0: video, Bit 1: audio.</p>
-<p class="Pp">Definition at line <b>162</b> of file <b>acds_client.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_session_create()</b>, and
-    <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> acds_session_create_params_t::has_password</h2>
-<p class="Pp">Password protection enabled.</p>
-<p class="Pp">Definition at line <b>164</b> of file <b>acds_client.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_session_create()</b>, and
-    <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b>
-  acds_session_create_params_t::identity_pubkey[32]</h2>
-<p class="Pp">Ed25519 public key (host identity).</p>
-<p class="Pp">Definition at line <b>160</b> of file <b>acds_client.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_session_create()</b>, and
-    <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b>
-  acds_session_create_params_t::identity_seckey[64]</h2>
-<p class="Pp">Ed25519 secret key (for signing).</p>
-<p class="Pp">Definition at line <b>161</b> of file <b>acds_client.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_session_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b>
-  acds_session_create_params_t::max_participants</h2>
-<p class="Pp">Maximum participants (1-8).</p>
-<p class="Pp">Definition at line <b>163</b> of file <b>acds_client.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_session_create()</b>, and
-    <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_acds_session_create_params_t::password_128_"><a class="permalink" href="#char_acds_session_create_params_t::password_128_">char
-  acds_session_create_params_t::password[128]</a></h2>
-<p class="Pp">Optional password (if has_password).</p>
-<p class="Pp">Definition at line <b>165</b> of file <b>acds_client.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_session_create()</b>, and
-    <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_char*_acds_session_create_params_t::reserved_string"><a class="permalink" href="#const_char*_acds_session_create_params_t::reserved_string">const
-  char* acds_session_create_params_t::reserved_string</a></h2>
-<p class="Pp">Optional reserved string (NULL = auto-generate).</p>
-<p class="Pp">Definition at line <b>168</b> of file <b>acds_client.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_session_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_acds_session_create_params_t::server_address_64_"><a class="permalink" href="#char_acds_session_create_params_t::server_address_64_">char
-  acds_session_create_params_t::server_address[64]</a></h2>
-<p class="Pp">Server address where clients should connect.</p>
-<p class="Pp">Definition at line <b>169</b> of file <b>acds_client.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_session_create()</b>, and
-    <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint16_t</b> acds_session_create_params_t::server_port</h2>
-<p class="Pp">Server port where clients should connect.</p>
-<p class="Pp">Definition at line <b>170</b> of file <b>acds_client.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_session_create()</b>, and
-    <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> acds_session_create_params_t::session_type</h2>
-<p class="Pp"><b>acds_session_type_t</b>: 0=DIRECT_TCP (default), 1=WEBRTC</p>
-<p class="Pp">Definition at line <b>167</b> of file <b>acds_client.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_session_create()</b>, and
-    <b>server_main()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
-    code.</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.9.4</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>acds_session_create_params_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">acds_session_create_params_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">acds_session_create_params_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">acds_session_create_params_t - Session creation request parameters.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+        <p class="Pp">#include &lt;include/ascii-chat/network/acip/acds_client.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>uint8_t</b> <b>identity_pubkey</b> [32]
+            <br />
+            Ed25519 public key (host identity). <b>uint8_t</b> <b>identity_seckey</b> [64]
+            <br />
+            Ed25519 secret key (for signing). <b>uint8_t</b> <b>capabilities</b>
+            <br />
+            Bit 0: video, Bit 1: audio. <b>uint8_t</b> <b>max_participants</b>
+            <br />
+            Maximum participants (1-8). <b>bool</b> <b>has_password</b>
+            <br />
+            Password protection enabled. char <b>password</b> [128]
+            <br />
+            Optional password (if has_password). <b>bool</b> <b>acds_expose_ip</b>
+            <br />
+            Explicitly allow public IP disclosure (--acds-expose-ip opt-in).
+            <b>uint8_t</b> <b>session_type</b>
+            <br />
+            <b>acds_session_type_t</b>: 0=DIRECT_TCP (default), 1=WEBRTC const char *
+            <b>reserved_string</b>
+            <br />
+            Optional reserved string (NULL = auto-generate). char <b>server_address</b>
+            [64]
+            <br />
+            Server address where clients should connect. <b>uint16_t</b>
+            <b>server_port</b>
+            <br />
+            Server port where clients should connect.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description">Detailed Description</a>
+        </h1>
+        <p class="Pp">Session creation request parameters.</p>
+        <p class="Pp">Definition at line <b>159</b> of file <b>acds_client.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation">Field Documentation</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> acds_session_create_params_t::acds_expose_ip</h2>
+          <p class="Pp">Explicitly allow public IP disclosure (--acds-expose-ip opt-in).</p>
+          <p class="Pp">Definition at line <b>166</b> of file <b>acds_client.h</b>.</p>
+          <p class="Pp">Referenced by <b>acds_session_create()</b>, and <b>server_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint8_t</b> acds_session_create_params_t::capabilities</h2>
+          <p class="Pp">Bit 0: video, Bit 1: audio.</p>
+          <p class="Pp">Definition at line <b>162</b> of file <b>acds_client.h</b>.</p>
+          <p class="Pp">Referenced by <b>acds_session_create()</b>, and <b>server_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> acds_session_create_params_t::has_password</h2>
+          <p class="Pp">Password protection enabled.</p>
+          <p class="Pp">Definition at line <b>164</b> of file <b>acds_client.h</b>.</p>
+          <p class="Pp">Referenced by <b>acds_session_create()</b>, and <b>server_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint8_t</b> acds_session_create_params_t::identity_pubkey[32]</h2>
+          <p class="Pp">Ed25519 public key (host identity).</p>
+          <p class="Pp">Definition at line <b>160</b> of file <b>acds_client.h</b>.</p>
+          <p class="Pp">Referenced by <b>acds_session_create()</b>, and <b>server_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint8_t</b> acds_session_create_params_t::identity_seckey[64]</h2>
+          <p class="Pp">Ed25519 secret key (for signing).</p>
+          <p class="Pp">Definition at line <b>161</b> of file <b>acds_client.h</b>.</p>
+          <p class="Pp">Referenced by <b>acds_session_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint8_t</b> acds_session_create_params_t::max_participants</h2>
+          <p class="Pp">Maximum participants (1-8).</p>
+          <p class="Pp">Definition at line <b>163</b> of file <b>acds_client.h</b>.</p>
+          <p class="Pp">Referenced by <b>acds_session_create()</b>, and <b>server_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_acds_session_create_params_t::password_128_">
+            <a class="permalink" href="#char_acds_session_create_params_t::password_128_"
+              >char acds_session_create_params_t::password[128]</a
+            >
+          </h2>
+          <p class="Pp">Optional password (if has_password).</p>
+          <p class="Pp">Definition at line <b>165</b> of file <b>acds_client.h</b>.</p>
+          <p class="Pp">Referenced by <b>acds_session_create()</b>, and <b>server_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_acds_session_create_params_t::reserved_string">
+            <a class="permalink" href="#const_char*_acds_session_create_params_t::reserved_string"
+              >const char* acds_session_create_params_t::reserved_string</a
+            >
+          </h2>
+          <p class="Pp">Optional reserved string (NULL = auto-generate).</p>
+          <p class="Pp">Definition at line <b>168</b> of file <b>acds_client.h</b>.</p>
+          <p class="Pp">Referenced by <b>acds_session_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_acds_session_create_params_t::server_address_64_">
+            <a class="permalink" href="#char_acds_session_create_params_t::server_address_64_"
+              >char acds_session_create_params_t::server_address[64]</a
+            >
+          </h2>
+          <p class="Pp">Server address where clients should connect.</p>
+          <p class="Pp">Definition at line <b>169</b> of file <b>acds_client.h</b>.</p>
+          <p class="Pp">Referenced by <b>acds_session_create()</b>, and <b>server_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint16_t</b> acds_session_create_params_t::server_port</h2>
+          <p class="Pp">Server port where clients should connect.</p>
+          <p class="Pp">Definition at line <b>170</b> of file <b>acds_client.h</b>.</p>
+          <p class="Pp">Referenced by <b>acds_session_create()</b>, and <b>server_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint8_t</b> acds_session_create_params_t::session_type</h2>
+          <p class="Pp"><b>acds_session_type_t</b>: 0=DIRECT_TCP (default), 1=WEBRTC</p>
+          <p class="Pp">Definition at line <b>167</b> of file <b>acds_client.h</b>.</p>
+          <p class="Pp">Referenced by <b>acds_session_create()</b>, and <b>server_main()</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+        <p class="Pp">Generated automatically by Doxygen for ascii-chat from the source code.</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.9.4</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

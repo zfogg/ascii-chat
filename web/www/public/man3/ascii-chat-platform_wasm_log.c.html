@@ -1,177 +1,222 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>log.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">log.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">log.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">log.c - WASM logging implementation (no-op stubs).</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef int <b>log_level_t</b>
-  <br/>
-  typedef int <b>log_color_t</b>
-  <br/>
-  typedef int <b>color_scheme_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>log_msg</b> (<b>log_level_t</b> level, const char *file,
-    int line, const char *func, const char *fmt,...)
-  <br/>
-  Log a message at a specific level. void <b>log_file_msg</b> (const char
-    *format,...)
-  <br/>
-  Log to file only, no stderr output. void <b>log_plain_msg</b> (const char
-    *format,...)
-  <br/>
-  Plain logging without timestamps or levels. void <b>log_msg_internal</b>
-    (const char *level, const char *file, int line, const char *func, const char
-    *format,...)
-  <br/>
-  void <b>log_terminal_msg</b> (<b>log_level_t</b> level, const char *file, int
-    line, const char *func, const char *fmt,...)
-  <br/>
-  Log a message to terminal only (no file output). int <b>log_template_parse</b>
-    (const char *template_str)
-  <br/>
-  void <b>log_plain_stderr_msg</b> (const char *format,...)
-  <br/>
-  Plain logging to stderr with newline. char * <b>format_message</b> (const char
-    *format, va_list <b>args</b>)
-  <br/>
-  Format a message using va_list. <b>log_level_t</b> <b>log_get_level</b> (void)
-  <br/>
-  Get the current minimum log level. void <b>log_set_level</b>
-    (<b>log_level_t</b> level)
-  <br/>
-  Set the minimum log level. void <b>log_set_color_scheme</b> (const
-    <b>color_scheme_t</b> *scheme)
-  <br/>
-  Set the color scheme for logging output. void <b>log_set_terminal_output</b>
-    (<b>bool</b> <b>enabled</b>)
-  <br/>
-  Control stderr output to terminal. <b>bool</b> <b>log_get_terminal_output</b>
-    (void)
-  <br/>
-  Get current terminal output setting. const char * <b>log_level_color</b>
-    (<b>log_color_t</b> color)
-  <br/>
-  Get color string for a given color enum. void <b>log_init</b> (const char
-    *filename, <b>log_level_t</b> level, <b>bool</b> force_stderr, <b>bool</b>
-    use_mmap)
-  <br/>
-  Initialize the logging system. void <b>log_init_colors</b> (void)
-  <br/>
-  Initialize logging color system with current terminal capabilities.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">WASM logging implementation (no-op stubs).</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>platform/wasm/log.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_int_color_scheme_t"><a class="permalink" href="#typedef_int_color_scheme_t">typedef
-  int color_scheme_t</a></h2>
-<p class="Pp">Definition at line <b>13</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">typedef int <b>log_color_t</b></h2>
-<p class="Pp">Definition at line <b>12</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss">typedef int <b>log_level_t</b></h2>
-<p class="Pp">Definition at line <b>11</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_log_msg_internal_(const_char_*_level,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_format,__"><a class="permalink" href="#void_log_msg_internal_(const_char_*_level,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_format,__">void
-  log_msg_internal (const char * level, const char * file, int line, const char
-  * func, const char * format, ...)</a></h2>
-<p class="Pp">Definition at line <b>32</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-<pre>32                                                                                                                 {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>log.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">log.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">log.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">log.c - WASM logging implementation (no-op stubs).</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+          <br />
+          <p class="Pp">
+            typedef int <b>log_level_t</b>
+            <br />
+            typedef int <b>log_color_t</b>
+            <br />
+            typedef int <b>color_scheme_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+          <br />
+          <p class="Pp">
+            void <b>log_msg</b> (<b>log_level_t</b> level, const char *file, int line, const char
+            *func, const char *fmt,...)
+            <br />
+            Log a message at a specific level. void <b>log_file_msg</b> (const char *format,...)
+            <br />
+            Log to file only, no stderr output. void <b>log_plain_msg</b> (const char *format,...)
+            <br />
+            Plain logging without timestamps or levels. void <b>log_msg_internal</b>
+            (const char *level, const char *file, int line, const char *func, const char
+            *format,...)
+            <br />
+            void <b>log_terminal_msg</b> (<b>log_level_t</b> level, const char *file, int line,
+            const char *func, const char *fmt,...)
+            <br />
+            Log a message to terminal only (no file output). int <b>log_template_parse</b>
+            (const char *template_str)
+            <br />
+            void <b>log_plain_stderr_msg</b> (const char *format,...)
+            <br />
+            Plain logging to stderr with newline. char * <b>format_message</b> (const char *format,
+            va_list <b>args</b>)
+            <br />
+            Format a message using va_list. <b>log_level_t</b> <b>log_get_level</b> (void)
+            <br />
+            Get the current minimum log level. void <b>log_set_level</b> (<b>log_level_t</b> level)
+            <br />
+            Set the minimum log level. void <b>log_set_color_scheme</b> (const
+            <b>color_scheme_t</b> *scheme)
+            <br />
+            Set the color scheme for logging output. void <b>log_set_terminal_output</b> (<b
+              >bool</b
+            >
+            <b>enabled</b>)
+            <br />
+            Control stderr output to terminal. <b>bool</b> <b>log_get_terminal_output</b>
+            (void)
+            <br />
+            Get current terminal output setting. const char * <b>log_level_color</b> (<b
+              >log_color_t</b
+            >
+            color)
+            <br />
+            Get color string for a given color enum. void <b>log_init</b> (const char *filename,
+            <b>log_level_t</b> level, <b>bool</b> force_stderr, <b>bool</b>
+            use_mmap)
+            <br />
+            Initialize the logging system. void <b>log_init_colors</b> (void)
+            <br />
+            Initialize logging color system with current terminal capabilities.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description">Detailed Description</a>
+        </h1>
+        <p class="Pp">WASM logging implementation (no-op stubs).</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>platform/wasm/log.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation">Typedef Documentation</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_int_color_scheme_t">
+            <a class="permalink" href="#typedef_int_color_scheme_t">typedef int color_scheme_t</a>
+          </h2>
+          <p class="Pp">Definition at line <b>13</b> of file <b>platform/wasm/log.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">typedef int <b>log_color_t</b></h2>
+          <p class="Pp">Definition at line <b>12</b> of file <b>platform/wasm/log.c</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">typedef int <b>log_level_t</b></h2>
+          <p class="Pp">Definition at line <b>11</b> of file <b>platform/wasm/log.c</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation">Function Documentation</a>
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_log_msg_internal_(const_char_*_level,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_format,__"
+          >
+            <a
+              class="permalink"
+              href="#void_log_msg_internal_(const_char_*_level,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_format,__"
+              >void log_msg_internal (const char * level, const char * file, int line, const char *
+              func, const char * format, ...)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>32</b> of file <b>platform/wasm/log.c</b>.</p>
+          <pre>
+32                                                                                                                 {
 33   (void)level;
 34   (void)file;
 35   (void)line;
 36   (void)func;
 37   (void)format;
-38 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_log_template_parse_(const_char_*_template_str)"><a class="permalink" href="#int_log_template_parse_(const_char_*_template_str)">int
-  log_template_parse (const char * template_str)</a></h2>
-<p class="Pp">Definition at line <b>48</b> of file
-  <b>platform/wasm/log.c</b>.</p>
-<pre>48                                                  {
+38 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_log_template_parse_(const_char_*_template_str)">
+            <a class="permalink" href="#int_log_template_parse_(const_char_*_template_str)"
+              >int log_template_parse (const char * template_str)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>48</b> of file <b>platform/wasm/log.c</b>.</p>
+          <pre>
+48                                                  {
 49   (void)template_str;
 50   return 0;
-51 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.9.4</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+51 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.9.4</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

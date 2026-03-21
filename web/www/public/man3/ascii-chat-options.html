@@ -1332,9 +1332,10 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
     <b>display_init()</b>, <b>ffmpeg_decoder_create_stdin()</b>,
     <b>ffmpeg_encoder_create()</b>, <b>ffmpeg_encoder_destroy()</b>,
     <b>ffmpeg_encoder_write_frame()</b>, <b>get_color_filter()</b>,
-    <b>get_color_mode()</b>, <b>get_flip_x()</b>, <b>get_height()</b>,
-    <b>get_matrix_rain()</b>, <b>get_palette()</b>, <b>get_palette_chars()</b>,
-    <b>get_render_mode()</b>, <b>get_target_fps()</b>, <b>get_width()</b>,
+    <b>get_color_mode()</b>, <b>get_flip_x()</b>, <b>get_flip_y()</b>,
+    <b>get_height()</b>, <b>get_matrix_rain()</b>, <b>get_palette()</b>,
+    <b>get_palette_chars()</b>, <b>get_render_mode()</b>,
+    <b>get_target_fps()</b>, <b>get_width()</b>,
     <b>keyboard_help_is_active()</b>, <b>keyboard_help_render()</b>,
     <b>main()</b>, <b>media_source_create()</b>, <b>mirror_convert_frame()</b>,
     <b>protocol_start_connection()</b>, <b>protocol_stop_connection()</b>,
@@ -6427,8 +6428,8 @@ if (help) {
     <b>options_state::webrtc</b>, <b>options_state::webrtc_disable_turn</b>, and
     <b>options_state::webrtc_skip_stun</b>.</p>
 <p class="Pp">Referenced by <b>client_main()</b>,
-    <b>session_handle_keyboard_input()</b>, <b>set_flip_x()</b>, and
-    <b>set_matrix_rain()</b>.</p>
+    <b>session_handle_keyboard_input()</b>, <b>set_flip_x()</b>,
+    <b>set_flip_y()</b>, and <b>set_matrix_rain()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> options_set_double (const char *
@@ -8469,7 +8470,7 @@ usage(stdout, MODE_SERVER);
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.8</td>
+    <td class="foot-date">Version 0.9.12</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

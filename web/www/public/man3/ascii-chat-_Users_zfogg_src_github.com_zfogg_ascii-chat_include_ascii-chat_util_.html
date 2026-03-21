@@ -1,118 +1,147 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>util Directory Reference(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">util Directory Reference(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">util Directory Reference(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">util Directory Reference</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
-<br/>
-<p class="Pp">file <b>aspect_ratio.h</b>
-  <br/>
-  &#x1F4D0; Aspect Ratio Calculation Functions file <b>atomic.h</b>
-  <br/>
-  file <b>bits.h</b>
-  <br/>
-  &#x1F522; Bit Manipulation Utilities file <b>bytes.h</b>
-  <br/>
-  &#x1F522; Byte-Level Access and Arithmetic Utilities file <b>display.h</b>
-  <br/>
-  &#x1F5A5;&#xFE0F; Display Width and Terminal Centering Utilities file
-    <b>endian.h</b>
-  <br/>
-  &#x1F504; Network byte order conversion helpers file <b>env.h</b>
-  <br/>
-  Environment variable utilities with stack-based prompt responses. file
-    <b>fnv1a.h</b>
-  <br/>
-  #&#xFE0F;&#x20E3; FNV-1a Hash Function Implementation file <b>format.h</b>
-  <br/>
-  &#x1F4CA; String Formatting Utilities file <b>fps.h</b>
-  <br/>
-  &#x23F1;&#xFE0F; FPS tracking utility for monitoring frame throughput across
-    all threads file <b>image.h</b>
-  <br/>
-  &#x1F5BC;&#xFE0F; Safe overflow-checked buffer size calculations for images
-    and video frames file <b>ip.h</b>
-  <br/>
-  &#x1F30D; IP Address Parsing and Formatting Utilities file <b>lifecycle.h</b>
-  <br/>
-  Lock-free module lifecycle state machine using pure stdatomic. file
-    <b>magic.h</b>
-  <br/>
-  Magic number validation constants and macros. file <b>math.h</b>
-  <br/>
-  &#x1F522; Mathematical Utility Functions file <b>number.h</b>
-  <br/>
-  &#x1F522; Number Formatting and Conversion Utilities file <b>overflow.h</b>
-  <br/>
-  &#x2705; Safe Integer Arithmetic and Overflow Detection file <b>parsing.h</b>
-  <br/>
-  &#x1F50D; Safe Parsing Utilities file <b>password.h</b>
-  <br/>
-  Password prompting utilities with secure input and formatting. file
-    <b>path.h</b>
-  <br/>
-  &#x1F4C2; Path Manipulation Utilities file <b>pcre2.h</b>
-  <br/>
-  &#x1F50D; Centralized PCRE2 singleton pattern for efficient regex compilation
-    file <b>string.h</b>
-  <br/>
-  &#x1F524; String Manipulation and Shell Escaping Utilities file
-    <b>thread.h</b>
-  <br/>
-  &#x1F9F5; Thread lifecycle management helpers file <b>time.h</b>
-  <br/>
-  &#x23F1;&#xFE0F; High-precision timing utilities using sokol_time.h and uthash
-    file <b>url.h</b>
-  <br/>
-  &#x1F310; Production-Grade URL Validation and Parsing file <b>utf8.h</b>
-  <br/>
-  &#x1F524; UTF-8 Encoding and Decoding Utilities file <b>util.h</b>
-  <br/>
-  &#x1F6E0;&#xFE0F; Master Utility Header file <b>validation.h</b>
-  <br/>
-  Common validation macros to reduce duplication in protocol handlers.
-  <br/>
-</p>
-</section>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.9.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>util Directory Reference(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">util Directory Reference(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">util Directory Reference(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">util Directory Reference</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+          <br />
+          <p class="Pp">
+            file <b>aspect_ratio.h</b>
+            <br />
+            &#x1F4D0; Aspect Ratio Calculation Functions file <b>atomic.h</b>
+            <br />
+            file <b>bits.h</b>
+            <br />
+            &#x1F522; Bit Manipulation Utilities file <b>bytes.h</b>
+            <br />
+            &#x1F522; Byte-Level Access and Arithmetic Utilities file <b>display.h</b>
+            <br />
+            &#x1F5A5;&#xFE0F; Display Width and Terminal Centering Utilities file
+            <b>endian.h</b>
+            <br />
+            &#x1F504; Network byte order conversion helpers file <b>env.h</b>
+            <br />
+            Environment variable utilities with stack-based prompt responses. file
+            <b>fnv1a.h</b>
+            <br />
+            #&#xFE0F;&#x20E3; FNV-1a Hash Function Implementation file <b>format.h</b>
+            <br />
+            &#x1F4CA; String Formatting Utilities file <b>fps.h</b>
+            <br />
+            &#x23F1;&#xFE0F; FPS tracking utility for monitoring frame throughput across all threads
+            file <b>image.h</b>
+            <br />
+            &#x1F5BC;&#xFE0F; Safe overflow-checked buffer size calculations for images and video
+            frames file <b>ip.h</b>
+            <br />
+            &#x1F30D; IP Address Parsing and Formatting Utilities file <b>lifecycle.h</b>
+            <br />
+            Lock-free module lifecycle state machine using pure stdatomic. file
+            <b>magic.h</b>
+            <br />
+            Magic number validation constants and macros. file <b>math.h</b>
+            <br />
+            &#x1F522; Mathematical Utility Functions file <b>number.h</b>
+            <br />
+            &#x1F522; Number Formatting and Conversion Utilities file <b>overflow.h</b>
+            <br />
+            &#x2705; Safe Integer Arithmetic and Overflow Detection file <b>parsing.h</b>
+            <br />
+            &#x1F50D; Safe Parsing Utilities file <b>password.h</b>
+            <br />
+            Password prompting utilities with secure input and formatting. file
+            <b>path.h</b>
+            <br />
+            &#x1F4C2; Path Manipulation Utilities file <b>pcre2.h</b>
+            <br />
+            &#x1F50D; Centralized PCRE2 singleton pattern for efficient regex compilation file
+            <b>string.h</b>
+            <br />
+            &#x1F524; String Manipulation and Shell Escaping Utilities file
+            <b>thread.h</b>
+            <br />
+            &#x1F9F5; Thread lifecycle management helpers file <b>time.h</b>
+            <br />
+            &#x23F1;&#xFE0F; High-precision timing utilities using sokol_time.h and uthash file
+            <b>url.h</b>
+            <br />
+            &#x1F310; Production-Grade URL Validation and Parsing file <b>utf8.h</b>
+            <br />
+            &#x1F524; UTF-8 Encoding and Decoding Utilities file <b>util.h</b>
+            <br />
+            &#x1F6E0;&#xFE0F; Master Utility Header file <b>validation.h</b>
+            <br />
+            Common validation macros to reduce duplication in protocol handlers.
+            <br />
+          </p>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.9.2</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

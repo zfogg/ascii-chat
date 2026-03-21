@@ -1,114 +1,154 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>acip_transport(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">acip_transport(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">acip_transport(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">acip_transport - Transport instance structure.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;include/ascii-chat/network/acip/transport.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp">const <b>acip_transport_methods_t</b> * <b>methods</b>
-  <br/>
-  Method table (virtual functions). <b>crypto_context_t</b> * <b>crypto_ctx</b>
-  <br/>
-  Optional encryption context. void * <b>impl_data</b>
-  <br/>
-  Transport-specific state.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Transport instance structure.</p>
-<p class="Pp">Base structure for all transport implementations. Specific
-    transports extend this with their own state.</p>
-<p class="Pp">Definition at line <b>203</b> of file <b>transport.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>crypto_context_t</b>* acip_transport::crypto_ctx</h2>
-<p class="Pp">Optional encryption context.</p>
-<p class="Pp">Definition at line <b>205</b> of file <b>transport.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
-    <b>acip_server_receive_and_dispatch()</b>,
-    <b>acip_tcp_transport_create()</b>, <b>acip_webrtc_transport_create()</b>,
-    <b>acip_websocket_client_transport_create()</b>,
-    <b>acip_websocket_server_transport_create()</b>, and
-    <b>client_dispatch_thread()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void*_acip_transport::impl_data"><a class="permalink" href="#void*_acip_transport::impl_data">void*
-  acip_transport::impl_data</a></h2>
-<p class="Pp">Transport-specific state.</p>
-<p class="Pp">Definition at line <b>206</b> of file <b>transport.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_tcp_transport_create()</b>,
-    <b>acip_transport_destroy()</b>, <b>acip_webrtc_transport_create()</b>,
-    <b>acip_websocket_client_transport_create()</b>, and
-    <b>acip_websocket_server_transport_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
-  <b>acip_transport_methods_t</b>* acip_transport::methods</a></h2>
-<p class="Pp">Method table (virtual functions).</p>
-<p class="Pp">Definition at line <b>204</b> of file <b>transport.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
-    <b>acip_server_receive_and_dispatch()</b>,
-    <b>acip_tcp_transport_create()</b>, <b>acip_transport_destroy()</b>,
-    <b>acip_webrtc_transport_create()</b>,
-    <b>acip_websocket_client_transport_create()</b>,
-    <b>acip_websocket_server_transport_create()</b>, and
-    <b>client_receive_thread()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
-    code.</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.9.4</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>acip_transport(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">acip_transport(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">acip_transport(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">acip_transport - Transport instance structure.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+        <p class="Pp">#include &lt;include/ascii-chat/network/acip/transport.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            const <b>acip_transport_methods_t</b> * <b>methods</b>
+            <br />
+            Method table (virtual functions). <b>crypto_context_t</b> * <b>crypto_ctx</b>
+            <br />
+            Optional encryption context. void * <b>impl_data</b>
+            <br />
+            Transport-specific state.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description">Detailed Description</a>
+        </h1>
+        <p class="Pp">Transport instance structure.</p>
+        <p class="Pp">
+          Base structure for all transport implementations. Specific transports extend this with
+          their own state.
+        </p>
+        <p class="Pp">Definition at line <b>203</b> of file <b>transport.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation">Field Documentation</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>crypto_context_t</b>* acip_transport::crypto_ctx</h2>
+          <p class="Pp">Optional encryption context.</p>
+          <p class="Pp">Definition at line <b>205</b> of file <b>transport.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acip_client_receive_and_dispatch()</b>,
+            <b>acip_server_receive_and_dispatch()</b>, <b>acip_tcp_transport_create()</b>,
+            <b>acip_webrtc_transport_create()</b>, <b>acip_websocket_client_transport_create()</b>,
+            <b>acip_websocket_server_transport_create()</b>, and <b>client_dispatch_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void*_acip_transport::impl_data">
+            <a class="permalink" href="#void*_acip_transport::impl_data"
+              >void* acip_transport::impl_data</a
+            >
+          </h2>
+          <p class="Pp">Transport-specific state.</p>
+          <p class="Pp">Definition at line <b>206</b> of file <b>transport.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acip_tcp_transport_create()</b>, <b>acip_transport_destroy()</b>,
+            <b>acip_webrtc_transport_create()</b>, <b>acip_websocket_client_transport_create()</b>,
+            and <b>acip_websocket_server_transport_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_">
+            <a class="permalink" href="#const_"
+              >const <b>acip_transport_methods_t</b>* acip_transport::methods</a
+            >
+          </h2>
+          <p class="Pp">Method table (virtual functions).</p>
+          <p class="Pp">Definition at line <b>204</b> of file <b>transport.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acip_client_receive_and_dispatch()</b>,
+            <b>acip_server_receive_and_dispatch()</b>, <b>acip_tcp_transport_create()</b>,
+            <b>acip_transport_destroy()</b>, <b>acip_webrtc_transport_create()</b>,
+            <b>acip_websocket_client_transport_create()</b>,
+            <b>acip_websocket_server_transport_create()</b>, and <b>client_receive_thread()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+        <p class="Pp">Generated automatically by Doxygen for ascii-chat from the source code.</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.9.4</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

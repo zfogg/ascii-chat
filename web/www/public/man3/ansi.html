@@ -1,240 +1,319 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>ansi(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">ansi(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">ansi(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">ansi - ANSI Utilities</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>ansi_rle_context_t</b>
-  <br/>
-  struct <b>ansi_timing_t</b>
-  <br/>
-  struct <b>rgb_error_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
-<br/>
-<p class="Pp">enum <b>ansi_color_mode_t</b> { <b>ANSI_MODE_FOREGROUND</b> = 0,
-    <b>ANSI_MODE_BACKGROUND</b>, <b>ANSI_MODE_FOREGROUND_BACKGROUND</b> }
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">char * <b>ansi_strip_escapes</b> (const char *input, size_t
-    input_len)
-  <br/>
-  Strip all ANSI escape sequences from a string. <b>bool</b>
-    <b>ansi_is_already_colorized</b> (const char *message, size_t pos)
-  <br/>
-  Check if a position in text is already colored. char *
-    <b>append_truecolor_fg</b> (char *dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
-    <b>uint8_t</b> b)
-  <br/>
-  char * <b>append_truecolor_bg</b> (char *dst, <b>uint8_t</b> r, <b>uint8_t</b>
-    g, <b>uint8_t</b> b)
-  <br/>
-  char * <b>append_truecolor_fg_bg</b> (char *dst, <b>uint8_t</b> fg_r,
-    <b>uint8_t</b> fg_g, <b>uint8_t</b> fg_b, <b>uint8_t</b> bg_r,
-    <b>uint8_t</b> bg_g, <b>uint8_t</b> bg_b)
-  <br/>
-  void <b>ansi_rle_init</b> (<b>ansi_rle_context_t</b> *ctx, char *buffer,
-    size_t capacity, <b>ansi_color_mode_t</b> mode)
-  <br/>
-  void <b>ansi_rle_add_pixel</b> (<b>ansi_rle_context_t</b> *ctx, <b>uint8_t</b>
-    r, <b>uint8_t</b> g, <b>uint8_t</b> b, char ascii_char)
-  <br/>
-  void <b>ansi_rle_finish</b> (<b>ansi_rle_context_t</b> *ctx)
-  <br/>
-  void <b>ansi_fast_init</b> (void)
-  <br/>
-  void <b>ansi_fast_init_256color</b> (void)
-  <br/>
-  void <b>ansi_fast_init_16color</b> (void)
-  <br/>
-  char * <b>append_256color_fg</b> (char *dst, <b>uint8_t</b> color_index)
-  <br/>
-  char * <b>append_256color_bg</b> (char *dst, <b>uint8_t</b> color_index)
-  <br/>
-  <b>uint8_t</b> <b>rgb_to_256color</b> (<b>uint8_t</b> r, <b>uint8_t</b> g,
-    <b>uint8_t</b> b)
-  <br/>
-  char * <b>append_16color_fg</b> (char *dst, <b>uint8_t</b> color_index)
-  <br/>
-  char * <b>append_16color_bg</b> (char *dst, <b>uint8_t</b> color_index)
-  <br/>
-  <b>uint8_t</b> <b>rgb_to_16color</b> (<b>uint8_t</b> r, <b>uint8_t</b> g,
-    <b>uint8_t</b> b)
-  <br/>
-  void <b>get_16color_rgb</b> (<b>uint8_t</b> color_index, <b>uint8_t</b> *r,
-    <b>uint8_t</b> *g, <b>uint8_t</b> *b)
-  <br/>
-  <b>uint8_t</b> <b>rgb_to_16color_dithered</b> (int r, int g, int b, int x, int
-    y, int width, int height, <b>rgb_error_t</b> *error_buffer)
-  <br/>
-  char * <b>append_color_fg_for_mode</b> (char *dst, <b>uint8_t</b> r,
-    <b>uint8_t</b> g, <b>uint8_t</b> b, <b>terminal_color_mode_t</b> mode)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
-  Type Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
-  <b>ansi_color_mode_t</b></a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b></b></p>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="ANSI_MODE_FOREGROUND"><a class="permalink" href="#ANSI_MODE_FOREGROUND"><b><i>ANSI_MODE_FOREGROUND
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="ANSI_MODE_BACKGROUND"><a class="permalink" href="#ANSI_MODE_BACKGROUND"><b><i>ANSI_MODE_BACKGROUND
-    </i></b></a></dt>
-  <dd></dd>
-  <dt id="ANSI_MODE_FOREGROUND_BACKGROUND"><a class="permalink" href="#ANSI_MODE_FOREGROUND_BACKGROUND"><b><i>ANSI_MODE_FOREGROUND_BACKGROUND
-    </i></b></a></dt>
-  <dd></dd>
-</dl>
-<p class="Pp">Definition at line <b>36</b> of file <b>ansi.h</b>.</p>
-<pre>36              {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>ansi(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">ansi(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">ansi(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">ansi - ANSI Utilities</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>ansi_rle_context_t</b>
+            <br />
+            struct <b>ansi_timing_t</b>
+            <br />
+            struct <b>rgb_error_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>ansi_color_mode_t</b> { <b>ANSI_MODE_FOREGROUND</b> = 0,
+            <b>ANSI_MODE_BACKGROUND</b>, <b>ANSI_MODE_FOREGROUND_BACKGROUND</b> }
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+          <br />
+          <p class="Pp">
+            char * <b>ansi_strip_escapes</b> (const char *input, size_t input_len)
+            <br />
+            Strip all ANSI escape sequences from a string. <b>bool</b>
+            <b>ansi_is_already_colorized</b> (const char *message, size_t pos)
+            <br />
+            Check if a position in text is already colored. char *
+            <b>append_truecolor_fg</b> (char *dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
+            <b>uint8_t</b> b)
+            <br />
+            char * <b>append_truecolor_bg</b> (char *dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
+            <b>uint8_t</b> b)
+            <br />
+            char * <b>append_truecolor_fg_bg</b> (char *dst, <b>uint8_t</b> fg_r,
+            <b>uint8_t</b> fg_g, <b>uint8_t</b> fg_b, <b>uint8_t</b> bg_r, <b>uint8_t</b> bg_g,
+            <b>uint8_t</b> bg_b)
+            <br />
+            void <b>ansi_rle_init</b> (<b>ansi_rle_context_t</b> *ctx, char *buffer, size_t
+            capacity, <b>ansi_color_mode_t</b> mode)
+            <br />
+            void <b>ansi_rle_add_pixel</b> (<b>ansi_rle_context_t</b> *ctx, <b>uint8_t</b> r,
+            <b>uint8_t</b> g, <b>uint8_t</b> b, char ascii_char)
+            <br />
+            void <b>ansi_rle_finish</b> (<b>ansi_rle_context_t</b> *ctx)
+            <br />
+            void <b>ansi_fast_init</b> (void)
+            <br />
+            void <b>ansi_fast_init_256color</b> (void)
+            <br />
+            void <b>ansi_fast_init_16color</b> (void)
+            <br />
+            char * <b>append_256color_fg</b> (char *dst, <b>uint8_t</b> color_index)
+            <br />
+            char * <b>append_256color_bg</b> (char *dst, <b>uint8_t</b> color_index)
+            <br />
+            <b>uint8_t</b> <b>rgb_to_256color</b> (<b>uint8_t</b> r, <b>uint8_t</b> g,
+            <b>uint8_t</b> b)
+            <br />
+            char * <b>append_16color_fg</b> (char *dst, <b>uint8_t</b> color_index)
+            <br />
+            char * <b>append_16color_bg</b> (char *dst, <b>uint8_t</b> color_index)
+            <br />
+            <b>uint8_t</b> <b>rgb_to_16color</b> (<b>uint8_t</b> r, <b>uint8_t</b> g,
+            <b>uint8_t</b> b)
+            <br />
+            void <b>get_16color_rgb</b> (<b>uint8_t</b> color_index, <b>uint8_t</b> *r,
+            <b>uint8_t</b> *g, <b>uint8_t</b> *b)
+            <br />
+            <b>uint8_t</b> <b>rgb_to_16color_dithered</b> (int r, int g, int b, int x, int y, int
+            width, int height, <b>rgb_error_t</b> *error_buffer)
+            <br />
+            char * <b>append_color_fg_for_mode</b> (char *dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
+            <b>uint8_t</b> b, <b>terminal_color_mode_t</b> mode)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description">Detailed Description</a>
+        </h1>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Enumeration_Type_Documentation">
+          <a class="permalink" href="#Enumeration_Type_Documentation"
+            >Enumeration Type Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="enum_">
+            <a class="permalink" href="#enum_">enum <b>ansi_color_mode_t</b></a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b></b></p>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="ANSI_MODE_FOREGROUND">
+              <a class="permalink" href="#ANSI_MODE_FOREGROUND"
+                ><b><i>ANSI_MODE_FOREGROUND </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="ANSI_MODE_BACKGROUND">
+              <a class="permalink" href="#ANSI_MODE_BACKGROUND"
+                ><b><i>ANSI_MODE_BACKGROUND </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="ANSI_MODE_FOREGROUND_BACKGROUND">
+              <a class="permalink" href="#ANSI_MODE_FOREGROUND_BACKGROUND"
+                ><b><i>ANSI_MODE_FOREGROUND_BACKGROUND </i></b></a
+              >
+            </dt>
+            <dd></dd>
+          </dl>
+          <p class="Pp">Definition at line <b>36</b> of file <b>ansi.h</b>.</p>
+          <pre>
+36              {
 37   ANSI_MODE_FOREGROUND = 0,
 38   ANSI_MODE_BACKGROUND,
 39   ANSI_MODE_FOREGROUND_BACKGROUND,
-40 } ansi_color_mode_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_ansi_fast_init_(void_)"><a class="permalink" href="#void_ansi_fast_init_(void_)">void
-  ansi_fast_init (void )</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Initialize fast
-    ANSI generation (call once at startup)</b></p>
-<p class="Pp">Definition at line <b>301</b> of file <b>ansi.c</b>.</p>
-<pre>301                           {
+40 } ansi_color_mode_t;</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation">Function Documentation</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ansi_fast_init_(void_)">
+            <a class="permalink" href="#void_ansi_fast_init_(void_)">void ansi_fast_init (void )</a>
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b
+              >Initialize fast ANSI generation (call once at startup)</b
+            >
+          </p>
+          <p class="Pp">Definition at line <b>301</b> of file <b>ansi.c</b>.</p>
+          <pre>
+301                           {
 302   // Initialize the dec3 cache used by truecolor functions
 303   ascii_simd_init();
-304 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ascii_simd_init()</b>.</p>
-<p class="Pp">Referenced by <b>client_init_with_args()</b>,
-    <b>mirror_init_with_args()</b>, and <b>session_display_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ansi_fast_init_16color_(void_)"><a class="permalink" href="#void_ansi_fast_init_16color_(void_)">void
-  ansi_fast_init_16color (void )</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Initialize
-    16-color mode (thread-safe, called on first use)</b></p>
-<p class="Pp">Definition at line <b>380</b> of file <b>ansi.c</b>.</p>
-<pre>380                                   {
+304 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ascii_simd_init()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>client_init_with_args()</b>, <b>mirror_init_with_args()</b>, and
+            <b>session_display_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ansi_fast_init_16color_(void_)">
+            <a class="permalink" href="#void_ansi_fast_init_16color_(void_)"
+              >void ansi_fast_init_16color (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b
+              >Initialize 16-color mode (thread-safe, called on first use)</b
+            >
+          </p>
+          <p class="Pp">Definition at line <b>380</b> of file <b>ansi.c</b>.</p>
+          <pre>
+380                                   {
 381   if (!lifecycle_init(&amp;g_color16_lc, &quot;ansi_16color&quot;)) {
 382     return; // Already initialized
 383   }
 384   do_init_16color();
-385 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>lifecycle_init()</b>.</p>
-<p class="Pp">Referenced by <b>append_16color_bg()</b>,
-    <b>append_16color_fg()</b>, <b>image_print_16color()</b>,
-    <b>image_print_16color_dithered()</b>,
-    <b>image_print_16color_dithered_with_background()</b>,
-    <b>rgb_to_16color_halfblocks_scalar()</b>, and
-    <b>session_display_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ansi_fast_init_256color_(void_)"><a class="permalink" href="#void_ansi_fast_init_256color_(void_)">void
-  ansi_fast_init_256color (void )</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Initialize
-    256-color mode (thread-safe, called on first use)</b></p>
-<p class="Pp">Definition at line <b>316</b> of file <b>ansi.c</b>.</p>
-<pre>316                                    {
+385 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>lifecycle_init()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>append_16color_bg()</b>, <b>append_16color_fg()</b>,
+            <b>image_print_16color()</b>, <b>image_print_16color_dithered()</b>,
+            <b>image_print_16color_dithered_with_background()</b>,
+            <b>rgb_to_16color_halfblocks_scalar()</b>, and <b>session_display_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ansi_fast_init_256color_(void_)">
+            <a class="permalink" href="#void_ansi_fast_init_256color_(void_)"
+              >void ansi_fast_init_256color (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b
+              >Initialize 256-color mode (thread-safe, called on first use)</b
+            >
+          </p>
+          <p class="Pp">Definition at line <b>316</b> of file <b>ansi.c</b>.</p>
+          <pre>
+316                                    {
 317   if (!lifecycle_init(&amp;g_color256_lc, &quot;ansi_256color&quot;)) {
 318     return; // Already initialized
 319   }
 320   do_init_256color();
-321 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>lifecycle_init()</b>.</p>
-<p class="Pp">Referenced by <b>rgb_to_256color_halfblocks_scalar()</b>, and
-    <b>session_display_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> ansi_is_already_colorized (const char * message,
-  size_t pos)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b></b></p>
-<p class="Pp">Check if a position in text is already colored. Scans from the
-    start of the message to the given position, tracking ANSI escape codes.
-    Returns true if there is an active color code (not in reset state).</p>
-<p class="Pp"></p>
-<p class="Pp">Detects reset codes: \x1b[0m and \x1b[m</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>message</i> The full message
-<br/>
-<i>pos</i> Position to check</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if already colored (not in reset state), false if in
-  reset state</div>
-<p class="Pp">Definition at line <b>74</b> of file <b>ansi.c</b>.</p>
-<pre>74                                                                 {
+321 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>lifecycle_init()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>rgb_to_256color_halfblocks_scalar()</b>, and
+            <b>session_display_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> ansi_is_already_colorized (const char * message, size_t pos)
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b></b></p>
+          <p class="Pp">
+            Check if a position in text is already colored. Scans from the start of the message to
+            the given position, tracking ANSI escape codes. Returns true if there is an active color
+            code (not in reset state).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Detects reset codes: \x1b[0m and \x1b[m</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>message</i> The full message
+            <br />
+            <i>pos</i> Position to check
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if already colored (not in reset state), false if in reset state
+          </div>
+          <p class="Pp">Definition at line <b>74</b> of file <b>ansi.c</b>.</p>
+          <pre>
+74                                                                 {
 75   if (!message) {
 76     return false;
 77   }
@@ -267,30 +346,39 @@
 104 
 105   // Return true if NOT in reset state (already colorized)
 106   return !in_reset;
-107 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>colorize_log_message()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ansi_rle_add_pixel_("><a class="permalink" href="#void_ansi_rle_add_pixel_(">void
-  ansi_rle_add_pixel (<b>ansi_rle_context_t</b> * ctx, <b>uint8_t</b> r,
-  <b>uint8_t</b> g, <b>uint8_t</b> b, char ascii_char)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Add pixel with
-    run-length encoding (only emits SGR when color changes)</b></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ctx</i> RLE context
-<br/>
-<i>r</i> Red component
-<br/>
-<i>g</i> Green component
-<br/>
-<i>b</i> Blue component
-<br/>
-<i>ascii_char</i> ASCII character to append</div>
-<p class="Pp">Definition at line <b>243</b> of file <b>ansi.c</b>.</p>
-<pre>243                                                                                                    {
+107 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Referenced by <b>colorize_log_message()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ansi_rle_add_pixel_(">
+            <a class="permalink" href="#void_ansi_rle_add_pixel_("
+              >void ansi_rle_add_pixel (<b>ansi_rle_context_t</b> * ctx, <b>uint8_t</b> r,
+              <b>uint8_t</b> g, <b>uint8_t</b> b, char ascii_char)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b
+              >Add pixel with run-length encoding (only emits SGR when color changes)</b
+            >
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>ctx</i> RLE context
+            <br />
+            <i>r</i> Red component
+            <br />
+            <i>g</i> Green component
+            <br />
+            <i>b</i> Blue component
+            <br />
+            <i>ascii_char</i> ASCII character to append
+          </div>
+          <p class="Pp">Definition at line <b>243</b> of file <b>ansi.c</b>.</p>
+          <pre>
+243                                                                                                    {
 244   // Check if we need to emit a new SGR sequence
 245   bool color_changed = ctx-&gt;first_pixel || (r != ctx-&gt;last_r) || (g != ctx-&gt;last_g) || (b != ctx-&gt;last_b);
 246 
@@ -329,30 +417,38 @@
 279   if (ctx-&gt;length &lt; ctx-&gt;capacity - 1) {
 280     ctx-&gt;buffer[ctx-&gt;length++] = ascii_char;
 281   }
-282 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ANSI_MODE_BACKGROUND</b>,
-    <b>ANSI_MODE_FOREGROUND</b>, <b>ANSI_MODE_FOREGROUND_BACKGROUND</b>,
-    <b>append_truecolor_bg()</b>, <b>append_truecolor_fg()</b>,
-    <b>append_truecolor_fg_bg()</b>, <b>ansi_rle_context_t::buffer</b>,
-    <b>ansi_rle_context_t::capacity</b>, <b>ansi_rle_context_t::first_pixel</b>,
-    <b>ansi_rle_context_t::last_b</b>, <b>ansi_rle_context_t::last_g</b>,
-    <b>ansi_rle_context_t::last_r</b>, <b>ansi_rle_context_t::length</b>,
-    <b>log_warn_every</b>, <b>ansi_rle_context_t::mode</b>, and
-    <b>US_PER_SEC_INT</b>.</p>
-<p class="Pp">Referenced by <b>image_print_color()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ansi_rle_finish_("><a class="permalink" href="#void_ansi_rle_finish_(">void
-  ansi_rle_finish (<b>ansi_rle_context_t</b> * ctx)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Finish RLE
-    sequence with reset and null terminator</b></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ctx</i> RLE context</div>
-<p class="Pp">Definition at line <b>285</b> of file <b>ansi.c</b>.</p>
-<pre>285                                               {
+282 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ANSI_MODE_BACKGROUND</b>, <b>ANSI_MODE_FOREGROUND</b>,
+            <b>ANSI_MODE_FOREGROUND_BACKGROUND</b>, <b>append_truecolor_bg()</b>,
+            <b>append_truecolor_fg()</b>, <b>append_truecolor_fg_bg()</b>,
+            <b>ansi_rle_context_t::buffer</b>, <b>ansi_rle_context_t::capacity</b>,
+            <b>ansi_rle_context_t::first_pixel</b>, <b>ansi_rle_context_t::last_b</b>,
+            <b>ansi_rle_context_t::last_g</b>, <b>ansi_rle_context_t::last_r</b>,
+            <b>ansi_rle_context_t::length</b>, <b>log_warn_every</b>,
+            <b>ansi_rle_context_t::mode</b>, and <b>US_PER_SEC_INT</b>.
+          </p>
+          <p class="Pp">Referenced by <b>image_print_color()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ansi_rle_finish_(">
+            <a class="permalink" href="#void_ansi_rle_finish_("
+              >void ansi_rle_finish (<b>ansi_rle_context_t</b> * ctx)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b
+              >Finish RLE sequence with reset and null terminator</b
+            >
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>ctx</i> RLE context</div>
+          <p class="Pp">Definition at line <b>285</b> of file <b>ansi.c</b>.</p>
+          <pre>
+285                                               {
 286   // Add reset sequence (requires 4 bytes + 1 for null terminator = 5 bytes total)
 287   if (ctx-&gt;length + 5 &lt;= ctx-&gt;capacity) {
 288     SAFE_MEMCPY(ctx-&gt;buffer + ctx-&gt;length, 4, &quot;\033[0m&quot;, 4);
@@ -363,31 +459,41 @@
 293   if (ctx-&gt;length &lt; ctx-&gt;capacity) {
 294     ctx-&gt;buffer[ctx-&gt;length] = '\0';
 295   }
-296 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ansi_rle_context_t::buffer</b>,
-    <b>ansi_rle_context_t::capacity</b>, <b>ansi_rle_context_t::length</b>, and
-    <b>SAFE_MEMCPY</b>.</p>
-<p class="Pp">Referenced by <b>image_print_color()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_ansi_rle_init_("><a class="permalink" href="#void_ansi_rle_init_(">void
-  ansi_rle_init (<b>ansi_rle_context_t</b> * ctx, char * buffer, size_t
-  capacity, <b>ansi_color_mode_t</b> mode)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Initialize RLE
-    context for efficient ANSI generation</b></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ctx</i> Context to initialize
-<br/>
-<i>buffer</i> Output buffer
-<br/>
-<i>capacity</i> Buffer capacity
-<br/>
-<i>mode</i> Color mode (foreground/background/both)</div>
-<p class="Pp">Definition at line <b>230</b> of file <b>ansi.c</b>.</p>
-<pre>230                                                                                                    {
+296 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ansi_rle_context_t::buffer</b>, <b>ansi_rle_context_t::capacity</b>,
+            <b>ansi_rle_context_t::length</b>, and <b>SAFE_MEMCPY</b>.
+          </p>
+          <p class="Pp">Referenced by <b>image_print_color()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ansi_rle_init_(">
+            <a class="permalink" href="#void_ansi_rle_init_("
+              >void ansi_rle_init (<b>ansi_rle_context_t</b> * ctx, char * buffer, size_t capacity,
+              <b>ansi_color_mode_t</b> mode)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b
+              >Initialize RLE context for efficient ANSI generation</b
+            >
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>ctx</i> Context to initialize
+            <br />
+            <i>buffer</i> Output buffer
+            <br />
+            <i>capacity</i> Buffer capacity
+            <br />
+            <i>mode</i> Color mode (foreground/background/both)
+          </div>
+          <p class="Pp">Definition at line <b>230</b> of file <b>ansi.c</b>.</p>
+          <pre>
+230                                                                                                    {
 231   ctx-&gt;buffer = buffer;
 232   ctx-&gt;capacity = capacity;
 233   ctx-&gt;length = 0;
@@ -397,35 +503,46 @@
 237   ctx-&gt;last_r = 0xFF;
 238   ctx-&gt;last_g = 0xFF;
 239   ctx-&gt;last_b = 0xFF;
-240 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ansi_rle_context_t::buffer</b>,
-    <b>ansi_rle_context_t::capacity</b>, <b>ansi_rle_context_t::first_pixel</b>,
-    <b>ansi_rle_context_t::last_b</b>, <b>ansi_rle_context_t::last_g</b>,
-    <b>ansi_rle_context_t::last_r</b>, <b>ansi_rle_context_t::length</b>, and
-    <b>ansi_rle_context_t::mode</b>.</p>
-<p class="Pp">Referenced by <b>image_print_color()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_ansi_strip_escapes_(const_char_*_input,_size_t_input_len)"><a class="permalink" href="#char_*_ansi_strip_escapes_(const_char_*_input,_size_t_input_len)">char
-  * ansi_strip_escapes (const char * input, size_t input_len)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b></b></p>
-<p class="Pp">Strip all ANSI escape sequences from a string. Removes all ANSI
-    CSI sequences (ESC [ ... final_byte) from the input, leaving only printable
-    text. Useful for creating plain text output from colorized ASCII art.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>input</i> Input string containing ANSI escape
-  sequences
-<br/>
-<i>input_len</i> Length of input string</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Newly allocated string with escapes removed (caller must
-  free), or NULL on error</div>
-<p class="Pp">Definition at line <b>23</b> of file <b>ansi.c</b>.</p>
-<pre>23                                                               {
+240 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ansi_rle_context_t::buffer</b>, <b>ansi_rle_context_t::capacity</b>,
+            <b>ansi_rle_context_t::first_pixel</b>, <b>ansi_rle_context_t::last_b</b>,
+            <b>ansi_rle_context_t::last_g</b>, <b>ansi_rle_context_t::last_r</b>,
+            <b>ansi_rle_context_t::length</b>, and <b>ansi_rle_context_t::mode</b>.
+          </p>
+          <p class="Pp">Referenced by <b>image_print_color()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_ansi_strip_escapes_(const_char_*_input,_size_t_input_len)">
+            <a
+              class="permalink"
+              href="#char_*_ansi_strip_escapes_(const_char_*_input,_size_t_input_len)"
+              >char * ansi_strip_escapes (const char * input, size_t input_len)</a
+            >
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b></b></p>
+          <p class="Pp">
+            Strip all ANSI escape sequences from a string. Removes all ANSI CSI sequences (ESC [ ...
+            final_byte) from the input, leaving only printable text. Useful for creating plain text
+            output from colorized ASCII art.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>input</i> Input string containing ANSI escape sequences
+            <br />
+            <i>input_len</i> Length of input string
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Newly allocated string with escapes removed (caller must free), or NULL on error
+          </div>
+          <p class="Pp">Definition at line <b>23</b> of file <b>ansi.c</b>.</p>
+          <pre>
+23                                                               {
 24   if (!input || input_len == 0) {
 25     return NULL;
 26   }
@@ -474,27 +591,38 @@
 69   // Null-terminate the output
 70   output[out_pos] = '\0';
 71   return output;
-72 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>SAFE_MALLOC</b>.</p>
-<p class="Pp">Referenced by <b>display_height()</b>, <b>display_width()</b>,
-    <b>layout_print_two_column_row()</b>, and <b>log_mmap_write()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_append_16color_bg_(char_*_dst,_"><a class="permalink" href="#char_*_append_16color_bg_(char_*_dst,_">char
-  * append_16color_bg (char * dst, <b>uint8_t</b> color_index)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Append 16-color
-    ANSI background SGR sequence</b></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>dst</i> Destination buffer
-<br/>
-<i>color_index</i> 16-color index (0-15)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to end of written data</div>
-<p class="Pp">Definition at line <b>403</b> of file <b>ansi.c</b>.</p>
-<pre>403                                                         {
+72 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>SAFE_MALLOC</b>.</p>
+          <p class="Pp">
+            Referenced by <b>display_height()</b>, <b>display_width()</b>,
+            <b>layout_print_two_column_row()</b>, and <b>log_mmap_write()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_append_16color_bg_(char_*_dst,_">
+            <a class="permalink" href="#char_*_append_16color_bg_(char_*_dst,_"
+              >char * append_16color_bg (char * dst, <b>uint8_t</b> color_index)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b
+              >Append 16-color ANSI background SGR sequence</b
+            >
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>dst</i> Destination buffer
+            <br />
+            <i>color_index</i> 16-color index (0-15)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Pointer to end of written data</div>
+          <p class="Pp">Definition at line <b>403</b> of file <b>ansi.c</b>.</p>
+          <pre>
+403                                                         {
 404   // Ensure initialization before use
 405   ansi_fast_init_16color();
 406 
@@ -508,28 +636,38 @@
 414   }
 415 
 416   return dst;
-417 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ansi_fast_init_16color()</b>.</p>
-<p class="Pp">Referenced by
-    <b>image_print_16color_dithered_with_background()</b>, and
-    <b>rgb_to_16color_halfblocks_scalar()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_append_16color_fg_(char_*_dst,_"><a class="permalink" href="#char_*_append_16color_fg_(char_*_dst,_">char
-  * append_16color_fg (char * dst, <b>uint8_t</b> color_index)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Append 16-color
-    ANSI foreground SGR sequence</b></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>dst</i> Destination buffer
-<br/>
-<i>color_index</i> 16-color index (0-15)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to end of written data</div>
-<p class="Pp">Definition at line <b>387</b> of file <b>ansi.c</b>.</p>
-<pre>387                                                         {
+417 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ansi_fast_init_16color()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>image_print_16color_dithered_with_background()</b>, and
+            <b>rgb_to_16color_halfblocks_scalar()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_append_16color_fg_(char_*_dst,_">
+            <a class="permalink" href="#char_*_append_16color_fg_(char_*_dst,_"
+              >char * append_16color_fg (char * dst, <b>uint8_t</b> color_index)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b
+              >Append 16-color ANSI foreground SGR sequence</b
+            >
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>dst</i> Destination buffer
+            <br />
+            <i>color_index</i> 16-color index (0-15)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Pointer to end of written data</div>
+          <p class="Pp">Definition at line <b>387</b> of file <b>ansi.c</b>.</p>
+          <pre>
+387                                                         {
 388   // Ensure initialization before use
 389   ansi_fast_init_16color();
 390 
@@ -543,85 +681,116 @@
 398   }
 399 
 400   return dst;
-401 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ansi_fast_init_16color()</b>.</p>
-<p class="Pp">Referenced by <b>append_color_fg_for_mode()</b>,
-    <b>image_print_16color()</b>, <b>image_print_16color_dithered()</b>,
-    <b>image_print_16color_dithered_with_background()</b>, and
-    <b>rgb_to_16color_halfblocks_scalar()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_append_256color_bg_(char_*_dst,_"><a class="permalink" href="#char_*_append_256color_bg_(char_*_dst,_">char
-  * append_256color_bg (char * dst, <b>uint8_t</b> color_index)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Append 256-color
-    background SGR sequence</b></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>dst</i> Destination buffer
-<br/>
-<i>color_index</i> 256-color palette index (0-255)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to end of written data</div>
-<p class="Pp">Definition at line <b>334</b> of file <b>ansi.c</b>.</p>
-<pre>334                                                          {
+401 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ansi_fast_init_16color()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>append_color_fg_for_mode()</b>, <b>image_print_16color()</b>,
+            <b>image_print_16color_dithered()</b>,
+            <b>image_print_16color_dithered_with_background()</b>, and
+            <b>rgb_to_16color_halfblocks_scalar()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_append_256color_bg_(char_*_dst,_">
+            <a class="permalink" href="#char_*_append_256color_bg_(char_*_dst,_"
+              >char * append_256color_bg (char * dst, <b>uint8_t</b> color_index)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b
+              >Append 256-color background SGR sequence</b
+            >
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>dst</i> Destination buffer
+            <br />
+            <i>color_index</i> 256-color palette index (0-255)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Pointer to end of written data</div>
+          <p class="Pp">Definition at line <b>334</b> of file <b>ansi.c</b>.</p>
+          <pre>
+334                                                          {
 335   const char *color_str = color256_bg_strings[color_index];
 336   size_t len = strlen(color_str);
 337   SAFE_MEMCPY(dst, len, color_str, len);
 338   return dst + len;
-339 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>SAFE_MEMCPY</b>.</p>
-<p class="Pp">Referenced by <b>rgb_to_256color_halfblocks_scalar()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_append_256color_fg_(char_*_dst,_"><a class="permalink" href="#char_*_append_256color_fg_(char_*_dst,_">char
-  * append_256color_fg (char * dst, <b>uint8_t</b> color_index)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Append 256-color
-    foreground SGR sequence</b></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>dst</i> Destination buffer
-<br/>
-<i>color_index</i> 256-color palette index (0-255)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to end of written data</div>
-<p class="Pp">Definition at line <b>326</b> of file <b>ansi.c</b>.</p>
-<pre>326                                                          {
+339 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>SAFE_MEMCPY</b>.</p>
+          <p class="Pp">Referenced by <b>rgb_to_256color_halfblocks_scalar()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_append_256color_fg_(char_*_dst,_">
+            <a class="permalink" href="#char_*_append_256color_fg_(char_*_dst,_"
+              >char * append_256color_fg (char * dst, <b>uint8_t</b> color_index)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b
+              >Append 256-color foreground SGR sequence</b
+            >
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>dst</i> Destination buffer
+            <br />
+            <i>color_index</i> 256-color palette index (0-255)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Pointer to end of written data</div>
+          <p class="Pp">Definition at line <b>326</b> of file <b>ansi.c</b>.</p>
+          <pre>
+326                                                          {
 327   const char *color_str = color256_strings[color_index];
 328   size_t len = strlen(color_str);
 329   SAFE_MEMCPY(dst, len, color_str, len);
 330   return dst + len;
-331 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>SAFE_MEMCPY</b>.</p>
-<p class="Pp">Referenced by <b>append_color_fg_for_mode()</b>, and
-    <b>rgb_to_256color_halfblocks_scalar()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_append_color_fg_for_mode_(char_*_dst,_"><a class="permalink" href="#char_*_append_color_fg_for_mode_(char_*_dst,_">char
-  * append_color_fg_for_mode (char * dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
-  <b>uint8_t</b> b, <b>terminal_color_mode_t</b> mode)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Append color SGR
-    sequence for the appropriate terminal color mode</b></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>dst</i> Destination buffer
-<br/>
-<i>r</i> Red component
-<br/>
-<i>g</i> Green component
-<br/>
-<i>b</i> Blue component
-<br/>
-<i>mode</i> Terminal color mode capability</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to end of written data</div>
-<p class="Pp">Definition at line <b>570</b> of file <b>ansi.c</b>.</p>
-<pre>570                                                                                                        {
+331 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>SAFE_MEMCPY</b>.</p>
+          <p class="Pp">
+            Referenced by <b>append_color_fg_for_mode()</b>, and
+            <b>rgb_to_256color_halfblocks_scalar()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_append_color_fg_for_mode_(char_*_dst,_">
+            <a class="permalink" href="#char_*_append_color_fg_for_mode_(char_*_dst,_"
+              >char * append_color_fg_for_mode (char * dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
+              <b>uint8_t</b> b, <b>terminal_color_mode_t</b> mode)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b
+              >Append color SGR sequence for the appropriate terminal color mode</b
+            >
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>dst</i> Destination buffer
+            <br />
+            <i>r</i> Red component
+            <br />
+            <i>g</i> Green component
+            <br />
+            <i>b</i> Blue component
+            <br />
+            <i>mode</i> Terminal color mode capability
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Pointer to end of written data</div>
+          <p class="Pp">Definition at line <b>570</b> of file <b>ansi.c</b>.</p>
+          <pre>
+570                                                                                                        {
 571   switch (mode) {
 572   case COLOR_MODE_TRUECOLOR:
 573     return append_truecolor_fg(dst, r, g, b);
@@ -642,35 +811,45 @@
 588     // No color output for monochrome mode or auto mode (fallback)
 589     return dst;
 590   }
-591 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>append_16color_fg()</b>,
-    <b>append_256color_fg()</b>, <b>append_truecolor_fg()</b>,
-    <b>COLOR_MODE_16_COLOR</b>, <b>COLOR_MODE_256_COLOR</b>,
-    <b>COLOR_MODE_AUTO</b>, <b>COLOR_MODE_NONE</b>, <b>COLOR_MODE_TRUECOLOR</b>,
-    <b>rgb_to_16color()</b>, and <b>rgb_to_256color()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_append_truecolor_bg_(char_*_dst,_"><a class="permalink" href="#char_*_append_truecolor_bg_(char_*_dst,_">char
-  * append_truecolor_bg (char * dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
-  <b>uint8_t</b> b)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Append truecolor
-    background SGR sequence Maximum output: 19 bytes
-    (\033[48;2;255;255;255m)</b></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>dst</i> Destination buffer
-<br/>
-<i>r</i> Red component
-<br/>
-<i>g</i> Green component
-<br/>
-<i>b</i> Blue component</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to end of written data</div>
-<p class="Pp">Definition at line <b>155</b> of file <b>ansi.c</b>.</p>
-<pre>155                                                                       {
+591 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>append_16color_fg()</b>, <b>append_256color_fg()</b>,
+            <b>append_truecolor_fg()</b>, <b>COLOR_MODE_16_COLOR</b>, <b>COLOR_MODE_256_COLOR</b>,
+            <b>COLOR_MODE_AUTO</b>, <b>COLOR_MODE_NONE</b>, <b>COLOR_MODE_TRUECOLOR</b>,
+            <b>rgb_to_16color()</b>, and <b>rgb_to_256color()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_append_truecolor_bg_(char_*_dst,_">
+            <a class="permalink" href="#char_*_append_truecolor_bg_(char_*_dst,_"
+              >char * append_truecolor_bg (char * dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
+              <b>uint8_t</b> b)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b
+              >Append truecolor background SGR sequence Maximum output: 19 bytes
+              (\033[48;2;255;255;255m)</b
+            >
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>dst</i> Destination buffer
+            <br />
+            <i>r</i> Red component
+            <br />
+            <i>g</i> Green component
+            <br />
+            <i>b</i> Blue component
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Pointer to end of written data</div>
+          <p class="Pp">Definition at line <b>155</b> of file <b>ansi.c</b>.</p>
+          <pre>
+155                                                                       {
 156   // Ensure dec3 cache is initialized
 157   if (!g_dec3_cache.dec3_initialized) {
 158     init_dec3();
@@ -692,34 +871,46 @@
 174   *dst++ = 'm';
 175 
 176   return dst;
-177 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>g_dec3_cache</b>, <b>init_dec3()</b>, and
-    <b>SAFE_MEMCPY</b>.</p>
-<p class="Pp">Referenced by <b>ansi_rle_add_pixel()</b>,
-    <b>grep_highlight()</b>, and <b>grep_highlight_colored()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_append_truecolor_fg_(char_*_dst,_"><a class="permalink" href="#char_*_append_truecolor_fg_(char_*_dst,_">char
-  * append_truecolor_fg (char * dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
-  <b>uint8_t</b> b)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Append truecolor
-    foreground SGR sequence Maximum output: 19 bytes
-    (\033[38;2;255;255;255m)</b></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>dst</i> Destination buffer
-<br/>
-<i>r</i> Red component
-<br/>
-<i>g</i> Green component
-<br/>
-<i>b</i> Blue component</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to end of written data</div>
-<p class="Pp">Definition at line <b>125</b> of file <b>ansi.c</b>.</p>
-<pre>125                                                                       {
+177 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>g_dec3_cache</b>, <b>init_dec3()</b>, and <b>SAFE_MEMCPY</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ansi_rle_add_pixel()</b>, <b>grep_highlight()</b>, and
+            <b>grep_highlight_colored()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_append_truecolor_fg_(char_*_dst,_">
+            <a class="permalink" href="#char_*_append_truecolor_fg_(char_*_dst,_"
+              >char * append_truecolor_fg (char * dst, <b>uint8_t</b> r, <b>uint8_t</b> g,
+              <b>uint8_t</b> b)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b
+              >Append truecolor foreground SGR sequence Maximum output: 19 bytes
+              (\033[38;2;255;255;255m)</b
+            >
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>dst</i> Destination buffer
+            <br />
+            <i>r</i> Red component
+            <br />
+            <i>g</i> Green component
+            <br />
+            <i>b</i> Blue component
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Pointer to end of written data</div>
+          <p class="Pp">Definition at line <b>125</b> of file <b>ansi.c</b>.</p>
+          <pre>
+125                                                                       {
 126   // Ensure dec3 cache is initialized
 127   if (!g_dec3_cache.dec3_initialized) {
 128     init_dec3();
@@ -745,41 +936,51 @@
 148   *dst++ = 'm';
 149 
 150   return dst;
-151 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>g_dec3_cache</b>, <b>init_dec3()</b>, and
-    <b>SAFE_MEMCPY</b>.</p>
-<p class="Pp">Referenced by <b>ansi_rle_add_pixel()</b>, and
-    <b>append_color_fg_for_mode()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="char_*_append_truecolor_fg_bg_(char_*_dst,_"><a class="permalink" href="#char_*_append_truecolor_fg_bg_(char_*_dst,_">char
-  * append_truecolor_fg_bg (char * dst, <b>uint8_t</b> fg_r, <b>uint8_t</b>
-  fg_g, <b>uint8_t</b> fg_b, <b>uint8_t</b> bg_r, <b>uint8_t</b> bg_g,
-  <b>uint8_t</b> bg_b)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Append combined
-    foreground + background truecolor SGR Maximum output: 38 bytes
-    (\033[38;2;255;255;255;48;2;255;255;255m)</b></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>dst</i> Destination buffer
-<br/>
-<i>fg_r</i> Foreground red component
-<br/>
-<i>fg_g</i> Foreground green component
-<br/>
-<i>fg_b</i> Foreground blue component
-<br/>
-<i>bg_r</i> Background red component
-<br/>
-<i>bg_g</i> Background green component
-<br/>
-<i>bg_b</i> Background blue component</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to end of written data</div>
-<p class="Pp">Definition at line <b>181</b> of file <b>ansi.c</b>.</p>
-<pre>182                                            {
+151 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>g_dec3_cache</b>, <b>init_dec3()</b>, and <b>SAFE_MEMCPY</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ansi_rle_add_pixel()</b>, and <b>append_color_fg_for_mode()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_append_truecolor_fg_bg_(char_*_dst,_">
+            <a class="permalink" href="#char_*_append_truecolor_fg_bg_(char_*_dst,_"
+              >char * append_truecolor_fg_bg (char * dst, <b>uint8_t</b> fg_r, <b>uint8_t</b> fg_g,
+              <b>uint8_t</b> fg_b, <b>uint8_t</b> bg_r, <b>uint8_t</b> bg_g, <b>uint8_t</b> bg_b)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b
+              >Append combined foreground + background truecolor SGR Maximum output: 38 bytes
+              (\033[38;2;255;255;255;48;2;255;255;255m)</b
+            >
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>dst</i> Destination buffer
+            <br />
+            <i>fg_r</i> Foreground red component
+            <br />
+            <i>fg_g</i> Foreground green component
+            <br />
+            <i>fg_b</i> Foreground blue component
+            <br />
+            <i>bg_r</i> Background red component
+            <br />
+            <i>bg_g</i> Background green component
+            <br />
+            <i>bg_b</i> Background blue component
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Pointer to end of written data</div>
+          <p class="Pp">Definition at line <b>181</b> of file <b>ansi.c</b>.</p>
+          <pre>
+182                                            {
 183   // Ensure dec3 cache is initialized
 184   if (!g_dec3_cache.dec3_initialized) {
 185     init_dec3();
@@ -822,30 +1023,40 @@
 222   *dst++ = 'm';
 223 
 224   return dst;
-225 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>g_dec3_cache</b>, <b>init_dec3()</b>, and
-    <b>SAFE_MEMCPY</b>.</p>
-<p class="Pp">Referenced by <b>ansi_rle_add_pixel()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_get_16color_rgb_("><a class="permalink" href="#void_get_16color_rgb_(">void
-  get_16color_rgb (<b>uint8_t</b> color_index, <b>uint8_t</b> * r,
-  <b>uint8_t</b> * g, <b>uint8_t</b> * b)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Get RGB values for
-    a 16-color ANSI index</b></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>color_index</i> 16-color index (0-15)
-<br/>
-<i>r</i> Output red component
-<br/>
-<i>g</i> Output green component
-<br/>
-<i>b</i> Output blue component</div>
-<p class="Pp">Definition at line <b>462</b> of file <b>ansi.c</b>.</p>
-<pre>462                                                                               {
+225 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>g_dec3_cache</b>, <b>init_dec3()</b>, and <b>SAFE_MEMCPY</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ansi_rle_add_pixel()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_get_16color_rgb_(">
+            <a class="permalink" href="#void_get_16color_rgb_("
+              >void get_16color_rgb (<b>uint8_t</b> color_index, <b>uint8_t</b> * r,
+              <b>uint8_t</b> * g, <b>uint8_t</b> * b)</a
+            >
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b
+              >Get RGB values for a 16-color ANSI index</b
+            >
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>color_index</i> 16-color index (0-15)
+            <br />
+            <i>r</i> Output red component
+            <br />
+            <i>g</i> Output green component
+            <br />
+            <i>b</i> Output blue component
+          </div>
+          <p class="Pp">Definition at line <b>462</b> of file <b>ansi.c</b>.</p>
+          <pre>
+462                                                                               {
 463   // Same color table as rgb_to_16color()
 464   static const uint8_t ansi_colors[16][3] = {
 465       {0, 0, 0},       // 0: Black
@@ -873,30 +1084,38 @@
 487   *r = ansi_colors[color_index][0];
 488   *g = ansi_colors[color_index][1];
 489   *b = ansi_colors[color_index][2];
-490 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by
-    <b>image_print_16color_dithered_with_background()</b>, and
-    <b>rgb_to_16color_dithered()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> rgb_to_16color (<b>uint8_t</b> r, <b>uint8_t</b>
-  g, <b>uint8_t</b> b)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Convert RGB to
-    closest 16-color ANSI index Uses distance-based matching against standard
-    ANSI colors</b></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>r</i> Red component
-<br/>
-<i>g</i> Green component
-<br/>
-<i>b</i> Blue component</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">16-color index (0-15)</div>
-<p class="Pp">Definition at line <b>419</b> of file <b>ansi.c</b>.</p>
-<pre>419                                                         {
+490 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Referenced by <b>image_print_16color_dithered_with_background()</b>, and
+            <b>rgb_to_16color_dithered()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint8_t</b> rgb_to_16color (<b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b> b)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b
+              >Convert RGB to closest 16-color ANSI index Uses distance-based matching against
+              standard ANSI colors</b
+            >
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>r</i> Red component
+            <br />
+            <i>g</i> Green component
+            <br />
+            <i>b</i> Blue component
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">16-color index (0-15)</div>
+          <p class="Pp">Definition at line <b>419</b> of file <b>ansi.c</b>.</p>
+          <pre>
+419                                                         {
 420   // Convert RGB to the closest 16-color ANSI color
 421   // This uses a simple distance-based approach
 422 
@@ -936,40 +1155,49 @@
 456   }
 457 
 458   return best_match;
-459 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>append_color_fg_for_mode()</b>,
-    <b>colorscheme_compile_scheme()</b>, <b>image_print_16color()</b>,
-    <b>rgb_to_16color_dithered()</b>, and
-    <b>rgb_to_16color_halfblocks_scalar()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> rgb_to_16color_dithered (int r, int g, int b, int
-  x, int y, int width, int height, <b>rgb_error_t</b> * error_buffer)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Convert RGB to
-    16-color with Floyd-Steinberg dithering</b></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>r</i> Red component
-<br/>
-<i>g</i> Green component
-<br/>
-<i>b</i> Blue component
-<br/>
-<i>x</i> Current pixel X coordinate
-<br/>
-<i>y</i> Current pixel Y coordinate
-<br/>
-<i>width</i> Image width
-<br/>
-<i>height</i> Image height
-<br/>
-<i>error_buffer</i> Dithering error buffer (width*height elements)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">16-color index with dithering applied</div>
-<p class="Pp">Definition at line <b>493</b> of file <b>ansi.c</b>.</p>
-<pre>493                                                                                                                      {
+459 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Referenced by <b>append_color_fg_for_mode()</b>, <b>colorscheme_compile_scheme()</b>,
+            <b>image_print_16color()</b>, <b>rgb_to_16color_dithered()</b>, and
+            <b>rgb_to_16color_halfblocks_scalar()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint8_t</b> rgb_to_16color_dithered (int r, int g, int b, int x, int y, int width,
+            int height, <b>rgb_error_t</b> * error_buffer)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b
+              >Convert RGB to 16-color with Floyd-Steinberg dithering</b
+            >
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>r</i> Red component
+            <br />
+            <i>g</i> Green component
+            <br />
+            <i>b</i> Blue component
+            <br />
+            <i>x</i> Current pixel X coordinate
+            <br />
+            <i>y</i> Current pixel Y coordinate
+            <br />
+            <i>width</i> Image width
+            <br />
+            <i>height</i> Image height
+            <br />
+            <i>error_buffer</i> Dithering error buffer (width*height elements)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">16-color index with dithering applied</div>
+          <p class="Pp">Definition at line <b>493</b> of file <b>ansi.c</b>.</p>
+          <pre>
+493                                                                                                                      {
 494   // Add accumulated error from previous pixels
 495   if (error_buffer) {
 496     // Use size_t for index calculation to prevent integer overflow on large images
@@ -1041,32 +1269,42 @@
 562   }
 563 
 564   return closest_color;
-565 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>rgb_error_t::b</b>, <b>rgb_error_t::g</b>,
-    <b>get_16color_rgb()</b>, <b>rgb_error_t::r</b>, and
-    <b>rgb_to_16color()</b>.</p>
-<p class="Pp">Referenced by <b>image_print_16color_dithered()</b>, and
-    <b>image_print_16color_dithered_with_background()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> rgb_to_256color (<b>uint8_t</b> r, <b>uint8_t</b>
-  g, <b>uint8_t</b> b)</h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b>Convert RGB to
-    closest 256-color palette index Uses 6x6x6 color cube + grayscale
-  ramp</b></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>r</i> Red component
-<br/>
-<i>g</i> Green component
-<br/>
-<i>b</i> Blue component</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">256-color palette index (0-255)</div>
-<p class="Pp">Definition at line <b>342</b> of file <b>ansi.c</b>.</p>
-<pre>342                                                          {
+565 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>rgb_error_t::b</b>, <b>rgb_error_t::g</b>, <b>get_16color_rgb()</b>,
+            <b>rgb_error_t::r</b>, and <b>rgb_to_16color()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>image_print_16color_dithered()</b>, and
+            <b>image_print_16color_dithered_with_background()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint8_t</b> rgb_to_256color (<b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b> b)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/video/terminal/ansi.h</b>&gt;<b
+              >Convert RGB to closest 256-color palette index Uses 6x6x6 color cube + grayscale
+              ramp</b
+            >
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>r</i> Red component
+            <br />
+            <i>g</i> Green component
+            <br />
+            <i>b</i> Blue component
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">256-color palette index (0-255)</div>
+          <p class="Pp">Definition at line <b>342</b> of file <b>ansi.c</b>.</p>
+          <pre>
+342                                                          {
 343   // Map to 6x6x6 color cube (216 colors) + grayscale ramp
 344 
 345   // Check if it's close to grayscale
@@ -1085,24 +1323,26 @@
 358   int b6 = (b * 5) / 255;
 359 
 360   return (uint8_t)(16 + (r6 * 36) + (g6 * 6) + b6);
-361 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>append_color_fg_for_mode()</b>,
-    <b>colorscheme_compile_scheme()</b>, and
-    <b>rgb_to_256color_halfblocks_scalar()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.9.4</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+361 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Referenced by <b>append_color_fg_for_mode()</b>, <b>colorscheme_compile_scheme()</b>,
+            and <b>rgb_to_256color_halfblocks_scalar()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.9.4</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

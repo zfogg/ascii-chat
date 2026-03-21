@@ -70,6 +70,10 @@
   <br/>
   EMSCRIPTEN_KEEPALIVE int <b>get_flip_x</b> (void)
   <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>set_flip_y</b> (int <b>enabled</b>)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>get_flip_y</b> (void)
+  <br/>
   EMSCRIPTEN_KEEPALIVE int <b>set_render_mode</b> (int mode)
   <br/>
   EMSCRIPTEN_KEEPALIVE int <b>get_render_mode</b> (void)
@@ -133,6 +137,18 @@
 <p class="Pp">References <b>GET_OPTION</b>.</p>
 </section>
 <section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_flip_y_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_flip_y_(void_)">EMSCRIPTEN_KEEPALIVE
+  int get_flip_y (void )</a></h2>
+<p class="Pp">Definition at line <b>157</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>157                      {
+158   return GET_OPTION(flip_y) ? 1 : 0;
+159 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>GET_OPTION</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_height_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_height_(void_)">EMSCRIPTEN_KEEPALIVE
   int get_height (void )</a></h2>
 <p class="Pp">Definition at line <b>40</b> of file
@@ -156,14 +172,14 @@
 <i>option_name</i> The long name of the option</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Help text string or NULL if not applicable</div>
-<p class="Pp">Definition at line <b>189</b> of file
+<p class="Pp">Definition at line <b>204</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>189                                                              {
-190   if (!option_name || !option_name[0])
-191     return NULL;
-192   asciichat_mode_t mode_enum = (asciichat_mode_t)mode;
-193   return options_get_help_text(mode_enum, option_name);
-194 }</pre>
+<pre>204                                                              {
+205   if (!option_name || !option_name[0])
+206     return NULL;
+207   asciichat_mode_t mode_enum = (asciichat_mode_t)mode;
+208   return options_get_help_text(mode_enum, option_name);
+209 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_get_help_text()</b>.</p>
@@ -207,11 +223,11 @@
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_render_mode_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_render_mode_(void_)">EMSCRIPTEN_KEEPALIVE
   int get_render_mode (void )</a></h2>
-<p class="Pp">Definition at line <b>157</b> of file
+<p class="Pp">Definition at line <b>172</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>157                           {
-158   return GET_OPTION(render_mode);
-159 }</pre>
+<pre>172                           {
+173   return GET_OPTION(render_mode);
+174 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>GET_OPTION</b>.</p>
@@ -219,11 +235,11 @@
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_target_fps_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_target_fps_(void_)">EMSCRIPTEN_KEEPALIVE
   int get_target_fps (void )</a></h2>
-<p class="Pp">Definition at line <b>172</b> of file
+<p class="Pp">Definition at line <b>187</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>172                          {
-173   return GET_OPTION(fps);
-174 }</pre>
+<pre>187                          {
+188   return GET_OPTION(fps);
+189 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>GET_OPTION</b>.</p>
@@ -275,6 +291,20 @@
 137   asciichat_error_t err = options_set_bool(&quot;flip_x&quot;, enabled != 0);
 138   return (err == ASCIICHAT_OK) ? 0 : -1;
 139 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>enabled</b>, and
+    <b>options_set_bool()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_flip_y_(int_enabled)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_flip_y_(int_enabled)">EMSCRIPTEN_KEEPALIVE
+  int set_flip_y (int enabled)</a></h2>
+<p class="Pp">Definition at line <b>151</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>151                             {
+152   asciichat_error_t err = options_set_bool(&quot;flip_y&quot;, enabled != 0);
+153   return (err == ASCIICHAT_OK) ? 0 : -1;
+154 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>enabled</b>, and
@@ -354,12 +384,12 @@
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_render_mode_(int_mode)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_render_mode_(int_mode)">EMSCRIPTEN_KEEPALIVE
   int set_render_mode (int mode)</a></h2>
-<p class="Pp">Definition at line <b>151</b> of file
+<p class="Pp">Definition at line <b>166</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>151                               {
-152   asciichat_error_t err = options_set_int(&quot;render_mode&quot;, mode);
-153   return (err == ASCIICHAT_OK) ? 0 : -1;
-154 }</pre>
+<pre>166                               {
+167   asciichat_error_t err = options_set_int(&quot;render_mode&quot;, mode);
+168   return (err == ASCIICHAT_OK) ? 0 : -1;
+169 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, and <b>options_set_int()</b>.</p>
@@ -367,12 +397,12 @@
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_target_fps_(int_fps)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_target_fps_(int_fps)">EMSCRIPTEN_KEEPALIVE
   int set_target_fps (int fps)</a></h2>
-<p class="Pp">Definition at line <b>166</b> of file
+<p class="Pp">Definition at line <b>181</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>166                             {
-167   asciichat_error_t err = options_set_int(&quot;fps&quot;, fps);
-168   return (err == ASCIICHAT_OK) ? 0 : -1;
-169 }</pre>
+<pre>181                             {
+182   asciichat_error_t err = options_set_int(&quot;fps&quot;, fps);
+183   return (err == ASCIICHAT_OK) ? 0 : -1;
+184 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, and <b>options_set_int()</b>.</p>
@@ -398,7 +428,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.8</td>
+    <td class="foot-date">Version 0.9.12</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

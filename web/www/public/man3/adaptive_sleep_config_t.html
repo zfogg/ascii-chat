@@ -1,128 +1,171 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>adaptive_sleep_config_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">adaptive_sleep_config_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">adaptive_sleep_config_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">adaptive_sleep_config_t - Configuration for adaptive sleep
-    behavior.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;include/ascii-chat/util/time.h&gt;</p>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>uint64_t</b> <b>baseline_sleep_ns</b>
-  <br/>
-  Normal sleep time in nanoseconds (when queue is at target). double
-    <b>min_speed_multiplier</b>
-  <br/>
-  Minimum speed (max sleep) - usually 1.0 (baseline speed). double
-    <b>max_speed_multiplier</b>
-  <br/>
-  Maximum speed (min sleep) - e.g., 4.0 = process 4x faster. double
-    <b>speedup_rate</b>
-  <br/>
-  Ramp-up rate when queue builds (0.0-1.0, higher = faster ramp). double
-    <b>slowdown_rate</b>
-  <br/>
-  Ramp-down rate when queue empties (0.0-1.0, higher = faster ramp).
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Configuration for adaptive sleep behavior.</p>
-<p class="Pp">Defines how a thread should adjust its sleep time based on
-    workload. Threads can speed up (sleep less) when queues build up and slow
-    down (sleep more) when queues are empty.</p>
-<p class="Pp">Definition at line <b>677</b> of file <b>time.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> adaptive_sleep_config_t::baseline_sleep_ns</h2>
-<p class="Pp">Normal sleep time in nanoseconds (when queue is at target).</p>
-<p class="Pp">Definition at line <b>678</b> of file <b>time.h</b>.</p>
-<p class="Pp">Referenced by <b>adaptive_sleep_calculate()</b>, and
-    <b>adaptive_sleep_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="double_adaptive_sleep_config_t::max_speed_multiplier"><a class="permalink" href="#double_adaptive_sleep_config_t::max_speed_multiplier">double
-  adaptive_sleep_config_t::max_speed_multiplier</a></h2>
-<p class="Pp">Maximum speed (min sleep) - e.g., 4.0 = process 4x faster.</p>
-<p class="Pp">Definition at line <b>680</b> of file <b>time.h</b>.</p>
-<p class="Pp">Referenced by <b>adaptive_sleep_calculate()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="double_adaptive_sleep_config_t::min_speed_multiplier"><a class="permalink" href="#double_adaptive_sleep_config_t::min_speed_multiplier">double
-  adaptive_sleep_config_t::min_speed_multiplier</a></h2>
-<p class="Pp">Minimum speed (max sleep) - usually 1.0 (baseline speed).</p>
-<p class="Pp">Definition at line <b>679</b> of file <b>time.h</b>.</p>
-<p class="Pp">Referenced by <b>adaptive_sleep_calculate()</b>, and
-    <b>adaptive_sleep_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="double_adaptive_sleep_config_t::slowdown_rate"><a class="permalink" href="#double_adaptive_sleep_config_t::slowdown_rate">double
-  adaptive_sleep_config_t::slowdown_rate</a></h2>
-<p class="Pp">Ramp-down rate when queue empties (0.0-1.0, higher = faster
-  ramp).</p>
-<p class="Pp">Definition at line <b>682</b> of file <b>time.h</b>.</p>
-<p class="Pp">Referenced by <b>adaptive_sleep_calculate()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="double_adaptive_sleep_config_t::speedup_rate"><a class="permalink" href="#double_adaptive_sleep_config_t::speedup_rate">double
-  adaptive_sleep_config_t::speedup_rate</a></h2>
-<p class="Pp">Ramp-up rate when queue builds (0.0-1.0, higher = faster
-  ramp).</p>
-<p class="Pp">Definition at line <b>681</b> of file <b>time.h</b>.</p>
-<p class="Pp">Referenced by <b>adaptive_sleep_calculate()</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
-    code.</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.9.4</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>adaptive_sleep_config_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">adaptive_sleep_config_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">adaptive_sleep_config_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">adaptive_sleep_config_t - Configuration for adaptive sleep behavior.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+        <p class="Pp">#include &lt;include/ascii-chat/util/time.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>uint64_t</b> <b>baseline_sleep_ns</b>
+            <br />
+            Normal sleep time in nanoseconds (when queue is at target). double
+            <b>min_speed_multiplier</b>
+            <br />
+            Minimum speed (max sleep) - usually 1.0 (baseline speed). double
+            <b>max_speed_multiplier</b>
+            <br />
+            Maximum speed (min sleep) - e.g., 4.0 = process 4x faster. double
+            <b>speedup_rate</b>
+            <br />
+            Ramp-up rate when queue builds (0.0-1.0, higher = faster ramp). double
+            <b>slowdown_rate</b>
+            <br />
+            Ramp-down rate when queue empties (0.0-1.0, higher = faster ramp).
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description">Detailed Description</a>
+        </h1>
+        <p class="Pp">Configuration for adaptive sleep behavior.</p>
+        <p class="Pp">
+          Defines how a thread should adjust its sleep time based on workload. Threads can speed up
+          (sleep less) when queues build up and slow down (sleep more) when queues are empty.
+        </p>
+        <p class="Pp">Definition at line <b>677</b> of file <b>time.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation">Field Documentation</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> adaptive_sleep_config_t::baseline_sleep_ns</h2>
+          <p class="Pp">Normal sleep time in nanoseconds (when queue is at target).</p>
+          <p class="Pp">Definition at line <b>678</b> of file <b>time.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>adaptive_sleep_calculate()</b>, and <b>adaptive_sleep_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="double_adaptive_sleep_config_t::max_speed_multiplier">
+            <a class="permalink" href="#double_adaptive_sleep_config_t::max_speed_multiplier"
+              >double adaptive_sleep_config_t::max_speed_multiplier</a
+            >
+          </h2>
+          <p class="Pp">Maximum speed (min sleep) - e.g., 4.0 = process 4x faster.</p>
+          <p class="Pp">Definition at line <b>680</b> of file <b>time.h</b>.</p>
+          <p class="Pp">Referenced by <b>adaptive_sleep_calculate()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="double_adaptive_sleep_config_t::min_speed_multiplier">
+            <a class="permalink" href="#double_adaptive_sleep_config_t::min_speed_multiplier"
+              >double adaptive_sleep_config_t::min_speed_multiplier</a
+            >
+          </h2>
+          <p class="Pp">Minimum speed (max sleep) - usually 1.0 (baseline speed).</p>
+          <p class="Pp">Definition at line <b>679</b> of file <b>time.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>adaptive_sleep_calculate()</b>, and <b>adaptive_sleep_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="double_adaptive_sleep_config_t::slowdown_rate">
+            <a class="permalink" href="#double_adaptive_sleep_config_t::slowdown_rate"
+              >double adaptive_sleep_config_t::slowdown_rate</a
+            >
+          </h2>
+          <p class="Pp">Ramp-down rate when queue empties (0.0-1.0, higher = faster ramp).</p>
+          <p class="Pp">Definition at line <b>682</b> of file <b>time.h</b>.</p>
+          <p class="Pp">Referenced by <b>adaptive_sleep_calculate()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="double_adaptive_sleep_config_t::speedup_rate">
+            <a class="permalink" href="#double_adaptive_sleep_config_t::speedup_rate"
+              >double adaptive_sleep_config_t::speedup_rate</a
+            >
+          </h2>
+          <p class="Pp">Ramp-up rate when queue builds (0.0-1.0, higher = faster ramp).</p>
+          <p class="Pp">Definition at line <b>681</b> of file <b>time.h</b>.</p>
+          <p class="Pp">Referenced by <b>adaptive_sleep_calculate()</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+        <p class="Pp">Generated automatically by Doxygen for ascii-chat from the source code.</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.9.4</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

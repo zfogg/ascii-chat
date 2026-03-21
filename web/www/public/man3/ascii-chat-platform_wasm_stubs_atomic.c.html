@@ -1,200 +1,265 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>atomic.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">atomic.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">atomic.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">atomic.c - Atomic debug stubs for WASM.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>named_registry_t</b>
-  <br/>
-  Global registry with uthash and rwlock.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>bool</b> <b>debug_atomic_is_initialized</b> (void)
-  <br/>
-  Check if debug atomic tracking is initialized. <b>bool</b>
-    <b>debug_sync_is_initialized</b> (void)
-  <br/>
-  void <b>debug_sync_mutex_lock</b> (const char *file, int line)
-  <br/>
-  void <b>debug_sync_mutex_unlock</b> (const char *file, int line)
-  <br/>
-  <b>bool</b> <b>debug_sync_mutex_trylock</b> (const char *file, int line)
-  <br/>
-  void <b>debug_sync_print_state</b> (void)
-  <br/>
-  Print all synchronization primitive states at once. void <b>named_register</b>
-    (const char *name, void *ptr)
-  <br/>
-  void <b>named_register_fd</b> (int fd, const char *name)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp"><b>named_registry_t</b> <b>g_debug_entries</b> = { 0 }
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Atomic debug stubs for WASM.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>platform/wasm/stubs/atomic.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> debug_atomic_is_initialized (void )</h2>
-<p class="Pp">Check if debug atomic tracking is initialized. In release builds
-    (NDEBUG), returns true. In debug builds, returns actual initialization
-    state.</p>
-<p class="Pp">Definition at line <b>9</b> of file
-    <b>platform/wasm/stubs/atomic.c</b>.</p>
-<pre>9                                        {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>atomic.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">atomic.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">atomic.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">atomic.c - Atomic debug stubs for WASM.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>named_registry_t</b>
+            <br />
+            Global registry with uthash and rwlock.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+          <br />
+          <p class="Pp">
+            <b>bool</b> <b>debug_atomic_is_initialized</b> (void)
+            <br />
+            Check if debug atomic tracking is initialized. <b>bool</b>
+            <b>debug_sync_is_initialized</b> (void)
+            <br />
+            void <b>debug_sync_mutex_lock</b> (const char *file, int line)
+            <br />
+            void <b>debug_sync_mutex_unlock</b> (const char *file, int line)
+            <br />
+            <b>bool</b> <b>debug_sync_mutex_trylock</b> (const char *file, int line)
+            <br />
+            void <b>debug_sync_print_state</b> (void)
+            <br />
+            Print all synchronization primitive states at once. void <b>named_register</b>
+            (const char *name, void *ptr)
+            <br />
+            void <b>named_register_fd</b> (int fd, const char *name)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+          <br />
+          <p class="Pp">
+            <b>named_registry_t</b> <b>g_debug_entries</b> = { 0 }
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description">Detailed Description</a>
+        </h1>
+        <p class="Pp">Atomic debug stubs for WASM.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>platform/wasm/stubs/atomic.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation">Function Documentation</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> debug_atomic_is_initialized (void )</h2>
+          <p class="Pp">
+            Check if debug atomic tracking is initialized. In release builds (NDEBUG), returns true.
+            In debug builds, returns actual initialization state.
+          </p>
+          <p class="Pp">Definition at line <b>9</b> of file <b>platform/wasm/stubs/atomic.c</b>.</p>
+          <pre>
+9                                        {
 10   return true;
-11 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>atomic_on_cas()</b>, <b>atomic_on_fetch()</b>,
-    <b>atomic_on_load()</b>, <b>atomic_on_store()</b>,
-    <b>atomic_ptr_on_cas()</b>, <b>atomic_ptr_on_exchange()</b>,
-    <b>atomic_ptr_on_load()</b>, and <b>atomic_ptr_on_store()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_mutex_lock_(const_char_*_file,_int_line)"><a class="permalink" href="#void_debug_sync_mutex_lock_(const_char_*_file,_int_line)">void
-  debug_sync_mutex_lock (const char * file, int line)</a></h2>
-<p class="Pp">Definition at line <b>18</b> of file
-    <b>platform/wasm/stubs/atomic.c</b>.</p>
-<pre>18                                                        {
+11 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Referenced by <b>atomic_on_cas()</b>, <b>atomic_on_fetch()</b>, <b>atomic_on_load()</b>,
+            <b>atomic_on_store()</b>, <b>atomic_ptr_on_cas()</b>, <b>atomic_ptr_on_exchange()</b>,
+            <b>atomic_ptr_on_load()</b>, and <b>atomic_ptr_on_store()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_sync_mutex_lock_(const_char_*_file,_int_line)">
+            <a class="permalink" href="#void_debug_sync_mutex_lock_(const_char_*_file,_int_line)"
+              >void debug_sync_mutex_lock (const char * file, int line)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>18</b> of file <b>platform/wasm/stubs/atomic.c</b>.
+          </p>
+          <pre>
+18                                                        {
 19   (void)file;
 20   (void)line;
 21   // No-op for WASM
-22 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> debug_sync_mutex_trylock (const char * file, int
-  line)</h2>
-<p class="Pp">Definition at line <b>30</b> of file
-    <b>platform/wasm/stubs/atomic.c</b>.</p>
-<pre>30                                                           {
+22 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> debug_sync_mutex_trylock (const char * file, int line)</h2>
+          <p class="Pp">
+            Definition at line <b>30</b> of file <b>platform/wasm/stubs/atomic.c</b>.
+          </p>
+          <pre>
+30                                                           {
 31   (void)file;
 32   (void)line;
 33   // Always succeed in WASM
 34   return true;
-35 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_debug_sync_mutex_unlock_(const_char_*_file,_int_line)"><a class="permalink" href="#void_debug_sync_mutex_unlock_(const_char_*_file,_int_line)">void
-  debug_sync_mutex_unlock (const char * file, int line)</a></h2>
-<p class="Pp">Definition at line <b>24</b> of file
-    <b>platform/wasm/stubs/atomic.c</b>.</p>
-<pre>24                                                          {
+35 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_debug_sync_mutex_unlock_(const_char_*_file,_int_line)">
+            <a class="permalink" href="#void_debug_sync_mutex_unlock_(const_char_*_file,_int_line)"
+              >void debug_sync_mutex_unlock (const char * file, int line)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>platform/wasm/stubs/atomic.c</b>.
+          </p>
+          <pre>
+24                                                          {
 25   (void)file;
 26   (void)line;
 27   // No-op for WASM
-28 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_named_register_(const_char_*_name,_void_*_ptr)"><a class="permalink" href="#void_named_register_(const_char_*_name,_void_*_ptr)">void
-  named_register (const char * name, void * ptr)</a></h2>
-<p class="Pp">Definition at line <b>46</b> of file
-    <b>platform/wasm/stubs/atomic.c</b>.</p>
-<pre>46                                                  {
+28 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_named_register_(const_char_*_name,_void_*_ptr)">
+            <a class="permalink" href="#void_named_register_(const_char_*_name,_void_*_ptr)"
+              >void named_register (const char * name, void * ptr)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>46</b> of file <b>platform/wasm/stubs/atomic.c</b>.
+          </p>
+          <pre>
+46                                                  {
 47   (void)name;
 48   (void)ptr;
 49   // No-op for WASM
-50 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_named_register_fd_(int_fd,_const_char_*_name)"><a class="permalink" href="#void_named_register_fd_(int_fd,_const_char_*_name)">void
-  named_register_fd (int fd, const char * name)</a></h2>
-<p class="Pp">Definition at line <b>52</b> of file
-    <b>platform/wasm/stubs/atomic.c</b>.</p>
-<pre>52                                                  {
+50 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_named_register_fd_(int_fd,_const_char_*_name)">
+            <a class="permalink" href="#void_named_register_fd_(int_fd,_const_char_*_name)"
+              >void named_register_fd (int fd, const char * name)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>52</b> of file <b>platform/wasm/stubs/atomic.c</b>.
+          </p>
+          <pre>
+52                                                  {
 53   (void)fd;
 54   (void)name;
 55   // No-op for WASM
-56 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>named_registry_t</b> g_debug_entries = { 0 }</h2>
-<p class="Pp">Definition at line <b>44</b> of file
-    <b>platform/wasm/stubs/atomic.c</b>.</p>
-<pre>44 { 0 };</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.9.4</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+56 }</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation">Variable Documentation</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>named_registry_t</b> g_debug_entries = { 0 }</h2>
+          <p class="Pp">
+            Definition at line <b>44</b> of file <b>platform/wasm/stubs/atomic.c</b>.
+          </p>
+          <pre>44 { 0 };</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.9.4</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

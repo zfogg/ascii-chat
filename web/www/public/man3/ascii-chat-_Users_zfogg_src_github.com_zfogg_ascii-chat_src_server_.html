@@ -1,90 +1,119 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>server Directory Reference(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">server Directory Reference(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">server Directory Reference(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">server Directory Reference</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
-<br/>
-<p class="Pp">file <b>client.c</b>
-  <br/>
-  &#x1F465; Per-client lifecycle manager: threading coordination, state
-    management, and client lifecycle orchestration file <b>client.h</b>
-  <br/>
-  Per-client state management and lifecycle orchestration. file <b>crypto.c</b>
-  <br/>
-  &#x1F510; Server cryptography: per-client handshake, X25519 key exchange, and
-    session encryption management file <b>crypto.h</b>
-  <br/>
-  Server cryptographic operations and per-client handshake management. file
-    <b>main.c</b>
-  <br/>
-  &#x1F5A5;&#xFE0F; Server main entry point: multi-client connection manager
-    with per-client rendering threads (60fps video + 172fps audio) file
-    <b>main.h</b>
-  <br/>
-  ascii-chat Server Mode Entry Point Header file <b>protocol.c</b>
-  <br/>
-  &#x1F4E1; Server packet processor: client communication handling, protocol
-    state management, and packet dispatch file <b>protocol.h</b>
-  <br/>
-  Server packet processing and protocol implementation. file <b>render.c</b>
-  <br/>
-  &#x1F3A8; Per-client rendering threads: 60fps video and 100fps audio
-    processing with rate limiting file <b>render.h</b>
-  <br/>
-  Per-client rendering threads with rate limiting. file <b>stats.c</b>
-  <br/>
-  &#x1F4CA; Server performance monitoring: resource utilization tracking, client
-    metrics, and health reporting file <b>stats.h</b>
-  <br/>
-  Server performance statistics tracking. file <b>stream.c</b>
-  <br/>
-  &#x1F3AC; Multi-client video mixer: frame generation, ASCII conversion, and
-    per-client personalized rendering file <b>stream.h</b>
-  <br/>
-  Multi-client video mixing and ASCII frame generation.
-  <br/>
-</p>
-</section>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.9.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>server Directory Reference(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">server Directory Reference(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">server Directory Reference(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">server Directory Reference</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+          <br />
+          <p class="Pp">
+            file <b>client.c</b>
+            <br />
+            &#x1F465; Per-client lifecycle manager: threading coordination, state management, and
+            client lifecycle orchestration file <b>client.h</b>
+            <br />
+            Per-client state management and lifecycle orchestration. file <b>crypto.c</b>
+            <br />
+            &#x1F510; Server cryptography: per-client handshake, X25519 key exchange, and session
+            encryption management file <b>crypto.h</b>
+            <br />
+            Server cryptographic operations and per-client handshake management. file
+            <b>main.c</b>
+            <br />
+            &#x1F5A5;&#xFE0F; Server main entry point: multi-client connection manager with
+            per-client rendering threads (60fps video + 172fps audio) file
+            <b>main.h</b>
+            <br />
+            ascii-chat Server Mode Entry Point Header file <b>protocol.c</b>
+            <br />
+            &#x1F4E1; Server packet processor: client communication handling, protocol state
+            management, and packet dispatch file <b>protocol.h</b>
+            <br />
+            Server packet processing and protocol implementation. file <b>render.c</b>
+            <br />
+            &#x1F3A8; Per-client rendering threads: 60fps video and 100fps audio processing with
+            rate limiting file <b>render.h</b>
+            <br />
+            Per-client rendering threads with rate limiting. file <b>stats.c</b>
+            <br />
+            &#x1F4CA; Server performance monitoring: resource utilization tracking, client metrics,
+            and health reporting file <b>stats.h</b>
+            <br />
+            Server performance statistics tracking. file <b>stream.c</b>
+            <br />
+            &#x1F3AC; Multi-client video mixer: frame generation, ASCII conversion, and per-client
+            personalized rendering file <b>stream.h</b>
+            <br />
+            Multi-client video mixing and ASCII frame generation.
+            <br />
+          </p>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.9.2</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

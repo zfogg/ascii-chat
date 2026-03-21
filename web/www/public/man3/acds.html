@@ -1,240 +1,306 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>acds(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">acds(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">acds(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">acds - Acds</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
-<br/>
-<p class="Pp">enum <b>acds_session_type_t</b> { <b>SESSION_TYPE_DIRECT_TCP</b> =
-    0, <b>SESSION_TYPE_WEBRTC</b> = 1 }
-  <br/>
-  Session connection type.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="ACDS_Discovery_Mode_Messages_(Host_Negotiation_&amp;_Migration)"><a class="permalink" href="#ACDS_Discovery_Mode_Messages_(Host_Negotiation_&amp;_Migration)">ACDS
-  Discovery Mode Messages (Host Negotiation &amp; Migration)</a></h2>
-<br/>
-<p class="Pp">enum <b>acip_nat_type_t</b> { <b>ACIP_NAT_TYPE_OPEN</b> = 0,
-    <b>ACIP_NAT_TYPE_FULL_CONE</b> = 1, <b>ACIP_NAT_TYPE_RESTRICTED</b> = 2,
-    <b>ACIP_NAT_TYPE_PORT_RESTRICTED</b> = 3, <b>ACIP_NAT_TYPE_SYMMETRIC</b> = 4
-    }
-  <br/>
-  NAT type classification for host selection. enum <b>acip_connection_type_t</b>
-    { <b>ACIP_CONNECTION_TYPE_DIRECT_PUBLIC</b> = 0,
-    <b>ACIP_CONNECTION_TYPE_UPNP</b> = 1, <b>ACIP_CONNECTION_TYPE_STUN</b> = 2,
-    <b>ACIP_CONNECTION_TYPE_TURN</b> = 3 }
-  <br/>
-  Connection type for host announcement. <b>acip_nat_quality_t</b>
-  <br/>
-  <b>acip_host_announcement_t</b>
-  <br/>
-  <b>acip_host_designated_t</b>
-  <br/>
-  <b>acip_host_lost_t</b>
-  <br/>
-  <b>acip_future_host_elected_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="ACDS_Error_Handling"><a class="permalink" href="#ACDS_Error_Handling">ACDS
-  Error Handling</a></h2>
-<br/>
-<p class="Pp">enum <b>acip_error_code_t</b> { <b>ACIP_ERROR_NONE</b> = 0,
-    <b>ACIP_ERROR_SESSION_NOT_FOUND</b> = 1, <b>ACIP_ERROR_SESSION_FULL</b> = 2,
-    <b>ACIP_ERROR_INVALID_PASSWORD</b> = 3, <b>ACIP_ERROR_INVALID_SIGNATURE</b>
-    = 4, <b>ACIP_ERROR_RATE_LIMITED</b> = 5, <b>ACIP_ERROR_STRING_TAKEN</b> = 6,
-    <b>ACIP_ERROR_STRING_INVALID</b> = 7, <b>ACIP_ERROR_INTERNAL</b> = 255 }
-  <br/>
-  ACIP error codes. <b>acip_error_t</b>
-  <br/>
-  <b>acip_bandwidth_test_t</b>
-  <br/>
-  <b>acip_bandwidth_result_t</b>
-  <br/>
-  <b>acip_broadcast_ack_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="ACDS_Session_Management_Messages"><a class="permalink" href="#ACDS_Session_Management_Messages">ACDS
-  Session Management Messages</a></h2>
-<br/>
-<p class="Pp"><b>acip_session_create_t</b>
-  <br/>
-  <b>acip_session_created_t</b>
-  <br/>
-  <b>acip_session_lookup_t</b>
-  <br/>
-  <b>acip_session_info_t</b>
-  <br/>
-  <b>acip_session_join_t</b>
-  <br/>
-  <b>acip_session_joined_t</b>
-  <br/>
-  <b>acip_participant_joined_t</b>
-  <br/>
-  <b>acip_participant_left_t</b>
-  <br/>
-  <b>acip_session_leave_t</b>
-  <br/>
-  <b>acip_session_end_t</b>
-  <br/>
-  <b>acip_session_reconnect_t</b>
-  <br/>
-  struct <b>__attribute__</b> ((packed))
-  <br/>
-  SESSION_CREATE (PACKET_TYPE_ACIP_SESSION_CREATE) - Create new session.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="ACDS_WebRTC_Signaling_Messages"><a class="permalink" href="#ACDS_WebRTC_Signaling_Messages">ACDS
-  WebRTC Signaling Messages</a></h2>
-<br/>
-<p class="Pp"><b>acip_webrtc_sdp_t</b>
-  <br/>
-  <b>acip_webrtc_ice_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="ACDS_String_Reservation_Messages_(Future)"><a class="permalink" href="#ACDS_String_Reservation_Messages_(Future)">ACDS
-  String Reservation Messages (Future)</a></h2>
-<br/>
-<p class="Pp"><b>acip_string_reserve_t</b>
-  <br/>
-  <b>acip_string_reserved_t</b>
-  <br/>
-  <b>acip_string_renew_t</b>
-  <br/>
-  <b>acip_string_release_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="ACDS_Ring_Consensus_Protocol_(New_P2P_Design)"><a class="permalink" href="#ACDS_Ring_Consensus_Protocol_(New_P2P_Design)">ACDS
-  Ring Consensus Protocol (New P2P Design)</a></h2>
-<p class="Pp">NEW ARCHITECTURE: Proactive future host election every 5 minutes.
-    Participants form a virtual ring and rotate who collects NAT data. Every 5
-    minutes, a new &quot;quorum leader&quot; emerges with complete knowledge and
-    elects the future host. This pre-elected host is announced to all
-    participants so they know who will take over if current host dies.</p>
-<p class="Pp"></p>
-<p class="Pp">Benefits:</p>
-<ul class="Bl-bullet">
-  <li>No election delay when host dies (future host already known)</li>
-  <li>Fresh NAT data every 5 minutes (not stale)</li>
-  <li>Automatic rotation ensures fair load (each participant gets a turn)</li>
-  <li>Ring topology enables P2P coordination without central ACDS</li>
-</ul>
-<p class="Pp">
-  <br/>
-  <b>acip_participant_list_t</b>
-  <br/>
-  <b>acip_participant_entry_t</b>
-  <br/>
-  <b>acip_ring_collect_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="ACDS_Protocol_Constants"><a class="permalink" href="#ACDS_Protocol_Constants">ACDS
-  Protocol Constants</a></h2>
-<br/>
-<p class="Pp">#define <b>ACIP_MAX_SESSION_STRING_LEN</b> 48
-  <br/>
-  Maximum session string length (e.g.,
-    <i>swift-river-mountain&quot;</i>=<i>20</i>chars).<i></i> #define
-    <b>ACIP_SESSION_EXPIRATION_MS</b> (24ULL * 60 * 60 * 1000)
-  <br/>
-  Session maximum lifetime (24 hours in milliseconds) Note: Sessions are
-    actually cleaned up after 3 hours of inactivity (last_activity_at), but
-    expires_at serves as an absolute maximum lifetime. #define
-    <b>ACIP_DISCOVERY_DEFAULT_PORT</b> <b>OPT_ACDS_PORT_INT_DEFAULT</b>
-  <br/>
-  Discovery server default port (use OPT_ACDS_PORT_INT_DEFAULT from options.h).
-    #define <b>ACIP_HOST_DEFAULT_PORT</b> <b>OPT_PORT_INT_DEFAULT</b>
-  <br/>
-  Default port for discovery mode hosts (use OPT_PORT_INT_DEFAULT from
-    options.h). #define <b>ACDS_OFFICIAL_SERVER_HOSTNAME</b>
-    'discovery-service.ascii-chat.com'
-  <br/>
-  Official ACDS server hostname (automatic HTTPS key trust).
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">This module defines the binary message formats for the ACIP
-    discovery protocol. All messages use packed structs sent over TCP using the
-    existing ACIP packet infrastructure (<b>packet_header_t</b> + payload).</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="ACDS_Protocol_Specification"><a class="permalink" href="#ACDS_Protocol_Specification">ACDS
-  Protocol Specification</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Protocol_Overview"><a class="permalink" href="#Protocol_Overview">Protocol
-  Overview</a></h2>
-<ul class="Bl-bullet">
-  <li><b>Transport</b>: TCP (port 27225 default, configurable)</li>
-  <li><b>Format</b>: Binary ACIP packets (NOT JSON/HTTP)</li>
-  <li><b>Packet Structure</b>: <b>packet_header_t</b> (22 bytes) + payload</li>
-  <li><b>Payload Format</b>: Packed C structs with explicit size fields</li>
-  <li><b>Byte Order</b>: Little-endian (host byte order on x86/ARM)</li>
-  <li><b>String Encoding</b>: UTF-8, null-terminated where specified</li>
-  <li><b>Timestamps</b>: Unix milliseconds (<b>uint64_t</b>)</li>
-  <li><b>Identifiers</b>: UUIDs as 16-byte binary (not ASCII strings)</li>
-  <li><b>Packet Type Range</b>: 6000-6199 (session management, discovery, host
-      election)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Packet_Header_Format_(22_bytes)"><a class="permalink" href="#Packet_Header_Format_(22_bytes)">Packet
-  Header Format (22 bytes)</a></h2>
-<pre>Offset  Size  Field     Value/Description
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>acds(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">acds(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">acds(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">acds - Acds</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>acds_session_type_t</b> { <b>SESSION_TYPE_DIRECT_TCP</b> = 0,
+            <b>SESSION_TYPE_WEBRTC</b> = 1 }
+            <br />
+            Session connection type.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="ACDS_Discovery_Mode_Messages_(Host_Negotiation_&amp;_Migration)">
+            <a
+              class="permalink"
+              href="#ACDS_Discovery_Mode_Messages_(Host_Negotiation_&amp;_Migration)"
+              >ACDS Discovery Mode Messages (Host Negotiation &amp; Migration)</a
+            >
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>acip_nat_type_t</b> { <b>ACIP_NAT_TYPE_OPEN</b> = 0,
+            <b>ACIP_NAT_TYPE_FULL_CONE</b> = 1, <b>ACIP_NAT_TYPE_RESTRICTED</b> = 2,
+            <b>ACIP_NAT_TYPE_PORT_RESTRICTED</b> = 3, <b>ACIP_NAT_TYPE_SYMMETRIC</b> = 4 }
+            <br />
+            NAT type classification for host selection. enum <b>acip_connection_type_t</b> {
+            <b>ACIP_CONNECTION_TYPE_DIRECT_PUBLIC</b> = 0, <b>ACIP_CONNECTION_TYPE_UPNP</b> = 1,
+            <b>ACIP_CONNECTION_TYPE_STUN</b> = 2, <b>ACIP_CONNECTION_TYPE_TURN</b> = 3 }
+            <br />
+            Connection type for host announcement. <b>acip_nat_quality_t</b>
+            <br />
+            <b>acip_host_announcement_t</b>
+            <br />
+            <b>acip_host_designated_t</b>
+            <br />
+            <b>acip_host_lost_t</b>
+            <br />
+            <b>acip_future_host_elected_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="ACDS_Error_Handling">
+            <a class="permalink" href="#ACDS_Error_Handling">ACDS Error Handling</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>acip_error_code_t</b> { <b>ACIP_ERROR_NONE</b> = 0,
+            <b>ACIP_ERROR_SESSION_NOT_FOUND</b> = 1, <b>ACIP_ERROR_SESSION_FULL</b> = 2,
+            <b>ACIP_ERROR_INVALID_PASSWORD</b> = 3, <b>ACIP_ERROR_INVALID_SIGNATURE</b> = 4,
+            <b>ACIP_ERROR_RATE_LIMITED</b> = 5, <b>ACIP_ERROR_STRING_TAKEN</b> = 6,
+            <b>ACIP_ERROR_STRING_INVALID</b> = 7, <b>ACIP_ERROR_INTERNAL</b> = 255 }
+            <br />
+            ACIP error codes. <b>acip_error_t</b>
+            <br />
+            <b>acip_bandwidth_test_t</b>
+            <br />
+            <b>acip_bandwidth_result_t</b>
+            <br />
+            <b>acip_broadcast_ack_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="ACDS_Session_Management_Messages">
+            <a class="permalink" href="#ACDS_Session_Management_Messages"
+              >ACDS Session Management Messages</a
+            >
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>acip_session_create_t</b>
+            <br />
+            <b>acip_session_created_t</b>
+            <br />
+            <b>acip_session_lookup_t</b>
+            <br />
+            <b>acip_session_info_t</b>
+            <br />
+            <b>acip_session_join_t</b>
+            <br />
+            <b>acip_session_joined_t</b>
+            <br />
+            <b>acip_participant_joined_t</b>
+            <br />
+            <b>acip_participant_left_t</b>
+            <br />
+            <b>acip_session_leave_t</b>
+            <br />
+            <b>acip_session_end_t</b>
+            <br />
+            <b>acip_session_reconnect_t</b>
+            <br />
+            struct <b>__attribute__</b> ((packed))
+            <br />
+            SESSION_CREATE (PACKET_TYPE_ACIP_SESSION_CREATE) - Create new session.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="ACDS_WebRTC_Signaling_Messages">
+            <a class="permalink" href="#ACDS_WebRTC_Signaling_Messages"
+              >ACDS WebRTC Signaling Messages</a
+            >
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>acip_webrtc_sdp_t</b>
+            <br />
+            <b>acip_webrtc_ice_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="ACDS_String_Reservation_Messages_(Future)">
+            <a class="permalink" href="#ACDS_String_Reservation_Messages_(Future)"
+              >ACDS String Reservation Messages (Future)</a
+            >
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>acip_string_reserve_t</b>
+            <br />
+            <b>acip_string_reserved_t</b>
+            <br />
+            <b>acip_string_renew_t</b>
+            <br />
+            <b>acip_string_release_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="ACDS_Ring_Consensus_Protocol_(New_P2P_Design)">
+            <a class="permalink" href="#ACDS_Ring_Consensus_Protocol_(New_P2P_Design)"
+              >ACDS Ring Consensus Protocol (New P2P Design)</a
+            >
+          </h2>
+          <p class="Pp">
+            NEW ARCHITECTURE: Proactive future host election every 5 minutes. Participants form a
+            virtual ring and rotate who collects NAT data. Every 5 minutes, a new &quot;quorum
+            leader&quot; emerges with complete knowledge and elects the future host. This
+            pre-elected host is announced to all participants so they know who will take over if
+            current host dies.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Benefits:</p>
+          <ul class="Bl-bullet">
+            <li>No election delay when host dies (future host already known)</li>
+            <li>Fresh NAT data every 5 minutes (not stale)</li>
+            <li>Automatic rotation ensures fair load (each participant gets a turn)</li>
+            <li>Ring topology enables P2P coordination without central ACDS</li>
+          </ul>
+          <p class="Pp">
+            <br />
+            <b>acip_participant_list_t</b>
+            <br />
+            <b>acip_participant_entry_t</b>
+            <br />
+            <b>acip_ring_collect_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="ACDS_Protocol_Constants">
+            <a class="permalink" href="#ACDS_Protocol_Constants">ACDS Protocol Constants</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>ACIP_MAX_SESSION_STRING_LEN</b> 48
+            <br />
+            Maximum session string length (e.g.,
+            <i>swift-river-mountain&quot;</i>=<i>20</i>chars).<i></i> #define
+            <b>ACIP_SESSION_EXPIRATION_MS</b> (24ULL * 60 * 60 * 1000)
+            <br />
+            Session maximum lifetime (24 hours in milliseconds) Note: Sessions are actually cleaned
+            up after 3 hours of inactivity (last_activity_at), but expires_at serves as an absolute
+            maximum lifetime. #define
+            <b>ACIP_DISCOVERY_DEFAULT_PORT</b> <b>OPT_ACDS_PORT_INT_DEFAULT</b>
+            <br />
+            Discovery server default port (use OPT_ACDS_PORT_INT_DEFAULT from options.h). #define
+            <b>ACIP_HOST_DEFAULT_PORT</b> <b>OPT_PORT_INT_DEFAULT</b>
+            <br />
+            Default port for discovery mode hosts (use OPT_PORT_INT_DEFAULT from options.h). #define
+            <b>ACDS_OFFICIAL_SERVER_HOSTNAME</b>
+            'discovery-service.ascii-chat.com'
+            <br />
+            Official ACDS server hostname (automatic HTTPS key trust).
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description">Detailed Description</a>
+        </h1>
+        <p class="Pp">
+          This module defines the binary message formats for the ACIP discovery protocol. All
+          messages use packed structs sent over TCP using the existing ACIP packet infrastructure
+          (<b>packet_header_t</b> + payload).
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="ACDS_Protocol_Specification">
+          <a class="permalink" href="#ACDS_Protocol_Specification">ACDS Protocol Specification</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Protocol_Overview">
+            <a class="permalink" href="#Protocol_Overview">Protocol Overview</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li><b>Transport</b>: TCP (port 27225 default, configurable)</li>
+            <li><b>Format</b>: Binary ACIP packets (NOT JSON/HTTP)</li>
+            <li><b>Packet Structure</b>: <b>packet_header_t</b> (22 bytes) + payload</li>
+            <li><b>Payload Format</b>: Packed C structs with explicit size fields</li>
+            <li><b>Byte Order</b>: Little-endian (host byte order on x86/ARM)</li>
+            <li><b>String Encoding</b>: UTF-8, null-terminated where specified</li>
+            <li><b>Timestamps</b>: Unix milliseconds (<b>uint64_t</b>)</li>
+            <li><b>Identifiers</b>: UUIDs as 16-byte binary (not ASCII strings)</li>
+            <li>
+              <b>Packet Type Range</b>: 6000-6199 (session management, discovery, host election)
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Packet_Header_Format_(22_bytes)">
+            <a class="permalink" href="#Packet_Header_Format_(22_bytes)"
+              >Packet Header Format (22 bytes)</a
+            >
+          </h2>
+          <pre>
+Offset  Size  Field     Value/Description
 ------  ----  -----     -----------------
 0       8     magic     0xA5C11C4A1 (&quot;ASCIICHAT&quot; in hex)
 8       2     type      6000-6199 (ACIP packet type enum)
@@ -242,317 +308,397 @@
 14      4     crc32     CRC32 of payload bytes only
 18      4     client_id Client identifier (0 if not assigned)
 ------
-Total: 22 bytes + payload_length bytes</pre>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Version_Information"><a class="permalink" href="#Version_Information">Version
-  Information</a></h2>
-<ul class="Bl-bullet">
-  <li><b>ACDS Protocol Version</b>: 1.0</li>
-  <li><b>ACIP Protocol Version</b>: 1.0</li>
-  <li><b>Release Date</b>: January 2026</li>
-  <li><b>Status</b>: Production</li>
-  <li><b>Backward Compatibility</b>: Version 1.0 is locked to 1.0 (no
-      negotiation)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Session_Lifecycle"><a class="permalink" href="#Session_Lifecycle">Session
-  Lifecycle</a></h2>
-<p class="Pp"><b>Creation Phase</b>:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Client sends SESSION_CREATE (host public key + signature)</dd>
-  <dt>2.</dt>
-  <dd>Server generates session_id, expires_at (now + 24hrs)</dd>
-  <dt>3.</dt>
-  <dd>Server returns SESSION_CREATED (session_id, session_string, STUN/TURN
-      servers)</dd>
-</dl>
-<p class="Pp"><b>Discovery Phase</b>:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Client sends SESSION_LOOKUP (session_string)</dd>
-  <dt>2.</dt>
-  <dd>Server returns SESSION_INFO (metadata, but NOT server IP/port)</dd>
-</dl>
-<p class="Pp"><b>Join Phase</b>:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Client sends SESSION_JOIN (credentials: password or Ed25519
-    signature)</dd>
-  <dt>2.</dt>
-  <dd>Server verifies credentials in database</dd>
-  <dt>3.</dt>
-  <dd>Server returns SESSION_JOINED (server IP/port, TURN credentials)</dd>
-  <dt>4.</dt>
-  <dd>Server broadcasts PARTICIPANT_JOINED to all session members</dd>
-</dl>
-<p class="Pp"><b>P2P Negotiation</b> (Discovery mode only):</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Participants exchange WEBRTC_SDP (offers/answers)</dd>
-  <dt>2.</dt>
-  <dd>Participants exchange WEBRTC_ICE (candidates)</dd>
-  <dt>3.</dt>
-  <dd>Peers discover NAT quality, elect host, establish P2P connection</dd>
-</dl>
-<p class="Pp"><b>Disconnect Phase</b>:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Client sends SESSION_LEAVE</dd>
-  <dt>2.</dt>
-  <dd>Server removes participant from roster</dd>
-  <dt>3.</dt>
-  <dd>Server broadcasts PARTICIPANT_LEFT to remaining members</dd>
-  <dt>4.</dt>
-  <dd>Server sends SESSION_END when last participant leaves</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Authentication_Methods"><a class="permalink" href="#Authentication_Methods">Authentication
-  Methods</a></h2>
-<ul class="Bl-bullet">
-  <li><b>Password</b>: Argon2id hash (128 bytes) stored server-side</li>
-  <li><b>Ed25519</b>: Client signs (type || timestamp || payload) with private
-      key</li>
-  <li><b>Replay Protection</b>: Timestamp validation (&#x00B1;5 minute
-    window)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Field_Meanings"><a class="permalink" href="#Field_Meanings">Field
-  Meanings</a></h2>
-<ul class="Bl-bullet">
-  <li><b>session_id</b>: UUID (16 bytes) generated by server, globally
-    unique</li>
-  <li><b>session_string</b>: Human-readable identifier (e.g.,
-      &quot;swift-river-mountain&quot;)</li>
-  <li><b>participant_id</b>: UUID per session member, tracks individuals</li>
-  <li><b>capabilities</b>: Bitfield (bit 0=video, bit 1=audio)</li>
-  <li><b>session_type</b>: 0=DIRECT_TCP (host IP revealed), 1=WEBRTC (P2P
-    mesh)</li>
-</ul>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="PROTOCOL_DESIGN:"><a class="permalink" href="#PROTOCOL_DESIGN:">PROTOCOL
-  DESIGN: </a></h1>
-<ul class="Bl-bullet">
-  <li>Raw TCP transport (port 27225 default)</li>
-  <li>Binary ACIP packets (NOT JSON)</li>
-  <li>Reuses existing crypto handshake (CRYPTO_KEY_EXCHANGE_*,
-    CRYPTO_AUTH_*)</li>
-  <li>Ed25519 identity signatures for session authentication</li>
-  <li>Ephemeral sessions (24-hour expiration)</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="MESSAGE_STRUCTURE:"><a class="permalink" href="#MESSAGE_STRUCTURE:">MESSAGE
-  STRUCTURE: </a></h1>
-<p class="Pp">All ACDS messages follow the standard ACIP packet structure:</p>
-<ul class="Bl-bullet">
-  <li>Header: <b>packet_header_t</b> (magic, type, length, CRC32,
-    client_id)</li>
-  <li>Payload: Message-specific packed struct (defined here)</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="INTEGRATION_WITH_OTHER_MODULES:"><a class="permalink" href="#INTEGRATION_WITH_OTHER_MODULES:">INTEGRATION
-  WITH OTHER MODULES: </a></h1>
-<ul class="Bl-bullet">
-  <li><b>network/acip/protocol.h</b>: Defines ACIP packet types (6000-6199)</li>
-  <li>network/packet.h: Provides <b>packet_header_t</b> infrastructure (header,
-      CRC, etc.)</li>
-  <li>src/acds/: ACDS server implementation</li>
-  <li>lib/network/acip/: Protocol handlers and transports</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">All structures are packed with <b>attribute</b>((packed))
-  for wire format.
-<p class="Pp"></p>
-<p class="Pp">Payload sizes include both fixed and variable-length portions.</p>
-<p class="Pp"></p>
-<p class="Pp">String fields are null-terminated UTF-8 (not length-prefixed)</p>
-<p class="Pp"></p>
-<p class="Pp">UUID fields are 16 bytes of raw binary data (not ASCII
-  strings)</p>
-<p class="Pp"></p>
-<p class="Pp">All numeric fields are little-endian</p>
-</div>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">January 2026</div>
-<p class="Pp"><b>Version</b></p>
-<div class="Bd-indent">1.0 (ACIP/ACDS Protocol Specification)</div>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_ACDS_OFFICIAL_SERVER_HOSTNAME___'discovery"><a class="permalink" href="#_define_ACDS_OFFICIAL_SERVER_HOSTNAME___'discovery">#define
-  ACDS_OFFICIAL_SERVER_HOSTNAME 'discovery-service.ascii-chat.com'</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Official ACDS server hostname (automatic HTTPS key trust). Used
-    by:</p>
-<ul class="Bl-bullet">
-  <li><b>crypto/discovery_keys.h</b>: ACDS_OFFICIAL_SERVER</li>
-  <li>options.h: OPT_ENDPOINT_DISCOVERY_SERVICE (production build)</li>
-</ul>
-<p class="Pp">Single source of truth to avoid duplication across headers.</p>
-<p class="Pp">Definition at line <b>1107</b> of file <b>acds.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ACIP_DISCOVERY_DEFAULT_PORT___"><a class="permalink" href="#_define_ACIP_DISCOVERY_DEFAULT_PORT___">#define
-  ACIP_DISCOVERY_DEFAULT_PORT <b>OPT_ACDS_PORT_INT_DEFAULT</b></a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Discovery server default port (use OPT_ACDS_PORT_INT_DEFAULT from
-    options.h).</p>
-<p class="Pp">Definition at line <b>1094</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_config_init_defaults()</b>, and
-    <b>discovery_session_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ACIP_HOST_DEFAULT_PORT___"><a class="permalink" href="#_define_ACIP_HOST_DEFAULT_PORT___">#define
-  ACIP_HOST_DEFAULT_PORT <b>OPT_PORT_INT_DEFAULT</b></a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Default port for discovery mode hosts (use OPT_PORT_INT_DEFAULT
-    from options.h).</p>
-<p class="Pp">Definition at line <b>1097</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by <b>negotiate_determine_result()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ACIP_MAX_SESSION_STRING_LEN___48"><a class="permalink" href="#_define_ACIP_MAX_SESSION_STRING_LEN___48">#define
-  ACIP_MAX_SESSION_STRING_LEN 48</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Maximum session string length (e.g.,
-    &quot;swift-river-mountain&quot; = 20 chars).</p>
-<p class="Pp">Definition at line <b>1085</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_server_validate_session_join()</b>,
-    <b>database_session_create()</b>, and <b>database_session_join()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_ACIP_SESSION_EXPIRATION_MS___(24ULL_*_60_*_60_*_1000)"><a class="permalink" href="#_define_ACIP_SESSION_EXPIRATION_MS___(24ULL_*_60_*_60_*_1000)">#define
-  ACIP_SESSION_EXPIRATION_MS (24ULL * 60 * 60 * 1000)</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Session maximum lifetime (24 hours in milliseconds) Note: Sessions
-    are actually cleaned up after 3 hours of inactivity (last_activity_at), but
-    expires_at serves as an absolute maximum lifetime.</p>
-<p class="Pp">Definition at line <b>1091</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by <b>database_session_create()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
-  Type Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss">enum <b>acds_session_type_t</b></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Session connection type. Determines how clients connect to the
-    session host:</p>
-<ul class="Bl-bullet">
-  <li>DIRECT_TCP: Clients connect directly to server IP:port (default, requires
-      public IP)</li>
-  <li>WEBRTC: Clients use WebRTC P2P mesh with STUN/TURN (works behind NAT)</li>
-</ul>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="SESSION_TYPE_DIRECT_TCP"><a class="permalink" href="#SESSION_TYPE_DIRECT_TCP"><b><i>SESSION_TYPE_DIRECT_TCP
-    </i></b></a></dt>
-  <dd>Direct TCP connection to server IP:port (default).</dd>
-  <dt id="SESSION_TYPE_WEBRTC"><a class="permalink" href="#SESSION_TYPE_WEBRTC"><b><i>SESSION_TYPE_WEBRTC
-    </i></b></a></dt>
-  <dd>WebRTC P2P mesh with STUN/TURN relay.</dd>
-</dl>
-<p class="Pp">Definition at line <b>144</b> of file <b>acds.h</b>.</p>
-<pre>144              {
+Total: 22 bytes + payload_length bytes</pre
+          >
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Version_Information">
+            <a class="permalink" href="#Version_Information">Version Information</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li><b>ACDS Protocol Version</b>: 1.0</li>
+            <li><b>ACIP Protocol Version</b>: 1.0</li>
+            <li><b>Release Date</b>: January 2026</li>
+            <li><b>Status</b>: Production</li>
+            <li><b>Backward Compatibility</b>: Version 1.0 is locked to 1.0 (no negotiation)</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Session_Lifecycle">
+            <a class="permalink" href="#Session_Lifecycle">Session Lifecycle</a>
+          </h2>
+          <p class="Pp"><b>Creation Phase</b>:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Client sends SESSION_CREATE (host public key + signature)</dd>
+            <dt>2.</dt>
+            <dd>Server generates session_id, expires_at (now + 24hrs)</dd>
+            <dt>3.</dt>
+            <dd>Server returns SESSION_CREATED (session_id, session_string, STUN/TURN servers)</dd>
+          </dl>
+          <p class="Pp"><b>Discovery Phase</b>:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Client sends SESSION_LOOKUP (session_string)</dd>
+            <dt>2.</dt>
+            <dd>Server returns SESSION_INFO (metadata, but NOT server IP/port)</dd>
+          </dl>
+          <p class="Pp"><b>Join Phase</b>:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Client sends SESSION_JOIN (credentials: password or Ed25519 signature)</dd>
+            <dt>2.</dt>
+            <dd>Server verifies credentials in database</dd>
+            <dt>3.</dt>
+            <dd>Server returns SESSION_JOINED (server IP/port, TURN credentials)</dd>
+            <dt>4.</dt>
+            <dd>Server broadcasts PARTICIPANT_JOINED to all session members</dd>
+          </dl>
+          <p class="Pp"><b>P2P Negotiation</b> (Discovery mode only):</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Participants exchange WEBRTC_SDP (offers/answers)</dd>
+            <dt>2.</dt>
+            <dd>Participants exchange WEBRTC_ICE (candidates)</dd>
+            <dt>3.</dt>
+            <dd>Peers discover NAT quality, elect host, establish P2P connection</dd>
+          </dl>
+          <p class="Pp"><b>Disconnect Phase</b>:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Client sends SESSION_LEAVE</dd>
+            <dt>2.</dt>
+            <dd>Server removes participant from roster</dd>
+            <dt>3.</dt>
+            <dd>Server broadcasts PARTICIPANT_LEFT to remaining members</dd>
+            <dt>4.</dt>
+            <dd>Server sends SESSION_END when last participant leaves</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Authentication_Methods">
+            <a class="permalink" href="#Authentication_Methods">Authentication Methods</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li><b>Password</b>: Argon2id hash (128 bytes) stored server-side</li>
+            <li><b>Ed25519</b>: Client signs (type || timestamp || payload) with private key</li>
+            <li><b>Replay Protection</b>: Timestamp validation (&#x00B1;5 minute window)</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Field_Meanings">
+            <a class="permalink" href="#Field_Meanings">Field Meanings</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li><b>session_id</b>: UUID (16 bytes) generated by server, globally unique</li>
+            <li>
+              <b>session_string</b>: Human-readable identifier (e.g.,
+              &quot;swift-river-mountain&quot;)
+            </li>
+            <li><b>participant_id</b>: UUID per session member, tracks individuals</li>
+            <li><b>capabilities</b>: Bitfield (bit 0=video, bit 1=audio)</li>
+            <li><b>session_type</b>: 0=DIRECT_TCP (host IP revealed), 1=WEBRTC (P2P mesh)</li>
+          </ul>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="PROTOCOL_DESIGN:">
+          <a class="permalink" href="#PROTOCOL_DESIGN:">PROTOCOL DESIGN: </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li>Raw TCP transport (port 27225 default)</li>
+          <li>Binary ACIP packets (NOT JSON)</li>
+          <li>Reuses existing crypto handshake (CRYPTO_KEY_EXCHANGE_*, CRYPTO_AUTH_*)</li>
+          <li>Ed25519 identity signatures for session authentication</li>
+          <li>Ephemeral sessions (24-hour expiration)</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="MESSAGE_STRUCTURE:">
+          <a class="permalink" href="#MESSAGE_STRUCTURE:">MESSAGE STRUCTURE: </a>
+        </h1>
+        <p class="Pp">All ACDS messages follow the standard ACIP packet structure:</p>
+        <ul class="Bl-bullet">
+          <li>Header: <b>packet_header_t</b> (magic, type, length, CRC32, client_id)</li>
+          <li>Payload: Message-specific packed struct (defined here)</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="INTEGRATION_WITH_OTHER_MODULES:">
+          <a class="permalink" href="#INTEGRATION_WITH_OTHER_MODULES:"
+            >INTEGRATION WITH OTHER MODULES:
+          </a>
+        </h1>
+        <ul class="Bl-bullet">
+          <li><b>network/acip/protocol.h</b>: Defines ACIP packet types (6000-6199)</li>
+          <li>
+            network/packet.h: Provides <b>packet_header_t</b> infrastructure (header, CRC, etc.)
+          </li>
+          <li>src/acds/: ACDS server implementation</li>
+          <li>lib/network/acip/: Protocol handlers and transports</li>
+        </ul>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          All structures are packed with <b>attribute</b>((packed)) for wire format.
+          <p class="Pp"></p>
+          <p class="Pp">Payload sizes include both fixed and variable-length portions.</p>
+          <p class="Pp"></p>
+          <p class="Pp">String fields are null-terminated UTF-8 (not length-prefixed)</p>
+          <p class="Pp"></p>
+          <p class="Pp">UUID fields are 16 bytes of raw binary data (not ASCII strings)</p>
+          <p class="Pp"></p>
+          <p class="Pp">All numeric fields are little-endian</p>
+        </div>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">January 2026</div>
+        <p class="Pp"><b>Version</b></p>
+        <div class="Bd-indent">1.0 (ACIP/ACDS Protocol Specification)</div>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ACDS_OFFICIAL_SERVER_HOSTNAME___'discovery">
+            <a class="permalink" href="#_define_ACDS_OFFICIAL_SERVER_HOSTNAME___'discovery"
+              >#define ACDS_OFFICIAL_SERVER_HOSTNAME 'discovery-service.ascii-chat.com'</a
+            >
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Official ACDS server hostname (automatic HTTPS key trust). Used by:</p>
+          <ul class="Bl-bullet">
+            <li><b>crypto/discovery_keys.h</b>: ACDS_OFFICIAL_SERVER</li>
+            <li>options.h: OPT_ENDPOINT_DISCOVERY_SERVICE (production build)</li>
+          </ul>
+          <p class="Pp">Single source of truth to avoid duplication across headers.</p>
+          <p class="Pp">Definition at line <b>1107</b> of file <b>acds.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ACIP_DISCOVERY_DEFAULT_PORT___">
+            <a class="permalink" href="#_define_ACIP_DISCOVERY_DEFAULT_PORT___"
+              >#define ACIP_DISCOVERY_DEFAULT_PORT <b>OPT_ACDS_PORT_INT_DEFAULT</b></a
+            >
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">
+            Discovery server default port (use OPT_ACDS_PORT_INT_DEFAULT from options.h).
+          </p>
+          <p class="Pp">Definition at line <b>1094</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acds_client_config_init_defaults()</b>, and
+            <b>discovery_session_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ACIP_HOST_DEFAULT_PORT___">
+            <a class="permalink" href="#_define_ACIP_HOST_DEFAULT_PORT___"
+              >#define ACIP_HOST_DEFAULT_PORT <b>OPT_PORT_INT_DEFAULT</b></a
+            >
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">
+            Default port for discovery mode hosts (use OPT_PORT_INT_DEFAULT from options.h).
+          </p>
+          <p class="Pp">Definition at line <b>1097</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">Referenced by <b>negotiate_determine_result()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ACIP_MAX_SESSION_STRING_LEN___48">
+            <a class="permalink" href="#_define_ACIP_MAX_SESSION_STRING_LEN___48"
+              >#define ACIP_MAX_SESSION_STRING_LEN 48</a
+            >
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">
+            Maximum session string length (e.g., &quot;swift-river-mountain&quot; = 20 chars).
+          </p>
+          <p class="Pp">Definition at line <b>1085</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acip_server_validate_session_join()</b>,
+            <b>database_session_create()</b>, and <b>database_session_join()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ACIP_SESSION_EXPIRATION_MS___(24ULL_*_60_*_60_*_1000)">
+            <a
+              class="permalink"
+              href="#_define_ACIP_SESSION_EXPIRATION_MS___(24ULL_*_60_*_60_*_1000)"
+              >#define ACIP_SESSION_EXPIRATION_MS (24ULL * 60 * 60 * 1000)</a
+            >
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">
+            Session maximum lifetime (24 hours in milliseconds) Note: Sessions are actually cleaned
+            up after 3 hours of inactivity (last_activity_at), but expires_at serves as an absolute
+            maximum lifetime.
+          </p>
+          <p class="Pp">Definition at line <b>1091</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">Referenced by <b>database_session_create()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Enumeration_Type_Documentation">
+          <a class="permalink" href="#Enumeration_Type_Documentation"
+            >Enumeration Type Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">enum <b>acds_session_type_t</b></h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">
+            Session connection type. Determines how clients connect to the session host:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              DIRECT_TCP: Clients connect directly to server IP:port (default, requires public IP)
+            </li>
+            <li>WEBRTC: Clients use WebRTC P2P mesh with STUN/TURN (works behind NAT)</li>
+          </ul>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="SESSION_TYPE_DIRECT_TCP">
+              <a class="permalink" href="#SESSION_TYPE_DIRECT_TCP"
+                ><b><i>SESSION_TYPE_DIRECT_TCP </i></b></a
+              >
+            </dt>
+            <dd>Direct TCP connection to server IP:port (default).</dd>
+            <dt id="SESSION_TYPE_WEBRTC">
+              <a class="permalink" href="#SESSION_TYPE_WEBRTC"
+                ><b><i>SESSION_TYPE_WEBRTC </i></b></a
+              >
+            </dt>
+            <dd>WebRTC P2P mesh with STUN/TURN relay.</dd>
+          </dl>
+          <p class="Pp">Definition at line <b>144</b> of file <b>acds.h</b>.</p>
+          <pre>
+144              {
 145   SESSION_TYPE_DIRECT_TCP = 0, 
 146   SESSION_TYPE_WEBRTC = 1      
-147 } acds_session_type_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">enum <b>acip_connection_type_t</b></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Connection type for host announcement.</p>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="ACIP_CONNECTION_TYPE_DIRECT_PUBLIC"><a class="permalink" href="#ACIP_CONNECTION_TYPE_DIRECT_PUBLIC"><b><i>ACIP_CONNECTION_TYPE_DIRECT_PUBLIC
-    </i></b></a></dt>
-  <dd>Direct public IP connection.</dd>
-  <dt id="ACIP_CONNECTION_TYPE_UPNP"><a class="permalink" href="#ACIP_CONNECTION_TYPE_UPNP"><b><i>ACIP_CONNECTION_TYPE_UPNP
-    </i></b></a></dt>
-  <dd>UPnP/NAT-PMP port mapping.</dd>
-  <dt id="ACIP_CONNECTION_TYPE_STUN"><a class="permalink" href="#ACIP_CONNECTION_TYPE_STUN"><b><i>ACIP_CONNECTION_TYPE_STUN
-    </i></b></a></dt>
-  <dd>STUN hole-punching.</dd>
-  <dt id="ACIP_CONNECTION_TYPE_TURN"><a class="permalink" href="#ACIP_CONNECTION_TYPE_TURN"><b><i>ACIP_CONNECTION_TYPE_TURN
-    </i></b></a></dt>
-  <dd>TURN relay (fallback).</dd>
-</dl>
-<p class="Pp">Definition at line <b>837</b> of file <b>acds.h</b>.</p>
-<pre>837              {
+147 } acds_session_type_t;</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">enum <b>acip_connection_type_t</b></h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Connection type for host announcement.</p>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="ACIP_CONNECTION_TYPE_DIRECT_PUBLIC">
+              <a class="permalink" href="#ACIP_CONNECTION_TYPE_DIRECT_PUBLIC"
+                ><b><i>ACIP_CONNECTION_TYPE_DIRECT_PUBLIC </i></b></a
+              >
+            </dt>
+            <dd>Direct public IP connection.</dd>
+            <dt id="ACIP_CONNECTION_TYPE_UPNP">
+              <a class="permalink" href="#ACIP_CONNECTION_TYPE_UPNP"
+                ><b><i>ACIP_CONNECTION_TYPE_UPNP </i></b></a
+              >
+            </dt>
+            <dd>UPnP/NAT-PMP port mapping.</dd>
+            <dt id="ACIP_CONNECTION_TYPE_STUN">
+              <a class="permalink" href="#ACIP_CONNECTION_TYPE_STUN"
+                ><b><i>ACIP_CONNECTION_TYPE_STUN </i></b></a
+              >
+            </dt>
+            <dd>STUN hole-punching.</dd>
+            <dt id="ACIP_CONNECTION_TYPE_TURN">
+              <a class="permalink" href="#ACIP_CONNECTION_TYPE_TURN"
+                ><b><i>ACIP_CONNECTION_TYPE_TURN </i></b></a
+              >
+            </dt>
+            <dd>TURN relay (fallback).</dd>
+          </dl>
+          <p class="Pp">Definition at line <b>837</b> of file <b>acds.h</b>.</p>
+          <pre>
+837              {
 838   ACIP_CONNECTION_TYPE_DIRECT_PUBLIC = 0, 
 839   ACIP_CONNECTION_TYPE_UPNP = 1,          
 840   ACIP_CONNECTION_TYPE_STUN = 2,          
 841   ACIP_CONNECTION_TYPE_TURN = 3           
-842 } acip_connection_type_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">enum <b>acip_error_code_t</b></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">ACIP error codes. Standard error codes returned in ACIP error
-    responses.</p>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="ACIP_ERROR_NONE"><a class="permalink" href="#ACIP_ERROR_NONE"><b><i>ACIP_ERROR_NONE
-    </i></b></a></dt>
-  <dd>No error (success).</dd>
-  <dt id="ACIP_ERROR_SESSION_NOT_FOUND"><a class="permalink" href="#ACIP_ERROR_SESSION_NOT_FOUND"><b><i>ACIP_ERROR_SESSION_NOT_FOUND
-    </i></b></a></dt>
-  <dd>Session does not exist.</dd>
-  <dt id="ACIP_ERROR_SESSION_FULL"><a class="permalink" href="#ACIP_ERROR_SESSION_FULL"><b><i>ACIP_ERROR_SESSION_FULL
-    </i></b></a></dt>
-  <dd>Session has reached max participants.</dd>
-  <dt id="ACIP_ERROR_INVALID_PASSWORD"><a class="permalink" href="#ACIP_ERROR_INVALID_PASSWORD"><b><i>ACIP_ERROR_INVALID_PASSWORD
-    </i></b></a></dt>
-  <dd>Password verification failed.</dd>
-  <dt id="ACIP_ERROR_INVALID_SIGNATURE"><a class="permalink" href="#ACIP_ERROR_INVALID_SIGNATURE"><b><i>ACIP_ERROR_INVALID_SIGNATURE
-    </i></b></a></dt>
-  <dd>Identity signature invalid.</dd>
-  <dt id="ACIP_ERROR_RATE_LIMITED"><a class="permalink" href="#ACIP_ERROR_RATE_LIMITED"><b><i>ACIP_ERROR_RATE_LIMITED
-    </i></b></a></dt>
-  <dd>Too many requests from this IP.</dd>
-  <dt id="ACIP_ERROR_STRING_TAKEN"><a class="permalink" href="#ACIP_ERROR_STRING_TAKEN"><b><i>ACIP_ERROR_STRING_TAKEN
-    </i></b></a></dt>
-  <dd>Requested string already reserved.</dd>
-  <dt id="ACIP_ERROR_STRING_INVALID"><a class="permalink" href="#ACIP_ERROR_STRING_INVALID"><b><i>ACIP_ERROR_STRING_INVALID
-    </i></b></a></dt>
-  <dd>String format invalid.</dd>
-  <dt id="ACIP_ERROR_INTERNAL"><a class="permalink" href="#ACIP_ERROR_INTERNAL"><b><i>ACIP_ERROR_INTERNAL
-    </i></b></a></dt>
-  <dd>Internal server error.</dd>
-</dl>
-<p class="Pp">Definition at line <b>1064</b> of file <b>acds.h</b>.</p>
-<pre>1064              {
+842 } acip_connection_type_t;</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">enum <b>acip_error_code_t</b></h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">ACIP error codes. Standard error codes returned in ACIP error responses.</p>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="ACIP_ERROR_NONE">
+              <a class="permalink" href="#ACIP_ERROR_NONE"
+                ><b><i>ACIP_ERROR_NONE </i></b></a
+              >
+            </dt>
+            <dd>No error (success).</dd>
+            <dt id="ACIP_ERROR_SESSION_NOT_FOUND">
+              <a class="permalink" href="#ACIP_ERROR_SESSION_NOT_FOUND"
+                ><b><i>ACIP_ERROR_SESSION_NOT_FOUND </i></b></a
+              >
+            </dt>
+            <dd>Session does not exist.</dd>
+            <dt id="ACIP_ERROR_SESSION_FULL">
+              <a class="permalink" href="#ACIP_ERROR_SESSION_FULL"
+                ><b><i>ACIP_ERROR_SESSION_FULL </i></b></a
+              >
+            </dt>
+            <dd>Session has reached max participants.</dd>
+            <dt id="ACIP_ERROR_INVALID_PASSWORD">
+              <a class="permalink" href="#ACIP_ERROR_INVALID_PASSWORD"
+                ><b><i>ACIP_ERROR_INVALID_PASSWORD </i></b></a
+              >
+            </dt>
+            <dd>Password verification failed.</dd>
+            <dt id="ACIP_ERROR_INVALID_SIGNATURE">
+              <a class="permalink" href="#ACIP_ERROR_INVALID_SIGNATURE"
+                ><b><i>ACIP_ERROR_INVALID_SIGNATURE </i></b></a
+              >
+            </dt>
+            <dd>Identity signature invalid.</dd>
+            <dt id="ACIP_ERROR_RATE_LIMITED">
+              <a class="permalink" href="#ACIP_ERROR_RATE_LIMITED"
+                ><b><i>ACIP_ERROR_RATE_LIMITED </i></b></a
+              >
+            </dt>
+            <dd>Too many requests from this IP.</dd>
+            <dt id="ACIP_ERROR_STRING_TAKEN">
+              <a class="permalink" href="#ACIP_ERROR_STRING_TAKEN"
+                ><b><i>ACIP_ERROR_STRING_TAKEN </i></b></a
+              >
+            </dt>
+            <dd>Requested string already reserved.</dd>
+            <dt id="ACIP_ERROR_STRING_INVALID">
+              <a class="permalink" href="#ACIP_ERROR_STRING_INVALID"
+                ><b><i>ACIP_ERROR_STRING_INVALID </i></b></a
+              >
+            </dt>
+            <dd>String format invalid.</dd>
+            <dt id="ACIP_ERROR_INTERNAL">
+              <a class="permalink" href="#ACIP_ERROR_INTERNAL"
+                ><b><i>ACIP_ERROR_INTERNAL </i></b></a
+              >
+            </dt>
+            <dd>Internal server error.</dd>
+          </dl>
+          <p class="Pp">Definition at line <b>1064</b> of file <b>acds.h</b>.</p>
+          <pre>
+1064              {
 1065   ACIP_ERROR_NONE = 0,              
 1066   ACIP_ERROR_SESSION_NOT_FOUND = 1, 
 1067   ACIP_ERROR_SESSION_FULL = 2,      
@@ -562,149 +708,175 @@ Total: 22 bytes + payload_length bytes</pre>
 1071   ACIP_ERROR_STRING_TAKEN = 6,      
 1072   ACIP_ERROR_STRING_INVALID = 7,    
 1073   ACIP_ERROR_INTERNAL = 255         
-1074 } acip_error_code_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">enum <b>acip_nat_type_t</b></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">NAT type classification for host selection.</p>
-<p class="Pp"><b>Enumerator</b>
-  <br/>
-</p>
-<dl class="Bl-tag">
-  <dt id="ACIP_NAT_TYPE_OPEN"><a class="permalink" href="#ACIP_NAT_TYPE_OPEN"><b><i>ACIP_NAT_TYPE_OPEN
-    </i></b></a></dt>
-  <dd>No NAT (public IP).</dd>
-  <dt id="ACIP_NAT_TYPE_FULL_CONE"><a class="permalink" href="#ACIP_NAT_TYPE_FULL_CONE"><b><i>ACIP_NAT_TYPE_FULL_CONE
-    </i></b></a></dt>
-  <dd>Full cone NAT (easiest to traverse).</dd>
-  <dt id="ACIP_NAT_TYPE_RESTRICTED"><a class="permalink" href="#ACIP_NAT_TYPE_RESTRICTED"><b><i>ACIP_NAT_TYPE_RESTRICTED
-    </i></b></a></dt>
-  <dd>Address-restricted cone NAT.</dd>
-  <dt id="ACIP_NAT_TYPE_PORT_RESTRICTED"><a class="permalink" href="#ACIP_NAT_TYPE_PORT_RESTRICTED"><b><i>ACIP_NAT_TYPE_PORT_RESTRICTED
-    </i></b></a></dt>
-  <dd>Port-restricted cone NAT.</dd>
-  <dt id="ACIP_NAT_TYPE_SYMMETRIC"><a class="permalink" href="#ACIP_NAT_TYPE_SYMMETRIC"><b><i>ACIP_NAT_TYPE_SYMMETRIC
-    </i></b></a></dt>
-  <dd>Symmetric NAT (hardest, requires TURN).</dd>
-</dl>
-<p class="Pp">Definition at line <b>825</b> of file <b>acds.h</b>.</p>
-<pre>825              {
+1074 } acip_error_code_t;</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">enum <b>acip_nat_type_t</b></h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">NAT type classification for host selection.</p>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="ACIP_NAT_TYPE_OPEN">
+              <a class="permalink" href="#ACIP_NAT_TYPE_OPEN"
+                ><b><i>ACIP_NAT_TYPE_OPEN </i></b></a
+              >
+            </dt>
+            <dd>No NAT (public IP).</dd>
+            <dt id="ACIP_NAT_TYPE_FULL_CONE">
+              <a class="permalink" href="#ACIP_NAT_TYPE_FULL_CONE"
+                ><b><i>ACIP_NAT_TYPE_FULL_CONE </i></b></a
+              >
+            </dt>
+            <dd>Full cone NAT (easiest to traverse).</dd>
+            <dt id="ACIP_NAT_TYPE_RESTRICTED">
+              <a class="permalink" href="#ACIP_NAT_TYPE_RESTRICTED"
+                ><b><i>ACIP_NAT_TYPE_RESTRICTED </i></b></a
+              >
+            </dt>
+            <dd>Address-restricted cone NAT.</dd>
+            <dt id="ACIP_NAT_TYPE_PORT_RESTRICTED">
+              <a class="permalink" href="#ACIP_NAT_TYPE_PORT_RESTRICTED"
+                ><b><i>ACIP_NAT_TYPE_PORT_RESTRICTED </i></b></a
+              >
+            </dt>
+            <dd>Port-restricted cone NAT.</dd>
+            <dt id="ACIP_NAT_TYPE_SYMMETRIC">
+              <a class="permalink" href="#ACIP_NAT_TYPE_SYMMETRIC"
+                ><b><i>ACIP_NAT_TYPE_SYMMETRIC </i></b></a
+              >
+            </dt>
+            <dd>Symmetric NAT (hardest, requires TURN).</dd>
+          </dl>
+          <p class="Pp">Definition at line <b>825</b> of file <b>acds.h</b>.</p>
+          <pre>
+825              {
 826   ACIP_NAT_TYPE_OPEN = 0,            
 827   ACIP_NAT_TYPE_FULL_CONE = 1,       
 828   ACIP_NAT_TYPE_RESTRICTED = 2,      
 829   ACIP_NAT_TYPE_PORT_RESTRICTED = 3, 
 830   ACIP_NAT_TYPE_SYMMETRIC = 4        
-831 } acip_nat_type_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="struct___attribute___((packed)_)"><a class="permalink" href="#struct___attribute___((packed)_)">struct
-  __attribute__ ((packed) )</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">SESSION_CREATE (PACKET_TYPE_ACIP_SESSION_CREATE) - Create new
-    session. BROADCAST_ACK (PACKET_TYPE_ACIP_BROADCAST_ACK) - Acknowledge
-    broadcast receipt.</p>
-<p class="Pp"></p>
-<p class="Pp">Bandwidth test result packet.</p>
-<p class="Pp"></p>
-<p class="Pp">Bandwidth test request packet.</p>
-<p class="Pp"></p>
-<p class="Pp">ERROR (PACKET_TYPE_ACIP_ERROR) - Generic error response.</p>
-<p class="Pp"></p>
-<p class="Pp">FUTURE_HOST_ELECTED (PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED) -
-    Future host announcement.</p>
-<p class="Pp"></p>
-<p class="Pp">HOST_LOST (PACKET_TYPE_ACIP_HOST_LOST) - Host disconnect
-    notification.</p>
-<p class="Pp"></p>
-<p class="Pp">HOST_DESIGNATED (PACKET_TYPE_ACIP_HOST_DESIGNATED) - Host
-    assignment.</p>
-<p class="Pp"></p>
-<p class="Pp">HOST_ANNOUNCEMENT (PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT) - Host
-    declaration.</p>
-<p class="Pp"></p>
-<p class="Pp">NETWORK_QUALITY (PACKET_TYPE_ACIP_NETWORK_QUALITY) - Unified
-    quality metrics.</p>
-<p class="Pp"></p>
-<p class="Pp">RING_COLLECT (PACKET_TYPE_ACIP_RING_COLLECT) - NAT quality
-    request.</p>
-<p class="Pp"></p>
-<p class="Pp">Participant entry in ring (variable-length data following
-    PARTICIPANT_LIST).</p>
-<p class="Pp"></p>
-<p class="Pp">PARTICIPANT_LIST (PACKET_TYPE_ACIP_PARTICIPANT_LIST) - Ordered
-    ring list.</p>
-<p class="Pp"></p>
-<p class="Pp">STRING_RELEASE (PACKET_TYPE_ACIP_STRING_RELEASE) - Release string
-    reservation.</p>
-<p class="Pp"></p>
-<p class="Pp">STRING_RENEW (PACKET_TYPE_ACIP_STRING_RENEW) - Renew string
-    reservation.</p>
-<p class="Pp"></p>
-<p class="Pp">STRING_RESERVED (PACKET_TYPE_ACIP_STRING_RESERVED) - String
-    reservation response.</p>
-<p class="Pp"></p>
-<p class="Pp">STRING_RESERVE (PACKET_TYPE_ACIP_STRING_RESERVE) - Reserve a
-    session string.</p>
-<p class="Pp"></p>
-<p class="Pp">WEBRTC_ICE (PACKET_TYPE_ACIP_WEBRTC_ICE) - ICE candidate
-  relay.</p>
-<p class="Pp"></p>
-<p class="Pp">WEBRTC_SDP (PACKET_TYPE_ACIP_WEBRTC_SDP) - SDP offer/answer
-  relay.</p>
-<p class="Pp"></p>
-<p class="Pp">SESSION_RECONNECT (PACKET_TYPE_ACIP_SESSION_RECONNECT) - Reconnect
-    to session.</p>
-<p class="Pp"></p>
-<p class="Pp">SESSION_END (PACKET_TYPE_ACIP_SESSION_END) - End session (host
-    only).</p>
-<p class="Pp"></p>
-<p class="Pp">SESSION_LEAVE (PACKET_TYPE_ACIP_SESSION_LEAVE) - Leave
-  session.</p>
-<p class="Pp"></p>
-<p class="Pp">PARTICIPANT_LEFT (PACKET_TYPE_ACIP_PARTICIPANT_LEFT) - Participant
-    left notification.</p>
-<p class="Pp"></p>
-<p class="Pp">PARTICIPANT_JOINED (PACKET_TYPE_ACIP_PARTICIPANT_JOINED) - New
-    participant notification.</p>
-<p class="Pp"></p>
-<p class="Pp">SESSION_JOINED (PACKET_TYPE_ACIP_SESSION_JOINED) - Session join
-    response.</p>
-<p class="Pp"></p>
-<p class="Pp">SESSION_JOIN (PACKET_TYPE_ACIP_SESSION_JOIN) - Join existing
-    session.</p>
-<p class="Pp"></p>
-<p class="Pp">SESSION_INFO (PACKET_TYPE_ACIP_SESSION_INFO) - Session info
-    response.</p>
-<p class="Pp"></p>
-<p class="Pp">SESSION_LOOKUP (PACKET_TYPE_ACIP_SESSION_LOOKUP) - Lookup session
-    by string.</p>
-<p class="Pp"></p>
-<p class="Pp">SESSION_CREATED (PACKET_TYPE_ACIP_SESSION_CREATED) - Session
-    created response.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Client -&gt; Discovery Server</p>
-<p class="Pp"></p>
-<p class="Pp">Payload structure (fixed + variable):</p>
-<ul class="Bl-bullet">
-  <li>Fixed part: acip_session_create_t (295 bytes minimum)</li>
-  <li>Variable part: reserved_string (if reserved_string_len &gt; 0, max 47
-      bytes)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss">Packet Format</h2>
-<pre>Offset  Size  Field                  Value/Description
+831 } acip_nat_type_t;</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation">Function Documentation</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="struct___attribute___((packed)_)">
+            <a class="permalink" href="#struct___attribute___((packed)_)"
+              >struct __attribute__ ((packed) )</a
+            >
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">
+            SESSION_CREATE (PACKET_TYPE_ACIP_SESSION_CREATE) - Create new session. BROADCAST_ACK
+            (PACKET_TYPE_ACIP_BROADCAST_ACK) - Acknowledge broadcast receipt.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Bandwidth test result packet.</p>
+          <p class="Pp"></p>
+          <p class="Pp">Bandwidth test request packet.</p>
+          <p class="Pp"></p>
+          <p class="Pp">ERROR (PACKET_TYPE_ACIP_ERROR) - Generic error response.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            FUTURE_HOST_ELECTED (PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED) - Future host announcement.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">HOST_LOST (PACKET_TYPE_ACIP_HOST_LOST) - Host disconnect notification.</p>
+          <p class="Pp"></p>
+          <p class="Pp">HOST_DESIGNATED (PACKET_TYPE_ACIP_HOST_DESIGNATED) - Host assignment.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            HOST_ANNOUNCEMENT (PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT) - Host declaration.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            NETWORK_QUALITY (PACKET_TYPE_ACIP_NETWORK_QUALITY) - Unified quality metrics.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">RING_COLLECT (PACKET_TYPE_ACIP_RING_COLLECT) - NAT quality request.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Participant entry in ring (variable-length data following PARTICIPANT_LIST).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            PARTICIPANT_LIST (PACKET_TYPE_ACIP_PARTICIPANT_LIST) - Ordered ring list.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            STRING_RELEASE (PACKET_TYPE_ACIP_STRING_RELEASE) - Release string reservation.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">STRING_RENEW (PACKET_TYPE_ACIP_STRING_RENEW) - Renew string reservation.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            STRING_RESERVED (PACKET_TYPE_ACIP_STRING_RESERVED) - String reservation response.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            STRING_RESERVE (PACKET_TYPE_ACIP_STRING_RESERVE) - Reserve a session string.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">WEBRTC_ICE (PACKET_TYPE_ACIP_WEBRTC_ICE) - ICE candidate relay.</p>
+          <p class="Pp"></p>
+          <p class="Pp">WEBRTC_SDP (PACKET_TYPE_ACIP_WEBRTC_SDP) - SDP offer/answer relay.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            SESSION_RECONNECT (PACKET_TYPE_ACIP_SESSION_RECONNECT) - Reconnect to session.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">SESSION_END (PACKET_TYPE_ACIP_SESSION_END) - End session (host only).</p>
+          <p class="Pp"></p>
+          <p class="Pp">SESSION_LEAVE (PACKET_TYPE_ACIP_SESSION_LEAVE) - Leave session.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            PARTICIPANT_LEFT (PACKET_TYPE_ACIP_PARTICIPANT_LEFT) - Participant left notification.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            PARTICIPANT_JOINED (PACKET_TYPE_ACIP_PARTICIPANT_JOINED) - New participant notification.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            SESSION_JOINED (PACKET_TYPE_ACIP_SESSION_JOINED) - Session join response.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">SESSION_JOIN (PACKET_TYPE_ACIP_SESSION_JOIN) - Join existing session.</p>
+          <p class="Pp"></p>
+          <p class="Pp">SESSION_INFO (PACKET_TYPE_ACIP_SESSION_INFO) - Session info response.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            SESSION_LOOKUP (PACKET_TYPE_ACIP_SESSION_LOOKUP) - Lookup session by string.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            SESSION_CREATED (PACKET_TYPE_ACIP_SESSION_CREATED) - Session created response.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Client -&gt; Discovery Server</p>
+          <p class="Pp"></p>
+          <p class="Pp">Payload structure (fixed + variable):</p>
+          <ul class="Bl-bullet">
+            <li>Fixed part: acip_session_create_t (295 bytes minimum)</li>
+            <li>Variable part: reserved_string (if reserved_string_len &gt; 0, max 47 bytes)</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">Packet Format</h2>
+          <pre>
+Offset  Size  Field                  Value/Description
 ------  ----  -----                  -----------------
 0       32    identity_pubkey        Ed25519 public key (host identity)
 32      64    signature              Ed25519(type || timestamp || capabilities)
@@ -721,25 +893,31 @@ Total: 22 bytes + payload_length bytes</pre>
 240     64    server_address         IPv4/IPv6/hostname (null-terminated)
 304     2     server_port            TCP port for client connection
 ------
-Total: 306 bytes + reserved_string (if len &gt; 0, max 47 bytes)</pre>
-<p class="Pp">The client requests creation of a new session with specific
-    capabilities, optionally providing a pre-reserved session string. The server
-    responds with SESSION_CREATED containing the session identifier.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Host Responsibility</b>: The creator becomes the session host
-    (participant_id) and controls session settings in discovery mode.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Discovery Server -&gt; Client</p>
-<p class="Pp"></p>
-<p class="Pp">Payload structure (fixed + variable):</p>
-<ul class="Bl-bullet">
-  <li>Fixed part: acip_session_created_t (90 bytes)</li>
-  <li>Variable part: stun_server_t[stun_count] + turn_server_t[turn_count]</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss">Packet Format</h2>
-<pre>Offset  Size  Field               Value/Description
+Total: 306 bytes + reserved_string (if len &gt; 0, max 47 bytes)</pre
+          >
+          <p class="Pp">
+            The client requests creation of a new session with specific capabilities, optionally
+            providing a pre-reserved session string. The server responds with SESSION_CREATED
+            containing the session identifier.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>Host Responsibility</b>: The creator becomes the session host (participant_id) and
+            controls session settings in discovery mode.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Discovery Server -&gt; Client</p>
+          <p class="Pp"></p>
+          <p class="Pp">Payload structure (fixed + variable):</p>
+          <ul class="Bl-bullet">
+            <li>Fixed part: acip_session_created_t (90 bytes)</li>
+            <li>Variable part: stun_server_t[stun_count] + turn_server_t[turn_count]</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">Packet Format</h2>
+          <pre>
+Offset  Size  Field               Value/Description
 ------  ----  -----               -----------------
 0       1     session_string_len  Length of generated/provided string
 1       48    session_string      Session ID string (null-padded)
@@ -749,50 +927,63 @@ Total: 306 bytes + reserved_string (if len &gt; 0, max 47 bytes)</pre>
 89      1     stun_count          Number of STUN servers (0-N)
 90      1     turn_count          Number of TURN servers (0-N)
 ------
-Total: 91 bytes + STUN/TURN server data</pre>
-<p class="Pp"><b>STUN/TURN Servers</b>: Followed by packed stun_server_t and
-    turn_server_t structs for WebRTC P2P connectivity behind NAT.</p>
-<p class="Pp"></p>
-<p class="Pp">The server responds to SESSION_CREATE with the generated session
-    identifier, session string (either auto-generated or the provided reserved
-    string), and optional STUN/TURN server information for WebRTC
-  connectivity.</p>
-<p class="Pp"></p>
-<p class="Pp">The creator is assigned a participant_id and is considered the
-    session initiator (controls session settings in discovery mode).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">STUN server configuration (stun_server_t) is defined in
-  networking/webrtc/stun.h
-<p class="Pp"></p>
-<p class="Pp">TURN server configuration (turn_server_t) is defined in
-    networking/webrtc/turn.h</p>
-</div>
-<p class="Pp">Direction: Client -&gt; Discovery Server</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">Packet Format</h2>
-<pre>Offset  Size  Field               Value/Description
+Total: 91 bytes + STUN/TURN server data</pre
+          >
+          <p class="Pp">
+            <b>STUN/TURN Servers</b>: Followed by packed stun_server_t and turn_server_t structs for
+            WebRTC P2P connectivity behind NAT.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The server responds to SESSION_CREATE with the generated session identifier, session
+            string (either auto-generated or the provided reserved string), and optional STUN/TURN
+            server information for WebRTC connectivity.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The creator is assigned a participant_id and is considered the session initiator
+            (controls session settings in discovery mode).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            STUN server configuration (stun_server_t) is defined in networking/webrtc/stun.h
+            <p class="Pp"></p>
+            <p class="Pp">
+              TURN server configuration (turn_server_t) is defined in networking/webrtc/turn.h
+            </p>
+          </div>
+          <p class="Pp">Direction: Client -&gt; Discovery Server</p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">Packet Format</h2>
+          <pre>
+Offset  Size  Field               Value/Description
 ------  ----  -----               -----------------
 0       1     session_string_len  Length of query string
 1       48    session_string      Session ID string to lookup
 ------
-Total: 49 bytes</pre>
-<p class="Pp">The client queries for session information using the session
-    string. Server responds with SESSION_INFO containing basic session metadata
-    (but NOT the server connection information, which is only revealed after
-    successful authentication via SESSION_JOIN).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Security Note</b>: Server does NOT reveal host IP in
-    SESSION_INFO response, preventing information leakage to non-members.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Discovery Server -&gt; Client</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">Packet Format</h2>
-<pre>Offset  Size  Field                 Value/Description
+Total: 49 bytes</pre
+          >
+          <p class="Pp">
+            The client queries for session information using the session string. Server responds
+            with SESSION_INFO containing basic session metadata (but NOT the server connection
+            information, which is only revealed after successful authentication via SESSION_JOIN).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>Security Note</b>: Server does NOT reveal host IP in SESSION_INFO response,
+            preventing information leakage to non-members.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Discovery Server -&gt; Client</p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">Packet Format</h2>
+          <pre>
+Offset  Size  Field                 Value/Description
 ------  ----  -----                 -----------------
 0       1     found                 0=not found, 1=found
 1       16    session_id            UUID (valid if found=1)
@@ -807,23 +998,28 @@ Total: 49 bytes</pre>
 70      1     require_server_verify ACDS policy flag (host verifies guest)
 71      1     require_client_verify ACDS policy flag (guest verifies host)
 ------
-Total: 72 bytes</pre>
-<p class="Pp"><b>SECURITY NOTE</b>: Does NOT include server connection
-    information (IP/port). Server address is only revealed after authentication
-    via SESSION_JOIN. This prevents IP address leakage to unauthenticated
-    clients.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Server Verification</b>: If require_server_verify=1, host must
-    verify client identity using Ed25519 signatures.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Client -&gt; Discovery Server</p>
-<p class="Pp"></p>
-<p class="Pp">Payload structure: acip_session_join_t (241 bytes fixed)</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss">Packet Format</h2>
-<pre>Offset  Size  Field               Value/Description
+Total: 72 bytes</pre
+          >
+          <p class="Pp">
+            <b>SECURITY NOTE</b>: Does NOT include server connection information (IP/port). Server
+            address is only revealed after authentication via SESSION_JOIN. This prevents IP address
+            leakage to unauthenticated clients.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>Server Verification</b>: If require_server_verify=1, host must verify client identity
+            using Ed25519 signatures.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Client -&gt; Discovery Server</p>
+          <p class="Pp"></p>
+          <p class="Pp">Payload structure: acip_session_join_t (241 bytes fixed)</p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">Packet Format</h2>
+          <pre>
+Offset  Size  Field               Value/Description
 ------  ----  -----               -----------------
 0       1     session_string_len  Length of session string
 1       48    session_string      Session ID to join
@@ -833,31 +1029,44 @@ Total: 72 bytes</pre>
 153     1     has_password        0=no password, 1=password provided
 154     128   password            Cleartext password (TLS protects wire)
 ------
-Total: 282 bytes</pre>
-<p class="Pp"><b>Authentication Methods</b>:</p>
-<ul class="Bl-bullet">
-  <li><b>Identity Signature</b>: Client signs (type || timestamp ||
-      session_string) with Ed25519</li>
-  <li><b>Password</b>: Optional additional requirement, stored as Argon2id hash
-      on server</li>
-  <li><b>Replay Protection</b>: Timestamp must be within &#x00B1;5 minute window
-      of server time</li>
-</ul>
-<p class="Pp"><b>Response</b>: Server verifies credentials and responds with
-    SESSION_JOINED containing server IP:port and TURN credentials.</p>
-<p class="Pp"></p>
-<p class="Pp">The client requests to join an existing session, providing
-    identity proof via Ed25519 signature and optionally a password. Server
-    responds with SESSION_JOINED containing server connection information upon
-    successful authentication.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Discovery Server -&gt; Client</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Packet_Format_(Variable_Length)"><a class="permalink" href="#Packet_Format_(Variable_Length)">Packet
-  Format (Variable Length)</a></h2>
-<pre>Offset  Size  Field                  Value/Description
+Total: 282 bytes</pre
+          >
+          <p class="Pp"><b>Authentication Methods</b>:</p>
+          <ul class="Bl-bullet">
+            <li>
+              <b>Identity Signature</b>: Client signs (type || timestamp || session_string) with
+              Ed25519
+            </li>
+            <li>
+              <b>Password</b>: Optional additional requirement, stored as Argon2id hash on server
+            </li>
+            <li>
+              <b>Replay Protection</b>: Timestamp must be within &#x00B1;5 minute window of server
+              time
+            </li>
+          </ul>
+          <p class="Pp">
+            <b>Response</b>: Server verifies credentials and responds with SESSION_JOINED containing
+            server IP:port and TURN credentials.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The client requests to join an existing session, providing identity proof via Ed25519
+            signature and optionally a password. Server responds with SESSION_JOINED containing
+            server connection information upon successful authentication.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Discovery Server -&gt; Client</p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Packet_Format_(Variable_Length)">
+            <a class="permalink" href="#Packet_Format_(Variable_Length)"
+              >Packet Format (Variable Length)</a
+            >
+          </h2>
+          <pre>
+Offset  Size  Field                  Value/Description
 ------  ----  -----                  -----------------
 0       1     success                0=failed, 1=joined
 1       1     error_code             Error code if success=0
@@ -875,59 +1084,73 @@ Total: 282 bytes</pre>
 (263+N*16)   128 turn_username       TURN auth user (if session_type=WEBRTC)
 (391+N*16)   128 turn_password       TURN auth pass (if session_type=WEBRTC)
 ------
-Total: 519+ bytes (variable based on peer_count)</pre>
-<p class="Pp"><b>CRITICAL SECURITY</b>: Server connection information (IP/port)
-    is ONLY revealed after successful authentication (password verification or
-    identity verification). This prevents IP address leakage to unauthenticated
-    clients who only know the session string.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>HOST NEGOTIATION</b>: When host_established == 0, the joiner
-    must negotiate with existing peers to determine who becomes the host. When
-    host_established == 1, the joiner can connect directly to the established
-    host.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>TURN Credentials</b>: RFC 5766 time-limited credentials for NAT
-    traversal. Format: &quot;timestamp:session_id&quot; and HMAC-SHA1(secret,
-    username).</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Discovery Server -&gt; Existing Participants</p>
-<p class="Pp"></p>
-<p class="Pp">Sent to all existing participants when a new participant joins the
-    session. In discovery mode, this triggers NAT quality exchange and host
-    negotiation between the new joiner and existing participants.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Discovery Server -&gt; Remaining Participants</p>
-<p class="Pp"></p>
-<p class="Pp">Sent to remaining participants when someone leaves the session
-    (gracefully or timeout). If the leaving participant was the host, this
-    triggers host migration.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Client -&gt; Discovery Server</p>
-<p class="Pp"></p>
-<p class="Pp">The client gracefully leaves a session, allowing the server to
-    update participant count and potentially notify other participants.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Host -&gt; Discovery Server</p>
-<p class="Pp"></p>
-<p class="Pp">The session host terminates the session, preventing new joins and
-    notifying all participants. Requires signature proof of host identity.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Client -&gt; Discovery Server</p>
-<p class="Pp"></p>
-<p class="Pp">The client reconnects to a session after disconnection, using
-    stored participant ID and identity proof to resume participation.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Bidirectional (relayed through discovery server)</p>
-<p class="Pp"></p>
-<p class="Pp">Payload structure (fixed + variable):</p>
-<ul class="Bl-bullet">
-  <li>Fixed: acip_webrtc_sdp_t (50 bytes minimum)</li>
-  <li>Variable: sdp_data (SDP string, null-terminated)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss">Packet Format</h2>
-<pre>Offset  Size  Field           Value/Description
+Total: 519+ bytes (variable based on peer_count)</pre
+          >
+          <p class="Pp">
+            <b>CRITICAL SECURITY</b>: Server connection information (IP/port) is ONLY revealed after
+            successful authentication (password verification or identity verification). This
+            prevents IP address leakage to unauthenticated clients who only know the session string.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>HOST NEGOTIATION</b>: When host_established == 0, the joiner must negotiate with
+            existing peers to determine who becomes the host. When host_established == 1, the joiner
+            can connect directly to the established host.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>TURN Credentials</b>: RFC 5766 time-limited credentials for NAT traversal. Format:
+            &quot;timestamp:session_id&quot; and HMAC-SHA1(secret, username).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Discovery Server -&gt; Existing Participants</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Sent to all existing participants when a new participant joins the session. In discovery
+            mode, this triggers NAT quality exchange and host negotiation between the new joiner and
+            existing participants.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Discovery Server -&gt; Remaining Participants</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Sent to remaining participants when someone leaves the session (gracefully or timeout).
+            If the leaving participant was the host, this triggers host migration.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Client -&gt; Discovery Server</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The client gracefully leaves a session, allowing the server to update participant count
+            and potentially notify other participants.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Host -&gt; Discovery Server</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The session host terminates the session, preventing new joins and notifying all
+            participants. Requires signature proof of host identity.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Client -&gt; Discovery Server</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The client reconnects to a session after disconnection, using stored participant ID and
+            identity proof to resume participation.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Bidirectional (relayed through discovery server)</p>
+          <p class="Pp"></p>
+          <p class="Pp">Payload structure (fixed + variable):</p>
+          <ul class="Bl-bullet">
+            <li>Fixed: acip_webrtc_sdp_t (50 bytes minimum)</li>
+            <li>Variable: sdp_data (SDP string, null-terminated)</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">Packet Format</h2>
+          <pre>
+Offset  Size  Field           Value/Description
 ------  ----  -----           -----------------
 0       16    session_id      Session UUID
 16      16    from_id         Sender's participant UUID
@@ -935,28 +1158,31 @@ Total: 519+ bytes (variable based on peer_count)</pre>
 48      2     sdp_len         Length of SDP data (0-2MB)
 50      N     sdp_data        UTF-8 SDP string (null-terminated)
 ------
-Total: 50 + sdp_len bytes</pre>
-<p class="Pp"><b>SDP Format</b>: RFC 4566 Session Description Protocol</p>
-<ul class="Bl-bullet">
-  <li>Offer: Media offer with local capabilities</li>
-  <li>Answer: Media answer matching peer capabilities</li>
-  <li>Both include ICE ufrag/pwd for candidate exchange</li>
-</ul>
-<p class="Pp">WebRTC session description protocol messages are relayed through
-    the discovery server to facilitate peer-to-peer connection
-  establishment.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Bidirectional (relayed through discovery server)</p>
-<p class="Pp"></p>
-<p class="Pp">Payload structure (fixed + variable):</p>
-<ul class="Bl-bullet">
-  <li>Fixed: acip_webrtc_ice_t (50 bytes minimum)</li>
-  <li>Variable: candidate (ICE candidate string, null-terminated)</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss">Packet Format</h2>
-<pre>Offset  Size  Field            Value/Description
+Total: 50 + sdp_len bytes</pre
+          >
+          <p class="Pp"><b>SDP Format</b>: RFC 4566 Session Description Protocol</p>
+          <ul class="Bl-bullet">
+            <li>Offer: Media offer with local capabilities</li>
+            <li>Answer: Media answer matching peer capabilities</li>
+            <li>Both include ICE ufrag/pwd for candidate exchange</li>
+          </ul>
+          <p class="Pp">
+            WebRTC session description protocol messages are relayed through the discovery server to
+            facilitate peer-to-peer connection establishment.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Bidirectional (relayed through discovery server)</p>
+          <p class="Pp"></p>
+          <p class="Pp">Payload structure (fixed + variable):</p>
+          <ul class="Bl-bullet">
+            <li>Fixed: acip_webrtc_ice_t (50 bytes minimum)</li>
+            <li>Variable: candidate (ICE candidate string, null-terminated)</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">Packet Format</h2>
+          <pre>
+Offset  Size  Field            Value/Description
 ------  ----  -----            -----------------
 0       16    session_id       Session UUID
 16      16    sender_id        Sender's participant UUID
@@ -964,403 +1190,432 @@ Total: 50 + sdp_len bytes</pre>
 48      2     candidate_len    Length of ICE candidate (0-512)
 50      N     candidate        UTF-8 ICE candidate (null-terminated)
 ------
-Total: 50 + candidate_len bytes</pre>
-<p class="Pp"><b>ICE Candidate Format</b>: RFC 5245 Interactive Connectivity
-    Establishment</p>
-<ul class="Bl-bullet">
-  <li>Example: &quot;candidate:1 1 udp 2122260223 192.168.1.100 54321 typ
-      host&quot;</li>
-  <li>Contains: foundation, component, transport, priority, address, port,
-    type</li>
-  <li>Relayed candidate: includes related-address/port for NAT-mapped
-    endpoints</li>
-</ul>
-<p class="Pp"><b>Candidate Types</b>:</p>
-<ul class="Bl-bullet">
-  <li><b>host</b>: Local machine (non-NATted)</li>
-  <li><b>srflx</b>: Server reflexive (STUN-discovered)</li>
-  <li><b>prflx</b>: Peer reflexive (discovered via STUN from peer)</li>
-  <li><b>relay</b>: TURN-relayed candidate</li>
-</ul>
-<p class="Pp">WebRTC ICE candidates are relayed through the discovery server to
-    facilitate NAT traversal during peer-to-peer connection establishment.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Client -&gt; Discovery Server</p>
-<p class="Pp"></p>
-<p class="Pp"><b>FUTURE FEATURE</b>: Reserve a memorable session string for
-    future use, preventing others from using it for a specified duration.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Discovery Server -&gt; Client</p>
-<p class="Pp"></p>
-<p class="Pp"><b>FUTURE FEATURE</b>: Confirms successful string reservation or
-    reports error.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Client -&gt; Discovery Server</p>
-<p class="Pp"></p>
-<p class="Pp"><b>FUTURE FEATURE</b>: Extends an existing string reservation
-    before expiration.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Client -&gt; Discovery Server</p>
-<p class="Pp"></p>
-<p class="Pp"><b>FUTURE FEATURE</b>: Voluntarily releases a reserved string
-    before expiration.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: ACDS -&gt; All Participants</p>
-<p class="Pp"></p>
-<p class="Pp">Broadcast by ACDS after session join or when participant
-    joins/leaves. Lists all participants in deterministic ring order (by join
-    time or participant ID). Participants use this to determine:</p>
-<ul class="Bl-bullet">
-  <li>My position in the ring</li>
-  <li>Who is next in ring (for NAT collection)</li>
-  <li>Who is quorum leader this round (last in rotation)</li>
-</ul>
-<p class="Pp">Follows acip_participant_list_t in packet payload. Array of
-    num_participants entries.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Previous Participant -&gt; Next Participant (via direct
-    connection)</p>
-<p class="Pp"></p>
-<p class="Pp">Sent during ring rotation to request NAT quality from next
-    participant. Forms the &quot;spoke&quot; of the ring, where one participant
-    collects from all others.</p>
-<p class="Pp"></p>
-<p class="Pp">During each 5-minute round:</p>
-<ul class="Bl-bullet">
-  <li>Participant[0] connects to Participant[1], gets NAT data</li>
-  <li>Participant[1] connects to Participant[2], gets NAT data</li>
-  <li>... (continues around ring)</li>
-  <li>Participant[N-1] has all NAT data, runs election, announces future
-    host</li>
-</ul>
-<p class="Pp">Direction: Participant -&gt; Others (via ring collection, WebRTC
-    signaling, or direct P2P)</p>
-<p class="Pp"></p>
-<p class="Pp"><b>NEW DESIGN</b>: Unified packet for all network quality metrics,
-    replacing separate NAT_QUALITY, HOST_LOST NAT fields, etc. Used in three
-    contexts:</p>
-<p class="Pp"></p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Initial Negotiation</b> (during host selection before session
-      established)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Exchanged between first two participants to determine initial host</dd>
-  <dt>2.</dt>
-  <dd><b>Ring Collection</b> (proactive, every 5 minutes)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Quorum leader collects from all participants for future host election</dd>
-  <dt> &#x2022;</dt>
-  <dd>Fresh NAT data ensures optimal host selection</dd>
-  <dt> &#x2022;</dt>
-  <dd>Participants know future host before current host dies</dd>
-  <dt>3.</dt>
-  <dd><b>Migration Recovery</b> (if current host dies unexpectedly)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Participants exchange fresh NETWORK_QUALITY if pre-elected future host
-      unavailable</dd>
-  <dt> &#x2022;</dt>
-  <dd>Enables fallback re-election</dd>
-</dl>
-<p class="Pp">Direction: Participant -&gt; ACDS</p>
-<p class="Pp"></p>
-<p class="Pp">Sent by the participant who won host negotiation to announce they
-    are starting the server. ACDS stores this and includes it in future
-    SESSION_JOINED responses.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: ACDS -&gt; All Participants</p>
-<p class="Pp"></p>
-<p class="Pp">Sent by ACDS after receiving HOST_ANNOUNCEMENT to notify all
-    participants who the host is and where to connect.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Participant -&gt; ACDS</p>
-<p class="Pp"></p>
-<p class="Pp">Lightweight notification that a participant detected the host
-    disconnected. NAT quality data is NOT included - migration participants use
-    pre-elected future host instead of re-electing. If future host unavailable,
-    participants can request fresh NETWORK_QUALITY exchange for re-election if
-    needed.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>NEW P2P DESIGN</b>: This is now just a notification for ACDS
-    bookkeeping. Actual migration happens peer-to-peer without ACDS involvement
-    - participants connect to pre-elected future host immediately upon
-    detection.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Quorum Leader -&gt; ACDS -&gt; All Participants</p>
-<p class="Pp"></p>
-<p class="Pp"><b>NEW P2P DESIGN</b>: Sent proactively by quorum leader after
-    completing ring consensus (every 5 minutes or when new participant joins).
-    Announces to all participants who will become host if current host dies.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Key Insight</b>: Future host is PRE-ELECTED and stored by
-    everyone. When current host dies, participants don't need to elect - they
-    immediately:</p>
-<ul class="Bl-bullet">
-  <li>Future host: starts hosting (already know they will)</li>
-  <li>Others: connect to future host (address already stored)</li>
-  <li>Total failover time: &lt;500ms (no election!)</li>
-</ul>
-<p class="Pp">This packet is broadcast by ACDS after receiving it from quorum
-    leader, ensuring all participants know the migration plan before host
-  dies.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Discovery Server -&gt; Client</p>
-<p class="Pp"></p>
-<p class="Pp">Generic error response used when no specific response packet type
-    exists. Contains error code and human-readable message.</p>
-<p class="Pp"></p>
-<p class="Pp">Sent by client to ACDS to request bandwidth measurement. Client
-    sends this packet followed by test payload data. ACDS measures receive time
-    and calculates upload speed.</p>
-<p class="Pp"></p>
-<p class="Pp">Sent by ACDS to client with measured bandwidth results. Includes
-    upload speed (measured by ACDS), download speed (echo test), RTT, jitter,
-    and packet loss metrics.</p>
-<p class="Pp"></p>
-<p class="Pp">Direction: Client -&gt; ACDS</p>
-<p class="Pp"></p>
-<p class="Pp">Sent by clients to acknowledge receipt of critical broadcast
-    messages (e.g., HOST_DESIGNATED, FUTURE_HOST_ELECTED). ACDS tracks ACKs and
-    retries broadcasts to clients that haven't acknowledged. &lt; Ed25519 public
-    key of session host</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Signs: type || timestamp || capabilities</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Unix ms (replay protection)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Bit 0: video, Bit 1: audio</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; 1-8 participants allowed</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; <b>acds_session_type_t</b>: 0=DIRECT_TCP (default),
-  1=WEBRTC</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; 0 = no password, 1 = password protected</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Argon2id hash (only if has_password == 1)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; 0 = require verification, 1 = allow public IP disclosure
-    (explicit --acds-expose-ip opt-in)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; 0 = auto-generate, &gt;0 = use provided string</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Total number of keys to transmit (0 = single key mode,
-    legacy)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Index of this key in the sequence (0-based), only valid if
-    total_keys &gt; 0</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; IPv4/IPv6 address or hostname (null-terminated)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Port number for client connection</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Length of session string (e.g., 20 for
-    &quot;swift-river-mountain&quot;)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Null-padded session string</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; UUID as bytes (not string)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Creator's participant ID (they are a participant too)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Unix ms (created_at + 24 hours)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Number of STUN servers</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Number of TURN servers</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; 0 = not found, 1 = found</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Valid only if found == 1</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Host's Ed25519 public key</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Session capabilities</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; <b>acds_session_type_t</b>: 0=DIRECT_TCP, 1=WEBRTC</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; 1 = password required to join</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Unix ms</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Unix ms</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; ACDS policy: server must verify client identity</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; ACDS policy: client must verify server identity</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Joiner's Ed25519 public key</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Signs: type || timestamp || session_string</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Unix ms</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Cleartext password (TLS protects transport)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; 0 = failed, 1 = joined</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Error code if success == 0</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Human-readable error</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; UUID for this participant (valid if success == 1)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Session UUID</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Who created the session (controls settings)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; 0 = no host yet (negotiate), 1 = host exists (connect
-    directly)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Host's participant ID (valid if host_established == 1)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Number of other participants to negotiate with</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; <b>acds_session_type_t</b>: 0=DIRECT_TCP, 1=WEBRTC</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; IPv4/IPv6 address or hostname (null-terminated)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Port number for client connection</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Format: &quot;{timestamp}:{session_id}&quot;</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Base64-encoded HMAC-SHA1(secret, username)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Session UUID</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; UUID of the new participant</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Ed25519 public key of new participant</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Total participants including new one</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Session UUID</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; UUID of participant who left</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; 1 if the leaving participant was the host</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Participants remaining in session</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Host proves ownership</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Prove identity</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Session UUID</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Participant UUID</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; All zeros = broadcast to all</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; 0 = offer, 1 = answer</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Length of SDP data</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; How long to reserve (1-365)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Unix ms</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Number of participants in session</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Participant's address (for direct connection)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Participant's listening port</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; <b>acip_connection_type_t</b></p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Who is requesting</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Who is requested</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Which 5-minute round (for detection of stale requests)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; STUN reflexive == local IP</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; UPnP/NAT-PMP port mapping works</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Port we mapped (network byte order)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; <b>acip_nat_type_t</b> classification</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Same subnet as peer (mDNS/ARP)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; RTT to STUN server in nanoseconds</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Upload bandwidth in Kbps (from ACDS test)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Download bandwidth in Kbps (informational)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Latency to ACDS server in nanoseconds</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Packet timing variance in nanoseconds</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Packet loss percentage (0-100)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Our public IP (if has_public_ip or upnp)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Our public port</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Bitmask: 1=host, 2=srflx, 4=relay</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; My participant ID</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Where clients should connect</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Port</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; <b>acip_connection_type_t</b></p>
-<p class="Pp"></p>
-<p class="Pp">&lt; <b>acip_connection_type_t</b></p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Who is reporting</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; The host that disconnected</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; 0=unknown, 1=timeout, 2=tcp_reset, 3=graceful</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; When disconnect was detected (Unix ms)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Who will host if current host dies</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Where to connect when needed</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Port number</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; <b>acip_connection_type_t</b> (DIRECT, UPNP, STUN, TURN)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Which 5-minute round this was elected in</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Error code (see <b>acip_error_code_t</b>)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Human-readable error</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Session identifier</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Participant identifier</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Size of test payload (typically 64KB)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Timestamp when client sent packet</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Upload bandwidth in kilobits/sec</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Download bandwidth in kilobits/sec</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Round-trip time in nanoseconds</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Packet timing variance in nanoseconds</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Packet loss percentage (0-100)</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Session UUID</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Participant acknowledging</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; ID of broadcast being acknowledged</p>
-<p class="Pp"></p>
-<p class="Pp">&lt; Type of packet being acknowledged</p>
-<p class="Pp">Definition at line <b>1</b> of file <b>acds.h</b>.</p>
-<pre>195                                        {
+Total: 50 + candidate_len bytes</pre
+          >
+          <p class="Pp">
+            <b>ICE Candidate Format</b>: RFC 5245 Interactive Connectivity Establishment
+          </p>
+          <ul class="Bl-bullet">
+            <li>Example: &quot;candidate:1 1 udp 2122260223 192.168.1.100 54321 typ host&quot;</li>
+            <li>Contains: foundation, component, transport, priority, address, port, type</li>
+            <li>Relayed candidate: includes related-address/port for NAT-mapped endpoints</li>
+          </ul>
+          <p class="Pp"><b>Candidate Types</b>:</p>
+          <ul class="Bl-bullet">
+            <li><b>host</b>: Local machine (non-NATted)</li>
+            <li><b>srflx</b>: Server reflexive (STUN-discovered)</li>
+            <li><b>prflx</b>: Peer reflexive (discovered via STUN from peer)</li>
+            <li><b>relay</b>: TURN-relayed candidate</li>
+          </ul>
+          <p class="Pp">
+            WebRTC ICE candidates are relayed through the discovery server to facilitate NAT
+            traversal during peer-to-peer connection establishment.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Client -&gt; Discovery Server</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>FUTURE FEATURE</b>: Reserve a memorable session string for future use, preventing
+            others from using it for a specified duration.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Discovery Server -&gt; Client</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>FUTURE FEATURE</b>: Confirms successful string reservation or reports error.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Client -&gt; Discovery Server</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>FUTURE FEATURE</b>: Extends an existing string reservation before expiration.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Client -&gt; Discovery Server</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>FUTURE FEATURE</b>: Voluntarily releases a reserved string before expiration.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: ACDS -&gt; All Participants</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Broadcast by ACDS after session join or when participant joins/leaves. Lists all
+            participants in deterministic ring order (by join time or participant ID). Participants
+            use this to determine:
+          </p>
+          <ul class="Bl-bullet">
+            <li>My position in the ring</li>
+            <li>Who is next in ring (for NAT collection)</li>
+            <li>Who is quorum leader this round (last in rotation)</li>
+          </ul>
+          <p class="Pp">
+            Follows acip_participant_list_t in packet payload. Array of num_participants entries.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Direction: Previous Participant -&gt; Next Participant (via direct connection)
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Sent during ring rotation to request NAT quality from next participant. Forms the
+            &quot;spoke&quot; of the ring, where one participant collects from all others.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">During each 5-minute round:</p>
+          <ul class="Bl-bullet">
+            <li>Participant[0] connects to Participant[1], gets NAT data</li>
+            <li>Participant[1] connects to Participant[2], gets NAT data</li>
+            <li>... (continues around ring)</li>
+            <li>Participant[N-1] has all NAT data, runs election, announces future host</li>
+          </ul>
+          <p class="Pp">
+            Direction: Participant -&gt; Others (via ring collection, WebRTC signaling, or direct
+            P2P)
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>NEW DESIGN</b>: Unified packet for all network quality metrics, replacing separate
+            NAT_QUALITY, HOST_LOST NAT fields, etc. Used in three contexts:
+          </p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>Initial Negotiation</b> (during host selection before session established)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Exchanged between first two participants to determine initial host</dd>
+            <dt>2.</dt>
+            <dd><b>Ring Collection</b> (proactive, every 5 minutes)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Quorum leader collects from all participants for future host election</dd>
+            <dt>&#x2022;</dt>
+            <dd>Fresh NAT data ensures optimal host selection</dd>
+            <dt>&#x2022;</dt>
+            <dd>Participants know future host before current host dies</dd>
+            <dt>3.</dt>
+            <dd><b>Migration Recovery</b> (if current host dies unexpectedly)</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Participants exchange fresh NETWORK_QUALITY if pre-elected future host unavailable
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Enables fallback re-election</dd>
+          </dl>
+          <p class="Pp">Direction: Participant -&gt; ACDS</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Sent by the participant who won host negotiation to announce they are starting the
+            server. ACDS stores this and includes it in future SESSION_JOINED responses.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: ACDS -&gt; All Participants</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Sent by ACDS after receiving HOST_ANNOUNCEMENT to notify all participants who the host
+            is and where to connect.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Participant -&gt; ACDS</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Lightweight notification that a participant detected the host disconnected. NAT quality
+            data is NOT included - migration participants use pre-elected future host instead of
+            re-electing. If future host unavailable, participants can request fresh NETWORK_QUALITY
+            exchange for re-election if needed.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>NEW P2P DESIGN</b>: This is now just a notification for ACDS bookkeeping. Actual
+            migration happens peer-to-peer without ACDS involvement - participants connect to
+            pre-elected future host immediately upon detection.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Quorum Leader -&gt; ACDS -&gt; All Participants</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>NEW P2P DESIGN</b>: Sent proactively by quorum leader after completing ring consensus
+            (every 5 minutes or when new participant joins). Announces to all participants who will
+            become host if current host dies.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            <b>Key Insight</b>: Future host is PRE-ELECTED and stored by everyone. When current host
+            dies, participants don't need to elect - they immediately:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Future host: starts hosting (already know they will)</li>
+            <li>Others: connect to future host (address already stored)</li>
+            <li>Total failover time: &lt;500ms (no election!)</li>
+          </ul>
+          <p class="Pp">
+            This packet is broadcast by ACDS after receiving it from quorum leader, ensuring all
+            participants know the migration plan before host dies.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Discovery Server -&gt; Client</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Generic error response used when no specific response packet type exists. Contains error
+            code and human-readable message.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Sent by client to ACDS to request bandwidth measurement. Client sends this packet
+            followed by test payload data. ACDS measures receive time and calculates upload speed.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Sent by ACDS to client with measured bandwidth results. Includes upload speed (measured
+            by ACDS), download speed (echo test), RTT, jitter, and packet loss metrics.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Direction: Client -&gt; ACDS</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Sent by clients to acknowledge receipt of critical broadcast messages (e.g.,
+            HOST_DESIGNATED, FUTURE_HOST_ELECTED). ACDS tracks ACKs and retries broadcasts to
+            clients that haven't acknowledged. &lt; Ed25519 public key of session host
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Signs: type || timestamp || capabilities</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Unix ms (replay protection)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Bit 0: video, Bit 1: audio</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; 1-8 participants allowed</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; <b>acds_session_type_t</b>: 0=DIRECT_TCP (default), 1=WEBRTC</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; 0 = no password, 1 = password protected</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Argon2id hash (only if has_password == 1)</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            &lt; 0 = require verification, 1 = allow public IP disclosure (explicit --acds-expose-ip
+            opt-in)
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; 0 = auto-generate, &gt;0 = use provided string</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Total number of keys to transmit (0 = single key mode, legacy)</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            &lt; Index of this key in the sequence (0-based), only valid if total_keys &gt; 0
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; IPv4/IPv6 address or hostname (null-terminated)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Port number for client connection</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            &lt; Length of session string (e.g., 20 for &quot;swift-river-mountain&quot;)
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Null-padded session string</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; UUID as bytes (not string)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Creator's participant ID (they are a participant too)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Unix ms (created_at + 24 hours)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Number of STUN servers</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Number of TURN servers</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; 0 = not found, 1 = found</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Valid only if found == 1</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Host's Ed25519 public key</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Session capabilities</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; <b>acds_session_type_t</b>: 0=DIRECT_TCP, 1=WEBRTC</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; 1 = password required to join</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Unix ms</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Unix ms</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; ACDS policy: server must verify client identity</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; ACDS policy: client must verify server identity</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Joiner's Ed25519 public key</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Signs: type || timestamp || session_string</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Unix ms</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Cleartext password (TLS protects transport)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; 0 = failed, 1 = joined</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Error code if success == 0</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Human-readable error</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; UUID for this participant (valid if success == 1)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Session UUID</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Who created the session (controls settings)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; 0 = no host yet (negotiate), 1 = host exists (connect directly)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Host's participant ID (valid if host_established == 1)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Number of other participants to negotiate with</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; <b>acds_session_type_t</b>: 0=DIRECT_TCP, 1=WEBRTC</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; IPv4/IPv6 address or hostname (null-terminated)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Port number for client connection</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Format: &quot;{timestamp}:{session_id}&quot;</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Base64-encoded HMAC-SHA1(secret, username)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Session UUID</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; UUID of the new participant</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Ed25519 public key of new participant</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Total participants including new one</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Session UUID</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; UUID of participant who left</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; 1 if the leaving participant was the host</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Participants remaining in session</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Host proves ownership</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Prove identity</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Session UUID</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Participant UUID</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; All zeros = broadcast to all</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; 0 = offer, 1 = answer</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Length of SDP data</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; How long to reserve (1-365)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Unix ms</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Number of participants in session</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Participant's address (for direct connection)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Participant's listening port</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; <b>acip_connection_type_t</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Who is requesting</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Who is requested</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Which 5-minute round (for detection of stale requests)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; STUN reflexive == local IP</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; UPnP/NAT-PMP port mapping works</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Port we mapped (network byte order)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; <b>acip_nat_type_t</b> classification</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Same subnet as peer (mDNS/ARP)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; RTT to STUN server in nanoseconds</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Upload bandwidth in Kbps (from ACDS test)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Download bandwidth in Kbps (informational)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Latency to ACDS server in nanoseconds</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Packet timing variance in nanoseconds</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Packet loss percentage (0-100)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Our public IP (if has_public_ip or upnp)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Our public port</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Bitmask: 1=host, 2=srflx, 4=relay</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; My participant ID</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Where clients should connect</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Port</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; <b>acip_connection_type_t</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; <b>acip_connection_type_t</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Who is reporting</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; The host that disconnected</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; 0=unknown, 1=timeout, 2=tcp_reset, 3=graceful</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; When disconnect was detected (Unix ms)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Who will host if current host dies</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Where to connect when needed</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Port number</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; <b>acip_connection_type_t</b> (DIRECT, UPNP, STUN, TURN)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Which 5-minute round this was elected in</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Error code (see <b>acip_error_code_t</b>)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Human-readable error</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Session identifier</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Participant identifier</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Size of test payload (typically 64KB)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Timestamp when client sent packet</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Upload bandwidth in kilobits/sec</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Download bandwidth in kilobits/sec</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Round-trip time in nanoseconds</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Packet timing variance in nanoseconds</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Packet loss percentage (0-100)</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Session UUID</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Participant acknowledging</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; ID of broadcast being acknowledged</p>
+          <p class="Pp"></p>
+          <p class="Pp">&lt; Type of packet being acknowledged</p>
+          <p class="Pp">Definition at line <b>1</b> of file <b>acds.h</b>.</p>
+          <pre>
+195                                        {
 196   uint8_t identity_pubkey[32]; 
 197   uint8_t signature[64];       
 198   uint64_t timestamp;          
@@ -1385,229 +1640,269 @@ Total: 50 + candidate_len bytes</pre>
 218   // For WEBRTC: these fields are ignored, signaling happens through ACDS
 219   char server_address[64]; 
 220   uint16_t server_port;    
-221 } acip_session_create_t;</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="acip_bandwidth_result_t"><a class="permalink" href="#acip_bandwidth_result_t">acip_bandwidth_result_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>1037</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by <b>nat_measure_bandwidth()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_bandwidth_test_t"><a class="permalink" href="#acip_bandwidth_test_t">acip_bandwidth_test_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>1020</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by <b>nat_measure_bandwidth()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_broadcast_ack_t"><a class="permalink" href="#acip_broadcast_ack_t">acip_broadcast_ack_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>1055</b> of file <b>acds.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_error_t"><a class="permalink" href="#acip_error_t">acip_error_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>1004</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_server_send_error()</b>, and
-    <b>send_error_packet_message()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_future_host_elected_t"><a class="permalink" href="#acip_future_host_elected_t">acip_future_host_elected_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>981</b> of file <b>acds.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_host_announcement_t"><a class="permalink" href="#acip_host_announcement_t">acip_host_announcement_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>910</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_become_host()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_host_designated_t"><a class="permalink" href="#acip_host_designated_t">acip_host_designated_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>928</b> of file <b>acds.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_host_lost_t"><a class="permalink" href="#acip_host_lost_t">acip_host_lost_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>952</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by
-  <b>discovery_session_handle_host_disconnect()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_nat_quality_t"><a class="permalink" href="#acip_nat_quality_t">acip_nat_quality_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>891</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by <b>nat_quality_from_acip()</b>,
-    <b>nat_quality_to_acip()</b>, <b>negotiate_elect_future_host()</b>, and
-    <b>negotiate_receive_peer_quality()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_participant_entry_t"><a class="permalink" href="#acip_participant_entry_t">acip_participant_entry_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>788</b> of file <b>acds.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_participant_joined_t"><a class="permalink" href="#acip_participant_joined_t">acip_participant_joined_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>492</b> of file <b>acds.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_participant_left_t"><a class="permalink" href="#acip_participant_left_t">acip_participant_left_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>509</b> of file <b>acds.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_participant_list_t"><a class="permalink" href="#acip_participant_list_t">acip_participant_list_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>774</b> of file <b>acds.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_ring_collect_t"><a class="permalink" href="#acip_ring_collect_t">acip_ring_collect_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>811</b> of file <b>acds.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_session_create_t"><a class="permalink" href="#acip_session_create_t">acip_session_create_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>221</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_session_create()</b>,
-    <b>acip_server_validate_session_create()</b>, and
-    <b>database_session_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_session_created_t"><a class="permalink" href="#acip_session_created_t">acip_session_created_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>269</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_session_create()</b>,
-    <b>acip_send_session_created()</b>, and
-  <b>database_session_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_session_end_t"><a class="permalink" href="#acip_session_end_t">acip_session_end_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>539</b> of file <b>acds.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_session_info_t"><a class="permalink" href="#acip_session_info_t">acip_session_info_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>355</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_session_lookup()</b>,
-    <b>acip_send_session_info()</b>, and <b>database_session_lookup()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_session_join_t"><a class="permalink" href="#acip_session_join_t">acip_session_join_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>403</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_session_join()</b>,
-    <b>acip_server_validate_session_join()</b>, and
-    <b>database_session_join()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_session_joined_t"><a class="permalink" href="#acip_session_joined_t">acip_session_joined_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>474</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_session_join()</b>,
-    <b>acip_send_session_joined()</b>, and <b>database_session_join()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_session_leave_t"><a class="permalink" href="#acip_session_leave_t">acip_session_leave_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>524</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_stop()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_session_lookup_t"><a class="permalink" href="#acip_session_lookup_t">acip_session_lookup_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>304</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_session_lookup()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_session_reconnect_t"><a class="permalink" href="#acip_session_reconnect_t">acip_session_reconnect_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>555</b> of file <b>acds.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_string_release_t"><a class="permalink" href="#acip_string_release_t">acip_string_release_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>728</b> of file <b>acds.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_string_renew_t"><a class="permalink" href="#acip_string_renew_t">acip_string_renew_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>711</b> of file <b>acds.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_string_reserve_t"><a class="permalink" href="#acip_string_reserve_t">acip_string_reserve_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>677</b> of file <b>acds.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_string_reserved_t"><a class="permalink" href="#acip_string_reserved_t">acip_string_reserved_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>693</b> of file <b>acds.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_webrtc_ice_t"><a class="permalink" href="#acip_webrtc_ice_t">acip_webrtc_ice_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>650</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by <b>signaling_relay_ice()</b>, and
-    <b>webrtc_peer_manager_handle_ice()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="acip_webrtc_sdp_t"><a class="permalink" href="#acip_webrtc_sdp_t">acip_webrtc_sdp_t</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>604</b> of file <b>acds.h</b>.</p>
-<p class="Pp">Referenced by <b>signaling_relay_sdp()</b>, and
-    <b>webrtc_peer_manager_handle_sdp()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
-    code.</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.9.4</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+221 } acip_session_create_t;</pre
+          >
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Variable_Documentation">
+          <a class="permalink" href="#Variable_Documentation">Variable Documentation</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_bandwidth_result_t">
+            <a class="permalink" href="#acip_bandwidth_result_t">acip_bandwidth_result_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>1037</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">Referenced by <b>nat_measure_bandwidth()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_bandwidth_test_t">
+            <a class="permalink" href="#acip_bandwidth_test_t">acip_bandwidth_test_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>1020</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">Referenced by <b>nat_measure_bandwidth()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_broadcast_ack_t">
+            <a class="permalink" href="#acip_broadcast_ack_t">acip_broadcast_ack_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>1055</b> of file <b>acds.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_error_t">
+            <a class="permalink" href="#acip_error_t">acip_error_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>1004</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acip_server_send_error()</b>, and <b>send_error_packet_message()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_future_host_elected_t">
+            <a class="permalink" href="#acip_future_host_elected_t">acip_future_host_elected_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>981</b> of file <b>acds.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_host_announcement_t">
+            <a class="permalink" href="#acip_host_announcement_t">acip_host_announcement_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>910</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">Referenced by <b>discovery_session_become_host()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_host_designated_t">
+            <a class="permalink" href="#acip_host_designated_t">acip_host_designated_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>928</b> of file <b>acds.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_host_lost_t">
+            <a class="permalink" href="#acip_host_lost_t">acip_host_lost_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>952</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">Referenced by <b>discovery_session_handle_host_disconnect()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_nat_quality_t">
+            <a class="permalink" href="#acip_nat_quality_t">acip_nat_quality_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>891</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>nat_quality_from_acip()</b>, <b>nat_quality_to_acip()</b>,
+            <b>negotiate_elect_future_host()</b>, and <b>negotiate_receive_peer_quality()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_participant_entry_t">
+            <a class="permalink" href="#acip_participant_entry_t">acip_participant_entry_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>788</b> of file <b>acds.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_participant_joined_t">
+            <a class="permalink" href="#acip_participant_joined_t">acip_participant_joined_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>492</b> of file <b>acds.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_participant_left_t">
+            <a class="permalink" href="#acip_participant_left_t">acip_participant_left_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>509</b> of file <b>acds.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_participant_list_t">
+            <a class="permalink" href="#acip_participant_list_t">acip_participant_list_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>774</b> of file <b>acds.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_ring_collect_t">
+            <a class="permalink" href="#acip_ring_collect_t">acip_ring_collect_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>811</b> of file <b>acds.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_session_create_t">
+            <a class="permalink" href="#acip_session_create_t">acip_session_create_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>221</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acds_session_create()</b>,
+            <b>acip_server_validate_session_create()</b>, and <b>database_session_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_session_created_t">
+            <a class="permalink" href="#acip_session_created_t">acip_session_created_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>269</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acds_session_create()</b>, <b>acip_send_session_created()</b>, and
+            <b>database_session_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_session_end_t">
+            <a class="permalink" href="#acip_session_end_t">acip_session_end_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>539</b> of file <b>acds.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_session_info_t">
+            <a class="permalink" href="#acip_session_info_t">acip_session_info_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>355</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acds_session_lookup()</b>, <b>acip_send_session_info()</b>, and
+            <b>database_session_lookup()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_session_join_t">
+            <a class="permalink" href="#acip_session_join_t">acip_session_join_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>403</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acds_session_join()</b>, <b>acip_server_validate_session_join()</b>,
+            and <b>database_session_join()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_session_joined_t">
+            <a class="permalink" href="#acip_session_joined_t">acip_session_joined_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>474</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acds_session_join()</b>, <b>acip_send_session_joined()</b>, and
+            <b>database_session_join()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_session_leave_t">
+            <a class="permalink" href="#acip_session_leave_t">acip_session_leave_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>524</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">Referenced by <b>discovery_session_stop()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_session_lookup_t">
+            <a class="permalink" href="#acip_session_lookup_t">acip_session_lookup_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>304</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">Referenced by <b>acds_session_lookup()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_session_reconnect_t">
+            <a class="permalink" href="#acip_session_reconnect_t">acip_session_reconnect_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>555</b> of file <b>acds.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_string_release_t">
+            <a class="permalink" href="#acip_string_release_t">acip_string_release_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>728</b> of file <b>acds.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_string_renew_t">
+            <a class="permalink" href="#acip_string_renew_t">acip_string_renew_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>711</b> of file <b>acds.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_string_reserve_t">
+            <a class="permalink" href="#acip_string_reserve_t">acip_string_reserve_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>677</b> of file <b>acds.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_string_reserved_t">
+            <a class="permalink" href="#acip_string_reserved_t">acip_string_reserved_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>693</b> of file <b>acds.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_webrtc_ice_t">
+            <a class="permalink" href="#acip_webrtc_ice_t">acip_webrtc_ice_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>650</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>signaling_relay_ice()</b>, and <b>webrtc_peer_manager_handle_ice()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="acip_webrtc_sdp_t">
+            <a class="permalink" href="#acip_webrtc_sdp_t">acip_webrtc_sdp_t</a>
+          </h2>
+          <p class="Pp">#include &lt;<b>include/ascii-chat/network/acip/acds.h</b>&gt;<b></b></p>
+          <p class="Pp">Definition at line <b>604</b> of file <b>acds.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>signaling_relay_sdp()</b>, and <b>webrtc_peer_manager_handle_sdp()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+        <p class="Pp">Generated automatically by Doxygen for ascii-chat from the source code.</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.9.4</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

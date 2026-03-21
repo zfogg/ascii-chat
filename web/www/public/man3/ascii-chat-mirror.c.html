@@ -150,145 +150,147 @@
 167     return NULL;
 168   }
 169 
-170   bool flip = GET_OPTION(flip_x);
-171   for (int y = 0; y &lt; src_height; y++) {
-172     for (int x = 0; x &lt; src_width; x++) {
-173       int src_x = flip ? (src_width - 1 - x) : x;
-174       int src_idx = (y * src_width + src_x) * 4;
-175       int dst_idx = y * src_width + x;
-176 
-177       rgb_pixels[dst_idx].r = rgba_data[src_idx + 0];
-178       rgb_pixels[dst_idx].g = rgba_data[src_idx + 1];
-179       rgb_pixels[dst_idx].b = rgba_data[src_idx + 2];
-180       // Alpha (rgba_data[src_idx + 3]) is discarded
-181     }
-182   }
-183 
-184   // Apply color filter to pixels if needed (except rainbow - handled in ANSI stage)
-185   if (filter != COLOR_FILTER_NONE &amp;&amp; filter != COLOR_FILTER_RAINBOW) {
-186     // color_filter operates on packed RGB24 format
-187     uint8_t *rgb24 = (uint8_t *)rgb_pixels;
-188     int stride = src_width * 3;
-189     apply_color_filter(rgb24, src_width, src_height, stride, filter, time_seconds);
-190   }
-191 
-192   // Create image structure
-193   image_t img = {.w = src_width, .h = src_height, .pixels = rgb_pixels, .alloc_method = IMAGE_ALLOC_SIMD};
-194 
-195   // Get palette characters based on selected palette type
-196   const char *palette_chars;
-197   switch (palette_type) {
-198   case PALETTE_BLOCKS:
-199     palette_chars = PALETTE_CHARS_BLOCKS;
-200     break;
-201   case PALETTE_DIGITAL:
-202     palette_chars = PALETTE_CHARS_DIGITAL;
-203     break;
-204   case PALETTE_MINIMAL:
-205     palette_chars = PALETTE_CHARS_MINIMAL;
-206     break;
-207   case PALETTE_COOL:
-208     palette_chars = PALETTE_CHARS_COOL;
-209     break;
-210   case PALETTE_CUSTOM:
-211     // Custom palette uses user-provided characters from options
-212     palette_chars = GET_OPTION(palette_custom);
-213     if (!palette_chars || palette_chars[0] == '\0') {
-214       palette_chars = PALETTE_CHARS_STANDARD; // Fallback
-215     }
-216     break;
-217   case PALETTE_STANDARD:
-218   default:
-219     palette_chars = PALETTE_CHARS_STANDARD;
-220     break;
-221   }
-222 
-223   // Convert to ASCII using capability-aware function
-224   char *ascii_output =
-225       ascii_convert_with_capabilities(&amp;img, dst_width, dst_height, &amp;caps, aspect_ratio, stretch, palette_chars);
-226 
-227   // Clean up
-228   SAFE_FREE(rgb_pixels);
-229 
-230   if (!ascii_output) {
-231     log_error(&quot;ascii_convert_with_capabilities returned NULL&quot;);
-232     return NULL;
-233   }
-234 
-235   // Apply rainbow color filter to ANSI output by replacing RGB values
-236   // This preserves character selection while applying rainbow colors
-237   if (filter == COLOR_FILTER_RAINBOW) {
-238     char *rainbow_output = rainbow_replace_ansi_colors(ascii_output, time_seconds);
-239     if (rainbow_output) {
-240       SAFE_FREE(ascii_output);
-241       ascii_output = rainbow_output;
-242     }
-243   }
-244 
-245   bool matrix_rain = GET_OPTION(matrix_rain);
-246   if (matrix_rain) {
-247     // Initialize digital rain context if needed or dimensions changed
-248     if (!g_digital_rain || g_digital_rain-&gt;num_columns != dst_width || g_digital_rain-&gt;num_rows != dst_height) {
-249       if (g_digital_rain) {
-250         digital_rain_destroy(g_digital_rain);
-251       }
-252       if (g_last_rain_output) {
-253         SAFE_FREE(g_last_rain_output);
-254         g_last_rain_output = NULL;
-255       }
-256       g_digital_rain = digital_rain_init(dst_width, dst_height);
-257       if (!g_digital_rain) {
-258         log_error(&quot;Failed to initialize digital rain effect&quot;);
-259         return ascii_output; // Return without effect on error
-260       }
-261       g_last_rain_update_time = emscripten_get_now();
-262     }
-263 
-264     // Update color from active filter (allows filter changes after initialization)
-265     digital_rain_set_color_from_filter(g_digital_rain, filter);
-266 
-267     // Time-based updates: only update effect every RAIN_UPDATE_INTERVAL_MS
-268     double current_time = emscripten_get_now();
-269     double elapsed_ms = current_time - g_last_rain_update_time;
-270 
-271     if (elapsed_ms &gt;= RAIN_UPDATE_INTERVAL_MS) {
-272       // Calculate actual delta time in seconds
-273       float delta_time = (float)(elapsed_ms / 1000.0);
-274       g_last_rain_update_time = current_time;
-275 
-276       // Apply effect and cache a copy
-277       char *rain_output = digital_rain_apply(g_digital_rain, ascii_output, delta_time);
-278       if (rain_output) {
-279         // Free old cached output
-280         if (g_last_rain_output) {
-281           SAFE_FREE(g_last_rain_output);
-282         }
-283         // Cache a copy (we'll return the original rain_output)
-284         g_last_rain_output = strdup(rain_output);
-285         // Return the rain output (caller will free it)
-286         SAFE_FREE(ascii_output);
-287         ascii_output = rain_output;
-288       }
-289     } else if (g_last_rain_output) {
-290       // Use cached output
-291       SAFE_FREE(ascii_output);
-292       ascii_output = strdup(g_last_rain_output);
-293     }
-294   } else {
-295     // Clean up digital rain context if it exists but effect is disabled
-296     if (g_digital_rain) {
-297       digital_rain_destroy(g_digital_rain);
-298       g_digital_rain = NULL;
-299     }
-300     if (g_last_rain_output) {
-301       SAFE_FREE(g_last_rain_output);
-302       g_last_rain_output = NULL;
-303     }
-304     g_last_rain_update_time = 0.0;
-305   }
-306 
-307   return ascii_output;
-308 }</pre>
+170   bool flip_x = GET_OPTION(flip_x);
+171   bool flip_y = GET_OPTION(flip_y);
+172   for (int y = 0; y &lt; src_height; y++) {
+173     for (int x = 0; x &lt; src_width; x++) {
+174       int src_x = flip_x ? (src_width - 1 - x) : x;
+175       int src_y = flip_y ? (src_height - 1 - y) : y;
+176       int src_idx = (src_y * src_width + src_x) * 4;
+177       int dst_idx = y * src_width + x;
+178 
+179       rgb_pixels[dst_idx].r = rgba_data[src_idx + 0];
+180       rgb_pixels[dst_idx].g = rgba_data[src_idx + 1];
+181       rgb_pixels[dst_idx].b = rgba_data[src_idx + 2];
+182       // Alpha (rgba_data[src_idx + 3]) is discarded
+183     }
+184   }
+185 
+186   // Apply color filter to pixels if needed (except rainbow - handled in ANSI stage)
+187   if (filter != COLOR_FILTER_NONE &amp;&amp; filter != COLOR_FILTER_RAINBOW) {
+188     // color_filter operates on packed RGB24 format
+189     uint8_t *rgb24 = (uint8_t *)rgb_pixels;
+190     int stride = src_width * 3;
+191     apply_color_filter(rgb24, src_width, src_height, stride, filter, time_seconds);
+192   }
+193 
+194   // Create image structure
+195   image_t img = {.w = src_width, .h = src_height, .pixels = rgb_pixels, .alloc_method = IMAGE_ALLOC_SIMD};
+196 
+197   // Get palette characters based on selected palette type
+198   const char *palette_chars;
+199   switch (palette_type) {
+200   case PALETTE_BLOCKS:
+201     palette_chars = PALETTE_CHARS_BLOCKS;
+202     break;
+203   case PALETTE_DIGITAL:
+204     palette_chars = PALETTE_CHARS_DIGITAL;
+205     break;
+206   case PALETTE_MINIMAL:
+207     palette_chars = PALETTE_CHARS_MINIMAL;
+208     break;
+209   case PALETTE_COOL:
+210     palette_chars = PALETTE_CHARS_COOL;
+211     break;
+212   case PALETTE_CUSTOM:
+213     // Custom palette uses user-provided characters from options
+214     palette_chars = GET_OPTION(palette_custom);
+215     if (!palette_chars || palette_chars[0] == '\0') {
+216       palette_chars = PALETTE_CHARS_STANDARD; // Fallback
+217     }
+218     break;
+219   case PALETTE_STANDARD:
+220   default:
+221     palette_chars = PALETTE_CHARS_STANDARD;
+222     break;
+223   }
+224 
+225   // Convert to ASCII using capability-aware function
+226   char *ascii_output =
+227       ascii_convert_with_capabilities(&amp;img, dst_width, dst_height, &amp;caps, aspect_ratio, stretch, palette_chars);
+228 
+229   // Clean up
+230   SAFE_FREE(rgb_pixels);
+231 
+232   if (!ascii_output) {
+233     log_error(&quot;ascii_convert_with_capabilities returned NULL&quot;);
+234     return NULL;
+235   }
+236 
+237   // Apply rainbow color filter to ANSI output by replacing RGB values
+238   // This preserves character selection while applying rainbow colors
+239   if (filter == COLOR_FILTER_RAINBOW) {
+240     char *rainbow_output = rainbow_replace_ansi_colors(ascii_output, time_seconds);
+241     if (rainbow_output) {
+242       SAFE_FREE(ascii_output);
+243       ascii_output = rainbow_output;
+244     }
+245   }
+246 
+247   bool matrix_rain = GET_OPTION(matrix_rain);
+248   if (matrix_rain) {
+249     // Initialize digital rain context if needed or dimensions changed
+250     if (!g_digital_rain || g_digital_rain-&gt;num_columns != dst_width || g_digital_rain-&gt;num_rows != dst_height) {
+251       if (g_digital_rain) {
+252         digital_rain_destroy(g_digital_rain);
+253       }
+254       if (g_last_rain_output) {
+255         SAFE_FREE(g_last_rain_output);
+256         g_last_rain_output = NULL;
+257       }
+258       g_digital_rain = digital_rain_init(dst_width, dst_height);
+259       if (!g_digital_rain) {
+260         log_error(&quot;Failed to initialize digital rain effect&quot;);
+261         return ascii_output; // Return without effect on error
+262       }
+263       g_last_rain_update_time = emscripten_get_now();
+264     }
+265 
+266     // Update color from active filter (allows filter changes after initialization)
+267     digital_rain_set_color_from_filter(g_digital_rain, filter);
+268 
+269     // Time-based updates: only update effect every RAIN_UPDATE_INTERVAL_MS
+270     double current_time = emscripten_get_now();
+271     double elapsed_ms = current_time - g_last_rain_update_time;
+272 
+273     if (elapsed_ms &gt;= RAIN_UPDATE_INTERVAL_MS) {
+274       // Calculate actual delta time in seconds
+275       float delta_time = (float)(elapsed_ms / 1000.0);
+276       g_last_rain_update_time = current_time;
+277 
+278       // Apply effect and cache a copy
+279       char *rain_output = digital_rain_apply(g_digital_rain, ascii_output, delta_time);
+280       if (rain_output) {
+281         // Free old cached output
+282         if (g_last_rain_output) {
+283           SAFE_FREE(g_last_rain_output);
+284         }
+285         // Cache a copy (we'll return the original rain_output)
+286         g_last_rain_output = strdup(rain_output);
+287         // Return the rain output (caller will free it)
+288         SAFE_FREE(ascii_output);
+289         ascii_output = rain_output;
+290       }
+291     } else if (g_last_rain_output) {
+292       // Use cached output
+293       SAFE_FREE(ascii_output);
+294       ascii_output = strdup(g_last_rain_output);
+295     }
+296   } else {
+297     // Clean up digital rain context if it exists but effect is disabled
+298     if (g_digital_rain) {
+299       digital_rain_destroy(g_digital_rain);
+300       g_digital_rain = NULL;
+301     }
+302     if (g_last_rain_output) {
+303       SAFE_FREE(g_last_rain_output);
+304       g_last_rain_output = NULL;
+305     }
+306     g_last_rain_update_time = 0.0;
+307   }
+308 
+309   return ascii_output;
+310 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>apply_color_filter()</b>,
@@ -321,10 +323,10 @@
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_void_mirror_free_string_(char_*_ptr)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_void_mirror_free_string_(char_*_ptr)">EMSCRIPTEN_KEEPALIVE
   void mirror_free_string (char * ptr)</a></h2>
-<p class="Pp">Definition at line <b>311</b> of file <b>mirror.c</b>.</p>
-<pre>311                                    {
-312   SAFE_FREE(ptr);
-313 }</pre>
+<p class="Pp">Definition at line <b>313</b> of file <b>mirror.c</b>.</p>
+<pre>313                                    {
+314   SAFE_FREE(ptr);
+315 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>SAFE_FREE</b>.</p>
@@ -408,7 +410,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.8</td>
+    <td class="foot-date">Version 0.9.12</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

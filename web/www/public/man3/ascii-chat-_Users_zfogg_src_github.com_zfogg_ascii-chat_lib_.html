@@ -1,116 +1,148 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>lib Directory Reference(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">lib Directory Reference(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">lib Directory Reference(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">lib Directory Reference</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Directories"><a class="permalink" href="#Directories">Directories</a></h2>
-<br/>
-<p class="Pp">directory <b>audio</b>
-  <br/>
-  directory <b>crypto</b>
-  <br/>
-  directory <b>debug</b>
-  <br/>
-  directory <b>discovery</b>
-  <br/>
-  directory <b>log</b>
-  <br/>
-  directory <b>media</b>
-  <br/>
-  directory <b>network</b>
-  <br/>
-  directory <b>options</b>
-  <br/>
-  directory <b>platform</b>
-  <br/>
-  directory <b>terminal</b>
-  <br/>
-  directory <b>tests</b>
-  <br/>
-  directory <b>tooling</b>
-  <br/>
-  directory <b>ui</b>
-  <br/>
-  directory <b>util</b>
-  <br/>
-  directory <b>video</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
-<br/>
-<p class="Pp">file <b>app_callbacks.c</b>
-  <br/>
-  Application callback registration system. file <b>asciichat_errno.c</b>
-  <br/>
-  &#x1F6A8; Custom error code system with formatted messages, thread-local
-    storage, and errno mapping file <b>atomic.c</b>
-  <br/>
-  Implementation of atomic operations abstraction. file <b>buffer_pool.c</b>
-  <br/>
-  &#x1F4BE; Lock-free memory pool with atomic operations file <b>common.c</b>
-  <br/>
-  &#x1F527; Core utilities: memory management, safe macros, and cross-platform
-    helpers file <b>lifecycle.c</b>
-  <br/>
-  Lock-free module lifecycle state machine implementation. file
-    <b>musl_c23_compat.c</b>
-  <br/>
-  &#x1F504; musl C23 compatibility wrappers for __isoc23_* symbol aliases (glibc
-    2.38+ compatibility) file <b>ringbuffer.c</b>
-  <br/>
-  &#x1F3AF; Lock-free circular buffer for audio streaming with atomic operations
-    file <b>thread_pool.c</b>
-  <br/>
-  &#x1F9F5; Generic thread pool implementation for managing worker threads file
-    <b>version.c</b>
-  <br/>
-  &#x1F3F7;&#xFE0F; Binary-embedded version information in custom ELF/Mach-O
-    sections for runtime inspection
-  <br/>
-</p>
-</section>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.9.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>lib Directory Reference(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">lib Directory Reference(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">lib Directory Reference(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">lib Directory Reference</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Directories">
+            <a class="permalink" href="#Directories">Directories</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            directory <b>audio</b>
+            <br />
+            directory <b>crypto</b>
+            <br />
+            directory <b>debug</b>
+            <br />
+            directory <b>discovery</b>
+            <br />
+            directory <b>log</b>
+            <br />
+            directory <b>media</b>
+            <br />
+            directory <b>network</b>
+            <br />
+            directory <b>options</b>
+            <br />
+            directory <b>platform</b>
+            <br />
+            directory <b>terminal</b>
+            <br />
+            directory <b>tests</b>
+            <br />
+            directory <b>tooling</b>
+            <br />
+            directory <b>ui</b>
+            <br />
+            directory <b>util</b>
+            <br />
+            directory <b>video</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+          <br />
+          <p class="Pp">
+            file <b>app_callbacks.c</b>
+            <br />
+            Application callback registration system. file <b>asciichat_errno.c</b>
+            <br />
+            &#x1F6A8; Custom error code system with formatted messages, thread-local storage, and
+            errno mapping file <b>atomic.c</b>
+            <br />
+            Implementation of atomic operations abstraction. file <b>buffer_pool.c</b>
+            <br />
+            &#x1F4BE; Lock-free memory pool with atomic operations file <b>common.c</b>
+            <br />
+            &#x1F527; Core utilities: memory management, safe macros, and cross-platform helpers
+            file <b>lifecycle.c</b>
+            <br />
+            Lock-free module lifecycle state machine implementation. file
+            <b>musl_c23_compat.c</b>
+            <br />
+            &#x1F504; musl C23 compatibility wrappers for __isoc23_* symbol aliases (glibc 2.38+
+            compatibility) file <b>ringbuffer.c</b>
+            <br />
+            &#x1F3AF; Lock-free circular buffer for audio streaming with atomic operations file
+            <b>thread_pool.c</b>
+            <br />
+            &#x1F9F5; Generic thread pool implementation for managing worker threads file
+            <b>version.c</b>
+            <br />
+            &#x1F3F7;&#xFE0F; Binary-embedded version information in custom ELF/Mach-O sections for
+            runtime inspection
+            <br />
+          </p>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.9.2</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>
