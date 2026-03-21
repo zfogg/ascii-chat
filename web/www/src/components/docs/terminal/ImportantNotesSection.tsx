@@ -32,7 +32,6 @@ export default function ImportantNotesSection() {
             (half-block, blocks) require UTF-8 support.
           </p>
         </div>
-
       </div>
     </section>
   );
