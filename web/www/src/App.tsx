@@ -1,8 +1,9 @@
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
-import { HeadingProvider } from "@ascii-chat/shared/components";
 import { Navigation } from "./components";
-import Home from "./pages/Home";
+import { HeadingProvider } from "@ascii-chat/shared/components";
+
+const Home = lazy(() => import("./pages/Home"));
 
 const Crypto = lazy(() => import("./pages/docs/Crypto"));
 const Man1 = lazy(() => import("./pages/Man1"));
@@ -20,11 +21,11 @@ const Media = lazy(() => import("./pages/docs/Media"));
 
 export default function App() {
   return (
-    <HeadingProvider>
-      <div className="flex flex-col h-screen overflow-y-auto overflow-x-hidden">
-        <Navigation />
-        <main className="pt-[var(--header-height)] flex flex-col flex-1">
-          <Suspense fallback={null}>
+    <div className="flex flex-col h-screen overflow-y-auto overflow-x-hidden">
+      <Navigation />
+      <main className="pt-[var(--header-height)] flex flex-col flex-1">
+        <Suspense fallback={null}>
+          <HeadingProvider>
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/docs" element={<DocsHub />} />
@@ -42,9 +43,9 @@ export default function App() {
               <Route path="/man3" element={<Man3 />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </Suspense>
-        </main>
-      </div>
-    </HeadingProvider>
+          </HeadingProvider>
+        </Suspense>
+      </main>
+    </div>
   );
 }

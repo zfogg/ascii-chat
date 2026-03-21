@@ -4,7 +4,14 @@ import { HeadingContext } from "./context";
 
 export function HeadingProvider({ children }: { children: ReactNode }) {
   const usedIdsRef = useRef<Set<string>>(new Set());
-  const location = useLocation();
+  let location;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    location = useLocation();
+  } catch {
+    // Fallback if not in Router context
+    location = { pathname: "/" } as ReturnType<typeof useLocation>;
+  }
 
   // Reset heading IDs when page changes
   useEffect(() => {
