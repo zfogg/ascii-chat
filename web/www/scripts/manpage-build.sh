@@ -49,6 +49,8 @@ if [ -d "$REPO_ROOT" ]; then
 
         # Fix malformed closing tags split across lines (e.g., </pre\n          >)
         # mandoc sometimes puts the > on the next line after whitespace, which breaks HTML parsing
+        # TODO: Verify this regex more thoroughly - test edge cases and ensure it doesn't break
+        # other HTML patterns. The pattern is broad and may have unintended side effects.
         perl -pi -e 's/<\/([a-zA-Z][a-zA-Z0-9]*)\s*\n\s*>/<\/\1>/g' "$htmlfile"
       fi
     done
