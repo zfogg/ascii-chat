@@ -4,24 +4,30 @@
 @source ".";
 @source "../../packages/shared/src";
 
+
 :root {
   --header-height: 65px;
 }
 
-html {
-  overflow-y: hidden;
+
+@layer base {
+  html {
+    overflow-y: hidden;
+  }
+
+  body {
+    overflow-y: auto;
+  }
+
+  /* Mobile overflow fix for docs pages */
+  .docs-container {
+    max-width: min(64rem, 100vw) !important;
+    overflow-x: hidden !important;
+  }
+
+  .docs-container code {
+    word-break: break-word;
+  }
+
 }
 
-body {
-  overflow-y: auto;
-}
-
-/* Mobile overflow fix for docs pages */
-.docs-container {
-  max-width: min(64rem, 100vw) !important;
-  overflow-x: hidden !important;
-}
-
-.docs-container code {
-  word-break: break-word;
-}

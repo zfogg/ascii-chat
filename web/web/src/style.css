@@ -57,14 +57,6 @@
     flex-direction: column;
   }
 
-  /* vertically center the xterm thingy in its container */
-  .terminal.xterm {
-    display: flex;
-  }
-  .terminal.xterm .xterm-screen {
-    align-self: center;
-  }
-
   a {
     text-decoration: underline;
   }

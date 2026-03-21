@@ -1,3 +1,13 @@
+@layer base {
+  /* vertically center the xterm thingy in its container */
+  .terminal.xterm {
+    display: flex;
+  }
+  .terminal.xterm .xterm-screen {
+    align-self: center;
+  }
+}
+
 @layer components {
   /* ========== HEADINGS ========== */
   .heading-1 {
