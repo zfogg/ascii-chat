@@ -58,6 +58,17 @@ http://localhost http://www.localhost http://discovery.localhost http://web.loca
   handle @weblocal {
     root * /app/web/web/dist
 
+    # COEP/COOP headers for SharedArrayBuffer support (required for WASM threads)
+    header Cross-Origin-Embedder-Policy "require-corp"
+    header Cross-Origin-Opener-Policy "same-origin"
+
+    # CORS for .wasm files (allows ascii-chat.com to fetch mirror.wasm cross-origin)
+    handle /wasm/* {
+      header Access-Control-Allow-Origin "*"
+      header Cross-Origin-Resource-Policy "cross-origin"
+      file_server
+    }
+
     # Cache static assets with content hashes for 1 year (immutable)
     handle /assets/* {
       header Cache-Control "public, max-age=31536000, immutable"
@@ -66,7 +77,7 @@ http://localhost http://www.localhost http://discovery.localhost http://web.loca
 
     # SPA routing with 1 hour cache
     @sparoutesweb {
-      not path /assets/*
+      not path /assets/* /wasm/*
     }
     handle @sparoutesweb {
       header Cache-Control "public, max-age=3600"
@@ -79,6 +90,10 @@ http://localhost http://www.localhost http://discovery.localhost http://web.loca
 # Production: ascii-chat.com subdomains (Cloudflare terminates TLS, Caddy serves HTTP)
 http://ascii-chat.com http://www.ascii-chat.com {
   root * /app/web/www/dist
+
+  # COEP/COOP headers for SharedArrayBuffer support (required for WASM)
+  header Cross-Origin-Embedder-Policy "require-corp"
+  header Cross-Origin-Opener-Policy "same-origin"
 
   # Proxy API requests to Node.js backend
   handle /api/* {
@@ -125,6 +140,17 @@ http://discovery.ascii-chat.com {
 http://web.ascii-chat.com {
   root * /app/web/web/dist
 
+  # COEP/COOP headers for SharedArrayBuffer support (required for WASM threads)
+  header Cross-Origin-Embedder-Policy "require-corp"
+  header Cross-Origin-Opener-Policy "same-origin"
+
+  # CORS for .wasm files (allows ascii-chat.com and www.ascii-chat.com to fetch mirror.wasm cross-origin)
+  handle /wasm/* {
+    header Access-Control-Allow-Origin "*"
+    header Cross-Origin-Resource-Policy "cross-origin"
+    file_server
+  }
+
   # Cache static assets with content hashes for 1 year (immutable)
   handle /assets/* {
     header Cache-Control "public, max-age=31536000, immutable"
@@ -133,7 +159,7 @@ http://web.ascii-chat.com {
 
   # SPA routing with 1 hour cache
   @sparouteswebprod {
-    not path /assets/*
+    not path /assets/* /wasm/*
   }
   handle @sparouteswebprod {
     header Cache-Control "public, max-age=3600"
