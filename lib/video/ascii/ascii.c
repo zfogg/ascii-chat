@@ -28,6 +28,7 @@
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/ascii/scalar/halfblock.h>
 #include <ascii-chat/video/ascii/scalar/background.h>
+#include <ascii-chat/video/ascii/scalar/foreground.h>
 
 /* ============================================================================
  * ASCII Art Video Processing
@@ -154,7 +155,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
       if (GET_OPTION(render_mode) == RENDER_MODE_BACKGROUND) {
         ascii = image_print_color_background(resized, palette_chars);
       } else {
-        ascii = image_print_color(resized, palette_chars);
+        ascii = image_print_color_utf8(resized, palette_chars);
       }
 #endif
     }
@@ -990,7 +991,7 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
     if (use_background) {
       return image_print_color_background(image, palette);
     }
-    return image_print_color(image, palette);
+    return image_print_color_utf8(image, palette);
 #endif
   }
   case TERM_COLOR_256:

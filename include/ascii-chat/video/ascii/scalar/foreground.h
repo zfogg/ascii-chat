@@ -27,6 +27,9 @@ char *image_print_256color(const image_t *p, const char *palette);
 // 16-color functions
 char *image_print_16color(const image_t *p, const char *palette);
 
+// Truecolor foreground with full UTF-8 support (no RLE, for WASM)
+char *image_print_color_utf8(const image_t *p, const char *palette);
+
 // 16-color dithered functions
 char *image_print_16color_dithered(const image_t *p, const char *palette);
 char *image_print_16color_dithered_with_background(const image_t *image, bool use_background, const char *palette);
