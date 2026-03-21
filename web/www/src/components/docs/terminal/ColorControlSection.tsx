@@ -1,6 +1,36 @@
 import { Heading } from "@ascii-chat/shared/components";
 import { CodeBlock } from "@ascii-chat/shared/components";
 import TrackedLink from "../../TrackedLink";
+import { MirrorDemoWidget } from "../../demo";
+import type { DemoOption } from "../../demo";
+import { ColorMode } from "@ascii-chat/shared/wasm";
+
+const COLOR_MODE_OPTIONS: DemoOption[] = [
+  {
+    id: "truecolor",
+    label: "Truecolor",
+    description: "--color-mode truecolor",
+    settings: { colorMode: ColorMode.TRUECOLOR },
+  },
+  {
+    id: "256",
+    label: "256-color",
+    description: "--color-mode 256",
+    settings: { colorMode: ColorMode.COLOR_256 },
+  },
+  {
+    id: "16",
+    label: "16-color",
+    description: "--color-mode 16",
+    settings: { colorMode: ColorMode.COLOR_16 },
+  },
+  {
+    id: "none",
+    label: "Monochrome",
+    description: "--color-mode none",
+    settings: { colorMode: ColorMode.NONE },
+  },
+];
 
 export default function ColorControlSection() {
   return (
@@ -95,6 +125,13 @@ export default function ColorControlSection() {
             "# Available schemes: pastel, nord, solarized-dark, dracula, gruvbox-dark, monokai, etc.\nascii-chat client --color-scheme dracula\n\n# Via environment\nexport ASCII_CHAT_COLOR_SCHEME=nord"
           }
         </CodeBlock>
+      </div>
+      <div className="mt-8">
+        <MirrorDemoWidget
+          demoOptions={COLOR_MODE_OPTIONS}
+          height="30vh"
+          minHeight={180}
+        />
       </div>
     </section>
   );

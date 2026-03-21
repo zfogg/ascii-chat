@@ -34,6 +34,8 @@ export {
   getMatrixRain,
   setFlipX,
   getFlipX,
+  setFlipY,
+  getFlipY,
   setTargetFps,
   getTargetFps,
 } from "./common/options";

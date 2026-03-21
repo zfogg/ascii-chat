@@ -525,6 +525,8 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _get_matrix_rain
     _set_flip_x
     _get_flip_x
+    _set_flip_y
+    _get_flip_y
     _set_target_fps
     _get_target_fps
     _malloc
@@ -551,6 +553,8 @@ set(EXPORTED_FUNCTIONS_CLIENT
     _get_matrix_rain
     _set_flip_x
     _get_flip_x
+    _set_flip_y
+    _get_flip_y
     _set_target_fps
     _get_target_fps
     _malloc

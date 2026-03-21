@@ -1,5 +1,34 @@
 import { Heading } from "@ascii-chat/shared/components";
 import { CodeBlock } from "@ascii-chat/shared/components";
+import { MirrorDemoWidget } from "../../demo";
+import type { DemoOption } from "../../demo";
+
+const FLIP_OPTIONS: DemoOption[] = [
+  {
+    id: "none",
+    label: "Normal",
+    description: "No flip",
+    settings: { flipX: false, flipY: false },
+  },
+  {
+    id: "flipx",
+    label: "--flip-x",
+    description: "Mirror horizontally",
+    settings: { flipX: true, flipY: false },
+  },
+  {
+    id: "flipy",
+    label: "--flip-y",
+    description: "Flip vertically",
+    settings: { flipX: false, flipY: true },
+  },
+  {
+    id: "both",
+    label: "Both",
+    description: "--flip-x --flip-y (180\u00b0 rotation)",
+    settings: { flipX: true, flipY: true },
+  },
+];
 
 export default function VideoTransformsSection() {
   return (
@@ -44,6 +73,13 @@ export default function VideoTransformsSection() {
             "# Preserve aspect ratio (DEFAULT)\nascii-chat mirror video.mp4\n\n# Stretch to fill terminal (may distort)\nascii-chat mirror video.mp4 --stretch\n\n# Via environment\nexport ASCII_CHAT_STRETCH=true"
           }
         </CodeBlock>
+      </div>
+      <div className="mt-8">
+        <MirrorDemoWidget
+          demoOptions={FLIP_OPTIONS}
+          height="30vh"
+          minHeight={180}
+        />
       </div>
     </section>
   );

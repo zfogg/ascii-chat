@@ -1,5 +1,29 @@
 import { Heading } from "@ascii-chat/shared/components";
 import { CodeBlock } from "@ascii-chat/shared/components";
+import { MirrorDemoWidget } from "../../demo";
+import type { DemoOption } from "../../demo";
+import { RenderMode } from "@ascii-chat/shared/wasm";
+
+const RENDER_MODE_OPTIONS: DemoOption[] = [
+  {
+    id: "foreground",
+    label: "Foreground",
+    description: "--render-mode foreground",
+    settings: { renderMode: RenderMode.FOREGROUND },
+  },
+  {
+    id: "background",
+    label: "Background",
+    description: "--render-mode background",
+    settings: { renderMode: RenderMode.BACKGROUND },
+  },
+  {
+    id: "halfblock",
+    label: "Half-block",
+    description: "--render-mode half-block",
+    settings: { renderMode: RenderMode.HALF_BLOCK },
+  },
+];
 
 export default function RenderModesSection() {
   return (
@@ -39,6 +63,13 @@ export default function RenderModesSection() {
             </ul>
           </div>
         </div>
+      </div>
+      <div className="mt-8">
+        <MirrorDemoWidget
+          demoOptions={RENDER_MODE_OPTIONS}
+          height="30vh"
+          minHeight={180}
+        />
       </div>
     </section>
   );

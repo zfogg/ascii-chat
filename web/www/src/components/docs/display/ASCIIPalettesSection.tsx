@@ -1,5 +1,40 @@
 import { Heading } from "@ascii-chat/shared/components";
 import { CodeBlock } from "@ascii-chat/shared/components";
+import { MirrorDemoWidget } from "../../demo";
+import type { DemoOption } from "../../demo";
+
+const PALETTE_OPTIONS: DemoOption[] = [
+  {
+    id: "standard",
+    label: "Standard",
+    description: "--palette standard",
+    settings: { palette: "standard" },
+  },
+  {
+    id: "blocks",
+    label: "Blocks",
+    description: "--palette blocks",
+    settings: { palette: "blocks" },
+  },
+  {
+    id: "digital",
+    label: "Digital",
+    description: "--palette digital",
+    settings: { palette: "digital" },
+  },
+  {
+    id: "minimal",
+    label: "Minimal",
+    description: "--palette minimal",
+    settings: { palette: "minimal" },
+  },
+  {
+    id: "cool",
+    label: "Cool",
+    description: "--palette cool",
+    settings: { palette: "cool" },
+  },
+];
 
 export default function ASCIIPalettesSection() {
   return (
@@ -94,6 +129,13 @@ export default function ASCIIPalettesSection() {
             '# Custom palette (darkest to brightest)\nascii-chat mirror --palette custom --palette-chars " .:-=+*#%@"\n\n# Short form\nascii-chat mirror -P custom -C " .:-=+*#%@"\n\n# UTF-8 custom palette\nascii-chat mirror --utf8 true -P custom -C " ░▒▓█"\n\n# Via environment\nexport ASCII_CHAT_PALETTE=custom\nexport ASCII_CHAT_PALETTE_CHARS=" .:-=+*#%@"'
           }
         </CodeBlock>
+      </div>
+      <div className="mt-8">
+        <MirrorDemoWidget
+          demoOptions={PALETTE_OPTIONS}
+          height="30vh"
+          minHeight={180}
+        />
       </div>
     </section>
   );

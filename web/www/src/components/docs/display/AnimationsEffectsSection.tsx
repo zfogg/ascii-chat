@@ -1,5 +1,29 @@
 import { Heading } from "@ascii-chat/shared/components";
 import { CodeBlock } from "@ascii-chat/shared/components";
+import { MirrorDemoWidget } from "../../demo";
+import type { DemoOption } from "../../demo";
+import { ColorFilter } from "@ascii-chat/shared/wasm";
+
+const MATRIX_OPTIONS: DemoOption[] = [
+  {
+    id: "off",
+    label: "Off",
+    description: "Normal rendering",
+    settings: { matrixRain: false },
+  },
+  {
+    id: "on",
+    label: "Matrix Rain",
+    description: "--matrix",
+    settings: { matrixRain: true },
+  },
+  {
+    id: "rainbow",
+    label: "Matrix Rainbow",
+    description: "--matrix --color-filter rainbow",
+    settings: { matrixRain: true, colorFilter: ColorFilter.RAINBOW },
+  },
+];
 
 export default function AnimationsEffectsSection() {
   return (
@@ -38,6 +62,13 @@ export default function AnimationsEffectsSection() {
             rain down as green code from the movies.
           </p>
         </div>
+      </div>
+      <div className="mt-8">
+        <MirrorDemoWidget
+          demoOptions={MATRIX_OPTIONS}
+          height="30vh"
+          minHeight={180}
+        />
       </div>
     </section>
   );

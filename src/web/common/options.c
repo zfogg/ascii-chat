@@ -144,6 +144,21 @@ int get_flip_x(void) {
 }
 
 // ============================================================================
+// Vertical Flip Accessors
+// ============================================================================
+
+EMSCRIPTEN_KEEPALIVE
+int set_flip_y(int enabled) {
+  asciichat_error_t err = options_set_bool("flip_y", enabled != 0);
+  return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int get_flip_y(void) {
+  return GET_OPTION(flip_y) ? 1 : 0;
+}
+
+// ============================================================================
 // Render Mode Accessors
 // ============================================================================
 

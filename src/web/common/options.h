@@ -41,6 +41,10 @@ int get_matrix_rain(void);
 int set_flip_x(int enabled);
 int get_flip_x(void);
 
+// Vertical flip setters/getters
+int set_flip_y(int enabled);
+int get_flip_y(void);
+
 // Target FPS setters/getters
 int set_target_fps(int fps);
 int get_target_fps(void);

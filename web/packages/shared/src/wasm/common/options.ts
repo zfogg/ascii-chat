@@ -42,13 +42,7 @@ export enum ColorFilter {
   RAINBOW = 12,
 }
 
-export type Palette =
-  | "standard"
-  | "blocks"
-  | "digital"
-  | "minimal"
-  | "cool"
-  | "custom";
+export type Palette = "standard" | "blocks" | "digital" | "minimal" | "cool" | "custom";
 
 // Module-level options accessor (set by mirror.ts or client.ts during init)
 let options: OptionAccessor | null = null;
@@ -229,6 +223,21 @@ export function setFlipX(enabled: boolean): void {
 export function getFlipX(): boolean {
   if (!options) throw new Error("Options not initialized");
   return options.getBool("flip_x");
+}
+
+// ============================================================================
+// Vertical Flip Accessors
+// ============================================================================
+
+export function setFlipY(enabled: boolean): void {
+  if (!options) throw new Error("Options not initialized");
+  console.log(`${LOG_PREFIX} setFlipY(${enabled})`);
+  options.setBool("flip_y", enabled);
+}
+
+export function getFlipY(): boolean {
+  if (!options) throw new Error("Options not initialized");
+  return options.getBool("flip_y");
 }
 
 // ============================================================================

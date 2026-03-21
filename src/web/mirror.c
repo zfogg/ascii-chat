@@ -167,11 +167,13 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
     return NULL;
   }
 
-  bool flip = GET_OPTION(flip_x);
+  bool flip_x = GET_OPTION(flip_x);
+  bool flip_y = GET_OPTION(flip_y);
   for (int y = 0; y < src_height; y++) {
     for (int x = 0; x < src_width; x++) {
-      int src_x = flip ? (src_width - 1 - x) : x;
-      int src_idx = (y * src_width + src_x) * 4;
+      int src_x = flip_x ? (src_width - 1 - x) : x;
+      int src_y = flip_y ? (src_height - 1 - y) : y;
+      int src_idx = (src_y * src_width + src_x) * 4;
       int dst_idx = y * src_width + x;
 
       rgb_pixels[dst_idx].r = rgba_data[src_idx + 0];
