@@ -23,9 +23,8 @@ import { useCanvasCapture } from "@ascii-chat/shared/hooks";
 import {
   AsciiRenderer,
   type AsciiRendererHandle,
+  Heading,
 } from "@ascii-chat/shared/components";
-import { SITES } from "@ascii-chat/shared/utils";
-import { Heading } from "@ascii-chat/shared/components";
 import { registerActiveDemo, unregisterActiveDemo } from "./activeDemo";
 import type { DemoOption } from "./types";
 
@@ -98,16 +97,20 @@ export default function MirrorDemoWidget({
       return;
     }
 
+    addDebugLog("Loading WASM factory...");
     // @ts-expect-error - Generated file without types
     const { default: factory } = await import("mirror-wasm-factory");
 
-    const wasmBaseUrl = SITES.WEB.replace(/:443$/, "");
+    // Use window.location.origin to load WASM from current site
+    // This works whether running on localhost, manjaro-twopal, or production
+    const wasmBaseUrl = window.location.origin;
+    addDebugLog(`Loading WASM from ${wasmBaseUrl}/wasm/`);
     await initMirrorWasm(factory as EmscriptenModuleFactory, {
       locateFile: (path: string) => `${wasmBaseUrl}/wasm/${path}`,
     });
 
     setWasmReady(true);
-  }, []);
+  }, [addDebugLog]);
 
   const stop = useCallback(() => {
     if (frameIntervalRef.current) {
