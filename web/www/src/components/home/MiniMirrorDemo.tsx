@@ -103,7 +103,7 @@ export default function MiniMirrorDemo() {
       if (videoRef.current) {
         videoRef.current.src = "/assets/demo-video.mp4";
         videoRef.current.loop = true;
-        videoRef.current.muted = false;
+        videoRef.current.muted = true;
         videoRef.current.playsInline = true;
         await new Promise<void>((resolve, reject) => {
           videoRef.current!.addEventListener(
@@ -126,6 +126,8 @@ export default function MiniMirrorDemo() {
           );
         });
         await videoRef.current.play();
+        // Unmute after playback starts (iOS requires muted for initial load)
+        videoRef.current.muted = false;
       }
 
       setFlipX(false);
