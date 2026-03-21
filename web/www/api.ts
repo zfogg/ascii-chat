@@ -421,16 +421,27 @@ app.get("/api/man3/search", limiter, (req: Request, res: Response) => {
       return res.status(500).json({ error: "Search index not loaded" });
     }
 
-    // Search using minisearch
+    // Search using minisearch - require word boundaries for more precise matches
     const searchResults = miniSearch.search(query, {
-      combineWith: "OR",
+      combineWith: "AND",
       prefix: false,
+      boost: {
+        name: 2,
+        title: 2,
+      },
     });
 
-    // Filter out source pages
-    const filteredResults = searchResults.filter(
-      (result) => !result.name.endsWith("_source"),
-    );
+    // Filter out source pages and results without meaningful matches
+    const filteredResults = searchResults
+      .filter((result) => !result.name.endsWith("_source"))
+      .filter((result) => {
+        // Only include if it's a name/title match or has reasonable score
+        const isNameMatch =
+          result.name.toLowerCase().includes(query.toLowerCase()) ||
+          (result.title &&
+            result.title.toLowerCase().includes(query.toLowerCase()));
+        return isNameMatch || result.score > 1;
+      });
 
     const results: {
       name: string;
