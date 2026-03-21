@@ -185,7 +185,10 @@ jobs:
         run: |
           cmake --build build_release --target ascii-chat
           cmake --build build_release --target static-lib
-          cmake --build build_release --target shared-lib
+
+      - name: Build shared library
+        if: matrix.os != 'Linux'
+        run: cmake --build build_release --target shared-lib
 
       - name: Verify build artifacts (Unix)
         if: matrix.os != 'Windows'
