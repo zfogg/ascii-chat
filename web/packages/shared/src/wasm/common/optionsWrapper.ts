@@ -88,13 +88,21 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
         `[OptionAccessor] setInt: name=${name}, value=${value}, fn exists=${typeof fn === "function"}`,
       );
       if (typeof fn !== "function") {
-        console.error(`[OptionAccessor] ERROR: WASM function _set_${name} not found`);
-        throw new Error(`WASM function _set_${name} not found. Ensure module is loaded.`);
+        console.error(
+          `[OptionAccessor] ERROR: WASM function _set_${name} not found`,
+        );
+        throw new Error(
+          `WASM function _set_${name} not found. Ensure module is loaded.`,
+        );
       }
       const result = (fn as (v: number) => number).call(module, value);
-      console.debug(`[OptionAccessor] setInt result: name=${name}, result=${result}`);
+      console.debug(
+        `[OptionAccessor] setInt result: name=${name}, result=${result}`,
+      );
       if (result !== 0) {
-        console.error(`[OptionAccessor] ERROR: Failed to set ${name}: ${value}, result=${result}`);
+        console.error(
+          `[OptionAccessor] ERROR: Failed to set ${name}: ${value}, result=${result}`,
+        );
         throw new Error(`Failed to set ${name}: ${value}`);
       }
     },
@@ -108,7 +116,9 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
     getInt(name: string): number {
       const fn = (module as unknown as Record<string, unknown>)[`_get_${name}`];
       if (typeof fn !== "function") {
-        throw new Error(`WASM function _get_${name} not found. Ensure module is loaded.`);
+        throw new Error(
+          `WASM function _get_${name} not found. Ensure module is loaded.`,
+        );
       }
       return (fn as () => number).call(module);
     },
@@ -125,13 +135,21 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
         `[OptionAccessor] setBool: name=${name}, value=${value}, fn exists=${typeof fn === "function"}`,
       );
       if (typeof fn !== "function") {
-        console.error(`[OptionAccessor] ERROR: WASM function _set_${name} not found`);
-        throw new Error(`WASM function _set_${name} not found. Ensure module is loaded.`);
+        console.error(
+          `[OptionAccessor] ERROR: WASM function _set_${name} not found`,
+        );
+        throw new Error(
+          `WASM function _set_${name} not found. Ensure module is loaded.`,
+        );
       }
       const result = (fn as (v: number) => number).call(module, value ? 1 : 0);
-      console.debug(`[OptionAccessor] setBool result: name=${name}, result=${result}`);
+      console.debug(
+        `[OptionAccessor] setBool result: name=${name}, result=${result}`,
+      );
       if (result !== 0) {
-        console.error(`[OptionAccessor] ERROR: Failed to set ${name}: ${value}, result=${result}`);
+        console.error(
+          `[OptionAccessor] ERROR: Failed to set ${name}: ${value}, result=${result}`,
+        );
         throw new Error(`Failed to set ${name}: ${value}`);
       }
     },
@@ -145,7 +163,9 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
     getBool(name: string): boolean {
       const fn = (module as unknown as Record<string, unknown>)[`_get_${name}`];
       if (typeof fn !== "function") {
-        throw new Error(`WASM function _get_${name} not found. Ensure module is loaded.`);
+        throw new Error(
+          `WASM function _get_${name} not found. Ensure module is loaded.`,
+        );
       }
       return (fn as () => number).call(module) !== 0;
     },
@@ -159,7 +179,9 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
     setString(name: string, value: string): void {
       const fn = (module as unknown as Record<string, unknown>)[`_set_${name}`];
       if (typeof fn !== "function") {
-        throw new Error(`WASM function _set_${name} not found. Ensure module is loaded.`);
+        throw new Error(
+          `WASM function _set_${name} not found. Ensure module is loaded.`,
+        );
       }
 
       if (!value) {
@@ -192,7 +214,9 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
     getString(name: string): string {
       const fn = (module as unknown as Record<string, unknown>)[`_get_${name}`];
       if (typeof fn !== "function") {
-        throw new Error(`WASM function _get_${name} not found. Ensure module is loaded.`);
+        throw new Error(
+          `WASM function _get_${name} not found. Ensure module is loaded.`,
+        );
       }
 
       const ptr = (fn as () => number).call(module);

@@ -42,7 +42,13 @@ export enum ColorFilter {
   RAINBOW = 12,
 }
 
-export type Palette = "standard" | "blocks" | "digital" | "minimal" | "cool" | "custom";
+export type Palette =
+  | "standard"
+  | "blocks"
+  | "digital"
+  | "minimal"
+  | "cool"
+  | "custom";
 
 // Module-level options accessor (set by mirror.ts or client.ts during init)
 let options: OptionAccessor | null = null;

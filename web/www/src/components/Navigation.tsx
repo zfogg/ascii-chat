@@ -44,7 +44,7 @@ export default function Navigation() {
 
   const handleNavClick = () => {
     // Scroll the main scrollable container to top
-    const scrollContainer = document.querySelector('div.overflow-y-auto');
+    const scrollContainer = document.querySelector("div.overflow-y-auto");
     if (scrollContainer) {
       scrollContainer.scrollTop = 0;
     }
@@ -61,101 +61,101 @@ export default function Navigation() {
         />
       )}
       <nav className="border-b border-gray-800 bg-gray-950/50 backdrop-blur-sm fixed top-0 left-0 right-0 z-50 w-full">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
-        <div className="flex items-center justify-between">
-          <TrackedLink
-            to="/"
-            label="Nav - Logo"
-            className="text-xl sm:text-2xl font-bold"
-          >
-            <span className="text-cyan-400">ascii</span>
-            <span className="text-purple-400">-</span>
-            <span className="text-teal-400">chat</span>
-          </TrackedLink>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex gap-6 text-sm items-center">
-            {navItems.map(({ to, label, paths }) => (
-              <TrackedLink
-                key={to}
-                to={to}
-                label={`Nav - ${label}`}
-                className={getDesktopNavLinkClass(paths)}
-                onClick={handleNavClick}
-              >
-                {label}
-              </TrackedLink>
-            ))}
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex items-center justify-between">
             <TrackedLink
-              href={SITES.WEB}
-              label="Nav - Web Client"
-              className="transition-colors py-1 px-2 rounded text-gray-400 hover:text-fuchsia-300"
-              target="_blank"
-              rel="noopener noreferrer"
+              to="/"
+              label="Nav - Logo"
+              className="text-xl sm:text-2xl font-bold"
             >
-              Web Client
+              <span className="text-cyan-400">ascii</span>
+              <span className="text-purple-400">-</span>
+              <span className="text-teal-400">chat</span>
             </TrackedLink>
+
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex gap-6 text-sm items-center">
+              {navItems.map(({ to, label, paths }) => (
+                <TrackedLink
+                  key={to}
+                  to={to}
+                  label={`Nav - ${label}`}
+                  className={getDesktopNavLinkClass(paths)}
+                  onClick={handleNavClick}
+                >
+                  {label}
+                </TrackedLink>
+              ))}
+              <TrackedLink
+                href={SITES.WEB}
+                label="Nav - Web Client"
+                className="transition-colors py-1 px-2 rounded text-gray-400 hover:text-fuchsia-300"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Web Client
+              </TrackedLink>
+            </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden text-gray-400 hover:text-fuchsia-300 transition-colors p-2"
+              aria-label="Toggle menu"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                {mobileMenuOpen ? (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                ) : (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                )}
+              </svg>
+            </button>
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden text-gray-400 hover:text-fuchsia-300 transition-colors p-2"
-            aria-label="Toggle menu"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              {mobileMenuOpen ? (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              ) : (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              )}
-            </svg>
-          </button>
+          {/* Mobile Navigation */}
+          {mobileMenuOpen && (
+            <div className="md:hidden mt-4 pb-2 border-t border-gray-800 pt-4">
+              {navItems.map(({ to, label, paths }) => (
+                <TrackedLink
+                  key={to}
+                  to={to}
+                  label={`Nav - ${label}`}
+                  className={getMobileNavLinkClass(paths)}
+                  onClick={handleNavClick}
+                >
+                  {label}
+                </TrackedLink>
+              ))}
+              <TrackedLink
+                href={SITES.WEB}
+                label="Nav - Web Client"
+                className={getMobileNavLinkClass()}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Web Client
+              </TrackedLink>
+            </div>
+          )}
         </div>
-
-        {/* Mobile Navigation */}
-        {mobileMenuOpen && (
-          <div className="md:hidden mt-4 pb-2 border-t border-gray-800 pt-4">
-            {navItems.map(({ to, label, paths }) => (
-              <TrackedLink
-                key={to}
-                to={to}
-                label={`Nav - ${label}`}
-                className={getMobileNavLinkClass(paths)}
-                onClick={handleNavClick}
-              >
-                {label}
-              </TrackedLink>
-            ))}
-            <TrackedLink
-              href={SITES.WEB}
-              label="Nav - Web Client"
-              className={getMobileNavLinkClass()}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Web Client
-            </TrackedLink>
-          </div>
-        )}
-      </div>
-    </nav>
+      </nav>
     </>
   );
 }
