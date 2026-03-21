@@ -176,25 +176,6 @@ if(USE_MUSL)
 
         # Configure FFmpeg
         message(STATUS "  Configuring FFmpeg...")
-        # Test pkg-config can find x265 with the same PKG_CONFIG_PATH we'll pass to FFmpeg
-        execute_process(
-            COMMAND ${CMAKE_COMMAND} -E env
-                PKG_CONFIG_PATH=${X264_PREFIX}/lib/pkgconfig:${X265_PREFIX}/lib/pkgconfig
-                pkg-config --exists --print-errors x265
-            RESULT_VARIABLE _PKG_X265_RESULT
-            OUTPUT_VARIABLE _PKG_X265_OUTPUT
-            ERROR_VARIABLE _PKG_X265_ERROR
-        )
-        message(STATUS "  pkg-config --exists x265: result=${_PKG_X265_RESULT} err=${_PKG_X265_ERROR}")
-        execute_process(
-            COMMAND ${CMAKE_COMMAND} -E env
-                PKG_CONFIG_PATH=${X264_PREFIX}/lib/pkgconfig:${X265_PREFIX}/lib/pkgconfig
-                pkg-config --libs --static x265
-            RESULT_VARIABLE _PKG_X265_LIBS_RESULT
-            OUTPUT_VARIABLE _PKG_X265_LIBS_OUTPUT
-            ERROR_VARIABLE _PKG_X265_LIBS_ERROR
-        )
-        message(STATUS "  pkg-config --libs --static x265: result=${_PKG_X265_LIBS_RESULT} out=${_PKG_X265_LIBS_OUTPUT} err=${_PKG_X265_LIBS_ERROR}")
         # Find GCC's lib directories for libstdc++/libgcc (needed for x265 C++ link test)
         execute_process(
             COMMAND ${REAL_GCC} -print-file-name=libgcc.a
@@ -216,8 +197,8 @@ if(USE_MUSL)
                 --prefix=${FFMPEG_PREFIX}
                 --cc=${MUSL_GCC}
                 "--extra-cflags=-I${X264_PREFIX}/include -I${X265_PREFIX}/include"
-                "--extra-ldflags=-L${X264_PREFIX}/lib -L${X265_PREFIX}/lib -L${GCC_STDCXX_DIR} -L${GCC_LIB_DIR}"
-                "--extra-libs=-lm -Wl,-Bstatic -lstdc++ -lgcc -lgcc_eh -Wl,-Bdynamic"
+                "--extra-ldflags=-L${X264_PREFIX}/lib -L${X265_PREFIX}/lib -L${ALPINE_LIBCXX_DIR}/usr/lib -L${GCC_STDCXX_DIR} -L${GCC_LIB_DIR}"
+                "--extra-libs=-lm -Wl,-Bstatic -lc++ -lc++abi -lstdc++ -lgcc -lgcc_eh -Wl,-Bdynamic"
                 --enable-static
                 --disable-shared
                 --enable-pic

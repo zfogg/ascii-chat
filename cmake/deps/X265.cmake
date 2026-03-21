@@ -162,26 +162,14 @@ if(USE_MUSL)
         message(STATUS "  ${BoldGreen}x265${ColorReset} library found in cache: ${BoldMagenta}${X265_PREFIX}/lib/libx265.a${ColorReset}")
     endif()
 
-    # x265 built with clang -stdlib=libc++ lists -lc++ in Libs.private,
-    # but FFmpeg's musl-gcc configure can't find libc++. Strip it since
-    # FFmpeg handles C++ runtime linking via --extra-libs.
+    # x265 built with clang -stdlib=libc++ lists C++ runtime libs in
+    # Libs.private that musl-gcc can't resolve during FFmpeg's link test.
+    # Clear Libs.private since FFmpeg handles runtime linking via --extra-libs.
     set(_x265_pc "${X265_PREFIX}/lib/pkgconfig/x265.pc")
     if(EXISTS "${_x265_pc}")
         file(READ "${_x265_pc}" _x265_pc_contents)
-        string(FIND "${_x265_pc_contents}" "-lc++" _has_libcxx)
-        if(NOT _has_libcxx EQUAL -1)
-            string(REPLACE "-lc++ " "" _x265_pc_contents "${_x265_pc_contents}")
-            string(REPLACE "-lc++" "" _x265_pc_contents "${_x265_pc_contents}")
-            file(WRITE "${_x265_pc}" "${_x265_pc_contents}")
-            message(STATUS "  Patched x265.pc: removed -lc++ from Libs.private")
-        endif()
-        # Verify the patch
-        file(READ "${_x265_pc}" _x265_pc_verify)
-        message(STATUS "  x265.pc Libs.private after patch:")
-        string(REGEX MATCH "Libs\\.private:.*" _libs_private "${_x265_pc_verify}")
-        message(STATUS "    ${_libs_private}")
-    else()
-        message(STATUS "  x265.pc not found at ${_x265_pc}")
+        string(REGEX REPLACE "Libs\\.private:[^\n]*" "Libs.private:" _x265_pc_contents "${_x265_pc_contents}")
+        file(WRITE "${_x265_pc}" "${_x265_pc_contents}")
     endif()
 
     set(X265_LIBRARIES "${X265_PREFIX}/lib/libx265.a")
