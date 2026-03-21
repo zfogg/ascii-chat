@@ -5,9 +5,31 @@
   header Cross-Origin-Embedder-Policy "require-corp"
   header Cross-Origin-Opener-Policy "same-origin"
 
-  # CORS for .wasm files (allows ascii-chat.com to fetch mirror.wasm cross-origin)
-  handle /wasm/* {
+  # CORS for .wasm files (allows ascii-chat.com and www.ascii-chat.com to fetch mirror.wasm cross-origin)
+  @wasm_cors_main {
+    path /wasm/*
+    header Origin "https://ascii-chat.com"
+  }
+  @wasm_cors_www {
+    path /wasm/*
+    header Origin "https://www.ascii-chat.com"
+  }
+  @wasm_no_cors {
+    path /wasm/*
+    not header Origin "https://ascii-chat.com"
+    not header Origin "https://www.ascii-chat.com"
+  }
+  handle @wasm_cors_main {
     header Access-Control-Allow-Origin "https://ascii-chat.com"
+    header Cross-Origin-Resource-Policy "cross-origin"
+    file_server
+  }
+  handle @wasm_cors_www {
+    header Access-Control-Allow-Origin "https://www.ascii-chat.com"
+    header Cross-Origin-Resource-Policy "cross-origin"
+    file_server
+  }
+  handle @wasm_no_cors {
     header Cross-Origin-Resource-Policy "cross-origin"
     file_server
   }
