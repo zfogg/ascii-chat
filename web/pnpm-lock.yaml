@@ -125,6 +125,12 @@ importers:
 
   packages/shared:
     dependencies:
+      '@pablo-lion/xterm-react':
+        specifier: ^1.1.2
+        version: 1.1.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@xterm/addon-fit':
+        specifier: ^0.11.0
+        version: 0.11.0
       prismjs:
         specifier: ^1.30.0
         version: 1.30.0
@@ -143,6 +149,9 @@ importers:
       react-syntax-highlighter:
         specifier: ^16.1.0
         version: 16.1.1(react@19.2.4)
+      xterm:
+        specifier: ^5.3.0
+        version: 5.3.0
     devDependencies:
       '@types/react':
         specifier: ^19.0.0

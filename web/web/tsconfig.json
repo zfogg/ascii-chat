@@ -8,12 +8,8 @@
       "@ascii-chat/shared/components": [
         "../packages/shared/src/components/index.ts"
       ],
-      "@ascii-chat/shared/hooks": [
-        "../packages/shared/src/hooks/index.ts"
-      ],
-      "@ascii-chat/shared/wasm": [
-        "../packages/shared/src/wasm/index.ts"
-      ],
+      "@ascii-chat/shared/hooks": ["../packages/shared/src/hooks/index.ts"],
+      "@ascii-chat/shared/wasm": ["../packages/shared/src/wasm/index.ts"],
       "@ascii-chat/shared/utils": ["../packages/shared/src/utils/index.ts"],
       "@ascii-chat/shared/styles/*": ["../packages/shared/src/styles/*"]
     },

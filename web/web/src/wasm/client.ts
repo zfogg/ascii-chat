@@ -2,7 +2,11 @@
 // Provides type-safe interface to libasciichat client mode
 
 import type { Palette } from "../components";
-import { createOptionAccessor, initializeOptions, cleanupOptions } from "@ascii-chat/shared/wasm";
+import {
+  createOptionAccessor,
+  initializeOptions,
+  cleanupOptions,
+} from "@ascii-chat/shared/wasm";
 
 // Type for WASM exports exposed to window.asciiChatWasm
 interface AsciiChatWasmExports {
