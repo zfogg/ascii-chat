@@ -461,10 +461,15 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   // Configure codec-specific options for quality
   AVDictionary *codec_opts = NULL;
   if (strcmp(codec_name, "libx264") == 0) {
-    // x264 fast settings for real-time rendering (optimize for speed over quality)
-    av_dict_set(&codec_opts, "preset", "ultrafast", 0); // ultrafast preset for real-time encoding
-    av_dict_set(&codec_opts, "crf", "28", 0); // Lower quality (crf 28 = reasonable quality, much faster)
-    log_debug("ffmpeg_encoder: x264 preset=ultrafast with crf=28 for real-time encoding");
+    av_dict_set(&codec_opts, "preset", "ultrafast", 0);
+    av_dict_set(&codec_opts, "crf", "28", 0);
+    log_debug("ffmpeg_encoder: x264 preset=ultrafast crf=28");
+  } else if (strcmp(codec_name, "libx265") == 0) {
+    av_dict_set(&codec_opts, "preset", "ultrafast", 0);
+    av_dict_set(&codec_opts, "crf", "32", 0);
+    // x265 tag must be hvc1 for MP4 container compatibility (Apple/browser playback)
+    enc->stream->codecpar->codec_tag = MKTAG('h', 'v', 'c', '1');
+    log_debug("ffmpeg_encoder: x265 preset=ultrafast crf=32");
   }
 
   // Open codec (capture libx264 startup logs)

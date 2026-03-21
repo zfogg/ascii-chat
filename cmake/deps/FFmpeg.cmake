@@ -191,13 +191,13 @@ if(USE_MUSL)
                 CC=${MUSL_GCC}
                 REALGCC=${REAL_GCC}
                 CFLAGS=${MUSL_KERNEL_CFLAGS}\ -fPIC
-                PKG_CONFIG_PATH=${X265_PREFIX}/lib/pkgconfig
+                PKG_CONFIG_PATH=${X264_PREFIX}/lib/pkgconfig:${X265_PREFIX}/lib/pkgconfig
                 ASAN_OPTIONS=
                 "${FFMPEG_SOURCE_DIR}/configure"
                 --prefix=${FFMPEG_PREFIX}
                 --cc=${MUSL_GCC}
-                --extra-cflags=-I${X265_PREFIX}/include
-                "--extra-ldflags=-L${X265_PREFIX}/lib -L${GCC_STDCXX_DIR} -L${GCC_LIB_DIR}"
+                "--extra-cflags=-I${X264_PREFIX}/include -I${X265_PREFIX}/include"
+                "--extra-ldflags=-L${X264_PREFIX}/lib -L${X265_PREFIX}/lib -L${GCC_STDCXX_DIR} -L${GCC_LIB_DIR}"
                 "--extra-libs=-lm -Wl,-Bstatic -lstdc++ -lgcc -lgcc_eh -Wl,-Bdynamic"
                 --enable-static
                 --disable-shared
@@ -217,7 +217,8 @@ if(USE_MUSL)
                 --enable-protocol=file
                 --enable-demuxer=mov,matroska,avi,gif,image2
                 --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg
-                --enable-encoder=libx265
+                --enable-encoder=libx264,libx265
+                --enable-libx264
                 --enable-libx265
                 --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video
                 --enable-swscale
@@ -272,6 +273,7 @@ if(USE_MUSL)
         "${FFMPEG_PREFIX}/lib/libavutil.a"
         "${FFMPEG_PREFIX}/lib/libswscale.a"
         "${FFMPEG_PREFIX}/lib/libswresample.a"
+        "${X264_PREFIX}/lib/libx264.a"
         "${X265_PREFIX}/lib/libx265.a")
 
     # Create a custom target for musl builds (libraries are pre-built/cached)
@@ -412,7 +414,8 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
                 --enable-protocol=file
                 --enable-demuxer=mov,matroska,avi,gif,image2,mp3,wav,flac,ogg
                 --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg,mp3,aac,flac,vorbis,opus,pcm_s16le
-                --enable-encoder=libx265
+                --enable-encoder=libx264,libx265
+                --enable-libx264
                 --enable-libx265
                 --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video,aac,mpegaudio
                 --enable-swscale
