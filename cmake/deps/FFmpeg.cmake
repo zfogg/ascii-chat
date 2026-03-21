@@ -176,14 +176,25 @@ if(USE_MUSL)
 
         # Configure FFmpeg
         message(STATUS "  Configuring FFmpeg...")
-        # Verify x265.pc before configure
-        if(EXISTS "${X265_PREFIX}/lib/pkgconfig/x265.pc")
-            file(READ "${X265_PREFIX}/lib/pkgconfig/x265.pc" _ffmpeg_x265_pc)
-            string(REGEX MATCH "Libs\\.private:.*" _ffmpeg_libs_priv "${_ffmpeg_x265_pc}")
-            message(STATUS "  x265.pc check: ${_ffmpeg_libs_priv}")
-        else()
-            message(STATUS "  x265.pc NOT FOUND at ${X265_PREFIX}/lib/pkgconfig/x265.pc")
-        endif()
+        # Test pkg-config can find x265 with the same PKG_CONFIG_PATH we'll pass to FFmpeg
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E env
+                PKG_CONFIG_PATH=${X264_PREFIX}/lib/pkgconfig:${X265_PREFIX}/lib/pkgconfig
+                pkg-config --exists --print-errors x265
+            RESULT_VARIABLE _PKG_X265_RESULT
+            OUTPUT_VARIABLE _PKG_X265_OUTPUT
+            ERROR_VARIABLE _PKG_X265_ERROR
+        )
+        message(STATUS "  pkg-config --exists x265: result=${_PKG_X265_RESULT} err=${_PKG_X265_ERROR}")
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E env
+                PKG_CONFIG_PATH=${X264_PREFIX}/lib/pkgconfig:${X265_PREFIX}/lib/pkgconfig
+                pkg-config --libs --static x265
+            RESULT_VARIABLE _PKG_X265_LIBS_RESULT
+            OUTPUT_VARIABLE _PKG_X265_LIBS_OUTPUT
+            ERROR_VARIABLE _PKG_X265_LIBS_ERROR
+        )
+        message(STATUS "  pkg-config --libs --static x265: result=${_PKG_X265_LIBS_RESULT} out=${_PKG_X265_LIBS_OUTPUT} err=${_PKG_X265_LIBS_ERROR}")
         # Find GCC's lib directories for libstdc++/libgcc (needed for x265 C++ link test)
         execute_process(
             COMMAND ${REAL_GCC} -print-file-name=libgcc.a
