@@ -7,6 +7,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import winston from "winston";
 import morgan from "morgan";
+import MiniSearch from "minisearch";
 import { generateSessionStrings } from "./src/utils/strings.ts";
 
 dotenv.config();
@@ -90,6 +91,7 @@ interface Snippet {
 // Cache for man3 files and index
 let fileCache: Record<string, string> = {};
 let indexCache: IndexEntry[] | null = null;
+let miniSearch: MiniSearch | null = null;
 
 // Initialize cache
 function initializeCache() {
@@ -119,6 +121,14 @@ function initializeCache() {
       logger.info(
         `Index loaded successfully with ${indexCache.length} entries`,
       );
+
+      // Build minisearch index
+      miniSearch = new MiniSearch({
+        fields: ["name", "title"],
+        storeFields: ["name", "title", "file"],
+      });
+      miniSearch.addAll(indexCache);
+      logger.info(`MiniSearch index built with ${indexCache.length} documents`);
     } catch (err) {
       logger.error(`Failed to parse index.json: ${(err as Error).message}`);
     }
@@ -389,25 +399,20 @@ app.get("/api/man3/search", limiter, (req: Request, res: Response) => {
   }
 
   try {
-    // Parse regex format: /pattern/flags or literal string
-    let regex: RegExp;
-    let regexForSnippets: string;
-    let snippetsFlags: string;
-    const regexMatch = query.match(/^\/(.+)\/([gimuy]*)$/);
-
-    if (regexMatch) {
-      // Extract pattern and flags from /pattern/flags format
-      const pattern = regexMatch[1];
-      const flags = regexMatch[2] || "i";
-      regex = new RegExp(pattern, flags);
-      regexForSnippets = pattern;
-      snippetsFlags = flags;
-    } else {
-      // Treat as literal string with case-insensitive flag
-      regex = new RegExp(query, "i");
-      regexForSnippets = query;
-      snippetsFlags = "i";
+    if (!miniSearch) {
+      return res.status(500).json({ error: "Search index not loaded" });
     }
+
+    // Search using minisearch
+    const searchResults = miniSearch.search(query, {
+      combineWith: "OR",
+      prefix: false,
+    });
+
+    // Filter out source pages
+    const filteredResults = searchResults.filter(
+      (result) => !result.name.endsWith("_source"),
+    );
 
     const results: {
       name: string;
@@ -417,32 +422,32 @@ app.get("/api/man3/search", limiter, (req: Request, res: Response) => {
       totalMatchesInFile: number;
     }[] = [];
 
-    if (!indexCache) {
-      return res.status(500).json({ error: "Index not loaded" });
-    }
+    // For each matched page, get content and find snippets
+    for (const result of filteredResults) {
+      const page = indexCache?.find((p) => p.name === result.name);
+      if (!page) continue;
 
-    // Search in index (title/name), excluding source pages and metadata
-    const titleMatches = indexCache.filter(
-      (page) =>
-        !page.name.endsWith("_source") &&
-        (regex.test(page.title || page.name) || regex.test(page.name)),
-    );
-
-    // Search in content for title matches (get snippets)
-    for (const page of titleMatches) {
       const { text: content, lineNumbers } = getFileContentWithLineNumbers(
         page.name,
         page.file,
       );
-      logger.debug(
-        `[search] Retrieved ${lineNumbers ? lineNumbers.length : 0} line numbers for ${page.name}`,
-      );
+
+      // Create a regex from the query for snippet matching
+      let snippetRegex: string;
+      try {
+        // Extract pattern from /pattern/flags format if present
+        const regexMatch = query.match(/^\/(.+)\/([gimuy]*)$/);
+        snippetRegex = regexMatch ? regexMatch[1] : query;
+      } catch {
+        snippetRegex = query;
+      }
+
       const { snippets, totalMatches } = findSnippets(
         content,
-        regexForSnippets,
+        snippetRegex,
         3,
         lineNumbers,
-        snippetsFlags,
+        "i",
       );
 
       results.push({
@@ -452,38 +457,6 @@ app.get("/api/man3/search", limiter, (req: Request, res: Response) => {
         snippets: snippets,
         totalMatchesInFile: totalMatches,
       });
-    }
-
-    // Search content for non-title matches (excluding source pages)
-    for (const page of indexCache) {
-      if (
-        page.name.endsWith("_source") ||
-        titleMatches.find((p) => p.name === page.name)
-      ) {
-        continue; // Skip source pages and already added matches
-      }
-
-      const { text: content, lineNumbers } = getFileContentWithLineNumbers(
-        page.name,
-        page.file,
-      );
-      const { snippets, totalMatches } = findSnippets(
-        content,
-        regexForSnippets,
-        3,
-        lineNumbers,
-        snippetsFlags,
-      );
-
-      if (snippets.length > 0) {
-        results.push({
-          name: page.name,
-          title: page.title,
-          matchType: "content",
-          snippets: snippets,
-          totalMatchesInFile: totalMatches,
-        });
-      }
     }
 
     // Count total matches (snippets) before slicing

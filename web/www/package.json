@@ -14,10 +14,12 @@
     "lint": "vp lint . --max-warnings 0",
     "type-check": "pnpm exec tsc --noEmit",
     "preview": "vp preview",
-    "vite:build": "vp build"
+    "vite:build": "vp build",
+    "test": "playwright test"
   },
   "dependencies": {
     "@ascii-chat/shared": "workspace:*",
+    "minisearch": "^7.2.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-helmet-async": "^2.0.5",
