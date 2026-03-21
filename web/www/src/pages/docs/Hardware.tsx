@@ -3,6 +3,7 @@ import { SITES } from "@ascii-chat/shared/utils";
 import { useEffect } from "react";
 import { AsciiChatHead, Footer } from "../../components";
 import { setBreadcrumbSchema, useScrollToHash } from "../../utils";
+import { pageMetadata } from "../../metadata";
 import {
   ImportantNotesSection,
   WebcamSetupSection,
@@ -24,8 +25,8 @@ export default function Hardware() {
   return (
     <>
       <AsciiChatHead
-        title="Hardware - ascii-chat Documentation"
-        description="Learn about webcams, microphones, speakers, and keyboard shortcuts in ascii-chat."
+        title={pageMetadata.hardware.title}
+        description={pageMetadata.hardware.description}
         url={`${SITES.MAIN}/docs/hardware`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col flex-1">

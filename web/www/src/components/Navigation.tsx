@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { SITES } from "@ascii-chat/shared/utils";
 import TrackedLink from "./TrackedLink";
@@ -8,6 +8,18 @@ export default function Navigation() {
   const location = useLocation();
 
   const isActive = (path: string): boolean => location.pathname === path;
+
+  // Focus first nav link when mobile menu opens for accessibility
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      const firstLink = document.querySelector(
+        ".md\\:hidden + .md\\:hidden a:first-of-type",
+      ) as HTMLAnchorElement;
+      if (firstLink) {
+        setTimeout(() => firstLink.focus(), 0);
+      }
+    }
+  }, [mobileMenuOpen]);
 
   const getDesktopNavLinkClass = (paths: string | string[]): string => {
     const active = Array.isArray(paths)
@@ -75,17 +87,23 @@ export default function Navigation() {
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex gap-6 text-sm items-center">
-              {navItems.map(({ to, label, paths }) => (
-                <TrackedLink
-                  key={to}
-                  to={to}
-                  label={`Nav - ${label}`}
-                  className={getDesktopNavLinkClass(paths)}
-                  onClick={handleNavClick}
-                >
-                  {label}
-                </TrackedLink>
-              ))}
+              {navItems.map(({ to, label, paths }) => {
+                const active = Array.isArray(paths)
+                  ? paths.some((p) => isActive(p))
+                  : isActive(paths);
+                return (
+                  <TrackedLink
+                    key={to}
+                    to={to}
+                    label={`Nav - ${label}`}
+                    className={getDesktopNavLinkClass(paths)}
+                    onClick={handleNavClick}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    {label}
+                  </TrackedLink>
+                );
+              })}
               <TrackedLink
                 href={SITES.WEB}
                 label="Nav - Web Client"
@@ -102,6 +120,7 @@ export default function Navigation() {
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="md:hidden text-gray-400 hover:text-fuchsia-300 transition-colors p-2"
               aria-label="Toggle menu"
+              aria-expanded={mobileMenuOpen}
             >
               <svg
                 className="w-6 h-6"
@@ -131,17 +150,23 @@ export default function Navigation() {
           {/* Mobile Navigation */}
           {mobileMenuOpen && (
             <div className="md:hidden mt-4 pb-2 border-t border-gray-800 pt-4">
-              {navItems.map(({ to, label, paths }) => (
-                <TrackedLink
-                  key={to}
-                  to={to}
-                  label={`Nav - ${label}`}
-                  className={getMobileNavLinkClass(paths)}
-                  onClick={handleNavClick}
-                >
-                  {label}
-                </TrackedLink>
-              ))}
+              {navItems.map(({ to, label, paths }) => {
+                const active = Array.isArray(paths)
+                  ? paths.some((p) => isActive(p))
+                  : isActive(paths);
+                return (
+                  <TrackedLink
+                    key={to}
+                    to={to}
+                    label={`Nav - ${label}`}
+                    className={getMobileNavLinkClass(paths)}
+                    onClick={handleNavClick}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    {label}
+                  </TrackedLink>
+                );
+              })}
               <TrackedLink
                 href={SITES.WEB}
                 label="Nav - Web Client"

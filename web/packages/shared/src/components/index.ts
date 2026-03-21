@@ -5,6 +5,7 @@ export { Button } from "./Button";
 export { Card } from "./Card";
 export { CodeBlock } from "./CodeBlock";
 export { CommitLink } from "./CommitLink";
+export { default as ErrorBoundary } from "./ErrorBoundary";
 export { Footer } from "./Footer";
 export { GettingHelpSection } from "./GettingHelpSection";
 export { Head } from "./Head";

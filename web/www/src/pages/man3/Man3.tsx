@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SITES } from "@ascii-chat/shared/utils";
 import { Footer, AsciiChatHead } from "../../components";
+import { pageMetadata } from "../../metadata";
 import "../../styles/man.css";
 import {
   useManPages,
@@ -89,7 +90,7 @@ export default function Man3() {
     <>
       <AsciiChatHead
         title={pageTitle}
-        description="C library function reference for ascii-chat. Complete API documentation with function signatures, data structures, and type definitions."
+        description={pageMetadata.man3.description}
         url={`${SITES.MAIN}/man3${nav.selectedPageName ? `?page=${nav.selectedPageName}` : ""}`}
       />
       <div className="w-full h-[calc(100vh-var(--header-height))] mx-auto max-w-[2200px] xl:px-[4rem] bg-gray-950 text-gray-100 flex flex-col overflow-hidden">

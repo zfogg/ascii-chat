@@ -3,6 +3,7 @@ import { SITES } from "@ascii-chat/shared/utils";
 import { useEffect } from "react";
 import { Footer, AsciiChatHead } from "../../components";
 import { setBreadcrumbSchema, useScrollToHash } from "../../utils";
+import { pageMetadata } from "../../metadata";
 import {
   QuickStartSection,
   PipingRedirectionSection,
@@ -26,8 +27,8 @@ export default function Snapshot() {
   return (
     <>
       <AsciiChatHead
-        title="Snapshot Mode - ascii-chat Documentation"
-        description="Single-frame capture, scripting, and automation examples with ascii-chat snapshot mode."
+        title={pageMetadata.snapshot.title}
+        description={pageMetadata.snapshot.description}
         url={`${SITES.MAIN}/docs/snapshot`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col flex-1">

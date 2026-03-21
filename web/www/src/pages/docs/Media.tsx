@@ -3,6 +3,7 @@ import { SITES } from "@ascii-chat/shared/utils";
 import { useEffect } from "react";
 import { Footer, AsciiChatHead } from "../../components";
 import { setBreadcrumbSchema, useScrollToHash } from "../../utils";
+import { pageMetadata } from "../../metadata";
 import {
   SupportedFormatsSection,
   LocalFilesSection,
@@ -27,8 +28,8 @@ export default function Media() {
   return (
     <>
       <AsciiChatHead
-        title="Media - ascii-chat Documentation"
-        description="Video files, URLs, streaming, and media handling in ascii-chat."
+        title={pageMetadata.media.title}
+        description={pageMetadata.media.description}
         url={`${SITES.MAIN}/docs/media`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col flex-1">

@@ -3,6 +3,7 @@ import { SITES } from "@ascii-chat/shared/utils";
 import { useEffect } from "react";
 import { Footer, TrackedLink, AsciiChatHead } from "../../components";
 import { setBreadcrumbSchema, useScrollToHash } from "../../utils";
+import { pageMetadata } from "../../metadata";
 import {
   ImportantNotesSection,
   ColorControlSection,
@@ -24,8 +25,8 @@ export default function Terminal() {
   return (
     <>
       <AsciiChatHead
-        title="Terminal - ascii-chat Documentation"
-        description="Terminal color modes, dimensions, UTF-8 support, and terminal capabilities for ascii-chat."
+        title={pageMetadata.terminal.title}
+        description={pageMetadata.terminal.description}
         url={`${SITES.MAIN}/docs/terminal`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col flex-1">

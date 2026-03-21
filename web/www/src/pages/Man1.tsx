@@ -3,6 +3,7 @@ import { SITES } from "@ascii-chat/shared/utils";
 import { Footer, Man, AsciiChatHead } from "../components";
 import { setBreadcrumbSchema } from "../utils";
 import { useAnchorNavigation } from "../hooks";
+import { pageMetadata } from "../metadata";
 import "../styles/man.css";
 
 export default function Man1() {
@@ -34,8 +35,8 @@ export default function Man1() {
   return (
     <>
       <AsciiChatHead
-        title="ascii-chat(1) - Man Page | ascii-chat"
-        description="Complete command-line reference for ascii-chat. Manual page with all options, modes, and usage examples."
+        title={pageMetadata.man1.title}
+        description={pageMetadata.man1.description}
         url={`${SITES.MAIN}/man1`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col">

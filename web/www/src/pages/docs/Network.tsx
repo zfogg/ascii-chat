@@ -3,6 +3,7 @@ import { Heading } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
 import { Footer, AsciiChatHead } from "../../components";
 import { setBreadcrumbSchema, useScrollToHash } from "../../utils";
+import { pageMetadata } from "../../metadata";
 import {
   ACIPProtocolSection,
   ConnectionFlowSection,
@@ -25,8 +26,8 @@ export default function Network() {
   return (
     <>
       <AsciiChatHead
-        title="Network - ascii-chat Documentation"
-        description="Connections, discovery service, NAT traversal, and network protocols for ascii-chat."
+        title={pageMetadata.network.title}
+        description={pageMetadata.network.description}
         url={`${SITES.MAIN}/docs/network`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col flex-1">

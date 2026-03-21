@@ -3,6 +3,7 @@ import { Heading } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
 import { Footer, AsciiChatHead } from "../../components";
 import { setBreadcrumbSchema, useScrollToHash } from "../../utils";
+import { pageMetadata } from "../../metadata";
 import {
   PriorityOverridesSection,
   ConfigFilesSection,
@@ -25,8 +26,8 @@ export default function Configuration() {
   return (
     <>
       <AsciiChatHead
-        title="Configuration - ascii-chat Documentation"
-        description="Learn about ascii-chat configuration: config files, command-line options, color schemes, and shell completions."
+        title={pageMetadata.configuration.title}
+        description={pageMetadata.configuration.description}
         url={`${SITES.MAIN}/docs/configuration`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col flex-1">

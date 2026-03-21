@@ -2,22 +2,24 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
-import { HeadingProvider } from "@ascii-chat/shared/components";
+import { ErrorBoundary, HeadingProvider } from "@ascii-chat/shared/components";
 import "./index.css";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <BrowserRouter>
-      <HelmetProvider>
-        <HeadingProvider>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </HeadingProvider>
-      </HelmetProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <HelmetProvider>
+          <HeadingProvider>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </HeadingProvider>
+        </HelmetProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   </StrictMode>,
 );

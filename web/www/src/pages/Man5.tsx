@@ -3,6 +3,7 @@ import { SITES } from "@ascii-chat/shared/utils";
 import { Footer, Man, AsciiChatHead } from "../components";
 import { setBreadcrumbSchema } from "../utils";
 import { useAnchorNavigation } from "../hooks";
+import { pageMetadata } from "../metadata";
 import "../styles/man.css";
 
 export default function Man5() {
@@ -34,8 +35,8 @@ export default function Man5() {
   return (
     <>
       <AsciiChatHead
-        title="ascii-chat(5) - File Formats | ascii-chat"
-        description="File formats and configuration reference for ascii-chat. Configuration files, color schemes, and format specifications."
+        title={pageMetadata.man5.title}
+        description={pageMetadata.man5.description}
         url={`${SITES.MAIN}/man5`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col">

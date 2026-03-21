@@ -3,6 +3,7 @@ import { Heading } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
 import { Footer, TrackedLink, AsciiChatHead } from "../../components";
 import { setBreadcrumbSchema, useScrollToHash } from "../../utils";
+import { pageMetadata } from "../../metadata";
 
 export default function DocsHub() {
   useScrollToHash(100);
@@ -115,8 +116,8 @@ export default function DocsHub() {
   return (
     <>
       <AsciiChatHead
-        title="Documentation - ascii-chat"
-        description="Complete guides for configuring, using, and scripting ascii-chat. Learn about configuration, hardware, terminal modes, snapshots, networking, and media."
+        title={pageMetadata.docs.title}
+        description={pageMetadata.docs.description}
         url={`${SITES.MAIN}/docs`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col flex-1">

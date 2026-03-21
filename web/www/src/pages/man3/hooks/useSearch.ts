@@ -29,7 +29,7 @@ export function useSearch(manPages: ManPage[]) {
   const [moreFilesCount, setMoreFilesCount] = useState(0);
   const [searching, setSearching] = useState(false);
   const [regexError, setRegexError] = useState<string | null>(null);
-  const searchTimeoutRef = useRef<number | null>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Perform search API call
   const performSearch = useCallback(

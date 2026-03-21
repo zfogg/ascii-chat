@@ -3,6 +3,7 @@ import { SITES } from "@ascii-chat/shared/utils";
 import { useEffect } from "react";
 import { Footer, AsciiChatHead } from "../../components";
 import { setBreadcrumbSchema, useScrollToHash } from "../../utils";
+import { pageMetadata } from "../../metadata";
 import {
   ImportantNotesSection,
   RenderModesSection,
@@ -26,8 +27,8 @@ export default function Display() {
   return (
     <>
       <AsciiChatHead
-        title="Display - ascii-chat Documentation"
-        description="Render modes, ASCII palettes, color filters, animations, framerate, and video transforms for ascii-chat."
+        title={pageMetadata.display.title}
+        description={pageMetadata.display.description}
         url={`${SITES.MAIN}/docs/display`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col flex-1">

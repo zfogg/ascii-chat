@@ -3,6 +3,7 @@ import { Heading } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
 import { Footer, AsciiChatHead } from "../../components";
 import { setBreadcrumbSchema, useScrollToHash } from "../../utils";
+import { pageMetadata } from "../../metadata";
 import {
   AcdsNoteBox,
   DesignPhilosophySection,
@@ -35,8 +36,8 @@ export default function Crypto() {
   return (
     <>
       <AsciiChatHead
-        title="Crypto & Security - ascii-chat"
-        description="Encryption, keys, authentication, and security flags in ascii-chat. Ed25519, X25519, end-to-end encryption, and discovery service security."
+        title={pageMetadata.crypto.title}
+        description={pageMetadata.crypto.description}
         url={`${SITES.MAIN}/docs/crypto`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col flex-1">

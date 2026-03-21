@@ -1,13 +1,14 @@
 import { NotFound } from "@ascii-chat/shared/components";
 import { Footer, AsciiChatHead } from "../components";
 import { SITES } from "@ascii-chat/shared/utils";
+import { pageMetadata } from "../metadata";
 
 export default function NotFoundPage() {
   return (
     <div className="flex flex-col flex-1 bg-gray-950 text-gray-100">
       <AsciiChatHead
-        title="404 - Page Not Found | ascii-chat"
-        description="The page you're looking for doesn't exist or has been moved."
+        title={pageMetadata.notFound.title}
+        description={pageMetadata.notFound.description}
         url={`${SITES.MAIN}/404`}
       />
       <div className="flex-1 flex items-center justify-center">
