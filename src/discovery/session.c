@@ -711,7 +711,7 @@ static asciichat_error_t create_session(discovery_session_t *session) {
 
   log_info("Session created: %s", session->session_string);
 
-  SAFE_FREE(alloc_buffer);
+  buffer_pool_free(NULL, alloc_buffer, 0);
 
   // Notify that session is ready
   if (session->on_session_ready) {
