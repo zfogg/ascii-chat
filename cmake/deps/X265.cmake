@@ -157,20 +157,23 @@ if(USE_MUSL)
             message(FATAL_ERROR "Failed to install x265:\n${INSTALL_ERROR}")
         endif()
 
-        # x265 built with clang -stdlib=libc++ lists -lc++ in Libs.private,
-        # but FFmpeg's musl-gcc configure can't find libc++. Strip it since
-        # FFmpeg handles C++ runtime linking via --extra-libs.
-        set(_x265_pc "${X265_PREFIX}/lib/pkgconfig/x265.pc")
-        if(EXISTS "${_x265_pc}")
-            file(READ "${_x265_pc}" _x265_pc_contents)
+        message(STATUS "  ${BoldGreen}x265${ColorReset} built and installed successfully")
+    else()
+        message(STATUS "  ${BoldGreen}x265${ColorReset} library found in cache: ${BoldMagenta}${X265_PREFIX}/lib/libx265.a${ColorReset}")
+    endif()
+
+    # x265 built with clang -stdlib=libc++ lists -lc++ in Libs.private,
+    # but FFmpeg's musl-gcc configure can't find libc++. Strip it since
+    # FFmpeg handles C++ runtime linking via --extra-libs.
+    set(_x265_pc "${X265_PREFIX}/lib/pkgconfig/x265.pc")
+    if(EXISTS "${_x265_pc}")
+        file(READ "${_x265_pc}" _x265_pc_contents)
+        string(FIND "${_x265_pc_contents}" "-lc++" _has_libcxx)
+        if(NOT _has_libcxx EQUAL -1)
             string(REPLACE "-lc++ " "" _x265_pc_contents "${_x265_pc_contents}")
             string(REPLACE "-lc++" "" _x265_pc_contents "${_x265_pc_contents}")
             file(WRITE "${_x265_pc}" "${_x265_pc_contents}")
         endif()
-
-        message(STATUS "  ${BoldGreen}x265${ColorReset} built and installed successfully")
-    else()
-        message(STATUS "  ${BoldGreen}x265${ColorReset} library found in cache: ${BoldMagenta}${X265_PREFIX}/lib/libx265.a${ColorReset}")
     endif()
 
     set(X265_LIBRARIES "${X265_PREFIX}/lib/libx265.a")
