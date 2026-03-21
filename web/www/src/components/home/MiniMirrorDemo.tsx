@@ -101,7 +101,7 @@ export default function MiniMirrorDemo() {
       if (videoRef.current) {
         videoRef.current.src = "/assets/demo-video.mp4";
         videoRef.current.loop = true;
-        videoRef.current.muted = true;
+        videoRef.current.muted = false;
         videoRef.current.playsInline = true;
         await new Promise<void>((resolve, reject) => {
           videoRef.current!.addEventListener(
@@ -281,7 +281,18 @@ export default function MiniMirrorDemo() {
           </button>
         )}
       </div>
-      <p className="text-gray-500 text-xs mt-2">
+      <p className="text-gray-600 text-xs mt-2 text-right">
+        Demo video:{" "}
+        <a
+          href="https://www.youtube.com/watch?v=9s1x9eHoEBE&t=1796"
+          className="text-gray-500 hover:text-gray-400 underline"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          ODESZA - THE FINALE - LIVE FROM THE GORGE
+        </a>
+      </p>
+      <p className="text-gray-500 text-xs mt-1 text-right">
         Want to play with this more? The web client{" "}
         <a
           href={`${SITES.WEB}/mirror`}
