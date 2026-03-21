@@ -226,8 +226,11 @@ export default function MirrorDemoWidget({
             const video = videoRef.current!;
             const errorCode = video.error?.code;
             const errorMsg = video.error?.message || "Unknown error";
-            const errorText = `Video error code ${errorCode}: ${errorMsg}`;
+            const videoSrc = video.src;
+            const errorText = `Video error code ${errorCode}: ${errorMsg} (src: ${videoSrc})`;
             addDebugLog(errorText);
+            // Always log to console for production debugging
+            console.error("[MirrorDemoWidget]", errorText);
             reject(new Error(errorText));
           };
 
