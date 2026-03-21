@@ -229,6 +229,16 @@ if(USE_MUSL)
             ERROR_VARIABLE CONFIG_ERROR
         )
         if(NOT CONFIG_RESULT EQUAL 0)
+            if(EXISTS "${FFMPEG_SOURCE_DIR}/ffbuild/config.log")
+                file(READ "${FFMPEG_SOURCE_DIR}/ffbuild/config.log" _ffmpeg_config_log)
+                # Extract x265-related entries
+                string(REGEX MATCHALL "[^\n]*x265[^\n]*" _x265_log_lines "${_ffmpeg_config_log}")
+                list(JOIN _x265_log_lines "\n" _x265_log_joined)
+                message(STATUS "FFmpeg config.log x265 entries:\n${_x265_log_joined}")
+                # Also get the last 30 lines for context
+                string(REGEX REPLACE ".*(\n[^\n]*){30}$" "\\0" _config_tail "${_ffmpeg_config_log}")
+                message(STATUS "FFmpeg config.log tail:\n${_config_tail}")
+            endif()
             message(FATAL_ERROR "Failed to configure FFmpeg:\n${CONFIG_OUTPUT}\n${CONFIG_ERROR}")
         endif()
 
