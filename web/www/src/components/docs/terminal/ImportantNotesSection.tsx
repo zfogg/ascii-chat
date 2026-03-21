@@ -33,14 +33,6 @@ export default function ImportantNotesSection() {
           </p>
         </div>
 
-        <div className="info-box-note">
-          <p className="text-gray-300 text-sm mb-2">
-            <strong>📦 Piping & Redirection:</strong> When output is piped
-            (e.g., <code>ascii-chat mirror | tee file.txt</code>
-            ), color and terminal detection change. Use{" "}
-            <code>--strip-ansi</code> to remove ANSI codes from piped output.
-          </p>
-        </div>
       </div>
     </section>
   );
