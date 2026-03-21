@@ -64,22 +64,25 @@ export default function Man3() {
   const search = useSearch(manPages);
 
   // Compute highlighted results (names and titles with query matches highlighted)
+  // Filter out results with no snippets to avoid empty result boxes
   const highlightedResults = useMemo(() => {
-    return search.searchResults.map((page) => ({
-      name: page.name,
-      title: page.title,
-      file: page.name,
-      highlightedName: highlightMatches(page.name, search.searchQuery),
-      highlightedTitle: highlightMatches(page.title, search.searchQuery),
-      ...(page.snippets
-        ? {
-            snippets: page.snippets.map((s) => ({
-              text: s.snippet,
-              lineNumbers: [s.lineNumber],
-            })),
-          }
-        : {}),
-    }));
+    return search.searchResults
+      .filter((page) => !page.snippets || page.snippets.length > 0)
+      .map((page) => ({
+        name: page.name,
+        title: page.title,
+        file: page.name,
+        highlightedName: highlightMatches(page.name, search.searchQuery),
+        highlightedTitle: highlightMatches(page.title, search.searchQuery),
+        ...(page.snippets
+          ? {
+              snippets: page.snippets.map((s) => ({
+                text: s.text,
+                lineNumbers: s.lineNumbers || [],
+              })),
+            }
+          : {}),
+      }));
   }, [search.searchResults, search.searchQuery]);
 
   const pageTitle = nav.selectedPageName
@@ -100,8 +103,8 @@ export default function Man3() {
           setSearchQuery={search.setSearchQuery}
           regexError={search.regexError}
           searching={search.searching}
-          filesMatched={search.filesMatched}
-          totalMatches={search.totalMatches}
+          filesMatched={highlightedResults.length}
+          totalMatches={highlightedResults.reduce((sum, r) => sum + (r.snippets?.length || 0), 0)}
         />
 
         {/* Scrollable panels container */}

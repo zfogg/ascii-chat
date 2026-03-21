@@ -1530,15 +1530,11 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
 
   // Create libwebsockets context
   // Protocol array must persist for lifetime of context - use static
-  // NOTE: Define ONLY "acip" protocol for WebSocket connections
-  // libwebsockets provides built-in "h1" and "http" protocols for WebSocket upgrade handshake.
-  // When local_protocol_name="h1" and protocol="acip" are specified:
-  // 1. libwebsockets uses built-in h1 (HTTP/1.1) for initial connection
-  // 2. HTTP upgrade happens automatically (101 Switching Protocols)
-  // 3. Connection switches to "acip" protocol using our custom callback
+  // Register "http" protocol for WebSocket connections - matches server-side protocol name
+  // This ensures libwebsockets will invoke our websocket_callback during upgrade handshake and communication
   static struct lws_protocols client_protocols[] = {
       {
-          "acip", // ACIP protocol - used after WebSocket upgrade handshake completes
+          "http", // Default HTTP protocol - handles WebSocket upgrade and ACIP communication
           websocket_callback,
           0,      // Per-session data - using connect_info.userdata instead
           524288, // RX buffer size
@@ -1616,12 +1612,10 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   connect_info.path = path;
   connect_info.host = host;
   connect_info.origin = host;
-  // Use h1 (HTTP/1.1) protocol for WebSocket upgrade with acip as the subprotocol
-  // - local_protocol_name="h1": libwebsockets' built-in HTTP/1.1 handler for WebSocket upgrade
-  // - protocol="acip": Request this subprotocol from the remote server (Sec-WebSocket-Protocol header)
-  // libwebsockets internally uses h1 regardless of the protocol name, so we use h1 directly
-  connect_info.local_protocol_name = "h1"; // libwebsockets built-in HTTP/1.1
-  connect_info.protocol = "acip";          // Remote subprotocol to request from server
+  // Use default protocol - libwebsockets will use first protocol in array (our "http" protocol)
+  // Don't specify local_protocol_name or protocol - let libwebsockets handle automatically
+  connect_info.local_protocol_name = NULL; // Use default (first protocol in array)
+  connect_info.protocol = NULL;            // No subprotocol - let libwebsockets choose automatically
   // Use SSL + skip server certificate hostname verification + allow self-signed certs (for development)
   connect_info.ssl_connection =
       use_ssl ? (LCCSCF_USE_SSL | LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK | LCCSCF_ALLOW_SELFSIGNED) : 0;

@@ -176,13 +176,6 @@ if(USE_MUSL)
 
         # Configure FFmpeg
         message(STATUS "  Configuring FFmpeg...")
-        # Verify x265 pkgconfig is available and print contents for debugging
-        if(EXISTS "${X265_PREFIX}/lib/pkgconfig/x265.pc")
-            file(READ "${X265_PREFIX}/lib/pkgconfig/x265.pc" _x265_pc_contents)
-            message(STATUS "  x265.pc contents:\n${_x265_pc_contents}")
-        else()
-            message(STATUS "  x265.pc not found at ${X265_PREFIX}/lib/pkgconfig/x265.pc")
-        endif()
         # Find GCC's lib directories for libstdc++/libgcc (needed for x265 C++ link test)
         execute_process(
             COMMAND ${REAL_GCC} -print-file-name=libgcc.a

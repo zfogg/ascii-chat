@@ -421,27 +421,15 @@ app.get("/api/man3/search", limiter, (req: Request, res: Response) => {
       return res.status(500).json({ error: "Search index not loaded" });
     }
 
-    // Search using minisearch - require word boundaries for more precise matches
+    // Search using minisearch with OR logic to find all pages containing any term
     const searchResults = miniSearch.search(query, {
-      combineWith: "AND",
+      combineWith: "OR",
       prefix: false,
       boost: {
         name: 2,
         title: 2,
       },
     });
-
-    // Filter out source pages and results without meaningful matches
-    const filteredResults = searchResults
-      .filter((result) => !result.name.endsWith("_source"))
-      .filter((result) => {
-        // Only include if it's a name/title match or has reasonable score
-        const isNameMatch =
-          result.name.toLowerCase().includes(query.toLowerCase()) ||
-          (result.title &&
-            result.title.toLowerCase().includes(query.toLowerCase()));
-        return isNameMatch || result.score > 1;
-      });
 
     const results: {
       name: string;
@@ -452,7 +440,7 @@ app.get("/api/man3/search", limiter, (req: Request, res: Response) => {
     }[] = [];
 
     // For each matched page, get content and find snippets
-    for (const result of filteredResults) {
+    for (const result of searchResults) {
       const page = indexCache?.find((p) => p.name === result.name);
       if (!page) continue;
 
@@ -479,28 +467,34 @@ app.get("/api/man3/search", limiter, (req: Request, res: Response) => {
         "i",
       );
 
-      results.push({
-        name: page.name,
-        title: page.title,
-        matchType: "title",
-        snippets: snippets,
-        totalMatchesInFile: totalMatches,
-      });
+      // Only include results that have actual matches
+      if (totalMatches > 0) {
+        results.push({
+          name: page.name,
+          title: page.title,
+          matchType: "title",
+          snippets: snippets,
+          totalMatchesInFile: totalMatches,
+        });
+      }
     }
 
+    // Filter to only include results with actual snippets (secondary safety check)
+    const resultsWithSnippets = results.filter((r) => r.snippets.length > 0);
+
     // Count total matches (snippets) before slicing
-    const totalMatches = results.reduce(
+    const totalMatches = resultsWithSnippets.reduce(
       (sum, result) => sum + result.snippets.length,
       0,
     );
 
     const displayLimit = 30;
-    const displayedResults = results.slice(0, displayLimit);
-    const moreFilesCount = Math.max(0, results.length - displayLimit);
+    const displayedResults = resultsWithSnippets.slice(0, displayLimit);
+    const moreFilesCount = Math.max(0, resultsWithSnippets.length - displayLimit);
 
     res.json({
       query: query,
-      filesMatched: results.length,
+      filesMatched: resultsWithSnippets.length,
       displayedResults: displayedResults.length,
       moreFilesCount: moreFilesCount,
       totalMatches: totalMatches,

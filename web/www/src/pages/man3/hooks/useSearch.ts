@@ -22,7 +22,11 @@ interface SearchResult {
  * Hook for managing search functionality
  */
 export function useSearch(manPages: ManPage[]) {
-  const [searchQuery, setSearchQuery] = useState("");
+  // Initialize search query from URL parameter if present
+  const [searchQuery, setSearchQuery] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("q") || "";
+  });
   const [searchResults, setSearchResults] = useState<ManPage[]>([]);
   const [filesMatched, setFilesMatched] = useState(0);
   const [totalMatches, setTotalMatches] = useState(0);
