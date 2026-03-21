@@ -347,7 +347,7 @@ export function useHtmlTransforms(
     // Find ALL P tags first, then check if they contain function signatures
     const result = cleaned.replace(
       /<p\s[^>]*>([\s\S]*?)<\/p>/g,
-      (match: string, content: string) => {
+      (match: string, content: string): string => {
         // Skip P tags with macro definitions - let them render as plain text to preserve grouping
         if (match.includes("#define")) {
           return match;
@@ -448,16 +448,15 @@ export function useHtmlTransforms(
 
           const tempDiv = document.createElement("div");
           tempDiv.innerHTML = content;
-          const textContent = tempDiv.textContent || "";
 
           // Find all function names in bold tags within the content
           const funcMatches = [];
           const boldTagRegex = /<b>([a-zA-Z_][a-zA-Z0-9_]*)<\/b>\s*\(/g;
-          let match;
-          while ((match = boldTagRegex.exec(content))) {
+          let boldMatch;
+          while ((boldMatch = boldTagRegex.exec(content))) {
             funcMatches.push({
-              name: match[1]!,
-              startIndex: match.index,
+              name: boldMatch[1]!,
+              startIndex: boldMatch.index,
             });
           }
 
@@ -479,21 +478,31 @@ export function useHtmlTransforms(
             // Look back a small distance to find the return type text (not the description)
             // The return type is close to the <b> tag, typically within 50 chars
             const searchLimit = Math.max(0, beforeBoldIndex - 100);
-            const textBeforeBold = content.substring(searchLimit, beforeBoldIndex);
+            const textBeforeBold = content.substring(
+              searchLimit,
+              beforeBoldIndex,
+            );
 
             // Remove all HTML tags to see the raw text
             const cleanText = textBeforeBold.replace(/<[^>]*>/g, "");
 
             // Extract the last whitespace-separated tokens (the return type)
             // Typically: "void", "size_t", "const char *", etc.
-            const tokens = cleanText.trim().split(/\s+/).filter(t => t);
+            const tokens = cleanText
+              .trim()
+              .split(/\s+/)
+              .filter((t) => t);
 
             // Take the last few tokens (return type is typically 1-3 tokens)
             // But make sure we don't take too much (max ~30 chars of type)
             if (tokens.length > 0) {
               let typeStr = "";
               // Walk backwards through tokens, collecting them until we have a reasonable type
-              for (let i = tokens.length - 1; i >= Math.max(0, tokens.length - 4); i--) {
+              for (
+                let i = tokens.length - 1;
+                i >= Math.max(0, tokens.length - 4);
+                i--
+              ) {
                 typeStr = tokens[i]! + (typeStr ? " " + typeStr : "");
                 if (typeStr.length > 40) break; // Stop if type gets too long
               }
@@ -513,7 +522,10 @@ export function useHtmlTransforms(
             }
 
             // Extract and clean parameters
-            const paramsRaw = content.substring(openParenIdx, closeParenIdx + 1);
+            const paramsRaw = content.substring(
+              openParenIdx,
+              closeParenIdx + 1,
+            );
             const paramsClean = paramsRaw
               .replace(/<[^>]*>/g, "")
               .replace(/\s+/g, " ")
@@ -529,7 +541,9 @@ export function useHtmlTransforms(
               const descEnd = nextFunc ? nextFunc.startIndex : content.length;
 
               // Get raw description text and strip HTML
-              const descRaw = content.substring(descStart, descEnd).replace(/<[^>]*>/g, "");
+              const descRaw = content
+                .substring(descStart, descEnd)
+                .replace(/<[^>]*>/g, "");
 
               // Normalize whitespace
               let desc = descRaw.replace(/\s+/g, " ").trim();
