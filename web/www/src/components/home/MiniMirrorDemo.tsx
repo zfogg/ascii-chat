@@ -22,6 +22,8 @@ export default function MiniMirrorDemo() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wasmReady, setWasmReady] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [termDims, setTermDims] = useState({ cols: 0, rows: 0 });
 
   const rendererRef = useRef<AsciiRendererHandle>(null);
@@ -157,6 +159,27 @@ export default function MiniMirrorDemo() {
     }
     rendererRef.current?.clear();
     setSource(null);
+    setMuted(false);
+    setPaused(false);
+  }, []);
+
+  const togglePause = useCallback(() => {
+    if (videoRef.current) {
+      if (videoRef.current.paused) {
+        void videoRef.current.play();
+        setPaused(false);
+      } else {
+        videoRef.current.pause();
+        setPaused(true);
+      }
+    }
+  }, []);
+
+  const toggleMute = useCallback(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = !videoRef.current.muted;
+      setMuted(videoRef.current.muted);
+    }
   }, []);
 
   // Sync dimensions to WASM when they change (matches Mirror.tsx pattern)
@@ -278,15 +301,33 @@ export default function MiniMirrorDemo() {
             {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
           </div>
         ) : (
-          <button
-            onClick={stop}
-            className="absolute top-2 right-2 px-3 py-1 rounded bg-red-700/80 hover:bg-red-600 text-white text-xs font-medium transition-colors z-10"
-          >
-            Stop
-          </button>
+          <>
+            <button
+              onClick={stop}
+              className="absolute top-2 right-2 px-3 py-1 rounded bg-red-700/80 hover:bg-red-600 text-white text-xs font-medium transition-colors z-10"
+            >
+              Stop
+            </button>
+            {source === "demo" && (
+              <div className="absolute bottom-2 right-2 flex gap-2 z-10">
+                <button
+                  onClick={togglePause}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${paused ? "bg-green-600/80 hover:bg-green-500 text-white" : "bg-gray-800/80 hover:bg-gray-700 text-gray-300"}`}
+                >
+                  {paused ? "Play" : "Pause"}
+                </button>
+                <button
+                  onClick={toggleMute}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${muted ? "bg-green-600/80 hover:bg-green-500 text-white" : "bg-gray-800/80 hover:bg-gray-700 text-gray-300"}`}
+                >
+                  {muted ? "Unmute" : "Mute"}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
-      <p className="text-gray-600 text-xs mt-2 text-right">
+      <p className="text-gray-600 text-xs mt-2 sm:text-right">
         Demo video:{" "}
         <a
           href="https://www.youtube.com/watch?v=9s1x9eHoEBE&t=1796"
@@ -297,7 +338,7 @@ export default function MiniMirrorDemo() {
           ODESZA - THE FINALE - LIVE FROM THE GORGE
         </a>
       </p>
-      <p className="text-gray-500 text-xs mt-1 text-right">
+      <p className="text-gray-500 text-xs mt-1 sm:text-right">
         Want to play with this more? The web client{" "}
         <a
           href={`${SITES.WEB}/mirror`}
