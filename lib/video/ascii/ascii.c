@@ -27,6 +27,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/ascii/scalar/halfblock.h>
+#include <ascii-chat/video/ascii/scalar/background.h>
 
 /* ============================================================================
  * ASCII Art Video Processing
@@ -150,7 +151,11 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
       bool use_background = (GET_OPTION(render_mode) == RENDER_MODE_BACKGROUND);
       ascii = image_print_color_simd(resized, use_background, false, palette_chars);
 #else
-      ascii = image_print_color(resized, palette_chars);
+      if (GET_OPTION(render_mode) == RENDER_MODE_BACKGROUND) {
+        ascii = image_print_color_background(resized, palette_chars);
+      } else {
+        ascii = image_print_color(resized, palette_chars);
+      }
 #endif
     }
   } else {
