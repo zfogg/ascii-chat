@@ -24,6 +24,22 @@ include_guard(GLOBAL)
 # Sets: PROJECT_VERSION_FROM_GIT, GIT_VERSION_MAJOR/MINOR/PATCH
 # =============================================================================
 macro(version_detect)
+    # If PROJECT_VERSION_FROM_GIT was already provided via command-line (e.g., -DPROJECT_VERSION_FROM_GIT=0.9.13),
+    # skip git detection and use the provided version
+    if(DEFINED PROJECT_VERSION_FROM_GIT AND PROJECT_VERSION_FROM_GIT MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+        if(PROJECT_VERSION_FROM_GIT MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)$")
+            set(GIT_VERSION_MAJOR "${CMAKE_MATCH_1}")
+            set(GIT_VERSION_MINOR "${CMAKE_MATCH_2}")
+            set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
+            set(_VERSION_TYPE "command-line")
+            # Get current date for man pages and documentation
+            string(TIMESTAMP PROJECT_VERSION_DATE "%Y-%m-%d" UTC)
+            message(STATUS "Version from command-line: ${PROJECT_VERSION_FROM_GIT} (Release build via Docker)")
+            message(STATUS "Release date: ${PROJECT_VERSION_DATE}")
+            return()
+        endif()
+    endif()
+
     # Get git describe output at configure time
     # Use bash -c to invoke GNU timeout (Windows' timeout.exe is a "wait N seconds"
     # utility, not a command wrapper, and CMake's execute_process finds it first)
@@ -243,8 +259,8 @@ elseif(NOT VERSION_FROM_OVERRIDE AND GIT_DESCRIBE MATCHES \"^([0-9a-f]+)(-dirty)
     set(PROJECT_VERSION_MINOR ${PROJECT_VERSION_MINOR})
     set(PROJECT_VERSION_PATCH ${PROJECT_VERSION_PATCH})
     set(PROJECT_VERSION \"${PROJECT_VERSION}\")
-else()
-    # Fallback - use version from project()
+elseif(NOT VERSION_FROM_OVERRIDE)
+    # Fallback - use version from project() (only when no override)
     set(GIT_VERSION_STRING \"unknown\")
     set(GIT_VERSION_SUFFIX \"-\")  # Separator for unknown versions
     set(PROJECT_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})

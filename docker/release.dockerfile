@@ -5,9 +5,10 @@
 # ============================================================================
 # Stage 1: Builder (deps image with all build tools and cached dependencies)
 # ============================================================================
-ARG VERSION=0.0.0
-
 FROM zfogg/ascii-chat-deps:latest AS builder
+
+# Accept VERSION build arg in builder stage
+ARG VERSION=0.0.0
 
 ENV SOURCE_COMMIT="docker-build"
 
@@ -22,12 +23,11 @@ RUN rm -rf /build/deps/ascii-chat-deps /build/deps/doxygen-awesome-css && \
     mv /tmp/deps-preserve/* /build/deps/ && rm -rf /tmp/deps-preserve
 
 # Build release-musl static binary with specified version
-# PROJECT_VERSION_OVERRIDE environment variable skips git detection in generate_version.cmake
+# Project version is passed via -DPROJECT_VERSION_FROM_GIT which is read by version_detect() macro
+# The release-musl preset is already cached in deps, so cmake uses cached build files
 RUN cd /build && \
-    PROJECT_VERSION_OVERRIDE=${VERSION} \
     cmake --preset release-musl \
-        -DPROJECT_VERSION=${VERSION} \
-        -DASCIICHAT_LIB_VERSION=0.3.0 && \
+        -DPROJECT_VERSION_FROM_GIT=${VERSION} && \
     cmake --build build_release && \
     cmake --install build_release --prefix /tmp/install && \
     strip /tmp/install/bin/ascii-chat
