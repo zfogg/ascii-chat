@@ -74,8 +74,8 @@ export default function Man3() {
       ...(page.snippets
         ? {
             snippets: page.snippets.map((s) => ({
-              text: s.text,
-              lineNumbers: s.lineNumbers,
+              text: s.snippet,
+              lineNumbers: [s.lineNumber],
             })),
           }
         : {}),

@@ -25,8 +25,10 @@ export default class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Error caught by boundary:", error, errorInfo);
     // Track in analytics if available
-    if (typeof window !== "undefined" && window.gtag) {
-      window.gtag("event", "exception", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    if (typeof window !== "undefined" && w.gtag) {
+      w.gtag("event", "exception", {
         description: `${error.name}: ${error.message}`,
         fatal: "true",
       });

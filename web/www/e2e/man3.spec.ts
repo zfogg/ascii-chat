@@ -3,38 +3,42 @@ import { test, expect } from "@playwright/test";
 test.describe("Man3 Pages", () => {
   test("page loads and displays search", async ({ page }) => {
     await page.goto("/man3");
-    const searchInput = page.locator('input').first();
+    const searchInput = page.locator("input").first();
     await expect(searchInput).toBeVisible();
   });
 
   test("can search pages", async ({ page }) => {
     await page.goto("/man3");
-    const searchInput = page.locator('input').first();
+    const searchInput = page.locator("input").first();
 
     // Search for "acds_client_t"
     await searchInput.fill("acds_client_t");
     await page.waitForTimeout(2000);
 
     // All results should be relevant to the search query
-    const allResults = page.locator('button[class*="w-full"][class*="text-left"]');
+    const allResults = page.locator(
+      'button[class*="w-full"][class*="text-left"]',
+    );
     const resultCount = await allResults.count();
 
     // Check that all results contain the search term
     for (let i = 0; i < Math.min(resultCount, 5); i++) {
       const resultText = await allResults.nth(i).textContent();
       // Every result should be related to "acds_client_t"
-      expect(resultText).toContain('acds_client_t');
+      expect(resultText).toContain("acds_client_t");
     }
   });
 
   test("can navigate to a page", async ({ page }) => {
     await page.goto("/man3");
-    const searchInput = page.locator('input').first();
+    const searchInput = page.locator("input").first();
     await searchInput.fill("acds");
     await page.waitForTimeout(1500);
 
     // Find first clickable button in the results area (has class w-full)
-    const firstButton = page.locator('button[class*="w-full"][class*="text-left"]').first();
+    const firstButton = page
+      .locator('button[class*="w-full"][class*="text-left"]')
+      .first();
     await firstButton.click();
     await page.waitForTimeout(500);
 
@@ -50,17 +54,17 @@ test.describe("Man3 Pages", () => {
 
   test("search is case-insensitive", async ({ page }) => {
     await page.goto("/man3");
-    const searchInput = page.locator('input').first();
+    const searchInput = page.locator("input").first();
 
     await searchInput.fill("acds");
     await page.waitForTimeout(1500);
-    const content1 = await page.textContent('body');
+    const content1 = await page.textContent("body");
     const count1 = (content1?.match(/acds/gi) || []).length;
 
     await searchInput.clear();
     await searchInput.fill("ACDS");
     await page.waitForTimeout(1500);
-    const content2 = await page.textContent('body');
+    const content2 = await page.textContent("body");
     const count2 = (content2?.match(/ACDS/gi) || []).length;
 
     expect(count1).toBe(count2);
@@ -68,7 +72,7 @@ test.describe("Man3 Pages", () => {
 
   test("can clear search", async ({ page }) => {
     await page.goto("/man3");
-    const searchInput = page.locator('input').first();
+    const searchInput = page.locator("input").first();
 
     await searchInput.fill("xyz");
     await page.waitForTimeout(200);
@@ -83,19 +87,23 @@ test.describe("Man3 Pages", () => {
   test("back/forward navigation works", async ({ page }) => {
     await page.goto("/man3");
     // First navigate to a specific page
-    const searchInput = page.locator('input').first();
+    const searchInput = page.locator("input").first();
     await searchInput.fill("acds");
     await page.waitForTimeout(1500);
-    const firstButton = page.locator('button[class*="w-full"][class*="text-left"]').first();
+    const firstButton = page
+      .locator('button[class*="w-full"][class*="text-left"]')
+      .first();
     await firstButton.click();
     await page.waitForTimeout(1000);
 
-    const url1 = page.url();
+    const _url1 = page.url();
 
     // Navigate to another page
     await searchInput.fill("acip");
     await page.waitForTimeout(1500);
-    const secondButton = page.locator('button[class*="w-full"][class*="text-left"]').first();
+    const secondButton = page
+      .locator('button[class*="w-full"][class*="text-left"]')
+      .first();
     const isVisible = await secondButton.isVisible().catch(() => false);
     if (isVisible) {
       await secondButton.click();
@@ -114,19 +122,21 @@ test.describe("Man3 Pages", () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto("/man3");
 
-    const searchInput = page.locator('input').first();
+    const searchInput = page.locator("input").first();
     await expect(searchInput).toBeVisible();
   });
 
   test("rapid navigation is stable", async ({ page }) => {
     await page.goto("/man3");
 
-    const searchInput = page.locator('input').first();
+    const searchInput = page.locator("input").first();
     await searchInput.fill("acds");
     await page.waitForTimeout(1500);
 
     // Click a few result buttons rapidly
-    const resultButtons = page.locator('button[class*="w-full"][class*="text-left"]');
+    const resultButtons = page.locator(
+      'button[class*="w-full"][class*="text-left"]',
+    );
     const count = await resultButtons.count();
 
     for (let i = 0; i < Math.min(count, 2); i++) {
