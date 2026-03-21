@@ -28,7 +28,7 @@ if(USE_MUSL)
     set(X265_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/x265-build")
     set(X265_SOURCE_DIR "${X265_BUILD_DIR}/src")
 
-    if(NOT EXISTS "${X265_PREFIX}/lib/libx265.a")
+    if(NOT EXISTS "${X265_PREFIX}/lib/libx265.a" OR NOT EXISTS "${X265_PREFIX}/lib/pkgconfig/x265.pc")
         message(STATUS "  x265 library not found in cache, will build from source")
 
         file(MAKE_DIRECTORY "${X265_BUILD_DIR}")
