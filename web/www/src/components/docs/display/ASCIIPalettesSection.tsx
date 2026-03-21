@@ -116,6 +116,14 @@ export default function ASCIIPalettesSection() {
         </div>
       </div>
 
+      <div className="mt-8">
+        <MirrorDemoWidget
+          demoOptions={PALETTE_OPTIONS}
+          height="30vh"
+          minHeight={180}
+        />
+      </div>
+
       <div className="docs-subsection-spacing">
         <Heading level={3} className="heading-3 text-purple-300 mb-3">
           Custom Palette Characters
@@ -129,13 +137,6 @@ export default function ASCIIPalettesSection() {
             '# Custom palette (darkest to brightest)\nascii-chat mirror --palette custom --palette-chars " .:-=+*#%@"\n\n# Short form\nascii-chat mirror -P custom -C " .:-=+*#%@"\n\n# UTF-8 custom palette\nascii-chat mirror --utf8 true -P custom -C " ░▒▓█"\n\n# Via environment\nexport ASCII_CHAT_PALETTE=custom\nexport ASCII_CHAT_PALETTE_CHARS=" .:-=+*#%@"'
           }
         </CodeBlock>
-      </div>
-      <div className="mt-8">
-        <MirrorDemoWidget
-          demoOptions={PALETTE_OPTIONS}
-          height="30vh"
-          minHeight={180}
-        />
       </div>
     </section>
   );
