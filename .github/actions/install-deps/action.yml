@@ -337,7 +337,7 @@ runs:
         # --dangerously-delete-conflicts: GitHub runners have pre-installed binaries
         # in /usr/bin that shadow update-alternatives. The flag allows deletion
         # only when CI=true (set by GitHub Actions).
-        bash scripts/install-deps.sh --dangerously-delete-conflicts
+        sudo bash scripts/install-deps.sh --dangerously-delete-conflicts
 
         # Install any extra packages requested by the workflow
         extra="${{ inputs.extra-packages }}"
