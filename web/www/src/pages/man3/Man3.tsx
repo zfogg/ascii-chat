@@ -90,9 +90,7 @@ export default function Man3() {
       <AsciiChatHead
         title={pageTitle}
         description="C library function reference for ascii-chat. Complete API documentation with function signatures, data structures, and type definitions."
-        url={`${SITES.MAIN}/man3${
-          nav.selectedPageName ? `?page=${nav.selectedPageName}` : ""
-        }`}
+        url={`${SITES.MAIN}/man3${nav.selectedPageName ? `?page=${nav.selectedPageName}` : ""}`}
       />
       <div className="w-full h-[calc(100vh-var(--header-height))] mx-auto max-w-[2200px] xl:px-[4rem] bg-gray-950 text-gray-100 flex flex-col overflow-hidden">
         {/* Header - does not scroll */}

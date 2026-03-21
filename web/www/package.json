@@ -1,7 +1,7 @@
 {
   "name": "www",
-  "private": true,
   "version": "0.3.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "concurrently 'ls api.ts | entr -dr vp dev --port 5173 | tee vp-dev.log' 'node api.ts | tee api.log' 'scripts/manpage-watch.sh'",

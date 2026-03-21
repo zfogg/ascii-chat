@@ -135,7 +135,9 @@ test("UI: browser auto-reconnects when server restarts", async ({ page }) => {
   );
   await page.goto(
     `http://localhost:3000/client?testServerUrl=ws://localhost:${wsPort}`,
-    { waitUntil: "domcontentloaded" },
+    {
+      waitUntil: "domcontentloaded",
+    },
   );
   await page.waitForTimeout(1000);
   console.log("✓ Page loaded with test server URL");

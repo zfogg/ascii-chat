@@ -8,12 +8,14 @@ type ACDSHeadProps = Partial<HeadProps> & {
 };
 
 export function ACDSHead({
-  title = "ascii-chat Discovery Service",
-  description = "ascii-chat Discovery Service (ACDS) public keys. ascii-chat is coded to download and trust keys from this site over HTTPS.",
-  keywords = "ascii-chat, ascii art, discovery service, ACDS, session discovery, session signaling, terminal video chat, WebRTC, NAT traversal, peer-to-peer",
+  title = "ascii-chat Discovery Service | Official Public Keys",
+  description =
+    "ascii-chat Discovery Service (ACDS) official public keys. ascii-chat is coded to download and trust keys from this site over HTTPS.",
+  keywords =
+    "ascii-chat, ascii art, discovery service, ACDS, session discovery, session signaling, terminal video chat, WebRTC, NAT traversal, peer-to-peer",
   url = `${SITES.DISCOVERY}/`,
   ogImage = `${SITES.DISCOVERY}/og-image.png`,
-  ogImageAlt = "ACDS ascii-chat Discovery Service",
+  ogImageAlt = "ascii-chat Discovery Service (ACDS) official public keys",
   ...props
 }: ACDSHeadProps) {
   return (

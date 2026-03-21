@@ -1,8 +1,20 @@
 {
-  "type": "module",
   "name": "ascii-chat-web",
   "private": true,
-  "packageManager": "pnpm@10.32.1",
+  "workspaces": {
+    "packages": [
+      "packages/*",
+      "www",
+      "discovery",
+      "web"
+    ],
+    "catalog": {
+      "vite": "npm:@voidzero-dev/vite-plus-core@latest",
+      "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
+      "vite-plus": "latest"
+    }
+  },
+  "type": "module",
   "scripts": {
     "dev": "pnpm -r --filter './www' --filter './discovery' --filter './web' run dev",
     "build": "pnpm -r run build",
@@ -22,21 +34,9 @@
     "typescript-eslint": "^8.57.0",
     "vite-plus": "catalog:"
   },
-  "workspaces": {
-    "packages": [
-      "packages/*",
-      "www",
-      "discovery",
-      "web"
-    ],
-    "catalog": {
-      "vite": "npm:@voidzero-dev/vite-plus-core@latest",
-      "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
-      "vite-plus": "latest"
-    }
-  },
   "overrides": {
     "vite": "catalog:",
     "vitest": "catalog:"
-  }
+  },
+  "packageManager": "pnpm@10.32.1"
 }

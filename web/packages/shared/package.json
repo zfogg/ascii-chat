@@ -4,9 +4,6 @@
   "private": true,
   "main": "./src/index.ts",
   "types": "./src/index.ts",
-  "scripts": {
-    "build": "echo 'Shared package (no build needed)'"
-  },
   "exports": {
     ".": "./src/index.ts",
     "./components": "./src/components/index.ts",
@@ -15,6 +12,9 @@
     "./utils": "./src/utils/index.ts",
     "./tailwind.config.js": "./tailwind.config.js",
     "./styles/base.css": "./src/styles/base.css"
+  },
+  "scripts": {
+    "build": "echo 'Shared package (no build needed)'"
   },
   "dependencies": {
     "@pablo-lion/xterm-react": "^1.1.2",

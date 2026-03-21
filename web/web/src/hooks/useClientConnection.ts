@@ -126,9 +126,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
               }`,
             );
             console.log(
-              `[Client] Renderer ref available: ${
-                rendererRef.current ? "yes" : "no"
-              }`,
+              `[Client] Renderer ref available: ${rendererRef.current ? "yes" : "no"}`,
             );
 
             // Send terminal capabilities after handshake

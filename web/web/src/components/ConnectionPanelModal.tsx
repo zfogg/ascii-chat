@@ -64,9 +64,7 @@ export function ConnectionPanelModal({
             <div className="mb-4 p-3 bg-terminal-bg rounded border border-terminal-8">
               <div className="text-xs text-terminal-8 mb-1">Status</div>
               <div
-                className={`font-mono text-sm ${getStateColor(
-                  connectionState,
-                )}`}
+                className={`font-mono text-sm ${getStateColor(connectionState)}`}
               >
                 {status}
               </div>
