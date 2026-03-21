@@ -166,12 +166,14 @@ if(USE_MUSL)
     # Rewrite x265.pc to include the alpine libc++ .a files directly in Libs
     # so FFmpeg's pkg-config link test can resolve C++ symbols. Clear
     # Libs.private to avoid musl-gcc trying to find -lc++ by name.
+    # Note: ALPINE_LIBCXX_DIR is function-scoped in Musl.cmake, so derive it here.
+    set(_alpine_libcxx_dir "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libcxx")
     set(_x265_pc "${X265_PREFIX}/lib/pkgconfig/x265.pc")
-    if(EXISTS "${_x265_pc}")
+    if(EXISTS "${_x265_pc}" AND EXISTS "${_alpine_libcxx_dir}/usr/lib/libc++.a")
         file(READ "${_x265_pc}" _x265_pc_contents)
         string(FIND "${_x265_pc_contents}" "libc++.a" _already_patched)
         if(_already_patched EQUAL -1)
-            string(REGEX REPLACE "Libs:([^\n]*)" "Libs:\\1 ${ALPINE_LIBCXX_DIR}/usr/lib/libc++.a ${ALPINE_LIBCXX_DIR}/usr/lib/libc++abi.a" _x265_pc_contents "${_x265_pc_contents}")
+            string(REGEX REPLACE "Libs:([^\n]*)" "Libs:\\1 ${_alpine_libcxx_dir}/usr/lib/libc++.a ${_alpine_libcxx_dir}/usr/lib/libc++abi.a" _x265_pc_contents "${_x265_pc_contents}")
         endif()
         string(REGEX REPLACE "Libs\\.private:[^\n]*" "Libs.private:" _x265_pc_contents "${_x265_pc_contents}")
         file(WRITE "${_x265_pc}" "${_x265_pc_contents}")
