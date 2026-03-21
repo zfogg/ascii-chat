@@ -44,7 +44,12 @@ if [ -d "$REPO_ROOT" ]; then
     for manfile in "$BUILD_DIR/share/man/man3"/*.3; do
       if [ -f "$manfile" ]; then
         basename=$(basename "$manfile" .3)
-        mandoc -Thtml "$manfile" > "public/man3/${basename}.html"
+        htmlfile="public/man3/${basename}.html"
+        mandoc -Thtml "$manfile" > "$htmlfile"
+
+        # Fix malformed closing tags split across lines (e.g., </pre\n          >)
+        # mandoc sometimes puts the > on the next line after whitespace, which breaks HTML parsing
+        perl -pi -e 's/<\/([a-zA-Z][a-zA-Z0-9]*)\s*\n\s*>/<\/\1>/g' "$htmlfile"
       fi
     done
 
