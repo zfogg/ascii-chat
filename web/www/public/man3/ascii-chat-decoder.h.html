@@ -135,83 +135,83 @@
     h265_decode(decoder, packet, packet_size, &amp;width, &amp;height,
   <br/>
    ascii_grid, &amp;decoded_size);</p>
-<p class="Pp">Definition at line <b>105</b> of file <b>decoder.c</b>.</p>
-<pre>113   {
-114     if (!decoder || !encoded_packet || !output_width || !output_height || !output_buf || !output_size) {
-115         return SET_ERRNO(ERROR_INTERNAL, &quot;Invalid decoder arguments&quot;);
-116     }
-117 
-118     if (packet_size &lt; 5) {
-119         return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Packet too small (minimum 5 bytes)&quot;);
-120     }
-121 
-122     // Parse header
-123     uint8_t flags = encoded_packet[0];
-124     uint16_t width = ((uint16_t)encoded_packet[1] &lt;&lt; 8) | encoded_packet[2];
-125     uint16_t height = ((uint16_t)encoded_packet[3] &lt;&lt; 8) | encoded_packet[4];
-126 
-127     if (width == 0 || height == 0) {
-128         return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid frame dimensions: %ux%u&quot;, width, height);
-129     }
-130 
-131     size_t required_output = width * height;
-132     if (*output_size &lt; required_output) {
-133         *output_size = required_output;
-134         return SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Output buffer too small: need %zu, have %zu&quot;,
-135                         required_output, *output_size);
-136     }
-137 
-138     // Decode HEVC data
-139     if (packet_size &gt; 5) {
-140         const uint8_t *hevc_data = encoded_packet + 5;
-141         size_t hevc_size = packet_size - 5;
-142 
-143         // Send packet to decoder
-144         av_packet_from_data(decoder-&gt;packet, (uint8_t *)hevc_data, hevc_size);
-145 
-146         if (avcodec_send_packet(decoder-&gt;codec_ctx, decoder-&gt;packet) &lt; 0) {
-147             return SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to send packet to decoder&quot;);
-148         }
-149 
-150         if (avcodec_receive_frame(decoder-&gt;codec_ctx, decoder-&gt;frame) &lt; 0) {
-151             return SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to receive decoded frame&quot;);
-152         }
-153     } else {
-154         // Empty packet - just signal a frame boundary
-155         if (avcodec_send_packet(decoder-&gt;codec_ctx, NULL) &lt; 0) {
-156             return SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to flush decoder&quot;);
-157         }
-158     }
-159 
-160     // Extract Y plane (grayscale intensity)
-161     uint8_t *y_plane = decoder-&gt;frame-&gt;data[0];
-162     int y_stride = decoder-&gt;frame-&gt;linesize[0];
-163     int img_width = decoder-&gt;frame-&gt;width;
-164     int img_height = decoder-&gt;frame-&gt;height;
-165 
-166     if (img_width != (int)width || img_height != (int)height) {
-167         log_warn(&quot;Image dimensions mismatch: expected %ux%u, got %dx%d&quot;, width, height, img_width, img_height);
-168     }
-169 
-170     // Copy Y plane to output (ASCII intensity values)
-171     for (int y = 0; y &lt; img_height &amp;&amp; y &lt; (int)height; y++) {
-172         memcpy(output_buf + y * width, y_plane + y * y_stride, width);
-173     }
-174 
-175     *output_width = width;
-176     *output_height = height;
-177     *output_size = width * height;
-178 
-179     decoder-&gt;last_width = width;
-180     decoder-&gt;last_height = height;
-181     decoder-&gt;total_frames++;
-182 
-183     if (flags &amp; H265_DECODER_FLAG_KEYFRAME) {
-184         decoder-&gt;keyframes++;
-185     }
-186 
-187     return ASCIICHAT_OK;
-188 }</pre>
+<p class="Pp">Definition at line <b>107</b> of file <b>decoder.c</b>.</p>
+<pre>115   {
+116     if (!decoder || !encoded_packet || !output_width || !output_height || !output_buf || !output_size) {
+117         return SET_ERRNO(ERROR_INTERNAL, &quot;Invalid decoder arguments&quot;);
+118     }
+119 
+120     if (packet_size &lt; 5) {
+121         return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Packet too small (minimum 5 bytes)&quot;);
+122     }
+123 
+124     // Parse header
+125     uint8_t flags = encoded_packet[0];
+126     uint16_t width = ((uint16_t)encoded_packet[1] &lt;&lt; 8) | encoded_packet[2];
+127     uint16_t height = ((uint16_t)encoded_packet[3] &lt;&lt; 8) | encoded_packet[4];
+128 
+129     if (width == 0 || height == 0) {
+130         return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid frame dimensions: %ux%u&quot;, width, height);
+131     }
+132 
+133     size_t required_output = width * height;
+134     if (*output_size &lt; required_output) {
+135         *output_size = required_output;
+136         return SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Output buffer too small: need %zu, have %zu&quot;,
+137                         required_output, *output_size);
+138     }
+139 
+140     // Decode HEVC data
+141     if (packet_size &gt; 5) {
+142         const uint8_t *hevc_data = encoded_packet + 5;
+143         size_t hevc_size = packet_size - 5;
+144 
+145         // Send packet to decoder
+146         av_packet_from_data(decoder-&gt;packet, (uint8_t *)hevc_data, hevc_size);
+147 
+148         if (avcodec_send_packet(decoder-&gt;codec_ctx, decoder-&gt;packet) &lt; 0) {
+149             return SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to send packet to decoder&quot;);
+150         }
+151 
+152         if (avcodec_receive_frame(decoder-&gt;codec_ctx, decoder-&gt;frame) &lt; 0) {
+153             return SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to receive decoded frame&quot;);
+154         }
+155     } else {
+156         // Empty packet - just signal a frame boundary
+157         if (avcodec_send_packet(decoder-&gt;codec_ctx, NULL) &lt; 0) {
+158             return SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to flush decoder&quot;);
+159         }
+160     }
+161 
+162     // Extract Y plane (grayscale intensity)
+163     uint8_t *y_plane = decoder-&gt;frame-&gt;data[0];
+164     int y_stride = decoder-&gt;frame-&gt;linesize[0];
+165     int img_width = decoder-&gt;frame-&gt;width;
+166     int img_height = decoder-&gt;frame-&gt;height;
+167 
+168     if (img_width != (int)width || img_height != (int)height) {
+169         log_warn(&quot;Image dimensions mismatch: expected %ux%u, got %dx%d&quot;, width, height, img_width, img_height);
+170     }
+171 
+172     // Copy Y plane to output (ASCII intensity values)
+173     for (int y = 0; y &lt; img_height &amp;&amp; y &lt; (int)height; y++) {
+174         memcpy(output_buf + y * width, y_plane + y * y_stride, width);
+175     }
+176 
+177     *output_width = width;
+178     *output_height = height;
+179     *output_size = width * height;
+180 
+181     decoder-&gt;last_width = width;
+182     decoder-&gt;last_height = height;
+183     decoder-&gt;total_frames++;
+184 
+185     if (flags &amp; H265_DECODER_FLAG_KEYFRAME) {
+186         decoder-&gt;keyframes++;
+187     }
+188 
+189     return ASCIICHAT_OK;
+190 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>h265_decoder::codec_ctx</b>,
@@ -253,44 +253,46 @@
 50         return NULL;
 51     }
 52 
-53     // Open decoder (HEVC decoder doesn't write to stderr like x265 encoder,
-54     // but avoid LOG_IO here to prevent process-global stderr redirection)
-55     int codec_open_result = avcodec_open2(dec-&gt;codec_ctx, codec, NULL);
-56 
-57     if (codec_open_result &lt; 0) {
-58         SET_ERRNO(ERROR_MEDIA_INIT, &quot;Failed to open HEVC decoder&quot;);
-59         avcodec_free_context(&amp;dec-&gt;codec_ctx);
-60         SAFE_FREE(dec);
-61         return NULL;
-62     }
-63 
-64     // Allocate frame and packet
-65     dec-&gt;frame = av_frame_alloc();
-66     dec-&gt;packet = av_packet_alloc();
-67     dec-&gt;parser = av_parser_init(AV_CODEC_ID_HEVC);
-68 
-69     if (!dec-&gt;frame || !dec-&gt;packet || !dec-&gt;parser) {
-70         SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate frame/packet/parser&quot;);
-71         if (dec-&gt;frame) av_frame_free(&amp;dec-&gt;frame);
-72         if (dec-&gt;packet) av_packet_free(&amp;dec-&gt;packet);
-73         if (dec-&gt;parser) av_parser_close(dec-&gt;parser);
-74         avcodec_free_context(&amp;dec-&gt;codec_ctx);
-75         SAFE_FREE(dec);
-76         return NULL;
-77     }
-78 
-79     log_info(&quot;FFmpeg HEVC decoder created&quot;);
+53     // Open decoder (capture x265 library output during initialization)
+54     int codec_open_result = 0;
+55     LOG_IO(&quot;hevc&quot;, {
+56         codec_open_result = avcodec_open2(dec-&gt;codec_ctx, codec, NULL);
+57     });
+58 
+59     if (codec_open_result &lt; 0) {
+60         SET_ERRNO(ERROR_MEDIA_INIT, &quot;Failed to open HEVC decoder&quot;);
+61         avcodec_free_context(&amp;dec-&gt;codec_ctx);
+62         SAFE_FREE(dec);
+63         return NULL;
+64     }
+65 
+66     // Allocate frame and packet
+67     dec-&gt;frame = av_frame_alloc();
+68     dec-&gt;packet = av_packet_alloc();
+69     dec-&gt;parser = av_parser_init(AV_CODEC_ID_HEVC);
+70 
+71     if (!dec-&gt;frame || !dec-&gt;packet || !dec-&gt;parser) {
+72         SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate frame/packet/parser&quot;);
+73         if (dec-&gt;frame) av_frame_free(&amp;dec-&gt;frame);
+74         if (dec-&gt;packet) av_packet_free(&amp;dec-&gt;packet);
+75         if (dec-&gt;parser) av_parser_close(dec-&gt;parser);
+76         avcodec_free_context(&amp;dec-&gt;codec_ctx);
+77         SAFE_FREE(dec);
+78         return NULL;
+79     }
 80 
-81     // Register decoder for debugging
-82     NAMED_REGISTER_H265_DECODER(dec, &quot;h265_decoder&quot;, NULL);
-83 
-84     return dec;
-85 }</pre>
+81     log_info(&quot;FFmpeg HEVC decoder created&quot;);
+82 
+83     // Register decoder for debugging
+84     NAMED_REGISTER_H265_DECODER(dec, &quot;h265_decoder&quot;, NULL);
+85 
+86     return dec;
+87 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>h265_decoder::codec_ctx</b>,
     <b>ERROR_MEDIA_INIT</b>, <b>ERROR_MEMORY</b>, <b>h265_decoder::frame</b>,
-    <b>log_info</b>, <b>NAMED_REGISTER_H265_DECODER</b>,
+    <b>log_info</b>, <b>LOG_IO</b>, <b>NAMED_REGISTER_H265_DECODER</b>,
     <b>h265_decoder::packet</b>, <b>h265_decoder::parser</b>,
     <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>h265_server_get_client_decoder()</b>.</p>
@@ -302,24 +304,24 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>decoder</i> Decoder to destroy (may be NULL)</div>
-<p class="Pp">Definition at line <b>87</b> of file <b>decoder.c</b>.</p>
-<pre>87                                                    {
-88     if (!decoder) return;
-89 
-90     if (decoder-&gt;frame) {
-91         av_frame_free(&amp;decoder-&gt;frame);
-92     }
-93     if (decoder-&gt;packet) {
-94         av_packet_free(&amp;decoder-&gt;packet);
-95     }
-96     if (decoder-&gt;parser) {
-97         av_parser_close(decoder-&gt;parser);
-98     }
-99     if (decoder-&gt;codec_ctx) {
-100         avcodec_free_context(&amp;decoder-&gt;codec_ctx);
-101     }
-102     SAFE_FREE(decoder);
-103 }</pre>
+<p class="Pp">Definition at line <b>89</b> of file <b>decoder.c</b>.</p>
+<pre>89                                                    {
+90     if (!decoder) return;
+91 
+92     if (decoder-&gt;frame) {
+93         av_frame_free(&amp;decoder-&gt;frame);
+94     }
+95     if (decoder-&gt;packet) {
+96         av_packet_free(&amp;decoder-&gt;packet);
+97     }
+98     if (decoder-&gt;parser) {
+99         av_parser_close(decoder-&gt;parser);
+100     }
+101     if (decoder-&gt;codec_ctx) {
+102         avcodec_free_context(&amp;decoder-&gt;codec_ctx);
+103     }
+104     SAFE_FREE(decoder);
+105 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>h265_decoder::codec_ctx</b>,
@@ -345,15 +347,15 @@
 <i>last_width</i> Output: width of last decoded frame
 <br/>
 <i>last_height</i> Output: height of last decoded frame</div>
-<p class="Pp">Definition at line <b>190</b> of file <b>decoder.c</b>.</p>
-<pre>196   {
-197     if (!decoder) return;
-198 
-199     if (total_frames) *total_frames = decoder-&gt;total_frames;
-200     if (keyframes) *keyframes = decoder-&gt;keyframes;
-201     if (last_width) *last_width = decoder-&gt;last_width;
-202     if (last_height) *last_height = decoder-&gt;last_height;
-203 }</pre>
+<p class="Pp">Definition at line <b>192</b> of file <b>decoder.c</b>.</p>
+<pre>198   {
+199     if (!decoder) return;
+200 
+201     if (total_frames) *total_frames = decoder-&gt;total_frames;
+202     if (keyframes) *keyframes = decoder-&gt;keyframes;
+203     if (last_width) *last_width = decoder-&gt;last_width;
+204     if (last_height) *last_height = decoder-&gt;last_height;
+205 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>h265_decoder::keyframes</b>,
@@ -369,7 +371,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.4</td>
+    <td class="foot-date">Version 0.9.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

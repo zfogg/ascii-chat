@@ -209,11 +209,8 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">long <b>__isoc23_strtol</b> (const char *str, char **endptr, int
-    base)
-  <br/>
-  String to integer conversion with manual base-10 parser. long
-    <b>__isoc23_wcstol</b> (const wchar_t *str, wchar_t **endptr, int base)
+<p class="Pp">long <b>__isoc23_wcstol</b> (const wchar_t *str, wchar_t **endptr,
+    int base)
   <br/>
   Wide string to integer conversion. int <b>__isoc23_scanf</b> (const char
     *format,...)
@@ -1362,112 +1359,18 @@ int rounded = ROUND(-2.5);  // Returns -2
 <i>...</i> Variable arguments</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>198</b> of file
+<p class="Pp">Definition at line <b>114</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>198                                             {
-199   va_list args;
-200   va_start(args, format);
-201   int result = vscanf(format, args);
-202   va_end(args);
-203   return result;
-204 }</pre>
+<pre>114                                             {
+115   va_list args;
+116   va_start(args, format);
+117   int result = vscanf(format, args);
+118   va_end(args);
+119   return result;
+120 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="long___isoc23_strtol_(const_char_*_str,_char_**_endptr,_int_base)"><a class="permalink" href="#long___isoc23_strtol_(const_char_*_str,_char_**_endptr,_int_base)">long
-  __isoc23_strtol (const char * str, char ** endptr, int base)</a></h2>
-<p class="Pp">#include &lt;<b>lib/musl_c23_compat.c</b>&gt;<b></b></p>
-<p class="Pp">String to integer conversion with manual base-10 parser. NOTE:
-    Manual base-10 parser avoids strtoll recursion in musl static builds. For
-    other bases, fallback to strtoll (less common use case).</p>
-<p class="Pp"></p>
-<p class="Pp">Convert string to long (C23 compatible)</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>str</i> String to convert (NULL-safe)
-<br/>
-<i>endptr</i> Pointer to first non-digit character (optional)
-<br/>
-<i>base</i> Numeric base (0-36; 0 auto-detects hex/octal)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Converted value, or LONG_MAX/LONG_MIN on overflow</div>
-<p class="Pp">Definition at line <b>33</b> of file <b>musl_c23_compat.c</b>.</p>
-<pre>33                                                                {
-34   if (!str) {
-35     if (endptr)
-36       *endptr = (char *)str;
-37     return 0;
-38   }
-39 
-40   /* Manual base-10 parser to avoid infinite recursion in musl where strtoll
-41      might redirect back to __isoc23_strtoll */
-42   if (base == 10 || base == 0) {
-43     const char *p = str;
-44     int sign = 1;
-45     long result = 0;
-46 
-47     /* Skip leading whitespace */
-48     while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r' || *p == '\v' || *p == '\f')
-49       p++;
-50 
-51     /* Parse optional sign */
-52     if (*p == '-') {
-53       sign = -1;
-54       p++;
-55     } else if (*p == '+') {
-56       p++;
-57     }
-58 
-59     /* For base-0, detect hex or octal prefix and delegate to strtoll */
-60     if (base == 0) {
-61       if (*p == '0') {
-62         if (p[1] == 'x' || p[1] == 'X') {
-63           /* Hex prefix detected - use strtoll for proper parsing */
-64           goto use_strtoll;
-65         } else if (p[1] &gt;= '0' &amp;&amp; p[1] &lt;= '7') {
-66           /* Octal prefix detected - use strtoll for proper parsing */
-67           goto use_strtoll;
-68         }
-69       }
-70       base = 10; /* Default to decimal */
-71     }
-72 
-73     /* Parse decimal digits with overflow detection */
-74     int has_digits = 0;
-75     while (*p &gt;= '0' &amp;&amp; *p &lt;= '9') {
-76       has_digits = 1;
-77       int digit = *p - '0';
-78       /* Prevent overflow: check before multiplication */
-79       if (result &gt; (LONG_MAX - digit) / 10) {
-80         if (endptr)
-81           *endptr = (char *)p;
-82         return sign &gt; 0 ? LONG_MAX : LONG_MIN;
-83       }
-84       result = result * 10 + digit;
-85       p++;
-86     }
-87 
-88     if (endptr) {
-89       *endptr = (char *)(has_digits ? p : str);
-90     }
-91 
-92     return sign * result;
-93   }
-94 
-95   /* Fallback for non-base-10 parsing */
-96 use_strtoll: {
-97   long long result = strtoll(str, endptr, base);
-98   /* Clamp result to long range */
-99   if (result &gt; LONG_MAX)
-100     return LONG_MAX;
-101   if (result &lt; LONG_MIN)
-102     return LONG_MIN;
-103   return (long)result;
-104 }
-105 }</pre>
-<pre></pre>
-<p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="long___isoc23_wcstol_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)"><a class="permalink" href="#long___isoc23_wcstol_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)">long
@@ -1483,11 +1386,10 @@ int rounded = ROUND(-2.5);  // Returns -2
 <i>base</i> Numeric base (0-36)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Converted value</div>
-<p class="Pp">Definition at line <b>151</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>151                                                                      {
-152   return wcstol(str, endptr, base);
-153 }</pre>
+<p class="Pp">Definition at line <b>67</b> of file <b>musl_c23_compat.c</b>.</p>
+<pre>67                                                                      {
+68   return wcstol(str, endptr, base);
+69 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -1503,15 +1405,15 @@ int rounded = ROUND(-2.5);  // Returns -2
 <i>...</i> Variable arguments</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>278</b> of file
+<p class="Pp">Definition at line <b>194</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>278                                                 {
-279   va_list args;
-280   va_start(args, format);
-281   int result = vwscanf(format, args);
-282   va_end(args);
-283   return result;
-284 }</pre>
+<pre>194                                                 {
+195   va_list args;
+196   va_start(args, format);
+197   int result = vwscanf(format, args);
+198   va_end(args);
+199   return result;
+200 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -1532,34 +1434,34 @@ int rounded = ROUND(-2.5);  // Returns -2
   0)
 <br/>
 <i>nbytes</i> Number of random bytes to generate</div>
-<p class="Pp">Definition at line <b>367</b> of file
+<p class="Pp">Definition at line <b>283</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>367                                               {
-368   if (nbytes == 0 || buf == NULL) {
-369     return;
-370   }
-371 
-372 /* Prefer getrandom syscall: available in Linux 3.17+, no file descriptor needed */
-373 #ifdef SYS_getrandom
-374   long result = syscall(SYS_getrandom, buf, nbytes, 0);
-375   if (result == (long)nbytes) {
-376     return;
-377   }
-378 #endif
-379 
-380   /* Fallback to /dev/urandom device */
-381   int fd = open(&quot;/dev/urandom&quot;, O_RDONLY);
-382   if (fd &gt;= 0) {
-383     ssize_t n = read(fd, buf, nbytes);
-384     close(fd);
-385     if (n == (ssize_t)nbytes) {
-386       return;
-387     }
-388   }
-389 
-390   /* Fatal error: unable to obtain random bytes */
-391   abort();
-392 }</pre>
+<pre>283                                               {
+284   if (nbytes == 0 || buf == NULL) {
+285     return;
+286   }
+287 
+288 /* Prefer getrandom syscall: available in Linux 3.17+, no file descriptor needed */
+289 #ifdef SYS_getrandom
+290   long result = syscall(SYS_getrandom, buf, nbytes, 0);
+291   if (result == (long)nbytes) {
+292     return;
+293   }
+294 #endif
+295 
+296   /* Fallback to /dev/urandom device */
+297   int fd = open(&quot;/dev/urandom&quot;, O_RDONLY);
+298   if (fd &gt;= 0) {
+299     ssize_t n = read(fd, buf, nbytes);
+300     close(fd);
+301     if (n == (ssize_t)nbytes) {
+302       return;
+303     }
+304   }
+305 
+306   /* Fatal error: unable to obtain random bytes */
+307   abort();
+308 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>random_r()</b>.</p>
@@ -8669,7 +8571,7 @@ fclose(fp);
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.4</td>
+    <td class="foot-date">Version 0.9.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

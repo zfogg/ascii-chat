@@ -39,11 +39,10 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">long <b>__isoc23_strtol</b> (const char *str, char **endptr, int
-    base)
+<p class="Pp">long <b>musl_strtol</b> (const char *, extern long long
+    musl_strtoll(const char char **, int)
   <br/>
-  String to integer conversion with manual base-10 parser. long long
-    <b>__isoc23_strtoll</b> (const char *str, char **endptr, int base)
+  long long <b>__isoc23_strtoll</b> (const char *str, char **endptr, int base)
   <br/>
   Convert string to long long (C23 compatible). unsigned long
     <b>__isoc23_strtoul</b> (const char *str, char **endptr, int base)
@@ -150,15 +149,15 @@
 <i>...</i> Variable arguments</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>213</b> of file
+<p class="Pp">Definition at line <b>129</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>213                                                            {
-214   va_list args;
-215   va_start(args, format);
-216   int result = vfscanf(stream, format, args);
-217   va_end(args);
-218   return result;
-219 }</pre>
+<pre>129                                                            {
+130   va_list args;
+131   va_start(args, format);
+132   int result = vfscanf(stream, format, args);
+133   va_end(args);
+134   return result;
+135 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -175,15 +174,15 @@
 <i>...</i> Variable arguments</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>293</b> of file
+<p class="Pp">Definition at line <b>209</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>293                                                                {
-294   va_list args;
-295   va_start(args, format);
-296   int result = vfwscanf(stream, format, args);
-297   va_end(args);
-298   return result;
-299 }</pre>
+<pre>209                                                                {
+210   va_list args;
+211   va_start(args, format);
+212   int result = vfwscanf(stream, format, args);
+213   va_end(args);
+214   return result;
+215 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -200,15 +199,15 @@
 <i>...</i> Variable arguments</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>228</b> of file
+<p class="Pp">Definition at line <b>144</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>228                                                               {
-229   va_list args;
-230   va_start(args, format);
-231   int result = vsscanf(str, format, args);
-232   va_end(args);
-233   return result;
-234 }</pre>
+<pre>144                                                               {
+145   va_list args;
+146   va_start(args, format);
+147   int result = vsscanf(str, format, args);
+148   va_end(args);
+149   return result;
+150 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -217,19 +216,10 @@
 <h2 class="Ss" id="long_long___isoc23_strtoll_(const_char_*_str,_char_**_endptr,_int_base)"><a class="permalink" href="#long_long___isoc23_strtoll_(const_char_*_str,_char_**_endptr,_int_base)">long
   long __isoc23_strtoll (const char * str, char ** endptr, int base)</a></h2>
 <p class="Pp">Convert string to long long (C23 compatible).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>str</i> String to convert
-<br/>
-<i>endptr</i> Pointer to first non-digit character (optional)
-<br/>
-<i>base</i> Numeric base (0-36)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Converted value</div>
-<p class="Pp">Definition at line <b>114</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>114                                                                      {
-115   return strtoll(str, endptr, base);
-116 }</pre>
+<p class="Pp">Definition at line <b>38</b> of file <b>musl_c23_compat.c</b>.</p>
+<pre>38                                                                      {
+39   return musl_strtoll(str, endptr, base);
+40 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -237,19 +227,10 @@
 <h2 class="Ss" id="unsigned_long___isoc23_strtoul_(const_char_*_str,_char_**_endptr,_int_base)"><a class="permalink" href="#unsigned_long___isoc23_strtoul_(const_char_*_str,_char_**_endptr,_int_base)">unsigned
   long __isoc23_strtoul (const char * str, char ** endptr, int base)</a></h2>
 <p class="Pp">Convert string to unsigned long (C23 compatible).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>str</i> String to convert
-<br/>
-<i>endptr</i> Pointer to first non-digit character (optional)
-<br/>
-<i>base</i> Numeric base (0-36)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Converted value</div>
-<p class="Pp">Definition at line <b>125</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>125                                                                          {
-126   return strtoul(str, endptr, base);
-127 }</pre>
+<p class="Pp">Definition at line <b>45</b> of file <b>musl_c23_compat.c</b>.</p>
+<pre>45                                                                          {
+46   return musl_strtoul(str, endptr, base);
+47 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -258,19 +239,10 @@
   long long __isoc23_strtoull (const char * str, char ** endptr, int
   base)</a></h2>
 <p class="Pp">Convert string to unsigned long long (C23 compatible).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>str</i> String to convert
-<br/>
-<i>endptr</i> Pointer to first non-digit character (optional)
-<br/>
-<i>base</i> Numeric base (0-36)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Converted value</div>
-<p class="Pp">Definition at line <b>136</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>136                                                                                {
-137   return strtoull(str, endptr, base);
-138 }</pre>
+<p class="Pp">Definition at line <b>52</b> of file <b>musl_c23_compat.c</b>.</p>
+<pre>52                                                                                {
+53   return musl_strtoull(str, endptr, base);
+54 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -286,15 +258,15 @@
 <i>...</i> Variable arguments</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>308</b> of file
+<p class="Pp">Definition at line <b>224</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>308                                                                      {
-309   va_list args;
-310   va_start(args, format);
-311   int result = vswscanf(str, format, args);
-312   va_end(args);
-313   return result;
-314 }</pre>
+<pre>224                                                                      {
+225   va_list args;
+226   va_start(args, format);
+227   int result = vswscanf(str, format, args);
+228   va_end(args);
+229   return result;
+230 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -312,11 +284,11 @@
 <i></i><b>args</b><i></i><b> Variable argument list</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>253</b> of file
+<p class="Pp">Definition at line <b>169</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>253                                                                      {
-254   return vfscanf(stream, format, args);
-255 }</pre>
+<pre>169                                                                      {
+170   return vfscanf(stream, format, args);
+171 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -335,11 +307,11 @@
 <i></i><b>args</b><i></i><b> Variable argument list</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>333</b> of file
+<p class="Pp">Definition at line <b>249</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>333                                                                          {
-334   return vfwscanf(stream, format, args);
-335 }</pre>
+<pre>249                                                                          {
+250   return vfwscanf(stream, format, args);
+251 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -355,11 +327,11 @@
 <i></i><b>args</b><i></i><b> Variable argument list</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>242</b> of file
+<p class="Pp">Definition at line <b>158</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>242                                                       {
-243   return vscanf(format, args);
-244 }</pre>
+<pre>158                                                       {
+159   return vscanf(format, args);
+160 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -378,11 +350,11 @@
 <i></i><b>args</b><i></i><b> Variable argument list</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>264</b> of file
+<p class="Pp">Definition at line <b>180</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>264                                                                         {
-265   return vsscanf(str, format, args);
-266 }</pre>
+<pre>180                                                                         {
+181   return vsscanf(str, format, args);
+182 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -401,11 +373,11 @@
 <i></i><b>args</b><i></i><b> Variable argument list</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>344</b> of file
+<p class="Pp">Definition at line <b>260</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>344                                                                                {
-345   return vswscanf(str, format, args);
-346 }</pre>
+<pre>260                                                                                {
+261   return vswscanf(str, format, args);
+262 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -421,11 +393,11 @@
 <i></i><b>args</b><i></i><b> Variable argument list</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of successfully read items</div>
-<p class="Pp">Definition at line <b>322</b> of file
+<p class="Pp">Definition at line <b>238</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>322                                                           {
-323   return vwscanf(format, args);
-324 }</pre>
+<pre>238                                                           {
+239   return vwscanf(format, args);
+240 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -443,11 +415,10 @@
 <i>base</i> Numeric base (0-36)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Converted value</div>
-<p class="Pp">Definition at line <b>162</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>162                                                                            {
-163   return wcstoll(str, endptr, base);
-164 }</pre>
+<p class="Pp">Definition at line <b>78</b> of file <b>musl_c23_compat.c</b>.</p>
+<pre>78                                                                            {
+79   return wcstoll(str, endptr, base);
+80 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -464,11 +435,10 @@
 <i>base</i> Numeric base (0-36)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Converted value</div>
-<p class="Pp">Definition at line <b>173</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>173                                                                                {
-174   return wcstoul(str, endptr, base);
-175 }</pre>
+<p class="Pp">Definition at line <b>89</b> of file <b>musl_c23_compat.c</b>.</p>
+<pre>89                                                                                {
+90   return wcstoul(str, endptr, base);
+91 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -485,11 +455,11 @@
 <i>base</i> Numeric base (0-36)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Converted value</div>
-<p class="Pp">Definition at line <b>184</b> of file
+<p class="Pp">Definition at line <b>100</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>184                                                                                      {
-185   return wcstoull(str, endptr, base);
-186 }</pre>
+<pre>100                                                                                      {
+101   return wcstoull(str, endptr, base);
+102 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -551,20 +521,31 @@
 <i>buf</i> Random data structure (validated but not used)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 if parameters invalid</div>
-<p class="Pp">Definition at line <b>430</b> of file
+<p class="Pp">Definition at line <b>346</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>430                                                                                              {
-431   (void)seed;
-432   // Validate parameters match glibc interface
-433   if (!statebuf || !buf || statelen &lt; 32) {
-434     return -1;
-435   }
-436 
-437   // Initialize buffer (though random_r() doesn't actually use it)
-438   memset(statebuf, 0, statelen);
-439 
-440   return 0;
-441 }</pre>
+<pre>346                                                                                              {
+347   (void)seed;
+348   // Validate parameters match glibc interface
+349   if (!statebuf || !buf || statelen &lt; 32) {
+350     return -1;
+351   }
+352 
+353   // Initialize buffer (though random_r() doesn't actually use it)
+354   memset(statebuf, 0, statelen);
+355 
+356   return 0;
+357 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="long_musl_strtol_(const_char_*_,_extern_long_long____musl_strtoll(const_char_char_**,_int_)"><a class="permalink" href="#long_musl_strtol_(const_char_*_,_extern_long_long____musl_strtoll(const_char_char_**,_int_)">long
+  musl_strtol (const char * , extern long long musl_strtoll(const char char **,
+  int ) [extern]</a></h2>
+<p class="Pp">Definition at line <b>23</b> of file <b>musl_c23_compat.c</b>.</p>
+<pre>31                                                                {
+32   return musl_strtol(str, endptr, base);
+33 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -607,23 +588,23 @@
 <i>result</i> Pointer to store generated random value in range [0, 2^31)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 if buf or result is NULL</div>
-<p class="Pp">Definition at line <b>467</b> of file
+<p class="Pp">Definition at line <b>383</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>467                                                                          {
-468   if (buf == NULL || result == NULL) {
-469     return -1;
-470   }
-471 
-472   /* Obtain cryptographically secure random bytes from kernel */
-473   uint32_t random_bytes;
-474   arc4random_buf(&amp;random_bytes, sizeof(random_bytes));
-475 
-476   /* Convert to 31-bit positive integer matching glibc behavior
-477      glibc's random_r returns values in range [0, 2^31) */
-478   *result = (int32_t)((random_bytes &gt;&gt; 1) &amp; 0x7FFFFFFF);
-479 
-480   return 0;
-481 }</pre>
+<pre>383                                                                          {
+384   if (buf == NULL || result == NULL) {
+385     return -1;
+386   }
+387 
+388   /* Obtain cryptographically secure random bytes from kernel */
+389   uint32_t random_bytes;
+390   arc4random_buf(&amp;random_bytes, sizeof(random_bytes));
+391 
+392   /* Convert to 31-bit positive integer matching glibc behavior
+393      glibc's random_r returns values in range [0, 2^31) */
+394   *result = (int32_t)((random_bytes &gt;&gt; 1) &amp; 0x7FFFFFFF);
+395 
+396   return 0;
+397 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>arc4random_buf()</b>.</p>
@@ -636,7 +617,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.4</td>
+    <td class="foot-date">Version 0.9.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>
