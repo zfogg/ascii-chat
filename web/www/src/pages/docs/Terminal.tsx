@@ -9,7 +9,6 @@ import {
   TerminalDimensionsSection,
   UnicodeTextSection,
   DebuggingDetectionSection,
-  OptionCombinationsSection,
   TipsTricksSection,
 } from "../../components/docs/terminal";
 
@@ -82,7 +81,6 @@ export default function Terminal() {
           </section>
 
           <DebuggingDetectionSection />
-          <OptionCombinationsSection />
           <TipsTricksSection />
 
           <Footer />
