@@ -137,7 +137,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
 
     # Install non-LLVM dependencies first
     apt-get install -y \
-      pkg-config make autoconf automake libtool ccache \
+      pkg-config make autoconf automake libtool ccache gperf \
       cmake ninja-build \
       musl-tools musl-dev \
       nasm \
