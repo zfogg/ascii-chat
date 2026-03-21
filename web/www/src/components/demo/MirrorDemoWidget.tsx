@@ -68,6 +68,7 @@ export default function MirrorDemoWidget({
   const [muted, setMuted] = useState(false);
   const [paused, setPaused] = useState(false);
   const [termDims, setTermDims] = useState({ cols: 0, rows: 0 });
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(
     demoOptions?.[defaultOptionIndex]?.id ?? null,
   );
@@ -83,6 +84,13 @@ export default function MirrorDemoWidget({
 
   const selectedOption =
     demoOptions?.find((o) => o.id === selectedOptionId) ?? null;
+
+  const addDebugLog = useCallback((msg: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const logMsg = `[${timestamp}] ${msg}`;
+    console.log(logMsg);
+    setDebugLogs((prev) => [...prev, logMsg].slice(-15));
+  }, []);
 
   const initWasm = useCallback(async () => {
     if (isWasmReady()) {
@@ -183,34 +191,77 @@ export default function MirrorDemoWidget({
   const startDemo = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setDebugLogs([]);
+    addDebugLog("Starting demo...");
     try {
       registerActiveDemo(stop);
+      addDebugLog("Initializing WASM...");
       await initWasm();
+      addDebugLog("WASM initialized");
 
       if (videoRef.current) {
+        addDebugLog("Setting up video element");
         videoRef.current.src = "/assets/demo-video.mp4";
+        videoRef.current.crossOrigin = "anonymous";
         videoRef.current.loop = true;
         videoRef.current.muted = true;
         videoRef.current.playsInline = true;
+
         await new Promise<void>((resolve, reject) => {
+          const loadedMetadataHandler = () => {
+            addDebugLog(
+              `Video metadata loaded: ${videoRef.current!.videoWidth}x${videoRef.current!.videoHeight}`,
+            );
+            if (canvasRef.current) {
+              canvasRef.current.width = videoRef.current!.videoWidth;
+              canvasRef.current.height = videoRef.current!.videoHeight;
+            }
+            resolve();
+          };
+
+          const errorHandler = () => {
+            const video = videoRef.current!;
+            const errorCode = video.error?.code;
+            const errorMsg = video.error?.message || "Unknown error";
+            const errorText = `Video error code ${errorCode}: ${errorMsg}`;
+            addDebugLog(errorText);
+            reject(new Error(errorText));
+          };
+
+          addDebugLog("Waiting for video metadata...");
           videoRef.current!.addEventListener(
             "loadedmetadata",
-            () => {
-              if (canvasRef.current) {
-                canvasRef.current.width = videoRef.current!.videoWidth;
-                canvasRef.current.height = videoRef.current!.videoHeight;
-              }
-              resolve();
+            loadedMetadataHandler,
+            {
+              once: true,
             },
-            { once: true },
           );
-          videoRef.current!.addEventListener(
-            "error",
-            () => reject(new Error("Failed to load demo video")),
-            { once: true },
-          );
+          videoRef.current!.addEventListener("error", errorHandler, {
+            once: true,
+          });
+
+          // Add timeout for debugging
+          const timeout = setTimeout(() => {
+            videoRef.current!.removeEventListener(
+              "loadedmetadata",
+              loadedMetadataHandler,
+            );
+            videoRef.current!.removeEventListener("error", errorHandler);
+            addDebugLog("Video load timeout - metadata not received");
+            reject(new Error("Video metadata load timeout"));
+          }, 5000);
+
+          // Store reference to clear timeout on success
+          const originalResolve = resolve;
+          resolve = () => {
+            clearTimeout(timeout);
+            originalResolve();
+          };
         });
+
+        addDebugLog("Playing video...");
         await videoRef.current.play();
+        addDebugLog("Video playing, unmuting...");
         videoRef.current.muted = false;
       }
 
@@ -219,15 +270,16 @@ export default function MirrorDemoWidget({
       setFlipY(false);
       applySelectedOption(sourceFlipX);
       sourceRef.current = "demo";
+      addDebugLog("Demo started successfully");
       setSource("demo");
     } catch (err) {
-      setError(
-        `Demo failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      addDebugLog(`ERROR: ${errorMsg}`);
+      setError(`Demo failed: ${errorMsg}`);
     } finally {
       setLoading(false);
     }
-  }, [initWasm, stop, applySelectedOption]);
+  }, [initWasm, stop, applySelectedOption, addDebugLog]);
 
   const togglePause = useCallback(() => {
     if (videoRef.current) {
@@ -465,6 +517,24 @@ export default function MirrorDemoWidget({
           </>
         )}
       </div>
+
+      {/* Debug logs panel */}
+      {debugLogs.length > 0 && (
+        <div className="mt-2 bg-gray-950 border border-gray-700 rounded p-2 max-h-32 overflow-y-auto">
+          <p className="text-gray-500 text-xs font-medium mb-1">Debug Logs:</p>
+          {debugLogs.map((log, i) => (
+            <div
+              key={i}
+              className={`text-xs font-mono ${
+                log.includes("ERROR") ? "text-red-400" : "text-green-400"
+              }`}
+            >
+              {log}
+            </div>
+          ))}
+        </div>
+      )}
+
       <p className="text-gray-600 text-xs mt-2 sm:text-right">
         Demo video:{" "}
         <a

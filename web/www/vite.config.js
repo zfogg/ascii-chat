@@ -51,12 +51,13 @@ export default defineConfig({
     dedupe: ["react", "react-dom"],
   },
   server: {
+    host: "0.0.0.0",
     port: 5173,
     headers: {
       "Cross-Origin-Embedder-Policy": "require-corp",
       "Cross-Origin-Opener-Policy": "same-origin",
     },
-    // Development: http://localhost:5173
+    // Development: http://0.0.0.0:5173 (accessible from other devices)
     // Production: https://ascii-chat.com
     // API proxy: /api requests route to localhost:3001 (via API_PORT env var)
     proxy: {
