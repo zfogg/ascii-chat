@@ -42,8 +42,25 @@ export default function Navigation() {
     { to: "/man3", label: "ascii-chat-*(3)", paths: "/man3" },
   ];
 
+  const handleNavClick = () => {
+    // Scroll the main scrollable container to top
+    const scrollContainer = document.querySelector('div.overflow-y-auto');
+    if (scrollContainer) {
+      scrollContainer.scrollTop = 0;
+    }
+    setMobileMenuOpen(false);
+  };
+
   return (
-    <nav className="border-b border-gray-800 bg-gray-950/50 backdrop-blur-sm fixed top-0 left-0 right-0 z-50 w-full">
+    <>
+      {/* Mobile menu backdrop */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-40 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+      <nav className="border-b border-gray-800 bg-gray-950/50 backdrop-blur-sm fixed top-0 left-0 right-0 z-50 w-full">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
         <div className="flex items-center justify-between">
           <TrackedLink
@@ -64,6 +81,7 @@ export default function Navigation() {
                 to={to}
                 label={`Nav - ${label}`}
                 className={getDesktopNavLinkClass(paths)}
+                onClick={handleNavClick}
               >
                 {label}
               </TrackedLink>
@@ -119,7 +137,7 @@ export default function Navigation() {
                 to={to}
                 label={`Nav - ${label}`}
                 className={getMobileNavLinkClass(paths)}
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={handleNavClick}
               >
                 {label}
               </TrackedLink>
@@ -138,5 +156,6 @@ export default function Navigation() {
         )}
       </div>
     </nav>
+    </>
   );
 }
