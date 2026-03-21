@@ -162,12 +162,17 @@ if(USE_MUSL)
         message(STATUS "  ${BoldGreen}x265${ColorReset} library found in cache: ${BoldMagenta}${X265_PREFIX}/lib/libx265.a${ColorReset}")
     endif()
 
-    # x265 built with clang -stdlib=libc++ lists C++ runtime libs in
-    # Libs.private that musl-gcc can't resolve during FFmpeg's link test.
-    # Clear Libs.private since FFmpeg handles runtime linking via --extra-libs.
+    # x265 built with clang -stdlib=libc++ needs libc++ symbols at link time.
+    # Rewrite x265.pc to include the alpine libc++ .a files directly in Libs
+    # so FFmpeg's pkg-config link test can resolve C++ symbols. Clear
+    # Libs.private to avoid musl-gcc trying to find -lc++ by name.
     set(_x265_pc "${X265_PREFIX}/lib/pkgconfig/x265.pc")
     if(EXISTS "${_x265_pc}")
         file(READ "${_x265_pc}" _x265_pc_contents)
+        string(FIND "${_x265_pc_contents}" "libc++.a" _already_patched)
+        if(_already_patched EQUAL -1)
+            string(REGEX REPLACE "Libs:([^\n]*)" "Libs:\\1 ${ALPINE_LIBCXX_DIR}/usr/lib/libc++.a ${ALPINE_LIBCXX_DIR}/usr/lib/libc++abi.a" _x265_pc_contents "${_x265_pc_contents}")
+        endif()
         string(REGEX REPLACE "Libs\\.private:[^\n]*" "Libs.private:" _x265_pc_contents "${_x265_pc_contents}")
         file(WRITE "${_x265_pc}" "${_x265_pc_contents}")
     endif()

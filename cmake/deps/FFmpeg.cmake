@@ -197,8 +197,8 @@ if(USE_MUSL)
                 --prefix=${FFMPEG_PREFIX}
                 --cc=${MUSL_GCC}
                 "--extra-cflags=-I${X264_PREFIX}/include -I${X265_PREFIX}/include"
-                "--extra-ldflags=-L${X264_PREFIX}/lib -L${X265_PREFIX}/lib -L${ALPINE_LIBCXX_DIR}/usr/lib -L${GCC_STDCXX_DIR} -L${GCC_LIB_DIR}"
-                "--extra-libs=-lm -Wl,-Bstatic -lc++ -lc++abi -lstdc++ -lgcc -lgcc_eh -Wl,-Bdynamic"
+                "--extra-ldflags=-L${X264_PREFIX}/lib -L${X265_PREFIX}/lib -L${GCC_STDCXX_DIR} -L${GCC_LIB_DIR}"
+                "--extra-libs=-lm -Wl,-Bstatic -lstdc++ -lgcc -lgcc_eh -Wl,-Bdynamic"
                 --enable-static
                 --disable-shared
                 --enable-pic
