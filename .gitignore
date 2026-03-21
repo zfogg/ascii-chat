@@ -92,3 +92,5 @@ massif.out*
 /*.mp4
 /*.webm
 /*.png
+
+.claude/
