@@ -45,7 +45,7 @@
   <br/>
   ARM NEON-accelerated ASCII half-block rendering. file <b>background.c</b>
   <br/>
-  Scalar ASCII background color rendering. file <b>ansi.c</b>
+  Scalar ASCII background color rendering (truecolor). file <b>ansi.c</b>
   <br/>
   ANSI escape sequence utilities and fast color code generation with
     SIMD-accelerated terminal output. file <b>digital_rain.h</b>
@@ -1923,128 +1923,133 @@ free(expanded);
 <p class="Pp">Color output requires terminal color support for proper
   display.</p>
 </div>
-<p class="Pp">Definition at line <b>70</b> of file <b>ascii.c</b>.</p>
-<pre>72                                                        {
-73   if (original == NULL || !palette_chars || !luminance_palette) {
-74     log_error(&quot;ascii_convert: invalid parameters&quot;);
-75     return NULL;
-76   }
-77 
-78   // Check for empty strings
-79   if (palette_chars[0] == '\0' || luminance_palette[0] == '\0') {
-80     log_error(&quot;ascii_convert: empty palette strings&quot;);
-81     return NULL;
-82   }
-83 
-84   // Start with the target dimensions requested by the user (or detected from
-85   // the terminal). These can be modified by aspect_ratio() if stretching is
-86   // disabled and one of the dimensions was left to be calculated
-87   // automatically.
-88   ssize_t resized_width = width;
-89   ssize_t resized_height = height;
-90 
-91   // If stretch is enabled, use full dimensions, otherwise calculate aspect ratio
-92   if (_aspect_ratio) {
-93     // The server now provides images at width*2 x height pixels
-94     // The aspect_ratio function will handle terminal character aspect ratio
-95     aspect_ratio(original-&gt;w, original-&gt;h, resized_width, resized_height, stretch, &amp;resized_width, &amp;resized_height);
-96   }
-97 
-98   // Calculate padding for centering
-99   size_t pad_width = 0;
-100   size_t pad_height = 0;
-101 
-102   if (_aspect_ratio) {
-103     // Only calculate padding when not stretching
-104     ssize_t pad_width_ss = width &gt; resized_width ? (width - resized_width) / 2 : 0;
-105     pad_width = (size_t)pad_width_ss;
-106 
-107     ssize_t pad_height_ss = height &gt; resized_height ? (height - resized_height) / 2 : 0;
-108     pad_height = (size_t)pad_height_ss;
-109   }
-110 
-111   // Resize the captured frame to the aspect-correct dimensions.
-112   if (resized_width &lt;= 0 || resized_height &lt;= 0) {
-113     log_error(&quot;Invalid dimensions for resize: width=%zd, height=%zd&quot;, resized_width, resized_height);
-114     return NULL;
-115   }
-116 
-117   // Validate dimensions fit in image_t's int fields before casting
-118   if (resized_width &gt; INT_MAX || resized_height &gt; INT_MAX) {
-119     log_error(&quot;Dimensions exceed INT_MAX: width=%zd, height=%zd&quot;, resized_width, resized_height);
-120     return NULL;
-121   }
-122 
-123   // Always resize to target dimensions
-124   image_t *resized = image_new((size_t)resized_width, (size_t)resized_height);
-125   if (!resized) {
-126     log_error(&quot;Failed to allocate resized image&quot;);
-127     return NULL;
-128   }
-129 
-130   image_clear(resized);
-131   image_resize(original, resized);
-132 
-133   char *ascii;
-134   if (color) {
-135     // Check for half-block mode first
-136     if (GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK) {
-137       const uint8_t *rgb_data = (const uint8_t *)resized-&gt;pixels;
-138 #if SIMD_SUPPORT_NEON
-139       // Use NEON half-block renderer (optimized SIMD path)
-140       log_dev(&quot;Using NEON halfblock renderer&quot;);
-141       ascii = rgb_to_truecolor_halfblocks_neon(rgb_data, resized-&gt;w, resized-&gt;h, 0);
-142 #else
-143       // Fallback to scalar halfblock renderer (works on all platforms)
-144       log_dev(&quot;Using scalar halfblock renderer (NEON not available)&quot;);
-145       ascii = rgb_to_truecolor_halfblocks_scalar(rgb_data, resized-&gt;w, resized-&gt;h, 0);
-146 #endif
-147     } else {
-148 #ifdef SIMD_SUPPORT
-149       // Standard color modes (foreground/background)
-150       bool use_background = (GET_OPTION(render_mode) == RENDER_MODE_BACKGROUND);
-151       ascii = image_print_color_simd(resized, use_background, false, palette_chars);
-152 #else
-153       ascii = image_print_color(resized, palette_chars);
-154 #endif
-155     }
-156   } else {
-157     // Use grayscale/monochrome conversion with client's palette
-158     ascii = image_print(resized, palette_chars);
-159   }
-160 
-161   if (!ascii) {
-162     log_error(&quot;Failed to convert image to ASCII&quot;);
-163     image_destroy(resized);
-164     return NULL;
+<p class="Pp">Definition at line <b>72</b> of file <b>ascii.c</b>.</p>
+<pre>74                                                        {
+75   if (original == NULL || !palette_chars || !luminance_palette) {
+76     log_error(&quot;ascii_convert: invalid parameters&quot;);
+77     return NULL;
+78   }
+79 
+80   // Check for empty strings
+81   if (palette_chars[0] == '\0' || luminance_palette[0] == '\0') {
+82     log_error(&quot;ascii_convert: empty palette strings&quot;);
+83     return NULL;
+84   }
+85 
+86   // Start with the target dimensions requested by the user (or detected from
+87   // the terminal). These can be modified by aspect_ratio() if stretching is
+88   // disabled and one of the dimensions was left to be calculated
+89   // automatically.
+90   ssize_t resized_width = width;
+91   ssize_t resized_height = height;
+92 
+93   // If stretch is enabled, use full dimensions, otherwise calculate aspect ratio
+94   if (_aspect_ratio) {
+95     // The server now provides images at width*2 x height pixels
+96     // The aspect_ratio function will handle terminal character aspect ratio
+97     aspect_ratio(original-&gt;w, original-&gt;h, resized_width, resized_height, stretch, &amp;resized_width, &amp;resized_height);
+98   }
+99 
+100   // Calculate padding for centering
+101   size_t pad_width = 0;
+102   size_t pad_height = 0;
+103 
+104   if (_aspect_ratio) {
+105     // Only calculate padding when not stretching
+106     ssize_t pad_width_ss = width &gt; resized_width ? (width - resized_width) / 2 : 0;
+107     pad_width = (size_t)pad_width_ss;
+108 
+109     ssize_t pad_height_ss = height &gt; resized_height ? (height - resized_height) / 2 : 0;
+110     pad_height = (size_t)pad_height_ss;
+111   }
+112 
+113   // Resize the captured frame to the aspect-correct dimensions.
+114   if (resized_width &lt;= 0 || resized_height &lt;= 0) {
+115     log_error(&quot;Invalid dimensions for resize: width=%zd, height=%zd&quot;, resized_width, resized_height);
+116     return NULL;
+117   }
+118 
+119   // Validate dimensions fit in image_t's int fields before casting
+120   if (resized_width &gt; INT_MAX || resized_height &gt; INT_MAX) {
+121     log_error(&quot;Dimensions exceed INT_MAX: width=%zd, height=%zd&quot;, resized_width, resized_height);
+122     return NULL;
+123   }
+124 
+125   // Always resize to target dimensions
+126   image_t *resized = image_new((size_t)resized_width, (size_t)resized_height);
+127   if (!resized) {
+128     log_error(&quot;Failed to allocate resized image&quot;);
+129     return NULL;
+130   }
+131 
+132   image_clear(resized);
+133   image_resize(original, resized);
+134 
+135   char *ascii;
+136   if (color) {
+137     // Check for half-block mode first
+138     if (GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK) {
+139       const uint8_t *rgb_data = (const uint8_t *)resized-&gt;pixels;
+140 #if SIMD_SUPPORT_NEON
+141       // Use NEON half-block renderer (optimized SIMD path)
+142       log_dev(&quot;Using NEON halfblock renderer&quot;);
+143       ascii = rgb_to_truecolor_halfblocks_neon(rgb_data, resized-&gt;w, resized-&gt;h, 0);
+144 #else
+145       // Fallback to scalar halfblock renderer (works on all platforms)
+146       log_dev(&quot;Using scalar halfblock renderer (NEON not available)&quot;);
+147       ascii = rgb_to_truecolor_halfblocks_scalar(rgb_data, resized-&gt;w, resized-&gt;h, 0);
+148 #endif
+149     } else {
+150 #ifdef SIMD_SUPPORT
+151       // Standard color modes (foreground/background)
+152       bool use_background = (GET_OPTION(render_mode) == RENDER_MODE_BACKGROUND);
+153       ascii = image_print_color_simd(resized, use_background, false, palette_chars);
+154 #else
+155       if (GET_OPTION(render_mode) == RENDER_MODE_BACKGROUND) {
+156         ascii = image_print_color_background(resized, palette_chars);
+157       } else {
+158         ascii = image_print_color_utf8(resized, palette_chars);
+159       }
+160 #endif
+161     }
+162   } else {
+163     // Use grayscale/monochrome conversion with client's palette
+164     ascii = image_print(resized, palette_chars);
 165   }
 166 
-167   size_t ascii_len = strlen(ascii);
-168   if (ascii_len == 0) {
-169     log_error(&quot;ASCII conversion returned empty string (resized dimensions: %dx%d)&quot;, resized-&gt;w, resized-&gt;h);
-170     SAFE_FREE(ascii);
-171     image_destroy(resized);
-172     return NULL;
-173   }
-174 
-175   char *ascii_width_padded = ascii_pad_frame_width(ascii, pad_width);
-176   SAFE_FREE(ascii);
-177 
-178   char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
-179   SAFE_FREE(ascii_width_padded);
+167   if (!ascii) {
+168     log_error(&quot;Failed to convert image to ASCII&quot;);
+169     image_destroy(resized);
+170     return NULL;
+171   }
+172 
+173   size_t ascii_len = strlen(ascii);
+174   if (ascii_len == 0) {
+175     log_error(&quot;ASCII conversion returned empty string (resized dimensions: %dx%d)&quot;, resized-&gt;w, resized-&gt;h);
+176     SAFE_FREE(ascii);
+177     image_destroy(resized);
+178     return NULL;
+179   }
 180 
-181   // Only destroy resized if we allocated it (not when using original directly)
-182   image_destroy(resized);
+181   char *ascii_width_padded = ascii_pad_frame_width(ascii, pad_width);
+182   SAFE_FREE(ascii);
 183 
-184   return ascii_padded;
-185 }</pre>
+184   char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
+185   SAFE_FREE(ascii_width_padded);
+186 
+187   // Only destroy resized if we allocated it (not when using original directly)
+188   image_destroy(resized);
+189 
+190   return ascii_padded;
+191 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ascii_pad_frame_height()</b>,
     <b>ascii_pad_frame_width()</b>, <b>aspect_ratio()</b>, <b>GET_OPTION</b>,
     <b>image_t::h</b>, <b>image_clear()</b>, <b>image_destroy()</b>,
-    <b>image_new()</b>, <b>image_print()</b>, <b>image_print_color()</b>,
-    <b>image_print_color_simd()</b>, <b>image_resize()</b>, <b>log_dev</b>,
+    <b>image_new()</b>, <b>image_print()</b>,
+    <b>image_print_color_background()</b>, <b>image_print_color_simd()</b>,
+    <b>image_print_color_utf8()</b>, <b>image_resize()</b>, <b>log_dev</b>,
     <b>log_error</b>, <b>image_t::pixels</b>, <b>RENDER_MODE_BACKGROUND</b>,
     <b>RENDER_MODE_HALF_BLOCK</b>, <b>rgb_to_truecolor_halfblocks_scalar()</b>,
     <b>SAFE_FREE</b>, and <b>image_t::w</b>.</p>
@@ -2105,203 +2110,203 @@ free(expanded);
 <p class="Pp">This is the recommended function for capability-aware ASCII
     conversion.</p>
 </div>
-<p class="Pp">Definition at line <b>188</b> of file <b>ascii.c</b>.</p>
-<pre>190                                                                                      {
-191 
-192   if (original == NULL || caps == NULL) {
-193     log_error(&quot;Invalid parameters for ascii_convert_with_capabilities&quot;);
-194     return NULL;
-195   }
-196 
-197   // Validate original image dimensions to detect corruption
-198   if (original-&gt;w &lt;= 0 || original-&gt;w &gt; 10000 || original-&gt;h &lt;= 0 || original-&gt;h &gt; 10000) {
-199     log_error(&quot;Invalid original image dimensions detected: w=%d, h=%d (likely corrupted)&quot;, original-&gt;w, original-&gt;h);
+<p class="Pp">Definition at line <b>194</b> of file <b>ascii.c</b>.</p>
+<pre>196                                                                                      {
+197 
+198   if (original == NULL || caps == NULL) {
+199     log_error(&quot;Invalid parameters for ascii_convert_with_capabilities&quot;);
 200     return NULL;
 201   }
 202 
-203   if (original-&gt;pixels == NULL) {
-204     log_error(&quot;Original image pixels pointer is NULL&quot;);
-205     return NULL;
-206   }
-207 
-208   // Start with the target dimensions requested by the user
-209   ssize_t resized_width = width;
-210   ssize_t resized_height = height;
-211 
-212   // Apply aspect ratio BEFORE doubling height for half-block mode
-213   // This ensures the width is correct relative to the original aspect ratio
-214   if (use_aspect_ratio) {
-215     aspect_ratio(original-&gt;w, original-&gt;h, resized_width, resized_height, stretch, &amp;resized_width, &amp;resized_height);
-216   }
+203   // Validate original image dimensions to detect corruption
+204   if (original-&gt;w &lt;= 0 || original-&gt;w &gt; 10000 || original-&gt;h &lt;= 0 || original-&gt;h &gt; 10000) {
+205     log_error(&quot;Invalid original image dimensions detected: w=%d, h=%d (likely corrupted)&quot;, original-&gt;w, original-&gt;h);
+206     return NULL;
+207   }
+208 
+209   if (original-&gt;pixels == NULL) {
+210     log_error(&quot;Original image pixels pointer is NULL&quot;);
+211     return NULL;
+212   }
+213 
+214   // Start with the target dimensions requested by the user
+215   ssize_t resized_width = width;
+216   ssize_t resized_height = height;
 217 
-218   // Half-block mode doubles height for 2x vertical resolution (AFTER aspect ratio)
-219   if (caps-&gt;render_mode == RENDER_MODE_HALF_BLOCK) {
-220     resized_height = resized_height * 2;
-221   }
-222 
-223   // Calculate padding for centering (only if client wants padding)
-224   size_t pad_width = 0;
-225   size_t pad_height = 0;
-226 
-227   log_dev(&quot;PADDING_CALC: use_aspect_ratio=%d wants_padding=%d width=%zd height=%zd resized_w=%zd resized_h=%zd&quot;,
-228           use_aspect_ratio, caps-&gt;wants_padding, width, height, resized_width, resized_height);
-229 
-230   if (use_aspect_ratio &amp;&amp; caps-&gt;wants_padding) {
-231     ssize_t pad_width_ss = width &gt; resized_width ? (width - resized_width) / 2 : 0;
-232     pad_width = (size_t)pad_width_ss;
-233 
-234     ssize_t pad_height_ss = height &gt; resized_height ? (height - resized_height) / 2 : 0;
-235     // Halfblock mode uses 2 source rows per output row, so padding is halved
-236     if (caps-&gt;render_mode == RENDER_MODE_HALF_BLOCK) {
-237       log_dev(&quot;HALFBLOCK PADDING: before=%zd, render_mode=%d&quot;, pad_height_ss, caps-&gt;render_mode);
-238       pad_height_ss /= 2;
-239       log_dev(&quot;HALFBLOCK PADDING: after=%zd&quot;, pad_height_ss);
-240     }
-241     pad_height = (size_t)pad_height_ss;
-242 
-243     log_debug_every(10 * US_PER_SEC_INT,
-244                     &quot;ascii_convert_with_capabilities: width=%zd, height=%zd, resized_width=%zd, resized_height=%zd, &quot;
-245                     &quot;pad_width=%zu, pad_height=%zu, stretch=%d, wants_padding=%d&quot;,
-246                     width, height, resized_width, resized_height, pad_width, pad_height, stretch, caps-&gt;wants_padding);
-247   } else if (!caps-&gt;wants_padding) {
-248     log_debug_every(10 * US_PER_SEC_INT,
-249                     &quot;ascii_convert_with_capabilities: padding disabled (wants_padding=false), width=%zd, height=%zd&quot;,
-250                     width, height);
-251   }
-252 
-253   // Resize the captured frame to the aspect-correct dimensions
-254   if (resized_width &lt;= 0 || resized_height &lt;= 0) {
-255     log_error(&quot;Invalid dimensions for resize: width=%zd, height=%zd&quot;, resized_width, resized_height);
-256     return NULL;
+218   // Apply aspect ratio BEFORE doubling height for half-block mode
+219   // This ensures the width is correct relative to the original aspect ratio
+220   if (use_aspect_ratio) {
+221     aspect_ratio(original-&gt;w, original-&gt;h, resized_width, resized_height, stretch, &amp;resized_width, &amp;resized_height);
+222   }
+223 
+224   // Half-block mode doubles height for 2x vertical resolution (AFTER aspect ratio)
+225   if (caps-&gt;render_mode == RENDER_MODE_HALF_BLOCK) {
+226     resized_height = resized_height * 2;
+227   }
+228 
+229   // Calculate padding for centering (only if client wants padding)
+230   size_t pad_width = 0;
+231   size_t pad_height = 0;
+232 
+233   log_dev(&quot;PADDING_CALC: use_aspect_ratio=%d wants_padding=%d width=%zd height=%zd resized_w=%zd resized_h=%zd&quot;,
+234           use_aspect_ratio, caps-&gt;wants_padding, width, height, resized_width, resized_height);
+235 
+236   if (use_aspect_ratio &amp;&amp; caps-&gt;wants_padding) {
+237     ssize_t pad_width_ss = width &gt; resized_width ? (width - resized_width) / 2 : 0;
+238     pad_width = (size_t)pad_width_ss;
+239 
+240     ssize_t pad_height_ss = height &gt; resized_height ? (height - resized_height) / 2 : 0;
+241     // Halfblock mode uses 2 source rows per output row, so padding is halved
+242     if (caps-&gt;render_mode == RENDER_MODE_HALF_BLOCK) {
+243       log_dev(&quot;HALFBLOCK PADDING: before=%zd, render_mode=%d&quot;, pad_height_ss, caps-&gt;render_mode);
+244       pad_height_ss /= 2;
+245       log_dev(&quot;HALFBLOCK PADDING: after=%zd&quot;, pad_height_ss);
+246     }
+247     pad_height = (size_t)pad_height_ss;
+248 
+249     log_debug_every(10 * US_PER_SEC_INT,
+250                     &quot;ascii_convert_with_capabilities: width=%zd, height=%zd, resized_width=%zd, resized_height=%zd, &quot;
+251                     &quot;pad_width=%zu, pad_height=%zu, stretch=%d, wants_padding=%d&quot;,
+252                     width, height, resized_width, resized_height, pad_width, pad_height, stretch, caps-&gt;wants_padding);
+253   } else if (!caps-&gt;wants_padding) {
+254     log_debug_every(10 * US_PER_SEC_INT,
+255                     &quot;ascii_convert_with_capabilities: padding disabled (wants_padding=false), width=%zd, height=%zd&quot;,
+256                     width, height);
 257   }
 258 
-259   // Validate dimensions fit in image_t's int fields before casting
-260   if (resized_width &gt; INT_MAX || resized_height &gt; INT_MAX) {
-261     log_error(&quot;Dimensions exceed INT_MAX: width=%zd, height=%zd&quot;, resized_width, resized_height);
+259   // Resize the captured frame to the aspect-correct dimensions
+260   if (resized_width &lt;= 0 || resized_height &lt;= 0) {
+261     log_error(&quot;Invalid dimensions for resize: width=%zd, height=%zd&quot;, resized_width, resized_height);
 262     return NULL;
 263   }
 264 
-265   // PROFILING: Time image allocation and resize
-266   START_TIMER(&quot;image_alloc&quot;);
-267   uint64_t prof_alloc_start_ns = time_get_ns();
-268 
-269   image_t *resized = image_new((size_t)resized_width, (size_t)resized_height);
-270   if (!resized) {
-271     log_error(&quot;Failed to allocate resized image&quot;);
-272     return NULL;
-273   }
+265   // Validate dimensions fit in image_t's int fields before casting
+266   if (resized_width &gt; INT_MAX || resized_height &gt; INT_MAX) {
+267     log_error(&quot;Dimensions exceed INT_MAX: width=%zd, height=%zd&quot;, resized_width, resized_height);
+268     return NULL;
+269   }
+270 
+271   // PROFILING: Time image allocation and resize
+272   START_TIMER(&quot;image_alloc&quot;);
+273   uint64_t prof_alloc_start_ns = time_get_ns();
 274 
-275   image_clear(resized);
-276 
-277   uint64_t prof_alloc_end_ns = time_get_ns();
-278   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, &quot;image_alloc&quot;,
-279                            &quot;IMAGE_ALLOC: Alloc+clear complete (%.2f ms)&quot;);
+275   image_t *resized = image_new((size_t)resized_width, (size_t)resized_height);
+276   if (!resized) {
+277     log_error(&quot;Failed to allocate resized image&quot;);
+278     return NULL;
+279   }
 280 
-281   START_TIMER(&quot;image_resize&quot;);
-282   uint64_t prof_resize_start_ns = prof_alloc_end_ns;
-283 
-284   image_resize(original, resized);
-285 
-286   uint64_t prof_resize_end_ns = time_get_ns();
-287   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, &quot;image_resize&quot;,
-288                            &quot;IMAGE_RESIZE: Resize complete (%.2f ms)&quot;);
+281   image_clear(resized);
+282 
+283   uint64_t prof_alloc_end_ns = time_get_ns();
+284   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, &quot;image_alloc&quot;,
+285                            &quot;IMAGE_ALLOC: Alloc+clear complete (%.2f ms)&quot;);
+286 
+287   START_TIMER(&quot;image_resize&quot;);
+288   uint64_t prof_resize_start_ns = prof_alloc_end_ns;
 289 
-290   // Check original image before resize (validate dimensions to prevent integer overflow)
-291   int orig_black = 0, orig_total = 0;
-292   if (original-&gt;w &gt; 0 &amp;&amp; original-&gt;w &lt;= 10000 &amp;&amp; original-&gt;h &gt; 0 &amp;&amp; original-&gt;h &lt;= 10000) {
-293     int64_t total_pixels = (int64_t)original-&gt;w * original-&gt;h;
-294     int sample_size = (total_pixels &lt; 1000) ? (int)total_pixels : 1000;
-295     for (int i = 0; i &lt; sample_size; i++) {
-296       rgb_pixel_t p = original-&gt;pixels[i];
-297       orig_total++;
-298       if (p.r == 0 &amp;&amp; p.g == 0 &amp;&amp; p.b == 0)
-299         orig_black++;
-300     }
-301     log_debug_every(5 * NS_PER_SEC_INT,
-302                     &quot;&gt;&gt;&gt; ORIGINAL image: %d/%d pixels are black (%.1f%%), first pixel=RGB(%d,%d,%d)\n&quot;, orig_black,
-303                     orig_total, orig_total &gt; 0 ? 100.0 * orig_black / orig_total : 0, original-&gt;pixels[0].r,
-304                     original-&gt;pixels[0].g, original-&gt;pixels[0].b);
-305   } else {
-306     log_warn(&quot;Skipping debug check: corrupted image dimensions (w=%d, h=%d)&quot;, original-&gt;w, original-&gt;h);
-307   }
-308 
-309   // PROFILING: Time ASCII print
-310   uint64_t prof_print_start_ns = prof_resize_end_ns;
-311 
-312   // DEBUG: Log dimensions going to renderer
-313   log_debug_every(10 * US_PER_SEC_INT,
-314                   &quot;ascii_convert: original=%dx%d, requested=%zdx%zd, resized=%dx%d, pad=%zux%zu (mode=%d)&quot;, original-&gt;w,
-315                   original-&gt;h, width, height, resized-&gt;w, resized-&gt;h, pad_width, pad_height, caps-&gt;render_mode);
-316 
-317   // Check if image is all black
-318   int black_pixels = 0, total_pixels = 0;
-319   for (int i = 0; i &lt; resized-&gt;w * resized-&gt;h &amp;&amp; i &lt; 1000; i++) {
-320     rgb_pixel_t p = resized-&gt;pixels[i];
-321     total_pixels++;
-322     if (p.r == 0 &amp;&amp; p.g == 0 &amp;&amp; p.b == 0)
-323       black_pixels++;
-324   }
-325   log_debug_every(5 * NS_PER_SEC_INT,
-326                   &quot;&gt;&gt;&gt; Resized image check: %d/%d pixels are black (%.1f%%), first pixel=RGB(%d,%d,%d)\n&quot;, black_pixels,
-327                   total_pixels, total_pixels &gt; 0 ? 100.0 * black_pixels / total_pixels : 0, resized-&gt;pixels[0].r,
-328                   resized-&gt;pixels[0].g, resized-&gt;pixels[0].b);
-329 
-330   // Use the capability-aware image printing function with client's palette
-331   START_TIMER(&quot;image_print_with_capabilities&quot;);
-332   char *ascii = image_print_with_capabilities(resized, caps, palette_chars);
-333 
-334   uint64_t prof_print_end_ns = time_get_ns();
-335   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, &quot;image_print_with_capabilities&quot;,
-336                            &quot;IMAGE_PRINT: Print complete (%.2f ms)&quot;);
-337 
-338   uint64_t alloc_time_us = time_ns_to_us(time_elapsed_ns(prof_alloc_start_ns, prof_alloc_end_ns));
-339   uint64_t resize_time_us = time_ns_to_us(time_elapsed_ns(prof_resize_start_ns, prof_resize_end_ns));
-340   uint64_t print_time_us = time_ns_to_us(time_elapsed_ns(prof_print_start_ns, prof_print_end_ns));
-341 
-342   // PROFILING: Time padding
-343   START_TIMER(&quot;ascii_padding&quot;);
-344   uint64_t prof_pad_start_ns = time_get_ns();
-345 
-346   if (!ascii) {
-347     log_error(&quot;Failed to convert image to ASCII using terminal capabilities&quot;);
-348     image_destroy(resized);
-349     return NULL;
-350   }
+290   image_resize(original, resized);
+291 
+292   uint64_t prof_resize_end_ns = time_get_ns();
+293   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, &quot;image_resize&quot;,
+294                            &quot;IMAGE_RESIZE: Resize complete (%.2f ms)&quot;);
+295 
+296   // Check original image before resize (validate dimensions to prevent integer overflow)
+297   int orig_black = 0, orig_total = 0;
+298   if (original-&gt;w &gt; 0 &amp;&amp; original-&gt;w &lt;= 10000 &amp;&amp; original-&gt;h &gt; 0 &amp;&amp; original-&gt;h &lt;= 10000) {
+299     int64_t total_pixels = (int64_t)original-&gt;w * original-&gt;h;
+300     int sample_size = (total_pixels &lt; 1000) ? (int)total_pixels : 1000;
+301     for (int i = 0; i &lt; sample_size; i++) {
+302       rgb_pixel_t p = original-&gt;pixels[i];
+303       orig_total++;
+304       if (p.r == 0 &amp;&amp; p.g == 0 &amp;&amp; p.b == 0)
+305         orig_black++;
+306     }
+307     log_debug_every(5 * NS_PER_SEC_INT,
+308                     &quot;&gt;&gt;&gt; ORIGINAL image: %d/%d pixels are black (%.1f%%), first pixel=RGB(%d,%d,%d)\n&quot;, orig_black,
+309                     orig_total, orig_total &gt; 0 ? 100.0 * orig_black / orig_total : 0, original-&gt;pixels[0].r,
+310                     original-&gt;pixels[0].g, original-&gt;pixels[0].b);
+311   } else {
+312     log_warn(&quot;Skipping debug check: corrupted image dimensions (w=%d, h=%d)&quot;, original-&gt;w, original-&gt;h);
+313   }
+314 
+315   // PROFILING: Time ASCII print
+316   uint64_t prof_print_start_ns = prof_resize_end_ns;
+317 
+318   // DEBUG: Log dimensions going to renderer
+319   log_debug_every(10 * US_PER_SEC_INT,
+320                   &quot;ascii_convert: original=%dx%d, requested=%zdx%zd, resized=%dx%d, pad=%zux%zu (mode=%d)&quot;, original-&gt;w,
+321                   original-&gt;h, width, height, resized-&gt;w, resized-&gt;h, pad_width, pad_height, caps-&gt;render_mode);
+322 
+323   // Check if image is all black
+324   int black_pixels = 0, total_pixels = 0;
+325   for (int i = 0; i &lt; resized-&gt;w * resized-&gt;h &amp;&amp; i &lt; 1000; i++) {
+326     rgb_pixel_t p = resized-&gt;pixels[i];
+327     total_pixels++;
+328     if (p.r == 0 &amp;&amp; p.g == 0 &amp;&amp; p.b == 0)
+329       black_pixels++;
+330   }
+331   log_debug_every(5 * NS_PER_SEC_INT,
+332                   &quot;&gt;&gt;&gt; Resized image check: %d/%d pixels are black (%.1f%%), first pixel=RGB(%d,%d,%d)\n&quot;, black_pixels,
+333                   total_pixels, total_pixels &gt; 0 ? 100.0 * black_pixels / total_pixels : 0, resized-&gt;pixels[0].r,
+334                   resized-&gt;pixels[0].g, resized-&gt;pixels[0].b);
+335 
+336   // Use the capability-aware image printing function with client's palette
+337   START_TIMER(&quot;image_print_with_capabilities&quot;);
+338   char *ascii = image_print_with_capabilities(resized, caps, palette_chars);
+339 
+340   uint64_t prof_print_end_ns = time_get_ns();
+341   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, &quot;image_print_with_capabilities&quot;,
+342                            &quot;IMAGE_PRINT: Print complete (%.2f ms)&quot;);
+343 
+344   uint64_t alloc_time_us = time_ns_to_us(time_elapsed_ns(prof_alloc_start_ns, prof_alloc_end_ns));
+345   uint64_t resize_time_us = time_ns_to_us(time_elapsed_ns(prof_resize_start_ns, prof_resize_end_ns));
+346   uint64_t print_time_us = time_ns_to_us(time_elapsed_ns(prof_print_start_ns, prof_print_end_ns));
+347 
+348   // PROFILING: Time padding
+349   START_TIMER(&quot;ascii_padding&quot;);
+350   uint64_t prof_pad_start_ns = time_get_ns();
 351 
-352   size_t ascii_len = strlen(ascii);
-353   if (ascii_len == 0) {
-354     log_error(&quot;Capability-aware ASCII conversion returned empty string (resized dimensions: %dx%d)&quot;, resized-&gt;w,
-355               resized-&gt;h);
-356     SAFE_FREE(ascii);
-357     image_destroy(resized);
-358     return NULL;
-359   }
-360 
-361   char *ascii_width_padded = ascii_pad_frame_width(ascii, pad_width);
-362   SAFE_FREE(ascii);
-363 
-364   char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
-365   SAFE_FREE(ascii_width_padded);
+352   if (!ascii) {
+353     log_error(&quot;Failed to convert image to ASCII using terminal capabilities&quot;);
+354     image_destroy(resized);
+355     return NULL;
+356   }
+357 
+358   size_t ascii_len = strlen(ascii);
+359   if (ascii_len == 0) {
+360     log_error(&quot;Capability-aware ASCII conversion returned empty string (resized dimensions: %dx%d)&quot;, resized-&gt;w,
+361               resized-&gt;h);
+362     SAFE_FREE(ascii);
+363     image_destroy(resized);
+364     return NULL;
+365   }
 366 
-367   uint64_t prof_pad_end_ns = time_get_ns();
-368   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 2 * NS_PER_MS_INT, &quot;ascii_padding&quot;,
-369                            &quot;ASCII_PADDING: Padding complete (%.2f ms)&quot;);
-370 
-371   uint64_t pad_time_ns = time_elapsed_ns(prof_pad_start_ns, prof_pad_end_ns);
-372   char alloc_str[32], resize_str[32], print_str[32], pad_str[32], total_str[32];
-373   time_pretty(alloc_time_us * 1000, -1, alloc_str, sizeof(alloc_str));
-374   time_pretty(resize_time_us * 1000, -1, resize_str, sizeof(resize_str));
-375   time_pretty(print_time_us * 1000, -1, print_str, sizeof(print_str));
-376   time_pretty(pad_time_ns, -1, pad_str, sizeof(pad_str));
-377   uint64_t total_time_ns = (alloc_time_us + resize_time_us + print_time_us) * 1000 + pad_time_ns;
-378   time_pretty(total_time_ns, -1, total_str, sizeof(total_str));
-379   log_dev(&quot;ASCII_BREAKDOWN: alloc=%s, resize=%s, print=%s, pad=%s (total=%s)&quot;, alloc_str, resize_str, print_str,
-380           pad_str, total_str);
-381 
-382   image_destroy(resized);
-383 
-384   return ascii_padded;
-385 }</pre>
+367   char *ascii_width_padded = ascii_pad_frame_width(ascii, pad_width);
+368   SAFE_FREE(ascii);
+369 
+370   char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
+371   SAFE_FREE(ascii_width_padded);
+372 
+373   uint64_t prof_pad_end_ns = time_get_ns();
+374   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 2 * NS_PER_MS_INT, &quot;ascii_padding&quot;,
+375                            &quot;ASCII_PADDING: Padding complete (%.2f ms)&quot;);
+376 
+377   uint64_t pad_time_ns = time_elapsed_ns(prof_pad_start_ns, prof_pad_end_ns);
+378   char alloc_str[32], resize_str[32], print_str[32], pad_str[32], total_str[32];
+379   time_pretty(alloc_time_us * 1000, -1, alloc_str, sizeof(alloc_str));
+380   time_pretty(resize_time_us * 1000, -1, resize_str, sizeof(resize_str));
+381   time_pretty(print_time_us * 1000, -1, print_str, sizeof(print_str));
+382   time_pretty(pad_time_ns, -1, pad_str, sizeof(pad_str));
+383   uint64_t total_time_ns = (alloc_time_us + resize_time_us + print_time_us) * 1000 + pad_time_ns;
+384   time_pretty(total_time_ns, -1, total_str, sizeof(total_str));
+385   log_dev(&quot;ASCII_BREAKDOWN: alloc=%s, resize=%s, print=%s, pad=%s (total=%s)&quot;, alloc_str, resize_str, print_str,
+386           pad_str, total_str);
+387 
+388   image_destroy(resized);
+389 
+390   return ascii_padded;
+391 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ascii_pad_frame_height()</b>,
@@ -2386,291 +2391,291 @@ if (grid) {
 <p class="Pp"></p>
 <p class="Pp">Returns: A newly allocated, null-terminated string containing the
     grid layout, or NULL on error. Caller must free the returned buffer.</p>
-<p class="Pp">Definition at line <b>600</b> of file <b>ascii.c</b>.</p>
-<pre>600                                                                                                                   {
-601   if (!sources || source_count &lt;= 0 || width &lt;= 0 || height &lt;= 0 || !out_size) {
-602     return NULL;
-603   }
-604 
-605   // If no sources, return empty frame
-606 
-607   // If only one source, center it properly to maintain aspect ratio and look good
-608   if (source_count == 1) {
-609     // Create a frame of the target size filled with spaces
-610     // Check for integer overflow before multiplication
-611     size_t w = (size_t)width;
-612     size_t h = (size_t)height;
-613     size_t w_times_h;
-614     if (checked_size_mul(w, h, &amp;w_times_h) != ASCIICHAT_OK) {
-615       SET_ERRNO(ERROR_INVALID_PARAM, &quot;ascii_create_grid: dimensions would overflow: %dx%d&quot;, width, height);
-616       return NULL;
-617     }
-618 
-619     size_t w_times_h_plus_h;
-620     if (checked_size_add(w_times_h, h, &amp;w_times_h_plus_h) != ASCIICHAT_OK) {
-621       SET_ERRNO(ERROR_INVALID_PARAM, &quot;ascii_create_grid: buffer size would overflow: %dx%d&quot;, width, height);
+<p class="Pp">Definition at line <b>606</b> of file <b>ascii.c</b>.</p>
+<pre>606                                                                                                                   {
+607   if (!sources || source_count &lt;= 0 || width &lt;= 0 || height &lt;= 0 || !out_size) {
+608     return NULL;
+609   }
+610 
+611   // If no sources, return empty frame
+612 
+613   // If only one source, center it properly to maintain aspect ratio and look good
+614   if (source_count == 1) {
+615     // Create a frame of the target size filled with spaces
+616     // Check for integer overflow before multiplication
+617     size_t w = (size_t)width;
+618     size_t h = (size_t)height;
+619     size_t w_times_h;
+620     if (checked_size_mul(w, h, &amp;w_times_h) != ASCIICHAT_OK) {
+621       SET_ERRNO(ERROR_INVALID_PARAM, &quot;ascii_create_grid: dimensions would overflow: %dx%d&quot;, width, height);
 622       return NULL;
 623     }
 624 
-625     size_t target_size;
-626     if (checked_size_add(w_times_h_plus_h, 1, &amp;target_size) != ASCIICHAT_OK) {
+625     size_t w_times_h_plus_h;
+626     if (checked_size_add(w_times_h, h, &amp;w_times_h_plus_h) != ASCIICHAT_OK) {
 627       SET_ERRNO(ERROR_INVALID_PARAM, &quot;ascii_create_grid: buffer size would overflow: %dx%d&quot;, width, height);
 628       return NULL;
 629     }
-630     char *result;
-631     result = SAFE_MALLOC(target_size, char *);
-632     SAFE_MEMSET(result, target_size, ' ', target_size - 1);
-633     result[target_size - 1] = '\0';
-634 
-635     // Add newlines at the end of each row
-636     for (int row = 0; row &lt; height; row++) {
-637       result[row * (width + 1) + width] = '\n';
-638     }
-639 
-640     // Copy the source frame into the result, line by line, centering it
-641     // Handle NULL frame_data gracefully
-642     const char *src_data = sources[0].frame_data;
-643     int src_pos = 0;
-644     int src_size = (int)sources[0].frame_size;
+630 
+631     size_t target_size;
+632     if (checked_size_add(w_times_h_plus_h, 1, &amp;target_size) != ASCIICHAT_OK) {
+633       SET_ERRNO(ERROR_INVALID_PARAM, &quot;ascii_create_grid: buffer size would overflow: %dx%d&quot;, width, height);
+634       return NULL;
+635     }
+636     char *result;
+637     result = SAFE_MALLOC(target_size, char *);
+638     SAFE_MEMSET(result, target_size, ' ', target_size - 1);
+639     result[target_size - 1] = '\0';
+640 
+641     // Add newlines at the end of each row
+642     for (int row = 0; row &lt; height; row++) {
+643       result[row * (width + 1) + width] = '\n';
+644     }
 645 
-646     // If source data is NULL or empty, just return the empty frame
-647     if (!src_data || src_size &lt;= 0) {
-648       *out_size = target_size - 1; // Don't count null terminator
-649       return result;
-650     }
+646     // Copy the source frame into the result, line by line, centering it
+647     // Handle NULL frame_data gracefully
+648     const char *src_data = sources[0].frame_data;
+649     int src_pos = 0;
+650     int src_size = (int)sources[0].frame_size;
 651 
-652     // Count lines in source to calculate vertical padding
-653     int src_lines = 0;
-654     for (int i = 0; i &lt; src_size; i++) {
-655       if (src_data[i] == '\n')
-656         src_lines++;
-657     }
-658 
-659     int v_padding = (height - src_lines) / 2;
-660     if (v_padding &lt; 0)
-661       v_padding = 0;
-662 
-663     int dst_row = v_padding;
-664     src_pos = 0;
-665 
-666     while (src_pos &lt; src_size &amp;&amp; dst_row &lt; height) {
-667       // Find end of current line in source
-668       int line_start = src_pos;
-669       int line_len = 0;
-670       while (src_pos &lt; src_size &amp;&amp; src_data[src_pos] != '\n') {
-671         line_len++;
-672         src_pos++;
-673       }
-674 
-675       // Calculate visual width of the line (excluding ANSI escape sequences)
-676       int visual_line_width = ansi_visual_width(&amp;src_data[line_start], line_len);
-677 
-678       // Calculate horizontal padding to center the line based on visual width
-679       int h_padding = (width - visual_line_width) / 2;
-680       if (h_padding &lt; 0)
-681         h_padding = 0;
-682 
-683       // Copy line to result with padding
-684       // Use size_t for position calculation to prevent integer underflow
-685       size_t row_offset = (size_t)dst_row * (size_t)(width + 1);
-686       size_t dst_pos = row_offset + (size_t)h_padding;
-687       int max_visual_width = width - h_padding;
-688       // Truncate to visual width while preserving complete ANSI sequences
-689       int copy_len = ansi_truncate_to_visual_width(&amp;src_data[line_start], line_len, max_visual_width);
-690 
-691       if (copy_len &gt; 0 &amp;&amp; dst_pos + (size_t)copy_len &lt; target_size) {
-692         SAFE_MEMCPY(&amp;result[dst_pos], target_size - dst_pos, &amp;src_data[line_start], (size_t)copy_len);
-693       }
-694 
-695       // Skip newline in source
-696       if (src_pos &lt; src_size &amp;&amp; src_data[src_pos] == '\n') {
-697         src_pos++;
-698       }
-699 
-700       dst_row++;
-701     }
-702 
-703     *out_size = target_size - 1; // Don't count null terminator
-704     return result;
-705   }
-706 
-707   // Multiple sources: create grid layout
-708   // Calculate grid dimensions that maximize the use of terminal space
-709   // Character aspect ratio: terminal chars are typically ~2x taller than wide
-710   float char_aspect = 2.0f;
-711 
-712   int grid_cols, grid_rows;
-713   float best_score = -1.0f;
-714   int best_cols = 1;
-715   int best_rows = source_count;
-716 
-717   // Try all possible grid configurations
-718   for (int test_cols = 1; test_cols &lt;= source_count; test_cols++) {
-719     int test_rows = (int)ceil((double)source_count / test_cols);
-720 
-721     // Skip configurations with too many empty cells
-722     int empty_cells = (test_cols * test_rows) - source_count;
-723     if (empty_cells &gt; source_count / 2)
-724       continue; // Don't waste more than 50% space
-725 
-726     // Calculate the size each cell would have
-727     int cell_width = (width - (test_cols - 1)) / test_cols;   // -1 per separator
-728     int cell_height = (height - (test_rows - 1)) / test_rows; // -1 per separator
-729 
-730     // Skip if cells would be too small
-731     if (cell_width &lt; 10 || cell_height &lt; 3)
-732       continue;
-733 
-734     // Calculate the aspect ratio of each cell (accounting for char aspect)
-735     float cell_aspect = ((float)cell_width / (float)cell_height) / char_aspect;
-736 
-737     // Score based on how close to square (1:1) each video cell would be
-738     // This naturally adapts to any terminal size
-739     float aspect_score = 1.0f - fabsf(logf(cell_aspect)); // log makes it symmetric around 1
-740     if (aspect_score &lt; 0)
-741       aspect_score = 0;
+652     // If source data is NULL or empty, just return the empty frame
+653     if (!src_data || src_size &lt;= 0) {
+654       *out_size = target_size - 1; // Don't count null terminator
+655       return result;
+656     }
+657 
+658     // Count lines in source to calculate vertical padding
+659     int src_lines = 0;
+660     for (int i = 0; i &lt; src_size; i++) {
+661       if (src_data[i] == '\n')
+662         src_lines++;
+663     }
+664 
+665     int v_padding = (height - src_lines) / 2;
+666     if (v_padding &lt; 0)
+667       v_padding = 0;
+668 
+669     int dst_row = v_padding;
+670     src_pos = 0;
+671 
+672     while (src_pos &lt; src_size &amp;&amp; dst_row &lt; height) {
+673       // Find end of current line in source
+674       int line_start = src_pos;
+675       int line_len = 0;
+676       while (src_pos &lt; src_size &amp;&amp; src_data[src_pos] != '\n') {
+677         line_len++;
+678         src_pos++;
+679       }
+680 
+681       // Calculate visual width of the line (excluding ANSI escape sequences)
+682       int visual_line_width = ansi_visual_width(&amp;src_data[line_start], line_len);
+683 
+684       // Calculate horizontal padding to center the line based on visual width
+685       int h_padding = (width - visual_line_width) / 2;
+686       if (h_padding &lt; 0)
+687         h_padding = 0;
+688 
+689       // Copy line to result with padding
+690       // Use size_t for position calculation to prevent integer underflow
+691       size_t row_offset = (size_t)dst_row * (size_t)(width + 1);
+692       size_t dst_pos = row_offset + (size_t)h_padding;
+693       int max_visual_width = width - h_padding;
+694       // Truncate to visual width while preserving complete ANSI sequences
+695       int copy_len = ansi_truncate_to_visual_width(&amp;src_data[line_start], line_len, max_visual_width);
+696 
+697       if (copy_len &gt; 0 &amp;&amp; dst_pos + (size_t)copy_len &lt; target_size) {
+698         SAFE_MEMCPY(&amp;result[dst_pos], target_size - dst_pos, &amp;src_data[line_start], (size_t)copy_len);
+699       }
+700 
+701       // Skip newline in source
+702       if (src_pos &lt; src_size &amp;&amp; src_data[src_pos] == '\n') {
+703         src_pos++;
+704       }
+705 
+706       dst_row++;
+707     }
+708 
+709     *out_size = target_size - 1; // Don't count null terminator
+710     return result;
+711   }
+712 
+713   // Multiple sources: create grid layout
+714   // Calculate grid dimensions that maximize the use of terminal space
+715   // Character aspect ratio: terminal chars are typically ~2x taller than wide
+716   float char_aspect = 2.0f;
+717 
+718   int grid_cols, grid_rows;
+719   float best_score = -1.0f;
+720   int best_cols = 1;
+721   int best_rows = source_count;
+722 
+723   // Try all possible grid configurations
+724   for (int test_cols = 1; test_cols &lt;= source_count; test_cols++) {
+725     int test_rows = (int)ceil((double)source_count / test_cols);
+726 
+727     // Skip configurations with too many empty cells
+728     int empty_cells = (test_cols * test_rows) - source_count;
+729     if (empty_cells &gt; source_count / 2)
+730       continue; // Don't waste more than 50% space
+731 
+732     // Calculate the size each cell would have
+733     int cell_width = (width - (test_cols - 1)) / test_cols;   // -1 per separator
+734     int cell_height = (height - (test_rows - 1)) / test_rows; // -1 per separator
+735 
+736     // Skip if cells would be too small
+737     if (cell_width &lt; 10 || cell_height &lt; 3)
+738       continue;
+739 
+740     // Calculate the aspect ratio of each cell (accounting for char aspect)
+741     float cell_aspect = ((float)cell_width / (float)cell_height) / char_aspect;
 742 
-743     // Bonus for better space utilization
-744     float utilization = (float)source_count / (float)(test_cols * test_rows);
-745 
-746     // For 2 clients specifically, heavily weight the aspect score
-747     // This makes 2 clients naturally go horizontal on wide terminals and vertical on tall ones
-748     float total_score;
-749     if (source_count == 2) {
-750       // For 2 clients, we want the layout that gives the most square-ish cells
-751       total_score = aspect_score * 0.9f + utilization * 0.1f;
-752     } else {
-753       // For 3+ clients, balance aspect ratio with space utilization
-754       total_score = aspect_score * 0.7f + utilization * 0.3f;
-755     }
-756 
-757     // Small bonus for simpler grids (prefer 2x2 over 3x1, etc.)
-758     if (test_cols == test_rows) {
-759       total_score += 0.05f; // Slight preference for square grids
-760     }
-761 
-762     if (total_score &gt; best_score) {
-763       best_score = total_score;
-764       best_cols = test_cols;
-765       best_rows = test_rows;
+743     // Score based on how close to square (1:1) each video cell would be
+744     // This naturally adapts to any terminal size
+745     float aspect_score = 1.0f - fabsf(logf(cell_aspect)); // log makes it symmetric around 1
+746     if (aspect_score &lt; 0)
+747       aspect_score = 0;
+748 
+749     // Bonus for better space utilization
+750     float utilization = (float)source_count / (float)(test_cols * test_rows);
+751 
+752     // For 2 clients specifically, heavily weight the aspect score
+753     // This makes 2 clients naturally go horizontal on wide terminals and vertical on tall ones
+754     float total_score;
+755     if (source_count == 2) {
+756       // For 2 clients, we want the layout that gives the most square-ish cells
+757       total_score = aspect_score * 0.9f + utilization * 0.1f;
+758     } else {
+759       // For 3+ clients, balance aspect ratio with space utilization
+760       total_score = aspect_score * 0.7f + utilization * 0.3f;
+761     }
+762 
+763     // Small bonus for simpler grids (prefer 2x2 over 3x1, etc.)
+764     if (test_cols == test_rows) {
+765       total_score += 0.05f; // Slight preference for square grids
 766     }
-767   }
-768 
-769   grid_cols = best_cols;
-770   grid_rows = best_rows;
-771 
-772   // Calculate dimensions for each cell (leave 1 char for separators)
-773   int cell_width = (width - (grid_cols - 1)) / grid_cols;
-774   int cell_height = (height - (grid_rows - 1)) / grid_rows;
-775 
-776   if (cell_width &lt; 10 || cell_height &lt; 3) {
-777     // Too small for grid layout, just use first source
-778     char *result;
-779     result = SAFE_MALLOC(sources[0].frame_size + 1, char *);
-780     if (sources[0].frame_data &amp;&amp; sources[0].frame_size &gt; 0) {
-781       SAFE_MEMCPY(result, sources[0].frame_size + 1, sources[0].frame_data, sources[0].frame_size);
-782       result[sources[0].frame_size] = '\0';
-783       *out_size = sources[0].frame_size;
-784     } else {
-785       // Handle NULL or empty frame data
-786       result[0] = '\0';
-787       *out_size = 0;
-788     }
-789     return result;
-790   }
-791 
-792   // Allocate mixed frame buffer
-793   // Check for integer overflow before multiplication
-794   size_t w_sz = (size_t)width;
-795   size_t h_sz = (size_t)height;
-796   if (w_sz &gt; SIZE_MAX / h_sz) {
-797     SET_ERRNO(ERROR_INVALID_PARAM, &quot;ascii_create_grid: dimensions would overflow: %dx%d&quot;, width, height);
-798     return NULL;
-799   }
-800   size_t mixed_size = w_sz * h_sz + h_sz + 1; // +1 for null terminator, +height for newlines
-801   char *mixed_frame;
-802   mixed_frame = SAFE_MALLOC(mixed_size, char *);
-803 
-804   // Initialize mixed frame with spaces
-805   SAFE_MEMSET(mixed_frame, mixed_size, ' ', mixed_size - 1);
-806   mixed_frame[mixed_size - 1] = '\0';
-807 
-808   // Add newlines at the end of each row
-809   for (int row = 0; row &lt; height; row++) {
-810     mixed_frame[row * (width + 1) + width] = '\n';
-811   }
-812 
-813   // Place each video source in the grid
-814   for (int src = 0; src &lt; source_count; src++) {
-815     int grid_row = src / grid_cols;
-816     int grid_col = src % grid_cols;
-817 
-818     // Calculate position in mixed frame
-819     int start_row = grid_row * (cell_height + 1); // +1 for separator
-820     int start_col = grid_col * (cell_width + 1);  // +1 for separator
-821 
-822     // Parse source frame line by line and place in grid
-823     const char *src_data = sources[src].frame_data;
-824     int src_row = 0;
-825     int src_pos = 0;
-826 
-827     while (src_pos &lt; (int)sources[src].frame_size &amp;&amp; src_row &lt; cell_height &amp;&amp; start_row + src_row &lt; height) {
-828       // Find end of current line in source
-829       int line_start = src_pos;
-830       while (src_pos &lt; (int)sources[src].frame_size &amp;&amp; src_data[src_pos] != '\n') {
-831         src_pos++;
-832       }
-833       int line_len = src_pos - line_start;
-834 
-835       // Copy line to mixed frame (truncate if too long)
-836       // Truncate to visual cell width while preserving complete ANSI sequences
-837       int copy_len = ansi_truncate_to_visual_width(src_data + line_start, line_len, cell_width);
-838       // Check that visual width of truncated line fits
-839       int truncated_visual_width = ansi_visual_width(src_data + line_start, copy_len);
-840       if (copy_len &gt; 0 &amp;&amp; start_col + truncated_visual_width &lt;= width) {
-841         int mixed_pos = (start_row + src_row) * (width + 1) + start_col;
-842         SAFE_MEMCPY(mixed_frame + mixed_pos, mixed_size - (size_t)mixed_pos, src_data + line_start, (size_t)copy_len);
-843       }
-844 
-845       // Move to next line
-846       if (src_pos &lt; (int)sources[src].frame_size &amp;&amp; src_data[src_pos] == '\n') {
-847         src_pos++;
-848       }
-849       src_row++;
-850     }
-851 
-852     // Draw separators with bounds checking to prevent buffer overflow
-853     if (grid_col &lt; grid_cols - 1 &amp;&amp; start_col + cell_width &lt; width) {
-854       // Vertical separator
-855       for (int row = start_row; row &lt; start_row + cell_height &amp;&amp; row &lt; height; row++) {
-856         size_t idx = (size_t)row * (size_t)(width + 1) + (size_t)(start_col + cell_width);
-857         if (idx &lt; mixed_size - 1) { // -1 to preserve null terminator
-858           mixed_frame[idx] = '|';
-859         }
-860       }
-861     }
-862 
-863     if (grid_row &lt; grid_rows - 1 &amp;&amp; start_row + cell_height &lt; height) {
-864       // Horizontal separator
-865       for (int col = start_col; col &lt; start_col + cell_width &amp;&amp; col &lt; width; col++) {
-866         size_t idx = (size_t)(start_row + cell_height) * (size_t)(width + 1) + (size_t)col;
-867         if (idx &lt; mixed_size - 1) { // -1 to preserve null terminator
-868           mixed_frame[idx] = '_';
-869         }
-870       }
-871       // Corner character where separators meet
-872       if (grid_col &lt; grid_cols - 1 &amp;&amp; start_col + cell_width &lt; width) {
-873         size_t idx = (size_t)(start_row + cell_height) * (size_t)(width + 1) + (size_t)(start_col + cell_width);
-874         if (idx &lt; mixed_size - 1) { // -1 to preserve null terminator
-875           mixed_frame[idx] = '+';
-876         }
-877       }
-878     }
-879   }
-880 
-881   *out_size = strlen(mixed_frame);
-882   return mixed_frame;
-883 }</pre>
+767 
+768     if (total_score &gt; best_score) {
+769       best_score = total_score;
+770       best_cols = test_cols;
+771       best_rows = test_rows;
+772     }
+773   }
+774 
+775   grid_cols = best_cols;
+776   grid_rows = best_rows;
+777 
+778   // Calculate dimensions for each cell (leave 1 char for separators)
+779   int cell_width = (width - (grid_cols - 1)) / grid_cols;
+780   int cell_height = (height - (grid_rows - 1)) / grid_rows;
+781 
+782   if (cell_width &lt; 10 || cell_height &lt; 3) {
+783     // Too small for grid layout, just use first source
+784     char *result;
+785     result = SAFE_MALLOC(sources[0].frame_size + 1, char *);
+786     if (sources[0].frame_data &amp;&amp; sources[0].frame_size &gt; 0) {
+787       SAFE_MEMCPY(result, sources[0].frame_size + 1, sources[0].frame_data, sources[0].frame_size);
+788       result[sources[0].frame_size] = '\0';
+789       *out_size = sources[0].frame_size;
+790     } else {
+791       // Handle NULL or empty frame data
+792       result[0] = '\0';
+793       *out_size = 0;
+794     }
+795     return result;
+796   }
+797 
+798   // Allocate mixed frame buffer
+799   // Check for integer overflow before multiplication
+800   size_t w_sz = (size_t)width;
+801   size_t h_sz = (size_t)height;
+802   if (w_sz &gt; SIZE_MAX / h_sz) {
+803     SET_ERRNO(ERROR_INVALID_PARAM, &quot;ascii_create_grid: dimensions would overflow: %dx%d&quot;, width, height);
+804     return NULL;
+805   }
+806   size_t mixed_size = w_sz * h_sz + h_sz + 1; // +1 for null terminator, +height for newlines
+807   char *mixed_frame;
+808   mixed_frame = SAFE_MALLOC(mixed_size, char *);
+809 
+810   // Initialize mixed frame with spaces
+811   SAFE_MEMSET(mixed_frame, mixed_size, ' ', mixed_size - 1);
+812   mixed_frame[mixed_size - 1] = '\0';
+813 
+814   // Add newlines at the end of each row
+815   for (int row = 0; row &lt; height; row++) {
+816     mixed_frame[row * (width + 1) + width] = '\n';
+817   }
+818 
+819   // Place each video source in the grid
+820   for (int src = 0; src &lt; source_count; src++) {
+821     int grid_row = src / grid_cols;
+822     int grid_col = src % grid_cols;
+823 
+824     // Calculate position in mixed frame
+825     int start_row = grid_row * (cell_height + 1); // +1 for separator
+826     int start_col = grid_col * (cell_width + 1);  // +1 for separator
+827 
+828     // Parse source frame line by line and place in grid
+829     const char *src_data = sources[src].frame_data;
+830     int src_row = 0;
+831     int src_pos = 0;
+832 
+833     while (src_pos &lt; (int)sources[src].frame_size &amp;&amp; src_row &lt; cell_height &amp;&amp; start_row + src_row &lt; height) {
+834       // Find end of current line in source
+835       int line_start = src_pos;
+836       while (src_pos &lt; (int)sources[src].frame_size &amp;&amp; src_data[src_pos] != '\n') {
+837         src_pos++;
+838       }
+839       int line_len = src_pos - line_start;
+840 
+841       // Copy line to mixed frame (truncate if too long)
+842       // Truncate to visual cell width while preserving complete ANSI sequences
+843       int copy_len = ansi_truncate_to_visual_width(src_data + line_start, line_len, cell_width);
+844       // Check that visual width of truncated line fits
+845       int truncated_visual_width = ansi_visual_width(src_data + line_start, copy_len);
+846       if (copy_len &gt; 0 &amp;&amp; start_col + truncated_visual_width &lt;= width) {
+847         int mixed_pos = (start_row + src_row) * (width + 1) + start_col;
+848         SAFE_MEMCPY(mixed_frame + mixed_pos, mixed_size - (size_t)mixed_pos, src_data + line_start, (size_t)copy_len);
+849       }
+850 
+851       // Move to next line
+852       if (src_pos &lt; (int)sources[src].frame_size &amp;&amp; src_data[src_pos] == '\n') {
+853         src_pos++;
+854       }
+855       src_row++;
+856     }
+857 
+858     // Draw separators with bounds checking to prevent buffer overflow
+859     if (grid_col &lt; grid_cols - 1 &amp;&amp; start_col + cell_width &lt; width) {
+860       // Vertical separator
+861       for (int row = start_row; row &lt; start_row + cell_height &amp;&amp; row &lt; height; row++) {
+862         size_t idx = (size_t)row * (size_t)(width + 1) + (size_t)(start_col + cell_width);
+863         if (idx &lt; mixed_size - 1) { // -1 to preserve null terminator
+864           mixed_frame[idx] = '|';
+865         }
+866       }
+867     }
+868 
+869     if (grid_row &lt; grid_rows - 1 &amp;&amp; start_row + cell_height &lt; height) {
+870       // Horizontal separator
+871       for (int col = start_col; col &lt; start_col + cell_width &amp;&amp; col &lt; width; col++) {
+872         size_t idx = (size_t)(start_row + cell_height) * (size_t)(width + 1) + (size_t)col;
+873         if (idx &lt; mixed_size - 1) { // -1 to preserve null terminator
+874           mixed_frame[idx] = '_';
+875         }
+876       }
+877       // Corner character where separators meet
+878       if (grid_col &lt; grid_cols - 1 &amp;&amp; start_col + cell_width &lt; width) {
+879         size_t idx = (size_t)(start_row + cell_height) * (size_t)(width + 1) + (size_t)(start_col + cell_width);
+880         if (idx &lt; mixed_size - 1) { // -1 to preserve null terminator
+881           mixed_frame[idx] = '+';
+882         }
+883       }
+884     }
+885   }
+886 
+887   *out_size = strlen(mixed_frame);
+888   return mixed_frame;
+889 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -2719,47 +2724,47 @@ if (grid) {
 <p class="Pp">NOTE: Uses plain newlines instead of ANSI escape sequences to
     support both TTY and piped/redirected output. TTY flicker prevention is
     handled by the display layer (e.g., display.c) when appropriate.</p>
-<p class="Pp">Definition at line <b>900</b> of file <b>ascii.c</b>.</p>
-<pre>900                                                                 {
-901   if (!frame) {
-902     return NULL;
-903   }
-904 
-905   if (pad_top == 0) {
-906     // Nothing to do; return a copy because the caller knows to free() the value.
-907     size_t orig_len = strlen(frame);
-908     char *copy;
-909     copy = SAFE_MALLOC(orig_len + 1, char *);
-910     SAFE_MEMCPY(copy, orig_len + 1, frame, orig_len + 1);
-911     return copy;
-912   }
-913 
-914   // Calculate buffer size needed
-915   // Each padding row needs: 1 newline character per padding row
-916   size_t frame_len = strlen(frame);
-917   size_t top_padding_len = pad_top; // 1 newline per padding row
-918   size_t total_len = top_padding_len + frame_len;
+<p class="Pp">Definition at line <b>906</b> of file <b>ascii.c</b>.</p>
+<pre>906                                                                 {
+907   if (!frame) {
+908     return NULL;
+909   }
+910 
+911   if (pad_top == 0) {
+912     // Nothing to do; return a copy because the caller knows to free() the value.
+913     size_t orig_len = strlen(frame);
+914     char *copy;
+915     copy = SAFE_MALLOC(orig_len + 1, char *);
+916     SAFE_MEMCPY(copy, orig_len + 1, frame, orig_len + 1);
+917     return copy;
+918   }
 919 
-920   char *buffer;
-921   buffer = SAFE_MALLOC(total_len + 1, char *);
-922 
-923   char *position = buffer;
-924 
-925   // Add top padding with plain newlines
-926   // Use plain newlines instead of ANSI escape sequences so the output works
-927   // when redirected to pipes or files, not just TTY
-928   for (size_t i = 0; i &lt; pad_top; i++) {
-929     *position++ = '\n';
-930   }
-931 
-932   // Copy the original frame
-933   size_t remaining = frame_len + 1;
-934   SAFE_MEMCPY(position, remaining, frame, frame_len);
-935   position += frame_len;
-936   *position = '\0';
+920   // Calculate buffer size needed
+921   // Each padding row needs: 1 newline character per padding row
+922   size_t frame_len = strlen(frame);
+923   size_t top_padding_len = pad_top; // 1 newline per padding row
+924   size_t total_len = top_padding_len + frame_len;
+925 
+926   char *buffer;
+927   buffer = SAFE_MALLOC(total_len + 1, char *);
+928 
+929   char *position = buffer;
+930 
+931   // Add top padding with plain newlines
+932   // Use plain newlines instead of ANSI escape sequences so the output works
+933   // when redirected to pipes or files, not just TTY
+934   for (size_t i = 0; i &lt; pad_top; i++) {
+935     *position++ = '\n';
+936   }
 937 
-938   return buffer;
-939 }</pre>
+938   // Copy the original frame
+939   size_t remaining = frame_len + 1;
+940   SAFE_MEMCPY(position, remaining, frame, frame_len);
+941   position += frame_len;
+942   *position = '\0';
+943 
+944   return buffer;
+945 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>frame</b>, <b>SAFE_MALLOC</b>, and
@@ -2795,68 +2800,68 @@ if (grid) {
 <p class="Pp"></p>
 <p class="Pp">Frame width is increased by 'pad' characters.</p>
 </div>
-<p class="Pp">Definition at line <b>455</b> of file <b>ascii.c</b>.</p>
-<pre>455                                                                 {
-456   if (!frame) {
-457     SET_ERRNO(ERROR_INVALID_PARAM, &quot;ascii_pad_frame_width: frame is NULL&quot;);
-458     return NULL;
-459   }
-460 
-461   if (pad_left == 0) {
-462     // Nothing to do; return a copy so the caller can free it safely without
-463     // worrying about the original allocation strategy.
-464     size_t orig_len = strlen(frame);
-465     char *copy;
-466     copy = SAFE_MALLOC(orig_len + 1, char *);
-467     SAFE_MEMCPY(copy, orig_len + 1, frame, orig_len + 1);
-468     return copy;
-469   }
-470 
-471   // Count how many visual rows we have (lines terminated by '\n') to determine
-472   // the final buffer size.
-473   size_t line_count = 1; // There is always at least the first line
-474   const char *char_in_frame = frame;
-475   while (*char_in_frame) {
-476     if (*char_in_frame == '\n') {
-477       line_count++;
-478     }
-479     char_in_frame++;
-480   }
-481 
-482   // Total length of the source plus padding.
-483   const size_t frame_len = strlen(frame);
-484   const size_t left_padding_len = line_count * pad_left;
-485   const size_t total_len = frame_len + left_padding_len;
-486 
-487   char *buffer;
-488   buffer = SAFE_MALLOC(total_len + 1, char *);
-489 
-490   // Build the padded frame.
-491   bool at_line_start = true;
-492   const char *src = frame;
-493   char *position = buffer;
-494 
-495   while (*src) {
-496     if (at_line_start) {
-497       // Insert the requested amount of spaces in front of every visual row.
-498       size_t remaining = (size_t)((ptrdiff_t)(buffer + total_len + 1) - (ptrdiff_t)position);
-499       SAFE_MEMSET(position, remaining, ' ', (size_t)pad_left);
-500       position += pad_left;
-501       at_line_start = false;
-502     }
-503 
-504     *position++ = *src;
-505 
-506     if (*src == '\n') {
-507       at_line_start = true;
+<p class="Pp">Definition at line <b>461</b> of file <b>ascii.c</b>.</p>
+<pre>461                                                                 {
+462   if (!frame) {
+463     SET_ERRNO(ERROR_INVALID_PARAM, &quot;ascii_pad_frame_width: frame is NULL&quot;);
+464     return NULL;
+465   }
+466 
+467   if (pad_left == 0) {
+468     // Nothing to do; return a copy so the caller can free it safely without
+469     // worrying about the original allocation strategy.
+470     size_t orig_len = strlen(frame);
+471     char *copy;
+472     copy = SAFE_MALLOC(orig_len + 1, char *);
+473     SAFE_MEMCPY(copy, orig_len + 1, frame, orig_len + 1);
+474     return copy;
+475   }
+476 
+477   // Count how many visual rows we have (lines terminated by '\n') to determine
+478   // the final buffer size.
+479   size_t line_count = 1; // There is always at least the first line
+480   const char *char_in_frame = frame;
+481   while (*char_in_frame) {
+482     if (*char_in_frame == '\n') {
+483       line_count++;
+484     }
+485     char_in_frame++;
+486   }
+487 
+488   // Total length of the source plus padding.
+489   const size_t frame_len = strlen(frame);
+490   const size_t left_padding_len = line_count * pad_left;
+491   const size_t total_len = frame_len + left_padding_len;
+492 
+493   char *buffer;
+494   buffer = SAFE_MALLOC(total_len + 1, char *);
+495 
+496   // Build the padded frame.
+497   bool at_line_start = true;
+498   const char *src = frame;
+499   char *position = buffer;
+500 
+501   while (*src) {
+502     if (at_line_start) {
+503       // Insert the requested amount of spaces in front of every visual row.
+504       size_t remaining = (size_t)((ptrdiff_t)(buffer + total_len + 1) - (ptrdiff_t)position);
+505       SAFE_MEMSET(position, remaining, ' ', (size_t)pad_left);
+506       position += pad_left;
+507       at_line_start = false;
 508     }
 509 
-510     src++;
-511   }
-512 
-513   *position = '\0';
-514   return buffer;
-515 }</pre>
+510     *position++ = *src;
+511 
+512     if (*src == '\n') {
+513       at_line_start = true;
+514     }
+515 
+516     src++;
+517   }
+518 
+519   *position = '\0';
+520   return buffer;
+521 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>frame</b>,
@@ -2879,11 +2884,11 @@ if (grid) {
 <p class="Pp"></p>
 <p class="Pp">After cleanup, webcam capture will fail until re-initialized.</p>
 </div>
-<p class="Pp">Definition at line <b>435</b> of file <b>ascii.c</b>.</p>
-<pre>435                               {
-436   webcam_destroy();
-437   log_debug(&quot;ASCII reader destroyed&quot;);
-438 }</pre>
+<p class="Pp">Definition at line <b>441</b> of file <b>ascii.c</b>.</p>
+<pre>441                               {
+442   webcam_destroy();
+443   log_debug(&quot;ASCII reader destroyed&quot;);
+444 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_debug</b>, and <b>webcam_destroy()</b>.</p>
@@ -2915,12 +2920,12 @@ if (grid) {
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">On failure, use <b>webcam_print_init_error_help()</b> for
   diagnostics.</div>
-<p class="Pp">Definition at line <b>36</b> of file <b>ascii.c</b>.</p>
-<pre>36                                                                    {
-37   log_info(&quot;Initializing ASCII reader with webcam index %u&quot;, webcam_index);
-38   webcam_init(webcam_index);
-39   return ASCIICHAT_OK;
-40 }</pre>
+<p class="Pp">Definition at line <b>38</b> of file <b>ascii.c</b>.</p>
+<pre>38                                                                    {
+39   log_info(&quot;Initializing ASCII reader with webcam index %u&quot;, webcam_index);
+40   webcam_init(webcam_index);
+41   return ASCIICHAT_OK;
+42 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>log_info</b>, and
@@ -2969,28 +2974,28 @@ if (grid) {
 <p class="Pp"></p>
 <p class="Pp">Output is written immediately (no buffering).</p>
 </div>
-<p class="Pp">Definition at line <b>390</b> of file <b>ascii.c</b>.</p>
-<pre>390                                                  {
-391   if (frame == NULL) {
-392     log_warn(&quot;Attempted to write NULL frame&quot;);
-393     return ERROR_INVALID_PARAM;
-394   }
-395 
-396   // Only reset cursor if output is connected to a TTY (not piped/redirected)
-397   if (terminal_should_use_control_sequences(STDOUT_FILENO)) {
-398     cursor_reset(STDOUT_FILENO);
-399   }
-400 
-401   size_t frame_len = strlen(frame);
-402   // Write all frame data with automatic retry on transient errors
-403   platform_write_all(STDOUT_FILENO, frame, frame_len);
-404 
-405   // Flush C stdio buffer and terminal to ensure piped output is written immediately
-406   (void)fflush(stdout);
-407   terminal_flush(STDOUT_FILENO);
-408 
-409   return ASCIICHAT_OK;
-410 }</pre>
+<p class="Pp">Definition at line <b>396</b> of file <b>ascii.c</b>.</p>
+<pre>396                                                  {
+397   if (frame == NULL) {
+398     log_warn(&quot;Attempted to write NULL frame&quot;);
+399     return ERROR_INVALID_PARAM;
+400   }
+401 
+402   // Only reset cursor if output is connected to a TTY (not piped/redirected)
+403   if (terminal_should_use_control_sequences(STDOUT_FILENO)) {
+404     cursor_reset(STDOUT_FILENO);
+405   }
+406 
+407   size_t frame_len = strlen(frame);
+408   // Write all frame data with automatic retry on transient errors
+409   platform_write_all(STDOUT_FILENO, frame, frame_len);
+410 
+411   // Flush C stdio buffer and terminal to ensure piped output is written immediately
+412   (void)fflush(stdout);
+413   terminal_flush(STDOUT_FILENO);
+414 
+415   return ASCIICHAT_OK;
+416 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>cursor_reset</b>,
@@ -3029,29 +3034,29 @@ if (grid) {
 <p class="Pp">After cleanup, terminal output functions may fail until
     re-initialized.</p>
 </div>
-<p class="Pp">Definition at line <b>412</b> of file <b>ascii.c</b>.</p>
-<pre>412                                                       {
-413 #if PLATFORM_WINDOWS
-414   (void)fd; // Unused on Windows - terminal operations use stdout directly
-415 #endif
-416   // console_clear(fd);
-417   // cursor_reset(fd);
-418   // Only restore terminal state if:
-419   // 1. reset_terminal is true (caller wants terminal restore)
-420   // 2. terminal_should_use_control_sequences() confirms it's safe (TTY, not snapshot, not testing)
-421   if (reset_terminal &amp;&amp; terminal_should_use_control_sequences(fd)) {
-422     // Show cursor using platform abstraction
-423     if (terminal_cursor_show() != 0) {
-424       log_warn(&quot;Failed to show cursor&quot;);
-425     }
-426 
-427     // Re-enable echo using platform abstraction
-428     if (terminal_set_echo(true) != 0) {
-429       log_warn(&quot;Failed to re-enable echo&quot;);
-430     }
-431   }
-432   log_debug(&quot;ASCII writer destroyed&quot;);
-433 }</pre>
+<p class="Pp">Definition at line <b>418</b> of file <b>ascii.c</b>.</p>
+<pre>418                                                       {
+419 #if PLATFORM_WINDOWS
+420   (void)fd; // Unused on Windows - terminal operations use stdout directly
+421 #endif
+422   // console_clear(fd);
+423   // cursor_reset(fd);
+424   // Only restore terminal state if:
+425   // 1. reset_terminal is true (caller wants terminal restore)
+426   // 2. terminal_should_use_control_sequences() confirms it's safe (TTY, not snapshot, not testing)
+427   if (reset_terminal &amp;&amp; terminal_should_use_control_sequences(fd)) {
+428     // Show cursor using platform abstraction
+429     if (terminal_cursor_show() != 0) {
+430       log_warn(&quot;Failed to show cursor&quot;);
+431     }
+432 
+433     // Re-enable echo using platform abstraction
+434     if (terminal_set_echo(true) != 0) {
+435       log_warn(&quot;Failed to re-enable echo&quot;);
+436     }
+437   }
+438   log_debug(&quot;ASCII writer destroyed&quot;);
+439 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_debug</b>, <b>log_warn</b>,
@@ -3093,34 +3098,34 @@ if (grid) {
 <p class="Pp">File descriptor is used for terminal output (stdout, stderr,
     etc.).</p>
 </div>
-<p class="Pp">Definition at line <b>42</b> of file <b>ascii.c</b>.</p>
-<pre>42                                                                 {
-43   // Validate file descriptor
-44   if (fd &lt; 0) {
-45     log_error(&quot;Invalid file descriptor %d&quot;, fd);
-46     return ERROR_INVALID_PARAM;
-47   }
-48 
-49   // Only apply terminal control sequences if:
-50   // 1. reset_terminal is true (caller wants terminal reset)
-51   // 2. terminal_should_use_control_sequences() confirms it's safe (TTY, not snapshot, not testing)
-52   if (reset_terminal &amp;&amp; terminal_should_use_control_sequences(fd)) {
-53     console_clear(fd);
-54     cursor_reset(fd);
-55 
-56     // Disable echo using platform abstraction
-57     if (terminal_set_echo(false) != 0) {
-58       log_error(&quot;Failed to disable echo for fd %d&quot;, fd);
-59       return ERROR_TERMINAL;
-60     }
-61     // Hide cursor using platform abstraction
-62     if (terminal_cursor_hide() != 0) {
-63       log_warn(&quot;Failed to hide cursor&quot;);
-64     }
-65   }
-66   log_dev(&quot;ASCII writer initialized&quot;);
-67   return ASCIICHAT_OK;
-68 }</pre>
+<p class="Pp">Definition at line <b>44</b> of file <b>ascii.c</b>.</p>
+<pre>44                                                                 {
+45   // Validate file descriptor
+46   if (fd &lt; 0) {
+47     log_error(&quot;Invalid file descriptor %d&quot;, fd);
+48     return ERROR_INVALID_PARAM;
+49   }
+50 
+51   // Only apply terminal control sequences if:
+52   // 1. reset_terminal is true (caller wants terminal reset)
+53   // 2. terminal_should_use_control_sequences() confirms it's safe (TTY, not snapshot, not testing)
+54   if (reset_terminal &amp;&amp; terminal_should_use_control_sequences(fd)) {
+55     console_clear(fd);
+56     cursor_reset(fd);
+57 
+58     // Disable echo using platform abstraction
+59     if (terminal_set_echo(false) != 0) {
+60       log_error(&quot;Failed to disable echo for fd %d&quot;, fd);
+61       return ERROR_TERMINAL;
+62     }
+63     // Hide cursor using platform abstraction
+64     if (terminal_cursor_hide() != 0) {
+65       log_warn(&quot;Failed to hide cursor&quot;);
+66     }
+67   }
+68   log_dev(&quot;ASCII writer initialized&quot;);
+69   return ASCIICHAT_OK;
+70 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>console_clear</b>,
@@ -4654,7 +4659,8 @@ if (rep_is_profitable(50)) {
 <p class="Pp">Referenced by <b>image_print()</b>, <b>image_print_16color()</b>,
     <b>image_print_16color_dithered()</b>,
     <b>image_print_16color_dithered_with_background()</b>,
-    <b>image_print_256color()</b>, <b>image_print_color()</b>, and
+    <b>image_print_256color()</b>, <b>image_print_color()</b>,
+    <b>image_print_color_background()</b>, <b>image_print_color_utf8()</b>, and
     <b>session_display_create()</b>.</p>
 </section>
 <section class="Ss">
@@ -5285,99 +5291,99 @@ if (img) {
 <p class="Pp"></p>
 <p class="Pp">Colors are quantized to 16-color palette automatically.</p>
 </div>
-<p class="Pp">Definition at line <b>463</b> of file <b>foreground.c</b>.</p>
-<pre>463                                                                      {
-464   if (!image || !image-&gt;pixels || !palette) {
-465     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image=%p or image-&gt;pixels=%p or palette=%p is NULL&quot;, image, image-&gt;pixels, palette);
-466     return NULL;
-467   }
-468 
-469   int h = image-&gt;h;
-470   int w = image-&gt;w;
-471 
-472   if (h &lt;= 0 || w &lt;= 0) {
-473     SET_ERRNO(ERROR_INVALID_STATE, &quot;image_print_16color: invalid dimensions h=%d, w=%d&quot;, h, w);
-474     return NULL;
-475   }
-476 
-477   // Initialize 16-color lookup table
-478   ansi_fast_init_16color();
-479 
-480   // Calculate buffer size (smaller than 256-color due to shorter ANSI sequences)
-481   // Space for ANSI codes + newlines
-482   // Calculate with overflow checking
-483   size_t h_times_w;
-484   if (checked_size_mul((size_t)h, (size_t)w, &amp;h_times_w) != ASCIICHAT_OK) {
-485     return NULL;
-486   }
-487 
-488   size_t h_times_w_times_12;
-489   if (checked_size_mul(h_times_w, 12u, &amp;h_times_w_times_12) != ASCIICHAT_OK) {
-490     return NULL;
-491   }
-492 
-493   size_t buffer_size;
-494   if (checked_size_add(h_times_w_times_12, (size_t)h, &amp;buffer_size) != ASCIICHAT_OK) {
-495     return NULL;
-496   }
-497 
-498   char *buffer;
-499   buffer = SAFE_MALLOC(buffer_size, char *);
-500 
-501   char *ptr = buffer;
-502   const char *reset_code = &quot;\033[0m&quot;;
-503 
-504   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
-505   if (!utf8_cache) {
-506     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to get UTF-8 cache for 16-color rendering&quot;);
-507     SAFE_FREE(buffer);
-508     return NULL;
-509   }
-510 
-511   for (int y = 0; y &lt; h; y++) {
-512     for (int x = 0; x &lt; w; x++) {
-513       rgb_pixel_t pixel = image-&gt;pixels[y * w + x];
-514 
-515       // Convert RGB to 16-color index and generate ANSI sequence
-516       uint8_t color_index = rgb_to_16color(pixel.r, pixel.g, pixel.b);
-517       ptr = append_16color_fg(ptr, color_index);
-518 
-519       // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
-520       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) &gt;&gt; 8;
-521 
-522       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
-523       uint8_t safe_luminance = clamp_rgb(luminance);
-524       uint8_t luma_idx = (uint8_t)(safe_luminance &gt;&gt; 2);        // 0-63 index (same as SIMD)
-525       uint8_t char_idx = utf8_cache-&gt;char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
-526 
-527       // Use direct palette character lookup (same as SIMD would do)
-528       char ascii_char = palette[char_idx];
-529       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache[(unsigned char)ascii_char];
-530 
-531       if (char_info) {
-532         // Copy UTF-8 character bytes
-533         for (int byte_idx = 0; byte_idx &lt; char_info-&gt;byte_len; byte_idx++) {
-534           *ptr++ = char_info-&gt;utf8_bytes[byte_idx];
-535         }
-536       } else {
-537         // Fallback to simple ASCII if UTF-8 cache fails
-538         size_t palette_len = strlen(palette);
-539         int palette_index = (luminance * ((int)palette_len - 1) + 127) / 255;
-540         *ptr++ = palette[palette_index];
-541       }
-542     }
-543 
-544     // Add reset and newline at end of each row
-545     SAFE_STRNCPY(ptr, reset_code, 5);
-546     ptr += strlen(reset_code);
-547     if (y &lt; h - 1) {
-548       *ptr++ = '\n';
-549     }
-550   }
-551 
-552   *ptr = '\0';
-553   return buffer;
-554 }</pre>
+<p class="Pp">Definition at line <b>526</b> of file <b>foreground.c</b>.</p>
+<pre>526                                                                      {
+527   if (!image || !image-&gt;pixels || !palette) {
+528     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image=%p or image-&gt;pixels=%p or palette=%p is NULL&quot;, image, image-&gt;pixels, palette);
+529     return NULL;
+530   }
+531 
+532   int h = image-&gt;h;
+533   int w = image-&gt;w;
+534 
+535   if (h &lt;= 0 || w &lt;= 0) {
+536     SET_ERRNO(ERROR_INVALID_STATE, &quot;image_print_16color: invalid dimensions h=%d, w=%d&quot;, h, w);
+537     return NULL;
+538   }
+539 
+540   // Initialize 16-color lookup table
+541   ansi_fast_init_16color();
+542 
+543   // Calculate buffer size (smaller than 256-color due to shorter ANSI sequences)
+544   // Space for ANSI codes + newlines
+545   // Calculate with overflow checking
+546   size_t h_times_w;
+547   if (checked_size_mul((size_t)h, (size_t)w, &amp;h_times_w) != ASCIICHAT_OK) {
+548     return NULL;
+549   }
+550 
+551   size_t h_times_w_times_12;
+552   if (checked_size_mul(h_times_w, 12u, &amp;h_times_w_times_12) != ASCIICHAT_OK) {
+553     return NULL;
+554   }
+555 
+556   size_t buffer_size;
+557   if (checked_size_add(h_times_w_times_12, (size_t)h, &amp;buffer_size) != ASCIICHAT_OK) {
+558     return NULL;
+559   }
+560 
+561   char *buffer;
+562   buffer = SAFE_MALLOC(buffer_size, char *);
+563 
+564   char *ptr = buffer;
+565   const char *reset_code = &quot;\033[0m&quot;;
+566 
+567   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+568   if (!utf8_cache) {
+569     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to get UTF-8 cache for 16-color rendering&quot;);
+570     SAFE_FREE(buffer);
+571     return NULL;
+572   }
+573 
+574   for (int y = 0; y &lt; h; y++) {
+575     for (int x = 0; x &lt; w; x++) {
+576       rgb_pixel_t pixel = image-&gt;pixels[y * w + x];
+577 
+578       // Convert RGB to 16-color index and generate ANSI sequence
+579       uint8_t color_index = rgb_to_16color(pixel.r, pixel.g, pixel.b);
+580       ptr = append_16color_fg(ptr, color_index);
+581 
+582       // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
+583       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) &gt;&gt; 8;
+584 
+585       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
+586       uint8_t safe_luminance = clamp_rgb(luminance);
+587       uint8_t luma_idx = (uint8_t)(safe_luminance &gt;&gt; 2);        // 0-63 index (same as SIMD)
+588       uint8_t char_idx = utf8_cache-&gt;char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
+589 
+590       // Use direct palette character lookup (same as SIMD would do)
+591       char ascii_char = palette[char_idx];
+592       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache[(unsigned char)ascii_char];
+593 
+594       if (char_info) {
+595         // Copy UTF-8 character bytes
+596         for (int byte_idx = 0; byte_idx &lt; char_info-&gt;byte_len; byte_idx++) {
+597           *ptr++ = char_info-&gt;utf8_bytes[byte_idx];
+598         }
+599       } else {
+600         // Fallback to simple ASCII if UTF-8 cache fails
+601         size_t palette_len = strlen(palette);
+602         int palette_index = (luminance * ((int)palette_len - 1) + 127) / 255;
+603         *ptr++ = palette[palette_index];
+604       }
+605     }
+606 
+607     // Add reset and newline at end of each row
+608     SAFE_STRNCPY(ptr, reset_code, 5);
+609     ptr += strlen(reset_code);
+610     if (y &lt; h - 1) {
+611       *ptr++ = '\n';
+612     }
+613   }
+614 
+615   *ptr = '\0';
+616   return buffer;
+617 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_fast_init_16color()</b>,
@@ -5428,109 +5434,109 @@ if (img) {
 <p class="Pp"></p>
 <p class="Pp">Requires terminal 16-color support for proper display.</p>
 </div>
-<p class="Pp">Definition at line <b>580</b> of file <b>foreground.c</b>.</p>
-<pre>580                                                                               {
-581   if (!image || !image-&gt;pixels || !palette) {
-582     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image=%p or image-&gt;pixels=%p or palette=%p is NULL&quot;, image, image-&gt;pixels, palette);
-583     return NULL;
-584   }
-585 
-586   int h = image-&gt;h;
-587   int w = image-&gt;w;
-588 
-589   if (h &lt;= 0 || w &lt;= 0) {
-590     SET_ERRNO(ERROR_INVALID_STATE, &quot;image_print_16color_dithered: invalid dimensions h=%d, w=%d&quot;, h, w);
-591     return NULL;
-592   }
-593 
-594   // Initialize 16-color lookup table
-595   ansi_fast_init_16color();
-596 
-597   // Allocate error buffer for Floyd-Steinberg dithering
-598   size_t pixel_count = (size_t)h * (size_t)w;
-599   rgb_error_t *error_buffer;
-600   error_buffer = SAFE_CALLOC(pixel_count, sizeof(rgb_error_t), rgb_error_t *);
-601 
-602   // Calculate buffer size (same as non-dithered version)
-603   // Space for ANSI codes + newlines
-604   // Calculate with overflow checking
-605   size_t h_times_w2;
-606   if (checked_size_mul((size_t)h, (size_t)w, &amp;h_times_w2) != ASCIICHAT_OK) {
-607     SAFE_FREE(error_buffer);
-608     return NULL;
-609   }
-610 
-611   size_t h_times_w2_times_12;
-612   if (checked_size_mul(h_times_w2, 12u, &amp;h_times_w2_times_12) != ASCIICHAT_OK) {
-613     SAFE_FREE(error_buffer);
-614     return NULL;
-615   }
-616 
-617   size_t buffer_size;
-618   if (checked_size_add(h_times_w2_times_12, (size_t)h, &amp;buffer_size) != ASCIICHAT_OK) {
-619     SAFE_FREE(error_buffer);
-620     return NULL;
-621   }
-622 
-623   char *buffer;
-624   buffer = SAFE_MALLOC(buffer_size, char *);
-625 
-626   char *ptr = buffer;
-627   const char *reset_code = &quot;\033[0m&quot;;
-628 
-629   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
-630   if (!utf8_cache) {
-631     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to get UTF-8 cache for 16-color dithered rendering&quot;);
-632     SAFE_FREE(buffer);
-633     SAFE_FREE(error_buffer);
-634     return NULL;
-635   }
-636 
-637   for (int y = 0; y &lt; h; y++) {
-638     for (int x = 0; x &lt; w; x++) {
-639       rgb_pixel_t pixel = image-&gt;pixels[y * w + x];
-640 
-641       // Convert RGB to 16-color index using dithering
-642       uint8_t color_index = rgb_to_16color_dithered(pixel.r, pixel.g, pixel.b, x, y, w, h, error_buffer);
-643       ptr = append_16color_fg(ptr, color_index);
-644 
-645       // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
-646       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) &gt;&gt; 8;
-647 
-648       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
-649       uint8_t safe_luminance = clamp_rgb(luminance);
-650       uint8_t luma_idx = (uint8_t)(safe_luminance &gt;&gt; 2);        // 0-63 index (same as SIMD)
-651       uint8_t char_idx = utf8_cache-&gt;char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
-652 
-653       // Use direct palette character lookup (same as SIMD would do)
-654       char ascii_char = palette[char_idx];
-655       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache[(unsigned char)ascii_char];
+<p class="Pp">Definition at line <b>643</b> of file <b>foreground.c</b>.</p>
+<pre>643                                                                               {
+644   if (!image || !image-&gt;pixels || !palette) {
+645     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image=%p or image-&gt;pixels=%p or palette=%p is NULL&quot;, image, image-&gt;pixels, palette);
+646     return NULL;
+647   }
+648 
+649   int h = image-&gt;h;
+650   int w = image-&gt;w;
+651 
+652   if (h &lt;= 0 || w &lt;= 0) {
+653     SET_ERRNO(ERROR_INVALID_STATE, &quot;image_print_16color_dithered: invalid dimensions h=%d, w=%d&quot;, h, w);
+654     return NULL;
+655   }
 656 
-657       if (char_info) {
-658         // Copy UTF-8 character bytes
-659         for (int byte_idx = 0; byte_idx &lt; char_info-&gt;byte_len; byte_idx++) {
-660           *ptr++ = char_info-&gt;utf8_bytes[byte_idx];
-661         }
-662       } else {
-663         // Fallback to simple ASCII if UTF-8 cache fails
-664         size_t palette_len = strlen(palette);
-665         int palette_index = (luminance * ((int)palette_len - 1) + 127) / 255;
-666         *ptr++ = palette[palette_index];
-667       }
-668     }
-669 
-670     // Add reset and newline at end of each row
-671     SAFE_STRNCPY(ptr, reset_code, 5);
-672     ptr += strlen(reset_code);
-673     if (y &lt; h - 1) {
-674       *ptr++ = '\n';
-675     }
-676   }
-677 
-678   *ptr = '\0';
-679   SAFE_FREE(error_buffer); // Clean up error buffer
-680   return buffer;
-681 }</pre>
+657   // Initialize 16-color lookup table
+658   ansi_fast_init_16color();
+659 
+660   // Allocate error buffer for Floyd-Steinberg dithering
+661   size_t pixel_count = (size_t)h * (size_t)w;
+662   rgb_error_t *error_buffer;
+663   error_buffer = SAFE_CALLOC(pixel_count, sizeof(rgb_error_t), rgb_error_t *);
+664 
+665   // Calculate buffer size (same as non-dithered version)
+666   // Space for ANSI codes + newlines
+667   // Calculate with overflow checking
+668   size_t h_times_w2;
+669   if (checked_size_mul((size_t)h, (size_t)w, &amp;h_times_w2) != ASCIICHAT_OK) {
+670     SAFE_FREE(error_buffer);
+671     return NULL;
+672   }
+673 
+674   size_t h_times_w2_times_12;
+675   if (checked_size_mul(h_times_w2, 12u, &amp;h_times_w2_times_12) != ASCIICHAT_OK) {
+676     SAFE_FREE(error_buffer);
+677     return NULL;
+678   }
+679 
+680   size_t buffer_size;
+681   if (checked_size_add(h_times_w2_times_12, (size_t)h, &amp;buffer_size) != ASCIICHAT_OK) {
+682     SAFE_FREE(error_buffer);
+683     return NULL;
+684   }
+685 
+686   char *buffer;
+687   buffer = SAFE_MALLOC(buffer_size, char *);
+688 
+689   char *ptr = buffer;
+690   const char *reset_code = &quot;\033[0m&quot;;
+691 
+692   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+693   if (!utf8_cache) {
+694     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to get UTF-8 cache for 16-color dithered rendering&quot;);
+695     SAFE_FREE(buffer);
+696     SAFE_FREE(error_buffer);
+697     return NULL;
+698   }
+699 
+700   for (int y = 0; y &lt; h; y++) {
+701     for (int x = 0; x &lt; w; x++) {
+702       rgb_pixel_t pixel = image-&gt;pixels[y * w + x];
+703 
+704       // Convert RGB to 16-color index using dithering
+705       uint8_t color_index = rgb_to_16color_dithered(pixel.r, pixel.g, pixel.b, x, y, w, h, error_buffer);
+706       ptr = append_16color_fg(ptr, color_index);
+707 
+708       // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
+709       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) &gt;&gt; 8;
+710 
+711       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
+712       uint8_t safe_luminance = clamp_rgb(luminance);
+713       uint8_t luma_idx = (uint8_t)(safe_luminance &gt;&gt; 2);        // 0-63 index (same as SIMD)
+714       uint8_t char_idx = utf8_cache-&gt;char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
+715 
+716       // Use direct palette character lookup (same as SIMD would do)
+717       char ascii_char = palette[char_idx];
+718       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache[(unsigned char)ascii_char];
+719 
+720       if (char_info) {
+721         // Copy UTF-8 character bytes
+722         for (int byte_idx = 0; byte_idx &lt; char_info-&gt;byte_len; byte_idx++) {
+723           *ptr++ = char_info-&gt;utf8_bytes[byte_idx];
+724         }
+725       } else {
+726         // Fallback to simple ASCII if UTF-8 cache fails
+727         size_t palette_len = strlen(palette);
+728         int palette_index = (luminance * ((int)palette_len - 1) + 127) / 255;
+729         *ptr++ = palette[palette_index];
+730       }
+731     }
+732 
+733     // Add reset and newline at end of each row
+734     SAFE_STRNCPY(ptr, reset_code, 5);
+735     ptr += strlen(reset_code);
+736     if (y &lt; h - 1) {
+737       *ptr++ = '\n';
+738     }
+739   }
+740 
+741   *ptr = '\0';
+742   SAFE_FREE(error_buffer); // Clean up error buffer
+743   return buffer;
+744 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_fast_init_16color()</b>,
@@ -5583,106 +5589,106 @@ if (img) {
 <p class="Pp"></p>
 <p class="Pp">Dithering improves color accuracy but may add noise.</p>
 </div>
-<p class="Pp">Definition at line <b>684</b> of file <b>foreground.c</b>.</p>
-<pre>684                                                                                                                    {
-685   if (!image || !image-&gt;pixels || !palette) {
-686     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image=%p or image-&gt;pixels=%p or palette=%p is NULL&quot;, image, image-&gt;pixels, palette);
-687     return NULL;
-688   }
-689 
-690   int h = image-&gt;h;
-691   int w = image-&gt;w;
-692 
-693   if (h &lt;= 0 || w &lt;= 0) {
-694     SET_ERRNO(ERROR_INVALID_STATE, &quot;image_print_16color_dithered_with_background: invalid dimensions h=%d, w=%d&quot;, h, w);
-695     return NULL;
-696   }
-697 
-698   // Initialize 16-color lookup table
-699   ansi_fast_init_16color();
-700 
-701   // Allocate error buffer for Floyd-Steinberg dithering
-702   size_t pixel_count = (size_t)h * (size_t)w;
-703   rgb_error_t *error_buffer;
-704   error_buffer = SAFE_CALLOC(pixel_count, sizeof(rgb_error_t), rgb_error_t *);
-705 
-706   // Calculate buffer size (larger for background mode due to more ANSI sequences)
-707   size_t buffer_size =
-708       (size_t)h * (size_t)w * (use_background ? 24 : 12) + (size_t)h; // Space for ANSI codes + newlines
-709   char *buffer;
-710   buffer = SAFE_MALLOC(buffer_size, char *);
-711 
-712   char *ptr = buffer;
-713   const char *reset_code = &quot;\033[0m&quot;;
-714 
-715   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
-716   if (!utf8_cache) {
-717     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to get UTF-8 cache for 16-color dithered bg rendering&quot;);
-718     SAFE_FREE(buffer);
-719     SAFE_FREE(error_buffer);
-720     return NULL;
-721   }
-722 
-723   for (int y = 0; y &lt; h; y++) {
-724     for (int x = 0; x &lt; w; x++) {
-725       rgb_pixel_t pixel = image-&gt;pixels[y * w + x];
-726 
-727       // Convert RGB to 16-color index using dithering
-728       uint8_t color_index = rgb_to_16color_dithered(pixel.r, pixel.g, pixel.b, x, y, w, h, error_buffer);
-729 
-730       if (use_background) {
-731         // Background mode: use contrasting foreground on background color
-732         uint8_t bg_r, bg_g, bg_b;
-733         get_16color_rgb(color_index, &amp;bg_r, &amp;bg_g, &amp;bg_b);
-734 
-735         // Calculate luminance to choose contrasting foreground
-736         int bg_luminance = (bg_r * 77 + bg_g * 150 + bg_b * 29) / 256;
-737         uint8_t fg_color = (bg_luminance &lt; 127) ? 15 : 0; // White on dark, black on bright
-738 
-739         ptr = append_16color_bg(ptr, color_index); // Set background to pixel color
-740         ptr = append_16color_fg(ptr, fg_color);    // Set contrasting foreground
-741       } else {
-742         // Foreground mode: set foreground to pixel color
-743         ptr = append_16color_fg(ptr, color_index);
-744       }
-745 
-746       // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
-747       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) &gt;&gt; 8;
-748 
-749       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
-750       uint8_t safe_luminance = clamp_rgb(luminance);
-751       uint8_t luma_idx = (uint8_t)(safe_luminance &gt;&gt; 2);
-752       uint8_t char_idx = utf8_cache-&gt;char_index_ramp[luma_idx];
-753 
-754       // Use direct palette character lookup (same as SIMD would do)
-755       char ascii_char = palette[char_idx];
-756       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache[(unsigned char)ascii_char];
-757 
-758       if (char_info) {
-759         // Copy UTF-8 character bytes
-760         for (int byte_idx = 0; byte_idx &lt; char_info-&gt;byte_len; byte_idx++) {
-761           *ptr++ = char_info-&gt;utf8_bytes[byte_idx];
-762         }
-763       } else {
-764         // Fallback to simple ASCII if UTF-8 cache fails
-765         size_t palette_len = strlen(palette);
-766         int palette_index = (luminance * ((int)palette_len - 1) + 127) / 255;
-767         *ptr++ = palette[palette_index];
-768       }
-769     }
-770 
-771     // Add reset and newline at end of each row
-772     SAFE_STRNCPY(ptr, reset_code, 5);
-773     ptr += strlen(reset_code);
-774     if (y &lt; h - 1) {
-775       *ptr++ = '\n';
-776     }
-777   }
-778 
-779   *ptr = '\0';
-780   SAFE_FREE(error_buffer); // Clean up error buffer
-781   return buffer;
-782 }</pre>
+<p class="Pp">Definition at line <b>747</b> of file <b>foreground.c</b>.</p>
+<pre>747                                                                                                                    {
+748   if (!image || !image-&gt;pixels || !palette) {
+749     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image=%p or image-&gt;pixels=%p or palette=%p is NULL&quot;, image, image-&gt;pixels, palette);
+750     return NULL;
+751   }
+752 
+753   int h = image-&gt;h;
+754   int w = image-&gt;w;
+755 
+756   if (h &lt;= 0 || w &lt;= 0) {
+757     SET_ERRNO(ERROR_INVALID_STATE, &quot;image_print_16color_dithered_with_background: invalid dimensions h=%d, w=%d&quot;, h, w);
+758     return NULL;
+759   }
+760 
+761   // Initialize 16-color lookup table
+762   ansi_fast_init_16color();
+763 
+764   // Allocate error buffer for Floyd-Steinberg dithering
+765   size_t pixel_count = (size_t)h * (size_t)w;
+766   rgb_error_t *error_buffer;
+767   error_buffer = SAFE_CALLOC(pixel_count, sizeof(rgb_error_t), rgb_error_t *);
+768 
+769   // Calculate buffer size (larger for background mode due to more ANSI sequences)
+770   size_t buffer_size =
+771       (size_t)h * (size_t)w * (use_background ? 24 : 12) + (size_t)h; // Space for ANSI codes + newlines
+772   char *buffer;
+773   buffer = SAFE_MALLOC(buffer_size, char *);
+774 
+775   char *ptr = buffer;
+776   const char *reset_code = &quot;\033[0m&quot;;
+777 
+778   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+779   if (!utf8_cache) {
+780     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to get UTF-8 cache for 16-color dithered bg rendering&quot;);
+781     SAFE_FREE(buffer);
+782     SAFE_FREE(error_buffer);
+783     return NULL;
+784   }
+785 
+786   for (int y = 0; y &lt; h; y++) {
+787     for (int x = 0; x &lt; w; x++) {
+788       rgb_pixel_t pixel = image-&gt;pixels[y * w + x];
+789 
+790       // Convert RGB to 16-color index using dithering
+791       uint8_t color_index = rgb_to_16color_dithered(pixel.r, pixel.g, pixel.b, x, y, w, h, error_buffer);
+792 
+793       if (use_background) {
+794         // Background mode: use contrasting foreground on background color
+795         uint8_t bg_r, bg_g, bg_b;
+796         get_16color_rgb(color_index, &amp;bg_r, &amp;bg_g, &amp;bg_b);
+797 
+798         // Calculate luminance to choose contrasting foreground
+799         int bg_luminance = (bg_r * 77 + bg_g * 150 + bg_b * 29) / 256;
+800         uint8_t fg_color = (bg_luminance &lt; 127) ? 15 : 0; // White on dark, black on bright
+801 
+802         ptr = append_16color_bg(ptr, color_index); // Set background to pixel color
+803         ptr = append_16color_fg(ptr, fg_color);    // Set contrasting foreground
+804       } else {
+805         // Foreground mode: set foreground to pixel color
+806         ptr = append_16color_fg(ptr, color_index);
+807       }
+808 
+809       // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
+810       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) &gt;&gt; 8;
+811 
+812       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
+813       uint8_t safe_luminance = clamp_rgb(luminance);
+814       uint8_t luma_idx = (uint8_t)(safe_luminance &gt;&gt; 2);
+815       uint8_t char_idx = utf8_cache-&gt;char_index_ramp[luma_idx];
+816 
+817       // Use direct palette character lookup (same as SIMD would do)
+818       char ascii_char = palette[char_idx];
+819       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache[(unsigned char)ascii_char];
+820 
+821       if (char_info) {
+822         // Copy UTF-8 character bytes
+823         for (int byte_idx = 0; byte_idx &lt; char_info-&gt;byte_len; byte_idx++) {
+824           *ptr++ = char_info-&gt;utf8_bytes[byte_idx];
+825         }
+826       } else {
+827         // Fallback to simple ASCII if UTF-8 cache fails
+828         size_t palette_len = strlen(palette);
+829         int palette_index = (luminance * ((int)palette_len - 1) + 127) / 255;
+830         *ptr++ = palette[palette_index];
+831       }
+832     }
+833 
+834     // Add reset and newline at end of each row
+835     SAFE_STRNCPY(ptr, reset_code, 5);
+836     ptr += strlen(reset_code);
+837     if (y &lt; h - 1) {
+838       *ptr++ = '\n';
+839     }
+840   }
+841 
+842   *ptr = '\0';
+843   SAFE_FREE(error_buffer); // Clean up error buffer
+844   return buffer;
+845 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_fast_init_16color()</b>,
@@ -5726,87 +5732,87 @@ if (img) {
 <p class="Pp"></p>
 <p class="Pp">Colors are quantized to 256-color palette automatically.</p>
 </div>
-<p class="Pp">Definition at line <b>358</b> of file <b>foreground.c</b>.</p>
-<pre>358                                                                       {
-359   if (!image || !image-&gt;pixels || !palette) {
-360     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image=%p or image-&gt;pixels=%p or palette=%p is NULL&quot;, image, image-&gt;pixels, palette);
-361     return NULL;
-362   }
-363 
-364   int h = image-&gt;h;
-365   int w = image-&gt;w;
-366 
-367   if (h &lt;= 0 || w &lt;= 0) {
-368     SET_ERRNO(ERROR_INVALID_STATE, &quot;image_print_256color: invalid dimensions h=%d, w=%d&quot;, h, w);
-369     return NULL;
-370   }
-371 
-372   ansi_fast_init_256color();
-373 
-374   // Buffer size: 256-color ANSI codes are &quot;\033[38;5;NNNm&quot; (max 13 bytes) + char + reset + newline
-375   size_t h_times_w;
-376   if (checked_size_mul((size_t)h, (size_t)w, &amp;h_times_w) != ASCIICHAT_OK) {
-377     return NULL;
-378   }
-379 
-380   size_t h_times_w_times_18;
-381   if (checked_size_mul(h_times_w, 18u, &amp;h_times_w_times_18) != ASCIICHAT_OK) {
-382     return NULL;
-383   }
-384 
-385   size_t buffer_size;
-386   if (checked_size_add(h_times_w_times_18, (size_t)h, &amp;buffer_size) != ASCIICHAT_OK) {
-387     return NULL;
-388   }
-389 
-390   char *buffer = SAFE_MALLOC(buffer_size, char *);
-391   char *ptr = buffer;
-392   const char *reset_code = &quot;\033[0m&quot;;
-393 
-394   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
-395   if (!utf8_cache) {
-396     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to get UTF-8 cache for 256-color rendering&quot;);
-397     SAFE_FREE(buffer);
-398     return NULL;
-399   }
-400 
-401   for (int y = 0; y &lt; h; y++) {
-402     for (int x = 0; x &lt; w; x++) {
-403       rgb_pixel_t pixel = image-&gt;pixels[y * w + x];
-404 
-405       uint8_t color_index = rgb_to_256color(pixel.r, pixel.g, pixel.b);
-406       ptr = append_256color_fg(ptr, color_index);
-407 
-408       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) &gt;&gt; 8;
-409 
-410       uint8_t safe_luminance = clamp_rgb(luminance);
-411       uint8_t luma_idx = (uint8_t)(safe_luminance &gt;&gt; 2);
-412       uint8_t char_idx = utf8_cache-&gt;char_index_ramp[luma_idx];
-413 
-414       char ascii_char = palette[char_idx];
-415       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache[(unsigned char)ascii_char];
-416 
-417       if (char_info) {
-418         for (int byte_idx = 0; byte_idx &lt; char_info-&gt;byte_len; byte_idx++) {
-419           *ptr++ = char_info-&gt;utf8_bytes[byte_idx];
-420         }
-421       } else {
-422         size_t palette_len = strlen(palette);
-423         int palette_index = (luminance * ((int)palette_len - 1) + 127) / 255;
-424         *ptr++ = palette[palette_index];
-425       }
-426     }
-427 
-428     SAFE_STRNCPY(ptr, reset_code, 5);
-429     ptr += strlen(reset_code);
-430     if (y &lt; h - 1) {
-431       *ptr++ = '\n';
-432     }
+<p class="Pp">Definition at line <b>421</b> of file <b>foreground.c</b>.</p>
+<pre>421                                                                       {
+422   if (!image || !image-&gt;pixels || !palette) {
+423     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image=%p or image-&gt;pixels=%p or palette=%p is NULL&quot;, image, image-&gt;pixels, palette);
+424     return NULL;
+425   }
+426 
+427   int h = image-&gt;h;
+428   int w = image-&gt;w;
+429 
+430   if (h &lt;= 0 || w &lt;= 0) {
+431     SET_ERRNO(ERROR_INVALID_STATE, &quot;image_print_256color: invalid dimensions h=%d, w=%d&quot;, h, w);
+432     return NULL;
 433   }
 434 
-435   *ptr = '\0';
-436   return buffer;
-437 }</pre>
+435   ansi_fast_init_256color();
+436 
+437   // Buffer size: 256-color ANSI codes are &quot;\033[38;5;NNNm&quot; (max 13 bytes) + char + reset + newline
+438   size_t h_times_w;
+439   if (checked_size_mul((size_t)h, (size_t)w, &amp;h_times_w) != ASCIICHAT_OK) {
+440     return NULL;
+441   }
+442 
+443   size_t h_times_w_times_18;
+444   if (checked_size_mul(h_times_w, 18u, &amp;h_times_w_times_18) != ASCIICHAT_OK) {
+445     return NULL;
+446   }
+447 
+448   size_t buffer_size;
+449   if (checked_size_add(h_times_w_times_18, (size_t)h, &amp;buffer_size) != ASCIICHAT_OK) {
+450     return NULL;
+451   }
+452 
+453   char *buffer = SAFE_MALLOC(buffer_size, char *);
+454   char *ptr = buffer;
+455   const char *reset_code = &quot;\033[0m&quot;;
+456 
+457   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+458   if (!utf8_cache) {
+459     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to get UTF-8 cache for 256-color rendering&quot;);
+460     SAFE_FREE(buffer);
+461     return NULL;
+462   }
+463 
+464   for (int y = 0; y &lt; h; y++) {
+465     for (int x = 0; x &lt; w; x++) {
+466       rgb_pixel_t pixel = image-&gt;pixels[y * w + x];
+467 
+468       uint8_t color_index = rgb_to_256color(pixel.r, pixel.g, pixel.b);
+469       ptr = append_256color_fg(ptr, color_index);
+470 
+471       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) &gt;&gt; 8;
+472 
+473       uint8_t safe_luminance = clamp_rgb(luminance);
+474       uint8_t luma_idx = (uint8_t)(safe_luminance &gt;&gt; 2);
+475       uint8_t char_idx = utf8_cache-&gt;char_index_ramp[luma_idx];
+476 
+477       char ascii_char = palette[char_idx];
+478       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache[(unsigned char)ascii_char];
+479 
+480       if (char_info) {
+481         for (int byte_idx = 0; byte_idx &lt; char_info-&gt;byte_len; byte_idx++) {
+482           *ptr++ = char_info-&gt;utf8_bytes[byte_idx];
+483         }
+484       } else {
+485         size_t palette_len = strlen(palette);
+486         int palette_index = (luminance * ((int)palette_len - 1) + 127) / 255;
+487         *ptr++ = palette[palette_index];
+488       }
+489     }
+490 
+491     SAFE_STRNCPY(ptr, reset_code, 5);
+492     ptr += strlen(reset_code);
+493     if (y &lt; h - 1) {
+494       *ptr++ = '\n';
+495     }
+496   }
+497 
+498   *ptr = '\0';
+499   return buffer;
+500 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_fast_init_256color()</b>,
@@ -5897,110 +5903,110 @@ if (img) {
 <p class="Pp">Exits with ERROR_BUFFER if buffer overflow is detected during
     string construction (should never happen with correct calculation).</p>
 </div>
-<p class="Pp">Definition at line <b>191</b> of file <b>foreground.c</b>.</p>
-<pre>191                                                                {
-192   if (!p || !palette) {
-193     SET_ERRNO(ERROR_INVALID_PARAM, &quot;p=%p or palette=%p is NULL&quot;, p, palette);
-194     return NULL;
-195   }
-196   if (!p-&gt;pixels) {
-197     SET_ERRNO(ERROR_INVALID_PARAM, &quot;p-&gt;pixels is NULL&quot;);
-198     return NULL;
-199   }
-200 
-201   // Get UTF-8 character cache for proper multi-byte character support
-202   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
-203   if (!utf8_cache) {
-204     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to get UTF-8 palette cache for scalar color rendering&quot;);
-205     return NULL;
-206   }
-207 
-208   const int h = p-&gt;h;
-209   const int w = p-&gt;w;
+<p class="Pp">Definition at line <b>194</b> of file <b>foreground.c</b>.</p>
+<pre>194                                                                {
+195   if (!p || !palette) {
+196     SET_ERRNO(ERROR_INVALID_PARAM, &quot;p=%p or palette=%p is NULL&quot;, p, palette);
+197     return NULL;
+198   }
+199   if (!p-&gt;pixels) {
+200     SET_ERRNO(ERROR_INVALID_PARAM, &quot;p-&gt;pixels is NULL&quot;);
+201     return NULL;
+202   }
+203 
+204   // Get UTF-8 character cache for proper multi-byte character support
+205   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+206   if (!utf8_cache) {
+207     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to get UTF-8 palette cache for scalar color rendering&quot;);
+208     return NULL;
+209   }
 210 
-211   // Constants for ANSI escape codes (using exact sizes from ansi_fast.c)
-212   const size_t max_fg_ansi = 19; // \033[38;2;255;255;255m
-213   const size_t max_bg_ansi = 19; // \033[48;2;255;255;255m
-214   const size_t reset_len = 4;    // \033[0m
-215 
-216   const size_t h_sz = (size_t)h;
-217   const size_t w_sz = (size_t)w;
+211   const int h = p-&gt;h;
+212   const int w = p-&gt;w;
+213 
+214   // Constants for ANSI escape codes (using exact sizes from ansi_fast.c)
+215   const size_t max_fg_ansi = 19; // \033[38;2;255;255;255m
+216   const size_t max_bg_ansi = 19; // \033[48;2;255;255;255m
+217   const size_t reset_len = 4;    // \033[0m
 218 
-219   // Ensure h * w won't overflow
-220   if (h_sz &gt; 0 &amp;&amp; w_sz &gt; SIZE_MAX / h_sz) {
-221     SET_ERRNO(ERROR_INVALID_STATE, &quot;Image dimensions too large: %d x %d&quot;, h, w);
-222     return NULL;
-223   }
-224 
-225   const size_t total_pixels = h_sz * w_sz;
-226   const size_t bytes_per_pixel = 1 + max_fg_ansi + max_bg_ansi; // Conservative estimate for max possible
+219   const size_t h_sz = (size_t)h;
+220   const size_t w_sz = (size_t)w;
+221 
+222   // Ensure h * w won't overflow
+223   if (h_sz &gt; 0 &amp;&amp; w_sz &gt; SIZE_MAX / h_sz) {
+224     SET_ERRNO(ERROR_INVALID_STATE, &quot;Image dimensions too large: %d x %d&quot;, h, w);
+225     return NULL;
+226   }
 227 
-228   // Ensure total_pixels * bytes_per_pixel won't overflow
-229   if (total_pixels &gt; SIZE_MAX / bytes_per_pixel) {
-230     SET_ERRNO(ERROR_INVALID_STATE, &quot;Pixel data too large for buffer: %d x %d&quot;, h, w);
-231     return NULL;
-232   }
-233 
-234   const size_t pixel_bytes = total_pixels * bytes_per_pixel;
-235 
-236   // Per row: newline (except last row)
-237   // Final reset added once by ansi_rle_finish()
-238   const size_t total_newlines = (h_sz &gt; 0) ? (h_sz - 1) : 0;
-239   const size_t final_reset = reset_len; // One reset at end (from ansi_rle_finish)
-240 
-241   // Final buffer size: pixel bytes + per-row newlines + final reset + null terminator
-242   const size_t extra_bytes = total_newlines + final_reset + 1;
+228   const size_t total_pixels = h_sz * w_sz;
+229   const size_t bytes_per_pixel = 1 + max_fg_ansi + max_bg_ansi; // Conservative estimate for max possible
+230 
+231   // Ensure total_pixels * bytes_per_pixel won't overflow
+232   if (total_pixels &gt; SIZE_MAX / bytes_per_pixel) {
+233     SET_ERRNO(ERROR_INVALID_STATE, &quot;Pixel data too large for buffer: %d x %d&quot;, h, w);
+234     return NULL;
+235   }
+236 
+237   const size_t pixel_bytes = total_pixels * bytes_per_pixel;
+238 
+239   // Per row: newline (except last row)
+240   // Final reset added once by ansi_rle_finish()
+241   const size_t total_newlines = (h_sz &gt; 0) ? (h_sz - 1) : 0;
+242   const size_t final_reset = reset_len; // One reset at end (from ansi_rle_finish)
 243 
-244   if (pixel_bytes &gt; SIZE_MAX - extra_bytes) {
-245     SET_ERRNO(ERROR_INVALID_STATE, &quot;Final buffer size would overflow: %d x %d&quot;, h, w);
-246     return NULL;
-247   }
-248 
-249   const size_t lines_size = pixel_bytes + extra_bytes;
-250   char *lines;
-251   lines = SAFE_MALLOC(lines_size, char *);
-252 
-253   const rgb_pixel_t *pix = p-&gt;pixels;
-254   // char *current_pos = lines;
-255   // const char *buffer_end = lines + lines_size - 1; // reserve space for '\0'
-256 
-257   // Initialize the optimized RLE context for color sequence caching
-258   // Note: This function should be called via image_print_with_capabilities() for proper per-client rendering
-259   ansi_rle_context_t rle_ctx;
-260   ansi_color_mode_t color_mode = ANSI_MODE_FOREGROUND; // Default to foreground-only for legacy usage
-261   ansi_rle_init(&amp;rle_ctx, lines, lines_size, color_mode);
-262 
-263   // Process each pixel using the optimized RLE context
-264   for (int y = 0; y &lt; h; y++) {
-265     const int row_offset = y * w;
-266 
-267     for (int x = 0; x &lt; w; x++) {
-268       const rgb_pixel_t pixel = pix[row_offset + x];
-269       int r = pixel.r, g = pixel.g, b = pixel.b;
-270       // Standard ITU-R BT.601 luminance calculation (uses original values for accuracy)
-271       const int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) &gt;&gt; 8;
-272 
-273       // Use UTF-8 character cache for proper character selection
-274       uint8_t safe_luminance = clamp_rgb(luminance);
-275       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache[safe_luminance];
-276 
-277       // For RLE, we need to pass the first byte of the UTF-8 character
-278       // Note: RLE system may need updates for full UTF-8 support
-279       const char ascii_char = char_info-&gt;utf8_bytes[0];
-280 
-281       ansi_rle_add_pixel(&amp;rle_ctx, (uint8_t)r, (uint8_t)g, (uint8_t)b, ascii_char);
-282     }
+244   // Final buffer size: pixel bytes + per-row newlines + final reset + null terminator
+245   const size_t extra_bytes = total_newlines + final_reset + 1;
+246 
+247   if (pixel_bytes &gt; SIZE_MAX - extra_bytes) {
+248     SET_ERRNO(ERROR_INVALID_STATE, &quot;Final buffer size would overflow: %d x %d&quot;, h, w);
+249     return NULL;
+250   }
+251 
+252   const size_t lines_size = pixel_bytes + extra_bytes;
+253   char *lines;
+254   lines = SAFE_MALLOC(lines_size, char *);
+255 
+256   const rgb_pixel_t *pix = p-&gt;pixels;
+257   // char *current_pos = lines;
+258   // const char *buffer_end = lines + lines_size - 1; // reserve space for '\0'
+259 
+260   // Initialize the optimized RLE context for color sequence caching
+261   // Note: This function should be called via image_print_with_capabilities() for proper per-client rendering
+262   ansi_rle_context_t rle_ctx;
+263   ansi_color_mode_t color_mode = ANSI_MODE_FOREGROUND; // Default to foreground-only for legacy usage
+264   ansi_rle_init(&amp;rle_ctx, lines, lines_size, color_mode);
+265 
+266   // Process each pixel using the optimized RLE context
+267   for (int y = 0; y &lt; h; y++) {
+268     const int row_offset = y * w;
+269 
+270     for (int x = 0; x &lt; w; x++) {
+271       const rgb_pixel_t pixel = pix[row_offset + x];
+272       int r = pixel.r, g = pixel.g, b = pixel.b;
+273       // Standard ITU-R BT.601 luminance calculation (uses original values for accuracy)
+274       const int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) &gt;&gt; 8;
+275 
+276       // Use UTF-8 character cache for proper character selection
+277       uint8_t safe_luminance = clamp_rgb(luminance);
+278       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache[safe_luminance];
+279 
+280       // For RLE, we need to pass the first byte of the UTF-8 character
+281       // Note: RLE system may need updates for full UTF-8 support
+282       const char ascii_char = char_info-&gt;utf8_bytes[0];
 283 
-284     // Add newline after each row (except the last row)
-285     if (y != h - 1 &amp;&amp; rle_ctx.length &lt; rle_ctx.capacity - 1) {
-286       rle_ctx.buffer[rle_ctx.length++] = '\n';
-287     }
-288   }
-289 
-290   ansi_rle_finish(&amp;rle_ctx);
-291 
-292   return lines;
-293 }</pre>
+284       ansi_rle_add_pixel(&amp;rle_ctx, (uint8_t)r, (uint8_t)g, (uint8_t)b, ascii_char);
+285     }
+286 
+287     // Add newline after each row (except the last row)
+288     if (y != h - 1 &amp;&amp; rle_ctx.length &lt; rle_ctx.capacity - 1) {
+289       rle_ctx.buffer[rle_ctx.length++] = '\n';
+290     }
+291   }
+292 
+293   ansi_rle_finish(&amp;rle_ctx);
+294 
+295   return lines;
+296 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ANSI_MODE_FOREGROUND</b>,
@@ -6013,9 +6019,7 @@ if (img) {
     <b>ansi_rle_context_t::length</b>, <b>image_t::pixels</b>,
     <b>rgb_pixel_t::r</b>, <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
     <b>utf8_char_t::utf8_bytes</b>, and <b>image_t::w</b>.</p>
-<p class="Pp">Referenced by <b>ascii_convert()</b>,
-    <b>image_print_color_background()</b>, <b>image_print_color_simd()</b>, and
-    <b>image_print_with_capabilities()</b>.</p>
+<p class="Pp">Referenced by <b>image_print_color_simd()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_*_image_print_color_simd_("><a class="permalink" href="#char_*_image_print_color_simd_(">char
@@ -6185,61 +6189,64 @@ if (img) {
 <p class="Pp">This is the recommended function for capability-aware ASCII
     conversion.</p>
 </div>
-<p class="Pp">Definition at line <b>953</b> of file <b>ascii.c</b>.</p>
-<pre>953                                                                                                                     {
-954   if (!image || !caps || !palette) {
-955     return NULL;
-956   }
-957 
-958   terminal_color_mode_t color_level = caps-&gt;color_level;
-959   render_mode_t render_mode = caps-&gt;render_mode;
-960 
-961   // Half-block mode: dispatch to halfblock renderers by color depth
-962   if (render_mode == RENDER_MODE_HALF_BLOCK) {
-963     const uint8_t *rgb_data = (const uint8_t *)image-&gt;pixels;
-964     switch (color_level) {
-965     case TERM_COLOR_TRUECOLOR:
-966       return rgb_to_truecolor_halfblocks_scalar(rgb_data, image-&gt;w, image-&gt;h, 0);
-967     case TERM_COLOR_256:
-968       return rgb_to_256color_halfblocks_scalar(rgb_data, image-&gt;w, image-&gt;h, 0, palette);
-969     case TERM_COLOR_16:
-970       return rgb_to_16color_halfblocks_scalar(rgb_data, image-&gt;w, image-&gt;h, 0, palette);
-971     case TERM_COLOR_NONE:
-972     case TERM_COLOR_AUTO:
-973     default:
-974       return rgb_to_halfblocks_scalar(rgb_data, image-&gt;w, image-&gt;h, 0, palette);
-975     }
-976   }
-977 
-978   // Foreground/background modes: dispatch by color depth
-979   switch (color_level) {
-980   case TERM_COLOR_TRUECOLOR: {
-981     bool use_background = (render_mode == RENDER_MODE_BACKGROUND);
-982 #ifdef SIMD_SUPPORT
-983     return image_print_color_simd((image_t *)image, use_background, false, palette);
-984 #else
-985     (void)use_background;
-986     return image_print_color(image, palette);
-987 #endif
-988   }
-989   case TERM_COLOR_256:
-990     return image_print_256color(image, palette);
-991   case TERM_COLOR_16:
-992     return image_print_16color(image, palette);
-993   case TERM_COLOR_NONE:
-994   case TERM_COLOR_AUTO:
-995   default:
-996     return image_print(image, palette);
-997   }
-998 }</pre>
+<p class="Pp">Definition at line <b>959</b> of file <b>ascii.c</b>.</p>
+<pre>959                                                                                                                     {
+960   if (!image || !caps || !palette) {
+961     return NULL;
+962   }
+963 
+964   terminal_color_mode_t color_level = caps-&gt;color_level;
+965   render_mode_t render_mode = caps-&gt;render_mode;
+966 
+967   // Half-block mode: dispatch to halfblock renderers by color depth
+968   if (render_mode == RENDER_MODE_HALF_BLOCK) {
+969     const uint8_t *rgb_data = (const uint8_t *)image-&gt;pixels;
+970     switch (color_level) {
+971     case TERM_COLOR_TRUECOLOR:
+972       return rgb_to_truecolor_halfblocks_scalar(rgb_data, image-&gt;w, image-&gt;h, 0);
+973     case TERM_COLOR_256:
+974       return rgb_to_256color_halfblocks_scalar(rgb_data, image-&gt;w, image-&gt;h, 0, palette);
+975     case TERM_COLOR_16:
+976       return rgb_to_16color_halfblocks_scalar(rgb_data, image-&gt;w, image-&gt;h, 0, palette);
+977     case TERM_COLOR_NONE:
+978     case TERM_COLOR_AUTO:
+979     default:
+980       return rgb_to_halfblocks_scalar(rgb_data, image-&gt;w, image-&gt;h, 0, palette);
+981     }
+982   }
+983 
+984   // Foreground/background modes: dispatch by color depth
+985   switch (color_level) {
+986   case TERM_COLOR_TRUECOLOR: {
+987     bool use_background = (render_mode == RENDER_MODE_BACKGROUND);
+988 #ifdef SIMD_SUPPORT
+989     return image_print_color_simd((image_t *)image, use_background, false, palette);
+990 #else
+991     if (use_background) {
+992       return image_print_color_background(image, palette);
+993     }
+994     return image_print_color_utf8(image, palette);
+995 #endif
+996   }
+997   case TERM_COLOR_256:
+998     return image_print_256color(image, palette);
+999   case TERM_COLOR_16:
+1000     return image_print_16color(image, palette);
+1001   case TERM_COLOR_NONE:
+1002   case TERM_COLOR_AUTO:
+1003   default:
+1004     return image_print(image, palette);
+1005   }
+1006 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>terminal_capabilities_t::color_level</b>,
     <b>image_t::h</b>, <b>image_print()</b>, <b>image_print_16color()</b>,
-    <b>image_print_256color()</b>, <b>image_print_color()</b>,
-    <b>image_print_color_simd()</b>, <b>image_t::pixels</b>,
-    <b>terminal_capabilities_t::render_mode</b>, <b>RENDER_MODE_BACKGROUND</b>,
-    <b>RENDER_MODE_HALF_BLOCK</b>, <b>rgb_to_16color_halfblocks_scalar()</b>,
+    <b>image_print_256color()</b>, <b>image_print_color_background()</b>,
+    <b>image_print_color_simd()</b>, <b>image_print_color_utf8()</b>,
+    <b>image_t::pixels</b>, <b>terminal_capabilities_t::render_mode</b>,
+    <b>RENDER_MODE_BACKGROUND</b>, <b>RENDER_MODE_HALF_BLOCK</b>,
+    <b>rgb_to_16color_halfblocks_scalar()</b>,
     <b>rgb_to_256color_halfblocks_scalar()</b>,
     <b>rgb_to_halfblocks_scalar()</b>,
     <b>rgb_to_truecolor_halfblocks_scalar()</b>, <b>TERM_COLOR_16</b>,
@@ -7419,32 +7426,32 @@ if (img) {
 <p class="Pp">Quantization reduces color accuracy but enables 256-color
   mode.</p>
 </div>
-<p class="Pp">Definition at line <b>308</b> of file <b>foreground.c</b>.</p>
-<pre>308                                                                        {
-309   if (!fg_code || !bg_code) {
-310     SET_ERRNO(ERROR_INVALID_PARAM, &quot;rgb_to_ansi_8bit: fg_code or bg_code is NULL&quot;);
-311     return;
-312   }
-313 
-314   // Convert RGB to 8-bit color code (216 color cube + 24 grayscale)
-315   if (r == g &amp;&amp; g == b) {
-316     // Grayscale
-317     if (r &lt; 8) {
-318       *fg_code = 16;
-319     } else if (r &gt; 248) {
-320       *fg_code = 231;
-321     } else {
-322       *fg_code = 232 + (r - 8) / 10;
-323     }
-324   } else {
-325     // Color cube: 16 + 36*r + 6*g + b where r,g,b are 0-5
-326     int r_level = (r * 5) / 255;
-327     int g_level = (g * 5) / 255;
-328     int b_level = (b * 5) / 255;
-329     *fg_code = 16 + 36 * r_level + 6 * g_level + b_level;
-330   }
-331   *bg_code = *fg_code; // Same logic for background
-332 }</pre>
+<p class="Pp">Definition at line <b>371</b> of file <b>foreground.c</b>.</p>
+<pre>371                                                                        {
+372   if (!fg_code || !bg_code) {
+373     SET_ERRNO(ERROR_INVALID_PARAM, &quot;rgb_to_ansi_8bit: fg_code or bg_code is NULL&quot;);
+374     return;
+375   }
+376 
+377   // Convert RGB to 8-bit color code (216 color cube + 24 grayscale)
+378   if (r == g &amp;&amp; g == b) {
+379     // Grayscale
+380     if (r &lt; 8) {
+381       *fg_code = 16;
+382     } else if (r &gt; 248) {
+383       *fg_code = 231;
+384     } else {
+385       *fg_code = 232 + (r - 8) / 10;
+386     }
+387   } else {
+388     // Color cube: 16 + 36*r + 6*g + b where r,g,b are 0-5
+389     int r_level = (r * 5) / 255;
+390     int g_level = (g * 5) / 255;
+391     int b_level = (b * 5) / 255;
+392     *fg_code = 16 + 36 * r_level + 6 * g_level + b_level;
+393   }
+394   *bg_code = *fg_code; // Same logic for background
+395 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
@@ -7478,12 +7485,12 @@ if (img) {
 <p class="Pp"></p>
 <p class="Pp">Color components are clamped to 0-255 range automatically.</p>
 </div>
-<p class="Pp">Definition at line <b>302</b> of file <b>foreground.c</b>.</p>
-<pre>302                                           {
-303   _Thread_local static char color_code[20]; // \033[48;2;255;255;255m + \0 = 20 bytes max
-304   SAFE_SNPRINTF(color_code, sizeof(color_code), &quot;\033[48;2;%d;%d;%dm&quot;, r, g, b);
-305   return color_code;
-306 }</pre>
+<p class="Pp">Definition at line <b>365</b> of file <b>foreground.c</b>.</p>
+<pre>365                                           {
+366   _Thread_local static char color_code[20]; // \033[48;2;255;255;255m + \0 = 20 bytes max
+367   SAFE_SNPRINTF(color_code, sizeof(color_code), &quot;\033[48;2;%d;%d;%dm&quot;, r, g, b);
+368   return color_code;
+369 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>SAFE_SNPRINTF</b>.</p>
@@ -7516,12 +7523,12 @@ if (img) {
 <p class="Pp"></p>
 <p class="Pp">Color components are clamped to 0-255 range automatically.</p>
 </div>
-<p class="Pp">Definition at line <b>296</b> of file <b>foreground.c</b>.</p>
-<pre>296                                           {
-297   _Thread_local static char color_code[20]; // \033[38;2;255;255;255m + \0 = 20 bytes max
-298   SAFE_SNPRINTF(color_code, sizeof(color_code), &quot;\033[38;2;%d;%d;%dm&quot;, r, g, b);
-299   return color_code;
-300 }</pre>
+<p class="Pp">Definition at line <b>359</b> of file <b>foreground.c</b>.</p>
+<pre>359                                           {
+360   _Thread_local static char color_code[20]; // \033[38;2;255;255;255m + \0 = 20 bytes max
+361   SAFE_SNPRINTF(color_code, sizeof(color_code), &quot;\033[38;2;%d;%d;%dm&quot;, r, g, b);
+362   return color_code;
+363 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>SAFE_SNPRINTF</b>.</p>
@@ -8114,8 +8121,9 @@ if (img) {
 <p class="Pp">Referenced by <b>build_utf8_luminance_cache()</b>,
     <b>build_utf8_ramp64_cache()</b>, <b>image_print()</b>,
     <b>image_print_16color()</b>, <b>image_print_16color_dithered()</b>,
-    <b>image_print_16color_dithered_with_background()</b>, and
-    <b>image_print_256color()</b>.</p>
+    <b>image_print_16color_dithered_with_background()</b>,
+    <b>image_print_256color()</b>, <b>image_print_color_background()</b>, and
+    <b>image_print_color_utf8()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>utf8_char_t</b> utf8_palette_cache::cache[256]</h2>
@@ -8125,7 +8133,9 @@ if (img) {
 <p class="Pp">Referenced by <b>get_utf8_palette_cache()</b>,
     <b>image_print_16color()</b>, <b>image_print_16color_dithered()</b>,
     <b>image_print_16color_dithered_with_background()</b>,
-    <b>image_print_256color()</b>, and <b>image_print_color()</b>.</p>
+    <b>image_print_256color()</b>, <b>image_print_color()</b>,
+    <b>image_print_color_background()</b>, and
+  <b>image_print_color_utf8()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>utf8_char_t</b> utf8_palette_cache::cache64[64]</h2>
@@ -8410,7 +8420,9 @@ if (img) {
     <b>build_utf8_ramp64_cache()</b>, <b>image_print()</b>,
     <b>image_print_16color()</b>, <b>image_print_16color_dithered()</b>,
     <b>image_print_16color_dithered_with_background()</b>,
-    <b>image_print_256color()</b>, and <b>image_print_color()</b>.</p>
+    <b>image_print_256color()</b>, <b>image_print_color()</b>,
+    <b>image_print_color_background()</b>, and
+  <b>image_print_color_utf8()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_ImageRGB::w"><a class="permalink" href="#int_ImageRGB::w">int
@@ -8433,7 +8445,7 @@ if (img) {
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.12</td>
+    <td class="foot-date">Version 0.9.13</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

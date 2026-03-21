@@ -49,7 +49,11 @@
   <br/>
   Client port. void * <b>user_data</b>
   <br/>
-  User-provided data from server config.
+  User-provided data from server config. <b>bool</b> <b>is_secure</b>
+  <br/>
+  True if connection is using TLS (wss://). <b>bool</b> <b>auth_required</b>
+  <br/>
+  True if client authentication is required.
   <br/>
 </p>
 </section>
@@ -67,6 +71,13 @@
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
+<h2 class="Ss"><b>bool</b> websocket_client_context_t::auth_required</h2>
+<p class="Pp">True if client authentication is required.</p>
+<p class="Pp">Definition at line <b>87</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_websocket_client_handler()</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="char_websocket_client_context_t::client_ip_64_"><a class="permalink" href="#char_websocket_client_context_t::client_ip_64_">char
   websocket_client_context_t::client_ip[64]</a></h2>
 <p class="Pp">Client IP address (for logging/rate limiting).</p>
@@ -80,6 +91,13 @@
 <p class="Pp">Client port.</p>
 <p class="Pp">Definition at line <b>84</b> of file
     <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> websocket_client_context_t::is_secure</h2>
+<p class="Pp">True if connection is using TLS (wss://).</p>
+<p class="Pp">Definition at line <b>86</b> of file
+    <b>include/ascii-chat/network/websocket/server.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_websocket_client_handler()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>acip_transport_t</b>*
@@ -106,7 +124,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.12</td>
+    <td class="foot-date">Version 0.9.13</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

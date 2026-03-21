@@ -138,7 +138,7 @@
 155   caps.utf8_support = true;
 156   caps.detection_reliable = true;
 157   caps.render_mode = (render_mode_t)GET_OPTION(render_mode);
-158   caps.wants_background = false;
+158   caps.wants_background = (caps.render_mode == RENDER_MODE_BACKGROUND);
 159   caps.wants_padding = true; // Enable padding for centering in mirror mode
 160   caps.palette_type = palette_type;
 161   caps.desired_fps = 60;
@@ -311,10 +311,10 @@
     <b>PALETTE_DIGITAL</b>, <b>PALETTE_MINIMAL</b>, <b>PALETTE_STANDARD</b>,
     <b>terminal_capabilities_t::palette_type</b>, <b>rgb_pixel_t::r</b>,
     <b>RAIN_UPDATE_INTERVAL_MS</b>, <b>rainbow_replace_ansi_colors()</b>,
-    <b>terminal_capabilities_t::render_mode</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_MALLOC</b>, <b>TERM_COLOR_16</b>, <b>TERM_COLOR_256</b>,
-    <b>TERM_COLOR_AUTO</b>, <b>TERM_COLOR_NONE</b>, <b>TERM_COLOR_TRUECOLOR</b>,
-    <b>terminal_get_effective_height()</b>,
+    <b>terminal_capabilities_t::render_mode</b>, <b>RENDER_MODE_BACKGROUND</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>TERM_COLOR_16</b>,
+    <b>TERM_COLOR_256</b>, <b>TERM_COLOR_AUTO</b>, <b>TERM_COLOR_NONE</b>,
+    <b>TERM_COLOR_TRUECOLOR</b>, <b>terminal_get_effective_height()</b>,
     <b>terminal_get_effective_width()</b>,
     <b>terminal_capabilities_t::utf8_support</b>,
     <b>terminal_capabilities_t::wants_background</b>, and
@@ -410,7 +410,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.12</td>
+    <td class="foot-date">Version 0.9.13</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

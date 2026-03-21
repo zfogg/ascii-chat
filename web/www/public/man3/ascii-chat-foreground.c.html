@@ -46,8 +46,10 @@
   Quantize color to specified number of levels. char * <b>image_print_color</b>
     (const <b>image_t</b> *p, const char *palette)
   <br/>
-  Print image as ASCII art with color. char * <b>rgb_to_ansi_fg</b> (int r, int
-    g, int b)
+  Print image as ASCII art with color. char * <b>image_print_color_utf8</b>
+    (const <b>image_t</b> *p, const char *palette)
+  <br/>
+  char * <b>rgb_to_ansi_fg</b> (int r, int g, int b)
   <br/>
   Convert RGB to ANSI foreground color code. char * <b>rgb_to_ansi_bg</b> (int
     r, int g, int b)
@@ -75,13 +77,89 @@
 </section>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char_*_image_print_color_utf8_(const_"><a class="permalink" href="#char_*_image_print_color_utf8_(const_">char
+  * image_print_color_utf8 (const <b>image_t</b> * p, const char *
+  palette)</a></h2>
+<p class="Pp">Definition at line <b>300</b> of file <b>foreground.c</b>.</p>
+<pre>300                                                                     {
+301   if (!p || !palette || !p-&gt;pixels) {
+302     return NULL;
+303   }
+304 
+305   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+306   if (!utf8_cache) {
+307     return NULL;
+308   }
+309 
+310   const int h = p-&gt;h;
+311   const int w = p-&gt;w;
+312   const size_t h_sz = (size_t)h;
+313   const size_t w_sz = (size_t)w;
+314 
+315   if (h_sz &gt; 0 &amp;&amp; w_sz &gt; SIZE_MAX / h_sz) {
+316     return NULL;
+317   }
+318 
+319   const size_t bytes_per_pixel = 30; // fg sequence (~19) + char (up to 4) + margin
+320   const size_t total_pixels = h_sz * w_sz;
+321   const size_t lines_size = total_pixels * bytes_per_pixel + h_sz + 16;
+322 
+323   char *lines;
+324   lines = SAFE_MALLOC(lines_size, char *);
+325 
+326   char *ptr = lines;
+327   const rgb_pixel_t *pix = p-&gt;pixels;
+328 
+329   for (int y = 0; y &lt; h; y++) {
+330     const int row_offset = y * w;
+331 
+332     for (int x = 0; x &lt; w; x++) {
+333       const rgb_pixel_t pixel = pix[row_offset + x];
+334 
+335       ptr += SAFE_SNPRINTF(ptr, 20, &quot;\033[38;2;%d;%d;%dm&quot;, pixel.r, pixel.g, pixel.b);
+336 
+337       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) &gt;&gt; 8;
+338       uint8_t safe_luminance = clamp_rgb(luminance);
+339       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache[safe_luminance];
+340       for (int i = 0; i &lt; char_info-&gt;byte_len; i++) {
+341         *ptr++ = char_info-&gt;utf8_bytes[i];
+342       }
+343     }
+344 
+345     *ptr++ = '\033';
+346     *ptr++ = '[';
+347     *ptr++ = '0';
+348     *ptr++ = 'm';
+349     if (y &lt; h - 1) {
+350       *ptr++ = '\n';
+351     }
+352   }
+353 
+354   *ptr = '\0';
+355   return lines;
+356 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>rgb_pixel_t::b</b>, <b>utf8_char_t::byte_len</b>,
+    <b>utf8_palette_cache::cache</b>, <b>rgb_pixel_t::g</b>,
+    <b>get_utf8_palette_cache()</b>, <b>image_t::h</b>, <b>image_t::pixels</b>,
+    <b>rgb_pixel_t::r</b>, <b>SAFE_MALLOC</b>, <b>SAFE_SNPRINTF</b>,
+    <b>utf8_char_t::utf8_bytes</b>, and <b>image_t::w</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert()</b>, and
+    <b>image_print_with_capabilities()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.12</td>
+    <td class="foot-date">Version 0.9.13</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

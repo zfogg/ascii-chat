@@ -61,17 +61,84 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Allocated ASCII string with background color codes
   (caller must free), or NULL on error</div>
-<p class="Pp">Definition at line <b>15</b> of file <b>background.c</b>.</p>
-<pre>15                                                                           {
-16   if (!p)
-17     return NULL;
-18   // For scalar, we use the color function which can be configured for background
-19   // This is a placeholder for background-specific scalar rendering
-20   return image_print_color(p, palette);
-21 }</pre>
+<p class="Pp">Definition at line <b>17</b> of file <b>background.c</b>.</p>
+<pre>17                                                                           {
+18   if (!p || !palette || !p-&gt;pixels) {
+19     return NULL;
+20   }
+21 
+22   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+23   if (!utf8_cache) {
+24     return NULL;
+25   }
+26 
+27   const int h = p-&gt;h;
+28   const int w = p-&gt;w;
+29   const size_t h_sz = (size_t)h;
+30   const size_t w_sz = (size_t)w;
+31 
+32   if (h_sz &gt; 0 &amp;&amp; w_sz &gt; SIZE_MAX / h_sz) {
+33     return NULL;
+34   }
+35 
+36   // Each pixel needs: bg sequence (~19) + fg sequence (~19) + char (up to 4) + possible reset
+37   const size_t bytes_per_pixel = 50;
+38   const size_t total_pixels = h_sz * w_sz;
+39   const size_t lines_size = total_pixels * bytes_per_pixel + h_sz + 16;
+40 
+41   char *lines;
+42   lines = SAFE_MALLOC(lines_size, char *);
+43 
+44   char *ptr = lines;
+45   const rgb_pixel_t *pix = p-&gt;pixels;
+46 
+47   for (int y = 0; y &lt; h; y++) {
+48     const int row_offset = y * w;
+49 
+50     for (int x = 0; x &lt; w; x++) {
+51       const rgb_pixel_t pixel = pix[row_offset + x];
+52 
+53       // Set background to pixel color
+54       ptr += SAFE_SNPRINTF(ptr, 20, &quot;\033[48;2;%d;%d;%dm&quot;, pixel.r, pixel.g, pixel.b);
+55 
+56       // Choose contrasting foreground: white on dark, black on bright
+57       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) &gt;&gt; 8;
+58       if (luminance &lt; 128) {
+59         ptr += SAFE_SNPRINTF(ptr, 20, &quot;\033[38;2;255;255;255m&quot;);
+60       } else {
+61         ptr += SAFE_SNPRINTF(ptr, 20, &quot;\033[38;2;0;0;0m&quot;);
+62       }
+63 
+64       // Select character based on luminance
+65       uint8_t safe_luminance = clamp_rgb(luminance);
+66       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache[safe_luminance];
+67       for (int i = 0; i &lt; char_info-&gt;byte_len; i++) {
+68         *ptr++ = char_info-&gt;utf8_bytes[i];
+69       }
+70     }
+71 
+72     // Reset and newline
+73     *ptr++ = '\033';
+74     *ptr++ = '[';
+75     *ptr++ = '0';
+76     *ptr++ = 'm';
+77     if (y &lt; h - 1) {
+78       *ptr++ = '\n';
+79     }
+80   }
+81 
+82   *ptr = '\0';
+83   return lines;
+84 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>image_print_color()</b>.</p>
+<p class="Pp">References <b>rgb_pixel_t::b</b>, <b>utf8_char_t::byte_len</b>,
+    <b>utf8_palette_cache::cache</b>, <b>rgb_pixel_t::g</b>,
+    <b>get_utf8_palette_cache()</b>, <b>image_t::h</b>, <b>image_t::pixels</b>,
+    <b>rgb_pixel_t::r</b>, <b>SAFE_MALLOC</b>, <b>SAFE_SNPRINTF</b>,
+    <b>utf8_char_t::utf8_bytes</b>, and <b>image_t::w</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert()</b>, and
+    <b>image_print_with_capabilities()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -81,7 +148,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.12</td>
+    <td class="foot-date">Version 0.9.13</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -1305,17 +1305,17 @@ connect_to_server(GET_OPTION(address), GET_OPTION(port));
 <p class="Pp">Zero-initialized fields are returned if options pointer is somehow
     NULL</p>
 </div>
-<p class="Pp">Definition at line <b>1241</b> of file
+<p class="Pp">Definition at line <b>1243</b> of file
     <b>include/ascii-chat/options/options.h</b>.</p>
-<pre>1241 #define GET_OPTION(field)                                                                                              \
-1242   ({                                                                                                                   \
-1243     const options_t *_opts = options_get();                                                                            \
-1244     if (!_opts) {                                                                                                      \
-1245       log_warn(&quot;GET_OPTION(&quot; #field &quot;) called but options not initialized&quot;);                                           \
-1246     }                                                                                                                  \
-1247     static typeof(((options_t *)0)-&gt;field) _default = {0};                                                             \
-1248     (_opts ? (_opts-&gt;field) : _default);                                                                               \
-1249   })</pre>
+<pre>1243 #define GET_OPTION(field)                                                                                              \
+1244   ({                                                                                                                   \
+1245     const options_t *_opts = options_get();                                                                            \
+1246     if (!_opts) {                                                                                                      \
+1247       log_warn(&quot;GET_OPTION(&quot; #field &quot;) called but options not initialized&quot;);                                           \
+1248     }                                                                                                                  \
+1249     static typeof(((options_t *)0)-&gt;field) _default = {0};                                                             \
+1250     (_opts ? (_opts-&gt;field) : _default);                                                                               \
+1251   })</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>acds_main()</b>, <b>add_client()</b>,
@@ -8470,7 +8470,7 @@ usage(stdout, MODE_SERVER);
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.12</td>
+    <td class="foot-date">Version 0.9.13</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -1734,12 +1734,6 @@
     "sourcePath": "include/ascii-chat/crypto/gpg/export.h"
   },
   {
-    "name": "ffmpeg_decoder.c",
-    "title": "ffmpeg_decoder.c",
-    "file": "ascii-chat-ffmpeg_decoder.c.html",
-    "sourcePath": "lib/platform/wasm/ffmpeg_decoder.c"
-  },
-  {
     "name": "ffmpeg_decoder.h",
     "title": "ffmpeg_decoder.h",
     "file": "ascii-chat-ffmpeg_decoder.h.html",
