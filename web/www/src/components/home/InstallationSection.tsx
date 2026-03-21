@@ -78,11 +78,10 @@ cd ascii-chat
 
 # Linux/macOS
 ./scripts/install-deps.sh
-
 # Windows
 ./scripts/install-deps.ps1
 
-sudo make install`}
+make && sudo make install`}
           </CodeBlock>
         </div>
       </div>
