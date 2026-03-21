@@ -449,6 +449,9 @@ target_link_directories(ascii-chat-video PRIVATE ${FFMPEG_LIBRARY_DIRS})
 target_link_libraries(ascii-chat-video ${FFMPEG_LIBRARIES})
 target_include_directories(ascii-chat-video PRIVATE ${GHOSTTY_INCLUDES})
 target_link_libraries(ascii-chat-video ${GHOSTTY_LIBS})
+if(VTERM_MUSL_TARGET)
+    add_dependencies(ascii-chat-video ${VTERM_MUSL_TARGET})
+endif()
 
 # FreeType2 for font rendering in render-file
 target_include_directories(ascii-chat-video PRIVATE ${FREETYPE_INCLUDE_DIRS})

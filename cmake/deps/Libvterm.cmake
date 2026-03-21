@@ -101,8 +101,8 @@ if(USE_MUSL)
             BUILD_ALWAYS 0
             DEPENDS freetype-musl fontconfig
             CONFIGURE_COMMAND ""
-            BUILD_COMMAND ${CMAKE_COMMAND} -DMUSL_GCC=${MUSL_GCC} -DKERNEL_HEADERS_DIR=${KERNEL_HEADERS_DIR} -DSOURCE_DIR=<SOURCE_DIR> -P ${CMAKE_SOURCE_DIR}/cmake/scripts/build-libvterm.cmake
-            INSTALL_COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=<SOURCE_DIR> -DPREFIX=${VTERM_PREFIX} -P ${CMAKE_SOURCE_DIR}/cmake/scripts/install-libvterm.cmake
+            BUILD_COMMAND ${CMAKE_COMMAND} -DMUSL_GCC=${MUSL_GCC} -DKERNEL_HEADERS_DIR=${KERNEL_HEADERS_DIR} -DSOURCE_DIR=${VTERM_BUILD_DIR}/src/libvterm-musl -P ${CMAKE_SOURCE_DIR}/cmake/scripts/build-libvterm.cmake
+            INSTALL_COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${VTERM_BUILD_DIR}/src/libvterm-musl -DPREFIX=${VTERM_PREFIX} -P ${CMAKE_SOURCE_DIR}/cmake/scripts/install-libvterm.cmake
             BUILD_BYPRODUCTS ${VTERM_PREFIX}/lib/libvterm.a
             LOG_DOWNLOAD TRUE
             LOG_CONFIGURE TRUE
@@ -119,6 +119,7 @@ if(USE_MUSL)
     set(VTERM_INCLUDE_DIRS "${VTERM_PREFIX}/include")
     set(RENDER_FILE_LIBS ${VTERM_LDFLAGS} ${FREETYPE_LIBRARIES} ${FONTCONFIG_LDFLAGS})
     set(RENDER_FILE_INCLUDES ${VTERM_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS} ${FONTCONFIG_INCLUDE_DIRS})
+    set(VTERM_MUSL_TARGET "libvterm-musl")
 
     message(STATUS "${BoldGreen}✓${ColorReset} Render-file backend: ${BoldCyan}libvterm + FreeType2 + fontconfig${ColorReset}")
 
