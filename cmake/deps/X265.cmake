@@ -99,7 +99,7 @@ if(USE_MUSL)
         else()
             set(_X265_MUSL_TARGET "x86_64-linux-musl")
         endif()
-        set(_X265_MUSL_SYSINCLUDE "-isystem /usr/lib/musl/include")
+        set(_X265_MUSL_SYSINCLUDE "-isystem ${MUSL_INCLUDE_DIR}")
         set(_X265_C_FLAGS "-fPIC -target ${_X265_MUSL_TARGET} ${_X265_MUSL_SYSINCLUDE}")
         # libc++ include must come BEFORE musl include — libc++ provides wrapper
         # headers (stddef.h, stdint.h, etc.) that #include_next the C versions
