@@ -112,11 +112,11 @@ runs:
       id: cache-keys
       shell: bash
       run: |
-        # Compute deps hash from cmake/dependencies files
+        # Compute deps hash from cmake/deps files
         if command -v sha256sum &>/dev/null; then
-          deps_hash=$(find cmake/dependencies -type f -exec sha256sum {} \; 2>/dev/null | sort | sha256sum | cut -c1-16)
+          deps_hash=$(find cmake/deps -type f -exec sha256sum {} \; 2>/dev/null | sort | sha256sum | cut -c1-16)
         else
-          deps_hash=$(find cmake/dependencies -type f -exec shasum -a 256 {} \; 2>/dev/null | sort | shasum -a 256 | cut -c1-16)
+          deps_hash=$(find cmake/deps -type f -exec shasum -a 256 {} \; 2>/dev/null | sort | shasum -a 256 | cut -c1-16)
         fi
 
         # Get runner info
@@ -141,8 +141,8 @@ runs:
       id: cache-keys-win
       shell: pwsh
       run: |
-        # Compute deps hash from cmake/dependencies files
-        $files = Get-ChildItem -Path "cmake/dependencies" -File -Recurse | Sort-Object FullName
+        # Compute deps hash from cmake/deps files
+        $files = Get-ChildItem -Path "cmake/deps" -File -Recurse | Sort-Object FullName
         $hashes = $files | ForEach-Object {
           $hash = Get-FileHash -Path $_.FullName -Algorithm SHA256
           "$($hash.Hash) $($_.FullName)"

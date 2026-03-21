@@ -454,7 +454,7 @@ jobs:
         run: |
           # Remove cached WebRTC source AFTER install-deps restores it
           # This forces FetchContent to download fresh source and apply patches
-          # The fix in cmake/dependencies/WebRTC.cmake clears CMAKE_CXX_FLAGS before add_subdirectory()
+          # The fix in cmake/deps/WebRTC.cmake clears CMAKE_CXX_FLAGS before add_subdirectory()
           # to allow WebRTC's project() command to properly configure libc++ implicit include paths
           echo "Removing cached WebRTC source..."
           rm -rf .deps-cache/Release/webrtc_aec3-src .deps-cache/Release/webrtc_aec3-build .deps-cache/Release/webrtc_aec3-subbuild
