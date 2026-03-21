@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, RefObject } from "react";
 import type { SettingsConfig, AsciiRendererHandle } from "../components";
-import { useCanvasCapture } from "./useCanvasCapture";
+import { useCanvasCapture } from "@ascii-chat/shared/hooks";
 import { getDefaultSettings } from "../utils";
 
 /**

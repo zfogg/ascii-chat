@@ -1,5 +1,6 @@
-// TypeScript wrapper for Mirror WASM module
+// Shared TypeScript wrapper for Mirror WASM module
 // Provides type-safe interface to libasciichat mirror mode
+// Decoupled from Emscripten factory location — callers provide the factory.
 
 import { createOptionAccessor, type WasmModule } from "./common/optionsWrapper";
 import {
@@ -44,22 +45,27 @@ interface MirrorModule extends WasmModule {
 export { RenderMode, ColorMode, ColorFilter };
 export type { Palette };
 
-// Import the Emscripten-generated module factory
-// @ts-expect-error - Generated file without types
-import MirrorModuleFactory from "./dist/mirror.js";
+// Emscripten module factory type — callers provide this
+export type EmscriptenModuleFactory = (
+  moduleOverrides: Record<string, unknown>,
+) => Promise<MirrorModule>;
 
 let wasmModule: MirrorModule | null = null;
 let frameCallCount = 0;
 
 /**
  * Initialize the WASM module (call once at app start)
+ * @param moduleFactory - Emscripten module factory function (from mirror.js)
+ * @param options - Optional overrides (e.g., locateFile for cross-origin .wasm loading)
  */
-export async function initMirrorWasm(): Promise<void> {
+export async function initMirrorWasm(
+  moduleFactory: EmscriptenModuleFactory,
+  options?: { locateFile?: (path: string) => string },
+): Promise<void> {
   if (wasmModule) return;
 
   console.log("[WASM] Starting module factory...");
-  // Provide runtime environment functions for Emscripten
-  wasmModule = await MirrorModuleFactory({
+  const moduleOverrides: Record<string, unknown> = {
     // libsodium crypto random - returns 32-bit unsigned integer
     getRandomValue: function () {
       const buf = new Uint32Array(1);
@@ -74,7 +80,13 @@ export async function initMirrorWasm(): Promise<void> {
     printErr: (text: string) => {
       console.error("[C] " + text);
     },
-  });
+  };
+
+  if (options?.locateFile) {
+    moduleOverrides["locateFile"] = options.locateFile;
+  }
+
+  wasmModule = await moduleFactory(moduleOverrides);
   console.log("[WASM] Module factory completed");
 
   if (!wasmModule) {

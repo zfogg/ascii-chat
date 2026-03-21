@@ -4,6 +4,7 @@ import { useAnchorNavigation } from "../hooks";
 import { AsciiChatHead, Footer } from "../components";
 import {
   HeroHeader,
+  MiniMirrorDemo,
   InstallationSection,
   FeaturesSection,
   QuickStartSection,
@@ -46,6 +47,7 @@ export default function Home() {
       <AsciiChatHead />
       <div className="flex flex-col max-w-4xl mx-auto px-4 sm:px-6 w-full mt-[var(--header-height)] pt-4">
         <HeroHeader />
+        <MiniMirrorDemo />
         <InstallationSection />
         <FeaturesSection sessionStrings={sessionStrings} />
         <QuickStartSection sessionString={sessionStrings[0] ?? ""} />

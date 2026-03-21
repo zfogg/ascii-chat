@@ -42,7 +42,7 @@ import {
   setPalette,
   setPaletteChars,
   setTargetFps,
-} from "../wasm/common/options";
+} from "@ascii-chat/shared/wasm";
 import {
   AsciiRenderer,
   ConnectionPanelModal,

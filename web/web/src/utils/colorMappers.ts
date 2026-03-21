@@ -1,7 +1,7 @@
 import {
   ColorMode as WasmColorMode,
   ColorFilter as WasmColorFilter,
-} from "../wasm/mirror";
+} from "@ascii-chat/shared/wasm";
 import {
   ColorMode as ClientColorMode,
   ColorFilter as ClientColorFilter,

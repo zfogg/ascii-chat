@@ -1,4 +1,5 @@
 export { default as DocumentationSection } from "./DocumentationSection";
+export { default as MiniMirrorDemo } from "./MiniMirrorDemo";
 export { default as FeaturesSection } from "./FeaturesSection";
 export { default as HeroHeader } from "./HeroHeader";
 export { default as InstallationSection } from "./InstallationSection";

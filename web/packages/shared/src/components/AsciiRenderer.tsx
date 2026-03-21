@@ -8,7 +8,6 @@ import {
 import type { Terminal } from "xterm";
 import { XTerm, type XTerm as XTermType } from "@pablo-lion/xterm-react";
 import { FitAddon } from "@xterm/addon-fit";
-import { DisconnectedOverlay } from "./DisconnectedOverlay";
 import "xterm/css/xterm.css";
 
 export interface AsciiRendererHandle {
@@ -72,6 +71,23 @@ export const AsciiRenderer = forwardRef<
         const terminal = (xterm as XTermType & { terminal: Terminal }).terminal;
         if (!terminal) return;
 
+        // Unpause render service BEFORE write() so xterm schedules a canvas paint.
+        // xterm's IntersectionObserver pauses rendering when the terminal isn't
+        // fully in the viewport (e.g. a 33vh container). If _isPaused is true
+        // when write() is called, xterm skips scheduling the render entirely.
+        const core = (
+          terminal as Terminal & {
+            _core?: {
+              _renderService?: {
+                _isPaused: boolean;
+              };
+            };
+          }
+        )._core;
+        if (core?._renderService) {
+          core._renderService._isPaused = false;
+        }
+
         const lines = ansiString.split("\n");
 
         const formattedLines = lines.map((line: string, index: number) =>
@@ -96,40 +112,11 @@ export const AsciiRenderer = forwardRef<
 
         terminal.write(output);
 
-        // Ensure terminal is not paused and will render
-        const core = (
-          terminal as Terminal & {
-            _core?: {
-              _renderService?: {
-                _isPaused: boolean;
-                _renderRows?: (start: number, end: number) => void;
-              };
-            };
-          }
-        )._core;
-        if (core && core._renderService) {
-          const renderService = core._renderService;
-
-          // Log if render service is paused
-          if (renderService._isPaused) {
-            console.log("[AsciiRenderer] Xterm renderService is PAUSED");
-          }
-
-          // Force unpause - this is critical for continuous rendering
-          renderService._isPaused = false;
-
-          // Call _renderRows to force immediate render of the updated content
-          // This is the actual render method in xterm 5.3.0
-          if (renderService._renderRows) {
-            try {
-              renderService._renderRows(0, terminal.rows);
-            } catch (e) {
-              console.error(
-                `[AsciiRenderer] Error calling _renderRows: ${String(e)}`,
-              );
-            }
-          }
-        }
+        // Force the canvas renderer to repaint all rows.
+        // xterm's IntersectionObserver can leave the renderer paused when
+        // the terminal is in a small container (e.g. 33vh mini demo).
+        // terminal.refresh() is the public API that marks rows dirty.
+        terminal.refresh(0, terminal.rows - 1);
 
         // Update FPS counter via direct DOM mutation and callback
         if (showFps && fpsUpdateTimeRef.current !== null) {
@@ -329,7 +316,13 @@ export const AsciiRenderer = forwardRef<
           }}
           className="flex flex-1 rounded bg-terminal-bg"
         />
-        <DisconnectedOverlay isDisconnected={connectionState === 0} />
+        {connectionState === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded pointer-events-none">
+            <div className="text-5xl font-bold text-red-500 drop-shadow-lg">
+              DISCONNECTED
+            </div>
+          </div>
+        )}
       </div>
 
       {/* FPS counter - hidden, displayed in control bar instead */}

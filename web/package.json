@@ -21,5 +21,22 @@
     "globals": "^17.4.0",
     "typescript-eslint": "^8.57.0",
     "vite-plus": "catalog:"
+  },
+  "workspaces": {
+    "packages": [
+      "packages/*",
+      "www",
+      "discovery",
+      "web"
+    ],
+    "catalog": {
+      "vite": "npm:@voidzero-dev/vite-plus-core@latest",
+      "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
+      "vite-plus": "latest"
+    }
+  },
+  "overrides": {
+    "vite": "catalog:",
+    "vitest": "catalog:"
   }
 }

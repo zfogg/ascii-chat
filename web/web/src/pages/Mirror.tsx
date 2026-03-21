@@ -1,7 +1,8 @@
 import { useEffect, useCallback } from "react";
 import "xterm/css/xterm.css";
-import { initMirrorWasm, isWasmReady } from "../wasm/mirror";
 import {
+  initMirrorWasm,
+  isWasmReady,
   setDimensions,
   getDimensions,
   setColorMode,
@@ -18,7 +19,9 @@ import {
   getFlipX,
   setTargetFps,
   getTargetFps,
-} from "../wasm/common/options";
+} from "@ascii-chat/shared/wasm";
+// @ts-expect-error - Generated file without types
+import MirrorModuleFactory from "../wasm/dist/mirror.js";
 import { SITES } from "@ascii-chat/shared/utils";
 import {
   Settings,
@@ -43,7 +46,7 @@ import {
 export function MirrorPage() {
   // Memoize WASM callbacks to prevent infinite re-render loops.
   // These are module-level functions that never change, so empty deps are correct.
-  const initWasm = useCallback(() => initMirrorWasm(), []);
+  const initWasm = useCallback(() => initMirrorWasm(MirrorModuleFactory), []);
 
   const applyWasmSettings = useCallback((settings: SettingsConfig) => {
     const om = createWasmOptionsManager(

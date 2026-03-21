@@ -42,12 +42,20 @@ export default defineConfig({
   resolve: {
     alias: {
       "@ascii-chat/shared": path.resolve(__dirname, "../packages/shared/src"),
+      "mirror-wasm-factory": path.resolve(
+        __dirname,
+        "../web/src/wasm/dist/mirror.js",
+      ),
     },
     extensions: [".ts", ".tsx", ".js", ".jsx"],
     dedupe: ["react", "react-dom"],
   },
   server: {
     port: 5173,
+    headers: {
+      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Opener-Policy": "same-origin",
+    },
     // Development: http://localhost:5173
     // Production: https://ascii-chat.com
     // API proxy: /api requests route to localhost:3001 (via API_PORT env var)

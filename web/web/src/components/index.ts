@@ -1,6 +1,6 @@
 export { AsciiChatWebHead } from "./AsciiChatWebHead";
-export { AsciiRenderer } from "./AsciiRenderer";
-export type { AsciiRendererHandle, AsciiRendererProps } from "./AsciiRenderer";
+export { AsciiRenderer } from "@ascii-chat/shared/components";
+export type { AsciiRendererHandle, AsciiRendererProps } from "@ascii-chat/shared/components";
 export { ConnectionPanelModal } from "./ConnectionPanelModal";
 export type { ConnectionPanelModalProps } from "./ConnectionPanelModal";
 export { DisconnectedOverlay } from "./DisconnectedOverlay";

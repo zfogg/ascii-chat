@@ -1,0 +1,22 @@
+{
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cross-Origin-Embedder-Policy",
+          "value": "require-corp"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    { "source": "/docs/(.*)", "destination": "/index.html" },
+    { "source": "/man(.*)", "destination": "/index.html" },
+    { "source": "/crypto", "destination": "/index.html" }
+  ]
+}
