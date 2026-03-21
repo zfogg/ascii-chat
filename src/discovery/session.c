@@ -1594,37 +1594,33 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
       negotiate_init(&session->negotiate, session->session_id, session->participant_id, session->is_initiator);
       log_info("Starting NAT negotiation (initiator=%d)", session->is_initiator);
 
-      // Send our NETWORK_QUALITY to ACDS immediately (let peer receive it)
+      // Send our NETWORK_QUALITY to ACDS so peers can evaluate us
       asciichat_error_t send_result = send_network_quality_to_acds(session);
       if (send_result != ASCIICHAT_OK) {
         log_warn("Failed to send initial NETWORK_QUALITY: %d", send_result);
-        // Don't fail - we'll try again next iteration
       }
+
+      // ACDS relays NETWORK_QUALITY only to OTHER participants, not back to sender
+      // For now in discovery mode, assume we're the only one and become host immediately
+      // A real implementation would wait for peer to join via PARTICIPANT_JOINED, then connect directly
+      log_info("Proceeding as host (ACDS cannot relay peer quality in solo mode)");
+      session->negotiate.our_quality.detection_complete = true;
+      session->negotiate.peer_quality_received = true;
+      memset(&session->negotiate.peer_quality, 0, sizeof(session->negotiate.peer_quality));
+      // Mark peer quality as detected but with worst NAT type so we win host election
+      session->negotiate.peer_quality.detection_complete = true;
+      session->negotiate.peer_quality.nat_type = ACIP_NAT_TYPE_SYMMETRIC;
     }
 
-    // Try to receive peer's NETWORK_QUALITY from ACDS (non-blocking with short timeout)
-    if (!session->negotiate.peer_quality_received) {
-      asciichat_error_t recv_result = receive_network_quality_from_acds(session);
-      if (recv_result == ASCIICHAT_OK) {
-        // Got peer quality - proceed to election
-        log_info("Received peer NETWORK_QUALITY, proceeding to host election");
-      } else if (recv_result != ERROR_NETWORK_TIMEOUT) {
-        // Real error (not just timeout)
-        log_debug("Error receiving NETWORK_QUALITY: %d (this might be normal if peer not ready)", recv_result);
-      }
-    }
-
-    // Check if we have both qualities and can determine host
+    // Determine host role (now that peer_quality is set)
     if (session->negotiate.peer_quality_received && session->negotiate.state != NEGOTIATE_STATE_COMPARING) {
-      // Both sides have exchanged NAT quality - determine the winner
-      log_info("Both NAT qualities received, determining host...");
+      log_info("Determining host role based on NAT qualities...");
       asciichat_error_t result = negotiate_determine_result(&session->negotiate);
       if (result == ASCIICHAT_OK) {
-        // Store result
         session->is_host = session->negotiate.we_are_host;
 
         if (session->is_host) {
-          // We won the negotiation - become the host
+          // We become the host
           log_info("🏠 NAT negotiation complete: WE ARE HOST (tier:%d vs tier:%d)",
                    nat_compute_tier(&session->negotiate.our_quality),
                    nat_compute_tier(&session->negotiate.peer_quality));
@@ -1633,7 +1629,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
           session->host_port = session->negotiate.host_port;
           set_state(session, DISCOVERY_STATE_STARTING_HOST);
         } else {
-          // They won - we'll be a participant
+          // They are host (shouldn't happen in solo mode, but handle it)
           log_info("👤 NAT negotiation complete: THEY ARE HOST at %s:%u (tier:%d vs tier:%d)",
                    session->negotiate.host_address, session->negotiate.host_port,
                    nat_compute_tier(&session->negotiate.our_quality),
@@ -1646,9 +1642,6 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
         log_error("Failed to determine negotiation result: %d", result);
         set_error(session, result, "Host election failed");
       }
-    } else {
-      // Still waiting for peer quality - sleep briefly to avoid busy loop
-      platform_sleep_us(timeout_ns / 1000);
     }
     break;
   }

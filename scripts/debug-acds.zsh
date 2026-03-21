@@ -10,12 +10,16 @@ PROTO="tcp"  # Default protocol
 export ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK='1'
 export ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'
 
-SNAPSHOT_DELAY=15  # Increased from 3.5 to allow joiner startup and connection (joiner joins at ~12s after initiator starts)
+SNAPSHOT_DELAY=3.5 # DO NOT INCREASE FROM 3.5
 
 ACDS_PORT=$(((RANDOM % 6000) + 2000))
 ACDS_WS_PORT=$(((RANDOM % 6000) + 2000))
+# Use high port number to avoid conflicts with standard ports and previous TIME_WAIT sockets
+HOST_PORT=$(((RANDOM % 10000) + 40000))  # Random port in 40000-50000 range
 
 tmpdir=$(mktemp -d "/tmp/XXX-ascii-chat-debug-acds")
+
+# No explicit port wait needed with random high ports - collisions unlikely
 
 acds_log="$tmpdir/acds-logfile-$ACDS_PORT.log"
 initiator_log="$tmpdir/initiator-logfile-$ACDS_PORT.log"
@@ -75,7 +79,7 @@ echo "Proto: $PROTO"
 echo "Using build directory: $BUILD_DIR"
 echo ""
 
-pkill -f "ascii-chat.*(discovery-service|discovery).*$ACDS_PORT" && sleep 0.5 || true
+pkill -f "ascii-chat.*(discovery-service|discovery)" && sleep 2 || true
 
 cmake --build "$BUILD_DIR"
 
@@ -121,10 +125,11 @@ echo "Starting initiator to create session..."
 START_TIME=$(date +%s%N)
 EXIT_CODE=0
 
-timeout -k0.5 "$((SNAPSHOT_DELAY + 1))" "$STRACE_CMD" -f -o "$initiator_strace" \
+timeout -k1 "$((SNAPSHOT_DELAY + 1))" "$STRACE_CMD" -f -o "$initiator_strace" \
   "$BUILD_DIR"/bin/ascii-chat \
   --log-level debug --log-file "$initiator_log" --sync-state 1 \
   --color true --color-mode truecolor \
+  --port "$HOST_PORT" \
   "${discovery_service_args[@]}" \
   --test-pattern \
   --snapshot --snapshot-delay "$SNAPSHOT_DELAY" \
