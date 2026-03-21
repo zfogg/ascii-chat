@@ -101,6 +101,9 @@ http://ascii-chat.com http://www.ascii-chat.com {
   header Cross-Origin-Embedder-Policy "require-corp"
   header Cross-Origin-Opener-Policy "same-origin"
 
+  # Accept-Ranges header for all responses (needed for video streaming on iOS)
+  header Accept-Ranges "bytes"
+
   # Proxy API requests to Node.js backend
   handle /api/* {
     reverse_proxy localhost:3001
@@ -110,7 +113,6 @@ http://ascii-chat.com http://www.ascii-chat.com {
   handle /assets/* {
     header Cache-Control "public, max-age=31536000, immutable"
     header Cross-Origin-Resource-Policy "cross-origin"
-    header Accept-Ranges "bytes"
     file_server
   }
 
