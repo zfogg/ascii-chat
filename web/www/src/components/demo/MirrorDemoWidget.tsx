@@ -14,6 +14,9 @@ import {
   setPaletteChars,
   setMatrixRain,
   setTargetFps,
+  ColorMode,
+  ColorFilter,
+  RenderMode,
 } from "@ascii-chat/shared/wasm";
 import type { EmscriptenModuleFactory } from "@ascii-chat/shared/wasm";
 import { useCanvasCapture } from "@ascii-chat/shared/hooks";
@@ -36,15 +39,17 @@ interface MirrorDemoWidgetProps {
 
 function applyDemoOption(option: DemoOption, sourceFlipX: boolean): void {
   const s = option.settings;
-  if (s.colorMode !== undefined) setColorMode(s.colorMode);
-  if (s.colorFilter !== undefined) setColorFilter(s.colorFilter);
-  if (s.renderMode !== undefined) setRenderMode(s.renderMode);
-  if (s.palette !== undefined) setPalette(s.palette);
-  if (s.paletteChars !== undefined) setPaletteChars(s.paletteChars);
-  if (s.matrixRain !== undefined) setMatrixRain(s.matrixRain);
-  if (s.targetFps !== undefined) setTargetFps(s.targetFps);
+  // Reset all options to defaults first, then apply preset overrides.
+  // This prevents stale state from a previous demo leaking through.
+  setColorMode(s.colorMode ?? ColorMode.AUTO);
+  setColorFilter(s.colorFilter ?? ColorFilter.NONE);
+  setRenderMode(s.renderMode ?? RenderMode.FOREGROUND);
+  setPalette(s.palette ?? "standard");
+  setMatrixRain(s.matrixRain ?? false);
   setFlipX(s.flipX !== undefined ? s.flipX : sourceFlipX);
   setFlipY(s.flipY ?? false);
+  if (s.paletteChars !== undefined) setPaletteChars(s.paletteChars);
+  if (s.targetFps !== undefined) setTargetFps(s.targetFps);
 }
 
 export default function MirrorDemoWidget({
