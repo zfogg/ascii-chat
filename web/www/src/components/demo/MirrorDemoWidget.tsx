@@ -465,6 +465,17 @@ export default function MirrorDemoWidget({
           </>
         )}
       </div>
+      <p className="text-gray-600 text-xs mt-2 sm:text-right">
+        Demo video:{" "}
+        <a
+          href="https://www.youtube.com/watch?v=9s1x9eHoEBE&t=1796"
+          className="text-gray-500 hover:text-gray-400 underline"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          ODESZA - THE FINALE - LIVE FROM THE GORGE
+        </a>
+      </p>
     </div>
   );
 }
