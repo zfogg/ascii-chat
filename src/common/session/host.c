@@ -14,6 +14,7 @@
  */
 
 #include "session/host.h"
+#include "session/display.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -107,6 +108,9 @@ typedef struct session_host {
 
   /** @brief User data for callbacks */
   void *user_data;
+
+  /** @brief Display context for local frame rendering (optional, can be NULL) */
+  struct session_display_ctx *display_context;
 
   /** @brief IPv4 listen socket */
   socket_t socket_v4;
@@ -670,8 +674,9 @@ static void *host_render_thread(void *arg) {
         }
       }
 
-      // If we have active participants, generate and broadcast grid
-      if (active_video_count > 0) {
+      // Generate and broadcast grid if we have active participants,
+      // or display locally if display context is set
+      if (active_video_count > 0 || host->display_context) {
         // Allocate arrays for ASCII frames and sources
         char **ascii_frames = SAFE_MALLOC(active_video_count * sizeof(char *), char **);
         ascii_frame_source_t *sources =
@@ -698,17 +703,25 @@ static void *host_render_thread(void *arg) {
             }
           }
 
-          // Create grid layout from all ASCII frames
+          // Create grid layout from all ASCII frames (empty grid if no active participants)
           size_t grid_size = 0;
           char *grid_frame = ascii_create_grid(sources, active_video_count, 80, 24, &grid_size);
 
           if (grid_frame) {
-            // Broadcast grid to all participants
-            for (int i = 0; i < host->max_clients; i++) {
-              if (host->clients[i].active && host->clients[i].socket != INVALID_SOCKET_VALUE) {
-                packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME, grid_frame, grid_size);
+            // Broadcast grid to all connected participants
+            if (active_video_count > 0) {
+              for (int i = 0; i < host->max_clients; i++) {
+                if (host->clients[i].active && host->clients[i].socket != INVALID_SOCKET_VALUE) {
+                  packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME, grid_frame, grid_size);
+                }
               }
             }
+
+            // Display locally if display context is set
+            if (host->display_context) {
+              session_display_render_frame(host->display_context, grid_frame);
+            }
+
             SAFE_FREE(grid_frame);
           }
 
@@ -775,10 +788,23 @@ static void *host_render_thread(void *arg) {
         uint8_t opus_buffer[1000];
         size_t opus_len = opus_codec_encode(host->opus_encoder, mixed_audio, 960, opus_buffer, sizeof(opus_buffer));
 
+        // Only broadcast audio if we have network-connected clients (not memory participants)
         if (opus_len > 0) {
-          // Broadcast mixed audio to all participants
-          uint16_t frame_sizes[1] = {(uint16_t)opus_len};
-          av_send_audio_opus_batch(host->socket_v4, opus_buffer, opus_len, frame_sizes, 48000, 20, 1, NULL);
+          mutex_lock(&host->clients_mutex);
+          bool has_network_clients = false;
+          for (int i = 0; i < host->max_clients; i++) {
+            if (host->clients[i].active && host->clients[i].socket != INVALID_SOCKET_VALUE) {
+              has_network_clients = true;
+              break;
+            }
+          }
+          mutex_unlock(&host->clients_mutex);
+
+          if (has_network_clients) {
+            // Broadcast mixed audio to all participants
+            uint16_t frame_sizes[1] = {(uint16_t)opus_len};
+            av_send_audio_opus_batch(host->socket_v4, opus_buffer, opus_len, frame_sizes, 48000, 20, 1, NULL);
+          }
         }
       }
 
@@ -1025,8 +1051,8 @@ uint32_t session_host_add_memory_participant(session_host_t *host) {
       SAFE_STRNCPY(host->clients[i].ip_address, "memory", sizeof(host->clients[i].ip_address));
       host->clients[i].port = 0;
       host->clients[i].active = true;
-      host->clients[i].video_active = false;
-      host->clients[i].audio_active = false;
+      host->clients[i].video_active = true;  // Memory participants always have active video/audio
+      host->clients[i].audio_active = true;
       host->clients[i].connected_at = (uint64_t)time(NULL);
       host->clients[i].transport = NULL;
 
@@ -1309,6 +1335,19 @@ asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_
   mutex_unlock(&host->clients_mutex);
 
   return SET_ERRNO(ERROR_NOT_FOUND, "session_host_send_frame: client %u not found", client_id);
+}
+
+/* ============================================================================
+ * Session Host Display Functions
+ * ============================================================================ */
+
+asciichat_error_t session_host_set_display(session_host_t *host, struct session_display_ctx *display) {
+  if (!host || !host->initialized) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "session_host_set_display: invalid host");
+  }
+
+  host->display_context = display;
+  return ASCIICHAT_OK;
 }
 
 /* ============================================================================

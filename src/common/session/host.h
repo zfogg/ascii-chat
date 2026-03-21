@@ -178,6 +178,9 @@ typedef struct {
 
   /** @brief User-provided context pointer passed to callbacks */
   void *user_data;
+
+  /** @brief Display context for local frame rendering (optional, can be NULL) */
+  struct session_display_ctx *display_context;
 } session_host_config_t;
 
 /* ============================================================================
@@ -408,6 +411,22 @@ asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_
  * Session Host Render Thread Functions
  * @{
  */
+
+/**
+ * @brief Set display context for local frame rendering
+ * @param host Host handle (must not be NULL)
+ * @param display Display context for rendering frames locally (can be NULL to disable)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Configures the host to render frames locally to the provided display context.
+ * This allows the host to see its own rendered output during testing.
+ * If display is NULL, local rendering is disabled.
+ *
+ * @note Can be called before or after render thread is started.
+ *
+ * @ingroup session
+ */
+asciichat_error_t session_host_set_display(session_host_t *host, struct session_display_ctx *display);
 
 /**
  * @brief Start media rendering thread (video mixing and audio distribution)

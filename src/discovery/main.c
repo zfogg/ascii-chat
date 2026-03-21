@@ -221,51 +221,76 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
     // HOST ROLE: Capture own media, manage participants, mix and broadcast
     log_info("Hosting session - capturing and broadcasting");
 
-    // Create session host for managing participants
-    session_host_config_t host_config = {
-        .port = (int)GET_OPTION(port),
-        .ipv4_address = NULL, // Bind to any
-        .ipv6_address = NULL,
-        .max_clients = 32,
-        .encryption_enabled = false, // TODO: Add crypto support
-        .key_path = NULL,
-        .password = NULL,
-        .callbacks = {0},
-        .user_data = NULL,
-    };
-
-    session_host_t *host = session_host_create(&host_config);
+    // Get the host context already created and started during discovery negotiation
+    session_host_t *host = discovery_session_get_host(g_discovery);
     if (!host) {
-      log_fatal("Failed to create session host");
-      return ERROR_MEMORY;
+      log_fatal("Failed to get session host from discovery");
+      return ERROR_INVALID_STATE;
     }
 
-    // Start host (accept connections, render threads)
-    result = session_host_start(host);
-    if (result != ASCIICHAT_OK) {
-      log_error("Failed to start session host: %d", result);
-      session_host_destroy(host);
-      return result;
+    // Set display context so host renders frames locally
+    asciichat_error_t display_result = session_host_set_display(host, display);
+    if (display_result != ASCIICHAT_OK) {
+      log_error("Failed to set display context on host: %d", display_result);
+      // Non-fatal - host can still render frames for broadcasting, just not locally
+    } else {
+      log_info("Display context set on host for local frame rendering");
     }
+
+    // The passed capture context is set up for network mode (participant receiving frames).
+    // For host role, we need local media capture. Reuse the existing capture context
+    // which should have test pattern, webcam, or file configured.
+    // Note: session_client_like should have initialized this with the media source.
 
     // Add memory participant for host's own media
     uint32_t host_participant_id = session_host_add_memory_participant(host);
     if (host_participant_id == 0) {
       log_error("Failed to add memory participant for host");
-      session_host_stop(host);
-      session_host_destroy(host);
+      // Host context is owned by discovery session - don't destroy
       return ERROR_INVALID_STATE;
     }
 
     log_info("Host participating with ID %u", host_participant_id);
 
+    // Start the render thread (handles video mixing and ASCII rendering for display)
+    result = session_host_start_render(host);
+    if (result != ASCIICHAT_OK) {
+      log_error("Failed to start render thread: %d", result);
+      // Host context is owned by discovery session - don't destroy
+      return result;
+    }
+
     // Main loop: capture own media and keep discovery responsive
-    while (!should_exit() && discovery_session_is_active(g_discovery)) {
-      // Capture frame from webcam (reuse existing capture context)
+    bool snapshot_mode = GET_OPTION(snapshot_mode);
+
+    while (discovery_session_is_active(g_discovery)) {
+      // Exit conditions:
+      // 1. Non-snapshot mode: check should_exit() (Ctrl+C, SIGTERM, any exit signal)
+      // 2. Snapshot mode: exit when should_exit() is true AND we've rendered at least one frame
+      //    (to allow the full snapshot_delay to elapse while ignoring the snapshot timeout in should_exit)
+      // 3. Discovery session ended: always exit
+
+      if (should_exit()) {
+        // In snapshot mode, if we haven't rendered any frames yet, don't exit yet
+        // Wait until at least one frame has been displayed
+        if (!snapshot_mode || g_snapshot_first_frame_rendered) {
+          log_debug("Exit condition met (snapshot_mode=%d, first_frame_rendered=%d)",
+                    snapshot_mode, g_snapshot_first_frame_rendered ? 1 : 0);
+          break;
+        } else {
+          log_debug_every(5 * NS_PER_SEC_INT, "Waiting for first frame (snapshot_mode=true, first_frame_rendered=false)");
+        }
+      }
+
+      // Capture frame from local media (webcam, test pattern, file, etc.)
+      // The capture context is set up during session_client_like_run() and handles all media types
       image_t *frame = session_capture_read_frame(capture);
       if (frame) {
-        // Inject host's frame into mixer
+        log_debug_every(5 * NS_PER_SEC_INT, "Captured frame, injecting into host");
+        // Inject host's frame into mixer for broadcasting
         session_host_inject_frame(host, host_participant_id, frame);
+      } else {
+        log_debug_every(5 * NS_PER_SEC_INT, "No frame captured");
       }
 
       // Keep discovery session responsive (NAT negotiations, migrations)
@@ -279,10 +304,10 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
       session_capture_sleep_for_fps(capture);
     }
 
-    // Cleanup
-    session_host_stop(host);
-    session_host_destroy(host);
+    log_debug("Host role main loop exited (snapshot_mode=%d, first_frame_rendered=%d, session_active=%d)",
+              snapshot_mode, g_snapshot_first_frame_rendered ? 1 : 0, discovery_session_is_active(g_discovery) ? 1 : 0);
 
+    // Host cleanup is handled by discovery session
     if (should_exit()) {
       return ASCIICHAT_OK;
     }
