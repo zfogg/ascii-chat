@@ -438,12 +438,9 @@ export function useHtmlTransforms(
             // Build full signature with return type and function name
             void ((returnType ? returnType + " " : "") + funcName + params);
 
-            // For table display, show just the params part without function name
-            const signatureWithoutName = params;
-
             rows.push({
               name: funcName,
-              signature: signatureWithoutName,
+              signature: returnType,
               description: description,
             });
           }
@@ -585,17 +582,14 @@ export function useHtmlTransforms(
             // Replace "funcName (" with "("
             const signatureWithoutName = signature.replace(
               new RegExp(
-                `\\b${currentMatch.name.replace(
-                  /[.*+?^${}()|[\]\\]/g,
-                  "\\$&",
-                )}\\s*\\(`,
+                `\\b${currentMatch.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\(`,
               ),
               "(",
             );
 
             rows.push({
               name: currentMatch.name,
-              signature: signatureWithoutName,
+              signature: returnType,
               description: description,
             });
           }
