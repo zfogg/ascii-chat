@@ -26,6 +26,8 @@
   "devDependencies": {
     "@eslint/js": "^9.7.0",
     "@tailwindcss/postcss": "^4.1.18",
+    "@types/express": "^5.0.6",
+    "@types/morgan": "^1.9.10",
     "@types/react": "^19.2.13",
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.55.0",

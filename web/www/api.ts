@@ -1,4 +1,5 @@
 import express from "express";
+import type { Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
 import fs from "fs";
@@ -46,7 +47,7 @@ app.set("trust proxy", "loopback, linklocal, uniquelocal");
 // HTTP request logging middleware
 app.use(
   morgan(NODE_ENV === "production" ? "combined" : "dev", {
-    stream: { write: (msg) => logger.info(msg.trim()) },
+    stream: { write: (msg: string) => logger.info(msg.trim()) },
   }),
 );
 
@@ -69,9 +70,26 @@ const sessionStringLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+interface IndexEntry {
+  name: string;
+  title: string;
+  file: string;
+}
+
+interface TextWithLineNumbers {
+  text: string;
+  lineNumbers: number[] | null;
+}
+
+interface Snippet {
+  text: string;
+  lineNumbers: (number | null)[];
+  matchLineNumber: number | null;
+}
+
 // Cache for man3 files and index
-let fileCache = {};
-let indexCache = null;
+let fileCache: Record<string, string> = {};
+let indexCache: IndexEntry[] | null = null;
 
 // Initialize cache
 function initializeCache() {
@@ -95,12 +113,14 @@ function initializeCache() {
   if (fs.existsSync(indexPath)) {
     logger.debug("Index file found, loading...");
     try {
-      indexCache = JSON.parse(fs.readFileSync(indexPath, "utf-8"));
+      indexCache = JSON.parse(
+        fs.readFileSync(indexPath, "utf-8"),
+      ) as IndexEntry[];
       logger.info(
         `Index loaded successfully with ${indexCache.length} entries`,
       );
     } catch (err) {
-      logger.error(`Failed to parse index.json: ${err.message}`);
+      logger.error(`Failed to parse index.json: ${(err as Error).message}`);
     }
   } else {
     logger.error(`Index file not found at ${indexPath}`);
@@ -116,7 +136,9 @@ function initializeCache() {
           const content = fs.readFileSync(filePath, "utf-8");
           fileCache[page.name] = extractTextContent(content);
         } catch (err) {
-          logger.error(`Failed to cache ${page.name}: ${err.message}`);
+          logger.error(
+            `Failed to cache ${page.name}: ${(err as Error).message}`,
+          );
         }
       }
     }
@@ -125,7 +147,7 @@ function initializeCache() {
 }
 
 // Extract text from HTML
-function extractTextContent(html) {
+function extractTextContent(html: string): string {
   let text = html
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "") // Remove scripts
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "") // Remove styles
@@ -133,7 +155,7 @@ function extractTextContent(html) {
 
   // Decode all HTML entities in one pass
   text = text.replace(/&([a-zA-Z]+|#\d+|#x[0-9A-Fa-f]+);/g, (match) => {
-    const entities = {
+    const entities: Record<string, string> = {
       lt: "<",
       gt: ">",
       amp: "&",
@@ -172,7 +194,7 @@ function extractTextContent(html) {
 }
 
 // Extract text with preserved line numbers from line number prefixes
-function extractTextWithLineNumbers(html) {
+function extractTextWithLineNumbers(html: string): TextWithLineNumbers {
   let text = html
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
@@ -180,7 +202,7 @@ function extractTextWithLineNumbers(html) {
 
   // Decode entities
   text = text.replace(/&([a-zA-Z]+|#\d+|#x[0-9A-Fa-f]+);/g, (match) => {
-    const entities = {
+    const entities: Record<string, string> = {
       lt: "<",
       gt: ">",
       amp: "&",
@@ -207,7 +229,7 @@ function extractTextWithLineNumbers(html) {
 
   // Keep all lines, but extract line numbers from those that have them
   const allLines = text.split("\n");
-  const lineNumbers = [];
+  const lineNumbers: number[] = [];
 
   for (let i = 0; i < allLines.length; i++) {
     const trimmed = allLines[i].trim();
@@ -243,7 +265,10 @@ function extractTextWithLineNumbers(html) {
 }
 
 // Get file text content with line numbers (from cache or disk)
-function getFileContentWithLineNumbers(pageName, fileName) {
+function getFileContentWithLineNumbers(
+  pageName: string,
+  fileName: string | undefined,
+): TextWithLineNumbers {
   // In development, read from disk
   if (process.env.NODE_ENV !== "production") {
     const man3Dir = path.join(__dirname, "public/man3");
@@ -267,15 +292,15 @@ function getFileContentWithLineNumbers(pageName, fileName) {
 
 // Find snippets around matches (centered on match)
 function findSnippets(
-  text,
-  query,
+  text: string,
+  query: string,
   maxSnippets = 3,
-  lineNumbers = null,
+  lineNumbers: number[] | null = null,
   flags = "i",
-) {
+): { snippets: Snippet[]; totalMatches: number } {
   const allLines = text.split("\n");
   let lines = allLines;
-  let actualLineNumbers = lineNumbers;
+  let actualLineNumbers: number[] = lineNumbers || [];
 
   // If lineNumbers are NOT provided, filter and number sequentially
   if (!lineNumbers) {
@@ -289,8 +314,8 @@ function findSnippets(
     }
   }
 
-  const snippets = [];
-  const usedLines = new Set();
+  const snippets: Snippet[] = [];
+  const usedLines = new Set<number>();
   let totalMatches = 0;
 
   try {
@@ -311,7 +336,7 @@ function findSnippets(
           if (i < lines.length - 1) usedLines.add(i + 1);
 
           // Get line numbers, skipping non-code lines (marked with -1)
-          let beforeLineNum = null;
+          let beforeLineNum: number | null = null;
           if (i > 0) {
             // Find previous code line
             for (let j = i - 1; j >= 0; j--) {
@@ -322,10 +347,10 @@ function findSnippets(
             }
           }
 
-          let matchLineNum = actualLineNumbers[i];
+          let matchLineNum: number | null = actualLineNumbers[i];
           if (matchLineNum <= 0) matchLineNum = null;
 
-          let afterLineNum = null;
+          let afterLineNum: number | null = null;
           if (i < lines.length - 1) {
             // Find next code line
             for (let j = i + 1; j < lines.length; j++) {
@@ -356,8 +381,8 @@ function findSnippets(
 }
 
 // Search endpoint
-app.get("/api/man3/search", limiter, (req, res) => {
-  const query = req.query.q || "";
+app.get("/api/man3/search", limiter, (req: Request, res: Response) => {
+  const query = (req.query.q as string) || "";
 
   if (!query || query.trim().length === 0) {
     return res.json({ results: [] });
@@ -365,9 +390,9 @@ app.get("/api/man3/search", limiter, (req, res) => {
 
   try {
     // Parse regex format: /pattern/flags or literal string
-    let regex;
-    let regexForSnippets;
-    let snippetsFlags;
+    let regex: RegExp;
+    let regexForSnippets: string;
+    let snippetsFlags: string;
     const regexMatch = query.match(/^\/(.+)\/([gimuy]*)$/);
 
     if (regexMatch) {
@@ -384,7 +409,13 @@ app.get("/api/man3/search", limiter, (req, res) => {
       snippetsFlags = "i";
     }
 
-    const results = [];
+    const results: {
+      name: string;
+      title: string;
+      matchType: string;
+      snippets: Snippet[];
+      totalMatchesInFile: number;
+    }[] = [];
 
     if (!indexCache) {
       return res.status(500).json({ error: "Index not loaded" });
@@ -475,12 +506,12 @@ app.get("/api/man3/search", limiter, (req, res) => {
     });
   } catch (err) {
     logger.error("Search error:", err);
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: (err as Error).message });
   }
 });
 
 // Health check
-app.get("/api/health", (req, res) => {
+app.get("/api/health", (_req: Request, res: Response) => {
   res.json({
     status: "ok",
     cached: Object.keys(fileCache).length,
@@ -489,60 +520,64 @@ app.get("/api/health", (req, res) => {
 });
 
 // Session strings endpoint
-app.get("/api/session-strings", sessionStringLimiter, (req, res) => {
-  // Enable CORS for session strings endpoint
-  if (NODE_ENV === "production") {
-    // In production, only allow ascii-chat subdomains
-    const origin = req.get("origin");
-    const allowedOrigins = [
-      "https://ascii-chat.com",
-      "https://www.ascii-chat.com",
-      "https://web.ascii-chat.com",
-      "https://discovery.ascii-chat.com",
-    ];
+app.get(
+  "/api/session-strings",
+  sessionStringLimiter,
+  (req: Request, res: Response) => {
+    // Enable CORS for session strings endpoint
+    if (NODE_ENV === "production") {
+      // In production, only allow ascii-chat subdomains
+      const origin = req.get("origin");
+      const allowedOrigins = [
+        "https://ascii-chat.com",
+        "https://www.ascii-chat.com",
+        "https://web.ascii-chat.com",
+        "https://discovery.ascii-chat.com",
+      ];
 
-    if (origin && allowedOrigins.includes(origin)) {
-      res.header("Access-Control-Allow-Origin", origin);
+      if (origin && allowedOrigins.includes(origin)) {
+        res.header("Access-Control-Allow-Origin", origin);
+      }
+    } else {
+      // In development, allow all origins
+      res.header("Access-Control-Allow-Origin", "*");
     }
-  } else {
-    // In development, allow all origins
-    res.header("Access-Control-Allow-Origin", "*");
-  }
-  res.header("Access-Control-Allow-Methods", "GET");
-  res.header("Access-Control-Allow-Headers", "Content-Type");
+    res.header("Access-Control-Allow-Methods", "GET");
+    res.header("Access-Control-Allow-Headers", "Content-Type");
 
-  try {
-    const count = parseInt(req.query.count || "1", 10);
+    try {
+      const count = parseInt((req.query.count as string) || "1", 10);
 
-    // Validate count
-    if (isNaN(count) || count < 1) {
-      return res
-        .status(400)
-        .json({ error: "count must be a positive integer" });
-    }
+      // Validate count
+      if (isNaN(count) || count < 1) {
+        return res
+          .status(400)
+          .json({ error: "count must be a positive integer" });
+      }
 
-    // Max limit check (2500 * 5000 * 5000 = 62,500,000,000)
-    const MAX_COUNT = 62500000000;
-    if (count > MAX_COUNT) {
-      return res.status(400).json({
-        error: `count exceeds maximum (${MAX_COUNT} unique combinations)`,
+      // Max limit check (2500 * 5000 * 5000 = 62,500,000,000)
+      const MAX_COUNT = 62500000000;
+      if (count > MAX_COUNT) {
+        return res.status(400).json({
+          error: `count exceeds maximum (${MAX_COUNT} unique combinations)`,
+        });
+      }
+
+      // Generate session strings using JavaScript implementation
+      const strings = generateSessionStrings(count);
+
+      logger.info(`[session-strings] Generated ${strings.length} strings`);
+
+      res.json({
+        count: strings.length,
+        strings: strings,
       });
+    } catch (err) {
+      logger.error(`Session strings error: ${(err as Error).message}`);
+      res.status(500).json({ error: "Failed to generate session strings" });
     }
-
-    // Generate session strings using JavaScript implementation
-    const strings = generateSessionStrings(count);
-
-    logger.info(`[session-strings] Generated ${strings.length} strings`);
-
-    res.json({
-      count: strings.length,
-      strings: strings,
-    });
-  } catch (err) {
-    logger.error(`Session strings error: ${err.message}`);
-    res.status(500).json({ error: "Failed to generate session strings" });
-  }
-});
+  },
+);
 
 // Initialize cache
 initializeCache();
