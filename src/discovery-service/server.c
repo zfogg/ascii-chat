@@ -1249,8 +1249,9 @@ void *acds_websocket_client_handler(void *arg) {
 
   // Transport is owned by WebSocket server, don't destroy it here
 
+  log_info("WebSocket client handler finished for %s", client_ip);
+
   SAFE_FREE(ctx);
 
-  log_info("WebSocket client handler finished for %s", client_ip);
   return NULL;
 }
