@@ -12,108 +12,93 @@ export default function DocumentationSection() {
         📚 Documentation
       </Heading>
 
-      <div className="grid sm:grid-cols-2 gap-4">
-        <TrackedLink
-          to="/docs"
-          label="Home - Documentation"
-          className="bg-gray-900/50 border border-teal-900/50 rounded-lg p-4 hover:border-teal-500/50 transition-colors"
-        >
-          <Heading
-            level={3}
-            className="text-teal-300 font-semibold mb-1"
-            anchorLink={false}
+      <div className="text-gray-300 space-y-4 text-sm sm:text-base leading-relaxed">
+        <p>
+          All ascii-chat documentation is available both in your terminal and
+          online. If you have ascii-chat installed, run{" "}
+          <code className="text-cyan-300 bg-gray-800 px-1.5 py-0.5 rounded text-xs">
+            ascii-chat --help
+          </code>{" "}
+          for a quick reference, or browse the full{" "}
+          <TrackedLink
+            to="/docs"
+            label="Home - Documentation"
+            className="text-cyan-400 hover:text-cyan-300 underline"
           >
-            📚 Documentation
-          </Heading>
-          <p className="text-gray-400 text-sm">
-            Configuration, hardware, terminal, snapshot, network, media
-          </p>
-        </TrackedLink>
+            /docs
+          </TrackedLink>{" "}
+          covering configuration, networking, media streaming, terminal
+          compatibility, and more.
+        </p>
 
-        <TrackedLink
-          to="/man1"
-          label="Home - Docs Man Page (1)"
-          className="bg-gray-900/50 border border-cyan-900/50 rounded-lg p-4 hover:border-cyan-500/50 transition-colors"
-        >
-          <Heading
-            level={3}
-            className="text-cyan-300 font-semibold mb-1"
-            anchorLink={false}
+        <p>
+          The{" "}
+          <TrackedLink
+            to="/man1"
+            label="Home - Man Page (1)"
+            className="text-cyan-400 hover:text-cyan-300 underline"
           >
-            📖 ascii-chat(1)
-          </Heading>
-          <p className="text-gray-400 text-sm">
-            Complete command-line man(1) page reference
-          </p>
-        </TrackedLink>
+            ascii-chat(1)
+          </TrackedLink>{" "}
+          man page is the complete command-line reference — every flag, mode,
+          and environment variable. The{" "}
+          <TrackedLink
+            to="/man5"
+            label="Home - Man Page (5)"
+            className="text-cyan-400 hover:text-cyan-300 underline"
+          >
+            ascii-chat(5)
+          </TrackedLink>{" "}
+          page covers the configuration file format. Both are the same pages you
+          get from{" "}
+          <code className="text-cyan-300 bg-gray-800 px-1.5 py-0.5 rounded text-xs">
+            man 1 ascii-chat
+          </code>{" "}
+          and{" "}
+          <code className="text-cyan-300 bg-gray-800 px-1.5 py-0.5 rounded text-xs">
+            man 5 ascii-chat
+          </code>{" "}
+          in your terminal.
+        </p>
 
-        <TrackedLink
-          to="/docs/crypto"
-          label="Home - Docs Cryptography"
-          className="bg-gray-900/50 border border-purple-900/50 rounded-lg p-4 hover:border-purple-500/50 transition-colors"
-        >
-          <Heading
-            level={3}
-            className="text-purple-300 font-semibold mb-1"
-            anchorLink={false}
+        <p>
+          For developers working with the source or building against
+          libasciichat, the{" "}
+          <TrackedLink
+            to="/man3"
+            label="Home - Man Page (3)"
+            className="text-cyan-400 hover:text-cyan-300 underline"
           >
-            🔐 Crypto & Security
-          </Heading>
-          <p className="text-gray-400 text-sm">
-            Encryption, keys, authentication, and security flags
-          </p>
-        </TrackedLink>
+            ascii-chat-*(3)
+          </TrackedLink>{" "}
+          pages document every struct, function, and header file in the
+          codebase. These are generated from the source with Doxygen and
+          searchable online. The full{" "}
+          <TrackedLink
+            href="https://zfogg.github.io/ascii-chat/"
+            label="Home - Doxygen"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-cyan-400 hover:text-cyan-300 underline"
+          >
+            Doxygen HTML
+          </TrackedLink>{" "}
+          is also hosted on GitHub Pages.
+        </p>
 
-        <TrackedLink
-          to="/man3"
-          label="Home - Docs Man Page (3)"
-          className="bg-gray-900/50 border border-pink-900/50 rounded-lg p-4 hover:border-pink-500/50 transition-colors"
-        >
-          <Heading
-            level={3}
-            className="text-pink-300 font-semibold mb-1"
-            anchorLink={false}
+        <p>
+          The{" "}
+          <TrackedLink
+            href={SITES.DISCOVERY}
+            label="Home - Discovery Service"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-cyan-400 hover:text-cyan-300 underline"
           >
-            📚 ascii-chat-*(3)
-          </Heading>
-          <p className="text-gray-400 text-sm">
-            Documentation for the source code as man(3) pages
-          </p>
-        </TrackedLink>
-
-        <TrackedLink
-          to="/man1#OPTIONS"
-          label="Home - Man1 OPTIONS"
-          className="bg-gray-900/50 border border-green-900/50 rounded-lg p-4 hover:border-green-500/50 transition-colors"
-        >
-          <Heading
-            level={3}
-            className="text-green-300 font-semibold mb-1"
-            anchorLink={false}
-          >
-            🌍 Command Line --options
-          </Heading>
-          <p className="text-gray-400 text-sm">
-            See man(1) page OPTIONS section
-          </p>
-        </TrackedLink>
-
-        <TrackedLink
-          href={SITES.DISCOVERY}
-          label="Home - Docs ACDS"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="bg-gray-900/50 border border-teal-900/50 rounded-lg p-4 hover:border-teal-500/50 transition-colors"
-        >
-          <Heading
-            level={3}
-            className="text-teal-300 font-semibold mb-1"
-            anchorLink={false}
-          >
-            🔍 Discovery Service
-          </Heading>
-          <p className="text-gray-400 text-sm">ACDS public keys and details</p>
-        </TrackedLink>
+            discovery service
+          </TrackedLink>{" "}
+          has its own page with public keys and connection details.
+        </p>
       </div>
     </section>
   );
