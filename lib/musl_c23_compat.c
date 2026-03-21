@@ -17,124 +17,40 @@
 #include <wchar.h>
 #include <limits.h>
 
-/** @ingroup util
- *  @brief String to integer conversion with manual base-10 parser
- *  @details NOTE: Manual base-10 parser avoids strtoll recursion in musl static builds.
- *           For other bases, fallback to strtoll (less common use case).
- */
+// Declare musl's actual strto* functions using asm labels to bypass glibc's C23
+// header redirect (e.g. strtoul → __isoc23_strtoul), which would cause infinite
+// recursion since this file IS the __isoc23_* implementation.
+extern long         musl_strtol(const char *, char **, int) __asm__("strtol");
+extern long long    musl_strtoll(const char *, char **, int) __asm__("strtoll");
+extern unsigned long musl_strtoul(const char *, char **, int) __asm__("strtoul");
+extern unsigned long long musl_strtoull(const char *, char **, int) __asm__("strtoull");
 
 /**
  * @brief Convert string to long (C23 compatible)
- * @param str String to convert (NULL-safe)
- * @param endptr Pointer to first non-digit character (optional)
- * @param base Numeric base (0-36; 0 auto-detects hex/octal)
- * @return Converted value, or LONG_MAX/LONG_MIN on overflow
  */
 long __isoc23_strtol(const char *str, char **endptr, int base) {
-  if (!str) {
-    if (endptr)
-      *endptr = (char *)str;
-    return 0;
-  }
-
-  /* Manual base-10 parser to avoid infinite recursion in musl where strtoll
-     might redirect back to __isoc23_strtoll */
-  if (base == 10 || base == 0) {
-    const char *p = str;
-    int sign = 1;
-    long result = 0;
-
-    /* Skip leading whitespace */
-    while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r' || *p == '\v' || *p == '\f')
-      p++;
-
-    /* Parse optional sign */
-    if (*p == '-') {
-      sign = -1;
-      p++;
-    } else if (*p == '+') {
-      p++;
-    }
-
-    /* For base-0, detect hex or octal prefix and delegate to strtoll */
-    if (base == 0) {
-      if (*p == '0') {
-        if (p[1] == 'x' || p[1] == 'X') {
-          /* Hex prefix detected - use strtoll for proper parsing */
-          goto use_strtoll;
-        } else if (p[1] >= '0' && p[1] <= '7') {
-          /* Octal prefix detected - use strtoll for proper parsing */
-          goto use_strtoll;
-        }
-      }
-      base = 10; /* Default to decimal */
-    }
-
-    /* Parse decimal digits with overflow detection */
-    int has_digits = 0;
-    while (*p >= '0' && *p <= '9') {
-      has_digits = 1;
-      int digit = *p - '0';
-      /* Prevent overflow: check before multiplication */
-      if (result > (LONG_MAX - digit) / 10) {
-        if (endptr)
-          *endptr = (char *)p;
-        return sign > 0 ? LONG_MAX : LONG_MIN;
-      }
-      result = result * 10 + digit;
-      p++;
-    }
-
-    if (endptr) {
-      *endptr = (char *)(has_digits ? p : str);
-    }
-
-    return sign * result;
-  }
-
-  /* Fallback for non-base-10 parsing */
-use_strtoll: {
-  long long result = strtoll(str, endptr, base);
-  /* Clamp result to long range */
-  if (result > LONG_MAX)
-    return LONG_MAX;
-  if (result < LONG_MIN)
-    return LONG_MIN;
-  return (long)result;
-}
+  return musl_strtol(str, endptr, base);
 }
 
 /**
  * @brief Convert string to long long (C23 compatible)
- * @param str String to convert
- * @param endptr Pointer to first non-digit character (optional)
- * @param base Numeric base (0-36)
- * @return Converted value
  */
 long long __isoc23_strtoll(const char *str, char **endptr, int base) {
-  return strtoll(str, endptr, base);
+  return musl_strtoll(str, endptr, base);
 }
 
 /**
  * @brief Convert string to unsigned long (C23 compatible)
- * @param str String to convert
- * @param endptr Pointer to first non-digit character (optional)
- * @param base Numeric base (0-36)
- * @return Converted value
  */
 unsigned long __isoc23_strtoul(const char *str, char **endptr, int base) {
-  return strtoul(str, endptr, base);
+  return musl_strtoul(str, endptr, base);
 }
 
 /**
  * @brief Convert string to unsigned long long (C23 compatible)
- * @param str String to convert
- * @param endptr Pointer to first non-digit character (optional)
- * @param base Numeric base (0-36)
- * @return Converted value
  */
 unsigned long long __isoc23_strtoull(const char *str, char **endptr, int base) {
-  return strtoull(str, endptr, base);
+  return musl_strtoull(str, endptr, base);
 }
 
 /** @ingroup util
