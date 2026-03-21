@@ -5,6 +5,7 @@ import {
   convertFrameToAscii,
   isWasmReady,
   setDimensions,
+  setFlipX,
 } from "@ascii-chat/shared/wasm";
 import type { EmscriptenModuleFactory } from "@ascii-chat/shared/wasm";
 import { useCanvasCapture } from "@ascii-chat/shared/hooks";
@@ -82,6 +83,7 @@ export default function MiniMirrorDemo() {
         });
       }
 
+      setFlipX(true);
       setSource("webcam");
     } catch (err) {
       setError(
@@ -126,6 +128,7 @@ export default function MiniMirrorDemo() {
         await videoRef.current.play();
       }
 
+      setFlipX(false);
       setSource("demo");
     } catch (err) {
       setError(
