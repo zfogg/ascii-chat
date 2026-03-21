@@ -9,6 +9,10 @@
   header Referrer-Policy "strict-origin-when-cross-origin"
   header Permissions-Policy "camera=(), microphone=(), geolocation=()"
 
+  # COEP/COOP headers for WASM threading support
+  header Cross-Origin-Embedder-Policy "require-corp"
+  header Cross-Origin-Opener-Policy "same-origin"
+
   # API routing from vercel.json routes
   handle /api/* {
     reverse_proxy localhost:3001
@@ -17,6 +21,8 @@
   # Cache static assets with content hashes for 1 year (immutable)
   handle /assets/* {
     header Cache-Control "public, max-age=31536000, immutable"
+    header Cross-Origin-Resource-Policy "cross-origin"
+    header Accept-Ranges "bytes"
     file_server
   }
 
