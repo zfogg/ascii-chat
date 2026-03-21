@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
-import { HeadingProvider, ErrorBoundary } from "@ascii-chat/shared/components";
+import { HeadingProvider } from "@ascii-chat/shared/components";
 import { Navigation } from "./components";
 import Home from "./pages/Home";
 
@@ -20,33 +20,31 @@ const Media = lazy(() => import("./pages/docs/Media"));
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <HeadingProvider>
-        <div className="flex flex-col h-screen overflow-y-auto overflow-x-hidden">
-          <Navigation />
-          <main className="pt-[var(--header-height)] flex flex-col flex-1">
-            <Suspense fallback={null}>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/docs" element={<DocsHub />} />
-                <Route path="/docs/" element={<DocsHub />} />
-                <Route path="/docs/configuration" element={<Configuration />} />
-                <Route path="/docs/hardware" element={<Hardware />} />
-                <Route path="/docs/terminal" element={<Terminal />} />
-                <Route path="/docs/display" element={<Display />} />
-                <Route path="/docs/snapshot" element={<Snapshot />} />
-                <Route path="/docs/network" element={<Network />} />
-                <Route path="/docs/media" element={<Media />} />
-                <Route path="/docs/crypto" element={<Crypto />} />
-                <Route path="/man1" element={<Man1 />} />
-                <Route path="/man5" element={<Man5 />} />
-                <Route path="/man3" element={<Man3 />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </main>
-        </div>
-      </HeadingProvider>
-    </ErrorBoundary>
+    <HeadingProvider>
+      <div className="flex flex-col h-screen overflow-y-auto overflow-x-hidden">
+        <Navigation />
+        <main className="pt-[var(--header-height)] flex flex-col flex-1">
+          <Suspense fallback={null}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/docs" element={<DocsHub />} />
+              <Route path="/docs/" element={<DocsHub />} />
+              <Route path="/docs/configuration" element={<Configuration />} />
+              <Route path="/docs/hardware" element={<Hardware />} />
+              <Route path="/docs/terminal" element={<Terminal />} />
+              <Route path="/docs/display" element={<Display />} />
+              <Route path="/docs/snapshot" element={<Snapshot />} />
+              <Route path="/docs/network" element={<Network />} />
+              <Route path="/docs/media" element={<Media />} />
+              <Route path="/docs/crypto" element={<Crypto />} />
+              <Route path="/man1" element={<Man1 />} />
+              <Route path="/man5" element={<Man5 />} />
+              <Route path="/man3" element={<Man3 />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </main>
+      </div>
+    </HeadingProvider>
   );
 }

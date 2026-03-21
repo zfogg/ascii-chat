@@ -2,7 +2,7 @@
 # Caddy serves all three apps by subdomain
 
 # Development/local: localhost subdomains without HTTPS
-http://localhost http://www.localhost http://discovery.localhost http://web.localhost {
+http://localhost http://www.localhost http://discovery.localhost http://web.localhost http://100.104.17.128 http://manjaro-twopal {
   # www.localhost and localhost -> www app
   @wwwlocal {
     host localhost www.localhost
