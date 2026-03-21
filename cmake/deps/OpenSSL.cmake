@@ -68,7 +68,7 @@ if(PLATFORM_IOS)
                 export CC=clang
                 export CFLAGS='-arch arm64 -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=16.0 -fPIC'
                 export LDFLAGS='-arch arm64 -isysroot ${IOS_SDK_PATH} -fPIC'
-                '${OPENSSL_SOURCE_DIR}/Configure' darwin64-arm64-cc --prefix=${OPENSSL_PREFIX} no-shared no-tests < /dev/null
+                '${OPENSSL_SOURCE_DIR}/Configure' darwin64-arm64-cc --prefix=${OPENSSL_PREFIX} --libdir=lib no-shared no-tests < /dev/null
             "
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
             TIMEOUT 60
@@ -156,17 +156,14 @@ if(USE_MUSL)
     # Detect target architecture for OpenSSL Configure
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
         set(OPENSSL_TARGET "linux-aarch64")
-        set(OPENSSL_LIBDIR "lib64")  # 64-bit
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
         set(OPENSSL_TARGET "linux-x86_64")
-        set(OPENSSL_LIBDIR "lib64")  # 64-bit
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "i386|i686")
         set(OPENSSL_TARGET "linux-x86")
-        set(OPENSSL_LIBDIR "lib")    # 32-bit
     else()
         set(OPENSSL_TARGET "linux-generic64")
-        set(OPENSSL_LIBDIR "lib64")  # Default to 64-bit
     endif()
+    set(OPENSSL_LIBDIR "lib")
 
     # Build OpenSSL synchronously at configure time if not cached
     if(NOT EXISTS "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a" OR NOT EXISTS "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto.a")
@@ -219,6 +216,7 @@ if(USE_MUSL)
                 "${OPENSSL_SOURCE_DIR}/Configure"
                 ${OPENSSL_TARGET}
                 --prefix=${OPENSSL_PREFIX}
+                --libdir=lib
                 no-shared
                 no-tests
                 no-ui-console
@@ -333,21 +331,18 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
         else()
             set(OPENSSL_TARGET "darwin64-x86_64-cc")
         endif()
-        set(OPENSSL_LIBDIR "lib")
         set(OPENSSL_NO_ASM ON)
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
         set(OPENSSL_TARGET "linux-aarch64")
-        set(OPENSSL_LIBDIR "lib64")  # 64-bit
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
         set(OPENSSL_TARGET "linux-x86_64")
-        set(OPENSSL_LIBDIR "lib64")  # 64-bit
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "i386|i686")
         set(OPENSSL_TARGET "linux-x86")
-        set(OPENSSL_LIBDIR "lib")    # 32-bit
     else()
         set(OPENSSL_TARGET "linux-generic64")
-        set(OPENSSL_LIBDIR "lib64")  # Default to 64-bit
     endif()
+    set(OPENSSL_LIBDIR "lib")
+
     set(OPENSSL_CONFIG_SIGNATURE "target=${OPENSSL_TARGET};no_asm=${OPENSSL_NO_ASM};shared=${OPENSSL_BUILD_SHARED};version=${OPENSSL_VERSION}")
 
     if(OPENSSL_BUILD_SHARED)
@@ -417,6 +412,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
         set(OPENSSL_CONFIGURE_ARGS
             ${OPENSSL_TARGET}
             --prefix=${OPENSSL_PREFIX}
+            --libdir=lib
             no-tests
             -fPIC
         )
