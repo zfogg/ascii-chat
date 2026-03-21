@@ -188,6 +188,9 @@ void quantize_color(int *r, int *g, int *b, int levels) {
  * @note Exits with ERROR_BUFFER if buffer overflow is detected
  *       during string construction (should never happen with correct calculation).
  */
+// Legacy truecolor foreground renderer using RLE optimization.
+// Only supports single-byte ASCII palette characters. For multi-byte UTF-8
+// palettes (blocks, digital, cool), use image_print_color_utf8 instead.
 char *image_print_color(const image_t *p, const char *palette) {
   if (!p || !palette) {
     SET_ERRNO(ERROR_INVALID_PARAM, "p=%p or palette=%p is NULL", p, palette);
