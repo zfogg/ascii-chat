@@ -54,8 +54,7 @@ export default defineConfig({
     // API proxy: /api requests route to localhost:3001 (via API_PORT env var)
     port: 3000,
     headers: {
-      "Cross-Origin-Embedder-Policy": "require-corp",
-      "Cross-Origin-Opener-Policy": "same-origin",
+      // COEP/COOP headers removed - they cause video playback issues
       "Access-Control-Allow-Origin": "*",
       "Cross-Origin-Resource-Policy": "cross-origin",
     },
