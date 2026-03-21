@@ -167,16 +167,21 @@ if(USE_MUSL)
     # so FFmpeg's pkg-config link test can resolve C++ symbols. Clear
     # Libs.private to avoid musl-gcc trying to find -lc++ by name.
     # Note: ALPINE_LIBCXX_DIR is function-scoped in Musl.cmake, so derive it here.
+    # x265 built with clang -stdlib=libc++ needs libc++/libc++abi/libunwind
+    # at link time. Rewrite x265.pc every configure to ensure correct paths
+    # (CI caches may have stale paths or missing libraries).
     set(_alpine_libcxx_dir "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libcxx")
     set(_x265_pc "${X265_PREFIX}/lib/pkgconfig/x265.pc")
     if(EXISTS "${_x265_pc}" AND EXISTS "${_alpine_libcxx_dir}/usr/lib/libc++.a")
-        file(READ "${_x265_pc}" _x265_pc_contents)
-        string(FIND "${_x265_pc_contents}" "libc++.a" _already_patched)
-        if(_already_patched EQUAL -1)
-            string(REGEX REPLACE "Libs:([^\n]*)" "Libs:\\1 ${_alpine_libcxx_dir}/usr/lib/libc++.a ${_alpine_libcxx_dir}/usr/lib/libc++abi.a" _x265_pc_contents "${_x265_pc_contents}")
+        set(_x265_pc_libs "-L\${libdir} -lx265 ${_alpine_libcxx_dir}/usr/lib/libc++.a ${_alpine_libcxx_dir}/usr/lib/libc++abi.a")
+        if(EXISTS "${_alpine_libcxx_dir}/usr/lib/libunwind.a")
+            set(_x265_pc_libs "${_x265_pc_libs} ${_alpine_libcxx_dir}/usr/lib/libunwind.a")
         endif()
+        file(READ "${_x265_pc}" _x265_pc_contents)
+        string(REGEX REPLACE "Libs:[^\n]*" "Libs: ${_x265_pc_libs}" _x265_pc_contents "${_x265_pc_contents}")
         string(REGEX REPLACE "Libs\\.private:[^\n]*" "Libs.private:" _x265_pc_contents "${_x265_pc_contents}")
         file(WRITE "${_x265_pc}" "${_x265_pc_contents}")
+        message(STATUS "  Patched x265.pc with alpine libc++ link flags")
     endif()
 
     set(X265_LIBRARIES "${X265_PREFIX}/lib/libx265.a")
