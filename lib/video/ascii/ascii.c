@@ -987,7 +987,9 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
 #ifdef SIMD_SUPPORT
     return image_print_color_simd((image_t *)image, use_background, false, palette);
 #else
-    (void)use_background;
+    if (use_background) {
+      return image_print_color_background(image, palette);
+    }
     return image_print_color(image, palette);
 #endif
   }
