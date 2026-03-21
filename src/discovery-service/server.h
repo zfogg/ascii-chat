@@ -75,6 +75,9 @@ typedef struct {
   // Transport abstraction
   acip_transport_t *transport; ///< Persistent transport for this client connection
   int registry_id;             ///< Socket or synthetic ID used in tcp_server registry
+
+  // Protocol state
+  bool session_established;    ///< True after SESSION_CREATE/SESSION_JOIN completes; handler exits loop
 } acds_client_data_t;
 
 /**

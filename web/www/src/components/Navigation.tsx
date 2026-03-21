@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
 import { SITES } from "@ascii-chat/shared/utils";
+import { useSafeLocation } from "../hooks/useSafeLocation";
 import TrackedLink from "./TrackedLink";
 
 export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const location = useLocation();
+  const location = useSafeLocation();
 
   const isActive = (path: string): boolean => location.pathname === path;
 

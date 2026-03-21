@@ -44,7 +44,10 @@
   <br/>
   <b>asciichat_error_t</b> <b>error</b>
   <br/>
-  <b>uint8_t</b> <b>session_id</b> [16]
+  <b>uint64_t</b> <b>waiting_peer_start_ns</b>
+  <br/>
+  Timestamp when entered WAITING_PEER state (for timeout). <b>uint8_t</b>
+    <b>session_id</b> [16]
   <br/>
   <b>uint8_t</b> <b>participant_id</b> [16]
   <br/>
@@ -56,7 +59,10 @@
   <br/>
   <b>bool</b> <b>is_host</b>
   <br/>
-  <b>uint8_t</b> <b>identity_pubkey</b> [32]
+  <b>bool</b> <b>host_elected</b>
+  <br/>
+  True if we've been elected as host (even if waiting for peer). <b>uint8_t</b>
+    <b>identity_pubkey</b> [32]
   <br/>
   Ed25519 public key for this participant (primary key). <b>uint8_t</b>
     <b>identity_seckey</b> [64]
@@ -158,20 +164,20 @@
 <section class="Ss">
 <h2 class="Ss" id="char_discovery_session_t::acds_address_64_"><a class="permalink" href="#char_discovery_session_t::acds_address_64_">char
   discovery_session_t::acds_address[64]</a></h2>
-<p class="Pp">Definition at line <b>160</b> of file
+<p class="Pp">Definition at line <b>162</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> discovery_session_t::acds_port</h2>
-<p class="Pp">Definition at line <b>161</b> of file
+<p class="Pp">Definition at line <b>163</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>socket_t</b> discovery_session_t::acds_socket</h2>
 <p class="Pp">Raw socket (owned by transport after creation).</p>
-<p class="Pp">Definition at line <b>159</b> of file
+<p class="Pp">Definition at line <b>161</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>,
     <b>discovery_session_destroy()</b>, and
@@ -180,7 +186,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>acip_transport_t</b>* discovery_session_t::acds_transport</h2>
 <p class="Pp">Persistent transport for ACDS communication.</p>
-<p class="Pp">Definition at line <b>158</b> of file
+<p class="Pp">Definition at line <b>160</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_become_host()</b>,
     <b>discovery_session_create()</b>, <b>discovery_session_destroy()</b>,
@@ -193,14 +199,14 @@
   discovery_session_t::acds_url[512]</a></h2>
 <p class="Pp">ACDS WebSocket URL (ws:// or wss://, if set uses WebSocket instead
     of TCP).</p>
-<p class="Pp">Definition at line <b>162</b> of file
+<p class="Pp">Definition at line <b>164</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void*_discovery_session_t::callback_user_data"><a class="permalink" href="#void*_discovery_session_t::callback_user_data">void*
   discovery_session_t::callback_user_data</a></h2>
-<p class="Pp">Definition at line <b>209</b> of file
+<p class="Pp">Definition at line <b>211</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>, and
     <b>discovery_session_process()</b>.</p>
@@ -214,7 +220,7 @@
 <section class="Ss">
 <h2 class="Ss" id="void*_discovery_session_t::exit_callback_data"><a class="permalink" href="#void*_discovery_session_t::exit_callback_data">void*
   discovery_session_t::exit_callback_data</a></h2>
-<p class="Pp">Definition at line <b>213</b> of file
+<p class="Pp">Definition at line <b>215</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>, and
     <b>discovery_session_start()</b>.</p>
@@ -222,14 +228,14 @@
 <section class="Ss">
 <h2 class="Ss" id="char_discovery_session_t::host_address_64_"><a class="permalink" href="#char_discovery_session_t::host_address_64_">char
   discovery_session_t::host_address[64]</a></h2>
-<p class="Pp">Definition at line <b>166</b> of file
+<p class="Pp">Definition at line <b>168</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_connect_to_future_host()</b>,
     and <b>discovery_session_process()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>session_host_t</b>* discovery_session_t::host_ctx</h2>
-<p class="Pp">Definition at line <b>202</b> of file
+<p class="Pp">Definition at line <b>204</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_become_host()</b>,
     <b>discovery_session_create()</b>, <b>discovery_session_destroy()</b>,
@@ -237,8 +243,15 @@
   <b>discovery_session_process()</b>.</p>
 </section>
 <section class="Ss">
+<h2 class="Ss"><b>bool</b> discovery_session_t::host_elected</h2>
+<p class="Pp">True if we've been elected as host (even if waiting for peer).</p>
+<p class="Pp">Definition at line <b>149</b> of file
+    <b>src/discovery/session.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_process()</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> discovery_session_t::host_id[16]</h2>
-<p class="Pp">Definition at line <b>165</b> of file
+<p class="Pp">Definition at line <b>167</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_connect_to_future_host()</b>,
     <b>discovery_session_handle_host_disconnect()</b>, and
@@ -246,7 +259,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> discovery_session_t::host_port</h2>
-<p class="Pp">Definition at line <b>167</b> of file
+<p class="Pp">Definition at line <b>169</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_connect_to_future_host()</b>,
     and <b>discovery_session_process()</b>.</p>
@@ -254,7 +267,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> discovery_session_t::identity_pubkey[32]</h2>
 <p class="Pp">Ed25519 public key for this participant (primary key).</p>
-<p class="Pp">Definition at line <b>150</b> of file
+<p class="Pp">Definition at line <b>152</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>, and
     <b>discovery_session_start()</b>.</p>
@@ -263,26 +276,26 @@
 <h2 class="Ss"><b>uint8_t</b>
   discovery_session_t::identity_pubkeys[<b>MAX_IDENTITY_KEYS</b>][32]</h2>
 <p class="Pp">All public keys for multi-key protocol.</p>
-<p class="Pp">Definition at line <b>154</b> of file
+<p class="Pp">Definition at line <b>156</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> discovery_session_t::identity_seckey[64]</h2>
 <p class="Pp">Ed25519 secret key for signing (primary key).</p>
-<p class="Pp">Definition at line <b>151</b> of file
+<p class="Pp">Definition at line <b>153</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>, and
     <b>discovery_session_start()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> discovery_session_t::initiator_id[16]</h2>
-<p class="Pp">Definition at line <b>144</b> of file
+<p class="Pp">Definition at line <b>145</b> of file
     <b>src/discovery/session.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> discovery_session_t::is_host</h2>
-<p class="Pp">Definition at line <b>147</b> of file
+<p class="Pp">Definition at line <b>148</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_become_host()</b>,
     <b>discovery_session_check_host_alive()</b>,
@@ -291,7 +304,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> discovery_session_t::is_initiator</h2>
-<p class="Pp">Definition at line <b>146</b> of file
+<p class="Pp">Definition at line <b>147</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>,
     <b>discovery_session_process()</b>, and
@@ -299,14 +312,14 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>host_liveness_t</b> discovery_session_t::liveness</h2>
-<p class="Pp">Definition at line <b>181</b> of file
+<p class="Pp">Definition at line <b>183</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_check_host_alive()</b>, and
     <b>discovery_session_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>migration_ctx_t</b> discovery_session_t::migration</h2>
-<p class="Pp">Definition at line <b>184</b> of file
+<p class="Pp">Definition at line <b>186</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_become_host()</b>,
     <b>discovery_session_check_host_alive()</b>,
@@ -316,7 +329,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>negotiate_ctx_t</b> discovery_session_t::negotiate</h2>
-<p class="Pp">Definition at line <b>175</b> of file
+<p class="Pp">Definition at line <b>177</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_process()</b>.</p>
 </section>
@@ -324,7 +337,7 @@
 <h2 class="Ss" id="size_t_discovery_session_t::num_identity_keys"><a class="permalink" href="#size_t_discovery_session_t::num_identity_keys">size_t
   discovery_session_t::num_identity_keys</a></h2>
 <p class="Pp">Number of identity keys loaded.</p>
-<p class="Pp">Definition at line <b>155</b> of file
+<p class="Pp">Definition at line <b>157</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
 </section>
@@ -332,7 +345,7 @@
 <h2 class="Ss" id="void(*_discovery_session_t::on_error)_("><a class="permalink" href="#void(*_discovery_session_t::on_error)_(">void(*
   discovery_session_t::on_error) (<b>asciichat_error_t</b> <b>error</b>, const
   char *message, void *user_data)</a></h2>
-<p class="Pp">Definition at line <b>208</b> of file
+<p class="Pp">Definition at line <b>210</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
 </section>
@@ -340,7 +353,7 @@
 <h2 class="Ss" id="void(*_discovery_session_t::on_session_ready)_(const_char_*"><a class="permalink" href="#void(*_discovery_session_t::on_session_ready)_(const_char_*">void(*
   discovery_session_t::on_session_ready) (const char *<b>session_string</b>,
   void *user_data)</a></h2>
-<p class="Pp">Definition at line <b>207</b> of file
+<p class="Pp">Definition at line <b>209</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>, and
     <b>discovery_session_process()</b>.</p>
@@ -349,14 +362,14 @@
 <h2 class="Ss" id="void(*_discovery_session_t::on_state_change)_("><a class="permalink" href="#void(*_discovery_session_t::on_state_change)_(">void(*
   discovery_session_t::on_state_change) (<b>discovery_state_t</b> new_state,
   void *user_data)</a></h2>
-<p class="Pp">Definition at line <b>206</b> of file
+<p class="Pp">Definition at line <b>208</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>session_participant_t</b>*
   discovery_session_t::participant_ctx</h2>
-<p class="Pp">Definition at line <b>203</b> of file
+<p class="Pp">Definition at line <b>205</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_check_host_alive()</b>,
     <b>discovery_session_connect_to_future_host()</b>,
@@ -367,7 +380,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> discovery_session_t::participant_id[16]</h2>
-<p class="Pp">Definition at line <b>143</b> of file
+<p class="Pp">Definition at line <b>144</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_become_host()</b>,
     <b>discovery_session_handle_host_disconnect()</b>,
@@ -377,7 +390,7 @@
 <h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
   <b>webrtc_peer_manager</b>* discovery_session_t::peer_manager</a></h2>
 <p class="Pp">WebRTC peer connection manager (NULL for TCP sessions).</p>
-<p class="Pp">Definition at line <b>187</b> of file
+<p class="Pp">Definition at line <b>189</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>,
     <b>discovery_session_destroy()</b>, and
@@ -385,7 +398,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>ring_consensus_t</b> discovery_session_t::ring</h2>
-<p class="Pp">Definition at line <b>178</b> of file
+<p class="Pp">Definition at line <b>180</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_connect_to_future_host()</b>,
     <b>discovery_session_get_future_host()</b>,
@@ -396,7 +409,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> discovery_session_t::session_id[16]</h2>
-<p class="Pp">Definition at line <b>142</b> of file
+<p class="Pp">Definition at line <b>143</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_become_host()</b>,
     <b>discovery_session_handle_host_disconnect()</b>,
@@ -405,7 +418,7 @@
 <section class="Ss">
 <h2 class="Ss" id="char_discovery_session_t::session_string_"><a class="permalink" href="#char_discovery_session_t::session_string_">char
   discovery_session_t::session_string[<b>SESSION_STRING_BUFFER_SIZE</b>]</a></h2>
-<p class="Pp">Definition at line <b>145</b> of file
+<p class="Pp">Definition at line <b>146</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>,
     <b>discovery_session_get_string()</b>, <b>discovery_session_process()</b>,
@@ -414,7 +427,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> discovery_session_t::session_type</h2>
 <p class="Pp">0 = DIRECT_TCP, 1 = WEBRTC</p>
-<p class="Pp">Definition at line <b>168</b> of file
+<p class="Pp">Definition at line <b>170</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_check_host_alive()</b>, and
     <b>discovery_session_process()</b>.</p>
@@ -422,7 +435,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>discovery_should_exit_fn</b>
   discovery_session_t::should_exit_callback</h2>
-<p class="Pp">Definition at line <b>212</b> of file
+<p class="Pp">Definition at line <b>214</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>, and
     <b>discovery_session_start()</b>.</p>
@@ -440,7 +453,7 @@
 <h2 class="Ss" id="size_t_discovery_session_t::stun_count"><a class="permalink" href="#size_t_discovery_session_t::stun_count">size_t
   discovery_session_t::stun_count</a></h2>
 <p class="Pp">Number of STUN servers.</p>
-<p class="Pp">Definition at line <b>197</b> of file
+<p class="Pp">Definition at line <b>199</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>, and
     <b>discovery_session_destroy()</b>.</p>
@@ -448,7 +461,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>stun_server_t</b>* discovery_session_t::stun_servers</h2>
 <p class="Pp">STUN servers from ACDS.</p>
-<p class="Pp">Definition at line <b>196</b> of file
+<p class="Pp">Definition at line <b>198</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>, and
     <b>discovery_session_destroy()</b>.</p>
@@ -457,7 +470,7 @@
 <h2 class="Ss" id="size_t_discovery_session_t::turn_count"><a class="permalink" href="#size_t_discovery_session_t::turn_count">size_t
   discovery_session_t::turn_count</a></h2>
 <p class="Pp">Number of TURN servers.</p>
-<p class="Pp">Definition at line <b>199</b> of file
+<p class="Pp">Definition at line <b>201</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>, and
     <b>discovery_session_destroy()</b>.</p>
@@ -465,13 +478,13 @@
 <section class="Ss">
 <h2 class="Ss" id="char_discovery_session_t::turn_password_128_"><a class="permalink" href="#char_discovery_session_t::turn_password_128_">char
   discovery_session_t::turn_password[128]</a></h2>
-<p class="Pp">Definition at line <b>172</b> of file
+<p class="Pp">Definition at line <b>174</b> of file
     <b>src/discovery/session.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>turn_server_t</b>* discovery_session_t::turn_servers</h2>
 <p class="Pp">TURN servers from ACDS.</p>
-<p class="Pp">Definition at line <b>198</b> of file
+<p class="Pp">Definition at line <b>200</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>, and
     <b>discovery_session_destroy()</b>.</p>
@@ -479,13 +492,20 @@
 <section class="Ss">
 <h2 class="Ss" id="char_discovery_session_t::turn_username_128_"><a class="permalink" href="#char_discovery_session_t::turn_username_128_">char
   discovery_session_t::turn_username[128]</a></h2>
-<p class="Pp">Definition at line <b>171</b> of file
+<p class="Pp">Definition at line <b>173</b> of file
     <b>src/discovery/session.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> discovery_session_t::waiting_peer_start_ns</h2>
+<p class="Pp">Timestamp when entered WAITING_PEER state (for timeout).</p>
+<p class="Pp">Definition at line <b>140</b> of file
+    <b>src/discovery/session.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_process()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> discovery_session_t::webrtc_connection_initiated</h2>
 <p class="Pp">True when we've called <b>webrtc_peer_manager_connect()</b>.</p>
-<p class="Pp">Definition at line <b>189</b> of file
+<p class="Pp">Definition at line <b>191</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>, and
     <b>discovery_session_process()</b>.</p>
@@ -494,7 +514,7 @@
 <h2 class="Ss"><b>uint64_t</b>
   discovery_session_t::webrtc_last_attempt_time_ms</h2>
 <p class="Pp">Timestamp of last connection attempt (monotonic time).</p>
-<p class="Pp">Definition at line <b>191</b> of file
+<p class="Pp">Definition at line <b>193</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>, and
     <b>discovery_session_process()</b>.</p>
@@ -503,7 +523,7 @@
 <h2 class="Ss" id="int_discovery_session_t::webrtc_retry_attempt"><a class="permalink" href="#int_discovery_session_t::webrtc_retry_attempt">int
   discovery_session_t::webrtc_retry_attempt</a></h2>
 <p class="Pp">Current retry attempt number (0 = initial, 1+ = retries).</p>
-<p class="Pp">Definition at line <b>190</b> of file
+<p class="Pp">Definition at line <b>192</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>, and
     <b>discovery_session_process()</b>.</p>
@@ -511,7 +531,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> discovery_session_t::webrtc_transport_ready</h2>
 <p class="Pp">True when DataChannel is open and transport created.</p>
-<p class="Pp">Definition at line <b>188</b> of file
+<p class="Pp">Definition at line <b>190</b> of file
     <b>src/discovery/session.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_check_host_alive()</b>,
     <b>discovery_session_create()</b>, and

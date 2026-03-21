@@ -137,6 +137,7 @@ typedef struct {
   // State
   discovery_state_t state;
   asciichat_error_t error;
+  uint64_t waiting_peer_start_ns; ///< Timestamp when entered WAITING_PEER state (for timeout)
 
   // Session info
   uint8_t session_id[16];
@@ -145,6 +146,7 @@ typedef struct {
   char session_string[SESSION_STRING_BUFFER_SIZE];
   bool is_initiator;
   bool is_host;
+  bool host_elected;  ///< True if we've been elected as host (even if waiting for peer)
 
   // Identity keys (Ed25519) - Multi-key support
   uint8_t identity_pubkey[32]; ///< Ed25519 public key for this participant (primary key)
@@ -173,6 +175,10 @@ typedef struct {
 
   // Negotiation (initial host negotiation)
   negotiate_ctx_t negotiate;
+
+  // Cached NAT quality (gathered once, reused for NETWORK_QUALITY packets)
+  nat_quality_t cached_nat_quality;
+  bool nat_quality_cached;
 
   // Ring Consensus (NEW P2P design)
   ring_consensus_t ring;

@@ -66,6 +66,10 @@ typedef struct {
   /** @brief Called when participant reports host has disconnected (discovery mode) */
   void (*on_host_lost)(const acip_host_lost_t *host_lost, acip_transport_t *transport, const char *client_ip, void *app_ctx);
 
+  /** @brief Called when client sends NAT network quality for negotiation (discovery mode) */
+  void (*on_network_quality)(const void *payload, size_t payload_len, acip_transport_t *transport, const char *client_ip,
+                             void *app_ctx);
+
   /** @brief Application context (passed to all callbacks) */
   void *app_ctx;
 } acip_acds_callbacks_t;

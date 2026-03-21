@@ -21,8 +21,8 @@ const Media = lazy(() => import("./pages/docs/Media"));
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <BrowserRouter>
+    <BrowserRouter>
+      <ErrorBoundary>
         <HelmetProvider>
           <HeadingProvider>
             <div className="flex flex-col h-screen overflow-y-auto overflow-x-hidden">
@@ -54,7 +54,7 @@ export default function App() {
             </div>
           </HeadingProvider>
         </HelmetProvider>
-      </BrowserRouter>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </BrowserRouter>
   );
 }

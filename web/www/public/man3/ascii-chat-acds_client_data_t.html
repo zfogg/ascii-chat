@@ -68,7 +68,10 @@
   <br/>
   Persistent transport for this client connection. int <b>registry_id</b>
   <br/>
-  Socket or synthetic ID used in <b>tcp_server</b> registry.
+  Socket or synthetic ID used in <b>tcp_server</b> registry. <b>bool</b>
+    <b>session_established</b>
+  <br/>
+  True after SESSION_CREATE/SESSION_JOIN completes; handler exits loop.
   <br/>
 </p>
 </section>
@@ -175,6 +178,13 @@
     <b>src/discovery-service/server.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>, and
     <b>acds_websocket_client_handler()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> acds_client_data_t::session_established</h2>
+<p class="Pp">True after SESSION_CREATE/SESSION_JOIN completes; handler exits
+    loop.</p>
+<p class="Pp">Definition at line <b>80</b> of file
+    <b>src/discovery-service/server.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> acds_client_data_t::session_id[16]</h2>

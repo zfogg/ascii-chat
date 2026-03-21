@@ -78,6 +78,8 @@ static asciichat_error_t handle_acds_host_announcement(const void *payload, size
                                                        const char *client_ip, const acip_acds_callbacks_t *callbacks);
 static asciichat_error_t handle_acds_host_lost(const void *payload, size_t payload_len, acip_transport_t *transport,
                                                const char *client_ip, const acip_acds_callbacks_t *callbacks);
+static asciichat_error_t handle_acds_network_quality(const void *payload, size_t payload_len, acip_transport_t *transport,
+                                                     const char *client_ip, const acip_acds_callbacks_t *callbacks);
 
 // ACDS handler dispatch table
 static const acip_acds_handler_func_t g_acds_handlers[ACDS_HANDLER_COUNT] = {
@@ -91,6 +93,7 @@ static const acip_acds_handler_func_t g_acds_handlers[ACDS_HANDLER_COUNT] = {
     handle_acds_webrtc_ice,        // 7
     handle_acds_host_announcement, // 8
     handle_acds_host_lost,         // 9
+    handle_acds_network_quality,   // 10
 };
 
 // ACDS packet type -> handler index hash table
@@ -106,6 +109,7 @@ static const acds_hash_entry_t g_acds_handler_hash[ACDS_HASH_SIZE] = {
     [22] = {PACKET_TYPE_ACIP_SESSION_LEAVE,     5},   // hash(6006)=22
     [25] = {PACKET_TYPE_ACIP_WEBRTC_SDP,        6},   // hash(6009)=25
     [26] = {PACKET_TYPE_ACIP_WEBRTC_ICE,        7},   // hash(6010)=26
+    [28] = {PACKET_TYPE_ACIP_NETWORK_QUALITY,   10},  // hash(6060)=28
 };
 // clang-format on
 
@@ -120,10 +124,18 @@ asciichat_error_t acip_handle_acds_packet(acip_transport_t *transport, packet_ty
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid callbacks");
   }
 
+  if (type == PACKET_TYPE_ACIP_NETWORK_QUALITY) {
+    log_info("★ ACIP_HANDLE_ACDS_PACKET: Dispatching type=%u (NETWORK_QUALITY) from %s, payload_len=%zu", type, client_ip, payload_len);
+  }
+
   // O(1) dispatch via hash table lookup
   int idx = acds_handler_hash_lookup(g_acds_handler_hash, type);
   if (idx < 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unhandled ACDS packet type: %d from %s", type, client_ip);
+  }
+
+  if (type == PACKET_TYPE_ACIP_NETWORK_QUALITY) {
+    log_info("★ ACIP_HANDLE_ACDS_PACKET: Found handler at index=%d", idx);
   }
 
   return g_acds_handlers[idx](payload, payload_len, transport, client_ip, callbacks);
@@ -315,5 +327,19 @@ static asciichat_error_t handle_acds_host_lost(const void *payload, size_t paylo
 
   const acip_host_lost_t *host_lost = (const acip_host_lost_t *)payload;
   callbacks->on_host_lost(host_lost, transport, client_ip, callbacks->app_ctx);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t handle_acds_network_quality(const void *payload, size_t payload_len, acip_transport_t *transport,
+                                                     const char *client_ip, const acip_acds_callbacks_t *callbacks) {
+  if (!callbacks->on_network_quality) {
+    return ASCIICHAT_OK;
+  }
+
+  if (payload_len < sizeof(acip_nat_quality_t)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NETWORK_QUALITY payload too small from %s", client_ip);
+  }
+
+  callbacks->on_network_quality(payload, payload_len, transport, client_ip, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }

@@ -10,7 +10,7 @@ PROTO="tcp"  # Default protocol
 export ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK='1'
 export ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'
 
-SNAPSHOT_DELAY=3.5
+SNAPSHOT_DELAY=15  # Increased from 3.5 to allow joiner startup and connection (joiner joins at ~12s after initiator starts)
 
 ACDS_PORT=$(((RANDOM % 6000) + 2000))
 ACDS_WS_PORT=$(((RANDOM % 6000) + 2000))

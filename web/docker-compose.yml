@@ -12,7 +12,7 @@ services:
     image: zfogg/ascii-chat-web:latest
     container_name: ascii-chat-web
     ports:
-      - "8088:80"
+      - "5173:80"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/"]
       interval: 30s

@@ -229,6 +229,11 @@ static void set_state(discovery_session_t *session, discovery_state_t new_state)
   discovery_state_t old_state = session->state;
   session->state = new_state;
 
+  // Initialize timing for WAITING_PEER state (to timeout if peer doesn't join)
+  if (new_state == DISCOVERY_STATE_WAITING_PEER) {
+    session->waiting_peer_start_ns = time_get_ns();
+  }
+
   log_debug("Discovery state: %d -> %d", old_state, new_state);
 
   if (session->on_state_change) {
@@ -310,27 +315,37 @@ static asciichat_error_t send_network_quality_to_acds(discovery_session_t *sessi
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session or ACDS transport");
   }
 
-  // Gather our NAT quality
+  // Use cached NAT quality if available, otherwise gather and cache it
   nat_quality_t our_quality;
-  asciichat_error_t result = gather_nat_quality(&our_quality);
-  if (result != ASCIICHAT_OK) {
-    log_warn("Failed to gather NAT quality: %d", result);
-    return result;
+  if (!session->nat_quality_cached) {
+    log_debug("★ GATHERING_NAT_QUALITY (first time)");
+    asciichat_error_t result = gather_nat_quality(&our_quality);
+    if (result != ASCIICHAT_OK) {
+      log_warn("Failed to gather NAT quality: %d", result);
+      return result;
+    }
+    // Cache the result
+    memcpy(&session->cached_nat_quality, &our_quality, sizeof(nat_quality_t));
+    session->nat_quality_cached = true;
+  } else {
+    log_debug("★ USING_CACHED_NAT_QUALITY");
+    memcpy(&our_quality, &session->cached_nat_quality, sizeof(nat_quality_t));
   }
 
   // Convert to wire format
   acip_nat_quality_t wire_quality;
   nat_quality_to_acip(&our_quality, session->session_id, session->participant_id, &wire_quality);
 
+  log_info("★ SEND_NETWORK_QUALITY: About to send type=%u, size=%zu", PACKET_TYPE_ACIP_NETWORK_QUALITY, sizeof(wire_quality));
   // Send via ACDS
   asciichat_error_t send_result = packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_NETWORK_QUALITY,
                                                             &wire_quality, sizeof(wire_quality), 0);
 
   if (send_result == ASCIICHAT_OK) {
-    log_debug("Sent NETWORK_QUALITY to ACDS (NAT tier: %d, upload: %u Kbps)", nat_compute_tier(&our_quality),
-              our_quality.upload_kbps);
+    log_info("★ SEND_NETWORK_QUALITY_SUCCESS: Sent to ACDS (NAT tier: %d, upload: %u Kbps)", nat_compute_tier(&our_quality),
+             our_quality.upload_kbps);
   } else {
-    log_error("Failed to send NETWORK_QUALITY: %d", send_result);
+    log_error("★ SEND_NETWORK_QUALITY_FAILED: Failed with error %d", send_result);
   }
 
   return send_result;
@@ -350,6 +365,7 @@ static asciichat_error_t receive_network_quality_from_acds(discovery_session_t *
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid session or ACDS transport");
   }
 
+  log_info("★ RECEIVE_NETWORK_QUALITY: waiting for packet from ACDS...");
   // Receive packet
   packet_type_t ptype;
   void *data = NULL;
@@ -358,13 +374,16 @@ static asciichat_error_t receive_network_quality_from_acds(discovery_session_t *
   asciichat_error_t result = packet_receive_via_transport(session->acds_transport, &ptype, &data, &len, &alloc_buffer);
 
   if (result != ASCIICHAT_OK) {
+    log_error("★ RECEIVE_NETWORK_QUALITY_FAILED: packet_receive_via_transport returned %d: %s", result,
+              asciichat_error_string(result));
     buffer_pool_free(NULL, alloc_buffer, 0);
     return result;
   }
 
+  log_info("★ RECEIVE_NETWORK_QUALITY_GOT_PACKET: type=%u, len=%zu", ptype, len);
   // Check if it's a NETWORK_QUALITY packet
   if (ptype != PACKET_TYPE_ACIP_NETWORK_QUALITY) {
-    log_debug("Received packet type %u (expected NETWORK_QUALITY)", ptype);
+    log_warn("★ RECEIVE_NETWORK_QUALITY_WRONG_TYPE: got type %u (expected %u)", ptype, PACKET_TYPE_ACIP_NETWORK_QUALITY);
     buffer_pool_free(NULL, alloc_buffer, 0);
     return ERROR_NETWORK_PROTOCOL;
   }
@@ -1520,32 +1539,38 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
   switch (session->state) {
   case DISCOVERY_STATE_WAITING_PEER: {
     // Wait for PARTICIPANT_JOINED notification from ACDS
-    if (session->acds_transport && timeout_ns > 0) {
-      // Set socket timeout
-      if (socket_set_timeout(session->acds_socket, timeout_ns) == 0) {
-        packet_type_t type;
-        void *data = NULL;
-        size_t len = 0;
-        void *alloc_buffer = NULL;
+    // Note: don't use a hard timeout here - let the outer process timeout (snapshot delay) control max wait
+    // The discovery_run() loop will keep calling this until session becomes active or process exits
+    uint64_t now_ns = time_get_ns();
+    uint64_t wait_duration = now_ns - session->waiting_peer_start_ns;
 
-        // Try to receive a packet (non-blocking with timeout)
-        asciichat_error_t recv_result =
-            packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
-        if (recv_result == ASCIICHAT_OK) {
-          if (type == PACKET_TYPE_ACIP_PARTICIPANT_JOINED) {
-            log_info("Peer joined session, transitioning to negotiation");
-            set_state(session, DISCOVERY_STATE_NEGOTIATING);
-            buffer_pool_free(NULL, alloc_buffer, 0);
-          } else {
-            // Got some other packet, handle it or ignore
-            log_debug("Received packet type %d while waiting for peer", type);
-            buffer_pool_free(NULL, alloc_buffer, 0);
-          }
-        } else if (recv_result == ERROR_NETWORK_TIMEOUT) {
-          // Timeout is normal, just return
+    log_debug("★ WAITING_PEER: duration=%.3fs (no timeout, waiting for peer...)", wait_duration / 1e9);
+
+    if (session->acds_transport && timeout_ns > 0) {
+      // Do not set socket timeout - let receive_packet_secure use its own timeout
+      // Setting a short socket timeout conflicts with its hardcoded 1-second timeout
+      packet_type_t type;
+      void *data = NULL;
+      size_t len = 0;
+      void *alloc_buffer = NULL;
+
+      // Try to receive a packet
+      asciichat_error_t recv_result =
+          packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
+      if (recv_result == ASCIICHAT_OK) {
+        if (type == PACKET_TYPE_ACIP_PARTICIPANT_JOINED) {
+          log_info("Peer joined session, transitioning to negotiation");
+          set_state(session, DISCOVERY_STATE_NEGOTIATING);
+          buffer_pool_free(NULL, alloc_buffer, 0);
         } else {
-          log_debug("Packet receive error while waiting for peer: %d", recv_result);
+          // Got some other packet, handle it or ignore
+          log_debug("Received packet type %d while waiting for peer", type);
+          buffer_pool_free(NULL, alloc_buffer, 0);
         }
+      } else if (recv_result == ERROR_NETWORK_TIMEOUT) {
+        // Timeout is normal, just return
+      } else {
+        log_debug("Packet receive error while waiting for peer: %d", recv_result);
       }
     } else {
       // Fallback to sleep if no timeout or invalid transport

@@ -15,6 +15,7 @@
 #include <ascii-chat/discovery/session.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/network.h>
+#include <ascii-chat/network/acip/send.h>
 #include <string.h>
 
 /**
@@ -83,44 +84,53 @@ typedef struct {
  * @brief Callback for tcp_server_foreach_client to broadcast to session
  */
 static void broadcast_callback(socket_t socket, void *client_data, void *user_arg) {
+  (void)socket; // Suppress unused parameter warning - use transport instead
   broadcast_context_t *ctx = (broadcast_context_t *)user_arg;
 
   if (!client_data) {
-    log_debug("Broadcast: socket=%d has no client_data", socket);
+    log_debug("Broadcast: socket has no client_data");
     return; // Client not yet joined a session
   }
 
   acds_client_data_t *acds_data = (acds_client_data_t *)client_data;
   if (!acds_data->joined_session) {
-    log_debug("Broadcast: socket=%d not joined (joined_session=false)", socket);
+    log_debug("Broadcast: client not joined (joined_session=false)");
     return; // Client connected but hasn't joined
   }
 
-  log_debug("Broadcast: checking socket=%d (session=%02x%02x..., participant=%02x%02x...)", socket,
-            acds_data->session_id[0], acds_data->session_id[1], acds_data->participant_id[0],
-            acds_data->participant_id[1]);
+  if (!acds_data->transport) {
+    log_warn("Broadcast: client has no transport");
+    return;
+  }
+
+  log_debug("Broadcast: checking participant=%02x%02x... (session=%02x%02x...)", acds_data->participant_id[0],
+            acds_data->participant_id[1], acds_data->session_id[0], acds_data->session_id[1]);
 
   // Check if client is in target session
   if (!uuid_equals(acds_data->session_id, ctx->target_session_id)) {
-    log_debug("Broadcast: socket=%d in different session", socket);
+    log_debug("Broadcast: client in different session");
     return; // Different session
   }
 
   // Skip excluded participant (e.g., sender)
   if (ctx->exclude_participant_id && uuid_equals(acds_data->participant_id, ctx->exclude_participant_id)) {
-    log_debug("Broadcast: socket=%d is excluded sender (participant=%02x%02x...)", socket, acds_data->participant_id[0],
+    log_debug("Broadcast: excluding sender (participant=%02x%02x...)", acds_data->participant_id[0],
               acds_data->participant_id[1]);
     return; // Skip sender
   }
 
-  // Send packet to this participant
-  log_debug("Broadcast: sending to socket=%d (participant=%02x%02x...)", socket, acds_data->participant_id[0],
-            acds_data->participant_id[1]);
-  int result = send_packet(socket, ctx->packet_type, ctx->packet, ctx->packet_len);
-  if (result == 0) {
+  // Send packet through transport (not raw socket)
+  log_info("★ BROADCAST_CALLBACK: sending packet_type=%u to participant=%02x%02x...", ctx->packet_type,
+           acds_data->participant_id[0], acds_data->participant_id[1]);
+  asciichat_error_t result = packet_send_via_transport(acds_data->transport, ctx->packet_type, ctx->packet,
+                                                       ctx->packet_len, 0);
+  if (result == ASCIICHAT_OK) {
     ctx->sent_count++;
+    log_info("★ BROADCAST_CALLBACK: successfully sent to participant=%02x%02x...", acds_data->participant_id[0],
+             acds_data->participant_id[1]);
   } else {
-    log_warn("Failed to send packet to participant (socket=%d)", socket);
+    log_warn("★ BROADCAST_CALLBACK_FAILED: Failed to send to participant=%02x%02x...: %s", acds_data->participant_id[0],
+             acds_data->participant_id[1], asciichat_error_string(result));
   }
 }
 
@@ -220,6 +230,13 @@ asciichat_error_t signaling_broadcast(sqlite3 *db, tcp_server_t *tcp_server, con
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, tcp_server, session_id, or packet is NULL");
   }
 
+  log_info("★ SIGNALING_BROADCAST_START: packet_type=%u, packet_len=%zu, session=%02x%02x...", packet_type, packet_len,
+           session_id[0], session_id[1]);
+  if (exclude_participant_id) {
+    log_debug("★ SIGNALING_BROADCAST: excluding participant=%02x%02x...", exclude_participant_id[0],
+              exclude_participant_id[1]);
+  }
+
   /* Find session by UUID using database lookup */
   session_entry_t *session = database_session_find_by_id(db, session_id);
   if (!session) {
@@ -238,10 +255,40 @@ asciichat_error_t signaling_broadcast(sqlite3 *db, tcp_server_t *tcp_server, con
   tcp_server_foreach_client(tcp_server, broadcast_callback, &ctx);
 
   if (ctx.sent_count == 0) {
-    log_warn("Broadcast sent to 0 participants (all offline or not joined yet)");
+    log_warn("★ SIGNALING_BROADCAST_COMPLETE: sent to 0 participants (all offline or not joined yet)");
   } else {
-    log_debug("Broadcast sent to %zu participants", ctx.sent_count);
+    log_info("★ SIGNALING_BROADCAST_COMPLETE: successfully sent to %zu participants", ctx.sent_count);
   }
 
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t signaling_relay_network_quality(sqlite3 *db, tcp_server_t *tcp_server,
+                                                   const acip_nat_quality_t *quality, size_t total_packet_len) {
+  if (!db || !tcp_server || !quality) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "db, tcp_server, or quality is NULL");
+  }
+
+  // Validate packet size
+  if (total_packet_len < sizeof(acip_nat_quality_t)) {
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "NETWORK_QUALITY packet too small");
+  }
+
+  // Extract session_id and sender_id from the quality packet
+  const uint8_t *session_id = quality->session_id;
+  const uint8_t *sender_id = quality->participant_id;
+
+  // Find session by UUID using database lookup
+  log_debug("NETWORK_QUALITY relay: session_id=%02x%02x..., sender_id=%02x%02x...", session_id[0], session_id[1],
+            sender_id[0], sender_id[1]);
+  session_entry_t *session = database_session_find_by_id(db, session_id);
+  if (!session) {
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Session not found for NETWORK_QUALITY relay");
+  }
+  session_entry_destroy(session); // We only need to validate existence
+
+  // Broadcast to all participants in session (except sender)
+  log_debug("Broadcasting NETWORK_QUALITY to all participants in session (excluding sender)");
+  return signaling_broadcast(db, tcp_server, session_id, PACKET_TYPE_ACIP_NETWORK_QUALITY, quality, total_packet_len,
+                             sender_id);
 }

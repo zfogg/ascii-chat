@@ -55,8 +55,10 @@ export default defineConfig({
     port: 5173,
     allowedHosts: ["manjaro-twopal"],
     headers: {
-      // COEP/COOP headers removed - they cause video playback issues
-      // and are not needed for this application
+      // COEP/COOP needed for WASM threading in dev, but breaks video on production HTTPS
+      // Only set in development - production must configure these via reverse proxy if needed
+      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Opener-Policy": "same-origin",
     },
     // Development: http://0.0.0.0:5173 (accessible from other devices)
     // Production: https://ascii-chat.com

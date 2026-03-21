@@ -47,6 +47,21 @@ asciichat_error_t signaling_relay_ice(sqlite3 *db, tcp_server_t *tcp_server, con
                                       size_t total_packet_len);
 
 /**
+ * @brief Relay NETWORK_QUALITY to session participants
+ *
+ * Relays NAT quality metrics to all participants in the session (excluding sender).
+ * Used during NAT negotiation phase to help peers determine optimal host.
+ *
+ * @param db SQLite database handle (for session validation)
+ * @param tcp_server TCP server with client registry
+ * @param quality NAT quality packet (includes session_id and participant_id)
+ * @param total_packet_len Total packet length
+ * @return ASCIICHAT_OK on success, error code otherwise
+ */
+asciichat_error_t signaling_relay_network_quality(sqlite3 *db, tcp_server_t *tcp_server,
+                                                   const acip_nat_quality_t *quality, size_t total_packet_len);
+
+/**
  * @brief Broadcast packet to all session participants
  *
  * Sends packet to all participants in a session (optionally excluding one).

@@ -437,6 +437,12 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
       log_info("Session created: %.*s (UUID: %02x%02x..., %zu keys, %d STUN, %d TURN servers)", resp.session_string_len,
                resp.session_string, resp.session_id[0], resp.session_id[1], client_data->num_pending_keys,
                resp.stun_count, resp.turn_count);
+
+      // Store session/participant IDs and mark session as established
+      memcpy(client_data->session_id, resp.session_id, 16);
+      memcpy(client_data->participant_id, resp.participant_id, 16);
+      client_data->joined_session = true;
+      client_data->session_established = true; // Signal handler to exit receive loop
     } else {
       // Error - send error response using proper error code
       acip_send_error(transport, create_result, "Failed to create session");
@@ -507,6 +513,12 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
       log_info("Session created: %.*s (UUID: %02x%02x..., %zu keys, %d STUN, %d TURN servers)", resp.session_string_len,
                resp.session_string, resp.session_id[0], resp.session_id[1], client_data->num_pending_keys,
                resp.stun_count, resp.turn_count);
+
+      // Store session/participant IDs and mark session as established
+      memcpy(client_data->session_id, resp.session_id, 16);
+      memcpy(client_data->participant_id, resp.participant_id, 16);
+      client_data->joined_session = true;
+      client_data->session_established = true; // Signal handler to exit receive loop
     } else {
       // Error - send error response using proper error code
       acip_send_error(transport, create_result, "Failed to create session");
@@ -720,6 +732,7 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
       memcpy(client_data->session_id, resp.session_id, 16);
       memcpy(client_data->participant_id, resp.participant_id, 16);
       client_data->joined_session = true;
+      client_data->session_established = true; // Signal handler to exit receive loop
     }
 
     log_info("Client %s joined session (participant %02x%02x...)", client_ip, resp.participant_id[0],
@@ -801,6 +814,29 @@ static void acds_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t payload_len,
   }
 }
 
+static void acds_on_network_quality(const void *payload, size_t payload_len, acip_transport_t *transport,
+                                    const char *client_ip, void *app_ctx) {
+  acds_server_t *server = (acds_server_t *)app_ctx;
+  (void)transport; // Transport not needed for relay
+
+  log_info("★ ACDS_ON_NETWORK_QUALITY: received from %s, payload_len=%zu", client_ip, payload_len);
+
+  // Cast payload to acip_nat_quality_t for relay
+  const acip_nat_quality_t *quality = (const acip_nat_quality_t *)payload;
+
+  log_debug("NETWORK_QUALITY: session=%02x%02x..., participant=%02x%02x...", quality->session_id[0],
+            quality->session_id[1], quality->participant_id[0], quality->participant_id[1]);
+
+  // Validation and relay
+  asciichat_error_t relay_result = signaling_relay_network_quality(server->db, &server->tcp_server, quality, payload_len);
+  if (relay_result != ASCIICHAT_OK) {
+    acip_send_error(transport, relay_result, "NETWORK_QUALITY relay failed");
+    log_warn("NETWORK_QUALITY relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));
+  } else {
+    log_info("★ ACDS_ON_NETWORK_QUALITY: relay completed successfully for %s", client_ip);
+  }
+}
+
 static void acds_on_host_announcement(const acip_host_announcement_t *announcement, acip_transport_t *transport,
                                       const char *client_ip, void *app_ctx) {
   acds_server_t *server = (acds_server_t *)app_ctx;
@@ -873,6 +909,7 @@ static const acip_acds_callbacks_t g_acds_callbacks = {
     .on_webrtc_ice = acds_on_webrtc_ice,
     .on_host_announcement = acds_on_host_announcement,
     .on_host_lost = acds_on_host_lost,
+    .on_network_quality = acds_on_network_quality,
     .app_ctx = NULL // Set dynamically to server instance
 };
 
@@ -1031,6 +1068,11 @@ void *acds_client_handler(void *arg) {
 
     // Receive packet (blocking with system timeout)
     int result = receive_packet(client_socket, &packet_type, &payload, &payload_size);
+
+    if (result >= 0) {
+      log_info("★ ACDS_CLIENT_HANDLER: Received packet type=%u from %s, payload_size=%zu", packet_type, client_ip, payload_size);
+    }
+
     if (result < 0) {
       // Check error context to distinguish timeout from actual disconnect
       asciichat_error_context_t err_ctx;
@@ -1097,16 +1139,20 @@ void *acds_client_handler(void *arg) {
     if (payload) {
       buffer_pool_free(NULL, payload, payload_size);
     }
+
+    // Keep handler running after session_established
+    // Handler continues to receive and relay WebRTC signaling packets (SDP, ICE)
+    // Broadcasts don't go through this socket - they use tcp_server_foreach_client() to write directly
   }
 
-  // Cleanup
+  // Cleanup - handler always cleans up since it runs until connection closes
   tcp_server_remove_client(&server->tcp_server, client_socket);
   log_debug("Client %s unregistered (total=%zu)", client_ip, tcp_server_get_client_count(&server->tcp_server));
 
   // Destroy transport before closing socket
   acip_transport_destroy(transport);
-
   socket_close(client_socket);
+
   SAFE_FREE(ctx);
 
   log_info("Client handler finished for %s", client_ip);

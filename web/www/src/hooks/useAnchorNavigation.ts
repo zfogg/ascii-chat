@@ -1,8 +1,8 @@
 import { useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useSafeLocation } from "./useSafeLocation";
 
 export function useAnchorNavigation(contentLoaded: boolean) {
-  const location = useLocation();
+  const location = useSafeLocation();
 
   useEffect(() => {
     const hash = location.hash.slice(1); // Remove the '#'

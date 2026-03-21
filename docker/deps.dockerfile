@@ -62,11 +62,18 @@ RUN rm -rf /build/deps/ascii-chat-deps /build/deps/doxygen-awesome-css && \
     rm -rf /build/deps/ascii-chat-deps/*/.git /build/deps/doxygen-awesome-css/.git
 
 # Run cmake configure to populate .deps-cache/ with all FetchContent downloads.
-# Uses the default preset (Debug build type).
+# Configures both Debug and Release presets.
 # After configure, remove the build/ artifacts (CMakeCache, ninja files, object files)
-# but keep .deps-cache/ which persists outside build/.
+# but keep .deps-cache/ which persists outside build/ (shared across all build types).
 RUN cmake --preset default \
         -DUSE_MUSL=OFF \
         -DASCIICHAT_ENABLE_ANALYZERS=OFF && \
     rm -rf build/
+
+# Configure Release preset with musl for static linking.
+# This shares the same .deps-cache/ as the Debug build above.
+RUN cmake --preset release-musl \
+        -DUSE_MUSL=ON \
+        -DASCIICHAT_ENABLE_ANALYZERS=OFF && \
+    rm -rf build_release/
 

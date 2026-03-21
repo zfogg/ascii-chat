@@ -195,7 +195,9 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
 
   // Wait for session to become active (host negotiation complete)
   // This processes ACDS events until we have a determined role
-  while (!should_exit()) {
+  // Note: Don't check should_exit() here - discovery requires peer connection even with --snapshot
+  // The snapshot delay will be honored once we transition to active state and start capturing
+  while (true) {
     result = discovery_session_process(g_discovery, 50 * NS_PER_MS_INT);
     if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
       log_error("Discovery session process failed: %d", result);
