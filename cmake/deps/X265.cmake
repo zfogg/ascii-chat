@@ -103,7 +103,7 @@ if(USE_MUSL)
         set(_X265_C_FLAGS "-fPIC -target ${_X265_MUSL_TARGET} ${_X265_MUSL_SYSINCLUDE}")
         # libc++ include must come BEFORE musl include — libc++ provides wrapper
         # headers (stddef.h, stdint.h, etc.) that #include_next the C versions
-        set(_X265_CXX_FLAGS "-fPIC -target ${_X265_MUSL_TARGET} -stdlib=libc++ -D_GNU_SOURCE")
+        set(_X265_CXX_FLAGS "-fPIC -target ${_X265_MUSL_TARGET} -stdlib=libc++ -nostdinc++ -D_GNU_SOURCE")
         if(ALPINE_LIBCXX_INCLUDE_DIR)
             set(_X265_CXX_FLAGS "${_X265_CXX_FLAGS} -isystem ${ALPINE_LIBCXX_INCLUDE_DIR}")
         endif()
