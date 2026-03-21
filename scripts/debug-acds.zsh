@@ -132,7 +132,7 @@ timeout -k0.5 "$((SNAPSHOT_DELAY + 1))" "$STRACE_CMD" -f -o "$initiator_strace" 
   | tee "$initiator_stdout" || EXIT_CODE=$?
 
 # Extract session string from initiator log
-SESSION_STRING=$(grep -i "session ready" "$initiator_log" 2>/dev/null | grep -oE "[a-z]+-[a-z]+-[a-z]+" | head -1 || echo "")
+SESSION_STRING=$(grep -i "Session created" "$initiator_log" 2>/dev/null | grep -oE "[a-z]+-[a-z]+-[a-z]+" | head -1 || echo "")
 
 if [ -z "$SESSION_STRING" ]; then
   echo "❌ Failed to get session string from initiator"
