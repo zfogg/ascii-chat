@@ -148,7 +148,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libprotobuf-c-dev \
       libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev \
       libabsl-dev \
-      libx265-dev \
+      libx264-dev libx265-dev \
       emscripten \
       doxygen \
       dpkg-dev rpm \
