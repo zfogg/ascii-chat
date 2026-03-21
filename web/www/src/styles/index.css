@@ -4,11 +4,9 @@
 @source ".";
 @source "../../packages/shared/src";
 
-
 :root {
   --header-height: 65px;
 }
-
 
 @layer base {
   html {
@@ -28,6 +26,4 @@
   .docs-container code {
     word-break: break-word;
   }
-
 }
-

@@ -56,7 +56,11 @@ export default function MiniMirrorDemo() {
       await initWasm();
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: "user",
+        },
         audio: false,
       });
 
@@ -64,19 +68,25 @@ export default function MiniMirrorDemo() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await new Promise<void>((resolve) => {
-          videoRef.current!.addEventListener("loadedmetadata", () => {
-            if (canvasRef.current) {
-              canvasRef.current.width = 640;
-              canvasRef.current.height = 480;
-            }
-            resolve();
-          }, { once: true });
+          videoRef.current!.addEventListener(
+            "loadedmetadata",
+            () => {
+              if (canvasRef.current) {
+                canvasRef.current.width = 640;
+                canvasRef.current.height = 480;
+              }
+              resolve();
+            },
+            { once: true },
+          );
         });
       }
 
       setSource("webcam");
     } catch (err) {
-      setError(`Camera access failed: ${err instanceof Error ? err.message : String(err)}`);
+      setError(
+        `Camera access failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
     } finally {
       setLoading(false);
     }
@@ -94,23 +104,33 @@ export default function MiniMirrorDemo() {
         videoRef.current.muted = true;
         videoRef.current.playsInline = true;
         await new Promise<void>((resolve, reject) => {
-          videoRef.current!.addEventListener("loadedmetadata", () => {
-            if (canvasRef.current) {
-              canvasRef.current.width = videoRef.current!.videoWidth;
-              canvasRef.current.height = videoRef.current!.videoHeight;
-            }
-            resolve();
-          }, { once: true });
-          videoRef.current!.addEventListener("error", () => {
-            reject(new Error("Failed to load demo video"));
-          }, { once: true });
+          videoRef.current!.addEventListener(
+            "loadedmetadata",
+            () => {
+              if (canvasRef.current) {
+                canvasRef.current.width = videoRef.current!.videoWidth;
+                canvasRef.current.height = videoRef.current!.videoHeight;
+              }
+              resolve();
+            },
+            { once: true },
+          );
+          videoRef.current!.addEventListener(
+            "error",
+            () => {
+              reject(new Error("Failed to load demo video"));
+            },
+            { once: true },
+          );
         });
         await videoRef.current.play();
       }
 
       setSource("demo");
     } catch (err) {
-      setError(`Demo failed: ${err instanceof Error ? err.message : String(err)}`);
+      setError(
+        `Demo failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
     } finally {
       setLoading(false);
     }
@@ -160,7 +180,11 @@ export default function MiniMirrorDemo() {
       if (frame.data.length !== expectedSize) return;
 
       try {
-        const ascii = convertFrameToAscii(frame.data, frame.width, frame.height);
+        const ascii = convertFrameToAscii(
+          frame.data,
+          frame.width,
+          frame.height,
+        );
         if (ascii) {
           rendererRef.current.writeFrame(ascii);
         }
@@ -243,9 +267,7 @@ export default function MiniMirrorDemo() {
                 {loading ? "Loading..." : "Demo Video"}
               </button>
             </div>
-            {error && (
-              <p className="text-red-400 text-xs mt-2">{error}</p>
-            )}
+            {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
           </div>
         ) : (
           <button
