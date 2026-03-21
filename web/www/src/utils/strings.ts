@@ -1,5 +1,5 @@
-import { adjectives, adjectives_count } from "./adjectives.js";
-import { nouns, nouns_count } from "./nouns.js";
+import { adjectives, adjectives_count } from "./adjectives.ts";
+import { nouns, nouns_count } from "./nouns.ts";
 
 /**
  * Generate cryptographically random bytes uniformly distributed within a range.

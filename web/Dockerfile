@@ -97,7 +97,7 @@ COPY web/Caddyfile /etc/caddy/Caddyfile
 EXPOSE 80
 
 # Run API server and Caddy together
-CMD ["sh", "-c", "node www/api.js & caddy run --config /etc/caddy/Caddyfile"]
+CMD ["sh", "-c", "node www/api.ts & caddy run --config /etc/caddy/Caddyfile"]
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=1.5s --start-period=3s --retries=3 \

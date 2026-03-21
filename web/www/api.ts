@@ -6,7 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import winston from "winston";
 import morgan from "morgan";
-import { generateSessionStrings } from "./src/utils/strings.js";
+import { generateSessionStrings } from "./src/utils/strings.ts";
 
 dotenv.config();
 
