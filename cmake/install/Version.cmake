@@ -147,6 +147,25 @@ function(version_setup_targets)
     # Create a script that generates version.h on every build
     set(VERSION_SCRIPT_PATH "${CMAKE_BINARY_DIR}/generate_version.cmake")
     file(WRITE "${VERSION_SCRIPT_PATH}" "
+# Check if PROJECT_VERSION_OVERRIDE is provided (e.g., from Docker release builds)
+# If set, skip git detection and use this version directly (format: X.Y.Z)
+if(DEFINED ENV{PROJECT_VERSION_OVERRIDE})
+    set(OVERRIDE_VERSION \"\$ENV{PROJECT_VERSION_OVERRIDE}\")
+    if(OVERRIDE_VERSION MATCHES \"^([0-9]+)\\\\.([0-9]+)\\\\.([0-9]+)\$\")
+        set(PROJECT_VERSION_MAJOR \"\${CMAKE_MATCH_1}\")
+        set(PROJECT_VERSION_MINOR \"\${CMAKE_MATCH_2}\")
+        set(PROJECT_VERSION_PATCH \"\${CMAKE_MATCH_3}\")
+        set(PROJECT_VERSION \"\${OVERRIDE_VERSION}\")
+        set(GIT_VERSION_STRING \"\")
+        set(GIT_VERSION_SUFFIX \"\")
+        set(GIT_COMMIT_HASH \"docker-build\")
+        set(GIT_IS_DIRTY \"false\")
+        set(VERSION_FROM_OVERRIDE TRUE)
+    else()
+        message(FATAL_ERROR \"Invalid PROJECT_VERSION_OVERRIDE format: \${OVERRIDE_VERSION} (expected X.Y.Z)\")
+    endif()
+endif()
+
 # Check if SOURCE_COMMIT is provided (e.g., from Coolify/Docker build)
 # If SOURCE_COMMIT is set, use it instead of git commands (for Docker builds without .git)
 if(DEFINED ENV{SOURCE_COMMIT})
@@ -166,10 +185,10 @@ else()
     set(GIT_DESCRIBE_AVAILABLE TRUE)
 endif()
 
-# Parse git describe output
+# Parse git describe output (skip if version was overridden)
 # Format: v0.2.0-42-gf811525-dirty
 # where 0.2.0 is the tag, 42 is commits since tag, g prefix indicates git hash
-if(GIT_DESCRIBE MATCHES \"^v?([0-9]+)\\\\.([0-9]+)\\\\.([0-9]+)-([0-9]+)-g([0-9a-f]+)(-dirty)?\\\$\")
+if(NOT VERSION_FROM_OVERRIDE AND GIT_DESCRIBE MATCHES \"^v?([0-9]+)\\\\.([0-9]+)\\\\.([0-9]+)-([0-9]+)-g([0-9a-f]+)(-dirty)?\\\$\")
     # Has a tag with commits since - extract tag version
     set(TAG_VERSION_MAJOR \"\${CMAKE_MATCH_1}\")
     set(TAG_VERSION_MINOR \"\${CMAKE_MATCH_2}\")
@@ -196,7 +215,7 @@ if(GIT_DESCRIBE MATCHES \"^v?([0-9]+)\\\\.([0-9]+)\\\\.([0-9]+)-([0-9]+)-g([0-9a
     set(PROJECT_VERSION_MINOR \"\${TAG_VERSION_MINOR}\")
     set(PROJECT_VERSION_PATCH \"\${TAG_VERSION_PATCH}\")
     set(PROJECT_VERSION \"\${TAG_VERSION_MAJOR}.\${TAG_VERSION_MINOR}.\${TAG_VERSION_PATCH}\")
-elseif(GIT_DESCRIBE MATCHES \"^v?([0-9]+)\\\\.([0-9]+)\\\\.([0-9]+)(-dirty)?\\\$\")
+elseif(NOT VERSION_FROM_OVERRIDE AND GIT_DESCRIBE MATCHES \"^v?([0-9]+)\\\\.([0-9]+)\\\\.([0-9]+)(-dirty)?\\\$\")
     # Exactly on a tag (no -N-g suffix) - release version
     set(TAG_VERSION_MAJOR \"\${CMAKE_MATCH_1}\")
     set(TAG_VERSION_MINOR \"\${CMAKE_MATCH_2}\")
@@ -214,7 +233,7 @@ elseif(GIT_DESCRIBE MATCHES \"^v?([0-9]+)\\\\.([0-9]+)\\\\.([0-9]+)(-dirty)?\\\$
     set(PROJECT_VERSION_MINOR \"\${TAG_VERSION_MINOR}\")
     set(PROJECT_VERSION_PATCH \"\${TAG_VERSION_PATCH}\")
     set(PROJECT_VERSION \"\${TAG_VERSION_MAJOR}.\${TAG_VERSION_MINOR}.\${TAG_VERSION_PATCH}\")
-elseif(GIT_DESCRIBE MATCHES \"^([0-9a-f]+)(-dirty)?\\\$\")
+elseif(NOT VERSION_FROM_OVERRIDE AND GIT_DESCRIBE MATCHES \"^([0-9a-f]+)(-dirty)?\\\$\")
     # No tags, just commit hash - development version with fallback version from project()
     set(GIT_COMMIT_HASH \"\${CMAKE_MATCH_1}\")
     set(GIT_DIRTY_SUFFIX \"\${CMAKE_MATCH_2}\")

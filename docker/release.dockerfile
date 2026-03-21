@@ -1,9 +1,12 @@
 # Multi-stage Dockerfile for ascii-chat release builds (static musl binary)
 # Build with: DOCKER_BUILDKIT=1 docker build -f docker/release.dockerfile -t zfogg/ascii-chat:release .
+# Set version: DOCKER_BUILDKIT=1 docker build --build-arg VERSION=0.9.13 -f docker/release.dockerfile -t zfogg/ascii-chat:0.9.13 .
 
 # ============================================================================
 # Stage 1: Builder (deps image with all build tools and cached dependencies)
 # ============================================================================
+ARG VERSION=0.0.0
+
 FROM zfogg/ascii-chat-deps:latest AS builder
 
 ENV SOURCE_COMMIT="docker-build"
@@ -18,9 +21,12 @@ COPY . /build/
 RUN rm -rf /build/deps/ascii-chat-deps /build/deps/doxygen-awesome-css && \
     mv /tmp/deps-preserve/* /build/deps/ && rm -rf /tmp/deps-preserve
 
-# Build release-musl static binary
+# Build release-musl static binary with specified version
+# PROJECT_VERSION_OVERRIDE environment variable skips git detection in generate_version.cmake
 RUN cd /build && \
+    PROJECT_VERSION_OVERRIDE=${VERSION} \
     cmake --preset release-musl \
+        -DPROJECT_VERSION=${VERSION} \
         -DASCIICHAT_LIB_VERSION=0.3.0 && \
     cmake --build build_release && \
     cmake --install build_release --prefix /tmp/install && \
