@@ -126,7 +126,7 @@ function initializeCache() {
       miniSearch = new MiniSearch({
         fields: ["name", "title", "content"],
         storeFields: ["name", "title", "file"],
-        idField: "name",
+        idField: "file",
       });
 
       // Add pages with their HTML content
@@ -137,16 +137,20 @@ function initializeCache() {
           try {
             const html = fs.readFileSync(filePath, "utf-8");
             // Extract text content from HTML
-            content = extractTextContent(html).substring(0, 50000); // Limit to 50k chars per page
+            content = extractTextContent(html);
           } catch (err) {
-            logger.debug(`Failed to read content for ${page.name}: ${(err as Error).message}`);
+            logger.debug(
+              `Failed to read content for ${page.name}: ${(err as Error).message}`,
+            );
           }
         }
         return { ...page, content };
       });
 
       miniSearch.addAll(docsWithContent);
-      logger.info(`MiniSearch index built with ${indexCache.length} documents and full-text search`);
+      logger.info(
+        `MiniSearch index built with ${indexCache.length} documents and full-text search`,
+      );
     } catch (err) {
       logger.error(`Failed to parse index.json: ${(err as Error).message}`);
     }
@@ -425,11 +429,16 @@ app.get("/api/man3/search", limiter, (req: Request, res: Response) => {
     const searchResults = miniSearch.search(query, {
       combineWith: "OR",
       prefix: false,
-      boost: {
-        name: 2,
-        title: 2,
-      },
+      fuzzy: true, // Enable fuzzy matching
+      limit: 1000, // Return up to 1000 results
     });
+
+    // Sort by minisearch score (highest first)
+    searchResults.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+    logger.debug(
+      `minisearch returned ${searchResults.length} results for query "${query}"`,
+    );
 
     const results: {
       name: string;
@@ -488,9 +497,9 @@ app.get("/api/man3/search", limiter, (req: Request, res: Response) => {
       0,
     );
 
-    const displayLimit = 30;
-    const displayedResults = resultsWithSnippets.slice(0, displayLimit);
-    const moreFilesCount = Math.max(0, resultsWithSnippets.length - displayLimit);
+    // Return all results (no limit)
+    const displayedResults = resultsWithSnippets;
+    const moreFilesCount = 0;
 
     res.json({
       query: query,

@@ -78,7 +78,9 @@ export default function Man3() {
           ? {
               snippets: page.snippets.map((s) => ({
                 text: s.text,
-                lineNumbers: s.lineNumbers || [],
+                lineNumbers: s.lineNumbers.filter(
+                  (ln) => ln !== null,
+                ) as number[],
               })),
             }
           : {}),
@@ -104,7 +106,10 @@ export default function Man3() {
           regexError={search.regexError}
           searching={search.searching}
           filesMatched={highlightedResults.length}
-          totalMatches={highlightedResults.reduce((sum, r) => sum + (r.snippets?.length || 0), 0)}
+          totalMatches={highlightedResults.reduce(
+            (sum, r) => sum + (r.snippets?.length || 0),
+            0,
+          )}
         />
 
         {/* Scrollable panels container */}

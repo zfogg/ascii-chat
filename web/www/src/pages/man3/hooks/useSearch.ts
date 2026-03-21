@@ -5,8 +5,9 @@ export interface ManPage {
   name: string;
   title: string;
   snippets?: Array<{
-    lineNumber: number;
-    snippet: string;
+    text: string;
+    lineNumbers: (number | null)[];
+    matchLineNumber: number | null;
   }>;
 }
 
