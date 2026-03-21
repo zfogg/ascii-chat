@@ -101,7 +101,7 @@ if(USE_MUSL)
             BUILD_ALWAYS 0
             DEPENDS freetype-musl fontconfig
             CONFIGURE_COMMAND ""
-            BUILD_COMMAND bash -c "cd <SOURCE_DIR> && make CC=${MUSL_GCC} CFLAGS='-O2 -fPIC -Wno-error -isystem ${KERNEL_HEADERS_DIR}' LDFLAGS='-static' ARFLAGS=rcs"
+            BUILD_COMMAND ${CMAKE_COMMAND} -E env PATH=$ENV{PATH} bash -c "cd <SOURCE_DIR> && make CC=${MUSL_GCC} CFLAGS='-O2 -fPIC -Wno-error -isystem ${KERNEL_HEADERS_DIR}' LDFLAGS='-static' ARFLAGS=rcs"
             INSTALL_COMMAND bash -c "cd <SOURCE_DIR> && make install PREFIX=${VTERM_PREFIX}"
             BUILD_BYPRODUCTS ${VTERM_PREFIX}/lib/libvterm.a
             LOG_DOWNLOAD TRUE
