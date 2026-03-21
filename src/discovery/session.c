@@ -28,6 +28,7 @@
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/websocket/client.h>
 
 #ifdef _WIN32
 #include <ws2tcpip.h> // For getaddrinfo on Windows
@@ -137,6 +138,9 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   }
 
   // ACDS connection info
+  if (config->acds_url && config->acds_url[0]) {
+    SAFE_STRNCPY(session->acds_url, config->acds_url, sizeof(session->acds_url));
+  }
   if (config->acds_address && config->acds_address[0]) {
     SAFE_STRNCPY(session->acds_address, config->acds_address, sizeof(session->acds_address));
   } else {
@@ -319,8 +323,8 @@ static asciichat_error_t send_network_quality_to_acds(discovery_session_t *sessi
   nat_quality_to_acip(&our_quality, session->session_id, session->participant_id, &wire_quality);
 
   // Send via ACDS
-  asciichat_error_t send_result =
-      packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_NETWORK_QUALITY, &wire_quality, sizeof(wire_quality), 0);
+  asciichat_error_t send_result = packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_NETWORK_QUALITY,
+                                                            &wire_quality, sizeof(wire_quality), 0);
 
   if (send_result == ASCIICHAT_OK) {
     log_debug("Sent NETWORK_QUALITY to ACDS (NAT tier: %d, upload: %u Kbps)", nat_compute_tier(&our_quality),
@@ -391,6 +395,29 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
   }
 
   set_state(session, DISCOVERY_STATE_CONNECTING_ACDS);
+
+  // WebSocket path
+  if (session->acds_url[0] != '\0') {
+    // Validate WebSocket URL scheme
+    if (strncmp(session->acds_url, "ws://", 5) != 0 && strncmp(session->acds_url, "wss://", 6) != 0) {
+      set_error(session, ERROR_USAGE, "discovery-service-url must use ws:// or wss:// scheme");
+      log_error("Invalid ACDS WebSocket URL scheme: %s", session->acds_url);
+      return ERROR_USAGE;
+    }
+
+    log_info("Connecting to ACDS via WebSocket: %s", session->acds_url);
+    acip_transport_t *transport = acip_websocket_client_transport_create("discovery_acds", session->acds_url, NULL);
+    if (!transport) {
+      set_error(session, ERROR_NETWORK_CONNECT, "Failed to create WebSocket connection to ACDS");
+      log_error("WebSocket connection to ACDS failed: %s", session->acds_url);
+      return ERROR_NETWORK_CONNECT;
+    }
+    session->acds_transport = transport;
+    log_info("Connected to ACDS via WebSocket");
+    return ASCIICHAT_OK;
+  }
+
+  // TCP path (original behavior)
   log_info("Connecting to ACDS at %s:%u...", session->acds_address, session->acds_port);
 
   // Resolve hostname using getaddrinfo (supports both IP addresses and hostnames)
@@ -629,8 +656,8 @@ static asciichat_error_t create_session(discovery_session_t *session) {
     }
 
     // Send SESSION_CREATE with this identity key
-    asciichat_error_t result =
-        packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_SESSION_CREATE, &create_msg, sizeof(create_msg), 0);
+    asciichat_error_t result = packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_SESSION_CREATE,
+                                                         &create_msg, sizeof(create_msg), 0);
     if (result != ASCIICHAT_OK) {
       log_error("Failed to send SESSION_CREATE for key %zu/%zu", key_idx + 1, session->num_identity_keys);
       set_error(session, result, "Failed to send SESSION_CREATE");
@@ -661,12 +688,12 @@ static asciichat_error_t create_session(discovery_session_t *session) {
     return ERROR_NETWORK_PROTOCOL;
   }
 
-  log_debug("SESSION_CREATE response: type=%d (expected %d), len=%zu (expected %zu)",
-           type, PACKET_TYPE_ACIP_SESSION_CREATED, len, sizeof(acip_session_created_t));
+  log_debug("SESSION_CREATE response: type=%d (expected %d), len=%zu (expected %zu)", type,
+            PACKET_TYPE_ACIP_SESSION_CREATED, len, sizeof(acip_session_created_t));
 
   if (type != PACKET_TYPE_ACIP_SESSION_CREATED || len < sizeof(acip_session_created_t)) {
-    log_debug("Response mismatch: type_match=%d, len_match=%d",
-             type == PACKET_TYPE_ACIP_SESSION_CREATED, len >= sizeof(acip_session_created_t));
+    log_debug("Response mismatch: type_match=%d, len_match=%d", type == PACKET_TYPE_ACIP_SESSION_CREATED,
+              len >= sizeof(acip_session_created_t));
     set_error(session, ERROR_NETWORK_PROTOCOL, "Unexpected response to SESSION_CREATE");
     buffer_pool_free(NULL, alloc_buffer, 0);
     return ERROR_NETWORK_PROTOCOL;
@@ -731,7 +758,8 @@ static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[16
   memcpy(packet_data + sizeof(acip_webrtc_sdp_t), sdp, sdp_len);
 
   // Send to ACDS
-  asciichat_error_t result = packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, packet_data, total_len, 0);
+  asciichat_error_t result =
+      packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, packet_data, total_len, 0);
 
   SAFE_FREE(packet_data);
 
@@ -783,7 +811,8 @@ static asciichat_error_t discovery_send_ice_via_acds(const uint8_t session_id[16
   log_debug("Sending ICE candidate to ACDS (candidate_len=%zu, mid=%s)", candidate_len, mid);
 
   // Send to ACDS
-  asciichat_error_t result = packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, packet_data, total_len, 0);
+  asciichat_error_t result =
+      packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, packet_data, total_len, 0);
 
   SAFE_FREE(packet_data);
 
@@ -1419,7 +1448,8 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
       return result;
     }
 
-    result = crypto_handshake_client_auth_response(&handshake_ctx, session->acds_transport, pkt_type, pkt_data, pkt_len);
+    result =
+        crypto_handshake_client_auth_response(&handshake_ctx, session->acds_transport, pkt_type, pkt_data, pkt_len);
     buffer_pool_free(NULL, alloc_buffer, 0);
 
     if (result != ASCIICHAT_OK) {
@@ -1499,7 +1529,8 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
         void *alloc_buffer = NULL;
 
         // Try to receive a packet (non-blocking with timeout)
-        asciichat_error_t recv_result = packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
+        asciichat_error_t recv_result =
+            packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
         if (recv_result == ASCIICHAT_OK) {
           if (type == PACKET_TYPE_ACIP_PARTICIPANT_JOINED) {
             log_info("Peer joined session, transitioning to negotiation");
@@ -1750,7 +1781,8 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
           size_t len = 0;
           void *alloc_buffer = NULL;
 
-          asciichat_error_t recv_result = packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
+          asciichat_error_t recv_result =
+              packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
 
           if (recv_result == ASCIICHAT_OK) {
             // Dispatch to appropriate handler
@@ -1921,7 +1953,8 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
         size_t len = 0;
         void *alloc_buffer = NULL;
 
-        asciichat_error_t recv_result = packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
+        asciichat_error_t recv_result =
+            packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
 
         if (recv_result == ASCIICHAT_OK) {
           // Dispatch to appropriate handler
@@ -1995,7 +2028,8 @@ void discovery_session_stop(discovery_session_t *session) {
     memcpy(leave_msg.session_id, session->session_id, 16);
     memcpy(leave_msg.participant_id, session->participant_id, 16);
 
-    packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_SESSION_LEAVE, &leave_msg, sizeof(leave_msg), 0);
+    packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_SESSION_LEAVE, &leave_msg, sizeof(leave_msg),
+                              0);
   }
 
   set_state(session, DISCOVERY_STATE_ENDED);
@@ -2359,7 +2393,8 @@ asciichat_error_t discovery_session_become_host(discovery_session_t *session) {
   // TODO: Use actual connection type based on NAT quality
 
   if (session->acds_transport) {
-    packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &announcement, sizeof(announcement), 0);
+    packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &announcement,
+                              sizeof(announcement), 0);
     log_info("Sent HOST_ANNOUNCEMENT to ACDS for new host %02x%02x... at %s:%u", announcement.host_id[0],
              announcement.host_id[1], announcement.host_address, announcement.host_port);
   }

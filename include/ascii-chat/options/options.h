@@ -982,14 +982,14 @@ typedef struct options_state {
   // ============================================================================
   // Network Options
   // ============================================================================
-  char address[OPTIONS_BUFF_SIZE];                 ///< Server address (client) or bind address (server)
-  char address6[OPTIONS_BUFF_SIZE];                ///< IPv6 bind address (server only)
-  int port;                                        ///< Server port number
-  int websocket_port;                              ///< WebSocket server port (server/discovery-service only)
-  char websocket_tls_cert[OPTIONS_BUFF_SIZE];      ///< WebSocket TLS certificate file path (server/discovery-service only)
-  char websocket_tls_key[OPTIONS_BUFF_SIZE];       ///< WebSocket TLS private key file path (server/discovery-service only)
+  char address[OPTIONS_BUFF_SIZE];            ///< Server address (client) or bind address (server)
+  char address6[OPTIONS_BUFF_SIZE];           ///< IPv6 bind address (server only)
+  int port;                                   ///< Server port number
+  int websocket_port;                         ///< WebSocket server port (server/discovery-service only)
+  char websocket_tls_cert[OPTIONS_BUFF_SIZE]; ///< WebSocket TLS certificate file path (server/discovery-service only)
+  char websocket_tls_key[OPTIONS_BUFF_SIZE];  ///< WebSocket TLS private key file path (server/discovery-service only)
   char websocket_tls_key_password[OPTIONS_BUFF_SIZE]; ///< WebSocket TLS key password (server/discovery-service only)
-  int max_clients;                                 ///< Maximum concurrent clients (server only)
+  int max_clients;                                    ///< Maximum concurrent clients (server only)
   char session_string[SESSION_STRING_BUFFER_SIZE]; ///< Session string for ACDS discovery (calculated max size: 38 chars
                                                    ///< + null)
 
@@ -999,6 +999,8 @@ typedef struct options_state {
   bool discovery;                                ///< Enable discovery session registration (default: false)
   char discovery_server[OPTIONS_BUFF_SIZE];      ///< discovery server address (default: 127.0.0.1)
   int discovery_port;                            ///< discovery server port (default: 27225)
+  char discovery_service_url[OPTIONS_BUFF_SIZE]; ///< discovery server WebSocket URL (ws:// or wss://, mutually
+                                                 ///< exclusive with discovery_port)
   char discovery_service_key[OPTIONS_BUFF_SIZE]; ///< discovery server public key for trust verification (SSH/GPG key or
                                                  ///< HTTPS URL)
   bool webrtc; ///< Enable WebRTC mode for discovery session (default: true, P2P WebRTC)
@@ -1791,8 +1793,8 @@ void update_dimensions_for_full_height(options_t *opts);
  * Used to track actual duration when snapshot mode is active
  */
 extern bool g_snapshot_first_frame_rendered;
-extern uint64_t g_snapshot_first_frame_rendered_ns;  // Timestamp when first frame was rendered (nanoseconds)
-extern uint64_t g_snapshot_first_capture_ns;         // Timestamp when first frame was captured (nanoseconds)
-extern uint64_t g_snapshot_actual_duration_ms;       // Actual wall-clock duration in ms when snapshot timeout reached
+extern uint64_t g_snapshot_first_frame_rendered_ns; // Timestamp when first frame was rendered (nanoseconds)
+extern uint64_t g_snapshot_first_capture_ns;        // Timestamp when first frame was captured (nanoseconds)
+extern uint64_t g_snapshot_actual_duration_ms;      // Actual wall-clock duration in ms when snapshot timeout reached
 
 /** @} */

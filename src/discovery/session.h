@@ -152,13 +152,14 @@ typedef struct {
 
   // Multi-key support: all identity keys for multi-key handshake
   uint8_t identity_pubkeys[MAX_IDENTITY_KEYS][32]; ///< All public keys for multi-key protocol
-  size_t num_identity_keys;                         ///< Number of identity keys loaded
+  size_t num_identity_keys;                        ///< Number of identity keys loaded
 
   // ACDS connection
-  acip_transport_t *acds_transport;  ///< Persistent transport for ACDS communication
-  socket_t acds_socket;              ///< Raw socket (owned by transport after creation)
+  acip_transport_t *acds_transport; ///< Persistent transport for ACDS communication
+  socket_t acds_socket;             ///< Raw socket (owned by transport after creation)
   char acds_address[64];
   uint16_t acds_port;
+  char acds_url[512]; ///< ACDS WebSocket URL (ws:// or wss://, if set uses WebSocket instead of TCP)
 
   // Host info (when not us)
   uint8_t host_id[16];
@@ -219,6 +220,7 @@ typedef struct {
   // ACDS server
   const char *acds_address; ///< ACDS address (default: "127.0.0.1")
   uint16_t acds_port;       ///< ACDS port (default: 27225)
+  const char *acds_url;     ///< ACDS WebSocket URL (ws:// or wss://, mutually exclusive with acds_port)
 
   // Session to join (NULL = create new)
   const char *session_string; ///< Session string to join (or NULL to create)
