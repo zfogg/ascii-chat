@@ -426,12 +426,13 @@ app.get("/api/man3/search", limiter, (req: Request, res: Response) => {
     }
 
     // Search using minisearch with OR logic to find all pages containing any term
-    const searchResults = miniSearch.search(query, {
-      combineWith: "OR",
-      prefix: false,
-      fuzzy: true, // Enable fuzzy matching
-      limit: 1000, // Return up to 1000 results
-    });
+    const searchResults = miniSearch
+      .search(query, {
+        combineWith: "OR",
+        prefix: false,
+        fuzzy: true, // Enable fuzzy matching
+      })
+      .slice(0, 1000); // Return up to 1000 results
 
     // Sort by minisearch score (highest first)
     searchResults.sort((a, b) => (b.score || 0) - (a.score || 0));
