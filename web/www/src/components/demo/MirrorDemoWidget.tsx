@@ -205,7 +205,8 @@ export default function MirrorDemoWidget({
       if (videoRef.current) {
         addDebugLog("Setting up video element");
         videoRef.current.src = "/assets/demo-video.mp4";
-        videoRef.current.crossOrigin = "anonymous";
+        // Don't set crossOrigin for same-domain resources
+        // (production server doesn't provide CORS headers)
         videoRef.current.loop = true;
         videoRef.current.muted = true;
         videoRef.current.playsInline = true;
