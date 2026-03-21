@@ -79,10 +79,12 @@ typedef void *(*websocket_client_handler_fn)(void *arg);
  * Contains all information needed to handle a WebSocket client connection.
  */
 typedef struct {
-  acip_transport_t *transport; ///< ACIP transport for this client
-  char client_ip[64];          ///< Client IP address (for logging/rate limiting)
-  int client_port;             ///< Client port
-  void *user_data;             ///< User-provided data from server config
+  acip_transport_t *transport;   ///< ACIP transport for this client
+  char client_ip[64];            ///< Client IP address (for logging/rate limiting)
+  int client_port;               ///< Client port
+  void *user_data;               ///< User-provided data from server config
+  bool is_secure;                ///< True if connection is using TLS (wss://)
+  bool auth_required;            ///< True if client authentication is required
 } websocket_client_context_t;
 
 /**

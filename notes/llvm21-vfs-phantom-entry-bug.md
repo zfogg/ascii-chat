@@ -60,6 +60,7 @@ The `setVirtualFileSystem()` method doesn't exist in LLVM 21. It was added in co
 ```
 
 This is a major refactoring that:
+
 - Changes how CompilerInstance manages VFS ownership
 - Adds new methods to CompilerInstance
 - Modifies 14+ files across clang, clang-tools-extra, and lldb
@@ -79,12 +80,12 @@ Cherry-picking just the Tooling.cpp change would fail because the required API d
 
 Key files in `/Users/zfogg/src/github.com/llvm/llvm-project`:
 
-| File | Role |
-|------|------|
-| `clang/lib/Tooling/Tooling.cpp` | FrontendActionFactory - where VFS should be set |
-| `clang/lib/Lex/PPMacroExpansion.cpp` | `__has_include_next` evaluation - my workaround fix |
+| File                                              | Role                                                                 |
+| ------------------------------------------------- | -------------------------------------------------------------------- |
+| `clang/lib/Tooling/Tooling.cpp`                   | FrontendActionFactory - where VFS should be set                      |
+| `clang/lib/Lex/PPMacroExpansion.cpp`              | `__has_include_next` evaluation - my workaround fix                  |
 | `clang/include/clang/Frontend/CompilerInstance.h` | CompilerInstance class - missing `setVirtualFileSystem()` in LLVM 21 |
-| `clang/lib/Frontend/CompilerInstance.cpp` | `setFileManager()` implementation - doesn't properly handle VFS |
+| `clang/lib/Frontend/CompilerInstance.cpp`         | `setFileManager()` implementation - doesn't properly handle VFS      |
 
 ## Proposed Solutions
 
@@ -113,11 +114,13 @@ bool Preprocessor::EvaluateHasIncludeNext(Token &Tok, IdentifierInfo *II) {
 ```
 
 **Pros:**
+
 - Small, focused change
 - Doesn't require VFS refactoring
 - Prevents the problematic search entirely
 
 **Cons:**
+
 - Workaround, not root cause fix
 - Changes `__has_include_next` behavior (returns false instead of searching)
 
@@ -138,21 +141,22 @@ This is the "proper" fix but requires more investigation.
 **Status:** Not viable short-term
 
 Homebrew could update to LLVM 22, but:
+
 - LLVM 22 is not released yet (still in development)
 - Would require Homebrew formula changes
 - Users would need to wait for LLVM 22 release
 
 ## Timeline
 
-| Date | Event |
-|------|-------|
-| 2025-09-16 | Commit `30633f308941` - VFS refactoring merged to main |
-| 2025-10-22 | Commit `866879f80342` - VFS fix merged to main |
-| 2025-12-01 | LLVM 22 build (a751ed97acf1) - includes both fixes |
-| 2025-12-27 | PR #173717 opened - PPMacroExpansion workaround for LLVM 21 |
+| Date       | Event                                                                   |
+| ---------- | ----------------------------------------------------------------------- |
+| 2025-09-16 | Commit `30633f308941` - VFS refactoring merged to main                  |
+| 2025-10-22 | Commit `866879f80342` - VFS fix merged to main                          |
+| 2025-12-01 | LLVM 22 build (a751ed97acf1) - includes both fixes                      |
+| 2025-12-27 | PR #173717 opened - PPMacroExpansion workaround for LLVM 21             |
 | 2025-12-27 | Fix verified - built LLVM 21.1.9 from release/21.x, tested successfully |
-| TBD | LLVM 21.1.9 official release with fix |
-| TBD | Homebrew updates LLVM formula |
+| TBD        | LLVM 21.1.9 official release with fix                                   |
+| TBD        | Homebrew updates LLVM formula                                           |
 
 ## Verification
 

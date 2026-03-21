@@ -26,18 +26,21 @@ Handshake Protocol
 ## File Organization
 
 ### Core Cryptography
+
 - **crypto.c/h** - Main interface (encryption, key exchange, HMAC, rekeying)
 - **pem_utils.c/h** - PEM/OpenSSH format parsing
 - **sha1.c/h** - SHA-1 for fingerprinting
 - **regex.c/h** - Format detection
 
 ### SSH Integration
+
 - **ssh/ssh_agent.c/h** - SSH agent communication (signing, key listing)
 - **ssh/ssh_keys.c/h** - OpenSSH format parsing
 - **known_hosts.c/h** - SSH-style known_hosts file
 - **keys_validation.c/h** - SSH key validation
 
 ### GPG Integration
+
 - **gpg/agent.c/h** - GPG agent communication
 - **gpg/export.c/h** - Export keys from GPG keyring
 - **gpg/signing.c/h** - GPG signing operations
@@ -46,21 +49,25 @@ Handshake Protocol
 - **gpg/openpgp.c/h** - OpenPGP format handling
 
 ### HTTPS & Discovery
+
 - **https_keys.c/h** - Fetch keys from HTTPS URLs (BearSSL)
 - **discovery_keys.c/h** - ACDS discovery server key management
 
 ### Handshake Protocol
+
 - **handshake/client.c/h** - Client-side handshake
 - **handshake/server.c/h** - Server-side handshake
 - **handshake/common.c/h** - Shared utilities
 
 ### Key Management
+
 - **keys.c/h** - Master key loading interface
 - **key_types.h** - Key structure definitions
 
 ## Usage Examples
 
 ### Basic Key Exchange
+
 ```c
 #include "ascii-chat/crypto/crypto.h"
 
@@ -97,6 +104,7 @@ crypto_destroy(&ctx);
 ```
 
 ### SSH Key Authentication
+
 ```c
 #include "ascii-chat/crypto/ssh/ssh_agent.h"
 #include "ascii-chat/crypto/ssh/ssh_keys.h"
@@ -117,6 +125,7 @@ if (ssh_agent_is_available()) {
 ```
 
 ### GPG Key Authentication
+
 ```c
 #include "ascii-chat/crypto/gpg/gpg.h"
 
@@ -130,6 +139,7 @@ gpg_agent_sign("zfogg", data_to_sign, sizeof(data_to_sign), signature);
 ```
 
 ### Known Hosts Verification
+
 ```c
 #include "ascii-chat/crypto/known_hosts.h"
 
@@ -148,6 +158,7 @@ if (!known_hosts_verify("localhost:27224", server_key)) {
 ```
 
 ### GitHub Key Fetching
+
 ```c
 #include "ascii-chat/crypto/https_keys.h"
 
@@ -166,28 +177,33 @@ if (verify_key_in_buffer(server_identity_key, github_keys, keys_len)) {
 ## Key Concepts
 
 ### X25519 Key Exchange
+
 - **Ephemeral:** New key pair for each connection
 - **Perfect Forward Secrecy:** Old connections safe even if long-term key compromised
 - **32-byte keys:** Compact, secure
 - **libsodium:** Hardware-optimized, constant-time
 
 ### XSalsa20-Poly1305 Encryption
+
 - **Authenticated encryption:** Detects tampering
 - **Nonce-based:** Different nonce per packet (prevents replay)
 - **MAC verification:** Automatic, returns error on mismatch
 - **Speed:** ~20μs per KB on modern CPUs
 
 ### HMAC-SHA256 Authentication
+
 - **Challenge-response:** Server sends random nonce
 - **Password binding:** HMAC includes shared secret (MITM protection)
 - **Constant-time verification:** No timing attacks
 
 ### Argon2id Password KDF
+
 - **Memory-hard:** Resists GPU/ASIC brute-force
 - **Interactive limits:** ~0.1s, ~64MB memory
 - **Deterministic salt:** Same password produces same key
 
 ### Session Rekeying
+
 - **Automatic:** After 1 hour or 1M packets (whichever first)
 - **DH re-exchange:** New ephemeral keys generated
 - **Seamless:** No interruption to connection
@@ -196,11 +212,13 @@ if (verify_key_in_buffer(server_identity_key, github_keys, keys_len)) {
 ## Configuration
 
 ### Environment Variables
+
 - `SSH_AUTH_SOCK` - SSH agent socket (Unix domain socket or named pipe)
 - `GNUPGHOME` - GPG home directory (default: ~/.gnupg)
 - `CRITERION_TEST` / `TESTING` - Enable test mode (reduced rekeying thresholds)
 
 ### Configuration Files
+
 - `~/.ascii-chat/authorized_clients.txt` - Server whitelist (one key per line)
 - `~/.ascii-chat/known_hosts` - SSH-style known hosts (hostname:port ssh-ed25519 <key>)
 - `~/.ascii-chat/acds_keys/` - Cached ACDS server keys
@@ -227,15 +245,15 @@ ctest --test-dir build -R crypto
 
 ## Performance
 
-| Operation | Time | Notes |
-|-----------|------|-------|
-| crypto_init() | ~100μs | libsodium init + key gen |
-| Key exchange | ~500μs | X25519 computation |
-| Encrypt 1KB | ~20μs | XSalsa20 |
-| Decrypt 1KB | ~20μs | XSalsa20 + Poly1305 verify |
-| SSH agent sign | ~1ms | IPC + SSH protocol |
-| GPG agent sign | ~50ms | IPC + GPG protocol |
-| HTTPS key fetch | ~200ms | Network + TLS |
+| Operation       | Time   | Notes                      |
+| --------------- | ------ | -------------------------- |
+| crypto_init()   | ~100μs | libsodium init + key gen   |
+| Key exchange    | ~500μs | X25519 computation         |
+| Encrypt 1KB     | ~20μs  | XSalsa20                   |
+| Decrypt 1KB     | ~20μs  | XSalsa20 + Poly1305 verify |
+| SSH agent sign  | ~1ms   | IPC + SSH protocol         |
+| GPG agent sign  | ~50ms  | IPC + GPG protocol         |
+| HTTPS key fetch | ~200ms | Network + TLS              |
 
 ## Testing
 
@@ -256,23 +274,27 @@ ctest --test-dir build -R crypto
 ## Security Properties
 
 ✅ **Encryption:**
+
 - XSalsa20-Poly1305 (AEAD)
 - Unique nonces per packet (session_id || counter)
 - Automatic MAC verification
 - Constant-time comparison
 
 ✅ **Key Exchange:**
+
 - X25519 ephemeral keys
 - Forward secrecy
 - Optional authentication via SSH/GPG
 
 ✅ **Authentication:**
+
 - HMAC-SHA256 challenge-response
 - Ed25519 signatures
 - SSH agent integration (keys never in memory)
 - GPG agent integration (keys never in memory)
 
 ⚠️ **Known Limitations:**
+
 - TOFU (Trust On First Use) for known_hosts - first connection vulnerable to MITM
 - No post-quantum cryptography (planned for future)
 - No Certificate Authority (planned: verification server)
@@ -280,21 +302,25 @@ ctest --test-dir build -R crypto
 ## Debugging
 
 ### Enable Verbose Logging
+
 ```bash
 ./build/bin/ascii-chat --log-level debug server --grep "/crypto|handshake/i"
 ```
 
 ### Inspect Known Hosts
+
 ```bash
 cat ~/.ascii-chat/known_hosts
 ```
 
 ### Check SSH Agent
+
 ```bash
 ssh-add -L  # List available keys
 ```
 
 ### Check GPG Agent
+
 ```bash
 gpg --list-keys
 echo "test" | gpg -s  # Test agent availability

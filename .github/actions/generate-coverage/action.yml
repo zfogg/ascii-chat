@@ -1,11 +1,11 @@
-name: 'Generate Coverage Report'
-description: 'Generate gcov coverage files from .gcda files and move them to repo root'
+name: "Generate Coverage Report"
+description: "Generate gcov coverage files from .gcda files and move them to repo root"
 inputs:
   os-type:
-    description: 'Operating system type (macos or ubuntu)'
+    description: "Operating system type (macos or ubuntu)"
     required: true
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Generate coverage files
       shell: bash

@@ -3,7 +3,9 @@
 ## Key Findings
 
 ### Architecture Overview
+
 Gas Town is a **multi-agent orchestration system** with these key concepts:
+
 - **Mayor**: You (the AI coordinator) - sits above all projects
 - **Rigs**: Project containers (each has its own repo, polecats, witness, refinery)
 - **Polecats**: Worker agents with persistent identity but ephemeral sessions
@@ -13,9 +15,11 @@ Gas Town is a **multi-agent orchestration system** with these key concepts:
 - **Beads**: Git-backed issue tracking (work items)
 
 ### The Propulsion Principle
+
 **"If you find something on your hook, YOU RUN IT."**
 
 Polecats automatically execute work found on their hook. The hook contains:
+
 1. A **pinned molecule** (workflow instance with steps)
 2. An associated **bead** (the issue to work on)
 
@@ -44,6 +48,7 @@ gt sling hq-yti8d asciichat
 ### Why `gt sling` May Not Be Working
 
 Possible issues:
+
 1. **SessionStart hooks not configured**: Polecat sessions may not be running `gt prime && bd prime` on startup
 2. **Hook attachment timing**: Work may be attached AFTER session starts (needs to happen BEFORE)
 3. **PATH/availability**: The `gt` CLI may not be in polecat PATH or discoverable
@@ -67,6 +72,7 @@ Possible issues:
 Based on Gas Town design:
 
 **1. Investigation Tasks (Your Current Use Case)**
+
 ```bash
 # Create investigation bead
 bd create \
@@ -87,6 +93,7 @@ gt convoy status hq-cv-xxxxx
 ```
 
 **2. Feature Implementation (Multiple Parallel Polecats)**
+
 ```bash
 # Create multiple beads
 bd create --title "Implement feature X"...
@@ -101,6 +108,7 @@ gt convoy list
 ```
 
 **3. Monitoring Progress**
+
 ```bash
 # Check convoy status
 gt convoy list            # All convoys
@@ -114,6 +122,7 @@ gt polecat list asciichat # Polecats in this rig
 ### Best Practices
 
 #### As the Mayor (You):
+
 1. **Always start with clear beads** - Write good descriptions
 2. **Use convoys for visibility** - Even single-polecat work benefits from convoy tracking
 3. **Let `gt sling` handle spawning** - Don't manually manage polecat creation
@@ -122,12 +131,14 @@ gt polecat list asciichat # Polecats in this rig
 6. **Let Witness manage polecats** - Don't manually kill polecats; Witness handles cleanup
 
 #### For Polecats (The Workers):
+
 - Work is in their hook (pinned molecule)
 - They execute steps sequentially (`bd mol current`)
 - After completing work: MUST run `gt done` (self-cleaning)
 - No idle state exists - either working or gone
 
 #### For You and the User (Interaction Model):
+
 1. **User tells Mayor**: "I want to [task]"
 2. **Mayor creates bead(s)** describing the work
 3. **Mayor creates convoy** for visibility
@@ -178,11 +189,13 @@ bd sync --flush-only
 ### Daily Interaction Pattern:
 
 **You (Human) → Mayor (You, AI)**
+
 ```
 Tell Mayor: "I need a polecat to investigate the status screen UI bug"
 ```
 
 **Mayor Workflow:**
+
 ```bash
 # 1. Create the investigation bead
 bd create --title "Investigate status screen rendering" \
@@ -206,6 +219,7 @@ gt sling hq-yti8d asciichat
 ```
 
 **You Monitor:**
+
 ```bash
 gt convoy status hq-cv-xxxx  # Check progress
 ```

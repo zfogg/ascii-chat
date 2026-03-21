@@ -22,6 +22,7 @@ Add encoder configuration to FFmpeg build. Find line 149:
 ```
 
 Alternative (if libx264 unavailable):
+
 ```cmake
 --enable-encoder=h264,mpeg4,png
 ```
@@ -91,12 +92,14 @@ void ffmpeg_encoder_destroy(ffmpeg_encoder_t *encoder);
 ### Step 2: Create `lib/media/ffmpeg_encoder.c`
 
 Follow the pattern of `ffmpeg_decoder.c`:
+
 1. Copy ffmpeg_decoder.c structure
 2. Replace AVCodecContext decoder with encoder
 3. Implement encoding loop instead of decoding loop
 4. Handle NAL unit output (H.264 bitstream)
 
 **Key differences from decoder:**
+
 - Use `avcodec_find_encoder_by_name("libx264")` instead of decoder
 - Use `avcodec_send_frame()` to send raw frames
 - Use `av_packet_alloc()` to receive encoded packets
@@ -122,6 +125,7 @@ endif()
 **File:** `include/ascii-chat/network/packet.h`
 
 Add format enum to IMAGE_FRAME:
+
 ```c
 #define PIXEL_FORMAT_RGB24   0
 #define PIXEL_FORMAT_H264    1  // Add this
@@ -162,6 +166,7 @@ const char *h264_preset;  // "fast", "medium", "slow"
 ```
 
 Parse from CLI:
+
 ```
 --h264                    Enable H.264 encoding
 --h264-bitrate <kbps>    Target bitrate (default: 2000)
@@ -195,6 +200,7 @@ if (packet->format == PIXEL_FORMAT_H264) {
 ### Step 2: Manage decoders per client
 
 Add to `client_info_t`:
+
 ```c
 struct client_info_t {
     // ... existing fields ...
@@ -246,14 +252,14 @@ tcpdump -i lo port 27224
 
 ## Timeline
 
-| Phase | Task | Time |
-|-------|------|------|
-| 1 | FFmpeg encoder in CMake | 30 mins |
-| 2 | Create ffmpeg_encoder module | 1.5-2 hrs |
-| 3 | Client integration | 1-2 hrs |
-| 4 | Server integration | 1 hr |
-| 5 | Testing & debugging | 1-2 hrs |
-| **Total** | | **5-7 hours** |
+| Phase     | Task                         | Time          |
+| --------- | ---------------------------- | ------------- |
+| 1         | FFmpeg encoder in CMake      | 30 mins       |
+| 2         | Create ffmpeg_encoder module | 1.5-2 hrs     |
+| 3         | Client integration           | 1-2 hrs       |
+| 4         | Server integration           | 1 hr          |
+| 5         | Testing & debugging          | 1-2 hrs       |
+| **Total** |                              | **5-7 hours** |
 
 ## Success Criteria
 
@@ -268,6 +274,7 @@ tcpdump -i lo port 27224
 ## Rollback Plan
 
 If H.264 causes issues:
+
 1. Add `--disable-h264` flag
 2. Fall back to RGB transmission
 3. Keep both codepaths (dynamic selection)

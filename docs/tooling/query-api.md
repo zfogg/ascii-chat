@@ -27,6 +27,7 @@ Returns an HTML status page with process info and interactive query form.
 Returns information about the attached target process.
 
 **Response**:
+
 ```json
 {
   "pid": 12345,
@@ -37,13 +38,13 @@ Returns information about the attached target process.
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `pid` | integer | Process ID |
-| `name` | string | Executable name |
-| `state` | string | `"running"`, `"stopped"`, or `"exited"` |
-| `triple` | string | Target architecture triple |
-| `num_threads` | integer | Number of threads |
+| Field         | Type    | Description                             |
+| ------------- | ------- | --------------------------------------- |
+| `pid`         | integer | Process ID                              |
+| `name`        | string  | Executable name                         |
+| `state`       | string  | `"running"`, `"stopped"`, or `"exited"` |
+| `triple`      | string  | Target architecture triple              |
+| `num_threads` | integer | Number of threads                       |
 
 ---
 
@@ -52,6 +53,7 @@ Returns information about the attached target process.
 Returns all threads in the target process.
 
 **Response**:
+
 ```json
 {
   "threads": [
@@ -78,6 +80,7 @@ Returns all threads in the target process.
 Returns the call stack for the current thread (when stopped).
 
 **Response**:
+
 ```json
 {
   "frames": [
@@ -100,6 +103,7 @@ Returns the call stack for the current thread (when stopped).
 ```
 
 **Error** (target not stopped):
+
 ```json
 {
   "status": "error",
@@ -116,17 +120,17 @@ Read a variable's value. Behavior depends on target state and parameters.
 
 **Parameters**:
 
-| Parameter | Required | Default | Description |
-|-----------|----------|---------|-------------|
-| `file` | When running | - | Source file path (relative to project root) |
-| `line` | When running | - | Line number |
-| `name` | Yes | - | Variable name (supports dot/arrow notation) |
-| `break` | No | - | If present, stop at breakpoint and stay stopped |
-| `timeout` | No | `5000` | Timeout in ms waiting for breakpoint |
-| `expand` | No | `false` | Expand struct members recursively |
-| `depth` | No | `3` | Max recursion depth for expansion |
-| `frame` | No | `0` | Stack frame index or function name |
-| `thread` | No | current | Thread ID to query |
+| Parameter | Required     | Default | Description                                     |
+| --------- | ------------ | ------- | ----------------------------------------------- |
+| `file`    | When running | -       | Source file path (relative to project root)     |
+| `line`    | When running | -       | Line number                                     |
+| `name`    | Yes          | -       | Variable name (supports dot/arrow notation)     |
+| `break`   | No           | -       | If present, stop at breakpoint and stay stopped |
+| `timeout` | No           | `5000`  | Timeout in ms waiting for breakpoint            |
+| `expand`  | No           | `false` | Expand struct members recursively               |
+| `depth`   | No           | `3`     | Max recursion depth for expansion               |
+| `frame`   | No           | `0`     | Stack frame index or function name              |
+| `thread`  | No           | current | Thread ID to query                              |
 
 **Examples**:
 
@@ -148,6 +152,7 @@ curl 'localhost:9999/query?name=argc&frame=1'
 ```
 
 **Response** (immediate mode):
+
 ```json
 {
   "status": "ok",
@@ -162,6 +167,7 @@ curl 'localhost:9999/query?name=argc&frame=1'
 ```
 
 **Response** (breakpoint mode):
+
 ```json
 {
   "status": "ok",
@@ -180,6 +186,7 @@ curl 'localhost:9999/query?name=argc&frame=1'
 ```
 
 **Response** (struct expansion):
+
 ```json
 {
   "status": "ok",
@@ -188,11 +195,15 @@ curl 'localhost:9999/query?name=argc&frame=1'
     "type": "client_t",
     "value": "{...}",
     "children": [
-      {"name": "id", "type": "uint32_t", "value": "42"},
-      {"name": "socket", "type": "socket_info_t", "children": [
-        {"name": "fd", "type": "int", "value": "7"},
-        {"name": "address", "type": "char[64]", "value": "\"127.0.0.1\""}
-      ]}
+      { "name": "id", "type": "uint32_t", "value": "42" },
+      {
+        "name": "socket",
+        "type": "socket_info_t",
+        "children": [
+          { "name": "fd", "type": "int", "value": "7" },
+          { "name": "address", "type": "char[64]", "value": "\"127.0.0.1\"" }
+        ]
+      }
     ]
   }
 }
@@ -205,6 +216,7 @@ curl 'localhost:9999/query?name=argc&frame=1'
 Stops (pauses) the target process.
 
 **Response**:
+
 ```json
 {
   "status": "stopped"
@@ -218,6 +230,7 @@ Stops (pauses) the target process.
 Resumes target execution if stopped.
 
 **Response**:
+
 ```json
 {
   "status": "running"
@@ -232,12 +245,13 @@ Execute one source line (when stopped).
 
 **Parameters**:
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `over` | `false` | Step over (don't enter functions) |
-| `out` | `false` | Step out (run until function returns) |
+| Parameter | Default | Description                           |
+| --------- | ------- | ------------------------------------- |
+| `over`    | `false` | Step over (don't enter functions)     |
+| `out`     | `false` | Step out (run until function returns) |
 
 **Examples**:
+
 ```bash
 curl -X POST 'localhost:9999/step'           # Step into
 curl -X POST 'localhost:9999/step?over=true' # Step over
@@ -245,6 +259,7 @@ curl -X POST 'localhost:9999/step?out=true'  # Step out
 ```
 
 **Response**:
+
 ```json
 {
   "status": "stopped",
@@ -263,6 +278,7 @@ curl -X POST 'localhost:9999/step?out=true'  # Step out
 Returns all set breakpoints.
 
 **Response**:
+
 ```json
 {
   "breakpoints": [
@@ -286,18 +302,20 @@ Set a persistent breakpoint.
 
 **Parameters**:
 
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `file` | Yes | Source file path |
-| `line` | Yes | Line number |
-| `condition` | No | Conditional expression |
+| Parameter   | Required | Description            |
+| ----------- | -------- | ---------------------- |
+| `file`      | Yes      | Source file path       |
+| `line`      | Yes      | Line number            |
+| `condition` | No       | Conditional expression |
 
 **Example**:
+
 ```bash
 curl -X POST 'localhost:9999/breakpoints?file=src/server.c&line=100&condition=client_count>5'
 ```
 
 **Response**:
+
 ```json
 {
   "id": 1,
@@ -315,16 +333,18 @@ Remove a breakpoint by ID.
 
 **Parameters**:
 
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `id` | Yes | Breakpoint ID |
+| Parameter | Required | Description   |
+| --------- | -------- | ------------- |
+| `id`      | Yes      | Breakpoint ID |
 
 **Example**:
+
 ```bash
 curl -X DELETE 'localhost:9999/breakpoints?id=1'
 ```
 
 **Response**:
+
 ```json
 {
   "status": "ok",
@@ -339,6 +359,7 @@ curl -X DELETE 'localhost:9999/breakpoints?id=1'
 Cleanly detach LLDB from target. Target continues running.
 
 **Response**:
+
 ```json
 {
   "status": "detached"
@@ -361,24 +382,26 @@ All errors return JSON with `status: "error"`:
 
 **Error Codes**:
 
-| Code | Description |
-|------|-------------|
-| `not_stopped` | Operation requires target to be stopped |
-| `not_running` | Operation requires target to be running |
-| `timeout` | Breakpoint not hit within timeout |
-| `variable_not_found` | Variable not found in scope |
-| `invalid_parameter` | Missing or invalid parameter |
-| `no_debug_info` | File/line has no debug symbols |
-| `attach_failed` | Could not attach to process |
+| Code                 | Description                             |
+| -------------------- | --------------------------------------- |
+| `not_stopped`        | Operation requires target to be stopped |
+| `not_running`        | Operation requires target to be running |
+| `timeout`            | Breakpoint not hit within timeout       |
+| `variable_not_found` | Variable not found in scope             |
+| `invalid_parameter`  | Missing or invalid parameter            |
+| `no_debug_info`      | File/line has no debug symbols          |
+| `attach_failed`      | Could not attach to process             |
 
 ---
 
 ## HTTP Headers
 
 **Request Headers** (optional):
+
 - `Accept: application/json` - Request JSON response
 
 **Response Headers**:
+
 - `Content-Type: application/json` - JSON responses
 - `Access-Control-Allow-Origin: *` - CORS enabled for browser access
 
@@ -386,10 +409,10 @@ All errors return JSON with `status: "error"`:
 
 ## Status Codes
 
-| Code | Meaning |
-|------|---------|
-| 200 | Success |
-| 400 | Bad request (missing/invalid parameters) |
-| 404 | Endpoint not found |
-| 500 | Internal error |
-| 503 | Target not attached |
+| Code | Meaning                                  |
+| ---- | ---------------------------------------- |
+| 200  | Success                                  |
+| 400  | Bad request (missing/invalid parameters) |
+| 404  | Endpoint not found                       |
+| 500  | Internal error                           |
+| 503  | Target not attached                      |

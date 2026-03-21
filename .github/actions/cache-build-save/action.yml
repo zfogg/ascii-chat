@@ -1,57 +1,57 @@
-name: 'Save CMake Build Cache'
-description: 'Save build, dependency, and ccache directories using actions/cache/save@v4.'
+name: "Save CMake Build Cache"
+description: "Save build, dependency, and ccache directories using actions/cache/save@v4."
 
 inputs:
   build-directory:
-    description: 'Absolute or relative path to the configured CMake build directory.'
+    description: "Absolute or relative path to the configured CMake build directory."
     required: true
   configure-cache-key:
-    description: 'Fully qualified cache key for the configure directory (CMakeCache.txt, CMakeFiles).'
+    description: "Fully qualified cache key for the configure directory (CMakeCache.txt, CMakeFiles)."
     required: false
-    default: ''
+    default: ""
   configure-cache-hit:
-    description: 'Whether the configure directory cache was restored.'
+    description: "Whether the configure directory cache was restored."
     required: false
-    default: ''
+    default: ""
   build-cache-key:
-    description: 'Fully qualified cache key for the build directory.'
+    description: "Fully qualified cache key for the build directory."
     required: true
   build-cache-hit:
-    description: 'Whether the build directory cache was restored.'
+    description: "Whether the build directory cache was restored."
     required: false
-    default: ''
+    default: ""
   cache-deps-enabled:
-    description: 'Set to true to save dependency caches.'
+    description: "Set to true to save dependency caches."
     required: false
-    default: 'true'
+    default: "true"
   deps-cache-directory:
-    description: 'Newline-separated list of dependency cache directories.'
+    description: "Newline-separated list of dependency cache directories."
     required: false
-    default: ''
+    default: ""
   deps-cache-key:
-    description: 'Fully qualified cache key for dependency directories.'
+    description: "Fully qualified cache key for dependency directories."
     required: false
-    default: ''
+    default: ""
   deps-cache-hit:
-    description: 'Whether the dependency cache was restored.'
+    description: "Whether the dependency cache was restored."
     required: false
-    default: ''
+    default: ""
   cache-ccache-enabled:
-    description: 'Set to true to save the ccache directory.'
+    description: "Set to true to save the ccache directory."
     required: false
-    default: 'true'
+    default: "true"
   ccache-directory:
-    description: 'Path to the ccache directory.'
+    description: "Path to the ccache directory."
     required: false
-    default: ''
+    default: ""
   ccache-cache-key:
-    description: 'Fully qualified cache key for ccache.'
+    description: "Fully qualified cache key for ccache."
     required: false
-    default: ''
+    default: ""
   ccache-cache-hit:
-    description: 'Whether the ccache directory cache was restored.'
+    description: "Whether the ccache directory cache was restored."
     required: false
-    default: ''
+    default: ""
 
 runs:
   using: composite
@@ -105,4 +105,3 @@ runs:
       with:
         path: ${{ inputs.ccache-directory }}
         key: ${{ inputs.ccache-cache-key }}
-

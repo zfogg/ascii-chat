@@ -26,6 +26,7 @@ int result = lws_service(server->context, -1);  // BUG: -1 causes blocking
 ### The Problem
 
 Passing `-1` to `lws_service()` was supposed to force non-blocking mode, but this is incorrect. The parameter `-1` actually causes `lws_service()` to:
+
 - Use a very long internal timeout
 - Block the service thread indefinitely or for extended periods
 - Prevent RECEIVE callbacks from firing while blocked
@@ -57,6 +58,7 @@ int result = lws_service(server->context, 50); // 50ms timeout
 ```
 
 Use a **50ms timeout** instead of -1. This keeps the event loop responsive:
+
 - Poll every 50ms for new socket activity
 - RECEIVE callbacks fire continuously as fragments arrive
 - WRITEABLE callbacks fire to send responses
@@ -67,6 +69,7 @@ This matches the correct pattern already used in `transport.c:87` for the client
 ## Current Bug: WebSocket Frames Not Sent Back to Client (2026-02-17 23:10)
 
 **Observed Behavior:**
+
 1. Browser connects to server via WebSocket ✓
 2. Frames arrive continuously (RECEIVE callbacks firing) ✓
 3. Send thread loops and gets video frames ✓
@@ -75,6 +78,7 @@ This matches the correct pattern already used in `transport.c:87` for the client
 6. No ASCII art sent back to browser ✗
 
 **Root Cause Chain:**
+
 1. **WebSocket frames aren't being processed into incoming_video_buffer**
    - No RECV_FRAME logs appear (incoming frames should be logged)
    - TCP clients show RECV_FRAME logs immediately upon connection
@@ -90,6 +94,7 @@ This matches the correct pattern already used in `transport.c:87` for the client
    - Nothing sent back to client
 
 **Why TCP Works, WebSocket Doesn't:**
+
 - Same code path for storing incoming frames
 - Same send thread implementation
 - TCP clients' incoming frames ARE being stored (RECV_FRAME logs appear)
@@ -103,7 +108,6 @@ WebSocket client frames are arriving but not being decoded/dispatched to the IMA
 - `lib/network/websocket/server.c` - Fixed lws_service() timeout parameter from -1 to 50ms
 - `lib/network/websocket/transport.c` - Reduced recv_mutex lock contention (2026-02-17)
 
-
 UPDATE:
 i can get about 0.5fps now. i connected a terminal client and it renders smoothly but renders the web client frozen, so
 the server is not processing the image frames sent over websocket back over raw tcp to the tcp terminal client either.
@@ -116,7 +120,6 @@ with lldb.
 here's a hint: the browser renders at 0.5fps while the terminal client renders the browser's webcam feed at 0fps (shows
 one frame then stops animating that grid cell). why? good question. because 0.5fps in the browser is progres, but the
 terminal app is showing the same data from the same server at 0fps, so back to the old bug in that regard..
-
 
 UPDATE NEW:
 back to 0 frames whatsoever in the browser. this is due to recent commits. maybe the goal should be fixing it completely

@@ -607,7 +607,7 @@ build/bin/test_performance_ascii_simd --filter "*monochrome*"
 
 ## Links
 
-* [Everything you never wanted to know about ANSI escape codes](https://notes.burke.libbey.me/ansi-escape-codes)
+- [Everything you never wanted to know about ANSI escape codes](https://notes.burke.libbey.me/ansi-escape-codes)
 
 ## Notes
 

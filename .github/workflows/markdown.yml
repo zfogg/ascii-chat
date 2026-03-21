@@ -2,13 +2,13 @@ name: Markdown Linting
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
     paths:
-      - '**.md'
+      - "**.md"
   pull_request:
-    branches: [ '*' ]
+    branches: ["*"]
     paths:
-      - '**.md'
+      - "**.md"
 
 env:
   CC: clang
@@ -20,82 +20,81 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-        submodules: true
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
 
-    - name: Install markdown link checker
-      run: |
-        npm install -g markdown-link-check
+      - name: Install markdown link checker
+        run: |
+          npm install -g markdown-link-check
 
-    - name: Check links in README
-      run: |
-        markdown-link-check README.md --config .github/markdown-link-check.json || true
+      - name: Check links in README
+        run: |
+          markdown-link-check README.md --config .github/markdown-link-check.json || true
 
-    - name: Check links in other markdown files
-      run: |
-        find . -name "*.md" -exec markdown-link-check {} \; || true
-
+      - name: Check links in other markdown files
+        run: |
+          find . -name "*.md" -exec markdown-link-check {} \; || true
 
   spell-check:
     name: Spell Check Documentation
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-        submodules: true
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
 
-    - name: Install aspell
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y aspell aspell-en
+      - name: Install aspell
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y aspell aspell-en
 
-    - name: Create custom dictionary
-      run: |
-        # Create a custom dictionary for technical terms
-        cat > .aspell.en.pws << EOF
-        ASCII
-        webcam
-        Ubuntu
-        ArchLinux
-        macOS
-        ANSI
-        RGB
-        FPS
-        TCP
-        IPv4
-        README
-        TODO
-        clang
-        gcc
-        pthread
-        realtime
-        colorize
-        refactor
-        WASM
-        WASI
-        Putty
-        iTerm
-        Kitty
-        rxvt
-        unicode
-        OpenBox
-        startx
-        PulseAudio
-        EOF
+      - name: Create custom dictionary
+        run: |
+          # Create a custom dictionary for technical terms
+          cat > .aspell.en.pws << EOF
+          ASCII
+          webcam
+          Ubuntu
+          ArchLinux
+          macOS
+          ANSI
+          RGB
+          FPS
+          TCP
+          IPv4
+          README
+          TODO
+          clang
+          gcc
+          pthread
+          realtime
+          colorize
+          refactor
+          WASM
+          WASI
+          Putty
+          iTerm
+          Kitty
+          rxvt
+          unicode
+          OpenBox
+          startx
+          PulseAudio
+          EOF
 
-    - name: Spell check README
-      run: |
-        aspell --mode=markdown --personal=.aspell.en.pws list < README.md > spelling_errors.txt || true
-        if [[ -s spelling_errors.txt ]]; then
-          echo "Potential spelling errors found in README.md:"
-          cat spelling_errors.txt
-          echo "Note: These may be false positives for technical terms"
-        else
-          echo "No spelling errors found in README.md"
-        fi
+      - name: Spell check README
+        run: |
+          aspell --mode=markdown --personal=.aspell.en.pws list < README.md > spelling_errors.txt || true
+          if [[ -s spelling_errors.txt ]]; then
+            echo "Potential spelling errors found in README.md:"
+            cat spelling_errors.txt
+            echo "Note: These may be false positives for technical terms"
+          else
+            echo "No spelling errors found in README.md"
+          fi

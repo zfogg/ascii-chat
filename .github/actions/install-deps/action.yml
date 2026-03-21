@@ -1,60 +1,60 @@
-name: 'Install Dependencies'
-description: 'Install and cache build dependencies for ascii-chat'
+name: "Install Dependencies"
+description: "Install and cache build dependencies for ascii-chat"
 inputs:
   os:
-    description: 'Operating system (ubuntu, macos, or windows)'
+    description: "Operating system (ubuntu, macos, or windows)"
     required: true
   extra-packages:
-    description: 'Additional packages to install (space-separated)'
+    description: "Additional packages to install (space-separated)"
     required: false
-    default: ''
+    default: ""
   vcpkg-packages:
-    description: 'Space-separated vcpkg packages to install for the primary triplet (Windows only)'
+    description: "Space-separated vcpkg packages to install for the primary triplet (Windows only)"
     required: false
-    default: ''
+    default: ""
   vcpkg-triplet:
-    description: 'vcpkg triplet to use for primary packages (Windows only)'
+    description: "vcpkg triplet to use for primary packages (Windows only)"
     required: false
-    default: 'x64-windows'
+    default: "x64-windows"
   vcpkg-static-packages:
-    description: 'Space-separated vcpkg packages to install for the static triplet (Windows only)'
+    description: "Space-separated vcpkg packages to install for the static triplet (Windows only)"
     required: false
-    default: ''
+    default: ""
   vcpkg-static-triplet:
-    description: 'vcpkg triplet to use for static packages (Windows only)'
+    description: "vcpkg triplet to use for static packages (Windows only)"
     required: false
-    default: 'x64-windows-static'
+    default: "x64-windows-static"
   github-token:
-    description: 'GitHub token for downloading pre-built tools from releases (Windows only)'
+    description: "GitHub token for downloading pre-built tools from releases (Windows only)"
     required: false
-    default: ''
+    default: ""
   windows-libs-mode:
     description: 'Windows library linking mode: "static" (Release builds), "dynamic" (Debug builds), or "both"'
     required: false
-    default: 'both'
+    default: "both"
 
 outputs:
   defer-tool-path:
-    description: 'Path to the defer tool executable'
+    description: "Path to the defer tool executable"
     value: ${{ steps.download-prebuilt.outputs.defer-tool-path || steps.download-prebuilt-macos.outputs.defer-tool-path }}
   cmake-cache-key:
-    description: 'Cache key for CMake dependencies (computed by cache-keys step)'
+    description: "Cache key for CMake dependencies (computed by cache-keys step)"
     value: ${{ steps.cache-keys.outputs.cmake-cache-key || steps.cache-keys-win.outputs.cmake-cache-key }}
   cmake-cache-hit:
-    description: 'Whether CMake dependency cache was hit'
+    description: "Whether CMake dependency cache was hit"
     value: ${{ steps.cmake-cache.outputs.cache-hit }}
   ccache-key:
-    description: 'Cache key for ccache (computed by cache-keys step)'
+    description: "Cache key for ccache (computed by cache-keys step)"
     value: ${{ steps.cache-keys.outputs.ccache-key || steps.cache-keys-win.outputs.ccache-key }}
   ccache-hit:
-    description: 'Whether ccache was hit'
+    description: "Whether ccache was hit"
     value: ${{ steps.ccache-restore.outputs.cache-hit }}
   build-cache-key:
-    description: 'Cache key for build directory (computed by cache-keys step)'
+    description: "Cache key for build directory (computed by cache-keys step)"
     value: ${{ steps.cache-keys.outputs.build-cache-key || steps.cache-keys-win.outputs.build-cache-key }}
 
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     # =========================================================================
     # CMake 4.2.0 Installation (macOS and Windows only)
@@ -712,7 +712,6 @@ runs:
         echo "Created clang config files for darwin${DARWIN_VERSION}"
         ls -la ~/.config/clang/
 
-
     # =========================================================================
     # Pre-built Tools Download (macOS)
     # =========================================================================
@@ -805,7 +804,6 @@ runs:
         # Set VCPKG_ROOT for CMake
         Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_ROOT=$vcpkgDir"
         Add-Content -Path $env:GITHUB_PATH -Value "$vcpkgDir"
-
 
     # =========================================================================
     # Pre-built Tools Download (Windows)

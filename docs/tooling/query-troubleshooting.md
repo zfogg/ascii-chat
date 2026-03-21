@@ -13,6 +13,7 @@ This guide covers common issues and solutions when using the query tool.
 **Causes & Solutions**:
 
 1. **Controller not running**
+
    ```bash
    # Check if controller is running
    pgrep -f ascii-query-server
@@ -22,6 +23,7 @@ This guide covers common issues and solutions when using the query tool.
    ```
 
 2. **Wrong port**
+
    ```bash
    # Check which port controller is using
    lsof -i -P | grep ascii-query
@@ -36,6 +38,7 @@ This guide covers common issues and solutions when using the query tool.
 ### "Failed to attach to process"
 
 **macOS - Code signing required**:
+
 ```bash
 # Check current signature
 codesign -dvvv ./build/bin/ascii-query-server
@@ -45,6 +48,7 @@ cmake --build build --target ascii-query-server
 ```
 
 The build system should automatically sign with `get-task-allow` entitlement. If not:
+
 ```bash
 # Manual signing (use your identity)
 codesign -s "Your Developer ID" \
@@ -53,6 +57,7 @@ codesign -s "Your Developer ID" \
 ```
 
 **Linux - ptrace restrictions**:
+
 ```bash
 # Check current setting
 cat /proc/sys/kernel/yama/ptrace_scope
@@ -69,6 +74,7 @@ prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY);
 ```
 
 **Docker**:
+
 ```bash
 # Run container with ptrace capability
 docker run --cap-add=SYS_PTRACE ...
@@ -77,6 +83,7 @@ docker run --cap-add=SYS_PTRACE ...
 ### "Process is already being debugged"
 
 Only one debugger can attach at a time. Check for:
+
 ```bash
 # Other LLDB instances
 pgrep lldb
@@ -97,11 +104,13 @@ pkill -f ascii-query-server
 **Causes**:
 
 1. **Variable optimized out** - Rebuild with `-O0`:
+
    ```bash
    cmake -B build -DCMAKE_BUILD_TYPE=Debug
    ```
 
 2. **Wrong file/line** - The line must be where variable is in scope:
+
    ```c
    void foo() {
        int x = 10;  // Query x here (line 2)
@@ -118,6 +127,7 @@ pkill -f ascii-query-server
 **Causes**:
 
 1. **Release build** - Rebuild with debug symbols:
+
    ```bash
    cmake -B build -DCMAKE_BUILD_TYPE=Debug
    cmake --build build
@@ -134,6 +144,7 @@ pkill -f ascii-query-server
 1. **Code path not executed** - The line may never be reached during your test
 
 2. **Wrong file path** - Use full absolute path:
+
    ```bash
    curl 'localhost:9999/query?file=/full/path/to/src/server.c&line=100&name=x&break'
    ```
@@ -141,6 +152,7 @@ pkill -f ascii-query-server
 3. **Breakpoint in loop that exits** - Line was hit but exited before timeout
 
 **Solutions**:
+
 - Increase timeout: `&timeout=30000` (30 seconds)
 - Verify the code path is being executed
 - Use `/breakpoints` to check if breakpoint was set
@@ -152,11 +164,13 @@ pkill -f ascii-query-server
 ### Queries are slow
 
 **Normal causes**:
+
 - Breakpoint mode is inherently slower (waits for execution)
 - Large struct expansion generates many sub-queries
 - First query after attach may be slower
 
 **Solutions**:
+
 - Use immediate mode for quick checks
 - Limit expansion depth: `&depth=1`
 - Keep controller running between queries
@@ -166,6 +180,7 @@ pkill -f ascii-query-server
 LLDB attachment has some overhead. This is expected but should be minimal.
 
 If severely impacted:
+
 - Detach when not actively querying
 - Avoid setting many breakpoints
 - Check if other debuggers are attached
@@ -188,12 +203,14 @@ sudo dnf install lldb-devel        # Fedora
 ### Query tool not built
 
 Ensure you enable the option:
+
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCIICHAT_BUILD_WITH_QUERY=ON
 cmake --build build
 ```
 
 Check that LLDB was found:
+
 ```
 -- Found LLDB library: /path/to/liblldb.dylib
 -- Building query tool
@@ -206,12 +223,14 @@ Check that LLDB was found:
 ### macOS: "Debugger was denied access"
 
 System Integrity Protection may block debugging. Either:
+
 1. Sign the binary with proper entitlements (preferred)
 2. Disable SIP (not recommended for production machines)
 
 ### Linux: "Operation not permitted"
 
 See ptrace restrictions above. Also check:
+
 ```bash
 # SELinux may block
 getenforce

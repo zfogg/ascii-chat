@@ -83,6 +83,7 @@ curl 'localhost:9999/query?file=src/server.c&line=100&name=client_count'
 ```
 
 Response:
+
 ```json
 {
   "status": "ok",
@@ -120,15 +121,16 @@ curl 'localhost:9999/query?file=src/server.c&line=100&name=client&expand'
 ```
 
 Response:
+
 ```json
 {
   "result": {
     "name": "client",
     "type": "client_t",
     "children": [
-      {"name": "id", "type": "uint32_t", "value": "42"},
-      {"name": "socket", "type": "socket_info_t", "value": "{...}"},
-      {"name": "socket.fd", "type": "int", "value": "7"}
+      { "name": "id", "type": "uint32_t", "value": "42" },
+      { "name": "socket", "type": "socket_info_t", "value": "{...}" },
+      { "name": "socket.fd", "type": "int", "value": "7" }
     ]
   }
 }
@@ -210,6 +212,7 @@ echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
 ```
 
 For Docker:
+
 ```bash
 docker run --cap-add=SYS_PTRACE ...
 ```

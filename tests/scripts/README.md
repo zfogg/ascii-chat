@@ -9,6 +9,7 @@ This directory contains test runner scripts for ascii-chat.
 PowerShell script to run tests via Docker using ctest. This is the recommended way to run tests on Windows or when you need a consistent Linux test environment.
 
 **Usage:**
+
 ```powershell
 # Run all tests
 ./tests/scripts/run-docker-tests.ps1

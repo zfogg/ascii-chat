@@ -13,6 +13,7 @@
 ## Task 1: Platform Layer - Terminal Bridge
 
 **Files:**
+
 - Create: `lib/platform/wasm/terminal.c`
 - Reference: `include/ascii-chat/platform/abstraction.h`
 - Reference: `include/ascii-chat/platform/terminal.h`
@@ -140,6 +141,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Task 2: Platform Layer - Threading
 
 **Files:**
+
 - Create: `lib/platform/wasm/threading.c`
 
 **Step 1: Create threading.c**
@@ -229,6 +231,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Task 3: Platform Layer - Environment and Time
 
 **Files:**
+
 - Create: `lib/platform/wasm/environment.c`
 - Create: `lib/platform/wasm/time.c`
 
@@ -332,6 +335,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Task 4: Platform Layer - Initialization
 
 **Files:**
+
 - Create: `lib/platform/wasm/init.c`
 
 **Step 1: Create init.c**
@@ -378,6 +382,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Task 5: WASM Entry Point
 
 **Files:**
+
 - Create: `web/web.ascii-chat.com/wasm/mirror_wasm.c`
 
 **Step 1: Create wasm directory**
@@ -493,6 +498,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Task 6: WASM Entry Point - Render Settings
 
 **Files:**
+
 - Modify: `web/web.ascii-chat.com/wasm/mirror_wasm.c`
 
 **Step 1: Add render mode and color settings**
@@ -582,6 +588,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Task 7: WASM Entry Point - Frame Conversion
 
 **Files:**
+
 - Modify: `web/web.ascii-chat.com/wasm/mirror_wasm.c`
 
 **Step 1: Add required includes at top of file**
@@ -707,6 +714,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Task 8: CMake Build Configuration
 
 **Files:**
+
 - Create: `web/web.ascii-chat.com/wasm/CMakeLists.txt`
 
 **Step 1: Create CMakeLists.txt**
@@ -918,6 +926,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Task 9: Build Script
 
 **Files:**
+
 - Create: `web/web.ascii-chat.com/wasm/build.sh`
 
 **Step 1: Create build.sh**
@@ -976,6 +985,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Task 10: TypeScript Type Definitions
 
 **Files:**
+
 - Create: `web/web.ascii-chat.com/src/wasm/mirror-types.ts`
 
 **Step 1: Create wasm directory**
@@ -991,79 +1001,75 @@ Create `web/web.ascii-chat.com/src/wasm/mirror-types.ts`:
 ```typescript
 // Type definitions for Mirror WASM module
 
-import { Terminal } from 'xterm';
+import { Terminal } from "xterm";
 
 export enum RenderMode {
-    Foreground = 0,
-    Background = 1,
-    HalfBlock = 2,
+  Foreground = 0,
+  Background = 1,
+  HalfBlock = 2,
 }
 
 export enum ColorMode {
-    Auto = 0,
-    None = 1,
-    Color16 = 2,
-    Color256 = 3,
-    TrueColor = 4,
+  Auto = 0,
+  None = 1,
+  Color16 = 2,
+  Color256 = 3,
+  TrueColor = 4,
 }
 
 export enum ColorFilter {
-    None = 0,
-    Black = 1,
-    White = 2,
-    Green = 3,
-    Magenta = 4,
-    Fuchsia = 5,
-    Orange = 6,
-    Teal = 7,
-    Cyan = 8,
-    PastelPink = 9,
-    ErrorRed = 10,
-    Yellow = 11,
+  None = 0,
+  Black = 1,
+  White = 2,
+  Green = 3,
+  Magenta = 4,
+  Fuchsia = 5,
+  Orange = 6,
+  Teal = 7,
+  Cyan = 8,
+  PastelPink = 9,
+  ErrorRed = 10,
+  Yellow = 11,
 }
 
 export interface EmscriptenModule {
-    HEAPU8: Uint8Array;
-    UTF8ToString(ptr: number, maxBytesToRead?: number): string;
-    ccall(ident: string, returnType: string, argTypes: string[], args: any[]): any;
-    cwrap(ident: string, returnType: string, argTypes: string[]): Function;
-    getValue(ptr: number, type: string): number;
-    setValue(ptr: number, value: number, type: string): void;
+  HEAPU8: Uint8Array;
+  UTF8ToString(ptr: number, maxBytesToRead?: number): string;
+  ccall(ident: string, returnType: string, argTypes: string[], args: any[]): any;
+  cwrap(ident: string, returnType: string, argTypes: string[]): Function;
+  getValue(ptr: number, type: string): number;
+  setValue(ptr: number, value: number, type: string): void;
 }
 
 export interface MirrorWasmModule extends EmscriptenModule {
-    // Initialization
-    _mirror_init(width: number, height: number): number;
-    _mirror_cleanup(): void;
+  // Initialization
+  _mirror_init(width: number, height: number): number;
+  _mirror_cleanup(): void;
 
-    // Dimension settings
-    _mirror_set_width(width: number): number;
-    _mirror_set_height(height: number): number;
-    _mirror_get_width(): number;
-    _mirror_get_height(): number;
+  // Dimension settings
+  _mirror_set_width(width: number): number;
+  _mirror_set_height(height: number): number;
+  _mirror_get_width(): number;
+  _mirror_get_height(): number;
 
-    // Render settings
-    _mirror_set_render_mode(mode: number): number;
-    _mirror_get_render_mode(): number;
-    _mirror_set_color_mode(mode: number): number;
-    _mirror_get_color_mode(): number;
-    _mirror_set_color_filter(filter: number): number;
-    _mirror_get_color_filter(): number;
+  // Render settings
+  _mirror_set_render_mode(mode: number): number;
+  _mirror_get_render_mode(): number;
+  _mirror_set_color_mode(mode: number): number;
+  _mirror_get_color_mode(): number;
+  _mirror_set_color_filter(filter: number): number;
+  _mirror_get_color_filter(): number;
 
-    // Frame conversion
-    _mirror_convert_frame(
-        rgba_ptr: number,
-        src_width: number,
-        src_height: number
-    ): number;
-    _mirror_free_string(ptr: number): void;
+  // Frame conversion
+  _mirror_convert_frame(rgba_ptr: number, src_width: number, src_height: number): number;
+  _mirror_free_string(ptr: number): void;
 
-    // Memory management
-    _malloc(size: number): number;
-    _free(ptr: number): void;
+  // Memory management
+  _malloc(size: number): number;
+  _free(ptr: number): void;
 
-    // xterm.js reference (for EM_JS callbacks)
-    xterm: Terminal | null;
+  // xterm.js reference (for EM_JS callbacks)
+  xterm: Terminal | null;
 }
 ```
 
@@ -1089,6 +1095,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Task 11: TypeScript WASM Wrapper Class (Part 1)
 
 **Files:**
+
 - Create: `web/web.ascii-chat.com/src/wasm/mirror.ts`
 
 **Step 1: Create mirror.ts with class definition**
@@ -1098,45 +1105,45 @@ Create `web/web.ascii-chat.com/src/wasm/mirror.ts`:
 ```typescript
 // WASM wrapper for ascii-chat mirror mode
 
-import { Terminal } from 'xterm';
-import MirrorWasmModuleFactory from './dist/mirror.js';
-import { MirrorWasmModule, RenderMode, ColorMode, ColorFilter } from './mirror-types';
+import { Terminal } from "xterm";
+import MirrorWasmModuleFactory from "./dist/mirror.js";
+import { MirrorWasmModule, RenderMode, ColorMode, ColorFilter } from "./mirror-types";
 
 export class MirrorWasm {
-    private module: MirrorWasmModule | null = null;
-    private initialized = false;
+  private module: MirrorWasmModule | null = null;
+  private initialized = false;
 
-    async init(xterm: Terminal, width: number, height: number): Promise<void> {
-        console.log('[MirrorWasm] Loading module...');
-        this.module = await MirrorWasmModuleFactory();
+  async init(xterm: Terminal, width: number, height: number): Promise<void> {
+    console.log("[MirrorWasm] Loading module...");
+    this.module = await MirrorWasmModuleFactory();
 
-        // Expose xterm.js to WASM (for EM_JS callbacks)
-        this.module.xterm = xterm;
+    // Expose xterm.js to WASM (for EM_JS callbacks)
+    this.module.xterm = xterm;
 
-        // Initialize WASM module
-        const result = this.module._mirror_init(width, height);
-        if (result !== 0) {
-            throw new Error('Failed to initialize WASM module');
-        }
-
-        this.initialized = true;
-        console.log('[MirrorWasm] Module initialized');
+    // Initialize WASM module
+    const result = this.module._mirror_init(width, height);
+    if (result !== 0) {
+      throw new Error("Failed to initialize WASM module");
     }
 
-    cleanup(): void {
-        if (this.module && this.initialized) {
-            this.module._mirror_cleanup();
-            this.initialized = false;
-        }
-    }
+    this.initialized = true;
+    console.log("[MirrorWasm] Module initialized");
+  }
 
-    private checkInitialized(): void {
-        if (!this.initialized || !this.module) {
-            throw new Error('WASM module not initialized. Call init() first.');
-        }
+  cleanup(): void {
+    if (this.module && this.initialized) {
+      this.module._mirror_cleanup();
+      this.initialized = false;
     }
+  }
 
-    // Dimension settings - continued in next step...
+  private checkInitialized(): void {
+    if (!this.initialized || !this.module) {
+      throw new Error("WASM module not initialized. Call init() first.");
+    }
+  }
+
+  // Dimension settings - continued in next step...
 }
 ```
 
@@ -1162,6 +1169,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Task 12: TypeScript WASM Wrapper Class (Part 2)
 
 **Files:**
+
 - Modify: `web/web.ascii-chat.com/src/wasm/mirror.ts`
 
 **Step 1: Add dimension methods**
@@ -1268,6 +1276,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Task 13: TypeScript WASM Wrapper Class (Part 3)
 
 **Files:**
+
 - Modify: `web/web.ascii-chat.com/src/wasm/mirror.ts`
 
 **Step 1: Add frame conversion method**
@@ -1322,20 +1331,16 @@ Append after the class definition:
 // Singleton instance
 let wasmInstance: MirrorWasm | null = null;
 
-export async function initMirrorWasm(
-    xterm: Terminal,
-    width: number,
-    height: number
-): Promise<MirrorWasm> {
-    if (!wasmInstance) {
-        wasmInstance = new MirrorWasm();
-        await wasmInstance.init(xterm, width, height);
-    }
-    return wasmInstance;
+export async function initMirrorWasm(xterm: Terminal, width: number, height: number): Promise<MirrorWasm> {
+  if (!wasmInstance) {
+    wasmInstance = new MirrorWasm();
+    await wasmInstance.init(xterm, width, height);
+  }
+  return wasmInstance;
 }
 
 export function isWasmReady(): boolean {
-    return wasmInstance !== null;
+  return wasmInstance !== null;
 }
 
 // Re-export types
@@ -1368,6 +1373,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Task 14: Settings Panel Component
 
 **Files:**
+
 - Create: `web/web.ascii-chat.com/src/components/MirrorSettings.tsx`
 
 **Step 1: Create components directory**
@@ -1381,39 +1387,39 @@ mkdir -p web/web.ascii-chat.com/src/components
 Create `web/web.ascii-chat.com/src/components/MirrorSettings.tsx`:
 
 ```typescript
-import { useState, useEffect } from 'react';
-import { MirrorWasm, RenderMode, ColorMode, ColorFilter } from '../wasm/mirror';
+import { useState, useEffect } from "react";
+import { MirrorWasm, RenderMode, ColorMode, ColorFilter } from "../wasm/mirror";
 
 interface MirrorSettingsProps {
-    wasm: MirrorWasm | null;
-    isRunning: boolean;
-    onDimensionsChange?: (width: number, height: number) => void;
+  wasm: MirrorWasm | null;
+  isRunning: boolean;
+  onDimensionsChange?: (width: number, height: number) => void;
 }
 
 export function MirrorSettings({ wasm, isRunning, onDimensionsChange }: MirrorSettingsProps) {
-    const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(true);
 
-    // Settings state
-    const [width, setWidth] = useState(150);
-    const [height, setHeight] = useState(60);
-    const [renderMode, setRenderMode] = useState(RenderMode.Foreground);
-    const [colorMode, setColorMode] = useState(ColorMode.Auto);
-    const [colorFilter, setColorFilter] = useState(ColorFilter.None);
+  // Settings state
+  const [width, setWidth] = useState(150);
+  const [height, setHeight] = useState(60);
+  const [renderMode, setRenderMode] = useState(RenderMode.Foreground);
+  const [colorMode, setColorMode] = useState(ColorMode.Auto);
+  const [colorFilter, setColorFilter] = useState(ColorFilter.None);
 
-    // Load initial values from WASM
-    useEffect(() => {
-        if (wasm) {
-            setWidth(wasm.getWidth());
-            setHeight(wasm.getHeight());
-            setRenderMode(wasm.getRenderMode());
-            setColorMode(wasm.getColorMode());
-            setColorFilter(wasm.getColorFilter());
-        }
-    }, [wasm]);
+  // Load initial values from WASM
+  useEffect(() => {
+    if (wasm) {
+      setWidth(wasm.getWidth());
+      setHeight(wasm.getHeight());
+      setRenderMode(wasm.getRenderMode());
+      setColorMode(wasm.getColorMode());
+      setColorFilter(wasm.getColorFilter());
+    }
+  }, [wasm]);
 
-    // Event handlers - continued in next step...
+  // Event handlers - continued in next step...
 
-    return null; // UI rendering in next step
+  return null; // UI rendering in next step
 }
 ```
 
@@ -1439,6 +1445,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Task 15: Settings Panel Event Handlers
 
 **Files:**
+
 - Modify: `web/web.ascii-chat.com/src/components/MirrorSettings.tsx`
 
 **Step 1: Add event handlers**
@@ -1446,38 +1453,38 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 Add before the `return` statement in `MirrorSettings.tsx`:
 
 ```typescript
-    // Event handlers
-    const handleWidthChange = async (newWidth: number) => {
-        if (!wasm) return;
-        setWidth(newWidth);
-        await wasm.setWidth(newWidth);
-        onDimensionsChange?.(newWidth, height);
-    };
+// Event handlers
+const handleWidthChange = async (newWidth: number) => {
+  if (!wasm) return;
+  setWidth(newWidth);
+  await wasm.setWidth(newWidth);
+  onDimensionsChange?.(newWidth, height);
+};
 
-    const handleHeightChange = async (newHeight: number) => {
-        if (!wasm) return;
-        setHeight(newHeight);
-        await wasm.setHeight(newHeight);
-        onDimensionsChange?.(width, newHeight);
-    };
+const handleHeightChange = async (newHeight: number) => {
+  if (!wasm) return;
+  setHeight(newHeight);
+  await wasm.setHeight(newHeight);
+  onDimensionsChange?.(width, newHeight);
+};
 
-    const handleRenderModeChange = async (mode: RenderMode) => {
-        if (!wasm) return;
-        setRenderMode(mode);
-        await wasm.setRenderMode(mode);
-    };
+const handleRenderModeChange = async (mode: RenderMode) => {
+  if (!wasm) return;
+  setRenderMode(mode);
+  await wasm.setRenderMode(mode);
+};
 
-    const handleColorModeChange = async (mode: ColorMode) => {
-        if (!wasm) return;
-        setColorMode(mode);
-        await wasm.setColorMode(mode);
-    };
+const handleColorModeChange = async (mode: ColorMode) => {
+  if (!wasm) return;
+  setColorMode(mode);
+  await wasm.setColorMode(mode);
+};
 
-    const handleColorFilterChange = async (filter: ColorFilter) => {
-        if (!wasm) return;
-        setColorFilter(filter);
-        await wasm.setColorFilter(filter);
-    };
+const handleColorFilterChange = async (filter: ColorFilter) => {
+  if (!wasm) return;
+  setColorFilter(filter);
+  await wasm.setColorFilter(filter);
+};
 ```
 
 **Step 2: Verify additions**
@@ -1503,6 +1510,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Task 16: Settings Panel UI Rendering
 
 **Files:**
+
 - Modify: `web/web.ascii-chat.com/src/components/MirrorSettings.tsx`
 
 **Step 1: Replace return statement with UI**
@@ -1637,16 +1645,19 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ## Task 17: Documentation
 
 **Files:**
+
 - Modify: `docs/plans/2026-02-06-web-mirror-full-library-wasm.md`
 
 **Step 1: Update design document status**
 
 Change line 3 in design doc from:
+
 ```markdown
 **Status:** Design Phase
 ```
 
 To:
+
 ```markdown
 **Status:** ✅ Implementation Complete
 ```
@@ -1655,8 +1666,7 @@ To:
 
 Append to end of design document:
 
-```markdown
-
+````markdown
 ---
 
 ## Implementation Notes
@@ -1678,6 +1688,7 @@ cd web/web.ascii-chat.com/wasm
 # - src/wasm/dist/mirror.js (~200-300KB)
 # - src/wasm/dist/mirror.wasm (~150-250KB)
 ```
+````
 
 ### Testing Checklist
 
@@ -1691,7 +1702,8 @@ cd web/web.ascii-chat.com/wasm
 - [ ] Frame conversion produces ASCII output
 - [ ] No memory leaks over time
 - [ ] Settings persist across renders
-```
+
+````
 
 **Step 3: Commit**
 
@@ -1702,24 +1714,27 @@ git commit -m "docs: Mark WASM implementation complete
 Update design document status and add implementation notes.
 
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
-```
+````
 
 ---
 
 ## Success Criteria
 
 ✅ **Phase 1 Complete When:**
+
 - All platform layer files created (5 files in `lib/platform/wasm/`)
 - WASM entry point complete (`mirror_wasm.c` with 12 exported functions)
 - CMake build configuration ready
 - Build script executable
 
 ✅ **Phase 2 Complete When:**
+
 - TypeScript types defined (`mirror-types.ts`)
 - WASM wrapper class complete (`mirror.ts`)
 - Settings panel component finished (`MirrorSettings.tsx`)
 
 ✅ **Phase 3 Complete When:**
+
 - WASM builds successfully (`./build.sh` produces `.wasm` and `.js`)
 - All 17 commits pushed to git
 - Design document marked complete

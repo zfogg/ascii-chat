@@ -82,6 +82,7 @@ browser-use task status <id>              # Check cloud task progress
 ## Commands
 
 ### Navigation & Tabs
+
 ```bash
 browser-use open <url>                    # Navigate to URL
 browser-use back                          # Go back in history
@@ -94,6 +95,7 @@ browser-use close-tab <tab>              # Close specific tab
 ```
 
 ### Page State
+
 ```bash
 browser-use state                         # Get URL, title, and clickable elements
 browser-use screenshot                    # Take screenshot (outputs base64)
@@ -102,6 +104,7 @@ browser-use screenshot --full path.png    # Full page screenshot
 ```
 
 ### Interactions
+
 ```bash
 browser-use click <index>                 # Click element
 browser-use type "text"                   # Type text into focused element
@@ -117,6 +120,7 @@ browser-use rightclick <index>            # Right-click element (context menu)
 Use indices from `browser-use state`.
 
 ### JavaScript & Data
+
 ```bash
 browser-use eval "document.title"         # Execute JavaScript, return result
 browser-use get title                     # Get page title
@@ -129,6 +133,7 @@ browser-use get bbox <index>              # Get bounding box (x, y, width, heigh
 ```
 
 ### Cookies
+
 ```bash
 browser-use cookies get                   # Get all cookies
 browser-use cookies get --url <url>       # Get cookies for specific URL
@@ -144,6 +149,7 @@ browser-use cookies import <file>         # Import cookies from JSON file
 ```
 
 ### Wait Conditions
+
 ```bash
 browser-use wait selector "h1"            # Wait for element to be visible
 browser-use wait selector ".loading" --state hidden  # Wait for element to disappear
@@ -153,6 +159,7 @@ browser-use wait selector "h1" --timeout 5000  # Custom timeout in ms
 ```
 
 ### Python Execution
+
 ```bash
 browser-use python "x = 42"               # Set variable
 browser-use python "print(x)"             # Access variable (outputs: 42)
@@ -163,6 +170,7 @@ browser-use python --file script.py       # Execute Python file
 ```
 
 The Python session maintains state across commands. The `browser` object provides:
+
 - `browser.url`, `browser.title`, `browser.html` — page info
 - `browser.goto(url)`, `browser.back()` — navigation
 - `browser.click(index)`, `browser.type(text)`, `browser.input(index, text)`, `browser.keys(keys)` — interactions
@@ -214,6 +222,7 @@ browser-use -b remote run "task" --judge-ground-truth "expected answer"
 ```
 
 ### Task Management
+
 ```bash
 browser-use task list                     # List recent tasks
 browser-use task list --limit 20          # Show more tasks
@@ -233,6 +242,7 @@ browser-use task logs <task-id>           # Get task execution logs
 ```
 
 ### Cloud Session Management
+
 ```bash
 browser-use session list                  # List cloud sessions
 browser-use session list --limit 20       # Show more sessions
@@ -258,6 +268,7 @@ browser-use session share <session-id> --delete     # Delete public share
 ```
 
 ### Tunnels
+
 ```bash
 browser-use tunnel <port>           # Start tunnel (returns URL)
 browser-use tunnel <port>           # Idempotent - returns existing URL
@@ -267,6 +278,7 @@ browser-use tunnel stop --all       # Stop all tunnels
 ```
 
 ### Session Management
+
 ```bash
 browser-use sessions                      # List active sessions
 browser-use close                         # Close current session
@@ -276,12 +288,14 @@ browser-use close --all                   # Close all sessions
 ### Profile Management
 
 #### Local Chrome Profiles (`--browser real`)
+
 ```bash
 browser-use -b real profile list          # List local Chrome profiles
 browser-use -b real profile cookies "Default"  # Show cookie domains in profile
 ```
 
 #### Cloud Profiles (`--browser remote`)
+
 ```bash
 browser-use -b remote profile list            # List cloud profiles
 browser-use -b remote profile list --page 2 --page-size 50
@@ -293,6 +307,7 @@ browser-use -b remote profile delete <id>
 ```
 
 #### Syncing
+
 ```bash
 browser-use profile sync --from "Default" --domain github.com  # Domain-specific
 browser-use profile sync --from "Default"                      # Full profile
@@ -300,6 +315,7 @@ browser-use profile sync --from "Default" --name "Custom Name" # With custom nam
 ```
 
 ### Server Control
+
 ```bash
 browser-use server logs                   # View server logs
 ```
@@ -335,6 +351,7 @@ Use when a task requires browsing a site the user is already logged into (e.g. G
 **Core workflow:** Check existing profiles → ask user which profile and browser mode → browse with that profile. Only sync cookies if no suitable profile exists.
 
 **Before browsing an authenticated site, the agent MUST:**
+
 1. Ask the user whether to use **real** (local Chrome) or **remote** (cloud) browser
 2. List available profiles for that mode
 3. Ask which profile to use
@@ -373,11 +390,13 @@ The user is already authenticated — no login needed.
 If the user wants to use a cloud browser but no cloud profile has the right cookies, sync them from a local Chrome profile.
 
 **Before syncing, the agent MUST:**
+
 1. Ask which local Chrome profile to use
 2. Ask which domain(s) to sync — do NOT default to syncing the full profile
 3. Confirm before proceeding
 
 **Check what cookies a local profile has:**
+
 ```bash
 browser-use -b real profile cookies "Default"
 # → youtube.com: 23
@@ -386,6 +405,7 @@ browser-use -b real profile cookies "Default"
 ```
 
 **Domain-specific sync (recommended):**
+
 ```bash
 browser-use profile sync --from "Default" --domain github.com
 # Creates new cloud profile: "Chrome - Default (github.com)"
@@ -393,13 +413,16 @@ browser-use profile sync --from "Default" --domain github.com
 ```
 
 **Full profile sync (use with caution):**
+
 ```bash
 browser-use profile sync --from "Default"
 # Syncs ALL cookies — includes sensitive data, tracking cookies, every session token
 ```
+
 Only use when the user explicitly needs their entire browser state.
 
 **Fine-grained control (advanced):**
+
 ```bash
 # Export cookies to file, manually edit, then import
 browser-use --browser real --profile "Default" cookies export /tmp/cookies.json
@@ -407,6 +430,7 @@ browser-use --browser remote --profile <id> cookies import /tmp/cookies.json
 ```
 
 **Use the synced profile:**
+
 ```bash
 browser-use --browser remote --profile <id> open https://github.com
 ```
@@ -457,11 +481,11 @@ browser-use session stop --all               # Stop all sessions
 
 **Task status is designed for token efficiency.** Default output is minimal — only expand when needed:
 
-| Mode | Flag | Tokens | Use When |
-|------|------|--------|----------|
-| Default | (none) | Low | Polling progress |
-| Compact | `-c` | Medium | Need full reasoning |
-| Verbose | `-v` | High | Debugging actions |
+| Mode    | Flag   | Tokens | Use When            |
+| ------- | ------ | ------ | ------------------- |
+| Default | (none) | Low    | Polling progress    |
+| Compact | `-c`   | Medium | Need full reasoning |
+| Verbose | `-v`   | High   | Debugging actions   |
 
 ```bash
 # For long tasks (50+ steps)
@@ -477,14 +501,14 @@ browser-use task status <id> -v --step 10  # Inspect specific step
 
 ## Global Options
 
-| Option | Description |
-|--------|-------------|
-| `--session NAME` | Use named session (default: "default") |
-| `--browser MODE` | Browser mode: chromium, real, remote |
-| `--headed` | Show browser window (chromium mode) |
+| Option           | Description                                                                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--session NAME` | Use named session (default: "default")                                                                                                      |
+| `--browser MODE` | Browser mode: chromium, real, remote                                                                                                        |
+| `--headed`       | Show browser window (chromium mode)                                                                                                         |
 | `--profile NAME` | Browser profile (local name or cloud ID). Works with `open`, `session create`, etc. — does NOT work with `run` (use `--session-id` instead) |
-| `--json` | Output as JSON |
-| `--mcp` | Run as MCP server via stdin/stdout |
+| `--json`         | Output as JSON                                                                                                                              |
+| `--mcp`          | Run as MCP server via stdin/stdout                                                                                                          |
 
 **Session behavior**: All commands without `--session` use the same "default" session. The browser stays open and is reused across commands. Use `--session NAME` to run multiple browsers in parallel.
 
@@ -500,17 +524,20 @@ browser-use task status <id> -v --step 10  # Inspect specific step
 ## Troubleshooting
 
 **Run diagnostics first:**
+
 ```bash
 browser-use doctor
 ```
 
 **Browser won't start?**
+
 ```bash
 browser-use close --all               # Close all sessions
 browser-use --headed open <url>       # Try with visible window
 ```
 
 **Element not found?**
+
 ```bash
 browser-use state                     # Check current elements
 browser-use scroll down               # Element might be below fold
@@ -518,6 +545,7 @@ browser-use state                     # Check again
 ```
 
 **Session issues?**
+
 ```bash
 browser-use sessions                  # Check active sessions
 browser-use close --all               # Clean slate
@@ -526,6 +554,7 @@ browser-use open <url>                # Fresh start
 
 **Session reuse fails after `task stop`**:
 If you stop a task and try to reuse its session, the new task may get stuck at "created" status. Create a new session instead:
+
 ```bash
 browser-use session create --profile <profile-id> --keep-alive
 browser-use -b remote run "new task" --session-id <new-session-id>

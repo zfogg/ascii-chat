@@ -38,6 +38,7 @@ src/
 ```
 
 **Key insight**: The server and client code are tightly coupled to their modes. To call someone, you currently need:
+
 1. One person runs `ascii-chat server --acds` to register with ACDS
 2. Other person runs `ascii-chat swift-river-mountain` to connect
 
@@ -46,6 +47,7 @@ This works, but requires users to decide who's the "server" upfront.
 ### What We Need
 
 A new **Discovery Mode** where:
+
 1. Both users run essentially the same command
 2. NAT quality determines who becomes the host
 3. The "loser" of NAT negotiation runs client software
@@ -104,6 +106,7 @@ Media starts IMMEDIATELY over DataChannel
 Bandwidth is measured from **actual media stream**, not synthetic tests:
 
 **How it works:**
+
 1. Media flows for 10-60 seconds
 2. Each frame carries sequence number and optional timestamp
 3. Track accumulation:
@@ -113,7 +116,7 @@ Bandwidth is measured from **actual media stream**, not synthetic tests:
    - Jitter (variance in RTT)
 
 4. After measurement window:
-   - Calculate upload_kbps = (bytes_received * 8) / window_duration
+   - Calculate upload_kbps = (bytes_received \* 8) / window_duration
    - Calculate loss% from missing sequence numbers
    - Send NETWORK_QUALITY packet with results
 
@@ -150,12 +153,14 @@ Media resumes with Bob as host (within same DataChannel)
 **Host-side evaluation:**
 
 Host collects MEDIA_QUALITY_REPORT from all participants every 30-60 seconds:
+
 1. Scores each participant: `score = quality*1000 + (upload_kbps/1000)*10 + (100-rtt_ms) + initiator_bonus`
 2. Elects best candidate as (new) host, second-best as backup
 3. Broadcasts HOST_QUALITY_UPDATE to all participants
 4. If current host is no longer best: triggers migration to new host
 
 **Why upload speed matters:**
+
 - Host sends video frames to ALL clients (upload-bound)
 - Host must sustain N × frame_size Kbps (N = number of clients)
 - Someone with 100Mbps down / 5Mbps up cannot host for 5+ people
@@ -163,15 +168,16 @@ Host collects MEDIA_QUALITY_REPORT from all participants every 30-60 seconds:
 
 ### Priority Order (Best to Worst)
 
-| Priority | Connection Type | Detection Method | Who Hosts |
-|----------|-----------------|------------------|-----------|
-| 0 | Localhost/LAN | mDNS discovery, same subnet | Either (prefer initiator) |
-| 1 | Public IP | STUN reflexive == local IP | User with public IP |
-| 2 | UPnP/NAT-PMP | Port mapping success | User who can map ports |
-| 3 | STUN (hole-punch) | ICE connectivity check | Better NAT type |
-| 4 | TURN relay | Always works | Initiator (tiebreaker) |
+| Priority | Connection Type   | Detection Method            | Who Hosts                 |
+| -------- | ----------------- | --------------------------- | ------------------------- |
+| 0        | Localhost/LAN     | mDNS discovery, same subnet | Either (prefer initiator) |
+| 1        | Public IP         | STUN reflexive == local IP  | User with public IP       |
+| 2        | UPnP/NAT-PMP      | Port mapping success        | User who can map ports    |
+| 3        | STUN (hole-punch) | ICE connectivity check      | Better NAT type           |
+| 4        | TURN relay        | Always works                | Initiator (tiebreaker)    |
 
 **Bandwidth as Tiebreaker and Override:**
+
 - Within same NAT priority tier: higher upload bandwidth wins
 - **Override rule**: If bandwidth difference is >10x, lower NAT tier can win
   - Example: Public IP with 2 Mbps upload loses to UPnP with 50 Mbps upload
@@ -306,14 +312,14 @@ When current host dies, everyone already knows where to connect. No ACDS electio
 
 ### User-Visible Latency Summary
 
-| Scenario | Best Case | Typical | Worst Case |
-|----------|-----------|---------|------------|
-| Start session (to string shown) | 200ms | 500ms | 1.5s |
-| Join session (to media starts) | 800ms | 1.0s | 2.0s |
-| Bandwidth measurement (quality accumulated) | 30s | 45s | 60s |
-| Host re-election (after quality measurement) | Instant | 1s | 5s |
-| Host migration (to call resumes) | 200ms | 500ms | 1.5s |
-| Disconnect detection | 0ms (RST) | 5s | 30s (timeout) |
+| Scenario                                     | Best Case | Typical | Worst Case    |
+| -------------------------------------------- | --------- | ------- | ------------- |
+| Start session (to string shown)              | 200ms     | 500ms   | 1.5s          |
+| Join session (to media starts)               | 800ms     | 1.0s    | 2.0s          |
+| Bandwidth measurement (quality accumulated)  | 30s       | 45s     | 60s           |
+| Host re-election (after quality measurement) | Instant   | 1s      | 5s            |
+| Host migration (to call resumes)             | 200ms     | 500ms   | 1.5s          |
+| Disconnect detection                         | 0ms (RST) | 5s      | 30s (timeout) |
 
 **Key improvement**: Call starts in ~1 second without bandwidth test blocking.
 Bandwidth measurements happen in background while media flows.
@@ -406,6 +412,7 @@ Alice                          ACDS                           Bob
 ```
 
 **Key timings**:
+
 - **Initial connection**: ~500ms (WebRTC setup + NAT_STATE + decision)
 - **Media starts**: Immediately after host election
 - **Bandwidth measurement**: 30-60 seconds of actual media flow
@@ -418,12 +425,14 @@ After media starts, bandwidth is measured from **actual frames** (not synthetic 
 #### Background Quality Measurement
 
 Participants track:
+
 - Frames received vs expected (detect loss from sequence numbers)
 - Frame sizes (bytes_received) over measurement window
 - RTT from frame timestamps
 - Jitter (variance in RTT)
 
 After 30-60 seconds:
+
 ```
 Participant A: "I measured 50 Mbps upload, 10ms RTT, 0.5% loss"
 Participant B: "I measured 5 Mbps upload, 15ms RTT, 2% loss"
@@ -433,6 +442,7 @@ Participant C: "I measured 80 Mbps upload, 8ms RTT, 0.2% loss"
 Host scores each: `score = upload_kbps/10 + (100-loss%) + (100-rtt_ms)`
 
 Example scores:
+
 - A: 5000 + 99.5 + 90 = 5189.5
 - B: 500 + 98 + 85 = 683
 - C: 8000 + 99.8 + 92 = 8191.8
@@ -575,6 +585,7 @@ HOST_DIED
 ### Settings Synchronization
 
 The session initiator's options (color, palette, dimensions, audio settings) are:
+
 1. Sent to host in SETTINGS_SYNC after host election
 2. Broadcast by host to all participants
 3. Applied by each participant (or rejected if incompatible)
@@ -700,12 +711,14 @@ typedef struct {
 ### Existing Packets (Unchanged)
 
 These continue to work as before, handled by ACDS:
+
 - `PACKET_TYPE_ACIP_WEBRTC_SDP` (109) - SDP offer/answer relay
 - `PACKET_TYPE_ACIP_WEBRTC_ICE` (110) - ICE candidate relay
 
 No new ACDS packet types needed. Migration and negotiation happen entirely peer-to-peer over DataChannel.
 
 **Protocol Summary**:
+
 - **NETWORK_QUALITY** (130): NAT type/UPnP/ICE info for initial host negotiation
   - Sent during first two participants handshake to determine who hosts
   - Light-weight (no bandwidth data, only connectivity info)
@@ -745,6 +758,7 @@ No new ACDS packet types needed. Migration and negotiation happen entirely peer-
 When current host dies, participants immediately know where backup is listening (no ACDS query needed).
 
 **Failover Flow**:
+
 1. Host broadcasts HOST_QUALITY_UPDATE with backup address/port stored locally by all participants
 2. If current host dies (TCP connection drops), all participants instantly know:
    - Who the backup is: backup_host_id from stored HOST_QUALITY_UPDATE
@@ -755,6 +769,7 @@ When current host dies, participants immediately know where backup is listening 
 6. Media resumes within ~200-500ms (no ACDS lookup, no election delay)
 
 **Advantages**:
+
 - **No ACDS dependency during failover**: Everyone already knows backup address
 - **Instant failover**: ~200-500ms from detection to call resume
 - **Deterministic**: No election needed, backup was pre-chosen and stored
@@ -762,6 +777,7 @@ When current host dies, participants immediately know where backup is listening 
 - **Scales better**: No central ACDS election bottleneck
 
 **Failover Timeline**:
+
 ```
 Host dies (T=0ms)
   ↓
@@ -1082,6 +1098,7 @@ static int compute_nat_tier(const nat_quality_t *q) {
 #### Current Problem
 
 Options are defined multiple times across files:
+
 - `lib/options/server.c` defines server options
 - `lib/options/client.c` defines client options (some overlap)
 - `lib/options/mirror.c` defines mirror options (mostly subset)
@@ -1201,7 +1218,7 @@ asciichat_error_t parse_discovery_options(int argc, char **argv, options_t *opts
   - Track frame sequence numbers to detect loss (missing sequence = lost frame)
   - Extract timestamp from each frame, calculate RTT = now - frame_timestamp
   - Accumulate bytes_received, frames_received per 30-60 second window
-  - Calculate bandwidth: (bytes_received * 8) / window_duration_ms
+  - Calculate bandwidth: (bytes_received \* 8) / window_duration_ms
   - Collect RTT samples, compute min/max/avg/jitter
   - Compute network quality assessment (0-3 scale based on loss/jitter/rtt)
 - [ ] **TODO 2.4.2**: Implement background quality reporting (every 30-60s)
@@ -1425,11 +1442,11 @@ CMakeLists.txt                # Add new source files (webrtc.c, media_quality me
 
 ## Timeline Estimate
 
-| Phase | Description | Complexity |
-|-------|-------------|------------|
-| 1 | Library Abstraction | Large - touches most of src/ |
-| 2 | Discovery Mode | Large - new feature, protocol changes |
-| 3 | Options Refactoring | Medium - mostly mechanical |
-| 4 | Polish & Edge Cases | Medium - important for UX |
+| Phase | Description         | Complexity                            |
+| ----- | ------------------- | ------------------------------------- |
+| 1     | Library Abstraction | Large - touches most of src/          |
+| 2     | Discovery Mode      | Large - new feature, protocol changes |
+| 3     | Options Refactoring | Medium - mostly mechanical            |
+| 4     | Polish & Edge Cases | Medium - important for UX             |
 
 Recommended order: Phase 1 first (enables 2), then Phase 2 (core feature), Phase 3 can happen in parallel, Phase 4 last.

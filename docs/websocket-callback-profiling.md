@@ -73,6 +73,7 @@ The WebSocket callback profiler instruments libwebsockets (LWS) callbacks to mea
 ### Architecture
 
 The profiler uses:
+
 - **Atomic operations** for thread-safe counters (no locks in hot path)
 - **Per-callback records** in a hash table (keyed by callback reason)
 - **Minimal overhead** design (single struct allocation per callback type)
@@ -113,10 +114,12 @@ if (!lws_profiler_init()) {
 ### Automatic Instrumentation
 
 The profiler is automatically integrated into:
+
 - `websocket_callback()` in lib/network/websocket/transport.c
 - `websocket_server_callback()` in lib/network/websocket/server.c
 
 Each callback wraps its execution with:
+
 ```c
 uint64_t prof_handle = lws_profiler_start((int)reason, 0);
 // ... callback work ...
@@ -174,6 +177,7 @@ lws_profiler_destroy();
 ### Invocation Count
 
 Indicates callback firing frequency:
+
 - High CLIENT_RECEIVE count: Receiving many fragments (normal for video)
 - High SERVER_WRITEABLE count: Sending many fragments (normal during streaming)
 - Anomalies: Unexpected patterns may indicate errors or inefficient processing
@@ -185,6 +189,7 @@ Indicates callback firing frequency:
 - **Total time**: Cumulative cost for this callback type
 
 Example:
+
 ```
 LWS_CALLBACK_SERVER_WRITEABLE
   Invocations: 1250
@@ -193,6 +198,7 @@ LWS_CALLBACK_SERVER_WRITEABLE
 ```
 
 Interpretation:
+
 - 1250 write callbacks sent 1250MB total (~1MB per callback)
 - Average write takes 2ms
 - Wide variance (0.5-15ms) suggests buffer pressure fluctuations
@@ -206,6 +212,7 @@ Throughput = bytes_processed * 8 / (total_time_ns / 1e6) kbps
 ```
 
 For above example:
+
 ```
 1250MB * 8 / (1250*2ms / 1e6) = 10M kbps = 1250 MB/s
 ```
@@ -215,28 +222,33 @@ For above example:
 ### Pattern 1: Client Receiving Video
 
 **Expected profile:**
+
 - CLIENT_RECEIVE invocations: 1000-2000 per second (fragment-based)
 - Average time: 0.2-0.5ms per fragment
 - Data: 128KB-256KB typical per fragment (for 921KB frames)
 
 **Optimization opportunities:**
+
 - If timing is high (>1ms): Buffer allocation stalling
 - If fragmentation high: Consider larger TCP buffers
 
 ### Pattern 2: Server Sending Video
 
 **Expected profile:**
+
 - SERVER_WRITEABLE invocations: High frequency (100+ per second when busy)
 - Average time: 1-5ms per write call
 - Data: 256KB-512KB per write (matches buffer size)
 
 **Optimization opportunities:**
+
 - If timing variable: Potential memory pressure
 - If data small: TCP window adjustments needed
 
 ### Pattern 3: Connection Lifecycle
 
 **Expected profile:**
+
 - ESTABLISHED: 1x per client (5-20ms)
 - CLOSED: 1x per client disconnect (10-100ms)
 - Timing during CLOSED: Thread join overhead
@@ -252,18 +264,21 @@ For above example:
 ### Investigate
 
 For CLIENT_RECEIVE with high timing:
+
 ```c
 // Check buffer pool allocation latency
 // May indicate memory fragmentation or allocation stalls
 ```
 
 For SERVER_WRITEABLE with high variance:
+
 ```c
 // Check for memory pressure or GC activity
 // May indicate contention with other threads
 ```
 
 For ESTABLISHED/CLOSED with high timing:
+
 ```c
 // Check handler thread spawn/join overhead
 // May indicate thread pool contention
@@ -289,6 +304,7 @@ For ESTABLISHED/CLOSED with high timing:
 ```
 
 Use for:
+
 - Performance trending over time
 - Comparative analysis between deployments
 - Integration with monitoring systems

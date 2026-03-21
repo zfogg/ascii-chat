@@ -44,14 +44,14 @@
     "when": "isMac"
   },
   {
-      "key": "ctrl+shift+b",
-      "command": "cmake.build",
-      "when": "!isMac && cmake:enableFullFeatureSet && !cmake:hideBuildCommand"
+    "key": "ctrl+shift+b",
+    "command": "cmake.build",
+    "when": "!isMac && cmake:enableFullFeatureSet && !cmake:hideBuildCommand"
   },
   {
-      "key": "command+shift+b",
-      "command": "cmake.build",
-      "when": "isMac && cmake:enableFullFeatureSet && !cmake:hideBuildCommand"
+    "key": "command+shift+b",
+    "command": "cmake.build",
+    "when": "isMac && cmake:enableFullFeatureSet && !cmake:hideBuildCommand"
   },
   {
     "key": "f9",

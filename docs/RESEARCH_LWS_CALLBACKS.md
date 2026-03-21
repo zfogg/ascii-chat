@@ -38,22 +38,26 @@ A lightweight, thread-safe timing system was added to track callback statistics:
 Timing calls added to four critical LWS callbacks in `lib/network/websocket/server.c`:
 
 #### 1. `LWS_CALLBACK_PROTOCOL_INIT`
+
 - **When:** Protocol layer initialization (early in connection lifecycle)
 - **Tracked:** Invocation count and execution duration
 - **Purpose:** Verify initialization isn't blocked or delayed
 
 #### 2. `LWS_CALLBACK_PROTOCOL_DESTROY`
+
 - **When:** Protocol layer cleanup (connection termination)
 - **Tracked:** Invocation count and execution duration
 - **Purpose:** Identify cleanup delays that might affect connection reuse
 
 #### 3. `LWS_CALLBACK_SERVER_WRITEABLE`
+
 - **When:** Socket ready for writing (triggered by `lws_callback_on_writable()`)
 - **Tracked:** Count, duration, min/max intervals, frequency (Hz)
 - **Purpose:** **Critical** - Diagnose if WRITEABLE callbacks fire frequently enough
 - **Hypothesis:** If min_interval is very large (e.g., 45 seconds), the event loop isn't waking up to send data
 
 #### 4. `LWS_CALLBACK_RECEIVE`
+
 - **When:** Data received from client
 - **Tracked:** Count, duration, min/max intervals, frequency (Hz)
 - **Purpose:** Verify receive callbacks fire with expected frequency and aren't blocked
@@ -78,6 +82,7 @@ websocket_callback_timing_log_stats();
 ```
 
 Outputs:
+
 ```
 ===== WEBSOCKET CALLBACK TIMING STATISTICS =====
 Timestamp: 1613851234567890000 ns
@@ -99,12 +104,15 @@ LWS_CALLBACK_RECEIVE:
 ## Expected Results
 
 ### Normal Operation
+
 - **WRITEABLE callback frequency:** Should match target frame rate (30 Hz for video = ~33ms intervals)
 - **RECEIVE callback frequency:** Variable, depends on input data rate
 - **Duration:** Individual callbacks should complete in microseconds (< 1000 ns)
 
 ### Issue #305 Symptoms
+
 If the 45-second frame interval is confirmed:
+
 - **WRITEABLE min_interval:** Would show ~45 seconds (very large interval)
 - **Root cause:** Event loop not waking up to send frames, or LWS stalling callbacks
 - **Potential issues:**
@@ -131,11 +139,13 @@ If the 45-second frame interval is confirmed:
 ### Manual Statistics Dump
 
 To force a statistics dump at any time, the application can call:
+
 ```c
 websocket_callback_timing_log_stats();
 ```
 
 This should be integrated into:
+
 - Status screen (show live callback rates)
 - Exit handlers (final statistics dump)
 - Performance monitoring endpoints
@@ -143,6 +153,7 @@ This should be integrated into:
 ### Resetting Statistics
 
 To capture statistics for a specific test period:
+
 ```c
 websocket_callback_timing_reset();
 // ... run test ...
@@ -152,21 +163,27 @@ websocket_callback_timing_log_stats();
 ## Analysis Method
 
 ### 1. Baseline Capture
+
 Run server + client pair for 30 seconds, capture stats.
 
 **Questions to answer:**
+
 - How often is WRITEABLE callback invoked?
 - What's the minimum interval between WRITEABLE callbacks?
 - Are intervals consistent or highly variable?
 
 ### 2. Single Frame Latency
+
 Send one frame, measure:
+
 - Time from RECEIVE → WRITEABLE
 - Number of WRITEABLE callbacks triggered
 - Correlation between RECEIVE and WRITEABLE
 
 ### 3. Sustained Load
+
 Stream continuous video for 60+ seconds:
+
 - Do callback rates remain stable?
 - Do intervals grow (stalling)?
 - Any correlation with memory usage or CPU?
@@ -198,13 +215,13 @@ Stream continuous video for 60+ seconds:
 ### Limitations
 
 - **Per-Connection Tracking:** Currently not implemented. If multiple simultaneous connections have different callback patterns, this won't show it.
-  - *Fix:* Add per-connection stats to `websocket_connection_data_t` if needed
+  - _Fix:_ Add per-connection stats to `websocket_connection_data_t` if needed
 
 - **Callback Reentrancy:** No protection if callbacks recursively invoke callbacks
-  - *Status:* LWS doesn't support callback reentrancy, so not a concern
+  - _Status:_ LWS doesn't support callback reentrancy, so not a concern
 
 - **Statistics Accuracy:** Min/max values could be skewed by initialization
-  - *Mitigation:* Reset stats before test run; discard first 10 samples
+  - _Mitigation:_ Reset stats before test run; discard first 10 samples
 
 ## Findings & Recommendations
 
@@ -228,6 +245,7 @@ Stream continuous video for 60+ seconds:
 ### Next Steps
 
 1. **Run Baseline Test**
+
    ```bash
    # Start server, stream video, capture output
    ./build/bin/ascii-chat server | grep "WEBSOCKET CALLBACK TIMING"

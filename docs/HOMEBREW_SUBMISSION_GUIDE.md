@@ -14,10 +14,12 @@ This guide walks you through submitting ascii-chat to official Homebrew (homebre
 ## Overview
 
 You currently have:
+
 - Custom tap: `homebrew-ascii-chat` with pre-built bottles
 - Two formulas: `ascii-chat` (runtime) and `libasciichat` (development)
 
 For homebrew-core:
+
 - Submit only `ascii-chat` (not libasciichat - Homebrew prefers single packages)
 - Build from source tarball (not pre-built bottles initially)
 - Simplified formula without GPG verification
@@ -27,11 +29,13 @@ For homebrew-core:
 ### 1. Prepare the Formula
 
 I've created a simplified formula at:
+
 ```
 Formula/ascii-chat-homebrew-core.rb
 ```
 
 **Key differences from your tap formula:**
+
 - Builds from GitHub source tarball (not pre-built bottles)
 - No GPG signature verification (Homebrew CI handles security)
 - Simplified installation process
@@ -97,6 +101,7 @@ brew info libsodium opus portaudio zstd mimalloc ca-certificates gnupg
 ```
 
 **Common audit issues to fix:**
+
 - Trailing whitespace
 - Line length > 80 characters
 - Incorrect dependency specifications
@@ -172,6 +177,7 @@ git push origin ascii-chat
 ```
 
 **Commit message format:**
+
 - First line: `formula-name VERSION (new formula)`
 - Blank line
 - Brief description (1-2 sentences)
@@ -186,11 +192,13 @@ git push origin ascii-chat
 4. Fill out the PR template (Homebrew has a specific template)
 
 **PR Title Format:**
+
 ```
 ascii-chat 0.6.12 (new formula)
 ```
 
 **PR Description Template:**
+
 ```markdown
 ## Description
 
@@ -229,18 +237,21 @@ Documentation: https://zfogg.github.io/ascii-chat/
 ### 10. Respond to CI and Reviewers
 
 Homebrew has automated CI that will:
+
 - Build your formula on macOS (multiple versions)
 - Build on Linux
 - Run all tests
 - Check for style violations
 
 **Common CI failures:**
+
 - Missing dependencies on Linux
 - Build failures due to system differences
 - Test failures
 - Style violations
 
 **Be prepared to:**
+
 - Respond to reviewer feedback promptly
 - Make requested changes
 - Update your PR with fixes
@@ -249,6 +260,7 @@ Homebrew has automated CI that will:
 ### 11. After Approval
 
 Once approved and merged:
+
 1. Your formula will be available in homebrew-core
 2. Users can install with: `brew install ascii-chat`
 3. Homebrew will build bottles automatically for popular platforms
@@ -257,6 +269,7 @@ Once approved and merged:
 ## Homebrew Submission Best Practices
 
 ### Do's:
+
 ✅ Test thoroughly on both macOS and Linux before submitting
 ✅ Run `brew audit --strict --online` and fix all issues
 ✅ Use minimal, focused descriptions
@@ -266,6 +279,7 @@ Once approved and merged:
 ✅ Keep the formula simple and maintainable
 
 ### Don'ts:
+
 ❌ Submit untested formulas
 ❌ Include pre-built binaries (bottles come later, after merge)
 ❌ Add GPG verification (Homebrew doesn't support it)
@@ -277,6 +291,7 @@ Once approved and merged:
 ## Maintaining the Formula
 
 After acceptance:
+
 - Update the formula for new releases by submitting PRs
 - Monitor issues related to your formula
 - Help users with installation problems
@@ -285,11 +300,13 @@ After acceptance:
 ## Alternative: Keep Your Tap
 
 If homebrew-core submission is too complex or restrictive, consider:
+
 - Keeping your custom tap with pre-built bottles
 - Providing better user experience in your tap
 - Submitting to homebrew-core later when ready
 
 Your custom tap is already excellent with:
+
 - Pre-built bottles (faster installation)
 - GPG signature verification (extra security)
 - Separate runtime and development packages
@@ -306,6 +323,7 @@ Your custom tap is already excellent with:
 ## Questions?
 
 If you need help during the submission process:
+
 - Ask in #general on Homebrew's Discussions: https://github.com/orgs/Homebrew/discussions
 - Review existing PRs to see how others handled similar issues
 - Check Homebrew's documentation thoroughly

@@ -9,12 +9,14 @@
 ## Steps
 
 ### Runtime Logging Library (lib/tooling/)
+
 - [x] Create `lib/tooling/instrument_log.h` and `lib/tooling/instrument_log.c` implementing `asciichat_instr_log_line()` using async-signal-safe `write()`; include PID/TID, timestamp, macro flag, snippet.
 - [x] Add env-configurable filters (e.g., `ASCII_PANIC_INCLUDE`, `ASCII_PANIC_THREAD`, `ASCII_PANIC_OUTPUT_DIR`) and per-thread file support.
 - [x] Expose initialization/teardown helpers for thread-local log files.
 - [x] Register the new source files in the existing library target definitions (via `cmake/tooling/Panic.cmake`).
 
 ### Panic Instrumentation Tool (`src/tooling/`)
+
 - [x] Implement `src/tooling/asciichat_instr_tool.cpp` using Clang libTooling + AST visitors to insert `asciichat_instr_log_line()` before each executable `Stmt`, capturing original source text via `SourceManager`.
 - [x] Enforce “write-new-only” safety: validate target output directories, refuse to overwrite existing files, and abort on any attempt to reuse an existing path.
 - [x] Handle macros by tagging expansion sites; log metadata distinguishing expansion use.
@@ -22,16 +24,19 @@
 - [x] Emit transformed sources to a dedicated output directory mirroring the input tree.
 
 ### Build System Integration (`cmake/tooling/`)
+
 - [x] Provide `cmake/tooling/Targets.cmake` that defines the libTooling executable and `ascii-debug-runtime`, ensuring LLVM/Clang discovery happens there.
 - [x] Expose `ascii_panic_prepare()` / `ascii_panic_finalize()` helpers in `cmake/tooling/Panic.cmake`, invoked from the root `CMakeLists.txt`.
 - [x] Add cache option `ASCIICHAT_BUILD_WITH_PANIC` and integrate `cmake/tooling/run_panic_instrumentation.sh` to generate panic-instrumented sources safely into `build/instrumented/`.
 
 ### Developer Documentation & Usage
+
 - [x] Document workflow in `docs/tooling-instrumentation.md`: configuration, environment filters, per-thread logs.
 - [x] Highlight safety guarantees (no overwrites/deletions of source/.git) and recommended manual checks before use.
 - [x] Note limitations (performance overhead, sanitizers, signal-handler opt-outs) and post-processing tips.
 
 ## Optional Enhancements (time permitting)
+
 - [x] Provide a small post-processing helper in `src/tooling/` that summarizes the last log per thread.
 - [ ] Add unit tests (Criterion) for the logging runtime to ensure env filters behave correctly (skipped in macOS CI if needed).
 
@@ -123,17 +128,17 @@
 ## Part Five – Risks, Mitigations, and Success Metrics
 
 1. **Risk: Excessive Overhead in Hot Paths**
-   - *Mitigation:* Encourage scoped instrumentation via filters; document rate limiting defaults and provide profiling guidance.
-   - *Metric:* Instrumented build should remain within 5× runtime of baseline for targeted modules.
+   - _Mitigation:_ Encourage scoped instrumentation via filters; document rate limiting defaults and provide profiling guidance.
+   - _Metric:_ Instrumented build should remain within 5× runtime of baseline for targeted modules.
 2. **Risk: Log Volume Overwhelms Storage or Pipelines**
-   - *Mitigation:* Default to per-thread rolling logs with size caps; expose `ASCII_PANIC_MAX_BYTES` env var; integrate optional gzip rotation.
-   - *Metric:* Demonstrate a 10-minute instrumented session stays under 500 MB with defaults.
+   - _Mitigation:_ Default to per-thread rolling logs with size caps; expose `ASCII_PANIC_MAX_BYTES` env var; integrate optional gzip rotation.
+   - _Metric:_ Demonstrate a 10-minute instrumented session stays under 500 MB with defaults.
 3. **Risk: Developer Misuse in Signal Handlers**
-   - *Mitigation:* Enforce compiler warnings when `ASCII_PANIC_SIGNAL_HANDLER` functions are instrumented; highlight safe patterns in docs.
-   - *Metric:* Zero known incidents of instrumented signal handlers in postmortems.
+   - _Mitigation:_ Enforce compiler warnings when `ASCII_PANIC_SIGNAL_HANDLER` functions are instrumented; highlight safe patterns in docs.
+   - _Metric:_ Zero known incidents of instrumented signal handlers in postmortems.
 4. **Risk: Divergence Between Original and Instrumented Trees**
-   - *Mitigation:* Add automated sanity checks comparing hashes of non-instrumented files; gate merges on clean diffs.
-   - *Metric:* CI guardrail that fails if non-instrumented sources are mutated by the pipeline.
+   - _Mitigation:_ Add automated sanity checks comparing hashes of non-instrumented files; gate merges on clean diffs.
+   - _Metric:_ CI guardrail that fails if non-instrumented sources are mutated by the pipeline.
 5. **Success Criteria**
    - First production bug localized primarily via instrumentation logs.
    - Positive developer feedback captured in `notes/IMPROVEMENTS.md` (at least two entries).

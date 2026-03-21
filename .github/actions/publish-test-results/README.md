@@ -19,30 +19,31 @@ A composite GitHub Action that handles test result publishing for the ascii-chat
   uses: ./.github/actions/publish-test-results
   if: always()
   with:
-    test-type: unit                           # Required: unit, integration, or performance
-    os-name: ubuntu                           # Required: ubuntu or macos
-    build-type: debug                          # Optional: debug or release (for unit tests)
-    junit-file: junit.xml                      # Optional: path to JUnit XML (default: junit.xml)
-    coverage-files: './*.gcov'                 # Optional: coverage file pattern (default: ./*.gcov)
+    test-type: unit # Required: unit, integration, or performance
+    os-name: ubuntu # Required: ubuntu or macos
+    build-type: debug # Optional: debug or release (for unit tests)
+    junit-file: junit.xml # Optional: path to JUnit XML (default: junit.xml)
+    coverage-files: "./*.gcov" # Optional: coverage file pattern (default: ./*.gcov)
     codecov-token: ${{ secrets.CODECOV_TOKEN }} # Required: Codecov token
-    upload-coverage: 'true'                    # Optional: whether to upload coverage (default: false)
+    upload-coverage: "true" # Optional: whether to upload coverage (default: false)
 ```
 
 ## Inputs
 
-| Input | Description | Required | Default |
-|-------|-------------|----------|---------|
-| `test-type` | Type of test (unit, integration, performance) | Yes | - |
-| `os-name` | Operating system name (ubuntu, macos) | Yes | - |
-| `build-type` | Build type (debug, release) | No | '' |
-| `junit-file` | Path to JUnit XML file | No | 'junit.xml' |
-| `coverage-files` | Coverage file pattern for Codecov | No | './*.gcov' |
-| `codecov-token` | Codecov token | Yes | - |
-| `upload-coverage` | Whether to upload coverage to Codecov | No | 'false' |
+| Input             | Description                                   | Required | Default     |
+| ----------------- | --------------------------------------------- | -------- | ----------- |
+| `test-type`       | Type of test (unit, integration, performance) | Yes      | -           |
+| `os-name`         | Operating system name (ubuntu, macos)         | Yes      | -           |
+| `build-type`      | Build type (debug, release)                   | No       | ''          |
+| `junit-file`      | Path to JUnit XML file                        | No       | 'junit.xml' |
+| `coverage-files`  | Coverage file pattern for Codecov             | No       | './\*.gcov' |
+| `codecov-token`   | Codecov token                                 | Yes      | -           |
+| `upload-coverage` | Whether to upload coverage to Codecov         | No       | 'false'     |
 
 ## Examples
 
 ### Unit Tests with Coverage (Debug Build)
+
 ```yaml
 - name: Publish Test Results and Coverage
   uses: ./.github/actions/publish-test-results
@@ -56,6 +57,7 @@ A composite GitHub Action that handles test result publishing for the ascii-chat
 ```
 
 ### Integration Tests
+
 ```yaml
 - name: Publish Test Results and Coverage
   uses: ./.github/actions/publish-test-results
@@ -64,10 +66,11 @@ A composite GitHub Action that handles test result publishing for the ascii-chat
     test-type: integration
     os-name: ${{ matrix.os-name }}
     codecov-token: ${{ secrets.CODECOV_TOKEN }}
-    upload-coverage: 'true'
+    upload-coverage: "true"
 ```
 
 ### Performance Tests
+
 ```yaml
 - name: Publish Test Results and Coverage
   uses: ./.github/actions/publish-test-results
@@ -76,7 +79,7 @@ A composite GitHub Action that handles test result publishing for the ascii-chat
     test-type: performance
     os-name: ${{ matrix.os-name }}
     codecov-token: ${{ secrets.CODECOV_TOKEN }}
-    upload-coverage: 'true'
+    upload-coverage: "true"
 ```
 
 ## What It Does
@@ -91,6 +94,7 @@ A composite GitHub Action that handles test result publishing for the ascii-chat
 ## Check Names
 
 The action creates GitHub checks with names based on test type:
+
 - Unit Tests: `Unit Tests (os-build)` e.g., "Unit Tests (ubuntu-debug)"
 - Integration Tests: `Integration Tests (os)` e.g., "Integration Tests (macos)"
 - Performance Tests: `Performance Tests (os)` e.g., "Performance Tests (ubuntu)"
@@ -98,6 +102,7 @@ The action creates GitHub checks with names based on test type:
 ## Codecov Flags
 
 The action uses appropriate flags for Codecov organization:
+
 - Unit Tests: `ascii-chat-tests-{os}-{build}`
 - Integration Tests: `ascii-chat-integration-{os}`
 - Performance Tests: `ascii-chat-performance-{os}`

@@ -151,14 +151,14 @@ coverage:
         threshold: 3%
         paths:
           - "tests/**/*"
-        informational: true  # Don't fail builds on test framework coverage
+        informational: true # Don't fail builds on test framework coverage
 
     # Patch-level status checks (for PRs)
     patch:
       # Overall patch coverage
       default:
         target: 60%
-        threshold: 0%  # Strict - all new code should be tested
+        threshold: 0% # Strict - all new code should be tested
         base: auto
         branches:
           - master
@@ -226,7 +226,7 @@ coverage:
           - master
           - main
           - palettes
-        if_ci_failed: success  # Don't fail CI for test coverage
+        if_ci_failed: success # Don't fail CI for test coverage
         only_pulls: true
         informational: true
 
@@ -257,7 +257,7 @@ component_management:
         target: auto
         threshold: 2%
         branches:
-          - "!master"  # Don't run on master to reduce noise
+          - "!master" # Don't run on master to reduce noise
       - type: patch
         target: 70%
         threshold: 5%

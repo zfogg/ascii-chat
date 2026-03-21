@@ -33,12 +33,14 @@ lws_write() for Fragment 2       (Fails assertion)
 ## Key Evidence from Logs
 
 **Fragment 1 Success**:
+
 ```
 [19:29:17.407846] WEBSOCKET_SEND: lws_write returned 4096 (requested 4096 bytes)
 [19:29:17.418... Fragment 1 SUCCESS - sent 4096 bytes (total progress: 4096/230446)
 ```
 
 **Fragment 2 Crash**:
+
 ```
 [19:29:17.422565] Fragment 2 - offset=4096, chunk=4096 bytes, flags=LWS_WRITE_CONTINUATION
 [19:29:17.424751] ERROR: CRASH DETECTED - Signal 6 (SIGABRT)

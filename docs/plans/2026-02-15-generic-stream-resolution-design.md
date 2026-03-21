@@ -11,6 +11,7 @@ Replace YouTube-specific URL handling with a generic stream resolver that suppor
 ## Problem Statement
 
 Currently, ascii-chat only supports YouTube URLs via `youtube.c/h`. This limits users to YouTube and requires maintaining YouTube-specific code. The new design:
+
 - Supports thousands of sites that yt-dlp handles
 - Removes YouTube-specific code and options
 - Allows arbitrary yt-dlp options via `--yt-dlp-options` flag
@@ -54,6 +55,7 @@ bool yt_dlp_is_available(void);
 ```
 
 **Implementation notes:**
+
 - Move existing YouTube extraction logic from `youtube.c`
 - Reuse 30-second cache from existing code
 - Accept arbitrary `--yt-dlp-options` string and pass to subprocess
@@ -100,6 +102,7 @@ static asciichat_error_t media_source_resolve_url(
 5. Cache successful result (30 seconds)
 
 **Error logging flow:**
+
 - `log_debug()` when starting each resolution attempt
 - `log_debug()` on probe success (FFmpeg can handle)
 - `log_error()` when each resolver fails
@@ -123,6 +126,7 @@ static asciichat_error_t media_source_resolve_url(
 ```
 
 Passes arbitrary yt-dlp options to the subprocess. Examples:
+
 - `--yt-dlp-options="--cookies-from-browser=chrome"`
 - `--yt-dlp-options="--no-cookies-from-browser --embed-subs"`
 - `--yt-dlp-options="--proxy socks5://127.0.0.1:1080"`
@@ -165,22 +169,26 @@ User sees the final error message clearly indicating what went wrong.
 ## Usage Examples
 
 ### YouTube with cookies
+
 ```bash
 ./ascii-chat mirror --yt-dlp-options="--cookies-from-browser=chrome"
 ```
 
 ### Direct MP4 stream (no yt-dlp subprocess overhead)
+
 ```bash
 ./ascii-chat mirror "https://example.com/video.mp4"
 # Tries FFmpeg directly, bypasses yt-dlp
 ```
 
 ### Complex site with custom proxy
+
 ```bash
 ./ascii-chat mirror --yt-dlp-options="--proxy socks5://127.0.0.1:1080"
 ```
 
 ### Direct RTSP stream
+
 ```bash
 ./ascii-chat mirror rtsp://camera.local/stream
 # Tries FFmpeg directly, bypasses yt-dlp
@@ -210,11 +218,13 @@ User sees the final error message clearly indicating what went wrong.
 ## Migration Guide
 
 For users:
+
 - Replace `--cookies-from-browser=chrome` with `--yt-dlp-options="--cookies-from-browser=chrome"`
 - Replace `--no-cookies-from-browser` with `--yt-dlp-options="--no-cookies-from-browser"`
 - All other functionality remains the same, now supports any URL yt-dlp handles
 
 For developers:
+
 - `youtube_is_youtube_url()` → no longer needed, routing handled in source.c
 - `youtube_extract_stream_url()` → use `media_source_resolve_url()` instead
 - Direct yt-dlp calls → use `yt_dlp_extract_stream_url()` from yt_dlp.c
@@ -222,6 +232,7 @@ For developers:
 ## Future Extensibility
 
 The `yt_dlp.c/h` module is reusable for any future yt-dlp-based features:
+
 - Format selection
 - Subtitle extraction
 - Quality preferences

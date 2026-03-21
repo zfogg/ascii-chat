@@ -185,10 +185,7 @@
       "name": "windows-debug",
       "displayName": "Windows Debug (vcpkg)",
       "description": "Windows Debug build using vcpkg for dependencies",
-      "inherits": [
-        "base-debug",
-        "base-vcpkg"
-      ],
+      "inherits": ["base-debug", "base-vcpkg"],
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
@@ -199,10 +196,7 @@
       "name": "windows-release",
       "displayName": "Windows Release (vcpkg)",
       "description": "Windows Release build using vcpkg with static linking",
-      "inherits": [
-        "base-release",
-        "base-vcpkg"
-      ],
+      "inherits": ["base-release", "base-vcpkg"],
       "cacheVariables": {
         "VCPKG_TARGET_TRIPLET": "x64-windows-static"
       },

@@ -25,6 +25,7 @@ Bisect result: 0d44b077 is the first bad commit
 The bisect identified `0d44b077` (build github pages docs with cmake) as the "first bad commit". However, this commit **only modifies workflow files** (`.github/workflows/doxygen.yml`) and should NOT affect WebSocket code.
 
 This suggests:
+
 1. Either the bisect boundary markers were incorrect
 2. Or there's a build system interaction
 3. Or the regression was already present in the baseline
@@ -34,6 +35,7 @@ Testing confirmed the baseline commit `b4d246bb` also fails the test, suggesting
 ### Test Failure Evidence
 
 Running `ctest -R websocket_integration` shows:
+
 - Test times out after 45 seconds
 - Expected runtime: 7 seconds or less (per bug report notes)
 - Server log shows: `ERROR: AddressSanitizer: Joining already joined thread, aborting`
@@ -62,6 +64,7 @@ From `notes/BUG_REPORT_FRAME_LOSS.md` and code examination:
 Commit `dadb4809` on branch `polecat/furiosa/as-9lf@mludcslb` addresses this:
 
 **Key changes:**
+
 - Move partial reassembly state into `websocket_transport_data_t`:
   - `partial_buffer`: preserve partial message
   - `partial_size`: current size
@@ -71,6 +74,7 @@ Commit `dadb4809` on branch `polecat/furiosa/as-9lf@mludcslb` addresses this:
 - No more orphaned fragments → no protocol errors → frames delivered
 
 **Commit message excerpt:**
+
 ```
 CRITICAL FIX: Resolves issue where slow fragment delivery caused frames
 to be lost and dispatch to fail.
@@ -100,6 +104,7 @@ ws_data->partial_buffer, partial_size, etc.
 **Immediate:** Merge the fix from `dadb4809` into master
 
 **Validation:**
+
 - Run WebSocket integration test: Should complete in <7 seconds
 - Verify frame delivery at normal FPS (not 0fps)
 - Check server logs for clean connections
@@ -111,6 +116,7 @@ ws_data->partial_buffer, partial_size, etc.
 **Fix Merge Point**: `dadb4809` (Preserve WebSocket fragment reassembly state across recv() calls)
 
 **Related Files**:
+
 - `lib/network/websocket/server.c` - Server callbacks (ESTABLISHED, CLOSED, RECEIVE)
 - `lib/network/websocket/client.c` - Client callbacks
 - `include/ascii-chat/network/websocket/internal.h` - Transport data structure

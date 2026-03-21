@@ -4,26 +4,26 @@ on:
   push:
     branches: [master, main]
     paths:
-      - 'src/client/**'
-      - 'src/server/**'
-      - 'lib/network/**'
-      - 'lib/util/fps.c'
-      - 'lib/util/fps.h'
-      - 'scripts/test-websocket-*.sh'
-      - '.github/workflows/websocket-fps-regression.yml'
+      - "src/client/**"
+      - "src/server/**"
+      - "lib/network/**"
+      - "lib/util/fps.c"
+      - "lib/util/fps.h"
+      - "scripts/test-websocket-*.sh"
+      - ".github/workflows/websocket-fps-regression.yml"
   pull_request:
     branches: [master, main]
     paths:
-      - 'src/client/**'
-      - 'src/server/**'
-      - 'lib/network/**'
-      - 'lib/util/fps.c'
-      - 'lib/util/fps.h'
-      - 'scripts/test-websocket-*.sh'
-      - '.github/workflows/websocket-fps-regression.yml'
+      - "src/client/**"
+      - "src/server/**"
+      - "lib/network/**"
+      - "lib/util/fps.c"
+      - "lib/util/fps.h"
+      - "scripts/test-websocket-*.sh"
+      - ".github/workflows/websocket-fps-regression.yml"
   schedule:
     # Run daily to catch performance regressions
-    - cron: '0 2 * * *'
+    - cron: "0 2 * * *"
   workflow_dispatch:
 
 env:

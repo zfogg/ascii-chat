@@ -52,21 +52,21 @@ pid=12345 tid=678 seq=42 ts=2025-11-07T18:32:01.123456789Z elapsed=12.3ms file=l
 
 ### Environment Filters
 
-| Variable | Purpose |
-| --- | --- |
-| `ASCII_PANIC_INCLUDE` | Substring filter applied to `file=`; emit only when the substring is present. |
-| `ASCII_PANIC_EXCLUDE` | Suppresses logs when the substring matches the file path. |
-| `ASCII_PANIC_THREAD` | Comma-separated decimal thread IDs to keep. IDs must match those printed in log headers. |
-| `ASCII_PANIC_INCLUDE_REGEX` | POSIX extended-regular-expression include filter on `file=`. Takes precedence over substring filters. |
-| `ASCII_PANIC_EXCLUDE_REGEX` | POSIX extended-regular-expression exclude filter on `file=`. |
-| `ASCII_PANIC_FUNCTION_INCLUDE` | Substring filter on `func=`. |
-| `ASCII_PANIC_FUNCTION_EXCLUDE` | Substring exclusion filter on `func=`. |
-| `ASCII_PANIC_FUNCTION_INCLUDE_REGEX` | POSIX extended regex include filter for function names. |
-| `ASCII_PANIC_FUNCTION_EXCLUDE_REGEX` | POSIX extended regex exclusion filter for function names. |
-| `ASCII_PANIC_OUTPUT_DIR` | Override log directory. The runtime creates it with mode 0700 when absent. |
-| `ASCII_PANIC_ONLY` | Comma-separated allow-list selectors (`file=<glob>`, `func=<glob>`, `module=<name>[:<glob>]`, or shorthand `module:pattern` such as `server:*`). |
-| `ASCII_PANIC_RATE` | Positive integer; log the first statement and every Nth subsequent statement per thread (helps throttle noisy traces). |
-| `ASCII_PANIC_ENABLE_COVERAGE` | Set to `1`, `true`, `on`, or `yes` to enable SanitizerCoverage logging callbacks (requires building with `-fsanitize-coverage=trace-pc-guard`). |
+| Variable                             | Purpose                                                                                                                                          |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ASCII_PANIC_INCLUDE`                | Substring filter applied to `file=`; emit only when the substring is present.                                                                    |
+| `ASCII_PANIC_EXCLUDE`                | Suppresses logs when the substring matches the file path.                                                                                        |
+| `ASCII_PANIC_THREAD`                 | Comma-separated decimal thread IDs to keep. IDs must match those printed in log headers.                                                         |
+| `ASCII_PANIC_INCLUDE_REGEX`          | POSIX extended-regular-expression include filter on `file=`. Takes precedence over substring filters.                                            |
+| `ASCII_PANIC_EXCLUDE_REGEX`          | POSIX extended-regular-expression exclude filter on `file=`.                                                                                     |
+| `ASCII_PANIC_FUNCTION_INCLUDE`       | Substring filter on `func=`.                                                                                                                     |
+| `ASCII_PANIC_FUNCTION_EXCLUDE`       | Substring exclusion filter on `func=`.                                                                                                           |
+| `ASCII_PANIC_FUNCTION_INCLUDE_REGEX` | POSIX extended regex include filter for function names.                                                                                          |
+| `ASCII_PANIC_FUNCTION_EXCLUDE_REGEX` | POSIX extended regex exclusion filter for function names.                                                                                        |
+| `ASCII_PANIC_OUTPUT_DIR`             | Override log directory. The runtime creates it with mode 0700 when absent.                                                                       |
+| `ASCII_PANIC_ONLY`                   | Comma-separated allow-list selectors (`file=<glob>`, `func=<glob>`, `module=<name>[:<glob>]`, or shorthand `module:pattern` such as `server:*`). |
+| `ASCII_PANIC_RATE`                   | Positive integer; log the first statement and every Nth subsequent statement per thread (helps throttle noisy traces).                           |
+| `ASCII_PANIC_ENABLE_COVERAGE`        | Set to `1`, `true`, `on`, or `yes` to enable SanitizerCoverage logging callbacks (requires building with `-fsanitize-coverage=trace-pc-guard`).  |
 
 > Regex filters rely on `regcomp(3)` and are available on POSIX platforms. On Windows they are ignored gracefully.
 
@@ -80,7 +80,7 @@ Unset variables disable the corresponding filter. Checks happen before log forma
 
 ### Startup & Shutdown
 
-- `asciichat_instr_runtime_get()` uses `pthread_once` to create TLS keys and picks up environment filters. Memory is allocated through the SAFE_ macros, ensuring leak tracking when `DEBUG_MEMORY` is enabled.
+- `asciichat_instr_runtime_get()` uses `pthread_once` to create TLS keys and picks up environment filters. Memory is allocated through the SAFE\_ macros, ensuring leak tracking when `DEBUG_MEMORY` is enabled.
 - `asciichat_instr_runtime_global_shutdown()` tears down TLS entries and halts logging—useful in unit tests that spawn threads.
 
 ### Sanitizer Coverage Mode
@@ -177,4 +177,3 @@ void handle_sigint(int signum) {
 ## Roadmap Follow-ups
 
 - Cover runtime filtering and formatting with Criterion tests executed via `ctest --test-dir build --output-on-failure` (Docker on macOS).
-

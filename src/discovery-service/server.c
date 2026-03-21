@@ -1139,11 +1139,23 @@ void *acds_websocket_client_handler(void *arg) {
   log_debug("WebSocket client %s registered (synthetic_id=%d, total=%zu)", client_ip, synthetic_id,
             tcp_server_get_client_count(&server->tcp_server));
 
-  // For WebSocket with TLS (wss://), skip crypto handshake since TLS already provides encryption
-  // For plain ws://, we should still do crypto handshake, but for now we skip it
-  // TODO: Add crypto handshake support for plain ws:// connections
-  client_data->handshake_complete = true;
-  log_info("WebSocket connection from %s - skipping crypto handshake (TLS encryption assumed)", client_ip);
+  // Determine if client authentication is required by checking server configuration
+  bool auth_required = server->config.require_client_identity;
+  ctx->auth_required = auth_required;
+
+  // Skip crypto handshake only for wss:// connections WITHOUT authentication requirement
+  // For plain ws://, always do crypto handshake
+  // For wss:// WITH auth requirement, always do crypto handshake
+  bool skip_handshake = ctx->is_secure && !auth_required;
+
+  if (skip_handshake) {
+    client_data->handshake_complete = true;
+    log_info("WebSocket connection from %s - skipping crypto handshake (TLS encryption used, no auth required)",
+             client_ip);
+  } else {
+    log_info("WebSocket connection from %s - proceeding with crypto handshake%s", client_ip,
+             auth_required ? " (client authentication required)" : "");
+  }
 
   // Main packet processing loop using transport recv
   while (atomic_load_bool(&server->tcp_server.running)) {

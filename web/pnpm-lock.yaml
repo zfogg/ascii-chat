@@ -117,7 +117,7 @@ importers:
         version: 0.8.2
       vite-plus:
         specifier: 'catalog:'
-        version: 0.1.12(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(jsdom@28.1.0)(terser@5.46.1)(typescript@5.9.3)(vite@7.3.1(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1))
+        version: 0.1.12(@types/node@25.5.0)(@voidzero-dev/vite-plus-core@0.1.12(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.46.1)(typescript@5.9.3))(esbuild@0.27.4)(jiti@2.6.1)(jsdom@28.1.0)(terser@5.46.1)(typescript@5.9.3)
     optionalDependencies:
       '@rollup/rollup-linux-arm64-gnu':
         specifier: ^4.59.0
@@ -267,10 +267,10 @@ importers:
         version: 0.8.2
       vite-plus:
         specifier: 'catalog:'
-        version: 0.1.12(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(jsdom@28.1.0)(terser@5.46.1)(typescript@5.9.3)(vite@7.3.1(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1))
+        version: 0.1.12(@types/node@25.5.0)(@voidzero-dev/vite-plus-core@0.1.12(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.46.1)(typescript@5.9.3))(esbuild@0.27.4)(jiti@2.6.1)(jsdom@28.1.0)(terser@5.46.1)(typescript@5.9.3)
       vitest:
         specifier: npm:@voidzero-dev/vite-plus-test@latest
-        version: '@voidzero-dev/vite-plus-test@0.1.12(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(jsdom@28.1.0)(terser@5.46.1)(typescript@5.9.3)(vite@7.3.1(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1))'
+        version: '@voidzero-dev/vite-plus-test@0.1.12(@types/node@25.5.0)(@voidzero-dev/vite-plus-core@0.1.12(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.46.1)(typescript@5.9.3))(esbuild@0.27.4)(jiti@2.6.1)(jsdom@28.1.0)(terser@5.46.1)(typescript@5.9.3)'
       ws:
         specifier: ^8.19.0
         version: 8.19.0
@@ -300,6 +300,9 @@ importers:
       '@eslint/js':
         specifier: ^9.7.0
         version: 9.39.4
+      '@playwright/test':
+        specifier: ^1.58.2
+        version: 1.58.2
       '@tailwindcss/postcss':
         specifier: ^4.1.18
         version: 4.2.2
@@ -371,7 +374,7 @@ importers:
         version: 0.8.2
       vite-plus:
         specifier: 'catalog:'
-        version: 0.1.12(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(jsdom@28.1.0)(terser@5.46.1)(typescript@5.9.3)(vite@7.3.1(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1))
+        version: 0.1.12(@types/node@25.5.0)(@voidzero-dev/vite-plus-core@0.1.12(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.46.1)(typescript@5.9.3))(esbuild@0.27.4)(jiti@2.6.1)(jsdom@28.1.0)(terser@5.46.1)(typescript@5.9.3)
       winston:
         specifier: ^3.11.0
         version: 3.19.0
@@ -5571,6 +5574,46 @@ snapshots:
   '@voidzero-dev/vite-plus-linux-x64-gnu@0.1.12':
     optional: true
 
+  '@voidzero-dev/vite-plus-test@0.1.12(@types/node@25.5.0)(@voidzero-dev/vite-plus-core@0.1.12(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.46.1)(typescript@5.9.3))(esbuild@0.27.4)(jiti@2.6.1)(jsdom@28.1.0)(terser@5.46.1)(typescript@5.9.3)':
+    dependencies:
+      '@standard-schema/spec': 1.1.0
+      '@types/chai': 5.2.3
+      '@voidzero-dev/vite-plus-core': 0.1.12(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.46.1)(typescript@5.9.3)
+      es-module-lexer: 1.7.0
+      obug: 2.1.1
+      pixelmatch: 7.1.0
+      pngjs: 7.0.0
+      sirv: 3.0.2
+      std-env: 4.0.0
+      tinybench: 2.9.0
+      tinyexec: 1.0.4
+      tinyglobby: 0.2.15
+      vite: '@voidzero-dev/vite-plus-core@0.1.12(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.46.1)(typescript@5.9.3)'
+      ws: 8.19.0
+    optionalDependencies:
+      '@types/node': 25.5.0
+      jsdom: 28.1.0
+    transitivePeerDependencies:
+      - '@arethetypeswrong/core'
+      - '@tsdown/css'
+      - '@tsdown/exe'
+      - '@vitejs/devtools'
+      - bufferutil
+      - esbuild
+      - jiti
+      - less
+      - publint
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - terser
+      - tsx
+      - typescript
+      - unplugin-unused
+      - utf-8-validate
+      - yaml
+
   '@voidzero-dev/vite-plus-test@0.1.12(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(jsdom@28.1.0)(terser@5.46.1)(typescript@5.9.3)(vite@7.3.1(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1))':
     dependencies:
       '@standard-schema/spec': 1.1.0
@@ -7681,6 +7724,52 @@ snapshots:
   vary@1.1.2: {}
 
   vite-plugin-sitemap@0.8.2: {}
+
+  vite-plus@0.1.12(@types/node@25.5.0)(@voidzero-dev/vite-plus-core@0.1.12(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.46.1)(typescript@5.9.3))(esbuild@0.27.4)(jiti@2.6.1)(jsdom@28.1.0)(terser@5.46.1)(typescript@5.9.3):
+    dependencies:
+      '@oxc-project/types': 0.115.0
+      '@voidzero-dev/vite-plus-core': 0.1.12(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.46.1)(typescript@5.9.3)
+      '@voidzero-dev/vite-plus-test': 0.1.12(@types/node@25.5.0)(@voidzero-dev/vite-plus-core@0.1.12(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(terser@5.46.1)(typescript@5.9.3))(esbuild@0.27.4)(jiti@2.6.1)(jsdom@28.1.0)(terser@5.46.1)(typescript@5.9.3)
+      cac: 6.7.14
+      cross-spawn: 7.0.6
+      oxfmt: 0.40.0
+      oxlint: 1.55.0(oxlint-tsgolint@0.17.0)
+      oxlint-tsgolint: 0.17.0
+      picocolors: 1.1.1
+    optionalDependencies:
+      '@voidzero-dev/vite-plus-darwin-arm64': 0.1.12
+      '@voidzero-dev/vite-plus-darwin-x64': 0.1.12
+      '@voidzero-dev/vite-plus-linux-arm64-gnu': 0.1.12
+      '@voidzero-dev/vite-plus-linux-x64-gnu': 0.1.12
+      '@voidzero-dev/vite-plus-win32-arm64-msvc': 0.1.12
+      '@voidzero-dev/vite-plus-win32-x64-msvc': 0.1.12
+    transitivePeerDependencies:
+      - '@arethetypeswrong/core'
+      - '@edge-runtime/vm'
+      - '@opentelemetry/api'
+      - '@tsdown/css'
+      - '@tsdown/exe'
+      - '@types/node'
+      - '@vitejs/devtools'
+      - '@vitest/ui'
+      - bufferutil
+      - esbuild
+      - happy-dom
+      - jiti
+      - jsdom
+      - less
+      - publint
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - terser
+      - tsx
+      - typescript
+      - unplugin-unused
+      - utf-8-validate
+      - vite
+      - yaml
 
   vite-plus@0.1.12(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(jsdom@28.1.0)(terser@5.46.1)(typescript@5.9.3)(vite@7.3.1(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)):
     dependencies:

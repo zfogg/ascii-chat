@@ -30,6 +30,7 @@ lib/video/webcam/
 #### Core Headers
 
 **webcam.h** - Webcam capture interface
+
 - Unified API for video capture across platforms
 - Platform-specific backend selection at compile time
 - Image format conversion to common RGB format
@@ -38,6 +39,7 @@ lib/video/webcam/
 #### Platform Implementations
 
 **Linux Implementation (linux/)**
+
 - **webcam_v4l2.c**: Uses Video4Linux2 API for webcam access
   - Direct kernel interface for video capture
   - YUYV to RGB conversion
@@ -45,6 +47,7 @@ lib/video/webcam/
   - Device capability querying
 
 **macOS Implementation (macos/)**
+
 - **webcam_avfoundation.m**: Uses AVFoundation framework
   - Objective-C implementation for native macOS support
   - Hardware-accelerated video capture
@@ -52,6 +55,7 @@ lib/video/webcam/
   - Permission handling for camera access
 
 **Windows Implementation (windows/)**
+
 - **webcam_mediafoundation.c**: Uses Windows Media Foundation
   - COM-based video capture
   - Format negotiation and conversion
@@ -63,6 +67,7 @@ lib/video/webcam/
 ### Webcam Capture (`webcam.h`)
 
 **High-Level Interface (Backwards Compatible):**
+
 ```c
 int webcam_init(unsigned short int webcam_index);
 image_t *webcam_read(void);
@@ -70,6 +75,7 @@ void webcam_cleanup(void);
 ```
 
 **Platform-Specific Interface:**
+
 ```c
 typedef struct webcam_context_t webcam_context_t;  // Opaque handle
 
@@ -84,36 +90,37 @@ int webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height);
 ### Linux Specifics
 
 **V4L2 Webcam Support:**
+
 - Direct kernel interface through `/dev/video*` devices
 - Memory-mapped I/O for zero-copy frame capture
 - YUYV format with software RGB conversion
 - Requires user to be in 'video' group
 - Multiple device support through enumeration
 
-
 ### macOS Specifics
 
 **AVFoundation Webcam Support:**
+
 - Native Objective-C implementation
 - Automatic format conversion
 - Hardware acceleration when available
 - System permission dialogs for camera access
 - Retina display awareness
 
-
 ### Windows Specifics
 
 **Media Foundation Webcam Support:**
+
 - COM-based initialization
 - Automatic format negotiation
 - YUY2/RGB conversion
 - Fallback test pattern for missing cameras
 - Device enumeration through Windows APIs
 
-
 ## Usage Examples
 
 ### Basic Webcam Capture
+
 ```c
 #include "video/webcam/webcam.h"
 #include "video/image.h"
@@ -152,6 +159,7 @@ int main() {
 The OS abstraction layer is integrated into the CMake build system:
 
 ### CMake Configuration
+
 ```cmake
 # Platform-specific webcam sources are automatically selected
 if(APPLE)
@@ -166,6 +174,7 @@ endif()
 ```
 
 ### Dependencies
+
 - **Linux**: V4L2 development headers (`libv4l-dev`)
 - **macOS**: AVFoundation framework (built-in)
 - **Windows**: Media Foundation (built-in)
@@ -175,33 +184,39 @@ endif()
 ## Error Handling
 
 ### Webcam Errors
+
 The webcam subsystem provides detailed platform-specific error messages:
 
 **Linux:**
+
 - Permission errors (user not in 'video' group)
 - Device busy (camera in use by another application)
 - Device not found (no `/dev/video*` devices)
 
 **macOS:**
+
 - Permission denied (camera access not granted)
 - Device not found (no cameras available)
 - Format negotiation failures
 
 **Windows:**
+
 - COM initialization failures
 - Device enumeration errors
 - Format conversion failures
 
-
 ## Testing
 
 ### Unit Tests
+
 - `tests/unit/webcam_test.c` - Webcam interface tests (planned)
 
 ### Integration Tests
+
 - `tests/integration/video_pipeline_test.c` - End-to-end video capture
 
 ### Platform Coverage
+
 - CI/CD tests on Linux, macOS, and Windows
 - Fallback test patterns for headless environments
 - Mock devices for automated testing
@@ -209,25 +224,28 @@ The webcam subsystem provides detailed platform-specific error messages:
 ## Known Limitations
 
 ### Linux
+
 - V4L2 requires specific pixel formats (YUYV preferred)
 - Some USB cameras may have compatibility issues
 - User must be in 'video' group for device access
 
 ### macOS
+
 - Requires user permission for camera access
 - First-time permission dialog may interrupt flow
 - Some virtual cameras may not be detected
 
 ### Windows
+
 - Media Foundation requires Windows 7 or later
 - Some older webcams may not support required formats
 - COM initialization required before use
 - Currently uses test pattern fallback (full implementation pending)
 
-
 ## Future Enhancements
 
 ### Planned Features
+
 - [ ] Hardware video encoding/decoding
 - [ ] Camera hot-plug detection
 - [ ] Video resolution selection
@@ -235,6 +253,7 @@ The webcam subsystem provides detailed platform-specific error messages:
 - [ ] Multiple camera support
 
 ### Platform-Specific Plans
+
 - **Linux**: PipeWire webcam support for modern distributions
 - **macOS**: Metal Performance Shaders for GPU-accelerated processing
 - **Windows**: DirectShow fallback for older systems
@@ -246,7 +265,6 @@ When migrating code to use the OS abstraction:
 1. **Replace OpenCV calls:**
    - `cv::VideoCapture` → `webcam_init()` / `webcam_read()`
    - Direct V4L2 calls → `webcam_*` functions
-
 
 2. **Replace webcam platform calls:**
    - `webcam_platform_*` functions → `webcam_*` functions
@@ -271,11 +289,11 @@ When adding new webcam platform implementations:
 ## Dependencies
 
 ### Required Libraries
+
 - **PortAudio**: Cross-platform audio I/O (all platforms)
 - **libv4l2**: Video4Linux2 (Linux only)
 - **AVFoundation**: Apple's media framework (macOS only, built-in)
 - **Media Foundation**: Windows media framework (Windows only, built-in)
-
 
 ## Author
 

@@ -10,6 +10,7 @@ The **session module** (`src/common/session/`) provides a unified abstraction fo
 - **Interactive controls** (keyboard input, help screens, status displays)
 
 The module is used by all display modes:
+
 - **Server mode**: Hosts sessions with multiple connected clients
 - **Client mode**: Connects to a server and streams media
 - **Mirror mode**: Local testing without networking
@@ -56,7 +57,9 @@ The module is used by all display modes:
 ### Component Breakdown
 
 #### **Host-Side (`host.h`)**
+
 Server abstractions for managing client sessions:
+
 - **Lifecycle**: Create → Start → Stop → Destroy
 - **Client Management**: Add, remove, find, list clients
 - **Media Injection**: For host's own webcam/audio participation
@@ -65,7 +68,9 @@ Server abstractions for managing client sessions:
 - **Transport Abstraction**: Support for TCP sockets, WebRTC DataChannels, WebSockets
 
 #### **Client-Side (`participant.h`)**
+
 Client abstractions for connecting to sessions:
+
 - **Lifecycle**: Create → Connect → Disconnect → Destroy
 - **Stream Control**: Start/stop video and audio streaming
 - **Media Reception**: Receive mixed ASCII frames and audio from server
@@ -73,7 +78,9 @@ Client abstractions for connecting to sessions:
 - **Reconnection**: Automatic reconnection on network failure
 
 #### **Shared Client-Like Framework (`client_like.h`)**
+
 Unified initialization framework for client-like modes:
+
 - Handles boilerplate setup for mirror, client, and discovery modes
 - Media source selection and FPS detection
 - Audio initialization and lifecycle
@@ -234,6 +241,7 @@ typedef struct session_log_buffer session_log_buffer_t;
 ### Configuration Structures
 
 #### **Host Configuration** (`host.h`)
+
 ```c
 typedef struct {
   int port;                           // Listen port (27224)
@@ -249,6 +257,7 @@ typedef struct {
 ```
 
 #### **Participant Configuration** (`participant.h`)
+
 ```c
 typedef struct {
   const char *address;               // Server address
@@ -262,6 +271,7 @@ typedef struct {
 ```
 
 #### **Client-Like Configuration** (`client_like.h`)
+
 ```c
 typedef struct {
   session_media_source_t media_source;  // What to capture
@@ -274,6 +284,7 @@ typedef struct {
 ### Callback Structures
 
 #### **Host Callbacks**
+
 ```c
 typedef struct {
   void (*on_client_join)(session_host_t *h, uint32_t client_id, void *data);
@@ -288,6 +299,7 @@ typedef struct {
 ```
 
 #### **Participant Callbacks**
+
 ```c
 typedef struct {
   void (*on_connected)(session_participant_t *p, uint32_t id, void *data);
@@ -318,6 +330,7 @@ typedef struct {
 **Purpose**: Abstract media source reading (webcam, files, URLs)
 
 **Key Functions**:
+
 - `session_capture_open()` - Open media source
 - `session_capture_close()` - Close media source
 - `session_capture_read_frame()` - Get next frame
@@ -326,6 +339,7 @@ typedef struct {
 - `session_capture_seek_relative()` - Seek in files
 
 **Supported Sources**:
+
 - Webcam (platform-specific)
 - Local files (MP4, MKV, etc. via FFmpeg)
 - URLs (HTTP/HTTPS/RTSP/DASH/HLS)
@@ -336,6 +350,7 @@ typedef struct {
 **Purpose**: Terminal abstraction and ASCII rendering
 
 **Key Functions**:
+
 - `session_display_create()` - Initialize terminal
 - `session_display_destroy()` - Cleanup terminal
 - `session_display_convert_to_ascii()` - Convert frames to ASCII
@@ -343,6 +358,7 @@ typedef struct {
 - `session_display_set_color_mode()` - Set palette (mono/16/256/true color)
 
 **Features**:
+
 - Terminal capability detection (ANSI support)
 - Color palette selection
 - Snapshot mode support
@@ -355,10 +371,12 @@ typedef struct {
 **Two Modes**:
 
 1. **Synchronous Mode** (with capture context)
+
    ```c
    session_render_loop(capture, display, should_exit_fn,
                       NULL, NULL, keyboard_handler, user_data);
    ```
+
    - Capture → ASCII conversion → Render loop
    - Frame rate driven by media source
 
@@ -367,6 +385,7 @@ typedef struct {
    session_render_loop(NULL, display, should_exit_fn,
                       capture_fn, sleep_fn, keyboard_handler, user_data);
    ```
+
    - Custom frame/sleep callbacks
    - Protocol-driven (client mode)
 
@@ -375,6 +394,7 @@ typedef struct {
 **Purpose**: Audio capture, processing, and playback
 
 **Key Functions**:
+
 - `session_audio_capture_init()` - Start audio input
 - `session_audio_capture_read()` - Get audio samples
 - `session_audio_playback_init()` - Start audio output
@@ -382,6 +402,7 @@ typedef struct {
 - Volume control and mixing
 
 **Features**:
+
 - Platform abstraction (PortAudio)
 - Format conversion (PCM float)
 - Volume normalization
@@ -392,6 +413,7 @@ typedef struct {
 **Purpose**: Interactive session controls
 
 **Supported Controls**:
+
 - `?` - Toggle help screen
 - ` ` (spacebar) - Play/pause
 - `←` / `→` - Seek ±30s
@@ -407,12 +429,14 @@ typedef struct {
 **Purpose**: Capture logs for status/splash screens
 
 **Functions**:
+
 - `session_log_buffer_init()` - Create circular buffer
 - `session_log_buffer_append()` - Add log entry
 - `session_log_buffer_get_recent()` - Retrieve entries
 - `session_log_buffer_clear()` - Clear all entries
 
 **Features**:
+
 - Thread-safe circular buffer
 - ANSI color support
 - Automatic sequence numbering
@@ -422,6 +446,7 @@ typedef struct {
 **Purpose**: Session-wide configuration and state
 
 **Manages**:
+
 - Color mode
 - Pause state
 - Volume level
@@ -479,6 +504,7 @@ session_settings_set_color_mode(COLOR_MODE_256);
 ### Default Behavior
 
 All connections are **encrypted by default** using:
+
 - **X25519** - Key exchange
 - **XSalsa20-Poly1305** - AEAD symmetric cipher
 - **Ed25519** - Signature verification
@@ -641,28 +667,33 @@ asciichat_error_t result = session_client_like_run(&config);
 ### Thread Safety
 
 **Host**: Thread-safe for all operations
+
 - Client operations are atomic
 - Callbacks can be from any thread
 - Safe to call from audio/video threads
 
 **Participant**: Thread-safe for stream control
+
 - Send operations are async
 - Receive callbacks from dedicated thread
 - Settings updates are RCU-protected
 
 **Render Loop**: Single-threaded by design
+
 - Keyboard input can be called from any thread
 - Frame operations must be synchronized by caller
 
 ### Memory Management
 
 All allocations tracked with `SAFE_MALLOC/CALLOC/FREE`:
+
 - Automatic leak detection in debug builds
 - Memory reports printed at exit
 
 ### Event Loop Integration
 
 Host and participant both provide callback-based interfaces for integration with custom event loops:
+
 - No internal threads required
 - Can be used with epoll/kqueue/select
 - Suitable for embedded systems
@@ -671,20 +702,20 @@ Host and participant both provide callback-based interfaces for integration with
 
 ## Files Overview
 
-| File | Purpose |
-|------|---------|
-| **host.h** | Server session management |
-| **participant.h** | Client session participation |
-| **client_like.h** | Unified client-like mode framework |
-| **capture.h** | Media source abstraction |
-| **display.h** | Terminal abstraction and rendering |
-| **render.h** | Unified render loop |
-| **audio.h** | Audio capture/playback |
-| **keyboard_handler.h** | Interactive controls |
-| **session_log_buffer.h** | Log capture for screens |
-| **settings.h** | Thread-safe session settings |
-| **consensus.h** | State coordination protocol |
-| **consensus_integration.h** | Consensus integration helpers |
+| File                        | Purpose                            |
+| --------------------------- | ---------------------------------- |
+| **host.h**                  | Server session management          |
+| **participant.h**           | Client session participation       |
+| **client_like.h**           | Unified client-like mode framework |
+| **capture.h**               | Media source abstraction           |
+| **display.h**               | Terminal abstraction and rendering |
+| **render.h**                | Unified render loop                |
+| **audio.h**                 | Audio capture/playback             |
+| **keyboard_handler.h**      | Interactive controls               |
+| **session_log_buffer.h**    | Log capture for screens            |
+| **settings.h**              | Thread-safe session settings       |
+| **consensus.h**             | State coordination protocol        |
+| **consensus_integration.h** | Consensus integration helpers      |
 
 ---
 

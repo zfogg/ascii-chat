@@ -38,6 +38,7 @@ Ring order: A → B → C → D → A (circularly back to A)
 ```
 
 **Key Properties:**
+
 - Order is deterministic (based on participant IDs sorted lexicographically)
 - Participants know their position (which client is "next" and which is "previous")
 - No single point of failure in the ring structure itself
@@ -69,6 +70,7 @@ typedef struct {
 ```
 
 **Metric Details:**
+
 - **NAT tier**: Determined during initial STUN probing (0=LAN best, 4=TURN worst)
 - **Upload bandwidth**: Estimated from available network speed or measured via bandwidth test
 - **RTT to host**: Ping latency measured from periodic keepalive packets
@@ -79,6 +81,7 @@ typedef struct {
 The **ring leader** is the last participant in the ring order - the one whose "next" pointer wraps around back to the first participant.
 
 **Responsibilities:**
+
 1. Receive all metrics from previous participant in ring
 2. Add own metrics to the collection
 3. Compute which client should be host and backup
@@ -86,6 +89,7 @@ The **ring leader** is the last participant in the ring order - the one whose "n
 5. All clients immediately accept and use the new host/backup addresses
 
 **Why the ring leader?**
+
 - Naturally receives all data without additional hops
 - Single point of decision (no quorum delays, no consensus rounds)
 - All other clients trust the leader because they KNOW the leader has complete information
@@ -144,6 +148,7 @@ Ring leader sends `STATS_COLLECTION_START` packet to previous participant:
 #### Step 2: Metrics Flow Around Ring
 
 Each participant:
+
 1. **Measures own metrics** (NAT tier, upload speed, RTT, loss, etc.)
 2. **Sends `STATS_UPDATE` to next in ring** with:
    - Own metrics (newly measured)
@@ -182,6 +187,7 @@ typedef struct {
 Once leader receives metrics from all participants (within deadline), compute:
 
 1. **Score each participant** using deterministic formula:
+
    ```
    score = (4 - nat_tier) * 1000      // Lower NAT tier = higher score
            + (upload_kbps / 10)         // Higher bandwidth = higher score
@@ -223,6 +229,7 @@ Ring leader broadcasts `RING_ELECTION_RESULT` to all clients via server:
 ### Phase 4: Participant Acknowledgment
 
 All participants:
+
 1. Receive `RING_ELECTION_RESULT` from server
 2. Verify leader is the expected ring leader (cross-check)
 3. Store host and backup addresses locally
@@ -247,6 +254,7 @@ All participants:
 ### When Participant Joins
 
 **Timeline:**
+
 1. New participant connects to ACDS
 2. Server broadcasts new `RING_MEMBERS` packet
 3. All clients recompute ring positions
@@ -258,6 +266,7 @@ All participants:
 ### When Participant Leaves
 
 **Timeline:**
+
 1. Server detects participant disconnect
 2. Broadcasts new `RING_MEMBERS` with reduced list
 3. Ring shrinks: if participant was leader, new last one becomes leader
@@ -265,6 +274,7 @@ All participants:
 5. Next metrics collection round proceeds with new ring
 
 **Example:**
+
 ```
 Before: A → B → C → D (D is leader)
         Leader: D
@@ -279,6 +289,7 @@ After:  A → B → C (C becomes new leader)
 **Scenario:** Host dies mid-collection (e.g., metrics flow: A→B→C→[host]→?)
 
 **Behavior:**
+
 1. Ring leader notices host hasn't sent/received for >timeout
 2. Doesn't block collection - continues with available metrics
 3. In election: host that died gets infinite score (won't be elected)
@@ -315,6 +326,7 @@ def compute_score(metrics):
 ### Tie-Breaking
 
 If two participants have identical scores:
+
 1. Compare NAT tier (lower wins)
 2. Compare upload bandwidth (higher wins)
 3. Compare participant ID lexicographically (A > Z = wins)
@@ -497,6 +509,7 @@ typedef struct {
 ### Host Death During Active Session
 
 **Timeline:**
+
 ```
 T=0s:     Host alive, all connected
 T=5m:     Ring consensus round: Host elected, Backup=C stored
@@ -513,6 +526,7 @@ T=8.50s:  Media resumed on new host
 ### Ring Leader Dies During Collection
 
 **Example:**
+
 - Collection round in progress: A→B→C→[waiting for D]
 - D (ring leader) dies mid-collection
 - C has collected A, B, C metrics (missing D)
@@ -556,6 +570,7 @@ Run full metrics collection every:
 ```
 
 Or on-demand when:
+
 - Participant joins
 - Participant leaves
 - Server detects poor quality from host
@@ -564,12 +579,14 @@ Or on-demand when:
 ### Measuring STUN Probe Success Rate
 
 **Why STUN probes?**
+
 - TCP (used for metrics collection) is reliable and doesn't show packet loss
 - STUN probes use UDP, which reflects actual network conditions on the direct path
 - Already part of NAT detection, so reusing existing infrastructure
 - Gives insight into network stability independent of TCP retransmission
 
 **Implementation:**
+
 ```c
 // During metrics collection window:
 for (int i = 0; i < 10; i++) {
@@ -591,6 +608,7 @@ Each participant should measure during:
 ```
 
 Capture:
+
 - STUN probe success rate: Send ~10 STUN binding requests during measurement window, track responses (UDP-based, reflects network quality)
 - Upload bandwidth: Estimate from available connection quality or measure via bandwidth test probes
 - RTT: Measure from ping packets or media frame timestamps (median over measurement window)
@@ -609,13 +627,13 @@ Capture:
 
 ### Attack Vectors
 
-| Attack | Mitigation |
-|--------|-----------|
-| Ring leader lies about metrics | All clients verify independently |
-| Ring leader offline | Leadership auto-transfers to new last |
-| Participant falsifies metrics | Other participants can challenge/remeasure |
-| Man-in-the-middle on election | Crypto handshake happens after election |
-| Participant spams collection | Timeout + rate limiting |
+| Attack                         | Mitigation                                 |
+| ------------------------------ | ------------------------------------------ |
+| Ring leader lies about metrics | All clients verify independently           |
+| Ring leader offline            | Leadership auto-transfers to new last      |
+| Participant falsifies metrics  | Other participants can challenge/remeasure |
+| Man-in-the-middle on election  | Crypto handshake happens after election    |
+| Participant spams collection   | Timeout + rate limiting                    |
 
 ### Optional: Signed Election
 
@@ -636,30 +654,31 @@ Each participant verifies signature using leader's public key.
 
 ### vs. Centralized Host Election (Current)
 
-| Aspect | Centralized | Ring Consensus |
-|--------|-------------|----------------|
-| **Decision maker** | Always host | Rotates (last in ring) |
-| **Information access** | Limited to host's metrics | Complete (all metrics reach leader) |
-| **Failure recovery** | Host dies = election delay | Automatic leadership transfer |
-| **Complexity** | Simple | Medium |
-| **Scalability** | O(1) computation, O(n) to collect | O(n) hops to collect, O(n) to sort |
-| **Fairness** | Host may be biased | Leader computes fairly with all data |
+| Aspect                 | Centralized                       | Ring Consensus                       |
+| ---------------------- | --------------------------------- | ------------------------------------ |
+| **Decision maker**     | Always host                       | Rotates (last in ring)               |
+| **Information access** | Limited to host's metrics         | Complete (all metrics reach leader)  |
+| **Failure recovery**   | Host dies = election delay        | Automatic leadership transfer        |
+| **Complexity**         | Simple                            | Medium                               |
+| **Scalability**        | O(1) computation, O(n) to collect | O(n) hops to collect, O(n) to sort   |
+| **Fairness**           | Host may be biased                | Leader computes fairly with all data |
 
 ### vs. Byzantine Fault Tolerance
 
-| Aspect | BFT | Ring Consensus |
-|--------|-----|----------------|
-| **Fault tolerance** | (n-1)/3 malicious nodes | Assumes honest leader |
-| **Rounds** | O(f) rounds, f=faults | 1 round + 1 round trip |
-| **Message complexity** | O(n²) | O(n) |
-| **Leader rotation** | Automatic on f leaders dead | Automatic (ring order) |
-| **Implementation** | Very complex | Medium complexity |
+| Aspect                 | BFT                         | Ring Consensus         |
+| ---------------------- | --------------------------- | ---------------------- |
+| **Fault tolerance**    | (n-1)/3 malicious nodes     | Assumes honest leader  |
+| **Rounds**             | O(f) rounds, f=faults       | 1 round + 1 round trip |
+| **Message complexity** | O(n²)                       | O(n)                   |
+| **Leader rotation**    | Automatic on f leaders dead | Automatic (ring order) |
+| **Implementation**     | Very complex                | Medium complexity      |
 
 ---
 
 ## Example: 4-Participant Election
 
 **Setup:**
+
 ```
 Participants: A, B, C, D
 Ring order: A → B → C → D → A (D is leader)
@@ -674,6 +693,7 @@ Metrics collected:
 ```
 
 **Scoring:**
+
 ```
 Score(A) = (4-1)*1000 + (50000/10) + (500-30) + 95
          = 3000 + 5000 + 470 + 95 = 8565
@@ -689,6 +709,7 @@ Score(D) = (4-1)*1000 + (75000/10) + (500-25) + 96
 ```
 
 **Election:**
+
 ```
 Sorted by score (descending - higher is better):
   Best:   C (12578)  - Excellent bandwidth, good NAT, low latency, high probe success
@@ -701,6 +722,7 @@ Backup:   D (next best, can handle load if C fails)
 ```
 
 **Broadcast:**
+
 ```
 RING_ELECTION_RESULT {
   round_id: 1,
@@ -721,12 +743,14 @@ All participants verify:
 ## Implementation Roadmap
 
 ### Phase 1: Ring Formation (Week 1)
+
 - [ ] Add RING_MEMBERS packet type
 - [ ] Server tracks participant order
 - [ ] Clients compute ring position on RING_MEMBERS receipt
 - [ ] All clients agree on leader
 
 ### Phase 2: Metrics Collection (Week 2)
+
 - [ ] Add STATS_UPDATE packet
 - [ ] Implement metrics measurement (NAT, upload, latency, loss)
 - [ ] Ring leader starts collection round
@@ -734,6 +758,7 @@ All participants verify:
 - [ ] Leader receives all
 
 ### Phase 3: Election & Broadcasting (Week 3)
+
 - [ ] Add scoring algorithm
 - [ ] Leader computes best host/backup
 - [ ] Add RING_ELECTION_RESULT packet
@@ -741,12 +766,14 @@ All participants verify:
 - [ ] Clients verify and store
 
 ### Phase 4: Migration Integration (Week 4)
+
 - [ ] Trigger migration when host changes
 - [ ] Use announced backup address on failover
 - [ ] Handle mid-collection host death
 - [ ] Test with 3+ participants
 
 ### Phase 5: Testing & Polish (Week 5)
+
 - [ ] Unit tests for scoring
 - [ ] Integration tests: 2/3/4/5 participants
 - [ ] Ring member changes (join/leave)
@@ -764,4 +791,3 @@ The Ring Consensus Protocol provides a fair, distributed, and scalable way to el
 ✅ Speed - Single round to collect + compute
 ✅ Scalability - O(n) complexity
 ✅ Simplicity - Deterministic, easy to verify
-

@@ -37,15 +37,16 @@ The regression test:
 
 ### Current Baseline (as-3v1da)
 
-| Metric | Value | Rationale |
-|--------|-------|-----------|
-| Minimum FPS | 1 fps | Catches critical throttling (0fps issue) |
-| Test duration | 5 seconds | Enough time to establish connection and capture frames |
-| Transport | WebSocket | Tests the specific delivery mechanism for remote clients |
+| Metric        | Value     | Rationale                                                |
+| ------------- | --------- | -------------------------------------------------------- |
+| Minimum FPS   | 1 fps     | Catches critical throttling (0fps issue)                 |
+| Test duration | 5 seconds | Enough time to establish connection and capture frames   |
+| Transport     | WebSocket | Tests the specific delivery mechanism for remote clients |
 
 ### Why Conservative?
 
 The 1 fps baseline is intentionally very conservative to:
+
 - Catch complete frame delivery failure (0fps throttling)
 - Detect severe performance regressions quickly
 - Allow development improvements to raise the baseline gradually
@@ -56,6 +57,7 @@ The 1 fps baseline is intentionally very conservative to:
 ### When to Update
 
 Update the baseline when:
+
 1. Performance improvements are implemented and verified
 2. Test environment changes (e.g., CI runner upgrade)
 3. Measured FPS consistently exceeds current baseline in production
@@ -135,6 +137,7 @@ cat /tmp/ascii-chat-client-*.log | grep "actual fps\|FRAME_RECV"
 ## CI Integration
 
 The test runs in GitHub Actions on:
+
 - **Push to master/main** with protocol changes
 - **Pull requests** affecting WebSocket/protocol code
 - **Daily schedule** (2 AM UTC) to catch environmental regressions

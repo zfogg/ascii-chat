@@ -1,7 +1,7 @@
 {
-  "type": "module",
   "name": "ascii-chat",
   "private": true,
+  "type": "module",
   "devDependencies": {
     "concurrently": "^9.2.1"
   }

@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   coturn:
@@ -25,7 +25,7 @@ services:
       resources:
         limits:
           memory: 512M
-          cpus: '1.0'
+          cpus: "1.0"
 
     # Health check
     healthcheck:

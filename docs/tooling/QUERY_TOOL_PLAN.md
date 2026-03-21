@@ -168,6 +168,7 @@
 Windows query tool is now functional:
 
 **Build Fixes Applied:**
+
 1. `src/tooling/query/lldb_controller.h` - Added `using pid_t = lldb::pid_t;` for Windows
 2. `src/tooling/query/http_server.cpp` - Added `using ssize_t = ptrdiff_t;` for Windows
 3. `src/tooling/query/main.cpp` - Fixed printf format specifiers using `%llu` with casts
@@ -175,12 +176,14 @@ Windows query tool is now functional:
 5. `cmake/tooling/Query.cmake` - Added DLL copying for liblldb.dll and liblzma.dll
 
 **Runtime Requirements:**
+
 - liblldb.dll (copied by CMake from LLVM bin dir)
 - liblzma.dll (copied by CMake from vcpkg)
 - python3XX.dll must be in PATH (Python install)
 - libxml2.dll must be in PATH (vcpkg or LLVM bin)
 
 **Tested Endpoints (all working):**
+
 - `GET /` - Status page with target info
 - `GET /process` - JSON process info
 - `GET /threads` - Thread list (when stopped)
@@ -190,6 +193,7 @@ Windows query tool is now functional:
 - `POST /detach` - Detaches cleanly
 
 **Remaining:**
+
 - CreateProcess auto-spawn not yet tested
 - Need to write test_query_windows.ps1
 
@@ -1401,13 +1405,11 @@ tests/unit/tooling/
 **Test Categories:**
 
 1. **API Tests** (query_api_test.c)
-
    - `QUERY_INIT` / `QUERY_SHUTDOWN` lifecycle
    - Port allocation
    - Process spawn/cleanup
 
 2. **HTTP Tests** (query_http_test.cpp)
-
    - Endpoint routing
    - JSON serialization
    - Error handling
@@ -1482,14 +1484,12 @@ lib/tooling/query/
 **Documentation Contents:**
 
 1. **query-tool.md** - User Guide
-
    - Quick start
    - Launch modes (standalone vs auto-spawn)
    - Example workflows
    - Editor integration (vim, vscode)
 
 2. **query-api.md** - API Reference
-
    - All HTTP endpoints
    - Request/response formats
    - Error codes

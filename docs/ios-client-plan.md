@@ -90,17 +90,17 @@ RGB24 pixel buffer, and a registered Swift callback receives it every frame.
 
 ### How it compares
 
-| Approach                         | iOS Client (Unified)                              |
-|----------------------------------|---------------------------------------------------|
-| Web client reimplements session  | iOS runs actual C session code unmodified          |
-| Swift ConnectionManager          | **Eliminated** — C client_main handles connections |
-| Swift PacketParser               | **Eliminated** — C ACIP code handles packets       |
-| Swift handshake state machine    | **Eliminated** — C crypto handshake runs as-is     |
-| Camera capture                   | Shared `webcam/apple/` (AVFoundation, macOS+iOS)   |
-| Audio pipeline                   | AVAudioEngine shim replaces PortAudio symbols      |
-| Display rendering                | libvterm + FreeType → pixel buffer → Swift callback |
-| Timing / FPS                     | C render loop handles timing (CADisplayLink not needed) |
-| React state / hooks (web)        | SwiftUI `@Observable` on frame callback            |
+| Approach                        | iOS Client (Unified)                                    |
+| ------------------------------- | ------------------------------------------------------- |
+| Web client reimplements session | iOS runs actual C session code unmodified               |
+| Swift ConnectionManager         | **Eliminated** — C client_main handles connections      |
+| Swift PacketParser              | **Eliminated** — C ACIP code handles packets            |
+| Swift handshake state machine   | **Eliminated** — C crypto handshake runs as-is          |
+| Camera capture                  | Shared `webcam/apple/` (AVFoundation, macOS+iOS)        |
+| Audio pipeline                  | AVAudioEngine shim replaces PortAudio symbols           |
+| Display rendering               | libvterm + FreeType → pixel buffer → Swift callback     |
+| Timing / FPS                    | C render loop handles timing (CADisplayLink not needed) |
+| React state / hooks (web)       | SwiftUI `@Observable` on frame callback                 |
 
 ---
 
@@ -192,21 +192,21 @@ endif()
 
 #### 1d. Dependency strategy
 
-| Dependency     | iOS Strategy                                         | Notes                                   |
-|----------------|------------------------------------------------------|-----------------------------------------|
-| libsodium      | vcpkg `arm64-ios` or build from source               | Has official iOS support                |
-| FFmpeg         | Build from source with `--enable-cross-compile`      | Mobile builds well-documented           |
-| Opus           | vcpkg or source build                                | Lightweight, easy cross-compile         |
-| libwebsockets  | Build from source (has `contrib/iOS.cmake`)          | Already in .deps-cache                  |
-| libdatachannel | Build from source                                    | For WebRTC/discovery mode               |
-| yyjson         | Header-only-ish, trivial                             | Just compiles                           |
-| PCRE2          | vcpkg or source build                                | Standard cross-compile                  |
-| BearSSL        | Build from source                                    | Small, portable                         |
-| zstd           | vcpkg or source build                                | Easy cross-compile                      |
-| sqlite3        | Use iOS system sqlite3                               | Ships with iOS                          |
-| libvterm       | Build from source                                    | Small, no deps, easy cross-compile      |
-| FreeType       | vcpkg or source build                                | Widely cross-compiled for iOS           |
-| PortAudio      | **Replace** - AVAudioEngine shim (`lib/audio/ios/portaudio_shim.m`) | 13 functions, same callback API         |
+| Dependency     | iOS Strategy                                                        | Notes                              |
+| -------------- | ------------------------------------------------------------------- | ---------------------------------- |
+| libsodium      | vcpkg `arm64-ios` or build from source                              | Has official iOS support           |
+| FFmpeg         | Build from source with `--enable-cross-compile`                     | Mobile builds well-documented      |
+| Opus           | vcpkg or source build                                               | Lightweight, easy cross-compile    |
+| libwebsockets  | Build from source (has `contrib/iOS.cmake`)                         | Already in .deps-cache             |
+| libdatachannel | Build from source                                                   | For WebRTC/discovery mode          |
+| yyjson         | Header-only-ish, trivial                                            | Just compiles                      |
+| PCRE2          | vcpkg or source build                                               | Standard cross-compile             |
+| BearSSL        | Build from source                                                   | Small, portable                    |
+| zstd           | vcpkg or source build                                               | Easy cross-compile                 |
+| sqlite3        | Use iOS system sqlite3                                              | Ships with iOS                     |
+| libvterm       | Build from source                                                   | Small, no deps, easy cross-compile |
+| FreeType       | vcpkg or source build                                               | Widely cross-compiled for iOS      |
+| PortAudio      | **Replace** - AVAudioEngine shim (`lib/audio/ios/portaudio_shim.m`) | 13 functions, same callback API    |
 
 **XCFramework target** (combine device + simulator):
 
@@ -223,13 +223,14 @@ xcodebuild -create-xcframework \
 
 **Key insight**: iOS is Darwin, which is POSIX. Unlike WASM (which needs its own stubs for
 everything because it runs in a browser), iOS can directly reuse the existing POSIX and macOS
-platform layers. The iOS layer only needs to *override* the handful of things that differ.
+platform layers. The iOS layer only needs to _override_ the handful of things that differ.
 
 Some stubs are genuinely shared between WASM and iOS (and future mobile/embedded targets) —
 things like "no real TTY", "no fork/exec", "no PortAudio". These live in a new shared
 `lib/platform/stubs/` directory that both `wasm/` and `ios/` pull from via CMake.
 
 **Do NOT blindly copy the WASM stubs to iOS.** The WASM layer makes dangerous simplifications:
+
 - WASM mutexes are **no-ops** (JS is single-threaded) — iOS is multithreaded, needs real pthreads
 - WASM crypto stubs **auto-accept all hosts** and disable key verification — iOS needs full crypto
 - WASM terminal code uses **EM_JS() bridges to JavaScript** — doesn't exist on iOS
@@ -267,11 +268,13 @@ lib/platform/stubs/
 ```
 
 **What stays in `wasm/stubs/` (WASM-only)**:
+
 - `crypto.c` — auto-accepts hosts, disables key verification. iOS needs REAL crypto.
 - `filesystem.c` — routes fd 1/2 to `wasm_log_to_console()` via EM_JS. iOS uses real files.
 - `log.c` — mmap stubs. iOS can use real mmap logging.
 
 **What stays in `wasm/` (WASM-only)**:
+
 - `threading.c` — no-op mutexes. iOS needs real pthreads.
 - `terminal.c` — EM_JS bridges to xterm.js. iOS doesn't have JS.
 - `console.c` — EM_JS to browser console. iOS uses os_log.
@@ -281,26 +284,26 @@ The iOS CMake target would use `stubs/* + ios/*` (shared + iOS-only).
 
 #### What works as-is from POSIX (no iOS code needed)
 
-| Module               | Why it works                                         |
-|----------------------|------------------------------------------------------|
-| `threading.c`        | pthreads (mutex, rwlock, condvar, TLS) work on iOS   |
-| `socket.c`           | BSD sockets work on iOS                              |
-| `time.c`             | `clock_gettime`, `gettimeofday`, `nanosleep` all work|
-| `string.c`           | Standard libc string functions                       |
-| `memory.c`           | `malloc`/`free`/`mmap` work                          |
-| `pipe.c`             | POSIX pipes work                                     |
-| `errno.c`            | Standard errno                                       |
-| `backtrace.c`        | Darwin backtrace works on iOS (Mach-O symbols)       |
-| `lifecycle.c`        | Atomic operations and pthreads work                  |
+| Module        | Why it works                                          |
+| ------------- | ----------------------------------------------------- |
+| `threading.c` | pthreads (mutex, rwlock, condvar, TLS) work on iOS    |
+| `socket.c`    | BSD sockets work on iOS                               |
+| `time.c`      | `clock_gettime`, `gettimeofday`, `nanosleep` all work |
+| `string.c`    | Standard libc string functions                        |
+| `memory.c`    | `malloc`/`free`/`mmap` work                           |
+| `pipe.c`      | POSIX pipes work                                      |
+| `errno.c`     | Standard errno                                        |
+| `backtrace.c` | Darwin backtrace works on iOS (Mach-O symbols)        |
+| `lifecycle.c` | Atomic operations and pthreads work                   |
 
 #### What works from macOS (no or minor changes)
 
-| Module               | Notes                                                |
-|----------------------|------------------------------------------------------|
-| `system.c`           | Darwin system calls, signal handling. `fork`/`exec` restricted but rarely called. |
-| `font.c`             | CoreText works on iOS. Bundle paths may differ slightly. |
-| `crypto/`            | Full libsodium crypto — works as-is on iOS arm64     |
-| `webcam/macos/`      | Pure AVFoundation/CoreMedia/CoreVideo — rename to `webcam/apple/` and it works on iOS as-is. Zero macOS-only APIs. |
+| Module          | Notes                                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `system.c`      | Darwin system calls, signal handling. `fork`/`exec` restricted but rarely called.                                  |
+| `font.c`        | CoreText works on iOS. Bundle paths may differ slightly.                                                           |
+| `crypto/`       | Full libsodium crypto — works as-is on iOS arm64                                                                   |
+| `webcam/macos/` | Pure AVFoundation/CoreMedia/CoreVideo — rename to `webcam/apple/` and it works on iOS as-is. Zero macOS-only APIs. |
 
 #### What iOS needs to override
 
@@ -343,6 +346,7 @@ That's ~9 platform files + 2 module files vs. the WASM layer's ~22 files.
 #### iOS override implementations
 
 **terminal.c** — no TTY, but we know what the display supports:
+
 ```c
 int get_terminal_size(unsigned short *rows, unsigned short *cols) {
     // Dimensions come from the Swift UI layer via options
@@ -365,6 +369,7 @@ asciichat_error_t terminal_cursor_show(void) { return ASCIICHAT_OK; }
 ```
 
 **keepawake.m** — Objective-C for UIKit:
+
 ```objc
 #import <UIKit/UIKit.h>
 #include "ascii-chat/error.h"
@@ -384,6 +389,7 @@ void platform_disable_keepawake(void) {
 ```
 
 **filesystem.m** — sandbox-aware paths:
+
 ```objc
 #import <Foundation/Foundation.h>
 #include "ascii-chat/error.h"
@@ -435,6 +441,7 @@ asciichat_error_t platform_find_config_file(const char *filename,
 ```
 
 **question.c** — delegate to Swift UI:
+
 ```c
 // Register a callback from Swift that handles user prompts in the UI
 typedef bool (*ios_prompt_callback_t)(const char *prompt, char *response, size_t max_len);
@@ -456,6 +463,7 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
 ```
 
 **process.c** — stubs for restricted APIs:
+
 ```c
 #include "ascii-chat/error.h"
 #include "ascii-chat/platform/process.h"
@@ -622,6 +630,7 @@ PaError Pa_OpenStream(PaStream **stream,
 ```
 
 This means:
+
 - The library's `audio.c` code works **unchanged** on iOS
 - Full duplex audio, Opus codec, AEC3 echo cancellation — all library-owned
 - `AVAudioSession` lifecycle managed properly (categories, interruptions, Bluetooth)
@@ -1051,6 +1060,7 @@ src/ios/
 ```
 
 **What's gone** (handled by C code running natively):
+
 - ~~`ConnectionManager.swift`~~ — C `client_main()` handles connections
 - ~~`PacketParser.swift`~~ — C ACIP code handles packets
 - ~~`CameraManager.swift`~~ — C webcam code (`webcam/apple/`) handles capture
@@ -1143,6 +1153,7 @@ write() syscall → terminal emulator → user sees ASCII art
 ```
 
 Every mode's output goes through `platform_write_all(STDOUT_FILENO, ...)`:
+
 - **Mirror**: webcam → ASCII frames → stdout
 - **Client**: received network frames → ASCII → stdout; status screens → stdout
 - **Server**: status screen with live logs → stdout
@@ -1251,7 +1262,7 @@ The frame callback in `AsciiChatEngine` must copy the pixel data before returnin
 because `term_renderer_pixels()` returns a pointer into the renderer's internal buffer
 that will be overwritten on the next call to `term_renderer_feed()`:
 
-```swift
+````swift
 ios_register_frame_callback({ pixels, w, h, pitch, ctx in
     guard let ctx = ctx, let pixels = pixels else { return }
     // Copy before the C renderer overwrites the buffer on the next frame
@@ -1460,8 +1471,8 @@ xcodebuild -create-xcframework \
 
 # Open Xcode project
 open src/ios/AsciiChat.xcodeproj
-```
+````
 
 ---
 
-*This is a living document. Updated as research continues and implementation progresses.*
+_This is a living document. Updated as research continues and implementation progresses._

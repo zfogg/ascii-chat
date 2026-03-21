@@ -23,6 +23,7 @@ ctest --test-dir build --output-on-failure --parallel 0
 ```
 
 **IMPORTANT**:
+
 - This project uses Clang only, not MSVC or GCC
 - Use `cmake --preset default` - use Ninja and don't switch to Makefiles or Visual Studio generators
 - **Avoid deleting build/** - just re-run `cmake --preset default` and rebuild
@@ -50,10 +51,12 @@ Get full options with: `./build/bin/ascii-chat <mode> --help`
 **Mode Legend:** S=server, C=client, M=mirror, DS=discovery-service, D=discovery
 
 ### Mode Help Commands
+
 - **`./build/bin/ascii-chat --help`** (all) - Shows all global flags, modes, examples, environment variables, and keybindings.
 - **`./build/bin/ascii-chat <mode> --help`** (S, C, M, DS) - Mode-specific help with available options for that mode. Key help key `?` in interactive mode shows help overlay.
 
 ### Connection & Addressing Options
+
 - **`--address`** (S, C, DS) - Bind address for server (supports IPv4/IPv6, syntax 0-2); client connects to this address with `[host][:port]` format (defaults localhost:27224).
 - **`--port`** (S, C, DS) - Port number (default: 27224 for server/client, 27225 for discovery-service).
 - **`--discovery-service`** (S, C, D) - Enable discovery service integration for P2P session discovery.
@@ -61,17 +64,20 @@ Get full options with: `./build/bin/ascii-chat <mode> --help`
 - **`--max-clients`** (S) - Maximum concurrent clients (server mode only).
 
 ### Media Input Options
+
 - **`--file FILE`** (S, C, M) - Use local file instead of webcam (supports .mp4, .mkv, .webm, etc.; use `-f '-'` for stdin piping).
 - **`--url URL`** (S, C, M) - Stream from HTTP/HTTPS URL, HLS (.m3u8), RTSP, or YouTube/TikTok (via yt-dlp).
 - **`--yt-dlp-options OPTIONS`** (S, C, M) - Custom yt-dlp flags for streaming site extraction.
 
 ### Cryptography & Authentication
+
 - **`--password`** (S, C) - Password-based authentication (ephemeral DH without identity verification).
 - **`--key FILE`** (S, C) - SSH key (ed25519 .pem format) for public key authentication; server advertises its key to clients.
 - **`--server-key FILE|github:USERNAME|URL`** (C) - Validate server's public key from local file, fetch from GitHub (github:USERNAME), or HTTP(S) URL (TOFU with known_hosts).
 - **`--client-keys FILE|github:USERNAME|URL`** (S) - Validate client public keys from local file, GitHub (github:USERNAME), or HTTP(S) URL (server mode).
 
 ### Display & Rendering Options
+
 - **`--width`** (M, C, S) - Override terminal width detection.
 - **`--height`** (M, C, S) - Override terminal height detection.
 - **`--color-mode {auto|none|16|256|truecolor}`** (all) - Force color output mode; CLAUDECODE auto-detects unless piped to file.
@@ -81,11 +87,14 @@ Get full options with: `./build/bin/ascii-chat <mode> --help`
 - **`--status-screen`** (S, DS) - Enable or disable live status screen display. Use `--status-screen=false` to disable (overrides non-interactive terminal checks).
 
 ### Snapshot & Recording
+
 - **`--snapshot`** (C, M) - Capture exactly one frame and exit (useful for scripting). **Gotcha**: Doesn't auto-detect terminal dimensions when piped.
 - **`--snapshot-delay`** (C, M) - Delay before snapshot (default 0). **Script tip**: Use `--snapshot --snapshot-delay 0 | pbcopy` to copy frame to clipboard on macOS.
 
 ### Logging & Debugging Options
+
 All modes support these (debug builds only):
+
 - **`--log-level {DEV|DEBUG|INFO|WARN|ERROR|FATAL}`** (all) - Verbosity control; pair with `--grep` for filtering specific logs.
 - **`--log-file PATH`** (all) - Write logs to file instead of stdout/stderr (useful for post-mortem debugging with `--grep` filtering).
 - **`--grep /PATTERN/FLAGS`** (all) - Filter logs by regex pattern; flags: `i` (case-insensitive), `F` (literal string), `C#` (context lines), `g` (highlight matches), `I` (invert/exclude).
@@ -94,7 +103,9 @@ All modes support these (debug builds only):
 - **`--memory-report [TIME]`** (all) - Periodic memory usage report; red numbers indicate leaks.
 
 ### Environment Variables
+
 All `--flag-name` options map to `ASCII_CHAT_FLAG_NAME` (hyphens → underscores); precedence: config file < env vars < CLI flags.
+
 - **`CLAUDECODE=1`** - Auto-set by Claude Code; enables splash screen, auto-detects color/UTF-8, disables status screen (override with `--splash-screen` or `--status-screen`).
 - **`ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y;n;password123'`** - Stack-based auto-answers for interactive prompts (semicolon-separated; useful for automation/testing).
 
@@ -117,7 +128,6 @@ Use 'bd' for task tracking. It's a useful tool for tracking issues as you attemp
 
 https://github.com/steveyegge/beads
 
-
 ## Gastown
 
 If you are the gastown mayor, use the `gt` binary.
@@ -125,20 +135,24 @@ If you are the gastown mayor, use the `gt` binary.
 https://github.com/steveyegge/gastown
 
 ### Workflow:
+
 Work like this if you are the mayor:
 
 #### 1. As the mayor, create a convoy with bead IDs
+
 gt convoy create "Feature X" gt-abc12 gt-def34 --notify --human
 
 #### 2. Assign work to an agent
+
 gt sling gt-abc12 myproject
 
 #### 3. Track progress
+
 gt convoy list
 
 #### 4. Monitor agents
-gt agents
 
+gt agents
 
 ## Debugging Flags
 
@@ -160,6 +174,7 @@ gt agents
 ### Log Filtering with --grep
 
 Searches logs and log headers. Supports two formats:
+
 - **Format 1**: `/pattern/flags` - Regex with flags (case-insensitive, context lines, etc.)
 - **Format 2**: `pattern` - Plain regex without slashes or flags
 
@@ -260,6 +275,7 @@ Cross-platform support via abstraction:
 - **lib/platform/abstraction.h** - Platform-independent API
 
 Key abstractions:
+
 - Threads: `asciichat_thread_t`, `asciichat_thread_create()`
 - Mutexes: `mutex_t`, `mutex_init/lock/unlock()`
 - Sockets: `socket_t`, `socket_close()`, `INVALID_SOCKET_VALUE`
@@ -270,6 +286,7 @@ Always use abstraction layer functions, never direct POSIX/Windows APIs.
 ## Session Management (lib/session)
 
 The session layer handles:
+
 - **display.c** - Terminal capability detection, ASCII rendering setup
 - **splash.c** - Intro splash screen with rainbow animation and log capture
 - **help_screen.c** - Interactive help UI
@@ -280,18 +297,21 @@ The session layer handles:
 ### Session Screens (Status + Splash)
 
 Both status screen and splash screen use the same "fixed header + scrolling logs" pattern:
+
 - Fixed header at top (status info or animated ASCII art)
 - Logs captured in `session_log_buffer` (100-entry circular buffer)
 - Logs displayed below header, calculated to fill exactly `term_rows - header_lines - 1`
 - Screen never scrolls past bottom (prevents terminal flashing)
 
 **Implementation:**
+
 - `session_log_buffer_init()` - Initialize log capture (called by splash/status init)
 - `session_log_buffer_append()` - Called from `lib/log/logging.c` to capture messages
 - `session_log_buffer_get_recent()` - Retrieve N most recent entries for display
 - `session_log_buffer_clear()` - Clear initialization logs before screen starts
 
 **Testing:**
+
 ```bash
 # Manual test script
 ./tests/manual/test_session_screens.sh
@@ -310,11 +330,13 @@ ascii-chat supports media from files and URLs using a smart resolution system:
 ### Supported Media Sources
 
 **Direct Streams & Files (FFmpeg-handled):**
+
 - Local files: `.mp4`, `.mkv`, `.webm`, `.avi`, `.mov`, `.flv`, `.gif`, `.jpg`, `.png`, etc.
 - Streaming protocols: `http://`, `https://`, `rtsp://`, `rtmp://`, HLS (`.m3u8`), DASH
 - Any format or protocol supported by FFmpeg
 
 **Complex Streaming Sites (yt-dlp-resolved):**
+
 - 1000+ supported sites including YouTube, TikTok, Twitch, Reddit, Instagram, Twitter, etc.
 - Requires `yt-dlp` installed: `pip install yt-dlp` or `brew install yt-dlp`
 - yt-dlp extracts the actual playable stream URL, which is then handled by FFmpeg
@@ -379,6 +401,7 @@ Stream URLs extracted by yt-dlp are cached for 30 seconds to avoid repeated subp
 ### End-to-End Encryption
 
 ascii-chat uses libsodium for E2E encryption by default:
+
 - **X25519** - Key exchange
 - **XSalsa20-Poly1305** - AEAD cipher
 - **Ed25519** - SSH key signatures
@@ -457,6 +480,7 @@ The Discovery Service enables automatic session discovery and connection:
 ### Packet Structure
 
 Every packet has:
+
 - **Magic**: ASCIICCHAT spelled in hexadecimal as best we could (validation)
 - **Type**: packet_type_t enum
 - **Length**: payload size
@@ -594,16 +618,16 @@ ctest --test-dir build -R "crypto_handshake" --output-on-failure
 ```
 
 **Note**: On Intel macOS (not ARM), use Docker for Criterion tests:
+
 ```bash
 docker-compose -f ./tests/docker-compose.yml run --rm ascii-chat-tests bash -c 'build_docker/bin/test_unit_crypto_handshake'
 ```
+
 On Linux run the tests directly.
 On Windows Criterion isn't supported.
 
-
 When running Criterion test binaries, run individual tests inside of a test suite by using a filter like `--filter
 "*my_test_name_filter*"` (don't forget the asterisks).
-
 
 ## Development Best Practices
 
@@ -629,6 +653,7 @@ log_debug("Processing packet");
 ```
 
 **Why:** Raw fprintf/printf calls:
+
 - Bypass `--grep` filtering (can't isolate specific logs)
 - Don't write to log file (can't debug post-mortem)
 - Interrupt UI rendering (splash screen flashing, scrolling artifacts)
@@ -648,6 +673,7 @@ log_debug("Processing packet");
 All comments in code are important by nature. Write them in a professional, matter-of-fact tone.
 
 **Acceptable prefixes:**
+
 - ✅ `TODO:` - for planned future work
 - ✅ `FIXME:` - for known issues that need fixing
 - ❌ `CRITICAL:` - everything in production code is critical
@@ -672,6 +698,7 @@ All comments in code are important by nature. Write them in a professional, matt
 ```
 
 **Why:**
+
 - Emphatic prefixes like CRITICAL/WARNING/IMPORTANT make code look unprofessional
 - All comments in production code should be equally important and carefully considered
 - The comment content itself should convey importance through clear explanation
@@ -699,24 +726,28 @@ All comments in code are important by nature. Write them in a professional, matt
 This is a C project. If the C code uses symbols from a library, those symbols MUST be linked. There is no way to conditionally compile away the symbols — they're either in the code or they're not.
 
 Spurious `if(FOUND)` guards around linking create silent failures:
+
 - Cmake finds the package ✓
 - Code compiles ✓
 - But linking is skipped (if condition somehow fails) ✗
 - Undefined symbols at runtime OR different behavior in CI with different environments
 
 **All project dependencies are non-optional.** This includes:
+
 - PCRE2, libsodium, BearSSL, yyjson — used unconditionally in multiple modules
 - FFmpeg, libwebsockets — required for musl static builds
 - PortAudio, Opus, JACK — audio pipeline components
 - Ghostty, libdatachannel, OpenSSL — networking and crypto
 
 **The only legitimate conditionals for dependencies:**
+
 - `if(JACK_FOUND)` — JACK is optional system audio backend (PortAudio may or may not use it)
 - Platform checks: `if(WIN32)`, `if(APPLE)`, `if(NOT WIN32)`
 - Build type checks: `if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")`, `if(USE_MUSL)`
 - Runtime checks: `if(TARGET ...)`, `if(DEFINED ...)`, `if(BUILD_SHARED_LIBS)` (actual build variants)
 
 **Correct pattern:** Link required deps unconditionally after they're found:
+
 ```cmake
 # ✅ CORRECT - find checks error if not found, linking is unconditional
 find_package(PCRE2 REQUIRED)
@@ -777,11 +808,13 @@ nc -zv localhost 27224
 ### Memory Issues
 
 **Leaks at exit**: Check memory report. Red numbers indicate leaks. Common causes:
+
 - Missing `SAFE_FREE()` calls
 - Circular references
 - Thread cleanup issues
 
 Use AddressSanitizer in debug builds to find issues:
+
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build

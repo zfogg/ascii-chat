@@ -40,6 +40,7 @@ This directory contains the deployment configuration for the ascii-chat STUN/TUR
 ### Quick Deploy
 
 1. **On your local machine**, clone the repo and push to server:
+
    ```bash
    git clone https://github.com/zfogg/ascii-chat.git
    ssh sidechain "sudo rm -rf /opt/ascii-chat && sudo mkdir -p /opt/ascii-chat"
@@ -78,15 +79,18 @@ docker-compose ps
 ### Authentication
 
 **Default credentials** (⚠️ CHANGE IN PRODUCTION):
+
 - Username: `ascii` / Password: `changeme123`
 - Username: `webrtc` / Password: `changeme456`
 
 Edit `turnserver.conf` and modify the `user=` lines:
+
 ```conf
 user=your-username:your-secure-password
 ```
 
 Then restart:
+
 ```bash
 sudo systemctl restart coturn
 ```
@@ -96,11 +100,13 @@ sudo systemctl restart coturn
 For TURNS (TURN over TLS), you need SSL certificates:
 
 1. Obtain certificates (e.g., Let's Encrypt):
+
    ```bash
    sudo certbot certonly --standalone -d turn.ascii-chat.com
    ```
 
 2. Update `turnserver.conf`:
+
    ```conf
    tls-listening-port=5349
    cert=/etc/letsencrypt/live/turn.ascii-chat.com/fullchain.pem
@@ -108,6 +114,7 @@ For TURNS (TURN over TLS), you need SSL certificates:
    ```
 
 3. Mount certificates in `docker-compose.yml`:
+
    ```yaml
    volumes:
      - /etc/letsencrypt:/etc/letsencrypt:ro
@@ -169,25 +176,26 @@ docker exec -it ascii-chat-coturn turnutils_uclient \
 ### Test from Web Browser
 
 Open browser console and run:
+
 ```javascript
 const pc = new RTCPeerConnection({
   iceServers: [
-    { urls: 'stun:stun.ascii-chat.com:3478' },
+    { urls: "stun:stun.ascii-chat.com:3478" },
     {
-      urls: 'turn:turn.ascii-chat.com:3478',
-      username: 'ascii',
-      credential: 'changeme123'
-    }
-  ]
+      urls: "turn:turn.ascii-chat.com:3478",
+      username: "ascii",
+      credential: "changeme123",
+    },
+  ],
 });
 
-pc.createDataChannel('test');
-pc.createOffer().then(offer => pc.setLocalDescription(offer));
+pc.createDataChannel("test");
+pc.createOffer().then((offer) => pc.setLocalDescription(offer));
 
 // Wait for ICE candidates
 pc.onicecandidate = (e) => {
   if (e.candidate) {
-    console.log('ICE Candidate:', e.candidate.candidate);
+    console.log("ICE Candidate:", e.candidate.candidate);
   }
 };
 ```
@@ -290,6 +298,7 @@ telnet <server-ip> 3478
 ### Permission denied errors
 
 Make sure the systemd service has correct permissions:
+
 ```bash
 sudo chown root:root /etc/systemd/system/coturn.service
 sudo chmod 644 /etc/systemd/system/coturn.service
@@ -318,16 +327,17 @@ const char* ice_servers[] = {
 ```
 
 Or in JavaScript for testing:
+
 ```javascript
 const config = {
   iceServers: [
-    { urls: 'stun:stun.ascii-chat.com:3478' },
+    { urls: "stun:stun.ascii-chat.com:3478" },
     {
-      urls: 'turn:turn.ascii-chat.com:3478',
-      username: 'ascii',
-      credential: 'changeme123'
-    }
-  ]
+      urls: "turn:turn.ascii-chat.com:3478",
+      username: "ascii",
+      credential: "changeme123",
+    },
+  ],
 };
 ```
 

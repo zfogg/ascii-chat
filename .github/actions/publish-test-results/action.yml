@@ -1,31 +1,31 @@
-name: 'Publish Test Results'
-description: 'Validates Criterion XML, publishes test results to GitHub, uploads to Codecov'
+name: "Publish Test Results"
+description: "Validates Criterion XML, publishes test results to GitHub, uploads to Codecov"
 inputs:
   test-type:
-    description: 'Type of test (unit, integration, performance)'
+    description: "Type of test (unit, integration, performance)"
     required: true
   os-name:
-    description: 'Operating system name (ubuntu, macos)'
+    description: "Operating system name (ubuntu, macos)"
     required: true
   build-type:
-    description: 'Build type (debug, release, or empty for integration/perf tests)'
+    description: "Build type (debug, release, or empty for integration/perf tests)"
     required: false
-    default: ''
+    default: ""
   criterion-xml-dir:
-    description: 'Directory containing Criterion XML files'
+    description: "Directory containing Criterion XML files"
     required: false
-    default: 'build/Testing/criterion-xml'
+    default: "build/Testing/criterion-xml"
   coverage-files:
-    description: 'Coverage file pattern for Codecov'
+    description: "Coverage file pattern for Codecov"
     required: false
-    default: './*.gcov'
+    default: "./*.gcov"
   codecov-token:
-    description: 'Codecov token'
+    description: "Codecov token"
     required: true
   upload-coverage:
-    description: 'Whether to upload coverage to Codecov'
+    description: "Whether to upload coverage to Codecov"
     required: false
-    default: 'false'
+    default: "false"
 
 runs:
   using: "composite"
@@ -116,7 +116,7 @@ runs:
               format('{0} Test Results ({1})', 'Performance', inputs.os-name) }}
         compare_to_earlier_commit: true
         test_changes_limit: 10
-        fail_on: 'nothing'  # Don't fail the workflow based on test results
+        fail_on: "nothing" # Don't fail the workflow based on test results
 
     # Publish test results to GitHub checks (macOS)
     - name: Publish Test Results to GitHub (macOS)
@@ -135,7 +135,7 @@ runs:
               format('{0} Test Results ({1})', 'Performance', inputs.os-name) }}
         compare_to_earlier_commit: true
         test_changes_limit: 10
-        fail_on: 'nothing'  # Don't fail the workflow based on test results
+        fail_on: "nothing" # Don't fail the workflow based on test results
 
     # Publish test results to GitHub checks (Windows)
     - name: Publish Test Results to GitHub (Windows)
@@ -154,7 +154,7 @@ runs:
               format('{0} Test Results ({1})', 'Performance', inputs.os-name) }}
         compare_to_earlier_commit: true
         test_changes_limit: 10
-        fail_on: 'nothing'  # Don't fail the workflow based on test results
+        fail_on: "nothing" # Don't fail the workflow based on test results
 
     # Convert Criterion XML to JUnit XML for Codecov compatibility
     - name: Convert Criterion XML to JUnit Format

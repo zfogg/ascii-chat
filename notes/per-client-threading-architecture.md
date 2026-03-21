@@ -7,11 +7,13 @@ ascii-chat has been transformed from a single-threaded bottleneck architecture t
 ## Architecture Summary
 
 ### Before: Single-Threaded Bottlenecks
+
 - **1 video broadcast thread** serving ALL clients (shared bottleneck)
 - **1 audio mixer thread** serving ALL clients (shared bottleneck)
 - Performance degraded with each additional client
 
 ### After: Per-Client Threading
+
 - **N video render threads** (1 per client) @ 60 FPS each
 - **N audio render threads** (1 per client) @ 172 FPS each
 - **Linear performance scaling** with client count
@@ -20,6 +22,7 @@ ascii-chat has been transformed from a single-threaded bottleneck architecture t
 ## Thread Architecture
 
 ### Per-Client Thread Structure
+
 ```c
 typedef struct {
   // Network and identification
@@ -52,6 +55,7 @@ typedef struct {
 ### Thread Responsibilities
 
 #### Video Render Thread (60 FPS per client)
+
 - **Purpose**: Generate ASCII frames specifically for one target client
 - **Rate**: 60 FPS (16.67ms intervals) with precise rate limiting
 - **Processing**:
@@ -61,6 +65,7 @@ typedef struct {
   - Handle client disconnection gracefully
 
 #### Audio Render Thread (172 FPS per client)
+
 - **Purpose**: Mix audio excluding the target client's own audio (prevents echo)
 - **Rate**: 172 FPS (5.8ms intervals) matching PortAudio buffer size
 - **Processing**:
@@ -72,38 +77,45 @@ typedef struct {
 ### Global Synchronization
 
 #### Reader-Writer Lock: `g_client_manager_rwlock`
+
 ```c
 static pthread_rwlock_t g_client_manager_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 ```
 
 **Use Case**: Protects the global client array for high-concurrency access patterns
+
 - **Read locks**: Statistics collection, client iteration for frame generation
 - **Write locks**: Client addition/removal, resource cleanup
 
 **Performance**: ~2,088+ acquisitions/second with 9 clients (acceptable for high-performance app)
 
 #### Per-Client Mutex: `client_state_mutex`
+
 ```c
 pthread_mutex_t client_state_mutex; // In each client_info_t
 ```
 
 **Use Case**: Protects individual client state fields from race conditions
+
 - **Protected fields**: `has_video`, `has_audio`, `active`, `*_thread_running`, `client_id`, dimensions, preferences
 - **Access pattern**: Brief snapshots taken by render threads before processing
 
 ## Critical Synchronization Fixes Applied
 
 ### Problem: Unused Per-Client Mutex
+
 - **Issue**: `client_state_mutex` was initialized but never used - massive race condition
 - **Impact**: Multiple threads modifying/reading client state simultaneously
 - **Fix**: Added mutex protection around ALL client state access in render threads
 
 ### Problem: Data Race Conditions
+
 - **Issue**: Boolean flags (`has_video`, `active`, `*_thread_running`) accessed without protection
 - **Impact**: Threads reading stale/corrupted state, undefined behavior
 - **Fix**: All boolean field access now uses mutex-protected snapshots
 
 ### Example: Thread-Safe State Access
+
 ```c
 // BEFORE (RACE CONDITION):
 while (client->video_render_thread_running && client->active) {
@@ -141,6 +153,7 @@ while (should_continue && !g_should_exit) {
 ### Safe Lock Patterns
 
 #### ✅ Correct: Global → Per-Client
+
 ```c
 pthread_rwlock_rdlock(&g_client_manager_rwlock);
 for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -153,6 +166,7 @@ pthread_rwlock_unlock(&g_client_manager_rwlock);
 ```
 
 #### ❌ DEADLOCK RISK: Per-Client → Global
+
 ```c
 // NEVER DO THIS - DEADLOCK POTENTIAL
 pthread_mutex_lock(&client->client_state_mutex);
@@ -162,12 +176,14 @@ pthread_rwlock_wrlock(&g_client_manager_rwlock); // DANGER!
 ## Performance Characteristics
 
 ### Theoretical Maximums (9 clients)
+
 - **Video operations**: 9 × 60 FPS = 540 frame generations/second
 - **Audio operations**: 9 × 172 FPS = 1,548 audio mixes/second
 - **Total render operations**: 2,088 operations/second
 - **Global lock acquisitions**: ~2,088+ RWLock operations/second
 
 ### Actual Performance Benefits
+
 - **Linear scaling**: Each client gets dedicated processing power
 - **No shared bottlenecks**: Clients don't compete for single mixer/broadcaster threads
 - **Real-time guarantees**: 60 FPS video and 172 FPS audio maintained per client
@@ -176,7 +192,9 @@ pthread_rwlock_wrlock(&g_client_manager_rwlock); // DANGER!
 ## Memory Management
 
 ### SAFE_MALLOC Pattern
+
 All allocations use `SAFE_MALLOC()` macro from `common.h`:
+
 ```c
 client->video_queue = packet_queue_create(MAX_QUEUE_SIZE, MAX_PACKET_SIZE);
 if (!client->video_queue) {
@@ -186,6 +204,7 @@ if (!client->video_queue) {
 ```
 
 ### Resource Cleanup Protocol
+
 1. **Thread termination**: Signal threads to stop via mutex-protected flags
 2. **Thread synchronization**: `pthread_join()` to wait for clean exit
 3. **Resource cleanup**: Destroy buffers, queues, and mutexes in correct order
@@ -194,6 +213,7 @@ if (!client->video_queue) {
 ## Thread Lifecycle Management
 
 ### Client Addition
+
 ```c
 int create_client_render_threads(client_info_t *client) {
   // Initialize per-client mutex
@@ -214,6 +234,7 @@ int create_client_render_threads(client_info_t *client) {
 ```
 
 ### Client Removal
+
 ```c
 int destroy_client_render_threads(client_info_t *client) {
   // Signal threads to stop (mutex-protected)
@@ -237,6 +258,7 @@ int destroy_client_render_threads(client_info_t *client) {
 ## Debugging and Monitoring
 
 ### Key Metrics to Monitor
+
 - **Active clients**: Should match running thread pairs
 - **Lock contention**: Reader-writer lock performance under load
 - **Memory usage**: No leaks with proper resource management
@@ -245,26 +267,31 @@ int destroy_client_render_threads(client_info_t *client) {
 ### Common Issues and Solutions
 
 #### "DEADBEEF" Packet Errors
+
 - **Cause**: Usually indicates network-level corruption, not threading issue
 - **Solution**: Check packet queue overflow, verify TCP connection stability
 
 #### High Memory Usage
+
 - **Cause**: Improper buffer cleanup or reference counting
 - **Solution**: Ensure framebuffers are read-only, don't write back after reading
 
 #### Performance Degradation
+
 - **Cause**: Lock contention or CPU overload with many clients
 - **Solution**: Monitor lock acquisition times, consider thread affinity
 
 ## Future Optimizations
 
 ### Potential Improvements (if needed)
+
 1. **Client state caching**: Cache client list snapshots to reduce global lock frequency
 2. **Lock-free data structures**: Replace remaining mutexes with atomic operations where possible
 3. **NUMA awareness**: Thread affinity for multi-socket systems
 4. **Adaptive frame rates**: Reduce render frequency under high load
 
 ### Performance Targets
+
 - **Current**: 9 clients × 232 FPS = 2,088 operations/second
 - **Theoretical max**: Limited by CPU cores and memory bandwidth
 - **Production**: Successfully tested with 0 memory leaks and stable 60 FPS per client
@@ -274,6 +301,7 @@ int destroy_client_render_threads(client_info_t *client) {
 The per-client threading architecture successfully transforms ascii-chat from a single-threaded bottleneck to a high-performance concurrent system. The critical synchronization fixes eliminate race conditions while maintaining full 60 FPS video and 172 FPS audio performance per client. The 2,088+ RWLock operations/second are acceptable for a high-performance real-time media streaming application.
 
 **Key Success Metrics:**
+
 - ✅ **Zero race conditions** with proper mutex protection
 - ✅ **Linear performance scaling** with client count
 - ✅ **0 memory leaks** with proper resource management

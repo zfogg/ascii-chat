@@ -13,11 +13,13 @@
 ### Task 1: Update options_t struct and defaults
 
 **Files:**
+
 - Modify: `include/ascii-chat/options/options.h:1-100`
 
 **Step 1: Remove webcam_flip field from struct**
 
 In `options_t struct`, find and remove:
+
 ```c
 bool webcam_flip;                ///< Flip webcam image horizontally
 ```
@@ -25,6 +27,7 @@ bool webcam_flip;                ///< Flip webcam image horizontally
 **Step 2: Add flip_x and flip_y fields to struct**
 
 After removing `webcam_flip`, add:
+
 ```c
 bool flip_x;                     ///< Flip video horizontally (X-axis)
 bool flip_y;                     ///< Flip video vertically (Y-axis)
@@ -33,6 +36,7 @@ bool flip_y;                     ///< Flip video vertically (Y-axis)
 **Step 3: Remove old default constant**
 
 Remove:
+
 ```c
 #define OPT_WEBCAM_FLIP_DEFAULT false
 ```
@@ -40,6 +44,7 @@ Remove:
 **Step 4: Add new default constants**
 
 Add:
+
 ```c
 #define OPT_FLIP_X_DEFAULT false
 #define OPT_FLIP_Y_DEFAULT false
@@ -48,6 +53,7 @@ Add:
 **Step 5: Remove old default variable declaration**
 
 Remove:
+
 ```c
 static const bool default_webcam_flip_value = OPT_WEBCAM_FLIP_DEFAULT;
 ```
@@ -55,6 +61,7 @@ static const bool default_webcam_flip_value = OPT_WEBCAM_FLIP_DEFAULT;
 **Step 6: Add new default variable declarations**
 
 Add:
+
 ```c
 static const bool default_flip_x_value = OPT_FLIP_X_DEFAULT;
 static const bool default_flip_y_value = OPT_FLIP_Y_DEFAULT;
@@ -72,6 +79,7 @@ git commit -m "refactor(options): Replace webcam_flip with flip_x and flip_y fie
 ### Task 2: Update option registry from webcam to display
 
 **Files:**
+
 - Modify: `lib/options/registry/webcam.c:1-50` (remove webcam-flip entry)
 - Create: `lib/options/registry/display.c` (new file if doesn't exist, add flip options)
 
@@ -82,6 +90,7 @@ Run: `ls -la lib/options/registry/display.c`
 **Step 2: If display.c doesn't exist, create it**
 
 Create new file `lib/options/registry/display.c`:
+
 ```c
 /**
  * @file display.c
@@ -152,16 +161,19 @@ git commit -m "feat(options): Move flip options from webcam to display registry 
 ### Task 3: Update options initialization
 
 **Files:**
+
 - Modify: `lib/options/options.c:1-100`
 
 **Step 1: Update options_t_new() initializer**
 
 Find `options_t_new()` function and replace:
+
 ```c
 .webcam_flip = OPT_WEBCAM_FLIP_DEFAULT,
 ```
 
 With:
+
 ```c
 .flip_x = OPT_FLIP_X_DEFAULT,
 .flip_y = OPT_FLIP_Y_DEFAULT,
@@ -172,6 +184,7 @@ With:
 Find references to `saved_webcam_flip` (there are multiple places where webcam_flip is preserved during config parsing). Replace each occurrence of `webcam_flip` with both `flip_x` and `flip_y`.
 
 For example, replace:
+
 ```c
 bool saved_webcam_flip = opts.webcam_flip;
 // ... code ...
@@ -179,6 +192,7 @@ opts.webcam_flip = saved_webcam_flip;
 ```
 
 With:
+
 ```c
 bool saved_flip_x = opts.flip_x;
 bool saved_flip_y = opts.flip_y;
@@ -201,16 +215,19 @@ git commit -m "refactor(options): Update initialization to use flip_x and flip_y
 ### Task 4: Update RCU (Runtime Configuration Update) handling
 
 **Files:**
+
 - Modify: `lib/options/rcu.c:1-200`
 
 **Step 1: Replace webcam_flip in default initializer**
 
 Find where `options_rcu_defaults_t` is initialized and replace:
+
 ```c
 .webcam_flip = OPT_WEBCAM_FLIP_DEFAULT,
 ```
 
 With:
+
 ```c
 .flip_x = OPT_FLIP_X_DEFAULT,
 .flip_y = OPT_FLIP_Y_DEFAULT,
@@ -219,6 +236,7 @@ With:
 **Step 2: Replace webcam_flip in field assignment**
 
 Find `else if (strcmp(ctx->field_name, "webcam_flip") == 0)` and replace with:
+
 ```c
 else if (strcmp(ctx->field_name, "flip_x") == 0)
   opts->flip_x = ctx->value;
@@ -242,11 +260,13 @@ git commit -m "refactor(rcu): Update field names from webcam_flip to flip_x and 
 ### Task 5: Update test helpers
 
 **Files:**
+
 - Modify: `include/ascii-chat/tests/common.h:1-50`
 
 **Step 1: Remove old test helper**
 
 Remove:
+
 ```c
 static inline void test_set_webcam_flip(bool value) {
   options_set_bool("webcam_flip", value);
@@ -256,6 +276,7 @@ static inline void test_set_webcam_flip(bool value) {
 **Step 2: Add new test helpers**
 
 Add:
+
 ```c
 static inline void test_set_flip_x(bool value) {
   options_set_bool("flip_x", value);
@@ -278,6 +299,7 @@ git commit -m "refactor(tests): Add test helpers for flip_x and flip_y"
 ### Task 6: Update webcam capture code
 
 **Files:**
+
 - Modify: `lib/video/webcam/webcam.c:100-150`
 
 **Step 1: Remove flip logic from webcam capture**
@@ -285,6 +307,7 @@ git commit -m "refactor(tests): Add test helpers for flip_x and flip_y"
 Find the two locations where `if (GET_OPTION(webcam_flip))` appears and remove both flip operations. These are in the webcam initialization and frame capture paths.
 
 Search for exact patterns:
+
 - `if (GET_OPTION(webcam_flip)) {` - remove entire if block
 - Line with `if (GET_OPTION(webcam_flip) && frame->w > 1)` - remove entire if block
 
@@ -306,6 +329,7 @@ git commit -m "refactor(webcam): Remove flip logic from capture stage"
 ### Task 7: Add flip logic to frame rendering
 
 **Files:**
+
 - Modify: `lib/session/display.c:1-300`
 
 **Step 1: Find frame rendering function**
@@ -315,6 +339,7 @@ Search for where frames are rendered to display. Look for function that processe
 **Step 2: Add flip logic before rendering**
 
 In the rendering path, add a function that applies flips:
+
 ```c
 /**
  * Apply flip transformations to frame
@@ -377,6 +402,7 @@ git commit -m "feat(display): Add flip_x and flip_y rendering to frame pipeline"
 ### Task 8: Update keyboard handler
 
 **Files:**
+
 - Modify: `lib/session/keyboard_handler.c:100-200`
 
 **Step 1: Find flip toggle in keyboard handler**
@@ -386,12 +412,14 @@ Search for `'f'` key handler that toggles `webcam_flip`.
 **Step 2: Replace with flip_x toggle**
 
 Replace:
+
 ```c
 bool current_flip = (bool)GET_OPTION(webcam_flip);
 options_set_bool("webcam_flip", !current_flip);
 ```
 
 With:
+
 ```c
 bool current_flip_x = (bool)GET_OPTION(flip_x);
 options_set_bool("flip_x", !current_flip_x);
@@ -413,6 +441,7 @@ git commit -m "refactor(keyboard): Update flip toggle to use flip_x option"
 ### Task 9: Update help screen references
 
 **Files:**
+
 - Modify: `lib/ui/help_screen.c:1-100`
 
 **Step 1: Find help screen flip references**
@@ -435,6 +464,7 @@ git commit -m "docs(help): Update flip option descriptions in help screen"
 ### Task 10: Update config file documentation
 
 **Files:**
+
 - Modify: `include/ascii-chat/options/config.h:1-50`
 
 **Step 1: Find config comments**
@@ -457,11 +487,13 @@ git commit -m "docs(config): Update documentation for flip_x and flip_y options"
 ### Task 11: Update web/WASM mirror bindings
 
 **Files:**
+
 - Modify: `src/web/mirror.c:1-50`
 
 **Step 1: Find mirror_set_webcam_flip and mirror_get_webcam_flip**
 
 These are WASM binding functions. Replace:
+
 ```c
 int mirror_set_webcam_flip(int enabled) {
   return options_set_bool("webcam_flip", enabled != 0) == ASCIICHAT_OK ? 0 : -1;
@@ -473,6 +505,7 @@ int mirror_get_webcam_flip(void) {
 ```
 
 With:
+
 ```c
 int mirror_set_flip_x(int enabled) {
   return options_set_bool("flip_x", enabled != 0) == ASCIICHAT_OK ? 0 : -1;
@@ -503,6 +536,7 @@ git commit -m "refactor(wasm): Update mirror bindings to use flip_x and flip_y"
 ### Task 12: Build and test
 
 **Files:**
+
 - Test: All tests should pass
 
 **Step 1: Clean and configure build**
@@ -547,6 +581,7 @@ git commit -m "test: Verify flip_x and flip_y options work correctly"
 ### Task 13: Update documentation
 
 **Files:**
+
 - Modify: `CLAUDE.md` (if flip is mentioned in debugging section)
 - Modify: `docs/plans/2026-02-15-generic-stream-resolution.md` (if needs updates)
 

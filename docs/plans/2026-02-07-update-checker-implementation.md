@@ -13,6 +13,7 @@
 ## Task 1: Add Update Checker Header and Data Structures
 
 **Files:**
+
 - Create: `include/ascii-chat/network/update_checker.h`
 
 **Step 1: Write the header file**
@@ -166,6 +167,7 @@ git commit -m "feat: add update checker header with data structures and API"
 ## Task 2: Implement Cache File Management
 
 **Files:**
+
 - Create: `lib/network/update_checker.c`
 
 **Step 1: Write cache file path and basic structure**
@@ -345,6 +347,7 @@ git commit -m "feat: implement update check cache file management"
 ## Task 3: Implement DNS Connectivity Check
 
 **Files:**
+
 - Modify: `lib/network/update_checker.c`
 
 **Step 1: Add DNS connectivity test function**
@@ -391,6 +394,7 @@ git commit -m "feat: add DNS connectivity test for update checker"
 ## Task 4: Implement Simple JSON Parsing for GitHub API Response
 
 **Files:**
+
 - Modify: `lib/network/update_checker.c`
 
 **Step 1: Add JSON parsing helper functions**
@@ -497,6 +501,7 @@ git commit -m "feat: add simple JSON parser for GitHub API responses"
 ## Task 5: Implement Core Update Check Logic
 
 **Files:**
+
 - Modify: `lib/network/update_checker.c`
 
 **Step 1: Add main update check function**
@@ -586,6 +591,7 @@ git commit -m "feat: implement core update check logic with GitHub API"
 ## Task 6: Implement Installation Method Detection
 
 **Files:**
+
 - Modify: `lib/network/update_checker.c`
 
 **Step 1: Add installation method detection functions**
@@ -659,6 +665,7 @@ git commit -m "feat: add installation method detection for Homebrew and Arch"
 ## Task 7: Implement Upgrade Suggestion Formatting
 
 **Files:**
+
 - Modify: `lib/network/update_checker.c`
 
 **Step 1: Add formatting functions**
@@ -725,6 +732,7 @@ git commit -m "feat: add upgrade suggestion formatting for different install met
 ## Task 8: Add Update Checker to CMake Build
 
 **Files:**
+
 - Modify: `cmake/targets/Libraries.cmake`
 
 **Step 1: Find the network library section and add update_checker.c**
@@ -755,6 +763,7 @@ git commit -m "build: add update_checker.c to network library"
 ## Task 9: Add --check-update Deferred Action
 
 **Files:**
+
 - Modify: `include/ascii-chat/options/actions.h`
 - Modify: `lib/options/parsing/actions.c`
 
@@ -884,6 +893,7 @@ git commit -m "feat: add --check-update deferred action"
 ## Task 10: Register --check-update and --no-check-update Options
 
 **Files:**
+
 - Modify: `lib/options/registry/general.c` (or wherever binary-level options are registered)
 
 **Step 1: Find option registration and add flags**
@@ -938,6 +948,7 @@ git commit -m "feat: register --check-update and --no-check-update options"
 ## Task 11: Integrate Automatic Update Check at Startup
 
 **Files:**
+
 - Modify: `lib/options/options.c` (or `src/main.c` depending on architecture)
 
 **Step 1: Add automatic check after options init**
@@ -987,6 +998,7 @@ git commit -m "feat: add automatic update check at startup with cache"
 ## Task 12: Add Update Notification to Splash Screen
 
 **Files:**
+
 - Modify: `lib/ui/splash.c`
 - Modify: `include/ascii-chat/ui/splash.h`
 
@@ -1042,6 +1054,7 @@ git commit -m "feat: display update notification banner on splash screen"
 ## Task 13: Add Update Notification to Server Status Screen
 
 **Files:**
+
 - Modify: `lib/ui/server_status.c`
 
 **Step 1: Add update notification to status header**
@@ -1097,6 +1110,7 @@ git commit -m "feat: display update notification banner on server status screen"
 ## Task 14: Write Unit Tests for Update Checker
 
 **Files:**
+
 - Create: `tests/unit/network/update_checker_test.c`
 
 **Step 1: Write comprehensive unit tests**
@@ -1237,6 +1251,7 @@ git commit -m "test: add unit tests for update checker"
 ## Task 15: Add Manual Testing and Documentation
 
 **Files:**
+
 - Create: `tests/manual/test_update_checker.sh`
 - Modify: `CLAUDE.md`
 
@@ -1287,7 +1302,7 @@ chmod +x tests/manual/test_update_checker.sh
 
 Add to `CLAUDE.md` under a new section:
 
-```markdown
+````markdown
 ## Update Checking
 
 ascii-chat automatically checks for updates from GitHub releases.
@@ -1309,15 +1324,18 @@ ascii-chat automatically checks for updates from GitHub releases.
 # Disable automatic checks
 ./build/bin/ascii-chat --no-check-update <mode>
 ```
+````
 
 ### Update Notifications
 
 When an update is available:
+
 - **Splash screen** (client/mirror): Yellow banner at top
 - **Status screen** (server/discovery-service): Yellow banner below title
 - **Log message**: `log_warn()` with version comparison
 
 Example notification:
+
 ```
 Update available: v0.8.1 (f8dc35e1) → v0.9.0 (a1b2c3d4). Run: brew upgrade ascii-chat
 ```
@@ -1325,6 +1343,7 @@ Update available: v0.8.1 (f8dc35e1) → v0.9.0 (a1b2c3d4). Run: brew upgrade asc
 ### Installation Method Detection
 
 The update checker detects how ascii-chat was installed:
+
 - **Homebrew**: Binary path contains `/Cellar/ascii-chat` → suggests `brew upgrade ascii-chat`
 - **Arch Linux**: `/etc/os-release` contains `ID=arch` → suggests `paru -S ascii-chat` or `yay -S ascii-chat`
 - **GitHub**: Default fallback → links to releases page
@@ -1332,6 +1351,7 @@ The update checker detects how ascii-chat was installed:
 ### Cache File Format
 
 `~/.config/ascii-chat/last_update_check`:
+
 ```
 1739145600                                          # Unix timestamp
 v0.9.0                                              # Latest version tag
@@ -1348,7 +1368,8 @@ rm ~/.config/ascii-chat/last_update_check
 # Watch update check in logs
 ./build/bin/ascii-chat --log-level debug server --grep "/update|github/i"
 ```
-```
+
+````
 
 **Step 4: Commit**
 
@@ -1356,7 +1377,7 @@ rm ~/.config/ascii-chat/last_update_check
 git add tests/manual/test_update_checker.sh CLAUDE.md
 chmod +x tests/manual/test_update_checker.sh
 git commit -m "docs: add update checker manual tests and documentation"
-```
+````
 
 ---
 

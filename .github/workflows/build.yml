@@ -4,39 +4,39 @@ on:
   push:
     branches: [master, main]
     paths:
-      - 'src/**.c'
-      - 'src/**.cpp'
-      - 'src/**.h'
-      - 'src/**.hpp'
-      - 'src/**.m'
-      - 'lib/**.c'
-      - 'lib/**.cpp'
-      - 'lib/**.h'
-      - 'lib/**.hpp'
-      - 'lib/**.m'
-      - 'cmake/**'
-      - 'CMakeLists.txt'
-      - 'CMakePresets.json'
-      - '.github/workflows/build.yml'
-      - '.github/actions/install-deps/**'
+      - "src/**.c"
+      - "src/**.cpp"
+      - "src/**.h"
+      - "src/**.hpp"
+      - "src/**.m"
+      - "lib/**.c"
+      - "lib/**.cpp"
+      - "lib/**.h"
+      - "lib/**.hpp"
+      - "lib/**.m"
+      - "cmake/**"
+      - "CMakeLists.txt"
+      - "CMakePresets.json"
+      - ".github/workflows/build.yml"
+      - ".github/actions/install-deps/**"
   pull_request:
     branches: [master, main]
     paths:
-      - 'src/**.c'
-      - 'src/**.cpp'
-      - 'src/**.h'
-      - 'src/**.hpp'
-      - 'src/**.m'
-      - 'lib/**.c'
-      - 'lib/**.cpp'
-      - 'lib/**.h'
-      - 'lib/**.hpp'
-      - 'lib/**.m'
-      - 'cmake/**'
-      - 'CMakeLists.txt'
-      - 'CMakePresets.json'
-      - '.github/workflows/build.yml'
-      - '.github/actions/install-deps/**'
+      - "src/**.c"
+      - "src/**.cpp"
+      - "src/**.h"
+      - "src/**.hpp"
+      - "src/**.m"
+      - "lib/**.c"
+      - "lib/**.cpp"
+      - "lib/**.h"
+      - "lib/**.hpp"
+      - "lib/**.m"
+      - "cmake/**"
+      - "CMakeLists.txt"
+      - "CMakePresets.json"
+      - ".github/workflows/build.yml"
+      - ".github/actions/install-deps/**"
   workflow_dispatch:
 
 env:
@@ -268,4 +268,3 @@ jobs:
             build_release/bin/ascii-chat*
             build_release/lib/*
           retention-days: 7
-

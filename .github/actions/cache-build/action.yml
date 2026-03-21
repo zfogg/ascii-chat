@@ -1,79 +1,79 @@
-name: 'Cache CMake Build'
-description: 'Restore the configured CMake build and dependency caches, and expose cache metadata for later save steps.'
+name: "Cache CMake Build"
+description: "Restore the configured CMake build and dependency caches, and expose cache metadata for later save steps."
 
 inputs:
   build-directory:
-    description: 'Absolute or relative path to the configured CMake build directory.'
+    description: "Absolute or relative path to the configured CMake build directory."
     required: false
     default: build
   build-cache-key:
-    description: 'Additional suffix applied to the build directory cache key (e.g. build type).'
+    description: "Additional suffix applied to the build directory cache key (e.g. build type)."
     required: false
-    default: ''
+    default: ""
   deps-cache-directory:
-    description: 'Path to the dependency cache directory (e.g. .deps-cache).'
+    description: "Path to the dependency cache directory (e.g. .deps-cache)."
     required: false
     default: .deps-cache
   cache-deps:
-    description: 'Set to false to skip managing the dependency cache directory.'
+    description: "Set to false to skip managing the dependency cache directory."
     required: false
-    default: 'true'
+    default: "true"
   ccache-directory:
-    description: 'Path to the ccache directory to cache.'
+    description: "Path to the ccache directory to cache."
     required: false
     default: ~/.ccache
   ccache-cache-key:
-    description: 'Additional suffix applied to the ccache cache key (e.g. target triple).'
+    description: "Additional suffix applied to the ccache cache key (e.g. target triple)."
     required: false
-    default: ''
+    default: ""
   cache-ccache:
-    description: 'Set to false to skip managing the ccache directory.'
+    description: "Set to false to skip managing the ccache directory."
     required: false
-    default: 'true'
+    default: "true"
   cache-version:
-    description: 'Version string used to invalidate both caches when inputs change.'
+    description: "Version string used to invalidate both caches when inputs change."
     required: false
     default: v3
 
 outputs:
   configure-cache-key:
-    description: 'Fully qualified cache key for the configure directory (CMakeCache.txt, CMakeFiles).'
+    description: "Fully qualified cache key for the configure directory (CMakeCache.txt, CMakeFiles)."
     value: ${{ format('{0}-configure-{1}-{2}-{3}-{4}-{5}', inputs.cache-version, runner.os, runner.arch, github.workflow, github.job, steps.cache-config.outputs.build_suffix) }}
   configure-cache-hit:
-    description: 'Whether the configure directory cache was restored.'
+    description: "Whether the configure directory cache was restored."
     value: ${{ steps.cache-configure-dir.outputs.cache-hit }}
   build-cache-key:
-    description: 'Fully qualified cache key for the build directory.'
+    description: "Fully qualified cache key for the build directory."
     value: ${{ format('{0}-build-{1}-{2}-{3}-{4}-{5}', inputs.cache-version, runner.os, runner.arch, github.workflow, github.job, steps.cache-config.outputs.build_suffix) }}
   build-cache-hit:
-    description: 'Whether the build directory cache was restored.'
+    description: "Whether the build directory cache was restored."
     value: ${{ steps.cache-build-dir.outputs.cache-hit }}
   build-directory-path:
-    description: 'Path to the build directory.'
+    description: "Path to the build directory."
     value: ${{ inputs.build-directory }}
   deps-cache-key:
-    description: 'Fully qualified cache key for the dependency cache.'
+    description: "Fully qualified cache key for the dependency cache."
     value: ${{ format('{0}-deps-{1}-{2}-{3}', inputs.cache-version, runner.os, runner.arch, steps.cache-config.outputs.build_suffix) }}
   deps-cache-hit:
-    description: 'Whether the dependency cache was restored.'
+    description: "Whether the dependency cache was restored."
     value: ${{ steps.cache-deps-dir.outputs.cache-hit }}
   cache-deps-enabled:
-    description: 'Whether deps caching is enabled.'
+    description: "Whether deps caching is enabled."
     value: ${{ inputs.cache-deps }}
   deps-cache-path:
-    description: 'Path to the dependency cache directory.'
+    description: "Path to the dependency cache directory."
     value: ${{ inputs.deps-cache-directory }}
   ccache-cache-key:
-    description: 'Fully qualified cache key for ccache.'
+    description: "Fully qualified cache key for ccache."
     value: ${{ format('{0}-ccache-{1}-{2}-{3}', inputs.cache-version, runner.os, runner.arch, steps.cache-config.outputs.ccache_suffix) }}
   ccache-cache-hit:
-    description: 'Whether the ccache directory was restored.'
+    description: "Whether the ccache directory was restored."
     value: ${{ steps.cache-ccache.outputs.cache-hit }}
   cache-ccache-enabled:
-    description: 'Whether ccache caching is enabled.'
+    description: "Whether ccache caching is enabled."
     value: ${{ inputs.cache-ccache }}
   ccache-directory-path:
-    description: 'Path to the ccache directory.'
+    description: "Path to the ccache directory."
     value: ${{ inputs.ccache-directory }}
 
 runs:

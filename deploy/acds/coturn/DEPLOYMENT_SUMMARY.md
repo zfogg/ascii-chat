@@ -9,6 +9,7 @@
 ## What Was Deployed
 
 ### 1. Coturn STUN/TURN Server
+
 - **Container**: `ascii-chat-coturn` (coturn/coturn:latest)
 - **Status**: Running with host networking
 - **Ports Listening**:
@@ -16,11 +17,13 @@
   - 49152-65535 UDP (TURN relay port range)
 
 ### 2. Systemd Service
+
 - **Service**: `coturn.service`
 - **Status**: Enabled (starts on boot)
 - **Location**: `/etc/systemd/system/coturn.service`
 
 ### 3. Firewall Configuration
+
 - **3478/tcp**: STUN/TURN TCP ✅
 - **3478/udp**: STUN/TURN UDP ✅
 - **49152:65535/udp**: TURN relay port range ✅
@@ -62,6 +65,7 @@ turn.ascii-chat.com    AAAA    2a01:4f9:c012:d912::1    🌐 DNS only
 ```
 
 **Why no proxy?**
+
 - STUN/TURN use UDP/TCP on port 3478
 - Cloudflare proxy only works for HTTP/HTTPS
 - Direct access to the server IP is required
@@ -75,10 +79,12 @@ turn.ascii-chat.com    AAAA    2a01:4f9:c012:d912::1    🌐 DNS only
 The ascii-chat codebase now includes these servers by default:
 
 **STUN Servers** (in order):
+
 1. `stun:stun.ascii-chat.com:3478` (Primary - our server)
 2. `stun:stun.l.google.com:19302` (Fallback - Google public STUN)
 
 **TURN Server**:
+
 - `turn:turn.ascii-chat.com:3478`
 - Username: `ascii`
 - Password: `0aa9917b4dad1b01631e87a32b875e09`
@@ -86,6 +92,7 @@ The ascii-chat codebase now includes these servers by default:
 **Code Location**: `lib/options/presets.c:540-554`
 
 **Environment Variables** (optional overrides):
+
 ```bash
 export ASCII_CHAT_STUN_SERVERS="stun:custom.example.com:3478"
 export ASCII_CHAT_TURN_SERVERS="turn:custom.example.com:3478"
@@ -98,6 +105,7 @@ export ASCII_CHAT_TURN_CREDENTIAL="mypassword"
 ## Management Commands
 
 ### Service Control
+
 ```bash
 # Check status
 sudo systemctl status coturn
@@ -116,6 +124,7 @@ sudo systemctl disable coturn
 ```
 
 ### Logs
+
 ```bash
 # Systemd logs
 sudo journalctl -u coturn -f
@@ -129,12 +138,14 @@ sudo docker exec ascii-chat-coturn tail -f /var/log/coturn.log
 ```
 
 ### Active Sessions
+
 ```bash
 # List active TURN sessions
 sudo docker exec ascii-chat-coturn turnadmin -l
 ```
 
 ### Container Management
+
 ```bash
 cd /opt/ascii-chat/deploy/acds/coturn
 
@@ -178,29 +189,30 @@ Open browser console (F12) and run:
 ```javascript
 const pc = new RTCPeerConnection({
   iceServers: [
-    { urls: 'stun:stun.ascii-chat.com:3478' },
-    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: "stun:stun.ascii-chat.com:3478" },
+    { urls: "stun:stun.l.google.com:19302" },
     {
-      urls: 'turn:turn.ascii-chat.com:3478',
-      username: 'ascii',
-      credential: '0aa9917b4dad1b01631e87a32b875e09'
-    }
-  ]
+      urls: "turn:turn.ascii-chat.com:3478",
+      username: "ascii",
+      credential: "0aa9917b4dad1b01631e87a32b875e09",
+    },
+  ],
 });
 
-pc.createDataChannel('test');
-pc.createOffer().then(offer => pc.setLocalDescription(offer));
+pc.createDataChannel("test");
+pc.createOffer().then((offer) => pc.setLocalDescription(offer));
 
 // Watch ICE candidates appear
 pc.onicecandidate = (e) => {
   if (e.candidate) {
-    console.log('ICE Candidate:', e.candidate.candidate);
+    console.log("ICE Candidate:", e.candidate.candidate);
     // Look for "typ relay" (TURN) and "typ srflx" (STUN)
   }
 };
 ```
 
 Expected output:
+
 - `typ host` - Local IP
 - `typ srflx` - Server reflexive (STUN discovered public IP)
 - `typ relay` - Relayed candidate (TURN server)
@@ -210,11 +222,13 @@ Expected output:
 ## Monitoring
 
 ### Check Listening Ports
+
 ```bash
 sudo ss -tulnp | grep -E ':(3478|5349)'
 ```
 
 ### Check Server Public IP
+
 ```bash
 # The server should be listening on these IPs:
 # - 135.181.27.224 (public IPv4)
@@ -224,6 +238,7 @@ sudo ss -tulnp | grep -E ':(3478|5349)'
 ```
 
 ### Resource Usage
+
 ```bash
 # Container stats
 docker stats ascii-chat-coturn
@@ -244,6 +259,7 @@ docker stats ascii-chat-coturn
 5. ✅ **Resource Limits**: Docker container has memory/CPU limits
 
 **Recommended Next Steps**:
+
 - [ ] Monitor coturn logs for unusual activity
 - [ ] Set up log rotation for Docker logs
 - [ ] Consider adding TLS certificates for TURNS (port 5349)
@@ -275,6 +291,7 @@ Repository changes:
 ## Troubleshooting
 
 ### Container won't start
+
 ```bash
 sudo journalctl -u coturn -n 50
 cd /opt/ascii-chat/deploy/acds/coturn
@@ -282,6 +299,7 @@ sudo docker-compose logs
 ```
 
 ### Ports not listening
+
 ```bash
 # Check if coturn process is running
 sudo docker exec ascii-chat-coturn pidof turnserver
@@ -291,6 +309,7 @@ sudo ufw status
 ```
 
 ### TURN authentication failing
+
 ```bash
 # Verify credentials in config
 sudo grep '^user=' /opt/ascii-chat/deploy/acds/coturn/turnserver.conf
@@ -300,6 +319,7 @@ sudo docker logs ascii-chat-coturn | grep -i auth
 ```
 
 ### DNS not resolving
+
 ```bash
 # Test DNS resolution
 dig stun.ascii-chat.com
@@ -312,10 +332,10 @@ dig turn.ascii-chat.com
 
 ## Deployment History
 
-| Date | Action | Status |
-|------|--------|--------|
-| 2026-01-02 07:49 | Initial deployment | ✅ Success |
-| 2026-01-02 07:57 | Credentials updated | ✅ Success |
+| Date             | Action                 | Status     |
+| ---------------- | ---------------------- | ---------- |
+| 2026-01-02 07:49 | Initial deployment     | ✅ Success |
+| 2026-01-02 07:57 | Credentials updated    | ✅ Success |
 | 2026-01-02 08:00 | ascii-chat integration | ✅ Success |
 
 ---
@@ -323,6 +343,7 @@ dig turn.ascii-chat.com
 ## Support
 
 For issues or questions:
+
 - Repository: https://github.com/zfogg/ascii-chat
 - Documentation: `/opt/ascii-chat/deploy/acds/coturn/README.md`
 - Logs: `sudo journalctl -u coturn -f`

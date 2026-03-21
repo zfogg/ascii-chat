@@ -2,17 +2,17 @@ name: Security
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
     paths:
-      - '**.c'
-      - '**.h'
-      - '**.m'
+      - "**.c"
+      - "**.h"
+      - "**.m"
   pull_request:
-    branches: [ '*' ]
+    branches: ["*"]
     paths:
-      - '**.c'
-      - '**.h'
-      - '**.m'
+      - "**.c"
+      - "**.h"
+      - "**.m"
 
 env:
   CC: clang
@@ -30,129 +30,129 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'cpp' ]
+        language: ["cpp"]
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-        fetch-tags: true
-        submodules: true
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          fetch-tags: true
+          submodules: true
 
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
-      with:
-        languages: ${{ matrix.language }}
-        config-file: ./.github/codeql/codeql-config.yml
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          config-file: ./.github/codeql/codeql-config.yml
 
-    - name: Install dependencies with caching
-      uses: ./.github/actions/install-deps
-      with:
-        os: ubuntu
+      - name: Install dependencies with caching
+        uses: ./.github/actions/install-deps
+        with:
+          os: ubuntu
 
-    - name: Build for analysis
-      run: |
-        cmake -B build -G Ninja \
-          -DCMAKE_BUILD_TYPE=Debug \
-          -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=OFF
-        cmake --build build
+      - name: Build for analysis
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=OFF
+          cmake --build build
 
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
-      with:
-        category: "/language:${{matrix.language}}"
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{matrix.language}}"
 
   dependency-scan:
     name: Dependency Vulnerability Scan
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-        fetch-tags: true
-        submodules: true
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          fetch-tags: true
+          submodules: true
 
-    - name: Install dependencies with caching
-      uses: ./.github/actions/install-deps
-      with:
-        os: ubuntu
+      - name: Install dependencies with caching
+        uses: ./.github/actions/install-deps
+        with:
+          os: ubuntu
 
-    - name: Check for known vulnerabilities in system packages
-      run: |
-        # Check libv4l version
-        if pkg-config --exists libv4l2; then
-          libv4l2_version=$(pkg-config --modversion libv4l2)
-          echo "libv4l2 version: $libv4l2_version"
-        fi
+      - name: Check for known vulnerabilities in system packages
+        run: |
+          # Check libv4l version
+          if pkg-config --exists libv4l2; then
+            libv4l2_version=$(pkg-config --modversion libv4l2)
+            echo "libv4l2 version: $libv4l2_version"
+          fi
 
-        # Check zstd version
-        if pkg-config --exists zstd; then
-          zstd_version=$(pkg-config --modversion zstd)
-          echo "zstd version: $zstd_version"
-        fi
+          # Check zstd version
+          if pkg-config --exists zstd; then
+            zstd_version=$(pkg-config --modversion zstd)
+            echo "zstd version: $zstd_version"
+          fi
 
-        # Check portaudio version
-        if pkg-config --exists portaudio-2.0; then
-          portaudio_version=$(pkg-config --modversion portaudio-2.0)
-          echo "portaudio version: $portaudio_version"
-        fi
+          # Check portaudio version
+          if pkg-config --exists portaudio-2.0; then
+            portaudio_version=$(pkg-config --modversion portaudio-2.0)
+            echo "portaudio version: $portaudio_version"
+          fi
 
-    - name: Run basic security checks
-      run: |
-        echo "Checking for insecure function usage..."
+      - name: Run basic security checks
+        run: |
+          echo "Checking for insecure function usage..."
 
-        # Find all .c and .h files and store in a variable
-        C_FILES=$(find . -type f \( -name "*.c" \))
-        H_FILES=$(find . -type f \( -name "*.h" \))
-        SRC_FILES="$C_FILES $H_FILES"
+          # Find all .c and .h files and store in a variable
+          C_FILES=$(find . -type f \( -name "*.c" \))
+          H_FILES=$(find . -type f \( -name "*.h" \))
+          SRC_FILES="$C_FILES $H_FILES"
 
-        # Check for potentially unsafe functions
-        echo "=== Checking for unsafe string functions ==="
-        if grep -n "strcpy\|strcat\|sprintf\|gets" $SRC_FILES 2>/dev/null; then
-          echo "⚠️  Found potentially unsafe string functions"
-        else
-          echo "✅ No unsafe string functions found"
-        fi
+          # Check for potentially unsafe functions
+          echo "=== Checking for unsafe string functions ==="
+          if grep -n "strcpy\|strcat\|sprintf\|gets" $SRC_FILES 2>/dev/null; then
+            echo "⚠️  Found potentially unsafe string functions"
+          else
+            echo "✅ No unsafe string functions found"
+          fi
 
-        echo "=== Checking for unsafe memory functions ==="
-        if grep -n "alloca" $SRC_FILES 2>/dev/null; then
-          echo "⚠️  Found alloca usage (stack overflow risk)"
-        else
-          echo "✅ No alloca usage found"
-        fi
+          echo "=== Checking for unsafe memory functions ==="
+          if grep -n "alloca" $SRC_FILES 2>/dev/null; then
+            echo "⚠️  Found alloca usage (stack overflow risk)"
+          else
+            echo "✅ No alloca usage found"
+          fi
 
-        echo "=== Checking for proper bounds checking ==="
-        if grep -n "malloc\|calloc\|realloc" $SRC_FILES | grep -v "SAFE_MALLOC\|DEBUG_MEMORY"; then
-          echo "⚠️  Found direct malloc usage without SAFE_MALLOC wrapper"
-        else
-          echo "✅ All allocations use safe wrappers"
-        fi
+          echo "=== Checking for proper bounds checking ==="
+          if grep -n "malloc\|calloc\|realloc" $SRC_FILES | grep -v "SAFE_MALLOC\|DEBUG_MEMORY"; then
+            echo "⚠️  Found direct malloc usage without SAFE_MALLOC wrapper"
+          else
+            echo "✅ All allocations use safe wrappers"
+          fi
 
   format-security:
     name: Format String Security Check
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-        fetch-tags: true
-        submodules: true
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          fetch-tags: true
+          submodules: true
 
-    - name: Install dependencies with caching
-      uses: ./.github/actions/install-deps
-      with:
-        os: ubuntu
-        extra-packages: clang-tools
+      - name: Install dependencies with caching
+        uses: ./.github/actions/install-deps
+        with:
+          os: ubuntu
+          extra-packages: clang-tools
 
-    - name: Run static security analysis
-      run: |
-        # Use clang static analyzer for security issues
-        cmake -B build -G Ninja \
-          -DCMAKE_BUILD_TYPE=Debug \
-          -DCMAKE_C_FLAGS='-std=c2x -Wformat -Wformat-security -Werror=format-security' -DBUILD_TESTS=OFF
-        scan-build cmake --build build || true
+      - name: Run static security analysis
+        run: |
+          # Use clang static analyzer for security issues
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_FLAGS='-std=c2x -Wformat -Wformat-security -Werror=format-security' -DBUILD_TESTS=OFF
+          scan-build cmake --build build || true

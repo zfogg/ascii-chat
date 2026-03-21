@@ -5,10 +5,10 @@ on:
     branches:
       - master
     paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'notes/**'
-      - 'todo/**'
+      - "**.md"
+      - "docs/**"
+      - "notes/**"
+      - "todo/**"
   workflow_dispatch:
 
 env:

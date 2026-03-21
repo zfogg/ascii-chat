@@ -175,6 +175,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     SAFE_STRNCPY(client_ctx->client_ip, client_ip, sizeof(client_ctx->client_ip));
     client_ctx->client_port = 0; // WebSocket doesn't expose client port easily
     client_ctx->user_data = server->user_data;
+    client_ctx->is_secure = lws_is_ssl(wsi); // Check if connection is TLS (wss://)
+    client_ctx->auth_required = false; // Set by server handler if authentication is required
 
     // Queue handler to thread pool (no pthread_create from callback context)
     // The handler_pool was created at server startup with pre-allocated workers

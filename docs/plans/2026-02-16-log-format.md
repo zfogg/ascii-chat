@@ -7,6 +7,7 @@
 **Architecture:** Create a format parsing system (`lib/log/format.c/h`) that tokenizes format strings into specifiers (`%time(fmt)`, `%level`, `%file`, etc.), evaluates each specifier at log time, and integrates with the existing `format_log_header()` function in logging.c. The format string is parsed once during initialization and executed during each log call. Both file and console output respect the format, with optional `--log-format-console` to apply formatting only to console.
 
 **UTF-8 Support:** Full UTF-8 support for format strings, file paths, and messages:
+
 - Format string validation using `utf8_is_valid()` during parsing
 - Safe literal text extraction from UTF-8 format strings (byte-level copy, UTF-8 already validated)
 - Existing message validation via `validate_log_message_utf8()` continues to work
@@ -15,6 +16,7 @@
 - Terminal display width calculation available via `utf8_display_width()` for future enhancements
 
 **Tech Stack:**
+
 - C string parsing and formatting with `snprintf`
 - Platform abstraction layer for time/thread operations
 - Existing logging system (logging.c/h) with UTF-8 validation
@@ -26,6 +28,7 @@
 ## Task 1: Design and Implement Format Parser (lib/log/format.c)
 
 **Files:**
+
 - Create: `lib/log/format.h`
 - Create: `lib/log/format.c`
 - Modify: `include/ascii-chat/log/logging.h` (add new function declarations)
@@ -468,16 +471,19 @@ git commit -m "feat: Implement log format parser
 ## Task 1.5: Implement Time Format Validator and Custom Formatter
 
 **Files:**
+
 - Modify: `include/ascii-chat/util/time.h` (add function declarations)
 - Modify: `lib/util/time.c` (add implementations)
 - Modify: `lib/log/format.c` (use time formatter in LOG_FORMAT_TIME handler)
 
 **Context:** The standard C `strftime()` function doesn't validate format strings upfront - it just returns 0 on error. Additionally, it doesn't support nanoseconds (only seconds via `%S`). We need:
+
 1. Safe validation of strftime format strings against a whitelist of known specifiers
 2. A custom time formatter that handles standard strftime + nanosecond extensions
 3. Safe error handling (don't crash, return error)
 
 **Infrastructure Already Available:**
+
 - Project uses `time_get_realtime_ns()` for nanosecond-precision timestamps
 - `get_current_time_formatted()` in logging.c already demonstrates extracting nanoseconds manually
 - Support for both standard specifiers and custom extensions is the pattern
@@ -747,6 +753,7 @@ git commit -m "feat: Add strftime format validation to time utilities
 ## Task 2: Add CLI Options for Log Format
 
 **Files:**
+
 - Modify: `include/ascii-chat/options/options.h` (add LOG_FORMAT option)
 - Modify: `lib/options/registry.c` (register new options)
 - Modify: `lib/log/logging.h` (add API for format configuration)
@@ -809,6 +816,7 @@ git commit -m "feat: Add --log-format and --log-format-console CLI options
 ## Task 3: Integrate Format Parser into Logging System
 
 **Files:**
+
 - Modify: `lib/log/logging.c` (integrate format parser)
 - Modify: `include/ascii-chat/log/logging.h` (add API functions)
 
@@ -912,6 +920,7 @@ git commit -m "feat: Integrate format parser into logging system
 ## Task 4: Wire Format Options to Logging Initialization
 
 **Files:**
+
 - Modify: `src/main.c` or logging initialization code
 - Reference: Look for `log_init()` call in main
 
@@ -962,6 +971,7 @@ git commit -m "feat: Wire log format options to logging initialization
 ## Task 5: Write Tests for Format Parser
 
 **Files:**
+
 - Create: `tests/unit/test_log_format.c`
 
 **Step 1: Write format parser tests**
@@ -1112,6 +1122,7 @@ git commit -m "test: Add comprehensive tests for log format parser
 ## Task 6: Integration Test - Verify Logs Match Expected Format
 
 **Files:**
+
 - Create: `tests/manual/test_log_format_e2e.sh`
 
 **Step 1: Create manual test script**
@@ -1185,6 +1196,7 @@ git commit -m "test: Add end-to-end log format testing script
 ## Task 7: Documentation and Cleanup
 
 **Files:**
+
 - Modify: `docs/crypto.md` or add `docs/logging.md`
 - Modify: `CLAUDE.md`
 
@@ -1192,7 +1204,7 @@ git commit -m "test: Add end-to-end log format testing script
 
 Add to debugging section:
 
-```markdown
+````markdown
 ### Custom Log Format with --log-format
 
 The `--log-format` option allows customizing how log messages are formatted:
@@ -1213,6 +1225,7 @@ The `--log-format` option allows customizing how log messages are formatted:
 # Console-only formatting (file logs unformatted)
 ./build/bin/ascii-chat server --log-format "[%time(%H:%M:%S)] %message" --log-format-console
 ```
+````
 
 #### Format Specifiers
 
@@ -1230,7 +1243,8 @@ The `--log-format` option allows customizing how log messages are formatted:
 
 - `ASCII_CHAT_LOG_FORMAT` - Set format via environment variable
 - `ASCII_CHAT_LOG_FORMAT_CONSOLE` - Set to `true` to apply format only to console
-```
+
+````
 
 **Step 2: Verify build and tests pass**
 
@@ -1238,7 +1252,7 @@ The `--log-format` option allows customizing how log messages are formatted:
 cmake --build build --target all
 ctest --test-dir build -R "log_format|logging" --output-on-failure
 # Expected: All tests pass
-```
+````
 
 **Step 3: Run full test suite**
 
@@ -1266,6 +1280,7 @@ git commit -m "docs: Add --log-format documentation
 ## Task 8: Verification and Final Integration
 
 **Files:**
+
 - Test: Run full suite and verify backward compatibility
 
 **Step 1: Save old binary for format comparison**
@@ -1361,4 +1376,3 @@ git log --oneline -8
 - Column-aware formatting for wide characters (CJK, emoji) deferred to future work (infrastructure available via `utf8_display_width()`)
 
 ---
-
