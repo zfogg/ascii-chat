@@ -5,29 +5,12 @@ import type { DemoOption } from "../../demo";
 import { ColorFilter } from "@ascii-chat/shared/wasm";
 
 const COLOR_FILTER_OPTIONS: DemoOption[] = [
-  { id: "none", label: "None", settings: { colorFilter: ColorFilter.NONE } },
+  { id: "rainbow", label: "Rainbow", settings: { colorFilter: ColorFilter.RAINBOW } },
   { id: "green", label: "Green", settings: { colorFilter: ColorFilter.GREEN } },
   { id: "cyan", label: "Cyan", settings: { colorFilter: ColorFilter.CYAN } },
-  {
-    id: "magenta",
-    label: "Magenta",
-    settings: { colorFilter: ColorFilter.MAGENTA },
-  },
-  {
-    id: "orange",
-    label: "Orange",
-    settings: { colorFilter: ColorFilter.ORANGE },
-  },
-  {
-    id: "rainbow",
-    label: "Rainbow",
-    settings: { colorFilter: ColorFilter.RAINBOW },
-  },
-  {
-    id: "yellow",
-    label: "Yellow",
-    settings: { colorFilter: ColorFilter.YELLOW },
-  },
+  { id: "magenta", label: "Magenta", settings: { colorFilter: ColorFilter.MAGENTA } },
+  { id: "orange", label: "Orange", settings: { colorFilter: ColorFilter.ORANGE } },
+  { id: "yellow", label: "Yellow", settings: { colorFilter: ColorFilter.YELLOW } },
   { id: "pink", label: "Pink", settings: { colorFilter: ColorFilter.PINK } },
   { id: "red", label: "Red", settings: { colorFilter: ColorFilter.RED } },
   { id: "teal", label: "Teal", settings: { colorFilter: ColorFilter.TEAL } },

@@ -5,12 +5,6 @@ import type { DemoOption } from "../../demo";
 
 const FLIP_OPTIONS: DemoOption[] = [
   {
-    id: "none",
-    label: "Normal",
-    description: "No flip",
-    settings: { flipX: false, flipY: false },
-  },
-  {
     id: "flipx",
     label: "--flip-x",
     description: "Mirror horizontally",
@@ -27,6 +21,12 @@ const FLIP_OPTIONS: DemoOption[] = [
     label: "Both",
     description: "--flip-x --flip-y (180\u00b0 rotation)",
     settings: { flipX: true, flipY: true },
+  },
+  {
+    id: "none",
+    label: "Normal",
+    description: "No flip",
+    settings: { flipX: false, flipY: false },
   },
 ];
 

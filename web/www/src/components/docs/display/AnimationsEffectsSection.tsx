@@ -6,12 +6,6 @@ import { ColorFilter } from "@ascii-chat/shared/wasm";
 
 const MATRIX_OPTIONS: DemoOption[] = [
   {
-    id: "off",
-    label: "Off",
-    description: "Normal rendering",
-    settings: { matrixRain: false },
-  },
-  {
     id: "on",
     label: "Matrix Rain",
     description: "--matrix",

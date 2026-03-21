@@ -25,6 +25,7 @@ import {
   type AsciiRendererHandle,
 } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
+import { Heading } from "@ascii-chat/shared/components";
 import { registerActiveDemo, unregisterActiveDemo } from "./activeDemo";
 import type { DemoOption } from "./types";
 
@@ -35,6 +36,7 @@ interface MirrorDemoWidgetProps {
   defaultOptionIndex?: number;
   height?: string;
   minHeight?: number;
+  showHeader?: boolean;
 }
 
 function applyDemoOption(option: DemoOption, sourceFlipX: boolean): void {
@@ -57,6 +59,7 @@ export default function MirrorDemoWidget({
   defaultOptionIndex = 0,
   height = "33vh",
   minHeight = 200,
+  showHeader = true,
 }: MirrorDemoWidgetProps) {
   const [source, setSource] = useState<DemoSource>(null);
   const [loading, setLoading] = useState(false);
@@ -322,7 +325,12 @@ export default function MirrorDemoWidget({
   const hasOptions = demoOptions && demoOptions.length > 0;
 
   return (
-    <>
+    <div className="mb-8">
+      {showHeader && (
+        <Heading level={3} className="heading-3 text-green-300 mb-3">
+          🎮 Try it right now
+        </Heading>
+      )}
       <div
         style={{
           position: "fixed",
@@ -457,6 +465,6 @@ export default function MirrorDemoWidget({
           </>
         )}
       </div>
-    </>
+    </div>
   );
 }

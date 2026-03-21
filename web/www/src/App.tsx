@@ -24,7 +24,7 @@ export default function App() {
     <BrowserRouter>
       <HelmetProvider>
         <HeadingProvider>
-          <div className="flex flex-col h-screen overflow-y-auto">
+          <div className="flex flex-col h-screen overflow-y-auto overflow-x-hidden">
             <Navigation />
             <main className="pt-[var(--header-height)] flex flex-col flex-1">
               <Suspense fallback={null}>

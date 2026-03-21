@@ -7,7 +7,7 @@ export default function MiniMirrorDemo() {
       <h2 className="text-2xl sm:text-3xl font-bold text-green-300 mb-4">
         🎬 Demo it right now
       </h2>
-      <MirrorDemoWidget />
+      <MirrorDemoWidget showHeader={false} />
       <p className="text-gray-600 text-xs mt-2 sm:text-right">
         Demo video:{" "}
         <a
