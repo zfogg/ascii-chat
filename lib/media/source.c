@@ -18,6 +18,8 @@
 #include <ascii-chat/debug/named.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <limits.h>
 
 /* ============================================================================
  * Media Source Structure
@@ -215,9 +217,13 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     // Parse webcam index from path (if provided)
     unsigned short int index = 0;
     if (path) {
-      int parsed = atoi(path);
-      if (parsed >= 0 && parsed <= USHRT_MAX) {
+      char *endptr;
+      errno = 0;
+      long parsed = strtol(path, &endptr, 10);
+      if (*endptr == '\0' && errno == 0 && parsed >= 0 && parsed <= USHRT_MAX) {
         index = (unsigned short int)parsed;
+      } else if (*endptr != '\0' || errno != 0) {
+        log_error("media_source_create: Invalid webcam index: %s", path);
       }
     }
 

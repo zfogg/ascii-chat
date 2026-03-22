@@ -14,6 +14,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/parsing.h>
+#include <ascii-chat/log/log.h>
 #include <errno.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -892,13 +893,20 @@ bool terminal_has_dark_background(void) {
     // Parse background color (after semicolon)
     const char *semicolon = strchr(colorfgbg, ';');
     if (semicolon && *(semicolon + 1)) {
-      int bg = atoi(semicolon + 1);
-      // Colors 0-7 are dark, 8-15 are light/bright
-      // If background is a light color (>= 8), we have a light terminal
-      if (bg >= 8) {
-        return false; // Light background
-      } else if (bg >= 0 && bg < 8) {
-        return true; // Dark background
+      char *endptr;
+      errno = 0;
+      long bg_val = strtol(semicolon + 1, &endptr, 10);
+      if (*endptr == '\0' && errno == 0 && bg_val >= 0 && bg_val <= INT_MAX) {
+        int bg = (int)bg_val;
+        // Colors 0-7 are dark, 8-15 are light/bright
+        // If background is a light color (>= 8), we have a light terminal
+        if (bg >= 8) {
+          return false; // Light background
+        } else if (bg < 8) {
+          return true; // Dark background
+        }
+      } else {
+        log_error("terminal_is_dark_background: Invalid color value in COLORFGBG: %s", semicolon + 1);
       }
     }
   }

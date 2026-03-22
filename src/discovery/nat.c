@@ -23,6 +23,8 @@
 #include <netdb.h>
 #endif
 #include <stdio.h>
+#include <errno.h>
+#include <limits.h>
 
 // Bandwidth override threshold: 10x difference can override NAT priority
 #define BANDWIDTH_OVERRIDE_RATIO 10
@@ -181,7 +183,14 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
   char *colon = strchr(host_buf, ':');
   if (colon) {
     *colon = '\0';
-    stun_port = (uint16_t)atoi(colon + 1);
+    char *endptr;
+    errno = 0;
+    long port_val = strtol(colon + 1, &endptr, 10);
+    if (*endptr == '\0' && errno == 0 && port_val > 0 && port_val <= 65535) {
+      stun_port = (uint16_t)port_val;
+    } else {
+      log_error("nat_probe_via_stun: Invalid STUN port: %s", colon + 1);
+    }
   }
 
   // Detect address family from STUN server hostname (IPv4 vs IPv6)

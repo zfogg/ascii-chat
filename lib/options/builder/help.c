@@ -20,6 +20,8 @@
 #include <ascii-chat/log/log.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
+#include <limits.h>
 
 // ============================================================================
 // Programmatic Section Printers for Help Output
@@ -709,9 +711,13 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
   int term_width = 80;
   const char *cols_env = SAFE_GETENV("COLUMNS");
   if (cols_env) {
-    int cols = atoi(cols_env);
-    if (cols > 40)
-      term_width = cols;
+    char *endptr;
+    errno = 0;
+    long cols = strtol(cols_env, &endptr, 10);
+    if (*endptr == '\0' && errno == 0 && cols > 40 && cols <= INT_MAX)
+      term_width = (int)cols;
+    else if (*endptr != '\0' || errno != 0 || cols <= 40)
+      log_error("options_config_print_binary_help: Invalid COLUMNS value: %s", cols_env);
   }
 
   // Binary-level help uses MODE_DISCOVERY internally
@@ -859,9 +865,13 @@ void options_config_print_usage_section(const options_config_t *config, FILE *st
   int term_width = 80;
   const char *cols_env = SAFE_GETENV("COLUMNS");
   if (cols_env) {
-    int cols = atoi(cols_env);
-    if (cols > 40)
-      term_width = cols;
+    char *endptr;
+    errno = 0;
+    long cols = strtol(cols_env, &endptr, 10);
+    if (*endptr == '\0' && errno == 0 && cols > 40 && cols <= INT_MAX)
+      term_width = (int)cols;
+    else if (*endptr != '\0' || errno != 0 || cols <= 40)
+      log_error("options_config_print_binary_help: Invalid COLUMNS value: %s", cols_env);
   }
 
   // Calculate global max column width across all sections for consistent alignment
@@ -892,9 +902,13 @@ void options_config_print_options_sections_with_width(const options_config_t *co
   } else {
     const char *cols_env = SAFE_GETENV("COLUMNS");
     if (cols_env) {
-      int cols = atoi(cols_env);
-      if (cols > 40)
-        term_width = cols;
+      char *endptr;
+      errno = 0;
+      long cols = strtol(cols_env, &endptr, 10);
+      if (*endptr == '\0' && errno == 0 && cols > 40 && cols <= INT_MAX)
+        term_width = (int)cols;
+      else if (*endptr != '\0' || errno != 0 || cols <= 40)
+        log_error("options_config_print_*: Invalid COLUMNS value: %s", cols_env);
     }
   }
 
@@ -1107,9 +1121,13 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
   } else {
     const char *cols_env = SAFE_GETENV("COLUMNS");
     if (cols_env) {
-      int cols = atoi(cols_env);
-      if (cols > 40)
-        term_width = cols;
+      char *endptr;
+      errno = 0;
+      long cols = strtol(cols_env, &endptr, 10);
+      if (*endptr == '\0' && errno == 0 && cols > 40 && cols <= INT_MAX)
+        term_width = (int)cols;
+      else if (*endptr != '\0' || errno != 0 || cols <= 40)
+        log_error("options_config_print_*: Invalid COLUMNS value: %s", cols_env);
     }
   }
 

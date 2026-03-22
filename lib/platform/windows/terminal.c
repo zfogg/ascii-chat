@@ -12,11 +12,14 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/parsing.h>
 #include <ascii-chat/platform/windows/getopt.h>
+#include <ascii-chat/log/log.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <io.h>
 #include <fcntl.h>
 #include <string.h>
+#include <errno.h>
+#include <limits.h>
 #include <ascii-chat/atomic.h>
 
 /**
@@ -1130,11 +1133,18 @@ bool terminal_has_dark_background(void) {
   if (colorfgbg) {
     const char *semicolon = strchr(colorfgbg, ';');
     if (semicolon && *(semicolon + 1)) {
-      int bg = atoi(semicolon + 1);
-      if (bg >= 8) {
-        return false; // Light background
-      } else if (bg >= 0 && bg < 8) {
-        return true; // Dark background
+      char *endptr;
+      errno = 0;
+      long bg_val = strtol(semicolon + 1, &endptr, 10);
+      if (*endptr == '\0' && errno == 0 && bg_val >= 0 && bg_val <= INT_MAX) {
+        int bg = (int)bg_val;
+        if (bg >= 8) {
+          return false; // Light background
+        } else if (bg < 8) {
+          return true; // Dark background
+        }
+      } else {
+        log_error("terminal_is_dark_background: Invalid color value in COLORFGBG: %s", semicolon + 1);
       }
     }
   }

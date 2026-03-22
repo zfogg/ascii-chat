@@ -29,6 +29,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <errno.h>
+#include <limits.h>
 
 // Module-level static frame buffer (reused across renders to avoid malloc per frame)
 static frame_buffer_t *g_frame_buf = NULL;
@@ -134,11 +136,22 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     const char *cols_env = getenv("COLUMNS");
     const char *rows_env = getenv("ROWS");
     if (cols_env && rows_env) {
-      int cols = atoi(cols_env);
-      int rows = atoi(rows_env);
-      if (cols > 0 && rows > 0) {
-        new_size.cols = cols;
-        new_size.rows = rows;
+      char *endptr;
+      errno = 0;
+      long cols_val = strtol(cols_env, &endptr, 10);
+      if (*endptr == '\0' && errno == 0 && cols_val > 0 && cols_val <= INT_MAX) {
+        int cols = (int)cols_val;
+        errno = 0;
+        long rows_val = strtol(rows_env, &endptr, 10);
+        if (*endptr == '\0' && errno == 0 && rows_val > 0 && rows_val <= INT_MAX) {
+          int rows = (int)rows_val;
+          new_size.cols = cols;
+          new_size.rows = rows;
+        } else {
+          log_error("terminal_screen_render: Invalid ROWS value: %s", rows_env);
+        }
+      } else {
+        log_error("terminal_screen_render: Invalid COLUMNS value: %s", cols_env);
       }
     }
 

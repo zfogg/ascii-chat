@@ -48,6 +48,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <errno.h>
+#include <limits.h>
 
 /**
  * @brief Maximum incoming message queue size (frames received from peer)
@@ -1434,11 +1435,15 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
     host[host_len] = '\0';
 
     // Extract port
-    port = atoi(port_start + 1);
-    if (port <= 0 || port > 65535) {
+    char *endptr;
+    errno = 0;
+    long port_val = strtol(port_start + 1, &endptr, 10);
+    if (*endptr != '\0' || errno != 0 || port_val <= 0 || port_val > 65535) {
+      log_error("websocket_transport_create: Invalid port number: %s", port_start + 1);
       SET_ERRNO(ERROR_INVALID_PARAM, "Invalid port number");
       return NULL;
     }
+    port = (uint16_t)port_val;
   } else {
     // No port specified, use default
     size_t host_len = path_start ? (size_t)(path_start - host_start) : strlen(host_start);
