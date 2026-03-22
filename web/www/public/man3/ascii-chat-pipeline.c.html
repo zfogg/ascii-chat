@@ -299,7 +299,7 @@
 449     bool snapshot_done = false;
 450 
 451     while (!should_exit(user_data) &amp;&amp; !atomic_load_bool(&amp;pipeline-&gt;stop) &amp;&amp; !snapshot_done) {
-452         pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline-&gt;display_queue, 100 * NS_PER_MS_INT);
+452         pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline-&gt;display_queue, 1 * NS_PER_MS_INT);
 453 
 454         if (!frame) continue;  // timeout, check should_exit again
 455 

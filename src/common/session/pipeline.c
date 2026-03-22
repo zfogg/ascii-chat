@@ -449,7 +449,7 @@ asciichat_error_t session_pipeline_run_main(
     bool snapshot_done = false;
 
     while (!should_exit(user_data) && !atomic_load_bool(&pipeline->stop) && !snapshot_done) {
-        pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline->display_queue, 100 * NS_PER_MS_INT);
+        pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline->display_queue, 1 * NS_PER_MS_INT);
 
         if (!frame) continue;  // timeout, check should_exit again
 

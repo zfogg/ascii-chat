@@ -323,9 +323,10 @@ function(configure_llvm_post_project)
                     set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
                     # Clang is hardcoded with wrong resource directory; -resource-dir is ignored
                     # Use -nostdinc and explicit isystem paths to bypass clang's broken default
-                    message(STATUS "${BoldYellow}Using clang resource dir + Xcode SDK for headers${ColorReset}")
-                    add_compile_options("-isystem${CLANG_RESOURCE_DIR}/include")
+                    message(STATUS "${BoldYellow}Using Xcode SDK + clang resource dir for headers${ColorReset}")
+                    # Put Xcode SDK FIRST so C headers with fundamental types are found before clang's C++ headers need them
                     add_compile_options("-isystem${XCODE_SDK_PATH}/usr/include")
+                    add_compile_options("-isystem${CLANG_RESOURCE_DIR}/include")
                 else()
                     message(WARNING "${BoldYellow}Xcode SDK not found; system headers may not be accessible${ColorReset}")
                 endif()

@@ -925,63 +925,63 @@ while (running) {
 <i>target_depth</i> Desired queue depth (0 = empty queue target)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Sleep time in nanoseconds</div>
-<p class="Pp">Definition at line <b>618</b> of file <b>util/time.c</b>.</p>
-<pre>618                                                                                                           {
-619   if (!state) {
-620     return 0;
-621   }
-622 
-623   const adaptive_sleep_config_t *cfg = &amp;state-&gt;config;
-624 
-625   // Determine if we need to speed up or slow down
-626   double desired_multiplier;
-627 
-628   if (queue_depth &gt; target_depth) {
-629     // Queue is building up - speed up processing
-630     // The more items in queue, the faster we should process
-631     size_t backlog = queue_depth - target_depth;
-632 
-633     // Calculate desired speed based on backlog
-634     // Each item above target increases speed proportionally
-635     // This ensures we drain the queue faster the more backed up we are
-636     double backlog_factor = 1.0 + ((double)backlog / (double)(target_depth + 1));
-637     desired_multiplier = cfg-&gt;min_speed_multiplier * backlog_factor;
+<p class="Pp">Definition at line <b>624</b> of file <b>util/time.c</b>.</p>
+<pre>624                                                                                                           {
+625   if (!state) {
+626     return 0;
+627   }
+628 
+629   const adaptive_sleep_config_t *cfg = &amp;state-&gt;config;
+630 
+631   // Determine if we need to speed up or slow down
+632   double desired_multiplier;
+633 
+634   if (queue_depth &gt; target_depth) {
+635     // Queue is building up - speed up processing
+636     // The more items in queue, the faster we should process
+637     size_t backlog = queue_depth - target_depth;
 638 
-639     // Clamp to max speed
-640     if (desired_multiplier &gt; cfg-&gt;max_speed_multiplier) {
-641       desired_multiplier = cfg-&gt;max_speed_multiplier;
-642     }
-643 
-644     // Ramp up gradually based on speedup_rate
-645     double delta = desired_multiplier - state-&gt;current_speed_multiplier;
-646     state-&gt;current_speed_multiplier += delta * cfg-&gt;speedup_rate;
-647 
-648   } else {
-649     // Queue is at or below target - slow down to baseline
-650     desired_multiplier = cfg-&gt;min_speed_multiplier;
-651 
-652     // Ramp down gradually based on slowdown_rate
-653     double delta = desired_multiplier - state-&gt;current_speed_multiplier;
-654     state-&gt;current_speed_multiplier += delta * cfg-&gt;slowdown_rate;
-655   }
-656 
-657   // Ensure we stay within configured bounds
-658   if (state-&gt;current_speed_multiplier &lt; cfg-&gt;min_speed_multiplier) {
-659     state-&gt;current_speed_multiplier = cfg-&gt;min_speed_multiplier;
-660   }
-661   if (state-&gt;current_speed_multiplier &gt; cfg-&gt;max_speed_multiplier) {
-662     state-&gt;current_speed_multiplier = cfg-&gt;max_speed_multiplier;
-663   }
-664 
-665   // Calculate actual sleep time: baseline / speed_multiplier
-666   // Higher multiplier = shorter sleep = faster processing
-667   uint64_t sleep_ns = (uint64_t)(cfg-&gt;baseline_sleep_ns / state-&gt;current_speed_multiplier);
-668 
-669   // Store for debugging
-670   state-&gt;last_sleep_ns = sleep_ns;
-671 
-672   return sleep_ns;
-673 }</pre>
+639     // Calculate desired speed based on backlog
+640     // Each item above target increases speed proportionally
+641     // This ensures we drain the queue faster the more backed up we are
+642     double backlog_factor = 1.0 + ((double)backlog / (double)(target_depth + 1));
+643     desired_multiplier = cfg-&gt;min_speed_multiplier * backlog_factor;
+644 
+645     // Clamp to max speed
+646     if (desired_multiplier &gt; cfg-&gt;max_speed_multiplier) {
+647       desired_multiplier = cfg-&gt;max_speed_multiplier;
+648     }
+649 
+650     // Ramp up gradually based on speedup_rate
+651     double delta = desired_multiplier - state-&gt;current_speed_multiplier;
+652     state-&gt;current_speed_multiplier += delta * cfg-&gt;speedup_rate;
+653 
+654   } else {
+655     // Queue is at or below target - slow down to baseline
+656     desired_multiplier = cfg-&gt;min_speed_multiplier;
+657 
+658     // Ramp down gradually based on slowdown_rate
+659     double delta = desired_multiplier - state-&gt;current_speed_multiplier;
+660     state-&gt;current_speed_multiplier += delta * cfg-&gt;slowdown_rate;
+661   }
+662 
+663   // Ensure we stay within configured bounds
+664   if (state-&gt;current_speed_multiplier &lt; cfg-&gt;min_speed_multiplier) {
+665     state-&gt;current_speed_multiplier = cfg-&gt;min_speed_multiplier;
+666   }
+667   if (state-&gt;current_speed_multiplier &gt; cfg-&gt;max_speed_multiplier) {
+668     state-&gt;current_speed_multiplier = cfg-&gt;max_speed_multiplier;
+669   }
+670 
+671   // Calculate actual sleep time: baseline / speed_multiplier
+672   // Higher multiplier = shorter sleep = faster processing
+673   uint64_t sleep_ns = (uint64_t)(cfg-&gt;baseline_sleep_ns / state-&gt;current_speed_multiplier);
+674 
+675   // Store for debugging
+676   state-&gt;last_sleep_ns = sleep_ns;
+677 
+678   return sleep_ns;
+679 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>adaptive_sleep_config_t::baseline_sleep_ns</b>,
@@ -1011,14 +1011,14 @@ while (running) {
 <i>queue_depth</i> Current number of items in queue/buffer
 <br/>
 <i>target_depth</i> Desired queue depth (0 = empty queue target)</div>
-<p class="Pp">Definition at line <b>675</b> of file <b>util/time.c</b>.</p>
-<pre>675                                                                                                {
-676   uint64_t sleep_ns = adaptive_sleep_calculate(state, queue_depth, target_depth);
-677 
-678   if (sleep_ns &gt; 0) {
-679     platform_sleep_ns(sleep_ns);
-680   }
-681 }</pre>
+<p class="Pp">Definition at line <b>681</b> of file <b>util/time.c</b>.</p>
+<pre>681                                                                                                {
+682   uint64_t sleep_ns = adaptive_sleep_calculate(state, queue_depth, target_depth);
+683 
+684   if (sleep_ns &gt; 0) {
+685     platform_sleep_ns(sleep_ns);
+686   }
+687 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>adaptive_sleep_calculate()</b>, and
@@ -1043,21 +1043,21 @@ while (running) {
 <br/>
 <i></i><b>Config Module</b><i></i><b> Pointer to configuration (will be
   copied)</b></div>
-<p class="Pp">Definition at line <b>603</b> of file <b>util/time.c</b>.</p>
-<pre>603                                                                                                {
-604   if (!state || !config) {
-605     return;
-606   }
-607 
-608   // Copy configuration
-609   state-&gt;config = *config;
-610 
-611   // Start at baseline speed (no speedup initially)
-612   state-&gt;current_speed_multiplier = config-&gt;min_speed_multiplier;
+<p class="Pp">Definition at line <b>609</b> of file <b>util/time.c</b>.</p>
+<pre>609                                                                                                {
+610   if (!state || !config) {
+611     return;
+612   }
 613 
-614   // Initial sleep is the baseline
-615   state-&gt;last_sleep_ns = config-&gt;baseline_sleep_ns;
-616 }</pre>
+614   // Copy configuration
+615   state-&gt;config = *config;
+616 
+617   // Start at baseline speed (no speedup initially)
+618   state-&gt;current_speed_multiplier = config-&gt;min_speed_multiplier;
+619 
+620   // Initial sleep is the baseline
+621   state-&gt;last_sleep_ns = config-&gt;baseline_sleep_ns;
+622 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>adaptive_sleep_config_t::baseline_sleep_ns</b>,
@@ -1107,26 +1107,26 @@ while (running) {
 <p class="Pp">Hours component can exceed 99 (e.g., &quot;123:45:06&quot; for 123
     hours)</p>
 </div>
-<p class="Pp">Definition at line <b>348</b> of file <b>util/time.c</b>.</p>
-<pre>348                                                                                              {
-349   if (!buffer || buffer_size == 0) {
-350     return -1;
-351   }
-352 
-353   // Validate components
-354   if (hours &lt; 0 || minutes &lt; 0 || minutes &gt;= 60 || seconds &lt; 0 || seconds &gt;= 60) {
-355     return -1;
-356   }
-357 
-358   // Format as HH:MM:SS with zero-padding
-359   int written = safe_snprintf(buffer, buffer_size, &quot;%02d:%02d:%02d&quot;, hours, minutes, seconds);
-360 
-361   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
-362     return -1;
-363   }
-364 
-365   return written;
-366 }</pre>
+<p class="Pp">Definition at line <b>354</b> of file <b>util/time.c</b>.</p>
+<pre>354                                                                                              {
+355   if (!buffer || buffer_size == 0) {
+356     return -1;
+357   }
+358 
+359   // Validate components
+360   if (hours &lt; 0 || minutes &lt; 0 || minutes &gt;= 60 || seconds &lt; 0 || seconds &gt;= 60) {
+361     return -1;
+362   }
+363 
+364   // Format as HH:MM:SS with zero-padding
+365   int written = safe_snprintf(buffer, buffer_size, &quot;%02d:%02d:%02d&quot;, hours, minutes, seconds);
+366 
+367   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
+368     return -1;
+369   }
+370 
+371   return written;
+372 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_size</b>, and <b>safe_snprintf()</b>.</p>
@@ -1206,81 +1206,81 @@ uint64_t elapsed = time_elapsed_ns(start, time_get_ns());
   <li>Timezone: z (offset), Z (name)</li>
   <li>Weekday: w (0-6), u (1-7)</li>
 </ul>
-<p class="Pp">Definition at line <b>693</b> of file <b>util/time.c</b>.</p>
-<pre>693                                                            {
-694   if (!format_str) {
-695     return false;
-696   }
-697 
-698   for (const char *p = format_str; *p; p++) {
-699     if (*p == '%') {
-700       p++;
-701       if (!*p) {
-702         /* Unterminated % at end of string */
-703         log_error(&quot;Invalid time format: unterminated %% at end&quot;);
-704         return false;
-705       }
-706 
-707       if (*p == '%') {
-708         /* Escaped %% - this is valid, just skip it */
-709         continue;
-710       }
-711 
-712       /* Optional: flag characters (-, 0, +, space) */
-713       if (*p == '-' || *p == '0' || *p == '+' || *p == ' ') {
-714         p++;
-715         if (!*p) {
-716           log_error(&quot;Invalid time format: flag character without specifier&quot;);
-717           return false;
-718         }
-719       }
-720 
-721       /* Optional: width specifier (digits or *) */
-722       if (*p == '*' || isdigit((unsigned char)*p)) {
-723         while (*p &amp;&amp; (isdigit((unsigned char)*p) || *p == '*')) {
-724           p++;
-725         }
-726         if (!*p) {
-727           log_error(&quot;Invalid time format: width specifier without specifier character&quot;);
-728           return false;
-729         }
-730       }
-731 
-732       /* Optional: precision specifier (.digits or .*) */
-733       if (*p == '.') {
-734         p++;
-735         if (!*p) {
-736           log_error(&quot;Invalid time format: precision specifier incomplete&quot;);
-737           return false;
-738         }
-739         while (*p &amp;&amp; (isdigit((unsigned char)*p) || *p == '*')) {
-740           p++;
-741         }
-742         if (!*p) {
-743           log_error(&quot;Invalid time format: precision specifier without specifier character&quot;);
-744           return false;
-745         }
-746       }
-747 
-748       /* Optional: modifier characters (E for %Ex, O for %Ox) */
-749       if (*p == 'E' || *p == 'O') {
-750         p++;
-751         if (!*p) {
-752           log_error(&quot;Invalid time format: modifier character without specifier&quot;);
-753           return false;
-754         }
-755       }
-756 
-757       /* Validate that the final character is a supported specifier */
-758       if (!strchr(SUPPORTED_SPECIFIERS, *p)) {
-759         log_error(&quot;Invalid time format: unsupported specifier %%%c (at position %ld)&quot;, *p, (p - format_str));
-760         return false;
+<p class="Pp">Definition at line <b>699</b> of file <b>util/time.c</b>.</p>
+<pre>699                                                            {
+700   if (!format_str) {
+701     return false;
+702   }
+703 
+704   for (const char *p = format_str; *p; p++) {
+705     if (*p == '%') {
+706       p++;
+707       if (!*p) {
+708         /* Unterminated % at end of string */
+709         log_error(&quot;Invalid time format: unterminated %% at end&quot;);
+710         return false;
+711       }
+712 
+713       if (*p == '%') {
+714         /* Escaped %% - this is valid, just skip it */
+715         continue;
+716       }
+717 
+718       /* Optional: flag characters (-, 0, +, space) */
+719       if (*p == '-' || *p == '0' || *p == '+' || *p == ' ') {
+720         p++;
+721         if (!*p) {
+722           log_error(&quot;Invalid time format: flag character without specifier&quot;);
+723           return false;
+724         }
+725       }
+726 
+727       /* Optional: width specifier (digits or *) */
+728       if (*p == '*' || isdigit((unsigned char)*p)) {
+729         while (*p &amp;&amp; (isdigit((unsigned char)*p) || *p == '*')) {
+730           p++;
+731         }
+732         if (!*p) {
+733           log_error(&quot;Invalid time format: width specifier without specifier character&quot;);
+734           return false;
+735         }
+736       }
+737 
+738       /* Optional: precision specifier (.digits or .*) */
+739       if (*p == '.') {
+740         p++;
+741         if (!*p) {
+742           log_error(&quot;Invalid time format: precision specifier incomplete&quot;);
+743           return false;
+744         }
+745         while (*p &amp;&amp; (isdigit((unsigned char)*p) || *p == '*')) {
+746           p++;
+747         }
+748         if (!*p) {
+749           log_error(&quot;Invalid time format: precision specifier without specifier character&quot;);
+750           return false;
+751         }
+752       }
+753 
+754       /* Optional: modifier characters (E for %Ex, O for %Ox) */
+755       if (*p == 'E' || *p == 'O') {
+756         p++;
+757         if (!*p) {
+758           log_error(&quot;Invalid time format: modifier character without specifier&quot;);
+759           return false;
+760         }
 761       }
-762     }
-763   }
-764 
-765   return true;
-766 }</pre>
+762 
+763       /* Validate that the final character is a supported specifier */
+764       if (!strchr(SUPPORTED_SPECIFIERS, *p)) {
+765         log_error(&quot;Invalid time format: unsupported specifier %%%c (at position %ld)&quot;, *p, (p - format_str));
+766         return false;
+767       }
+768     }
+769   }
+770 
+771   return true;
+772 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_error</b>.</p>
@@ -1321,42 +1321,42 @@ uint64_t elapsed = time_elapsed_ns(start, time_get_ns());
   <li>Output is locale-aware (UTF-8 safe from strftime)</li>
   <li>Returns 0 on error (strftime failure or buffer overflow)</li>
 </ul>
-<p class="Pp">Definition at line <b>768</b> of file <b>util/time.c</b>.</p>
-<pre>768                                                                         {
-769   if (!format_str || !buf || buf_size &lt; 2) {
-770     SET_ERRNO(ERROR_INVALID_PARAM, &quot;time_format_now: invalid arguments - format_str=%p, buf=%p, buf_size=%zu&quot;,
-771               format_str, buf, buf_size);
-772     return 0;
-773   }
-774 
-775   /* Get current wall-clock time in nanoseconds */
-776   uint64_t ts_ns = time_get_realtime_ns();
-777 
-778   /* Extract seconds and nanoseconds */
-779   time_t seconds = (time_t)(ts_ns / NS_PER_SEC_INT);
+<p class="Pp">Definition at line <b>774</b> of file <b>util/time.c</b>.</p>
+<pre>774                                                                         {
+775   if (!format_str || !buf || buf_size &lt; 2) {
+776     SET_ERRNO(ERROR_INVALID_PARAM, &quot;time_format_now: invalid arguments - format_str=%p, buf=%p, buf_size=%zu&quot;,
+777               format_str, buf, buf_size);
+778     return 0;
+779   }
 780 
-781   /* Convert seconds to struct tm */
-782   struct tm tm_info;
-783   platform_localtime(&amp;seconds, &amp;tm_info);
-784 
-785   /* Format using strftime */
-786   size_t len = strftime(buf, buf_size, format_str, &amp;tm_info);
-787 
-788   /* Check for strftime errors or buffer overflow */
-789   if (len == 0) {
-790     /* strftime returned 0 - either error or exact buffer fill */
-791     log_debug(&quot;strftime returned 0 for format: %s&quot;, format_str);
-792     return 0;
-793   }
-794 
-795   if (len &gt;= buf_size - 1) {
-796     /* Buffer would overflow - strftime filled entire buffer or hit exact size */
-797     log_error(&quot;time_format_now: buffer too small (need %zu, have %zu)&quot;, len + 1, buf_size);
+781   /* Get current wall-clock time in nanoseconds */
+782   uint64_t ts_ns = time_get_realtime_ns();
+783 
+784   /* Extract seconds and nanoseconds */
+785   time_t seconds = (time_t)(ts_ns / NS_PER_SEC_INT);
+786 
+787   /* Convert seconds to struct tm */
+788   struct tm tm_info;
+789   platform_localtime(&amp;seconds, &amp;tm_info);
+790 
+791   /* Format using strftime */
+792   size_t len = strftime(buf, buf_size, format_str, &amp;tm_info);
+793 
+794   /* Check for strftime errors or buffer overflow */
+795   if (len == 0) {
+796     /* strftime returned 0 - either error or exact buffer fill */
+797     log_debug(&quot;strftime returned 0 for format: %s&quot;, format_str);
 798     return 0;
 799   }
 800 
-801   return (int)len;
-802 }</pre>
+801   if (len &gt;= buf_size - 1) {
+802     /* Buffer would overflow - strftime filled entire buffer or hit exact size */
+803     log_error(&quot;time_format_now: buffer too small (need %zu, have %zu)&quot;, len + 1, buf_size);
+804     return 0;
+805   }
+806 
+807   return (int)len;
+808 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
@@ -1404,35 +1404,35 @@ if (err != ASCIICHAT_OK) {
 }
 log_info(&quot;Current time: %s&quot;, timebuf);
 </pre>
-<p class="Pp">Definition at line <b>804</b> of file <b>util/time.c</b>.</p>
-<pre>804                                                                                        {
-805   /* Check NULL pointers */
-806   if (!format_str) {
-807     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: format_str is NULL&quot;);
-808   }
-809 
-810   if (!buf) {
-811     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: buf is NULL&quot;);
-812   }
-813 
-814   /* Check minimum buffer size */
-815   if (buf_size &lt; 64) {
-816     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: buffer too small (minimum 64 bytes, got %zu)&quot;, buf_size);
-817   }
-818 
-819   /* Validate format string */
-820   if (!time_format_is_valid_strftime(format_str)) {
-821     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: invalid time format: %s&quot;, format_str);
-822   }
-823 
-824   /* Format the time */
-825   int result = time_format_now(format_str, buf, buf_size);
-826   if (result &lt;= 0) {
-827     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: strftime formatting failed&quot;);
+<p class="Pp">Definition at line <b>810</b> of file <b>util/time.c</b>.</p>
+<pre>810                                                                                        {
+811   /* Check NULL pointers */
+812   if (!format_str) {
+813     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: format_str is NULL&quot;);
+814   }
+815 
+816   if (!buf) {
+817     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: buf is NULL&quot;);
+818   }
+819 
+820   /* Check minimum buffer size */
+821   if (buf_size &lt; 64) {
+822     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: buffer too small (minimum 64 bytes, got %zu)&quot;, buf_size);
+823   }
+824 
+825   /* Validate format string */
+826   if (!time_format_is_valid_strftime(format_str)) {
+827     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: invalid time format: %s&quot;, format_str);
 828   }
 829 
-830   return ASCIICHAT_OK;
-831 }</pre>
+830   /* Format the time */
+831   int result = time_format_now(format_str, buf, buf_size);
+832   if (result &lt;= 0) {
+833     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: strftime formatting failed&quot;);
+834   }
+835 
+836   return ASCIICHAT_OK;
+837 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_STATE</b>,
@@ -1627,34 +1627,34 @@ uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
 <p class="Pp"></p>
 <p class="Pp">Thread-safe (no global state)</p>
 </div>
-<p class="Pp">Definition at line <b>566</b> of file <b>util/time.c</b>.</p>
-<pre>566                                                                                {
-567   if (!buffer || buffer_size == 0) {
-568     return -1;
-569   }
-570 
-571   // Determine direction (past vs future)
-572   bool is_future = nanoseconds &lt; 0;
-573   uint64_t abs_ns = is_future ? (uint64_t)(-nanoseconds) : (uint64_t)nanoseconds;
-574 
-575   // Convert nanoseconds to seconds for threshold checking
-576   double total_seconds = (double)abs_ns / NS_PER_SEC;
-577   int minutes = (int)(total_seconds / 60);
-578   int hours = minutes / 60;
-579   int days = hours / 24;
-580   int months = days / 30; // Approximate
-581   int years = months / 12;
-582 
-583   const char *suffix = is_future ? &quot;from now&quot; : &quot;ago&quot;;
-584   int written =
-585       format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, suffix, buffer, buffer_size);
-586 
-587   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
-588     return -1;
-589   }
-590 
-591   return written;
-592 }</pre>
+<p class="Pp">Definition at line <b>572</b> of file <b>util/time.c</b>.</p>
+<pre>572                                                                                {
+573   if (!buffer || buffer_size == 0) {
+574     return -1;
+575   }
+576 
+577   // Determine direction (past vs future)
+578   bool is_future = nanoseconds &lt; 0;
+579   uint64_t abs_ns = is_future ? (uint64_t)(-nanoseconds) : (uint64_t)nanoseconds;
+580 
+581   // Convert nanoseconds to seconds for threshold checking
+582   double total_seconds = (double)abs_ns / NS_PER_SEC;
+583   int minutes = (int)(total_seconds / 60);
+584   int hours = minutes / 60;
+585   int days = hours / 24;
+586   int months = days / 30; // Approximate
+587   int years = months / 12;
+588 
+589   const char *suffix = is_future ? &quot;from now&quot; : &quot;ago&quot;;
+590   int written =
+591       format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, suffix, buffer, buffer_size);
+592 
+593   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
+594     return -1;
+595   }
+596 
+597   return written;
+598 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_size</b>, and <b>NS_PER_SEC</b>.</p>
@@ -1683,11 +1683,11 @@ uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
 <p class="Pp"></p>
 <p class="Pp">Thread-safe (no global state)</p>
 </div>
-<p class="Pp">Definition at line <b>594</b> of file <b>util/time.c</b>.</p>
-<pre>594                                                               {
-595   int64_t ns = (int64_t)time_get_ns();
-596   return time_human_readable(ns, buffer, buffer_size);
-597 }</pre>
+<p class="Pp">Definition at line <b>600</b> of file <b>util/time.c</b>.</p>
+<pre>600                                                               {
+601   int64_t ns = (int64_t)time_get_ns();
+602   return time_human_readable(ns, buffer, buffer_size);
+603 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_size</b>, <b>time_get_ns()</b>, and
@@ -1727,29 +1727,29 @@ uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
 <p class="Pp"></p>
 <p class="Pp">Thread-safe (no global state)</p>
 </div>
-<p class="Pp">Definition at line <b>543</b> of file <b>util/time.c</b>.</p>
-<pre>543                                                                                          {
-544   if (!buffer || buffer_size == 0) {
-545     return -1;
-546   }
-547 
-548   // Convert nanoseconds to seconds for threshold checking
-549   double total_seconds = (double)nanoseconds / NS_PER_SEC;
-550   int minutes = (int)(total_seconds / 60);
-551   int hours = minutes / 60;
-552   int days = hours / 24;
-553   int months = days / 30; // Approximate
-554   int years = months / 12;
-555 
-556   int written =
-557       format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, &quot;ago&quot;, buffer, buffer_size);
-558 
-559   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
-560     return -1;
-561   }
-562 
-563   return written;
-564 }</pre>
+<p class="Pp">Definition at line <b>549</b> of file <b>util/time.c</b>.</p>
+<pre>549                                                                                          {
+550   if (!buffer || buffer_size == 0) {
+551     return -1;
+552   }
+553 
+554   // Convert nanoseconds to seconds for threshold checking
+555   double total_seconds = (double)nanoseconds / NS_PER_SEC;
+556   int minutes = (int)(total_seconds / 60);
+557   int hours = minutes / 60;
+558   int days = hours / 24;
+559   int months = days / 30; // Approximate
+560   int years = months / 12;
+561 
+562   int written =
+563       format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, &quot;ago&quot;, buffer, buffer_size);
+564 
+565   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
+566     return -1;
+567   }
+568 
+569   return written;
+570 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_size</b>, and <b>NS_PER_SEC</b>.</p>
@@ -1765,15 +1765,15 @@ uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
 <i>ts</i> Pointer to timespec structure (output)</div>
 <p class="Pp">Useful for nanosleep() or other system calls that require struct
     timespec.</p>
-<p class="Pp">Definition at line <b>172</b> of file <b>util/time.c</b>.</p>
-<pre>172                                                            {
-173   if (!ts) {
-174     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null ts&quot;);
-175     return;
-176   }
-177   ts-&gt;tv_sec = (time_t)(ns / NS_PER_SEC_INT);
-178   ts-&gt;tv_nsec = (long)(ns % NS_PER_SEC_INT);
-179 }</pre>
+<p class="Pp">Definition at line <b>178</b> of file <b>util/time.c</b>.</p>
+<pre>178                                                            {
+179   if (!ts) {
+180     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null ts&quot;);
+181     return;
+182   }
+183   ts-&gt;tv_sec = (time_t)(ns / NS_PER_SEC_INT);
+184   ts-&gt;tv_nsec = (long)(ns % NS_PER_SEC_INT);
+185 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>NS_PER_SEC_INT</b>, and
@@ -1833,122 +1833,122 @@ uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
 <p class="Pp"></p>
 <p class="Pp">decimals=0 produces no decimal point</p>
 </div>
-<p class="Pp">Definition at line <b>418</b> of file <b>util/time.c</b>.</p>
-<pre>418                                                                                       {
-419   if (!buffer || buffer_size == 0) {
-420     return -1;
-421   }
-422 
-423   // Handle zero
-424   if (nanoseconds == 0) {
-425     int written = safe_snprintf(buffer, buffer_size, &quot;0 ns&quot;);
-426     return (written &lt; 0 || (size_t)written &gt;= buffer_size) ? -1 : written;
+<p class="Pp">Definition at line <b>424</b> of file <b>util/time.c</b>.</p>
+<pre>424                                                                                       {
+425   if (!buffer || buffer_size == 0) {
+426     return -1;
 427   }
 428 
-429   // Determine decimals for this range if not explicitly set
-430   int actual_decimals = decimals;
-431   if (decimals == -1) {
-432     if (nanoseconds &lt; NS_PER_MIN_INT) {
-433       actual_decimals = (nanoseconds &lt; NS_PER_SEC_INT) ? 3 : 2; // ns/&#x00B5;s/ms or seconds
-434     } else {
-435       actual_decimals = 3; // colon notation
-436     }
-437   }
-438 
-439   // Clamp decimals to valid range
-440   if (actual_decimals &lt; 0)
-441     actual_decimals = 0;
-442   if (actual_decimals &gt; 9)
-443     actual_decimals = 9;
+429   // Handle zero
+430   if (nanoseconds == 0) {
+431     int written = safe_snprintf(buffer, buffer_size, &quot;0 ns&quot;);
+432     return (written &lt; 0 || (size_t)written &gt;= buffer_size) ? -1 : written;
+433   }
+434 
+435   // Determine decimals for this range if not explicitly set
+436   int actual_decimals = decimals;
+437   if (decimals == -1) {
+438     if (nanoseconds &lt; NS_PER_MIN_INT) {
+439       actual_decimals = (nanoseconds &lt; NS_PER_SEC_INT) ? 3 : 2; // ns/&#x00B5;s/ms or seconds
+440     } else {
+441       actual_decimals = 3; // colon notation
+442     }
+443   }
 444 
-445   int written = 0;
-446 
-447   // Nanoseconds (&lt; 1&#x00B5;s)
-448   if (nanoseconds &lt; NS_PER_US_INT) {
-449     written = safe_snprintf(buffer, buffer_size, &quot;%llu ns&quot;, (unsigned long long)nanoseconds);
-450   }
-451   // Microseconds (&lt; 1ms)
-452   else if (nanoseconds &lt; NS_PER_MS_INT) {
-453     double us = (double)nanoseconds / NS_PER_US;
-454     char temp_buf[64];
-455     // Use a direct snprintf with large enough buffer first
-456     snprintf(temp_buf, sizeof(temp_buf), &quot;%.*f &#x00B5;s&quot;, actual_decimals, us);
-457     strip_trailing_zeros(temp_buf);
-458     written = (int)strlen(temp_buf);
-459     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
-460       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
-461     } else {
-462       written = -1;
-463     }
-464   }
-465   // Milliseconds (&lt; 1s)
-466   else if (nanoseconds &lt; NS_PER_SEC_INT) {
-467     double ms = (double)nanoseconds / NS_PER_MS;
-468     char temp_buf[64];
-469     snprintf(temp_buf, sizeof(temp_buf), &quot;%.*f ms&quot;, actual_decimals, ms);
-470     strip_trailing_zeros(temp_buf);
-471     written = (int)strlen(temp_buf);
-472     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
-473       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
-474     } else {
-475       written = -1;
-476     }
-477   }
-478   // Seconds (&lt; 1 minute)
-479   else if (nanoseconds &lt; NS_PER_MIN_INT) {
-480     double s = (double)nanoseconds / NS_PER_SEC;
-481     char temp_buf[64];
-482     snprintf(temp_buf, sizeof(temp_buf), &quot;%.*f s&quot;, actual_decimals, s);
-483     strip_trailing_zeros(temp_buf);
-484     written = (int)strlen(temp_buf);
-485     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
-486       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
-487     } else {
-488       written = -1;
-489     }
-490   }
-491   // Minutes (&lt; 1 hour) - use colon notation: M:SS.frac
-492   else if (nanoseconds &lt; NS_PER_HOUR_INT) {
-493     uint64_t total_seconds = nanoseconds / NS_PER_SEC_INT;
-494     uint64_t minutes = total_seconds / 60;
-495     uint64_t seconds = total_seconds % 60;
-496     uint64_t remainder_ns = nanoseconds % NS_PER_SEC_INT;
-497     double fraction = (double)remainder_ns / NS_PER_SEC;
-498 
-499     char temp_buf[64];
-500     if (actual_decimals == 0) {
-501       snprintf(temp_buf, sizeof(temp_buf), &quot;%llu:%02llu&quot;, (unsigned long long)minutes, (unsigned long long)seconds);
-502     } else {
-503       snprintf(temp_buf, sizeof(temp_buf), &quot;%llu:%02llu.%.*f&quot;, (unsigned long long)minutes, (unsigned long long)seconds,
-504                actual_decimals, fraction);
-505       strip_trailing_zeros(temp_buf);
-506     }
-507 
-508     written = (int)strlen(temp_buf);
-509     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
-510       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
-511     } else {
-512       written = -1;
-513     }
-514   }
-515   // Hours+ - use colon notation: H:MM:SS or HH:MM:SS
-516   else {
-517     uint64_t total_seconds = nanoseconds / NS_PER_SEC_INT;
-518     uint64_t hours = total_seconds / 3600;
-519     uint64_t remaining = total_seconds % 3600;
-520     uint64_t minutes = remaining / 60;
-521     uint64_t seconds = remaining % 60;
-522 
-523     written = safe_snprintf(buffer, buffer_size, &quot;%llu:%02llu:%02llu&quot;, (unsigned long long)hours,
-524                             (unsigned long long)minutes, (unsigned long long)seconds);
-525   }
-526 
-527   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
-528     return -1;
-529   }
-530 
-531   return written;
-532 }</pre>
+445   // Clamp decimals to valid range
+446   if (actual_decimals &lt; 0)
+447     actual_decimals = 0;
+448   if (actual_decimals &gt; 9)
+449     actual_decimals = 9;
+450 
+451   int written = 0;
+452 
+453   // Nanoseconds (&lt; 1&#x00B5;s)
+454   if (nanoseconds &lt; NS_PER_US_INT) {
+455     written = safe_snprintf(buffer, buffer_size, &quot;%llu ns&quot;, (unsigned long long)nanoseconds);
+456   }
+457   // Microseconds (&lt; 1ms)
+458   else if (nanoseconds &lt; NS_PER_MS_INT) {
+459     double us = (double)nanoseconds / NS_PER_US;
+460     char temp_buf[64];
+461     // Use a direct snprintf with large enough buffer first
+462     snprintf(temp_buf, sizeof(temp_buf), &quot;%.*f &#x00B5;s&quot;, actual_decimals, us);
+463     strip_trailing_zeros(temp_buf);
+464     written = (int)strlen(temp_buf);
+465     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
+466       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+467     } else {
+468       written = -1;
+469     }
+470   }
+471   // Milliseconds (&lt; 1s)
+472   else if (nanoseconds &lt; NS_PER_SEC_INT) {
+473     double ms = (double)nanoseconds / NS_PER_MS;
+474     char temp_buf[64];
+475     snprintf(temp_buf, sizeof(temp_buf), &quot;%.*f ms&quot;, actual_decimals, ms);
+476     strip_trailing_zeros(temp_buf);
+477     written = (int)strlen(temp_buf);
+478     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
+479       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+480     } else {
+481       written = -1;
+482     }
+483   }
+484   // Seconds (&lt; 1 minute)
+485   else if (nanoseconds &lt; NS_PER_MIN_INT) {
+486     double s = (double)nanoseconds / NS_PER_SEC;
+487     char temp_buf[64];
+488     snprintf(temp_buf, sizeof(temp_buf), &quot;%.*f s&quot;, actual_decimals, s);
+489     strip_trailing_zeros(temp_buf);
+490     written = (int)strlen(temp_buf);
+491     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
+492       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+493     } else {
+494       written = -1;
+495     }
+496   }
+497   // Minutes (&lt; 1 hour) - use colon notation: M:SS.frac
+498   else if (nanoseconds &lt; NS_PER_HOUR_INT) {
+499     uint64_t total_seconds = nanoseconds / NS_PER_SEC_INT;
+500     uint64_t minutes = total_seconds / 60;
+501     uint64_t seconds = total_seconds % 60;
+502     uint64_t remainder_ns = nanoseconds % NS_PER_SEC_INT;
+503     double fraction = (double)remainder_ns / NS_PER_SEC;
+504 
+505     char temp_buf[64];
+506     if (actual_decimals == 0) {
+507       snprintf(temp_buf, sizeof(temp_buf), &quot;%llu:%02llu&quot;, (unsigned long long)minutes, (unsigned long long)seconds);
+508     } else {
+509       snprintf(temp_buf, sizeof(temp_buf), &quot;%llu:%02llu.%.*f&quot;, (unsigned long long)minutes, (unsigned long long)seconds,
+510                actual_decimals, fraction);
+511       strip_trailing_zeros(temp_buf);
+512     }
+513 
+514     written = (int)strlen(temp_buf);
+515     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
+516       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+517     } else {
+518       written = -1;
+519     }
+520   }
+521   // Hours+ - use colon notation: H:MM:SS or HH:MM:SS
+522   else {
+523     uint64_t total_seconds = nanoseconds / NS_PER_SEC_INT;
+524     uint64_t hours = total_seconds / 3600;
+525     uint64_t remaining = total_seconds % 3600;
+526     uint64_t minutes = remaining / 60;
+527     uint64_t seconds = remaining % 60;
+528 
+529     written = safe_snprintf(buffer, buffer_size, &quot;%llu:%02llu:%02llu&quot;, (unsigned long long)hours,
+530                             (unsigned long long)minutes, (unsigned long long)seconds);
+531   }
+532 
+533   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
+534     return -1;
+535   }
+536 
+537   return written;
+538 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_size</b>, <b>NS_PER_HOUR_INT</b>,
@@ -1994,11 +1994,11 @@ uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
 <p class="Pp"></p>
 <p class="Pp">Thread-safe (no global state)</p>
 </div>
-<p class="Pp">Definition at line <b>534</b> of file <b>util/time.c</b>.</p>
-<pre>534                                                                     {
-535   uint64_t ns = time_get_ns();
-536   return time_pretty(ns, decimals, buffer, buffer_size);
-537 }</pre>
+<p class="Pp">Definition at line <b>540</b> of file <b>util/time.c</b>.</p>
+<pre>540                                                                     {
+541   uint64_t ns = time_get_ns();
+542   return time_pretty(ns, decimals, buffer, buffer_size);
+543 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_size</b>, <b>time_get_ns()</b>, and
@@ -2045,8 +2045,14 @@ uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
 166     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null ts&quot;);
 167     return 0;
 168   }
-169   return (uint64_t)ts-&gt;tv_sec * NS_PER_SEC_INT + (uint64_t)ts-&gt;tv_nsec;
-170 }</pre>
+169   // Use __uint128_t to prevent overflow during multiplication of large time values
+170   __uint128_t result = (__uint128_t)ts-&gt;tv_sec * NS_PER_SEC_INT;
+171   if (result &gt; UINT64_MAX) {
+172     SET_ERRNO(ERROR_INVALID_PARAM, &quot;time_timespec_to_ns: timespec value would overflow&quot;);
+173     return UINT64_MAX;
+174   }
+175   return (uint64_t)result + (uint64_t)ts-&gt;tv_nsec;
+176 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>NS_PER_SEC_INT</b>, and
@@ -2059,10 +2065,10 @@ uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
 <p class="Pp">Check if timing system is initialized.</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if initialized, false otherwise</div>
-<p class="Pp">Definition at line <b>340</b> of file <b>util/time.c</b>.</p>
-<pre>340                                 {
-341   return lifecycle_is_initialized(&amp;g_timer_manager.lifecycle);
-342 }</pre>
+<p class="Pp">Definition at line <b>346</b> of file <b>util/time.c</b>.</p>
+<pre>346                                 {
+347   return lifecycle_is_initialized(&amp;g_timer_manager.lifecycle);
+348 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_is_initialized()</b>.</p>
@@ -2079,57 +2085,57 @@ uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
   copied)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on failure</div>
-<p class="Pp">Definition at line <b>234</b> of file <b>util/time.c</b>.</p>
-<pre>234                                    {
-235   if (!lifecycle_is_initialized(&amp;g_timer_manager.lifecycle)) {
-236     SET_ERRNO(ERROR_INVALID_STATE, &quot;Timer system not initialized&quot;);
-237     return false;
-238   }
-239 
-240   if (!name) {
-241     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Timer name is NULL&quot;);
-242     return false;
-243   }
-244 
-245   rwlock_wrlock(&amp;g_timer_manager.rwlock);
-246 
-247   // Check if timer already exists - this is an error, timers must be unique
-248   timer_record_t *existing = NULL;
-249   HASH_FIND_STR(g_timer_manager.timers, name, existing);
+<p class="Pp">Definition at line <b>240</b> of file <b>util/time.c</b>.</p>
+<pre>240                                    {
+241   if (!lifecycle_is_initialized(&amp;g_timer_manager.lifecycle)) {
+242     SET_ERRNO(ERROR_INVALID_STATE, &quot;Timer system not initialized&quot;);
+243     return false;
+244   }
+245 
+246   if (!name) {
+247     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Timer name is NULL&quot;);
+248     return false;
+249   }
 250 
-251   if (existing) {
-252     rwlock_wrunlock(&amp;g_timer_manager.rwlock);
-253     SET_ERRNO(ERROR_INVALID_STATE, &quot;Timer '%s' already exists - timers must have unique names&quot;, name);
-254     return false;
-255   }
+251   rwlock_wrlock(&amp;g_timer_manager.rwlock);
+252 
+253   // Check if timer already exists - this is an error, timers must be unique
+254   timer_record_t *existing = NULL;
+255   HASH_FIND_STR(g_timer_manager.timers, name, existing);
 256 
-257   // Create new timer record
-258   timer_record_t *timer = SAFE_MALLOC(sizeof(timer_record_t), timer_record_t *);
-259   if (!timer) {
-260     rwlock_wrunlock(&amp;g_timer_manager.rwlock);
-261     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate timer record&quot;);
-262     return false;
-263   }
-264 
-265   // Use platform-safe string duplication
-266   size_t name_len = strlen(name) + 1;
-267   timer-&gt;name = SAFE_MALLOC(name_len, char *);
-268   if (!timer-&gt;name) {
-269     SAFE_FREE(timer);
-270     rwlock_wrunlock(&amp;g_timer_manager.rwlock);
-271     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate timer name&quot;);
-272     return false;
-273   }
-274   SAFE_STRNCPY(timer-&gt;name, name, name_len);
-275 
-276   timer-&gt;start_ticks = stm_now();
-277 
-278   // Add to hashtable
-279   HASH_ADD_KEYPTR(hh, g_timer_manager.timers, timer-&gt;name, strlen(timer-&gt;name), timer);
-280 
-281   rwlock_wrunlock(&amp;g_timer_manager.rwlock);
-282   return true;
-283 }</pre>
+257   if (existing) {
+258     rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+259     SET_ERRNO(ERROR_INVALID_STATE, &quot;Timer '%s' already exists - timers must have unique names&quot;, name);
+260     return false;
+261   }
+262 
+263   // Create new timer record
+264   timer_record_t *timer = SAFE_MALLOC(sizeof(timer_record_t), timer_record_t *);
+265   if (!timer) {
+266     rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+267     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate timer record&quot;);
+268     return false;
+269   }
+270 
+271   // Use platform-safe string duplication
+272   size_t name_len = strlen(name) + 1;
+273   timer-&gt;name = SAFE_MALLOC(name_len, char *);
+274   if (!timer-&gt;name) {
+275     SAFE_FREE(timer);
+276     rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+277     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate timer name&quot;);
+278     return false;
+279   }
+280   SAFE_STRNCPY(timer-&gt;name, name, name_len);
+281 
+282   timer-&gt;start_ticks = stm_now();
+283 
+284   // Add to hashtable
+285   HASH_ADD_KEYPTR(hh, g_timer_manager.timers, timer-&gt;name, strlen(timer-&gt;name), timer);
+286 
+287   rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+288   return true;
+289 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
@@ -2151,61 +2157,61 @@ uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Elapsed time in nanoseconds, or -1.0 if timer not
   found</div>
-<p class="Pp">Definition at line <b>285</b> of file <b>util/time.c</b>.</p>
-<pre>285                                     {
-286   if (!lifecycle_is_initialized(&amp;g_timer_manager.lifecycle)) {
-287     SET_ERRNO(ERROR_INVALID_STATE, &quot;Timer system not initialized&quot;);
-288     return -1.0;
-289   }
-290 
-291   if (!name) {
-292     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Timer name is NULL&quot;);
-293     return -1.0;
-294   }
-295 
-296   rwlock_wrlock(&amp;g_timer_manager.rwlock);
-297 
-298   // Find timer
-299   timer_record_t *timer = NULL;
-300   HASH_FIND_STR(g_timer_manager.timers, name, timer);
+<p class="Pp">Definition at line <b>291</b> of file <b>util/time.c</b>.</p>
+<pre>291                                     {
+292   if (!lifecycle_is_initialized(&amp;g_timer_manager.lifecycle)) {
+293     SET_ERRNO(ERROR_INVALID_STATE, &quot;Timer system not initialized&quot;);
+294     return -1.0;
+295   }
+296 
+297   if (!name) {
+298     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Timer name is NULL&quot;);
+299     return -1.0;
+300   }
 301 
-302   if (!timer) {
-303     rwlock_wrunlock(&amp;g_timer_manager.rwlock);
-304     log_dev(&quot;Timer '%s' not found (may have already been stopped)&quot;, name);
-305     return -1.0;
-306   }
+302   rwlock_wrlock(&amp;g_timer_manager.rwlock);
+303 
+304   // Find timer
+305   timer_record_t *timer = NULL;
+306   HASH_FIND_STR(g_timer_manager.timers, name, timer);
 307 
-308   // Calculate elapsed time in nanoseconds for maximum precision
-309   uint64_t end_ticks = stm_now();
-310   uint64_t elapsed_ticks = stm_diff(end_ticks, timer-&gt;start_ticks);
-311   double elapsed_ns = stm_ns(elapsed_ticks);
-312 
-313   // Format duration for human-readable logging
-314   char duration_str[32];
-315   time_pretty((uint64_t)elapsed_ns, -1, duration_str, sizeof(duration_str));
-316 
-317   // Log the result (dev level - only shown with --verbose)
-318   log_dev(&quot;Timer '%s': %s&quot;, name, duration_str);
-319 
-320   // Save pointers to free BEFORE removing from hashtable
-321   char *timer_name = timer-&gt;name;
+308   if (!timer) {
+309     rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+310     log_dev(&quot;Timer '%s' not found (may have already been stopped)&quot;, name);
+311     return -1.0;
+312   }
+313 
+314   // Calculate elapsed time in nanoseconds for maximum precision
+315   uint64_t end_ticks = stm_now();
+316   uint64_t elapsed_ticks = stm_diff(end_ticks, timer-&gt;start_ticks);
+317   double elapsed_ns = stm_ns(elapsed_ticks);
+318 
+319   // Format duration for human-readable logging
+320   char duration_str[32];
+321   time_pretty((uint64_t)elapsed_ns, -1, duration_str, sizeof(duration_str));
 322 
-323   // Remove from hashtable (HASH_DEL only removes from hash, doesn't free memory)
-324   HASH_DEL(g_timer_manager.timers, timer);
+323   // Log the result (dev level - only shown with --verbose)
+324   log_dev(&quot;Timer '%s': %s&quot;, name, duration_str);
 325 
-326   // Free timer-&gt;name first (this was allocated separately)
-327   SAFE_FREE(timer_name);
+326   // Save pointers to free BEFORE removing from hashtable
+327   char *timer_name = timer-&gt;name;
 328 
-329   // Nullify the timer-&gt;name field so debug_free doesn't try to access it
-330   // when freeing the timer structure itself
-331   timer-&gt;name = NULL;
-332 
-333   // Free the timer record itself
-334   SAFE_FREE(timer);
-335 
-336   rwlock_wrunlock(&amp;g_timer_manager.rwlock);
-337   return elapsed_ns; // Return nanoseconds
-338 }</pre>
+329   // Remove from hashtable (HASH_DEL only removes from hash, doesn't free memory)
+330   HASH_DEL(g_timer_manager.timers, timer);
+331 
+332   // Free timer-&gt;name first (this was allocated separately)
+333   SAFE_FREE(timer_name);
+334 
+335   // Nullify the timer-&gt;name field so debug_free doesn't try to access it
+336   // when freeing the timer structure itself
+337   timer-&gt;name = NULL;
+338 
+339   // Free the timer record itself
+340   SAFE_FREE(timer);
+341 
+342   rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+343   return elapsed_ns; // Return nanoseconds
+344 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
@@ -2220,33 +2226,33 @@ uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
 <p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
 <p class="Pp">Cleanup the timing system. Frees all timer records and destroys
     mutex. Should be called at program exit.</p>
-<p class="Pp">Definition at line <b>207</b> of file <b>util/time.c</b>.</p>
-<pre>207                                 {
-208   if (!lifecycle_is_initialized(&amp;g_timer_manager.lifecycle)) {
-209     return;
-210   }
-211 
-212   rwlock_wrlock(&amp;g_timer_manager.rwlock);
-213 
-214   // Free all timer records
-215   int timer_count = 0;
-216   timer_record_t *current, *tmp;
-217   HASH_ITER(hh, g_timer_manager.timers, current, tmp) {
-218     HASH_DEL(g_timer_manager.timers, current);
-219     SAFE_FREE(current-&gt;name);
-220     SAFE_FREE(current);
-221     timer_count++;
-222   }
-223 
-224   g_timer_manager.timers = NULL;
-225 
-226   rwlock_wrunlock(&amp;g_timer_manager.rwlock);
-227 
-228   /* Shutdown lifecycle and destroy rwlock together */
-229   lifecycle_shutdown(&amp;g_timer_manager.lifecycle);
-230 
-231   log_debug(&quot;Timer system cleaned up (freed %d timers)&quot;, timer_count);
-232 }</pre>
+<p class="Pp">Definition at line <b>213</b> of file <b>util/time.c</b>.</p>
+<pre>213                                 {
+214   if (!lifecycle_is_initialized(&amp;g_timer_manager.lifecycle)) {
+215     return;
+216   }
+217 
+218   rwlock_wrlock(&amp;g_timer_manager.rwlock);
+219 
+220   // Free all timer records
+221   int timer_count = 0;
+222   timer_record_t *current, *tmp;
+223   HASH_ITER(hh, g_timer_manager.timers, current, tmp) {
+224     HASH_DEL(g_timer_manager.timers, current);
+225     SAFE_FREE(current-&gt;name);
+226     SAFE_FREE(current);
+227     timer_count++;
+228   }
+229 
+230   g_timer_manager.timers = NULL;
+231 
+232   rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+233 
+234   /* Shutdown lifecycle and destroy rwlock together */
+235   lifecycle_shutdown(&amp;g_timer_manager.lifecycle);
+236 
+237   log_debug(&quot;Timer system cleaned up (freed %d timers)&quot;, timer_count);
+238 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_is_initialized()</b>,
@@ -2263,28 +2269,28 @@ uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on failure</div>
-<p class="Pp">Definition at line <b>185</b> of file <b>util/time.c</b>.</p>
-<pre>185                              {
-186   if (lifecycle_is_initialized(&amp;g_timer_manager.lifecycle)) {
-187     return true;
-188   }
-189 
-190   // Initialize sokol_time
-191   stm_setup();
-192 
-193   // Initialize rwlock and lifecycle together
-194   g_timer_manager.lifecycle.sync_type = LIFECYCLE_SYNC_RWLOCK;
-195   g_timer_manager.lifecycle.sync.rwlock = &amp;g_timer_manager.rwlock;
-196   if (!lifecycle_init(&amp;g_timer_manager.lifecycle, &quot;timer_manager&quot;)) {
-197     SET_ERRNO(ERROR_PLATFORM_INIT, &quot;Failed to initialize timer system (already initialized by another thread)&quot;);
-198     return true; // Another thread already initialized it
-199   }
-200 
-201   g_timer_manager.timers = NULL;
-202 
-203   log_dev(&quot;Timer system initialized&quot;);
-204   return true;
-205 }</pre>
+<p class="Pp">Definition at line <b>191</b> of file <b>util/time.c</b>.</p>
+<pre>191                              {
+192   if (lifecycle_is_initialized(&amp;g_timer_manager.lifecycle)) {
+193     return true;
+194   }
+195 
+196   // Initialize sokol_time
+197   stm_setup();
+198 
+199   // Initialize rwlock and lifecycle together
+200   g_timer_manager.lifecycle.sync_type = LIFECYCLE_SYNC_RWLOCK;
+201   g_timer_manager.lifecycle.sync.rwlock = &amp;g_timer_manager.rwlock;
+202   if (!lifecycle_init(&amp;g_timer_manager.lifecycle, &quot;timer_manager&quot;)) {
+203     SET_ERRNO(ERROR_PLATFORM_INIT, &quot;Failed to initialize timer system (already initialized by another thread)&quot;);
+204     return true; // Another thread already initialized it
+205   }
+206 
+207   g_timer_manager.timers = NULL;
+208 
+209   log_dev(&quot;Timer system initialized&quot;);
+210   return true;
+211 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_PLATFORM_INIT</b>, <b>lifecycle_init()</b>,

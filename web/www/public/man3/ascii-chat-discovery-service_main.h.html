@@ -66,389 +66,396 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Exit code (0 = success, non-zero = error)</div>
-<p class="Pp">Definition at line <b>82</b> of file
+<p class="Pp">Definition at line <b>86</b> of file
     <b>discovery-service/main.c</b>.</p>
-<pre>82                     {
-83   asciichat_error_t result;
-84 
-85   // Handle keepawake: check for mutual exclusivity and apply mode default
-86   // Discovery-service default: keepawake DISABLED (use --keepawake to enable)
-87   if (GET_OPTION(enable_keepawake) &amp;&amp; GET_OPTION(disable_keepawake)) {
-88     log_error(&quot;--keepawake and --no-keepawake are mutually exclusive&quot;);
-89     return ERROR_INVALID_PARAM;
-90   }
-91   if (GET_OPTION(enable_keepawake)) {
-92     (void)platform_enable_keepawake();
-93   }
-94 
-95   // Increase file descriptor limit for many concurrent connections
-96 #ifdef __linux__
-97   struct rlimit rl = {.rlim_cur = 65536, .rlim_max = 65536};
-98   if (setrlimit(RLIMIT_NOFILE, &amp;rl) &lt; 0) {
-99     log_warn(&quot;couldn't raise fd limit: %s&quot;, strerror(errno));
-100   }
-101 #elif defined(__APPLE__)
-102   struct rlimit rl = {.rlim_cur = 10240, .rlim_max = RLIM_INFINITY};
-103   setrlimit(RLIMIT_NOFILE, &amp;rl);
-104 #endif
-105 
-106   // Options already parsed and shared initialization complete (done by main.c)
-107   const options_t *opts = options_get();
-108 
-109   log_info(&quot;ascii-chat Discovery Service (acds) starting...&quot;);
-110   log_info(&quot;Version: %s (%s, %s)&quot;, ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
-111 
-112   // Initialize session string generator (libsodium)
-113   result = acds_string_init();
-114   if (result != ASCIICHAT_OK) {
-115     log_error(&quot;Failed to initialize session string generator&quot;);
-116     return result;
-117   }
-118 
-119   // Load or generate identity keys
-120   uint8_t public_key[32];
-121   uint8_t secret_key[64];
+<pre>86                     {
+87   asciichat_error_t result;
+88 
+89   // Handle keepawake: check for mutual exclusivity and apply mode default
+90   // Discovery-service default: keepawake DISABLED (use --keepawake to enable)
+91   if (GET_OPTION(enable_keepawake) &amp;&amp; GET_OPTION(disable_keepawake)) {
+92     log_error(&quot;--keepawake and --no-keepawake are mutually exclusive&quot;);
+93     return ERROR_INVALID_PARAM;
+94   }
+95   if (GET_OPTION(enable_keepawake)) {
+96     (void)platform_enable_keepawake();
+97   }
+98 
+99   // Increase file descriptor limit for many concurrent connections
+100 #ifdef __linux__
+101   struct rlimit rl = {.rlim_cur = 65536, .rlim_max = 65536};
+102   if (setrlimit(RLIMIT_NOFILE, &amp;rl) &lt; 0) {
+103     log_warn(&quot;couldn't raise fd limit: %s&quot;, strerror(errno));
+104   }
+105 #elif defined(__APPLE__)
+106   struct rlimit rl = {.rlim_cur = 10240, .rlim_max = RLIM_INFINITY};
+107   setrlimit(RLIMIT_NOFILE, &amp;rl);
+108 #endif
+109 
+110   // Options already parsed and shared initialization complete (done by main.c)
+111   const options_t *opts = options_get();
+112 
+113   log_info(&quot;ascii-chat Discovery Service (acds) starting...&quot;);
+114   log_info(&quot;Version: %s (%s, %s)&quot;, ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
+115 
+116   // Initialize session string generator (libsodium)
+117   result = acds_string_init();
+118   if (result != ASCIICHAT_OK) {
+119     log_error(&quot;Failed to initialize session string generator&quot;);
+120     return result;
+121   }
 122 
-123   const char *acds_key_path = GET_OPTION(encrypt_key);
-124   // If no key provided, use default path in config directory
-125   char default_key_path[PLATFORM_MAX_PATH_LENGTH] = {0};
-126   if (!acds_key_path || acds_key_path[0] == '\0') {
-127     const char *config_dir = get_config_dir();
-128     if (config_dir) {
-129       safe_snprintf(default_key_path, sizeof(default_key_path), &quot;%sdiscovery_identity&quot;, config_dir);
-130       acds_key_path = default_key_path;
-131     }
-132   }
-133   log_info(&quot;Loading identity key from %s&quot;, acds_key_path);
-134   result = acds_identity_load(acds_key_path, public_key, secret_key);
-135 
-136   if (result != ASCIICHAT_OK) {
-137     log_info(&quot;Identity key not found, generating new key...&quot;);
-138 
-139     result = acds_identity_generate(public_key, secret_key);
-140     if (result != ASCIICHAT_OK) {
-141       log_error(&quot;Failed to generate identity key&quot;);
-142       return result;
-143     }
-144 
-145     result = acds_identity_save(acds_key_path, public_key, secret_key);
-146     if (result != ASCIICHAT_OK) {
-147       log_error(&quot;Failed to save identity key to %s&quot;, acds_key_path);
-148       return result;
-149     }
-150 
-151     log_info(&quot;Saved new identity key to %s&quot;, acds_key_path);
-152   }
-153 
-154   // Display server fingerprint
-155   char fingerprint[65];
-156   acds_identity_fingerprint(public_key, fingerprint);
-157   log_info(&quot;Discovery server identity: SHA256:%s&quot;, fingerprint);
-158   char msg[256];
-159   safe_snprintf(msg, sizeof(msg), &quot;&#x1F511; Server fingerprint: SHA256:%s&quot;, fingerprint);
-160   log_console(LOG_INFO, msg);
-161 
-162   // Create config from options for server initialization
-163   acds_config_t config;
-164   // Read validated port option (discovery-service listens on 'port', not 'acds_port')
-165   int port_num = GET_OPTION(port);
-166   if (port_num &lt; 1 || port_num &gt; 65535) {
-167     log_error(&quot;Invalid port: %d (must be 1-65535)&quot;, port_num);
-168     return ERROR_INVALID_PARAM;
-169   }
-170   config.port = port_num;
-171 
-172   const char *address = opts &amp;&amp; opts-&gt;address[0] != '\0' ? opts-&gt;address : &quot;127.0.0.1&quot;;
-173   const char *address6 = opts &amp;&amp; opts-&gt;address6[0] != '\0' ? opts-&gt;address6 : &quot;::1&quot;;
-174   const char *log_file = opts &amp;&amp; opts-&gt;log_file[0] != '\0' ? opts-&gt;log_file : &quot;acds.log&quot;;
-175   SAFE_STRNCPY(config.address, address, sizeof(config.address));
-176   SAFE_STRNCPY(config.address6, address6, sizeof(config.address6));
-177   SAFE_STRNCPY(config.database_path, GET_OPTION(discovery_database_path), sizeof(config.database_path));
-178   SAFE_STRNCPY(config.key_path, acds_key_path, sizeof(config.key_path));
-179   SAFE_STRNCPY(config.log_file, log_file, sizeof(config.log_file));
-180   config.log_level = GET_OPTION(log_level);
-181   config.require_server_identity = GET_OPTION(require_server_identity) != 0;
-182   config.require_client_identity = GET_OPTION(require_client_identity) != 0;
-183 
-184   // Log security policy
-185   if (config.require_server_identity) {
-186     log_info(&quot;Security: Requiring signed identity from servers creating sessions&quot;);
-187   }
-188   if (config.require_client_identity) {
-189     log_info(&quot;Security: Requiring signed identity from clients joining sessions&quot;);
-190   }
-191 
-192   // Parse STUN servers from comma-separated list
-193   config.stun_count = 0;
-194   memset(config.stun_servers, 0, sizeof(config.stun_servers));
-195   const char *stun_servers_str = GET_OPTION(stun_servers);
-196   if (stun_servers_str &amp;&amp; stun_servers_str[0] != '\0') {
-197     char stun_copy[OPTIONS_BUFF_SIZE];
-198     SAFE_STRNCPY(stun_copy, stun_servers_str, sizeof(stun_copy));
-199 
-200     char *saveptr = NULL;
-201     char *token = platform_strtok_r(stun_copy, &quot;,&quot;, &amp;saveptr);
-202     while (token &amp;&amp; config.stun_count &lt; 4) {
-203       // Trim whitespace
-204       while (*token == ' ' || *token == '\t')
-205         token++;
-206       size_t len = strlen(token);
-207       while (len &gt; 0 &amp;&amp; (token[len - 1] == ' ' || token[len - 1] == '\t')) {
-208         token[--len] = '\0';
-209       }
-210 
-211       if (len &gt; 0 &amp;&amp; len &lt; sizeof(config.stun_servers[0].host)) {
-212         config.stun_servers[config.stun_count].host_len = (uint8_t)len;
-213         SAFE_STRNCPY(config.stun_servers[config.stun_count].host, token,
-214                      sizeof(config.stun_servers[config.stun_count].host));
-215         log_info(&quot;Added STUN server: %s&quot;, token);
-216         config.stun_count++;
-217       } else if (len &gt; 0) {
-218         log_warn(&quot;STUN server URL too long (max 63 chars): %s&quot;, token);
-219       }
-220 
-221       token = platform_strtok_r(NULL, &quot;,&quot;, &amp;saveptr);
-222     }
-223   }
+123   // Load or generate identity keys
+124   uint8_t public_key[32];
+125   uint8_t secret_key[64];
+126 
+127   const char *acds_key_path = GET_OPTION(encrypt_key);
+128   // If no key provided, use default path in config directory
+129   char default_key_path[PLATFORM_MAX_PATH_LENGTH] = {0};
+130   if (!acds_key_path || acds_key_path[0] == '\0') {
+131     const char *config_dir = get_config_dir();
+132     if (config_dir) {
+133       safe_snprintf(default_key_path, sizeof(default_key_path), &quot;%sdiscovery_identity&quot;, config_dir);
+134       acds_key_path = default_key_path;
+135     }
+136   }
+137   log_info(&quot;Loading identity key from %s&quot;, acds_key_path);
+138   result = acds_identity_load(acds_key_path, public_key, secret_key);
+139 
+140   if (result != ASCIICHAT_OK) {
+141     log_info(&quot;Identity key not found, generating new key...&quot;);
+142 
+143     result = acds_identity_generate(public_key, secret_key);
+144     if (result != ASCIICHAT_OK) {
+145       log_error(&quot;Failed to generate identity key&quot;);
+146       return result;
+147     }
+148 
+149     result = acds_identity_save(acds_key_path, public_key, secret_key);
+150     if (result != ASCIICHAT_OK) {
+151       log_error(&quot;Failed to save identity key to %s&quot;, acds_key_path);
+152       return result;
+153     }
+154 
+155     log_info(&quot;Saved new identity key to %s&quot;, acds_key_path);
+156   }
+157 
+158   // Display server fingerprint
+159   char fingerprint[65];
+160   acds_identity_fingerprint(public_key, fingerprint);
+161   log_info(&quot;Discovery server identity: SHA256:%s&quot;, fingerprint);
+162   char msg[256];
+163   safe_snprintf(msg, sizeof(msg), &quot;&#x1F511; Server fingerprint: SHA256:%s&quot;, fingerprint);
+164   log_console(LOG_INFO, msg);
+165 
+166   // Create config from options for server initialization
+167   acds_config_t config;
+168   // Read validated port option (discovery-service listens on 'port', not 'acds_port')
+169   int port_num = GET_OPTION(port);
+170   if (port_num &lt; 1 || port_num &gt; 65535) {
+171     log_error(&quot;Invalid port: %d (must be 1-65535)&quot;, port_num);
+172     return ERROR_INVALID_PARAM;
+173   }
+174   config.port = port_num;
+175 
+176   const char *address = opts &amp;&amp; opts-&gt;address[0] != '\0' ? opts-&gt;address : &quot;127.0.0.1&quot;;
+177   const char *address6 = opts &amp;&amp; opts-&gt;address6[0] != '\0' ? opts-&gt;address6 : &quot;::1&quot;;
+178   const char *log_file = opts &amp;&amp; opts-&gt;log_file[0] != '\0' ? opts-&gt;log_file : &quot;acds.log&quot;;
+179   SAFE_STRNCPY(config.address, address, sizeof(config.address));
+180   SAFE_STRNCPY(config.address6, address6, sizeof(config.address6));
+181   SAFE_STRNCPY(config.database_path, GET_OPTION(discovery_database_path), sizeof(config.database_path));
+182   SAFE_STRNCPY(config.key_path, acds_key_path, sizeof(config.key_path));
+183   SAFE_STRNCPY(config.log_file, log_file, sizeof(config.log_file));
+184   config.log_level = GET_OPTION(log_level);
+185   config.require_server_identity = GET_OPTION(require_server_identity) != 0;
+186   config.require_client_identity = GET_OPTION(require_client_identity) != 0;
+187 
+188   // Log security policy
+189   if (config.require_server_identity) {
+190     log_info(&quot;Security: Requiring signed identity from servers creating sessions&quot;);
+191   }
+192   if (config.require_client_identity) {
+193     log_info(&quot;Security: Requiring signed identity from clients joining sessions&quot;);
+194   }
+195 
+196   // Parse STUN servers from comma-separated list
+197   config.stun_count = 0;
+198   memset(config.stun_servers, 0, sizeof(config.stun_servers));
+199   const char *stun_servers_str = GET_OPTION(stun_servers);
+200   if (stun_servers_str &amp;&amp; stun_servers_str[0] != '\0') {
+201     char stun_copy[OPTIONS_BUFF_SIZE];
+202     SAFE_STRNCPY(stun_copy, stun_servers_str, sizeof(stun_copy));
+203 
+204     char *saveptr = NULL;
+205     char *token = platform_strtok_r(stun_copy, &quot;,&quot;, &amp;saveptr);
+206     while (token &amp;&amp; config.stun_count &lt; 4) {
+207       // Trim whitespace
+208       while (*token == ' ' || *token == '\t')
+209         token++;
+210       size_t len = strlen(token);
+211       while (len &gt; 0 &amp;&amp; (token[len - 1] == ' ' || token[len - 1] == '\t')) {
+212         token[--len] = '\0';
+213       }
+214 
+215       if (len &gt; 0 &amp;&amp; len &lt; sizeof(config.stun_servers[0].host)) {
+216         config.stun_servers[config.stun_count].host_len = (uint8_t)len;
+217         SAFE_STRNCPY(config.stun_servers[config.stun_count].host, token,
+218                      sizeof(config.stun_servers[config.stun_count].host));
+219         log_info(&quot;Added STUN server: %s&quot;, token);
+220         config.stun_count++;
+221       } else if (len &gt; 0) {
+222         log_warn(&quot;STUN server URL too long (max 63 chars): %s&quot;, token);
+223       }
 224 
-225   // Parse TURN servers from comma-separated list
-226   config.turn_count = 0;
-227   memset(config.turn_servers, 0, sizeof(config.turn_servers));
-228   const char *turn_servers_str = GET_OPTION(turn_servers);
-229   const char *turn_username_str = GET_OPTION(turn_username);
-230   const char *turn_credential_str = GET_OPTION(turn_credential);
-231 
-232   if (turn_servers_str &amp;&amp; turn_servers_str[0] != '\0') {
-233     char turn_copy[OPTIONS_BUFF_SIZE];
-234     SAFE_STRNCPY(turn_copy, turn_servers_str, sizeof(turn_copy));
+225       token = platform_strtok_r(NULL, &quot;,&quot;, &amp;saveptr);
+226     }
+227   }
+228 
+229   // Parse TURN servers from comma-separated list
+230   config.turn_count = 0;
+231   memset(config.turn_servers, 0, sizeof(config.turn_servers));
+232   const char *turn_servers_str = GET_OPTION(turn_servers);
+233   const char *turn_username_str = GET_OPTION(turn_username);
+234   const char *turn_credential_str = GET_OPTION(turn_credential);
 235 
-236     char *saveptr = NULL;
-237     char *token = platform_strtok_r(turn_copy, &quot;,&quot;, &amp;saveptr);
-238     while (token &amp;&amp; config.turn_count &lt; 4) {
-239       // Trim whitespace
-240       while (*token == ' ' || *token == '\t')
-241         token++;
-242       size_t len = strlen(token);
-243       while (len &gt; 0 &amp;&amp; (token[len - 1] == ' ' || token[len - 1] == '\t')) {
-244         token[--len] = '\0';
-245       }
-246 
-247       if (len &gt; 0 &amp;&amp; len &lt; sizeof(config.turn_servers[0].url)) {
-248         config.turn_servers[config.turn_count].url_len = (uint8_t)len;
-249         SAFE_STRNCPY(config.turn_servers[config.turn_count].url, token,
-250                      sizeof(config.turn_servers[config.turn_count].url));
-251 
-252         // Set username if provided
-253         if (turn_username_str &amp;&amp; turn_username_str[0] != '\0') {
-254           size_t username_len = strlen(turn_username_str);
-255           if (username_len &lt; sizeof(config.turn_servers[0].username)) {
-256             config.turn_servers[config.turn_count].username_len = (uint8_t)username_len;
-257             SAFE_STRNCPY(config.turn_servers[config.turn_count].username, turn_username_str,
-258                          sizeof(config.turn_servers[config.turn_count].username));
-259           }
-260         }
-261 
-262         // Set credential if provided
-263         if (turn_credential_str &amp;&amp; turn_credential_str[0] != '\0') {
-264           size_t credential_len = strlen(turn_credential_str);
-265           if (credential_len &lt; sizeof(config.turn_servers[0].credential)) {
-266             config.turn_servers[config.turn_count].credential_len = (uint8_t)credential_len;
-267             SAFE_STRNCPY(config.turn_servers[config.turn_count].credential, turn_credential_str,
-268                          sizeof(config.turn_servers[config.turn_count].credential));
-269           }
-270         }
-271 
-272         log_info(&quot;Added TURN server: %s (username: %s)&quot;, token,
-273                  turn_username_str &amp;&amp; turn_username_str[0] ? turn_username_str : &quot;&lt;none&gt;&quot;);
-274         config.turn_count++;
-275       } else if (len &gt; 0) {
-276         log_warn(&quot;TURN server URL too long (max 63 chars): %s&quot;, token);
-277       }
-278 
-279       token = platform_strtok_r(NULL, &quot;,&quot;, &amp;saveptr);
-280     }
-281   }
+236   if (turn_servers_str &amp;&amp; turn_servers_str[0] != '\0') {
+237     char turn_copy[OPTIONS_BUFF_SIZE];
+238     SAFE_STRNCPY(turn_copy, turn_servers_str, sizeof(turn_copy));
+239 
+240     char *saveptr = NULL;
+241     char *token = platform_strtok_r(turn_copy, &quot;,&quot;, &amp;saveptr);
+242     while (token &amp;&amp; config.turn_count &lt; 4) {
+243       // Trim whitespace
+244       while (*token == ' ' || *token == '\t')
+245         token++;
+246       size_t len = strlen(token);
+247       while (len &gt; 0 &amp;&amp; (token[len - 1] == ' ' || token[len - 1] == '\t')) {
+248         token[--len] = '\0';
+249       }
+250 
+251       if (len &gt; 0 &amp;&amp; len &lt; sizeof(config.turn_servers[0].url)) {
+252         config.turn_servers[config.turn_count].url_len = (uint8_t)len;
+253         SAFE_STRNCPY(config.turn_servers[config.turn_count].url, token,
+254                      sizeof(config.turn_servers[config.turn_count].url));
+255 
+256         // Set username if provided
+257         if (turn_username_str &amp;&amp; turn_username_str[0] != '\0') {
+258           size_t username_len = strlen(turn_username_str);
+259           if (username_len &lt; sizeof(config.turn_servers[0].username)) {
+260             config.turn_servers[config.turn_count].username_len = (uint8_t)username_len;
+261             SAFE_STRNCPY(config.turn_servers[config.turn_count].username, turn_username_str,
+262                          sizeof(config.turn_servers[config.turn_count].username));
+263           }
+264         }
+265 
+266         // Set credential if provided
+267         if (turn_credential_str &amp;&amp; turn_credential_str[0] != '\0') {
+268           size_t credential_len = strlen(turn_credential_str);
+269           if (credential_len &lt; sizeof(config.turn_servers[0].credential)) {
+270             config.turn_servers[config.turn_count].credential_len = (uint8_t)credential_len;
+271             SAFE_STRNCPY(config.turn_servers[config.turn_count].credential, turn_credential_str,
+272                          sizeof(config.turn_servers[config.turn_count].credential));
+273           }
+274         }
+275 
+276         log_info(&quot;Added TURN server: %s (username: %s)&quot;, token,
+277                  turn_username_str &amp;&amp; turn_username_str[0] ? turn_username_str : &quot;&lt;none&gt;&quot;);
+278         config.turn_count++;
+279       } else if (len &gt; 0) {
+280         log_warn(&quot;TURN server URL too long (max 63 chars): %s&quot;, token);
+281       }
 282 
-283   // Copy TURN secret for dynamic credential generation
-284   const char *turn_secret_str = GET_OPTION(turn_secret);
-285   if (turn_secret_str &amp;&amp; turn_secret_str[0] != '\0') {
-286     SAFE_STRNCPY(config.turn_secret, turn_secret_str, sizeof(config.turn_secret));
-287     log_info(&quot;TURN dynamic credential generation enabled&quot;);
-288   } else {
-289     config.turn_secret[0] = '\0';
-290   }
-291 
-292   // Initialize server
-293   acds_server_t server;
-294   memset(&amp;server, 0, sizeof(server));
-295   g_server = &amp;server;
-296 
-297   result = acds_server_init(&amp;server, &amp;config);
-298   if (result != ASCIICHAT_OK) {
-299     log_error(&quot;Server initialization failed&quot;);
-300     g_server = NULL;
-301     return result;
-302   }
-303 
-304   // Initialize WebSocket server (for browser clients)
-305   websocket_server_config_t ws_config = {
-306       .port = GET_OPTION(websocket_port),
-307       .client_handler = acds_websocket_client_handler,
-308       .user_data = &amp;server,
-309       .tls_cert_path = GET_OPTION(websocket_tls_cert),
-310       .tls_key_path = GET_OPTION(websocket_tls_key),
-311   };
-312 
-313   memset(&amp;g_websocket_server, 0, sizeof(g_websocket_server));
-314   asciichat_error_t ws_init_result = websocket_server_init(&amp;g_websocket_server, &amp;ws_config);
-315   if (ws_init_result != ASCIICHAT_OK) {
-316     log_warn(&quot;Failed to initialize WebSocket server - browser clients will not be supported&quot;);
-317   } else {
-318     log_info(&quot;WebSocket server initialized on port %d&quot;, GET_OPTION(websocket_port));
-319     // Start WebSocket event loop in background thread (services lws callbacks)
-320     if (asciichat_thread_create(&amp;g_ws_thread, &quot;websocket_event_loop&quot;, websocket_server_thread_wrapper,
-321                                 &amp;g_websocket_server) == 0) {
-322       g_ws_thread_started = true;
-323       log_info(&quot;WebSocket event loop thread started&quot;);
-324     } else {
-325       log_error(&quot;Failed to start WebSocket event loop thread&quot;);
-326     }
-327   }
-328 
-329   // Initialize status tracking variables
-330   g_discovery_start_time = time(NULL);
-331   g_last_status_update = g_discovery_start_time;
+283       token = platform_strtok_r(NULL, &quot;,&quot;, &amp;saveptr);
+284     }
+285   }
+286 
+287   // Copy TURN secret for dynamic credential generation
+288   const char *turn_secret_str = GET_OPTION(turn_secret);
+289   if (turn_secret_str &amp;&amp; turn_secret_str[0] != '\0') {
+290     SAFE_STRNCPY(config.turn_secret, turn_secret_str, sizeof(config.turn_secret));
+291     log_info(&quot;TURN dynamic credential generation enabled&quot;);
+292   } else {
+293     config.turn_secret[0] = '\0';
+294   }
+295 
+296   // Initialize server
+297   acds_server_t server;
+298   memset(&amp;server, 0, sizeof(server));
+299   g_server = &amp;server;
+300 
+301   result = acds_server_init(&amp;server, &amp;config);
+302   if (result != ASCIICHAT_OK) {
+303     log_error(&quot;Server initialization failed&quot;);
+304     g_server = NULL;
+305     return result;
+306   }
+307 
+308   // Initialize WebSocket server (for browser clients)
+309   websocket_server_config_t ws_config = {
+310       .port = GET_OPTION(websocket_port),
+311       .client_handler = acds_websocket_client_handler,
+312       .user_data = &amp;server,
+313       .tls_cert_path = GET_OPTION(websocket_tls_cert),
+314       .tls_key_path = GET_OPTION(websocket_tls_key),
+315   };
+316 
+317   memset(&amp;g_websocket_server, 0, sizeof(g_websocket_server));
+318   asciichat_error_t ws_init_result = websocket_server_init(&amp;g_websocket_server, &amp;ws_config);
+319   if (ws_init_result != ASCIICHAT_OK) {
+320     log_warn(&quot;Failed to initialize WebSocket server - browser clients will not be supported&quot;);
+321   } else {
+322     log_info(&quot;WebSocket server initialized on port %d&quot;, GET_OPTION(websocket_port));
+323     // Start WebSocket event loop in background thread (services lws callbacks)
+324     if (asciichat_thread_create(&amp;g_ws_thread, &quot;websocket_event_loop&quot;, websocket_server_thread_wrapper,
+325                                 &amp;g_websocket_server) == 0) {
+326       g_ws_thread_started = true;
+327       log_info(&quot;WebSocket event loop thread started&quot;);
+328     } else {
+329       log_error(&quot;Failed to start WebSocket event loop thread&quot;);
+330     }
+331   }
 332 
-333   // Check if shutdown was requested during initialization
-334   if (acds_should_exit()) {
-335     log_info(&quot;Shutdown signal received during initialization, skipping server startup&quot;);
-336     return 0;
-337   }
-338 
-339   // =========================================================================
-340   // UPnP Port Mapping (Quick Win for Direct TCP)
-341   // =========================================================================
-342   // Try to open port via UPnP so direct TCP works for ~70% of home users.
-343   // If this fails, clients fall back to WebRTC automatically - not fatal.
-344   //
-345   // Strategy:
-346   //   1. UPnP (works on ~90% of home routers)
-347   //   2. NAT-PMP fallback (Apple routers)
-348   //   3. If both fail: use ACDS + WebRTC (reliable, but slightly higher latency)
-349 
-350   // Check again before expensive UPnP initialization (might timeout trying to reach router)
-351   if (acds_should_exit()) {
-352     log_info(&quot;Shutdown signal received before UPnP initialization&quot;);
-353     result = ASCIICHAT_OK;
-354     goto cleanup_resources;
-355   }
-356 
-357   if (GET_OPTION(enable_upnp)) {
-358     asciichat_error_t upnp_result = nat_upnp_open(config.port, &quot;ascii-chat ACDS&quot;, &amp;g_upnp_ctx);
-359 
-360     if (upnp_result == ASCIICHAT_OK &amp;&amp; g_upnp_ctx) {
-361       char public_addr[22];
-362       if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
-363         char msg[256];
-364         safe_snprintf(msg, sizeof(msg), &quot;&#x1F310; Public endpoint: %s (direct TCP)&quot;, public_addr);
-365         log_console(LOG_INFO, msg);
-366         log_info(&quot;UPnP: Port mapping successful, public endpoint: %s&quot;, public_addr);
-367       }
-368     } else {
-369       log_info(&quot;UPnP: Port mapping unavailable or failed - will use WebRTC fallback&quot;);
-370       log_console(LOG_INFO, &quot;&#x1F4E1; Clients behind strict NATs will use WebRTC fallback&quot;);
-371     }
-372   } else {
-373     log_debug(&quot;UPnP: Disabled (use --upnp to enable automatic port mapping)&quot;);
-374   }
-375 
-376   // Check if shutdown was requested before initializing mDNS
-377   if (acds_should_exit()) {
-378     log_info(&quot;Shutdown signal received before mDNS initialization&quot;);
-379     result = ASCIICHAT_OK;
-380     goto cleanup_resources;
-381   }
-382 
-383   // Initialize mDNS for LAN discovery of ACDS server
-384   // This allows clients on the local network to discover the discovery service itself
-385 
-386   log_debug(&quot;Initializing mDNS for ACDS LAN service discovery...&quot;);
-387   g_mdns_ctx = asciichat_mdns_init();
-388   if (!g_mdns_ctx) {
-389     LOG_ERRNO_IF_SET(&quot;Failed to initialize mDNS (non-fatal, LAN discovery disabled)&quot;);
-390     log_warn(&quot;mDNS disabled for ACDS - LAN discovery of discovery service will not be available&quot;);
-391   } else {
-392     // Advertise ACDS service on the LAN
-393     // Build hostname if available
-394     char hostname[256] = {0};
-395     gethostname(hostname, sizeof(hostname) - 1);
-396 
-397     asciichat_mdns_service_t service = {
-398         .name = &quot;ascii-chat-Discovery-Service&quot;,
-399         .type = &quot;_ascii-chat-discovery-service._tcp&quot;,
-400         .host = hostname,
-401         .port = config.port,
-402         .txt_records = NULL,
-403         .txt_count = 0,
-404     };
-405 
-406     asciichat_error_t mdns_advertise_result = asciichat_mdns_advertise(g_mdns_ctx, &amp;service);
-407     if (mdns_advertise_result != ASCIICHAT_OK) {
-408       LOG_ERRNO_IF_SET(&quot;Failed to advertise ACDS mDNS service&quot;);
-409       log_warn(&quot;mDNS advertising failed for ACDS - LAN discovery disabled&quot;);
-410       asciichat_mdns_destroy(g_mdns_ctx);
-411       g_mdns_ctx = NULL;
-412     } else {
-413       log_console(LOG_INFO, &quot;&#x1F310; mDNS: ACDS advertised as '_ascii-chat-discovery-service._tcp.local' on LAN&quot;);
-414       log_info(&quot;mDNS: ACDS advertised as '_ascii-chat-discovery-service._tcp.local' (port=%d)&quot;, config.port);
-415     }
-416   }
-417 
-418   // Install signal handlers for clean shutdown
-419   signal(SIGINT, acds_handle_signal);
-420   signal(SIGTERM, acds_handle_signal);
+333   // Initialize status tracking variables
+334   g_discovery_start_time = time(NULL);
+335   g_last_status_update = g_discovery_start_time;
+336 
+337   // Check if shutdown was requested during initialization
+338   if (acds_should_exit()) {
+339     log_info(&quot;Shutdown signal received during initialization, skipping server startup&quot;);
+340     return 0;
+341   }
+342 
+343   // =========================================================================
+344   // UPnP Port Mapping (Quick Win for Direct TCP)
+345   // =========================================================================
+346   // Try to open port via UPnP so direct TCP works for ~70% of home users.
+347   // If this fails, clients fall back to WebRTC automatically - not fatal.
+348   //
+349   // Strategy:
+350   //   1. UPnP (works on ~90% of home routers)
+351   //   2. NAT-PMP fallback (Apple routers)
+352   //   3. If both fail: use ACDS + WebRTC (reliable, but slightly higher latency)
+353 
+354   // Check again before expensive UPnP initialization (might timeout trying to reach router)
+355   if (acds_should_exit()) {
+356     log_info(&quot;Shutdown signal received before UPnP initialization&quot;);
+357     result = ASCIICHAT_OK;
+358     goto cleanup_resources;
+359   }
+360 
+361   if (GET_OPTION(enable_upnp)) {
+362     asciichat_error_t upnp_result = nat_upnp_open(config.port, &quot;ascii-chat ACDS&quot;, &amp;g_upnp_ctx);
+363 
+364     if (upnp_result == ASCIICHAT_OK &amp;&amp; g_upnp_ctx) {
+365       char public_addr[22];
+366       if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
+367         char msg[256];
+368         safe_snprintf(msg, sizeof(msg), &quot;&#x1F310; Public endpoint: %s (direct TCP)&quot;, public_addr);
+369         log_console(LOG_INFO, msg);
+370         log_info(&quot;UPnP: Port mapping successful, public endpoint: %s&quot;, public_addr);
+371       }
+372     } else {
+373       log_info(&quot;UPnP: Port mapping unavailable or failed - will use WebRTC fallback&quot;);
+374       log_console(LOG_INFO, &quot;&#x1F4E1; Clients behind strict NATs will use WebRTC fallback&quot;);
+375     }
+376   } else {
+377     log_debug(&quot;UPnP: Disabled (use --upnp to enable automatic port mapping)&quot;);
+378   }
+379 
+380   // Check if shutdown was requested before initializing mDNS
+381   if (acds_should_exit()) {
+382     log_info(&quot;Shutdown signal received before mDNS initialization&quot;);
+383     result = ASCIICHAT_OK;
+384     goto cleanup_resources;
+385   }
+386 
+387   // Initialize mDNS for LAN discovery of ACDS server
+388   // This allows clients on the local network to discover the discovery service itself
+389 
+390   log_debug(&quot;Initializing mDNS for ACDS LAN service discovery...&quot;);
+391   g_mdns_ctx = asciichat_mdns_init();
+392   if (!g_mdns_ctx) {
+393     LOG_ERRNO_IF_SET(&quot;Failed to initialize mDNS (non-fatal, LAN discovery disabled)&quot;);
+394     log_warn(&quot;mDNS disabled for ACDS - LAN discovery of discovery service will not be available&quot;);
+395   } else {
+396     // Advertise ACDS service on the LAN
+397     // Build hostname if available
+398     char hostname[256] = {0};
+399     gethostname(hostname, sizeof(hostname) - 1);
+400 
+401     asciichat_mdns_service_t service = {
+402         .name = &quot;ascii-chat-Discovery-Service&quot;,
+403         .type = &quot;_ascii-chat-discovery-service._tcp&quot;,
+404         .host = hostname,
+405         .port = config.port,
+406         .txt_records = NULL,
+407         .txt_count = 0,
+408     };
+409 
+410     asciichat_error_t mdns_advertise_result = asciichat_mdns_advertise(g_mdns_ctx, &amp;service);
+411     if (mdns_advertise_result != ASCIICHAT_OK) {
+412       LOG_ERRNO_IF_SET(&quot;Failed to advertise ACDS mDNS service&quot;);
+413       log_warn(&quot;mDNS advertising failed for ACDS - LAN discovery disabled&quot;);
+414       asciichat_mdns_destroy(g_mdns_ctx);
+415       g_mdns_ctx = NULL;
+416     } else {
+417       log_console(LOG_INFO, &quot;&#x1F310; mDNS: ACDS advertised as '_ascii-chat-discovery-service._tcp.local' on LAN&quot;);
+418       log_info(&quot;mDNS: ACDS advertised as '_ascii-chat-discovery-service._tcp.local' (port=%d)&quot;, config.port);
+419     }
+420   }
 421 
-422 
-423   // Run server
-424   result = acds_server_run(&amp;server);
-425   if (result != ASCIICHAT_OK) {
-426     log_error(&quot;Server run failed&quot;);
-427   }
-428 
-429 cleanup_resources:
-430   // Cleanup
-431   // Disable keepawake before exit
-432   platform_disable_keepawake();
+422   // Install signal handlers for clean shutdown
+423   // Use sigaction with explicit flags to disable SA_RESTART - this ensures
+424   // select() returns EINTR instead of restarting, so the shutdown flag can be checked
+425   struct sigaction sa = {
+426     .sa_handler = acds_handle_signal,
+427     .sa_flags = 0  // No SA_RESTART - we want select() to return EINTR on signal
+428   };
+429   sigemptyset(&amp;sa.sa_mask);
+430   sigaction(SIGINT, &amp;sa, NULL);
+431   sigaction(SIGTERM, &amp;sa, NULL);
+432 
 433 
-434   log_info(&quot;Shutting down discovery server...&quot;);
-435   acds_server_shutdown(&amp;server);
-436   g_server = NULL;
-437 
-438   // Stop and join WebSocket event loop thread
-439   if (g_ws_thread_started) {
-440     atomic_store_bool(&amp;g_websocket_server.running, false);
-441     asciichat_thread_join(&amp;g_ws_thread, NULL);
-442     g_ws_thread_started = false;
-443   }
-444   websocket_server_destroy(&amp;g_websocket_server);
-445   log_debug(&quot;WebSocket server destroyed&quot;);
-446 
-447   // Clean up UPnP port mapping
-448   if (g_upnp_ctx) {
-449     nat_upnp_close(&amp;g_upnp_ctx);
-450     log_debug(&quot;UPnP port mapping closed&quot;);
-451   }
-452 
-453   // Clean up mDNS context
-454   if (g_mdns_ctx) {
-455     asciichat_mdns_destroy(g_mdns_ctx);
-456     g_mdns_ctx = NULL;
-457     log_debug(&quot;mDNS context shut down&quot;);
-458   }
-459 
-460   log_info(&quot;Discovery server stopped&quot;);
-461   return result;
-462 }</pre>
+434   // Run server
+435   result = acds_server_run(&amp;server);
+436   if (result != ASCIICHAT_OK) {
+437     log_error(&quot;Server run failed&quot;);
+438   }
+439 
+440 cleanup_resources:
+441   // Cleanup
+442   // Disable keepawake before exit
+443   platform_disable_keepawake();
+444 
+445   log_info(&quot;Shutting down discovery server...&quot;);
+446   acds_server_shutdown(&amp;server);
+447   g_server = NULL;
+448 
+449   // Stop and join WebSocket event loop thread
+450   if (g_ws_thread_started) {
+451     atomic_store_bool(&amp;g_websocket_server.running, false);
+452     asciichat_thread_join(&amp;g_ws_thread, NULL);
+453     g_ws_thread_started = false;
+454   }
+455   websocket_server_destroy(&amp;g_websocket_server);
+456   log_debug(&quot;WebSocket server destroyed&quot;);
+457 
+458   // Clean up UPnP port mapping
+459   if (g_upnp_ctx) {
+460     nat_upnp_close(&amp;g_upnp_ctx);
+461     log_debug(&quot;UPnP port mapping closed&quot;);
+462   }
+463 
+464   // Clean up mDNS context
+465   if (g_mdns_ctx) {
+466     asciichat_mdns_destroy(g_mdns_ctx);
+467     g_mdns_ctx = NULL;
+468     log_debug(&quot;mDNS context shut down&quot;);
+469   }
+470 
+471   log_info(&quot;Discovery server stopped&quot;);
+472   return result;
+473 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acds_identity_fingerprint()</b>,
