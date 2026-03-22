@@ -468,12 +468,6 @@ export default function MirrorDemoWidget({
           </div>
         ) : (
           <>
-            <button
-              onClick={stop}
-              className="absolute top-2 right-2 px-3 py-1 rounded bg-red-700/80 hover:bg-red-600 text-white text-xs font-medium transition-colors z-10"
-            >
-              Stop
-            </button>
             {source === "demo" && (
               <div className="absolute bottom-2 right-2 flex gap-2 z-10">
                 <button
@@ -522,6 +516,16 @@ export default function MirrorDemoWidget({
               </div>
             )}
           </>
+        )}
+
+        {/* Stop button - overlaid on top */}
+        {source && (
+          <button
+            onClick={stop}
+            className="absolute top-2 right-2 px-3 py-1 rounded bg-red-700/80 hover:bg-red-600 text-white text-xs font-medium transition-colors z-20"
+          >
+            Stop
+          </button>
         )}
       </div>
 
