@@ -124,6 +124,10 @@ project(${PROJECT_NAME_FULL}
 # Post-project() Config (code that must be run after project())
 # =============================================================================
 
+# Find Threads early - required for abseil and other dependencies
+# On macOS, explicitly set pthread flag to help FindThreads module
+find_package(Threads REQUIRED)
+
 # Don't clear CMAKE_OSX_SYSROOT - while it would prevent Xcode SDK headers from
 # shadowing compiler builtins, it also breaks pthread detection via FindThreads.
 # The Homebrew LLVM setup in CI uses clang config files in ~/.config/clang/ to
