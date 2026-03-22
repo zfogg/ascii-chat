@@ -23,8 +23,8 @@ RUN rm -rf /build/deps/ascii-chat-deps /build/deps/doxygen-awesome-css && \
     mv /tmp/deps-preserve/* /build/deps/ && rm -rf /tmp/deps-preserve
 
 # Build release-musl static binary - reuse pre-configured build from deps stage
-# Create minimal .git structure so Ninja/CMake dependencies are satisfied in Release builds
-# SOURCE_COMMIT env var is read by generate_version.cmake during build
+# Create minimal .git structure so Ninja/CMake dependencies are satisfied
+# Clean release builds show just version without dev/commit info
 RUN cd /build && \
     mkdir -p .git && \
     touch .git/HEAD .git/index && \
