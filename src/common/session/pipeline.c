@@ -449,6 +449,9 @@ asciichat_error_t session_pipeline_run_main(
     bool snapshot_done = false;
 
     while (!should_exit(user_data) && !atomic_load_bool(&pipeline->stop) && !snapshot_done) {
+        bool exit_check = should_exit(user_data);
+        log_debug_every(NS_PER_SEC_INT, "[PIPELINE_DEBUG] should_exit=%d, stop=%d, snapshot_done=%d", exit_check, atomic_load_bool(&pipeline->stop), snapshot_done);
+
         pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline->display_queue, 1 * NS_PER_MS_INT);
 
         if (!frame) continue;  // timeout, check should_exit again
@@ -559,14 +562,20 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
         mutex_unlock(&pipeline->encode_queue->mu);
     }
 
-    // Drain and wait for capture thread
+    // Drain and wait for capture thread with 1 second timeout
     if (asciichat_thread_is_initialized(&pipeline->capture_tid)) {
-        asciichat_thread_join(&pipeline->capture_tid, NULL);
+        int join_result = asciichat_thread_join_timeout(&pipeline->capture_tid, NULL, 1000 * NS_PER_MS_INT);
+        if (join_result != 0) {
+            log_warn("[PIPELINE] Capture thread join timed out or failed (result=%d)", join_result);
+        }
     }
 
-    // Drain and wait for encode thread
+    // Drain and wait for encode thread with 1 second timeout
     if (asciichat_thread_is_initialized(&pipeline->encode_tid)) {
-        asciichat_thread_join(&pipeline->encode_tid, NULL);
+        int join_result = asciichat_thread_join_timeout(&pipeline->encode_tid, NULL, 1000 * NS_PER_MS_INT);
+        if (join_result != 0) {
+            log_warn("[PIPELINE] Encode thread join timed out or failed (result=%d)", join_result);
+        }
     }
 
     // Flush queues to free any remaining frames
