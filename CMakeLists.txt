@@ -128,10 +128,14 @@ project(${PROJECT_NAME_FULL}
 # On macOS, explicitly set pthread flag to help FindThreads module
 find_package(Threads REQUIRED)
 
-# Don't clear CMAKE_OSX_SYSROOT - while it would prevent Xcode SDK headers from
-# shadowing compiler builtins, it also breaks pthread detection via FindThreads.
-# The Homebrew LLVM setup in CI uses clang config files in ~/.config/clang/ to
-# manage header priorities and SDK paths, so we don't need to clear it here.
+# Clear CMAKE_OSX_SYSROOT for Homebrew LLVM on macOS
+# CMake auto-sets this to the Xcode SDK path, which causes Xcode SDK headers to
+# shadow Homebrew LLVM's libc++ headers and builtin headers (like <stddef.h>).
+# This breaks type definitions when C++ includes C headers.
+# Homebrew LLVM config files in ~/.config/clang/ handle SDK configuration instead.
+if(APPLE)
+    set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
+endif()
 
 # Musl release build optimization adjustment
 # Use -O2 instead of -O3 for musl release builds to avoid TPOFF32 relocation errors
