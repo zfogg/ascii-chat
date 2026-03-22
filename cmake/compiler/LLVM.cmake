@@ -325,6 +325,7 @@ function(configure_llvm_post_project)
                     # Use -nostdinc and explicit isystem paths to bypass clang's broken default
                     message(STATUS "${BoldYellow}Bypassing broken clang resource dir with -nostdinc + explicit -isystem${ColorReset}")
                     add_compile_options(-nostdinc)
+                    add_compile_options(-isystem ${CLANG_RESOURCE_DIR}/include)
                     add_compile_options(-isystem ${XCODE_SDK_PATH}/usr/include)
                 else()
                     message(WARNING "${BoldYellow}Xcode SDK not found; system headers may not be accessible${ColorReset}")
