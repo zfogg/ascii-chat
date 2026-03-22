@@ -23,11 +23,13 @@ RUN rm -rf /build/deps/ascii-chat-deps /build/deps/doxygen-awesome-css && \
     mv /tmp/deps-preserve/* /build/deps/ && rm -rf /tmp/deps-preserve
 
 # Build release-musl static binary - reuse pre-configured build from deps stage
-# Set PROJECT_VERSION_OVERRIDE env var which generate_version.cmake reads at build time
-# This allows setting version without reconfiguring (avoids Ninja version check error)
+# Create minimal .git structure so Ninja/CMake dependencies are satisfied in Release builds
+# SOURCE_COMMIT env var is read by generate_version.cmake during build
 RUN cd /build && \
+    mkdir -p .git && \
+    touch .git/HEAD .git/index && \
     PROJECT_VERSION_OVERRIDE=${VERSION} \
-    SOURCE_COMMIT="docker-release-${VERSION}" \
+    SOURCE_COMMIT="docker-release" \
     cmake --build build_release && \
     cmake --install build_release --prefix /tmp/install && \
     strip /tmp/install/bin/ascii-chat
