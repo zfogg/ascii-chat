@@ -424,7 +424,17 @@ export default function MirrorDemoWidget({
         </div>
 
         {/* Overlay container - explicitly sized to avoid iOS layout issues */}
-        <div className="absolute pointer-events-none" style={{ top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" }}>
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: "100%",
+            height: "100%",
+          }}
+        >
           {!source && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-auto">
               <p className="text-gray-200 text-sm sm:text-base bg-gray-800 px-2 py-1 rounded">
@@ -521,7 +531,6 @@ export default function MirrorDemoWidget({
                   ))}
                 </div>
               )}
-
             </>
           )}
         </div>
@@ -538,7 +547,7 @@ export default function MirrorDemoWidget({
       </div>
 
       {/* Debug logs panel (dev only) */}
-      {process.env.NODE_ENV !== "production" && debugLogs.length > 0 && (
+      {import.meta.env.MODE !== "production" && debugLogs.length > 0 && (
         <div className="mt-2 bg-gray-950 border border-gray-700 rounded p-2 max-h-32 overflow-y-auto">
           <p className="text-gray-500 text-xs font-medium mb-1">Debug Logs:</p>
           {debugLogs.map((log, i) => (
