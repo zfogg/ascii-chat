@@ -72,15 +72,40 @@ endif()
 # Ensure the combined library is built before linking
 # For Debug/Dev: shared library (DLL on Windows) - except musl which needs static
 # For Release: static library (unless ASCIICHAT_SHARED_DEPS is ON)
-# For USE_MUSL: always static (musl requires static linking)
 # Determine if we should use shared library linking
+# - USE_MUSL: always static (musl requires static linking)
+# - Linux Release (non-musl): static FFmpeg .a can't link into shared lib (PIC issues on arm64)
 set(_use_shared_lib FALSE)
 if(NOT USE_MUSL)
-    # Always use shared library (built from OBJECT libraries for all build types)
-    set(_use_shared_lib TRUE)
+    if(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+        set(_use_shared_lib FALSE)
+    else()
+        set(_use_shared_lib TRUE)
+    endif()
 endif()
 
-if(_use_shared_lib)
+if(NOT _use_shared_lib AND NOT USE_MUSL)
+    # Linux Release non-musl: link object libraries directly (static FFmpeg can't go into .so)
+    add_dependencies(ascii-chat generate_version)
+    target_link_libraries(ascii-chat PRIVATE
+        ascii-chat-util
+        ascii-chat-data-structures
+        ascii-chat-platform
+        ascii-chat-crypto
+        ascii-chat-simd
+        ascii-chat-video
+        ascii-chat-audio
+        ascii-chat-network
+        ascii-chat-core
+        ascii-chat-panic
+    )
+    get_core_deps_libraries(CORE_LIBS)
+    target_link_libraries(ascii-chat PRIVATE ${CORE_LIBS} ${BEARSSL_LIBRARIES})
+    if(FFMPEG_LIBRARIES)
+        target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LIBRARIES})
+    endif()
+    set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
+elseif(_use_shared_lib)
     add_dependencies(ascii-chat ascii-chat-shared generate_version)
     target_link_libraries(ascii-chat ascii-chat-shared)
 
