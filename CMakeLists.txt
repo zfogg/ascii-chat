@@ -124,21 +124,11 @@ project(${PROJECT_NAME_FULL}
 # Post-project() Config (code that must be run after project())
 # =============================================================================
 
-# Clear CMAKE_OSX_SYSROOT ONLY for Homebrew LLVM to prevent Xcode SDK headers
-# from shadowing compiler builtins (fixes BearSSL mach-o/dyld.h errors).
-# For system clang, keep CMAKE_OSX_SYSROOT set so pthread and system library
-# detection work correctly with FindThreads module.
-if(APPLE)
-    message(STATUS "DEBUG: CMAKE_C_COMPILER = ${CMAKE_C_COMPILER}")
-    message(STATUS "DEBUG: CMAKE_CXX_COMPILER = ${CMAKE_CXX_COMPILER}")
-    message(STATUS "DEBUG: CMAKE_OSX_SYSROOT = ${CMAKE_OSX_SYSROOT}")
-    # Check if using Homebrew LLVM (path contains /opt/homebrew or /usr/local/opt)
-    if(CMAKE_C_COMPILER MATCHES "homebrew|opt/llvm" OR CMAKE_CXX_COMPILER MATCHES "homebrew|opt/llvm")
-        set(CMAKE_OSX_SYSROOT "")
-        message(STATUS "Using Homebrew LLVM - clearing CMAKE_OSX_SYSROOT to prevent header shadowing")
-    else()
-        message(STATUS "Using system clang - keeping CMAKE_OSX_SYSROOT for library detection")
-    endif()
+# Re-clear CMAKE_OSX_SYSROOT after project() because CMake's compiler
+# detection re-sets it. Self-contained LLVM (Homebrew) doesn't need -isysroot
+# and it causes Xcode SDK headers to shadow the compiler's builtin headers.
+if(APPLE AND NOT ASCIICHAT_USER_PROVIDED_OSX_SYSROOT)
+    set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
 endif()
 
 # Musl release build optimization adjustment
