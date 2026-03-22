@@ -323,8 +323,9 @@ function(configure_llvm_post_project)
                     set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
                     # Clang is hardcoded with wrong resource directory; -resource-dir is ignored
                     # Use -nostdinc and explicit isystem paths to bypass clang's broken default
-                    message(STATUS "${BoldYellow}Bypassing broken clang resource dir with -isysroot${ColorReset}")
+                    message(STATUS "${BoldYellow}Using Xcode SDK with explicit clang resource dir for headers${ColorReset}")
                     add_compile_options(-isysroot ${XCODE_SDK_PATH})
+                    add_compile_options(-isystem ${CLANG_RESOURCE_DIR}/include)
                 else()
                     message(WARNING "${BoldYellow}Xcode SDK not found; system headers may not be accessible${ColorReset}")
                 endif()
