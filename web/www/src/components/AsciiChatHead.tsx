@@ -14,6 +14,7 @@ export function AsciiChatHead({
   url = `${SITES.MAIN}/`,
   ogImage = `${SITES.MAIN}/og-image.png`,
   ogImageAlt = "ascii-chat terminal video chat application",
+  twitterCreator = "@zfogg_",
   ...props
 }: AsciiChatHeadProps) {
   return (
@@ -24,6 +25,7 @@ export function AsciiChatHead({
       url={url}
       ogImage={ogImage}
       ogImageAlt={ogImageAlt}
+      twitterCreator={twitterCreator}
       {...props}
     />
   );

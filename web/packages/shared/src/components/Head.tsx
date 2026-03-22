@@ -37,8 +37,8 @@ export function Head({
   ogImageHeight = "630",
   ogImageAlt,
   twitterCard = "summary_large_image",
-  twitterSite = "@ascii_chat",
-  twitterCreator = "@zach_fogg",
+  twitterSite,
+  twitterCreator = "@zfogg_",
   ogType = "website",
   children,
 }: HeadProps) {
@@ -85,8 +85,8 @@ export function Head({
 
     // Set Twitter tags
     setMeta("twitter:card", twitterCard, true);
-    setMeta("twitter:site", twitterSite, true);
-    setMeta("twitter:creator", twitterCreator, true);
+    if (twitterSite) setMeta("twitter:site", twitterSite, true);
+    if (twitterCreator) setMeta("twitter:creator", twitterCreator, true);
     setMeta("twitter:url", url, true);
     setMeta("twitter:title", title, true);
     setMeta("twitter:description", description, true);
