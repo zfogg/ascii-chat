@@ -261,51 +261,6 @@ function(configure_llvm_post_project)
         set(_user_provided_sysroot TRUE)
     endif()
 
-    # If clang resource directory is broken, add explicit Xcode SDK include paths
-    # (GitHub Actions workaround for broken Homebrew LLVM installations)
-    if(NOT _user_provided_sysroot)
-        # Detect if clang resource directory has the headers we need
-        execute_process(
-            COMMAND "${CMAKE_C_COMPILER}" -print-resource-dir
-            OUTPUT_VARIABLE _clang_resource_dir
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-            ERROR_QUIET
-        )
-
-        if(NOT EXISTS "${_clang_resource_dir}/include/stdarg.h")
-            # Resource dir is broken, add Xcode SDK includes explicitly
-            message(STATUS "${BoldYellow}Clang resource directory missing stdarg.h,${ColorReset} adding Xcode SDK paths")
-
-            # Try to find Xcode SDK
-            execute_process(
-                COMMAND xcrun --show-sdk-path --sdk macosx
-                OUTPUT_VARIABLE _xcode_sdk
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_QUIET
-            )
-
-            if(_xcode_sdk AND EXISTS "${_xcode_sdk}")
-                message(STATUS "${BoldGreen}Found Xcode SDK:${ColorReset} ${BoldCyan}${_xcode_sdk}${ColorReset}")
-                # Add Xcode SDK include paths to compiler flags
-                string(APPEND CMAKE_C_FLAGS " -isystem ${_xcode_sdk}/usr/include")
-                string(APPEND CMAKE_CXX_FLAGS " -isystem ${_xcode_sdk}/usr/include")
-                string(APPEND CMAKE_OBJC_FLAGS " -isystem ${_xcode_sdk}/usr/include")
-
-                # Also set CMAKE_OSX_SYSROOT for other uses (like compilation database)
-                set(CMAKE_OSX_SYSROOT "${_xcode_sdk}" CACHE PATH "macOS SDK path" FORCE)
-
-                # Export flags to parent scope
-                set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
-                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
-                set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS}" PARENT_SCOPE)
-
-                message(STATUS "${BoldGreen}Added Xcode SDK include paths${ColorReset}")
-            else()
-                message(WARNING "${BoldYellow}Could not find Xcode SDK${ColorReset}")
-            endif()
-        endif()
-    endif()
-
     # Determine LLVM_ROOT_PREFIX from CMAKE_C_COMPILER or from LLVM_ROOT_PREFIX cache
     set(LLVM_ROOT_PREFIX "")
     if(CMAKE_C_COMPILER)
@@ -328,7 +283,6 @@ function(configure_llvm_post_project)
     endif()
 
     # Configure resource directory
-    # On GitHub Actions, -print-resource-dir may return a non-existent path for old clang versions
     execute_process(
         COMMAND "${LLVM_ROOT_PREFIX}/bin/clang" -print-resource-dir
         OUTPUT_VARIABLE CLANG_RESOURCE_DIR
@@ -336,44 +290,20 @@ function(configure_llvm_post_project)
         ERROR_QUIET
     )
 
-    # Validate and fix resource directory if it doesn't exist
+    # Fallback: construct from version if -print-resource-dir failed
     if(NOT CLANG_RESOURCE_DIR OR NOT EXISTS "${CLANG_RESOURCE_DIR}/include")
-        message(STATUS "${BoldYellow}Resource directory invalid or missing:${ColorReset} ${CLANG_RESOURCE_DIR}")
-
-        # Get clang version from --version output
         execute_process(
             COMMAND "${LLVM_ROOT_PREFIX}/bin/clang" --version
             OUTPUT_VARIABLE CLANG_VERSION_OUTPUT
             OUTPUT_STRIP_TRAILING_WHITESPACE
         )
-
-        # Extract major version (e.g., "22" from "clang version 22.0.1")
-        string(REGEX MATCH "version ([0-9]+)" CLANG_VERSION_MATCH "${CLANG_VERSION_OUTPUT}")
+        string(REGEX MATCH "clang version ([0-9]+)\\.([0-9]+)" CLANG_VERSION_MATCH "${CLANG_VERSION_OUTPUT}")
         set(CLANG_MAJOR_VERSION "${CMAKE_MATCH_1}")
-
-        if(CLANG_MAJOR_VERSION)
-            # Try exact version match first
-            set(CLANG_RESOURCE_DIR "${LLVM_ROOT_PREFIX}/lib/clang/${CLANG_MAJOR_VERSION}")
-            if(NOT EXISTS "${CLANG_RESOURCE_DIR}/include")
-                # Scan for any available clang version directories
-                file(GLOB CLANG_DIRS "${LLVM_ROOT_PREFIX}/lib/clang/*")
-                if(CLANG_DIRS)
-                    # Filter to only directories with include/ subdirectory
-                    foreach(_dir ${CLANG_DIRS})
-                        if(EXISTS "${_dir}/include")
-                            set(CLANG_RESOURCE_DIR "${_dir}")
-                            break()
-                        endif()
-                    endforeach()
-                endif()
-            endif()
-        endif()
+        set(CLANG_RESOURCE_DIR "${LLVM_ROOT_PREFIX}/lib/clang/${CLANG_MAJOR_VERSION}")
     endif()
 
-    # Only use -resource-dir if it actually contains headers
-    # On some GitHub Actions runners, -print-resource-dir returns a broken path
-    if(EXISTS "${CLANG_RESOURCE_DIR}/include/stdarg.h")
-        message(STATUS "${BoldGreen}Found stdarg.h in Clang resource directory${ColorReset}: ${CLANG_RESOURCE_DIR}")
+    if(EXISTS "${CLANG_RESOURCE_DIR}/include")
+        message(STATUS "${BoldGreen}Found${ColorReset} ${BoldBlue}Clang${ColorReset} resource directory: ${CLANG_RESOURCE_DIR}")
         # Append to CMAKE_*_FLAGS so it takes effect for project() and all subdirectories (including mimalloc)
         string(APPEND CMAKE_C_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
         string(APPEND CMAKE_CXX_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
@@ -382,12 +312,8 @@ function(configure_llvm_post_project)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
         set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS}" PARENT_SCOPE)
-    elseif(EXISTS "${CLANG_RESOURCE_DIR}/include")
-        message(STATUS "${BoldYellow}Resource directory found but stdarg.h missing${ColorReset}: ${CLANG_RESOURCE_DIR}/include")
-        message(STATUS "${BoldYellow}Skipping -resource-dir flag${ColorReset} (letting clang use defaults)")
     else()
         message(WARNING "${BoldYellow}Could not find Clang resource directory${ColorReset} at: ${CLANG_RESOURCE_DIR}")
-        message(STATUS "${BoldYellow}Skipping -resource-dir flag${ColorReset} (letting clang use defaults)")
     endif()
 
     # macOS SDK handling:
