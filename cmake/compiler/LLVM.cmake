@@ -304,33 +304,33 @@ function(configure_llvm_post_project)
 
     if(EXISTS "${CLANG_RESOURCE_DIR}/include")
         message(STATUS "${BoldGreen}Found${ColorReset} ${BoldBlue}Clang${ColorReset} resource directory: ${CLANG_RESOURCE_DIR}")
-        # Append to CMAKE_*_FLAGS so it takes effect for project() and all subdirectories (including mimalloc)
-        string(APPEND CMAKE_C_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
-        string(APPEND CMAKE_CXX_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
-        string(APPEND CMAKE_OBJC_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
-        # Export to parent scope
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
-        set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS}" PARENT_SCOPE)
-
-        # Even if resource directory exists, check if system headers are present.
-        # On Homebrew LLVM, mach-o/dyld.h should be accessible via the SDK.
-        # If it's missing, set CMAKE_OSX_SYSROOT to ensure CMake checks and compilation work.
-        if(APPLE AND NOT EXISTS "${CLANG_RESOURCE_DIR}/include/mach-o/dyld.h" AND NOT ASCIICHAT_USER_PROVIDED_OSX_SYSROOT)
-            message(STATUS "${BoldYellow}System headers missing from resource directory${ColorReset}; setting CMAKE_OSX_SYSROOT")
-            find_program(XCRUN_EXECUTABLE xcrun)
-            if(XCRUN_EXECUTABLE)
-                execute_process(
-                    COMMAND ${XCRUN_EXECUTABLE} --show-sdk-path
-                    OUTPUT_VARIABLE XCODE_SDK_PATH
-                    OUTPUT_STRIP_TRAILING_WHITESPACE
-                    ERROR_QUIET
-                )
-                if(XCODE_SDK_PATH AND EXISTS "${XCODE_SDK_PATH}/usr/include")
-                    set(CMAKE_OSX_SYSROOT "${XCODE_SDK_PATH}" CACHE PATH "macOS SDK root" FORCE)
-                    message(STATUS "${BoldYellow}Set CMAKE_OSX_SYSROOT${ColorReset}: ${XCODE_SDK_PATH}")
+        # On macOS, check if system headers are accessible. If not (broken Homebrew LLVM),
+        # don't use -resource-dir and instead rely on CMAKE_OSX_SYSROOT + Xcode SDK.
+        if(APPLE AND NOT EXISTS "${CLANG_RESOURCE_DIR}/include/mach-o/dyld.h")
+            message(STATUS "${BoldYellow}Resource directory lacks system headers; using Xcode SDK instead of -resource-dir${ColorReset}")
+            if(NOT ASCIICHAT_USER_PROVIDED_OSX_SYSROOT)
+                find_program(XCRUN_EXECUTABLE xcrun)
+                if(XCRUN_EXECUTABLE)
+                    execute_process(
+                        COMMAND ${XCRUN_EXECUTABLE} --show-sdk-path
+                        OUTPUT_VARIABLE XCODE_SDK_PATH
+                        OUTPUT_STRIP_TRAILING_WHITESPACE
+                        ERROR_QUIET
+                    )
+                    if(XCODE_SDK_PATH AND EXISTS "${XCODE_SDK_PATH}/usr/include")
+                        set(CMAKE_OSX_SYSROOT "${XCODE_SDK_PATH}" CACHE PATH "macOS SDK root" FORCE)
+                        message(STATUS "${BoldYellow}Set CMAKE_OSX_SYSROOT${ColorReset}: ${XCODE_SDK_PATH}")
+                    endif()
                 endif()
             endif()
+        else()
+            # Resource directory is valid, use it
+            string(APPEND CMAKE_C_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
+            string(APPEND CMAKE_CXX_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
+            string(APPEND CMAKE_OBJC_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+            set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS}" PARENT_SCOPE)
         endif()
     else()
         message(WARNING "${BoldYellow}Could not find Clang resource directory${ColorReset} at: ${CLANG_RESOURCE_DIR}")
