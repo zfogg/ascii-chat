@@ -406,7 +406,6 @@ export default function MirrorDemoWidget({
           autoPlay
           muted
           playsInline
-          crossOrigin="anonymous"
           style={{ width: "640px", height: "480px" }}
         />
         <canvas ref={canvasRef} />
