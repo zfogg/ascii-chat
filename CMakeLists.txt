@@ -101,6 +101,13 @@ include(${CMAKE_SOURCE_DIR}/cmake/platform/iOS.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/LLVM.cmake)
 configure_llvm_pre_project()
 
+# Clear CMAKE_OSX_SYSROOT BEFORE project() for macOS Homebrew LLVM
+# CMake auto-sets this to the Xcode SDK, which causes header shadowing in
+# dependencies like libwebsockets. Homebrew LLVM's config files handle SDK paths.
+if(APPLE)
+    set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
+endif()
+
 # Always enable C++ for Clang tooling (defer() and source instrumentation)
 if(APPLE)
     set(PROJECT_LANGUAGES C CXX OBJC)
@@ -127,15 +134,6 @@ project(${PROJECT_NAME_FULL}
 # Find Threads early - required for abseil and other dependencies
 # On macOS, explicitly set pthread flag to help FindThreads module
 find_package(Threads REQUIRED)
-
-# Clear CMAKE_OSX_SYSROOT for Homebrew LLVM on macOS
-# CMake auto-sets this to the Xcode SDK path, which causes Xcode SDK headers to
-# shadow Homebrew LLVM's libc++ headers and builtin headers (like <stddef.h>).
-# This breaks type definitions when C++ includes C headers.
-# Homebrew LLVM config files in ~/.config/clang/ handle SDK configuration instead.
-if(APPLE)
-    set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
-endif()
 
 # Musl release build optimization adjustment
 # Use -O2 instead of -O3 for musl release builds to avoid TPOFF32 relocation errors
