@@ -33,6 +33,15 @@ scripts/manpage-build.sh
 
 Deploy to Vercel or any static hosting service. The site is built to `dist/`.
 
+### Cloudflare Configuration
+
+If using Cloudflare as a CDN/proxy, configure a **Page Rule** to bypass cache for video files:
+
+- **URL Pattern:** `www.ascii-chat.com/assets/*.mp4`
+- **Cache Level:** Bypass
+
+This is required for iOS Safari support. Safari requires proper HTTP 206 Partial Content responses for video streaming, which Cloudflare's cache layer doesn't preserve. Bypassing Cloudflare's cache allows Caddy to handle range requests correctly while browsers still cache the video locally for 1 year.
+
 ## Pages
 
 - **/** - Home page with features, installation, and quick start
