@@ -46,7 +46,7 @@ export default {
       fontFamily: {
         mono: ["Hack", "monospace"],
         hack: ["Hack", "monospace"],
-        inter: ["Inter", "sans-serif"],
+        aleo: ["Aleo", "serif"],
       },
     },
   },

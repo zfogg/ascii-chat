@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 @import "@ascii-chat/shared/styles/base.css";
 
@@ -10,7 +9,7 @@
 }
 
 @theme {
-  --font-sans: Inter, sans-serif;
+  --font-sans: Aleo, serif;
 }
 
 @layer base {

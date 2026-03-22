@@ -1,5 +1,54 @@
 @import url("//cdn.jsdelivr.net/npm/hack-font@3.3.0/build/web/hack.css");
 
+/* Aleo font family */
+@font-face {
+  font-family: "Aleo";
+  font-weight: normal;
+  font-style: normal;
+  src: url("/fonts/aleo/Aleo-Regular-webfont.woff") format("woff"),
+       url("/fonts/aleo/Aleo-Regular.otf") format("opentype");
+}
+
+@font-face {
+  font-family: "Aleo";
+  font-weight: bold;
+  font-style: normal;
+  src: url("/fonts/aleo/Aleo-Bold-webfont.woff") format("woff"),
+       url("/fonts/aleo/Aleo-Bold.otf") format("opentype");
+}
+
+@font-face {
+  font-family: "Aleo";
+  font-weight: 300;
+  font-style: normal;
+  src: url("/fonts/aleo/Aleo-Light-webfont.woff") format("woff"),
+       url("/fonts/aleo/Aleo-Light.otf") format("opentype");
+}
+
+@font-face {
+  font-family: "Aleo";
+  font-weight: normal;
+  font-style: italic;
+  src: url("/fonts/aleo/Aleo-Italic-webfont.woff") format("woff"),
+       url("/fonts/aleo/Aleo-Italic.otf") format("opentype");
+}
+
+@font-face {
+  font-family: "Aleo";
+  font-weight: bold;
+  font-style: italic;
+  src: url("/fonts/aleo/Aleo-BoldItalic-webfont.woff") format("woff"),
+       url("/fonts/aleo/Aleo-BoldItalic.otf") format("opentype");
+}
+
+@font-face {
+  font-family: "Aleo";
+  font-weight: 300;
+  font-style: italic;
+  src: url("/fonts/aleo/Aleo-LightItalic-webfont.woff") format("woff"),
+       url("/fonts/aleo/Aleo-LightItalic.otf") format("opentype");
+}
+
 /* Override react-syntax-highlighter font-family */
 pre code {
   font-family: Hack, monospace !important;

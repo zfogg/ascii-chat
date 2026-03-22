@@ -1,9 +1,6 @@
 /* Import xterm.js CSS */
 @import "xterm/css/xterm.css";
 
-/* Import Roboto Mono from Google Fonts */
-@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&display=swap");
-
 /* Import Tailwind v4 */
 @import "tailwindcss";
 
@@ -14,7 +11,7 @@
 @source "../../packages/shared/src";
 
 @theme {
-  --font-sans: Roboto Mono, monospace;
+  --font-sans: Aleo, serif;
   --font-mono: Hack, monospace;
   --color-terminal-bg: #030712;
   --color-terminal-fg: #f3f4f6;
