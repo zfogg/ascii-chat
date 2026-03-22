@@ -134,11 +134,4 @@ char *render_ascii_mono_sve(const image_t *image, const char *ascii_chars) {
   return output;
 }
 
-// 256-color palette mapping (RGB to ANSI 256 color index) - copied from NEON
-static inline uint8_t rgb_to_256color_sve(uint8_t r, uint8_t g, uint8_t b) {
-  return (uint8_t)(16 + 36 * (r / 51) + 6 * (g / 51) + (b / 51));
-}
-
-// Unified SVE function for all color modes (full implementation like NEON)
-
 #endif /* SIMD_SUPPORT_SVE */
