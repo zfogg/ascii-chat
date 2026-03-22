@@ -21,6 +21,7 @@ http://localhost http://www.localhost http://discovery.localhost http://web.loca
     handle /assets/* {
       header Cache-Control "public, max-age=31536000, immutable"
       header Cross-Origin-Resource-Policy "cross-origin"
+      header Access-Control-Allow-Origin "*"
       header Accept-Ranges "bytes"
       file_server
     }
@@ -46,6 +47,7 @@ http://localhost http://www.localhost http://discovery.localhost http://web.loca
     # Cache static assets with content hashes for 1 year (immutable)
     handle /assets/* {
       header Cache-Control "public, max-age=31536000, immutable"
+      header Access-Control-Allow-Origin "*"
       file_server
     }
 
@@ -81,6 +83,7 @@ http://localhost http://www.localhost http://discovery.localhost http://web.loca
     # Cache static assets with content hashes for 1 year (immutable)
     handle /assets/* {
       header Cache-Control "public, max-age=31536000, immutable"
+      header Access-Control-Allow-Origin "*"
       file_server
     }
 
@@ -116,6 +119,7 @@ http://ascii-chat.com http://www.ascii-chat.com {
   handle /assets/* {
     header Cache-Control "public, max-age=31536000, immutable"
     header Cross-Origin-Resource-Policy "cross-origin"
+    header Access-Control-Allow-Origin "*"
     header Accept-Ranges "bytes"
     file_server
   }
@@ -137,6 +141,7 @@ http://discovery.ascii-chat.com {
   # Cache static assets with content hashes for 1 year (immutable)
   handle /assets/* {
     header Cache-Control "public, max-age=31536000, immutable"
+    header Access-Control-Allow-Origin "*"
     header Accept-Ranges "bytes"
     file_server
   }
@@ -169,6 +174,7 @@ http://web.ascii-chat.com {
   # Cache static assets with content hashes for 1 year (immutable)
   handle /assets/* {
     header Cache-Control "public, max-age=31536000, immutable"
+    header Access-Control-Allow-Origin "*"
     header Accept-Ranges "bytes"
     file_server
   }
