@@ -130,6 +130,21 @@ jobs:
         with:
           cache-version: v7
 
+      - name: Debug macOS environment
+        if: matrix.os == 'macOS'
+        run: |
+          echo "=== Checking for stdarg.h in Xcode SDK ==="
+          find /Applications/Xcode_16.0.app -name "stdarg.h" 2>/dev/null | head -10
+          echo ""
+          echo "=== Checking SDK structure ==="
+          ls -la /Applications/Xcode_16.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/ 2>/dev/null | grep -E "^d|stdarg"
+          echo ""
+          echo "=== Clang default include paths ==="
+          clang -v -E -x c /dev/null 2>&1 | grep -A 20 "include"
+          echo ""
+          echo "=== Clang with -isysroot ==="
+          clang -v -isysroot /Applications/Xcode_16.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk -E -x c /dev/null 2>&1 | grep -A 20 "include"
+
       - name: Configure (Unix)
         if: matrix.os != 'Windows'
         run: |
