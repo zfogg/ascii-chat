@@ -82,6 +82,9 @@ RUN useradd -m -u 1001 -s /bin/bash ascii && \
     chown -R ascii:ascii /home/ascii && \
     chown -R ascii:ascii /acds 2>/dev/null || true
 
+# Create data directory for ACDS database (volume mount point)
+RUN mkdir -p /data && chown ascii:ascii /data
+
 # Switch to non-root user
 USER ascii
 WORKDIR /home/ascii

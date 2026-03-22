@@ -69,6 +69,9 @@ RUN adduser -D -u 1001 -s /bin/sh ascii && \
     chown -R ascii:ascii /home/ascii && \
     chown -R ascii:ascii /acds 2>/dev/null || true
 
+# Create data directory for ACDS database (volume mount point)
+RUN mkdir -p /data && chown ascii:ascii /data
+
 USER ascii
 WORKDIR /home/ascii
 
