@@ -49,7 +49,7 @@ export function Head({
     // Helper to set meta tag
     const setMeta = (name: string, content: string, isProperty = false) => {
       let meta = document.querySelector(
-        `meta[${isProperty ? "property" : "name"}="${name}"]`
+        `meta[${isProperty ? "property" : "name"}="${name}"]`,
       );
       if (!meta) {
         meta = document.createElement("meta");
