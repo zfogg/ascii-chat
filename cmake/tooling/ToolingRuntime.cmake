@@ -62,11 +62,8 @@ function(ascii_build_tooling_runtime)
     # =========================================================================
     # This utility reads panic instrumentation log files and summarizes them.
     # Cross-platform: uses dirent.h on Unix, _findfirst/_findnext on Windows.
-    # Skip for musl builds: ascii-panic-report links against ascii-chat-shared,
-    # but OBJECT files compiled with -fPIE produce relocations incompatible with
-    # shared libraries (-shared requires -fPIC). Musl static builds don't need
-    # the report utility.
-    if(NOT USE_MUSL)
+    # Skip when shared library isn't available (musl builds, Linux Release non-musl)
+    if(TARGET ascii-chat-shared)
         add_executable(ascii-panic-report
             ${TOOLING_PANIC_REPORT_SRCS}
         )
