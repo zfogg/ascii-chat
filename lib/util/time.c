@@ -166,7 +166,13 @@ uint64_t time_timespec_to_ns(const struct timespec *ts) {
     SET_ERRNO(ERROR_INVALID_PARAM, "null ts");
     return 0;
   }
-  return (uint64_t)ts->tv_sec * NS_PER_SEC_INT + (uint64_t)ts->tv_nsec;
+  // Use __uint128_t to prevent overflow during multiplication of large time values
+  __uint128_t result = (__uint128_t)ts->tv_sec * NS_PER_SEC_INT;
+  if (result > UINT64_MAX) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "time_timespec_to_ns: timespec value would overflow");
+    return UINT64_MAX;
+  }
+  return (uint64_t)result + (uint64_t)ts->tv_nsec;
 }
 
 void time_ns_to_timespec(uint64_t ns, struct timespec *ts) {

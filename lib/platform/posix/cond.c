@@ -82,7 +82,8 @@ int cond_wait_impl(cond_t *cond, mutex_t *mutex) {
 int cond_timedwait_impl(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
   struct timespec ts;
   uint64_t now_ns = time_get_realtime_ns();
-  uint64_t deadline_ns = now_ns + timeout_ns;
+  // Prevent overflow: cap deadline at UINT64_MAX
+  uint64_t deadline_ns = (UINT64_MAX - now_ns < timeout_ns) ? UINT64_MAX : now_ns + timeout_ns;
   time_ns_to_timespec(deadline_ns, &ts);
   // pthread_cond_timedwait atomically releases mutex before waiting, then re-acquires it
   // DO NOT manually track unlock/lock - pthread_cond_timedwait is atomic and doesn't call our mutex functions
