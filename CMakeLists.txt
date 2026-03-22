@@ -129,6 +129,9 @@ project(${PROJECT_NAME_FULL}
 # For system clang, keep CMAKE_OSX_SYSROOT set so pthread and system library
 # detection work correctly with FindThreads module.
 if(APPLE)
+    message(STATUS "DEBUG: CMAKE_C_COMPILER = ${CMAKE_C_COMPILER}")
+    message(STATUS "DEBUG: CMAKE_CXX_COMPILER = ${CMAKE_CXX_COMPILER}")
+    message(STATUS "DEBUG: CMAKE_OSX_SYSROOT = ${CMAKE_OSX_SYSROOT}")
     # Check if using Homebrew LLVM (path contains /opt/homebrew or /usr/local/opt)
     if(CMAKE_C_COMPILER MATCHES "homebrew|opt/llvm" OR CMAKE_CXX_COMPILER MATCHES "homebrew|opt/llvm")
         unset(CMAKE_OSX_SYSROOT CACHE)
