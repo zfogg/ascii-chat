@@ -453,15 +453,15 @@
   LOG_ATOMIC_UINT64_INIT( val)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/log/log.h</b>&gt;<b></b><b>Value:</b><b></b></p>
-<pre>{.impl = 0, .last_store_time_ns = 0, .last_load_time_ns = 0, \
-.store_count = 0, .load_count = 0, .cas_count = 0, \
-.cas_success_count = 0, .fetch_count = 0}</pre>
+<pre>{.impl = (uint64_t)0, .last_store_time_ns = (uint64_t)0, .last_load_time_ns = (uint64_t)0, \
+.store_count = (uint64_t)0, .load_count = (uint64_t)0, .cas_count = (uint64_t)0, \
+.cas_success_count = (uint64_t)0, .fetch_count = (uint64_t)0}</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Definition at line <b>35</b> of file <b>log/log.h</b>.</p>
-<pre>35 #define LOG_ATOMIC_UINT64_INIT(val) {.impl = 0, .last_store_time_ns = 0, .last_load_time_ns = 0, \
-36                                       .store_count = 0, .load_count = 0, .cas_count = 0, \
-37                                       .cas_success_count = 0, .fetch_count = 0}</pre>
+<pre>35 #define LOG_ATOMIC_UINT64_INIT(val) {.impl = (uint64_t)0, .last_store_time_ns = (uint64_t)0, .last_load_time_ns = (uint64_t)0, \
+36                                       .store_count = (uint64_t)0, .load_count = (uint64_t)0, .cas_count = (uint64_t)0, \
+37                                       .cas_success_count = (uint64_t)0, .fetch_count = (uint64_t)0}</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -4721,7 +4721,7 @@ int len = log_template_apply(fmt, output, sizeof(output),
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.9.13</td>
+    <td class="foot-date">Version 0.9.19</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>
