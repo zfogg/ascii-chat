@@ -10,6 +10,7 @@
 #include <ascii-chat/network/websocket/server.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/common/protocol_constants.h>
+#include <time.h>
 #include <yyjson.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/log/log.h>
@@ -21,6 +22,7 @@
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/discovery/database.h>
 #include <ascii-chat/debug/named.h>
 #include <libwebsockets.h>
 #include <string.h>
@@ -582,6 +584,48 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
         return -1;
 
       unsigned char buf[LWS_PRE + 1024];
+      unsigned char *start = buf + LWS_PRE;
+      unsigned char *p = start;
+      unsigned char *end = buf + sizeof(buf);
+
+      if (lws_add_http_header_status(wsi, HTTP_STATUS_OK, &p, end) ||
+          lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE,
+                                       (const unsigned char *)"application/json", 16, &p, end) ||
+          lws_add_http_header_content_length(wsi, (lws_filepos_t)json_len, &p, end) ||
+          lws_finalize_http_header(wsi, &p, end)) {
+        free(json);
+        return -1;
+      }
+
+      memcpy(p, json, json_len);
+      p += json_len;
+      free(json);
+
+      if (lws_write(wsi, start, (size_t)(p - start), LWS_WRITE_HTTP_HEADERS) < 0)
+        return -1;
+      if (lws_http_transaction_completed(wsi))
+        return -1;
+      return 0;
+    }
+    // Serve /stats endpoint for server statistics
+    else if (path && (strcmp(path, "/stats") == 0 || strcmp(path, "stats") == 0)) {
+      yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+      yyjson_mut_val *root = yyjson_mut_obj(doc);
+      yyjson_mut_doc_set_root(doc, root);
+
+      yyjson_mut_obj_add_str(doc, root, "status", "ok");
+      yyjson_mut_obj_add_str(doc, root, "version", ASCII_CHAT_VERSION_FULL);
+      char proto_ver[16];
+      snprintf(proto_ver, sizeof(proto_ver), "%d.%d.%d", PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR, PROTOCOL_VERSION_PATCH);
+      yyjson_mut_obj_add_str(doc, root, "protocol", proto_ver);
+
+      size_t json_len = 0;
+      char *json = yyjson_mut_write(doc, 0, &json_len);
+      yyjson_mut_doc_free(doc);
+      if (!json)
+        return -1;
+
+      unsigned char buf[LWS_PRE + 2048];
       unsigned char *start = buf + LWS_PRE;
       unsigned char *p = start;
       unsigned char *end = buf + sizeof(buf);

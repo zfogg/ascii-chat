@@ -95,6 +95,17 @@ typedef struct {
 } migration_context_t;
 
 /**
+ * @brief Network statistics for both TCP and WebSocket connections
+ */
+typedef struct {
+  atomic_t bytes_sent;       ///< Total bytes sent (TCP + WebSocket)
+  atomic_t bytes_received;   ///< Total bytes received (TCP + WebSocket)
+  atomic_t packets_sent;     ///< Total packets sent (TCP + WebSocket)
+  atomic_t packets_received; ///< Total packets received (TCP + WebSocket)
+  time_t start_time;         ///< Server start time
+} acds_stats_t;
+
+/**
  * @brief Discovery server state
  *
  * Contains all runtime state for the discovery server including
@@ -121,6 +132,9 @@ typedef struct {
   // Background worker threads (cleanup, etc.)
   thread_pool_t *worker_pool; ///< Thread pool for background workers
   atomic_t shutdown;          ///< Shutdown flag for worker threads
+
+  // Statistics (TCP + WebSocket)
+  acds_stats_t stats; ///< Network statistics for all connections
 
   // Configuration
   acds_config_t config; ///< Runtime configuration

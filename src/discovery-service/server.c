@@ -196,6 +196,13 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
   memset(server, 0, sizeof(*server));
   memcpy(&server->config, config, sizeof(acds_config_t));
 
+  // Initialize stats
+  atomic_store_u64(&server->stats.bytes_sent, 0);
+  atomic_store_u64(&server->stats.bytes_received, 0);
+  atomic_store_u64(&server->stats.packets_sent, 0);
+  atomic_store_u64(&server->stats.packets_received, 0);
+  server->stats.start_time = time(NULL);
+
   // Open database (SQLite as single source of truth)
   asciichat_error_t result = database_init(config->database_path, &server->db);
   if (result != ASCIICHAT_OK) {
@@ -321,6 +328,19 @@ void acds_server_shutdown(acds_server_t *server) {
 // Transport is now passed to callbacks as a parameter, no need for temp creation
 
 // =============================================================================
+// Stats Tracking Helper
+// =============================================================================
+
+static inline void acds_track_packet_sent(acds_server_t *server, size_t payload_size) {
+  if (server) {
+    // Packet size includes header (same as receive)
+    size_t total_packet_size = payload_size + 14;  // 4 (magic) + 1 (type) + 2 (length) + 4 (CRC) + 3 (client ID)
+    atomic_fetch_add_u64(&server->stats.bytes_sent, total_packet_size);
+    atomic_fetch_add_u64(&server->stats.packets_sent, 1);
+  }
+}
+
+// =============================================================================
 // ACIP Callback Wrappers for ACDS
 // =============================================================================
 // These callbacks are invoked by acip_handle_acds_packet() via O(1) array dispatch.
@@ -432,6 +452,7 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
 
       // Send complete response with variable-length data
       packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_CREATED, payload, total_size, 0);
+      acds_track_packet_sent(server, total_size);
       SAFE_FREE(payload);
 
       log_info("Session created: %.*s (UUID: %02x%02x..., %zu keys, %d STUN, %d TURN servers)", resp.session_string_len,
@@ -508,6 +529,7 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
 
       // Send complete response with variable-length data
       packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_CREATED, payload, total_size, 0);
+      acds_track_packet_sent(server, total_size);
       SAFE_FREE(payload);
 
       log_info("Session created: %.*s (UUID: %02x%02x..., %zu keys, %d STUN, %d TURN servers)", resp.session_string_len,
@@ -1071,6 +1093,12 @@ void *acds_client_handler(void *arg) {
 
     if (result >= 0) {
       log_info("★ ACDS_CLIENT_HANDLER: Received packet type=%u from %s, payload_size=%zu", packet_type, client_ip, payload_size);
+
+      // Track network stats (TCP packets)
+      // Packet size includes header (6 bytes: magic 4 + type 1 + length 2 + CRC 4)
+      size_t total_packet_size = payload_size + 14;  // 4 (magic) + 1 (type) + 2 (length) + 4 (CRC) + 3 (client ID)
+      atomic_fetch_add_u64(&server->stats.bytes_received, total_packet_size);
+      atomic_fetch_add_u64(&server->stats.packets_received, 1);
     }
 
     if (result < 0) {

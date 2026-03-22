@@ -230,3 +230,25 @@ bool database_session_verify_key(sqlite3 *db, const char *session_string, const 
  */
 asciichat_error_t database_session_get_keys(sqlite3 *db, const char *session_string, uint8_t (*keys_out)[32],
                                             size_t max_keys, size_t *count_out);
+
+// ============================================================================
+// Statistics Queries
+// ============================================================================
+
+/**
+ * @brief Get total number of active sessions
+ *
+ * @param db Database handle
+ * @param count_out Output: number of active sessions
+ * @return ASCIICHAT_OK on success, error code otherwise
+ */
+asciichat_error_t database_stats_session_count(sqlite3 *db, int64_t *count_out);
+
+/**
+ * @brief Get total number of unique clients/participants
+ *
+ * @param db Database handle
+ * @param count_out Output: number of unique participants
+ * @return ASCIICHAT_OK on success, error code otherwise
+ */
+asciichat_error_t database_stats_unique_clients(sqlite3 *db, int64_t *count_out);

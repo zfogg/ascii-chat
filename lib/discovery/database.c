@@ -1155,3 +1155,66 @@ asciichat_error_t database_session_get_keys(sqlite3 *db, const char *session_str
   log_debug("Retrieved %zu keys for session %s", count, session_string);
   return ASCIICHAT_OK;
 }
+
+// ============================================================================
+// Statistics Queries
+// ============================================================================
+
+asciichat_error_t database_stats_session_count(sqlite3 *db, int64_t *count_out) {
+  if (!db || !count_out) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "db or count_out is NULL");
+  }
+
+  const char *query = "SELECT COUNT(*) FROM sessions WHERE expires_at > ?";
+  sqlite3_stmt *stmt;
+  int rc = sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+  if (rc != SQLITE_OK) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to prepare statement: %s", sqlite3_errmsg(db));
+  }
+
+  time_t now = time(NULL);
+  sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now);
+
+  int64_t count = 0;
+  rc = sqlite3_step(stmt);
+  if (rc == SQLITE_ROW) {
+    count = sqlite3_column_int64(stmt, 0);
+  } else if (rc != SQLITE_DONE) {
+    sqlite3_finalize(stmt);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to execute query: %s", sqlite3_errmsg(db));
+  }
+
+  sqlite3_finalize(stmt);
+  *count_out = count;
+
+  log_debug("Active session count: %lld", (long long)count);
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t database_stats_unique_clients(sqlite3 *db, int64_t *count_out) {
+  if (!db || !count_out) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "db or count_out is NULL");
+  }
+
+  const char *query = "SELECT COUNT(DISTINCT participant_id) FROM participants";
+  sqlite3_stmt *stmt;
+  int rc = sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+  if (rc != SQLITE_OK) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to prepare statement: %s", sqlite3_errmsg(db));
+  }
+
+  int64_t count = 0;
+  rc = sqlite3_step(stmt);
+  if (rc == SQLITE_ROW) {
+    count = sqlite3_column_int64(stmt, 0);
+  } else if (rc != SQLITE_DONE) {
+    sqlite3_finalize(stmt);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to execute query: %s", sqlite3_errmsg(db));
+  }
+
+  sqlite3_finalize(stmt);
+  *count_out = count;
+
+  log_debug("Unique clients count: %lld", (long long)count);
+  return ASCIICHAT_OK;
+}
