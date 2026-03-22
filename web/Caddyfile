@@ -17,6 +17,13 @@ http://localhost http://www.localhost http://discovery.localhost http://web.loca
     # Accept-Ranges header for video streaming on iOS
     header Accept-Ranges "bytes"
 
+    # Serve fonts with CORS for other subdomains
+    handle /fonts/* {
+      header Access-Control-Allow-Origin "*"
+      header Cache-Control "public, max-age=31536000, immutable"
+      file_server
+    }
+
     # Cache static assets with content hashes for 1 year (immutable)
     handle /assets/* {
       header Cache-Control "public, max-age=31536000, immutable"
@@ -43,6 +50,13 @@ http://localhost http://www.localhost http://discovery.localhost http://web.loca
   }
   handle @discoverylocal {
     root * /app/web/discovery/dist
+
+    # Serve fonts from www's dist directory (single source of truth)
+    handle /fonts/* {
+      root * /app/web/www/dist
+      header Cache-Control "public, max-age=31536000, immutable"
+      file_server
+    }
 
     # Cache static assets with content hashes for 1 year (immutable)
     handle /assets/* {
@@ -72,6 +86,13 @@ http://localhost http://www.localhost http://discovery.localhost http://web.loca
     # COEP/COOP headers for SharedArrayBuffer support (required for WASM threads)
     header Cross-Origin-Embedder-Policy "require-corp"
     header Cross-Origin-Opener-Policy "same-origin"
+
+    # Serve fonts from www's dist directory (single source of truth)
+    handle /fonts/* {
+      root * /app/web/www/dist
+      header Cache-Control "public, max-age=31536000, immutable"
+      file_server
+    }
 
     # CORS for .wasm files (allows ascii-chat.com to fetch mirror.wasm cross-origin)
     handle /wasm/* {
@@ -109,6 +130,13 @@ http://ascii-chat.com http://www.ascii-chat.com {
 
   # Accept-Ranges header for all responses (needed for video streaming on iOS)
   header Accept-Ranges "bytes"
+
+  # Serve fonts with CORS for other subdomains
+  handle /fonts/* {
+    header Access-Control-Allow-Origin "*"
+    header Cache-Control "public, max-age=31536000, immutable"
+    file_server
+  }
 
   # Proxy API requests to Node.js backend
   handle /api/* {
@@ -148,6 +176,13 @@ http://ascii-chat.com http://www.ascii-chat.com {
 http://discovery.ascii-chat.com {
   root * /app/web/discovery/dist
 
+  # Serve fonts from www's dist directory (single source of truth)
+  handle /fonts/* {
+    root * /app/web/www/dist
+    header Cache-Control "public, max-age=31536000, immutable"
+    file_server
+  }
+
   # Cache static assets with content hashes for 1 year (immutable)
   handle /assets/* {
     header Cache-Control "public, max-age=31536000, immutable"
@@ -183,6 +218,13 @@ http://web.ascii-chat.com {
   # COEP/COOP headers for SharedArrayBuffer support (required for WASM threads)
   header Cross-Origin-Embedder-Policy "require-corp"
   header Cross-Origin-Opener-Policy "same-origin"
+
+  # Serve fonts from www's dist directory (single source of truth)
+  handle /fonts/* {
+    root * /app/web/www/dist
+    header Cache-Control "public, max-age=31536000, immutable"
+    file_server
+  }
 
   # CORS for .wasm files (allows ascii-chat.com and www.ascii-chat.com to fetch mirror.wasm cross-origin)
   handle /wasm/* {
