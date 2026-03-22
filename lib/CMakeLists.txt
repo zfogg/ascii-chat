@@ -181,8 +181,9 @@ check_c_compiler_flag("-Wno-unterminated-string-initialization" HAVE_WNO_UNTERMI
 set(BUILDING_OBJECT_LIBS TRUE)
 
 # In CMakeLists.txt - for macOS
-if(APPLE)
+if(APPLE AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     # Use standard install paths, let Homebrew handle relocation
+    # Skip for Release builds to avoid embedding developer paths in the rpath
     set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 endif()
 

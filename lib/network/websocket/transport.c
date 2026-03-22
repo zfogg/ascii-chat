@@ -491,8 +491,8 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     // CRITICAL FIX: Fragment large messages into ~4KB chunks to avoid internal buffering
     // libwebsockets #464: Sending messages > rx_buffer_size causes ultra-slow buffering
     uint64_t now_ns = time_get_ns();
-    log_dev("LWS_CALLBACK_CLIENT_WRITEABLE FIRED for wsi=%p, ws_data=%p, is_connected=%d, timestamp=%llu",
-            (void *)wsi, (void *)ws_data, ws_data ? ws_data->is_connected : -1, (unsigned long long)now_ns);
+    log_dev("LWS_CALLBACK_CLIENT_WRITEABLE FIRED for wsi=%p, ws_data=%p, is_connected=%d, timestamp=%llu", (void *)wsi,
+            (void *)ws_data, ws_data ? ws_data->is_connected : -1, (unsigned long long)now_ns);
 
     if (!ws_data || atomic_load_bool(&ws_data->is_destroying)) {
       break;
@@ -820,7 +820,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
       uint64_t elapsed_ns = time_get_ns() - start_time;
       uint64_t elapsed_ms = elapsed_ns / 1000000ULL;
 
-      log_info("WEBSOCKET_RECV: Wait returned (result=%d, elapsed=%llums)", wait_result, (unsigned long long)elapsed_ms);
+      log_info("WEBSOCKET_RECV: Wait returned (result=%d, elapsed=%llums)", wait_result,
+               (unsigned long long)elapsed_ms);
 
       // Re-check after wait
       connected = ws_data->is_connected;
@@ -1647,10 +1648,10 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   connect_info.path = path;
   connect_info.host = host;
   connect_info.origin = host;
-  // Use default protocol - libwebsockets will use first protocol in array (our "http" protocol)
-  // Don't specify local_protocol_name or protocol - let libwebsockets handle automatically
-  connect_info.local_protocol_name = NULL; // Use default (first protocol in array)
-  connect_info.protocol = NULL;            // No subprotocol - let libwebsockets choose automatically
+  // Request the ACIP subprotocol so server routes to acip_protocol handler
+  // This ensures WebSocket upgrade includes Sec-WebSocket-Protocol: acip
+  connect_info.local_protocol_name = "acip";
+  connect_info.protocol = "acip";
   // Use SSL + skip server certificate hostname verification + allow self-signed certs (for development)
   connect_info.ssl_connection =
       use_ssl ? (LCCSCF_USE_SSL | LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK | LCCSCF_ALLOW_SELFSIGNED) : 0;

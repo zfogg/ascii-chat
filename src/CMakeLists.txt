@@ -214,7 +214,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_SHARED_DEPS)
         set(_install_rpath "$ORIGIN/../lib;${CMAKE_BUILD_RPATH}")
     endif()
     set_target_properties(ascii-chat PROPERTIES
-        BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH}"
+        BUILD_RPATH "${_install_rpath}"
         INSTALL_RPATH "${_install_rpath}"
         INSTALL_RPATH_USE_LINK_PATH TRUE
     )
@@ -228,6 +228,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
         set_target_properties(ascii-chat PROPERTIES
             BUILD_RPATH "${_release_rpath}"
             INSTALL_RPATH "${_release_rpath}"
+            INSTALL_RPATH_USE_LINK_PATH FALSE
             SKIP_BUILD_RPATH FALSE
         )
     else()
