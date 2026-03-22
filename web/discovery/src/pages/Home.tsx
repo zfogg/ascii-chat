@@ -97,6 +97,8 @@ function Home() {
               href: "https://github.com/zfogg/ascii-chat",
               label: "📦 GitHub",
               color: "text-cyan-400 hover:text-cyan-300",
+              target: "_blank",
+              rel: "noopener noreferrer",
               onClick: () =>
                 handleLinkClick(
                   "https://github.com/zfogg/ascii-chat",
@@ -107,6 +109,8 @@ function Home() {
               href: "https://zfogg.github.io/ascii-chat/group__module__acds.html",
               label: "📚 Documentation",
               color: "text-teal-400 hover:text-teal-300",
+              target: "_blank",
+              rel: "noopener noreferrer",
               onClick: () =>
                 handleLinkClick(
                   "https://zfogg.github.io/ascii-chat/group__module__acds.html",
@@ -117,12 +121,16 @@ function Home() {
               href: SITES.MAIN,
               label: "🌐 www",
               color: "text-pink-400 hover:text-pink-300",
+              target: "_blank",
+              rel: "noopener noreferrer",
               onClick: () => handleLinkClick(SITES.MAIN, "www"),
             },
             {
               href: SITES.WEB,
               label: "🌐 Web Client",
               color: "text-yellow-400 hover:text-yellow-300",
+              target: "_blank",
+              rel: "noopener noreferrer",
               onClick: () => handleLinkClick(SITES.WEB, "Web Client"),
             },
           ]}

@@ -32,6 +32,8 @@ function NotFoundPage() {
               href: "https://github.com/zfogg/ascii-chat",
               label: "📦 GitHub",
               color: "text-cyan-400 hover:text-cyan-300",
+              target: "_blank",
+              rel: "noopener noreferrer",
               onClick: () =>
                 handleLinkClick(
                   "https://github.com/zfogg/ascii-chat",
@@ -42,6 +44,8 @@ function NotFoundPage() {
               href: "https://zfogg.github.io/ascii-chat/group__module__acds.html",
               label: "📚 ACDS Documentation",
               color: "text-teal-400 hover:text-teal-300",
+              target: "_blank",
+              rel: "noopener noreferrer",
               onClick: () =>
                 handleLinkClick(
                   "https://zfogg.github.io/ascii-chat/group__module__acds.html",
@@ -52,6 +56,8 @@ function NotFoundPage() {
               href: "https://github.com/zfogg/ascii-chat/issues",
               label: "🐛 Issues",
               color: "text-purple-400 hover:text-purple-300",
+              target: "_blank",
+              rel: "noopener noreferrer",
               onClick: () =>
                 handleLinkClick(
                   "https://github.com/zfogg/ascii-chat/issues",
@@ -62,6 +68,8 @@ function NotFoundPage() {
               href: "https://github.com/zfogg/ascii-chat/releases",
               label: "📦 Releases",
               color: "text-pink-400 hover:text-pink-300",
+              target: "_blank",
+              rel: "noopener noreferrer",
               onClick: () =>
                 handleLinkClick(
                   "https://github.com/zfogg/ascii-chat/releases",
