@@ -34,6 +34,13 @@
     file_server
   }
 
+  # Proxy font requests to ascii-chat.com (fonts served from one place)
+  handle /fonts/* {
+    reverse_proxy https://ascii-chat.com {
+      header_up Host ascii-chat.com
+    }
+  }
+
   # Cache static assets with content hashes for 1 year (immutable)
   handle /assets/* {
     header Cache-Control "public, max-age=31536000, immutable"
