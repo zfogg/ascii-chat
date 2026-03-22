@@ -376,10 +376,25 @@ void keyboard_help_render(session_display_ctx_t *ctx) {
   // Generate top border
   APPEND("\033[%d;%dH", start_row + 1, start_col + 1);
   border_buf[0] = '\0';
-  strcat(border_buf, "╔");
-  for (int i = 1; i < box_width - 1; i++)
-    strcat(border_buf, "═");
-  strcat(border_buf, "╗");
+  int border_pos = 0;
+  int result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, "%s", "╔");
+  if (result < 0) {
+    log_error("Failed to write top-left corner: snprintf returned %d", result);
+  } else {
+    border_pos += result;
+  }
+  for (int i = 1; i < box_width - 1; i++) {
+    result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, "%s", "═");
+    if (result < 0) {
+      log_error("Failed to write horizontal line: snprintf returned %d", result);
+      break;
+    }
+    border_pos += result;
+  }
+  result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, "%s", "╗");
+  if (result < 0) {
+    log_error("Failed to write top-right corner: snprintf returned %d", result);
+  }
   APPEND("%s", border_buf);
 
   // Title
@@ -390,10 +405,25 @@ void keyboard_help_render(session_display_ctx_t *ctx) {
   // Generate separator border
   APPEND("\033[%d;%dH", start_row + 3, start_col + 1);
   border_buf[0] = '\0';
-  strcat(border_buf, "╠");
-  for (int i = 1; i < box_width - 1; i++)
-    strcat(border_buf, "═");
-  strcat(border_buf, "╣");
+  border_pos = 0;
+  result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, "%s", "╠");
+  if (result < 0) {
+    log_error("Failed to write left T: snprintf returned %d", result);
+  } else {
+    border_pos += result;
+  }
+  for (int i = 1; i < box_width - 1; i++) {
+    result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, "%s", "═");
+    if (result < 0) {
+      log_error("Failed to write horizontal line: snprintf returned %d", result);
+      break;
+    }
+    border_pos += result;
+  }
+  result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, "%s", "╣");
+  if (result < 0) {
+    log_error("Failed to write right T: snprintf returned %d", result);
+  }
   APPEND("%s", border_buf);
 
   // Navigation section
@@ -519,10 +549,25 @@ void keyboard_help_render(session_display_ctx_t *ctx) {
     buf_pos += written;
   }
   border_buf[0] = '\0';
-  strcat(border_buf, "╚");
-  for (int i = 1; i < box_width - 1; i++)
-    strcat(border_buf, "═");
-  strcat(border_buf, "╝");
+  border_pos = 0;
+  result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, "%s", "╚");
+  if (result < 0) {
+    log_error("Failed to write bottom-left corner: snprintf returned %d", result);
+  } else {
+    border_pos += result;
+  }
+  for (int i = 1; i < box_width - 1; i++) {
+    result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, "%s", "═");
+    if (result < 0) {
+      log_error("Failed to write horizontal line: snprintf returned %d", result);
+      break;
+    }
+    border_pos += result;
+  }
+  result = SAFE_SNPRINTF(border_buf + border_pos, sizeof(border_buf) - border_pos, "%s", "╝");
+  if (result < 0) {
+    log_error("Failed to write bottom-right corner: snprintf returned %d", result);
+  }
   written = snprintf(buffer + buf_pos, BUFFER_SIZE - buf_pos, "%s", border_buf);
   if (written > 0) {
     buf_pos += written;

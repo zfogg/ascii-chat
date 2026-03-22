@@ -24,13 +24,20 @@ video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
 
   // Copy client_id string - we own this memory now
   // (caller's client_id may be a stack variable that goes out of scope)
-  char *client_id_copy = SAFE_MALLOC(strlen(client_id) + 1, char *);
+  size_t client_id_len = strlen(client_id) + 1;
+  char *client_id_copy = SAFE_MALLOC(client_id_len, char *);
   if (!client_id_copy) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for client_id copy");
     SAFE_FREE(vfb);
     return NULL;
   }
-  strcpy(client_id_copy, client_id);
+  asciichat_error_t strcpy_result = SAFE_STRCPY(client_id_copy, client_id_len, client_id);
+  if (strcpy_result != ASCIICHAT_OK) {
+    log_error("Failed to copy client_id: %s", asciichat_error_string(strcpy_result));
+    SAFE_FREE(client_id_copy);
+    SAFE_FREE(vfb);
+    return NULL;
+  }
   vfb->client_id = client_id_copy;
   vfb->active = true;
 

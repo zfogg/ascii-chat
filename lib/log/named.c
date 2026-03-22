@@ -772,7 +772,11 @@ const char *log_named_format_or_original(const char *message) {
       current = format_buffer;
     } else {
       /* Subsequent iterations, swap buffers */
-      strcpy(work_buffer, format_buffer);
+      asciichat_error_t strcpy_result = SAFE_STRCPY(work_buffer, sizeof(work_buffer), format_buffer);
+      if (strcpy_result != ASCIICHAT_OK) {
+        log_error("Failed to copy format buffer: %s", asciichat_error_string(strcpy_result));
+        return format_buffer;
+      }
       current = work_buffer;
     }
   }

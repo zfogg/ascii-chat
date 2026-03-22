@@ -336,9 +336,15 @@ static char *find_project_root(void) {
     if (cached_root[0] != '\0') {
       // Return a new allocation using malloc (not SAFE_MALLOC) to avoid debug_malloc
       // recursion when called during memory report while holding g_mem.mutex
-      char *copy = malloc(strlen(cached_root) + 1);
+      size_t root_len = strlen(cached_root) + 1;
+      char *copy = malloc(root_len);
       if (copy) {
-        strcpy(copy, cached_root);
+        asciichat_error_t strcpy_result = SAFE_STRCPY(copy, root_len, cached_root);
+        if (strcpy_result != ASCIICHAT_OK) {
+          log_error("Failed to copy project root: %s", asciichat_error_string(strcpy_result));
+          free(copy);
+          return NULL;
+        }
       }
       return copy;
     }
@@ -367,9 +373,15 @@ static char *find_project_root(void) {
       search_done = true;
       // Return a new allocation using malloc (not SAFE_MALLOC) to avoid debug_malloc
       // recursion when called during memory report while holding g_mem.mutex
-      char *result = malloc(strlen(search_path) + 1);
+      size_t path_len = strlen(search_path) + 1;
+      char *result = malloc(path_len);
       if (result) {
-        strcpy(result, search_path);
+        asciichat_error_t strcpy_result = SAFE_STRCPY(result, path_len, search_path);
+        if (strcpy_result != ASCIICHAT_OK) {
+          log_error("Failed to copy search path (git root): %s", asciichat_error_string(strcpy_result));
+          free(result);
+          return NULL;
+        }
       }
       return result;
     }
@@ -391,9 +403,15 @@ static char *find_project_root(void) {
       search_done = true;
       // Return a new allocation using malloc (not SAFE_MALLOC) to avoid debug_malloc
       // recursion when called during memory report while holding g_mem.mutex
-      char *result = malloc(strlen(search_path) + 1);
+      size_t path_len = strlen(search_path) + 1;
+      char *result = malloc(path_len);
       if (result) {
-        strcpy(result, search_path);
+        asciichat_error_t strcpy_result = SAFE_STRCPY(result, path_len, search_path);
+        if (strcpy_result != ASCIICHAT_OK) {
+          log_error("Failed to copy search path (license root): %s", asciichat_error_string(strcpy_result));
+          free(result);
+          return NULL;
+        }
       }
       return result;
     }

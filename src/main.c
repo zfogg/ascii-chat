@@ -770,7 +770,11 @@ int main(int argc, char *argv[]) {
         // File ends with .log - replace with .json
         SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
         // Replace .log with .json
-        strcpy(&json_filename_buf[len - 4], ".json");
+        asciichat_error_t strcpy_result = SAFE_STRCPY(&json_filename_buf[len - 4],
+                                                       sizeof(json_filename_buf) - (len - 4), ".json");
+        if (strcpy_result != ASCIICHAT_OK) {
+          log_error("Failed to write .json extension: %s", asciichat_error_string(strcpy_result));
+        }
       } else {
         // File doesn't end with .log - just append .json
         SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);

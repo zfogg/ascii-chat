@@ -85,11 +85,17 @@ asciichat_error_t h265_client_init_media_source(
     ctx->source_type = source_type;
 
     if (source_location) {
-        ctx->source_location = SAFE_MALLOC(strlen(source_location) + 1, char *);
+        size_t source_len = strlen(source_location) + 1;
+        ctx->source_location = SAFE_MALLOC(source_len, char *);
         if (!ctx->source_location) {
             return SET_ERRNO(ERROR_MEMORY, "Failed to allocate source location string");
         }
-        strcpy(ctx->source_location, source_location);
+        asciichat_error_t strcpy_result = SAFE_STRCPY(ctx->source_location, source_len, source_location);
+        if (strcpy_result != ASCIICHAT_OK) {
+            log_error("Failed to copy source location string: %s", asciichat_error_string(strcpy_result));
+            SAFE_FREE(ctx->source_location);
+            return strcpy_result;
+        }
     }
 
     switch (source_type) {

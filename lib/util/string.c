@@ -356,7 +356,12 @@ void truncate_utf8_with_ellipsis(const char *input, char *output, size_t output_
     current_width = utf8_display_width(output);
     if (current_width <= available_width) {
       // Found the right length - add ellipsis
-      strcat(output, "...");
+      size_t current_len = strlen(output);
+      size_t remaining = output_size - current_len;
+      int snprintf_result = SAFE_SNPRINTF(output + current_len, remaining, "%s", "...");
+      if (snprintf_result < 0) {
+        log_error("Failed to append ellipsis: snprintf returned %d", snprintf_result);
+      }
       return;
     }
   }

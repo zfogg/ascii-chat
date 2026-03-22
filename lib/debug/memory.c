@@ -1217,7 +1217,10 @@ void debug_memory_report(void) {
                 size_t max_len = sizeof(file) - 4;
                 strncpy(file, site->key, max_len);
                 file[max_len] = '\0';
-                strcat(file, "...");
+                int snprintf_result = SAFE_SNPRINTF(file + max_len, sizeof(file) - max_len, "%s", "...");
+                if (snprintf_result < 0) {
+                  log_error("Failed to append ellipsis to filename: snprintf returned %d", snprintf_result);
+                }
 
                 if (sscanf(first_colon + 1, "%d", &line) == 1 && sscanf(last_colon + 1, "%" SCNu64, &tid) == 1) {
                   parse_success = true;

@@ -34,7 +34,14 @@ static char *entry_strdup(const char *s) {
   if (!s) return NULL;
   size_t len = strlen(s) + 1;
   char *dup = malloc(len);
-  if (dup) strcpy(dup, s);
+  if (dup) {
+    asciichat_error_t strcpy_result = SAFE_STRCPY(dup, len, s);
+    if (strcpy_result != ASCIICHAT_OK) {
+      log_error("Failed to duplicate string: %s", asciichat_error_string(strcpy_result));
+      free(dup);
+      return NULL;
+    }
+  }
   return dup;
 }
 

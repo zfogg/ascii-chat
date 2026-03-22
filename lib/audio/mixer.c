@@ -399,14 +399,22 @@ int mixer_add_source(mixer_t *mixer, const char *client_id, audio_ring_buffer_t 
 
   mixer->source_buffers[slot] = buffer;
   // Duplicate the client_id string - we own this memory now
-  mixer->source_ids[slot] = SAFE_MALLOC(strlen(client_id) + 1, char *);
+  size_t client_id_len = strlen(client_id) + 1;
+  mixer->source_ids[slot] = SAFE_MALLOC(client_id_len, char *);
   if (!mixer->source_ids[slot]) {
     log_warn("Mixer: Failed to allocate memory for client_id %s", client_id);
     mixer->source_buffers[slot] = NULL;
     rwlock_wrunlock(&mixer->source_lock);
     return -1;
   }
-  strcpy((char *)mixer->source_ids[slot], client_id);
+  asciichat_error_t strcpy_result = SAFE_STRCPY((char *)mixer->source_ids[slot], client_id_len, client_id);
+  if (strcpy_result != ASCIICHAT_OK) {
+    log_error("Mixer: Failed to copy client_id: %s", asciichat_error_string(strcpy_result));
+    SAFE_FREE(mixer->source_ids[slot]);
+    mixer->source_buffers[slot] = NULL;
+    rwlock_wrunlock(&mixer->source_lock);
+    return -1;
+  }
   mixer->source_active[slot] = true;
   mixer->num_sources++;
 

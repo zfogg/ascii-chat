@@ -45,8 +45,14 @@ char *platform_strdup(const char *s) {
     return NULL;
   size_t len = strlen(s) + 1;
   char *dup = SAFE_MALLOC(len, char *);
-  if (dup)
-    strcpy(dup, s);
+  if (dup) {
+    asciichat_error_t strcpy_result = SAFE_STRCPY(dup, len, s);
+    if (strcpy_result != ASCIICHAT_OK) {
+      log_error("Failed to duplicate string: %s", asciichat_error_string(strcpy_result));
+      SAFE_FREE(dup);
+      return NULL;
+    }
+  }
   return dup;
 }
 
@@ -142,7 +148,11 @@ asciichat_error_t platform_escape_shell_path(const char *path, char *output, siz
   }
 
   output[0] = '\'';
-  strcpy(output + 1, path);
+  asciichat_error_t strcpy_result = SAFE_STRCPY(output + 1, output_size - 1, path);
+  if (strcpy_result != ASCIICHAT_OK) {
+    log_error("Failed to copy path for escaping: %s", asciichat_error_string(strcpy_result));
+    return strcpy_result;
+  }
   output[path_len + 1] = '\'';
   output[path_len + 2] = '\0';
 

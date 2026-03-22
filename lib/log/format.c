@@ -61,12 +61,19 @@ static log_template_t *parse_format_string(const char *format_str, bool console_
     return NULL;
   }
 
-  result->original = (char *)malloc(strlen(format_str) + 1);
+  size_t format_len = strlen(format_str) + 1;
+  result->original = (char *)malloc(format_len);
   if (!result->original) {
     free(result);
     return NULL;
   }
-  strcpy(result->original, format_str);
+  asciichat_error_t strcpy_result = SAFE_STRCPY(result->original, format_len, format_str);
+  if (strcpy_result != ASCIICHAT_OK) {
+    log_error("Failed to copy format string: %s", asciichat_error_string(strcpy_result));
+    free(result->original);
+    free(result);
+    return NULL;
+  }
   result->console_only = console_only;
 
   /* Pre-allocate spec array (worst case: every char is a specifier) */
