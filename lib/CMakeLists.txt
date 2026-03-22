@@ -777,8 +777,12 @@ add_library(ascii-chat-shared SHARED
                     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_lib}" "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/"
                 )
             endforeach()
-            # Use $ORIGIN to find FFmpeg libraries in the same directory
-            set(_shared_rpath_list "\$ORIGIN")
+            # Use relative rpath to find FFmpeg libraries in the same directory
+            if(APPLE)
+                set(_shared_rpath_list "@loader_path")
+            else()
+                set(_shared_rpath_list "\$ORIGIN")
+            endif()
             message(STATUS "Release build: Will copy FFmpeg libs to ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} with \$ORIGIN RPATH")
         else()
             # Non-Release builds: use absolute paths (will be removed by remove_paths.sh in Release only)
@@ -815,7 +819,11 @@ add_library(ascii-chat-shared SHARED
             )
         endif()
         # Also use linker flag to ensure RPATH is properly embedded
-        target_link_options(ascii-chat-shared PRIVATE "LINKER:-rpath=${_shared_rpath_str}")
+        if(APPLE)
+            target_link_options(ascii-chat-shared PRIVATE "LINKER:-rpath,${_shared_rpath_str}")
+        else()
+            target_link_options(ascii-chat-shared PRIVATE "LINKER:-rpath=${_shared_rpath_str}")
+        endif()
     endif()
 
     # Windows: Explicitly set import library location for Windows
