@@ -261,6 +261,36 @@ function(configure_llvm_post_project)
         set(_user_provided_sysroot TRUE)
     endif()
 
+    # If clang resource directory is broken, explicitly set CMAKE_OSX_SYSROOT
+    # to Xcode SDK to ensure headers are found (GitHub Actions workaround)
+    if(NOT _user_provided_sysroot)
+        # Detect if clang resource directory has the headers we need
+        execute_process(
+            COMMAND "${CMAKE_C_COMPILER}" -print-resource-dir
+            OUTPUT_VARIABLE _clang_resource_dir
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+
+        if(NOT EXISTS "${_clang_resource_dir}/include/stdarg.h")
+            # Resource dir is broken, use Xcode SDK explicitly
+            message(STATUS "${BoldYellow}Clang resource directory broken,${ColorReset} using Xcode SDK")
+
+            # Try to find Xcode SDK
+            execute_process(
+                COMMAND xcrun --show-sdk-path --sdk macosx
+                OUTPUT_VARIABLE _xcode_sdk
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+
+            if(_xcode_sdk AND EXISTS "${_xcode_sdk}")
+                set(CMAKE_OSX_SYSROOT "${_xcode_sdk}" CACHE PATH "macOS SDK path" FORCE)
+                message(STATUS "${BoldGreen}Set CMAKE_OSX_SYSROOT${ColorReset} to Xcode SDK: ${BoldCyan}${_xcode_sdk}${ColorReset}")
+            endif()
+        endif()
+    endif()
+
     # Determine LLVM_ROOT_PREFIX from CMAKE_C_COMPILER or from LLVM_ROOT_PREFIX cache
     set(LLVM_ROOT_PREFIX "")
     if(CMAKE_C_COMPILER)
