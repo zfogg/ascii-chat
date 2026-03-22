@@ -304,13 +304,6 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
             set(BEARSSL_EXTRA_CFLAGS "-fPIC")
             set(BEARSSL_CC "${CMAKE_C_COMPILER}")
 
-            # On macOS, add resource-dir and SDK flags for Xcode/Homebrew LLVM compatibility
-            if(APPLE)
-                if(CLANG_RESOURCE_DIR)
-                    string(APPEND BEARSSL_EXTRA_CFLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
-                endif()
-            endif()
-
             # Clean BearSSL build directory before initial build
             execute_process(
                 COMMAND make clean

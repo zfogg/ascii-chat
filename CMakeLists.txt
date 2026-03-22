@@ -124,12 +124,10 @@ project(${PROJECT_NAME_FULL}
 # Post-project() Config (code that must be run after project())
 # =============================================================================
 
-# Re-clear CMAKE_OSX_SYSROOT after project() because CMake's compiler
-# detection re-sets it. Self-contained LLVM (Homebrew) doesn't need -isysroot
-# and it causes Xcode SDK headers to shadow the compiler's builtin headers.
-if(APPLE AND NOT ASCIICHAT_USER_PROVIDED_OSX_SYSROOT)
-    set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
-endif()
+# Don't clear CMAKE_OSX_SYSROOT - it's needed for system header detection.
+# The Homebrew LLVM setup in CI uses clang config files with explicit flags
+# to prioritize compiler builtins over Xcode SDK headers, so we don't need
+# to clear the sysroot here.
 
 # Musl release build optimization adjustment
 # Use -O2 instead of -O3 for musl release builds to avoid TPOFF32 relocation errors
