@@ -83,7 +83,18 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
     SAFE_FREE(cache_path);
     return SET_ERRNO(ERROR_FILE_OPERATION, "Failed to read timestamp from cache");
   }
-  result->last_check_time = (time_t)atoll(line);
+
+  // Parse timestamp safely with error checking
+  errno = 0;
+  char *endptr = NULL;
+  long long timestamp_ll = strtoll(line, &endptr, 10);
+  if (errno != 0 || endptr == line) {
+    log_error("Failed to parse timestamp from cache: invalid value '%s'", line);
+    fclose(f);
+    SAFE_FREE(cache_path);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid timestamp in cache file");
+  }
+  result->last_check_time = (time_t)timestamp_ll;
 
   // Read line 2: latest version (may be empty if check failed)
   if (fgets(line, sizeof(line), f)) {
