@@ -525,8 +525,8 @@ export default function MirrorDemoWidget({
         )}
       </div>
 
-      {/* Debug logs panel */}
-      {debugLogs.length > 0 && (
+      {/* Debug logs panel (dev only) */}
+      {process.env.NODE_ENV !== "production" && debugLogs.length > 0 && (
         <div className="mt-2 bg-gray-950 border border-gray-700 rounded p-2 max-h-32 overflow-y-auto">
           <p className="text-gray-500 text-xs font-medium mb-1">Debug Logs:</p>
           {debugLogs.map((log, i) => (
