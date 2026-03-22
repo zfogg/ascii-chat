@@ -617,12 +617,6 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       yyjson_mut_val *root = yyjson_mut_obj(doc);
       yyjson_mut_doc_set_root(doc, root);
 
-      yyjson_mut_obj_add_str(doc, root, "status", "ok");
-      yyjson_mut_obj_add_str(doc, root, "version", ASCII_CHAT_VERSION_FULL);
-      char proto_ver[16];
-      snprintf(proto_ver, sizeof(proto_ver), "%d.%d.%d", PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR, PROTOCOL_VERSION_PATCH);
-      yyjson_mut_obj_add_str(doc, root, "protocol", proto_ver);
-
       if (ws_server && ws_server->user_data) {
         acds_server_t *acds = (acds_server_t *)ws_server->user_data;
         yyjson_mut_val *network_obj = yyjson_mut_obj(doc);
