@@ -91,7 +91,7 @@ export const AsciiRenderer = forwardRef<
         const lines = ansiString.split("\n");
 
         const formattedLines = lines.map((line: string, index: number) =>
-          index < lines.length - 1 ? line + "\r\n" : line,
+          index < lines.length - 1 ? line + "\r\n" : line
         );
 
         // Use cursor home only. Clear screen only when dimensions changed.
@@ -206,8 +206,8 @@ export const AsciiRenderer = forwardRef<
         if (core) {
           const renderService = core._renderService;
           if (renderService) {
-            const originalHandler =
-              renderService._handleIntersectionChange.bind(renderService);
+            const originalHandler = renderService._handleIntersectionChange
+              .bind(renderService);
             renderService._handleIntersectionChange = (
               entry: IntersectionObserverEntry,
             ) => {
@@ -283,7 +283,7 @@ export const AsciiRenderer = forwardRef<
   return (
     <>
       {/* ASCII terminal output */}
-      <div className="flex flex-col flex-1 overflow-hidden min-h-0 relative">
+      <div className="h-full flex flex-col flex-1 overflow-hidden min-h-0 relative">
         <style>
           {`
             .xterm {
