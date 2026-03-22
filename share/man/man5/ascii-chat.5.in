@@ -1,4 +1,4 @@
-.TH ascii-chat 5 "@PROJECT_VERSION_DATE@" "ascii-chat @PROJECT_VERSION@" "File Formats"
+.TH ascii-chat 5 "@PROJECT_VERSION_DATE@" "ascii-chat @PROJECT_VERSION@" "ascii-chat File Formats"
 .SH NAME
 ascii-chat \- file format specifications for ascii-chat configuration and authentication
 .SH DESCRIPTION

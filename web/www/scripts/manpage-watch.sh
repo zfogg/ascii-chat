@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 
 REPO_ROOT="$(cd ../.. && pwd)"
 
-cmake -S "$REPO_ROOT" -B "$REPO_ROOT/build_release" --preset default
+cmake -S "$REPO_ROOT" -B "$REPO_ROOT/build_release" --preset release
 
 # Watch C sources/headers for man(3) regeneration, plus man(1) and man(5) templates
 # Rebuild man pages when files change
