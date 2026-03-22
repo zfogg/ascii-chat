@@ -1079,12 +1079,77 @@ asciichat_error_t platform_restore_timer_resolution(void) {
 /**
  * Execute a subprocess using fork+exec (POSIX implementation)
  */
-int platform_execute_subprocess(const char *executable, const char **argv) {
+int platform_execute_subprocess(const char *executable, const char **argv,
+                                char *output_buffer, size_t output_size) {
   if (!executable || !argv) {
     log_error("platform_execute_subprocess: invalid parameters");
     return -1;
   }
 
+  // If output capture is requested
+  if (output_buffer && output_size > 0) {
+    // Build command line from argv for popen
+    size_t cmd_len = 0;
+    for (int i = 0; argv[i] != NULL; i++) {
+      cmd_len += strlen(argv[i]) + 1;
+    }
+
+    char *command_line = SAFE_MALLOC(cmd_len + 1, char *);
+    if (!command_line) {
+      return -1;
+    }
+
+    // Build command line
+    command_line[0] = '\0';
+    for (int i = 0; argv[i] != NULL; i++) {
+      if (i > 0) {
+        if (safe_snprintf(command_line + strlen(command_line), cmd_len + 1 - strlen(command_line), " %s", argv[i]) < 0) {
+          SAFE_FREE(command_line);
+          log_error("Failed to build command line");
+          return -1;
+        }
+      } else {
+        if (safe_snprintf(command_line, cmd_len + 1, "%s", argv[i]) < 0) {
+          SAFE_FREE(command_line);
+          log_error("Failed to build command line");
+          return -1;
+        }
+      }
+    }
+
+    // Use popen to capture output
+    FILE *pipe = popen(command_line, "r");
+    SAFE_FREE(command_line);
+
+    if (!pipe) {
+      log_error("Failed to execute command: %s", SAFE_STRERROR(errno));
+      return -1;
+    }
+
+    // Read output from pipe
+    size_t pos = 0;
+    int ch;
+    while ((ch = fgetc(pipe)) != EOF && pos < output_size - 1) {
+      output_buffer[pos++] = (char)ch;
+    }
+    output_buffer[pos] = '\0';
+
+    // Get exit code from pclose
+    int exit_code = pclose(pipe);
+    if (exit_code < 0) {
+      log_error("Failed to close pipe: %s", SAFE_STRERROR(errno));
+      return -1;
+    }
+
+    // Extract actual exit code
+    if (WIFEXITED(exit_code)) {
+      return WEXITSTATUS(exit_code);
+    }
+
+    return -1;
+  }
+
+  // No output capture: use fork+exec for better performance
   pid_t pid = fork();
   if (pid < 0) {
     log_error("Failed to fork process: %s", SAFE_STRERROR(errno));

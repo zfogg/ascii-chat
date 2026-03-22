@@ -61,13 +61,10 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
   }
 
   // Use gpg --export to export the public key in binary format
-  char cmd[BUFFER_SIZE_LARGE];
-  safe_snprintf(cmd, sizeof(cmd), "gpg --export 0x%s > \"%s\" " PLATFORM_SHELL_NULL_REDIRECT, escaped_key_id,
-                temp_path);
-
+  const char *argv[] = {"gpg", "--export", escaped_key_id, "--output", temp_path, NULL};
   int result = 0;
   LOG_IO("gpg", {
-    result = system(cmd);
+    result = platform_execute_subprocess("gpg", argv, NULL, 0);
   });
   if (result != 0) {
     log_error("Failed to export GPG public key for key ID: %s (exit code: %d)", key_id, result);

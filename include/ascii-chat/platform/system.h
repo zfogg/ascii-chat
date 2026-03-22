@@ -647,31 +647,45 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
 // ============================================================================
 
 /**
- * @brief Execute a subprocess and wait for it to complete
+ * @brief Execute a subprocess and optionally capture its output
  * @param executable Path to executable to run (e.g., "gpg", "/usr/bin/yt-dlp")
  * @param argv NULL-terminated array of arguments (argv[0] should be executable name or path)
+ * @param output_buffer Optional buffer to store captured stdout (NULL to skip output capture)
+ * @param output_size Size of output buffer (ignored if output_buffer is NULL)
  * @return Exit code of the process, or -1 on error
  *
  * Executes a subprocess using platform-specific mechanisms:
- *   - POSIX: fork() + execvp()
- *   - Windows: CreateProcess()
+ *   - POSIX: fork() + execvp() (no output), or popen() (with output)
+ *   - Windows: CreateProcess() (no output), or piped output capture (with output)
  *
- * Usage example:
+ * If output_buffer is NULL or output_size is 0, stdout and stderr are inherited
+ * from the parent process. Otherwise, stdout is captured into output_buffer.
+ *
+ * Usage examples:
  * @code
+ * // No output capture
  * const char *argv[] = {"gpg", "--version", NULL};
- * int exit_code = platform_execute_subprocess("gpg", argv);
+ * int exit_code = platform_execute_subprocess("gpg", argv, NULL, 0);
+ *
+ * // With output capture
+ * char output[1024];
+ * const char *argv[] = {"gpg", "--list-secret-keys", "--with-colons", NULL};
+ * int exit_code = platform_execute_subprocess("gpg", argv, output, sizeof(output));
  * if (exit_code == 0) {
- *     log_info("GPG is available");
+ *     // Parse output (null-terminated)
  * }
  * @endcode
  *
- * @note stdout and stderr are inherited from the parent process
- * @note Returns immediately after child completes (blocking call)
+ * @note When output_buffer is NULL: stdout and stderr inherited, fast fork+exec
+ * @note When output_buffer is provided: stdout captured, stderr inherited
+ * @note Output is always null-terminated when captured
+ * @note Returns -1 if output_buffer is provided but too small for output
  * @note More secure than system() as it doesn't invoke a shell
  *
  * @ingroup platform_system
  */
-int platform_execute_subprocess(const char *executable, const char **argv);
+int platform_execute_subprocess(const char *executable, const char **argv,
+                                char *output_buffer, size_t output_size);
 
 // ============================================================================
 // I/O Functions

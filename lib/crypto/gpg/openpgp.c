@@ -578,25 +578,15 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
     close(output_fd);
   }
 
-  // Build GPG command using temporary homedir for isolation
-  // Steps:
-  // 1. Import the key into the temporary homedir (not the user's keyring)
-  // 2. Get the key fingerprint from the temporary homedir
-  // 3. Export the key unencrypted with the provided passphrase
+  // Use temporary homedir for isolation instead of shell pipeline
   const char *homedir_path = gpg_homedir_path(homedir);
-  char command[4096];
-  safe_snprintf(
-      command, sizeof(command),
-      "gpg --homedir '%s' --batch --import '%s' " PLATFORM_SHELL_NULL_REDIRECT " && "
-      "KEY_FPR=$(gpg --homedir '%s' --list-secret-keys --with-colons " PLATFORM_SHELL_NULL_REDIRECT
-      " | grep '^fpr' | head -1 | cut -d: -f10) && "
-      "gpg --homedir '%s' --batch --pinentry-mode loopback --passphrase '%s' --armor --export-secret-keys "
-      "--export-options export-minimal,no-export-attributes \"$KEY_FPR\" > '%s' " PLATFORM_SHELL_NULL_REDIRECT,
-      homedir_path, input_path, homedir_path, homedir_path, passphrase, output_path);
 
+  // Step 1: Import the key into the temporary homedir
+  log_debug("Importing GPG key into temporary homedir");
+  const char *argv_import[] = {"gpg", "--homedir", homedir_path, "--batch", "--import", input_path, NULL};
   int status = 0;
   LOG_IO("gpg", {
-    status = system(command);
+    status = platform_execute_subprocess("gpg", argv_import, NULL, 0);
   });
 
   // Clean up input file (no longer needed)
@@ -604,9 +594,83 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
 
   if (status != 0) {
     platform_unlink(output_path);
-    gpg_homedir_destroy(homedir); // Auto-cleanup the temp homedir
+    gpg_homedir_destroy(homedir);
     sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "GPG decryption failed. Check passphrase and key format.");
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to import GPG key into temporary homedir");
+  }
+
+  // Step 2: Get the key fingerprint from the temporary homedir
+  log_debug("Retrieving GPG key fingerprint");
+  char fpr_output[4096];
+  const char *argv_list[] = {"gpg", "--homedir", homedir_path, "--batch", "--list-secret-keys", "--with-colons", NULL};
+  LOG_IO("gpg", {
+    status = platform_execute_subprocess("gpg", argv_list, fpr_output, sizeof(fpr_output));
+  });
+
+  if (status != 0) {
+    platform_unlink(output_path);
+    gpg_homedir_destroy(homedir);
+    sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to retrieve GPG key fingerprint");
+  }
+
+  // Parse fingerprint from output: find line starting with "fpr" and extract field 10
+  char key_fpr[41] = {0};  // Ed25519 fingerprints are 40 hex chars
+  const char *line = fpr_output;
+  while (*line) {
+    if (strncmp(line, "fpr:", 4) == 0) {
+      // Found fpr line, extract the fingerprint (field 10, colon-separated)
+      int field_count = 0;
+      const char *field_start = line;
+      for (const char *p = line; *p && *p != '\n'; p++) {
+        if (*p == ':') {
+          field_count++;
+          field_start = p + 1;
+          if (field_count == 10) {
+            // Found field 10, copy until next colon or newline
+            size_t fpr_len = 0;
+            while (field_start[fpr_len] && field_start[fpr_len] != ':' && field_start[fpr_len] != '\n' && fpr_len < sizeof(key_fpr) - 1) {
+              fpr_len++;
+            }
+            if (fpr_len > 0 && fpr_len < sizeof(key_fpr)) {
+              safe_snprintf(key_fpr, sizeof(key_fpr), "%.*s", (int)fpr_len, field_start);
+            }
+            break;
+          }
+        }
+      }
+      break;
+    }
+    // Skip to next line
+    while (*line && *line != '\n') line++;
+    if (*line == '\n') line++;
+  }
+
+  if (!key_fpr[0]) {
+    log_error("Could not find GPG key fingerprint in output");
+    platform_unlink(output_path);
+    gpg_homedir_destroy(homedir);
+    sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "GPG key fingerprint not found in keyring");
+  }
+
+  log_debug("Found GPG key fingerprint: %s", key_fpr);
+
+  // Step 3: Export the secret key using the fingerprint with passphrase
+  log_debug("Exporting decrypted GPG key");
+  const char *argv_export[] = {"gpg", "--homedir", homedir_path, "--batch", "--pinentry-mode", "loopback",
+                              "--passphrase", passphrase, "--armor", "--export-secret-keys",
+                              "--export-options", "export-minimal,no-export-attributes", "--output", output_path,
+                              key_fpr, NULL};
+  LOG_IO("gpg", {
+    status = platform_execute_subprocess("gpg", argv_export, NULL, 0);
+  });
+
+  if (status != 0) {
+    platform_unlink(output_path);
+    gpg_homedir_destroy(homedir);
+    sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "GPG export failed. Check passphrase and key format.");
   }
 
   // Read the decrypted output

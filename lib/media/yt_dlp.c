@@ -144,7 +144,7 @@ bool yt_dlp_is_available(void) {
   const char *argv[] = {"yt-dlp", "--version", NULL};
   int ret = 0;
   LOG_IO("yt-dlp", {
-    ret = platform_execute_subprocess("yt-dlp", argv);
+    ret = platform_execute_subprocess("yt-dlp", argv, NULL, 0);
   });
   return (ret == 0);
 }

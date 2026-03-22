@@ -1398,7 +1398,8 @@ static bool is_executable_file(const char *path) {
 /**
  * Execute a subprocess using CreateProcess (Windows implementation)
  */
-int platform_execute_subprocess(const char *executable, const char **argv) {
+int platform_execute_subprocess(const char *executable, const char **argv,
+                                char *output_buffer, size_t output_size) {
   if (!executable || !argv) {
     log_error("platform_execute_subprocess: invalid parameters");
     return -1;
@@ -1441,6 +1442,12 @@ int platform_execute_subprocess(const char *executable, const char **argv) {
       }
       pos += result;
     }
+  }
+
+  // Note: Windows output capture with pipes not yet implemented
+  // For now, just ignore output_buffer parameter
+  if (output_buffer && output_size > 0) {
+    log_warn("Output capture not yet implemented on Windows; proceeding without capture");
   }
 
   // Create process
