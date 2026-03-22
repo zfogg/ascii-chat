@@ -477,13 +477,16 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
     )
 
     # Add x264/x265 libraries (FFmpeg was built with --enable-libx264/libx265)
-    find_library(X264_LIBRARY x264)
-    find_library(X265_LIBRARY x265)
-    if(X264_LIBRARY)
-        list(APPEND FFMPEG_LIBRARIES ${X264_LIBRARY})
-    endif()
-    if(X265_LIBRARY)
-        list(APPEND FFMPEG_LIBRARIES ${X265_LIBRARY})
+    find_package(PkgConfig QUIET)
+    if(PKG_CONFIG_FOUND)
+        pkg_check_modules(X264_PKG x264)
+        pkg_check_modules(X265_PKG x265)
+        if(X264_PKG_FOUND)
+            list(APPEND FFMPEG_LIBRARIES ${X264_PKG_LDFLAGS})
+        endif()
+        if(X265_PKG_FOUND)
+            list(APPEND FFMPEG_LIBRARIES ${X265_PKG_LDFLAGS})
+        endif()
     endif()
 
     # Add macOS frameworks only on macOS
