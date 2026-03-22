@@ -59,8 +59,8 @@ export class ServerFixture {
         ) {
           try {
             this.logStream.write(data);
-          } catch (e) {
-            // Stream closed, ignore
+          } catch (error) {
+            console.error("Error writing to log stream:", error);
           }
         }
       });
@@ -73,8 +73,8 @@ export class ServerFixture {
         ) {
           try {
             this.logStream.write(data);
-          } catch (e) {
-            // Stream closed, ignore
+          } catch (error) {
+            console.error("Error writing to log stream:", error);
           }
         }
       });
@@ -83,8 +83,8 @@ export class ServerFixture {
         clearTimeout(timeout);
         try {
           this.logStream?.end();
-        } catch (e) {
-          // Ignore stream errors
+        } catch (error) {
+          console.error("Error closing log stream:", error);
         }
         reject(new Error(`Failed to spawn server: ${err.message}`));
       });
@@ -93,8 +93,8 @@ export class ServerFixture {
         clearTimeout(timeout);
         try {
           this.logStream?.end();
-        } catch (e) {
-          // Ignore stream errors
+        } catch (error) {
+          console.error("Error closing log stream:", error);
         }
         if (code !== 0 && code !== null) {
           reject(new Error(`Server exited with code ${code}`));
@@ -119,7 +119,7 @@ export class ServerFixture {
     return new Promise((resolve) => {
       try {
         this.logStream?.end();
-      } catch (e) {
+      } catch {
         // Ignore stream errors
       }
 

@@ -415,8 +415,8 @@ export function usePageNavigation(
                   });
                 }
               }
-            } catch (_e) {
-              // Silent fail on regex error
+            } catch (error) {
+              console.error("Error scrolling to snippet:", error);
             }
           }
         }

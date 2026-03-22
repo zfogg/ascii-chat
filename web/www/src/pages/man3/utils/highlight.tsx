@@ -34,7 +34,11 @@ export function buildSearchRegex(query: string) {
     }
 
     return { regex, isValid: true };
-  } catch (_e) {
+  } catch (error) {
+    console.error(
+      `Failed to build regex from query "${query}":`,
+      error instanceof Error ? error.message : String(error),
+    );
     return { regex: null, isValid: false };
   }
 }
@@ -67,7 +71,11 @@ export function highlightMatches(text: string, query: string) {
       }
       return <span key={i}>{part}</span>;
     });
-  } catch (_e) {
+  } catch (error) {
+    console.debug(
+      "Failed to highlight text matches:",
+      error instanceof Error ? error.message : String(error),
+    );
     return text;
   }
 }
@@ -93,7 +101,11 @@ export function highlightMatchesInHTML(html: string, query: string) {
       regex,
       '<span class="bg-yellow-900/50 text-yellow-200">$1</span>',
     );
-  } catch (_e) {
+  } catch (error) {
+    console.debug(
+      "Failed to highlight HTML matches:",
+      error instanceof Error ? error.message : String(error),
+    );
     return html;
   }
 }

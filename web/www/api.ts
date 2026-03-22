@@ -405,8 +405,11 @@ function findSnippets(
         }
       }
     }
-  } catch (_e) {
-    // Invalid regex
+  } catch (error) {
+    console.error(
+      "Error searching man pages:",
+      error instanceof Error ? error.message : String(error),
+    );
   }
 
   return { snippets, totalMatches };
