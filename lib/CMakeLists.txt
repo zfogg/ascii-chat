@@ -720,7 +720,14 @@ endif()
 # Note: ascii-chat-panic is always included as it provides runtime logging functions
 # that may be called by panic-instrumented code
 # Skip shared library for musl builds (static PIE binary only)
-if(NOT USE_MUSL)
+# Also skip on Linux Release non-musl: static FFmpeg .a can't link into .so (PIC/TLS issues on arm64)
+set(_build_shared_lib TRUE)
+if(USE_MUSL)
+    set(_build_shared_lib FALSE)
+elseif(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    set(_build_shared_lib FALSE)
+endif()
+if(_build_shared_lib)
 add_library(ascii-chat-shared SHARED
         $<TARGET_OBJECTS:ascii-chat-util>
         $<TARGET_OBJECTS:ascii-chat-data-structures>
@@ -1256,7 +1263,7 @@ if(ASCIICHAT_LLVM_NM_EXECUTABLE)
     )
 endif()
 
-endif()  # End if(NOT USE_MUSL) - closes shared library configuration
+endif()  # End if(_build_shared_lib) - closes shared library configuration
 
 # =============================================================================
 # Required Symbol Definitions (musl builds skip shared lib but still need these for static lib)

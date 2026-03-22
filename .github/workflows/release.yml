@@ -293,7 +293,7 @@ jobs:
         run: |
           cmake --build build_release --target all
           cmake --build build_release --target static-lib
-          cmake --build build_release --target shared-lib
+          # shared-lib not available on Linux (static FFmpeg can't link into .so)
           cmake --build build_release --target docs
 
           # Run CPack with verbose output to diagnose DEB/RPM generation issues
