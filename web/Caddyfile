@@ -121,6 +121,16 @@ http://ascii-chat.com http://www.ascii-chat.com {
     header Cross-Origin-Resource-Policy "cross-origin"
     header Access-Control-Allow-Origin "*"
     header Accept-Ranges "bytes"
+
+    # Ensure MP4 files have correct MIME type for iOS
+    @mp4files {
+      path *.mp4
+    }
+    handle @mp4files {
+      header Content-Type "video/mp4"
+      file_server
+    }
+
     file_server
   }
 
@@ -143,6 +153,16 @@ http://discovery.ascii-chat.com {
     header Cache-Control "public, max-age=31536000, immutable"
     header Access-Control-Allow-Origin "*"
     header Accept-Ranges "bytes"
+
+    # Ensure MP4 files have correct MIME type for iOS
+    @mp4files {
+      path *.mp4
+    }
+    handle @mp4files {
+      header Content-Type "video/mp4"
+      file_server
+    }
+
     file_server
   }
 
@@ -176,6 +196,16 @@ http://web.ascii-chat.com {
     header Cache-Control "public, max-age=31536000, immutable"
     header Access-Control-Allow-Origin "*"
     header Accept-Ranges "bytes"
+
+    # Ensure MP4 files have correct MIME type for iOS
+    @mp4files {
+      path *.mp4
+    }
+    handle @mp4files {
+      header Content-Type "video/mp4"
+      file_server
+    }
+
     file_server
   }
 
