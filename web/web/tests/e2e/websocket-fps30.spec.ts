@@ -85,11 +85,12 @@ test("client mode: maintains FPS > 15", async ({ page, context }) => {
 
     // Measure FPS by comparing frame count over a 1.5-second period
     const startMetrics = await page.evaluate(() => {
+      const w = window as any;
       console.log(
         "[Test] Start metrics - window.__clientFrameMetrics =",
-        window.__clientFrameMetrics,
+        w.__clientFrameMetrics,
       );
-      const metrics = window.__clientFrameMetrics || {
+      const metrics = w.__clientFrameMetrics || {
         rendered: 0,
         received: 0,
         queueDepth: 0,
@@ -101,11 +102,12 @@ test("client mode: maintains FPS > 15", async ({ page, context }) => {
     await page.waitForTimeout(1500);
 
     const endMetrics = await page.evaluate(() => {
+      const w = window as any;
       console.log(
         "[Test] End metrics - window.__clientFrameMetrics =",
-        window.__clientFrameMetrics,
+        w.__clientFrameMetrics,
       );
-      const metrics = window.__clientFrameMetrics || {
+      const metrics = w.__clientFrameMetrics || {
         rendered: 0,
         received: 0,
         queueDepth: 0,

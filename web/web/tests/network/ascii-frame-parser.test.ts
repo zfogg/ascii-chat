@@ -2,7 +2,7 @@
  * Unit tests for AsciiFrameParser
  */
 
-import { describe, it, expect } from "vite-plus/test";
+import { describe, it, expect } from "vitest";
 import {
   parseAsciiFrame,
   ASCII_FRAME_HEADER_SIZE,
@@ -13,7 +13,7 @@ function buildFramePayload(
   width: number,
   height: number,
   frameData: string,
-  flags = FrameFlags.HAS_COLOR,
+  flags: number = FrameFlags.HAS_COLOR,
 ): Uint8Array {
   const encoder = new TextEncoder();
   const frameBytes = encoder.encode(frameData);

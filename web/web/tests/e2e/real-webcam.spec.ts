@@ -58,12 +58,6 @@ test("Real webcam animates with server frames", async ({ page, context }) => {
 
   // With real webcam input, frames MUST be different from each other
   const uniqueChecksums = new Set(frameChecksums);
-  expect(frameChecksums.length).toBeGreaterThan(
-    0,
-    "No frames received from server",
-  );
-  expect(uniqueChecksums.size).toBeGreaterThan(
-    1,
-    `Got ${frameChecksums.length} frames but only ${uniqueChecksums.size} unique. Frames must change with real webcam input.`,
-  );
+  expect(frameChecksums.length).toBeGreaterThan(0);
+  expect(uniqueChecksums.size).toBeGreaterThan(1);
 });

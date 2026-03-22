@@ -42,6 +42,9 @@ test("Browser receives multiple ENCRYPTED packets from server", async ({
     canvas.width = 640;
     canvas.height = 480;
     const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("Failed to get 2D context from canvas");
+    }
     const stream = canvas.captureStream(30);
 
     let frameCount = 0;
@@ -60,8 +63,10 @@ test("Browser receives multiple ENCRYPTED packets from server", async ({
       const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(
         navigator.mediaDevices,
       );
-      navigator.mediaDevices.getUserMedia = async (constraints) => {
-        if (constraints.video) return stream;
+      navigator.mediaDevices.getUserMedia = async (
+        constraints: MediaStreamConstraints,
+      ) => {
+        if (constraints?.video) return stream;
         return originalGetUserMedia(constraints);
       };
     }
@@ -114,12 +119,6 @@ test("Browser receives multiple ENCRYPTED packets from server", async ({
   console.log(`ASCII_FRAME packets processed: ${asciiFrames.length}`);
 
   // CRITICAL: Must receive multiple frames
-  expect(encryptedPackets.length).toBeGreaterThan(
-    1,
-    `Expected multiple ENCRYPTED packets but got ${encryptedPackets.length}`,
-  );
-  expect(asciiFrames.length).toBeGreaterThan(
-    1,
-    `Expected multiple ASCII_FRAME packets but got ${asciiFrames.length}`,
-  );
+  expect(encryptedPackets.length).toBeGreaterThan(1);
+  expect(asciiFrames.length).toBeGreaterThan(1);
 });

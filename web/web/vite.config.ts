@@ -34,7 +34,7 @@ export default defineConfig({
     react(),
     sitemap({
       hostname: "https://web.ascii-chat.com",
-      routes: ["/", "/mirror", "/client", "/discovery"],
+      dynamicRoutes: ["/", "/mirror", "/client", "/discovery"],
       changefreq: "daily",
       priority: 1.0,
       lastmod: new Date(),

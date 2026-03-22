@@ -39,7 +39,10 @@ declare module "ws" {
       listener: (ws: WebSocket, request: IncomingMessage) => void,
     ): this;
     on(event: "error", listener: (error: Error) => void): this;
-    on(event: "headers", listener: (headers: string[], request: IncomingMessage) => void): this;
+    on(
+      event: "headers",
+      listener: (headers: string[], request: IncomingMessage) => void,
+    ): this;
     on(event: "close", listener: () => void): this;
     on(event: "listening", listener: () => void): this;
 

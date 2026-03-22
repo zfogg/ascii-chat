@@ -41,6 +41,9 @@ test("Debug CLIENT_CAPABILITIES and ASCII_FRAME flow", async ({
     canvas.width = 640;
     canvas.height = 480;
     const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("Failed to get 2D context from canvas");
+    }
 
     // Create a fake video stream
     const stream = canvas.captureStream(30);
@@ -65,8 +68,10 @@ test("Debug CLIENT_CAPABILITIES and ASCII_FRAME flow", async ({
       const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(
         navigator.mediaDevices,
       );
-      navigator.mediaDevices.getUserMedia = async (constraints) => {
-        if (constraints.video) {
+      navigator.mediaDevices.getUserMedia = async (
+        constraints: MediaStreamConstraints,
+      ) => {
+        if (constraints?.video) {
           return stream;
         }
         return originalGetUserMedia(constraints);
@@ -160,7 +165,10 @@ test("Debug CLIENT_CAPABILITIES and ASCII_FRAME flow", async ({
     });
     console.log(`Terminal rendering check:`, terminalContent);
   } catch (e) {
-    console.log(`Error checking terminal: ${e}`);
+    console.error(
+      "Error checking terminal:",
+      e instanceof Error ? e.message : String(e),
+    );
   }
 
   // Take screenshot to see what's actually rendered

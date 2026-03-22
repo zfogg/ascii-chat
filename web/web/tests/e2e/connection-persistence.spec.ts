@@ -40,6 +40,9 @@ test("Client connection persists and renders continuous frames", async ({
     canvas.width = 640;
     canvas.height = 480;
     const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("Failed to get 2D context from canvas");
+    }
     const stream = canvas.captureStream(30);
 
     let frameCount = 0;
@@ -60,8 +63,10 @@ test("Client connection persists and renders continuous frames", async ({
       const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(
         navigator.mediaDevices,
       );
-      navigator.mediaDevices.getUserMedia = async (constraints) => {
-        if (constraints.video) return stream;
+      navigator.mediaDevices.getUserMedia = async (
+        constraints: MediaStreamConstraints,
+      ) => {
+        if (constraints?.video) return stream;
         return originalGetUserMedia(constraints);
       };
     }
