@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { useEffect, ReactNode } from "react";
 
 export interface HeadProps {
   // Core
@@ -42,45 +42,76 @@ export function Head({
   ogType = "website",
   children,
 }: HeadProps) {
-  return (
-    <>
-      <title>{title}</title>
-      <meta name="description" content={description} />
-      {keywords && <meta name="keywords" content={keywords} />}
-      {author && <meta name="author" content={author} />}
+  useEffect(() => {
+    // Update title
+    document.title = title;
 
-      {/* Open Graph */}
-      <meta property="og:type" content={ogType} />
-      <meta property="og:url" content={url} />
-      <meta property="og:title" content={title} />
-      <meta property="og:description" content={description} />
-      {ogImage && (
-        <>
-          <meta property="og:image" content={ogImage} />
-          <meta property="og:image:width" content={ogImageWidth} />
-          <meta property="og:image:height" content={ogImageHeight} />
-          {ogImageAlt && <meta property="og:image:alt" content={ogImageAlt} />}
-        </>
-      )}
+    // Helper to set meta tag
+    const setMeta = (name: string, content: string, isProperty = false) => {
+      let meta = document.querySelector(
+        `meta[${isProperty ? "property" : "name"}="${name}"]`
+      );
+      if (!meta) {
+        meta = document.createElement("meta");
+        if (isProperty) {
+          meta.setAttribute("property", name);
+        } else {
+          meta.setAttribute("name", name);
+        }
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute("content", content);
+    };
 
-      {/* Twitter */}
-      <meta property="twitter:card" content={twitterCard} />
-      <meta property="twitter:site" content={twitterSite} />
-      <meta property="twitter:creator" content={twitterCreator} />
-      <meta property="twitter:url" content={url} />
-      <meta property="twitter:title" content={title} />
-      <meta property="twitter:description" content={description} />
-      {ogImage && (
-        <>
-          <meta property="twitter:image" content={ogImage} />
-          {ogImageAlt && (
-            <meta property="twitter:image:alt" content={ogImageAlt} />
-          )}
-        </>
-      )}
+    // Set standard meta tags
+    setMeta("description", description);
+    if (keywords) setMeta("keywords", keywords);
+    if (author) setMeta("author", author);
 
-      {/* Custom children for route-specific tags */}
-      {children}
-    </>
-  );
+    // Set Open Graph tags
+    setMeta("og:type", ogType, true);
+    setMeta("og:url", url, true);
+    setMeta("og:title", title, true);
+    setMeta("og:description", description, true);
+
+    if (ogImage) {
+      setMeta("og:image", ogImage, true);
+      setMeta("og:image:width", ogImageWidth, true);
+      setMeta("og:image:height", ogImageHeight, true);
+      if (ogImageAlt) {
+        setMeta("og:image:alt", ogImageAlt, true);
+      }
+    }
+
+    // Set Twitter tags
+    setMeta("twitter:card", twitterCard, true);
+    setMeta("twitter:site", twitterSite, true);
+    setMeta("twitter:creator", twitterCreator, true);
+    setMeta("twitter:url", url, true);
+    setMeta("twitter:title", title, true);
+    setMeta("twitter:description", description, true);
+
+    if (ogImage) {
+      setMeta("twitter:image", ogImage, true);
+      if (ogImageAlt) {
+        setMeta("twitter:image:alt", ogImageAlt, true);
+      }
+    }
+  }, [
+    title,
+    description,
+    keywords,
+    author,
+    url,
+    ogImage,
+    ogImageWidth,
+    ogImageHeight,
+    ogImageAlt,
+    twitterCard,
+    twitterSite,
+    twitterCreator,
+    ogType,
+  ]);
+
+  return <>{children}</>;
 }
