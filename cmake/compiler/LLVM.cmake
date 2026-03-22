@@ -283,6 +283,7 @@ function(configure_llvm_post_project)
     endif()
 
     # Configure resource directory
+    # On GitHub Actions, -print-resource-dir may return a non-existent path for old clang versions
     execute_process(
         COMMAND "${LLVM_ROOT_PREFIX}/bin/clang" -print-resource-dir
         OUTPUT_VARIABLE CLANG_RESOURCE_DIR
@@ -290,31 +291,35 @@ function(configure_llvm_post_project)
         ERROR_QUIET
     )
 
-    # Validate resource directory exists. If not, try to find the correct one
+    # Validate and fix resource directory if it doesn't exist
     if(NOT CLANG_RESOURCE_DIR OR NOT EXISTS "${CLANG_RESOURCE_DIR}/include")
+        message(STATUS "${BoldYellow}Resource directory invalid or missing:${ColorReset} ${CLANG_RESOURCE_DIR}")
+
+        # Get clang version from --version output
         execute_process(
             COMMAND "${LLVM_ROOT_PREFIX}/bin/clang" --version
             OUTPUT_VARIABLE CLANG_VERSION_OUTPUT
             OUTPUT_STRIP_TRAILING_WHITESPACE
         )
 
-        # Extract version from "clang version X.Y.Z"
-        string(REGEX MATCH "clang version ([0-9]+)\\.([0-9]+)" CLANG_VERSION_MATCH "${CLANG_VERSION_OUTPUT}")
-        if(CMAKE_MATCH_1)
-            set(CLANG_MAJOR_VERSION "${CMAKE_MATCH_1}")
+        # Extract major version (e.g., "22" from "clang version 22.0.1")
+        string(REGEX MATCH "version ([0-9]+)" CLANG_VERSION_MATCH "${CLANG_VERSION_OUTPUT}")
+        set(CLANG_MAJOR_VERSION "${CMAKE_MATCH_1}")
 
-            # Try the version-specific directory
+        if(CLANG_MAJOR_VERSION)
+            # Try exact version match first
             set(CLANG_RESOURCE_DIR "${LLVM_ROOT_PREFIX}/lib/clang/${CLANG_MAJOR_VERSION}")
-
-            # If that doesn't exist, scan for available clang directories (to handle version mismatches)
             if(NOT EXISTS "${CLANG_RESOURCE_DIR}/include")
-                # Look for any clang/N directory that has include/
-                file(GLOB AVAILABLE_CLANG_DIRS "${LLVM_ROOT_PREFIX}/lib/clang/*/include")
-                if(AVAILABLE_CLANG_DIRS)
-                    # Get the first (most recent) one
-                    list(GET AVAILABLE_CLANG_DIRS 0 _first_available)
-                    get_filename_component(CLANG_RESOURCE_DIR "${_first_available}" DIRECTORY)
-                    message(WARNING "${BoldYellow}Clang version mismatch:${ColorReset} clang reports version ${CLANG_MAJOR_VERSION}, but found resource dir at: ${CLANG_RESOURCE_DIR}")
+                # Scan for any available clang version directories
+                file(GLOB CLANG_DIRS "${LLVM_ROOT_PREFIX}/lib/clang/*")
+                if(CLANG_DIRS)
+                    # Filter to only directories with include/ subdirectory
+                    foreach(_dir ${CLANG_DIRS})
+                        if(EXISTS "${_dir}/include")
+                            set(CLANG_RESOURCE_DIR "${_dir}")
+                            break()
+                        endif()
+                    endforeach()
                 endif()
             endif()
         endif()
