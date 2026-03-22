@@ -16,6 +16,9 @@ import { test, expect } from "@playwright/test";
 const MIRROR_TEST_URL = "http://localhost:3000/mirror?test";
 const TEST_TIMEOUT = 30000;
 
+// ANSI escape character
+const ESC = String.fromCharCode(0x1b);
+
 // Hue sectors of the color wheel (0-360 degrees)
 const HUE_SECTORS = [
   { name: "red", min: 0, max: 30 },
@@ -142,7 +145,8 @@ test.describe("Rainbow Color Filter Cycling", () => {
         }
 
         // Find first truecolor ANSI code: ESC[38;2;R;G;Bm
-        const match = frame.match(/\x1b\[38;2;(\d+);(\d+);(\d+)m/);
+        const ansiRegex = new RegExp(`${ESC}\\[38;2;(\\d+);(\\d+);(\\d+)m`);
+        const match = frame.match(ansiRegex);
         if (!match) {
           console.log(
             `[rainbow-test] No truecolor code in frame (count=${frameCount}, len=${frame.length})`,
@@ -152,7 +156,7 @@ test.describe("Rainbow Color Filter Cycling", () => {
 
         // Also extract first 5 distinct colors to see variety
         const allColors: string[] = [];
-        const re = /\x1b\[38;2;(\d+);(\d+);(\d+)m/g;
+        const re = new RegExp(`${ESC}\\[38;2;(\\d+);(\\d+);(\\d+)m`, "g");
         let m;
         const seen = new Set<string>();
         while ((m = re.exec(frame)) !== null && allColors.length < 5) {
@@ -190,7 +194,6 @@ test.describe("Rainbow Color Filter Cycling", () => {
             time: i * SAMPLE_INTERVAL_MS,
             hue: Math.round(hue),
             sector,
-            frameCount: sample.frameCount ?? 0,
           });
         }
       }
@@ -205,9 +208,7 @@ test.describe("Rainbow Color Filter Cycling", () => {
     );
     console.log(
       "Hue samples:",
-      sampledHues.map(
-        (s) => `${s.time}ms: ${s.hue}° (${s.sector}) frame#${s.frameCount}`,
-      ),
+      sampledHues.map((s) => `${s.time}ms: ${s.hue}° (${s.sector})`),
     );
 
     // We should have gotten a reasonable number of samples

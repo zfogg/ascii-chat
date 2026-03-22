@@ -9,7 +9,6 @@ import { expect, test } from "@playwright/test";
 import { ServerFixture, getRandomPort } from "./server-fixture";
 
 const WEB_CLIENT_URL = "http://localhost:3000/client";
-const TEST_TIMEOUT = 5000;
 
 // Get server port from environment variable or use default (27226 is the WebSocket default)
 const SERVER_PORT = process.env.PORT ? parseInt(process.env.PORT) : 27226;
@@ -61,7 +60,9 @@ test.describe("Client Connection to Native Server", () => {
 
     // Inject fake webcam that generates animated test patterns
     await context.addInitScript(() => {
-      const originalGetUserMedia = navigator.mediaDevices.getUserMedia;
+      const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(
+        navigator.mediaDevices,
+      );
 
       navigator.mediaDevices.getUserMedia = async (constraints: any) => {
         if (constraints?.video) {

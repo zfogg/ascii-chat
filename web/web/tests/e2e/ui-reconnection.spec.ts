@@ -91,26 +91,6 @@ test("UI: browser auto-reconnects when server restarts", async ({ page }) => {
     });
   };
 
-  const getAllStatuses = async () => {
-    return await page.evaluate(() => {
-      // Debug: return all text that contains "connect", "handshake", "error", etc
-      const results: string[] = [];
-      document.querySelectorAll("*").forEach((el) => {
-        const text = el.textContent?.trim() || "";
-        if (
-          (text.includes("connect") ||
-            text.includes("handshake") ||
-            text.includes("disconnect") ||
-            text.includes("error")) &&
-          text.length < 100
-        ) {
-          results.push(text);
-        }
-      });
-      return [...new Set(results)];
-    });
-  };
-
   // Listen to browser console for key events
   page.on("console", (msg) => {
     const text = msg.text();

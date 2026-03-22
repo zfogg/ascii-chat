@@ -1,0 +1,11 @@
+deps/
+.deps-cache/
+build*/
+src/
+lib/
+include/
+todo/
+tests/
+notes/
+web/
+playwright-report/

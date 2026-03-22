@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { WebSocketServer } from "ws";
+import { WebSocketServer, WebSocket } from "ws";
 
 test.describe("Browser Reconnection with Server Restart", () => {
   let wsServer: WebSocketServer | null = null;
@@ -8,7 +8,7 @@ test.describe("Browser Reconnection with Server Restart", () => {
   const startServer = async (wsPort: number) => {
     return new Promise<void>((resolve) => {
       wsServer = new WebSocketServer({ port: wsPort });
-      wsServer.on("connection", (ws) => {
+      wsServer.on("connection", (ws: WebSocket) => {
         console.log(`[E2E Test] Client connected to WebSocket server`);
         // Send handshake complete packet immediately
         const packet = new Uint8Array(22);
@@ -109,7 +109,7 @@ test.describe("Browser Reconnection with Server Restart", () => {
       await page.waitForTimeout(200);
     }
 
-    expect(isConnected).toBe(true, "Should be Connected before server restart");
+    expect(isConnected).toBe(true);
     console.log("[E2E Test] ✓ Connected initially");
 
     // Kill server
@@ -132,10 +132,7 @@ test.describe("Browser Reconnection with Server Restart", () => {
       .catch(() => false);
 
     console.log(`[E2E Test] Error button highlighted: ${errorBtnHighlighted}`);
-    expect(errorBtnHighlighted).toBe(
-      false,
-      "Should NOT be in Error state after disconnect",
-    );
+    expect(errorBtnHighlighted).toBe(false);
 
     // Wait for it to attempt reconnecting (should show Connecting state)
     console.log("[E2E Test] Waiting for Connecting state...");
@@ -164,10 +161,7 @@ test.describe("Browser Reconnection with Server Restart", () => {
       await page.waitForTimeout(500);
     }
 
-    expect(connectingFound).toBe(
-      true,
-      "Should show Connecting state during reconnection",
-    );
+    expect(connectingFound).toBe(true);
     console.log("[E2E Test] ✓ Showing Connecting state (no Error)");
 
     // Restart server
@@ -201,10 +195,7 @@ test.describe("Browser Reconnection with Server Restart", () => {
       await page.waitForTimeout(300);
     }
 
-    expect(reconnectedFound).toBe(
-      true,
-      "Should reconnect to Connected after server restart",
-    );
+    expect(reconnectedFound).toBe(true);
     console.log("[E2E Test] ✓ Reconnected after server restart");
 
     // Cleanup

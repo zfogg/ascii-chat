@@ -95,7 +95,10 @@
       "name": "release",
       "displayName": "Release",
       "description": "Optimized static release build - automatically uses musl on Linux, vcpkg static on Windows",
-      "inherits": "base-release"
+      "inherits": "base-release",
+      "cacheVariables": {
+        "ASCIICHAT_ENABLE_ANALYZERS": "OFF"
+      }
     },
     {
       "name": "release-musl",

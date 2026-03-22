@@ -1,15 +1,14 @@
 import { test, expect } from "@playwright/test";
-import { WebSocketServer } from "ws";
+import { WebSocketServer, WebSocket } from "ws";
 
 test("browser auto-reconnects when server restarts", async ({ page }) => {
   let wsServer: WebSocketServer | null = null;
   const port = 9900 + Math.floor(Math.random() * 100);
-  const serverUrl = `ws://localhost:${port}`;
 
   const startServer = async () => {
     return new Promise<void>((resolve) => {
       wsServer = new WebSocketServer({ port });
-      wsServer.on("connection", (ws) => {
+      wsServer.on("connection", (ws: WebSocket) => {
         console.log("[Test] Client connected");
         const packet = new Uint8Array(22);
         packet[8] = 0;
@@ -84,7 +83,7 @@ test("browser auto-reconnects when server restarts", async ({ page }) => {
   }
 
   await page.screenshot({ path: "/tmp/step1-connected.png", fullPage: true });
-  expect(isConnected).toBe(true, "Should show Connected before disconnect");
+  expect(isConnected).toBe(true);
 
   // Kill server
   console.log("[Test] Killing server...");
@@ -106,7 +105,7 @@ test("browser auto-reconnects when server restarts", async ({ page }) => {
 
   await page.screenshot({ path: "/tmp/step2-disconnect.png", fullPage: true });
   console.log(`[Test] After disconnect - Error state: ${isError}`);
-  expect(isError).toBe(false, "Should NOT show Error state");
+  expect(isError).toBe(false);
 
   // Wait for Connecting state
   console.log("[Test] Waiting for Connecting state...");
@@ -132,7 +131,7 @@ test("browser auto-reconnects when server restarts", async ({ page }) => {
     await page.waitForTimeout(500);
   }
 
-  expect(isConnecting).toBe(true, "Should show Connecting state");
+  expect(isConnecting).toBe(true);
 
   // Restart server
   console.log("[Test] Restarting server...");
@@ -164,7 +163,7 @@ test("browser auto-reconnects when server restarts", async ({ page }) => {
   }
 
   await page.screenshot({ path: "/tmp/step3-reconnected.png", fullPage: true });
-  expect(isConnected).toBe(true, "Should reconnect to Connected");
+  expect(isConnected).toBe(true);
 
   console.log("[Test] ✅ All checks passed!");
   await stopServer();
