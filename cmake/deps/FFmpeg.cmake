@@ -476,6 +476,16 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
         "${FFMPEG_PREFIX}/lib/libavutil.a"
     )
 
+    # Add x264/x265 libraries (FFmpeg was built with --enable-libx264/libx265)
+    find_library(X264_LIBRARY x264)
+    find_library(X265_LIBRARY x265)
+    if(X264_LIBRARY)
+        list(APPEND FFMPEG_LIBRARIES ${X264_LIBRARY})
+    endif()
+    if(X265_LIBRARY)
+        list(APPEND FFMPEG_LIBRARIES ${X265_LIBRARY})
+    endif()
+
     # Add macOS frameworks only on macOS
     if(APPLE)
         list(APPEND FFMPEG_LIBRARIES
