@@ -1887,37 +1887,37 @@
 <p class="Pp"></p>
 <p class="Pp">If the key is not registered, returns just the type_hint. In
     release builds (NDEBUG), this always returns &quot;?&quot;.</p>
-<p class="Pp">Definition at line <b>345</b> of file <b>debug/named.c</b>.</p>
-<pre>345                                                                  {
-346   if (!type_hint) type_hint = &quot;object&quot;;
-347 
-348   static _Thread_local char buffer[DESCRIBE_BUFFER_SIZE];
-349 
-350   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-351     snprintf(buffer, sizeof(buffer), &quot;%s (0x%tx)&quot;, type_hint, (ptrdiff_t)key);
-352     return buffer;
-353   }
+<p class="Pp">Definition at line <b>352</b> of file <b>debug/named.c</b>.</p>
+<pre>352                                                                  {
+353   if (!type_hint) type_hint = &quot;object&quot;;
 354 
-355   rwlock_rdlock(&amp;g_named_registry.entries_lock);
-356   named_entry_t *entry = NULL;
-357   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
-358   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
-359 
-360   if (entry) {
-361     const char *type = entry-&gt;type ? entry-&gt;type : type_hint;
-362     const char *name = entry-&gt;name ? entry-&gt;name : &quot;unknown&quot;;
-363     if (entry-&gt;file &amp;&amp; entry-&gt;func &amp;&amp; entry-&gt;line &gt; 0) {
-364       snprintf(buffer, sizeof(buffer), &quot;%s/%s (0x%tx) @ %s:%d:%s()&quot;, type, name, (ptrdiff_t)key,
-365                entry-&gt;file, entry-&gt;line, entry-&gt;func);
-366     } else {
-367       snprintf(buffer, sizeof(buffer), &quot;%s/%s (0x%tx)&quot;, type, name, (ptrdiff_t)key);
-368     }
-369   } else {
-370     snprintf(buffer, sizeof(buffer), &quot;%s (0x%tx)&quot;, type_hint ? type_hint : &quot;unknown&quot;, (ptrdiff_t)key);
-371   }
-372 
-373   return buffer;
-374 }</pre>
+355   static _Thread_local char buffer[DESCRIBE_BUFFER_SIZE];
+356 
+357   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+358     snprintf(buffer, sizeof(buffer), &quot;%s (0x%tx)&quot;, type_hint, (ptrdiff_t)key);
+359     return buffer;
+360   }
+361 
+362   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+363   named_entry_t *entry = NULL;
+364   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+365   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+366 
+367   if (entry) {
+368     const char *type = entry-&gt;type ? entry-&gt;type : type_hint;
+369     const char *name = entry-&gt;name ? entry-&gt;name : &quot;unknown&quot;;
+370     if (entry-&gt;file &amp;&amp; entry-&gt;func &amp;&amp; entry-&gt;line &gt; 0) {
+371       snprintf(buffer, sizeof(buffer), &quot;%s/%s (0x%tx) @ %s:%d:%s()&quot;, type, name, (ptrdiff_t)key,
+372                entry-&gt;file, entry-&gt;line, entry-&gt;func);
+373     } else {
+374       snprintf(buffer, sizeof(buffer), &quot;%s/%s (0x%tx)&quot;, type, name, (ptrdiff_t)key);
+375     }
+376   } else {
+377     snprintf(buffer, sizeof(buffer), &quot;%s (0x%tx)&quot;, type_hint ? type_hint : &quot;unknown&quot;, (ptrdiff_t)key);
+378   }
+379 
+380   return buffer;
+381 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>DESCRIBE_BUFFER_SIZE</b>, <b>named_entry::file</b>,
@@ -1939,11 +1939,11 @@
 <p class="Pp">This is a function (not a macro) to handle the opaque
     <b>asciichat_thread_t</b> type properly, converting it through
     <b>asciichat_thread_to_key()</b>.</p>
-<p class="Pp">Definition at line <b>376</b> of file <b>debug/named.c</b>.</p>
-<pre>376                                                 {
-377   uintptr_t key = asciichat_thread_to_key((asciichat_thread_t)thread);
-378   return named_describe(key, &quot;thread&quot;);
-379 }</pre>
+<p class="Pp">Definition at line <b>383</b> of file <b>debug/named.c</b>.</p>
+<pre>383                                                 {
+384   uintptr_t key = asciichat_thread_to_key((asciichat_thread_t)thread);
+385   return named_describe(key, &quot;thread&quot;);
+386 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_thread_to_key()</b>, and
@@ -1956,47 +1956,47 @@
   &lt;<b>include/ascii-chat/debug/named.h</b>&gt;<b></b></p>
 <p class="Pp">Destroy the named object registry. Cleans up all registered names
     and internal structures. Typically called from lock_debug_destroy().</p>
-<p class="Pp">Definition at line <b>93</b> of file <b>debug/named.c</b>.</p>
-<pre>93                          {
-94   // Always attempt to shut down the lifecycle, but always cleanup entries
-95   lifecycle_shutdown(&amp;g_named_registry.lifecycle);
-96 
-97   rwlock_wrlock(&amp;g_named_registry.entries_lock);
-98 
-99   // Find the registry's own rwlock entry (allocated during named_init bootstrap)
-100   // This entry will be unregistered by rwlock_destroy, so we must not free it here
-101   uintptr_t registry_lock_key = (uintptr_t)(const void *)&amp;g_named_registry.entries_lock;
-102   named_entry_t *registry_lock_entry = NULL;
-103   HASH_FIND(hh, g_named_registry.entries, &amp;registry_lock_key, sizeof(uintptr_t), registry_lock_entry);
-104 
-105   for (named_entry_t *e = g_named_registry.entries; e != NULL;) {
-106     named_entry_t *next = e-&gt;hh.next;
-107 
-108     // Skip the registry lock entry - it will be cleaned up by rwlock_destroy
-109     // which calls NAMED_UNREGISTER after we release the lock
-110     if (e == registry_lock_entry) {
-111       e = next;
-112       continue;
-113     }
+<p class="Pp">Definition at line <b>100</b> of file <b>debug/named.c</b>.</p>
+<pre>100                          {
+101   // Always attempt to shut down the lifecycle, but always cleanup entries
+102   lifecycle_shutdown(&amp;g_named_registry.lifecycle);
+103 
+104   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+105 
+106   // Find the registry's own rwlock entry (allocated during named_init bootstrap)
+107   // This entry will be unregistered by rwlock_destroy, so we must not free it here
+108   uintptr_t registry_lock_key = (uintptr_t)(const void *)&amp;g_named_registry.entries_lock;
+109   named_entry_t *registry_lock_entry = NULL;
+110   HASH_FIND(hh, g_named_registry.entries, &amp;registry_lock_key, sizeof(uintptr_t), registry_lock_entry);
+111 
+112   for (named_entry_t *e = g_named_registry.entries; e != NULL;) {
+113     named_entry_t *next = e-&gt;hh.next;
 114 
-115     // Free all other entries
-116     free(e-&gt;name);
-117     if (e-&gt;type) free(e-&gt;type);
-118     if (e-&gt;format_spec) free(e-&gt;format_spec);
-119     if (e-&gt;file) free(e-&gt;file);
-120     if (e-&gt;func) free(e-&gt;func);
-121     free(e);
-122     e = next;
-123   }
-124 
-125   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
-126 
-127   // rwlock_destroy will call NAMED_UNREGISTER on the lock entry, which will:
-128   // 1. Acquire the lock (now safe since we released it)
-129   // 2. Find and remove the lock entry from the hash
-130   // 3. Free the lock entry's fields
-131   rwlock_destroy(&amp;g_named_registry.entries_lock);
-132 }</pre>
+115     // Skip the registry lock entry - it will be cleaned up by rwlock_destroy
+116     // which calls NAMED_UNREGISTER after we release the lock
+117     if (e == registry_lock_entry) {
+118       e = next;
+119       continue;
+120     }
+121 
+122     // Free all other entries
+123     free(e-&gt;name);
+124     if (e-&gt;type) free(e-&gt;type);
+125     if (e-&gt;format_spec) free(e-&gt;format_spec);
+126     if (e-&gt;file) free(e-&gt;file);
+127     if (e-&gt;func) free(e-&gt;func);
+128     free(e);
+129     e = next;
+130   }
+131 
+132   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+133 
+134   // rwlock_destroy will call NAMED_UNREGISTER on the lock entry, which will:
+135   // 1. Acquire the lock (now safe since we released it)
+136   // 2. Find and remove the lock entry from the hash
+137   // 3. Free the lock entry's fields
+138   rwlock_destroy(&amp;g_named_registry.entries_lock);
+139 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_shutdown()</b>, <b>rwlock_destroy()</b>,
@@ -2017,19 +2017,19 @@
     <b>named_register_fmt()</b>, or NULL if the key is not in the registry.</p>
 <p class="Pp"></p>
 <p class="Pp">In release builds (NDEBUG), this always returns NULL.</p>
-<p class="Pp">Definition at line <b>306</b> of file <b>debug/named.c</b>.</p>
-<pre>306                                      {
-307   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-308     return NULL;
-309   }
-310 
-311   rwlock_rdlock(&amp;g_named_registry.entries_lock);
-312   named_entry_t *entry = NULL;
-313   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
-314   const char *result = entry ? entry-&gt;name : NULL;
-315   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
-316   return result;
-317 }</pre>
+<p class="Pp">Definition at line <b>313</b> of file <b>debug/named.c</b>.</p>
+<pre>313                                      {
+314   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+315     return NULL;
+316   }
+317 
+318   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+319   named_entry_t *entry = NULL;
+320   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+321   const char *result = entry ? entry-&gt;name : NULL;
+322   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+323   return result;
+324 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_is_initialized()</b>,
@@ -2072,22 +2072,22 @@
 <p class="Pp">Looks up an FD using the same namespace encoding as
     <b>named_register_fd()</b>. In release builds (NDEBUG), this always returns
     NULL.</p>
-<p class="Pp">Definition at line <b>459</b> of file <b>debug/named.c</b>.</p>
-<pre>459                                  {
-460   if (fd &lt; 0) return NULL;
-461 
-462   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-463     return NULL;
-464   }
-465 
-466   uintptr_t key = encode_fd_key(fd);
-467   rwlock_rdlock(&amp;g_named_registry.entries_lock);
-468   named_entry_t *entry = NULL;
-469   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
-470   const char *result = entry ? entry-&gt;name : NULL;
-471   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
-472   return result;
-473 }</pre>
+<p class="Pp">Definition at line <b>466</b> of file <b>debug/named.c</b>.</p>
+<pre>466                                  {
+467   if (fd &lt; 0) return NULL;
+468 
+469   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+470     return NULL;
+471   }
+472 
+473   uintptr_t key = encode_fd_key(fd);
+474   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+475   named_entry_t *entry = NULL;
+476   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+477   const char *result = entry ? entry-&gt;name : NULL;
+478   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+479   return result;
+480 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_is_initialized()</b>,
@@ -2106,22 +2106,22 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Format specifier string (e.g., &quot;%d&quot;), or NULL
   if not registered</div>
-<p class="Pp">Definition at line <b>475</b> of file <b>debug/named.c</b>.</p>
-<pre>475                                              {
-476   if (fd &lt; 0) return NULL;
-477 
-478   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-479     return NULL;
-480   }
-481 
-482   uintptr_t key = encode_fd_key(fd);
-483   rwlock_rdlock(&amp;g_named_registry.entries_lock);
-484   named_entry_t *entry = NULL;
-485   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
-486   const char *result = entry ? entry-&gt;format_spec : NULL;
-487   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
-488   return result;
-489 }</pre>
+<p class="Pp">Definition at line <b>482</b> of file <b>debug/named.c</b>.</p>
+<pre>482                                              {
+483   if (fd &lt; 0) return NULL;
+484 
+485   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+486     return NULL;
+487   }
+488 
+489   uintptr_t key = encode_fd_key(fd);
+490   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+491   named_entry_t *entry = NULL;
+492   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+493   const char *result = entry ? entry-&gt;format_spec : NULL;
+494   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+495   return result;
+496 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>named_entry::format_spec</b>,
@@ -2143,19 +2143,19 @@
     <b>named_register()</b>, or NULL if the key is not in the registry.</p>
 <p class="Pp"></p>
 <p class="Pp">In release builds (NDEBUG), this always returns NULL.</p>
-<p class="Pp">Definition at line <b>332</b> of file <b>debug/named.c</b>.</p>
-<pre>332                                                  {
-333   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-334     return NULL;
-335   }
-336 
-337   rwlock_rdlock(&amp;g_named_registry.entries_lock);
-338   named_entry_t *entry = NULL;
-339   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
-340   const char *result = entry ? entry-&gt;format_spec : NULL;
-341   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
-342   return result;
-343 }</pre>
+<p class="Pp">Definition at line <b>339</b> of file <b>debug/named.c</b>.</p>
+<pre>339                                                  {
+340   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+341     return NULL;
+342   }
+343 
+344   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+345   named_entry_t *entry = NULL;
+346   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+347   const char *result = entry ? entry-&gt;format_spec : NULL;
+348   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+349   return result;
+350 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>named_entry::format_spec</b>,
@@ -2175,22 +2175,22 @@
 <p class="Pp">Looks up a packet type using the same namespace encoding as
     <b>named_register_packet_type()</b>. In release builds (NDEBUG), this always
     returns NULL.</p>
-<p class="Pp">Definition at line <b>520</b> of file <b>debug/named.c</b>.</p>
-<pre>520                                                 {
-521   if (pkt_type &lt; 0) return NULL;
-522 
-523   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-524     return NULL;
-525   }
-526 
-527   uintptr_t key = encode_pkt_type_key(pkt_type);
-528   rwlock_rdlock(&amp;g_named_registry.entries_lock);
-529   named_entry_t *entry = NULL;
-530   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
-531   const char *result = entry ? entry-&gt;name : NULL;
-532   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
-533   return result;
-534 }</pre>
+<p class="Pp">Definition at line <b>527</b> of file <b>debug/named.c</b>.</p>
+<pre>527                                                 {
+528   if (pkt_type &lt; 0) return NULL;
+529 
+530   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+531     return NULL;
+532   }
+533 
+534   uintptr_t key = encode_pkt_type_key(pkt_type);
+535   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+536   named_entry_t *entry = NULL;
+537   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+538   const char *result = entry ? entry-&gt;name : NULL;
+539   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+540   return result;
+541 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_is_initialized()</b>,
@@ -2209,22 +2209,22 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Format specifier string (e.g., &quot;%d&quot;), or NULL
   if not registered</div>
-<p class="Pp">Definition at line <b>536</b> of file <b>debug/named.c</b>.</p>
-<pre>536                                                             {
-537   if (pkt_type &lt; 0) return NULL;
-538 
-539   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-540     return NULL;
-541   }
-542 
-543   uintptr_t key = encode_pkt_type_key(pkt_type);
-544   rwlock_rdlock(&amp;g_named_registry.entries_lock);
-545   named_entry_t *entry = NULL;
-546   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
-547   const char *result = entry ? entry-&gt;format_spec : NULL;
-548   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
-549   return result;
-550 }</pre>
+<p class="Pp">Definition at line <b>543</b> of file <b>debug/named.c</b>.</p>
+<pre>543                                                             {
+544   if (pkt_type &lt; 0) return NULL;
+545 
+546   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+547     return NULL;
+548   }
+549 
+550   uintptr_t key = encode_pkt_type_key(pkt_type);
+551   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+552   named_entry_t *entry = NULL;
+553   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+554   const char *result = entry ? entry-&gt;format_spec : NULL;
+555   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+556   return result;
+557 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>named_entry::format_spec</b>,
@@ -2245,19 +2245,19 @@
     <b>named_register_fmt()</b>, or NULL if the key is not in the registry.</p>
 <p class="Pp"></p>
 <p class="Pp">In release builds (NDEBUG), this always returns NULL.</p>
-<p class="Pp">Definition at line <b>319</b> of file <b>debug/named.c</b>.</p>
-<pre>319                                           {
-320   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-321     return NULL;
-322   }
-323 
-324   rwlock_rdlock(&amp;g_named_registry.entries_lock);
-325   named_entry_t *entry = NULL;
-326   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
-327   const char *result = entry ? entry-&gt;type : NULL;
-328   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
-329   return result;
-330 }</pre>
+<p class="Pp">Definition at line <b>326</b> of file <b>debug/named.c</b>.</p>
+<pre>326                                           {
+327   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+328     return NULL;
+329   }
+330 
+331   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+332   named_entry_t *entry = NULL;
+333   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+334   const char *result = entry ? entry-&gt;type : NULL;
+335   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+336   return result;
+337 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_is_initialized()</b>,
@@ -2273,25 +2273,25 @@
 <div class="Bd-indent">0 on success, non-zero on error</div>
 <p class="Pp">Must be called once at startup before any <b>named_register()</b>
     calls. Typically called from lock_debug_init().</p>
-<p class="Pp">Definition at line <b>74</b> of file <b>debug/named.c</b>.</p>
-<pre>74                                    {
-75   // Idempotent: if already initialized, return success
-76   if (lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-77     return ASCIICHAT_OK;
-78   }
-79 
-80   if (!lifecycle_init(&amp;g_named_registry.lifecycle, &quot;named_registry&quot;)) {
-81     return ASCIICHAT_OK;
-82   }
-83 
-84   if (rwlock_init(&amp;g_named_registry.entries_lock, &quot;named_registry_lock&quot;) != 0) {
-85     lifecycle_shutdown(&amp;g_named_registry.lifecycle);
-86     return ASCIICHAT_OK;  // Continue even if rwlock init fails
-87   }
-88 
-89   lifecycle_init_commit(&amp;g_named_registry.lifecycle);
-90   return ASCIICHAT_OK;
-91 }</pre>
+<p class="Pp">Definition at line <b>81</b> of file <b>debug/named.c</b>.</p>
+<pre>81                                    {
+82   // Idempotent: if already initialized, return success
+83   if (lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+84     return ASCIICHAT_OK;
+85   }
+86 
+87   if (!lifecycle_init(&amp;g_named_registry.lifecycle, &quot;named_registry&quot;)) {
+88     return ASCIICHAT_OK;
+89   }
+90 
+91   if (rwlock_init(&amp;g_named_registry.entries_lock, &quot;named_registry_lock&quot;) != 0) {
+92     lifecycle_shutdown(&amp;g_named_registry.lifecycle);
+93     return ASCIICHAT_OK;  // Continue even if rwlock init fails
+94   }
+95 
+96   lifecycle_init_commit(&amp;g_named_registry.lifecycle);
+97   return ASCIICHAT_OK;
+98 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>lifecycle_init()</b>,
@@ -2338,76 +2338,76 @@
 <p class="Pp">Multiple registrations of the same key will overwrite the previous
     entry. In release builds (NDEBUG), this is a no-op and returns
   base_name.</p>
-<p class="Pp">Definition at line <b>168</b> of file <b>debug/named.c</b>.</p>
-<pre>169                                                                                                {
-170 #ifdef NDEBUG
-171   // In release builds, skip debug registry and return the base name
-172   return base_name ? base_name : &quot;?&quot;;
-173 #endif
-174 
-175   if (!base_name || !type || !format_spec) {
-176     return &quot;?&quot;;
-177   }
-178 
-179   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-180     return base_name;
-181   }
-182 
-183   // If parent_key provided, look up parent name and create hierarchical name
-184   char final_base_name[256];
-185   if (parent_key != 0) {
-186     rwlock_rdlock(&amp;g_named_registry.entries_lock);
-187     const char *parent_name = named_lookup_name_unlocked(parent_key);
-188     rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+<p class="Pp">Definition at line <b>175</b> of file <b>debug/named.c</b>.</p>
+<pre>176                                                                                                {
+177 #ifdef NDEBUG
+178   // In release builds, skip debug registry and return the base name
+179   return base_name ? base_name : &quot;?&quot;;
+180 #endif
+181 
+182   if (!base_name || !type || !format_spec) {
+183     return &quot;?&quot;;
+184   }
+185 
+186   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+187     return base_name;
+188   }
 189 
-190     if (parent_name) {
-191       snprintf(final_base_name, sizeof(final_base_name), &quot;%s#%s&quot;, parent_name, base_name);
-192     } else {
-193       // Parent not found, fall back to base name
-194       snprintf(final_base_name, sizeof(final_base_name), &quot;%s&quot;, base_name);
-195     }
-196   } else {
-197     snprintf(final_base_name, sizeof(final_base_name), &quot;%s&quot;, base_name);
-198   }
-199 
-200   // Generate unique name using atomic counters (only for non-hierarchical names)
-201   char name_buffer[256];
-202   if (parent_key == 0) {
-203     uint64_t counter = 0;
-204     if (strcmp(type, &quot;mutex&quot;) == 0) {
-205       counter = __sync_fetch_and_add(&amp;mutex_counter, 1);
-206     } else if (strcmp(type, &quot;rwlock&quot;) == 0) {
-207       counter = __sync_fetch_and_add(&amp;rwlock_counter, 1);
-208     } else if (strcmp(type, &quot;cond&quot;) == 0) {
-209       counter = __sync_fetch_and_add(&amp;cond_counter, 1);
-210     } else if (strcmp(type, &quot;atomic&quot;) == 0) {
-211       counter = __sync_fetch_and_add(&amp;atomic_counter, 1);
-212     }
-213     snprintf(name_buffer, sizeof(name_buffer), &quot;%s.%&quot;PRIu64, final_base_name, counter);
-214   } else {
-215     // Hierarchical names don't get counters - parent already has one
-216     snprintf(name_buffer, sizeof(name_buffer), &quot;%s&quot;, final_base_name);
-217   }
-218 
-219   // Allocate entry BEFORE acquiring lock (avoid long critical section)
-220   named_entry_t *entry = malloc(sizeof(named_entry_t));
-221   if (!entry) return base_name;
-222 
-223   entry-&gt;key = key;
-224   entry-&gt;name = entry_strdup(name_buffer);
-225   named_entry_init(entry, type, format_spec, file, line, func);
-226 
-227   // Only hold lock for the hash table operation
-228   log_dev(&quot;[NAMED_REGISTER_LOCK_1] About to acquire entries_lock for key=%p type=%s&quot;, (void*)key, type);
-229   rwlock_wrlock(&amp;g_named_registry.entries_lock);
-230   log_dev(&quot;[NAMED_REGISTER_LOCK_2] &#x2705; Acquired entries_lock, adding hash entry&quot;);
-231   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
-232   log_dev(&quot;[NAMED_REGISTER_LOCK_3] Hash entry added, releasing entries_lock&quot;);
-233   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
-234   log_dev(&quot;[NAMED_REGISTER_LOCK_4] &#x2705; Released entries_lock&quot;);
-235 
-236   return entry-&gt;name;
-237 }</pre>
+190   // If parent_key provided, look up parent name and create hierarchical name
+191   char final_base_name[256];
+192   if (parent_key != 0) {
+193     rwlock_rdlock(&amp;g_named_registry.entries_lock);
+194     const char *parent_name = named_lookup_name_unlocked(parent_key);
+195     rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+196 
+197     if (parent_name) {
+198       snprintf(final_base_name, sizeof(final_base_name), &quot;%s#%s&quot;, parent_name, base_name);
+199     } else {
+200       // Parent not found, fall back to base name
+201       snprintf(final_base_name, sizeof(final_base_name), &quot;%s&quot;, base_name);
+202     }
+203   } else {
+204     snprintf(final_base_name, sizeof(final_base_name), &quot;%s&quot;, base_name);
+205   }
+206 
+207   // Generate unique name using atomic counters (only for non-hierarchical names)
+208   char name_buffer[256];
+209   if (parent_key == 0) {
+210     uint64_t counter = 0;
+211     if (strcmp(type, &quot;mutex&quot;) == 0) {
+212       counter = __sync_fetch_and_add(&amp;mutex_counter, 1);
+213     } else if (strcmp(type, &quot;rwlock&quot;) == 0) {
+214       counter = __sync_fetch_and_add(&amp;rwlock_counter, 1);
+215     } else if (strcmp(type, &quot;cond&quot;) == 0) {
+216       counter = __sync_fetch_and_add(&amp;cond_counter, 1);
+217     } else if (strcmp(type, &quot;atomic&quot;) == 0) {
+218       counter = __sync_fetch_and_add(&amp;atomic_counter, 1);
+219     }
+220     snprintf(name_buffer, sizeof(name_buffer), &quot;%s.%&quot;PRIu64, final_base_name, counter);
+221   } else {
+222     // Hierarchical names don't get counters - parent already has one
+223     snprintf(name_buffer, sizeof(name_buffer), &quot;%s&quot;, final_base_name);
+224   }
+225 
+226   // Allocate entry BEFORE acquiring lock (avoid long critical section)
+227   named_entry_t *entry = malloc(sizeof(named_entry_t));
+228   if (!entry) return base_name;
+229 
+230   entry-&gt;key = key;
+231   entry-&gt;name = entry_strdup(name_buffer);
+232   named_entry_init(entry, type, format_spec, file, line, func);
+233 
+234   // Only hold lock for the hash table operation
+235   log_dev(&quot;[NAMED_REGISTER_LOCK_1] About to acquire entries_lock for key=%p type=%s&quot;, (void*)key, type);
+236   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+237   log_dev(&quot;[NAMED_REGISTER_LOCK_2] &#x2705; Acquired entries_lock, adding hash entry&quot;);
+238   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+239   log_dev(&quot;[NAMED_REGISTER_LOCK_3] Hash entry added, releasing entries_lock&quot;);
+240   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+241   log_dev(&quot;[NAMED_REGISTER_LOCK_4] &#x2705; Released entries_lock&quot;);
+242 
+243   return entry-&gt;name;
+244 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>named_entry::key</b>,
@@ -2436,35 +2436,35 @@
     collisions with packet types or other numeric values. Name is auto-generated
     as &quot;fd=%d&quot;. In release builds (NDEBUG), this is a no-op and
     returns &quot;fd=%d&quot; string.</p>
-<p class="Pp">Definition at line <b>430</b> of file <b>debug/named.c</b>.</p>
-<pre>430                                                                                     {
-431   if (fd &lt; 0) {
-432     return &quot;?&quot;;
-433   }
-434 
-435   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-436     return &quot;?&quot;;
-437   }
-438 
-439   char name_buffer[256];
-440   snprintf(name_buffer, sizeof(name_buffer), &quot;fd=%d&quot;, fd);
+<p class="Pp">Definition at line <b>437</b> of file <b>debug/named.c</b>.</p>
+<pre>437                                                                                     {
+438   if (fd &lt; 0) {
+439     return &quot;?&quot;;
+440   }
 441 
-442   // Allocate entry BEFORE acquiring lock
-443   named_entry_t *entry = malloc(sizeof(named_entry_t));
-444   if (!entry) return &quot;?&quot;;
+442   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+443     return &quot;?&quot;;
+444   }
 445 
-446   uintptr_t key = encode_fd_key(fd);
-447   entry-&gt;key = key;
-448   entry-&gt;name = entry_strdup(name_buffer);
-449   named_entry_init(entry, &quot;fd&quot;, &quot;%d&quot;, file, line, func);
-450 
-451   // Only hold lock for the hash table operation
-452   rwlock_wrlock(&amp;g_named_registry.entries_lock);
-453   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
-454   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
-455 
-456   return entry-&gt;name;
-457 }</pre>
+446   char name_buffer[256];
+447   snprintf(name_buffer, sizeof(name_buffer), &quot;fd=%d&quot;, fd);
+448 
+449   // Allocate entry BEFORE acquiring lock
+450   named_entry_t *entry = malloc(sizeof(named_entry_t));
+451   if (!entry) return &quot;?&quot;;
+452 
+453   uintptr_t key = encode_fd_key(fd);
+454   entry-&gt;key = key;
+455   entry-&gt;name = entry_strdup(name_buffer);
+456   named_entry_init(entry, &quot;fd&quot;, &quot;%d&quot;, file, line, func);
+457 
+458   // Only hold lock for the hash table operation
+459   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+460   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+461   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+462 
+463   return entry-&gt;name;
+464 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>named_entry::key</b>,
@@ -2508,46 +2508,46 @@
 <p class="Pp"></p>
 <p class="Pp">In release builds (NDEBUG), this is a no-op and returns
     &quot;?&quot;.</p>
-<p class="Pp">Definition at line <b>239</b> of file <b>debug/named.c</b>.</p>
-<pre>240                                                                        {
-241   if (!type || !format_spec || !fmt) {
-242     return &quot;?&quot;;
-243   }
-244 
-245   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-246     return fmt;
-247   }
-248 
-249   // Format the name BEFORE acquiring lock
-250   va_list args;
-251   va_start(args, fmt);
-252   char *full_name = NULL;
-253   int ret = vasprintf(&amp;full_name, fmt, args);
-254   va_end(args);
+<p class="Pp">Definition at line <b>246</b> of file <b>debug/named.c</b>.</p>
+<pre>247                                                                        {
+248   if (!type || !format_spec || !fmt) {
+249     return &quot;?&quot;;
+250   }
+251 
+252   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+253     return fmt;
+254   }
 255 
-256   if (ret &lt; 0) {
-257     return &quot;?&quot;;
-258   }
-259 
-260   // Allocate entry BEFORE acquiring lock
-261   named_entry_t *entry = malloc(sizeof(named_entry_t));
-262   if (!entry) {
-263     free(full_name);
+256   // Format the name BEFORE acquiring lock
+257   va_list args;
+258   va_start(args, fmt);
+259   char *full_name = NULL;
+260   int ret = vasprintf(&amp;full_name, fmt, args);
+261   va_end(args);
+262 
+263   if (ret &lt; 0) {
 264     return &quot;?&quot;;
 265   }
 266 
-267   // Initialize entry (name is pre-allocated as full_name)
-268   entry-&gt;key = key;
-269   entry-&gt;name = full_name;
-270   named_entry_init(entry, type, format_spec, file, line, func);
-271 
-272   // Only hold lock for the hash table operation
-273   rwlock_wrlock(&amp;g_named_registry.entries_lock);
-274   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
-275   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
-276 
-277   return entry-&gt;name;
-278 }</pre>
+267   // Allocate entry BEFORE acquiring lock
+268   named_entry_t *entry = malloc(sizeof(named_entry_t));
+269   if (!entry) {
+270     free(full_name);
+271     return &quot;?&quot;;
+272   }
+273 
+274   // Initialize entry (name is pre-allocated as full_name)
+275   entry-&gt;key = key;
+276   entry-&gt;name = full_name;
+277   named_entry_init(entry, type, format_spec, file, line, func);
+278 
+279   // Only hold lock for the hash table operation
+280   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+281   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+282   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+283 
+284   return entry-&gt;name;
+285 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>, <b>named_entry::key</b>,
@@ -2575,35 +2575,35 @@
     avoid collisions with FDs or other numeric values. Name is auto-generated as
     &quot;PACKET_TYPE=%d&quot;. In release builds (NDEBUG), this is a no-op and
     returns &quot;PACKET_TYPE=%d&quot; string.</p>
-<p class="Pp">Definition at line <b>491</b> of file <b>debug/named.c</b>.</p>
-<pre>491                                                                                                    {
-492   if (pkt_type &lt; 0) {
-493     return &quot;?&quot;;
-494   }
-495 
-496   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-497     return &quot;?&quot;;
-498   }
-499 
-500   char name_buffer[256];
-501   snprintf(name_buffer, sizeof(name_buffer), &quot;PACKET_TYPE=%d&quot;, pkt_type);
+<p class="Pp">Definition at line <b>498</b> of file <b>debug/named.c</b>.</p>
+<pre>498                                                                                                    {
+499   if (pkt_type &lt; 0) {
+500     return &quot;?&quot;;
+501   }
 502 
-503   // Allocate entry BEFORE acquiring lock
-504   named_entry_t *entry = malloc(sizeof(named_entry_t));
-505   if (!entry) return &quot;?&quot;;
+503   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+504     return &quot;?&quot;;
+505   }
 506 
-507   uintptr_t key = encode_pkt_type_key(pkt_type);
-508   entry-&gt;key = key;
-509   entry-&gt;name = entry_strdup(name_buffer);
-510   named_entry_init(entry, &quot;packet_type&quot;, &quot;%d&quot;, file, line, func);
-511 
-512   // Only hold lock for the hash table operation
-513   rwlock_wrlock(&amp;g_named_registry.entries_lock);
-514   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
-515   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
-516 
-517   return entry-&gt;name;
-518 }</pre>
+507   char name_buffer[256];
+508   snprintf(name_buffer, sizeof(name_buffer), &quot;PACKET_TYPE=%d&quot;, pkt_type);
+509 
+510   // Allocate entry BEFORE acquiring lock
+511   named_entry_t *entry = malloc(sizeof(named_entry_t));
+512   if (!entry) return &quot;?&quot;;
+513 
+514   uintptr_t key = encode_pkt_type_key(pkt_type);
+515   entry-&gt;key = key;
+516   entry-&gt;name = entry_strdup(name_buffer);
+517   named_entry_init(entry, &quot;packet_type&quot;, &quot;%d&quot;, file, line, func);
+518 
+519   // Only hold lock for the hash table operation
+520   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+521   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+522   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+523 
+524   return entry-&gt;name;
+525 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>named_entry::key</b>,
@@ -2624,30 +2624,30 @@
 <p class="Pp">Safely iterates through all registered entries without holding the
     lock for the entire iteration (entries are copied). Callback is invoked for
     each entry. In release builds (NDEBUG), this is a no-op.</p>
-<p class="Pp">Definition at line <b>386</b> of file <b>debug/named.c</b>.</p>
-<pre>386                                                                               {
-387   if (!callback || !lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-388     return;
-389   }
-390 
-391   // Snapshot entries while holding read lock
-392   named_iter_entry_t entries[256];
-393   int count = 0;
-394 
-395   rwlock_rdlock(&amp;g_named_registry.entries_lock);
-396   for (named_entry_t *e = g_named_registry.entries; e != NULL &amp;&amp; count &lt; 256; e = e-&gt;hh.next) {
-397     entries[count].key = e-&gt;key;
-398     strncpy(entries[count].name, e-&gt;name ? e-&gt;name : &quot;?&quot;, MAX_NAME_LEN - 1);
-399     entries[count].name[MAX_NAME_LEN - 1] = '\0';
-400     count++;
-401   }
-402   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
-403 
-404   // Call callback outside the lock
-405   for (int i = 0; i &lt; count; i++) {
-406     callback(entries[i].key, entries[i].name, user_data);
-407   }
-408 }</pre>
+<p class="Pp">Definition at line <b>393</b> of file <b>debug/named.c</b>.</p>
+<pre>393                                                                               {
+394   if (!callback || !lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+395     return;
+396   }
+397 
+398   // Snapshot entries while holding read lock
+399   named_iter_entry_t entries[256];
+400   int count = 0;
+401 
+402   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+403   for (named_entry_t *e = g_named_registry.entries; e != NULL &amp;&amp; count &lt; 256; e = e-&gt;hh.next) {
+404     entries[count].key = e-&gt;key;
+405     strncpy(entries[count].name, e-&gt;name ? e-&gt;name : &quot;?&quot;, MAX_NAME_LEN - 1);
+406     entries[count].name[MAX_NAME_LEN - 1] = '\0';
+407     count++;
+408   }
+409   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+410 
+411   // Call callback outside the lock
+412   for (int i = 0; i &lt; count; i++) {
+413     callback(entries[i].key, entries[i].name, user_data);
+414   }
+415 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>named_iter_entry_t::key</b>,
@@ -2667,10 +2667,10 @@
     the format &quot;PACKET_TYPE=%d&quot; where d is the enum value. This should
     be called once during initialization to enable packet type identification in
     log message formatting.</p>
-<p class="Pp">Definition at line <b>552</b> of file <b>debug/named.c</b>.</p>
-<pre>552                                                 {
-553   // No-op
-554 }</pre>
+<p class="Pp">Definition at line <b>559</b> of file <b>debug/named.c</b>.</p>
+<pre>559                                                 {
+560   // No-op
+561 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>main()</b>.</p>
@@ -2686,26 +2686,26 @@
   named_register</div>
 <p class="Pp">Removes the resource from the registry. Safe to call multiple
     times for the same key (idempotent).</p>
-<p class="Pp">Definition at line <b>280</b> of file <b>debug/named.c</b>.</p>
-<pre>280                                      {
-281   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
-282     return;
-283   }
-284 
-285   rwlock_wrlock(&amp;g_named_registry.entries_lock);
-286   named_entry_t *entry = NULL;
-287   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
-288   if (entry) {
-289     HASH_DEL(g_named_registry.entries, entry);
-290     free(entry-&gt;name);
-291     if (entry-&gt;type) free(entry-&gt;type);
-292     if (entry-&gt;format_spec) free(entry-&gt;format_spec);
-293     if (entry-&gt;file) free(entry-&gt;file);
-294     if (entry-&gt;func) free(entry-&gt;func);
-295     free(entry);
-296   }
-297   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
-298 }</pre>
+<p class="Pp">Definition at line <b>287</b> of file <b>debug/named.c</b>.</p>
+<pre>287                                      {
+288   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+289     return;
+290   }
+291 
+292   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+293   named_entry_t *entry = NULL;
+294   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+295   if (entry) {
+296     HASH_DEL(g_named_registry.entries, entry);
+297     free(entry-&gt;name);
+298     if (entry-&gt;type) free(entry-&gt;type);
+299     if (entry-&gt;format_spec) free(entry-&gt;format_spec);
+300     if (entry-&gt;file) free(entry-&gt;file);
+301     if (entry-&gt;func) free(entry-&gt;func);
+302     free(entry);
+303   }
+304   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+305 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>named_entry::file</b>,
@@ -2733,12 +2733,12 @@
     creation (e.g., client_id).</p>
 <p class="Pp"></p>
 <p class="Pp">In release builds (NDEBUG), this is a no-op and returns NULL.</p>
-<p class="Pp">Definition at line <b>300</b> of file <b>debug/named.c</b>.</p>
-<pre>300                                                                         {
-301   (void)key;
-302   (void)new_base_name;
-303   return NULL;
-304 }</pre>
+<p class="Pp">Definition at line <b>307</b> of file <b>debug/named.c</b>.</p>
+<pre>307                                                                         {
+308   (void)key;
+309   (void)new_base_name;
+310   return NULL;
+311 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>tcp_client_connect()</b>, and

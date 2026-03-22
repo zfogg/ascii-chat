@@ -116,30 +116,30 @@
 <div class="Bd-indent">Error code (ASCIICHAT_OK on success)</div>
 <p class="Pp">The output packet includes: [flags: u8][width: u16][height:
     u16][x265_data...] as defined in <b>h265_encoder</b></p>
-<p class="Pp">Definition at line <b>113</b> of file
+<p class="Pp">Definition at line <b>119</b> of file
     <b>src/session/h265/client.c</b>.</p>
-<pre>117   {
-118     if (!ctx || !output_buf || !output_size) {
-119         return SET_ERRNO(ERROR_INTERNAL, &quot;Invalid arguments to capture_and_encode&quot;);
-120     }
-121 
-122     if (!ctx-&gt;encoder) {
-123         return SET_ERRNO(ERROR_INTERNAL, &quot;Encoder not initialized&quot;);
-124     }
-125 
-126     memset(ctx-&gt;frame_buf, 128, ctx-&gt;frame_buf_size);
+<pre>123   {
+124     if (!ctx || !output_buf || !output_size) {
+125         return SET_ERRNO(ERROR_INTERNAL, &quot;Invalid arguments to capture_and_encode&quot;);
+126     }
 127 
-128     asciichat_error_t result = h265_encode(
-129         ctx-&gt;encoder,
-130         ctx-&gt;current_width,
-131         ctx-&gt;current_height,
-132         ctx-&gt;frame_buf,
-133         output_buf,
-134         output_size
-135     );
-136 
-137     return result;
-138 }</pre>
+128     if (!ctx-&gt;encoder) {
+129         return SET_ERRNO(ERROR_INTERNAL, &quot;Encoder not initialized&quot;);
+130     }
+131 
+132     memset(ctx-&gt;frame_buf, 128, ctx-&gt;frame_buf_size);
+133 
+134     asciichat_error_t result = h265_encode(
+135         ctx-&gt;encoder,
+136         ctx-&gt;current_width,
+137         ctx-&gt;current_height,
+138         ctx-&gt;frame_buf,
+139         output_buf,
+140         output_size
+141     );
+142 
+143     return result;
+144 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>h265_client_context::current_height</b>,
@@ -250,13 +250,13 @@
 <i>keyframes</i> Output: total keyframes encoded
 <br/>
 <i>avg_bitrate</i> Output: average bitrate in bits per second</div>
-<p class="Pp">Definition at line <b>146</b> of file
+<p class="Pp">Definition at line <b>152</b> of file
     <b>src/session/h265/client.c</b>.</p>
-<pre>151   {
-152     if (!ctx || !ctx-&gt;encoder) return;
-153 
-154     h265_encoder_get_stats(ctx-&gt;encoder, total_frames, keyframes, avg_bitrate);
-155 }</pre>
+<pre>157   {
+158     if (!ctx || !ctx-&gt;encoder) return;
+159 
+160     h265_encoder_get_stats(ctx-&gt;encoder, total_frames, keyframes, avg_bitrate);
+161 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>h265_client_context::encoder</b>, and
@@ -294,37 +294,44 @@
 85     ctx-&gt;source_type = source_type;
 86 
 87     if (source_location) {
-88         ctx-&gt;source_location = SAFE_MALLOC(strlen(source_location) + 1, char *);
-89         if (!ctx-&gt;source_location) {
-90             return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate source location string&quot;);
-91         }
-92         strcpy(ctx-&gt;source_location, source_location);
-93     }
-94 
-95     switch (source_type) {
-96         case H265_SOURCE_TEST_PATTERN:
-97             log_info(&quot;H.265 client media source: test pattern&quot;);
-98             break;
-99         case H265_SOURCE_FILE:
-100             log_info(&quot;H.265 client media source: file '%s'&quot;, source_location);
-101             break;
-102         case H265_SOURCE_URL:
-103             log_info(&quot;H.265 client media source: URL '%s'&quot;, source_location);
+88         size_t source_len = strlen(source_location) + 1;
+89         ctx-&gt;source_location = SAFE_MALLOC(source_len, char *);
+90         if (!ctx-&gt;source_location) {
+91             return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate source location string&quot;);
+92         }
+93         asciichat_error_t strcpy_result = SAFE_STRCPY(ctx-&gt;source_location, source_len, source_location);
+94         if (strcpy_result != ASCIICHAT_OK) {
+95             log_error(&quot;Failed to copy source location string: %s&quot;, asciichat_error_string(strcpy_result));
+96             SAFE_FREE(ctx-&gt;source_location);
+97             return strcpy_result;
+98         }
+99     }
+100 
+101     switch (source_type) {
+102         case H265_SOURCE_TEST_PATTERN:
+103             log_info(&quot;H.265 client media source: test pattern&quot;);
 104             break;
-105         case H265_SOURCE_WEBCAM:
-106             log_info(&quot;H.265 client media source: webcam '%s'&quot;, source_location);
+105         case H265_SOURCE_FILE:
+106             log_info(&quot;H.265 client media source: file '%s'&quot;, source_location);
 107             break;
-108     }
-109 
-110     return ASCIICHAT_OK;
-111 }</pre>
+108         case H265_SOURCE_URL:
+109             log_info(&quot;H.265 client media source: URL '%s'&quot;, source_location);
+110             break;
+111         case H265_SOURCE_WEBCAM:
+112             log_info(&quot;H.265 client media source: webcam '%s'&quot;, source_location);
+113             break;
+114     }
+115 
+116     return ASCIICHAT_OK;
+117 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INTERNAL</b>,
     <b>ERROR_MEMORY</b>, <b>H265_SOURCE_FILE</b>,
     <b>H265_SOURCE_TEST_PATTERN</b>, <b>H265_SOURCE_URL</b>,
-    <b>H265_SOURCE_WEBCAM</b>, <b>log_info</b>, <b>SAFE_MALLOC</b>,
-    <b>SET_ERRNO</b>, <b>h265_client_context::source_location</b>, and
+    <b>H265_SOURCE_WEBCAM</b>, <b>log_error</b>, <b>log_info</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SAFE_STRCPY</b>, <b>SET_ERRNO</b>,
+    <b>h265_client_context::source_location</b>, and
     <b>h265_client_context::source_type</b>.</p>
 </section>
 <section class="Ss">
@@ -335,13 +342,13 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>ctx</i> Client context</div>
-<p class="Pp">Definition at line <b>140</b> of file
+<p class="Pp">Definition at line <b>146</b> of file
     <b>src/session/h265/client.c</b>.</p>
-<pre>140                                                               {
-141     if (ctx &amp;&amp; ctx-&gt;encoder) {
-142         h265_encoder_request_keyframe(ctx-&gt;encoder);
-143     }
-144 }</pre>
+<pre>146                                                               {
+147     if (ctx &amp;&amp; ctx-&gt;encoder) {
+148         h265_encoder_request_keyframe(ctx-&gt;encoder);
+149     }
+150 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>h265_client_context::encoder</b>, and

@@ -485,233 +485,237 @@
 770         // File ends with .log - replace with .json
 771         SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
 772         // Replace .log with .json
-773         strcpy(&amp;json_filename_buf[len - 4], &quot;.json&quot;);
-774       } else {
-775         // File doesn't end with .log - just append .json
-776         SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
-777         strncat(json_filename_buf, &quot;.json&quot;, sizeof(json_filename_buf) - strlen(json_filename_buf) - 1);
-778       }
-779     }
-780     final_log_file = json_filename_buf;
-781     // For JSON mode: Initialize logging without file (text will be disabled)
-782     // We'll set up JSON output separately below
-783     // Note: log_init() was already called in asciichat_shared_init()
-784   } else {
-785     // Text logging mode: use the file from options (which is mode-specific default or user-specified)
-786     // Note: log_init() was already called in asciichat_shared_init()
-787   }
-788 
-789   // Apply custom log template if specified (use early parsed value if available, otherwise use options)
-790   const char *final_format = early_log_template ? early_log_template : GET_OPTION(log_template);
-791   bool final_format_console_only =
-792       early_log_template ? early_log_template_console_only : GET_OPTION(log_format_console_only);
-793   if (final_format &amp;&amp; final_format[0] != '\0') {
-794     asciichat_error_t fmt_result = log_set_format(final_format, final_format_console_only);
-795     if (fmt_result != ASCIICHAT_OK) {
-796       log_error(&quot;Failed to apply custom log format&quot;);
-797     }
-798   }
-799 
-800   // Configure JSON output if requested
-801   if (use_json_logging) {
-802     // Open the JSON file for output
-803     int json_fd = platform_open(&quot;main_log_file&quot;, final_log_file, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
-804     if (json_fd &gt;= 0) {
-805       log_set_json_output(json_fd);
-806     } else {
-807       // Failed to open JSON file - report error and exit
-808       SET_ERRNO(ERROR_CONFIG, &quot;Failed to open JSON output file: %s&quot;, final_log_file);
-809       return ERROR_CONFIG;
-810     }
-811   }
-812 
-813   // Initialize colors now that logging is fully initialized
-814   // This must happen after log_init() since log_init_colors() checks if g_log.initialized
-815   log_init_colors();
+773         asciichat_error_t strcpy_result = SAFE_STRCPY(&amp;json_filename_buf[len - 4],
+774                                                        sizeof(json_filename_buf) - (len - 4), &quot;.json&quot;);
+775         if (strcpy_result != ASCIICHAT_OK) {
+776           log_error(&quot;Failed to write .json extension: %s&quot;, asciichat_error_string(strcpy_result));
+777         }
+778       } else {
+779         // File doesn't end with .log - just append .json
+780         SAFE_STRNCPY(json_filename_buf, final_log_file, sizeof(json_filename_buf) - 1);
+781         strncat(json_filename_buf, &quot;.json&quot;, sizeof(json_filename_buf) - strlen(json_filename_buf) - 1);
+782       }
+783     }
+784     final_log_file = json_filename_buf;
+785     // For JSON mode: Initialize logging without file (text will be disabled)
+786     // We'll set up JSON output separately below
+787     // Note: log_init() was already called in asciichat_shared_init()
+788   } else {
+789     // Text logging mode: use the file from options (which is mode-specific default or user-specified)
+790     // Note: log_init() was already called in asciichat_shared_init()
+791   }
+792 
+793   // Apply custom log template if specified (use early parsed value if available, otherwise use options)
+794   const char *final_format = early_log_template ? early_log_template : GET_OPTION(log_template);
+795   bool final_format_console_only =
+796       early_log_template ? early_log_template_console_only : GET_OPTION(log_format_console_only);
+797   if (final_format &amp;&amp; final_format[0] != '\0') {
+798     asciichat_error_t fmt_result = log_set_format(final_format, final_format_console_only);
+799     if (fmt_result != ASCIICHAT_OK) {
+800       log_error(&quot;Failed to apply custom log format&quot;);
+801     }
+802   }
+803 
+804   // Configure JSON output if requested
+805   if (use_json_logging) {
+806     // Open the JSON file for output
+807     int json_fd = platform_open(&quot;main_log_file&quot;, final_log_file, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+808     if (json_fd &gt;= 0) {
+809       log_set_json_output(json_fd);
+810     } else {
+811       // Failed to open JSON file - report error and exit
+812       SET_ERRNO(ERROR_CONFIG, &quot;Failed to open JSON output file: %s&quot;, final_log_file);
+813       return ERROR_CONFIG;
+814     }
+815   }
 816 
-817   // Apply quiet mode - disables terminal output
-818   // Status screen mode only disables terminal output if terminal is interactive
-819   // In non-interactive mode (piped output), logs go to stdout/stderr normally
-820   if (GET_OPTION(quiet) ||
-821       (opts-&gt;detected_mode == MODE_SERVER &amp;&amp; GET_OPTION(status_screen) &amp;&amp; terminal_is_interactive())) {
-822     log_set_terminal_output(false);
-823   }
-824 
-825   // Initialize palette based on command line options
-826   const char *custom_chars = opts &amp;&amp; opts-&gt;palette_custom_set ? opts-&gt;palette_custom : NULL;
-827   if (apply_palette_config(GET_OPTION(palette_type), custom_chars) != 0) {
-828     FATAL(ERROR_CONFIG, &quot;Failed to apply palette configuration&quot;);
-829   }
-830 
-831   // Set quiet mode for memory debugging
-832 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
-833   debug_memory_set_quiet_mode(GET_OPTION(quiet));
-834 #endif
-835 
-836   // Truncate log if it's already too large
-837   log_truncate_if_large();
-838   fflush(stderr);
+817   // Initialize colors now that logging is fully initialized
+818   // This must happen after log_init() since log_init_colors() checks if g_log.initialized
+819   log_init_colors();
+820 
+821   // Apply quiet mode - disables terminal output
+822   // Status screen mode only disables terminal output if terminal is interactive
+823   // In non-interactive mode (piped output), logs go to stdout/stderr normally
+824   if (GET_OPTION(quiet) ||
+825       (opts-&gt;detected_mode == MODE_SERVER &amp;&amp; GET_OPTION(status_screen) &amp;&amp; terminal_is_interactive())) {
+826     log_set_terminal_output(false);
+827   }
+828 
+829   // Initialize palette based on command line options
+830   const char *custom_chars = opts &amp;&amp; opts-&gt;palette_custom_set ? opts-&gt;palette_custom : NULL;
+831   if (apply_palette_config(GET_OPTION(palette_type), custom_chars) != 0) {
+832     FATAL(ERROR_CONFIG, &quot;Failed to apply palette configuration&quot;);
+833   }
+834 
+835   // Set quiet mode for memory debugging
+836 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
+837   debug_memory_set_quiet_mode(GET_OPTION(quiet));
+838 #endif
 839 
-840   // Handle --help and --version (these are detected and flagged by options_init)
-841   // Terminal capabilities already initialized before options_init() at startup
-842   if (opts-&gt;help) {
-843     print_usage(opts-&gt;detected_mode);
-844     fflush(NULL);
-845     _Exit(0);
-846   }
-847 
-848   if (opts-&gt;version) {
-849     log_set_terminal_output(true);
-850     action_show_version();
-851     // action_show_version() calls _Exit(), so we don't reach here
-852   }
-853 
-854 #ifndef NDEBUG
-855   // Handle --debug-state (debug builds only)
-856   // Sleep for specified time AFTER mode initialization so locks are created
-857   if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts) &amp;&amp; opts-&gt;debug_sync_state_time &gt; 0.0) {
-858     log_info(&quot;Will print sync state after %f seconds&quot;, opts-&gt;debug_sync_state_time);
-859   }
-860 #endif
-861 
-862   // For server mode with status screen: disable terminal output only if interactive
-863   // In non-interactive mode (piped output), logs go to stdout/stderr normally
-864   // The status screen (when shown) will capture and display logs in its buffer instead
-865   if (opts-&gt;detected_mode == MODE_SERVER &amp;&amp; opts-&gt;status_screen &amp;&amp; terminal_is_interactive()) {
-866     log_set_terminal_output(false);
-867   }
-868 
-869   log_dev(&quot;Logging initialized to %s&quot;, final_log_file);
-870 
-871   // Note: We do NOT auto-disable colors when stdout appears to be piped, because:
-872   // 1. Tools like ripgrep can display ANSI colors when piped
-873   // 2. Sandboxed/containerized environments may report false positives for isatty()
-874   // 3. Users can explicitly disable colors with --color=false if needed
-875   // Color behavior is now fully controlled by --color and --color-mode options.
-876 
-877 #ifndef NDEBUG
-878   // Initialize lock debugging system after logging is fully set up
-879   log_debug(&quot;Initializing lock debug system...&quot;);
-880   int debug_sync_result = debug_sync_init();
-881   if (debug_sync_result != 0) {
-882     LOG_ERRNO_IF_SET(&quot;Debug sync system initialization failed&quot;);
-883     FATAL(ERROR_PLATFORM_INIT, &quot;Debug sync system initialization failed&quot;);
-884   }
-885   log_debug(&quot;Debug sync system initialized successfully&quot;);
-886 
-887   // Initialize memory debug system
-888   // TEMPORARILY DISABLED: these calls hang in non-interactive mode
-889   // log_debug(&quot;Initializing memory debug system...&quot;);
-890   // int debug_memory_result = debug_memory_thread_init();
-891   // if (debug_memory_result != 0) {
-892   //   LOG_ERRNO_IF_SET(&quot;Memory debug system initialization failed&quot;);
-893   //   FATAL(ERROR_PLATFORM_INIT, &quot;Memory debug system initialization failed&quot;);
-894   // }
-895   // log_debug(&quot;Memory debug system initialized successfully&quot;);
-896 
-897   // Start memory debug (now just prints report directly)
-898   // if (debug_memory_thread_start() != 0) {
-899   //   LOG_ERRNO_IF_SET(&quot;Memory debug startup failed&quot;);
-900   //   FATAL(ERROR_THREAD, &quot;Memory debug startup failed&quot;);
-901   // }
-902 
-903 #ifndef _WIN32
-904   // Unblock SIGUSR1 and SIGUSR2 at process level to ensure delivery
-905   sigset_t set;
-906   sigemptyset(&amp;set);
-907   sigaddset(&amp;set, SIGUSR1);
-908   sigaddset(&amp;set, SIGUSR2);
-909   sigprocmask(SIG_UNBLOCK, &amp;set, NULL);
-910 
-911   // Register SIGUSR1 to trigger synchronization debugging output in all modes
-912   signal_handler_t old_usr1 = platform_signal(SIGUSR1, common_handle_sigusr1);
-913   if (old_usr1 == SIG_ERR) {
-914     log_warn(&quot;Failed to register SIGUSR1 handler&quot;);
-915   } else {
-916     log_debug(&quot;SIGUSR1 handler registered successfully&quot;);
-917   }
-918 
-919   // Register SIGUSR2 to trigger memory report in all modes
-920   signal_handler_t old_usr2 = platform_signal(SIGUSR2, common_handle_sigusr2);
-921   if (old_usr2 == SIG_ERR) {
-922     log_warn(&quot;Failed to register SIGUSR2 handler&quot;);
-923   } else {
-924     log_debug(&quot;SIGUSR2 handler registered successfully&quot;);
-925   }
-926 #endif
-927 #endif
-928 
-929   if (opts-&gt;fps &gt; 0) {
-930     if (opts-&gt;fps &lt; 1 || opts-&gt;fps &gt; 144) {
-931       log_warn(&quot;FPS value %d out of range (1-144), using default&quot;, opts-&gt;fps);
-932     } else {
-933       log_debug(&quot;FPS set from command line: %d&quot;, opts-&gt;fps);
-934     }
-935   }
-936 
-937   // Automatic update check at startup (once per week maximum)
-938   if (!GET_OPTION(no_check_update)) {
-939     update_check_result_t update_result;
-940     asciichat_error_t update_err = update_check_startup(&amp;update_result);
-941     if (update_err == ASCIICHAT_OK &amp;&amp; update_result.update_available) {
-942       char notification[1024];
-943       update_check_format_notification(&amp;update_result, notification, sizeof(notification));
-944       log_info(&quot;%s&quot;, notification);
-945 
-946       // Set update notification for splash/status screens
-947       splash_set_update_notification(notification);
-948     }
-949   }
-950 
-951   // Set up global signal handlers BEFORE mode dispatch
-952   // All modes use the same centralized exit mechanism
-953   setup_signal_handlers();
+840   // Truncate log if it's already too large
+841   log_truncate_if_large();
+842   fflush(stderr);
+843 
+844   // Handle --help and --version (these are detected and flagged by options_init)
+845   // Terminal capabilities already initialized before options_init() at startup
+846   if (opts-&gt;help) {
+847     print_usage(opts-&gt;detected_mode);
+848     fflush(NULL);
+849     _Exit(0);
+850   }
+851 
+852   if (opts-&gt;version) {
+853     log_set_terminal_output(true);
+854     action_show_version();
+855     // action_show_version() calls _Exit(), so we don't reach here
+856   }
+857 
+858 #ifndef NDEBUG
+859   // Handle --debug-state (debug builds only)
+860   // Sleep for specified time AFTER mode initialization so locks are created
+861   if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts) &amp;&amp; opts-&gt;debug_sync_state_time &gt; 0.0) {
+862     log_info(&quot;Will print sync state after %f seconds&quot;, opts-&gt;debug_sync_state_time);
+863   }
+864 #endif
+865 
+866   // For server mode with status screen: disable terminal output only if interactive
+867   // In non-interactive mode (piped output), logs go to stdout/stderr normally
+868   // The status screen (when shown) will capture and display logs in its buffer instead
+869   if (opts-&gt;detected_mode == MODE_SERVER &amp;&amp; opts-&gt;status_screen &amp;&amp; terminal_is_interactive()) {
+870     log_set_terminal_output(false);
+871   }
+872 
+873   log_dev(&quot;Logging initialized to %s&quot;, final_log_file);
+874 
+875   // Note: We do NOT auto-disable colors when stdout appears to be piped, because:
+876   // 1. Tools like ripgrep can display ANSI colors when piped
+877   // 2. Sandboxed/containerized environments may report false positives for isatty()
+878   // 3. Users can explicitly disable colors with --color=false if needed
+879   // Color behavior is now fully controlled by --color and --color-mode options.
+880 
+881 #ifndef NDEBUG
+882   // Initialize lock debugging system after logging is fully set up
+883   log_debug(&quot;Initializing lock debug system...&quot;);
+884   int debug_sync_result = debug_sync_init();
+885   if (debug_sync_result != 0) {
+886     LOG_ERRNO_IF_SET(&quot;Debug sync system initialization failed&quot;);
+887     FATAL(ERROR_PLATFORM_INIT, &quot;Debug sync system initialization failed&quot;);
+888   }
+889   log_debug(&quot;Debug sync system initialized successfully&quot;);
+890 
+891   // Initialize memory debug system
+892   // TEMPORARILY DISABLED: these calls hang in non-interactive mode
+893   // log_debug(&quot;Initializing memory debug system...&quot;);
+894   // int debug_memory_result = debug_memory_thread_init();
+895   // if (debug_memory_result != 0) {
+896   //   LOG_ERRNO_IF_SET(&quot;Memory debug system initialization failed&quot;);
+897   //   FATAL(ERROR_PLATFORM_INIT, &quot;Memory debug system initialization failed&quot;);
+898   // }
+899   // log_debug(&quot;Memory debug system initialized successfully&quot;);
+900 
+901   // Start memory debug (now just prints report directly)
+902   // if (debug_memory_thread_start() != 0) {
+903   //   LOG_ERRNO_IF_SET(&quot;Memory debug startup failed&quot;);
+904   //   FATAL(ERROR_THREAD, &quot;Memory debug startup failed&quot;);
+905   // }
+906 
+907 #ifndef _WIN32
+908   // Unblock SIGUSR1 and SIGUSR2 at process level to ensure delivery
+909   sigset_t set;
+910   sigemptyset(&amp;set);
+911   sigaddset(&amp;set, SIGUSR1);
+912   sigaddset(&amp;set, SIGUSR2);
+913   sigprocmask(SIG_UNBLOCK, &amp;set, NULL);
+914 
+915   // Register SIGUSR1 to trigger synchronization debugging output in all modes
+916   signal_handler_t old_usr1 = platform_signal(SIGUSR1, common_handle_sigusr1);
+917   if (old_usr1 == SIG_ERR) {
+918     log_warn(&quot;Failed to register SIGUSR1 handler&quot;);
+919   } else {
+920     log_debug(&quot;SIGUSR1 handler registered successfully&quot;);
+921   }
+922 
+923   // Register SIGUSR2 to trigger memory report in all modes
+924   signal_handler_t old_usr2 = platform_signal(SIGUSR2, common_handle_sigusr2);
+925   if (old_usr2 == SIG_ERR) {
+926     log_warn(&quot;Failed to register SIGUSR2 handler&quot;);
+927   } else {
+928     log_debug(&quot;SIGUSR2 handler registered successfully&quot;);
+929   }
+930 #endif
+931 #endif
+932 
+933   if (opts-&gt;fps &gt; 0) {
+934     if (opts-&gt;fps &lt; 1 || opts-&gt;fps &gt; 144) {
+935       log_warn(&quot;FPS value %d out of range (1-144), using default&quot;, opts-&gt;fps);
+936     } else {
+937       log_debug(&quot;FPS set from command line: %d&quot;, opts-&gt;fps);
+938     }
+939   }
+940 
+941   // Automatic update check at startup (once per week maximum)
+942   if (!GET_OPTION(no_check_update)) {
+943     update_check_result_t update_result;
+944     asciichat_error_t update_err = update_check_startup(&amp;update_result);
+945     if (update_err == ASCIICHAT_OK &amp;&amp; update_result.update_available) {
+946       char notification[1024];
+947       update_check_format_notification(&amp;update_result, notification, sizeof(notification));
+948       log_info(&quot;%s&quot;, notification);
+949 
+950       // Set update notification for splash/status screens
+951       splash_set_update_notification(notification);
+952     }
+953   }
 954 
-955   // Register application callbacks so lib code can check exit flags
-956   // This connects the render loop's should_exit check to signal_exit()
-957   static const app_callbacks_t app_callbacks = {
-958       .should_exit = should_exit,
-959       .signal_exit = signal_exit,
-960   };
-961   app_callbacks_register(&amp;app_callbacks);
-962 
-963   // Register shutdown callback so splash thread and other code can check for exit
-964   shutdown_register_callback((shutdown_check_fn)should_exit);
-965 
-966 #ifndef NDEBUG
-967   // Start debug threads now, after initialization but before mode entry
-968   // This avoids lock contention during critical initialization phase
-969   // Note: debug_sync_start_thread() and debug_memory_thread_start() now use
-970   // direct pthread calls instead of mutex_init/cond_init to avoid named registry
-971   // deadlock during thread startup
-972   if (debug_sync_start_thread() != 0) {
-973     LOG_ERRNO_IF_SET(&quot;Debug sync thread startup failed&quot;);
-974     FATAL(ERROR_THREAD, &quot;Debug sync thread startup failed&quot;);
-975   }
-976   log_debug(&quot;Debug sync thread started&quot;);
-977 
-978 #endif
-979 
-980   // Find and dispatch to mode entry point
-981   const mode_descriptor_t *mode = find_mode(opts-&gt;detected_mode);
-982   if (!mode) {
-983     log_error(&quot;Error: Mode not found for detected_mode=%d&quot;, opts-&gt;detected_mode);
-984     return 1;
-985   }
-986 
-987   // Call the mode-specific entry point
-988   // Mode entry points use options_get() to access parsed options
-989   int exit_code = mode-&gt;entry_point();
+955   // Set up global signal handlers BEFORE mode dispatch
+956   // All modes use the same centralized exit mechanism
+957   setup_signal_handlers();
+958 
+959   // Register application callbacks so lib code can check exit flags
+960   // This connects the render loop's should_exit check to signal_exit()
+961   static const app_callbacks_t app_callbacks = {
+962       .should_exit = should_exit,
+963       .signal_exit = signal_exit,
+964   };
+965   app_callbacks_register(&amp;app_callbacks);
+966 
+967   // Register shutdown callback so splash thread and other code can check for exit
+968   shutdown_register_callback((shutdown_check_fn)should_exit);
+969 
+970 #ifndef NDEBUG
+971   // Start debug threads now, after initialization but before mode entry
+972   // This avoids lock contention during critical initialization phase
+973   // Note: debug_sync_start_thread() and debug_memory_thread_start() now use
+974   // direct pthread calls instead of mutex_init/cond_init to avoid named registry
+975   // deadlock during thread startup
+976   if (debug_sync_start_thread() != 0) {
+977     LOG_ERRNO_IF_SET(&quot;Debug sync thread startup failed&quot;);
+978     FATAL(ERROR_THREAD, &quot;Debug sync thread startup failed&quot;);
+979   }
+980   log_debug(&quot;Debug sync thread started&quot;);
+981 
+982 #endif
+983 
+984   // Find and dispatch to mode entry point
+985   const mode_descriptor_t *mode = find_mode(opts-&gt;detected_mode);
+986   if (!mode) {
+987     log_error(&quot;Error: Mode not found for detected_mode=%d&quot;, opts-&gt;detected_mode);
+988     return 1;
+989   }
 990 
-991   // Named registry cleanup is handled by asciichat_shared_destroy()
-992   // (called via atexit handler), which runs AFTER the memory report
-993 
-994   if (exit_code == ERROR_USAGE) {
-995     exit(ERROR_USAGE);
-996   }
+991   // Call the mode-specific entry point
+992   // Mode entry points use options_get() to access parsed options
+993   int exit_code = mode-&gt;entry_point();
+994 
+995   // Named registry cleanup is handled by asciichat_shared_destroy()
+996   // (called via atexit handler), which runs AFTER the memory report
 997 
-998   return exit_code;
-999 }</pre>
+998   if (exit_code == ERROR_USAGE) {
+999     exit(ERROR_USAGE);
+1000   }
+1001 
+1002   return exit_code;
+1003 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>action_show_version()</b>,
@@ -749,9 +753,10 @@
     <b>options_state::palette_custom_set</b>,
     <b>path_cleanup_thread_locals()</b>, <b>platform_open()</b>,
     <b>platform_signal()</b>, <b>REGISTER_GLOBAL_ATOMICS</b>,
-    <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>, <b>setup_signal_handlers()</b>,
-    <b>should_exit()</b>, <b>shutdown_register_callback()</b>,
-    <b>signal_exit()</b>, <b>splash_set_update_notification()</b>,
+    <b>SAFE_STRCPY</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
+    <b>setup_signal_handlers()</b>, <b>should_exit()</b>,
+    <b>shutdown_register_callback()</b>, <b>signal_exit()</b>,
+    <b>splash_set_update_notification()</b>,
     <b>options_state::status_screen</b>, <b>terminal_cursor_show()</b>,
     <b>terminal_is_interactive()</b>, <b>terminal_should_force_stderr()</b>,
     <b>update_check_result_t::update_available</b>,

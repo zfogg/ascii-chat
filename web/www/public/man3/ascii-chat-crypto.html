@@ -6373,209 +6373,209 @@
 <p class="Pp">Key ID must exist: Key must exist in local GPG keyring. Returns -1
     if key is not found (check with gpg --list-keys &lt;KEY_ID&gt;).</p>
 </div>
-<p class="Pp">Definition at line <b>253</b> of file <b>export.c</b>.</p>
-<pre>253                                                                                        {
-254   if (!key_id || !public_key_out) {
-255     log_error(&quot;Invalid arguments to gpg_get_public_key&quot;);
-256     return -1;
-257   }
-258 
-259   // SECURITY: Validate key_id to prevent command injection
-260   // GPG key IDs should be hexadecimal (0-9, a-f, A-F)
-261   if (!validate_shell_safe(key_id, NULL)) {
-262     log_error(&quot;Invalid GPG key ID format - contains unsafe characters: %s&quot;, key_id);
-263     return -1;
-264   }
-265 
-266   // Additional validation: ensure key_id is hex alphanumeric
-267   for (size_t i = 0; key_id[i] != '\0'; i++) {
-268     if (!isxdigit((unsigned char)key_id[i])) {
-269       log_error(&quot;Invalid GPG key ID format - must be hexadecimal: %s&quot;, key_id);
-270       return -1;
-271     }
-272   }
-273 
-274   // Escape key_id for safe use in shell command (single quotes)
-275   char escaped_key_id[BUFFER_SIZE_MEDIUM];
-276   if (!escape_shell_single_quotes(key_id, escaped_key_id, sizeof(escaped_key_id))) {
-277     log_error(&quot;Failed to escape GPG key ID for shell command&quot;);
-278     return -1;
-279   }
-280 
-281   // Use gpg to list the key and get the keygrip
-282   char cmd[BUFFER_SIZE_LARGE];
-283   safe_snprintf(cmd, sizeof(cmd), &quot;gpg --list-keys --with-keygrip --with-colons 0x%s &quot; PLATFORM_SHELL_NULL_REDIRECT,
-284                 escaped_key_id);
-285 
-286   FILE *fp = NULL;
-287   if (platform_popen(&quot;gpg_export&quot;, cmd, &quot;r&quot;, &amp;fp) != ASCIICHAT_OK || !fp) {
-288     log_error(&quot;Failed to run gpg command - GPG may not be installed&quot;);
-289 #ifdef _WIN32
-290     log_error(&quot;To install GPG on Windows, download Gpg4win from:&quot;);
-291     log_error(&quot;  https://www.gpg4win.org/download.html&quot;);
-292 #elif defined(__APPLE__)
-293     log_error(&quot;To install GPG on macOS, use Homebrew:&quot;);
-294     log_error(&quot;  brew install gnupg&quot;);
-295 #else
-296     log_error(&quot;To install GPG on Linux:&quot;);
-297     log_error(&quot;  Debian/Ubuntu: sudo apt-get install gnupg&quot;);
-298     log_error(&quot;  Fedora/RHEL:   sudo dnf install gnupg2&quot;);
-299     log_error(&quot;  Arch Linux:    sudo pacman -S gnupg&quot;);
-300     log_error(&quot;  Alpine Linux:  sudo apk add gnupg&quot;);
-301 #endif
-302     return -1;
-303   }
-304 
-305   char line[BUFFER_SIZE_XLARGE];
-306   char found_keygrip[128] = {0};
-307   bool found_key = false;
-308 
-309   // Parse gpg output
-310   // Format: pub:..., grp:::::::::&lt;keygrip&gt;:
-311   while (fgets(line, sizeof(line), fp)) {
-312     if (strncmp(line, &quot;pub:&quot;, 4) == 0) {
-313       // Found the public key line
-314       found_key = true;
-315     } else if (found_key &amp;&amp; strncmp(line, &quot;grp:&quot;, 4) == 0) {
-316       // Extract keygrip using PCRE2 regex
-317       // Format: grp:::::::::D52FF935FBA59609EE65E1685287828242A1EA1A:
-318       char *keygrip_extracted = NULL;
-319 
-320       if (crypto_regex_extract_gpg_keygrip(line, &amp;keygrip_extracted)) {
-321         // Successfully extracted keygrip
-322         SAFE_STRNCPY(found_keygrip, keygrip_extracted, sizeof(found_keygrip));
-323         if (keygrip_out) {
-324           SAFE_STRNCPY(keygrip_out, found_keygrip, 41);
-325         }
-326         SAFE_FREE(keygrip_extracted);
-327       } else {
-328         // Fallback to manual parsing if regex fails
-329         const char *grp_start = line + 4;
-330         int colon_count = 0;
-331         while (*grp_start &amp;&amp; colon_count &lt; 8) {
-332           if (*grp_start == ':') {
-333             colon_count++;
-334           }
-335           grp_start++;
-336         }
-337 
-338         if (colon_count == 8) {
-339           const char *grp_end = strchr(grp_start, ':');
-340           if (grp_end) {
-341             size_t grp_len = grp_end - grp_start;
-342             if (grp_len &lt; sizeof(found_keygrip)) {
-343               memcpy(found_keygrip, grp_start, grp_len);
-344               found_keygrip[grp_len] = '\0';
-345 
-346               if (keygrip_out) {
-347                 SAFE_STRNCPY(keygrip_out, found_keygrip, 41);
-348               }
-349             }
-350           }
-351         }
-352       }
-353       break;
-354     }
-355   }
-356 
-357   platform_pclose(&amp;fp);
-358 
-359   if (!found_key || strlen(found_keygrip) == 0) {
-360     log_error(&quot;Could not find GPG key with ID: %s&quot;, key_id);
-361     return -1;
-362   }
-363 
-364   log_debug(&quot;Found keygrip for key %s: %s&quot;, key_id, found_keygrip);
-365 
-366   // Try to use GPG agent API to read the public key directly via READKEY command
-367   int agent_sock = gpg_agent_connect();
-368   if (agent_sock &lt; 0) {
-369     log_debug(&quot;GPG agent not available, falling back to gpg --export for public key extraction&quot;);
-370     // Fallback: Use gpg --export to get the public key
-371     int export_result = gpg_export_public_key(key_id, public_key_out);
-372     if (export_result == 0) {
-373       log_debug(&quot;Successfully extracted public key using fallback method&quot;);
-374     } else {
-375       log_error(&quot;Fallback public key extraction failed for key ID: %s&quot;, key_id);
-376     }
-377     return export_result;
-378   }
-379 
-380   // Send READKEY command with keygrip to get the public key S-expression
-381   char readkey_cmd[BUFFER_SIZE_SMALL];
-382   safe_snprintf(readkey_cmd, sizeof(readkey_cmd), &quot;READKEY %s\n&quot;, found_keygrip);
-383 
-384   // Cast agent_sock back to pipe_t (gpg_agent_connect returns pipe_t cast to int for portability)
-385   pipe_t agent_pipe = (pipe_t)(intptr_t)agent_sock;
-386   ssize_t bytes_written = platform_pipe_write(agent_pipe, (const unsigned char *)readkey_cmd, strlen(readkey_cmd));
-387   if (bytes_written != (ssize_t)strlen(readkey_cmd)) {
-388     log_error(&quot;Failed to send READKEY command to GPG agent&quot;);
-389     gpg_agent_disconnect(agent_sock);
-390     return -1;
-391   }
-392 
-393   // Read the response (public key S-expression)
-394   char response[BUFFER_SIZE_XXXLARGE];
-395   memset(response, 0, sizeof(response));
-396   ssize_t bytes_read = platform_pipe_read(agent_pipe, (unsigned char *)response, sizeof(response) - 1);
-397 
-398   gpg_agent_disconnect(agent_sock);
-399 
-400   if (bytes_read &lt;= 0) {
-401     log_error(&quot;Failed to read READKEY response from GPG agent&quot;);
-402     return -1;
-403   }
-404 
-405   // Parse the S-expression to extract Ed25519 public key (q value)
-406   // GPG agent returns binary S-expressions in format: (1:q&lt;length&gt;:&lt;binary-data&gt;)
-407   // Example: (1:q33:&lt;33-bytes&gt;) where first byte is 0x40 (Ed25519 prefix), then 32-byte key
-408   const char *q_marker = strstr(response, &quot;(1:q&quot;);
-409   if (!q_marker) {
-410     log_warn(&quot;Failed to find public key (1:q) in GPG agent READKEY response, trying gpg --export fallback&quot;);
-411     log_debug(&quot;Response was: %.*s&quot;, (int)(bytes_read &lt; 200 ? bytes_read : 200), response);
-412     gpg_agent_disconnect(agent_sock);
-413 
-414     // Fallback: Use gpg --export for public-only keys
-415     int export_result = gpg_export_public_key(key_id, public_key_out);
-416     if (export_result == 0) {
-417       log_debug(&quot;Successfully extracted public key using gpg --export fallback&quot;);
-418     } else {
-419       log_error(&quot;Fallback public key extraction failed for key ID: %s&quot;, key_id);
-420     }
-421     return export_result;
-422   }
+<p class="Pp">Definition at line <b>250</b> of file <b>export.c</b>.</p>
+<pre>250                                                                                        {
+251   if (!key_id || !public_key_out) {
+252     log_error(&quot;Invalid arguments to gpg_get_public_key&quot;);
+253     return -1;
+254   }
+255 
+256   // SECURITY: Validate key_id to prevent command injection
+257   // GPG key IDs should be hexadecimal (0-9, a-f, A-F)
+258   if (!validate_shell_safe(key_id, NULL)) {
+259     log_error(&quot;Invalid GPG key ID format - contains unsafe characters: %s&quot;, key_id);
+260     return -1;
+261   }
+262 
+263   // Additional validation: ensure key_id is hex alphanumeric
+264   for (size_t i = 0; key_id[i] != '\0'; i++) {
+265     if (!isxdigit((unsigned char)key_id[i])) {
+266       log_error(&quot;Invalid GPG key ID format - must be hexadecimal: %s&quot;, key_id);
+267       return -1;
+268     }
+269   }
+270 
+271   // Escape key_id for safe use in shell command (single quotes)
+272   char escaped_key_id[BUFFER_SIZE_MEDIUM];
+273   if (!escape_shell_single_quotes(key_id, escaped_key_id, sizeof(escaped_key_id))) {
+274     log_error(&quot;Failed to escape GPG key ID for shell command&quot;);
+275     return -1;
+276   }
+277 
+278   // Use gpg to list the key and get the keygrip
+279   char cmd[BUFFER_SIZE_LARGE];
+280   safe_snprintf(cmd, sizeof(cmd), &quot;gpg --list-keys --with-keygrip --with-colons 0x%s &quot; PLATFORM_SHELL_NULL_REDIRECT,
+281                 escaped_key_id);
+282 
+283   FILE *fp = NULL;
+284   if (platform_popen(&quot;gpg_export&quot;, cmd, &quot;r&quot;, &amp;fp) != ASCIICHAT_OK || !fp) {
+285     log_error(&quot;Failed to run gpg command - GPG may not be installed&quot;);
+286 #ifdef _WIN32
+287     log_error(&quot;To install GPG on Windows, download Gpg4win from:&quot;);
+288     log_error(&quot;  https://www.gpg4win.org/download.html&quot;);
+289 #elif defined(__APPLE__)
+290     log_error(&quot;To install GPG on macOS, use Homebrew:&quot;);
+291     log_error(&quot;  brew install gnupg&quot;);
+292 #else
+293     log_error(&quot;To install GPG on Linux:&quot;);
+294     log_error(&quot;  Debian/Ubuntu: sudo apt-get install gnupg&quot;);
+295     log_error(&quot;  Fedora/RHEL:   sudo dnf install gnupg2&quot;);
+296     log_error(&quot;  Arch Linux:    sudo pacman -S gnupg&quot;);
+297     log_error(&quot;  Alpine Linux:  sudo apk add gnupg&quot;);
+298 #endif
+299     return -1;
+300   }
+301 
+302   char line[BUFFER_SIZE_XLARGE];
+303   char found_keygrip[128] = {0};
+304   bool found_key = false;
+305 
+306   // Parse gpg output
+307   // Format: pub:..., grp:::::::::&lt;keygrip&gt;:
+308   while (fgets(line, sizeof(line), fp)) {
+309     if (strncmp(line, &quot;pub:&quot;, 4) == 0) {
+310       // Found the public key line
+311       found_key = true;
+312     } else if (found_key &amp;&amp; strncmp(line, &quot;grp:&quot;, 4) == 0) {
+313       // Extract keygrip using PCRE2 regex
+314       // Format: grp:::::::::D52FF935FBA59609EE65E1685287828242A1EA1A:
+315       char *keygrip_extracted = NULL;
+316 
+317       if (crypto_regex_extract_gpg_keygrip(line, &amp;keygrip_extracted)) {
+318         // Successfully extracted keygrip
+319         SAFE_STRNCPY(found_keygrip, keygrip_extracted, sizeof(found_keygrip));
+320         if (keygrip_out) {
+321           SAFE_STRNCPY(keygrip_out, found_keygrip, 41);
+322         }
+323         SAFE_FREE(keygrip_extracted);
+324       } else {
+325         // Fallback to manual parsing if regex fails
+326         const char *grp_start = line + 4;
+327         int colon_count = 0;
+328         while (*grp_start &amp;&amp; colon_count &lt; 8) {
+329           if (*grp_start == ':') {
+330             colon_count++;
+331           }
+332           grp_start++;
+333         }
+334 
+335         if (colon_count == 8) {
+336           const char *grp_end = strchr(grp_start, ':');
+337           if (grp_end) {
+338             size_t grp_len = grp_end - grp_start;
+339             if (grp_len &lt; sizeof(found_keygrip)) {
+340               memcpy(found_keygrip, grp_start, grp_len);
+341               found_keygrip[grp_len] = '\0';
+342 
+343               if (keygrip_out) {
+344                 SAFE_STRNCPY(keygrip_out, found_keygrip, 41);
+345               }
+346             }
+347           }
+348         }
+349       }
+350       break;
+351     }
+352   }
+353 
+354   platform_pclose(&amp;fp);
+355 
+356   if (!found_key || strlen(found_keygrip) == 0) {
+357     log_error(&quot;Could not find GPG key with ID: %s&quot;, key_id);
+358     return -1;
+359   }
+360 
+361   log_debug(&quot;Found keygrip for key %s: %s&quot;, key_id, found_keygrip);
+362 
+363   // Try to use GPG agent API to read the public key directly via READKEY command
+364   int agent_sock = gpg_agent_connect();
+365   if (agent_sock &lt; 0) {
+366     log_debug(&quot;GPG agent not available, falling back to gpg --export for public key extraction&quot;);
+367     // Fallback: Use gpg --export to get the public key
+368     int export_result = gpg_export_public_key(key_id, public_key_out);
+369     if (export_result == 0) {
+370       log_debug(&quot;Successfully extracted public key using fallback method&quot;);
+371     } else {
+372       log_error(&quot;Fallback public key extraction failed for key ID: %s&quot;, key_id);
+373     }
+374     return export_result;
+375   }
+376 
+377   // Send READKEY command with keygrip to get the public key S-expression
+378   char readkey_cmd[BUFFER_SIZE_SMALL];
+379   safe_snprintf(readkey_cmd, sizeof(readkey_cmd), &quot;READKEY %s\n&quot;, found_keygrip);
+380 
+381   // Cast agent_sock back to pipe_t (gpg_agent_connect returns pipe_t cast to int for portability)
+382   pipe_t agent_pipe = (pipe_t)(intptr_t)agent_sock;
+383   ssize_t bytes_written = platform_pipe_write(agent_pipe, (const unsigned char *)readkey_cmd, strlen(readkey_cmd));
+384   if (bytes_written != (ssize_t)strlen(readkey_cmd)) {
+385     log_error(&quot;Failed to send READKEY command to GPG agent&quot;);
+386     gpg_agent_disconnect(agent_sock);
+387     return -1;
+388   }
+389 
+390   // Read the response (public key S-expression)
+391   char response[BUFFER_SIZE_XXXLARGE];
+392   memset(response, 0, sizeof(response));
+393   ssize_t bytes_read = platform_pipe_read(agent_pipe, (unsigned char *)response, sizeof(response) - 1);
+394 
+395   gpg_agent_disconnect(agent_sock);
+396 
+397   if (bytes_read &lt;= 0) {
+398     log_error(&quot;Failed to read READKEY response from GPG agent&quot;);
+399     return -1;
+400   }
+401 
+402   // Parse the S-expression to extract Ed25519 public key (q value)
+403   // GPG agent returns binary S-expressions in format: (1:q&lt;length&gt;:&lt;binary-data&gt;)
+404   // Example: (1:q33:&lt;33-bytes&gt;) where first byte is 0x40 (Ed25519 prefix), then 32-byte key
+405   const char *q_marker = strstr(response, &quot;(1:q&quot;);
+406   if (!q_marker) {
+407     log_warn(&quot;Failed to find public key (1:q) in GPG agent READKEY response, trying gpg --export fallback&quot;);
+408     log_debug(&quot;Response was: %.*s&quot;, (int)(bytes_read &lt; 200 ? bytes_read : 200), response);
+409     gpg_agent_disconnect(agent_sock);
+410 
+411     // Fallback: Use gpg --export for public-only keys
+412     int export_result = gpg_export_public_key(key_id, public_key_out);
+413     if (export_result == 0) {
+414       log_debug(&quot;Successfully extracted public key using gpg --export fallback&quot;);
+415     } else {
+416       log_error(&quot;Fallback public key extraction failed for key ID: %s&quot;, key_id);
+417     }
+418     return export_result;
+419   }
+420 
+421   // Skip &quot;(1:q&quot; to get to the length field
+422   const char *len_start = q_marker + 4;
 423 
-424   // Skip &quot;(1:q&quot; to get to the length field
-425   const char *len_start = q_marker + 4;
-426 
-427   // Parse the length (e.g., &quot;33:&quot;)
-428   char *colon = strchr(len_start, ':');
-429   if (!colon) {
-430     log_error(&quot;Malformed S-expression: missing colon after length&quot;);
-431     return -1;
-432   }
-433 
-434   size_t key_len = strtoul(len_start, NULL, 10);
-435   if (key_len != 33) {
-436     log_error(&quot;Unexpected Ed25519 public key length: %zu bytes (expected 33)&quot;, key_len);
-437     return -1;
-438   }
+424   // Parse the length (e.g., &quot;33:&quot;)
+425   char *colon = strchr(len_start, ':');
+426   if (!colon) {
+427     log_error(&quot;Malformed S-expression: missing colon after length&quot;);
+428     return -1;
+429   }
+430 
+431   size_t key_len = strtoul(len_start, NULL, 10);
+432   if (key_len != 33) {
+433     log_error(&quot;Unexpected Ed25519 public key length: %zu bytes (expected 33)&quot;, key_len);
+434     return -1;
+435   }
+436 
+437   // Skip the colon to get to the binary data
+438   const unsigned char *binary_start = (const unsigned char *)(colon + 1);
 439 
-440   // Skip the colon to get to the binary data
-441   const unsigned char *binary_start = (const unsigned char *)(colon + 1);
-442 
-443   // Ed25519 public keys in GPG format have a 0x40 prefix byte, then 32 bytes of actual key
-444   if (binary_start[0] != 0x40) {
-445     log_error(&quot;Invalid Ed25519 public key prefix: 0x%02x (expected 0x40)&quot;, binary_start[0]);
-446     return -1;
-447   }
+440   // Ed25519 public keys in GPG format have a 0x40 prefix byte, then 32 bytes of actual key
+441   if (binary_start[0] != 0x40) {
+442     log_error(&quot;Invalid Ed25519 public key prefix: 0x%02x (expected 0x40)&quot;, binary_start[0]);
+443     return -1;
+444   }
+445 
+446   // Copy the 32-byte public key (skip the 0x40 prefix)
+447   memcpy(public_key_out, binary_start + 1, 32);
 448 
-449   // Copy the 32-byte public key (skip the 0x40 prefix)
-450   memcpy(public_key_out, binary_start + 1, 32);
-451 
-452   log_debug(&quot;Extracted Ed25519 public key from GPG agent via READKEY command&quot;);
-453   return 0;
-454 }</pre>
+449   log_debug(&quot;Extracted Ed25519 public key from GPG agent via READKEY command&quot;);
+450   return 0;
+451 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>BUFFER_SIZE_LARGE</b>,
@@ -6680,190 +6680,190 @@
 <p class="Pp">Key must exist: Key must exist in local GPG keyring. Returns -1 if
     key is not found (check with gpg --list-keys &lt;KEY_ID&gt;).</p>
 </div>
-<p class="Pp">Definition at line <b>144</b> of file <b>signing.c</b>.</p>
-<pre>145                                                          {
-146   log_debug(&quot;gpg_sign_detached_ed25519: Signing with key ID %s (fallback mode)&quot;, key_id);
-147 
-148   // Get OpenPGP signature packet from gpg --detach-sign
-149   uint8_t openpgp_signature[512];
-150   size_t openpgp_len = 0;
-151 
-152   int result = gpg_sign_with_key(key_id, message, message_len, openpgp_signature, &amp;openpgp_len);
-153   if (result != 0) {
-154     log_error(&quot;GPG detached signing failed for key %s&quot;, key_id);
-155     return -1;
-156   }
-157 
-158   log_debug(&quot;gpg_sign_with_key returned %zu bytes&quot;, openpgp_len);
-159 
-160   if (openpgp_len &lt; 10) {
-161     log_error(&quot;GPG signature too short: %zu bytes&quot;, openpgp_len);
-162     return -1;
-163   }
-164 
-165   log_debug(&quot;Parsing OpenPGP signature packet (%zu bytes) to extract Ed25519 signature&quot;, openpgp_len);
-166 
-167   // Parse OpenPGP signature packet format
-168   // Reference: RFC 4880 Section 5.2 (Signature Packet)
-169   // Format: [header][version][type][algo][hash-algo][...][signature-data]
-170   size_t offset = 0;
-171 
-172   // Parse packet header
-173   uint8_t tag = openpgp_signature[offset++];
-174   size_t packet_len = 0;
-175 
-176   if ((tag &amp; 0x40) == 0) {
-177     // Old format packet
-178     uint8_t length_type = tag &amp; 0x03;
-179     if (length_type == 0) {
-180       packet_len = openpgp_signature[offset++];
-181     } else if (length_type == 1) {
-182       packet_len = (openpgp_signature[offset] &lt;&lt; 8) | openpgp_signature[offset + 1];
-183       offset += 2;
-184     } else if (length_type == 2) {
-185       packet_len = (openpgp_signature[offset] &lt;&lt; 24) | (openpgp_signature[offset + 1] &lt;&lt; 16) |
-186                    (openpgp_signature[offset + 2] &lt;&lt; 8) | openpgp_signature[offset + 3];
-187       offset += 4;
-188     } else {
-189       log_error(&quot;Unsupported old-format packet length type: %d&quot;, length_type);
-190       return -1;
-191     }
-192   } else {
-193     // New format packet
-194     uint8_t length_byte = openpgp_signature[offset++];
-195     if (length_byte &lt; 192) {
-196       packet_len = length_byte;
-197     } else if (length_byte &lt; 224) {
-198       packet_len = ((length_byte - 192) &lt;&lt; 8) + openpgp_signature[offset++] + 192;
-199     } else if (length_byte == 255) {
-200       packet_len = (openpgp_signature[offset] &lt;&lt; 24) | (openpgp_signature[offset + 1] &lt;&lt; 16) |
-201                    (openpgp_signature[offset + 2] &lt;&lt; 8) | openpgp_signature[offset + 3];
-202       offset += 4;
-203     } else {
-204       log_error(&quot;Unsupported new-format packet length encoding: %d&quot;, length_byte);
-205       return -1;
-206     }
-207   }
-208 
-209   if (offset + packet_len &gt; openpgp_len) {
-210     log_error(&quot;Packet length exceeds signature size: %zu + %zu &gt; %zu&quot;, offset, packet_len, openpgp_len);
-211     return -1;
-212   }
-213 
-214   log_debug(&quot;Signature packet: offset=%zu, length=%zu&quot;, offset, packet_len);
-215 
-216   // Parse signature packet body
-217   // Skip: version (1), sig_type (1), pub_algo (1), hash_algo (1)
-218   if (offset + 4 &gt; openpgp_len) {
-219     log_error(&quot;Signature packet too short for header&quot;);
-220     return -1;
-221   }
-222 
-223   uint8_t version = openpgp_signature[offset++];
-224   uint8_t sig_type = openpgp_signature[offset++];
-225   uint8_t pub_algo = openpgp_signature[offset++];
-226   uint8_t hash_algo = openpgp_signature[offset++];
-227 
-228   log_debug(&quot;Signature: version=%d, type=%d, algo=%d, hash=%d&quot;, version, sig_type, pub_algo, hash_algo);
-229 
-230   // Verify algorithm is Ed25519 (22 = EdDSA)
-231   if (pub_algo != 22) {
-232     log_error(&quot;Expected EdDSA algorithm (22), got %d&quot;, pub_algo);
-233     return -1;
-234   }
-235 
-236   // For v4 signatures: skip hashed subpackets
-237   if (version == 4) {
-238     if (offset + 2 &gt; openpgp_len) {
-239       log_error(&quot;Cannot read hashed subpacket length&quot;);
-240       return -1;
-241     }
-242     uint16_t hashed_len = (openpgp_signature[offset] &lt;&lt; 8) | openpgp_signature[offset + 1];
-243     offset += 2;
-244     offset += hashed_len; // Skip hashed subpackets
-245 
-246     if (offset + 2 &gt; openpgp_len) {
-247       log_error(&quot;Cannot read unhashed subpacket length&quot;);
-248       return -1;
-249     }
-250     uint16_t unhashed_len = (openpgp_signature[offset] &lt;&lt; 8) | openpgp_signature[offset + 1];
-251     offset += 2;
-252     offset += unhashed_len; // Skip unhashed subpackets
-253 
-254     // Skip left 16 bits of signed hash value
-255     if (offset + 2 &gt; openpgp_len) {
-256       log_error(&quot;Cannot read hash left bits&quot;);
-257       return -1;
-258     }
-259     offset += 2;
-260   }
-261 
-262   // Now we're at the signature data (MPI format for Ed25519)
-263   // Ed25519 signature is: r (32 bytes) || s (32 bytes) = 64 bytes total
-264   // In OpenPGP, each MPI is encoded as: [2-byte bit count][data]
-265 
-266   if (offset + 2 &gt; openpgp_len) {
-267     log_error(&quot;Cannot read MPI bit count for R&quot;);
-268     return -1;
-269   }
-270 
-271   uint16_t r_bits = (openpgp_signature[offset] &lt;&lt; 8) | openpgp_signature[offset + 1];
-272   offset += 2;
-273   size_t r_bytes = (r_bits + 7) / 8;
-274 
-275   log_debug(&quot;R: %d bits (%zu bytes)&quot;, r_bits, r_bytes);
-276 
-277   if (r_bytes != 32) {
-278     log_error(&quot;Expected 32-byte R value, got %zu bytes&quot;, r_bytes);
-279     return -1;
-280   }
-281 
-282   if (offset + r_bytes &gt; openpgp_len) {
-283     log_error(&quot;R value exceeds packet size&quot;);
-284     return -1;
-285   }
-286 
-287   memcpy(signature_out, &amp;openpgp_signature[offset], 32);
-288   offset += r_bytes;
-289 
-290   // Read S value
-291   if (offset + 2 &gt; openpgp_len) {
-292     log_error(&quot;Cannot read MPI bit count for S&quot;);
-293     return -1;
-294   }
-295 
-296   uint16_t s_bits = (openpgp_signature[offset] &lt;&lt; 8) | openpgp_signature[offset + 1];
-297   offset += 2;
-298   size_t s_bytes = (s_bits + 7) / 8;
-299 
-300   log_debug(&quot;S: %d bits (%zu bytes)&quot;, s_bits, s_bytes);
-301 
-302   if (s_bytes != 32) {
-303     log_error(&quot;Expected 32-byte S value, got %zu bytes&quot;, s_bytes);
-304     return -1;
-305   }
-306 
-307   if (offset + s_bytes &gt; openpgp_len) {
-308     log_error(&quot;S value exceeds packet size&quot;);
-309     return -1;
-310   }
-311 
-312   memcpy(signature_out + 32, &amp;openpgp_signature[offset], 32);
-313 
-314   log_debug(&quot;Successfully extracted 64-byte Ed25519 signature from OpenPGP packet&quot;);
-315 
-316   // Debug: Log signature components
-317   char hex_r[65], hex_s[65];
-318   for (int i = 0; i &lt; 32; i++) {
-319     safe_snprintf(hex_r + i * 2, 3, &quot;%02x&quot;, signature_out[i]);
-320     safe_snprintf(hex_s + i * 2, 3, &quot;%02x&quot;, signature_out[i + 32]);
-321   }
-322   hex_r[64] = hex_s[64] = '\0';
-323   log_debug(&quot;Signature R (first 32 bytes): %s&quot;, hex_r);
-324   log_debug(&quot;Signature S (last 32 bytes): %s&quot;, hex_s);
-325 
-326   return 0;
-327 }</pre>
+<p class="Pp">Definition at line <b>143</b> of file <b>signing.c</b>.</p>
+<pre>144                                                          {
+145   log_debug(&quot;gpg_sign_detached_ed25519: Signing with key ID %s (fallback mode)&quot;, key_id);
+146 
+147   // Get OpenPGP signature packet from gpg --detach-sign
+148   uint8_t openpgp_signature[512];
+149   size_t openpgp_len = 0;
+150 
+151   int result = gpg_sign_with_key(key_id, message, message_len, openpgp_signature, &amp;openpgp_len);
+152   if (result != 0) {
+153     log_error(&quot;GPG detached signing failed for key %s&quot;, key_id);
+154     return -1;
+155   }
+156 
+157   log_debug(&quot;gpg_sign_with_key returned %zu bytes&quot;, openpgp_len);
+158 
+159   if (openpgp_len &lt; 10) {
+160     log_error(&quot;GPG signature too short: %zu bytes&quot;, openpgp_len);
+161     return -1;
+162   }
+163 
+164   log_debug(&quot;Parsing OpenPGP signature packet (%zu bytes) to extract Ed25519 signature&quot;, openpgp_len);
+165 
+166   // Parse OpenPGP signature packet format
+167   // Reference: RFC 4880 Section 5.2 (Signature Packet)
+168   // Format: [header][version][type][algo][hash-algo][...][signature-data]
+169   size_t offset = 0;
+170 
+171   // Parse packet header
+172   uint8_t tag = openpgp_signature[offset++];
+173   size_t packet_len = 0;
+174 
+175   if ((tag &amp; 0x40) == 0) {
+176     // Old format packet
+177     uint8_t length_type = tag &amp; 0x03;
+178     if (length_type == 0) {
+179       packet_len = openpgp_signature[offset++];
+180     } else if (length_type == 1) {
+181       packet_len = (openpgp_signature[offset] &lt;&lt; 8) | openpgp_signature[offset + 1];
+182       offset += 2;
+183     } else if (length_type == 2) {
+184       packet_len = (openpgp_signature[offset] &lt;&lt; 24) | (openpgp_signature[offset + 1] &lt;&lt; 16) |
+185                    (openpgp_signature[offset + 2] &lt;&lt; 8) | openpgp_signature[offset + 3];
+186       offset += 4;
+187     } else {
+188       log_error(&quot;Unsupported old-format packet length type: %d&quot;, length_type);
+189       return -1;
+190     }
+191   } else {
+192     // New format packet
+193     uint8_t length_byte = openpgp_signature[offset++];
+194     if (length_byte &lt; 192) {
+195       packet_len = length_byte;
+196     } else if (length_byte &lt; 224) {
+197       packet_len = ((length_byte - 192) &lt;&lt; 8) + openpgp_signature[offset++] + 192;
+198     } else if (length_byte == 255) {
+199       packet_len = (openpgp_signature[offset] &lt;&lt; 24) | (openpgp_signature[offset + 1] &lt;&lt; 16) |
+200                    (openpgp_signature[offset + 2] &lt;&lt; 8) | openpgp_signature[offset + 3];
+201       offset += 4;
+202     } else {
+203       log_error(&quot;Unsupported new-format packet length encoding: %d&quot;, length_byte);
+204       return -1;
+205     }
+206   }
+207 
+208   if (offset + packet_len &gt; openpgp_len) {
+209     log_error(&quot;Packet length exceeds signature size: %zu + %zu &gt; %zu&quot;, offset, packet_len, openpgp_len);
+210     return -1;
+211   }
+212 
+213   log_debug(&quot;Signature packet: offset=%zu, length=%zu&quot;, offset, packet_len);
+214 
+215   // Parse signature packet body
+216   // Skip: version (1), sig_type (1), pub_algo (1), hash_algo (1)
+217   if (offset + 4 &gt; openpgp_len) {
+218     log_error(&quot;Signature packet too short for header&quot;);
+219     return -1;
+220   }
+221 
+222   uint8_t version = openpgp_signature[offset++];
+223   uint8_t sig_type = openpgp_signature[offset++];
+224   uint8_t pub_algo = openpgp_signature[offset++];
+225   uint8_t hash_algo = openpgp_signature[offset++];
+226 
+227   log_debug(&quot;Signature: version=%d, type=%d, algo=%d, hash=%d&quot;, version, sig_type, pub_algo, hash_algo);
+228 
+229   // Verify algorithm is Ed25519 (22 = EdDSA)
+230   if (pub_algo != 22) {
+231     log_error(&quot;Expected EdDSA algorithm (22), got %d&quot;, pub_algo);
+232     return -1;
+233   }
+234 
+235   // For v4 signatures: skip hashed subpackets
+236   if (version == 4) {
+237     if (offset + 2 &gt; openpgp_len) {
+238       log_error(&quot;Cannot read hashed subpacket length&quot;);
+239       return -1;
+240     }
+241     uint16_t hashed_len = (openpgp_signature[offset] &lt;&lt; 8) | openpgp_signature[offset + 1];
+242     offset += 2;
+243     offset += hashed_len; // Skip hashed subpackets
+244 
+245     if (offset + 2 &gt; openpgp_len) {
+246       log_error(&quot;Cannot read unhashed subpacket length&quot;);
+247       return -1;
+248     }
+249     uint16_t unhashed_len = (openpgp_signature[offset] &lt;&lt; 8) | openpgp_signature[offset + 1];
+250     offset += 2;
+251     offset += unhashed_len; // Skip unhashed subpackets
+252 
+253     // Skip left 16 bits of signed hash value
+254     if (offset + 2 &gt; openpgp_len) {
+255       log_error(&quot;Cannot read hash left bits&quot;);
+256       return -1;
+257     }
+258     offset += 2;
+259   }
+260 
+261   // Now we're at the signature data (MPI format for Ed25519)
+262   // Ed25519 signature is: r (32 bytes) || s (32 bytes) = 64 bytes total
+263   // In OpenPGP, each MPI is encoded as: [2-byte bit count][data]
+264 
+265   if (offset + 2 &gt; openpgp_len) {
+266     log_error(&quot;Cannot read MPI bit count for R&quot;);
+267     return -1;
+268   }
+269 
+270   uint16_t r_bits = (openpgp_signature[offset] &lt;&lt; 8) | openpgp_signature[offset + 1];
+271   offset += 2;
+272   size_t r_bytes = (r_bits + 7) / 8;
+273 
+274   log_debug(&quot;R: %d bits (%zu bytes)&quot;, r_bits, r_bytes);
+275 
+276   if (r_bytes != 32) {
+277     log_error(&quot;Expected 32-byte R value, got %zu bytes&quot;, r_bytes);
+278     return -1;
+279   }
+280 
+281   if (offset + r_bytes &gt; openpgp_len) {
+282     log_error(&quot;R value exceeds packet size&quot;);
+283     return -1;
+284   }
+285 
+286   memcpy(signature_out, &amp;openpgp_signature[offset], 32);
+287   offset += r_bytes;
+288 
+289   // Read S value
+290   if (offset + 2 &gt; openpgp_len) {
+291     log_error(&quot;Cannot read MPI bit count for S&quot;);
+292     return -1;
+293   }
+294 
+295   uint16_t s_bits = (openpgp_signature[offset] &lt;&lt; 8) | openpgp_signature[offset + 1];
+296   offset += 2;
+297   size_t s_bytes = (s_bits + 7) / 8;
+298 
+299   log_debug(&quot;S: %d bits (%zu bytes)&quot;, s_bits, s_bytes);
+300 
+301   if (s_bytes != 32) {
+302     log_error(&quot;Expected 32-byte S value, got %zu bytes&quot;, s_bytes);
+303     return -1;
+304   }
+305 
+306   if (offset + s_bytes &gt; openpgp_len) {
+307     log_error(&quot;S value exceeds packet size&quot;);
+308     return -1;
+309   }
+310 
+311   memcpy(signature_out + 32, &amp;openpgp_signature[offset], 32);
+312 
+313   log_debug(&quot;Successfully extracted 64-byte Ed25519 signature from OpenPGP packet&quot;);
+314 
+315   // Debug: Log signature components
+316   char hex_r[65], hex_s[65];
+317   for (int i = 0; i &lt; 32; i++) {
+318     safe_snprintf(hex_r + i * 2, 3, &quot;%02x&quot;, signature_out[i]);
+319     safe_snprintf(hex_s + i * 2, 3, &quot;%02x&quot;, signature_out[i + 32]);
+320   }
+321   hex_r[64] = hex_s[64] = '\0';
+322   log_debug(&quot;Signature R (first 32 bytes): %s&quot;, hex_r);
+323   log_debug(&quot;Signature S (last 32 bytes): %s&quot;, hex_s);
+324 
+325   return 0;
+326 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>gpg_sign_with_key()</b>, <b>log_debug</b>,
@@ -7020,67 +7020,65 @@
 87   }
 88 
 89   // Call gpg --detach-sign
-90   char cmd[BUFFER_SIZE_LARGE];
-91   safe_snprintf(cmd, sizeof(cmd),
-92                 &quot;gpg --local-user 0x%s --detach-sign --output \&quot;%s\&quot; \&quot;%s\&quot; &quot; PLATFORM_SHELL_NULL_REDIRECT,
-93                 escaped_key_id, sig_path, msg_path);
-94 
-95   // Note: Don't log the full command as it may contain sensitive key material
-96   log_debug(&quot;Signing with GPG key 0x%s&quot;, escaped_key_id);
-97   int status = 0;
-98   LOG_IO(&quot;gpg&quot;, {
-99     status = system(cmd);
-100   });
-101   if (status != 0) {
-102     log_error(&quot;GPG signing failed (exit code %d)&quot;, status);
-103     goto cleanup;
-104   }
-105 
-106   // Read signature file
-107   FILE *sig_fp = platform_fopen(&quot;file_stream&quot;, sig_path, &quot;rb&quot;);
-108   if (!sig_fp) {
-109     log_error(&quot;Failed to open signature file: %s&quot;, SAFE_STRERROR(errno));
-110     goto cleanup;
-111   }
-112 
-113   fseek(sig_fp, 0, SEEK_END);
-114   long sig_size = ftell(sig_fp);
-115   fseek(sig_fp, 0, SEEK_SET);
-116 
-117   if (sig_size &lt;= 0 || sig_size &gt; 512) {
-118     log_error(&quot;Invalid signature size: %ld bytes&quot;, sig_size);
-119     fclose(sig_fp);
-120     goto cleanup;
-121   }
-122 
-123   size_t bytes_read = fread(signature_out, 1, sig_size, sig_fp);
-124   fclose(sig_fp);
-125 
-126   if (bytes_read != (size_t)sig_size) {
-127     log_error(&quot;Failed to read signature file&quot;);
-128     goto cleanup;
-129   }
-130 
-131   *signature_len_out = sig_size;
-132   log_debug(&quot;GPG signature created successfully (%zu bytes)&quot;, *signature_len_out);
-133   result = 0;
-134 
-135 cleanup:
-136   if (msg_fd &gt;= 0) {
-137     close(msg_fd);
-138   }
-139   platform_delete_temp_file(msg_path);
-140   platform_delete_temp_file(sig_path);
-141   return result;
-142 }</pre>
+90   // Use gpg with --detach-sign and --output for safe subprocess execution
+91   const char *argv[] = {&quot;gpg&quot;, &quot;--local-user&quot;, escaped_key_id, &quot;--detach-sign&quot;,
+92                         &quot;--output&quot;, sig_path, msg_path, NULL};
+93 
+94   // Note: Don't log the full command as it may contain sensitive key material
+95   log_debug(&quot;Signing with GPG key 0x%s&quot;, escaped_key_id);
+96   int status = 0;
+97   LOG_IO(&quot;gpg&quot;, {
+98     status = platform_execute_subprocess(&quot;gpg&quot;, argv, NULL, 0);
+99   });
+100   if (status != 0) {
+101     log_error(&quot;GPG signing failed (exit code %d)&quot;, status);
+102     goto cleanup;
+103   }
+104 
+105   // Read signature file
+106   FILE *sig_fp = platform_fopen(&quot;file_stream&quot;, sig_path, &quot;rb&quot;);
+107   if (!sig_fp) {
+108     log_error(&quot;Failed to open signature file: %s&quot;, SAFE_STRERROR(errno));
+109     goto cleanup;
+110   }
+111 
+112   fseek(sig_fp, 0, SEEK_END);
+113   long sig_size = ftell(sig_fp);
+114   fseek(sig_fp, 0, SEEK_SET);
+115 
+116   if (sig_size &lt;= 0 || sig_size &gt; 512) {
+117     log_error(&quot;Invalid signature size: %ld bytes&quot;, sig_size);
+118     fclose(sig_fp);
+119     goto cleanup;
+120   }
+121 
+122   size_t bytes_read = fread(signature_out, 1, sig_size, sig_fp);
+123   fclose(sig_fp);
+124 
+125   if (bytes_read != (size_t)sig_size) {
+126     log_error(&quot;Failed to read signature file&quot;);
+127     goto cleanup;
+128   }
+129 
+130   *signature_len_out = sig_size;
+131   log_debug(&quot;GPG signature created successfully (%zu bytes)&quot;, *signature_len_out);
+132   result = 0;
+133 
+134 cleanup:
+135   if (msg_fd &gt;= 0) {
+136     close(msg_fd);
+137   }
+138   platform_delete_temp_file(msg_path);
+139   platform_delete_temp_file(sig_path);
+140   return result;
+141 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>BUFFER_SIZE_LARGE</b>, <b>errno</b>,
-    <b>escape_path_for_shell()</b>, <b>log_debug</b>, <b>log_error</b>,
-    <b>LOG_IO</b>, <b>platform_create_temp_file()</b>,
-    <b>platform_delete_temp_file()</b>, <b>platform_fopen()</b>,
-    <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>PLATFORM_SHELL_NULL_REDIRECT</b>,
-    <b>safe_snprintf()</b>, and <b>SAFE_STRERROR</b>.</p>
+<p class="Pp">References <b>errno</b>, <b>escape_path_for_shell()</b>,
+    <b>log_debug</b>, <b>log_error</b>, <b>LOG_IO</b>,
+    <b>platform_create_temp_file()</b>, <b>platform_delete_temp_file()</b>,
+    <b>platform_execute_subprocess()</b>, <b>platform_fopen()</b>,
+    <b>PLATFORM_MAX_PATH_LENGTH</b>, and <b>SAFE_STRERROR</b>.</p>
 <p class="Pp">Referenced by <b>gpg_sign_detached_ed25519()</b>, and
     <b>gpg_verify_detached_ed25519()</b>.</p>
 </section>
@@ -8073,128 +8071,128 @@ yqG5PFMAAQDm8...
 =abcd
 -----END PGP PRIVATE KEY BLOCK-----
 </pre>
-<p class="Pp">Definition at line <b>656</b> of file <b>openpgp.c</b>.</p>
-<pre>657                                                                        {
-658   if (!armored_text || !ed25519_pk || !ed25519_sk) {
-659     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for armored seckey parsing&quot;);
-660   }
-661 
-662   // Find the BEGIN marker (try both &quot;PRIVATE KEY&quot; and &quot;SECRET KEY&quot; formats)
-663   const char *begin = strstr(armored_text, &quot;-----BEGIN PGP PRIVATE KEY BLOCK-----&quot;);
-664   if (!begin) {
-665     begin = strstr(armored_text, &quot;-----BEGIN PGP SECRET KEY BLOCK-----&quot;);
-666   }
-667   if (!begin) {
-668     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Missing PGP PRIVATE/SECRET KEY BLOCK BEGIN marker&quot;);
-669   }
-670 
-671   // Skip to the end of the BEGIN line
-672   const char *base64_start = strchr(begin, '\n');
-673   if (!base64_start) {
-674     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Invalid PGP armored format: no newline after BEGIN marker&quot;);
-675   }
-676   base64_start++; // Skip the newline
-677 
-678   // Find the END marker (try both formats)
-679   const char *end = strstr(base64_start, &quot;-----END PGP PRIVATE KEY BLOCK-----&quot;);
-680   if (!end) {
-681     end = strstr(base64_start, &quot;-----END PGP SECRET KEY BLOCK-----&quot;);
-682   }
-683   if (!end) {
-684     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Missing PGP PRIVATE/SECRET KEY BLOCK END marker&quot;);
-685   }
-686 
-687   // Find the checksum line (starts with '=') and exclude it
-688   const char *base64_end = end;
-689   const char *checksum = base64_end;
-690   while (checksum &gt; base64_start &amp;&amp; *checksum != '=') {
-691     checksum--;
-692   }
-693   if (*checksum == '=') {
-694     // Move back to before the checksum line
-695     while (checksum &gt; base64_start &amp;&amp; (checksum[-1] == '\n' || checksum[-1] == '\r')) {
-696       checksum--;
-697     }
-698     base64_end = checksum;
-699   }
-700 
-701   size_t base64_len = (size_t)(base64_end - base64_start);
-702 
-703   log_debug(&quot;Extracting base64 data from PGP secret key armor (%zu bytes)&quot;, base64_len);
-704 
-705   // Decode base64 to binary OpenPGP packets
-706   uint8_t *binary_data;
-707   size_t binary_len;
-708   asciichat_error_t decode_result = openpgp_base64_decode(base64_start, base64_len, &amp;binary_data, &amp;binary_len);
-709   if (decode_result != ASCIICHAT_OK) {
-710     return decode_result;
-711   }
-712 
-713   log_debug(&quot;Decoded %zu bytes of OpenPGP secret key packet data&quot;, binary_len);
-714 
-715   // Parse OpenPGP packets to find the secret key packet (tag 5)
-716   size_t offset = 0;
-717   bool found_seckey = false;
-718 
-719   while (offset &lt; binary_len) {
-720     openpgp_packet_header_t header;
-721     asciichat_error_t header_result = openpgp_parse_packet_header(binary_data + offset, binary_len - offset, &amp;header);
-722     if (header_result != ASCIICHAT_OK) {
-723       SAFE_FREE(binary_data);
-724       return header_result;
-725     }
-726 
-727     log_debug(&quot;Packet at offset %zu: tag=%u, length=%zu&quot;, offset, header.tag, header.length);
-728 
-729     // Check if this is a secret key packet (tag 5)
-730     if (header.tag == OPENPGP_TAG_SECRET_KEY) {
-731       openpgp_secret_key_t seckey;
-732       asciichat_error_t parse_result =
-733           openpgp_parse_secret_key_packet(binary_data + offset + header.header_len, header.length, &amp;seckey);
+<p class="Pp">Definition at line <b>720</b> of file <b>openpgp.c</b>.</p>
+<pre>721                                                                        {
+722   if (!armored_text || !ed25519_pk || !ed25519_sk) {
+723     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for armored seckey parsing&quot;);
+724   }
+725 
+726   // Find the BEGIN marker (try both &quot;PRIVATE KEY&quot; and &quot;SECRET KEY&quot; formats)
+727   const char *begin = strstr(armored_text, &quot;-----BEGIN PGP PRIVATE KEY BLOCK-----&quot;);
+728   if (!begin) {
+729     begin = strstr(armored_text, &quot;-----BEGIN PGP SECRET KEY BLOCK-----&quot;);
+730   }
+731   if (!begin) {
+732     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Missing PGP PRIVATE/SECRET KEY BLOCK BEGIN marker&quot;);
+733   }
 734 
-735       if (parse_result == ASCIICHAT_OK) {
-736         // Check if key is encrypted
-737         if (seckey.is_encrypted) {
-738           SAFE_FREE(binary_data);
-739           log_debug(&quot;Detected encrypted GPG key, attempting to decrypt with passphrase&quot;);
-740 
-741           // Decrypt the key using gpg binary
-742           char *decrypted_text = NULL;
-743           asciichat_error_t decrypt_result = openpgp_decrypt_with_gpg(armored_text, &amp;decrypted_text);
-744           if (decrypt_result != ASCIICHAT_OK) {
-745             return decrypt_result;
-746           }
-747 
-748           // Recursively parse the decrypted key
-749           asciichat_error_t recursive_result = openpgp_parse_armored_seckey(decrypted_text, ed25519_pk, ed25519_sk);
-750           SAFE_FREE(decrypted_text);
-751           return recursive_result;
-752         }
-753 
-754         // Unencrypted key - extract directly
-755         memcpy(ed25519_pk, seckey.pubkey, 32);
-756         memcpy(ed25519_sk, seckey.seckey, 32);
-757         found_seckey = true;
-758         log_debug(&quot;Extracted Ed25519 keypair from OpenPGP armored secret key block&quot;);
-759         break;
-760       } else {
-761         // Not an Ed25519 key, try next packet
-762         log_debug(&quot;Skipping non-Ed25519 secret key packet&quot;);
-763       }
-764     }
-765 
-766     // Move to next packet
-767     offset += header.header_len + header.length;
-768   }
-769 
-770   SAFE_FREE(binary_data);
-771 
-772   if (!found_seckey) {
-773     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;No Ed25519 secret key found in PGP armored block&quot;);
-774   }
-775 
-776   return ASCIICHAT_OK;
-777 }</pre>
+735   // Skip to the end of the BEGIN line
+736   const char *base64_start = strchr(begin, '\n');
+737   if (!base64_start) {
+738     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Invalid PGP armored format: no newline after BEGIN marker&quot;);
+739   }
+740   base64_start++; // Skip the newline
+741 
+742   // Find the END marker (try both formats)
+743   const char *end = strstr(base64_start, &quot;-----END PGP PRIVATE KEY BLOCK-----&quot;);
+744   if (!end) {
+745     end = strstr(base64_start, &quot;-----END PGP SECRET KEY BLOCK-----&quot;);
+746   }
+747   if (!end) {
+748     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Missing PGP PRIVATE/SECRET KEY BLOCK END marker&quot;);
+749   }
+750 
+751   // Find the checksum line (starts with '=') and exclude it
+752   const char *base64_end = end;
+753   const char *checksum = base64_end;
+754   while (checksum &gt; base64_start &amp;&amp; *checksum != '=') {
+755     checksum--;
+756   }
+757   if (*checksum == '=') {
+758     // Move back to before the checksum line
+759     while (checksum &gt; base64_start &amp;&amp; (checksum[-1] == '\n' || checksum[-1] == '\r')) {
+760       checksum--;
+761     }
+762     base64_end = checksum;
+763   }
+764 
+765   size_t base64_len = (size_t)(base64_end - base64_start);
+766 
+767   log_debug(&quot;Extracting base64 data from PGP secret key armor (%zu bytes)&quot;, base64_len);
+768 
+769   // Decode base64 to binary OpenPGP packets
+770   uint8_t *binary_data;
+771   size_t binary_len;
+772   asciichat_error_t decode_result = openpgp_base64_decode(base64_start, base64_len, &amp;binary_data, &amp;binary_len);
+773   if (decode_result != ASCIICHAT_OK) {
+774     return decode_result;
+775   }
+776 
+777   log_debug(&quot;Decoded %zu bytes of OpenPGP secret key packet data&quot;, binary_len);
+778 
+779   // Parse OpenPGP packets to find the secret key packet (tag 5)
+780   size_t offset = 0;
+781   bool found_seckey = false;
+782 
+783   while (offset &lt; binary_len) {
+784     openpgp_packet_header_t header;
+785     asciichat_error_t header_result = openpgp_parse_packet_header(binary_data + offset, binary_len - offset, &amp;header);
+786     if (header_result != ASCIICHAT_OK) {
+787       SAFE_FREE(binary_data);
+788       return header_result;
+789     }
+790 
+791     log_debug(&quot;Packet at offset %zu: tag=%u, length=%zu&quot;, offset, header.tag, header.length);
+792 
+793     // Check if this is a secret key packet (tag 5)
+794     if (header.tag == OPENPGP_TAG_SECRET_KEY) {
+795       openpgp_secret_key_t seckey;
+796       asciichat_error_t parse_result =
+797           openpgp_parse_secret_key_packet(binary_data + offset + header.header_len, header.length, &amp;seckey);
+798 
+799       if (parse_result == ASCIICHAT_OK) {
+800         // Check if key is encrypted
+801         if (seckey.is_encrypted) {
+802           SAFE_FREE(binary_data);
+803           log_debug(&quot;Detected encrypted GPG key, attempting to decrypt with passphrase&quot;);
+804 
+805           // Decrypt the key using gpg binary
+806           char *decrypted_text = NULL;
+807           asciichat_error_t decrypt_result = openpgp_decrypt_with_gpg(armored_text, &amp;decrypted_text);
+808           if (decrypt_result != ASCIICHAT_OK) {
+809             return decrypt_result;
+810           }
+811 
+812           // Recursively parse the decrypted key
+813           asciichat_error_t recursive_result = openpgp_parse_armored_seckey(decrypted_text, ed25519_pk, ed25519_sk);
+814           SAFE_FREE(decrypted_text);
+815           return recursive_result;
+816         }
+817 
+818         // Unencrypted key - extract directly
+819         memcpy(ed25519_pk, seckey.pubkey, 32);
+820         memcpy(ed25519_sk, seckey.seckey, 32);
+821         found_seckey = true;
+822         log_debug(&quot;Extracted Ed25519 keypair from OpenPGP armored secret key block&quot;);
+823         break;
+824       } else {
+825         // Not an Ed25519 key, try next packet
+826         log_debug(&quot;Skipping non-Ed25519 secret key packet&quot;);
+827       }
+828     }
+829 
+830     // Move to next packet
+831     offset += header.header_len + header.length;
+832   }
+833 
+834   SAFE_FREE(binary_data);
+835 
+836   if (!found_seckey) {
+837     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;No Ed25519 secret key found in PGP armored block&quot;);
+838   }
+839 
+840   return ASCIICHAT_OK;
+841 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CRYPTO_KEY</b>,

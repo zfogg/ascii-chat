@@ -1,137 +1,105 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-  <!-- This is an automatically generated file.  Do not edit.
+<!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <style>
-      table.head,
-      table.foot {
-        width: 100%;
-      }
-      td.head-rtitle,
-      td.foot-os {
-        text-align: right;
-      }
-      td.head-vol {
-        text-align: center;
-      }
-      .Nd,
-      .Bf,
-      .Op {
-        display: inline;
-      }
-      .Pa,
-      .Ad {
-        font-style: italic;
-      }
-      .Ms {
-        font-weight: bold;
-      }
-      .Bl-diag > dt {
-        font-weight: bold;
-      }
-      code.Nm,
-      .Fl,
-      .Cm,
-      .Ic,
-      code.In,
-      .Fd,
-      .Fn,
-      .Cd {
-        font-weight: bold;
-        font-family: inherit;
-      }
-    </style>
-    <title>network Directory Reference(3)</title>
-  </head>
-  <body>
-    <table class="head">
-      <tr>
-        <td class="head-ltitle">network Directory Reference(3)</td>
-        <td class="head-vol">Library Functions Manual</td>
-        <td class="head-rtitle">network Directory Reference(3)</td>
-      </tr>
-    </table>
-    <div class="manual-text">
-      <section class="Sh">
-        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-        <p class="Pp">network Directory Reference</p>
-      </section>
-      <section class="Sh">
-        <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-        <section class="Ss">
-          <h2 class="Ss" id="Directories">
-            <a class="permalink" href="#Directories">Directories</a>
-          </h2>
-          <br />
-          <p class="Pp">
-            directory <b>acip</b>
-            <br />
-            directory <b>consensus</b>
-            <br />
-            directory <b>mdns</b>
-            <br />
-            directory <b>nat</b>
-            <br />
-            directory <b>packet</b>
-            <br />
-            directory <b>rate_limit</b>
-            <br />
-            directory <b>tcp</b>
-            <br />
-            directory <b>webrtc</b>
-            <br />
-            directory <b>websocket</b>
-            <br />
-            <br />
-          </p>
-        </section>
-        <section class="Ss">
-          <h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
-          <br />
-          <p class="Pp">
-            file <b>client.c</b>
-            <br />
-            Client application state implementation. file <b>compression.c</b>
-            <br />
-            &#x1F5DC;&#xFE0F; Fast zstd compression/decompression utilities for network payload
-            optimization file <b>connection_attempt.c</b>
-            <br />
-            Connection state machine and attempt logic for TCP/WebSocket clients. file
-            <b>crc32.c</b>
-            <br />
-            &#x26A1; Hardware-accelerated CRC32 checksum with ARM64 and x86_64 CPU feature detection
-            file <b>dns.c</b>
-            <br />
-            DNS resolution utilities implementation. file <b>errors.c</b>
-            <br />
-            Network error handling utilities implementation. file <b>frame_validator.c</b>
-            <br />
-            Frame validation implementation for IMAGE_FRAME packets. file
-            <b>http_client.c</b>
-            <br />
-            &#x1F310; HTTPS client with BearSSL for fetching public keys from GitHub/GitLab with CA
-            validation file <b>network.c</b>
-            <br />
-            &#x1F310; Cross-platform socket I/O with timeout management and connection handling file
-            <b>parallel_connect.c</b>
-            <br />
-            Parallel IPv4/IPv6 connection implementation. file <b>update_checker.c</b>
-            <br />
-            Update checker implementation with GitHub API and cache management.
-            <br />
-          </p>
-        </section>
-      </section>
-    </div>
-    <table class="foot">
-      <tr>
-        <td class="foot-date">Version 0.9.2</td>
-        <td class="foot-os">ascii-chat</td>
-      </tr>
-    </table>
-  </body>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>network Directory Reference(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">network Directory Reference(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">network Directory Reference(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">network Directory Reference</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Directories"><a class="permalink" href="#Directories">Directories</a></h2>
+<br/>
+<p class="Pp">directory <b>acip</b>
+  <br/>
+  directory <b>consensus</b>
+  <br/>
+  directory <b>mdns</b>
+  <br/>
+  directory <b>nat</b>
+  <br/>
+  directory <b>packet</b>
+  <br/>
+  directory <b>rate_limit</b>
+  <br/>
+  directory <b>tcp</b>
+  <br/>
+  directory <b>webrtc</b>
+  <br/>
+  directory <b>websocket</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+<br/>
+<p class="Pp">file <b>client.c</b>
+  <br/>
+  Client application state implementation. file <b>compression.c</b>
+  <br/>
+  &#x1F5DC;&#xFE0F; Fast zstd compression/decompression utilities for network
+    payload optimization file <b>connection_attempt.c</b>
+  <br/>
+  Connection state machine and attempt logic for TCP/WebSocket clients. file
+    <b>crc32.c</b>
+  <br/>
+  &#x26A1; Hardware-accelerated CRC32 checksum with ARM64 and x86_64 CPU feature
+    detection file <b>dns.c</b>
+  <br/>
+  DNS resolution utilities implementation. file <b>errors.c</b>
+  <br/>
+  Network error handling utilities implementation. file <b>frame_validator.c</b>
+  <br/>
+  Frame validation implementation for IMAGE_FRAME packets. file
+    <b>http_client.c</b>
+  <br/>
+  &#x1F310; HTTPS client with BearSSL for fetching public keys from
+    GitHub/GitLab with CA validation file <b>network.c</b>
+  <br/>
+  &#x1F310; Cross-platform socket I/O with timeout management and connection
+    handling file <b>parallel_connect.c</b>
+  <br/>
+  Parallel IPv4/IPv6 connection implementation. file <b>update_checker.c</b>
+  <br/>
+  Update checker implementation with GitHub API and cache management.
+  <br/>
+</p>
+</section>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
 </html>

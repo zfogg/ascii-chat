@@ -90,7 +90,7 @@
 <p class="Pp">Media source for video and audio capture.</p>
 <p class="Pp">Abstracts multiple media input types (webcam, files, stdin, test
     patterns) with unified interface for frame/audio reading.</p>
-<p class="Pp">Definition at line <b>32</b> of file <b>source.c</b>.</p>
+<p class="Pp">Definition at line <b>34</b> of file <b>source.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -99,14 +99,14 @@
 <h2 class="Ss" id="void*_media_source_t::audio_ctx"><a class="permalink" href="#void*_media_source_t::audio_ctx">void*
   media_source_t::audio_ctx</a></h2>
 <p class="Pp">Audio context for clearing buffers on seek (opaque).</p>
-<p class="Pp">Definition at line <b>56</b> of file <b>source.c</b>.</p>
+<p class="Pp">Definition at line <b>58</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_seek()</b>, and
     <b>media_source_set_audio_context()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>ffmpeg_decoder_t</b>* media_source_t::audio_decoder</h2>
 <p class="Pp">Audio decoder (separate or shared with video).</p>
-<p class="Pp">Definition at line <b>43</b> of file <b>source.c</b>.</p>
+<p class="Pp">Definition at line <b>45</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_create()</b>,
     <b>media_source_destroy()</b>, <b>media_source_has_audio()</b>,
     <b>media_source_read_audio()</b>, <b>media_source_rewind()</b>,
@@ -115,7 +115,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>mutex_t</b> media_source_t::decoder_mutex</h2>
 <p class="Pp">Protects shared decoder access (YouTube URLs).</p>
-<p class="Pp">Definition at line <b>47</b> of file <b>source.c</b>.</p>
+<p class="Pp">Definition at line <b>49</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_create()</b>,
     <b>media_source_destroy()</b>, <b>media_source_read_audio()</b>,
     <b>media_source_read_video()</b>, and <b>media_source_rewind()</b>.</p>
@@ -124,14 +124,14 @@
 <h2 class="Ss" id="char*_media_source_t::file_path"><a class="permalink" href="#char*_media_source_t::file_path">char*
   media_source_t::file_path</a></h2>
 <p class="Pp">File path (for FILE type).</p>
-<p class="Pp">Definition at line <b>52</b> of file <b>source.c</b>.</p>
+<p class="Pp">Definition at line <b>54</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_create()</b>, and
     <b>media_source_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> media_source_t::is_paused</h2>
 <p class="Pp">Whether playback is paused.</p>
-<p class="Pp">Definition at line <b>35</b> of file <b>source.c</b>.</p>
+<p class="Pp">Definition at line <b>37</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_create()</b>,
     <b>media_source_is_paused()</b>, <b>media_source_pause()</b>,
     <b>media_source_read_audio()</b>, <b>media_source_read_video()</b>,
@@ -140,7 +140,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> media_source_t::is_shared_decoder</h2>
 <p class="Pp">True if both streams share same decoder (YouTube URLs).</p>
-<p class="Pp">Definition at line <b>44</b> of file <b>source.c</b>.</p>
+<p class="Pp">Definition at line <b>46</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_create()</b>,
     <b>media_source_destroy()</b>, <b>media_source_read_audio()</b>,
     <b>media_source_read_video()</b>, <b>media_source_rewind()</b>, and
@@ -149,7 +149,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> media_source_t::loop_enabled</h2>
 <p class="Pp">Whether to loop playback (for files).</p>
-<p class="Pp">Definition at line <b>34</b> of file <b>source.c</b>.</p>
+<p class="Pp">Definition at line <b>36</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_at_end()</b>,
     <b>media_source_create()</b>, <b>media_source_read_audio()</b>,
     <b>media_source_read_video()</b>, and <b>media_source_set_loop()</b>.</p>
@@ -158,14 +158,14 @@
 <h2 class="Ss" id="char*_media_source_t::original_youtube_url"><a class="permalink" href="#char*_media_source_t::original_youtube_url">char*
   media_source_t::original_youtube_url</a></h2>
 <p class="Pp">Original YouTube URL for re-extraction.</p>
-<p class="Pp">Definition at line <b>53</b> of file <b>source.c</b>.</p>
+<p class="Pp">Definition at line <b>55</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_create()</b>, and
     <b>media_source_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>mutex_t</b> media_source_t::pause_mutex</h2>
 <p class="Pp">Protects pause state.</p>
-<p class="Pp">Definition at line <b>49</b> of file <b>source.c</b>.</p>
+<p class="Pp">Definition at line <b>51</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_create()</b>,
     <b>media_source_destroy()</b>, <b>media_source_is_paused()</b>,
     <b>media_source_pause()</b>, <b>media_source_read_audio()</b>,
@@ -175,7 +175,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>mutex_t</b> media_source_t::seek_access_mutex</h2>
 <p class="Pp">Protects decoder access during seeks.</p>
-<p class="Pp">Definition at line <b>48</b> of file <b>source.c</b>.</p>
+<p class="Pp">Definition at line <b>50</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_create()</b>,
     <b>media_source_destroy()</b>, and <b>media_source_read_audio()</b>.</p>
 </section>
@@ -183,21 +183,21 @@
 <h2 class="Ss" id="unsigned_int_media_source_t::test_frame_counter"><a class="permalink" href="#unsigned_int_media_source_t::test_frame_counter">unsigned
   int media_source_t::test_frame_counter</a></h2>
 <p class="Pp">Animation phase counter for test pattern.</p>
-<p class="Pp">Definition at line <b>60</b> of file <b>source.c</b>.</p>
+<p class="Pp">Definition at line <b>62</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_create()</b>, and
     <b>media_source_read_video()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>image_t</b>* media_source_t::test_pattern_frame</h2>
 <p class="Pp">Reusable 320x240 frame buffer for test pattern.</p>
-<p class="Pp">Definition at line <b>59</b> of file <b>source.c</b>.</p>
+<p class="Pp">Definition at line <b>61</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_create()</b>,
     <b>media_source_destroy()</b>, and <b>media_source_read_video()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>media_source_type_t</b> media_source_t::type</h2>
 <p class="Pp">Type of media source (webcam, file, stdin, test).</p>
-<p class="Pp">Definition at line <b>33</b> of file <b>source.c</b>.</p>
+<p class="Pp">Definition at line <b>35</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_at_end()</b>,
     <b>media_source_create()</b>, <b>media_source_get_duration()</b>,
     <b>media_source_get_position()</b>, <b>media_source_get_type()</b>,
@@ -209,7 +209,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>ffmpeg_decoder_t</b>* media_source_t::video_decoder</h2>
 <p class="Pp">Video decoder (separate or shared with audio).</p>
-<p class="Pp">Definition at line <b>42</b> of file <b>source.c</b>.</p>
+<p class="Pp">Definition at line <b>44</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_at_end()</b>,
     <b>media_source_create()</b>, <b>media_source_destroy()</b>,
     <b>media_source_get_duration()</b>, <b>media_source_get_position()</b>,
@@ -220,7 +220,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>webcam_context_t</b>* media_source_t::webcam_ctx</h2>
 <p class="Pp">Webcam context (NULL for non-webcam types).</p>
-<p class="Pp">Definition at line <b>38</b> of file <b>source.c</b>.</p>
+<p class="Pp">Definition at line <b>40</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_create()</b>,
     <b>media_source_destroy()</b>, and <b>media_source_read_video()</b>.</p>
 </section>
@@ -228,7 +228,7 @@
 <h2 class="Ss" id="unsigned_short_int_media_source_t::webcam_index"><a class="permalink" href="#unsigned_short_int_media_source_t::webcam_index">unsigned
   short int media_source_t::webcam_index</a></h2>
 <p class="Pp">Webcam device index.</p>
-<p class="Pp">Definition at line <b>39</b> of file <b>source.c</b>.</p>
+<p class="Pp">Definition at line <b>41</b> of file <b>source.c</b>.</p>
 <p class="Pp">Referenced by <b>media_source_create()</b>.</p>
 <p class="Pp"></p>
 </section>

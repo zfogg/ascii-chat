@@ -173,8 +173,12 @@
     <b>platform_load_system_ca_certs</b> (char **pem_data_out, size_t
     *pem_size_out)
   <br/>
-  Load system CA certificates for TLS/HTTPS. size_t <b>platform_write_all</b>
-    (int fd, const void *buf, size_t count)
+  Load system CA certificates for TLS/HTTPS. int
+    <b>platform_execute_subprocess</b> (const char *executable, const char
+    **argv, char *output_buffer, size_t output_size)
+  <br/>
+  Execute a subprocess and optionally capture its output. size_t
+    <b>platform_write_all</b> (int fd, const void *buf, size_t count)
   <br/>
   Write all bytes to a file descriptor, handling partial writes. ssize_t
     <b>platform_write</b> (int fd, const void *buf, size_t count)

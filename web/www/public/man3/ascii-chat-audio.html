@@ -1027,15 +1027,15 @@ opus_codec_destroy(decoder);</pre>
 <br/>
 <i>gain</i> Gain multiplier to apply</div>
 <p class="Pp">Multiplies all samples by gain factor.</p>
-<p class="Pp">Definition at line <b>1099</b> of file <b>mixer.c</b>.</p>
-<pre>1099                                                              {
-1100   if (!buffer || count &lt;= 0)
-1101     return;
-1102 
-1103   for (int i = 0; i &lt; count; i++) {
-1104     buffer[i] *= gain;
-1105   }
-1106 }</pre>
+<p class="Pp">Definition at line <b>1107</b> of file <b>mixer.c</b>.</p>
+<pre>1107                                                              {
+1108   if (!buffer || count &lt;= 0)
+1109     return;
+1110 
+1111   for (int i = 0; i &lt; count; i++) {
+1112     buffer[i] *= gain;
+1113   }
+1114 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -3318,14 +3318,14 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <br/>
 <i>count</i> Number of samples to convert</div>
 <p class="Pp">Batch converts float samples to int16 format for WebRTC.</p>
-<p class="Pp">Definition at line <b>1070</b> of file <b>mixer.c</b>.</p>
-<pre>1070                                                                       {
-1071   if (!src || !dst || count &lt;= 0)
-1072     return;
-1073   for (int i = 0; i &lt; count; i++) {
-1074     dst[i] = float_to_int16(src[i]);
-1075   }
-1076 }</pre>
+<p class="Pp">Definition at line <b>1078</b> of file <b>mixer.c</b>.</p>
+<pre>1078                                                                       {
+1079   if (!src || !dst || count &lt;= 0)
+1080     return;
+1081   for (int i = 0; i &lt; count; i++) {
+1082     dst[i] = float_to_int16(src[i]);
+1083   }
+1084 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>float_to_int16()</b>.</p>
@@ -3343,14 +3343,14 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <br/>
 <i>count</i> Number of samples to convert</div>
 <p class="Pp">Batch converts int16 samples to float format.</p>
-<p class="Pp">Definition at line <b>1078</b> of file <b>mixer.c</b>.</p>
-<pre>1078                                                                       {
-1079   if (!src || !dst || count &lt;= 0)
-1080     return;
-1081   for (int i = 0; i &lt; count; i++) {
-1082     dst[i] = int16_to_float(src[i]);
-1083   }
-1084 }</pre>
+<p class="Pp">Definition at line <b>1086</b> of file <b>mixer.c</b>.</p>
+<pre>1086                                                                       {
+1087   if (!src || !dst || count &lt;= 0)
+1088     return;
+1089   for (int i = 0; i &lt; count; i++) {
+1090     dst[i] = int16_to_float(src[i]);
+1091   }
+1092 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>int16_to_float()</b>.</p>
@@ -3369,19 +3369,19 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <div class="Bd-indent">Maximum absolute sample value (0.0 to 1.0+)</div>
 <p class="Pp">Scans buffer for the sample with highest absolute value. Useful
     for level metering and gain staging.</p>
-<p class="Pp">Definition at line <b>1086</b> of file <b>mixer.c</b>.</p>
-<pre>1086                                                   {
-1087   if (!buffer || count &lt;= 0)
-1088     return 0.0f;
-1089 
-1090   float peak = 0.0f;
-1091   for (int i = 0; i &lt; count; i++) {
-1092     float abs_sample = fabsf(buffer[i]);
-1093     if (abs_sample &gt; peak)
-1094       peak = abs_sample;
-1095   }
-1096   return peak;
-1097 }</pre>
+<p class="Pp">Definition at line <b>1094</b> of file <b>mixer.c</b>.</p>
+<pre>1094                                                   {
+1095   if (!buffer || count &lt;= 0)
+1096     return 0.0f;
+1097 
+1098   float peak = 0.0f;
+1099   for (int i = 0; i &lt; count; i++) {
+1100     float abs_sample = fabsf(buffer[i]);
+1101     if (abs_sample &gt; peak)
+1102       peak = abs_sample;
+1103   }
+1104   return peak;
+1105 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -3562,15 +3562,15 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <i>gain</i> Gain multiplier to apply during copy</div>
 <p class="Pp">Copies samples from src to dst while applying gain. Useful for
     format conversion (e.g., scale by 32768 for WebRTC).</p>
-<p class="Pp">Definition at line <b>1131</b> of file <b>mixer.c</b>.</p>
-<pre>1131                                                                                 {
-1132   if (!src || !dst || count &lt;= 0)
-1133     return;
-1134 
-1135   for (int i = 0; i &lt; count; i++) {
-1136     dst[i] = src[i] * gain;
-1137   }
-1138 }</pre>
+<p class="Pp">Definition at line <b>1139</b> of file <b>mixer.c</b>.</p>
+<pre>1139                                                                                 {
+1140   if (!src || !dst || count &lt;= 0)
+1141     return;
+1142 
+1143   for (int i = 0; i &lt; count; i++) {
+1144     dst[i] = src[i] * gain;
+1145   }
+1146 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_audio_pipeline_process_duplex()</b>.</p>
@@ -3827,18 +3827,18 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <p class="Pp">Applies linear interpolation from start_gain to end_gain across
     buffer. Use start_gain=0, end_gain=1 for fade-in; start_gain=1, end_gain=0
     for fade-out.</p>
-<p class="Pp">Definition at line <b>1108</b> of file <b>mixer.c</b>.</p>
-<pre>1108                                                                              {
-1109   if (!buffer || count &lt;= 0)
-1110     return;
-1111 
-1112   float step = (end_gain - start_gain) / (float)count;
-1113   float gain = start_gain;
-1114   for (int i = 0; i &lt; count; i++) {
-1115     buffer[i] *= gain;
-1116     gain += step;
-1117   }
-1118 }</pre>
+<p class="Pp">Definition at line <b>1116</b> of file <b>mixer.c</b>.</p>
+<pre>1116                                                                              {
+1117   if (!buffer || count &lt;= 0)
+1118     return;
+1119 
+1120   float step = (end_gain - start_gain) / (float)count;
+1121   float gain = start_gain;
+1122   for (int i = 0; i &lt; count; i++) {
+1123     buffer[i] *= gain;
+1124     gain += step;
+1125   }
+1126 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -3855,17 +3855,17 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <br/>
 <i>fade_in</i> If true, fade from 0 to 1; if false, fade from 1 to 0</div>
 <p class="Pp">Applies smoothstep curve for more natural-sounding fades.</p>
-<p class="Pp">Definition at line <b>1120</b> of file <b>mixer.c</b>.</p>
-<pre>1120                                                                 {
-1121   if (!buffer || count &lt;= 0)
-1122     return;
-1123 
-1124   for (int i = 0; i &lt; count; i++) {
-1125     float t = (float)i / (float)(count - 1);
-1126     float gain = smoothstep(fade_in ? t : (1.0f - t));
-1127     buffer[i] *= gain;
-1128   }
-1129 }</pre>
+<p class="Pp">Definition at line <b>1128</b> of file <b>mixer.c</b>.</p>
+<pre>1128                                                                 {
+1129   if (!buffer || count &lt;= 0)
+1130     return;
+1131 
+1132   for (int i = 0; i &lt; count; i++) {
+1133     float t = (float)i / (float)(count - 1);
+1134     float gain = smoothstep(fade_in ? t : (1.0f - t));
+1135     buffer[i] *= gain;
+1136   }
+1137 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>smoothstep()</b>.</p>
@@ -3882,15 +3882,15 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <div class="Bd-indent">Scaled int16 sample in [-32768, 32767] range</div>
 <p class="Pp">Scales float audio sample to 16-bit integer format used by WebRTC.
     Values outside [-1.0, 1.0] are clamped before scaling.</p>
-<p class="Pp">Definition at line <b>1057</b> of file <b>mixer.c</b>.</p>
-<pre>1057                                      {
-1058   // Clamp to [-1, 1] then scale to int16 range
-1059   if (sample &gt; 1.0f)
-1060     sample = 1.0f;
-1061   if (sample &lt; -1.0f)
-1062     sample = -1.0f;
-1063   return (int16_t)(sample * 32767.0f);
-1064 }</pre>
+<p class="Pp">Definition at line <b>1065</b> of file <b>mixer.c</b>.</p>
+<pre>1065                                      {
+1066   // Clamp to [-1, 1] then scale to int16 range
+1067   if (sample &gt; 1.0f)
+1068     sample = 1.0f;
+1069   if (sample &lt; -1.0f)
+1070     sample = -1.0f;
+1071   return (int16_t)(sample * 32767.0f);
+1072 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>buffer_float_to_int16()</b>.</p>
@@ -3910,20 +3910,20 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <i>sample_rate</i> Sample rate in Hz</div>
 <p class="Pp">Initializes filter state and calculates filter coefficient alpha
     from cutoff frequency.</p>
-<p class="Pp">Definition at line <b>923</b> of file <b>mixer.c</b>.</p>
-<pre>923                                                                                          {
-924   if (!filter)
-925     return;
-926 
-927   filter-&gt;cutoff_hz = cutoff_hz;
-928   filter-&gt;sample_rate = sample_rate;
-929 
-930   // Calculate filter coefficient
-931   // alpha = 1 / (1 + 2*pi*fc/fs)
-932   filter-&gt;alpha = 1.0f / (1.0f + 2.0f * M_PI * cutoff_hz / sample_rate);
-933 
-934   highpass_filter_reset(filter);
-935 }</pre>
+<p class="Pp">Definition at line <b>931</b> of file <b>mixer.c</b>.</p>
+<pre>931                                                                                          {
+932   if (!filter)
+933     return;
+934 
+935   filter-&gt;cutoff_hz = cutoff_hz;
+936   filter-&gt;sample_rate = sample_rate;
+937 
+938   // Calculate filter coefficient
+939   // alpha = 1 / (1 + 2*pi*fc/fs)
+940   filter-&gt;alpha = 1.0f / (1.0f + 2.0f * M_PI * cutoff_hz / sample_rate);
+941 
+942   highpass_filter_reset(filter);
+943 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>highpass_filter_t::alpha</b>,
@@ -3946,15 +3946,15 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <i>num_samples</i> Number of samples to process</div>
 <p class="Pp">Processes entire buffer through high-pass filter. Buffer is
     modified in-place.</p>
-<p class="Pp">Definition at line <b>959</b> of file <b>mixer.c</b>.</p>
-<pre>959                                                                                                {
-960   if (!filter || !buffer || num_samples &lt;= 0)
-961     return;
-962 
-963   for (int i = 0; i &lt; num_samples; i++) {
-964     buffer[i] = highpass_filter_process_sample(filter, buffer[i]);
-965   }
-966 }</pre>
+<p class="Pp">Definition at line <b>967</b> of file <b>mixer.c</b>.</p>
+<pre>967                                                                                                {
+968   if (!filter || !buffer || num_samples &lt;= 0)
+969     return;
+970 
+971   for (int i = 0; i &lt; num_samples; i++) {
+972     buffer[i] = highpass_filter_process_sample(filter, buffer[i]);
+973   }
+974 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>highpass_filter_process_sample()</b>.</p>
@@ -3975,20 +3975,20 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <div class="Bd-indent">Filtered output sample</div>
 <p class="Pp">Processes input sample through first-order IIR high-pass filter.
     Filter state is updated for next sample.</p>
-<p class="Pp">Definition at line <b>945</b> of file <b>mixer.c</b>.</p>
-<pre>945                                                                              {
-946   if (!filter)
-947     return input;
-948 
-949   // First-order high-pass filter
-950   // y[n] = alpha * (y[n-1] + x[n] - x[n-1])
-951   float output = filter-&gt;alpha * (filter-&gt;prev_output + input - filter-&gt;prev_input);
-952 
-953   filter-&gt;prev_input = input;
-954   filter-&gt;prev_output = output;
-955 
-956   return output;
-957 }</pre>
+<p class="Pp">Definition at line <b>953</b> of file <b>mixer.c</b>.</p>
+<pre>953                                                                              {
+954   if (!filter)
+955     return input;
+956 
+957   // First-order high-pass filter
+958   // y[n] = alpha * (y[n-1] + x[n] - x[n-1])
+959   float output = filter-&gt;alpha * (filter-&gt;prev_output + input - filter-&gt;prev_input);
+960 
+961   filter-&gt;prev_input = input;
+962   filter-&gt;prev_output = output;
+963 
+964   return output;
+965 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>highpass_filter_t::alpha</b>,
@@ -4006,14 +4006,14 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <div class="Bd-indent"><i>filter</i> High-pass filter structure</div>
 <p class="Pp">Resets filter state (prev_input, prev_output) to zero. Useful for
     starting fresh processing or removing DC offset.</p>
-<p class="Pp">Definition at line <b>937</b> of file <b>mixer.c</b>.</p>
-<pre>937                                                       {
-938   if (!filter)
-939     return;
-940 
-941   filter-&gt;prev_input = 0.0f;
-942   filter-&gt;prev_output = 0.0f;
-943 }</pre>
+<p class="Pp">Definition at line <b>945</b> of file <b>mixer.c</b>.</p>
+<pre>945                                                       {
+946   if (!filter)
+947     return;
+948 
+949   filter-&gt;prev_input = 0.0f;
+950   filter-&gt;prev_output = 0.0f;
+951 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>highpass_filter_t::prev_input</b>, and
@@ -4031,10 +4031,10 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Float sample in [-1.0, 1.0] range</div>
 <p class="Pp">Scales 16-bit integer audio sample to float format.</p>
-<p class="Pp">Definition at line <b>1066</b> of file <b>mixer.c</b>.</p>
-<pre>1066                                      {
-1067   return (float)sample / 32768.0f;
-1068 }</pre>
+<p class="Pp">Definition at line <b>1074</b> of file <b>mixer.c</b>.</p>
+<pre>1074                                      {
+1075   return (float)sample / 32768.0f;
+1076 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>buffer_int16_to_float()</b>.</p>
@@ -4075,22 +4075,22 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <i>sample_rate</i> Sample rate in Hz</div>
 <p class="Pp">Initializes filter state and calculates filter coefficient alpha
     from cutoff frequency. Frequencies above cutoff are attenuated.</p>
-<p class="Pp">Definition at line <b>973</b> of file <b>mixer.c</b>.</p>
-<pre>973                                                                                        {
-974   if (!filter)
-975     return;
-976 
-977   filter-&gt;cutoff_hz = cutoff_hz;
-978   filter-&gt;sample_rate = sample_rate;
-979 
-980   // Calculate filter coefficient using RC time constant formula
-981   // alpha = dt / (RC + dt) where RC = 1 / (2 * pi * fc)
-982   float dt = 1.0f / sample_rate;
-983   float rc = 1.0f / (2.0f * (float)M_PI * cutoff_hz);
-984   filter-&gt;alpha = dt / (rc + dt);
-985 
-986   lowpass_filter_reset(filter);
-987 }</pre>
+<p class="Pp">Definition at line <b>981</b> of file <b>mixer.c</b>.</p>
+<pre>981                                                                                        {
+982   if (!filter)
+983     return;
+984 
+985   filter-&gt;cutoff_hz = cutoff_hz;
+986   filter-&gt;sample_rate = sample_rate;
+987 
+988   // Calculate filter coefficient using RC time constant formula
+989   // alpha = dt / (RC + dt) where RC = 1 / (2 * pi * fc)
+990   float dt = 1.0f / sample_rate;
+991   float rc = 1.0f / (2.0f * (float)M_PI * cutoff_hz);
+992   filter-&gt;alpha = dt / (rc + dt);
+993 
+994   lowpass_filter_reset(filter);
+995 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lowpass_filter_t::alpha</b>,
@@ -4113,15 +4113,15 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <i>num_samples</i> Number of samples to process</div>
 <p class="Pp">Processes entire buffer through low-pass filter. Buffer is
     modified in-place.</p>
-<p class="Pp">Definition at line <b>1008</b> of file <b>mixer.c</b>.</p>
-<pre>1008                                                                                              {
-1009   if (!filter || !buffer || num_samples &lt;= 0)
-1010     return;
-1011 
-1012   for (int i = 0; i &lt; num_samples; i++) {
-1013     buffer[i] = lowpass_filter_process_sample(filter, buffer[i]);
-1014   }
-1015 }</pre>
+<p class="Pp">Definition at line <b>1016</b> of file <b>mixer.c</b>.</p>
+<pre>1016                                                                                              {
+1017   if (!filter || !buffer || num_samples &lt;= 0)
+1018     return;
+1019 
+1020   for (int i = 0; i &lt; num_samples; i++) {
+1021     buffer[i] = lowpass_filter_process_sample(filter, buffer[i]);
+1022   }
+1023 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lowpass_filter_process_sample()</b>.</p>
@@ -4142,18 +4142,18 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <div class="Bd-indent">Filtered output sample</div>
 <p class="Pp">Processes input sample through first-order IIR low-pass filter.
     Filter state is updated for next sample.</p>
-<p class="Pp">Definition at line <b>996</b> of file <b>mixer.c</b>.</p>
-<pre>996                                                                            {
-997   if (!filter)
-998     return input;
-999 
-1000   // First-order IIR low-pass filter: y[n] = alpha * x[n] + (1 - alpha) * y[n-1]
-1001   float output = filter-&gt;alpha * input + (1.0f - filter-&gt;alpha) * filter-&gt;prev_output;
-1002 
-1003   filter-&gt;prev_output = output;
-1004 
-1005   return output;
-1006 }</pre>
+<p class="Pp">Definition at line <b>1004</b> of file <b>mixer.c</b>.</p>
+<pre>1004                                                                            {
+1005   if (!filter)
+1006     return input;
+1007 
+1008   // First-order IIR low-pass filter: y[n] = alpha * x[n] + (1 - alpha) * y[n-1]
+1009   float output = filter-&gt;alpha * input + (1.0f - filter-&gt;alpha) * filter-&gt;prev_output;
+1010 
+1011   filter-&gt;prev_output = output;
+1012 
+1013   return output;
+1014 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lowpass_filter_t::alpha</b>, and
@@ -4169,13 +4169,13 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>filter</i> Low-pass filter structure</div>
 <p class="Pp">Resets filter state (prev_output) to zero.</p>
-<p class="Pp">Definition at line <b>989</b> of file <b>mixer.c</b>.</p>
-<pre>989                                                     {
-990   if (!filter)
-991     return;
-992 
-993   filter-&gt;prev_output = 0.0f;
-994 }</pre>
+<p class="Pp">Definition at line <b>997</b> of file <b>mixer.c</b>.</p>
+<pre>997                                                     {
+998   if (!filter)
+999     return;
+1000 
+1001   filter-&gt;prev_output = 0.0f;
+1002 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lowpass_filter_t::prev_output</b>.</p>
@@ -4230,33 +4230,43 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 399 
 400   mixer-&gt;source_buffers[slot] = buffer;
 401   // Duplicate the client_id string - we own this memory now
-402   mixer-&gt;source_ids[slot] = SAFE_MALLOC(strlen(client_id) + 1, char *);
-403   if (!mixer-&gt;source_ids[slot]) {
-404     log_warn(&quot;Mixer: Failed to allocate memory for client_id %s&quot;, client_id);
-405     mixer-&gt;source_buffers[slot] = NULL;
-406     rwlock_wrunlock(&amp;mixer-&gt;source_lock);
-407     return -1;
-408   }
-409   strcpy((char *)mixer-&gt;source_ids[slot], client_id);
-410   mixer-&gt;source_active[slot] = true;
-411   mixer-&gt;num_sources++;
-412 
-413   // OPTIMIZATION 1: Update bitset optimization structures
-414   mixer-&gt;active_sources_mask |= (1ULL &lt;&lt; slot); // Set bit for this slot
-415   // Hash table optimization disabled for string-based client_ids (linear search is acceptable for small mixer sizes)
-416 
-417   rwlock_wrunlock(&amp;mixer-&gt;source_lock);
-418 
-419   log_info(&quot;Mixer: Added source for client %s at slot %d&quot;, client_id, slot);
-420   return slot;
-421 }</pre>
+402   size_t client_id_len = strlen(client_id) + 1;
+403   mixer-&gt;source_ids[slot] = SAFE_MALLOC(client_id_len, char *);
+404   if (!mixer-&gt;source_ids[slot]) {
+405     log_warn(&quot;Mixer: Failed to allocate memory for client_id %s&quot;, client_id);
+406     mixer-&gt;source_buffers[slot] = NULL;
+407     rwlock_wrunlock(&amp;mixer-&gt;source_lock);
+408     return -1;
+409   }
+410   asciichat_error_t strcpy_result = SAFE_STRCPY((char *)mixer-&gt;source_ids[slot], client_id_len, client_id);
+411   if (strcpy_result != ASCIICHAT_OK) {
+412     log_error(&quot;Mixer: Failed to copy client_id: %s&quot;, asciichat_error_string(strcpy_result));
+413     SAFE_FREE(mixer-&gt;source_ids[slot]);
+414     mixer-&gt;source_buffers[slot] = NULL;
+415     rwlock_wrunlock(&amp;mixer-&gt;source_lock);
+416     return -1;
+417   }
+418   mixer-&gt;source_active[slot] = true;
+419   mixer-&gt;num_sources++;
+420 
+421   // OPTIMIZATION 1: Update bitset optimization structures
+422   mixer-&gt;active_sources_mask |= (1ULL &lt;&lt; slot); // Set bit for this slot
+423   // Hash table optimization disabled for string-based client_ids (linear search is acceptable for small mixer sizes)
+424 
+425   rwlock_wrunlock(&amp;mixer-&gt;source_lock);
+426 
+427   log_info(&quot;Mixer: Added source for client %s at slot %d&quot;, client_id, slot);
+428   return slot;
+429 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>mixer_t::active_sources_mask</b>, <b>log_info</b>,
-    <b>log_warn</b>, <b>mixer_t::max_sources</b>, <b>mixer_t::num_sources</b>,
-    <b>rwlock_wrlock</b>, <b>rwlock_wrunlock</b>, <b>SAFE_MALLOC</b>,
-    <b>mixer_t::source_active</b>, <b>mixer_t::source_buffers</b>,
-    <b>mixer_t::source_ids</b>, and <b>mixer_t::source_lock</b>.</p>
+<p class="Pp">References <b>mixer_t::active_sources_mask</b>,
+    <b>ASCIICHAT_OK</b>, <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
+    <b>mixer_t::max_sources</b>, <b>mixer_t::num_sources</b>,
+    <b>rwlock_wrlock</b>, <b>rwlock_wrunlock</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>SAFE_STRCPY</b>, <b>mixer_t::source_active</b>,
+    <b>mixer_t::source_buffers</b>, <b>mixer_t::source_ids</b>, and
+    <b>mixer_t::source_lock</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, and
   <b>add_webrtc_client()</b>.</p>
 </section>
@@ -4508,151 +4518,151 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Output buffer must have at least num_samples float
   elements.</div>
-<p class="Pp">Definition at line <b>483</b> of file <b>mixer.c</b>.</p>
-<pre>483                                                                   {
-484   if (!mixer || !output || num_samples &lt;= 0)
-485     return -1;
-486 
-487   // THREAD SAFETY: Acquire read lock to protect against concurrent source add/remove
-488   // This prevents race conditions where source_buffers[i] could be set to NULL while we read it
-489   rwlock_rdlock(&amp;mixer-&gt;source_lock);
-490 
-491   // Clear output buffer
-492   SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
-493 
-494   // Count active sources
-495   int active_count = 0;
-496   for (int i = 0; i &lt; mixer-&gt;max_sources; i++) {
-497     if (mixer-&gt;source_ids[i] != 0 &amp;&amp; mixer-&gt;source_active[i] &amp;&amp; mixer-&gt;source_buffers[i]) {
-498       active_count++;
-499     }
-500   }
+<p class="Pp">Definition at line <b>491</b> of file <b>mixer.c</b>.</p>
+<pre>491                                                                   {
+492   if (!mixer || !output || num_samples &lt;= 0)
+493     return -1;
+494 
+495   // THREAD SAFETY: Acquire read lock to protect against concurrent source add/remove
+496   // This prevents race conditions where source_buffers[i] could be set to NULL while we read it
+497   rwlock_rdlock(&amp;mixer-&gt;source_lock);
+498 
+499   // Clear output buffer
+500   SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
 501 
-502   if (active_count == 0) {
-503     // No active sources, output silence
-504     return 0;
-505   }
-506 
-507   // Process in frames for efficiency
-508   for (int frame_start = 0; frame_start &lt; num_samples; frame_start += MIXER_FRAME_SIZE) {
-509     int frame_size = (frame_start + MIXER_FRAME_SIZE &gt; num_samples) ? (num_samples - frame_start) : MIXER_FRAME_SIZE;
-510 
-511     // Clear mix buffer
-512     SAFE_MEMSET(mixer-&gt;mix_buffer, frame_size * sizeof(float), 0, frame_size * sizeof(float));
-513 
-514     // Temporary buffers for source audio
-515     float source_samples[MIXER_MAX_SOURCES][MIXER_FRAME_SIZE];
-516     int source_count = 0;
-517     int source_map[MIXER_MAX_SOURCES]; // Maps source index to slot
+502   // Count active sources
+503   int active_count = 0;
+504   for (int i = 0; i &lt; mixer-&gt;max_sources; i++) {
+505     if (mixer-&gt;source_ids[i] != 0 &amp;&amp; mixer-&gt;source_active[i] &amp;&amp; mixer-&gt;source_buffers[i]) {
+506       active_count++;
+507     }
+508   }
+509 
+510   if (active_count == 0) {
+511     // No active sources, output silence
+512     return 0;
+513   }
+514 
+515   // Process in frames for efficiency
+516   for (int frame_start = 0; frame_start &lt; num_samples; frame_start += MIXER_FRAME_SIZE) {
+517     int frame_size = (frame_start + MIXER_FRAME_SIZE &gt; num_samples) ? (num_samples - frame_start) : MIXER_FRAME_SIZE;
 518 
-519     // Read from each active source
-520     for (int i = 0; i &lt; mixer-&gt;max_sources; i++) {
-521       if (mixer-&gt;source_ids[i] != 0 &amp;&amp; mixer-&gt;source_active[i] &amp;&amp; mixer-&gt;source_buffers[i]) {
-522         // Read samples from this source's ring buffer
-523         size_t samples_read_size =
-524             audio_ring_buffer_read(mixer-&gt;source_buffers[i], source_samples[source_count], frame_size);
-525         int samples_read = (int)samples_read_size;
+519     // Clear mix buffer
+520     SAFE_MEMSET(mixer-&gt;mix_buffer, frame_size * sizeof(float), 0, frame_size * sizeof(float));
+521 
+522     // Temporary buffers for source audio
+523     float source_samples[MIXER_MAX_SOURCES][MIXER_FRAME_SIZE];
+524     int source_count = 0;
+525     int source_map[MIXER_MAX_SOURCES]; // Maps source index to slot
 526 
-527         // Accept partial frames - pad with silence if needed
-528         // This prevents audio dropouts when ring buffers are temporarily under-filled
-529         if (samples_read &gt; 0) {
-530           // Pad remaining samples with silence if we got a partial frame
-531           if (samples_read &lt; frame_size) {
-532             SAFE_MEMSET(&amp;source_samples[source_count][samples_read], (frame_size - samples_read) * sizeof(float), 0,
-533                         (frame_size - samples_read) * sizeof(float));
-534           }
-535 
-536           source_map[source_count] = i;
-537           source_count++;
-538 
-539           if (source_count &gt;= MIXER_MAX_SOURCES)
-540             break;
-541         }
-542       }
-543     }
-544 
-545     // OPTIMIZATION: Batch envelope calculation per-frame instead of per-sample
-546     // Calculate peak amplitude for each source over the entire frame
-547     int speaking_count = 0;
-548 
-549     for (int i = 0; i &lt; source_count; i++) {
-550       int slot = source_map[i];
-551       float peak = 0.0f;
+527     // Read from each active source
+528     for (int i = 0; i &lt; mixer-&gt;max_sources; i++) {
+529       if (mixer-&gt;source_ids[i] != 0 &amp;&amp; mixer-&gt;source_active[i] &amp;&amp; mixer-&gt;source_buffers[i]) {
+530         // Read samples from this source's ring buffer
+531         size_t samples_read_size =
+532             audio_ring_buffer_read(mixer-&gt;source_buffers[i], source_samples[source_count], frame_size);
+533         int samples_read = (int)samples_read_size;
+534 
+535         // Accept partial frames - pad with silence if needed
+536         // This prevents audio dropouts when ring buffers are temporarily under-filled
+537         if (samples_read &gt; 0) {
+538           // Pad remaining samples with silence if we got a partial frame
+539           if (samples_read &lt; frame_size) {
+540             SAFE_MEMSET(&amp;source_samples[source_count][samples_read], (frame_size - samples_read) * sizeof(float), 0,
+541                         (frame_size - samples_read) * sizeof(float));
+542           }
+543 
+544           source_map[source_count] = i;
+545           source_count++;
+546 
+547           if (source_count &gt;= MIXER_MAX_SOURCES)
+548             break;
+549         }
+550       }
+551     }
 552 
-553       // Find peak amplitude in frame (much faster than per-sample envelope)
-554       for (int s = 0; s &lt; frame_size; s++) {
-555         float abs_sample = fabsf(source_samples[i][s]);
-556         if (abs_sample &gt; peak)
-557           peak = abs_sample;
-558       }
-559 
-560       // Update envelope using frame peak (one update per frame instead of per-sample)
-561       if (peak &gt; mixer-&gt;ducking.envelope[slot]) {
-562         mixer-&gt;ducking.envelope[slot] =
-563             mixer-&gt;ducking.attack_coeff * mixer-&gt;ducking.envelope[slot] + (1.0f - mixer-&gt;ducking.attack_coeff) * peak;
-564       } else {
-565         mixer-&gt;ducking.envelope[slot] =
-566             mixer-&gt;ducking.release_coeff * mixer-&gt;ducking.envelope[slot] + (1.0f - mixer-&gt;ducking.release_coeff) * peak;
-567       }
-568 
-569       // Count speaking sources
-570       if (mixer-&gt;ducking.envelope[slot] &gt; db_to_linear(-60.0f))
-571         speaking_count++;
-572     }
-573 
-574     // Apply ducking ONCE per frame (not per-sample)
-575     ducking_process_frame(&amp;mixer-&gt;ducking, mixer-&gt;ducking.envelope, mixer-&gt;ducking.gain, mixer-&gt;max_sources);
+553     // OPTIMIZATION: Batch envelope calculation per-frame instead of per-sample
+554     // Calculate peak amplitude for each source over the entire frame
+555     int speaking_count = 0;
+556 
+557     for (int i = 0; i &lt; source_count; i++) {
+558       int slot = source_map[i];
+559       float peak = 0.0f;
+560 
+561       // Find peak amplitude in frame (much faster than per-sample envelope)
+562       for (int s = 0; s &lt; frame_size; s++) {
+563         float abs_sample = fabsf(source_samples[i][s]);
+564         if (abs_sample &gt; peak)
+565           peak = abs_sample;
+566       }
+567 
+568       // Update envelope using frame peak (one update per frame instead of per-sample)
+569       if (peak &gt; mixer-&gt;ducking.envelope[slot]) {
+570         mixer-&gt;ducking.envelope[slot] =
+571             mixer-&gt;ducking.attack_coeff * mixer-&gt;ducking.envelope[slot] + (1.0f - mixer-&gt;ducking.attack_coeff) * peak;
+572       } else {
+573         mixer-&gt;ducking.envelope[slot] =
+574             mixer-&gt;ducking.release_coeff * mixer-&gt;ducking.envelope[slot] + (1.0f - mixer-&gt;ducking.release_coeff) * peak;
+575       }
 576 
-577     // Calculate crowd scaling ONCE per frame
-578     float crowd_gain = (speaking_count &gt; 0) ? (1.0f / powf((float)speaking_count, mixer-&gt;crowd_alpha)) : 1.0f;
-579     float pre_bus = mixer-&gt;base_gain * crowd_gain;
-580 
-581     // Pre-calculate combined gains for each source (ducking * pre_bus)
-582     float combined_gains[MIXER_MAX_SOURCES];
-583     for (int i = 0; i &lt; source_count; i++) {
-584       int slot = source_map[i];
-585       combined_gains[i] = mixer-&gt;ducking.gain[slot] * pre_bus;
-586     }
-587 
-588     // OPTIMIZATION: Fast mixing loop - simple multiply-add with pre-calculated gains
-589     // NO per-sample compressor to avoid expensive log/pow calls (480x per iteration)
-590     for (int s = 0; s &lt; frame_size; s++) {
-591       float mix = 0.0f;
-592       for (int i = 0; i &lt; source_count; i++) {
-593         mix += source_samples[i][s] * combined_gains[i];
-594       }
+577       // Count speaking sources
+578       if (mixer-&gt;ducking.envelope[slot] &gt; db_to_linear(-60.0f))
+579         speaking_count++;
+580     }
+581 
+582     // Apply ducking ONCE per frame (not per-sample)
+583     ducking_process_frame(&amp;mixer-&gt;ducking, mixer-&gt;ducking.envelope, mixer-&gt;ducking.gain, mixer-&gt;max_sources);
+584 
+585     // Calculate crowd scaling ONCE per frame
+586     float crowd_gain = (speaking_count &gt; 0) ? (1.0f / powf((float)speaking_count, mixer-&gt;crowd_alpha)) : 1.0f;
+587     float pre_bus = mixer-&gt;base_gain * crowd_gain;
+588 
+589     // Pre-calculate combined gains for each source (ducking * pre_bus)
+590     float combined_gains[MIXER_MAX_SOURCES];
+591     for (int i = 0; i &lt; source_count; i++) {
+592       int slot = source_map[i];
+593       combined_gains[i] = mixer-&gt;ducking.gain[slot] * pre_bus;
+594     }
 595 
-596       // Store in mix buffer for frame-level compression below
-597       mixer-&gt;mix_buffer[s] = mix;
-598     }
-599 
-600     // OPTIMIZATION: Apply compression ONCE per frame instead of per-sample
-601     // This reduces expensive log10f/powf calls from 480x to 1x per iteration
-602     // Calculate frame peak for compressor sidechain
-603     float frame_peak = 0.0f;
-604     for (int s = 0; s &lt; frame_size; s++) {
-605       float abs_val = fabsf(mixer-&gt;mix_buffer[s]);
-606       if (abs_val &gt; frame_peak)
-607         frame_peak = abs_val;
-608     }
-609 
-610     // Process compressor with frame peak (1 call instead of 480)
-611     float comp_gain = compressor_process_sample(&amp;mixer-&gt;compressor, frame_peak);
-612 
-613     // Apply compression gain and soft clipping to all samples
-614     for (int s = 0; s &lt; frame_size; s++) {
-615       float mix = mixer-&gt;mix_buffer[s] * comp_gain;
-616 
-617       // Soft clip at 0.7 to provide 3dB headroom and prevent hard clipping
-618       // With +6dB makeup gain, peaks can exceed 1.0, so we need headroom
-619       // threshold=0.7 maps asymptotically toward 1.0, preventing harsh distortion
-620       output[frame_start + s] = soft_clip(mix, 0.7f, 3.0f);
-621     }
-622   }
-623 
-624   rwlock_rdunlock(&amp;mixer-&gt;source_lock);
-625   return num_samples;
-626 }</pre>
+596     // OPTIMIZATION: Fast mixing loop - simple multiply-add with pre-calculated gains
+597     // NO per-sample compressor to avoid expensive log/pow calls (480x per iteration)
+598     for (int s = 0; s &lt; frame_size; s++) {
+599       float mix = 0.0f;
+600       for (int i = 0; i &lt; source_count; i++) {
+601         mix += source_samples[i][s] * combined_gains[i];
+602       }
+603 
+604       // Store in mix buffer for frame-level compression below
+605       mixer-&gt;mix_buffer[s] = mix;
+606     }
+607 
+608     // OPTIMIZATION: Apply compression ONCE per frame instead of per-sample
+609     // This reduces expensive log10f/powf calls from 480x to 1x per iteration
+610     // Calculate frame peak for compressor sidechain
+611     float frame_peak = 0.0f;
+612     for (int s = 0; s &lt; frame_size; s++) {
+613       float abs_val = fabsf(mixer-&gt;mix_buffer[s]);
+614       if (abs_val &gt; frame_peak)
+615         frame_peak = abs_val;
+616     }
+617 
+618     // Process compressor with frame peak (1 call instead of 480)
+619     float comp_gain = compressor_process_sample(&amp;mixer-&gt;compressor, frame_peak);
+620 
+621     // Apply compression gain and soft clipping to all samples
+622     for (int s = 0; s &lt; frame_size; s++) {
+623       float mix = mixer-&gt;mix_buffer[s] * comp_gain;
+624 
+625       // Soft clip at 0.7 to provide 3dB headroom and prevent hard clipping
+626       // With +6dB makeup gain, peaks can exceed 1.0, so we need headroom
+627       // threshold=0.7 maps asymptotically toward 1.0, preventing harsh distortion
+628       output[frame_start + s] = soft_clip(mix, 0.7f, 3.0f);
+629     }
+630   }
+631 
+632   rwlock_rdunlock(&amp;mixer-&gt;source_lock);
+633   return num_samples;
+634 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ducking_t::attack_coeff</b>,
@@ -4697,211 +4707,211 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <p class="Pp"></p>
 <p class="Pp">Thread-safe (acquires read lock for source access).</p>
 </div>
-<p class="Pp">Definition at line <b>628</b> of file <b>mixer.c</b>.</p>
-<pre>628                                                                                                                {
-629   if (!mixer || !output || num_samples &lt;= 0)
-630     return -1;
-631 
-632   // Only use timing in debug builds - snprintf + hashtable ops are expensive in hot path
-633 #ifndef NDEBUG
-634   START_TIMER(&quot;mixer_total&quot;);
-635 #endif
-636 
-637   // THREAD SAFETY: Acquire read lock to protect against concurrent source add/remove
-638   // This prevents race conditions where source_buffers[i] could be set to NULL while we read it
-639   rwlock_rdlock(&amp;mixer-&gt;source_lock);
-640 
-641   // Clear output buffer
-642   SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
-643 
-644   // OPTIMIZATION 1: O(1) exclusion using bitset and hash table
-645   uint8_t exclude_index = mixer_hash_get_slot(mixer, exclude_client_id);
-646   uint64_t active_mask = mixer-&gt;active_sources_mask;
-647 
-648   // Validate exclude_index before using in bitshift
-649   // - exclude_index == MIXER_HASH_INVALID means &quot;not found&quot; (sentinel value from initialization)
-650   // - exclude_index &gt;= MIXER_MAX_SOURCES would cause undefined behavior in bitshift
-651   bool valid_exclude = (exclude_index &lt; MIXER_MAX_SOURCES &amp;&amp; exclude_index != MIXER_HASH_INVALID);
-652 
-653   if (valid_exclude) {
-654     // Apply exclusion to prevent echo feedback
-655     uint64_t mask_without_excluded = active_mask &amp; ~(1ULL &lt;&lt; exclude_index);
-656     active_mask = mask_without_excluded;
-657 
-658     // DIAGNOSTIC: Log which client was excluded and which remain active
-659     log_dev_every(
-660         4500 * US_PER_MS_INT,
-661         &quot;MIXER EXCLUSION: exclude_client=%u, exclude_index=%u, active_mask_before=0x%llx, active_mask_after=0x%llx&quot;,
-662         exclude_client_id, exclude_index, (unsigned long long)(active_mask | (1ULL &lt;&lt; exclude_index)),
-663         (unsigned long long)active_mask);
-664   } else {
-665     // DIAGNOSTIC: Failed to exclude - log why
-666     log_dev_every(4500 * US_PER_MS_INT,
-667                   &quot;MIXER EXCLUSION FAILED: exclude_client=%u, exclude_index=%u (valid=%d), lookup_id=%u&quot;,
-668                   exclude_client_id, exclude_index, valid_exclude,
-669                   (exclude_index &lt; MIXER_MAX_SOURCES &amp;&amp; exclude_index != 0xFF) ? mixer-&gt;source_ids[exclude_index] : 0);
-670   }
-671 
-672   // Fast check: any sources to mix?
-673   if (active_mask == 0) {
-674     rwlock_rdunlock(&amp;mixer-&gt;source_lock);
-675 #ifndef NDEBUG
-676     STOP_TIMER(&quot;mixer_total&quot;);
-677 #endif
-678     return 0; // No sources to mix (excluding the specified client), output silence
-679   }
-680 
-681   // Process in frames for efficiency
-682   for (int frame_start = 0; frame_start &lt; num_samples; frame_start += MIXER_FRAME_SIZE) {
-683     int frame_size = (frame_start + MIXER_FRAME_SIZE &gt; num_samples) ? (num_samples - frame_start) : MIXER_FRAME_SIZE;
-684 
-685     uint64_t read_start_ns = time_get_ns();
-686 
-687     // Clear mix buffer
-688     SAFE_MEMSET(mixer-&gt;mix_buffer, frame_size * sizeof(float), 0, frame_size * sizeof(float));
-689 
-690     // Temporary buffers for source audio
-691     float source_samples[MIXER_MAX_SOURCES][MIXER_FRAME_SIZE];
-692     int source_count = 0;
-693     int source_map[MIXER_MAX_SOURCES]; // Maps source index to slot
+<p class="Pp">Definition at line <b>636</b> of file <b>mixer.c</b>.</p>
+<pre>636                                                                                                                {
+637   if (!mixer || !output || num_samples &lt;= 0)
+638     return -1;
+639 
+640   // Only use timing in debug builds - snprintf + hashtable ops are expensive in hot path
+641 #ifndef NDEBUG
+642   START_TIMER(&quot;mixer_total&quot;);
+643 #endif
+644 
+645   // THREAD SAFETY: Acquire read lock to protect against concurrent source add/remove
+646   // This prevents race conditions where source_buffers[i] could be set to NULL while we read it
+647   rwlock_rdlock(&amp;mixer-&gt;source_lock);
+648 
+649   // Clear output buffer
+650   SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
+651 
+652   // OPTIMIZATION 1: O(1) exclusion using bitset and hash table
+653   uint8_t exclude_index = mixer_hash_get_slot(mixer, exclude_client_id);
+654   uint64_t active_mask = mixer-&gt;active_sources_mask;
+655 
+656   // Validate exclude_index before using in bitshift
+657   // - exclude_index == MIXER_HASH_INVALID means &quot;not found&quot; (sentinel value from initialization)
+658   // - exclude_index &gt;= MIXER_MAX_SOURCES would cause undefined behavior in bitshift
+659   bool valid_exclude = (exclude_index &lt; MIXER_MAX_SOURCES &amp;&amp; exclude_index != MIXER_HASH_INVALID);
+660 
+661   if (valid_exclude) {
+662     // Apply exclusion to prevent echo feedback
+663     uint64_t mask_without_excluded = active_mask &amp; ~(1ULL &lt;&lt; exclude_index);
+664     active_mask = mask_without_excluded;
+665 
+666     // DIAGNOSTIC: Log which client was excluded and which remain active
+667     log_dev_every(
+668         4500 * US_PER_MS_INT,
+669         &quot;MIXER EXCLUSION: exclude_client=%u, exclude_index=%u, active_mask_before=0x%llx, active_mask_after=0x%llx&quot;,
+670         exclude_client_id, exclude_index, (unsigned long long)(active_mask | (1ULL &lt;&lt; exclude_index)),
+671         (unsigned long long)active_mask);
+672   } else {
+673     // DIAGNOSTIC: Failed to exclude - log why
+674     log_dev_every(4500 * US_PER_MS_INT,
+675                   &quot;MIXER EXCLUSION FAILED: exclude_client=%u, exclude_index=%u (valid=%d), lookup_id=%u&quot;,
+676                   exclude_client_id, exclude_index, valid_exclude,
+677                   (exclude_index &lt; MIXER_MAX_SOURCES &amp;&amp; exclude_index != 0xFF) ? mixer-&gt;source_ids[exclude_index] : 0);
+678   }
+679 
+680   // Fast check: any sources to mix?
+681   if (active_mask == 0) {
+682     rwlock_rdunlock(&amp;mixer-&gt;source_lock);
+683 #ifndef NDEBUG
+684     STOP_TIMER(&quot;mixer_total&quot;);
+685 #endif
+686     return 0; // No sources to mix (excluding the specified client), output silence
+687   }
+688 
+689   // Process in frames for efficiency
+690   for (int frame_start = 0; frame_start &lt; num_samples; frame_start += MIXER_FRAME_SIZE) {
+691     int frame_size = (frame_start + MIXER_FRAME_SIZE &gt; num_samples) ? (num_samples - frame_start) : MIXER_FRAME_SIZE;
+692 
+693     uint64_t read_start_ns = time_get_ns();
 694 
-695     // OPTIMIZATION 1: Iterate only over active sources using bitset
-696     uint64_t current_mask = active_mask;
-697     while (current_mask &amp;&amp; source_count &lt; MIXER_MAX_SOURCES) {
-698       int i = find_first_set_bit(current_mask); // Portable: find first set bit
-699       current_mask &amp;= current_mask - 1;         // Clear lowest set bit
-700 
-701       // Verify source is valid (defensive programming)
-702       if (i &lt; mixer-&gt;max_sources &amp;&amp; mixer-&gt;source_ids[i] != 0 &amp;&amp; mixer-&gt;source_buffers[i]) {
-703         // Read samples from this source's ring buffer
-704         size_t samples_read_size =
-705             audio_ring_buffer_read(mixer-&gt;source_buffers[i], source_samples[source_count], frame_size);
-706         int samples_read = (int)samples_read_size;
-707 
-708         // Accept partial frames - pad with silence if needed
-709         // This prevents audio dropouts when ring buffers are temporarily under-filled
-710         if (samples_read &gt; 0) {
-711           // Pad remaining samples with silence if we got a partial frame
-712           if (samples_read &lt; frame_size) {
-713             SAFE_MEMSET(&amp;source_samples[source_count][samples_read], (frame_size - samples_read) * sizeof(float), 0,
-714                         (frame_size - samples_read) * sizeof(float));
-715           }
-716 
-717           // DIAGNOSTIC: Calculate RMS of this source's audio
-718           float source_rms = 0.0f;
-719           if (frame_start == 0) { // Only log for first frame to reduce spam
-720             float sum_squares = 0.0f;
-721             for (int s = 0; s &lt; samples_read; s++) {
-722               sum_squares += source_samples[source_count][s] * source_samples[source_count][s];
-723             }
-724             source_rms = sqrtf(sum_squares / (float)samples_read);
-725             log_info_every(NS_PER_MS_INT, &quot;MIXER SOURCE READ: client_id=%u, slot=%d, samples_read=%d, RMS=%.6f&quot;,
-726                            mixer-&gt;source_ids[i], i, samples_read, source_rms);
-727           }
-728 
-729           source_map[source_count] = i;
-730           source_count++;
-731         }
-732       }
-733     }
-734 
-735     uint64_t read_end_ns = time_get_ns();
-736     uint64_t read_time_ns = time_elapsed_ns(read_start_ns, read_end_ns);
-737 
-738     if (read_time_ns &gt; 10 * NS_PER_MS_INT) {
-739       char read_time_str[32];
-740       time_pretty(read_time_ns, -1, read_time_str, sizeof(read_time_str));
-741       log_warn_every(LOG_RATE_DEFAULT, &quot;Mixer: Slow source reading took %s for %d sources&quot;, read_time_str,
-742                      source_count);
-743     }
-744 
-745     // OPTIMIZATION: Batch envelope calculation per-frame instead of per-sample
-746     // Calculate peak amplitude for each source over the entire frame
-747     int speaking_count = 0;
-748 
-749     for (int i = 0; i &lt; source_count; i++) {
-750       int slot = source_map[i];
-751       float peak = 0.0f;
+695     // Clear mix buffer
+696     SAFE_MEMSET(mixer-&gt;mix_buffer, frame_size * sizeof(float), 0, frame_size * sizeof(float));
+697 
+698     // Temporary buffers for source audio
+699     float source_samples[MIXER_MAX_SOURCES][MIXER_FRAME_SIZE];
+700     int source_count = 0;
+701     int source_map[MIXER_MAX_SOURCES]; // Maps source index to slot
+702 
+703     // OPTIMIZATION 1: Iterate only over active sources using bitset
+704     uint64_t current_mask = active_mask;
+705     while (current_mask &amp;&amp; source_count &lt; MIXER_MAX_SOURCES) {
+706       int i = find_first_set_bit(current_mask); // Portable: find first set bit
+707       current_mask &amp;= current_mask - 1;         // Clear lowest set bit
+708 
+709       // Verify source is valid (defensive programming)
+710       if (i &lt; mixer-&gt;max_sources &amp;&amp; mixer-&gt;source_ids[i] != 0 &amp;&amp; mixer-&gt;source_buffers[i]) {
+711         // Read samples from this source's ring buffer
+712         size_t samples_read_size =
+713             audio_ring_buffer_read(mixer-&gt;source_buffers[i], source_samples[source_count], frame_size);
+714         int samples_read = (int)samples_read_size;
+715 
+716         // Accept partial frames - pad with silence if needed
+717         // This prevents audio dropouts when ring buffers are temporarily under-filled
+718         if (samples_read &gt; 0) {
+719           // Pad remaining samples with silence if we got a partial frame
+720           if (samples_read &lt; frame_size) {
+721             SAFE_MEMSET(&amp;source_samples[source_count][samples_read], (frame_size - samples_read) * sizeof(float), 0,
+722                         (frame_size - samples_read) * sizeof(float));
+723           }
+724 
+725           // DIAGNOSTIC: Calculate RMS of this source's audio
+726           float source_rms = 0.0f;
+727           if (frame_start == 0) { // Only log for first frame to reduce spam
+728             float sum_squares = 0.0f;
+729             for (int s = 0; s &lt; samples_read; s++) {
+730               sum_squares += source_samples[source_count][s] * source_samples[source_count][s];
+731             }
+732             source_rms = sqrtf(sum_squares / (float)samples_read);
+733             log_info_every(NS_PER_MS_INT, &quot;MIXER SOURCE READ: client_id=%u, slot=%d, samples_read=%d, RMS=%.6f&quot;,
+734                            mixer-&gt;source_ids[i], i, samples_read, source_rms);
+735           }
+736 
+737           source_map[source_count] = i;
+738           source_count++;
+739         }
+740       }
+741     }
+742 
+743     uint64_t read_end_ns = time_get_ns();
+744     uint64_t read_time_ns = time_elapsed_ns(read_start_ns, read_end_ns);
+745 
+746     if (read_time_ns &gt; 10 * NS_PER_MS_INT) {
+747       char read_time_str[32];
+748       time_pretty(read_time_ns, -1, read_time_str, sizeof(read_time_str));
+749       log_warn_every(LOG_RATE_DEFAULT, &quot;Mixer: Slow source reading took %s for %d sources&quot;, read_time_str,
+750                      source_count);
+751     }
 752 
-753       // Find peak amplitude in frame (much faster than per-sample envelope)
-754       for (int s = 0; s &lt; frame_size; s++) {
-755         float abs_sample = fabsf(source_samples[i][s]);
-756         if (abs_sample &gt; peak)
-757           peak = abs_sample;
-758       }
-759 
-760       // Update envelope using frame peak (one update per frame instead of per-sample)
-761       if (peak &gt; mixer-&gt;ducking.envelope[slot]) {
-762         mixer-&gt;ducking.envelope[slot] =
-763             mixer-&gt;ducking.attack_coeff * mixer-&gt;ducking.envelope[slot] + (1.0f - mixer-&gt;ducking.attack_coeff) * peak;
-764       } else {
-765         mixer-&gt;ducking.envelope[slot] =
-766             mixer-&gt;ducking.release_coeff * mixer-&gt;ducking.envelope[slot] + (1.0f - mixer-&gt;ducking.release_coeff) * peak;
-767       }
-768 
-769       // Count speaking sources
-770       if (mixer-&gt;ducking.envelope[slot] &gt; db_to_linear(-60.0f))
-771         speaking_count++;
-772     }
-773 
-774     // Apply ducking ONCE per frame (not per-sample)
-775     ducking_process_frame(&amp;mixer-&gt;ducking, mixer-&gt;ducking.envelope, mixer-&gt;ducking.gain, mixer-&gt;max_sources);
+753     // OPTIMIZATION: Batch envelope calculation per-frame instead of per-sample
+754     // Calculate peak amplitude for each source over the entire frame
+755     int speaking_count = 0;
+756 
+757     for (int i = 0; i &lt; source_count; i++) {
+758       int slot = source_map[i];
+759       float peak = 0.0f;
+760 
+761       // Find peak amplitude in frame (much faster than per-sample envelope)
+762       for (int s = 0; s &lt; frame_size; s++) {
+763         float abs_sample = fabsf(source_samples[i][s]);
+764         if (abs_sample &gt; peak)
+765           peak = abs_sample;
+766       }
+767 
+768       // Update envelope using frame peak (one update per frame instead of per-sample)
+769       if (peak &gt; mixer-&gt;ducking.envelope[slot]) {
+770         mixer-&gt;ducking.envelope[slot] =
+771             mixer-&gt;ducking.attack_coeff * mixer-&gt;ducking.envelope[slot] + (1.0f - mixer-&gt;ducking.attack_coeff) * peak;
+772       } else {
+773         mixer-&gt;ducking.envelope[slot] =
+774             mixer-&gt;ducking.release_coeff * mixer-&gt;ducking.envelope[slot] + (1.0f - mixer-&gt;ducking.release_coeff) * peak;
+775       }
 776 
-777     // Calculate crowd scaling ONCE per frame
-778     float crowd_gain = (speaking_count &gt; 0) ? (1.0f / powf((float)speaking_count, mixer-&gt;crowd_alpha)) : 1.0f;
-779     float pre_bus = mixer-&gt;base_gain * crowd_gain;
-780 
-781     // Pre-calculate combined gains for each source (ducking * pre_bus)
-782     float combined_gains[MIXER_MAX_SOURCES];
-783     for (int i = 0; i &lt; source_count; i++) {
-784       int slot = source_map[i];
-785       combined_gains[i] = mixer-&gt;ducking.gain[slot] * pre_bus;
-786     }
-787 
-788     // OPTIMIZATION: Fast mixing loop - simple multiply-add with pre-calculated gains
-789     // NO per-sample compressor to avoid expensive log/pow calls (480x per iteration)
-790     for (int s = 0; s &lt; frame_size; s++) {
-791       float mix = 0.0f;
-792       for (int i = 0; i &lt; source_count; i++) {
-793         mix += source_samples[i][s] * combined_gains[i];
-794       }
+777       // Count speaking sources
+778       if (mixer-&gt;ducking.envelope[slot] &gt; db_to_linear(-60.0f))
+779         speaking_count++;
+780     }
+781 
+782     // Apply ducking ONCE per frame (not per-sample)
+783     ducking_process_frame(&amp;mixer-&gt;ducking, mixer-&gt;ducking.envelope, mixer-&gt;ducking.gain, mixer-&gt;max_sources);
+784 
+785     // Calculate crowd scaling ONCE per frame
+786     float crowd_gain = (speaking_count &gt; 0) ? (1.0f / powf((float)speaking_count, mixer-&gt;crowd_alpha)) : 1.0f;
+787     float pre_bus = mixer-&gt;base_gain * crowd_gain;
+788 
+789     // Pre-calculate combined gains for each source (ducking * pre_bus)
+790     float combined_gains[MIXER_MAX_SOURCES];
+791     for (int i = 0; i &lt; source_count; i++) {
+792       int slot = source_map[i];
+793       combined_gains[i] = mixer-&gt;ducking.gain[slot] * pre_bus;
+794     }
 795 
-796       // Store in mix buffer for frame-level compression below
-797       mixer-&gt;mix_buffer[s] = mix;
-798     }
-799 
-800     // OPTIMIZATION: Apply compression ONCE per frame instead of per-sample
-801     // This reduces expensive log10f/powf calls from 480x to 1x per iteration
-802     // Calculate frame peak for compressor sidechain
-803     float frame_peak = 0.0f;
-804     for (int s = 0; s &lt; frame_size; s++) {
-805       float abs_val = fabsf(mixer-&gt;mix_buffer[s]);
-806       if (abs_val &gt; frame_peak)
-807         frame_peak = abs_val;
-808     }
-809 
-810     // Process compressor with frame peak (1 call instead of 480)
-811     float comp_gain = compressor_process_sample(&amp;mixer-&gt;compressor, frame_peak);
-812 
-813     // Apply compression gain and soft clipping to all samples
-814     for (int s = 0; s &lt; frame_size; s++) {
-815       float mix = mixer-&gt;mix_buffer[s] * comp_gain;
-816 
-817       // Soft clip at 0.7 to provide 3dB headroom and prevent hard clipping
-818       // With +6dB makeup gain, peaks can exceed 1.0, so we need headroom
-819       // threshold=0.7 maps asymptotically toward 1.0, preventing harsh distortion
-820       output[frame_start + s] = soft_clip(mix, 0.7f, 3.0f);
-821     }
-822   }
-823 
-824   rwlock_rdunlock(&amp;mixer-&gt;source_lock);
-825 
-826 #ifndef NDEBUG
-827   STOP_TIMER_AND_LOG_EVERY(warn, NS_PER_SEC_INT, 2 * NS_PER_MS_INT, &quot;mixer_total&quot;, &quot;Mixer took&quot;);
-828 #endif
-829 
-830   return num_samples;
-831 }</pre>
+796     // OPTIMIZATION: Fast mixing loop - simple multiply-add with pre-calculated gains
+797     // NO per-sample compressor to avoid expensive log/pow calls (480x per iteration)
+798     for (int s = 0; s &lt; frame_size; s++) {
+799       float mix = 0.0f;
+800       for (int i = 0; i &lt; source_count; i++) {
+801         mix += source_samples[i][s] * combined_gains[i];
+802       }
+803 
+804       // Store in mix buffer for frame-level compression below
+805       mixer-&gt;mix_buffer[s] = mix;
+806     }
+807 
+808     // OPTIMIZATION: Apply compression ONCE per frame instead of per-sample
+809     // This reduces expensive log10f/powf calls from 480x to 1x per iteration
+810     // Calculate frame peak for compressor sidechain
+811     float frame_peak = 0.0f;
+812     for (int s = 0; s &lt; frame_size; s++) {
+813       float abs_val = fabsf(mixer-&gt;mix_buffer[s]);
+814       if (abs_val &gt; frame_peak)
+815         frame_peak = abs_val;
+816     }
+817 
+818     // Process compressor with frame peak (1 call instead of 480)
+819     float comp_gain = compressor_process_sample(&amp;mixer-&gt;compressor, frame_peak);
+820 
+821     // Apply compression gain and soft clipping to all samples
+822     for (int s = 0; s &lt; frame_size; s++) {
+823       float mix = mixer-&gt;mix_buffer[s] * comp_gain;
+824 
+825       // Soft clip at 0.7 to provide 3dB headroom and prevent hard clipping
+826       // With +6dB makeup gain, peaks can exceed 1.0, so we need headroom
+827       // threshold=0.7 maps asymptotically toward 1.0, preventing harsh distortion
+828       output[frame_start + s] = soft_clip(mix, 0.7f, 3.0f);
+829     }
+830   }
+831 
+832   rwlock_rdunlock(&amp;mixer-&gt;source_lock);
+833 
+834 #ifndef NDEBUG
+835   STOP_TIMER_AND_LOG_EVERY(warn, NS_PER_SEC_INT, 2 * NS_PER_MS_INT, &quot;mixer_total&quot;, &quot;Mixer took&quot;);
+836 #endif
+837 
+838   return num_samples;
+839 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>mixer_t::active_sources_mask</b>,
@@ -4941,39 +4951,39 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <p class="Pp"></p>
 <p class="Pp">If client_id is not found, operation has no effect.</p>
 </div>
-<p class="Pp">Definition at line <b>423</b> of file <b>mixer.c</b>.</p>
-<pre>423                                                                 {
-424   if (!mixer)
-425     return;
-426 
-427   // OPTIMIZATION 2: Acquire write lock for source modification
-428   rwlock_wrlock(&amp;mixer-&gt;source_lock);
-429 
-430   for (int i = 0; i &lt; mixer-&gt;max_sources; i++) {
-431     if (mixer-&gt;source_ids[i] != NULL &amp;&amp; strcmp(mixer-&gt;source_ids[i], client_id) == 0) {
-432       mixer-&gt;source_buffers[i] = NULL;
-433       // Free the allocated client_id string
-434       SAFE_FREE(mixer-&gt;source_ids[i]);
-435       mixer-&gt;source_active[i] = false;
-436       mixer-&gt;num_sources--;
+<p class="Pp">Definition at line <b>431</b> of file <b>mixer.c</b>.</p>
+<pre>431                                                                 {
+432   if (!mixer)
+433     return;
+434 
+435   // OPTIMIZATION 2: Acquire write lock for source modification
+436   rwlock_wrlock(&amp;mixer-&gt;source_lock);
 437 
-438       // OPTIMIZATION 1: Update bitset optimization structures
-439       mixer-&gt;active_sources_mask &amp;= ~(1ULL &lt;&lt; i); // Clear bit for this slot
-440       // Hash table optimization disabled for string-based client_ids
-441 
-442       // Reset ducking state for this source
-443       mixer-&gt;ducking.envelope[i] = 0.0f;
-444       mixer-&gt;ducking.gain[i] = 1.0f;
+438   for (int i = 0; i &lt; mixer-&gt;max_sources; i++) {
+439     if (mixer-&gt;source_ids[i] != NULL &amp;&amp; strcmp(mixer-&gt;source_ids[i], client_id) == 0) {
+440       mixer-&gt;source_buffers[i] = NULL;
+441       // Free the allocated client_id string
+442       SAFE_FREE(mixer-&gt;source_ids[i]);
+443       mixer-&gt;source_active[i] = false;
+444       mixer-&gt;num_sources--;
 445 
-446       rwlock_wrunlock(&amp;mixer-&gt;source_lock);
-447 
-448       log_info(&quot;Mixer: Removed source for client %s from slot %d&quot;, client_id, i);
-449       return;
-450     }
-451   }
-452 
-453   rwlock_wrunlock(&amp;mixer-&gt;source_lock);
-454 }</pre>
+446       // OPTIMIZATION 1: Update bitset optimization structures
+447       mixer-&gt;active_sources_mask &amp;= ~(1ULL &lt;&lt; i); // Clear bit for this slot
+448       // Hash table optimization disabled for string-based client_ids
+449 
+450       // Reset ducking state for this source
+451       mixer-&gt;ducking.envelope[i] = 0.0f;
+452       mixer-&gt;ducking.gain[i] = 1.0f;
+453 
+454       rwlock_wrunlock(&amp;mixer-&gt;source_lock);
+455 
+456       log_info(&quot;Mixer: Removed source for client %s from slot %d&quot;, client_id, i);
+457       return;
+458     }
+459   }
+460 
+461   rwlock_wrunlock(&amp;mixer-&gt;source_lock);
+462 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>mixer_t::active_sources_mask</b>,
@@ -5005,33 +5015,33 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <p class="Pp"></p>
 <p class="Pp">Source must exist (be added) before calling this function.</p>
 </div>
-<p class="Pp">Definition at line <b>456</b> of file <b>mixer.c</b>.</p>
-<pre>456                                                                                  {
-457   if (!mixer)
-458     return;
-459 
-460   // OPTIMIZATION 2: Acquire write lock for source modification
-461   rwlock_wrlock(&amp;mixer-&gt;source_lock);
-462 
-463   for (int i = 0; i &lt; mixer-&gt;max_sources; i++) {
-464     if (mixer-&gt;source_ids[i] != NULL &amp;&amp; strcmp(mixer-&gt;source_ids[i], client_id) == 0) {
-465       mixer-&gt;source_active[i] = active;
-466 
-467       // OPTIMIZATION 1: Update bitset for active state change
-468       if (active) {
-469         mixer-&gt;active_sources_mask |= (1ULL &lt;&lt; i); // Set bit
-470       } else {
-471         mixer-&gt;active_sources_mask &amp;= ~(1ULL &lt;&lt; i); // Clear bit
-472       }
-473 
-474       rwlock_wrunlock(&amp;mixer-&gt;source_lock);
-475       log_debug(&quot;Mixer: Set source %s active=%d&quot;, client_id, active);
-476       return;
-477     }
-478   }
-479 
-480   rwlock_wrunlock(&amp;mixer-&gt;source_lock);
-481 }</pre>
+<p class="Pp">Definition at line <b>464</b> of file <b>mixer.c</b>.</p>
+<pre>464                                                                                  {
+465   if (!mixer)
+466     return;
+467 
+468   // OPTIMIZATION 2: Acquire write lock for source modification
+469   rwlock_wrlock(&amp;mixer-&gt;source_lock);
+470 
+471   for (int i = 0; i &lt; mixer-&gt;max_sources; i++) {
+472     if (mixer-&gt;source_ids[i] != NULL &amp;&amp; strcmp(mixer-&gt;source_ids[i], client_id) == 0) {
+473       mixer-&gt;source_active[i] = active;
+474 
+475       // OPTIMIZATION 1: Update bitset for active state change
+476       if (active) {
+477         mixer-&gt;active_sources_mask |= (1ULL &lt;&lt; i); // Set bit
+478       } else {
+479         mixer-&gt;active_sources_mask &amp;= ~(1ULL &lt;&lt; i); // Clear bit
+480       }
+481 
+482       rwlock_wrunlock(&amp;mixer-&gt;source_lock);
+483       log_debug(&quot;Mixer: Set source %s active=%d&quot;, client_id, active);
+484       return;
+485     }
+486   }
+487 
+488   rwlock_wrunlock(&amp;mixer-&gt;source_lock);
+489 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>mixer_t::active_sources_mask</b>, <b>log_debug</b>,
@@ -5051,20 +5061,20 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <i>sample_rate</i> Sample rate in Hz</div>
 <p class="Pp">Initializes noise gate state and converts time-based parameters to
     coefficients.</p>
-<p class="Pp">Definition at line <b>838</b> of file <b>mixer.c</b>.</p>
-<pre>838                                                             {
-839   if (!gate)
-840     return;
-841 
-842   gate-&gt;sample_rate = sample_rate;
-843   gate-&gt;envelope = 0.0f;
-844   gate-&gt;gate_open = false;
-845 
-846   // Default parameters
-847   // Slower attack (10ms) prevents clicking artifacts during gate transitions
-848   // threshold=0.01, attack=10ms, release=50ms, hysteresis=0.9
-849   noise_gate_set_params(gate, 0.01f, 10 * NS_PER_MS_INT, 50 * NS_PER_MS_INT, 0.9f);
-850 }</pre>
+<p class="Pp">Definition at line <b>846</b> of file <b>mixer.c</b>.</p>
+<pre>846                                                             {
+847   if (!gate)
+848     return;
+849 
+850   gate-&gt;sample_rate = sample_rate;
+851   gate-&gt;envelope = 0.0f;
+852   gate-&gt;gate_open = false;
+853 
+854   // Default parameters
+855   // Slower attack (10ms) prevents clicking artifacts during gate transitions
+856   // threshold=0.01, attack=10ms, release=50ms, hysteresis=0.9
+857   noise_gate_set_params(gate, 0.01f, 10 * NS_PER_MS_INT, 50 * NS_PER_MS_INT, 0.9f);
+858 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>noise_gate_t::envelope</b>,
@@ -5084,10 +5094,10 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <div class="Bd-indent">true if gate is open, false if closed</div>
 <p class="Pp">Returns current gate state. Useful for debugging and
   monitoring.</p>
-<p class="Pp">Definition at line <b>914</b> of file <b>mixer.c</b>.</p>
-<pre>914                                                   {
-915   return gate ? gate-&gt;gate_open : false;
-916 }</pre>
+<p class="Pp">Definition at line <b>922</b> of file <b>mixer.c</b>.</p>
+<pre>922                                                   {
+923   return gate ? gate-&gt;gate_open : false;
+924 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>noise_gate_t::gate_open</b>.</p>
@@ -5111,25 +5121,25 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Peak amplitude is calculated per sample for gate
   decision.</div>
-<p class="Pp">Definition at line <b>895</b> of file <b>mixer.c</b>.</p>
-<pre>895                                                                                    {
-896   if (!gate || !buffer || num_samples &lt;= 0)
-897     return;
-898 
-899   // First pass: find peak amplitude
-900   float peak = 0.0f;
-901   for (int i = 0; i &lt; num_samples; i++) {
-902     float abs_sample = fabsf(buffer[i]);
-903     if (abs_sample &gt; peak) {
-904       peak = abs_sample;
-905     }
-906   }
-907 
-908   // Second pass: apply gate
+<p class="Pp">Definition at line <b>903</b> of file <b>mixer.c</b>.</p>
+<pre>903                                                                                    {
+904   if (!gate || !buffer || num_samples &lt;= 0)
+905     return;
+906 
+907   // First pass: find peak amplitude
+908   float peak = 0.0f;
 909   for (int i = 0; i &lt; num_samples; i++) {
-910     buffer[i] = noise_gate_process_sample(gate, buffer[i], peak);
-911   }
-912 }</pre>
+910     float abs_sample = fabsf(buffer[i]);
+911     if (abs_sample &gt; peak) {
+912       peak = abs_sample;
+913     }
+914   }
+915 
+916   // Second pass: apply gate
+917   for (int i = 0; i &lt; num_samples; i++) {
+918     buffer[i] = noise_gate_process_sample(gate, buffer[i], peak);
+919   }
+920 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>noise_gate_process_sample()</b>.</p>
@@ -5158,31 +5168,31 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">peak_amplitude should be envelope follower output, not
   raw sample.</div>
-<p class="Pp">Definition at line <b>870</b> of file <b>mixer.c</b>.</p>
-<pre>870                                                                                        {
-871   if (!gate)
-872     return input;
-873 
-874   // Determine target state with hysteresis
-875   float target;
-876   if (gate-&gt;gate_open) {
-877     // Gate is open - use lower threshold (hysteresis) to close
-878     target = (peak_amplitude &gt; gate-&gt;threshold * gate-&gt;hysteresis) ? 1.0f : 0.0f;
-879   } else {
-880     // Gate is closed - use normal threshold to open
-881     target = (peak_amplitude &gt; gate-&gt;threshold) ? 1.0f : 0.0f;
-882   }
-883 
-884   // Update gate state
-885   gate-&gt;gate_open = (target &gt; 0.5f);
-886 
-887   // Update envelope with appropriate coefficient
-888   float coeff = (target &gt; gate-&gt;envelope) ? gate-&gt;attack_coeff : gate-&gt;release_coeff;
-889   gate-&gt;envelope += coeff * (target - gate-&gt;envelope);
-890 
-891   // Apply gate
-892   return input * gate-&gt;envelope;
-893 }</pre>
+<p class="Pp">Definition at line <b>878</b> of file <b>mixer.c</b>.</p>
+<pre>878                                                                                        {
+879   if (!gate)
+880     return input;
+881 
+882   // Determine target state with hysteresis
+883   float target;
+884   if (gate-&gt;gate_open) {
+885     // Gate is open - use lower threshold (hysteresis) to close
+886     target = (peak_amplitude &gt; gate-&gt;threshold * gate-&gt;hysteresis) ? 1.0f : 0.0f;
+887   } else {
+888     // Gate is closed - use normal threshold to open
+889     target = (peak_amplitude &gt; gate-&gt;threshold) ? 1.0f : 0.0f;
+890   }
+891 
+892   // Update gate state
+893   gate-&gt;gate_open = (target &gt; 0.5f);
+894 
+895   // Update envelope with appropriate coefficient
+896   float coeff = (target &gt; gate-&gt;envelope) ? gate-&gt;attack_coeff : gate-&gt;release_coeff;
+897   gate-&gt;envelope += coeff * (target - gate-&gt;envelope);
+898 
+899   // Apply gate
+900   return input * gate-&gt;envelope;
+901 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>noise_gate_t::attack_coeff</b>,
@@ -5211,23 +5221,23 @@ if (audio_validate_batch_params(&amp;batch) != ASCIICHAT_OK) {
 <i>hysteresis</i> Hysteresis factor (0-1) to prevent chatter</div>
 <p class="Pp">Updates noise gate parameters. Time-based parameters are converted
     to coefficients internally.</p>
-<p class="Pp">Definition at line <b>852</b> of file <b>mixer.c</b>.</p>
-<pre>853                                              {
-854   if (!gate)
-855     return;
-856 
-857   gate-&gt;threshold = threshold;
-858   gate-&gt;attack_ns = attack_ns;
-859   gate-&gt;release_ns = release_ns;
-860   gate-&gt;hysteresis = hysteresis;
-861 
-862   // Calculate coefficients for envelope follower
-863   // Using exponential moving average: coeff = 1 - exp(-1 / (time_s * sample_rate))
-864   float attack_s = (float)attack_ns / NS_PER_SEC;
-865   float release_s = (float)release_ns / NS_PER_SEC;
-866   gate-&gt;attack_coeff = 1.0f - expf(-1.0f / (attack_s * gate-&gt;sample_rate + 1e-12f));
-867   gate-&gt;release_coeff = 1.0f - expf(-1.0f / (release_s * gate-&gt;sample_rate + 1e-12f));
-868 }</pre>
+<p class="Pp">Definition at line <b>860</b> of file <b>mixer.c</b>.</p>
+<pre>861                                              {
+862   if (!gate)
+863     return;
+864 
+865   gate-&gt;threshold = threshold;
+866   gate-&gt;attack_ns = attack_ns;
+867   gate-&gt;release_ns = release_ns;
+868   gate-&gt;hysteresis = hysteresis;
+869 
+870   // Calculate coefficients for envelope follower
+871   // Using exponential moving average: coeff = 1 - exp(-1 / (time_s * sample_rate))
+872   float attack_s = (float)attack_ns / NS_PER_SEC;
+873   float release_s = (float)release_ns / NS_PER_SEC;
+874   gate-&gt;attack_coeff = 1.0f - expf(-1.0f / (attack_s * gate-&gt;sample_rate + 1e-12f));
+875   gate-&gt;release_coeff = 1.0f - expf(-1.0f / (release_s * gate-&gt;sample_rate + 1e-12f));
+876 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>noise_gate_t::attack_coeff</b>,
@@ -5759,14 +5769,14 @@ resample_linear(input, in_samples, output, out_samples, 48000, 44100);
   curve</div>
 <p class="Pp">Standard smoothstep function providing smooth fade-in/fade-out
     curves. Output is clamped to [0, 1] range.</p>
-<p class="Pp">Definition at line <b>1049</b> of file <b>mixer.c</b>.</p>
-<pre>1049                           {
-1050   if (t &lt;= 0.0f)
-1051     return 0.0f;
-1052   if (t &gt;= 1.0f)
-1053     return 1.0f;
-1054   return t * t * (3.0f - 2.0f * t);
-1055 }</pre>
+<p class="Pp">Definition at line <b>1057</b> of file <b>mixer.c</b>.</p>
+<pre>1057                           {
+1058   if (t &lt;= 0.0f)
+1059     return 0.0f;
+1060   if (t &gt;= 1.0f)
+1061     return 1.0f;
+1062   return t * t * (3.0f - 2.0f * t);
+1063 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_audio_pipeline_process_duplex()</b>, and
@@ -5801,19 +5811,19 @@ resample_linear(input, in_samples, output, out_samples, 48000, 44100);
   <li>threshold=0.9, steepness=6.0: Moderate limiting, 1dB headroom</li>
   <li>threshold=0.95, steepness=10.0: Aggressive limiting, minimal headroom</li>
 </ul>
-<p class="Pp">Definition at line <b>1022</b> of file <b>mixer.c</b>.</p>
-<pre>1022                                                                 {
-1023   if (sample &gt; threshold) {
-1024     // Soft clip positive values using tanh curve
-1025     // Maps samples above threshold asymptotically toward 1.0
-1026     return threshold + (1.0f - threshold) * tanhf((sample - threshold) * steepness);
-1027   }
-1028   if (sample &lt; -threshold) {
-1029     // Soft clip negative values symmetrically
-1030     return -threshold + (-1.0f + threshold) * tanhf((sample + threshold) * steepness);
-1031   }
-1032   return sample;
-1033 }</pre>
+<p class="Pp">Definition at line <b>1030</b> of file <b>mixer.c</b>.</p>
+<pre>1030                                                                 {
+1031   if (sample &gt; threshold) {
+1032     // Soft clip positive values using tanh curve
+1033     // Maps samples above threshold asymptotically toward 1.0
+1034     return threshold + (1.0f - threshold) * tanhf((sample - threshold) * steepness);
+1035   }
+1036   if (sample &lt; -threshold) {
+1037     // Soft clip negative values symmetrically
+1038     return -threshold + (-1.0f + threshold) * tanhf((sample + threshold) * steepness);
+1039   }
+1040   return sample;
+1041 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_audio_pipeline_process_duplex()</b>,
@@ -5837,15 +5847,15 @@ resample_linear(input, in_samples, output, out_samples, 48000, 44100);
 <i>steepness</i> How aggressively the curve bends</div>
 <p class="Pp">Processes entire buffer through <b>soft_clip()</b>. Buffer is
     modified in-place.</p>
-<p class="Pp">Definition at line <b>1035</b> of file <b>mixer.c</b>.</p>
-<pre>1035                                                                                         {
-1036   if (!buffer || num_samples &lt;= 0)
-1037     return;
-1038 
-1039   for (int i = 0; i &lt; num_samples; i++) {
-1040     buffer[i] = soft_clip(buffer[i], threshold, steepness);
-1041   }
-1042 }</pre>
+<p class="Pp">Definition at line <b>1043</b> of file <b>mixer.c</b>.</p>
+<pre>1043                                                                                         {
+1044   if (!buffer || num_samples &lt;= 0)
+1045     return;
+1046 
+1047   for (int i = 0; i &lt; num_samples; i++) {
+1048     buffer[i] = soft_clip(buffer[i], threshold, steepness);
+1049   }
+1050 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>soft_clip()</b>.</p>

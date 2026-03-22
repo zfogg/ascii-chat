@@ -2144,32 +2144,32 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">If loop is enabled, this returns false (EOF triggers rewind)</p>
 </div>
-<p class="Pp">Definition at line <b>766</b> of file <b>source.c</b>.</p>
-<pre>766                                                  {
-767   if (!source) {
-768     return true;
-769   }
-770 
-771   switch (source-&gt;type) {
-772   case MEDIA_SOURCE_WEBCAM:
-773   case MEDIA_SOURCE_TEST:
-774     return false; // Webcam never ends
-775 
-776   case MEDIA_SOURCE_FILE:
-777   case MEDIA_SOURCE_STDIN:
-778     if (!source-&gt;video_decoder) {
-779       return true;
-780     }
-781     // If loop is enabled, we never truly reach end
-782     if (source-&gt;loop_enabled &amp;&amp; source-&gt;type == MEDIA_SOURCE_FILE) {
-783       return false;
-784     }
-785     return ffmpeg_decoder_at_end(source-&gt;video_decoder);
-786 
-787   default:
-788     return true;
-789   }
-790 }</pre>
+<p class="Pp">Definition at line <b>772</b> of file <b>source.c</b>.</p>
+<pre>772                                                  {
+773   if (!source) {
+774     return true;
+775   }
+776 
+777   switch (source-&gt;type) {
+778   case MEDIA_SOURCE_WEBCAM:
+779   case MEDIA_SOURCE_TEST:
+780     return false; // Webcam never ends
+781 
+782   case MEDIA_SOURCE_FILE:
+783   case MEDIA_SOURCE_STDIN:
+784     if (!source-&gt;video_decoder) {
+785       return true;
+786     }
+787     // If loop is enabled, we never truly reach end
+788     if (source-&gt;loop_enabled &amp;&amp; source-&gt;type == MEDIA_SOURCE_FILE) {
+789       return false;
+790     }
+791     return ffmpeg_decoder_at_end(source-&gt;video_decoder);
+792 
+793   default:
+794     return true;
+795   }
+796 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ffmpeg_decoder_at_end()</b>,
@@ -2209,270 +2209,274 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">Call <b>media_source_destroy()</b> to cleanup</p>
 </div>
-<p class="Pp">Definition at line <b>177</b> of file <b>source.c</b>.</p>
-<pre>177                                                                                 {
-178   media_source_t *source = SAFE_MALLOC(sizeof(media_source_t), media_source_t *);
-179   if (!source) {
-180     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate media source&quot;);
-181     return NULL;
-182   }
-183 
-184   memset(source, 0, sizeof(*source));
-185   source-&gt;type = type;
-186   source-&gt;loop_enabled = false;
-187   source-&gt;is_paused = false;
-188 
-189   // Initialize mutex for protecting shared decoder access (for YouTube URLs)
-190   if (mutex_init(&amp;source-&gt;decoder_mutex, &quot;media_decoder&quot;) != 0) {
-191     SET_ERRNO(ERROR_MEMORY, &quot;Failed to initialize mutex&quot;);
-192     SAFE_FREE(source);
-193     return NULL;
-194   }
-195 
-196   // Initialize mutex for protecting pause state (accessed from keyboard and video threads)
-197   if (mutex_init(&amp;source-&gt;pause_mutex, &quot;media_pause&quot;) != 0) {
-198     SET_ERRNO(ERROR_MEMORY, &quot;Failed to initialize pause mutex&quot;);
-199     mutex_destroy(&amp;source-&gt;decoder_mutex);
-200     SAFE_FREE(source);
-201     return NULL;
-202   }
-203 
-204   // Initialize mutex for protecting decoder access during seeks (prevents race conditions)
-205   if (mutex_init(&amp;source-&gt;seek_access_mutex, &quot;media_seek&quot;) != 0) {
-206     SET_ERRNO(ERROR_MEMORY, &quot;Failed to initialize seek access mutex&quot;);
-207     mutex_destroy(&amp;source-&gt;decoder_mutex);
-208     mutex_destroy(&amp;source-&gt;pause_mutex);
-209     SAFE_FREE(source);
-210     return NULL;
-211   }
-212 
-213   switch (type) {
-214   case MEDIA_SOURCE_WEBCAM: {
-215     // Parse webcam index from path (if provided)
-216     unsigned short int index = 0;
-217     if (path) {
-218       int parsed = atoi(path);
-219       if (parsed &gt;= 0 &amp;&amp; parsed &lt;= USHRT_MAX) {
-220         index = (unsigned short int)parsed;
-221       }
-222     }
-223 
-224     source-&gt;webcam_index = index;
-225     asciichat_error_t webcam_error = webcam_init_context(&amp;source-&gt;webcam_ctx, index);
-226     if (webcam_error != ASCIICHAT_OK) {
-227       // Webcam init failed - log and cleanup
-228       log_error(&quot;Failed to initialize webcam device %u (error code: %d)&quot;, index, webcam_error);
-229       // Destroy mutexes before freeing source
-230       mutex_destroy(&amp;source-&gt;decoder_mutex);
-231       mutex_destroy(&amp;source-&gt;pause_mutex);
-232       mutex_destroy(&amp;source-&gt;seek_access_mutex);
-233       SAFE_FREE(source);
-234 
-235       // Explicitly re-set errno to preserve the specific error code for the caller
-236       // (log_error or other calls may have cleared the thread-local errno)
-237       if (webcam_error == ERROR_WEBCAM_IN_USE) {
-238         SET_ERRNO(ERROR_WEBCAM_IN_USE, &quot;Webcam device %u is in use&quot;, index);
-239       } else {
-240         SET_ERRNO(ERROR_WEBCAM, &quot;Failed to initialize webcam device %u&quot;, index);
-241       }
-242       return NULL;
-243     }
-244 
-245     log_debug(&quot;Media source: Webcam device %u&quot;, index);
-246     break;
-247   }
-248 
-249   case MEDIA_SOURCE_FILE: {
-250     if (!path || path[0] == '\0') {
-251       SET_ERRNO(ERROR_INVALID_PARAM, &quot;File path is required for FILE source&quot;);
-252       // Destroy mutexes before freeing source
-253       mutex_destroy(&amp;source-&gt;decoder_mutex);
-254       mutex_destroy(&amp;source-&gt;pause_mutex);
-255       mutex_destroy(&amp;source-&gt;seek_access_mutex);
-256       SAFE_FREE(source);
-257       return NULL;
-258     }
-259 
-260     // Resolve URL using smart FFmpeg/yt-dlp routing
-261     const char *effective_path = path;
-262     char resolved_url[BUFFER_SIZE_XLARGE] = {0};
-263     const char *yt_dlp_options = GET_OPTION(yt_dlp_options);
-264 
-265     log_debug(&quot;Resolving URL: %s&quot;, path);
-266     asciichat_error_t resolve_err = media_source_resolve_url(path, yt_dlp_options, resolved_url, sizeof(resolved_url));
-267     if (resolve_err != ASCIICHAT_OK) {
-268       log_debug(&quot;Failed to resolve URL (error: %d)&quot;, resolve_err);
-269       // Destroy mutexes before freeing source
-270       mutex_destroy(&amp;source-&gt;decoder_mutex);
-271       mutex_destroy(&amp;source-&gt;pause_mutex);
-272       mutex_destroy(&amp;source-&gt;seek_access_mutex);
-273       SAFE_FREE(source);
-274       return NULL;
-275     }
-276     effective_path = resolved_url;
-277     log_debug(&quot;Using resolved URL for playback&quot;);
-278 
-279     // Store original URL for potential re-extraction if needed
-280     source-&gt;original_youtube_url = platform_strdup(path);
-281     if (!source-&gt;original_youtube_url) {
-282       log_warn(&quot;Failed to cache original URL&quot;);
-283     }
+<p class="Pp">Definition at line <b>179</b> of file <b>source.c</b>.</p>
+<pre>179                                                                                 {
+180   media_source_t *source = SAFE_MALLOC(sizeof(media_source_t), media_source_t *);
+181   if (!source) {
+182     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate media source&quot;);
+183     return NULL;
+184   }
+185 
+186   memset(source, 0, sizeof(*source));
+187   source-&gt;type = type;
+188   source-&gt;loop_enabled = false;
+189   source-&gt;is_paused = false;
+190 
+191   // Initialize mutex for protecting shared decoder access (for YouTube URLs)
+192   if (mutex_init(&amp;source-&gt;decoder_mutex, &quot;media_decoder&quot;) != 0) {
+193     SET_ERRNO(ERROR_MEMORY, &quot;Failed to initialize mutex&quot;);
+194     SAFE_FREE(source);
+195     return NULL;
+196   }
+197 
+198   // Initialize mutex for protecting pause state (accessed from keyboard and video threads)
+199   if (mutex_init(&amp;source-&gt;pause_mutex, &quot;media_pause&quot;) != 0) {
+200     SET_ERRNO(ERROR_MEMORY, &quot;Failed to initialize pause mutex&quot;);
+201     mutex_destroy(&amp;source-&gt;decoder_mutex);
+202     SAFE_FREE(source);
+203     return NULL;
+204   }
+205 
+206   // Initialize mutex for protecting decoder access during seeks (prevents race conditions)
+207   if (mutex_init(&amp;source-&gt;seek_access_mutex, &quot;media_seek&quot;) != 0) {
+208     SET_ERRNO(ERROR_MEMORY, &quot;Failed to initialize seek access mutex&quot;);
+209     mutex_destroy(&amp;source-&gt;decoder_mutex);
+210     mutex_destroy(&amp;source-&gt;pause_mutex);
+211     SAFE_FREE(source);
+212     return NULL;
+213   }
+214 
+215   switch (type) {
+216   case MEDIA_SOURCE_WEBCAM: {
+217     // Parse webcam index from path (if provided)
+218     unsigned short int index = 0;
+219     if (path) {
+220       char *endptr;
+221       errno = 0;
+222       long parsed = strtol(path, &amp;endptr, 10);
+223       if (*endptr == '\0' &amp;&amp; errno == 0 &amp;&amp; parsed &gt;= 0 &amp;&amp; parsed &lt;= USHRT_MAX) {
+224         index = (unsigned short int)parsed;
+225       } else if (*endptr != '\0' || errno != 0) {
+226         log_error(&quot;media_source_create: Invalid webcam index: %s&quot;, path);
+227       }
+228     }
+229 
+230     source-&gt;webcam_index = index;
+231     asciichat_error_t webcam_error = webcam_init_context(&amp;source-&gt;webcam_ctx, index);
+232     if (webcam_error != ASCIICHAT_OK) {
+233       // Webcam init failed - log and cleanup
+234       log_error(&quot;Failed to initialize webcam device %u (error code: %d)&quot;, index, webcam_error);
+235       // Destroy mutexes before freeing source
+236       mutex_destroy(&amp;source-&gt;decoder_mutex);
+237       mutex_destroy(&amp;source-&gt;pause_mutex);
+238       mutex_destroy(&amp;source-&gt;seek_access_mutex);
+239       SAFE_FREE(source);
+240 
+241       // Explicitly re-set errno to preserve the specific error code for the caller
+242       // (log_error or other calls may have cleared the thread-local errno)
+243       if (webcam_error == ERROR_WEBCAM_IN_USE) {
+244         SET_ERRNO(ERROR_WEBCAM_IN_USE, &quot;Webcam device %u is in use&quot;, index);
+245       } else {
+246         SET_ERRNO(ERROR_WEBCAM, &quot;Failed to initialize webcam device %u&quot;, index);
+247       }
+248       return NULL;
+249     }
+250 
+251     log_debug(&quot;Media source: Webcam device %u&quot;, index);
+252     break;
+253   }
+254 
+255   case MEDIA_SOURCE_FILE: {
+256     if (!path || path[0] == '\0') {
+257       SET_ERRNO(ERROR_INVALID_PARAM, &quot;File path is required for FILE source&quot;);
+258       // Destroy mutexes before freeing source
+259       mutex_destroy(&amp;source-&gt;decoder_mutex);
+260       mutex_destroy(&amp;source-&gt;pause_mutex);
+261       mutex_destroy(&amp;source-&gt;seek_access_mutex);
+262       SAFE_FREE(source);
+263       return NULL;
+264     }
+265 
+266     // Resolve URL using smart FFmpeg/yt-dlp routing
+267     const char *effective_path = path;
+268     char resolved_url[BUFFER_SIZE_XLARGE] = {0};
+269     const char *yt_dlp_options = GET_OPTION(yt_dlp_options);
+270 
+271     log_debug(&quot;Resolving URL: %s&quot;, path);
+272     asciichat_error_t resolve_err = media_source_resolve_url(path, yt_dlp_options, resolved_url, sizeof(resolved_url));
+273     if (resolve_err != ASCIICHAT_OK) {
+274       log_debug(&quot;Failed to resolve URL (error: %d)&quot;, resolve_err);
+275       // Destroy mutexes before freeing source
+276       mutex_destroy(&amp;source-&gt;decoder_mutex);
+277       mutex_destroy(&amp;source-&gt;pause_mutex);
+278       mutex_destroy(&amp;source-&gt;seek_access_mutex);
+279       SAFE_FREE(source);
+280       return NULL;
+281     }
+282     effective_path = resolved_url;
+283     log_debug(&quot;Using resolved URL for playback&quot;);
 284 
-285     // Cache file path for potential reopen on loop
-286     source-&gt;file_path = platform_strdup(effective_path);
-287     if (!source-&gt;file_path) {
-288       SET_ERRNO(ERROR_MEMORY, &quot;Failed to duplicate file path&quot;);
-289       SAFE_FREE(source-&gt;original_youtube_url);
-290       // Destroy mutexes before freeing source
-291       mutex_destroy(&amp;source-&gt;decoder_mutex);
-292       mutex_destroy(&amp;source-&gt;pause_mutex);
-293       mutex_destroy(&amp;source-&gt;seek_access_mutex);
-294       SAFE_FREE(source);
-295       return NULL;
-296     }
-297 
-298     // Always use separate decoders for video and audio
-299     // This allows independent read rates and avoids lock contention
-300     source-&gt;video_decoder = ffmpeg_decoder_create(effective_path);
-301     if (!source-&gt;video_decoder) {
-302       log_error(&quot;Failed to open media file for video: %s&quot;, effective_path);
-303       SAFE_FREE(source-&gt;file_path);
-304       SAFE_FREE(source-&gt;original_youtube_url);
-305       // Destroy mutexes before freeing source
-306       mutex_destroy(&amp;source-&gt;decoder_mutex);
-307       mutex_destroy(&amp;source-&gt;pause_mutex);
-308       mutex_destroy(&amp;source-&gt;seek_access_mutex);
-309       SAFE_FREE(source);
-310       return NULL;
-311     }
-312 
-313     // Start prefetch thread for video frames (critical for HTTP performance)
-314     // This thread continuously reads frames into a buffer so the render loop never blocks
-315     asciichat_error_t prefetch_err = ffmpeg_decoder_start_prefetch(source-&gt;video_decoder);
-316     if (prefetch_err != ASCIICHAT_OK) {
-317       log_error(&quot;Failed to start video prefetch thread: %s&quot;, asciichat_error_string(prefetch_err));
-318       // Don't fail on prefetch error - continue with frame skipping as fallback
-319     }
-320 
-321     source-&gt;audio_decoder = ffmpeg_decoder_create(effective_path);
-322     if (!source-&gt;audio_decoder) {
-323       log_error(&quot;Failed to open media file for audio: %s&quot;, effective_path);
-324       ffmpeg_decoder_destroy(source-&gt;video_decoder);
-325       source-&gt;video_decoder = NULL;
-326       SAFE_FREE(source-&gt;file_path);
-327       SAFE_FREE(source-&gt;original_youtube_url);
-328       // Destroy mutexes before freeing source
-329       mutex_destroy(&amp;source-&gt;decoder_mutex);
-330       mutex_destroy(&amp;source-&gt;pause_mutex);
-331       mutex_destroy(&amp;source-&gt;seek_access_mutex);
-332       SAFE_FREE(source);
-333       return NULL;
-334     }
-335     source-&gt;is_shared_decoder = false;
-336 
-337     log_debug(&quot;Media source: URL resolved to stream (separate video/audio decoders)&quot;);
-338     break;
-339   }
-340 
-341   case MEDIA_SOURCE_STDIN: {
-342     // Create separate decoders for video and audio from stdin
-343     source-&gt;video_decoder = ffmpeg_decoder_create_stdin();
-344     if (!source-&gt;video_decoder) {
-345       log_error(&quot;Failed to open stdin for video input&quot;);
-346       // Destroy mutexes before freeing source
-347       mutex_destroy(&amp;source-&gt;decoder_mutex);
-348       mutex_destroy(&amp;source-&gt;pause_mutex);
-349       mutex_destroy(&amp;source-&gt;seek_access_mutex);
-350       SAFE_FREE(source);
-351       return NULL;
-352     }
-353 
-354     // Start prefetch thread for stdin video frames
-355     asciichat_error_t prefetch_err = ffmpeg_decoder_start_prefetch(source-&gt;video_decoder);
-356     if (prefetch_err != ASCIICHAT_OK) {
-357       log_error(&quot;Failed to start stdin video prefetch thread: %s&quot;, asciichat_error_string(prefetch_err));
-358       // Don't fail on prefetch error - continue with frame skipping as fallback
-359     }
-360 
-361     source-&gt;audio_decoder = ffmpeg_decoder_create_stdin();
-362     if (!source-&gt;audio_decoder) {
-363       log_error(&quot;Failed to open stdin for audio input&quot;);
-364       ffmpeg_decoder_destroy(source-&gt;video_decoder);
-365       source-&gt;video_decoder = NULL;
-366       // Destroy mutexes before freeing source
-367       mutex_destroy(&amp;source-&gt;decoder_mutex);
-368       mutex_destroy(&amp;source-&gt;pause_mutex);
-369       mutex_destroy(&amp;source-&gt;seek_access_mutex);
-370       SAFE_FREE(source);
-371       return NULL;
-372     }
-373 
-374     log_debug(&quot;Media source: stdin (separate video/audio decoders)&quot;);
-375     break;
-376   }
-377 
-378   case MEDIA_SOURCE_TEST: {
-379     // Test pattern state is encapsulated in media_source_t
-380     source-&gt;webcam_index = 0;
-381     source-&gt;webcam_ctx = NULL; // No context needed for test pattern
-382     source-&gt;test_pattern_frame = NULL;  // Allocated lazily on first read
-383     source-&gt;test_frame_counter = 0;
-384 
-385     log_debug(&quot;Media source: Test pattern&quot;);
-386     break;
-387   }
-388 
-389   default:
-390     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown media source type: %d&quot;, type);
-391     // Destroy mutexes before freeing source
-392     mutex_destroy(&amp;source-&gt;decoder_mutex);
-393     mutex_destroy(&amp;source-&gt;pause_mutex);
-394     mutex_destroy(&amp;source-&gt;seek_access_mutex);
-395     SAFE_FREE(source);
-396     return NULL;
-397   }
-398 
-399   /* Register media source with named registry */
-400   char media_type_str[64];
-401   switch (type) {
-402   case MEDIA_SOURCE_WEBCAM:
-403     snprintf(media_type_str, sizeof(media_type_str), &quot;media_source:webcam&quot;);
-404     break;
-405   case MEDIA_SOURCE_FILE:
-406     snprintf(media_type_str, sizeof(media_type_str), &quot;media_source:file&quot;);
-407     break;
-408   case MEDIA_SOURCE_TEST:
-409     snprintf(media_type_str, sizeof(media_type_str), &quot;media_source:test&quot;);
+285     // Store original URL for potential re-extraction if needed
+286     source-&gt;original_youtube_url = platform_strdup(path);
+287     if (!source-&gt;original_youtube_url) {
+288       log_warn(&quot;Failed to cache original URL&quot;);
+289     }
+290 
+291     // Cache file path for potential reopen on loop
+292     source-&gt;file_path = platform_strdup(effective_path);
+293     if (!source-&gt;file_path) {
+294       SET_ERRNO(ERROR_MEMORY, &quot;Failed to duplicate file path&quot;);
+295       SAFE_FREE(source-&gt;original_youtube_url);
+296       // Destroy mutexes before freeing source
+297       mutex_destroy(&amp;source-&gt;decoder_mutex);
+298       mutex_destroy(&amp;source-&gt;pause_mutex);
+299       mutex_destroy(&amp;source-&gt;seek_access_mutex);
+300       SAFE_FREE(source);
+301       return NULL;
+302     }
+303 
+304     // Always use separate decoders for video and audio
+305     // This allows independent read rates and avoids lock contention
+306     source-&gt;video_decoder = ffmpeg_decoder_create(effective_path);
+307     if (!source-&gt;video_decoder) {
+308       log_error(&quot;Failed to open media file for video: %s&quot;, effective_path);
+309       SAFE_FREE(source-&gt;file_path);
+310       SAFE_FREE(source-&gt;original_youtube_url);
+311       // Destroy mutexes before freeing source
+312       mutex_destroy(&amp;source-&gt;decoder_mutex);
+313       mutex_destroy(&amp;source-&gt;pause_mutex);
+314       mutex_destroy(&amp;source-&gt;seek_access_mutex);
+315       SAFE_FREE(source);
+316       return NULL;
+317     }
+318 
+319     // Start prefetch thread for video frames (critical for HTTP performance)
+320     // This thread continuously reads frames into a buffer so the render loop never blocks
+321     asciichat_error_t prefetch_err = ffmpeg_decoder_start_prefetch(source-&gt;video_decoder);
+322     if (prefetch_err != ASCIICHAT_OK) {
+323       log_error(&quot;Failed to start video prefetch thread: %s&quot;, asciichat_error_string(prefetch_err));
+324       // Don't fail on prefetch error - continue with frame skipping as fallback
+325     }
+326 
+327     source-&gt;audio_decoder = ffmpeg_decoder_create(effective_path);
+328     if (!source-&gt;audio_decoder) {
+329       log_error(&quot;Failed to open media file for audio: %s&quot;, effective_path);
+330       ffmpeg_decoder_destroy(source-&gt;video_decoder);
+331       source-&gt;video_decoder = NULL;
+332       SAFE_FREE(source-&gt;file_path);
+333       SAFE_FREE(source-&gt;original_youtube_url);
+334       // Destroy mutexes before freeing source
+335       mutex_destroy(&amp;source-&gt;decoder_mutex);
+336       mutex_destroy(&amp;source-&gt;pause_mutex);
+337       mutex_destroy(&amp;source-&gt;seek_access_mutex);
+338       SAFE_FREE(source);
+339       return NULL;
+340     }
+341     source-&gt;is_shared_decoder = false;
+342 
+343     log_debug(&quot;Media source: URL resolved to stream (separate video/audio decoders)&quot;);
+344     break;
+345   }
+346 
+347   case MEDIA_SOURCE_STDIN: {
+348     // Create separate decoders for video and audio from stdin
+349     source-&gt;video_decoder = ffmpeg_decoder_create_stdin();
+350     if (!source-&gt;video_decoder) {
+351       log_error(&quot;Failed to open stdin for video input&quot;);
+352       // Destroy mutexes before freeing source
+353       mutex_destroy(&amp;source-&gt;decoder_mutex);
+354       mutex_destroy(&amp;source-&gt;pause_mutex);
+355       mutex_destroy(&amp;source-&gt;seek_access_mutex);
+356       SAFE_FREE(source);
+357       return NULL;
+358     }
+359 
+360     // Start prefetch thread for stdin video frames
+361     asciichat_error_t prefetch_err = ffmpeg_decoder_start_prefetch(source-&gt;video_decoder);
+362     if (prefetch_err != ASCIICHAT_OK) {
+363       log_error(&quot;Failed to start stdin video prefetch thread: %s&quot;, asciichat_error_string(prefetch_err));
+364       // Don't fail on prefetch error - continue with frame skipping as fallback
+365     }
+366 
+367     source-&gt;audio_decoder = ffmpeg_decoder_create_stdin();
+368     if (!source-&gt;audio_decoder) {
+369       log_error(&quot;Failed to open stdin for audio input&quot;);
+370       ffmpeg_decoder_destroy(source-&gt;video_decoder);
+371       source-&gt;video_decoder = NULL;
+372       // Destroy mutexes before freeing source
+373       mutex_destroy(&amp;source-&gt;decoder_mutex);
+374       mutex_destroy(&amp;source-&gt;pause_mutex);
+375       mutex_destroy(&amp;source-&gt;seek_access_mutex);
+376       SAFE_FREE(source);
+377       return NULL;
+378     }
+379 
+380     log_debug(&quot;Media source: stdin (separate video/audio decoders)&quot;);
+381     break;
+382   }
+383 
+384   case MEDIA_SOURCE_TEST: {
+385     // Test pattern state is encapsulated in media_source_t
+386     source-&gt;webcam_index = 0;
+387     source-&gt;webcam_ctx = NULL; // No context needed for test pattern
+388     source-&gt;test_pattern_frame = NULL;  // Allocated lazily on first read
+389     source-&gt;test_frame_counter = 0;
+390 
+391     log_debug(&quot;Media source: Test pattern&quot;);
+392     break;
+393   }
+394 
+395   default:
+396     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown media source type: %d&quot;, type);
+397     // Destroy mutexes before freeing source
+398     mutex_destroy(&amp;source-&gt;decoder_mutex);
+399     mutex_destroy(&amp;source-&gt;pause_mutex);
+400     mutex_destroy(&amp;source-&gt;seek_access_mutex);
+401     SAFE_FREE(source);
+402     return NULL;
+403   }
+404 
+405   /* Register media source with named registry */
+406   char media_type_str[64];
+407   switch (type) {
+408   case MEDIA_SOURCE_WEBCAM:
+409     snprintf(media_type_str, sizeof(media_type_str), &quot;media_source:webcam&quot;);
 410     break;
-411   default:
-412     snprintf(media_type_str, sizeof(media_type_str), &quot;media_source:unknown&quot;);
+411   case MEDIA_SOURCE_FILE:
+412     snprintf(media_type_str, sizeof(media_type_str), &quot;media_source:file&quot;);
 413     break;
-414   }
-415   NAMED_REGISTER(source, media_type_str, &quot;media_source_t&quot;, &quot;0x%tx&quot;, NULL);
-416 
-417   /* Register media source's sync primitives with hierarchical naming */
-418   NAMED_REGISTER_MUTEX(&amp;source-&gt;decoder_mutex, &quot;decoder_mutex&quot;, (uintptr_t)(const void *)(source));
-419   NAMED_REGISTER_MUTEX(&amp;source-&gt;pause_mutex, &quot;pause_mutex&quot;, (uintptr_t)(const void *)(source));
-420   NAMED_REGISTER_MUTEX(&amp;source-&gt;seek_access_mutex, &quot;seek_access_mutex&quot;, (uintptr_t)(const void *)(source));
-421 
-422   return source;
-423 }</pre>
+414   case MEDIA_SOURCE_TEST:
+415     snprintf(media_type_str, sizeof(media_type_str), &quot;media_source:test&quot;);
+416     break;
+417   default:
+418     snprintf(media_type_str, sizeof(media_type_str), &quot;media_source:unknown&quot;);
+419     break;
+420   }
+421   NAMED_REGISTER(source, media_type_str, &quot;media_source_t&quot;, &quot;0x%tx&quot;, NULL);
+422 
+423   /* Register media source's sync primitives with hierarchical naming */
+424   NAMED_REGISTER_MUTEX(&amp;source-&gt;decoder_mutex, &quot;decoder_mutex&quot;, (uintptr_t)(const void *)(source));
+425   NAMED_REGISTER_MUTEX(&amp;source-&gt;pause_mutex, &quot;pause_mutex&quot;, (uintptr_t)(const void *)(source));
+426   NAMED_REGISTER_MUTEX(&amp;source-&gt;seek_access_mutex, &quot;seek_access_mutex&quot;, (uintptr_t)(const void *)(source));
+427 
+428   return source;
+429 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
     <b>media_source_t::audio_decoder</b>, <b>BUFFER_SIZE_XLARGE</b>,
-    <b>media_source_t::decoder_mutex</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_MEMORY</b>, <b>ERROR_WEBCAM</b>, <b>ERROR_WEBCAM_IN_USE</b>,
-    <b>ffmpeg_decoder_create()</b>, <b>ffmpeg_decoder_create_stdin()</b>,
-    <b>ffmpeg_decoder_destroy()</b>, <b>ffmpeg_decoder_start_prefetch()</b>,
-    <b>media_source_t::file_path</b>, <b>GET_OPTION</b>,
-    <b>media_source_t::is_paused</b>, <b>media_source_t::is_shared_decoder</b>,
-    <b>log_debug</b>, <b>log_error</b>, <b>log_warn</b>,
-    <b>media_source_t::loop_enabled</b>, <b>MEDIA_SOURCE_FILE</b>,
-    <b>MEDIA_SOURCE_STDIN</b>, <b>MEDIA_SOURCE_TEST</b>,
-    <b>MEDIA_SOURCE_WEBCAM</b>, <b>mutex_destroy()</b>, <b>mutex_init()</b>,
-    <b>NAMED_REGISTER</b>, <b>NAMED_REGISTER_MUTEX</b>,
-    <b>media_source_t::original_youtube_url</b>,
+    <b>media_source_t::decoder_mutex</b>, <b>errno</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>ERROR_WEBCAM</b>,
+    <b>ERROR_WEBCAM_IN_USE</b>, <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_destroy()</b>,
+    <b>ffmpeg_decoder_start_prefetch()</b>, <b>media_source_t::file_path</b>,
+    <b>GET_OPTION</b>, <b>media_source_t::is_paused</b>,
+    <b>media_source_t::is_shared_decoder</b>, <b>log_debug</b>,
+    <b>log_error</b>, <b>log_warn</b>, <b>media_source_t::loop_enabled</b>,
+    <b>MEDIA_SOURCE_FILE</b>, <b>MEDIA_SOURCE_STDIN</b>,
+    <b>MEDIA_SOURCE_TEST</b>, <b>MEDIA_SOURCE_WEBCAM</b>,
+    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>NAMED_REGISTER</b>,
+    <b>NAMED_REGISTER_MUTEX</b>, <b>media_source_t::original_youtube_url</b>,
     <b>media_source_t::pause_mutex</b>, <b>platform_strdup()</b>,
     <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
     <b>media_source_t::seek_access_mutex</b>, <b>SET_ERRNO</b>,
@@ -2499,56 +2503,56 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">For FILE/STDIN types, closes FFmpeg decoder</p>
 </div>
-<p class="Pp">Definition at line <b>425</b> of file <b>source.c</b>.</p>
-<pre>425                                                   {
-426   if (!source) {
-427     return;
-428   }
-429 
-430   // Cleanup based on type
-431   if (source-&gt;webcam_ctx) {
-432     webcam_cleanup_context(source-&gt;webcam_ctx);
-433     source-&gt;webcam_ctx = NULL;
+<p class="Pp">Definition at line <b>431</b> of file <b>source.c</b>.</p>
+<pre>431                                                   {
+432   if (!source) {
+433     return;
 434   }
 435 
-436   // For YouTube (shared decoder), only destroy once
-437   // For local files (separate decoders), destroy both
-438   if (source-&gt;video_decoder) {
-439     ffmpeg_decoder_destroy(source-&gt;video_decoder);
-440     source-&gt;video_decoder = NULL;
-441   }
-442 
-443   if (source-&gt;audio_decoder) {
-444     // Don't double-free if audio and video share the same decoder
-445     if (!source-&gt;is_shared_decoder) {
-446       ffmpeg_decoder_destroy(source-&gt;audio_decoder);
-447     }
-448     source-&gt;audio_decoder = NULL;
-449   }
-450 
-451   if (source-&gt;file_path) {
-452     free(source-&gt;file_path);
-453     source-&gt;file_path = NULL;
-454   }
-455 
-456   if (source-&gt;original_youtube_url) {
-457     free(source-&gt;original_youtube_url);
-458     source-&gt;original_youtube_url = NULL;
-459   }
-460 
-461   // Clean up test pattern frame
-462   if (source-&gt;test_pattern_frame) {
-463     image_destroy(source-&gt;test_pattern_frame);
-464     source-&gt;test_pattern_frame = NULL;
+436   // Cleanup based on type
+437   if (source-&gt;webcam_ctx) {
+438     webcam_cleanup_context(source-&gt;webcam_ctx);
+439     source-&gt;webcam_ctx = NULL;
+440   }
+441 
+442   // For YouTube (shared decoder), only destroy once
+443   // For local files (separate decoders), destroy both
+444   if (source-&gt;video_decoder) {
+445     ffmpeg_decoder_destroy(source-&gt;video_decoder);
+446     source-&gt;video_decoder = NULL;
+447   }
+448 
+449   if (source-&gt;audio_decoder) {
+450     // Don't double-free if audio and video share the same decoder
+451     if (!source-&gt;is_shared_decoder) {
+452       ffmpeg_decoder_destroy(source-&gt;audio_decoder);
+453     }
+454     source-&gt;audio_decoder = NULL;
+455   }
+456 
+457   if (source-&gt;file_path) {
+458     free(source-&gt;file_path);
+459     source-&gt;file_path = NULL;
+460   }
+461 
+462   if (source-&gt;original_youtube_url) {
+463     free(source-&gt;original_youtube_url);
+464     source-&gt;original_youtube_url = NULL;
 465   }
 466 
-467   // Destroy mutexes
-468   mutex_destroy(&amp;source-&gt;decoder_mutex);
-469   mutex_destroy(&amp;source-&gt;pause_mutex);
-470   mutex_destroy(&amp;source-&gt;seek_access_mutex);
-471 
-472   SAFE_FREE(source);
-473 }</pre>
+467   // Clean up test pattern frame
+468   if (source-&gt;test_pattern_frame) {
+469     image_destroy(source-&gt;test_pattern_frame);
+470     source-&gt;test_pattern_frame = NULL;
+471   }
+472 
+473   // Destroy mutexes
+474   mutex_destroy(&amp;source-&gt;decoder_mutex);
+475   mutex_destroy(&amp;source-&gt;pause_mutex);
+476   mutex_destroy(&amp;source-&gt;seek_access_mutex);
+477 
+478   SAFE_FREE(source);
+479 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>media_source_t::audio_decoder</b>,
@@ -2589,28 +2593,28 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">STDIN sources return -1.0 (cannot determine duration)</p>
 </div>
-<p class="Pp">Definition at line <b>926</b> of file <b>source.c</b>.</p>
-<pre>926                                                          {
-927   if (!source) {
-928     return -1.0;
-929   }
-930 
-931   switch (source-&gt;type) {
-932   case MEDIA_SOURCE_WEBCAM:
-933   case MEDIA_SOURCE_TEST:
-934     return -1.0; // Infinite
-935 
-936   case MEDIA_SOURCE_FILE:
-937   case MEDIA_SOURCE_STDIN:
-938     if (!source-&gt;video_decoder) {
-939       return -1.0;
-940     }
-941     return ffmpeg_decoder_get_duration(source-&gt;video_decoder);
-942 
-943   default:
-944     return -1.0;
-945   }
-946 }</pre>
+<p class="Pp">Definition at line <b>932</b> of file <b>source.c</b>.</p>
+<pre>932                                                          {
+933   if (!source) {
+934     return -1.0;
+935   }
+936 
+937   switch (source-&gt;type) {
+938   case MEDIA_SOURCE_WEBCAM:
+939   case MEDIA_SOURCE_TEST:
+940     return -1.0; // Infinite
+941 
+942   case MEDIA_SOURCE_FILE:
+943   case MEDIA_SOURCE_STDIN:
+944     if (!source-&gt;video_decoder) {
+945       return -1.0;
+946     }
+947     return ffmpeg_decoder_get_duration(source-&gt;video_decoder);
+948 
+949   default:
+950     return -1.0;
+951   }
+952 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ffmpeg_decoder_get_duration()</b>,
@@ -2642,28 +2646,28 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">FILE sources return position based on last decoded frame PTS</p>
 </div>
-<p class="Pp">Definition at line <b>948</b> of file <b>source.c</b>.</p>
-<pre>948                                                          {
-949   if (!source) {
-950     return -1.0;
-951   }
-952 
-953   switch (source-&gt;type) {
-954   case MEDIA_SOURCE_WEBCAM:
-955   case MEDIA_SOURCE_TEST:
-956     return -1.0; // No position concept
-957 
-958   case MEDIA_SOURCE_FILE:
-959   case MEDIA_SOURCE_STDIN:
-960     if (!source-&gt;video_decoder) {
-961       return -1.0;
-962     }
-963     return ffmpeg_decoder_get_position(source-&gt;video_decoder);
-964 
-965   default:
-966     return -1.0;
-967   }
-968 }</pre>
+<p class="Pp">Definition at line <b>954</b> of file <b>source.c</b>.</p>
+<pre>954                                                          {
+955   if (!source) {
+956     return -1.0;
+957   }
+958 
+959   switch (source-&gt;type) {
+960   case MEDIA_SOURCE_WEBCAM:
+961   case MEDIA_SOURCE_TEST:
+962     return -1.0; // No position concept
+963 
+964   case MEDIA_SOURCE_FILE:
+965   case MEDIA_SOURCE_STDIN:
+966     if (!source-&gt;video_decoder) {
+967       return -1.0;
+968     }
+969     return ffmpeg_decoder_get_position(source-&gt;video_decoder);
+970 
+971   default:
+972     return -1.0;
+973   }
+974 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ffmpeg_decoder_get_position()</b>,
@@ -2683,10 +2687,10 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Media source type</div>
 <p class="Pp">Returns the type of the media source.</p>
-<p class="Pp">Definition at line <b>922</b> of file <b>source.c</b>.</p>
-<pre>922                                                                   {
-923   return source ? source-&gt;type : MEDIA_SOURCE_TEST;
-924 }</pre>
+<p class="Pp">Definition at line <b>928</b> of file <b>source.c</b>.</p>
+<pre>928                                                                   {
+929   return source ? source-&gt;type : MEDIA_SOURCE_TEST;
+930 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>MEDIA_SOURCE_TEST</b>, and
@@ -2717,28 +2721,28 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">FILE/STDIN sources return the video stream's fps from FFmpeg</p>
 </div>
-<p class="Pp">Definition at line <b>970</b> of file <b>source.c</b>.</p>
-<pre>970                                                           {
-971   if (!source) {
-972     return 0.0;
-973   }
-974 
-975   switch (source-&gt;type) {
-976   case MEDIA_SOURCE_WEBCAM:
-977   case MEDIA_SOURCE_TEST:
-978     return 0.0; // Variable rate, no fixed FPS
-979 
-980   case MEDIA_SOURCE_FILE:
-981   case MEDIA_SOURCE_STDIN:
-982     if (!source-&gt;video_decoder) {
-983       return 0.0;
-984     }
-985     return ffmpeg_decoder_get_video_fps(source-&gt;video_decoder);
-986 
-987   default:
-988     return 0.0;
-989   }
-990 }</pre>
+<p class="Pp">Definition at line <b>976</b> of file <b>source.c</b>.</p>
+<pre>976                                                           {
+977   if (!source) {
+978     return 0.0;
+979   }
+980 
+981   switch (source-&gt;type) {
+982   case MEDIA_SOURCE_WEBCAM:
+983   case MEDIA_SOURCE_TEST:
+984     return 0.0; // Variable rate, no fixed FPS
+985 
+986   case MEDIA_SOURCE_FILE:
+987   case MEDIA_SOURCE_STDIN:
+988     if (!source-&gt;video_decoder) {
+989       return 0.0;
+990     }
+991     return ffmpeg_decoder_get_video_fps(source-&gt;video_decoder);
+992 
+993   default:
+994     return 0.0;
+995   }
+996 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ffmpeg_decoder_get_video_fps()</b>,
@@ -2764,25 +2768,25 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">FILE/STDIN sources return true if audio stream detected</p>
 </div>
-<p class="Pp">Definition at line <b>731</b> of file <b>source.c</b>.</p>
-<pre>731                                                     {
-732   if (!source) {
-733     return false;
-734   }
-735 
-736   switch (source-&gt;type) {
-737   case MEDIA_SOURCE_WEBCAM:
-738   case MEDIA_SOURCE_TEST:
-739     return false; // Webcam/test don't have audio
-740 
-741   case MEDIA_SOURCE_FILE:
-742   case MEDIA_SOURCE_STDIN:
-743     return source-&gt;audio_decoder &amp;&amp; ffmpeg_decoder_has_audio(source-&gt;audio_decoder);
-744 
-745   default:
-746     return false;
-747   }
-748 }</pre>
+<p class="Pp">Definition at line <b>737</b> of file <b>source.c</b>.</p>
+<pre>737                                                     {
+738   if (!source) {
+739     return false;
+740   }
+741 
+742   switch (source-&gt;type) {
+743   case MEDIA_SOURCE_WEBCAM:
+744   case MEDIA_SOURCE_TEST:
+745     return false; // Webcam/test don't have audio
+746 
+747   case MEDIA_SOURCE_FILE:
+748   case MEDIA_SOURCE_STDIN:
+749     return source-&gt;audio_decoder &amp;&amp; ffmpeg_decoder_has_audio(source-&gt;audio_decoder);
+750 
+751   default:
+752     return false;
+753   }
+754 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>media_source_t::audio_decoder</b>,
@@ -2809,25 +2813,25 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">FILE/STDIN sources return true if video stream detected</p>
 </div>
-<p class="Pp">Definition at line <b>623</b> of file <b>source.c</b>.</p>
-<pre>623                                                     {
-624   if (!source) {
-625     return false;
-626   }
-627 
-628   switch (source-&gt;type) {
-629   case MEDIA_SOURCE_WEBCAM:
-630   case MEDIA_SOURCE_TEST:
-631     return true; // Webcam/test always has video
-632 
-633   case MEDIA_SOURCE_FILE:
-634   case MEDIA_SOURCE_STDIN:
-635     return source-&gt;video_decoder &amp;&amp; ffmpeg_decoder_has_video(source-&gt;video_decoder);
-636 
-637   default:
-638     return false;
-639   }
-640 }</pre>
+<p class="Pp">Definition at line <b>629</b> of file <b>source.c</b>.</p>
+<pre>629                                                     {
+630   if (!source) {
+631     return false;
+632   }
+633 
+634   switch (source-&gt;type) {
+635   case MEDIA_SOURCE_WEBCAM:
+636   case MEDIA_SOURCE_TEST:
+637     return true; // Webcam/test always has video
+638 
+639   case MEDIA_SOURCE_FILE:
+640   case MEDIA_SOURCE_STDIN:
+641     return source-&gt;video_decoder &amp;&amp; ffmpeg_decoder_has_video(source-&gt;video_decoder);
+642 
+643   default:
+644     return false;
+645   }
+646 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ffmpeg_decoder_has_video()</b>,
@@ -2846,16 +2850,16 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if paused, false if playing</div>
 <p class="Pp">Determines if the media source is currently paused.</p>
-<p class="Pp">Definition at line <b>1014</b> of file <b>source.c</b>.</p>
-<pre>1014                                                     {
-1015   if (!source) {
-1016     return false;
-1017   }
-1018   mutex_lock(&amp;source-&gt;pause_mutex);
-1019   bool paused = source-&gt;is_paused;
-1020   mutex_unlock(&amp;source-&gt;pause_mutex);
-1021   return paused;
-1022 }</pre>
+<p class="Pp">Definition at line <b>1020</b> of file <b>source.c</b>.</p>
+<pre>1020                                                     {
+1021   if (!source) {
+1022     return false;
+1023   }
+1024   mutex_lock(&amp;source-&gt;pause_mutex);
+1025   bool paused = source-&gt;is_paused;
+1026   mutex_unlock(&amp;source-&gt;pause_mutex);
+1027   return paused;
+1028 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>media_source_t::is_paused</b>, <b>mutex_lock</b>,
@@ -2887,15 +2891,15 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">Pausing is instantaneous (next read will return no data)</p>
 </div>
-<p class="Pp">Definition at line <b>996</b> of file <b>source.c</b>.</p>
-<pre>996                                                 {
-997   if (!source) {
-998     return;
-999   }
-1000   mutex_lock(&amp;source-&gt;pause_mutex);
-1001   source-&gt;is_paused = true;
-1002   mutex_unlock(&amp;source-&gt;pause_mutex);
-1003 }</pre>
+<p class="Pp">Definition at line <b>1002</b> of file <b>source.c</b>.</p>
+<pre>1002                                                 {
+1003   if (!source) {
+1004     return;
+1005   }
+1006   mutex_lock(&amp;source-&gt;pause_mutex);
+1007   source-&gt;is_paused = true;
+1008   mutex_unlock(&amp;source-&gt;pause_mutex);
+1009 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>media_source_t::is_paused</b>, <b>mutex_lock</b>,
@@ -2942,91 +2946,91 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">Audio is resampled to 48kHz mono automatically</p>
 </div>
-<p class="Pp">Definition at line <b>646</b> of file <b>source.c</b>.</p>
-<pre>646                                                                                           {
-647   if (!source || !buffer || num_samples == 0) {
-648     return 0;
-649   }
-650 
-651   static uint64_t call_count = 0;
-652   call_count++;
-653   if (call_count &lt;= 5 || call_count % 1000 == 0) {
-654     log_info(&quot;media_source_read_audio #%lu: source_type=%d num_samples=%zu&quot;, call_count, source-&gt;type, num_samples);
+<p class="Pp">Definition at line <b>652</b> of file <b>source.c</b>.</p>
+<pre>652                                                                                           {
+653   if (!source || !buffer || num_samples == 0) {
+654     return 0;
 655   }
 656 
-657   // Check pause state (thread-safe)
-658   mutex_lock(&amp;source-&gt;pause_mutex);
-659   bool is_paused = source-&gt;is_paused;
-660   mutex_unlock(&amp;source-&gt;pause_mutex);
-661 
-662   // Return silence immediately if paused (maintaining position)
-663   if (is_paused) {
-664     memset(buffer, 0, num_samples * sizeof(float));
-665     return num_samples;
-666   }
+657   static uint64_t call_count = 0;
+658   call_count++;
+659   if (call_count &lt;= 5 || call_count % 1000 == 0) {
+660     log_info(&quot;media_source_read_audio #%lu: source_type=%d num_samples=%zu&quot;, call_count, source-&gt;type, num_samples);
+661   }
+662 
+663   // Check pause state (thread-safe)
+664   mutex_lock(&amp;source-&gt;pause_mutex);
+665   bool is_paused = source-&gt;is_paused;
+666   mutex_unlock(&amp;source-&gt;pause_mutex);
 667 
-668   switch (source-&gt;type) {
-669   case MEDIA_SOURCE_WEBCAM:
-670   case MEDIA_SOURCE_TEST:
-671     // Webcam/test pattern don't provide audio
-672     return 0;
+668   // Return silence immediately if paused (maintaining position)
+669   if (is_paused) {
+670     memset(buffer, 0, num_samples * sizeof(float));
+671     return num_samples;
+672   }
 673 
-674   case MEDIA_SOURCE_FILE:
-675   case MEDIA_SOURCE_STDIN: {
-676     if (!source-&gt;audio_decoder) {
-677       log_warn(&quot;media_source_read_audio: audio_decoder is NULL!&quot;);
-678       return 0;
-679     }
-680 
-681     // Lock seek_access_mutex to prevent audio callback from reading during seek
-682     mutex_lock(&amp;source-&gt;seek_access_mutex);
-683 
-684     // Lock shared decoder if YouTube URL (protect against concurrent video thread access)
-685     if (source-&gt;is_shared_decoder) {
-686       mutex_lock(&amp;source-&gt;decoder_mutex);
-687     }
-688 
-689     double audio_pos_before_read = ffmpeg_decoder_get_position(source-&gt;audio_decoder);
-690     size_t samples_read = ffmpeg_decoder_read_audio_samples(source-&gt;audio_decoder, buffer, num_samples);
-691     double audio_pos_after_read = ffmpeg_decoder_get_position(source-&gt;audio_decoder);
-692 
-693     static double last_audio_pos = 0;
-694     if (audio_pos_after_read &gt;= 0 &amp;&amp; last_audio_pos &gt;= 0 &amp;&amp; audio_pos_after_read &lt; last_audio_pos) {
-695       log_warn(&quot;AUDIO POSITION WENT BACKWARD: %.2f &#x2192; %.2f (LOOPING!)&quot;, last_audio_pos, audio_pos_after_read);
-696     }
-697     if (audio_pos_after_read &gt;= 0) {
-698       last_audio_pos = audio_pos_after_read;
-699     }
-700 
-701     log_info_every(100 * US_PER_MS_INT, &quot;Audio: read %zu samples, pos %.2f &#x2192; %.2f&quot;, samples_read, audio_pos_before_read,
-702                    audio_pos_after_read);
-703 
-704     // Handle EOF with loop
-705     if (samples_read == 0 &amp;&amp; ffmpeg_decoder_at_end(source-&gt;audio_decoder)) {
-706       if (source-&gt;loop_enabled &amp;&amp; source-&gt;type == MEDIA_SOURCE_FILE) {
-707         log_debug(&quot;End of file reached (audio), rewinding for loop&quot;);
-708         if (media_source_rewind(source) == ASCIICHAT_OK) {
-709           // Try reading again after rewind
-710           samples_read = ffmpeg_decoder_read_audio_samples(source-&gt;audio_decoder, buffer, num_samples);
-711         }
-712       }
-713     }
-714 
-715     // Unlock shared decoder
-716     if (source-&gt;is_shared_decoder) {
-717       mutex_unlock(&amp;source-&gt;decoder_mutex);
-718     }
-719 
-720     // Release seek_access_mutex
-721     mutex_unlock(&amp;source-&gt;seek_access_mutex);
-722 
-723     return samples_read;
-724   }
+674   switch (source-&gt;type) {
+675   case MEDIA_SOURCE_WEBCAM:
+676   case MEDIA_SOURCE_TEST:
+677     // Webcam/test pattern don't provide audio
+678     return 0;
+679 
+680   case MEDIA_SOURCE_FILE:
+681   case MEDIA_SOURCE_STDIN: {
+682     if (!source-&gt;audio_decoder) {
+683       log_warn(&quot;media_source_read_audio: audio_decoder is NULL!&quot;);
+684       return 0;
+685     }
+686 
+687     // Lock seek_access_mutex to prevent audio callback from reading during seek
+688     mutex_lock(&amp;source-&gt;seek_access_mutex);
+689 
+690     // Lock shared decoder if YouTube URL (protect against concurrent video thread access)
+691     if (source-&gt;is_shared_decoder) {
+692       mutex_lock(&amp;source-&gt;decoder_mutex);
+693     }
+694 
+695     double audio_pos_before_read = ffmpeg_decoder_get_position(source-&gt;audio_decoder);
+696     size_t samples_read = ffmpeg_decoder_read_audio_samples(source-&gt;audio_decoder, buffer, num_samples);
+697     double audio_pos_after_read = ffmpeg_decoder_get_position(source-&gt;audio_decoder);
+698 
+699     static double last_audio_pos = 0;
+700     if (audio_pos_after_read &gt;= 0 &amp;&amp; last_audio_pos &gt;= 0 &amp;&amp; audio_pos_after_read &lt; last_audio_pos) {
+701       log_warn(&quot;AUDIO POSITION WENT BACKWARD: %.2f &#x2192; %.2f (LOOPING!)&quot;, last_audio_pos, audio_pos_after_read);
+702     }
+703     if (audio_pos_after_read &gt;= 0) {
+704       last_audio_pos = audio_pos_after_read;
+705     }
+706 
+707     log_info_every(100 * US_PER_MS_INT, &quot;Audio: read %zu samples, pos %.2f &#x2192; %.2f&quot;, samples_read, audio_pos_before_read,
+708                    audio_pos_after_read);
+709 
+710     // Handle EOF with loop
+711     if (samples_read == 0 &amp;&amp; ffmpeg_decoder_at_end(source-&gt;audio_decoder)) {
+712       if (source-&gt;loop_enabled &amp;&amp; source-&gt;type == MEDIA_SOURCE_FILE) {
+713         log_debug(&quot;End of file reached (audio), rewinding for loop&quot;);
+714         if (media_source_rewind(source) == ASCIICHAT_OK) {
+715           // Try reading again after rewind
+716           samples_read = ffmpeg_decoder_read_audio_samples(source-&gt;audio_decoder, buffer, num_samples);
+717         }
+718       }
+719     }
+720 
+721     // Unlock shared decoder
+722     if (source-&gt;is_shared_decoder) {
+723       mutex_unlock(&amp;source-&gt;decoder_mutex);
+724     }
 725 
-726   default:
-727     return 0;
-728   }
-729 }</pre>
+726     // Release seek_access_mutex
+727     mutex_unlock(&amp;source-&gt;seek_access_mutex);
+728 
+729     return samples_read;
+730   }
+731 
+732   default:
+733     return 0;
+734   }
+735 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -3077,150 +3081,150 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">Frame timing is handled by caller (capture thread)</p>
 </div>
-<p class="Pp">Definition at line <b>479</b> of file <b>source.c</b>.</p>
-<pre>479                                                          {
-480   if (!source) {
-481     return NULL;
-482   }
-483 
-484   // Check pause state (thread-safe)
-485   mutex_lock(&amp;source-&gt;pause_mutex);
-486   bool is_paused = source-&gt;is_paused;
-487   mutex_unlock(&amp;source-&gt;pause_mutex);
-488 
-489   // Return NULL immediately if paused (maintaining position)
-490   if (is_paused) {
-491     return NULL;
-492   }
-493 
-494   switch (source-&gt;type) {
-495   case MEDIA_SOURCE_WEBCAM:
-496     // Read from webcam
-497     if (source-&gt;webcam_ctx) {
-498       return webcam_read_context(source-&gt;webcam_ctx);
-499     }
-500     return NULL;
-501 
-502   case MEDIA_SOURCE_TEST: {
-503     // Generate animated test pattern in-place (animated color bars)
-504     if (!source-&gt;test_pattern_frame) {
-505       source-&gt;test_pattern_frame = image_new(320, 240);
-506       if (!source-&gt;test_pattern_frame) {
-507         return NULL;
-508       }
-509     }
-510 
-511     // Generate animated color bars that shift based on frame counter
-512     unsigned int animation_phase = source-&gt;test_frame_counter / 2;  // Slow down animation
-513     source-&gt;test_frame_counter++;
-514 
-515     for (int y = 0; y &lt; source-&gt;test_pattern_frame-&gt;h; y++) {
-516       for (int x = 0; x &lt; source-&gt;test_pattern_frame-&gt;w; x++) {
-517         rgb_pixel_t *pixel = &amp;source-&gt;test_pattern_frame-&gt;pixels[y * source-&gt;test_pattern_frame-&gt;w + x];
-518 
-519         // Animated color bars that shift based on frame counter
-520         int animated_x = (x + animation_phase) % source-&gt;test_pattern_frame-&gt;w;
-521         int grid_x = animated_x / 40;
-522 
-523         // Base pattern: color bars that animate horizontally
-524         switch (grid_x % 3) {
-525         case 0:  // Red
-526           pixel-&gt;r = 255;
-527           pixel-&gt;g = 0;
-528           pixel-&gt;b = 0;
-529           break;
-530         case 1:  // Green
-531           pixel-&gt;r = 0;
-532           pixel-&gt;g = 255;
-533           pixel-&gt;b = 0;
-534           break;
-535         case 2:  // Blue
-536         default:
+<p class="Pp">Definition at line <b>485</b> of file <b>source.c</b>.</p>
+<pre>485                                                          {
+486   if (!source) {
+487     return NULL;
+488   }
+489 
+490   // Check pause state (thread-safe)
+491   mutex_lock(&amp;source-&gt;pause_mutex);
+492   bool is_paused = source-&gt;is_paused;
+493   mutex_unlock(&amp;source-&gt;pause_mutex);
+494 
+495   // Return NULL immediately if paused (maintaining position)
+496   if (is_paused) {
+497     return NULL;
+498   }
+499 
+500   switch (source-&gt;type) {
+501   case MEDIA_SOURCE_WEBCAM:
+502     // Read from webcam
+503     if (source-&gt;webcam_ctx) {
+504       return webcam_read_context(source-&gt;webcam_ctx);
+505     }
+506     return NULL;
+507 
+508   case MEDIA_SOURCE_TEST: {
+509     // Generate animated test pattern in-place (animated color bars)
+510     if (!source-&gt;test_pattern_frame) {
+511       source-&gt;test_pattern_frame = image_new(320, 240);
+512       if (!source-&gt;test_pattern_frame) {
+513         return NULL;
+514       }
+515     }
+516 
+517     // Generate animated color bars that shift based on frame counter
+518     unsigned int animation_phase = source-&gt;test_frame_counter / 2;  // Slow down animation
+519     source-&gt;test_frame_counter++;
+520 
+521     for (int y = 0; y &lt; source-&gt;test_pattern_frame-&gt;h; y++) {
+522       for (int x = 0; x &lt; source-&gt;test_pattern_frame-&gt;w; x++) {
+523         rgb_pixel_t *pixel = &amp;source-&gt;test_pattern_frame-&gt;pixels[y * source-&gt;test_pattern_frame-&gt;w + x];
+524 
+525         // Animated color bars that shift based on frame counter
+526         int animated_x = (x + animation_phase) % source-&gt;test_pattern_frame-&gt;w;
+527         int grid_x = animated_x / 40;
+528 
+529         // Base pattern: color bars that animate horizontally
+530         switch (grid_x % 3) {
+531         case 0:  // Red
+532           pixel-&gt;r = 255;
+533           pixel-&gt;g = 0;
+534           pixel-&gt;b = 0;
+535           break;
+536         case 1:  // Green
 537           pixel-&gt;r = 0;
-538           pixel-&gt;g = 0;
-539           pixel-&gt;b = 255;
+538           pixel-&gt;g = 255;
+539           pixel-&gt;b = 0;
 540           break;
-541         }
-542 
-543         // Add animated grid lines
-544         if (animated_x % 40 == 0 || y % 30 == 0) {
-545           pixel-&gt;r = 0;
-546           pixel-&gt;g = 0;
-547           pixel-&gt;b = 0;
-548         }
-549       }
-550     }
-551 
-552     return source-&gt;test_pattern_frame;
-553   }
-554 
-555   case MEDIA_SOURCE_FILE:
-556   case MEDIA_SOURCE_STDIN: {
-557     if (!source-&gt;video_decoder) {
-558       return NULL;
-559     }
+541         case 2:  // Blue
+542         default:
+543           pixel-&gt;r = 0;
+544           pixel-&gt;g = 0;
+545           pixel-&gt;b = 255;
+546           break;
+547         }
+548 
+549         // Add animated grid lines
+550         if (animated_x % 40 == 0 || y % 30 == 0) {
+551           pixel-&gt;r = 0;
+552           pixel-&gt;g = 0;
+553           pixel-&gt;b = 0;
+554         }
+555       }
+556     }
+557 
+558     return source-&gt;test_pattern_frame;
+559   }
 560 
-561     // Lock shared decoder if YouTube URL (protect against concurrent audio thread access)
-562     if (source-&gt;is_shared_decoder) {
-563       mutex_lock(&amp;source-&gt;decoder_mutex);
-564     }
-565 
-566     uint64_t frame_read_start_ns = time_get_ns();
-567     image_t *frame = ffmpeg_decoder_read_video_frame(source-&gt;video_decoder);
-568     uint64_t frame_read_ns = time_elapsed_ns(frame_read_start_ns, time_get_ns());
-569 
-570     // Track frame reading statistics for FPS diagnosis
-571     static uint64_t total_attempts = 0;
-572     static uint64_t successful_frames = 0;
-573     static uint64_t null_frame_count = 0;
-574     static uint64_t total_read_time_ns = 0;
-575     static uint64_t max_read_time_ns = 0;
-576 
-577     total_attempts++;
-578     if (frame) {
-579       successful_frames++;
-580       total_read_time_ns += frame_read_ns;
-581       if (frame_read_ns &gt; max_read_time_ns) {
-582         max_read_time_ns = frame_read_ns;
-583       }
-584 
-585       // Log statistics every 30 successful frames
-586       if (successful_frames % 30 == 0) {
-587         double avg_read_ms = (double)total_read_time_ns / (double)successful_frames / NS_PER_MS;
-588         double max_read_ms = (double)max_read_time_ns / NS_PER_MS;
-589         double null_rate = (double)null_frame_count * 100.0 / (double)total_attempts;
-590         log_info_every(3 * US_PER_SEC_INT,
-591                        &quot;FRAME_STATS[%lu]: avg_read=%.2f ms, max_read=%.2f ms, null_rate=%.1f%% &quot;
-592                        &quot;(%lu null/%lu attempts)&quot;,
-593                        successful_frames, avg_read_ms, max_read_ms, null_rate, null_frame_count, total_attempts);
-594       }
-595     } else {
-596       null_frame_count++;
-597     }
-598 
-599     // Handle EOF with loop
-600     if (!frame &amp;&amp; ffmpeg_decoder_at_end(source-&gt;video_decoder)) {
-601       if (source-&gt;loop_enabled &amp;&amp; source-&gt;type == MEDIA_SOURCE_FILE) {
-602         log_debug(&quot;End of file reached, rewinding for loop&quot;);
-603         if (media_source_rewind(source) == ASCIICHAT_OK) {
-604           // Try reading again after rewind
-605           frame = ffmpeg_decoder_read_video_frame(source-&gt;video_decoder);
-606         }
-607       }
-608     }
-609 
-610     // Unlock shared decoder
-611     if (source-&gt;is_shared_decoder) {
-612       mutex_unlock(&amp;source-&gt;decoder_mutex);
-613     }
-614 
-615     return frame;
-616   }
-617 
-618   default:
-619     return NULL;
-620   }
-621 }</pre>
+561   case MEDIA_SOURCE_FILE:
+562   case MEDIA_SOURCE_STDIN: {
+563     if (!source-&gt;video_decoder) {
+564       return NULL;
+565     }
+566 
+567     // Lock shared decoder if YouTube URL (protect against concurrent audio thread access)
+568     if (source-&gt;is_shared_decoder) {
+569       mutex_lock(&amp;source-&gt;decoder_mutex);
+570     }
+571 
+572     uint64_t frame_read_start_ns = time_get_ns();
+573     image_t *frame = ffmpeg_decoder_read_video_frame(source-&gt;video_decoder);
+574     uint64_t frame_read_ns = time_elapsed_ns(frame_read_start_ns, time_get_ns());
+575 
+576     // Track frame reading statistics for FPS diagnosis
+577     static uint64_t total_attempts = 0;
+578     static uint64_t successful_frames = 0;
+579     static uint64_t null_frame_count = 0;
+580     static uint64_t total_read_time_ns = 0;
+581     static uint64_t max_read_time_ns = 0;
+582 
+583     total_attempts++;
+584     if (frame) {
+585       successful_frames++;
+586       total_read_time_ns += frame_read_ns;
+587       if (frame_read_ns &gt; max_read_time_ns) {
+588         max_read_time_ns = frame_read_ns;
+589       }
+590 
+591       // Log statistics every 30 successful frames
+592       if (successful_frames % 30 == 0) {
+593         double avg_read_ms = (double)total_read_time_ns / (double)successful_frames / NS_PER_MS;
+594         double max_read_ms = (double)max_read_time_ns / NS_PER_MS;
+595         double null_rate = (double)null_frame_count * 100.0 / (double)total_attempts;
+596         log_info_every(3 * US_PER_SEC_INT,
+597                        &quot;FRAME_STATS[%lu]: avg_read=%.2f ms, max_read=%.2f ms, null_rate=%.1f%% &quot;
+598                        &quot;(%lu null/%lu attempts)&quot;,
+599                        successful_frames, avg_read_ms, max_read_ms, null_rate, null_frame_count, total_attempts);
+600       }
+601     } else {
+602       null_frame_count++;
+603     }
+604 
+605     // Handle EOF with loop
+606     if (!frame &amp;&amp; ffmpeg_decoder_at_end(source-&gt;video_decoder)) {
+607       if (source-&gt;loop_enabled &amp;&amp; source-&gt;type == MEDIA_SOURCE_FILE) {
+608         log_debug(&quot;End of file reached, rewinding for loop&quot;);
+609         if (media_source_rewind(source) == ASCIICHAT_OK) {
+610           // Try reading again after rewind
+611           frame = ffmpeg_decoder_read_video_frame(source-&gt;video_decoder);
+612         }
+613       }
+614     }
+615 
+616     // Unlock shared decoder
+617     if (source-&gt;is_shared_decoder) {
+618       mutex_unlock(&amp;source-&gt;decoder_mutex);
+619     }
+620 
+621     return frame;
+622   }
+623 
+624   default:
+625     return NULL;
+626   }
+627 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>rgb_pixel_t::b</b>,
@@ -3257,15 +3261,15 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">Resume is instantaneous (next read will return new data)</p>
 </div>
-<p class="Pp">Definition at line <b>1005</b> of file <b>source.c</b>.</p>
-<pre>1005                                                  {
-1006   if (!source) {
-1007     return;
-1008   }
-1009   mutex_lock(&amp;source-&gt;pause_mutex);
-1010   source-&gt;is_paused = false;
-1011   mutex_unlock(&amp;source-&gt;pause_mutex);
-1012 }</pre>
+<p class="Pp">Definition at line <b>1011</b> of file <b>source.c</b>.</p>
+<pre>1011                                                  {
+1012   if (!source) {
+1013     return;
+1014   }
+1015   mutex_lock(&amp;source-&gt;pause_mutex);
+1016   source-&gt;is_paused = false;
+1017   mutex_unlock(&amp;source-&gt;pause_mutex);
+1018 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>media_source_t::is_paused</b>, <b>mutex_lock</b>,
@@ -3295,57 +3299,57 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">Can be called manually to restart playback</p>
 </div>
-<p class="Pp">Definition at line <b>792</b> of file <b>source.c</b>.</p>
-<pre>792                                                               {
-793   if (!source) {
-794     return ERROR_INVALID_PARAM;
-795   }
-796 
-797   switch (source-&gt;type) {
-798   case MEDIA_SOURCE_WEBCAM:
-799   case MEDIA_SOURCE_TEST:
-800     return ASCIICHAT_OK; // No-op for webcam
-801 
-802   case MEDIA_SOURCE_FILE:
-803     if (!source-&gt;video_decoder || !source-&gt;audio_decoder) {
-804       return ERROR_INVALID_PARAM;
-805     }
-806 
-807     // Lock shared decoder if YouTube URL (protect against concurrent thread access)
-808     if (source-&gt;is_shared_decoder) {
-809       mutex_lock(&amp;source-&gt;decoder_mutex);
-810     }
-811 
-812     // Rewind video decoder
-813     asciichat_error_t video_result = ffmpeg_decoder_rewind(source-&gt;video_decoder);
-814     if (video_result != ASCIICHAT_OK) {
-815       if (source-&gt;is_shared_decoder) {
-816         mutex_unlock(&amp;source-&gt;decoder_mutex);
-817       }
-818       return video_result;
-819     }
-820 
-821     // For YouTube (shared decoder), don't rewind audio separately
-822     // For local files (separate decoders), rewind audio too
-823     asciichat_error_t result = ASCIICHAT_OK;
-824     if (!source-&gt;is_shared_decoder) {
-825       result = ffmpeg_decoder_rewind(source-&gt;audio_decoder);
-826     }
-827 
-828     // Unlock shared decoder
-829     if (source-&gt;is_shared_decoder) {
-830       mutex_unlock(&amp;source-&gt;decoder_mutex);
-831     }
-832 
-833     return result;
-834 
-835   case MEDIA_SOURCE_STDIN:
-836     return ERROR_NOT_SUPPORTED; // Cannot seek stdin
-837 
-838   default:
-839     return ERROR_INVALID_PARAM;
-840   }
-841 }</pre>
+<p class="Pp">Definition at line <b>798</b> of file <b>source.c</b>.</p>
+<pre>798                                                               {
+799   if (!source) {
+800     return ERROR_INVALID_PARAM;
+801   }
+802 
+803   switch (source-&gt;type) {
+804   case MEDIA_SOURCE_WEBCAM:
+805   case MEDIA_SOURCE_TEST:
+806     return ASCIICHAT_OK; // No-op for webcam
+807 
+808   case MEDIA_SOURCE_FILE:
+809     if (!source-&gt;video_decoder || !source-&gt;audio_decoder) {
+810       return ERROR_INVALID_PARAM;
+811     }
+812 
+813     // Lock shared decoder if YouTube URL (protect against concurrent thread access)
+814     if (source-&gt;is_shared_decoder) {
+815       mutex_lock(&amp;source-&gt;decoder_mutex);
+816     }
+817 
+818     // Rewind video decoder
+819     asciichat_error_t video_result = ffmpeg_decoder_rewind(source-&gt;video_decoder);
+820     if (video_result != ASCIICHAT_OK) {
+821       if (source-&gt;is_shared_decoder) {
+822         mutex_unlock(&amp;source-&gt;decoder_mutex);
+823       }
+824       return video_result;
+825     }
+826 
+827     // For YouTube (shared decoder), don't rewind audio separately
+828     // For local files (separate decoders), rewind audio too
+829     asciichat_error_t result = ASCIICHAT_OK;
+830     if (!source-&gt;is_shared_decoder) {
+831       result = ffmpeg_decoder_rewind(source-&gt;audio_decoder);
+832     }
+833 
+834     // Unlock shared decoder
+835     if (source-&gt;is_shared_decoder) {
+836       mutex_unlock(&amp;source-&gt;decoder_mutex);
+837     }
+838 
+839     return result;
+840 
+841   case MEDIA_SOURCE_STDIN:
+842     return ERROR_NOT_SUPPORTED; // Cannot seek stdin
+843 
+844   default:
+845     return ERROR_INVALID_PARAM;
+846   }
+847 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -3394,85 +3398,85 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">Seeks are approximate (may land before requested timestamp)</p>
 </div>
-<p class="Pp">Definition at line <b>843</b> of file <b>source.c</b>.</p>
-<pre>843                                                                                   {
-844   if (!source) {
-845     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Media source is NULL&quot;);
-846     return ERROR_INVALID_PARAM;
-847   }
-848 
-849   if (timestamp_sec &lt; 0.0) {
-850     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Timestamp must be &gt;= 0.0&quot;);
-851     return ERROR_INVALID_PARAM;
-852   }
-853 
-854   // WEBCAM and TEST sources: no-op (always return OK)
-855   if (source-&gt;type == MEDIA_SOURCE_WEBCAM || source-&gt;type == MEDIA_SOURCE_TEST) {
-856     return ASCIICHAT_OK;
-857   }
-858 
-859   // STDIN: not supported
-860   if (source-&gt;type == MEDIA_SOURCE_STDIN) {
-861     SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;Cannot seek stdin&quot;);
-862     return ERROR_NOT_SUPPORTED;
+<p class="Pp">Definition at line <b>849</b> of file <b>source.c</b>.</p>
+<pre>849                                                                                   {
+850   if (!source) {
+851     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Media source is NULL&quot;);
+852     return ERROR_INVALID_PARAM;
+853   }
+854 
+855   if (timestamp_sec &lt; 0.0) {
+856     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Timestamp must be &gt;= 0.0&quot;);
+857     return ERROR_INVALID_PARAM;
+858   }
+859 
+860   // WEBCAM and TEST sources: no-op (always return OK)
+861   if (source-&gt;type == MEDIA_SOURCE_WEBCAM || source-&gt;type == MEDIA_SOURCE_TEST) {
+862     return ASCIICHAT_OK;
 863   }
 864 
-865   asciichat_error_t result = ASCIICHAT_OK;
-866 
-867   // Clear audio playback buffer BEFORE seeking to prevent old audio from being queued
-868   // This ensures fresh audio starts playing immediately after seek completes
-869   if (source-&gt;audio_ctx) {
-870     audio_context_t *audio_ctx = (audio_context_t *)source-&gt;audio_ctx;
-871     if (audio_ctx-&gt;playback_buffer) {
-872       audio_ring_buffer_clear(audio_ctx-&gt;playback_buffer);
-873     }
-874   }
-875 
-876   // The seeking_in_progress flag in decoders blocks prefetch thread
-877   // seeking_in_progress coordinates with audio callback via condition variable
-878 
-879   uint64_t seek_start_ns = time_get_ns();
-880   if (source-&gt;video_decoder) {
-881     double video_pos_before = ffmpeg_decoder_get_position(source-&gt;video_decoder);
-882     asciichat_error_t video_err = ffmpeg_decoder_seek_to_timestamp(source-&gt;video_decoder, timestamp_sec);
-883     double video_pos_after = ffmpeg_decoder_get_position(source-&gt;video_decoder);
-884     uint64_t video_seek_ns = time_elapsed_ns(seek_start_ns, time_get_ns());
-885     char video_seek_str[32];
-886     time_pretty(video_seek_ns, -1, video_seek_str, sizeof(video_seek_str));
-887     if (video_err != ASCIICHAT_OK) {
-888       log_warn(&quot;Video seek to %.2f failed: error code %d (took %s)&quot;, timestamp_sec, video_err, video_seek_str);
-889       result = video_err;
-890     } else {
-891       log_info(&quot;Video SEEK: %.2f &#x2192; %.2f sec (target %.2f, took %s)&quot;, video_pos_before, video_pos_after, timestamp_sec,
-892                video_seek_str);
-893     }
-894   }
-895 
-896   // Seek audio decoder (if separate from video)
-897   if (source-&gt;audio_decoder &amp;&amp; !source-&gt;is_shared_decoder) {
-898     log_info(&quot;=== Starting audio seek to %.2f sec ===&quot;, timestamp_sec);
-899     uint64_t audio_seek_start_ns = time_get_ns();
-900     double audio_pos_before = ffmpeg_decoder_get_position(source-&gt;audio_decoder);
-901     log_info(&quot;Audio position before seek: %.2f&quot;, audio_pos_before);
-902     asciichat_error_t audio_err = ffmpeg_decoder_seek_to_timestamp(source-&gt;audio_decoder, timestamp_sec);
-903     double audio_pos_after = ffmpeg_decoder_get_position(source-&gt;audio_decoder);
-904     uint64_t audio_seek_ns = time_elapsed_ns(audio_seek_start_ns, time_get_ns());
-905     log_info(&quot;Audio position after seek: %.2f&quot;, audio_pos_after);
-906     char audio_seek_str[32];
-907     time_pretty(audio_seek_ns, -1, audio_seek_str, sizeof(audio_seek_str));
-908     if (audio_err != ASCIICHAT_OK) {
-909       log_warn(&quot;Audio seek to %.2f failed: error code %d (took %s)&quot;, timestamp_sec, audio_err, audio_seek_str);
-910       result = audio_err;
-911     } else {
-912       log_info(&quot;Audio SEEK COMPLETE: %.2f &#x2192; %.2f sec (target %.2f, took %s)&quot;, audio_pos_before, audio_pos_after,
-913                timestamp_sec, audio_seek_str);
-914     }
-915   }
-916 
-917   // Prefetch thread automatically resumes when seeking_in_progress is cleared and signaled
-918 
-919   return result;
-920 }</pre>
+865   // STDIN: not supported
+866   if (source-&gt;type == MEDIA_SOURCE_STDIN) {
+867     SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;Cannot seek stdin&quot;);
+868     return ERROR_NOT_SUPPORTED;
+869   }
+870 
+871   asciichat_error_t result = ASCIICHAT_OK;
+872 
+873   // Clear audio playback buffer BEFORE seeking to prevent old audio from being queued
+874   // This ensures fresh audio starts playing immediately after seek completes
+875   if (source-&gt;audio_ctx) {
+876     audio_context_t *audio_ctx = (audio_context_t *)source-&gt;audio_ctx;
+877     if (audio_ctx-&gt;playback_buffer) {
+878       audio_ring_buffer_clear(audio_ctx-&gt;playback_buffer);
+879     }
+880   }
+881 
+882   // The seeking_in_progress flag in decoders blocks prefetch thread
+883   // seeking_in_progress coordinates with audio callback via condition variable
+884 
+885   uint64_t seek_start_ns = time_get_ns();
+886   if (source-&gt;video_decoder) {
+887     double video_pos_before = ffmpeg_decoder_get_position(source-&gt;video_decoder);
+888     asciichat_error_t video_err = ffmpeg_decoder_seek_to_timestamp(source-&gt;video_decoder, timestamp_sec);
+889     double video_pos_after = ffmpeg_decoder_get_position(source-&gt;video_decoder);
+890     uint64_t video_seek_ns = time_elapsed_ns(seek_start_ns, time_get_ns());
+891     char video_seek_str[32];
+892     time_pretty(video_seek_ns, -1, video_seek_str, sizeof(video_seek_str));
+893     if (video_err != ASCIICHAT_OK) {
+894       log_warn(&quot;Video seek to %.2f failed: error code %d (took %s)&quot;, timestamp_sec, video_err, video_seek_str);
+895       result = video_err;
+896     } else {
+897       log_info(&quot;Video SEEK: %.2f &#x2192; %.2f sec (target %.2f, took %s)&quot;, video_pos_before, video_pos_after, timestamp_sec,
+898                video_seek_str);
+899     }
+900   }
+901 
+902   // Seek audio decoder (if separate from video)
+903   if (source-&gt;audio_decoder &amp;&amp; !source-&gt;is_shared_decoder) {
+904     log_info(&quot;=== Starting audio seek to %.2f sec ===&quot;, timestamp_sec);
+905     uint64_t audio_seek_start_ns = time_get_ns();
+906     double audio_pos_before = ffmpeg_decoder_get_position(source-&gt;audio_decoder);
+907     log_info(&quot;Audio position before seek: %.2f&quot;, audio_pos_before);
+908     asciichat_error_t audio_err = ffmpeg_decoder_seek_to_timestamp(source-&gt;audio_decoder, timestamp_sec);
+909     double audio_pos_after = ffmpeg_decoder_get_position(source-&gt;audio_decoder);
+910     uint64_t audio_seek_ns = time_elapsed_ns(audio_seek_start_ns, time_get_ns());
+911     log_info(&quot;Audio position after seek: %.2f&quot;, audio_pos_after);
+912     char audio_seek_str[32];
+913     time_pretty(audio_seek_ns, -1, audio_seek_str, sizeof(audio_seek_str));
+914     if (audio_err != ASCIICHAT_OK) {
+915       log_warn(&quot;Audio seek to %.2f failed: error code %d (took %s)&quot;, timestamp_sec, audio_err, audio_seek_str);
+916       result = audio_err;
+917     } else {
+918       log_info(&quot;Audio SEEK COMPLETE: %.2f &#x2192; %.2f sec (target %.2f, took %s)&quot;, audio_pos_before, audio_pos_after,
+919                timestamp_sec, audio_seek_str);
+920     }
+921   }
+922 
+923   // Prefetch thread automatically resumes when seeking_in_progress is cleared and signaled
+924 
+925   return result;
+926 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>media_source_t::audio_ctx</b>,
@@ -3502,12 +3506,12 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <i>audio_ctx</i> Audio context pointer (opaque, may be NULL)</div>
 <p class="Pp">Associates an audio context with the media source. Used to clear
     playback buffers during seeking to prevent audio lag.</p>
-<p class="Pp">Definition at line <b>1033</b> of file <b>source.c</b>.</p>
-<pre>1033                                                                              {
-1034   if (source) {
-1035     source-&gt;audio_ctx = audio_ctx;
-1036   }
-1037 }</pre>
+<p class="Pp">Definition at line <b>1039</b> of file <b>source.c</b>.</p>
+<pre>1039                                                                              {
+1040   if (source) {
+1041     source-&gt;audio_ctx = audio_ctx;
+1042   }
+1043 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>media_source_t::audio_ctx</b>.</p>
@@ -3539,22 +3543,22 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Called automatically from session_capture_create (no need
   to call manually)</div>
-<p class="Pp">Definition at line <b>1039</b> of file <b>source.c</b>.</p>
-<pre>1039                                                                                                                    {
-1040   if (!source) {
-1041     return;
-1042   }
-1043 
-1044   // Set exit callback on video decoder if present
-1045   if (source-&gt;video_decoder) {
-1046     ffmpeg_decoder_set_exit_callback(source-&gt;video_decoder, should_exit_callback, user_data);
-1047   }
-1048 
-1049   // Set exit callback on audio decoder if present (only if different from video decoder)
-1050   if (source-&gt;audio_decoder &amp;&amp; source-&gt;audio_decoder != source-&gt;video_decoder) {
-1051     ffmpeg_decoder_set_exit_callback(source-&gt;audio_decoder, should_exit_callback, user_data);
-1052   }
-1053 }</pre>
+<p class="Pp">Definition at line <b>1045</b> of file <b>source.c</b>.</p>
+<pre>1045                                                                                                                    {
+1046   if (!source) {
+1047     return;
+1048   }
+1049 
+1050   // Set exit callback on video decoder if present
+1051   if (source-&gt;video_decoder) {
+1052     ffmpeg_decoder_set_exit_callback(source-&gt;video_decoder, should_exit_callback, user_data);
+1053   }
+1054 
+1055   // Set exit callback on audio decoder if present (only if different from video decoder)
+1056   if (source-&gt;audio_decoder &amp;&amp; source-&gt;audio_decoder != source-&gt;video_decoder) {
+1057     ffmpeg_decoder_set_exit_callback(source-&gt;audio_decoder, should_exit_callback, user_data);
+1058   }
+1059 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>media_source_t::audio_decoder</b>,
@@ -3588,18 +3592,18 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">Looping works for both video and audio streams</p>
 </div>
-<p class="Pp">Definition at line <b>754</b> of file <b>source.c</b>.</p>
-<pre>754                                                               {
-755   if (!source) {
-756     return;
-757   }
-758 
-759   source-&gt;loop_enabled = loop;
-760 
-761   if (loop &amp;&amp; source-&gt;type == MEDIA_SOURCE_STDIN) {
-762     log_warn(&quot;Loop mode not supported for stdin input (cannot seek)&quot;);
+<p class="Pp">Definition at line <b>760</b> of file <b>source.c</b>.</p>
+<pre>760                                                               {
+761   if (!source) {
+762     return;
 763   }
-764 }</pre>
+764 
+765   source-&gt;loop_enabled = loop;
+766 
+767   if (loop &amp;&amp; source-&gt;type == MEDIA_SOURCE_STDIN) {
+768     log_warn(&quot;Loop mode not supported for stdin input (cannot seek)&quot;);
+769   }
+770 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_warn</b>, <b>media_source_t::loop_enabled</b>,
@@ -3616,15 +3620,15 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <div class="Bd-indent"><i>source</i> Media source (must not be NULL)</div>
 <p class="Pp">Toggles between paused and playing states. If paused, resumes
     playback. If playing, pauses playback.</p>
-<p class="Pp">Definition at line <b>1024</b> of file <b>source.c</b>.</p>
-<pre>1024                                                        {
-1025   if (!source) {
-1026     return;
-1027   }
-1028   mutex_lock(&amp;source-&gt;pause_mutex);
-1029   source-&gt;is_paused = !source-&gt;is_paused;
-1030   mutex_unlock(&amp;source-&gt;pause_mutex);
-1031 }</pre>
+<p class="Pp">Definition at line <b>1030</b> of file <b>source.c</b>.</p>
+<pre>1030                                                        {
+1031   if (!source) {
+1032     return;
+1033   }
+1034   mutex_lock(&amp;source-&gt;pause_mutex);
+1035   source-&gt;is_paused = !source-&gt;is_paused;
+1036   mutex_unlock(&amp;source-&gt;pause_mutex);
+1037 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>media_source_t::is_paused</b>, <b>mutex_lock</b>,
@@ -3660,140 +3664,140 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <p class="Pp"></p>
 <p class="Pp">Thread-safe: Uses centralized cache with proper locking</p>
 </div>
-<p class="Pp">Definition at line <b>151</b> of file <b>yt_dlp.c</b>.</p>
-<pre>152                                                                 {
-153   if (!url || !output_url || output_size &lt; 256) {
-154     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for yt-dlp URL extraction&quot;);
-155     return ERROR_INVALID_PARAM;
-156   }
-157 
-158   // Check if yt-dlp is available
-159   if (!yt_dlp_is_available()) {
-160     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, &quot;yt-dlp is not installed. Please install it with: &quot;
-161                                             &quot;pip install yt-dlp (or: brew install yt-dlp on macOS)&quot;);
-162     return ERROR_YOUTUBE_EXTRACT_FAILED;
-163   }
-164 
-165   // Check if we have a cached extraction for this URL+options combination
-166   char cached_url[8192] = {0};
-167   if (yt_dlp_cache_get(url, yt_dlp_options, cached_url, sizeof(cached_url))) {
-168     if (cached_url[0] != '\0') {
-169       // Cached success - return the URL
-170       SAFE_STRNCPY(output_url, cached_url, output_size - 1);
-171       output_url[output_size - 1] = '\0';
-172       return ASCIICHAT_OK;
-173     } else {
-174       // Cached failure - return error without logging again
-175       return ERROR_YOUTUBE_EXTRACT_FAILED;
-176     }
-177   }
-178 
-179   // Build yt-dlp command
-180   char command[4096];
-181   const char *opts = yt_dlp_options ? yt_dlp_options : &quot;&quot;;
-182 
-183   int cmd_ret;
-184   if (opts[0] != '\0') {
-185     // User provided custom options
-186     cmd_ret = safe_snprintf(command, sizeof(command),
-187                             &quot;yt-dlp --quiet --no-warnings &quot;
-188                             &quot;--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) &quot;
-189                             &quot;AppleWebKit/537.36' &quot;
-190                             &quot;%s &quot;
-191                             &quot;-f 'b' -O '%%(url)s' '%s' 2&gt;&amp;1&quot;,
-192                             opts, url);
-193   } else {
-194     // No custom options, use default
-195     cmd_ret = safe_snprintf(command, sizeof(command),
-196                             &quot;yt-dlp --quiet --no-warnings &quot;
-197                             &quot;--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) &quot;
-198                             &quot;AppleWebKit/537.36' &quot;
-199                             &quot;-f 'b' -O '%%(url)s' '%s' 2&gt;&amp;1&quot;,
-200                             url);
-201   }
-202 
-203   if (cmd_ret &lt; 0 || cmd_ret &gt;= (int)sizeof(command)) {
-204     SET_ERRNO(ERROR_INVALID_PARAM, &quot;URL or yt-dlp options too long&quot;);
-205     return ERROR_INVALID_PARAM;
-206   }
-207 
-208   log_debug(&quot;Executing yt-dlp: %s&quot;, command);
-209 
-210   // Execute yt-dlp and capture output
-211   FILE *pipe = NULL;
-212   if (platform_popen(&quot;yt_dlp_extract&quot;, command, &quot;r&quot;, &amp;pipe) != ASCIICHAT_OK || !pipe) {
-213     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, &quot;Failed to execute yt-dlp subprocess&quot;);
-214     return ERROR_YOUTUBE_EXTRACT_FAILED;
-215   }
-216 
-217   // Read output looking for stream URL (should be last line starting with http)
-218   char url_buffer[8192] = {0};
-219   char full_output[16384] = {0};
-220   size_t ytdlp_output_len = 0;
-221   size_t url_size = 0;
-222   int c;
-223 
-224   while ((c = fgetc(pipe)) != EOF &amp;&amp; ytdlp_output_len &lt; sizeof(full_output) - 1) {
-225     full_output[ytdlp_output_len++] = (char)c;
-226 
-227     // Track current line - looking for http:// or https:// stream URL
-228     if ((url_size == 0 &amp;&amp; c == 'h') || (url_size &gt; 0 &amp;&amp; c != '\n' &amp;&amp; url_size &lt; sizeof(url_buffer) - 1)) {
-229       url_buffer[url_size++] = (char)c;
-230     } else if (c == '\n') {
-231       if (url_size &gt; 0) {
-232         url_buffer[url_size] = '\0';
-233         if (url_is_valid(url_buffer)) {
-234           break; // Found valid URL
-235         }
-236       }
-237       url_size = 0; // Reset for next line
-238     }
-239   }
-240   full_output[ytdlp_output_len] = '\0';
-241   url_buffer[url_size] = '\0';
-242 
-243   int pclose_ret = (platform_pclose(&amp;pipe) == ASCIICHAT_OK) ? 0 : -1;
-244   if (pclose_ret != 0) {
-245     yt_dlp_cache_set(url, yt_dlp_options, NULL); // Cache failure
-246 
-247     log_debug(&quot;yt-dlp exited with code %d&quot;, pclose_ret);
-248     if (ytdlp_output_len &gt; 0) {
-249       log_error(&quot;yt-dlp output:\n%s&quot;, full_output);
-250       SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, &quot;yt-dlp failed to extract stream: %s&quot;, full_output);
-251     } else {
-252       SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, &quot;yt-dlp failed to extract stream&quot;);
-253     }
-254     return ERROR_YOUTUBE_EXTRACT_FAILED;
-255   }
-256 
-257   if (url_size == 0 || (url_size == 2 &amp;&amp; strncmp(url_buffer, &quot;NA&quot;, 2) == 0)) {
-258     yt_dlp_cache_set(url, yt_dlp_options, NULL);
-259     log_error(&quot;yt-dlp returned empty output for URL: %s&quot;, url);
-260     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, &quot;yt-dlp returned no playable formats&quot;);
-261     return ERROR_YOUTUBE_EXTRACT_FAILED;
-262   }
-263 
-264   if (url_buffer[0] != 'h' || strncmp(url_buffer, &quot;http&quot;, 4) != 0) {
-265     yt_dlp_cache_set(url, yt_dlp_options, NULL);
-266     log_error(&quot;Invalid URL from yt-dlp: %s (full output: %s)&quot;, url_buffer, full_output);
-267     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, &quot;yt-dlp returned invalid URL&quot;);
-268     return ERROR_YOUTUBE_EXTRACT_FAILED;
-269   }
-270 
-271   if (url_size &gt;= output_size) {
-272     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Stream URL too long for output buffer (%zu bytes, max %zu)&quot;, url_size, output_size);
-273     return ERROR_INVALID_PARAM;
-274   }
-275 
-276   SAFE_STRNCPY(output_url, url_buffer, output_size - 1);
-277   output_url[output_size - 1] = '\0';
-278 
-279   // Cache successful result
-280   yt_dlp_cache_set(url, yt_dlp_options, output_url);
-281 
-282   log_debug(&quot;yt-dlp successfully extracted stream URL (%zu bytes)&quot;, url_size);
-283   return ASCIICHAT_OK;
-284 }</pre>
+<p class="Pp">Definition at line <b>152</b> of file <b>yt_dlp.c</b>.</p>
+<pre>153                                                                 {
+154   if (!url || !output_url || output_size &lt; 256) {
+155     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for yt-dlp URL extraction&quot;);
+156     return ERROR_INVALID_PARAM;
+157   }
+158 
+159   // Check if yt-dlp is available
+160   if (!yt_dlp_is_available()) {
+161     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, &quot;yt-dlp is not installed. Please install it with: &quot;
+162                                             &quot;pip install yt-dlp (or: brew install yt-dlp on macOS)&quot;);
+163     return ERROR_YOUTUBE_EXTRACT_FAILED;
+164   }
+165 
+166   // Check if we have a cached extraction for this URL+options combination
+167   char cached_url[8192] = {0};
+168   if (yt_dlp_cache_get(url, yt_dlp_options, cached_url, sizeof(cached_url))) {
+169     if (cached_url[0] != '\0') {
+170       // Cached success - return the URL
+171       SAFE_STRNCPY(output_url, cached_url, output_size - 1);
+172       output_url[output_size - 1] = '\0';
+173       return ASCIICHAT_OK;
+174     } else {
+175       // Cached failure - return error without logging again
+176       return ERROR_YOUTUBE_EXTRACT_FAILED;
+177     }
+178   }
+179 
+180   // Build yt-dlp command
+181   char command[4096];
+182   const char *opts = yt_dlp_options ? yt_dlp_options : &quot;&quot;;
+183 
+184   int cmd_ret;
+185   if (opts[0] != '\0') {
+186     // User provided custom options
+187     cmd_ret = safe_snprintf(command, sizeof(command),
+188                             &quot;yt-dlp --quiet --no-warnings &quot;
+189                             &quot;--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) &quot;
+190                             &quot;AppleWebKit/537.36' &quot;
+191                             &quot;%s &quot;
+192                             &quot;-f 'b' -O '%%(url)s' '%s' 2&gt;&amp;1&quot;,
+193                             opts, url);
+194   } else {
+195     // No custom options, use default
+196     cmd_ret = safe_snprintf(command, sizeof(command),
+197                             &quot;yt-dlp --quiet --no-warnings &quot;
+198                             &quot;--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) &quot;
+199                             &quot;AppleWebKit/537.36' &quot;
+200                             &quot;-f 'b' -O '%%(url)s' '%s' 2&gt;&amp;1&quot;,
+201                             url);
+202   }
+203 
+204   if (cmd_ret &lt; 0 || cmd_ret &gt;= (int)sizeof(command)) {
+205     SET_ERRNO(ERROR_INVALID_PARAM, &quot;URL or yt-dlp options too long&quot;);
+206     return ERROR_INVALID_PARAM;
+207   }
+208 
+209   log_debug(&quot;Executing yt-dlp: %s&quot;, command);
+210 
+211   // Execute yt-dlp and capture output
+212   FILE *pipe = NULL;
+213   if (platform_popen(&quot;yt_dlp_extract&quot;, command, &quot;r&quot;, &amp;pipe) != ASCIICHAT_OK || !pipe) {
+214     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, &quot;Failed to execute yt-dlp subprocess&quot;);
+215     return ERROR_YOUTUBE_EXTRACT_FAILED;
+216   }
+217 
+218   // Read output looking for stream URL (should be last line starting with http)
+219   char url_buffer[8192] = {0};
+220   char full_output[16384] = {0};
+221   size_t ytdlp_output_len = 0;
+222   size_t url_size = 0;
+223   int c;
+224 
+225   while ((c = fgetc(pipe)) != EOF &amp;&amp; ytdlp_output_len &lt; sizeof(full_output) - 1) {
+226     full_output[ytdlp_output_len++] = (char)c;
+227 
+228     // Track current line - looking for http:// or https:// stream URL
+229     if ((url_size == 0 &amp;&amp; c == 'h') || (url_size &gt; 0 &amp;&amp; c != '\n' &amp;&amp; url_size &lt; sizeof(url_buffer) - 1)) {
+230       url_buffer[url_size++] = (char)c;
+231     } else if (c == '\n') {
+232       if (url_size &gt; 0) {
+233         url_buffer[url_size] = '\0';
+234         if (url_is_valid(url_buffer)) {
+235           break; // Found valid URL
+236         }
+237       }
+238       url_size = 0; // Reset for next line
+239     }
+240   }
+241   full_output[ytdlp_output_len] = '\0';
+242   url_buffer[url_size] = '\0';
+243 
+244   int pclose_ret = (platform_pclose(&amp;pipe) == ASCIICHAT_OK) ? 0 : -1;
+245   if (pclose_ret != 0) {
+246     yt_dlp_cache_set(url, yt_dlp_options, NULL); // Cache failure
+247 
+248     log_debug(&quot;yt-dlp exited with code %d&quot;, pclose_ret);
+249     if (ytdlp_output_len &gt; 0) {
+250       log_error(&quot;yt-dlp output:\n%s&quot;, full_output);
+251       SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, &quot;yt-dlp failed to extract stream: %s&quot;, full_output);
+252     } else {
+253       SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, &quot;yt-dlp failed to extract stream&quot;);
+254     }
+255     return ERROR_YOUTUBE_EXTRACT_FAILED;
+256   }
+257 
+258   if (url_size == 0 || (url_size == 2 &amp;&amp; strncmp(url_buffer, &quot;NA&quot;, 2) == 0)) {
+259     yt_dlp_cache_set(url, yt_dlp_options, NULL);
+260     log_error(&quot;yt-dlp returned empty output for URL: %s&quot;, url);
+261     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, &quot;yt-dlp returned no playable formats&quot;);
+262     return ERROR_YOUTUBE_EXTRACT_FAILED;
+263   }
+264 
+265   if (url_buffer[0] != 'h' || strncmp(url_buffer, &quot;http&quot;, 4) != 0) {
+266     yt_dlp_cache_set(url, yt_dlp_options, NULL);
+267     log_error(&quot;Invalid URL from yt-dlp: %s (full output: %s)&quot;, url_buffer, full_output);
+268     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, &quot;yt-dlp returned invalid URL&quot;);
+269     return ERROR_YOUTUBE_EXTRACT_FAILED;
+270   }
+271 
+272   if (url_size &gt;= output_size) {
+273     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Stream URL too long for output buffer (%zu bytes, max %zu)&quot;, url_size, output_size);
+274     return ERROR_INVALID_PARAM;
+275   }
+276 
+277   SAFE_STRNCPY(output_url, url_buffer, output_size - 1);
+278   output_url[output_size - 1] = '\0';
+279 
+280   // Cache successful result
+281   yt_dlp_cache_set(url, yt_dlp_options, output_url);
+282 
+283   log_debug(&quot;yt-dlp successfully extracted stream URL (%zu bytes)&quot;, url_size);
+284   return ASCIICHAT_OK;
+285 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -3815,15 +3819,17 @@ ffmpeg -i input.avi -f matroska - | ascii-chat client --file -
 <div class="Bd-indent">Thread-safe: No static state</div>
 <p class="Pp">Definition at line <b>143</b> of file <b>yt_dlp.c</b>.</p>
 <pre>143                                {
-144   int ret = 0;
-145   LOG_IO(&quot;yt-dlp&quot;, {
-146     ret = system(&quot;yt-dlp --version &gt;/dev/null 2&gt;&amp;1&quot;);
-147   });
-148   return (ret == 0);
-149 }</pre>
+144   const char *argv[] = {&quot;yt-dlp&quot;, &quot;--version&quot;, NULL};
+145   int ret = 0;
+146   LOG_IO(&quot;yt-dlp&quot;, {
+147     ret = platform_execute_subprocess(&quot;yt-dlp&quot;, argv, NULL, 0);
+148   });
+149   return (ret == 0);
+150 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>LOG_IO</b>.</p>
+<p class="Pp">References <b>LOG_IO</b>, and
+    <b>platform_execute_subprocess()</b>.</p>
 <p class="Pp">Referenced by <b>yt_dlp_extract_stream_url()</b>.</p>
 </section>
 </section>

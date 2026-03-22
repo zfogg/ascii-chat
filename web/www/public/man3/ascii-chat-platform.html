@@ -1108,8 +1108,12 @@
     <b>platform_load_system_ca_certs</b> (char **pem_data_out, size_t
     *pem_size_out)
   <br/>
-  Load system CA certificates for TLS/HTTPS. size_t <b>platform_write_all</b>
-    (int fd, const void *buf, size_t count)
+  Load system CA certificates for TLS/HTTPS. int
+    <b>platform_execute_subprocess</b> (const char *executable, const char
+    **argv, char *output_buffer, size_t output_size)
+  <br/>
+  Execute a subprocess and optionally capture its output. size_t
+    <b>platform_write_all</b> (int fd, const void *buf, size_t count)
   <br/>
   Write all bytes to a file descriptor, handling partial writes. int
     <b>get_binary_file_address_offsets</b> (const void *addr,
@@ -3200,8 +3204,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 </div>
 <p class="Pp">Definition at line <b>686</b> of file <b>abstraction.h</b>.</p>
 <p class="Pp">Referenced by <b>check_gpg_key_expiry()</b>,
-    <b>gpg_get_public_key()</b>, <b>gpg_sign_with_key()</b>, and
-    <b>parse_gpg_keys_from_response()</b>.</p>
+    <b>gpg_get_public_key()</b>, and <b>parse_gpg_keys_from_response()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_PLATFORM_THREAD_LOCAL_____thread"><a class="permalink" href="#_define_PLATFORM_THREAD_LOCAL_____thread">#define
@@ -5941,6 +5944,69 @@ platform_escape_shell_path(&quot;/path/to/file.txt&quot;, escaped, sizeof(escape
 // POSIX: '/path/to/file.txt'
 </pre>
 </div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_platform_execute_subprocess_(const_char_*_executable,_const_char_**_argv,_char_*_output_buffer,_size_t_output_size)"><a class="permalink" href="#int_platform_execute_subprocess_(const_char_*_executable,_const_char_**_argv,_char_*_output_buffer,_size_t_output_size)">int
+  platform_execute_subprocess (const char * executable, const char ** argv, char
+  * output_buffer, size_t output_size)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/platform/system.h</b>&gt;<b></b></p>
+<p class="Pp">Execute a subprocess and optionally capture its output.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>executable</i> Path to executable to run (e.g.,
+  &quot;gpg&quot;, &quot;/usr/bin/yt-dlp&quot;)
+<br/>
+<i>argv</i> NULL-terminated array of arguments (argv[0] should be executable
+  name or path)
+<br/>
+<i>output_buffer</i> Optional buffer to store captured stdout (NULL to skip
+  output capture)
+<br/>
+<i>output_size</i> Size of output buffer (ignored if output_buffer is
+  NULL)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Exit code of the process, or -1 on error</div>
+<p class="Pp">Executes a subprocess using platform-specific mechanisms:</p>
+<ul class="Bl-bullet">
+  <li>POSIX: fork() + execvp() (no output), or popen() (with output)</li>
+  <li>Windows: CreateProcess() (no output), or piped output capture (with
+      output)</li>
+</ul>
+<p class="Pp">If output_buffer is NULL or output_size is 0, stdout and stderr
+    are inherited from the parent process. Otherwise, stdout is captured into
+    output_buffer.</p>
+<p class="Pp"></p>
+<p class="Pp">Usage examples:</p>
+<p class="Pp"></p>
+<pre>// No output capture
+const char *argv[] = {&quot;gpg&quot;, &quot;--version&quot;, NULL};
+int exit_code = platform_execute_subprocess(&quot;gpg&quot;, argv, NULL, 0);
+// With output capture
+char output[1024];
+const char *argv[] = {&quot;gpg&quot;, &quot;--list-secret-keys&quot;, &quot;--with-colons&quot;, NULL};
+int exit_code = platform_execute_subprocess(&quot;gpg&quot;, argv, output, sizeof(output));
+if (exit_code == 0) {
+<br/>
+    // Parse output (null-terminated)
+}
+</pre>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">When output_buffer is NULL: stdout and stderr inherited,
+  fast fork+exec
+<p class="Pp"></p>
+<p class="Pp">When output_buffer is provided: stdout captured, stderr
+  inherited</p>
+<p class="Pp"></p>
+<p class="Pp">Output is always null-terminated when captured</p>
+<p class="Pp"></p>
+<p class="Pp">Returns -1 if output_buffer is provided but too small for
+  output</p>
+<p class="Pp"></p>
+<p class="Pp">More secure than system() as it doesn't invoke a shell</p>
+</div>
+<p class="Pp">Referenced by <b>gpg_sign_with_key()</b>,
+    <b>update_check_get_upgrade_suggestion()</b>, and
+    <b>yt_dlp_is_available()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="FILE_*_platform_fdopen_(const_char_*_name,_int_fd,_const_char_*_mode)"><a class="permalink" href="#FILE_*_platform_fdopen_(const_char_*_name,_int_fd,_const_char_*_mode)">FILE
@@ -9441,9 +9507,9 @@ platform_stderr_restore(handle);        // stderr restored
     <b>get_known_hosts_path()</b>, <b>get_log_dir()</b>,
     <b>get_manpage_template()</b>, <b>gpg_agent_sign()</b>,
     <b>gpg_get_public_key()</b>, <b>gpg_sign_detached_ed25519()</b>,
-    <b>gpg_sign_with_key()</b>, <b>gpg_verify_detached_ed25519()</b>,
-    <b>gpg_verify_signature()</b>, <b>gpg_verify_signature_with_binary()</b>,
-    <b>https_get()</b>, <b>ice_format_candidate()</b>, <b>log_mmap_write()</b>,
+    <b>gpg_verify_detached_ed25519()</b>, <b>gpg_verify_signature()</b>,
+    <b>gpg_verify_signature_with_binary()</b>, <b>https_get()</b>,
+    <b>ice_format_candidate()</b>, <b>log_mmap_write()</b>,
     <b>log_recolor_plain_entry()</b>, <b>log_template_apply()</b>,
     <b>manpage_content_generate_environment()</b>,
     <b>manpage_content_generate_environment_with_manual()</b>,
@@ -12110,16 +12176,23 @@ while (total_sent &lt; len) {
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/windows_errno.h</b>&gt;<b></b></p>
 <p class="Pp">Referenced by <b>acds_identity_load()</b>, <b>acds_main()</b>,
-    <b>acip_tcp_transport_create()</b>, <b>add_client()</b>,
+    <b>acip_tcp_transport_create()</b>,
+    <b>acip_websocket_client_transport_create()</b>, <b>add_client()</b>,
     <b>asciichat_pcre2_extract_group_ulong()</b>, <b>connect_with_timeout()</b>,
     <b>file_read_error_message()</b>, <b>file_write_error_message()</b>,
     <b>gpg_sign_with_key()</b>, <b>gpg_verify_signature_with_binary()</b>,
-    <b>packet_send()</b>, <b>parse_long()</b>, <b>parse_ulong()</b>,
-    <b>parse_ulonglong()</b>, <b>platform_get_executable_path()</b>,
-    <b>platform_write_all()</b>, <b>query_init()</b>,
-    <b>recv_with_timeout()</b>, <b>safe_parse_audio_message()</b>,
-    <b>safe_parse_size_message()</b>, <b>send_with_timeout()</b>,
-    <b>version_parse()</b>, and <b>websocket_server_init()</b>.</p>
+    <b>media_source_create()</b>,
+    <b>options_config_print_options_sections_with_width()</b>,
+    <b>options_config_print_usage()</b>,
+    <b>options_config_print_usage_section()</b>,
+    <b>options_print_help_for_mode()</b>, <b>packet_send()</b>,
+    <b>parse_long()</b>, <b>parse_ulong()</b>, <b>parse_ulonglong()</b>,
+    <b>platform_get_executable_path()</b>, <b>platform_write_all()</b>,
+    <b>query_init()</b>, <b>recv_with_timeout()</b>,
+    <b>safe_parse_audio_message()</b>, <b>safe_parse_size_message()</b>,
+    <b>send_with_timeout()</b>, <b>terminal_screen_render()</b>,
+    <b>update_check_load_cache()</b>, <b>version_parse()</b>, and
+    <b>websocket_server_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="pthread_rwlock_t_rwlock_t::impl"><a class="permalink" href="#pthread_rwlock_t_rwlock_t::impl">pthread_rwlock_t

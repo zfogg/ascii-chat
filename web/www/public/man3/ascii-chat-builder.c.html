@@ -2846,86 +2846,103 @@ options_builder_set_input_type(builder, &quot;compression-level&quot;, OPTION_IN
 1859 
 1860     if (!is_set) {
 1861       if (error_message) {
-1862         if (desc-&gt;env_var_name) {
-1863           asprintf(error_message, &quot;Required option --%s is not set (set %s env var or use --%s)&quot;, desc-&gt;long_name,
-1864                    desc-&gt;env_var_name, desc-&gt;long_name);
-1865         } else {
-1866           asprintf(error_message, &quot;Required option --%s is not set&quot;, desc-&gt;long_name);
-1867         }
-1868       }
-1869       return ERROR_USAGE;
-1870     }
-1871   }
-1872 
-1873   // Check dependencies
-1874   for (size_t i = 0; i &lt; config-&gt;num_dependencies; i++) {
-1875     const option_dependency_t *dep = &amp;config-&gt;dependencies[i];
-1876 
-1877     bool option_is_set = is_option_set(config, options_struct, dep-&gt;option_name);
-1878     bool depends_is_set = is_option_set(config, options_struct, dep-&gt;depends_on);
-1879 
-1880     switch (dep-&gt;type) {
-1881     case DEPENDENCY_REQUIRES:
-1882       if (option_is_set &amp;&amp; !depends_is_set) {
-1883         if (error_message) {
-1884           if (dep-&gt;error_message) {
-1885             *error_message = platform_strdup(dep-&gt;error_message);
-1886           } else {
-1887             asprintf(error_message, &quot;Option --%s requires --%s to be set&quot;, dep-&gt;option_name, dep-&gt;depends_on);
-1888           }
-1889         }
-1890         return ERROR_USAGE;
-1891       }
-1892       break;
-1893 
-1894     case DEPENDENCY_CONFLICTS:
-1895       if (option_is_set &amp;&amp; depends_is_set) {
-1896         if (error_message) {
-1897           if (dep-&gt;error_message) {
-1898             *error_message = platform_strdup(dep-&gt;error_message);
-1899           } else {
-1900             asprintf(error_message, &quot;Option --%s conflicts with --%s&quot;, dep-&gt;option_name, dep-&gt;depends_on);
-1901           }
-1902         }
-1903         return ERROR_USAGE;
-1904       }
-1905       break;
-1906 
-1907     case DEPENDENCY_IMPLIES:
-1908       // Implies is handled during parsing, not validation
-1909       break;
-1910     }
-1911   }
-1912 
-1913   // Run custom validators
-1914   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
-1915     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
-1916     if (!desc-&gt;validate)
-1917       continue;
-1918 
-1919     char *custom_error = NULL;
-1920     if (!desc-&gt;validate(options_struct, &amp;custom_error)) {
-1921       if (error_message) {
-1922         *error_message = custom_error;
-1923       } else {
-1924         free(custom_error);
-1925       }
-1926       return ERROR_USAGE;
-1927     }
-1928   }
-1929 
-1930   // Cross-field validation: Check for conflicting color options
-1931   // Cannot use --color with --color-mode none
-1932   const options_t *opts = (const options_t *)options_struct;
-1933   if (opts-&gt;color &amp;&amp; opts-&gt;color_mode == TERM_COLOR_NONE) {
-1934     if (error_message) {
-1935       asprintf(error_message, &quot;Option --color cannot be used with --color-mode=none (conflicting color settings)&quot;);
-1936     }
-1937     return ERROR_USAGE;
-1938   }
-1939 
-1940   return ASCIICHAT_OK;
-1941 }</pre>
+1862         int asprintf_result;
+1863         if (desc-&gt;env_var_name) {
+1864           asprintf_result = asprintf(error_message, &quot;Required option --%s is not set (set %s env var or use --%s)&quot;, desc-&gt;long_name,
+1865                                      desc-&gt;env_var_name, desc-&gt;long_name);
+1866         } else {
+1867           asprintf_result = asprintf(error_message, &quot;Required option --%s is not set&quot;, desc-&gt;long_name);
+1868         }
+1869         if (asprintf_result &lt; 0) {
+1870           log_error(&quot;Failed to format error message for missing required option --%s&quot;, desc-&gt;long_name);
+1871           *error_message = NULL;
+1872         }
+1873       }
+1874       return ERROR_USAGE;
+1875     }
+1876   }
+1877 
+1878   // Check dependencies
+1879   for (size_t i = 0; i &lt; config-&gt;num_dependencies; i++) {
+1880     const option_dependency_t *dep = &amp;config-&gt;dependencies[i];
+1881 
+1882     bool option_is_set = is_option_set(config, options_struct, dep-&gt;option_name);
+1883     bool depends_is_set = is_option_set(config, options_struct, dep-&gt;depends_on);
+1884 
+1885     switch (dep-&gt;type) {
+1886     case DEPENDENCY_REQUIRES:
+1887       if (option_is_set &amp;&amp; !depends_is_set) {
+1888         if (error_message) {
+1889           if (dep-&gt;error_message) {
+1890             *error_message = platform_strdup(dep-&gt;error_message);
+1891           } else {
+1892             int asprintf_result = asprintf(error_message, &quot;Option --%s requires --%s to be set&quot;, dep-&gt;option_name, dep-&gt;depends_on);
+1893             if (asprintf_result &lt; 0) {
+1894               log_error(&quot;Failed to format error message for option dependency: --%s requires --%s&quot;, dep-&gt;option_name, dep-&gt;depends_on);
+1895               *error_message = NULL;
+1896             }
+1897           }
+1898         }
+1899         return ERROR_USAGE;
+1900       }
+1901       break;
+1902 
+1903     case DEPENDENCY_CONFLICTS:
+1904       if (option_is_set &amp;&amp; depends_is_set) {
+1905         if (error_message) {
+1906           if (dep-&gt;error_message) {
+1907             *error_message = platform_strdup(dep-&gt;error_message);
+1908           } else {
+1909             int asprintf_result = asprintf(error_message, &quot;Option --%s conflicts with --%s&quot;, dep-&gt;option_name, dep-&gt;depends_on);
+1910             if (asprintf_result &lt; 0) {
+1911               log_error(&quot;Failed to format error message for option conflict: --%s conflicts with --%s&quot;, dep-&gt;option_name, dep-&gt;depends_on);
+1912               *error_message = NULL;
+1913             }
+1914           }
+1915         }
+1916         return ERROR_USAGE;
+1917       }
+1918       break;
+1919 
+1920     case DEPENDENCY_IMPLIES:
+1921       // Implies is handled during parsing, not validation
+1922       break;
+1923     }
+1924   }
+1925 
+1926   // Run custom validators
+1927   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+1928     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+1929     if (!desc-&gt;validate)
+1930       continue;
+1931 
+1932     char *custom_error = NULL;
+1933     if (!desc-&gt;validate(options_struct, &amp;custom_error)) {
+1934       if (error_message) {
+1935         *error_message = custom_error;
+1936       } else {
+1937         free(custom_error);
+1938       }
+1939       return ERROR_USAGE;
+1940     }
+1941   }
+1942 
+1943   // Cross-field validation: Check for conflicting color options
+1944   // Cannot use --color with --color-mode none
+1945   const options_t *opts = (const options_t *)options_struct;
+1946   if (opts-&gt;color &amp;&amp; opts-&gt;color_mode == TERM_COLOR_NONE) {
+1947     if (error_message) {
+1948       int asprintf_result = asprintf(error_message, &quot;Option --color cannot be used with --color-mode=none (conflicting color settings)&quot;);
+1949       if (asprintf_result &lt; 0) {
+1950         log_error(&quot;Failed to format error message for color option conflict&quot;);
+1951         *error_message = NULL;
+1952       }
+1953     }
+1954     return ERROR_USAGE;
+1955   }
+1956 
+1957   return ASCIICHAT_OK;
+1958 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asprintf</b>,
@@ -2937,7 +2954,7 @@ options_builder_set_input_type(builder, &quot;compression-level&quot;, OPTION_IN
     <b>option_descriptor_t::env_var_name</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>option_dependency_t::error_message</b>, <b>ERROR_USAGE</b>,
     <b>g_builder_handlers</b>, <b>is_option_set()</b>, <b>is_set</b>,
-    <b>option_descriptor_t::long_name</b>,
+    <b>log_error</b>, <b>option_descriptor_t::long_name</b>,
     <b>options_config_t::num_dependencies</b>,
     <b>options_config_t::num_descriptors</b>, <b>NUM_OPTION_TYPES</b>,
     <b>option_descriptor_t::offset</b>, <b>option_dependency_t::option_name</b>,

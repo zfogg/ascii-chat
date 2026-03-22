@@ -855,23 +855,30 @@
     <b>gpg_homedir_create()</b>, <b>gpg_sign_detached_ed25519()</b>,
     <b>gpg_sign_with_key()</b>, <b>gpg_verify_detached_ed25519()</b>,
     <b>gpg_verify_signature()</b>, <b>gpg_verify_signature_with_binary()</b>,
-    <b>grep_init()</b>, <b>h265_encode()</b>, <b>h265_encoder_flush()</b>,
+    <b>grep_init()</b>, <b>h265_client_init_media_source()</b>,
+    <b>h265_encode()</b>, <b>h265_encoder_flush()</b>,
     <b>handle_audio_batch_packet()</b>, <b>handle_audio_opus_batch_packet()</b>,
     <b>handle_audio_opus_packet()</b>, <b>handle_audio_packet()</b>,
     <b>handle_image_frame_h265_packet()</b>, <b>handle_image_frame_packet()</b>,
     <b>handle_stream_start_packet()</b>, <b>https_get()</b>,
     <b>is_session_string()</b>, <b>is_valid_ipv4()</b>,
     <b>keepalive_start_thread()</b>, <b>keyboard_help_render()</b>,
-    <b>log_search_exit_mode()</b>, <b>log_set_format()</b>, <b>main()</b>,
-    <b>media_source_create()</b>, <b>memory_backend_create()</b>,
-    <b>mirror_convert_frame()</b>, <b>mirror_main()</b>,
+    <b>log_named_format_or_original()</b>, <b>log_search_exit_mode()</b>,
+    <b>log_set_format()</b>, <b>main()</b>, <b>media_source_create()</b>,
+    <b>memory_backend_create()</b>, <b>mirror_convert_frame()</b>,
+    <b>mirror_main()</b>, <b>mixer_add_source()</b>,
     <b>mutex_stack_detect_deadlocks()</b>, <b>negotiate_start_detection()</b>,
     <b>options_builder_add_double()</b>,
     <b>options_builder_add_double_with_metadata()</b>,
     <b>options_builder_add_int()</b>,
     <b>options_builder_add_int_with_metadata()</b>,
     <b>options_builder_add_string()</b>, <b>options_collect_identity_keys()</b>,
-    <b>options_config_parse_positional()</b>, <b>options_init()</b>,
+    <b>options_config_parse_positional()</b>,
+    <b>options_config_print_options_sections_with_width()</b>,
+    <b>options_config_print_usage()</b>,
+    <b>options_config_print_usage_section()</b>,
+    <b>options_config_validate()</b>, <b>options_init()</b>,
+    <b>options_print_help_for_mode()</b>,
     <b>packet_decode_frame_data_malloc()</b>, <b>packet_parse_opus_batch()</b>,
     <b>packet_send_via_transport()</b>, <b>parse_color_mode_option()</b>,
     <b>parse_log_level_option()</b>, <b>parse_palette_chars_option()</b>,
@@ -896,9 +903,11 @@
     <b>sqlite_backend_create()</b>, <b>stop_client_render_threads()</b>,
     <b>symbol_cache_resolve_batch()</b>, <b>tcp_client_connect()</b>,
     <b>tcp_client_create()</b>, <b>tcp_server_run()</b>,
-    <b>term_renderer_feed()</b>, <b>thread_pool_create_with_workers()</b>,
+    <b>term_renderer_feed()</b>, <b>terminal_screen_render()</b>,
+    <b>thread_pool_create_with_workers()</b>,
     <b>threaded_send_image_frame_h265()</b>,
     <b>time_format_is_valid_strftime()</b>, <b>time_format_now()</b>,
+    <b>truncate_utf8_with_ellipsis()</b>, <b>update_check_load_cache()</b>,
     <b>update_check_perform()</b>, <b>validate_fps_opt()</b>,
     <b>validate_options_and_report()</b>, <b>validate_port_opt()</b>,
     <b>validate_positive_int_opt()</b>, <b>validate_ssh_key_file()</b>,
@@ -1810,82 +1819,82 @@
   <li>&quot;splash_anim.0&quot; in blue</li>
   <li>&quot;0x7f123456&quot; in grey</li>
 </ul>
-<p class="Pp">Definition at line <b>797</b> of file <b>log/named.c</b>.</p>
-<pre>797                                                         {
-798 #define COLORIZE_BUFFERS 4
-799 #define COLORIZE_BUFFER_SIZE 512
-800   static char buffers[COLORIZE_BUFFERS][COLORIZE_BUFFER_SIZE];
-801   static int buffer_idx = 0;
-802 
-803   if (!name_str || name_str[0] == '\0') {
-804     return name_str;
-805   }
+<p class="Pp">Definition at line <b>801</b> of file <b>log/named.c</b>.</p>
+<pre>801                                                         {
+802 #define COLORIZE_BUFFERS 4
+803 #define COLORIZE_BUFFER_SIZE 512
+804   static char buffers[COLORIZE_BUFFERS][COLORIZE_BUFFER_SIZE];
+805   static int buffer_idx = 0;
 806 
-807   char *current_buf = buffers[buffer_idx];
-808   buffer_idx = (buffer_idx + 1) % COLORIZE_BUFFERS;
-809 
-810   /* Find the slash separator (type/name) */
-811   const char *slash = strchr(name_str, '/');
-812   if (!slash) {
-813     /* No slash found - just return the string as-is */
-814     return name_str;
-815   }
-816 
-817   /* Find opening paren for address */
-818   const char *paren = strchr(name_str, '(');
-819 
-820   /* Extract type (before slash) */
-821   size_t type_len = slash - name_str;
-822   char type_buf[256];
-823   strncpy(type_buf, name_str, type_len &lt; sizeof(type_buf) - 1 ? type_len : sizeof(type_buf) - 1);
-824   type_buf[type_len] = '\0';
-825 
-826   /* Extract name (between slash and paren, or end of string) */
-827   const char *name_start = slash + 1;
-828   size_t name_len;
-829   if (paren &amp;&amp; paren &gt; slash) {
-830     /* Skip spaces before paren */
-831     const char *name_end = paren - 1;
-832     while (name_end &gt; name_start &amp;&amp; *name_end == ' ') {
-833       name_end--;
-834     }
-835     name_len = name_end - name_start + 1;
-836   } else {
-837     name_len = strlen(name_start);
-838   }
-839 
-840   char name_buf[256];
-841   strncpy(name_buf, name_start, name_len &lt; sizeof(name_buf) - 1 ? name_len : sizeof(name_buf) - 1);
-842   name_buf[name_len] = '\0';
+807   if (!name_str || name_str[0] == '\0') {
+808     return name_str;
+809   }
+810 
+811   char *current_buf = buffers[buffer_idx];
+812   buffer_idx = (buffer_idx + 1) % COLORIZE_BUFFERS;
+813 
+814   /* Find the slash separator (type/name) */
+815   const char *slash = strchr(name_str, '/');
+816   if (!slash) {
+817     /* No slash found - just return the string as-is */
+818     return name_str;
+819   }
+820 
+821   /* Find opening paren for address */
+822   const char *paren = strchr(name_str, '(');
+823 
+824   /* Extract type (before slash) */
+825   size_t type_len = slash - name_str;
+826   char type_buf[256];
+827   strncpy(type_buf, name_str, type_len &lt; sizeof(type_buf) - 1 ? type_len : sizeof(type_buf) - 1);
+828   type_buf[type_len] = '\0';
+829 
+830   /* Extract name (between slash and paren, or end of string) */
+831   const char *name_start = slash + 1;
+832   size_t name_len;
+833   if (paren &amp;&amp; paren &gt; slash) {
+834     /* Skip spaces before paren */
+835     const char *name_end = paren - 1;
+836     while (name_end &gt; name_start &amp;&amp; *name_end == ' ') {
+837       name_end--;
+838     }
+839     name_len = name_end - name_start + 1;
+840   } else {
+841     name_len = strlen(name_start);
+842   }
 843 
-844   /* Apply colors */
-845   const char *type_colored = colored_string(LOG_COLOR_WARN, type_buf);
-846   const char *name_colored = colored_string(LOG_COLOR_DEV, name_buf);
+844   char name_buf[256];
+845   strncpy(name_buf, name_start, name_len &lt; sizeof(name_buf) - 1 ? name_len : sizeof(name_buf) - 1);
+846   name_buf[name_len] = '\0';
 847 
-848   /* Format: type(yellow)/name(blue) and add address part if present */
-849   if (paren) {
-850     /* Extract address (0x...) from parentheses */
-851     const char *addr_start = paren + 1;
-852     const char *addr_end = strchr(addr_start, ')');
-853     if (addr_end) {
-854       size_t addr_len = addr_end - addr_start;
-855       char addr_buf[128];
-856       strncpy(addr_buf, addr_start, addr_len &lt; sizeof(addr_buf) - 1 ? addr_len : sizeof(addr_buf) - 1);
-857       addr_buf[addr_len] = '\0';
-858 
-859       const char *addr_colored = colored_string(LOG_COLOR_GREY, addr_buf);
-860       safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s (%s)&quot;, type_colored, name_colored, addr_colored);
-861     } else {
-862       safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s %s&quot;, type_colored, name_colored, paren);
-863     }
-864   } else {
-865     safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s&quot;, type_colored, name_colored);
-866   }
-867 
-868   return current_buf;
-869 #undef COLORIZE_BUFFERS
-870 #undef COLORIZE_BUFFER_SIZE
-871 }</pre>
+848   /* Apply colors */
+849   const char *type_colored = colored_string(LOG_COLOR_WARN, type_buf);
+850   const char *name_colored = colored_string(LOG_COLOR_DEV, name_buf);
+851 
+852   /* Format: type(yellow)/name(blue) and add address part if present */
+853   if (paren) {
+854     /* Extract address (0x...) from parentheses */
+855     const char *addr_start = paren + 1;
+856     const char *addr_end = strchr(addr_start, ')');
+857     if (addr_end) {
+858       size_t addr_len = addr_end - addr_start;
+859       char addr_buf[128];
+860       strncpy(addr_buf, addr_start, addr_len &lt; sizeof(addr_buf) - 1 ? addr_len : sizeof(addr_buf) - 1);
+861       addr_buf[addr_len] = '\0';
+862 
+863       const char *addr_colored = colored_string(LOG_COLOR_GREY, addr_buf);
+864       safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s (%s)&quot;, type_colored, name_colored, addr_colored);
+865     } else {
+866       safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s %s&quot;, type_colored, name_colored, paren);
+867     }
+868   } else {
+869     safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s&quot;, type_colored, name_colored);
+870   }
+871 
+872   return current_buf;
+873 #undef COLORIZE_BUFFERS
+874 #undef COLORIZE_BUFFER_SIZE
+875 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>colored_string()</b>, <b>COLORIZE_BUFFER_SIZE</b>,
@@ -3267,18 +3276,23 @@
 772       current = format_buffer;
 773     } else {
 774       /* Subsequent iterations, swap buffers */
-775       strcpy(work_buffer, format_buffer);
-776       current = work_buffer;
-777     }
-778   }
-779 
-780   /* Max iterations reached, return last formatted version */
-781   return format_buffer;
-782 }</pre>
+775       asciichat_error_t strcpy_result = SAFE_STRCPY(work_buffer, sizeof(work_buffer), format_buffer);
+776       if (strcpy_result != ASCIICHAT_OK) {
+777         log_error(&quot;Failed to copy format buffer: %s&quot;, asciichat_error_string(strcpy_result));
+778         return format_buffer;
+779       }
+780       current = work_buffer;
+781     }
+782   }
+783 
+784   /* Max iterations reached, return last formatted version */
+785   return format_buffer;
+786 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>log_named_format_message()</b>, and
-    <b>NAMED_FORMAT_BUFFER_SIZE</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>log_error</b>,
+    <b>log_named_format_message()</b>, <b>NAMED_FORMAT_BUFFER_SIZE</b>, and
+    <b>SAFE_STRCPY</b>.</p>
 <p class="Pp">Referenced by <b>log_template_apply()</b>.</p>
 </section>
 <section class="Ss">
@@ -4267,260 +4281,260 @@ int len = log_template_apply(fmt, output, sizeof(output),
 <br/>
                            1234, &quot;Test message&quot;, false, now);
 </pre>
-<p class="Pp">Definition at line <b>484</b> of file <b>log/format.c</b>.</p>
-<pre>486                                                                                         {
-487   /* Check all critical pointers - format could be freed by another thread (TOCTOU race) */
-488   if (!format || !buf || buf_size == 0) {
-489     return -1;
-490   }
-491 
-492   int total_written = 0;
-493   char *p = buf;
-494   size_t remaining = buf_size - 1; /* Reserve space for null terminator */
-495 
-496   (void)timestamp; /* May be used in future; for now, LOG_FORMAT_TIME uses custom formatting */
-497 
-498   /* Safety check: verify format-&gt;specs is valid before dereferencing
-499    * This protects against use-after-free if format is freed by another thread (TOCTOU race).
-500    * Between our initial NULL check and here, the main thread may have freed this memory. */
-501   if (!format || !format-&gt;specs || format-&gt;spec_count == 0) {
-502     return -1;
-503   }
+<p class="Pp">Definition at line <b>491</b> of file <b>log/format.c</b>.</p>
+<pre>493                                                                                         {
+494   /* Check all critical pointers - format could be freed by another thread (TOCTOU race) */
+495   if (!format || !buf || buf_size == 0) {
+496     return -1;
+497   }
+498 
+499   int total_written = 0;
+500   char *p = buf;
+501   size_t remaining = buf_size - 1; /* Reserve space for null terminator */
+502 
+503   (void)timestamp; /* May be used in future; for now, LOG_FORMAT_TIME uses custom formatting */
 504 
-505   for (size_t i = 0; i &lt; format-&gt;spec_count; i++) {
-506     /* Re-check specs pointer in loop to catch use-after-free during iteration */
-507     if (!format-&gt;specs || i &gt;= format-&gt;spec_count) {
-508       break; /* Format was freed, stop processing */
-509     }
-510     const log_format_spec_t *spec = &amp;format-&gt;specs[i];
+505   /* Safety check: verify format-&gt;specs is valid before dereferencing
+506    * This protects against use-after-free if format is freed by another thread (TOCTOU race).
+507    * Between our initial NULL check and here, the main thread may have freed this memory. */
+508   if (!format || !format-&gt;specs || format-&gt;spec_count == 0) {
+509     return -1;
+510   }
 511 
-512     /* Additional safety check: if spec is null or invalid, stop processing */
-513     if (!spec) {
-514       break;
-515     }
-516 
-517     int written = 0;
+512   for (size_t i = 0; i &lt; format-&gt;spec_count; i++) {
+513     /* Re-check specs pointer in loop to catch use-after-free during iteration */
+514     if (!format-&gt;specs || i &gt;= format-&gt;spec_count) {
+515       break; /* Format was freed, stop processing */
+516     }
+517     const log_format_spec_t *spec = &amp;format-&gt;specs[i];
 518 
-519     switch (spec-&gt;type) {
-520     case LOG_FORMAT_LITERAL:
-521       written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, spec-&gt;literal ? spec-&gt;literal : &quot;&quot;);
-522       break;
+519     /* Additional safety check: if spec is null or invalid, stop processing */
+520     if (!spec) {
+521       break;
+522     }
 523 
-524     case LOG_FORMAT_TIME:
-525       /* Format time using custom time formatter */
-526       if (spec-&gt;literal) {
-527         written = time_format_now(spec-&gt;literal, p, remaining + 1);
-528         if (written &lt;= 0) {
-529           log_debug(&quot;time_format_now failed for format: %s&quot;, spec-&gt;literal);
-530           written = 0;
-531         }
-532       }
-533       break;
-534 
-535     case LOG_FORMAT_LEVEL:
-536       /* Log level as string (DEV, DEBUG, INFO, WARN, ERROR, FATAL) */
-537       written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, get_level_string(level));
-538       break;
-539 
-540     case LOG_FORMAT_LEVEL_ALIGNED:
-541       /* Log level padded to exactly 5 characters (prevents truncation to [DEBU]/[ERRO]) */
-542       written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, get_level_string_padded(level));
-543       break;
-544 
-545     case LOG_FORMAT_FILE:
-546       if (file) {
-547         written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, file);
-548       }
-549       break;
-550 
-551     case LOG_FORMAT_FILE_RELATIVE:
-552       if (file) {
-553         const char *rel_file = extract_project_relative_path(file);
-554         written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, rel_file);
+524     int written = 0;
+525 
+526     switch (spec-&gt;type) {
+527     case LOG_FORMAT_LITERAL:
+528       written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, spec-&gt;literal ? spec-&gt;literal : &quot;&quot;);
+529       break;
+530 
+531     case LOG_FORMAT_TIME:
+532       /* Format time using custom time formatter */
+533       if (spec-&gt;literal) {
+534         written = time_format_now(spec-&gt;literal, p, remaining + 1);
+535         if (written &lt;= 0) {
+536           log_debug(&quot;time_format_now failed for format: %s&quot;, spec-&gt;literal);
+537           written = 0;
+538         }
+539       }
+540       break;
+541 
+542     case LOG_FORMAT_LEVEL:
+543       /* Log level as string (DEV, DEBUG, INFO, WARN, ERROR, FATAL) */
+544       written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, get_level_string(level));
+545       break;
+546 
+547     case LOG_FORMAT_LEVEL_ALIGNED:
+548       /* Log level padded to exactly 5 characters (prevents truncation to [DEBU]/[ERRO]) */
+549       written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, get_level_string_padded(level));
+550       break;
+551 
+552     case LOG_FORMAT_FILE:
+553       if (file) {
+554         written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, file);
 555       }
 556       break;
 557 
-558     case LOG_FORMAT_LINE:
-559       if (line &gt; 0) {
-560         written = safe_snprintf(p, remaining + 1, &quot;%d&quot;, line);
-561       }
-562       break;
-563 
-564     case LOG_FORMAT_FUNC:
-565       if (func) {
-566         written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, func);
-567       }
-568       break;
-569 
-570     case LOG_FORMAT_TID:
-571       written = safe_snprintf(p, remaining + 1, &quot;%llu&quot;, (unsigned long long)tid);
-572       break;
-573 
-574     case LOG_FORMAT_TNAME: {
-575       asciichat_thread_t thread = (asciichat_thread_t)tid;
-576       uintptr_t key = asciichat_thread_to_key(thread);
-577       const char *tname = named_get(key);
-578       if (tname) {
-579         written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, tname);
-580       } else {
-581         written = safe_snprintf(p, remaining + 1, &quot;%llu&quot;, (unsigned long long)tid);
-582       }
-583       break;
-584     }
-585 
-586     case LOG_FORMAT_MICROSECONDS: {
-587       /* Extract microseconds from nanoseconds (ns_value % 1_000_000_000 / 1000) */
-588       long nanoseconds = (long)(time_nanoseconds % NS_PER_SEC_INT);
-589       long microseconds = nanoseconds / 1000;
-590       if (microseconds &lt; 0)
-591         microseconds = 0;
-592       if (microseconds &gt; 999999)
-593         microseconds = 999999;
-594       written = safe_snprintf(p, remaining + 1, &quot;%06ld&quot;, microseconds);
-595       break;
-596     }
-597 
-598     case LOG_FORMAT_NANOSECONDS: {
-599       /* Extract nanoseconds component (ns_value % 1_000_000_000) */
-600       long nanoseconds = (long)(time_nanoseconds % NS_PER_SEC_INT);
-601       if (nanoseconds &lt; 0)
-602         nanoseconds = 0;
-603       if (nanoseconds &gt; 999999999)
-604         nanoseconds = 999999999;
-605       written = safe_snprintf(p, remaining + 1, &quot;%09ld&quot;, nanoseconds);
-606       break;
-607     }
-608 
-609     case LOG_FORMAT_STRFTIME_CODE: {
-610       /* strftime format code (like %H, %M, %S, %A, %B, etc.)
-611        * Let strftime handle all the parsing and validation */
-612       if (spec-&gt;literal &amp;&amp; spec-&gt;literal_len &lt; 64) {
-613         /* Construct format string with % prefix on stack */
-614         char format_str[66]; /* 1 (%) + 64 (literal) + 1 (null) */
-615         format_str[0] = '%';
-616         memcpy(format_str + 1, spec-&gt;literal, spec-&gt;literal_len);
-617         format_str[spec-&gt;literal_len + 1] = '\0';
-618         written = time_format_now(format_str, p, remaining + 1);
-619         if (written &lt;= 0) {
-620           log_debug(&quot;time_format_now failed for format code: %s&quot;, format_str);
-621           written = 0;
-622         }
-623       }
-624       break;
-625     }
-626 
-627     case LOG_FORMAT_MESSAGE:
-628       if (message) {
-629         /* Format hex addresses as named object descriptions (type/name format) */
-630         const char *formatted_msg = log_named_format_or_original(message);
-631         written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, formatted_msg);
-632       }
-633       break;
-634 
-635     case LOG_FORMAT_COLORED_MESSAGE: {
-636       /* Apply colorize_log_message() for number/unit/hex highlighting, then format named objects */
-637       if (message) {
-638         const char *formatted_msg = log_named_format_or_original(message);
-639         const char *colorized_msg = colorize_log_message(formatted_msg);
-640         written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, colorized_msg);
-641       }
-642       break;
-643     }
-644 
-645     case LOG_FORMAT_COLORLOG_LEVEL:
-646       /* Color code for the log level (placeholder for future color support) */
-647       (void)use_colors; /* Suppress unused parameter warning */
-648       written = 0;
+558     case LOG_FORMAT_FILE_RELATIVE:
+559       if (file) {
+560         const char *rel_file = extract_project_relative_path(file);
+561         written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, rel_file);
+562       }
+563       break;
+564 
+565     case LOG_FORMAT_LINE:
+566       if (line &gt; 0) {
+567         written = safe_snprintf(p, remaining + 1, &quot;%d&quot;, line);
+568       }
+569       break;
+570 
+571     case LOG_FORMAT_FUNC:
+572       if (func) {
+573         written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, func);
+574       }
+575       break;
+576 
+577     case LOG_FORMAT_TID:
+578       written = safe_snprintf(p, remaining + 1, &quot;%llu&quot;, (unsigned long long)tid);
+579       break;
+580 
+581     case LOG_FORMAT_TNAME: {
+582       asciichat_thread_t thread = (asciichat_thread_t)tid;
+583       uintptr_t key = asciichat_thread_to_key(thread);
+584       const char *tname = named_get(key);
+585       if (tname) {
+586         written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, tname);
+587       } else {
+588         written = safe_snprintf(p, remaining + 1, &quot;%llu&quot;, (unsigned long long)tid);
+589       }
+590       break;
+591     }
+592 
+593     case LOG_FORMAT_MICROSECONDS: {
+594       /* Extract microseconds from nanoseconds (ns_value % 1_000_000_000 / 1000) */
+595       long nanoseconds = (long)(time_nanoseconds % NS_PER_SEC_INT);
+596       long microseconds = nanoseconds / 1000;
+597       if (microseconds &lt; 0)
+598         microseconds = 0;
+599       if (microseconds &gt; 999999)
+600         microseconds = 999999;
+601       written = safe_snprintf(p, remaining + 1, &quot;%06ld&quot;, microseconds);
+602       break;
+603     }
+604 
+605     case LOG_FORMAT_NANOSECONDS: {
+606       /* Extract nanoseconds component (ns_value % 1_000_000_000) */
+607       long nanoseconds = (long)(time_nanoseconds % NS_PER_SEC_INT);
+608       if (nanoseconds &lt; 0)
+609         nanoseconds = 0;
+610       if (nanoseconds &gt; 999999999)
+611         nanoseconds = 999999999;
+612       written = safe_snprintf(p, remaining + 1, &quot;%09ld&quot;, nanoseconds);
+613       break;
+614     }
+615 
+616     case LOG_FORMAT_STRFTIME_CODE: {
+617       /* strftime format code (like %H, %M, %S, %A, %B, etc.)
+618        * Let strftime handle all the parsing and validation */
+619       if (spec-&gt;literal &amp;&amp; spec-&gt;literal_len &lt; 64) {
+620         /* Construct format string with % prefix on stack */
+621         char format_str[66]; /* 1 (%) + 64 (literal) + 1 (null) */
+622         format_str[0] = '%';
+623         memcpy(format_str + 1, spec-&gt;literal, spec-&gt;literal_len);
+624         format_str[spec-&gt;literal_len + 1] = '\0';
+625         written = time_format_now(format_str, p, remaining + 1);
+626         if (written &lt;= 0) {
+627           log_debug(&quot;time_format_now failed for format code: %s&quot;, format_str);
+628           written = 0;
+629         }
+630       }
+631       break;
+632     }
+633 
+634     case LOG_FORMAT_MESSAGE:
+635       if (message) {
+636         /* Format hex addresses as named object descriptions (type/name format) */
+637         const char *formatted_msg = log_named_format_or_original(message);
+638         written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, formatted_msg);
+639       }
+640       break;
+641 
+642     case LOG_FORMAT_COLORED_MESSAGE: {
+643       /* Apply colorize_log_message() for number/unit/hex highlighting, then format named objects */
+644       if (message) {
+645         const char *formatted_msg = log_named_format_or_original(message);
+646         const char *colorized_msg = colorize_log_message(formatted_msg);
+647         written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, colorized_msg);
+648       }
 649       break;
-650 
-651     case LOG_FORMAT_COLOR: {
-652       /* Parse and apply %color(LEVEL, content)
-653        * literal stores &quot;LEVEL,content&quot; where LEVEL is the color level name (or &quot;*&quot; for current level)
-654        * and content is a format string to render and colorize */
-655       if (!spec-&gt;literal || spec-&gt;literal_len == 0) {
-656         written = 0;
-657         break;
-658       }
-659 
-660       /* Find the comma separating LEVEL and content */
-661       const char *comma_pos = strchr(spec-&gt;literal, ',');
-662       if (!comma_pos) {
-663         /* Invalid format - no comma found */
-664         log_debug(&quot;log_template_apply: %%color format missing comma in: %s&quot;, spec-&gt;literal);
-665         written = 0;
-666         break;
-667       }
-668 
-669       /* Extract level name (before comma) */
-670       size_t level_len = comma_pos - spec-&gt;literal;
-671       char level_name[32];
-672       if (level_len &gt;= sizeof(level_name)) {
-673         /* Level name too long */
-674         written = 0;
-675         break;
-676       }
-677       memcpy(level_name, spec-&gt;literal, level_len);
-678       level_name[level_len] = '\0';
-679 
-680       /* Parse level name to log_color_t (pass current level for &quot;*&quot; support) */
-681       log_color_t color = parse_color_level(level_name, level);
-682 
-683       /* Extract content (after comma), skip leading whitespace */
-684       const char *content_start = comma_pos + 1;
-685       while (*content_start == ' ' || *content_start == '\t') {
-686         content_start++;
-687       }
-688 
-689       /* Render content recursively */
-690       char content_buf[512];
-691       int content_len = render_format_content(content_start, content_buf, sizeof(content_buf), level, timestamp, file,
-692                                               line, func, tid, message, use_colors, time_nanoseconds);
-693 
-694       if (content_len &lt; 0 || content_len &gt;= (int)sizeof(content_buf)) {
-695         written = 0;
-696         break;
-697       }
-698 
-699       /* Apply color to rendered content using colored_string */
-700       const char *colored_content = colored_string(color, content_buf);
-701 
-702       /* Copy colored content to output buffer */
-703       written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, colored_content);
-704       break;
-705     }
-706 
-707     case LOG_FORMAT_NEWLINE:
-708       /* Platform-aware newline */
-709 #ifdef _WIN32
-710       written = safe_snprintf(p, remaining + 1, &quot;\r\n&quot;);
-711 #else
-712       written = safe_snprintf(p, remaining + 1, &quot;\n&quot;);
-713 #endif
-714       break;
-715 
-716     default:
-717       break;
-718     }
-719 
-720     if (written &lt; 0) {
-721       /* snprintf error */
-722       return -1;
-723     }
-724 
-725     if ((size_t)written &gt; remaining) {
-726       /* Buffer overflow prevention */
-727       log_debug(&quot;log_template_apply: buffer overflow prevented&quot;);
-728       return -1;
-729     }
-730 
-731     p += written;
-732     remaining -= written;
-733     total_written += written;
-734   }
-735 
-736   *p = '\0';
-737   return total_written;
-738 }</pre>
+650     }
+651 
+652     case LOG_FORMAT_COLORLOG_LEVEL:
+653       /* Color code for the log level (placeholder for future color support) */
+654       (void)use_colors; /* Suppress unused parameter warning */
+655       written = 0;
+656       break;
+657 
+658     case LOG_FORMAT_COLOR: {
+659       /* Parse and apply %color(LEVEL, content)
+660        * literal stores &quot;LEVEL,content&quot; where LEVEL is the color level name (or &quot;*&quot; for current level)
+661        * and content is a format string to render and colorize */
+662       if (!spec-&gt;literal || spec-&gt;literal_len == 0) {
+663         written = 0;
+664         break;
+665       }
+666 
+667       /* Find the comma separating LEVEL and content */
+668       const char *comma_pos = strchr(spec-&gt;literal, ',');
+669       if (!comma_pos) {
+670         /* Invalid format - no comma found */
+671         log_debug(&quot;log_template_apply: %%color format missing comma in: %s&quot;, spec-&gt;literal);
+672         written = 0;
+673         break;
+674       }
+675 
+676       /* Extract level name (before comma) */
+677       size_t level_len = comma_pos - spec-&gt;literal;
+678       char level_name[32];
+679       if (level_len &gt;= sizeof(level_name)) {
+680         /* Level name too long */
+681         written = 0;
+682         break;
+683       }
+684       memcpy(level_name, spec-&gt;literal, level_len);
+685       level_name[level_len] = '\0';
+686 
+687       /* Parse level name to log_color_t (pass current level for &quot;*&quot; support) */
+688       log_color_t color = parse_color_level(level_name, level);
+689 
+690       /* Extract content (after comma), skip leading whitespace */
+691       const char *content_start = comma_pos + 1;
+692       while (*content_start == ' ' || *content_start == '\t') {
+693         content_start++;
+694       }
+695 
+696       /* Render content recursively */
+697       char content_buf[512];
+698       int content_len = render_format_content(content_start, content_buf, sizeof(content_buf), level, timestamp, file,
+699                                               line, func, tid, message, use_colors, time_nanoseconds);
+700 
+701       if (content_len &lt; 0 || content_len &gt;= (int)sizeof(content_buf)) {
+702         written = 0;
+703         break;
+704       }
+705 
+706       /* Apply color to rendered content using colored_string */
+707       const char *colored_content = colored_string(color, content_buf);
+708 
+709       /* Copy colored content to output buffer */
+710       written = safe_snprintf(p, remaining + 1, &quot;%s&quot;, colored_content);
+711       break;
+712     }
+713 
+714     case LOG_FORMAT_NEWLINE:
+715       /* Platform-aware newline */
+716 #ifdef _WIN32
+717       written = safe_snprintf(p, remaining + 1, &quot;\r\n&quot;);
+718 #else
+719       written = safe_snprintf(p, remaining + 1, &quot;\n&quot;);
+720 #endif
+721       break;
+722 
+723     default:
+724       break;
+725     }
+726 
+727     if (written &lt; 0) {
+728       /* snprintf error */
+729       return -1;
+730     }
+731 
+732     if ((size_t)written &gt; remaining) {
+733       /* Buffer overflow prevention */
+734       log_debug(&quot;log_template_apply: buffer overflow prevented&quot;);
+735       return -1;
+736     }
+737 
+738     p += written;
+739     remaining -= written;
+740     total_written += written;
+741   }
+742 
+743   *p = '\0';
+744   return total_written;
+745 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_thread_to_key()</b>,
@@ -4550,32 +4564,32 @@ int len = log_template_apply(fmt, output, sizeof(output),
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>format</i> Pointer to format to free (safe to call
   with NULL)</div>
-<p class="Pp">Definition at line <b>318</b> of file <b>log/format.c</b>.</p>
-<pre>318                                                {
-319   if (!format) {
-320     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null format&quot;);
-321     return;
-322   }
-323 
-324   if (format-&gt;specs) {
-325     for (size_t i = 0; i &lt; format-&gt;spec_count; i++) {
-326       if (format-&gt;specs[i].literal) {
-327         free(format-&gt;specs[i].literal);
-328         format-&gt;specs[i].literal = NULL;
-329       }
-330     }
-331     free(format-&gt;specs);
-332     format-&gt;specs = NULL;
-333   }
-334 
-335   if (format-&gt;original) {
-336     free(format-&gt;original);
-337     format-&gt;original = NULL;
-338   }
-339 
-340   free(format);
-341   format = NULL;
-342 }</pre>
+<p class="Pp">Definition at line <b>325</b> of file <b>log/format.c</b>.</p>
+<pre>325                                                {
+326   if (!format) {
+327     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null format&quot;);
+328     return;
+329   }
+330 
+331   if (format-&gt;specs) {
+332     for (size_t i = 0; i &lt; format-&gt;spec_count; i++) {
+333       if (format-&gt;specs[i].literal) {
+334         free(format-&gt;specs[i].literal);
+335         format-&gt;specs[i].literal = NULL;
+336       }
+337     }
+338     free(format-&gt;specs);
+339     format-&gt;specs = NULL;
+340   }
+341 
+342   if (format-&gt;original) {
+343     free(format-&gt;original);
+344     format-&gt;original = NULL;
+345   }
+346 
+347   free(format);
+348   format = NULL;
+349 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
@@ -4607,10 +4621,10 @@ int len = log_template_apply(fmt, output, sizeof(output),
 </ul>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Errors are logged with details about what failed</div>
-<p class="Pp">Definition at line <b>314</b> of file <b>log/format.c</b>.</p>
-<pre>314                                                                               {
-315   return parse_format_string(format_str, console_only);
-316 }</pre>
+<p class="Pp">Definition at line <b>321</b> of file <b>log/format.c</b>.</p>
+<pre>321                                                                               {
+322   return parse_format_string(format_str, console_only);
+323 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>log_set_format()</b>.</p>
