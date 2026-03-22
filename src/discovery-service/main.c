@@ -77,6 +77,10 @@ static bool acds_should_exit(void) {
 static void acds_handle_signal(int sig) {
   (void)sig;
   g_shutdown_requested = 1;
+  // Stop TCP server immediately so it doesn't restart select()
+  if (g_server) {
+    atomic_store_bool(&g_server->tcp_server.running, false);
+  }
 }
 
 int acds_main(void) {
@@ -416,8 +420,15 @@ int acds_main(void) {
   }
 
   // Install signal handlers for clean shutdown
-  signal(SIGINT, acds_handle_signal);
-  signal(SIGTERM, acds_handle_signal);
+  // Use sigaction with explicit flags to disable SA_RESTART - this ensures
+  // select() returns EINTR instead of restarting, so the shutdown flag can be checked
+  struct sigaction sa = {
+    .sa_handler = acds_handle_signal,
+    .sa_flags = 0  // No SA_RESTART - we want select() to return EINTR on signal
+  };
+  sigemptyset(&sa.sa_mask);
+  sigaction(SIGINT, &sa, NULL);
+  sigaction(SIGTERM, &sa, NULL);
 
 
   // Run server
