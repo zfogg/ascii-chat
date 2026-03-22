@@ -22,12 +22,12 @@ COPY . /build/
 RUN rm -rf /build/deps/ascii-chat-deps /build/deps/doxygen-awesome-css && \
     mv /tmp/deps-preserve/* /build/deps/ && rm -rf /tmp/deps-preserve
 
-# Build release-musl static binary with specified version
-# Project version is passed via -DPROJECT_VERSION_FROM_GIT which is read by version_detect() macro
-# The release-musl preset is already cached in deps, so cmake uses cached build files
+# Build release-musl static binary - reuse pre-configured build from deps stage
+# Set PROJECT_VERSION_OVERRIDE env var which generate_version.cmake reads at build time
+# This allows setting version without reconfiguring (avoids Ninja version check error)
 RUN cd /build && \
-    cmake --preset release-musl \
-        -DPROJECT_VERSION_FROM_GIT=${VERSION} && \
+    PROJECT_VERSION_OVERRIDE=${VERSION} \
+    SOURCE_COMMIT="docker-release-${VERSION}" \
     cmake --build build_release && \
     cmake --install build_release --prefix /tmp/install && \
     strip /tmp/install/bin/ascii-chat

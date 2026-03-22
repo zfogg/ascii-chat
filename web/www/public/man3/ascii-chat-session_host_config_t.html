@@ -59,7 +59,10 @@
   <br/>
   Event callbacks. void * <b>user_data</b>
   <br/>
-  User-provided context pointer passed to callbacks.
+  User-provided context pointer passed to callbacks. struct
+    <b>session_display_ctx</b> * <b>display_context</b>
+  <br/>
+  Display context for local frame rendering (optional, can be NULL).
   <br/>
 </p>
 </section>
@@ -79,6 +82,13 @@
 <p class="Pp">Event callbacks.</p>
 <p class="Pp">Definition at line <b>177</b> of file <b>host.h</b>.</p>
 <p class="Pp">Referenced by <b>session_host_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
+  <b>session_display_ctx</b>* session_host_config_t::display_context</a></h2>
+<p class="Pp">Display context for local frame rendering (optional, can be
+  NULL).</p>
+<p class="Pp">Definition at line <b>183</b> of file <b>host.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_host_config_t::encryption_enabled</h2>

@@ -74,14 +74,14 @@
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
 <p class="Pp">Internal client record structure.</p>
-<p class="Pp">Definition at line <b>53</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>54</b> of file <b>host.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_host_client_t::active</h2>
-<p class="Pp">Definition at line <b>59</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>60</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>,
     <b>session_host_broadcast_frame()</b>,
@@ -95,7 +95,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_host_client_t::audio_active</h2>
-<p class="Pp">Definition at line <b>61</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>62</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>,
     <b>session_host_find_client()</b>, and
@@ -103,7 +103,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> session_host_client_t::client_id</h2>
-<p class="Pp">Definition at line <b>55</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>56</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>,
     <b>session_host_broadcast_frame()</b>,
@@ -117,7 +117,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> session_host_client_t::connected_at</h2>
-<p class="Pp">Definition at line <b>62</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>63</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>, and
     <b>session_host_find_client()</b>.</p>
@@ -126,7 +126,7 @@
 <h2 class="Ss"><b>ringbuffer_t</b>* session_host_client_t::incoming_audio</h2>
 <p class="Pp">Incoming audio ringbuffer (written by receive loop, read by render
     thread).</p>
-<p class="Pp">Definition at line <b>71</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>72</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>, <b>session_host_destroy()</b>,
     <b>session_host_inject_audio()</b>, and
@@ -135,7 +135,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>image_t</b>* session_host_client_t::incoming_video</h2>
 <p class="Pp">Incoming video frame buffer (for host render thread).</p>
-<p class="Pp">Definition at line <b>68</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>69</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>, <b>session_host_destroy()</b>,
     <b>session_host_inject_frame()</b>, and
@@ -144,7 +144,7 @@
 <section class="Ss">
 <h2 class="Ss" id="char_session_host_client_t::ip_address_64_"><a class="permalink" href="#char_session_host_client_t::ip_address_64_">char
   session_host_client_t::ip_address[64]</a></h2>
-<p class="Pp">Definition at line <b>57</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>58</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>, and
     <b>session_host_find_client()</b>.</p>
@@ -152,7 +152,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>participant_type_t</b>
   session_host_client_t::participant_type</h2>
-<p class="Pp">Definition at line <b>54</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>55</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>,
     <b>session_host_inject_audio()</b>, and
@@ -161,14 +161,14 @@
 <section class="Ss">
 <h2 class="Ss" id="int_session_host_client_t::port"><a class="permalink" href="#int_session_host_client_t::port">int
   session_host_client_t::port</a></h2>
-<p class="Pp">Definition at line <b>58</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>59</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>, and
     <b>session_host_find_client()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>socket_t</b> session_host_client_t::socket</h2>
-<p class="Pp">Definition at line <b>56</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>57</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>,
     <b>session_host_broadcast_frame()</b>, <b>session_host_remove_client()</b>,
@@ -179,7 +179,7 @@
   <b>acip_transport</b>* session_host_client_t::transport</a></h2>
 <p class="Pp">Alternative transport (WebRTC, WebSocket, etc.) - NULL if using
     socket only.</p>
-<p class="Pp">Definition at line <b>65</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>66</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>,
     <b>session_host_client_has_transport()</b>,
@@ -188,7 +188,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_host_client_t::video_active</h2>
-<p class="Pp">Definition at line <b>60</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>61</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>,
     <b>session_host_find_client()</b>, and

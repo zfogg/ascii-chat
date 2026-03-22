@@ -56,14 +56,8 @@ ENV GPG_PUBLIC_KEY=${GPG_PUBLIC_KEY}
 # Run all checks
 RUN vp check
 
-# Build www app
-RUN echo "Building www app" && cd www && pnpm run build && test -d dist || (echo "ERROR: dist directory not created for www" && ls -la && exit 1)
-
-# Build discovery app
-RUN echo "Building discovery app" && cd discovery && pnpm run build && test -d dist || (echo "ERROR: dist directory not created for discovery" && ls -la && exit 1)
-
-# Build web app
-RUN echo "Building web app" && cd web && pnpm run build && test -d dist || (echo "ERROR: dist directory not created for web" && ls -la && exit 1)
+# Build all sites
+RUN pnpm build
 
 # ============================================
 # Production stage - serve all apps with Caddy

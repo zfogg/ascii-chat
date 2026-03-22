@@ -192,6 +192,7 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
   (void)user_data; // Unused
 
   asciichat_error_t result = ASCIICHAT_OK;
+  bool snapshot_mode = GET_OPTION(snapshot_mode);
 
   // Wait for session to become active (host negotiation complete)
   // This processes ACDS events until we have a determined role
@@ -209,7 +210,9 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
     }
   }
 
-  if (should_exit()) {
+  // In snapshot mode, proceed to role handling even if should_exit() is true
+  // We'll check for exit conditions during the actual frame rendering phase
+  if (should_exit() && !snapshot_mode) {
     log_info("Shutdown requested during discovery negotiation");
     return ASCIICHAT_OK;
   }
@@ -261,8 +264,6 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
     }
 
     // Main loop: capture own media and keep discovery responsive
-    bool snapshot_mode = GET_OPTION(snapshot_mode);
-
     while (discovery_session_is_active(g_discovery)) {
       // Exit conditions:
       // 1. Non-snapshot mode: check should_exit() (Ctrl+C, SIGTERM, any exit signal)

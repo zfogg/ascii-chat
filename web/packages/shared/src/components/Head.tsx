@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { ReactNode } from "react";
+import ErrorBoundary from "./ErrorBoundary";
 
 export interface HeadProps {
   // Core
@@ -27,7 +28,7 @@ export interface HeadProps {
   children?: ReactNode;
 }
 
-export function Head({
+function HeadContent({
   title,
   description,
   keywords,
@@ -83,5 +84,13 @@ export function Head({
       {/* Custom children for route-specific tags */}
       {children}
     </Helmet>
+  );
+}
+
+export function Head(props: HeadProps) {
+  return (
+    <ErrorBoundary fallback={null}>
+      <HeadContent {...props} />
+    </ErrorBoundary>
   );
 }

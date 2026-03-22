@@ -100,23 +100,32 @@
 <i>callbacks</i> Application callbacks</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>116</b> of file <b>acds_handlers.c</b>.</p>
-<pre>118                                                                                   {
-119   if (!callbacks) {
-120     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid callbacks&quot;);
-121   }
-122 
-123   // O(1) dispatch via hash table lookup
-124   int idx = acds_handler_hash_lookup(g_acds_handler_hash, type);
-125   if (idx &lt; 0) {
-126     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled ACDS packet type: %d from %s&quot;, type, client_ip);
-127   }
-128 
-129   return g_acds_handlers[idx](payload, payload_len, transport, client_ip, callbacks);
-130 }</pre>
+<p class="Pp">Definition at line <b>120</b> of file <b>acds_handlers.c</b>.</p>
+<pre>122                                                                                   {
+123   if (!callbacks) {
+124     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid callbacks&quot;);
+125   }
+126 
+127   if (type == PACKET_TYPE_ACIP_NETWORK_QUALITY) {
+128     log_info(&quot;&#x2605; ACIP_HANDLE_ACDS_PACKET: Dispatching type=%u (NETWORK_QUALITY) from %s, payload_len=%zu&quot;, type, client_ip, payload_len);
+129   }
+130 
+131   // O(1) dispatch via hash table lookup
+132   int idx = acds_handler_hash_lookup(g_acds_handler_hash, type);
+133   if (idx &lt; 0) {
+134     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled ACDS packet type: %d from %s&quot;, type, client_ip);
+135   }
+136 
+137   if (type == PACKET_TYPE_ACIP_NETWORK_QUALITY) {
+138     log_info(&quot;&#x2605; ACIP_HANDLE_ACDS_PACKET: Found handler at index=%d&quot;, idx);
+139   }
+140 
+141   return g_acds_handlers[idx](payload, payload_len, transport, client_ip, callbacks);
+142 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>log_info</b>,
+    <b>PACKET_TYPE_ACIP_NETWORK_QUALITY</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>, and
     <b>acds_websocket_client_handler()</b>.</p>
 </section>

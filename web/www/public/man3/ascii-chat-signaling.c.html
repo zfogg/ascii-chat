@@ -65,7 +65,12 @@
     <b>packet_type_t</b> packet_type, const void *packet, size_t packet_len,
     const <b>uint8_t</b> *exclude_participant_id)
   <br/>
-  Broadcast packet to all session participants.
+  Broadcast packet to all session participants. <b>asciichat_error_t</b>
+    <b>signaling_relay_network_quality</b> (sqlite3 *db, <b>tcp_server_t</b>
+    *<b>tcp_server</b>, const <b>acip_nat_quality_t</b> *quality, size_t
+    total_packet_len)
+  <br/>
+  Relay NETWORK_QUALITY to session participants.
   <br/>
 </p>
 </section>
@@ -99,47 +104,55 @@
   typically sender)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>223</b> of file <b>signaling.c</b>.</p>
-<pre>225                                                                              {
-226   if (!db || !tcp_server || !session_id || !packet) {
-227     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, tcp_server, session_id, or packet is NULL&quot;);
-228   }
-229 
-230   /* Find session by UUID using database lookup */
-231   session_entry_t *session = database_session_find_by_id(db, session_id);
-232   if (!session) {
-233     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Session not found for broadcast&quot;);
-234   }
-235   session_entry_destroy(session); // We only need to validate existence
-236 
-237   // Broadcast to all participants in session (excluding sender if specified)
-238   broadcast_context_t ctx = {.target_session_id = session_id,
-239                              .exclude_participant_id = exclude_participant_id,
-240                              .packet_type = packet_type,
-241                              .packet = packet,
-242                              .packet_len = packet_len,
-243                              .sent_count = 0};
-244 
-245   tcp_server_foreach_client(tcp_server, broadcast_callback, &amp;ctx);
+<p class="Pp">Definition at line <b>226</b> of file <b>signaling.c</b>.</p>
+<pre>228                                                                              {
+229   if (!db || !tcp_server || !session_id || !packet) {
+230     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, tcp_server, session_id, or packet is NULL&quot;);
+231   }
+232 
+233   log_info(&quot;&#x2605; SIGNALING_BROADCAST_START: packet_type=%u, packet_len=%zu, session=%02x%02x...&quot;, packet_type, packet_len,
+234            session_id[0], session_id[1]);
+235   if (exclude_participant_id) {
+236     log_debug(&quot;&#x2605; SIGNALING_BROADCAST: excluding participant=%02x%02x...&quot;, exclude_participant_id[0],
+237               exclude_participant_id[1]);
+238   }
+239 
+240   /* Find session by UUID using database lookup */
+241   session_entry_t *session = database_session_find_by_id(db, session_id);
+242   if (!session) {
+243     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Session not found for broadcast&quot;);
+244   }
+245   session_entry_destroy(session); // We only need to validate existence
 246 
-247   if (ctx.sent_count == 0) {
-248     log_warn(&quot;Broadcast sent to 0 participants (all offline or not joined yet)&quot;);
-249   } else {
-250     log_debug(&quot;Broadcast sent to %zu participants&quot;, ctx.sent_count);
-251   }
-252 
-253   return ASCIICHAT_OK;
-254 }</pre>
+247   // Broadcast to all participants in session (excluding sender if specified)
+248   broadcast_context_t ctx = {.target_session_id = session_id,
+249                              .exclude_participant_id = exclude_participant_id,
+250                              .packet_type = packet_type,
+251                              .packet = packet,
+252                              .packet_len = packet_len,
+253                              .sent_count = 0};
+254 
+255   tcp_server_foreach_client(tcp_server, broadcast_callback, &amp;ctx);
+256 
+257   if (ctx.sent_count == 0) {
+258     log_warn(&quot;&#x2605; SIGNALING_BROADCAST_COMPLETE: sent to 0 participants (all offline or not joined yet)&quot;);
+259   } else {
+260     log_info(&quot;&#x2605; SIGNALING_BROADCAST_COMPLETE: successfully sent to %zu participants&quot;, ctx.sent_count);
+261   }
+262 
+263   return ASCIICHAT_OK;
+264 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
     <b>database_session_find_by_id()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK_PROTOCOL</b>, <b>log_debug</b>, <b>log_warn</b>,
-    <b>broadcast_context_t::sent_count</b>, <b>session_entry_destroy()</b>,
-    <b>session_id</b>, <b>SET_ERRNO</b>, and
-  <b>tcp_server_foreach_client()</b>.</p>
-<p class="Pp">Referenced by <b>signaling_relay_ice()</b>, and
-    <b>signaling_relay_sdp()</b>.</p>
+    <b>ERROR_NETWORK_PROTOCOL</b>, <b>log_debug</b>, <b>log_info</b>,
+    <b>log_warn</b>, <b>broadcast_context_t::sent_count</b>,
+    <b>session_entry_destroy()</b>, <b>session_id</b>, <b>SET_ERRNO</b>, and
+    <b>tcp_server_foreach_client()</b>.</p>
+<p class="Pp">Referenced by <b>signaling_relay_ice()</b>,
+    <b>signaling_relay_network_quality()</b>, and
+  <b>signaling_relay_sdp()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> signaling_relay_ice (sqlite3 * db,
@@ -160,47 +173,47 @@
 <i>total_packet_len</i> Total packet length including variable data</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>181</b> of file <b>signaling.c</b>.</p>
-<pre>182                                                                {
-183   if (!db || !tcp_server || !ice) {
-184     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, tcp_server, or ice is NULL&quot;);
-185   }
-186 
-187   /* Find session by UUID using database lookup */
-188   session_entry_t *session = database_session_find_by_id(db, ice-&gt;session_id);
-189   if (!session) {
-190     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Session not found for ICE relay&quot;);
-191   }
-192   session_entry_destroy(session); // We only need to validate existence
-193 
-194   // Check if broadcast (recipient_id all zeros) or unicast
-195   if (is_broadcast_uuid(ice-&gt;recipient_id)) {
-196     // Broadcast to all participants in session (except sender)
-197     log_debug(&quot;Broadcasting ICE candidate to all participants in session (excluding sender)&quot;);
-198     return signaling_broadcast(db, tcp_server, ice-&gt;session_id, PACKET_TYPE_ACIP_WEBRTC_ICE, ice, total_packet_len,
-199                                ice-&gt;sender_id);
-200   } else {
-201     // Unicast to specific recipient
-202     find_client_context_t ctx = {
-203         .target_participant_id = ice-&gt;recipient_id, .found_socket = INVALID_SOCKET_VALUE, .found = false};
-204 
-205     tcp_server_foreach_client(tcp_server, find_participant_callback, &amp;ctx);
-206 
-207     if (!ctx.found) {
-208       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Recipient participant not found (may be offline)&quot;);
-209     }
-210 
-211     // Send ICE packet to recipient
-212     int result = send_packet(ctx.found_socket, PACKET_TYPE_ACIP_WEBRTC_ICE, ice, total_packet_len);
-213     if (result != 0) {
-214       return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send ICE packet to recipient&quot;);
-215     }
-216 
-217     log_debug(&quot;Relayed ICE candidate from sender to recipient (socket=%d)&quot;, ctx.found_socket);
-218   }
+<p class="Pp">Definition at line <b>184</b> of file <b>signaling.c</b>.</p>
+<pre>185                                                                {
+186   if (!db || !tcp_server || !ice) {
+187     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, tcp_server, or ice is NULL&quot;);
+188   }
+189 
+190   /* Find session by UUID using database lookup */
+191   session_entry_t *session = database_session_find_by_id(db, ice-&gt;session_id);
+192   if (!session) {
+193     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Session not found for ICE relay&quot;);
+194   }
+195   session_entry_destroy(session); // We only need to validate existence
+196 
+197   // Check if broadcast (recipient_id all zeros) or unicast
+198   if (is_broadcast_uuid(ice-&gt;recipient_id)) {
+199     // Broadcast to all participants in session (except sender)
+200     log_debug(&quot;Broadcasting ICE candidate to all participants in session (excluding sender)&quot;);
+201     return signaling_broadcast(db, tcp_server, ice-&gt;session_id, PACKET_TYPE_ACIP_WEBRTC_ICE, ice, total_packet_len,
+202                                ice-&gt;sender_id);
+203   } else {
+204     // Unicast to specific recipient
+205     find_client_context_t ctx = {
+206         .target_participant_id = ice-&gt;recipient_id, .found_socket = INVALID_SOCKET_VALUE, .found = false};
+207 
+208     tcp_server_foreach_client(tcp_server, find_participant_callback, &amp;ctx);
+209 
+210     if (!ctx.found) {
+211       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Recipient participant not found (may be offline)&quot;);
+212     }
+213 
+214     // Send ICE packet to recipient
+215     int result = send_packet(ctx.found_socket, PACKET_TYPE_ACIP_WEBRTC_ICE, ice, total_packet_len);
+216     if (result != 0) {
+217       return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send ICE packet to recipient&quot;);
+218     }
 219 
-220   return ASCIICHAT_OK;
-221 }</pre>
+220     log_debug(&quot;Relayed ICE candidate from sender to recipient (socket=%d)&quot;, ctx.found_socket);
+221   }
+222 
+223   return ASCIICHAT_OK;
+224 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_webrtc_ice_t</b>, <b>ASCIICHAT_OK</b>,
@@ -211,6 +224,61 @@
     <b>log_debug</b>, <b>PACKET_TYPE_ACIP_WEBRTC_ICE</b>, <b>send_packet()</b>,
     <b>session_entry_destroy()</b>, <b>SET_ERRNO</b>,
     <b>signaling_broadcast()</b>, and <b>tcp_server_foreach_client()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> signaling_relay_network_quality (sqlite3
+  * db, <b>tcp_server_t</b> * tcp_server, const <b>acip_nat_quality_t</b> *
+  quality, size_t total_packet_len)</h2>
+<p class="Pp">Relay NETWORK_QUALITY to session participants. Relays NAT quality
+    metrics to all participants in the session (excluding sender). Used during
+    NAT negotiation phase to help peers determine optimal host.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> SQLite database handle (for session validation)
+<br/>
+<i></i><b>tcp_server</b><i></i><b> TCP server with client registry</b>
+<br/>
+<i>quality</i> NAT quality packet (includes session_id and participant_id)
+<br/>
+<i>total_packet_len</i> Total packet length</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>266</b> of file <b>signaling.c</b>.</p>
+<pre>267                                                                                                                {
+268   if (!db || !tcp_server || !quality) {
+269     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, tcp_server, or quality is NULL&quot;);
+270   }
+271 
+272   // Validate packet size
+273   if (total_packet_len &lt; sizeof(acip_nat_quality_t)) {
+274     return SET_ERRNO(ERROR_NETWORK_SIZE, &quot;NETWORK_QUALITY packet too small&quot;);
+275   }
+276 
+277   // Extract session_id and sender_id from the quality packet
+278   const uint8_t *session_id = quality-&gt;session_id;
+279   const uint8_t *sender_id = quality-&gt;participant_id;
+280 
+281   // Find session by UUID using database lookup
+282   log_debug(&quot;NETWORK_QUALITY relay: session_id=%02x%02x..., sender_id=%02x%02x...&quot;, session_id[0], session_id[1],
+283             sender_id[0], sender_id[1]);
+284   session_entry_t *session = database_session_find_by_id(db, session_id);
+285   if (!session) {
+286     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Session not found for NETWORK_QUALITY relay&quot;);
+287   }
+288   session_entry_destroy(session); // We only need to validate existence
+289 
+290   // Broadcast to all participants in session (except sender)
+291   log_debug(&quot;Broadcasting NETWORK_QUALITY to all participants in session (excluding sender)&quot;);
+292   return signaling_broadcast(db, tcp_server, session_id, PACKET_TYPE_ACIP_NETWORK_QUALITY, quality, total_packet_len,
+293                              sender_id);
+294 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_nat_quality_t</b>,
+    <b>database_session_find_by_id()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_NETWORK_PROTOCOL</b>, <b>ERROR_NETWORK_SIZE</b>, <b>log_debug</b>,
+    <b>PACKET_TYPE_ACIP_NETWORK_QUALITY</b>, <b>session_entry_destroy()</b>,
+    <b>session_id</b>, <b>SET_ERRNO</b>, and <b>signaling_broadcast()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> signaling_relay_sdp (sqlite3 * db,
@@ -230,52 +298,52 @@
 <i>total_packet_len</i> Total packet length including variable data</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>134</b> of file <b>signaling.c</b>.</p>
-<pre>135                                                                {
-136   if (!db || !tcp_server || !sdp) {
-137     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, tcp_server, or sdp is NULL&quot;);
-138   }
-139 
-140   /* Find session by UUID using database lookup */
-141   log_debug(&quot;SDP relay: Looking up session_id=%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x&quot;,
-142             sdp-&gt;session_id[0], sdp-&gt;session_id[1], sdp-&gt;session_id[2], sdp-&gt;session_id[3], sdp-&gt;session_id[4],
-143             sdp-&gt;session_id[5], sdp-&gt;session_id[6], sdp-&gt;session_id[7], sdp-&gt;session_id[8], sdp-&gt;session_id[9],
-144             sdp-&gt;session_id[10], sdp-&gt;session_id[11], sdp-&gt;session_id[12], sdp-&gt;session_id[13], sdp-&gt;session_id[14],
-145             sdp-&gt;session_id[15]);
-146   session_entry_t *session = database_session_find_by_id(db, sdp-&gt;session_id);
-147   if (!session) {
-148     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Session not found for SDP relay&quot;);
-149   }
-150   session_entry_destroy(session); // We only need to validate existence
-151 
-152   // Check if broadcast (recipient_id all zeros) or unicast
-153   if (is_broadcast_uuid(sdp-&gt;recipient_id)) {
-154     // Broadcast to all participants in session (except sender)
-155     log_debug(&quot;Broadcasting SDP to all participants in session (excluding sender)&quot;);
-156     return signaling_broadcast(db, tcp_server, sdp-&gt;session_id, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp, total_packet_len,
-157                                sdp-&gt;sender_id);
-158   } else {
-159     // Unicast to specific recipient
-160     find_client_context_t ctx = {
-161         .target_participant_id = sdp-&gt;recipient_id, .found_socket = INVALID_SOCKET_VALUE, .found = false};
-162 
-163     tcp_server_foreach_client(tcp_server, find_participant_callback, &amp;ctx);
-164 
-165     if (!ctx.found) {
-166       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Recipient participant not found (may be offline)&quot;);
-167     }
-168 
-169     // Send SDP packet to recipient
-170     int result = send_packet(ctx.found_socket, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp, total_packet_len);
-171     if (result != 0) {
-172       return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send SDP packet to recipient&quot;);
-173     }
-174 
-175     log_debug(&quot;Relayed SDP from sender to recipient (socket=%d)&quot;, ctx.found_socket);
-176   }
+<p class="Pp">Definition at line <b>137</b> of file <b>signaling.c</b>.</p>
+<pre>138                                                                {
+139   if (!db || !tcp_server || !sdp) {
+140     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db, tcp_server, or sdp is NULL&quot;);
+141   }
+142 
+143   /* Find session by UUID using database lookup */
+144   log_debug(&quot;SDP relay: Looking up session_id=%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x&quot;,
+145             sdp-&gt;session_id[0], sdp-&gt;session_id[1], sdp-&gt;session_id[2], sdp-&gt;session_id[3], sdp-&gt;session_id[4],
+146             sdp-&gt;session_id[5], sdp-&gt;session_id[6], sdp-&gt;session_id[7], sdp-&gt;session_id[8], sdp-&gt;session_id[9],
+147             sdp-&gt;session_id[10], sdp-&gt;session_id[11], sdp-&gt;session_id[12], sdp-&gt;session_id[13], sdp-&gt;session_id[14],
+148             sdp-&gt;session_id[15]);
+149   session_entry_t *session = database_session_find_by_id(db, sdp-&gt;session_id);
+150   if (!session) {
+151     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Session not found for SDP relay&quot;);
+152   }
+153   session_entry_destroy(session); // We only need to validate existence
+154 
+155   // Check if broadcast (recipient_id all zeros) or unicast
+156   if (is_broadcast_uuid(sdp-&gt;recipient_id)) {
+157     // Broadcast to all participants in session (except sender)
+158     log_debug(&quot;Broadcasting SDP to all participants in session (excluding sender)&quot;);
+159     return signaling_broadcast(db, tcp_server, sdp-&gt;session_id, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp, total_packet_len,
+160                                sdp-&gt;sender_id);
+161   } else {
+162     // Unicast to specific recipient
+163     find_client_context_t ctx = {
+164         .target_participant_id = sdp-&gt;recipient_id, .found_socket = INVALID_SOCKET_VALUE, .found = false};
+165 
+166     tcp_server_foreach_client(tcp_server, find_participant_callback, &amp;ctx);
+167 
+168     if (!ctx.found) {
+169       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Recipient participant not found (may be offline)&quot;);
+170     }
+171 
+172     // Send SDP packet to recipient
+173     int result = send_packet(ctx.found_socket, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp, total_packet_len);
+174     if (result != 0) {
+175       return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send SDP packet to recipient&quot;);
+176     }
 177 
-178   return ASCIICHAT_OK;
-179 }</pre>
+178     log_debug(&quot;Relayed SDP from sender to recipient (socket=%d)&quot;, ctx.found_socket);
+179   }
+180 
+181   return ASCIICHAT_OK;
+182 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_webrtc_sdp_t</b>, <b>ASCIICHAT_OK</b>,

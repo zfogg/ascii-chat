@@ -80,8 +80,13 @@
     <b>acip_transport_t</b> *transport, const char *client_ip, void
     *<b>app_ctx</b>)
   <br/>
-  Called when participant reports host has disconnected (discovery mode). void *
-    <b>app_ctx</b>
+  Called when participant reports host has disconnected (discovery mode). void(*
+    <b>on_network_quality</b> )(const void *payload, size_t payload_len,
+    <b>acip_transport_t</b> *transport, const char *client_ip, void
+    *<b>app_ctx</b>)
+  <br/>
+  Called when client sends NAT network quality for negotiation (discovery mode).
+    void * <b>app_ctx</b>
   <br/>
   Application context (passed to all callbacks).
   <br/>
@@ -111,7 +116,7 @@
 <h2 class="Ss" id="void*_acip_acds_callbacks_t::app_ctx"><a class="permalink" href="#void*_acip_acds_callbacks_t::app_ctx">void*
   acip_acds_callbacks_t::app_ctx</a></h2>
 <p class="Pp">Application context (passed to all callbacks).</p>
-<p class="Pp">Definition at line <b>70</b> of file <b>acds_handlers.h</b>.</p>
+<p class="Pp">Definition at line <b>74</b> of file <b>acds_handlers.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>, and
     <b>acds_websocket_client_handler()</b>.</p>
 </section>
@@ -140,6 +145,15 @@
 <p class="Pp">Called when participant reports host has disconnected (discovery
     mode).</p>
 <p class="Pp">Definition at line <b>67</b> of file <b>acds_handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_acip_acds_callbacks_t::on_network_quality)_(const_void_*payload,_size_t_payload_len,_"><a class="permalink" href="#void(*_acip_acds_callbacks_t::on_network_quality)_(const_void_*payload,_size_t_payload_len,_">void(*
+  acip_acds_callbacks_t::on_network_quality) (const void *payload, size_t
+  payload_len, <b>acip_transport_t</b> *transport, const char *client_ip, void
+  *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when client sends NAT network quality for negotiation
+    (discovery mode).</p>
+<p class="Pp">Definition at line <b>70</b> of file <b>acds_handlers.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void(*_acip_acds_callbacks_t::on_session_create)_(const_"><a class="permalink" href="#void(*_acip_acds_callbacks_t::on_session_create)_(const_">void(*

@@ -72,8 +72,8 @@ RUN cmake --preset default \
 
 # Configure Release preset with musl for static linking.
 # This shares the same .deps-cache/ as the Debug build above.
+# Keep build_release/ directory so release.dockerfile can reuse it without reconfiguring
 RUN cmake --preset release-musl \
         -DUSE_MUSL=ON \
-        -DASCIICHAT_ENABLE_ANALYZERS=OFF && \
-    rm -rf build_release/
+        -DASCIICHAT_ENABLE_ANALYZERS=OFF
 

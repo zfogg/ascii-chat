@@ -1612,6 +1612,26 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
       session->negotiate.peer_quality.nat_type = ACIP_NAT_TYPE_SYMMETRIC;
     }
 
+    // Check for HOST_ANNOUNCEMENT from ACDS (in case we're waiting for host discovery)
+    if (session->acds_transport && !session->is_initiator && !session->host_address[0]) {
+      packet_type_t type;
+      void *data = NULL;
+      size_t len = 0;
+      void *alloc_buffer = NULL;
+
+      asciichat_error_t recv_result = packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
+      if (recv_result == ASCIICHAT_OK && type == PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT) {
+        acip_host_announcement_t *announcement = (acip_host_announcement_t *)data;
+        log_info("Received HOST_ANNOUNCEMENT from ACDS: %s:%u", announcement->host_address, announcement->host_port);
+        SAFE_STRNCPY(session->host_address, announcement->host_address, sizeof(session->host_address));
+        session->host_port = announcement->host_port;
+        buffer_pool_free(NULL, alloc_buffer, 0);
+        // Continue to host role determination below
+      } else if (recv_result == ASCIICHAT_OK) {
+        buffer_pool_free(NULL, alloc_buffer, 0);
+      }
+    }
+
     // Determine host role (now that peer_quality is set)
     if (session->negotiate.peer_quality_received && session->negotiate.state != NEGOTIATE_STATE_COMPARING) {
       log_info("Determining host role based on NAT qualities...");
@@ -1627,6 +1647,13 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
           memcpy(session->host_id, session->participant_id, 16);
           SAFE_STRNCPY(session->host_address, session->negotiate.host_address, sizeof(session->host_address));
           session->host_port = session->negotiate.host_port;
+
+          // Fallback to localhost if NAT detection failed to determine address
+          if (!session->host_address[0]) {
+            log_warn("NAT address empty, using localhost fallback");
+            SAFE_STRNCPY(session->host_address, "127.0.0.1", sizeof(session->host_address));
+          }
+
           set_state(session, DISCOVERY_STATE_STARTING_HOST);
         } else {
           // They are host (shouldn't happen in solo mode, but handle it)
@@ -1636,6 +1663,14 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
                    nat_compute_tier(&session->negotiate.peer_quality));
           SAFE_STRNCPY(session->host_address, session->negotiate.host_address, sizeof(session->host_address));
           session->host_port = session->negotiate.host_port;
+
+          // If host address is empty, wait for HOST_ANNOUNCEMENT from ACDS instead of using fallback
+          if (!session->host_address[0]) {
+            log_info("Waiting for HOST_ANNOUNCEMENT from ACDS to discover host address...");
+            // Stay in NEGOTIATING state to continue waiting for HOST_ANNOUNCEMENT
+            break;
+          }
+
           set_state(session, DISCOVERY_STATE_CONNECTING_HOST);
         }
       } else {
@@ -1680,6 +1715,21 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
     // Notify listeners that we're ready
     if (session->on_session_ready) {
       session->on_session_ready(session->session_string, session->callback_user_data);
+    }
+
+    // Send HOST_ANNOUNCEMENT to ACDS so participants can discover us
+    int host_port = GET_OPTION(port);
+    acip_host_announcement_t announcement = {0};
+    memcpy(announcement.session_id, session->session_id, 16);
+    memcpy(announcement.host_id, session->host_id, 16);
+    SAFE_STRNCPY(announcement.host_address, session->host_address, sizeof(announcement.host_address));
+    announcement.host_port = host_port;
+    announcement.connection_type = ACIP_CONNECTION_TYPE_DIRECT_PUBLIC;
+
+    if (session->acds_transport) {
+      packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &announcement,
+                                sizeof(announcement), 0);
+      log_info("Sent HOST_ANNOUNCEMENT to ACDS at %s:%u", announcement.host_address, announcement.host_port);
     }
 
     set_state(session, DISCOVERY_STATE_ACTIVE);
@@ -2412,11 +2462,10 @@ asciichat_error_t discovery_session_become_host(discovery_session_t *session) {
   acip_host_announcement_t announcement = {0};
   memcpy(announcement.session_id, session->session_id, 16);
   memcpy(announcement.host_id, session->participant_id, 16);
-  SAFE_STRNCPY(announcement.host_address, "127.0.0.1", sizeof(announcement.host_address));
-  // TODO: Use actual determined host address instead of 127.0.0.1
+  SAFE_STRNCPY(announcement.host_address, session->host_address, sizeof(announcement.host_address));
   announcement.host_port = host_port;
+  // Set connection type based on NAT quality (for now use DIRECT_PUBLIC for localhost dev environments)
   announcement.connection_type = ACIP_CONNECTION_TYPE_DIRECT_PUBLIC;
-  // TODO: Use actual connection type based on NAT quality
 
   if (session->acds_transport) {
     packet_send_via_transport(session->acds_transport, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &announcement,
