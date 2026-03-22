@@ -125,26 +125,9 @@ if(_use_shared_lib)
         )
         # Link BearSSL (required)
         target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
-        # Link against FFmpeg libraries
-        # For Release/RelWithDebInfo: Link against cache-built FFmpeg with absolute paths
-        # For Debug: FFmpeg.cmake uses pkg-config (system libraries) which sets FFMPEG_LIBRARIES
-        if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-            target_link_libraries(ascii-chat
-                "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/lib/libavformat.so"
-                "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/lib/libavcodec.so"
-                "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/lib/libswscale.so"
-                "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/lib/libswresample.so"
-                "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/lib/libavutil.so"
-            )
-            # For Release, add absolute RPATH to cache FFmpeg
-            target_link_options(ascii-chat PRIVATE
-                -Wl,-rpath=${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg/lib
-            )
-        else()
-            # Debug build: Use pkg-config FFmpeg libraries (system libraries)
-            if(FFMPEG_LIBRARIES)
-                target_link_libraries(ascii-chat ${FFMPEG_LIBRARIES})
-            endif()
+        # Link against FFmpeg libraries (set by FFmpeg.cmake for all build types)
+        if(FFMPEG_LIBRARIES)
+            target_link_libraries(ascii-chat ${FFMPEG_LIBRARIES})
         endif()
         # Link WebRTC audio processing for echo cancellation
         if(TARGET webrtc_audio_processing)
