@@ -64,6 +64,10 @@ export default defineConfig({
         target: `http://localhost:${process.env.API_PORT || 3001}`,
         changeOrigin: true,
       },
+      "/fonts": {
+        target: "http://localhost:5173",
+        changeOrigin: true,
+      },
     },
   },
   build: {

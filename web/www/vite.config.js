@@ -59,6 +59,8 @@ export default defineConfig({
       // Only set in development - production must configure these via reverse proxy if needed
       "Cross-Origin-Embedder-Policy": "require-corp",
       "Cross-Origin-Opener-Policy": "same-origin",
+      // Allow other dev servers (web:3000, discovery:5174) to load fonts
+      "Access-Control-Allow-Origin": "*",
     },
     // Development: http://0.0.0.0:5173 (accessible from other devices)
     // Production: https://ascii-chat.com
