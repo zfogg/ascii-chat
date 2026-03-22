@@ -124,10 +124,19 @@ project(${PROJECT_NAME_FULL}
 # Post-project() Config (code that must be run after project())
 # =============================================================================
 
-# Don't clear CMAKE_OSX_SYSROOT - it's needed for system header detection.
-# The Homebrew LLVM setup in CI uses clang config files with explicit flags
-# to prioritize compiler builtins over Xcode SDK headers, so we don't need
-# to clear the sysroot here.
+# Clear CMAKE_OSX_SYSROOT ONLY for Homebrew LLVM to prevent Xcode SDK headers
+# from shadowing compiler builtins (fixes BearSSL mach-o/dyld.h errors).
+# For system clang, keep CMAKE_OSX_SYSROOT set so pthread and system library
+# detection work correctly with FindThreads module.
+if(APPLE)
+    # Check if using Homebrew LLVM (path contains /opt/homebrew or /usr/local/opt)
+    if(CMAKE_C_COMPILER MATCHES "homebrew|opt/llvm" OR CMAKE_CXX_COMPILER MATCHES "homebrew|opt/llvm")
+        unset(CMAKE_OSX_SYSROOT CACHE)
+        message(STATUS "Using Homebrew LLVM - clearing CMAKE_OSX_SYSROOT to prevent header shadowing")
+    else()
+        message(STATUS "Using system clang - keeping CMAKE_OSX_SYSROOT for library detection")
+    endif()
+endif()
 
 # Musl release build optimization adjustment
 # Use -O2 instead of -O3 for musl release builds to avoid TPOFF32 relocation errors
