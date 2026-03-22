@@ -114,7 +114,13 @@
     const char *session_string, <b>uint8_t</b>(*keys_out)[32], size_t max_keys,
     size_t *count_out)
   <br/>
-  Get all active keys for a session.
+  Get all active keys for a session. <b>asciichat_error_t</b>
+    <b>database_stats_session_count</b> (sqlite3 *db, int64_t *count_out)
+  <br/>
+  Get total number of active sessions. <b>asciichat_error_t</b>
+    <b>database_stats_unique_clients</b> (sqlite3 *db, int64_t *count_out)
+  <br/>
+  Get total number of unique clients/participants.
   <br/>
 </p>
 </section>
@@ -1386,6 +1392,97 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>valid</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> database_stats_session_count (sqlite3 *
+  db, int64_t * count_out)</h2>
+<p class="Pp">Get total number of active sessions.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> Database handle
+<br/>
+<i>count_out</i> Output: number of active sessions</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>1163</b> of file
+    <b>discovery/database.c</b>.</p>
+<pre>1163                                                                                 {
+1164   if (!db || !count_out) {
+1165     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db or count_out is NULL&quot;);
+1166   }
+1167 
+1168   const char *query = &quot;SELECT COUNT(*) FROM sessions WHERE expires_at &gt; ?&quot;;
+1169   sqlite3_stmt *stmt;
+1170   int rc = sqlite3_prepare_v2(db, query, -1, &amp;stmt, NULL);
+1171   if (rc != SQLITE_OK) {
+1172     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to prepare statement: %s&quot;, sqlite3_errmsg(db));
+1173   }
+1174 
+1175   time_t now = time(NULL);
+1176   sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now);
+1177 
+1178   int64_t count = 0;
+1179   rc = sqlite3_step(stmt);
+1180   if (rc == SQLITE_ROW) {
+1181     count = sqlite3_column_int64(stmt, 0);
+1182   } else if (rc != SQLITE_DONE) {
+1183     sqlite3_finalize(stmt);
+1184     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to execute query: %s&quot;, sqlite3_errmsg(db));
+1185   }
+1186 
+1187   sqlite3_finalize(stmt);
+1188   *count_out = count;
+1189 
+1190   log_debug(&quot;Active session count: %lld&quot;, (long long)count);
+1191   return ASCIICHAT_OK;
+1192 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> database_stats_unique_clients (sqlite3 *
+  db, int64_t * count_out)</h2>
+<p class="Pp">Get total number of unique clients/participants.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>db</i> Database handle
+<br/>
+<i>count_out</i> Output: number of unique participants</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
+<p class="Pp">Definition at line <b>1194</b> of file
+    <b>discovery/database.c</b>.</p>
+<pre>1194                                                                                  {
+1195   if (!db || !count_out) {
+1196     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;db or count_out is NULL&quot;);
+1197   }
+1198 
+1199   const char *query = &quot;SELECT COUNT(DISTINCT participant_id) FROM participants&quot;;
+1200   sqlite3_stmt *stmt;
+1201   int rc = sqlite3_prepare_v2(db, query, -1, &amp;stmt, NULL);
+1202   if (rc != SQLITE_OK) {
+1203     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to prepare statement: %s&quot;, sqlite3_errmsg(db));
+1204   }
+1205 
+1206   int64_t count = 0;
+1207   rc = sqlite3_step(stmt);
+1208   if (rc == SQLITE_ROW) {
+1209     count = sqlite3_column_int64(stmt, 0);
+1210   } else if (rc != SQLITE_DONE) {
+1211     sqlite3_finalize(stmt);
+1212     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to execute query: %s&quot;, sqlite3_errmsg(db));
+1213   }
+1214 
+1215   sqlite3_finalize(stmt);
+1216   *count_out = count;
+1217 
+1218   log_debug(&quot;Unique clients count: %lld&quot;, (long long)count);
+1219   return ASCIICHAT_OK;
+1220 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 </section>
 <section class="Sh">

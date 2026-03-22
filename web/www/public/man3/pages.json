@@ -168,6 +168,12 @@
     "sourcePath": null
   },
   {
+    "name": "acds_stats_t",
+    "title": "acds_stats_t",
+    "file": "ascii-chat-acds_stats_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "acds_thread_context_t",
     "title": "acds_thread_context_t",
     "file": "ascii-chat-acds_thread_context_t.html",
@@ -6213,6 +6219,12 @@
     "name": "websocket_server_config_t",
     "title": "websocket_server_config_t",
     "file": "ascii-chat-websocket_server_config_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "websocket_stats_t",
+    "title": "websocket_stats_t",
+    "file": "ascii-chat-websocket_stats_t.html",
     "sourcePath": null
   },
   {

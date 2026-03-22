@@ -667,11 +667,12 @@ ATOMIC_REGISTER_AUTO(g_counter, NULL);
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_on_fetch()</b>.</p>
-<p class="Pp">Referenced by <b>audio_ring_buffer_read()</b>,
-    <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    <b>buffer_pool_shrink()</b>, <b>client_send_thread_func()</b>,
-    <b>cond_on_wait()</b>, <b>get_utf8_palette_cache()</b>,
-    <b>log_mmap_rotate()</b>, <b>log_mmap_write()</b>, <b>node_pool_get()</b>,
+<p class="Pp">Referenced by <b>acds_client_handler()</b>,
+    <b>audio_ring_buffer_read()</b>, <b>buffer_pool_alloc()</b>,
+    <b>buffer_pool_free()</b>, <b>buffer_pool_shrink()</b>,
+    <b>client_send_thread_func()</b>, <b>cond_on_wait()</b>,
+    <b>get_utf8_palette_cache()</b>, <b>log_mmap_rotate()</b>,
+    <b>log_mmap_write()</b>, <b>node_pool_get()</b>,
     <b>packet_queue_enqueue()</b>, <b>packet_queue_enqueue_packet()</b>,
     <b>packet_queue_try_dequeue()</b>, <b>ringbuffer_write()</b>,
     <b>rwlock_on_rdlock()</b>, <b>session_log_buffer_append()</b>,
@@ -1341,8 +1342,8 @@ ATOMIC_REGISTER_AUTO(g_counter, NULL);
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_on_store()</b>.</p>
-<p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
-    <b>asciichat_pcre2_cleanup_all()</b>,
+<p class="Pp">Referenced by <b>acds_server_init()</b>, <b>add_client()</b>,
+    <b>add_webrtc_client()</b>, <b>asciichat_pcre2_cleanup_all()</b>,
     <b>asciichat_pcre2_singleton_compile()</b>,
     <b>asciichat_pcre2_singleton_get_code()</b>,
     <b>audio_ring_buffer_clear()</b>, <b>audio_ring_buffer_read()</b>,

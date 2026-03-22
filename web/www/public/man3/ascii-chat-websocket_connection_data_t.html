@@ -71,7 +71,7 @@
 <p class="Pp">Per-connection user data.</p>
 <p class="Pp">Stored in libwebsockets per-session user data (wsi user
   pointer).</p>
-<p class="Pp">Definition at line <b>45</b> of file
+<p class="Pp">Definition at line <b>48</b> of file
     <b>lib/network/websocket/server.c</b>.</p>
 </section>
 <section class="Sh">
@@ -81,61 +81,61 @@
 <h2 class="Ss"><b>bool</b> websocket_connection_data_t::cleaning_up</h2>
 <p class="Pp">True if cleanup is in progress (prevents race with
   remove_client).</p>
-<p class="Pp">Definition at line <b>50</b> of file
+<p class="Pp">Definition at line <b>53</b> of file
     <b>lib/network/websocket/server.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> websocket_connection_data_t::handler_started</h2>
 <p class="Pp">True if handler thread was started.</p>
-<p class="Pp">Definition at line <b>49</b> of file
+<p class="Pp">Definition at line <b>52</b> of file
     <b>lib/network/websocket/server.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_thread_t</b>
   websocket_connection_data_t::handler_thread</h2>
 <p class="Pp">Client handler thread.</p>
-<p class="Pp">Definition at line <b>48</b> of file
+<p class="Pp">Definition at line <b>51</b> of file
     <b>lib/network/websocket/server.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> websocket_connection_data_t::has_pending_send</h2>
 <p class="Pp">True if there's an in-progress message.</p>
-<p class="Pp">Definition at line <b>56</b> of file
+<p class="Pp">Definition at line <b>59</b> of file
     <b>lib/network/websocket/server.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b>*
   websocket_connection_data_t::pending_send_data</h2>
 <p class="Pp">Current message being sent.</p>
-<p class="Pp">Definition at line <b>53</b> of file
+<p class="Pp">Definition at line <b>56</b> of file
     <b>lib/network/websocket/server.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_websocket_connection_data_t::pending_send_len"><a class="permalink" href="#size_t_websocket_connection_data_t::pending_send_len">size_t
   websocket_connection_data_t::pending_send_len</a></h2>
 <p class="Pp">Total length of message being sent.</p>
-<p class="Pp">Definition at line <b>54</b> of file
+<p class="Pp">Definition at line <b>57</b> of file
     <b>lib/network/websocket/server.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_websocket_connection_data_t::pending_send_offset"><a class="permalink" href="#size_t_websocket_connection_data_t::pending_send_offset">size_t
   websocket_connection_data_t::pending_send_offset</a></h2>
 <p class="Pp">Current offset in message (bytes already sent).</p>
-<p class="Pp">Definition at line <b>55</b> of file
+<p class="Pp">Definition at line <b>58</b> of file
     <b>lib/network/websocket/server.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>websocket_server_t</b>*
   websocket_connection_data_t::server</h2>
 <p class="Pp">Back-reference to server.</p>
-<p class="Pp">Definition at line <b>46</b> of file
+<p class="Pp">Definition at line <b>49</b> of file
     <b>lib/network/websocket/server.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>acip_transport_t</b>*
   websocket_connection_data_t::transport</h2>
 <p class="Pp">ACIP transport for this connection.</p>
-<p class="Pp">Definition at line <b>47</b> of file
+<p class="Pp">Definition at line <b>50</b> of file
     <b>lib/network/websocket/server.c</b>.</p>
 <p class="Pp"></p>
 </section>
