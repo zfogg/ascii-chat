@@ -306,7 +306,7 @@ export const AsciiRenderer = forwardRef<
             },
             cursorStyle: "block",
             cursorBlink: false,
-            fontFamily: '"FiraCode Nerd Font Mono", "Fira Code", monospace',
+            fontFamily: "Hack, monospace",
             fontSize: 12,
             scrollback: 0,
             disableStdin: true,

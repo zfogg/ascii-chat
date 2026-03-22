@@ -1,6 +1,9 @@
 /* Import xterm.js CSS */
 @import "xterm/css/xterm.css";
 
+/* Import Roboto Mono from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&display=swap');
+
 /* Import Tailwind v4 */
 @import "tailwindcss";
 
@@ -11,6 +14,8 @@
 @source "../../packages/shared/src";
 
 @theme {
+  --font-sans: Roboto Mono, monospace;
+  --font-mono: Hack, monospace;
   --color-terminal-bg: #030712;
   --color-terminal-fg: #f3f4f6;
   --color-terminal-black: #0c0c0c;
@@ -50,6 +55,11 @@
 @layer base {
   /* Define terminal colors for xterm.js - using shared design colors for main bg/fg */
   /* Custom styles for web.ascii-chat.com */
+  html,
+  body {
+    font-family: var(--font-sans) !important;
+  }
+
   #app {
     width: 100%;
     min-height: 100vh;

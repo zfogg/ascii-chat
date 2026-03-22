@@ -1,3 +1,10 @@
+@import url('//cdn.jsdelivr.net/npm/hack-font@3.3.0/build/web/hack.css');
+
+/* Override react-syntax-highlighter font-family */
+pre code {
+  font-family: Hack, monospace !important;
+}
+
 @layer base {
   /* vertically center the xterm thingy in its container */
   .terminal.xterm {
@@ -182,9 +189,6 @@
     background-color: rgb(3, 7, 18);
     padding: 0.5rem;
     border-radius: 0.25rem;
-    font-family:
-      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-      "Courier New", monospace;
     font-size: 0.875rem;
     color: rgb(45, 212, 191);
   }
@@ -195,9 +199,6 @@
     border-radius: 0.5rem;
     padding: 1rem;
     overflow-x: auto;
-    font-family:
-      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-      "Courier New", monospace;
     font-size: 0.875rem;
   }
 

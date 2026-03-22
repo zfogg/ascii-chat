@@ -44,7 +44,9 @@ export default {
         },
       },
       fontFamily: {
-        mono: ["JetBrains Mono", "Cascadia Code", "Fira Code", "monospace"],
+        mono: ["Hack", "monospace"],
+        hack: ["Hack", "monospace"],
+        inter: ["Inter", "sans-serif"],
       },
     },
   },

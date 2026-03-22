@@ -1,8 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "@ascii-chat/shared/styles/base.css";
 
 @source ".";
 @source "../../packages/shared/src";
+
+@theme {
+  --font-sans: Inter, sans-serif;
+}
 
 @layer base {
   body {

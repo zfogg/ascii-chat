@@ -13,9 +13,7 @@
 
 /* Main man page content container */
 .man-page-content {
-  font-family:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  font-family: Hack, monospace;
   font-size: 0.625rem;
   line-height: 1.55;
   max-width: 100%;
@@ -363,6 +361,7 @@ section {
 
 /* Code blocks */
 .man-page-content pre {
+  font-family: Hack, monospace;
   font-size: 1rem;
   overflow-x: auto;
 }

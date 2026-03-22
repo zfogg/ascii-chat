@@ -135,12 +135,6 @@ export function CodeBlock({
           lineHeight: "1.5",
           margin: 0,
         }}
-        codeTagProps={{
-          style: {
-            fontFamily:
-              'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-          },
-        }}
         showLineNumbers={showLineNumbers}
         lineProps={(lineNumber) => {
           const isHighlighted =
