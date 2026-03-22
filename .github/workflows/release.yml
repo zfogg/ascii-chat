@@ -403,7 +403,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos-26-large
+          # Intel macOS disabled (macos-26-large requires paid runner)
+          # - os: macos-26-large
           - os: macos-26
 
     steps:
