@@ -78,6 +78,7 @@ export default function MirrorDemoWidget({
   const streamRef = useRef<MediaStream | null>(null);
   const frameIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const sourceRef = useRef<DemoSource>(null);
+  const frameCountRef = useRef(0);
 
   const { captureFrame } = useCanvasCapture(videoRef, canvasRef);
 
@@ -337,6 +338,10 @@ export default function MirrorDemoWidget({
   }, [termDims, wasmReady]);
 
   useEffect(() => {
+    addDebugLog(`Dimensions set: ${termDims.cols}x${termDims.rows}, wasmReady=${wasmReady}`);
+  }, [termDims, wasmReady, addDebugLog]);
+
+  useEffect(() => {
     if (!source || !wasmReady) return;
     if (termDims.cols <= 0 || termDims.rows <= 0) return;
 
@@ -356,6 +361,7 @@ export default function MirrorDemoWidget({
           frame.height,
         );
         if (ascii) {
+          frameCountRef.current++;
           rendererRef.current.writeFrame(ascii);
         }
       } catch (err) {
@@ -415,7 +421,7 @@ export default function MirrorDemoWidget({
         className="relative rounded-lg border border-gray-700 bg-[#0c0c0c] overflow-hidden"
         style={{ height, minHeight: `${minHeight}px`, width: "100%" }}
       >
-        <div className="w-full h-full overflow-hidden">
+        <div className="w-full h-full">
           <AsciiRenderer
             ref={rendererRef}
             onDimensionsChange={handleDimensionsChange}

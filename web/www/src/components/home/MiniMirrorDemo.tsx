@@ -7,7 +7,7 @@ export default function MiniMirrorDemo() {
       <h2 className="text-2xl sm:text-3xl font-bold text-green-300 mb-4">
         🎬 Demo it right now
       </h2>
-      <MirrorDemoWidget showHeader={false} />
+      <MirrorDemoWidget showHeader={false} minHeight={375} />
       <p className="text-gray-500 text-xs mt-[-1.6rem] sm:text-right">
         Want to play with this more? The web client{" "}
         <a
