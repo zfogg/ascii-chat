@@ -8,7 +8,7 @@ export default function MiniMirrorDemo() {
         🎬 Demo it right now
       </h2>
       <MirrorDemoWidget showHeader={false} />
-      <p className="text-gray-500 text-xs mt-1 sm:text-right">
+      <p className="text-gray-500 text-xs mt-[-1.6rem] sm:text-right">
         Want to play with this more? The web client{" "}
         <a
           href={`${SITES.WEB}/mirror`}
