@@ -338,7 +338,9 @@ export default function MirrorDemoWidget({
   }, [termDims, wasmReady]);
 
   useEffect(() => {
-    addDebugLog(`Dimensions set: ${termDims.cols}x${termDims.rows}, wasmReady=${wasmReady}`);
+    addDebugLog(
+      `Dimensions set: ${termDims.cols}x${termDims.rows}, wasmReady=${wasmReady}`,
+    );
   }, [termDims, wasmReady, addDebugLog]);
 
   useEffect(() => {
