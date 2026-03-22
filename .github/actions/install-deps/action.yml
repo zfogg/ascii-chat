@@ -256,6 +256,14 @@ runs:
         # Don't use set -e here - we need to survive install-deps failures
         set -uo pipefail
 
+        # Select Xcode 16.0 for compatibility with Homebrew LLVM
+        # Xcode 16.4 SDK headers are incompatible with LLVM 22's header search
+        XCODE_16_0="/Applications/Xcode_16.0.app"
+        if [ -d "$XCODE_16_0" ]; then
+          echo "Selecting Xcode 16.0 for LLVM compatibility"
+          sudo xcode-select -s "$XCODE_16_0"
+        fi
+
         echo "Running scripts/install-deps.sh to install build dependencies..."
         # install-deps.sh handles all Homebrew package installation
         # GitHub runners have pre-installed packages with version conflicts

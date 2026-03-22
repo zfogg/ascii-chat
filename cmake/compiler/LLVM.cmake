@@ -327,14 +327,13 @@ function(configure_llvm_post_project)
         set(ASCIICHAT_MACOS_SDK_FOR_TOOLS "${_macos_sdk_for_tools}" CACHE INTERNAL "Saved macOS SDK path for tools (defer, panic, etc.)")
     endif()
 
-    # Clear CMAKE_OSX_SYSROOT for self-contained LLVM (Homebrew, git-built)
-    # -isysroot conflicts with Homebrew LLVM's resource dir headers (stddef.h, stdarg.h)
-    # Only keep it if the user explicitly provided it on command line
-    if(NOT _user_provided_sysroot)
-        set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
-        message(STATUS "${BoldGreen}Using${ColorReset} self-contained ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset}: disabling SDK root (-isysroot)")
-    else()
+    # macOS SDK handling for self-contained LLVM (Homebrew, git-built):
+    # Keep CMAKE_OSX_SYSROOT (clang needs it for system headers) but don't
+    # clear it — the headers need sysroot context for #include_next chains.
+    if(_user_provided_sysroot)
         message(STATUS "${BoldGreen}Keeping${ColorReset} ${BoldBlue}CMAKE_OSX_SYSROOT${ColorReset} (user-provided)")
+    else()
+        message(STATUS "${BoldGreen}Using${ColorReset} self-contained ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset} with system SDK")
     endif()
 
     # Add library paths and linking for the detected LLVM installation
