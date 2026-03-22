@@ -314,6 +314,35 @@ function(configure_llvm_post_project)
         set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS}" PARENT_SCOPE)
     else()
         message(WARNING "${BoldYellow}Could not find Clang resource directory${ColorReset} at: ${CLANG_RESOURCE_DIR}")
+
+        # Fallback for broken Homebrew LLVM installations: add Xcode SDK system include paths
+        if(APPLE)
+            # Try to find Xcode's system headers
+            find_program(XCRUN_EXECUTABLE xcrun)
+            if(XCRUN_EXECUTABLE)
+                execute_process(
+                    COMMAND ${XCRUN_EXECUTABLE} --show-sdk-path
+                    OUTPUT_VARIABLE XCODE_SDK_PATH
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    ERROR_QUIET
+                )
+
+                if(XCODE_SDK_PATH AND EXISTS "${XCODE_SDK_PATH}/usr/include")
+                    message(STATUS "${BoldYellow}Using Xcode SDK system headers as fallback${ColorReset}: ${XCODE_SDK_PATH}/usr/include")
+                    string(APPEND CMAKE_C_FLAGS " -isysroot ${XCODE_SDK_PATH}")
+                    string(APPEND CMAKE_CXX_FLAGS " -isysroot ${XCODE_SDK_PATH}")
+                    string(APPEND CMAKE_OBJC_FLAGS " -isysroot ${XCODE_SDK_PATH}")
+                    # Export to parent scope
+                    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
+                    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+                    set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS}" PARENT_SCOPE)
+                else()
+                    message(WARNING "${BoldYellow}Xcode SDK not found; system headers may not be accessible${ColorReset}")
+                endif()
+            else()
+                message(WARNING "${BoldYellow}xcrun not found; cannot determine Xcode SDK path${ColorReset}")
+            endif()
+        endif()
     endif()
 
     # macOS SDK handling:
