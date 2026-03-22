@@ -305,22 +305,24 @@ function(configure_llvm_post_project)
     if(EXISTS "${CLANG_RESOURCE_DIR}/include")
         message(STATUS "${BoldGreen}Found${ColorReset} ${BoldBlue}Clang${ColorReset} resource directory: ${CLANG_RESOURCE_DIR}")
         # On macOS, check if system headers are accessible. If not (broken Homebrew LLVM),
-        # don't use -resource-dir and instead rely on CMAKE_OSX_SYSROOT + Xcode SDK.
+        # don't use -resource-dir and instead use Xcode SDK with explicit -isysroot flag.
         if(APPLE AND NOT EXISTS "${CLANG_RESOURCE_DIR}/include/mach-o/dyld.h")
-            message(STATUS "${BoldYellow}Resource directory lacks system headers; using Xcode SDK instead of -resource-dir${ColorReset}")
-            if(NOT ASCIICHAT_USER_PROVIDED_OSX_SYSROOT)
-                find_program(XCRUN_EXECUTABLE xcrun)
-                if(XCRUN_EXECUTABLE)
-                    execute_process(
-                        COMMAND ${XCRUN_EXECUTABLE} --show-sdk-path
-                        OUTPUT_VARIABLE XCODE_SDK_PATH
-                        OUTPUT_STRIP_TRAILING_WHITESPACE
-                        ERROR_QUIET
-                    )
-                    if(XCODE_SDK_PATH AND EXISTS "${XCODE_SDK_PATH}/usr/include")
-                        set(CMAKE_OSX_SYSROOT "${XCODE_SDK_PATH}" CACHE PATH "macOS SDK root" FORCE)
-                        message(STATUS "${BoldYellow}Set CMAKE_OSX_SYSROOT${ColorReset}: ${XCODE_SDK_PATH}")
-                    endif()
+            message(STATUS "${BoldYellow}Resource directory lacks system headers; using Xcode SDK with -isysroot${ColorReset}")
+            find_program(XCRUN_EXECUTABLE xcrun)
+            if(XCRUN_EXECUTABLE)
+                execute_process(
+                    COMMAND ${XCRUN_EXECUTABLE} --show-sdk-path
+                    OUTPUT_VARIABLE XCODE_SDK_PATH
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    ERROR_QUIET
+                )
+                if(XCODE_SDK_PATH AND EXISTS "${XCODE_SDK_PATH}/usr/include")
+                    message(STATUS "${BoldYellow}Using Xcode SDK for headers${ColorReset}: ${XCODE_SDK_PATH}")
+                    # Use add_compile_options to ensure -isysroot is passed to all compilers
+                    # This must be done here to take effect during actual compilation
+                    add_compile_options(-isysroot ${XCODE_SDK_PATH})
+                else()
+                    message(WARNING "${BoldYellow}Xcode SDK not found; system headers may not be accessible${ColorReset}")
                 endif()
             endif()
         else()
