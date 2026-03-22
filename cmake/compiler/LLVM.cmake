@@ -318,6 +318,9 @@ function(configure_llvm_post_project)
                 )
                 if(XCODE_SDK_PATH AND EXISTS "${XCODE_SDK_PATH}/usr/include")
                     message(STATUS "${BoldYellow}Using Xcode SDK for headers${ColorReset}: ${XCODE_SDK_PATH}")
+                    # Clear CMAKE_OSX_SYSROOT so it doesn't get applied automatically
+                    # We'll use add_compile_options instead to have full control
+                    set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
                     # Use add_compile_options to ensure -isysroot is passed to all compilers
                     # This must be done here to take effect during actual compilation
                     add_compile_options(-isysroot ${XCODE_SDK_PATH})
