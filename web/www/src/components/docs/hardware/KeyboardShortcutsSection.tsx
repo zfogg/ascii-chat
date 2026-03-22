@@ -25,10 +25,10 @@ export default function KeyboardShortcutsSection() {
         <div className="space-y-3">
           <div className="card-standard accent-cyan">
             <Heading level={4} className="text-cyan-300 font-semibold mb-2">
-              Arrow Keys
+              Left/Right Arrow Keys
             </Heading>
             <p className="text-gray-300 text-sm">
-              Navigate between clients in grid view or focus different streams
+              Forward or backward 30s while playing media from a file or url
             </p>
           </div>
           <div className="card-standard accent-yellow">
@@ -58,7 +58,7 @@ export default function KeyboardShortcutsSection() {
               Space
             </Heading>
             <p className="text-gray-300 text-sm">
-              Pause/unpause media playback (when file or URL media is playing)
+              Pause/unpause media playback when file or URL media is playing
             </p>
           </div>
           <div className="card-standard accent-lime">
