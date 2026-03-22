@@ -713,9 +713,8 @@ endif()
 # =============================================================================
 # Test Shared Library
 # =============================================================================
-# Available in all build types except musl static builds
-# Musl builds use static-pie which cannot link against shared libraries
-if(NOT USE_MUSL)
+# Available when shared library is built (skipped for musl and Linux Release non-musl)
+if(TARGET ascii-chat-shared)
     if(BUILD_TESTS)
         add_executable(test-shared-lib ${CMAKE_SOURCE_DIR}/cmake/test/test_lib.c)
         set_target_properties(test-shared-lib PROPERTIES LINKER_LANGUAGE CXX)
