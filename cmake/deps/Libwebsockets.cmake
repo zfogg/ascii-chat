@@ -326,8 +326,9 @@ if(NOT EXISTS "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a" OR NOT LWS_OPENSSL_LIBS
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DCMAKE_INSTALL_PREFIX=${LWS_NATIVE_PREFIX}
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+            -DCMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}
             -DCMAKE_PREFIX_PATH=${LWS_OPENSSL_PREFIX}
-            -DCMAKE_C_FLAGS=-I${LWS_OPENSSL_PREFIX}/include\ -Wno-error=incompatible-pointer-types-discards-qualifiers\ -Wno-sign-conversion
+            -DCMAKE_C_FLAGS=-I${LWS_OPENSSL_PREFIX}/include\ -Wno-sign-conversion\ -Wno-error\ -w
             -DLWS_WITH_SHARED=OFF
             -DLWS_WITH_STATIC=ON
             -DLWS_WITHOUT_TESTAPPS=ON
