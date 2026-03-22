@@ -73,7 +73,7 @@ test("mirror mode: can render with fake webcam", async ({ page }) => {
 
   // Try to stop
   try {
-    const stopButton = await page.getByRole("button", { name: /Stop/i });
+    const stopButton = page.getByRole("button", { name: /Stop/i });
     await stopButton.click();
   } catch {
     // OK
@@ -134,7 +134,7 @@ test("mirror mode: maintains FPS > 15", async ({ page }) => {
 
   // Try to stop
   try {
-    const stopButton = await page.getByRole("button", { name: /Stop/i });
+    const stopButton = page.getByRole("button", { name: /Stop/i });
     await stopButton.click();
   } catch {
     // OK
