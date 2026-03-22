@@ -208,12 +208,19 @@ static const char *find_fd_prefix_start(const char *start, const char *p) {
   if (p == start)
     return p;
 
-  const char *word_start = p - 1;
+  const char *initial_pos = p - 1;
+  const char *word_start = initial_pos;
   /* Skip back over whitespace, '=', ':' */
   while (word_start > start &&
          (*word_start == ' ' || *word_start == '\t' || *word_start == '=' || *word_start == ':')) {
     word_start--;
   }
+
+  /* Require at least one separator between keyword and digit.
+   * Without this, "fd7a" in IPv6 addresses like "fd7a:115c:..." would
+   * be misinterpreted as fd prefix + digit 7. */
+  if (word_start == initial_pos)
+    return p;
 
   /* Check if we have a digit (we're in a decimal number) */
   if (!isdigit(*word_start)) {
@@ -252,12 +259,17 @@ static const char *find_packet_type_prefix_start(const char *start, const char *
   if (p == start)
     return p;
 
-  const char *word_start = p - 1;
+  const char *initial_pos = p - 1;
+  const char *word_start = initial_pos;
   /* Skip back over whitespace, '=', ':', '(' */
   while (word_start > start && (*word_start == ' ' || *word_start == '\t' || *word_start == '=' || *word_start == ':' ||
                                 *word_start == '(')) {
     word_start--;
   }
+
+  /* Require at least one separator between keyword and digit */
+  if (word_start == initial_pos)
+    return p;
 
   /* Check if we have a digit (we're in a decimal number) */
   if (!isdigit(*word_start)) {
