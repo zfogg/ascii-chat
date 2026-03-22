@@ -9,16 +9,22 @@ export function Footer() {
           href: SITES.MAIN,
           label: "🖥️ www",
           color: "text-terminal-green hover:text-terminal-brightGreen",
+          target: "_blank",
+          rel: "noopener noreferrer",
         },
         {
           href: SITES.DISCOVERY,
           label: "🔍 discovery",
           color: "text-terminal-magenta hover:text-terminal-brightMagenta",
+          target: "_blank",
+          rel: "noopener noreferrer",
         },
         {
           href: "https://github.com/zfogg/ascii-chat",
           label: "📦 GitHub",
           color: "text-terminal-cyan hover:text-terminal-brightCyan",
+          target: "_blank",
+          rel: "noopener noreferrer",
         },
       ]}
       commitSha={__COMMIT_SHA__}

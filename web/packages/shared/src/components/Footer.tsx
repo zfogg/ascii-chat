@@ -9,6 +9,8 @@ interface FooterProps {
     label: string;
     color: string;
     onClick?: () => void;
+    target?: string;
+    rel?: string;
   }>;
   commitSha: string;
   onCommitClick?: () => void;
@@ -37,6 +39,8 @@ export function Footer({
             <Link
               href={link.href}
               onClick={link.onClick}
+              target={link.target}
+              rel={link.rel}
               className={`${link.color} transition-colors whitespace-nowrap`}
             >
               {link.label}
@@ -49,7 +53,12 @@ export function Footer({
       )}
       <p className="text-xs md:text-sm text-gray-400 mt-2">
         made with ❤️ by{" "}
-        <Link href="https://zfo.gg" className={authorLinkColor}>
+        <Link
+          href="https://zfo.gg"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={authorLinkColor}
+        >
           @zfogg
         </Link>
         {" · "}

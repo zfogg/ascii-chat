@@ -9,26 +9,36 @@ export default function Footer() {
           href: "https://github.com/zfogg/ascii-chat",
           label: "📦 GitHub",
           color: "text-cyan-400 hover:text-cyan-300",
+          target: "_blank",
+          rel: "noopener noreferrer",
         },
         {
           href: "https://github.com/zfogg/ascii-chat/issues",
           label: "🐛 Issues",
           color: "text-purple-400 hover:text-purple-300",
+          target: "_blank",
+          rel: "noopener noreferrer",
         },
         {
           href: "https://github.com/zfogg/ascii-chat/releases",
           label: "📦 Releases",
           color: "text-teal-400 hover:text-teal-300",
+          target: "_blank",
+          rel: "noopener noreferrer",
         },
         {
           href: SITES.DISCOVERY,
           label: "🔍 Discovery",
           color: "text-pink-400 hover:text-pink-300",
+          target: "_blank",
+          rel: "noopener noreferrer",
         },
         {
           href: SITES.WEB,
           label: "🌐 Web Client",
           color: "text-yellow-400 hover:text-yellow-300",
+          target: "_blank",
+          rel: "noopener noreferrer",
         },
       ]}
       commitSha={__COMMIT_SHA__}
