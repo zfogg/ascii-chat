@@ -160,10 +160,12 @@ test.describe("Rainbow Color Filter Cycling", () => {
         let m;
         const seen = new Set<string>();
         while ((m = re.exec(frame)) !== null && allColors.length < 5) {
-          const key = `${m[1]},${m[2]},${m[3]}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            allColors.push(key);
+          if (m[1] && m[2] && m[3]) {
+            const key = `${m[1]},${m[2]},${m[3]}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              allColors.push(key);
+            }
           }
         }
         // Log always so we can see the data
@@ -172,9 +174,9 @@ test.describe("Rainbow Color Filter Cycling", () => {
         );
 
         return {
-          r: parseInt(match[1], 10),
-          g: parseInt(match[2], 10),
-          b: parseInt(match[3], 10),
+          r: parseInt(match[1]!, 10),
+          g: parseInt(match[2]!, 10),
+          b: parseInt(match[3]!, 10),
           sampleCount: 1,
           frameCount: frameCount || 0,
           distinctColors: allColors.length,

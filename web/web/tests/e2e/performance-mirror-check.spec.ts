@@ -115,7 +115,7 @@ test("mirror mode: maintains FPS > 15", async ({ page }) => {
         console.log("Found FPS text:", text);
         // Match "FPS: 19" or "FPS: 19 / 60"
         const match = text.match(/FPS:\s*(\d+)/);
-        if (match) {
+        if (match && match[1]) {
           return parseInt(match[1]);
         }
       }

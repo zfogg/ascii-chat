@@ -90,7 +90,7 @@ describe("Reconnection with Server Restart", () => {
 
     // Verify final state is CONNECTED
     expect(states[states.length - 1]).toBe(ConnectionState.CONNECTED);
-    expect(ConnectionState[states[states.length - 1]]).toBe("CONNECTED");
+    expect(ConnectionState[states[states.length - 1]!]).toBe("CONNECTED");
     console.log("[✓] Final UI state: CONNECTED");
 
     // Verify we saw reconnection states

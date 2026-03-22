@@ -187,7 +187,7 @@ test("UI: browser auto-reconnects when server restarts", async ({ page }) => {
     // Record every state change (not duplicates)
     if (
       !stateTimeline.length ||
-      stateTimeline[stateTimeline.length - 1].state !== state
+      stateTimeline[stateTimeline.length - 1]!.state !== state
     ) {
       stateTimeline.push({ state, elapsed });
       console.log(`  +${elapsed}ms: ${state}`);
@@ -203,7 +203,7 @@ test("UI: browser auto-reconnects when server restarts", async ({ page }) => {
       const nextIdx = i + 1;
       const duration =
         nextIdx < stateTimeline.length
-          ? stateTimeline[nextIdx].elapsed - s.elapsed
+          ? stateTimeline[nextIdx]!.elapsed - s.elapsed
           : "...";
       return `${s.state}(${s.elapsed}ms, ${duration}ms)`;
     })
@@ -211,7 +211,7 @@ test("UI: browser auto-reconnects when server restarts", async ({ page }) => {
   console.log("  ", progression);
 
   // Validate: should NOT stay Connected, should show Connecting or Disconnected
-  if (stateTimeline.length === 1 && stateTimeline[0].state === "Connected") {
+  if (stateTimeline.length === 1 && stateTimeline[0]!.state === "Connected") {
     console.log("\n✗✗✗ BROKEN: Browser never detected server disconnect!");
     console.log("     Stayed in Connected state the entire time");
   } else if (stateTimeline.map((s) => s.state).includes("Connecting")) {
@@ -259,7 +259,7 @@ test("UI: browser auto-reconnects when server restarts", async ({ page }) => {
       // Record every state change
       if (
         !fullReconnectTimeline.length ||
-        fullReconnectTimeline[fullReconnectTimeline.length - 1].state !== state
+        fullReconnectTimeline[fullReconnectTimeline.length - 1]!.state !== state
       ) {
         fullReconnectTimeline.push({ state, elapsed });
         console.log(`  +${elapsed}ms: ${state}`);
@@ -287,7 +287,7 @@ test("UI: browser auto-reconnects when server restarts", async ({ page }) => {
       const nextIdx = i + 1;
       const duration =
         nextIdx < reconnectTimeline.length
-          ? reconnectTimeline[nextIdx].elapsed - s.elapsed
+          ? reconnectTimeline[nextIdx]!.elapsed - s.elapsed
           : "...";
       return `${s.state}(${s.elapsed}ms, ${duration}ms)`;
     })

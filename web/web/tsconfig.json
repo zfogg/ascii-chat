@@ -16,5 +16,5 @@
     "skipLibCheck": true,
     "moduleResolution": "bundler"
   },
-  "include": ["src"]
+  "include": ["src", "tests"]
 }

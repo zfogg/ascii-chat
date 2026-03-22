@@ -5,7 +5,7 @@ let server: ServerFixture | null = null;
 let serverUrl: string = "";
 
 test.beforeAll(async () => {
-  const env_port = process.env.PORT;
+  const env_port = process.env["PORT"];
   if (env_port) {
     const port = parseInt(env_port);
     serverUrl = `ws://localhost:${port}`;

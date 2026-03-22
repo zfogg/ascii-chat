@@ -34,7 +34,7 @@ test("Real webcam animates with server frames", async ({ page, context }) => {
     // The format is "hash=123456" (decimal number)
     if (text.includes("hash=")) {
       const match = text.match(/hash=(\d+)/);
-      if (match) {
+      if (match && match[1]) {
         frameChecksums.push(match[1]);
         receiveTimestamps.push(Date.now());
         console.log(`[FRAME #${frameChecksums.length}] checksum=${match[1]}`);

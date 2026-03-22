@@ -218,7 +218,7 @@ test("Debug CLIENT_CAPABILITIES and ASCII_FRAME flow", async ({
   const typeBreakdown = new Map<string, number>();
   innerPackets.forEach((p) => {
     const match = p.match(/type=(\d+) \(([^)]+)\)/);
-    if (match) {
+    if (match && match[2]) {
       const type = match[2];
       typeBreakdown.set(type, (typeBreakdown.get(type) || 0) + 1);
     }

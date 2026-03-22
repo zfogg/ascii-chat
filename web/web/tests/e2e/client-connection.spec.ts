@@ -11,8 +11,8 @@ import { ServerFixture, getRandomPort } from "./server-fixture";
 const WEB_CLIENT_URL = "http://localhost:3000/client";
 
 // Get server port from environment variable or use default (27226 is the WebSocket default)
-const SERVER_PORT = process.env.PORT ? parseInt(process.env.PORT) : 27226;
-const USE_EXTERNAL_SERVER = process.env.PORT !== undefined;
+const SERVER_PORT = process.env["PORT"] ? parseInt(process.env["PORT"]) : 27226;
+const USE_EXTERNAL_SERVER = process.env["PORT"] !== undefined;
 
 // Create server fixture for this test file
 let server: ServerFixture | null = null;
