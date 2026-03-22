@@ -261,8 +261,8 @@ function(configure_llvm_post_project)
         set(_user_provided_sysroot TRUE)
     endif()
 
-    # If clang resource directory is broken, explicitly set CMAKE_OSX_SYSROOT
-    # to Xcode SDK to ensure headers are found (GitHub Actions workaround)
+    # If clang resource directory is broken, add explicit Xcode SDK include paths
+    # (GitHub Actions workaround for broken Homebrew LLVM installations)
     if(NOT _user_provided_sysroot)
         # Detect if clang resource directory has the headers we need
         execute_process(
@@ -273,8 +273,8 @@ function(configure_llvm_post_project)
         )
 
         if(NOT EXISTS "${_clang_resource_dir}/include/stdarg.h")
-            # Resource dir is broken, use Xcode SDK explicitly
-            message(STATUS "${BoldYellow}Clang resource directory broken,${ColorReset} using Xcode SDK")
+            # Resource dir is broken, add Xcode SDK includes explicitly
+            message(STATUS "${BoldYellow}Clang resource directory missing stdarg.h,${ColorReset} adding Xcode SDK paths")
 
             # Try to find Xcode SDK
             execute_process(
@@ -285,8 +285,23 @@ function(configure_llvm_post_project)
             )
 
             if(_xcode_sdk AND EXISTS "${_xcode_sdk}")
+                message(STATUS "${BoldGreen}Found Xcode SDK:${ColorReset} ${BoldCyan}${_xcode_sdk}${ColorReset}")
+                # Add Xcode SDK include paths to compiler flags
+                string(APPEND CMAKE_C_FLAGS " -isystem ${_xcode_sdk}/usr/include")
+                string(APPEND CMAKE_CXX_FLAGS " -isystem ${_xcode_sdk}/usr/include")
+                string(APPEND CMAKE_OBJC_FLAGS " -isystem ${_xcode_sdk}/usr/include")
+
+                # Also set CMAKE_OSX_SYSROOT for other uses (like compilation database)
                 set(CMAKE_OSX_SYSROOT "${_xcode_sdk}" CACHE PATH "macOS SDK path" FORCE)
-                message(STATUS "${BoldGreen}Set CMAKE_OSX_SYSROOT${ColorReset} to Xcode SDK: ${BoldCyan}${_xcode_sdk}${ColorReset}")
+
+                # Export flags to parent scope
+                set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
+                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+                set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS}" PARENT_SCOPE)
+
+                message(STATUS "${BoldGreen}Added Xcode SDK include paths${ColorReset}")
+            else()
+                message(WARNING "${BoldYellow}Could not find Xcode SDK${ColorReset}")
             endif()
         endif()
     endif()
