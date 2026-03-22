@@ -119,10 +119,6 @@ project(${PROJECT_NAME_FULL}
     LANGUAGES ${PROJECT_LANGUAGES}
 )
 
-# Set C++ standard explicitly to avoid c++26 auto-detection issues
-# (LLVM 22 + Xcode 16.4 SDK has header incompatibilities in c++26 mode)
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # =============================================================================
 # Post-project() Config (code that must be run after project())
