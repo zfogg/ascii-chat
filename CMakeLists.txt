@@ -127,8 +127,10 @@ project(${PROJECT_NAME_FULL}
 # Re-clear CMAKE_OSX_SYSROOT after project() because CMake's compiler
 # detection re-sets it. Self-contained LLVM (Homebrew) doesn't need -isysroot
 # and it causes Xcode SDK headers to shadow the compiler's builtin headers.
-if(APPLE AND NOT ASCIICHAT_USER_PROVIDED_OSX_SYSROOT)
-    set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
+if(APPLE)
+    if(NOT ASCIICHAT_USER_PROVIDED_OSX_SYSROOT)
+        set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
+    endif()
 endif()
 
 # Musl release build optimization adjustment
