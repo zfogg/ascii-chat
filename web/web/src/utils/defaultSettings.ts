@@ -9,16 +9,11 @@ export const DEFAULT_SETTINGS: SettingsConfig = {
   palette: "standard",
   paletteChars: " =#░░▒▒▓▓██",
   matrixRain: false,
-  flipX: false,
+  flipX: true,
 };
 
-/**
- * Get default settings with platform-specific overrides
- * @param isMacOS Whether the current platform is macOS
- */
-export function getDefaultSettings(isMacOS: boolean = false): SettingsConfig {
+export function getDefaultSettings(): SettingsConfig {
   return {
     ...DEFAULT_SETTINGS,
-    flipX: isMacOS,
   };
 }

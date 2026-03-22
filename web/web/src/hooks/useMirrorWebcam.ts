@@ -88,8 +88,7 @@ export function useMirrorWebcam({
           console.warn("[Mirror] Failed to set matrix rain:", err);
         }
         try {
-          const isMacOS = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
-          setFlipX(settings.flipX ?? isMacOS);
+          setFlipX(settings.flipX ?? true);
         } catch (err) {
           console.warn("[Mirror] Failed to set flip X:", err);
         }

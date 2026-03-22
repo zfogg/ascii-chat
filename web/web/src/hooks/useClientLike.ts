@@ -18,8 +18,6 @@ export interface UseClientLikeOptions {
   setWasmDimensions: (cols: number, rows: number) => void;
   /** Optional callback after dimensions change (for network modes) */
   onDimensionsChange?: (dims: { cols: number; rows: number }) => void;
-  /** Detect macOS for default settings (default: auto-detect) */
-  isMacOS?: boolean;
 }
 
 export interface UseClientLikeReturn {
@@ -75,10 +73,6 @@ export function useClientLike(
     onDimensionsChange,
   } = options;
 
-  // Auto-detect macOS
-  const isMacOS =
-    options.isMacOS ?? /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
-
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -98,9 +92,8 @@ export function useClientLike(
   const [fps, setFps] = useState<number | undefined>();
   const [wasmInitialized, setWasmInitialized] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [settings, setSettings] = useState<SettingsConfig>(
-    getDefaultSettings(isMacOS),
-  );
+  const [settings, setSettings] =
+    useState<SettingsConfig>(getDefaultSettings());
 
   // Debug refs
   const debugCountRef = useRef(0);
