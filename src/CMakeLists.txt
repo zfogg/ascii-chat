@@ -229,7 +229,21 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
             BUILD_RPATH "${_release_rpath}"
             INSTALL_RPATH "${_release_rpath}"
             INSTALL_RPATH_USE_LINK_PATH FALSE
-            SKIP_BUILD_RPATH FALSE
+            SKIP_RPATH FALSE
+        )
+        # Use explicit linker flags to enforce EXACTLY our RPATH paths
+        target_link_options(ascii-chat PRIVATE
+            "LINKER:-rpath,@loader_path/../lib"
+            "LINKER:-rpath,/usr/local/lib"
+            "LINKER:-rpath,${HOMEBREW_PREFIX}/lib"
+        )
+        # Post-build: Remove any build-directory RPATH entries that CMake added automatically
+        # This handles the case where CMAKE_LIBRARY_OUTPUT_DIRECTORY gets added to RPATH
+        add_custom_command(TARGET ascii-chat POST_BUILD
+            COMMAND bash
+            ARGS -c "install_name_tool -delete_rpath '${CMAKE_LIBRARY_OUTPUT_DIRECTORY}' '$<TARGET_FILE:ascii-chat>' 2>/dev/null || true"
+            COMMENT "Removing CMAKE_LIBRARY_OUTPUT_DIRECTORY from RPATH if present"
+            VERBATIM
         )
     else()
         # For Release builds on Linux, copy custom FFmpeg libraries to build/lib

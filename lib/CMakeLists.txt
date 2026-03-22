@@ -764,6 +764,9 @@ add_library(ascii-chat-shared SHARED
         # Library version is from lib/v* tags, separate from app version
         VERSION ${ASCIICHAT_LIB_VERSION}
         SOVERSION ${ASCIICHAT_LIB_VERSION_MAJOR}
+        # macOS: Use relative install name so CMake doesn't force absolute paths in RPATH
+        MACOSX_RPATH TRUE
+        INSTALL_NAME_DIR "@loader_path"
     )
 
     # Set RPATH on shared library so it can find dependencies at runtime
@@ -808,6 +811,7 @@ add_library(ascii-chat-shared SHARED
             # Release: use only our explicit RPATH, don't add linked library paths automatically
             set_target_properties(ascii-chat-shared PROPERTIES
                 BUILD_RPATH "${_shared_rpath_list}"
+                INSTALL_RPATH "${_shared_rpath_list}"
                 SKIP_BUILD_RPATH FALSE
                 INSTALL_RPATH_USE_LINK_PATH FALSE
             )
@@ -1152,20 +1156,20 @@ endif()
 # Link FreeType2 and Fontconfig for font rendering
 # Use PUBLIC to ensure these are transitively linked when linking static library
 if(FREETYPE_LIBRARY_DIRS)
-    target_link_directories(ascii-chat-shared PUBLIC ${FREETYPE_LIBRARY_DIRS})
+    target_link_directories(ascii-chat-shared PRIVATE ${FREETYPE_LIBRARY_DIRS})
 endif()
-target_link_libraries(ascii-chat-shared PUBLIC ${FREETYPE_LIBRARIES})
+target_link_libraries(ascii-chat-shared PRIVATE ${FREETYPE_LIBRARIES})
 if(FONTCONFIG_LINK_LIBRARIES)
-    target_link_libraries(ascii-chat-shared PUBLIC ${FONTCONFIG_LINK_LIBRARIES})
+    target_link_libraries(ascii-chat-shared PRIVATE ${FONTCONFIG_LINK_LIBRARIES})
 endif()
 
 # Link vterm for terminal emulation
 if(VTERM_LDFLAGS)
-    target_link_libraries(ascii-chat-shared PUBLIC ${VTERM_LDFLAGS})
+    target_link_libraries(ascii-chat-shared PRIVATE ${VTERM_LDFLAGS})
 endif()
 
 # Link yyjson for JSON support
-target_link_libraries(ascii-chat-shared PUBLIC ${YYJSON_LIBRARIES})
+target_link_libraries(ascii-chat-shared PRIVATE ${YYJSON_LIBRARIES})
 
 # Suppress linker warnings about duplicate debug symbols in libdatachannel
 # (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
