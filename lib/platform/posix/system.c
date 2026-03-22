@@ -212,7 +212,7 @@ signal_handler_t platform_signal(int sig, signal_handler_t handler) {
   // Set up new signal action
   sa.sa_handler = handler;
   sigemptyset(&sa.sa_mask);
-  sa.sa_flags = SA_RESTART; // Restart interrupted system calls
+  sa.sa_flags = 0; // No SA_RESTART - allow system calls to return EINTR for signal handling
 
   // Install the signal handler
   if (sigaction(sig, &sa, &old_sa) == -1) {
