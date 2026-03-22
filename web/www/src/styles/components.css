@@ -58,6 +58,10 @@
     @apply border-yellow-900/30;
   }
 
+  .accent-orange {
+    @apply border-orange-900/30;
+  }
+
   .accent-red {
     @apply border-red-900/30;
   }
@@ -85,6 +89,10 @@
 
   .text-accent-yellow {
     @apply text-yellow-300;
+  }
+
+  .text-accent-orange {
+    @apply text-orange-300;
   }
 
   .text-accent-red {

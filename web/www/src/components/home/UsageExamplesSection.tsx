@@ -58,7 +58,7 @@ ascii-chat client`}
         <div>
           <Heading
             level={3}
-            className="text-xl font-semibold text-yellow-300 mb-3"
+            className="text-xl font-semibold text-orange-300 mb-3"
           >
             Internet session with ACDS
           </Heading>
@@ -163,7 +163,7 @@ cat selfie.txt`}
         <div>
           <Heading
             level={3}
-            className="text-xl font-semibold text-yellow-300 mb-3"
+            className="text-xl font-semibold text-orange-300 mb-3"
           >
             Stream video file as ASCII art
           </Heading>

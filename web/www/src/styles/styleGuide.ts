@@ -120,6 +120,7 @@ export const accentText = {
   pink: "text-pink-300",
   green: "text-green-300",
   yellow: "text-yellow-300",
+  orange: "text-orange-300",
   red: "text-red-300",
 };
 
