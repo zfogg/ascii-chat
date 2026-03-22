@@ -133,6 +133,69 @@ static const char *find_generic_type_prefix(const char *start, const char *p, co
 }
 
 /**
+ * @brief Find a type prefix before a hex address (e.g., "transport=" in "transport=0x1234")
+ * @param start Start of string
+ * @param p Current position (pointing to '0' in "0x...")
+ * @param out_type Output pointer to type keyword start
+ * @param out_type_len Output length of type keyword
+ * @return Pointer to start of prefix keyword, or p if no prefix found
+ *
+ * Walks backwards from hex address to find "keyword=" pattern where keyword is a
+ * known pointer-type name (transport, client, socket, mutex, etc.).
+ */
+static const char *find_hex_type_prefix_start(const char *start, const char *p,
+                                               const char **out_type, size_t *out_type_len) {
+  *out_type = NULL;
+  *out_type_len = 0;
+
+  if (p <= start)
+    return p;
+
+  /* Check for '=' immediately before hex address */
+  const char *check = p - 1;
+  if (check < start || *check != '=')
+    return p;
+
+  /* Walk back over the keyword before '=' */
+  const char *eq_pos = check;
+  check = eq_pos - 1;
+  if (check < start)
+    return p;
+
+  /* Find start of keyword */
+  while (check > start && (isalnum(*check) || *check == '_')) {
+    check--;
+  }
+  if (!(isalnum(*check) || *check == '_')) {
+    check++;
+  }
+
+  size_t word_len = eq_pos - check;
+  if (word_len == 0)
+    return p;
+
+  /* Known pointer-type keywords that appear with hex values */
+  static const struct {
+    const char *type;
+    size_t len;
+  } known_types[] = {
+      {"transport", 9}, {"client", 6},  {"context", 7},    {"crypto", 6}, {"websocket", 9},
+      {"mutex", 5},     {"rwlock", 6},  {"cond", 4},       {"thread", 6}, {"socket", 6},
+      {"connection", 10},
+  };
+
+  for (size_t i = 0; i < sizeof(known_types) / sizeof(known_types[0]); i++) {
+    if (word_len == known_types[i].len && strncmp(check, known_types[i].type, word_len) == 0) {
+      *out_type = check;
+      *out_type_len = word_len;
+      return check;
+    }
+  }
+
+  return p;
+}
+
+/**
  * @brief Find the start of the fd/file/descriptor prefix before a position
  * @param start Start of string
  * @param p Current position in string
@@ -429,39 +492,92 @@ static bool try_format_hex_address(const char *message, const char *hex_start, c
     return false;
   }
 
+  /* Detect type prefix before hex address (e.g., "transport=" in "transport=0x1234") */
+  const char *prefix_type = NULL;
+  size_t prefix_type_len = 0;
+  const char *prefix_start = find_hex_type_prefix_start(message, hex_start, &prefix_type, &prefix_type_len);
+  bool has_type_prefix = (prefix_type != NULL && prefix_start != hex_start);
+
   /* Check if address is registered */
   const char *name = named_get(address);
   const char *type = named_get_type(address);
-  if (!name || !type) {
-    return false;
+
+  if (name && type) {
+    const char *fmt_spec = named_get_format_spec(address);
+    if (!fmt_spec) {
+      fmt_spec = "0x%tx";
+    }
+
+    char id_buffer[128];
+    int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, (ptrdiff_t)address);
+    if (id_written <= 0 || id_written >= (int)sizeof(id_buffer)) {
+      return false;
+    }
+
+    size_t saved_pos = *out_pos;
+
+    /* Backtrack type prefix if it matches the registered type to avoid redundancy
+     * (e.g., "transport=transport/name" becomes "transport/name") */
+    if (has_type_prefix && prefix_type_len == strlen(type) && strncmp(prefix_type, type, prefix_type_len) == 0) {
+      size_t prefix_len = hex_start - prefix_start;
+      if (*out_pos >= prefix_len) {
+        *out_pos -= prefix_len;
+      }
+    }
+
+    char temp_output[512];
+    int temp_written = snprintf(temp_output, sizeof(temp_output), "%s/%s (%s)", type, name, id_buffer);
+    if (temp_written <= 0 || (size_t)temp_written >= sizeof(temp_output)) {
+      *out_pos = saved_pos;
+      return false;
+    }
+
+    if (*out_pos + temp_written >= output_size - 1) {
+      *out_pos = saved_pos;
+      return false;
+    }
+
+    memcpy(output + *out_pos, temp_output, temp_written);
+    *out_pos += temp_written;
+    *p = hex_ptr;
+    return true;
   }
 
-  /* Format the output */
-  const char *fmt_spec = named_get_format_spec(address);
-  if (!fmt_spec) {
-    fmt_spec = "0x%tx";
+  /* Handle NULL pointer (address 0) with a known type prefix */
+  if (address == 0 && has_type_prefix) {
+    size_t saved_pos = *out_pos;
+    size_t prefix_len = hex_start - prefix_start;
+    if (*out_pos >= prefix_len) {
+      *out_pos -= prefix_len;
+    }
+
+    char type_str[64];
+    if (prefix_type_len >= sizeof(type_str)) {
+      *out_pos = saved_pos;
+      return false;
+    }
+    memcpy(type_str, prefix_type, prefix_type_len);
+    type_str[prefix_type_len] = '\0';
+
+    char temp_output[512];
+    int temp_written = snprintf(temp_output, sizeof(temp_output), "%s/(null)", type_str);
+    if (temp_written <= 0 || (size_t)temp_written >= sizeof(temp_output)) {
+      *out_pos = saved_pos;
+      return false;
+    }
+
+    if (*out_pos + temp_written >= output_size - 1) {
+      *out_pos = saved_pos;
+      return false;
+    }
+
+    memcpy(output + *out_pos, temp_output, temp_written);
+    *out_pos += temp_written;
+    *p = hex_ptr;
+    return true;
   }
 
-  char id_buffer[128];
-  int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, (ptrdiff_t)address);
-  if (id_written <= 0 || id_written >= (int)sizeof(id_buffer)) {
-    return false;
-  }
-
-  char temp_output[512];
-  int temp_written = snprintf(temp_output, sizeof(temp_output), "%s/%s (%s)", type, name, id_buffer);
-  if (temp_written <= 0 || (size_t)temp_written >= sizeof(temp_output)) {
-    return false;
-  }
-
-  if (*out_pos + temp_written >= output_size - 1) {
-    return false; /* Buffer overflow */
-  }
-
-  memcpy(output + *out_pos, temp_output, temp_written);
-  *out_pos += temp_written;
-  *p = hex_ptr;
-  return true;
+  return false;
 }
 
 int log_named_format_message(const char *message, char *output, size_t output_size) {
@@ -595,6 +711,17 @@ int log_named_format_message(const char *message, char *output, size_t output_si
       /* Check if this is a registered file descriptor */
       if (!is_already_formatted && digit_count > 0 && has_fd_prefix(message, int_start)) {
         const char *name = named_get_fd(fd_value);
+        const char *reg_type = NULL;
+
+        /* Fallback: check main registry for sockets registered via NAMED_REGISTER_SOCKET
+         * (which uses raw integer key, not FD namespace encoding) */
+        if (!name) {
+          name = named_get((uintptr_t)(intptr_t)fd_value);
+          if (name) {
+            reg_type = named_get_type((uintptr_t)(intptr_t)fd_value);
+          }
+        }
+
         if (name) {
           const char *prefix_start = find_fd_prefix_start(message, int_start);
           size_t prefix_len = int_start - prefix_start;
@@ -604,7 +731,34 @@ int log_named_format_message(const char *message, char *output, size_t output_si
             out_pos -= prefix_len;
           }
 
-          if (write_formatted_fd(fd_value, name, output, output_size, &out_pos)) {
+          bool formatted = false;
+          if (reg_type) {
+            /* From main registry — use registered type and original prefix keyword */
+            const char *kw_end = prefix_start;
+            while (kw_end < int_start && (isalnum(*kw_end) || *kw_end == '_'))
+              kw_end++;
+            size_t kw_len = kw_end - prefix_start;
+
+            char kw_buf[32];
+            if (kw_len > 0 && kw_len < sizeof(kw_buf)) {
+              memcpy(kw_buf, prefix_start, kw_len);
+              kw_buf[kw_len] = '\0';
+            } else {
+              snprintf(kw_buf, sizeof(kw_buf), "%s", reg_type);
+            }
+
+            char temp[512];
+            int written = snprintf(temp, sizeof(temp), "%s/%s (%s=%d)", reg_type, name, kw_buf, fd_value);
+            if (written > 0 && (size_t)written < sizeof(temp) && out_pos + (size_t)written < output_size - 1) {
+              memcpy(output + out_pos, temp, (size_t)written);
+              out_pos += (size_t)written;
+              formatted = true;
+            }
+          } else {
+            formatted = write_formatted_fd(fd_value, name, output, output_size, &out_pos);
+          }
+
+          if (formatted) {
             any_transformed = true;
             continue;
           }
