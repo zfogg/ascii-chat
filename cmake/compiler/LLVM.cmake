@@ -325,8 +325,10 @@ function(configure_llvm_post_project)
         endif()
     endif()
 
-    if(EXISTS "${CLANG_RESOURCE_DIR}/include")
-        message(STATUS "${BoldGreen}Found${ColorReset} ${BoldBlue}Clang${ColorReset} resource directory: ${CLANG_RESOURCE_DIR}")
+    # Only use -resource-dir if it actually contains headers
+    # On some GitHub Actions runners, -print-resource-dir returns a broken path
+    if(EXISTS "${CLANG_RESOURCE_DIR}/include/stdarg.h")
+        message(STATUS "${BoldGreen}Found stdarg.h in Clang resource directory${ColorReset}: ${CLANG_RESOURCE_DIR}")
         # Append to CMAKE_*_FLAGS so it takes effect for project() and all subdirectories (including mimalloc)
         string(APPEND CMAKE_C_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
         string(APPEND CMAKE_CXX_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
@@ -335,8 +337,12 @@ function(configure_llvm_post_project)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
         set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS}" PARENT_SCOPE)
+    elseif(EXISTS "${CLANG_RESOURCE_DIR}/include")
+        message(STATUS "${BoldYellow}Resource directory found but stdarg.h missing${ColorReset}: ${CLANG_RESOURCE_DIR}/include")
+        message(STATUS "${BoldYellow}Skipping -resource-dir flag${ColorReset} (letting clang use defaults)")
     else()
         message(WARNING "${BoldYellow}Could not find Clang resource directory${ColorReset} at: ${CLANG_RESOURCE_DIR}")
+        message(STATUS "${BoldYellow}Skipping -resource-dir flag${ColorReset} (letting clang use defaults)")
     endif()
 
     # macOS SDK handling:
