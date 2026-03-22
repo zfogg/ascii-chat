@@ -412,121 +412,126 @@ export default function MirrorDemoWidget({
       </div>
 
       <div
-        className="relative rounded-lg border border-gray-700 bg-[#0c0c0c] overflow-hidden flex flex-col"
-        style={{ height, minHeight: `${minHeight}px` }}
+        className="relative rounded-lg border border-gray-700 bg-[#0c0c0c] overflow-hidden"
+        style={{ height, minHeight: `${minHeight}px`, width: "100%" }}
       >
-        <AsciiRenderer
-          ref={rendererRef}
-          onDimensionsChange={handleDimensionsChange}
-          showFps={false}
-        />
+        <div className="w-full h-full overflow-hidden">
+          <AsciiRenderer
+            ref={rendererRef}
+            onDimensionsChange={handleDimensionsChange}
+            showFps={false}
+          />
+        </div>
 
-        {!source ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10">
-            <p className="text-gray-200 text-sm sm:text-base bg-gray-800 px-2 py-1 rounded">
-              Select an option
-            </p>
-            {hasOptions && (
-              <div className="flex flex-wrap gap-2 justify-center px-4 max-w-full">
-                {demoOptions.map((opt) => (
-                  <button
-                    key={opt.id}
-                    onClick={() => setSelectedOptionId(opt.id)}
-                    className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                      selectedOptionId === opt.id
-                        ? "bg-green-700 hover:bg-green-600 cursor-not-allowed text-white"
-                        : "bg-gray-700 text-gray-300 hover:bg-gray-600 hover:scale-110 transform transition-transform cursor-pointer"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            )}
-            {hasOptions && selectedOption?.description && (
-              <p className="text-gray-400 text-xs text-center px-4">
-                {selectedOption.description}
+        {/* Overlay container - explicitly sized to avoid iOS layout issues */}
+        <div className="absolute pointer-events-none" style={{ top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" }}>
+          {!source && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-auto">
+              <p className="text-gray-200 text-sm sm:text-base bg-gray-800 px-2 py-1 rounded">
+                Select an option
               </p>
-            )}
-            <div className="flex gap-3">
-              <button
-                onClick={startWebcam}
-                disabled={loading}
-                className="px-4 py-2 rounded bg-cyan-600 hover:bg-cyan-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:opacity-50"
-              >
-                {loading ? "Loading..." : "Webcam"}
-              </button>
-              <button
-                onClick={startDemo}
-                disabled={loading}
-                className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:opacity-50"
-              >
-                {loading ? "Loading..." : "Demo Video"}
-              </button>
-            </div>
-            {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
-          </div>
-        ) : (
-          <>
-            {source === "demo" && (
-              <div className="absolute bottom-2 right-2 flex gap-2 z-10">
+              {hasOptions && (
+                <div className="flex flex-wrap gap-2 justify-center px-4 max-w-full">
+                  {demoOptions.map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => setSelectedOptionId(opt.id)}
+                      className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                        selectedOptionId === opt.id
+                          ? "bg-green-700 hover:bg-green-600 cursor-not-allowed text-white"
+                          : "bg-gray-700 text-gray-300 hover:bg-gray-600 hover:scale-110 transform transition-transform cursor-pointer"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {hasOptions && selectedOption?.description && (
+                <p className="text-gray-400 text-xs text-center px-4">
+                  {selectedOption.description}
+                </p>
+              )}
+              <div className="flex gap-3">
                 <button
-                  onClick={togglePause}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                    paused
-                      ? "bg-green-700/80 hover:bg-green-600 text-white"
-                      : "bg-gray-800/80 hover:bg-gray-700 text-gray-300"
-                  }`}
+                  onClick={startWebcam}
+                  disabled={loading}
+                  className="px-4 py-2 rounded bg-cyan-600 hover:bg-cyan-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:opacity-50"
                 >
-                  {paused ? "Play" : "Pause"}
+                  {loading ? "Loading..." : "Webcam"}
                 </button>
                 <button
-                  onClick={restart}
-                  className="px-3 py-1 rounded text-xs font-medium transition-colors bg-gray-800/80 hover:bg-gray-700 text-gray-300"
+                  onClick={startDemo}
+                  disabled={loading}
+                  className="px-4 py-2 rounded bg-purple-600 hover:bg-purple-500 hover:scale-110 transform transition-transform cursor-pointer text-white text-sm font-medium disabled:opacity-50"
                 >
-                  Restart
-                </button>
-                <button
-                  onClick={toggleMute}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                    muted
-                      ? "bg-green-700/80 hover:bg-green-600 text-white"
-                      : "bg-gray-800/80 hover:bg-gray-700 text-gray-300"
-                  }`}
-                >
-                  {muted ? "Unmute" : "Mute"}
+                  {loading ? "Loading..." : "Demo Video"}
                 </button>
               </div>
-            )}
-            {hasOptions && (
-              <div className="absolute bottom-2 left-2 flex flex-col gap-1 z-10">
-                {demoOptions.map((opt) => (
+              {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
+            </div>
+          )}
+
+          {source && (
+            <>
+              {source === "demo" && (
+                <div className="absolute bottom-2 right-2 flex gap-2 z-10 pointer-events-auto">
                   <button
-                    key={opt.id}
-                    onClick={() => switchOption(opt)}
-                    className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-                      selectedOptionId === opt.id
+                    onClick={togglePause}
+                    className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                      paused
                         ? "bg-green-700/80 hover:bg-green-600 text-white"
-                        : "bg-gray-800/80 text-gray-400 hover:bg-gray-700 hover:scale-110 transform transition-transform cursor-pointer"
+                        : "bg-gray-800/80 hover:bg-gray-700 text-gray-300"
                     }`}
                   >
-                    {opt.label}
+                    {paused ? "Play" : "Pause"}
                   </button>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+                  <button
+                    onClick={restart}
+                    className="px-3 py-1 rounded text-xs font-medium transition-colors bg-gray-800/80 hover:bg-gray-700 text-gray-300"
+                  >
+                    Restart
+                  </button>
+                  <button
+                    onClick={toggleMute}
+                    className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                      muted
+                        ? "bg-green-700/80 hover:bg-green-600 text-white"
+                        : "bg-gray-800/80 hover:bg-gray-700 text-gray-300"
+                    }`}
+                  >
+                    {muted ? "Unmute" : "Mute"}
+                  </button>
+                </div>
+              )}
+              {hasOptions && (
+                <div className="absolute bottom-2 left-2 flex flex-col gap-1 z-10 pointer-events-auto">
+                  {demoOptions.map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => switchOption(opt)}
+                      className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                        selectedOptionId === opt.id
+                          ? "bg-green-700/80 hover:bg-green-600 text-white"
+                          : "bg-gray-800/80 text-gray-400 hover:bg-gray-700 hover:scale-110 transform transition-transform cursor-pointer"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-        {/* Stop button - overlaid on top */}
-        {source && (
-          <button
-            onClick={stop}
-            className="absolute top-2 right-2 px-3 py-1 rounded bg-red-700/80 hover:bg-red-600 text-white text-xs font-medium transition-colors z-20"
-          >
-            Stop
-          </button>
-        )}
+              {/* Stop button - overlaid on top */}
+              <button
+                onClick={stop}
+                className="absolute top-2 right-2 px-3 py-1 rounded bg-red-700/80 hover:bg-red-600 text-white text-xs font-medium transition-colors z-20 pointer-events-auto"
+              >
+                Stop
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Debug logs panel (dev only) */}
