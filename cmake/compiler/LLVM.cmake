@@ -283,23 +283,24 @@ function(configure_llvm_post_project)
     endif()
 
     # Configure resource directory
+    # First, get the CORRECT clang major version for our installed clang
     execute_process(
-        COMMAND "${LLVM_ROOT_PREFIX}/bin/clang" -print-resource-dir
-        OUTPUT_VARIABLE CLANG_RESOURCE_DIR
+        COMMAND "${LLVM_ROOT_PREFIX}/bin/clang" --version
+        OUTPUT_VARIABLE CLANG_VERSION_OUTPUT
         OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET
     )
+    string(REGEX MATCH "clang version ([0-9]+)\\.([0-9]+)" CLANG_VERSION_MATCH "${CLANG_VERSION_OUTPUT}")
+    set(CLANG_MAJOR_VERSION "${CMAKE_MATCH_1}")
+    set(CLANG_RESOURCE_DIR "${LLVM_ROOT_PREFIX}/lib/clang/${CLANG_MAJOR_VERSION}")
 
-    # Fallback: construct from version if -print-resource-dir failed
-    if(NOT CLANG_RESOURCE_DIR OR NOT EXISTS "${CLANG_RESOURCE_DIR}/include")
+    # Verify it exists, fallback to -print-resource-dir if not
+    if(NOT EXISTS "${CLANG_RESOURCE_DIR}/include")
         execute_process(
-            COMMAND "${LLVM_ROOT_PREFIX}/bin/clang" --version
-            OUTPUT_VARIABLE CLANG_VERSION_OUTPUT
+            COMMAND "${LLVM_ROOT_PREFIX}/bin/clang" -print-resource-dir
+            OUTPUT_VARIABLE CLANG_RESOURCE_DIR
             OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
         )
-        string(REGEX MATCH "clang version ([0-9]+)\\.([0-9]+)" CLANG_VERSION_MATCH "${CLANG_VERSION_OUTPUT}")
-        set(CLANG_MAJOR_VERSION "${CMAKE_MATCH_1}")
-        set(CLANG_RESOURCE_DIR "${LLVM_ROOT_PREFIX}/lib/clang/${CLANG_MAJOR_VERSION}")
     endif()
 
     if(EXISTS "${CLANG_RESOURCE_DIR}/include")
@@ -307,7 +308,7 @@ function(configure_llvm_post_project)
         # On macOS, check if system headers are accessible. If not (broken Homebrew LLVM),
         # don't use -resource-dir and instead use Xcode SDK with explicit -isysroot flag.
         if(APPLE AND NOT EXISTS "${CLANG_RESOURCE_DIR}/include/mach-o/dyld.h")
-            message(STATUS "${BoldYellow}Resource directory lacks system headers; using Xcode SDK with -isysroot${ColorReset}")
+            message(STATUS "${BoldYellow}Resource directory lacks system headers; using Xcode SDK fallback${ColorReset}")
             find_program(XCRUN_EXECUTABLE xcrun)
             if(XCRUN_EXECUTABLE)
                 execute_process(
@@ -317,12 +318,14 @@ function(configure_llvm_post_project)
                     ERROR_QUIET
                 )
                 if(XCODE_SDK_PATH AND EXISTS "${XCODE_SDK_PATH}/usr/include")
-                    message(STATUS "${BoldYellow}Using Xcode SDK for headers${ColorReset}: ${XCODE_SDK_PATH}")
+                    message(STATUS "${BoldYellow}Using Xcode SDK for system headers${ColorReset}: ${XCODE_SDK_PATH}")
                     # Clear CMAKE_OSX_SYSROOT so it doesn't get applied automatically
-                    # We'll use add_compile_options instead to have full control
                     set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
-                    # Use add_compile_options to ensure -isysroot is passed to all compilers
-                    # This must be done here to take effect during actual compilation
+                    # Override clang's broken resource dir with the correct one
+                    # Clang is misconfigured to use old version's resource directory
+                    message(STATUS "${BoldYellow}Overriding clang resource dir${ColorReset}: ${CLANG_RESOURCE_DIR}")
+                    add_compile_options(-resource-dir ${CLANG_RESOURCE_DIR})
+                    # Also add -isysroot to point to system headers
                     add_compile_options(-isysroot ${XCODE_SDK_PATH})
                 else()
                     message(WARNING "${BoldYellow}Xcode SDK not found; system headers may not be accessible${ColorReset}")
