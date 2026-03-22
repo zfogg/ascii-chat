@@ -9,7 +9,7 @@ export default function FramerateSection() {
       </Heading>
 
       <div className="docs-subsection-spacing">
-        <Heading level={3} className="heading-3 text-yellow-300 mb-3">
+        <Heading level={3} className="heading-3 text-orange-300 mb-3">
           Target FPS
         </Heading>
         <p className="docs-paragraph">
@@ -21,8 +21,8 @@ export default function FramerateSection() {
             "# Default (60 FPS)\nascii-chat client example.com\n\n# High framerate for high refresh-rate terminals\nascii-chat mirror --fps 144\n\n# Low framerate for slow connections\nascii-chat client example.com --fps 15\n\n# Via environment\nexport ASCII_CHAT_FPS=60"
           }
         </CodeBlock>
-        <div className="card-standard accent-yellow mt-3">
-          <Heading level={4} className="text-yellow-300 font-semibold mb-2">
+        <div className="card-standard accent-orange mt-3">
+          <Heading level={4} className="text-orange-300 font-semibold mb-2">
             FPS Guidelines
           </Heading>
           <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
