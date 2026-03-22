@@ -101,13 +101,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/platform/iOS.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/LLVM.cmake)
 configure_llvm_pre_project()
 
-# Clear CMAKE_OSX_SYSROOT BEFORE project() for macOS Homebrew LLVM
-# CMake auto-sets this to the Xcode SDK, which causes header shadowing in
-# dependencies like libwebsockets. Homebrew LLVM's config files handle SDK paths.
-if(APPLE)
-    set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
-endif()
-
 # Always enable C++ for Clang tooling (defer() and source instrumentation)
 if(APPLE)
     set(PROJECT_LANGUAGES C CXX OBJC)
