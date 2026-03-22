@@ -490,6 +490,9 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
     endif()
 
     # Add macOS frameworks only on macOS
+    # Compression libraries needed on all platforms (FFmpeg uses --enable-zlib --enable-bzlib)
+    list(APPEND FFMPEG_LIBRARIES "-lbz2" "-lz")
+
     if(APPLE)
         list(APPEND FFMPEG_LIBRARIES
             "-framework AudioToolbox"
@@ -501,9 +504,6 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
             "-framework CoreServices"
             "-liconv"
         )
-    else()
-        # On Linux/Unix, add compression libraries (iconv is part of glibc, don't link it separately)
-        list(APPEND FFMPEG_LIBRARIES "-lbz2" "-lz")
     endif()
 
 

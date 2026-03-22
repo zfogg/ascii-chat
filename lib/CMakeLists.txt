@@ -1150,6 +1150,9 @@ endif()
 
 # Link FreeType2 and Fontconfig for font rendering
 # Use PUBLIC to ensure these are transitively linked when linking static library
+if(FREETYPE_LIBRARY_DIRS)
+    target_link_directories(ascii-chat-shared PUBLIC ${FREETYPE_LIBRARY_DIRS})
+endif()
 target_link_libraries(ascii-chat-shared PUBLIC ${FREETYPE_LIBRARIES})
 if(FONTCONFIG_LINK_LIBRARIES)
     target_link_libraries(ascii-chat-shared PUBLIC ${FONTCONFIG_LINK_LIBRARIES})
