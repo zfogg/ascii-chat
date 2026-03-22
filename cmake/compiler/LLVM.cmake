@@ -312,6 +312,26 @@ function(configure_llvm_post_project)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
         set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS}" PARENT_SCOPE)
+
+        # Even if resource directory exists, check if system headers are present.
+        # On Homebrew LLVM, mach-o/dyld.h should be accessible via the SDK.
+        # If it's missing, fall through to add Xcode SDK path.
+        if(APPLE AND NOT EXISTS "${CLANG_RESOURCE_DIR}/include/mach-o/dyld.h")
+            message(STATUS "${BoldYellow}System headers missing from resource directory${ColorReset}; adding Xcode SDK path")
+            find_program(XCRUN_EXECUTABLE xcrun)
+            if(XCRUN_EXECUTABLE)
+                execute_process(
+                    COMMAND ${XCRUN_EXECUTABLE} --show-sdk-path
+                    OUTPUT_VARIABLE XCODE_SDK_PATH
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    ERROR_QUIET
+                )
+                if(XCODE_SDK_PATH AND EXISTS "${XCODE_SDK_PATH}/usr/include")
+                    add_compile_options(-isysroot ${XCODE_SDK_PATH})
+                    message(STATUS "${BoldYellow}Added Xcode SDK path${ColorReset}: ${XCODE_SDK_PATH}")
+                endif()
+            endif()
+        endif()
     else()
         message(WARNING "${BoldYellow}Could not find Clang resource directory${ColorReset} at: ${CLANG_RESOURCE_DIR}")
 
