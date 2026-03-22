@@ -24,6 +24,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/debug/named.h>
+#include <discovery-service/server.h>
 #include <libwebsockets.h>
 #include <string.h>
 #include <errno.h>
@@ -609,6 +610,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     }
     // Serve /stats endpoint for server statistics
     else if (path && (strcmp(path, "/stats") == 0 || strcmp(path, "stats") == 0)) {
+      const struct lws_protocols *protocol = lws_get_protocol(wsi);
+      websocket_server_t *ws_server = protocol ? (websocket_server_t *)protocol->user : NULL;
+
       yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
       yyjson_mut_val *root = yyjson_mut_obj(doc);
       yyjson_mut_doc_set_root(doc, root);
@@ -618,6 +622,41 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       char proto_ver[16];
       snprintf(proto_ver, sizeof(proto_ver), "%d.%d.%d", PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR, PROTOCOL_VERSION_PATCH);
       yyjson_mut_obj_add_str(doc, root, "protocol", proto_ver);
+
+      if (ws_server && ws_server->user_data) {
+        acds_server_t *acds = (acds_server_t *)ws_server->user_data;
+        yyjson_mut_val *network_obj = yyjson_mut_obj(doc);
+
+        uint64_t bytes_sent = atomic_load_u64(&acds->stats.bytes_sent);
+        uint64_t bytes_received = atomic_load_u64(&acds->stats.bytes_received);
+        uint64_t packets_sent = atomic_load_u64(&acds->stats.packets_sent);
+        uint64_t packets_received = atomic_load_u64(&acds->stats.packets_received);
+        time_t start_time = acds->stats.start_time;
+
+        yyjson_mut_obj_add_uint(doc, network_obj, "bytes_sent", bytes_sent);
+        yyjson_mut_obj_add_uint(doc, network_obj, "bytes_received", bytes_received);
+        yyjson_mut_obj_add_uint(doc, network_obj, "packets_sent", packets_sent);
+        yyjson_mut_obj_add_uint(doc, network_obj, "packets_received", packets_received);
+
+        time_t now = time(NULL);
+        long uptime_seconds = now - start_time;
+        yyjson_mut_obj_add_int(doc, network_obj, "uptime_seconds", uptime_seconds);
+
+        yyjson_mut_obj_add_val(doc, root, "network", network_obj);
+
+        if (acds->db) {
+          int64_t session_count = 0;
+          int64_t unique_clients = 0;
+
+          if (database_stats_session_count(acds->db, &session_count) == ASCIICHAT_OK) {
+            yyjson_mut_obj_add_int(doc, root, "active_sessions", session_count);
+          }
+
+          if (database_stats_unique_clients(acds->db, &unique_clients) == ASCIICHAT_OK) {
+            yyjson_mut_obj_add_int(doc, root, "unique_clients", unique_clients);
+          }
+        }
+      }
 
       size_t json_len = 0;
       char *json = yyjson_mut_write(doc, 0, &json_len);
