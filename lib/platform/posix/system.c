@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include <errno.h>
+#include <sys/wait.h>
 // execinfo.h provides backtrace functions - available in glibc
 // For musl, libexecinfo provides it but may not be available during compile
 #ifndef USE_MUSL
@@ -1073,6 +1074,52 @@ asciichat_error_t platform_request_timer_precision(int precision) {
 asciichat_error_t platform_restore_timer_resolution(void) {
   // POSIX systems don't have a timer precision API like Windows
   return ASCIICHAT_OK;
+}
+
+/**
+ * Execute a subprocess using fork+exec (POSIX implementation)
+ */
+int platform_execute_subprocess(const char *executable, const char **argv) {
+  if (!executable || !argv) {
+    log_error("platform_execute_subprocess: invalid parameters");
+    return -1;
+  }
+
+  pid_t pid = fork();
+  if (pid < 0) {
+    log_error("Failed to fork process: %s", SAFE_STRERROR(errno));
+    return -1;
+  }
+
+  if (pid == 0) {
+    // Child process: execute the command
+    // argv[0] is conventionally the program name
+    execvp(executable, (char * const *)argv);
+    // If execvp returns, an error occurred
+    log_error("Failed to execute %s: %s", executable, SAFE_STRERROR(errno));
+    exit(127);  // Standard convention for command not found
+  }
+
+  // Parent process: wait for child to complete
+  int status = 0;
+  pid_t wait_result = waitpid(pid, &status, 0);
+  if (wait_result < 0) {
+    log_error("Failed to wait for child process %d: %s", pid, SAFE_STRERROR(errno));
+    return -1;
+  }
+
+  // Extract exit code
+  if (WIFEXITED(status)) {
+    int exit_code = WEXITSTATUS(status);
+    return exit_code;
+  } else if (WIFSIGNALED(status)) {
+    // Process terminated by signal
+    int sig = WTERMSIG(status);
+    log_warn("Process %d terminated by signal %d", pid, sig);
+    return -1;
+  }
+
+  return -1;
 }
 
 #endif // !_WIN32

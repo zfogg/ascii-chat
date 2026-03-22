@@ -420,7 +420,8 @@ void update_check_get_upgrade_suggestion(install_method_t method, const char *la
 
   case INSTALL_METHOD_ARCH_AUR:
     // Check if paru is available, otherwise suggest yay
-    if (system("command -v paru >/dev/null 2>&1") == 0) {
+    const char *argv_paru[] = {"paru", NULL};
+    if (platform_execute_subprocess("paru", argv_paru) == 0) {
       snprintf(buffer, buffer_size, "paru -S ascii-chat");
     } else {
       snprintf(buffer, buffer_size, "yay -S ascii-chat");

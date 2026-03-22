@@ -643,6 +643,37 @@ asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *
 asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out);
 
 // ============================================================================
+// Subprocess Execution
+// ============================================================================
+
+/**
+ * @brief Execute a subprocess and wait for it to complete
+ * @param executable Path to executable to run (e.g., "gpg", "/usr/bin/yt-dlp")
+ * @param argv NULL-terminated array of arguments (argv[0] should be executable name or path)
+ * @return Exit code of the process, or -1 on error
+ *
+ * Executes a subprocess using platform-specific mechanisms:
+ *   - POSIX: fork() + execvp()
+ *   - Windows: CreateProcess()
+ *
+ * Usage example:
+ * @code
+ * const char *argv[] = {"gpg", "--version", NULL};
+ * int exit_code = platform_execute_subprocess("gpg", argv);
+ * if (exit_code == 0) {
+ *     log_info("GPG is available");
+ * }
+ * @endcode
+ *
+ * @note stdout and stderr are inherited from the parent process
+ * @note Returns immediately after child completes (blocking call)
+ * @note More secure than system() as it doesn't invoke a shell
+ *
+ * @ingroup platform_system
+ */
+int platform_execute_subprocess(const char *executable, const char **argv);
+
+// ============================================================================
 // I/O Functions
 // ============================================================================
 

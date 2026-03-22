@@ -1395,4 +1395,102 @@ static bool is_executable_file(const char *path) {
   return true;
 }
 
-#endif // !!_WIN32
+/**
+ * Execute a subprocess using CreateProcess (Windows implementation)
+ */
+int platform_execute_subprocess(const char *executable, const char **argv) {
+  if (!executable || !argv) {
+    log_error("platform_execute_subprocess: invalid parameters");
+    return -1;
+  }
+
+  // Build command line from argv array
+  // Calculate total command line length needed
+  size_t cmd_len = 0;
+  for (int i = 0; argv[i] != NULL; i++) {
+    cmd_len += strlen(argv[i]) + 1;  // +1 for space
+  }
+
+  if (cmd_len == 0) {
+    log_error("Empty command line");
+    return -1;
+  }
+
+  char *command_line = SAFE_MALLOC(cmd_len + 1, char *);
+  if (!command_line) {
+    return -1;
+  }
+
+  // Build command line using safe string operations
+  size_t pos = 0;
+  for (int i = 0; argv[i] != NULL; i++) {
+    if (i > 0) {
+      int result = SAFE_SNPRINTF(command_line + pos, cmd_len - pos, " %s", argv[i]);
+      if (result < 0) {
+        log_error("Failed to build command line");
+        SAFE_FREE(command_line);
+        return -1;
+      }
+      pos += result;
+    } else {
+      int result = SAFE_SNPRINTF(command_line + pos, cmd_len - pos, "%s", argv[i]);
+      if (result < 0) {
+        log_error("Failed to build command line");
+        SAFE_FREE(command_line);
+        return -1;
+      }
+      pos += result;
+    }
+  }
+
+  // Create process
+  STARTUPINFOA startup_info;
+  PROCESS_INFORMATION process_info;
+  ZeroMemory(&startup_info, sizeof(startup_info));
+  startup_info.cb = sizeof(startup_info);
+  ZeroMemory(&process_info, sizeof(process_info));
+
+  BOOL success = CreateProcessA(
+    executable,      // lpApplicationName - executable path
+    command_line,    // lpCommandLine - full command line
+    NULL,            // lpProcessAttributes
+    NULL,            // lpThreadAttributes
+    FALSE,           // bInheritHandles
+    0,               // dwCreationFlags
+    NULL,            // lpEnvironment
+    NULL,            // lpCurrentDirectory
+    &startup_info,   // lpStartupInfo
+    &process_info    // lpProcessInformation
+  );
+
+  SAFE_FREE(command_line);
+
+  if (!success) {
+    DWORD error = GetLastError();
+    log_error("Failed to execute %s: error code %lu", executable, error);
+    return -1;
+  }
+
+  // Wait for process to complete
+  DWORD wait_result = WaitForSingleObject(process_info.hProcess, INFINITE);
+  DWORD exit_code = 0;
+  BOOL got_code = GetExitCodeProcess(process_info.hProcess, &exit_code);
+
+  // Clean up handles
+  CloseHandle(process_info.hProcess);
+  CloseHandle(process_info.hThread);
+
+  if (wait_result != WAIT_OBJECT_0) {
+    log_error("Failed to wait for process: error code %lu", GetLastError());
+    return -1;
+  }
+
+  if (!got_code) {
+    log_error("Failed to get process exit code: error code %lu", GetLastError());
+    return -1;
+  }
+
+  return (int)exit_code;
+}
+
+#endif // _WIN32
