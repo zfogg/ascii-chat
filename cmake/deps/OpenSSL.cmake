@@ -425,8 +425,15 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
             list(APPEND OPENSSL_CONFIGURE_ARGS no-shared)
         endif()
         message(STATUS "  Configuring OpenSSL for ${OPENSSL_TARGET}...")
+        # Use Apple clang on macOS to ensure stdarg.h and other builtins are found
+        if(APPLE)
+            set(_OPENSSL_ENV_CMD ${CMAKE_COMMAND} -E env CC=/usr/bin/clang)
+        else()
+            set(_OPENSSL_ENV_CMD ${CMAKE_COMMAND} -E env)
+        endif()
         execute_process(
-            COMMAND "${OPENSSL_SOURCE_DIR}/Configure"
+            COMMAND ${_OPENSSL_ENV_CMD}
+                "${OPENSSL_SOURCE_DIR}/Configure"
                 ${OPENSSL_CONFIGURE_ARGS}
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
             RESULT_VARIABLE CONFIG_RESULT
@@ -439,7 +446,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
 
         message(STATUS "  Building OpenSSL (this takes a few minutes)...")
         execute_process(
-            COMMAND make -j
+            COMMAND ${_OPENSSL_ENV_CMD} make -j
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
             RESULT_VARIABLE BUILD_RESULT
         )
