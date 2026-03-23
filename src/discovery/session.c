@@ -1580,8 +1580,6 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
 
   // For ACDS, handshake completes after key exchange (no auth required)
   log_info("discovery_session_start: ACDS handshake complete");
-  return ASCIICHAT_OK;
-
   log_info("discovery_session_start: Crypto handshake with ACDS completed");
 
   // Check again after handshake
