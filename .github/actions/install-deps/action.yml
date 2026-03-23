@@ -712,7 +712,6 @@ runs:
         # Clang configuration for x86_64 macOS
         -isysroot ${SDK_PATH}
         -isystem ${SDK_PATH}/usr/include
-        -isystem ${BREW_PREFIX}/opt/llvm/lib/clang/${LLVM_VERSION}/include
         -stdlib=libc++
         -resource-dir ${BREW_PREFIX}/opt/llvm/lib/clang/${LLVM_VERSION}
         EOF
@@ -722,7 +721,6 @@ runs:
         # Clang configuration for ARM64 macOS
         -isysroot ${SDK_PATH}
         -isystem ${SDK_PATH}/usr/include
-        -isystem ${BREW_PREFIX}/opt/llvm/lib/clang/${LLVM_VERSION}/include
         -stdlib=libc++
         -resource-dir ${BREW_PREFIX}/opt/llvm/lib/clang/${LLVM_VERSION}
         EOF
