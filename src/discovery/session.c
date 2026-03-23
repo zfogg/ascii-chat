@@ -2175,9 +2175,26 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
     platform_sleep_us(timeout_ns / 1000);
     break;
 
-  default:
-    SET_ERRNO(ERROR_INVALID_STATE, "Invalid session state");
+  case DISCOVERY_STATE_FAILED:
+    // Session has failed - return error on further processing
+    return session->error != ASCIICHAT_OK ? session->error : ERROR_NETWORK;
+
+  case DISCOVERY_STATE_ENDED:
+    // Session has ended gracefully - return OK
+    return ASCIICHAT_OK;
+
+  case DISCOVERY_STATE_INIT:
+  case DISCOVERY_STATE_CONNECTING_ACDS:
+  case DISCOVERY_STATE_CREATING_SESSION:
+  case DISCOVERY_STATE_JOINING_SESSION:
+    // These states are handled during discovery_session_start(), not in the process loop
+    // If we reach here, something went wrong - sleep and wait
+    log_debug("discovery_session_process: State %d should be handled by discovery_session_start", session->state);
+    platform_sleep_us(timeout_ns / 1000);
     break;
+
+  default:
+    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid session state: %d", session->state);
   }
 
   return ASCIICHAT_OK;
