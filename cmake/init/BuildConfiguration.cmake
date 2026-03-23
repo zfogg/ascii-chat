@@ -52,7 +52,8 @@ if(WIN32 AND CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 
 # Option to build tests
-option(BUILD_TESTS "Build test executables" ON)
+# Default off so normal runtime builds do not pull the test graph in.
+option(BUILD_TESTS "Build test executables" OFF)
 
 # Enforce static linking for Release builds by default
 # Automatically disable when USE_MUSL is OFF on Linux (no static linking available)
@@ -182,4 +183,3 @@ endfunction()
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-

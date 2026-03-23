@@ -56,7 +56,6 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <stdbool.h>
 
-typedef struct websocket_client websocket_client_t;
 typedef struct terminal_fd_reader_s terminal_fd_reader_t;
 /* discovery_session is defined in src/discovery/session.h as an opaque type
    Discovery mode should include that header and cast to/from void * */
@@ -121,13 +120,6 @@ typedef struct session_client_like_config {
 
   /** True when this session should be treated as a networked client-like mode. */
   bool network_mode;
-
-  /**
-   * Active WebSocket transport for this session. When non-NULL, teardown
-   * will close it as part of the cleanup sequence.
-   * NULL for mirror mode and TCP-only client mode.
-   */
-  websocket_client_t *websocket_client;
 
   /**
    * Active discovery session for this connection (opaque void *).

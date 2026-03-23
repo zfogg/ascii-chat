@@ -384,11 +384,11 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
   // Determine the networking mode based on available indicators:
   // - If config has a discovery object, it's discovery mode (will create network clients later)
-  // - If config already has websocket_client, it's network mode (client mode)
+  // - If network_mode is set, this is a networked client mode
   // - Otherwise, it's mirror mode (local-only capture)
   // Mirror mode has a run_fn (mirror_run) but no network components
   bool discovery_mode = (config->discovery != NULL);
-  bool network_mode = config->network_mode || config->websocket_client != NULL || discovery_mode;
+  bool network_mode = config->network_mode || discovery_mode;
   bool mirror_mode = (!discovery_mode && !network_mode);
 
   if (mirror_mode) {

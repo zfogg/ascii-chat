@@ -853,7 +853,6 @@ int client_main(void) {
       .run_fn = client_run,
       .run_user_data = NULL,
       .network_mode = true,
-      .websocket_client = NULL,
       .discovery = NULL,
       .custom_should_exit = NULL,
       .exit_user_data = NULL,
