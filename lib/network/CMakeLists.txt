@@ -17,6 +17,7 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/errors.c
     ${CMAKE_CURRENT_SOURCE_DIR}/parallel_connect.c
     ${CMAKE_CURRENT_SOURCE_DIR}/connection_endpoint.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/connection_handle.c
     ${CMAKE_CURRENT_SOURCE_DIR}/connection_attempt.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client.c
     # rate_limit/

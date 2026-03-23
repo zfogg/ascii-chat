@@ -152,9 +152,9 @@ Test(websocket_integration, app_client_context_created, .init = NULL, .fini = NU
   cr_assert_not_null(client, "Failed to create app_client_t");
 
   // Verify basic fields are initialized
-  cr_assert_eq(client->active_transport, NULL, "Transport should be NULL initially");
-  cr_assert_eq(client->tcp_client, NULL, "TCP client should be NULL");
-  cr_assert_eq(client->ws_client, NULL, "WebSocket client should be NULL");
+  cr_assert_eq(client->connection.transport, NULL, "Transport should be NULL initially");
+  cr_assert_eq(client->connection.client_owner, NULL, "Connection owner should be NULL");
+  cr_assert_eq(client->connection.backend, CONNECTION_HANDLE_NONE, "Connection backend should be unset");
   cr_assert_eq(client->my_client_id, 0, "Client ID should be 0");
 
   app_client_destroy(&client);
@@ -237,14 +237,15 @@ Test(websocket_integration, app_client_with_websocket_transport) {
   cr_assert_not_null(ws_client, "Failed to create WebSocket client");
 
   // Simulate app_client holding reference to WebSocket client
-  app_client->ws_client = ws_client;
-  app_client->transport_type = ACIP_TRANSPORT_WEBSOCKET;
+  app_client->connection.client_owner = ws_client;
+  app_client->connection.backend = CONNECTION_HANDLE_WEBSOCKET;
+  app_client->connection.transport_type = ACIP_TRANSPORT_WEBSOCKET;
 
-  cr_assert_eq(app_client->ws_client, ws_client, "WebSocket client should be stored");
-  cr_assert_eq(app_client->transport_type, ACIP_TRANSPORT_WEBSOCKET, "Transport type should be WebSocket");
+  cr_assert_eq(app_client->connection.client_owner, ws_client, "WebSocket client should be stored");
+  cr_assert_eq(app_client->connection.transport_type, ACIP_TRANSPORT_WEBSOCKET, "Transport type should be WebSocket");
 
   // Cleanup
-  websocket_client_destroy(&app_client->ws_client);
+  websocket_client_destroy(&ws_client);
   app_client_destroy(&app_client);
 }
 
@@ -268,8 +269,9 @@ Test(websocket_integration, multiple_frames_at_15fps, .timeout = 20) {
   cr_assert_not_null(ctx.ws_client, "Failed to create WebSocket client");
 
   // Store WebSocket client in app client
-  ctx.app_client->ws_client = ctx.ws_client;
-  ctx.app_client->transport_type = ACIP_TRANSPORT_WEBSOCKET;
+  ctx.app_client->connection.client_owner = ctx.ws_client;
+  ctx.app_client->connection.backend = CONNECTION_HANDLE_WEBSOCKET;
+  ctx.app_client->connection.transport_type = ACIP_TRANSPORT_WEBSOCKET;
 
   // Build WebSocket URL
   char ws_url[256];
@@ -283,8 +285,8 @@ Test(websocket_integration, multiple_frames_at_15fps, .timeout = 20) {
 
   if (transport != NULL) {
     log_info("✓ WebSocket transport established");
-    ctx.app_client->active_transport = transport; // Set active transport for frame reception
-    cr_assert_not_null(ctx.app_client->active_transport, "Transport should be set");
+    ctx.app_client->connection.transport = transport; // Set active transport for frame reception
+    cr_assert_not_null(ctx.app_client->connection.transport, "Transport should be set");
 
     // Receive ASCII art frames from server and validate content
     start_time_ns = time_get_realtime_ns();
@@ -302,7 +304,7 @@ Test(websocket_integration, multiple_frames_at_15fps, .timeout = 20) {
     int no_frame_count = 0;
     for (int attempt = 0; attempt < max_attempts && frames_received < 10; attempt++) {
       // Try to receive a packet
-      acip_transport_t *recv_transport = ctx.app_client->active_transport;
+      acip_transport_t *recv_transport = ctx.app_client->connection.transport;
       if (!recv_transport) {
         usleep(10000); // 10ms polling interval
         continue;
@@ -454,8 +456,11 @@ Test(websocket_integration, multiple_frames_at_15fps, .timeout = 20) {
   }
 
   // Cleanup
-  if (ctx.app_client && ctx.app_client->ws_client) {
-    websocket_client_destroy(&ctx.app_client->ws_client);
+  if (ctx.ws_client) {
+    websocket_client_destroy(&ctx.ws_client);
+  }
+  if (ctx.app_client) {
+    ctx.app_client->connection.client_owner = NULL;
   }
   if (ctx.app_client) {
     app_client_destroy(&ctx.app_client);

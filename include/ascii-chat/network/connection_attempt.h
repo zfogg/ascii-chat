@@ -26,6 +26,7 @@
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/connection_handle.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -34,9 +35,6 @@
 /* ============================================================================
  * Forward Declarations
  * ============================================================================ */
-
-struct tcp_client;       // Forward declaration for TCP client instance
-struct websocket_client; // Forward declaration for WebSocket client instance
 
 /* ============================================================================
  * Connection State Enumeration
@@ -90,10 +88,8 @@ typedef struct {
   uint64_t attempt_start_time_ns; ///< When current attempt began
   uint64_t timeout_ns;            ///< Timeout for connection attempt
 
-  // Transport Instances (one will be non-NULL at a time)
-  acip_transport_t *active_transport;          ///< Currently active transport
-  struct tcp_client *tcp_client_instance;      ///< TCP client instance - owned by context
-  struct websocket_client *ws_client_instance; ///< WebSocket client instance - owned by context
+  // Transport ownership
+  connection_handle_t connection; ///< Shared transport/client ownership handle
 
   // Statistics
   uint32_t reconnect_attempt; ///< Reconnection attempt number (1st, 2nd, etc.)
@@ -162,7 +158,7 @@ void connection_context_cleanup(connection_attempt_context_t *ctx);
  * @brief Attempt TCP connection
  *
  * Attempts a direct TCP connection to the specified server.
- * On success, sets active_transport in the context.
+ * On success, sets the transport in the context handle.
  *
  * Handles:
  * - WebSocket URL detection (ws:// or wss://)
@@ -177,7 +173,7 @@ void connection_context_cleanup(connection_attempt_context_t *ctx);
  * @return ASCIICHAT_OK on successful connection
  * @return ERROR_* code on failure
  *
- * @note ctx.active_transport will be set to the transport on success
+ * @note ctx.connection.transport will be set to the transport on success
  * @note ctx.current_state will be set to CONN_STATE_CONNECTED on success
  */
 asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, const char *server_address,
@@ -187,7 +183,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
  * @brief Attempt WebSocket connection
  *
  * Attempts a WebSocket connection to the specified server (ws:// or wss://).
- * On success, sets active_transport in the context.
+ * On success, sets the transport in the context handle.
  *
  * Handles:
  * - WebSocket URL parsing
@@ -199,7 +195,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
  * @return ASCIICHAT_OK on successful connection
  * @return ERROR_* code on failure
  *
- * @note ctx.active_transport will be set to the WebSocket transport on success
+ * @note ctx.connection.transport will be set to the WebSocket transport on success
  * @note ctx.current_state will be set to CONN_STATE_CONNECTED on success
  */
 asciichat_error_t connection_attempt_websocket(connection_attempt_context_t *ctx, const char *ws_url);

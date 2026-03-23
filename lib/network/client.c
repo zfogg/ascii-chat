@@ -10,6 +10,7 @@
  */
 
 #include <ascii-chat/network/client.h>
+#include <ascii-chat/network/connection_handle.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -32,10 +33,7 @@ app_client_t *app_client_create(void) {
   memset(client, 0, sizeof(*client));
 
   /* Transport */
-  client->active_transport = NULL;
-  client->transport_type = ACIP_TRANSPORT_TCP;
-  client->tcp_client = NULL;
-  client->ws_client = NULL;
+  connection_handle_init(&client->connection);
 
   /* Audio State */
   memset(&client->audio_ctx, 0, sizeof(client->audio_ctx));
@@ -143,9 +141,7 @@ void app_client_destroy(app_client_t **client_ptr) {
   mutex_destroy(&client->audio_send_queue_mutex);
   cond_destroy(&client->audio_send_queue_cond);
 
-  // Note: Network clients (tcp_client, ws_client) are not destroyed here.
-  // They should be destroyed separately in connection_context_cleanup()
-  // to maintain proper lifecycle management.
+  connection_handle_cleanup(&client->connection);
 
   SAFE_FREE(*client_ptr);
 }

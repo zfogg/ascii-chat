@@ -16,6 +16,7 @@
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/network/acip/transport.h>  // For acip_transport_t
+#include <ascii-chat/network/connection_handle.h>
 #include <ascii-chat/crypto/handshake/common.h> // For crypto_handshake_context_t (complete type needed for field)
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/video/rgba/video_frame.h>
@@ -201,10 +202,6 @@ typedef struct client_info {
  * Client-Side Application State (replaces tcp_client_t mixed concerns)
  * ============================================================================ */
 
-/** Forward declarations */
-struct tcp_client;
-struct websocket_client;
-
 /**
  * @brief Audio packet for async transmission
  */
@@ -222,17 +219,14 @@ typedef struct {
  *
  * Transport-agnostic container for application-layer state previously mixed
  * in tcp_client_t. Holds audio queues, thread handles, crypto context, and
- * display state. Maintains references to active network client and transport.
+ * display state. Connection ownership is tracked through connection_handle_t.
  */
 typedef struct app_client {
   /* ========================================================================
    * Active Transport & Network Client
    * ======================================================================== */
 
-  acip_transport_t *active_transport;
-  acip_transport_type_t transport_type;
-  struct tcp_client *tcp_client;
-  struct websocket_client *ws_client;
+  connection_handle_t connection;
 
   /* ========================================================================
    * Audio State

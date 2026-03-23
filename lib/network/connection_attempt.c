@@ -23,6 +23,7 @@
 
 #include <ascii-chat/network/connection_attempt.h>
 #include <ascii-chat/network/connection_endpoint.h>
+#include <ascii-chat/network/connection_handle.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
@@ -75,6 +76,7 @@ asciichat_error_t connection_context_init(connection_attempt_context_t *ctx) {
 
   // Reset context
   memset(ctx, 0, sizeof(connection_attempt_context_t));
+  connection_handle_init(&ctx->connection);
 
   // Initialize state
   ctx->current_state = CONN_STATE_IDLE;
@@ -100,26 +102,7 @@ void connection_context_cleanup(connection_attempt_context_t *ctx) {
   if (!ctx)
     return;
 
-  // Close active transport if still open
-  if (ctx->active_transport) {
-    acip_transport_close(ctx->active_transport);
-    acip_transport_destroy(ctx->active_transport);
-    ctx->active_transport = NULL;
-    log_debug("Transport connection closed");
-  }
-
-  // Destroy TCP client instance if created
-  if (ctx->tcp_client_instance) {
-    tcp_client_destroy(&ctx->tcp_client_instance);
-    ctx->tcp_client_instance = NULL;
-    log_debug("TCP client instance destroyed");
-  }
-
-  if (ctx->ws_client_instance) {
-    websocket_client_destroy(&ctx->ws_client_instance);
-    ctx->ws_client_instance = NULL;
-    log_debug("WebSocket client instance destroyed");
-  }
+  connection_handle_cleanup(&ctx->connection);
 
   log_debug("Connection context cleaned up");
 }
@@ -297,8 +280,11 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
 
     log_info("WebSocket connection established to %s", ws_url);
     connection_state_transition(ctx, CONN_STATE_CONNECTED);
-    ctx->active_transport = transport;
-    ctx->ws_client_instance = ws_client;
+    ctx->connection.transport = transport;
+    ctx->connection.transport_type = ACIP_TRANSPORT_WEBSOCKET;
+    ctx->connection.backend = CONNECTION_HANDLE_WEBSOCKET;
+    ctx->connection.client_owner = ws_client;
+    ctx->connection.owns_client_owner = true;
 
     return ASCIICHAT_OK;
   }
@@ -326,7 +312,6 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     log_debug("Created TCP client locally (not pre-created by framework)");
   } else {
     log_debug("Using pre-created TCP client from framework");
-    ctx->tcp_client_instance = tcp_client;
   }
 
   // Set timeout for this attempt
@@ -445,9 +430,12 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
 
   log_info("TCP connection established to %s:%u", endpoint.host, endpoint.port);
   connection_state_transition(ctx, CONN_STATE_CONNECTED);
-  ctx->active_transport = transport;
+  ctx->connection.transport = transport;
+  ctx->connection.transport_type = ACIP_TRANSPORT_TCP;
   if (created_tcp_client) {
-    ctx->tcp_client_instance = tcp_client;
+    ctx->connection.backend = CONNECTION_HANDLE_TCP;
+    ctx->connection.client_owner = tcp_client;
+    ctx->connection.owns_client_owner = true;
   }
   log_debug("TCP client instance stored in connection context for cleanup");
 
@@ -520,8 +508,11 @@ asciichat_error_t connection_attempt_websocket(connection_attempt_context_t *ctx
 
   log_info("WebSocket connection established to %s", ws_url);
   connection_state_transition(ctx, CONN_STATE_CONNECTED);
-  ctx->active_transport = transport;
-  ctx->ws_client_instance = ws_client;
+  ctx->connection.transport = transport;
+  ctx->connection.transport_type = ACIP_TRANSPORT_WEBSOCKET;
+  ctx->connection.backend = CONNECTION_HANDLE_WEBSOCKET;
+  ctx->connection.client_owner = ws_client;
+  ctx->connection.owns_client_owner = true;
   log_debug("WebSocket client instance stored in connection context");
 
   return ASCIICHAT_OK;

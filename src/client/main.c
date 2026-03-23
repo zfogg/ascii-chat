@@ -499,9 +499,9 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
   }
 
   // Connection successful - integrate transport into server layer
-  if (g_client_session.connection_ctx.active_transport) {
-    server_connection_set_transport(g_client_session.connection_ctx.active_transport);
-    g_client_session.connection_ctx.active_transport = NULL;
+  if (g_client_session.connection_ctx.connection.transport) {
+    server_connection_set_transport(g_client_session.connection_ctx.connection.transport);
+    g_client_session.connection_ctx.connection.transport = NULL;
   } else {
     log_error("Connection succeeded but no active transport");
     return ERROR_NETWORK;
@@ -603,7 +603,7 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
 
   // Clear transport reference from connection context since server_connection_close() already destroyed it
   // This prevents double-free when connection_context_cleanup() is called below
-  g_client_session.connection_ctx.active_transport = NULL;
+  g_client_session.connection_ctx.connection.transport = NULL;
 
   // Recreate thread pool for clean reconnection
   if (g_client_worker_pool) {
@@ -851,23 +851,12 @@ int client_main(void) {
   // Get reconnect attempts setting (-1 = unlimited, 0 = no retry, >0 = retry N times)
   int reconnect_attempts = GET_OPTION(reconnect_attempts);
 
-  // Create TCP client only when the selected connection target actually uses TCP.
-  // WebSocket targets do not need the pre-created TCP client.
-  tcp_client_t *client_tcp = NULL;
-  if (!url_is_websocket(g_client_session.discovered_address)) {
-    client_tcp = tcp_client_create();
-    if (!client_tcp) {
-      log_error("Failed to create TCP client for connection attempts");
-      return 1; // Return error to exit client
-    }
-  }
-
   // Configure session_client_like with client-specific settings
   session_client_like_config_t config = {
       .run_fn = client_run,
       .run_user_data = NULL,
       .network_mode = true,
-      .tcp_client = client_tcp,
+      .tcp_client = NULL,
       .websocket_client = NULL,
       .discovery = NULL,
       .custom_should_exit = NULL,
@@ -885,7 +874,6 @@ int client_main(void) {
   log_debug("[CLIENT_MAIN] session_client_like_run() returned %d", session_result);
 
   // Network client lifecycle is owned by connection_context_cleanup() after the session returns.
-  // Do not destroy the pre-created TCP client here; the connection context owns it now.
 
   // Cleanup connection context
   log_debug("[CLIENT_MAIN] About to call connection_context_cleanup()");
