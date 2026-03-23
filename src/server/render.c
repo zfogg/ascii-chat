@@ -160,6 +160,7 @@
 #include "stream.h"
 #include "protocol.h"
 #include <ascii-chat/common.h>
+#include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
 #include <ascii-chat/platform/abstraction.h>
@@ -363,6 +364,7 @@ void *client_video_render_thread(void *arg) {
     if (waited_ms == 0) {
       log_debug("Waiting for terminal capabilities from client %u...", thread_client_id);
     }
+    APP_CALLBACK_VOID(platform_pump_events);
     platform_sleep_ms(10);
     waited_ms += 10;
     if (waited_ms >= timeout_ms) {

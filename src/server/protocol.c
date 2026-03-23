@@ -120,6 +120,7 @@
 #include "protocol.h"
 #include "client.h"
 #include "session/h265/server.h"
+#include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/util/endian.h>
@@ -225,6 +226,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
     acip_send_error(transport_snapshot, ERROR_NETWORK_PROTOCOL, reason_str);
   }
 
+  APP_CALLBACK_VOID(platform_pump_events);
   platform_sleep_ms(500);
 
   log_debug("Setting active=false in disconnect_client_for_bad_data (client_id=%u, reason=%s)", client_id, reason_str);

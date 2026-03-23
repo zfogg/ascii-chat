@@ -118,6 +118,7 @@
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/discovery/nouns.h>
@@ -1930,6 +1931,7 @@ void *client_receive_thread(void *arg) {
               strstr(err_ctx.context_message, "reassembly timeout")) {
             // Fragments are arriving slowly - this is normal, retry without disconnecting
             log_dev_every(100000, "Client %s: fragment reassembly timeout, retrying in 10ms", client->client_id);
+            APP_CALLBACK_VOID(platform_pump_events);
             platform_sleep_ms(10); // Sleep 10ms to allow fragments to arrive
             continue;              // Retry without disconnecting
           }

@@ -26,6 +26,7 @@
 #include <ascii-chat/network/rate_limit/rate_limit.h>
 #include <ascii-chat/network/rate_limit/sqlite.h>
 #include <ascii-chat/network/errors.h>
+#include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/network/network.h>
@@ -161,6 +162,7 @@ static void *cleanup_thread_func(void *arg) {
     // Sleep for 5 minutes (or until shutdown)
     // Use 100ms sleep intervals for responsive shutdown on timeout
     for (int i = 0; i < 3000 && !atomic_load_bool(&server->shutdown); i++) {
+      APP_CALLBACK_VOID(platform_pump_events);
       platform_sleep_ms(100); // Sleep 100ms at a time for responsive shutdown
     }
 
@@ -290,6 +292,7 @@ void acds_server_shutdown(acds_server_t *server) {
          shutdown_attempts < max_shutdown_attempts) {
     log_debug("Waiting for %zu client handler threads to exit (attempt %d/%d)", remaining_clients,
               shutdown_attempts + 1, max_shutdown_attempts);
+    APP_CALLBACK_VOID(platform_pump_events);
     platform_sleep_ms(100);
     shutdown_attempts++;
   }

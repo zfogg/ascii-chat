@@ -56,6 +56,7 @@
 #endif
 
 #include <ascii-chat/platform/network.h> // Consolidates platform-specific network headers
+#include <ascii-chat/app_callbacks.h>
 
 #include <errno.h>
 #include <limits.h>
@@ -1017,6 +1018,7 @@ static void *acds_ping_thread(void *arg) {
 
     // Sleep for 10 seconds before next ping (well before 15s timeout)
     for (int i = 0; i < 100 && !atomic_load_bool(&g_should_exit); i++) {
+      APP_CALLBACK_VOID(platform_pump_events);
       platform_sleep_ms(100); // Check exit flag every 100ms
     }
   }
@@ -1440,6 +1442,7 @@ static void *ascii_chat_client_handler(void *arg) {
         log_debug("HANDLER: Client %s still active (waited %d seconds), active=%d", client->client_id, wait_count / 10,
                   atomic_load_bool(&client->active));
       }
+      APP_CALLBACK_VOID(platform_pump_events);
       platform_sleep_ms(100); // Check every 100ms
     }
     log_info("Client %s disconnected from %s:%d (waited %d seconds, active=%d, server_should_exit=%d)",
