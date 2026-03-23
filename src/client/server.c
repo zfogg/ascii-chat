@@ -71,6 +71,7 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/connection_endpoint.h>
 #include <ascii-chat/network/websocket/internal.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
@@ -379,32 +380,31 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     // Initial connection logged only to file
   }
 
+  connection_endpoint_t endpoint = {0};
+  asciichat_error_t endpoint_result = connection_endpoint_resolve(address, port, &endpoint);
+  if (endpoint_result != ASCIICHAT_OK) {
+    log_error("Failed to resolve connection endpoint: %s", asciichat_error_string(endpoint_result));
+    return -1;
+  }
+
   // Check for WebSocket URL - handle separately from TCP
-  if (url_is_websocket(address)) {
+  if (endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET) {
     // WebSocket connection - bypass TCP socket creation
     // Use the original address (URL already contains port if specified)
-    const char *ws_url = address;
+    const char *ws_url = endpoint.input;
+    log_info("Connecting via WebSocket: %s (host=%s, port=%u)", ws_url, endpoint.host, endpoint.port);
 
-    // Parse for debug logging
-    url_parts_t url_parts = {0};
-    if (url_parse(address, &url_parts) == ASCIICHAT_OK) {
-      log_info("Connecting via WebSocket: %s (scheme=%s, host=%s, port=%d)", ws_url, url_parts.scheme, url_parts.host,
-               url_parts.port);
-
-      // Set server IP and port for crypto handshake
-      // This ensures the crypto context has proper server address info for known_hosts verification
-      server_connection_set_ip(url_parts.host);
-      log_debug("CLIENT_CONNECT: Set server IP to %s from WebSocket URL", url_parts.host);
-    } else {
-      log_info("Connecting via WebSocket: %s", ws_url);
-    }
+    // Set server IP and port for crypto handshake
+    // This ensures the crypto context has proper server address info for known_hosts verification
+    server_connection_set_ip(endpoint.host);
+    server_connection_set_port(endpoint.port);
+    log_debug("CLIENT_CONNECT: Set server IP=%s, port=%u from WebSocket endpoint", endpoint.host, endpoint.port);
 
     // Initialize crypto if encryption is enabled
     log_debug("CLIENT_CONNECT: Calling client_crypto_init()");
     if (client_crypto_init() != 0) {
       log_error("Failed to initialize crypto (password required or incorrect)");
       log_debug("CLIENT_CONNECT: client_crypto_init() failed");
-      url_parts_destroy(&url_parts);
       return CONNECTION_ERROR_AUTH_FAILED;
     }
 
@@ -415,7 +415,6 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     g_client_transport = acip_websocket_client_transport_create("client", ws_url, (crypto_context_t *)crypto_ctx);
     if (!g_client_transport) {
       log_error("Failed to create WebSocket ACIP transport");
-      url_parts_destroy(&url_parts);
       return -1;
     }
     log_debug("CLIENT_CONNECT: Created WebSocket ACIP transport with crypto context");
@@ -442,7 +441,6 @@ int server_connection_establish(const char *address, int port, int reconnect_att
       log_error("Failed to establish WebSocket connection within 15 seconds");
       acip_transport_destroy(g_client_transport);
       g_client_transport = NULL;
-      url_parts_destroy(&url_parts);
       atomic_store_bool(&g_connection_active, false);
       return -1;
     }
@@ -456,7 +454,6 @@ int server_connection_establish(const char *address, int port, int reconnect_att
       log_error("Failed to send initial capabilities to server: %s", network_error_string());
       acip_transport_destroy(g_client_transport);
       g_client_transport = NULL;
-      url_parts_destroy(&url_parts);
       return -1;
     }
 
@@ -488,12 +485,10 @@ int server_connection_establish(const char *address, int port, int reconnect_att
       log_error("Failed to send client join packet: %s", network_error_string());
       acip_transport_destroy(g_client_transport);
       g_client_transport = NULL;
-      url_parts_destroy(&url_parts);
       return -1;
     }
 
     log_info("WebSocket connection established successfully");
-    url_parts_destroy(&url_parts);
     return 0;
   }
 

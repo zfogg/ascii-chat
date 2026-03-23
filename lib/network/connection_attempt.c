@@ -22,6 +22,7 @@
  */
 
 #include <ascii-chat/network/connection_attempt.h>
+#include <ascii-chat/network/connection_endpoint.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
@@ -193,50 +194,30 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     return SET_ERRNO(ERROR_NETWORK, "Connection attempt aborted due to shutdown request");
   }
 
-  // Check for WebSocket URL or TCP URL - handle separately from bare TCP addresses
-  log_debug("connection_attempt_tcp: server_address='%s', port=%u", server_address, server_port);
-
-  // Check for TCP URL scheme (tcp://) and parse it to extract host and port
-  char tcp_address_buf[512] = {0};
-  const char *effective_address = server_address;
-  uint16_t effective_port = server_port;
-
-  if (url_is_tcp(server_address)) {
-    url_parts_t url_parts = {0};
-    if (url_parse(server_address, &url_parts) == ASCIICHAT_OK) {
-      log_debug("TCP URL parsed: host=%s, port=%d, scheme=%s", url_parts.host, url_parts.port, url_parts.scheme);
-      // Copy host to local buffer since url_parts will be destroyed
-      SAFE_STRNCPY(tcp_address_buf, url_parts.host, sizeof(tcp_address_buf) - 1);
-      effective_address = tcp_address_buf;
-      effective_port = (url_parts.port > 0) ? (uint16_t)url_parts.port : server_port;
-      log_debug("TCP URL converted to address='%s', port=%u", effective_address, effective_port);
-      url_parts_destroy(&url_parts);
-    } else {
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Failed to parse TCP URL: %s", server_address);
-    }
+  // Normalize the endpoint once so TCP and WebSocket paths use the same rules.
+  connection_endpoint_t endpoint = {0};
+  asciichat_error_t endpoint_result = connection_endpoint_resolve(server_address, server_port, &endpoint);
+  if (endpoint_result != ASCIICHAT_OK) {
+    return endpoint_result;
   }
 
-  if (url_is_websocket(server_address)) {
+  log_debug("connection_attempt_tcp: server_address='%s', normalized=%s host=%s port=%u", server_address,
+            connection_endpoint_protocol_name(endpoint.protocol), endpoint.host, endpoint.port);
+
+  if (endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET) {
     // WebSocket connection path
-    const char *ws_url = server_address;
+    const char *ws_url = endpoint.input;
 
-    // Parse for debug logging and server IP extraction
-    url_parts_t url_parts = {0};
-    if (url_parse(server_address, &url_parts) == ASCIICHAT_OK) {
-      log_debug("WebSocket URL parsed: host=%s, port=%d, scheme=%s", url_parts.host, url_parts.port, url_parts.scheme);
-
-      // Set server IP for crypto handshake
-      // This ensures the crypto context has proper server address info for known_hosts verification
-      APP_CALLBACK_VOID_STR(server_connection_set_ip, url_parts.host);
-      log_debug("Set server IP to %s from WebSocket URL", url_parts.host);
-    }
+    // Set server IP/port for crypto handshake known_hosts verification
+    APP_CALLBACK_VOID_STR(server_connection_set_ip, endpoint.host);
+    APP_CALLBACK_VOID_INT(server_connection_set_port, endpoint.port);
+    log_debug("Set server IP=%s, port=%u for WebSocket crypto handshake", endpoint.host, endpoint.port);
 
     log_info("Attempting WebSocket connection to %s", ws_url);
 
     // Transition to attempting state
     asciichat_error_t result = connection_state_transition(ctx, CONN_STATE_ATTEMPTING);
     if (result != ASCIICHAT_OK) {
-      url_parts_destroy(&url_parts);
       return result;
     }
 
@@ -264,12 +245,6 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     log_debug("WebSocket crypto mode computed: 0x%02x (encrypt=%d, auth=%d)", crypto_mode,
               ACIP_CRYPTO_HAS_ENCRYPT(crypto_mode), ACIP_CRYPTO_HAS_AUTH(crypto_mode));
 
-    // Set server IP and port for crypto handshake known_hosts verification
-    // This is required for the crypto layer to properly validate server identity
-    APP_CALLBACK_VOID_STR(server_connection_set_ip, url_parts.host);
-    APP_CALLBACK_VOID_INT(server_connection_set_port, url_parts.port);
-    log_debug("Set server IP=%s, port=%d for WebSocket crypto handshake", url_parts.host, url_parts.port);
-
     // Set crypto mode before initialization via callback
     // NOTE: Always initialize crypto context, even in NONE mode!
     // The server always sends KEY_EXCHANGE_INIT packets, and the context
@@ -282,7 +257,6 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
 
     if (APP_CALLBACK_INT(client_crypto_init) != 0) {
       log_error("Failed to initialize crypto context");
-      url_parts_destroy(&url_parts);
       return SET_ERRNO(ERROR_CRYPTO, "Crypto initialization failed");
     }
     log_debug("Crypto context initialized successfully");
@@ -297,7 +271,6 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     if (!ws_client) {
       log_error("Failed to create WebSocket client");
       connection_state_transition(ctx, CONN_STATE_FAILED);
-      url_parts_destroy(&url_parts);
       return SET_ERRNO(ERROR_NETWORK, "WebSocket client creation failed");
     }
 
@@ -307,7 +280,6 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
       log_error("Failed to create WebSocket ACIP transport");
       websocket_client_destroy(&ws_client);
       connection_state_transition(ctx, CONN_STATE_FAILED);
-      url_parts_destroy(&url_parts);
       return SET_ERRNO(ERROR_NETWORK, "WebSocket connection failed");
     }
 
@@ -328,7 +300,6 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
       log_error("WebSocket TLS handshake failed or timed out after 15 seconds");
       websocket_client_destroy(&ws_client);
       connection_state_transition(ctx, CONN_STATE_FAILED);
-      url_parts_destroy(&url_parts);
       return SET_ERRNO(ERROR_NETWORK, "WebSocket handshake timeout");
     }
 
@@ -340,12 +311,11 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     // Update global websocket client so session_client_like_run() detects network mode
     session_client_like_set_websocket_client(ws_client);
 
-    url_parts_destroy(&url_parts);
     return ASCIICHAT_OK;
   }
 
   // TCP connection path (original logic)
-  log_info("Attempting TCP connection to %s:%u (3s timeout)", server_address, server_port);
+  log_info("Attempting TCP connection to %s:%u (3s timeout)", endpoint.host, endpoint.port);
 
   // Transition to attempting state
   asciichat_error_t result = connection_state_transition(ctx, CONN_STATE_ATTEMPTING);
@@ -375,7 +345,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
 
   // Attempt TCP connection (reconnect_attempt is 0-based, convert for tcp_client_connect)
   // Use effective_address/port which may be parsed from tcp:// URL scheme
-  int tcp_result = tcp_client_connect(tcp_client, effective_address, effective_port, (int)ctx->reconnect_attempt,
+  int tcp_result = tcp_client_connect(tcp_client, endpoint.host, endpoint.port, (int)ctx->reconnect_attempt,
                                       ctx->reconnect_attempt == 0, ctx->reconnect_attempt > 0);
 
   if (tcp_result != 0) {
@@ -483,7 +453,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     }
   }
 
-  log_info("TCP connection established to %s:%u", effective_address, effective_port);
+  log_info("TCP connection established to %s:%u", endpoint.host, endpoint.port);
   connection_state_transition(ctx, CONN_STATE_CONNECTED);
   ctx->active_transport = transport;
 

@@ -14,6 +14,7 @@
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/network/connection_endpoint.h>
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/network/webrtc/peer_manager.h>
 #include <ascii-chat/discovery/identity.h>
@@ -480,57 +481,33 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
 
   set_state(session, DISCOVERY_STATE_CONNECTING_ACDS);
 
-  // URL-based path: route based on scheme
-  if (session->acds_url[0] != '\0') {
-    // tcp:// scheme — parse host:port and fall through to TCP path
-    if (strncmp(session->acds_url, "tcp://", 6) == 0) {
-      const char *host_start = session->acds_url + 6;
-      const char *colon = strrchr(host_start, ':');
-      if (colon && colon > host_start) {
-        size_t host_len = (size_t)(colon - host_start);
-        if (host_len < sizeof(session->acds_address)) {
-          memcpy(session->acds_address, host_start, host_len);
-          session->acds_address[host_len] = '\0';
-          session->acds_port = (uint16_t)atoi(colon + 1);
-          log_info("Parsed TCP URL: host=%s, port=%u", session->acds_address, session->acds_port);
-        }
-      } else {
-        // No port — use host as-is with default port
-        SAFE_STRNCPY(session->acds_address, host_start, sizeof(session->acds_address));
-      }
-      // Fall through to TCP path below
-    } else if (strncmp(session->acds_url, "ws://", 5) == 0 || strncmp(session->acds_url, "wss://", 6) == 0) {
-      // WebSocket path
-      log_info("Connecting to ACDS via WebSocket: %s", session->acds_url);
-      acip_transport_t *transport = acip_websocket_client_transport_create("discovery_acds", session->acds_url, NULL);
-      if (!transport) {
-        set_error(session, ERROR_NETWORK_CONNECT, "Failed to create WebSocket connection to ACDS");
-        log_error("WebSocket connection to ACDS failed: %s", session->acds_url);
-        return ERROR_NETWORK_CONNECT;
-      }
-      session->acds_transport = transport;
-      log_info("Connected to ACDS via WebSocket");
-      return ASCIICHAT_OK;
-    } else {
-      // No recognized scheme — treat as tcp://host[:port]
-      const char *host_start = session->acds_url;
-      const char *colon = strrchr(host_start, ':');
-      if (colon && colon > host_start) {
-        size_t host_len = (size_t)(colon - host_start);
-        if (host_len < sizeof(session->acds_address)) {
-          memcpy(session->acds_address, host_start, host_len);
-          session->acds_address[host_len] = '\0';
-          session->acds_port = (uint16_t)atoi(colon + 1);
-          log_info("Parsed URL (default TCP): host=%s, port=%u", session->acds_address, session->acds_port);
-        }
-      } else {
-        SAFE_STRNCPY(session->acds_address, host_start, sizeof(session->acds_address));
-      }
-      // Fall through to TCP path below
+  connection_endpoint_t endpoint = {0};
+  const char *endpoint_input = session->acds_url[0] != '\0' ? session->acds_url : session->acds_address;
+  uint16_t endpoint_default_port = session->acds_port > 0 ? session->acds_port : ACIP_DISCOVERY_DEFAULT_PORT;
+
+  asciichat_error_t endpoint_result = connection_endpoint_resolve(endpoint_input, endpoint_default_port, &endpoint);
+  if (endpoint_result != ASCIICHAT_OK) {
+    set_error(session, endpoint_result, "Failed to resolve ACDS endpoint");
+    return endpoint_result;
+  }
+
+  if (endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET) {
+    log_info("Connecting to ACDS via WebSocket: %s", endpoint.input);
+    acip_transport_t *transport = acip_websocket_client_transport_create("discovery_acds", endpoint.input, NULL);
+    if (!transport) {
+      set_error(session, ERROR_NETWORK_CONNECT, "Failed to create WebSocket connection to ACDS");
+      log_error("WebSocket connection to ACDS failed: %s", endpoint.input);
+      return ERROR_NETWORK_CONNECT;
     }
+    session->acds_transport = transport;
+    log_info("Connected to ACDS via WebSocket");
+    return ASCIICHAT_OK;
   }
 
   // TCP path
+  SAFE_STRNCPY(session->acds_address, endpoint.host, sizeof(session->acds_address));
+  session->acds_port = endpoint.port;
+
   log_info("Connecting to ACDS at %s:%u...", session->acds_address, session->acds_port);
 
   // Resolve hostname using getaddrinfo (supports both IP addresses and hostnames)
