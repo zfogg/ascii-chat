@@ -42,10 +42,6 @@ ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}" \
     CXX=clang++ \
     CMAKE_GENERATOR=Ninja
 
-# Copy full source tree needed for cmake configure (downloads FetchContent deps).
-# .dockerignore excludes .deps-cache/, build/, .git, tests/, etc.
-COPY . /build/
-
 # Clone submodules (after COPY so they aren't overwritten by empty dirs from build context)
 RUN rm -rf /build/deps/ascii-chat-deps /build/deps/doxygen-awesome-css && \
     git clone --depth 1 https://github.com/zfogg/BearSSL.git /build/deps/ascii-chat-deps/bearssl && \
@@ -61,6 +57,11 @@ RUN rm -rf /build/deps/ascii-chat-deps /build/deps/doxygen-awesome-css && \
     git clone --depth 1 https://github.com/ibireme/yyjson.git /build/deps/ascii-chat-deps/yyjson && \
     rm -rf /build/deps/ascii-chat-deps/*/.git /build/deps/doxygen-awesome-css/.git
 
+# Copy full source tree needed for cmake configure (downloads FetchContent deps).
+# .dockerignore excludes .deps-cache/, build/, .git, tests/, etc.
+COPY . /build/
+
+# In production this is set by a script in scripts/update-coolify-version.zsh
 ENV LIB_VERSION=0.3.0
 
 # Run cmake configure to populate .deps-cache/ with all FetchContent downloads.
