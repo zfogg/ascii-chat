@@ -321,15 +321,15 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
       return ASCIICHAT_OK;
     }
   } else {
-    // PARTICIPANT ROLE: Wait for host without rendering frames
-    // Just process discovery events silently (display is not used for participants)
-    while (discovery_session_is_active(g_discovery) && !should_exit()) {
-      result = discovery_session_process(g_discovery, 50 * NS_PER_MS_INT);
-      if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
-        log_error("Discovery session process failed: %d", result);
-        return result;
-      }
-    }
+    // PARTICIPANT ROLE: Just wait for host connection
+    // Don't use capture/display for participant discovery mode
+    (void)capture;  // Not used
+    (void)display;  // Not used - don't render
+
+    // Session is active and we're a participant. In discovery mode, participants
+    // don't render anything - they just wait for the host. Return early to skip
+    // any display rendering that would happen after discovery_run returns.
+    return ASCIICHAT_OK;
   }
 
   return result;
