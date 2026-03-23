@@ -415,28 +415,45 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
 
   set_state(session, DISCOVERY_STATE_CONNECTING_ACDS);
 
-  // WebSocket path
+  // URL-based path: route based on scheme
   if (session->acds_url[0] != '\0') {
-    // Validate WebSocket URL scheme
-    if (strncmp(session->acds_url, "ws://", 5) != 0 && strncmp(session->acds_url, "wss://", 6) != 0) {
-      set_error(session, ERROR_USAGE, "discovery-service-url must use ws:// or wss:// scheme");
-      log_error("Invalid ACDS WebSocket URL scheme: %s", session->acds_url);
+    // tcp:// scheme — parse host:port and fall through to TCP path
+    if (strncmp(session->acds_url, "tcp://", 6) == 0) {
+      const char *host_start = session->acds_url + 6;
+      const char *colon = strrchr(host_start, ':');
+      if (colon && colon > host_start) {
+        size_t host_len = (size_t)(colon - host_start);
+        if (host_len < sizeof(session->acds_address)) {
+          memcpy(session->acds_address, host_start, host_len);
+          session->acds_address[host_len] = '\0';
+          session->acds_port = (uint16_t)atoi(colon + 1);
+          log_info("Parsed TCP URL: host=%s, port=%u", session->acds_address, session->acds_port);
+        }
+      } else {
+        // No port — use host as-is with default port
+        SAFE_STRNCPY(session->acds_address, host_start, sizeof(session->acds_address));
+      }
+      // Fall through to TCP path below
+    } else if (strncmp(session->acds_url, "ws://", 5) == 0 || strncmp(session->acds_url, "wss://", 6) == 0) {
+      // WebSocket path
+      log_info("Connecting to ACDS via WebSocket: %s", session->acds_url);
+      acip_transport_t *transport = acip_websocket_client_transport_create("discovery_acds", session->acds_url, NULL);
+      if (!transport) {
+        set_error(session, ERROR_NETWORK_CONNECT, "Failed to create WebSocket connection to ACDS");
+        log_error("WebSocket connection to ACDS failed: %s", session->acds_url);
+        return ERROR_NETWORK_CONNECT;
+      }
+      session->acds_transport = transport;
+      log_info("Connected to ACDS via WebSocket");
+      return ASCIICHAT_OK;
+    } else {
+      set_error(session, ERROR_USAGE, "discovery-service-url must use tcp://, ws://, or wss:// scheme");
+      log_error("Invalid ACDS URL scheme: %s", session->acds_url);
       return ERROR_USAGE;
     }
-
-    log_info("Connecting to ACDS via WebSocket: %s", session->acds_url);
-    acip_transport_t *transport = acip_websocket_client_transport_create("discovery_acds", session->acds_url, NULL);
-    if (!transport) {
-      set_error(session, ERROR_NETWORK_CONNECT, "Failed to create WebSocket connection to ACDS");
-      log_error("WebSocket connection to ACDS failed: %s", session->acds_url);
-      return ERROR_NETWORK_CONNECT;
-    }
-    session->acds_transport = transport;
-    log_info("Connected to ACDS via WebSocket");
-    return ASCIICHAT_OK;
   }
 
-  // TCP path (original behavior)
+  // TCP path
   log_info("Connecting to ACDS at %s:%u...", session->acds_address, session->acds_port);
 
   // Resolve hostname using getaddrinfo (supports both IP addresses and hostnames)
