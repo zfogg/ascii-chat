@@ -308,13 +308,14 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
     log_debug("Host role main loop exited (snapshot_mode=%d, first_frame_rendered=%d, session_active=%d)",
               snapshot_mode, g_snapshot_first_frame_rendered ? 1 : 0, discovery_session_is_active(g_discovery) ? 1 : 0);
 
-    // Host cleanup is handled by discovery session
+    // Stop render thread before returning (display will be destroyed by caller)
+    session_host_stop_render(host);
+
     if (should_exit()) {
       return ASCIICHAT_OK;
     }
 
     // If we reach here, discovery session is no longer active (role change)
-    // Return error to trigger potential reconnection retry
     if (!discovery_session_is_active(g_discovery)) {
       log_info("Session ended or role changed");
       return ASCIICHAT_OK;
