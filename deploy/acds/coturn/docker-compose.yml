@@ -6,13 +6,15 @@ services:
     container_name: ascii-chat-coturn
     restart: unless-stopped
 
-    # Expose STUN/TURN and relay ports
-    ports:
-      - "3478:3478/udp" # STUN/TURN
-      - "3478:3478/tcp" # STUN/TURN
-      - "5349:5349/udp" # STUN/TURN over TLS
-      - "5349:5349/tcp" # STUN/TURN over TLS
-      - "49152-65535:49152-65535/udp" # TURN relay range
+    # Host networking required: TURN relay uses 16k+ UDP ports (49152-65535)
+    # which docker-compose expands into individual iptables rules per port.
+    # Also gives coturn real client IPs for proper NAT traversal.
+    #
+    # Ports used:
+    #   3478/udp+tcp     - STUN/TURN
+    #   5349/udp+tcp     - STUN/TURN over TLS
+    #   49152-65535/udp  - TURN relay range
+    network_mode: host
 
     # Mount configuration and data
     volumes:
