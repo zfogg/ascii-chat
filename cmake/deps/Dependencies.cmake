@@ -66,6 +66,14 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/Opus.cmake)
 # WebRTC Audio Processing - Production-grade echo cancellation with AEC3
 include(${CMAKE_SOURCE_DIR}/cmake/deps/WebRTC.cmake)
 
+# Clear CMAKE_OSX_SYSROOT after WebRTC configuration
+# WebRTC needs it to find system Threads library, but the main build fails with system headers
+# when CMAKE_OSX_SYSROOT points to Xcode SDK (headers not accessible with Homebrew LLVM)
+# Let Homebrew LLVM find headers via its own resource directory instead
+if(APPLE AND CMAKE_CXX_COMPILER MATCHES "clang")
+    unset(CMAKE_OSX_SYSROOT CACHE)
+endif()
+
 # OpenSSL - SSL/TLS library (required by libdatachannel, libwebsockets, and TURN credentials)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/OpenSSL.cmake)
 

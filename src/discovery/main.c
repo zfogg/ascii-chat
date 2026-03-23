@@ -224,6 +224,9 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
     // HOST ROLE: Capture own media, manage participants, mix and broadcast
     log_info("Hosting session - capturing and broadcasting");
 
+    // Disable terminal logging for host rendering (was deferred for discovery mode)
+    log_set_terminal_output(false);
+
     // Get the host context already created and started during discovery negotiation
     session_host_t *host = discovery_session_get_host(g_discovery);
     if (!host) {

@@ -237,13 +237,18 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // SETUP: Terminal Logging in Snapshot Mode
   // ============================================================================
 
-  log_debug("session_client_like_run(): About to disable terminal logging (snapshot=%d)", GET_OPTION(snapshot_mode));
-  if (!GET_OPTION(snapshot_mode)) {
+  log_debug("session_client_like_run(): About to disable terminal logging (snapshot=%d, discovery=%d)", GET_OPTION(snapshot_mode), config->discovery != NULL);
+  // For discovery mode, skip disabling logging initially - we'll handle it after role is determined
+  // Discovery participants should show logs, only hosts should have logs disabled for rendering
+  bool should_disable_logging = !GET_OPTION(snapshot_mode) && (config->discovery == NULL);
+  if (should_disable_logging) {
     log_debug("session_client_like_run(): Calling log_set_terminal_output(false)...");
     log_set_terminal_output(false);
     log_debug("session_client_like_run(): RETURNED from log_set_terminal_output(false)");
+  } else {
+    log_debug("session_client_like_run(): Skipping log disable (snapshot=%d or discovery=%d)", GET_OPTION(snapshot_mode), config->discovery != NULL);
   }
-  log_debug("session_client_like_run(): Terminal logging disabled, starting media source setup");
+  log_debug("session_client_like_run(): Terminal logging setup complete, starting media source setup");
 
   // ============================================================================
   // SETUP: Media Source Selection and FPS Probing
