@@ -273,32 +273,15 @@ static asciichat_error_t gather_nat_quality(nat_quality_t *quality) {
   // Initialize with defaults
   nat_quality_init(quality);
 
-  // Parse STUN servers from options (use fallback endpoint for NAT probe)
-  // Extract just the hostname:port without the "stun:" prefix for nat_detect_quality
-  // If custom servers are configured, use the first one; otherwise use fallback
-  const char *stun_servers_option = GET_OPTION(stun_servers);
-  const char *stun_server_for_probe = OPT_ENDPOINT_STUN_FALLBACK; // Default fallback
-
-  if (stun_servers_option && stun_servers_option[0] != '\0') {
-    // Use the first configured server
-    // nat_detect_quality expects just "host:port" without "stun:" prefix
-    // Use the fallback server, ACDS will provide custom servers in SESSION_CREATED
-    stun_server_for_probe = OPT_ENDPOINT_STUN_FALLBACK;
-  }
-
-  // Strip "stun:" prefix if present
-  const char *probe_host = stun_server_for_probe;
-  if (strncmp(probe_host, "stun:", 5) == 0) {
-    probe_host = stun_server_for_probe + 5;
-  }
-
-  // Run NAT detection (timeout 2 seconds)
-  // This will probe STUN, check UPnP, etc.
-  asciichat_error_t result = nat_detect_quality(quality, probe_host, 0);
-  if (result != ASCIICHAT_OK) {
-    log_warn("NAT detection had issues, using partial data");
-    // Don't fail - we have partial data that's better than nothing
-  }
+  // For discovery clients, skip blocking NAT detection (UPnP/STUN probes)
+  // Discovery mode uses ACDS for session discovery, not direct TCP, so NAT tier
+  // doesn't affect connectivity. Blocking UPnP discovery hangs the main thread
+  // and prevents signal handling. Return safe defaults instead.
+  log_debug("★ DISCOVERY_NAT_SKIP: Skipping blocking NAT detection for discovery client");
+  quality->detection_complete = true;
+  quality->nat_type = ACIP_NAT_TYPE_SYMMETRIC; // Conservative assumption
+  quality->has_host_candidates = true;
+  quality->has_relay_candidates = true; // Assume WebRTC relay available
 
   return ASCIICHAT_OK;
 }

@@ -434,28 +434,32 @@
 449   // Stop and join WebSocket event loop thread
 450   if (g_ws_thread_started) {
 451     atomic_store_bool(&amp;g_websocket_server.running, false);
-452     asciichat_thread_join(&amp;g_ws_thread, NULL);
-453     g_ws_thread_started = false;
-454   }
-455   websocket_server_destroy(&amp;g_websocket_server);
-456   log_debug(&quot;WebSocket server destroyed&quot;);
-457 
-458   // Clean up UPnP port mapping
-459   if (g_upnp_ctx) {
-460     nat_upnp_close(&amp;g_upnp_ctx);
-461     log_debug(&quot;UPnP port mapping closed&quot;);
-462   }
-463 
-464   // Clean up mDNS context
-465   if (g_mdns_ctx) {
-466     asciichat_mdns_destroy(g_mdns_ctx);
-467     g_mdns_ctx = NULL;
-468     log_debug(&quot;mDNS context shut down&quot;);
-469   }
-470 
-471   log_info(&quot;Discovery server stopped&quot;);
-472   return result;
-473 }</pre>
+452     websocket_server_cancel_service(&amp;g_websocket_server);
+453     int join_result = asciichat_thread_join_timeout(&amp;g_ws_thread, NULL, 500 * NS_PER_MS_INT);
+454     if (join_result != 0) {
+455       log_warn(&quot;WebSocket event loop thread did not exit within 500ms&quot;);
+456     }
+457     g_ws_thread_started = false;
+458   }
+459   websocket_server_destroy(&amp;g_websocket_server);
+460   log_debug(&quot;WebSocket server destroyed&quot;);
+461 
+462   // Clean up UPnP port mapping
+463   if (g_upnp_ctx) {
+464     nat_upnp_close(&amp;g_upnp_ctx);
+465     log_debug(&quot;UPnP port mapping closed&quot;);
+466   }
+467 
+468   // Clean up mDNS context
+469   if (g_mdns_ctx) {
+470     asciichat_mdns_destroy(g_mdns_ctx);
+471     g_mdns_ctx = NULL;
+472     log_debug(&quot;mDNS context shut down&quot;);
+473   }
+474 
+475   log_info(&quot;Discovery server stopped&quot;);
+476   return result;
+477 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acds_identity_fingerprint()</b>,
@@ -469,7 +473,7 @@
     <b>ASCII_CHAT_VERSION_FULL</b>, <b>asciichat_mdns_advertise()</b>,
     <b>asciichat_mdns_destroy()</b>, <b>asciichat_mdns_init()</b>,
     <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
-    <b>asciichat_thread_join()</b>, <b>atomic_store_bool()</b>,
+    <b>asciichat_thread_join_timeout()</b>, <b>atomic_store_bool()</b>,
     <b>acds_config_t::database_path</b>, <b>errno</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>get_config_dir()</b>, <b>GET_OPTION</b>,
     <b>acds_config_t::key_path</b>, <b>log_console</b>, <b>log_debug</b>,
@@ -477,15 +481,17 @@
     <b>log_file</b>, <b>options_state::log_file</b>, <b>LOG_INFO</b>,
     <b>log_info</b>, <b>acds_config_t::log_level</b>, <b>log_warn</b>,
     <b>nat_upnp_close()</b>, <b>nat_upnp_get_address()</b>,
-    <b>nat_upnp_open()</b>, <b>OPTIONS_BUFF_SIZE</b>, <b>options_get()</b>,
-    <b>platform_disable_keepawake()</b>, <b>platform_enable_keepawake()</b>,
-    <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>platform_strtok_r()</b>,
-    <b>acds_config_t::port</b>, <b>acds_config_t::require_client_identity</b>,
+    <b>nat_upnp_open()</b>, <b>NS_PER_MS_INT</b>, <b>OPTIONS_BUFF_SIZE</b>,
+    <b>options_get()</b>, <b>platform_disable_keepawake()</b>,
+    <b>platform_enable_keepawake()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>,
+    <b>platform_strtok_r()</b>, <b>acds_config_t::port</b>,
+    <b>acds_config_t::require_client_identity</b>,
     <b>acds_config_t::require_server_identity</b>, <b>safe_snprintf()</b>,
     <b>SAFE_STRNCPY</b>, <b>acds_config_t::stun_count</b>,
     <b>acds_config_t::stun_servers</b>, <b>acds_config_t::turn_count</b>,
     <b>acds_config_t::turn_secret</b>, <b>acds_config_t::turn_servers</b>,
-    <b>websocket_server_destroy()</b>, and <b>websocket_server_init()</b>.</p>
+    <b>websocket_server_cancel_service()</b>, <b>websocket_server_destroy()</b>,
+    and <b>websocket_server_init()</b>.</p>
 </section>
 </section>
 <section class="Sh">

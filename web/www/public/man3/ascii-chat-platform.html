@@ -4006,11 +4006,11 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 50 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>acds_main()</b>, <b>audio_destroy()</b>,
-    <b>audio_stop_duplex()</b>, <b>discover_session_parallel()</b>,
-    <b>ffmpeg_decoder_destroy()</b>, <b>parallel_connect()</b>,
-    <b>remove_client()</b>, <b>server_main()</b>, <b>session_host_start()</b>,
-    <b>session_host_stop()</b>, <b>session_host_stop_render()</b>,
+<p class="Pp">Referenced by <b>audio_destroy()</b>, <b>audio_stop_duplex()</b>,
+    <b>discover_session_parallel()</b>, <b>ffmpeg_decoder_destroy()</b>,
+    <b>parallel_connect()</b>, <b>remove_client()</b>, <b>server_main()</b>,
+    <b>session_host_start()</b>, <b>session_host_stop()</b>,
+    <b>session_host_stop_render()</b>,
     <b>session_participant_stop_audio_capture()</b>,
     <b>session_participant_stop_video_capture()</b>,
     <b>session_pipeline_create()</b>, <b>splash_wait_for_animation()</b>,
@@ -4043,7 +4043,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 16 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>audio_start_thread()</b>,
+<p class="Pp">Referenced by <b>acds_main()</b>, <b>audio_start_thread()</b>,
     <b>debug_sync_cleanup_thread()</b>, <b>ffmpeg_decoder_stop_prefetch()</b>,
     <b>server_main()</b>, <b>session_pipeline_destroy()</b>,
     <b>splash_wait_for_animation()</b>, and <b>thread_pool_stop_all()</b>.</p>
@@ -10074,8 +10074,8 @@ if (result &lt; 0 &amp;&amp; socket_is_in_progress_error(socket_get_last_error()
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>packet_send()</b>, <b>tcp_client_close()</b>,
-    <b>tcp_client_connect()</b>, <b>tcp_client_destroy()</b>, and
-    <b>tcp_client_shutdown()</b>.</p>
+    <b>tcp_client_connect()</b>, <b>tcp_client_destroy()</b>,
+    <b>tcp_client_shutdown()</b>, and <b>tcp_server_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> socket_is_would_block_error (int error_code)</h2>

@@ -1821,82 +1821,82 @@
   <li>&quot;splash_anim.0&quot; in blue</li>
   <li>&quot;0x7f123456&quot; in grey</li>
 </ul>
-<p class="Pp">Definition at line <b>967</b> of file <b>log/named.c</b>.</p>
-<pre>967                                                         {
-968 #define COLORIZE_BUFFERS 4
-969 #define COLORIZE_BUFFER_SIZE 512
-970   static char buffers[COLORIZE_BUFFERS][COLORIZE_BUFFER_SIZE];
-971   static int buffer_idx = 0;
-972 
-973   if (!name_str || name_str[0] == '\0') {
-974     return name_str;
-975   }
-976 
-977   char *current_buf = buffers[buffer_idx];
-978   buffer_idx = (buffer_idx + 1) % COLORIZE_BUFFERS;
-979 
-980   /* Find the slash separator (type/name) */
-981   const char *slash = strchr(name_str, '/');
-982   if (!slash) {
-983     /* No slash found - just return the string as-is */
-984     return name_str;
-985   }
-986 
-987   /* Find opening paren for address */
-988   const char *paren = strchr(name_str, '(');
-989 
-990   /* Extract type (before slash) */
-991   size_t type_len = slash - name_str;
-992   char type_buf[256];
-993   strncpy(type_buf, name_str, type_len &lt; sizeof(type_buf) - 1 ? type_len : sizeof(type_buf) - 1);
-994   type_buf[type_len] = '\0';
+<p class="Pp">Definition at line <b>976</b> of file <b>log/named.c</b>.</p>
+<pre>976                                                         {
+977 #define COLORIZE_BUFFERS 4
+978 #define COLORIZE_BUFFER_SIZE 512
+979   static char buffers[COLORIZE_BUFFERS][COLORIZE_BUFFER_SIZE];
+980   static int buffer_idx = 0;
+981 
+982   if (!name_str || name_str[0] == '\0') {
+983     return name_str;
+984   }
+985 
+986   char *current_buf = buffers[buffer_idx];
+987   buffer_idx = (buffer_idx + 1) % COLORIZE_BUFFERS;
+988 
+989   /* Find the slash separator (type/name) */
+990   const char *slash = strchr(name_str, '/');
+991   if (!slash) {
+992     /* No slash found - just return the string as-is */
+993     return name_str;
+994   }
 995 
-996   /* Extract name (between slash and paren, or end of string) */
-997   const char *name_start = slash + 1;
-998   size_t name_len;
-999   if (paren &amp;&amp; paren &gt; slash) {
-1000     /* Skip spaces before paren */
-1001     const char *name_end = paren - 1;
-1002     while (name_end &gt; name_start &amp;&amp; *name_end == ' ') {
-1003       name_end--;
-1004     }
-1005     name_len = name_end - name_start + 1;
-1006   } else {
-1007     name_len = strlen(name_start);
-1008   }
-1009 
-1010   char name_buf[256];
-1011   strncpy(name_buf, name_start, name_len &lt; sizeof(name_buf) - 1 ? name_len : sizeof(name_buf) - 1);
-1012   name_buf[name_len] = '\0';
-1013 
-1014   /* Apply colors */
-1015   const char *type_colored = colored_string(LOG_COLOR_WARN, type_buf);
-1016   const char *name_colored = colored_string(LOG_COLOR_DEV, name_buf);
-1017 
-1018   /* Format: type(yellow)/name(blue) and add address part if present */
-1019   if (paren) {
-1020     /* Extract address (0x...) from parentheses */
-1021     const char *addr_start = paren + 1;
-1022     const char *addr_end = strchr(addr_start, ')');
-1023     if (addr_end) {
-1024       size_t addr_len = addr_end - addr_start;
-1025       char addr_buf[128];
-1026       strncpy(addr_buf, addr_start, addr_len &lt; sizeof(addr_buf) - 1 ? addr_len : sizeof(addr_buf) - 1);
-1027       addr_buf[addr_len] = '\0';
-1028 
-1029       const char *addr_colored = colored_string(LOG_COLOR_GREY, addr_buf);
-1030       safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s (%s)&quot;, type_colored, name_colored, addr_colored);
-1031     } else {
-1032       safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s %s&quot;, type_colored, name_colored, paren);
-1033     }
-1034   } else {
-1035     safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s&quot;, type_colored, name_colored);
-1036   }
+996   /* Find opening paren for address */
+997   const char *paren = strchr(name_str, '(');
+998 
+999   /* Extract type (before slash) */
+1000   size_t type_len = slash - name_str;
+1001   char type_buf[256];
+1002   strncpy(type_buf, name_str, type_len &lt; sizeof(type_buf) - 1 ? type_len : sizeof(type_buf) - 1);
+1003   type_buf[type_len] = '\0';
+1004 
+1005   /* Extract name (between slash and paren, or end of string) */
+1006   const char *name_start = slash + 1;
+1007   size_t name_len;
+1008   if (paren &amp;&amp; paren &gt; slash) {
+1009     /* Skip spaces before paren */
+1010     const char *name_end = paren - 1;
+1011     while (name_end &gt; name_start &amp;&amp; *name_end == ' ') {
+1012       name_end--;
+1013     }
+1014     name_len = name_end - name_start + 1;
+1015   } else {
+1016     name_len = strlen(name_start);
+1017   }
+1018 
+1019   char name_buf[256];
+1020   strncpy(name_buf, name_start, name_len &lt; sizeof(name_buf) - 1 ? name_len : sizeof(name_buf) - 1);
+1021   name_buf[name_len] = '\0';
+1022 
+1023   /* Apply colors */
+1024   const char *type_colored = colored_string(LOG_COLOR_WARN, type_buf);
+1025   const char *name_colored = colored_string(LOG_COLOR_DEV, name_buf);
+1026 
+1027   /* Format: type(yellow)/name(blue) and add address part if present */
+1028   if (paren) {
+1029     /* Extract address (0x...) from parentheses */
+1030     const char *addr_start = paren + 1;
+1031     const char *addr_end = strchr(addr_start, ')');
+1032     if (addr_end) {
+1033       size_t addr_len = addr_end - addr_start;
+1034       char addr_buf[128];
+1035       strncpy(addr_buf, addr_start, addr_len &lt; sizeof(addr_buf) - 1 ? addr_len : sizeof(addr_buf) - 1);
+1036       addr_buf[addr_len] = '\0';
 1037 
-1038   return current_buf;
-1039 #undef COLORIZE_BUFFERS
-1040 #undef COLORIZE_BUFFER_SIZE
-1041 }</pre>
+1038       const char *addr_colored = colored_string(LOG_COLOR_GREY, addr_buf);
+1039       safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s (%s)&quot;, type_colored, name_colored, addr_colored);
+1040     } else {
+1041       safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s %s&quot;, type_colored, name_colored, paren);
+1042     }
+1043   } else {
+1044     safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s&quot;, type_colored, name_colored);
+1045   }
+1046 
+1047   return current_buf;
+1048 #undef COLORIZE_BUFFERS
+1049 #undef COLORIZE_BUFFER_SIZE
+1050 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>colored_string()</b>, <b>COLORIZE_BUFFER_SIZE</b>,
@@ -3013,239 +3013,248 @@
 663               (prefix_len == 6 &amp;&amp; strncmp(check, &quot;socket&quot;, 6) == 0) ||
 664               (prefix_len == 6 &amp;&amp; strncmp(check, &quot;sockfd&quot;, 6) == 0) ||
 665               (prefix_len == 8 &amp;&amp; strncmp(check, &quot;pkt_type&quot;, 8) == 0)) {
-666             is_already_formatted = true;
-667           }
-668         } else if (check &gt;= message &amp;&amp; *check == '/') {
-669           /* Found &quot;/&quot;, now check if this is a type/name pattern.
-670            * Format is &quot;(type/name (...)&quot; where type is word characters (thread, mutex, socket, etc.)
-671            * Must verify &quot;/&quot; is preceded by word characters AND &quot;(&quot; to ensure it's a formatted type.
-672            */
-673           const char *slash_pos = check;
-674           check--;
-675           while (check &gt; message &amp;&amp; (isalnum(*check) || *check == '_')) {
-676             check--;
-677           }
-678           check++;
-679 
-680           /* Check that the &quot;/&quot; was preceded by word characters (indicating a type name) */
-681           size_t type_len = slash_pos - check;
-682           if (type_len &gt; 0 &amp;&amp; (isalpha(*check) || *check == '_')) {
-683             /* Verify this is a registered type/name pattern by checking for &quot;(&quot; before the type
-684              * AND checking if the type actually exists in the registry */
-685             const char *type_start = check;
-686             const char *before_type = type_start - 1;
-687             while (before_type &gt; message &amp;&amp; isspace(*before_type)) {
-688               before_type--;
-689             }
-690 
-691             /* Only mark as formatted if:
-692              * 1. Preceded by &quot;(&quot; - ensures pattern looks like &quot;(type/name ...)&quot;
-693              * 2. Type exists in registry - prevents false positives on random text */
-694             if (before_type &gt;= message &amp;&amp; *before_type == '(' &amp;&amp; is_type_in_registry(type_start, type_len)) {
-695               is_already_formatted = true;
-696             }
-697           }
-698         }
-699       }
-700 
-701       /* Check if this is a registered packet type */
-702       if (!is_already_formatted &amp;&amp; digit_count &gt; 0 &amp;&amp; has_packet_type_prefix(message, int_start)) {
-703         const char *name = named_get_packet_type(fd_value);
-704         if (name) {
-705           const char *prefix_start = find_packet_type_prefix_start(message, int_start);
-706           size_t prefix_len = int_start - prefix_start;
-707           size_t saved_pos = out_pos;
-708 
-709           if (out_pos &gt;= prefix_len) {
-710             out_pos -= prefix_len;
-711           }
-712 
-713           if (write_formatted_packet_type(fd_value, name, output, output_size, &amp;out_pos)) {
-714             any_transformed = true;
-715             continue;
-716           }
+666             /* Only mark as already-formatted if inside formatted output:
+667              * - &quot;(&quot; before keyword: parenthesized value like &quot;(sockfd=15)&quot;
+668              * - &quot;/&quot; before keyword: name part of type/name like &quot;fd/fd=7&quot;
+669              * Raw log patterns like &quot;sockfd=15&quot; should still be eligible for replacement. */
+670             const char *before_kw = check - 1;
+671             while (before_kw &gt; message &amp;&amp; isspace(*before_kw))
+672               before_kw--;
+673             if (before_kw &gt;= message &amp;&amp; (*before_kw == '(' || *before_kw == '/')) {
+674               is_already_formatted = true;
+675             }
+676           }
+677         } else if (check &gt;= message &amp;&amp; *check == '/') {
+678           /* Found &quot;/&quot;, now check if this is a type/name pattern.
+679            * Format is &quot;(type/name (...)&quot; where type is word characters (thread, mutex, socket, etc.)
+680            * Must verify &quot;/&quot; is preceded by word characters AND &quot;(&quot; to ensure it's a formatted type.
+681            */
+682           const char *slash_pos = check;
+683           check--;
+684           while (check &gt; message &amp;&amp; (isalnum(*check) || *check == '_')) {
+685             check--;
+686           }
+687           check++;
+688 
+689           /* Check that the &quot;/&quot; was preceded by word characters (indicating a type name) */
+690           size_t type_len = slash_pos - check;
+691           if (type_len &gt; 0 &amp;&amp; (isalpha(*check) || *check == '_')) {
+692             /* Verify this is a registered type/name pattern by checking for &quot;(&quot; before the type
+693              * AND checking if the type actually exists in the registry */
+694             const char *type_start = check;
+695             const char *before_type = type_start - 1;
+696             while (before_type &gt; message &amp;&amp; isspace(*before_type)) {
+697               before_type--;
+698             }
+699 
+700             /* Only mark as formatted if:
+701              * 1. Preceded by &quot;(&quot; - ensures pattern looks like &quot;(type/name ...)&quot;
+702              * 2. Type exists in registry - prevents false positives on random text */
+703             if (before_type &gt;= message &amp;&amp; *before_type == '(' &amp;&amp; is_type_in_registry(type_start, type_len)) {
+704               is_already_formatted = true;
+705             }
+706           }
+707         }
+708       }
+709 
+710       /* Check if this is a registered packet type */
+711       if (!is_already_formatted &amp;&amp; digit_count &gt; 0 &amp;&amp; has_packet_type_prefix(message, int_start)) {
+712         const char *name = named_get_packet_type(fd_value);
+713         if (name) {
+714           const char *prefix_start = find_packet_type_prefix_start(message, int_start);
+715           size_t prefix_len = int_start - prefix_start;
+716           size_t saved_pos = out_pos;
 717 
-718           out_pos = saved_pos; /* Restore on failure */
-719         }
-720       }
+718           if (out_pos &gt;= prefix_len) {
+719             out_pos -= prefix_len;
+720           }
 721 
-722 
-723       /* Check if this is a registered file descriptor */
-724       if (!is_already_formatted &amp;&amp; digit_count &gt; 0 &amp;&amp; has_fd_prefix(message, int_start)) {
-725         const char *name = named_get_fd(fd_value);
-726         const char *reg_type = NULL;
-727 
-728         /* Fallback: check main registry for sockets registered via NAMED_REGISTER_SOCKET
-729          * (which uses raw integer key, not FD namespace encoding) */
-730         if (!name) {
-731           name = named_get((uintptr_t)(intptr_t)fd_value);
-732           if (name) {
-733             reg_type = named_get_type((uintptr_t)(intptr_t)fd_value);
-734           }
-735         }
+722           if (write_formatted_packet_type(fd_value, name, output, output_size, &amp;out_pos)) {
+723             any_transformed = true;
+724             continue;
+725           }
+726 
+727           out_pos = saved_pos; /* Restore on failure */
+728         }
+729       }
+730 
+731 
+732       /* Check if this is a registered file descriptor */
+733       if (!is_already_formatted &amp;&amp; digit_count &gt; 0 &amp;&amp; has_fd_prefix(message, int_start)) {
+734         const char *name = named_get_fd(fd_value);
+735         const char *reg_type = NULL;
 736 
-737         if (name) {
-738           const char *prefix_start = find_fd_prefix_start(message, int_start);
-739           size_t prefix_len = int_start - prefix_start;
-740           size_t saved_pos = out_pos;
-741 
-742           if (out_pos &gt;= prefix_len) {
-743             out_pos -= prefix_len;
-744           }
+737         /* Fallback: check main registry for sockets registered via NAMED_REGISTER_SOCKET
+738          * (which uses raw integer key, not FD namespace encoding) */
+739         if (!name) {
+740           name = named_get((uintptr_t)(intptr_t)fd_value);
+741           if (name) {
+742             reg_type = named_get_type((uintptr_t)(intptr_t)fd_value);
+743           }
+744         }
 745 
-746           bool formatted = false;
-747           if (reg_type) {
-748             /* From main registry &#x2014; use registered type and original prefix keyword */
-749             const char *kw_end = prefix_start;
-750             while (kw_end &lt; int_start &amp;&amp; (isalnum(*kw_end) || *kw_end == '_'))
-751               kw_end++;
-752             size_t kw_len = kw_end - prefix_start;
-753 
-754             char kw_buf[32];
-755             if (kw_len &gt; 0 &amp;&amp; kw_len &lt; sizeof(kw_buf)) {
-756               memcpy(kw_buf, prefix_start, kw_len);
-757               kw_buf[kw_len] = '\0';
-758             } else {
-759               snprintf(kw_buf, sizeof(kw_buf), &quot;%s&quot;, reg_type);
-760             }
-761 
-762             char temp[512];
-763             int written = snprintf(temp, sizeof(temp), &quot;%s/%s (%s=%d)&quot;, reg_type, name, kw_buf, fd_value);
-764             if (written &gt; 0 &amp;&amp; (size_t)written &lt; sizeof(temp) &amp;&amp; out_pos + (size_t)written &lt; output_size - 1) {
-765               memcpy(output + out_pos, temp, (size_t)written);
-766               out_pos += (size_t)written;
-767               formatted = true;
-768             }
-769           } else {
-770             formatted = write_formatted_fd(fd_value, name, output, output_size, &amp;out_pos);
-771           }
-772 
-773           if (formatted) {
-774             any_transformed = true;
-775             continue;
-776           }
-777 
-778           out_pos = saved_pos; /* Restore on failure */
-779         }
-780       }
+746         if (name) {
+747           const char *prefix_start = find_fd_prefix_start(message, int_start);
+748           size_t prefix_len = int_start - prefix_start;
+749           size_t saved_pos = out_pos;
+750 
+751           if (out_pos &gt;= prefix_len) {
+752             out_pos -= prefix_len;
+753           }
+754 
+755           bool formatted = false;
+756           if (reg_type) {
+757             /* From main registry &#x2014; use registered type and original prefix keyword */
+758             const char *kw_end = prefix_start;
+759             while (kw_end &lt; int_start &amp;&amp; (isalnum(*kw_end) || *kw_end == '_'))
+760               kw_end++;
+761             size_t kw_len = kw_end - prefix_start;
+762 
+763             char kw_buf[32];
+764             if (kw_len &gt; 0 &amp;&amp; kw_len &lt; sizeof(kw_buf)) {
+765               memcpy(kw_buf, prefix_start, kw_len);
+766               kw_buf[kw_len] = '\0';
+767             } else {
+768               snprintf(kw_buf, sizeof(kw_buf), &quot;%s&quot;, reg_type);
+769             }
+770 
+771             char temp[512];
+772             int written = snprintf(temp, sizeof(temp), &quot;%s/%s (%s=%d)&quot;, reg_type, name, kw_buf, fd_value);
+773             if (written &gt; 0 &amp;&amp; (size_t)written &lt; sizeof(temp) &amp;&amp; out_pos + (size_t)written &lt; output_size - 1) {
+774               memcpy(output + out_pos, temp, (size_t)written);
+775               out_pos += (size_t)written;
+776               formatted = true;
+777             }
+778           } else {
+779             formatted = write_formatted_fd(fd_value, name, output, output_size, &amp;out_pos);
+780           }
 781 
-782       /* Check if this integer has a generic type prefix (socket, client, connection, etc.)
-783        * DISABLED: This feature has a backtracking bug that corrupts output when applied after
-784        * other formatting operations. Re-enable only after fixing the backtracking logic to
-785        * properly track correspondence between input and output positions.
-786        * See commit b86fed2a8 which introduced the bug.
-787        */
-788       // NOLINTNEXTLINE(readability-simplify-boolean-expr) - Intentionally disabled code, see comment above
-789       if (false &amp;&amp; !is_already_formatted &amp;&amp; digit_count &gt; 0) {
-790         const char *type_name = NULL;
-791         size_t type_len = 0;
-792         const char *prefix_start = find_generic_type_prefix(message, int_start, &amp;type_name, &amp;type_len);
-793 
-794         if (type_name &amp;&amp; prefix_start != int_start) {
-795           /* Skip if already formatted with a name (e.g., &quot;socket/listener.0&quot; already has a /) */
-796           bool skip_format = false;
-797           /* Check if this looks like it's already been formatted by looking for / in the pattern */
-798           const char *check_ptr = prefix_start;
-799           while (check_ptr &lt; int_start &amp;&amp; *check_ptr &amp;&amp; *check_ptr != '/') {
-800             check_ptr++;
-801           }
-802           if (check_ptr &lt; int_start &amp;&amp; *check_ptr == '/') {
-803             /* Already formatted (contains /), skip */
-804             skip_format = true;
-805           }
-806 
-807           if (!skip_format) {
-808             /* We found a type prefix like &quot;socket&quot;, &quot;client&quot;, etc.
-809              * Try to look up a registered name for this type+id */
-810 
-811             /* Normalize type name aliases: &quot;sockfd&quot; &#x2192; &quot;socket&quot;, &quot;descriptor&quot; &#x2192; &quot;fd&quot; */
-812             const char *lookup_type = type_name;
-813             size_t lookup_len = type_len;
-814             if (type_len == 6 &amp;&amp; strncmp(type_name, &quot;sockfd&quot;, 6) == 0) {
-815               lookup_type = &quot;socket&quot;;
-816               lookup_len = 6;
-817             } else if (type_len == 10 &amp;&amp; strncmp(type_name, &quot;descriptor&quot;, 10) == 0) {
-818               lookup_type = &quot;fd&quot;;
-819               lookup_len = 2;
-820             }
-821 
-822             const char *name = named_get_by_type_and_id(lookup_type, lookup_len, fd_value);
-823 
-824             char temp_output[512];
-825             char type_str[32];
-826             char id_buffer[64];
-827 
-828             /* Safely copy type name */
-829             if (type_len &lt; sizeof(type_str)) {
-830               memcpy(type_str, type_name, type_len);
-831               type_str[type_len] = '\0';
+782           if (formatted) {
+783             any_transformed = true;
+784             continue;
+785           }
+786 
+787           out_pos = saved_pos; /* Restore on failure */
+788         }
+789       }
+790 
+791       /* Check if this integer has a generic type prefix (socket, client, connection, etc.)
+792        * DISABLED: This feature has a backtracking bug that corrupts output when applied after
+793        * other formatting operations. Re-enable only after fixing the backtracking logic to
+794        * properly track correspondence between input and output positions.
+795        * See commit b86fed2a8 which introduced the bug.
+796        */
+797       // NOLINTNEXTLINE(readability-simplify-boolean-expr) - Intentionally disabled code, see comment above
+798       if (false &amp;&amp; !is_already_formatted &amp;&amp; digit_count &gt; 0) {
+799         const char *type_name = NULL;
+800         size_t type_len = 0;
+801         const char *prefix_start = find_generic_type_prefix(message, int_start, &amp;type_name, &amp;type_len);
+802 
+803         if (type_name &amp;&amp; prefix_start != int_start) {
+804           /* Skip if already formatted with a name (e.g., &quot;socket/listener.0&quot; already has a /) */
+805           bool skip_format = false;
+806           /* Check if this looks like it's already been formatted by looking for / in the pattern */
+807           const char *check_ptr = prefix_start;
+808           while (check_ptr &lt; int_start &amp;&amp; *check_ptr &amp;&amp; *check_ptr != '/') {
+809             check_ptr++;
+810           }
+811           if (check_ptr &lt; int_start &amp;&amp; *check_ptr == '/') {
+812             /* Already formatted (contains /), skip */
+813             skip_format = true;
+814           }
+815 
+816           if (!skip_format) {
+817             /* We found a type prefix like &quot;socket&quot;, &quot;client&quot;, etc.
+818              * Try to look up a registered name for this type+id */
+819 
+820             /* Normalize type name aliases: &quot;sockfd&quot; &#x2192; &quot;socket&quot;, &quot;descriptor&quot; &#x2192; &quot;fd&quot; */
+821             const char *lookup_type = type_name;
+822             size_t lookup_len = type_len;
+823             if (type_len == 6 &amp;&amp; strncmp(type_name, &quot;sockfd&quot;, 6) == 0) {
+824               lookup_type = &quot;socket&quot;;
+825               lookup_len = 6;
+826             } else if (type_len == 10 &amp;&amp; strncmp(type_name, &quot;descriptor&quot;, 10) == 0) {
+827               lookup_type = &quot;fd&quot;;
+828               lookup_len = 2;
+829             }
+830 
+831             const char *name = named_get_by_type_and_id(lookup_type, lookup_len, fd_value);
 832 
-833               int id_written = snprintf(id_buffer, sizeof(id_buffer), &quot;%d&quot;, fd_value);
-834               if (id_written &gt; 0 &amp;&amp; id_written &lt; (int)sizeof(id_buffer)) {
-835                 int temp_written = 0;
-836                 if (name) {
-837                   /* Format with name: type/name (type=value) */
-838                   temp_written =
-839                       snprintf(temp_output, sizeof(temp_output), &quot;%s/%s (%s=%s)&quot;, type_str, name, type_str, id_buffer);
-840 
-841                   if (temp_written &gt; 0 &amp;&amp; (size_t)temp_written &lt; sizeof(temp_output)) {
-842                     /* Backtrack to remove the prefix we already copied */
-843                     size_t prefix_len = int_start - prefix_start;
-844                     if (out_pos &gt;= prefix_len) {
-845                       out_pos -= prefix_len;
-846                     }
-847 
-848                     int copy_len = temp_written;
-849                     if (out_pos + copy_len &lt; output_size - 1) {
-850                       memcpy(output + out_pos, temp_output, copy_len);
-851                       out_pos += copy_len;
-852                       any_transformed = true;
-853                       continue;
-854                     }
-855                   }
-856                 }
-857               }
-858             }
-859           }
-860         }
-861       }
-862 
-863       /* Not a registered FD or formatting failed - copy original number */
-864       if (!copy_unformatted_decimal(int_start, p, output, output_size, &amp;out_pos)) {
-865         break;
-866       }
-867     } else {
-868       /* Check if this is the start of &quot;type=DIGIT&quot; pattern */
-869       if (*p == 't' &amp;&amp; p + 4 &lt; message + strlen(message) &amp;&amp; is_type_equals_pattern(p)) {
-870         if (!type_equals_inside_parens(p, message)) {
-871           const char *digit_end = p + 5;
-872           int pkt_value = parse_decimal_digits(digit_end, &amp;digit_end);
-873 
-874           if (pkt_value &gt; 0) {
-875             const char *name = named_get_packet_type(pkt_value);
-876             if (name &amp;&amp; write_formatted_type_equals(pkt_value, name, output, output_size, &amp;out_pos)) {
-877               p = digit_end;
-878               any_transformed = true;
-879               continue;
-880             }
-881           }
-882         }
-883       }
-884 
-885       /* Regular character - copy it */
-886       copy_char_to_output(output, &amp;out_pos, *p++);
-887     }
-888   }
-889 
-890   /* Null terminate */
-891   if (out_pos &lt; output_size) {
-892     output[out_pos] = '\0';
-893   } else {
-894     output[output_size - 1] = '\0';
-895   }
-896 
-897   return any_transformed ? (int)out_pos : -1;
-898 }</pre>
+833             char temp_output[512];
+834             char type_str[32];
+835             char id_buffer[64];
+836 
+837             /* Safely copy type name */
+838             if (type_len &lt; sizeof(type_str)) {
+839               memcpy(type_str, type_name, type_len);
+840               type_str[type_len] = '\0';
+841 
+842               int id_written = snprintf(id_buffer, sizeof(id_buffer), &quot;%d&quot;, fd_value);
+843               if (id_written &gt; 0 &amp;&amp; id_written &lt; (int)sizeof(id_buffer)) {
+844                 int temp_written = 0;
+845                 if (name) {
+846                   /* Format with name: type/name (type=value) */
+847                   temp_written =
+848                       snprintf(temp_output, sizeof(temp_output), &quot;%s/%s (%s=%s)&quot;, type_str, name, type_str, id_buffer);
+849 
+850                   if (temp_written &gt; 0 &amp;&amp; (size_t)temp_written &lt; sizeof(temp_output)) {
+851                     /* Backtrack to remove the prefix we already copied */
+852                     size_t prefix_len = int_start - prefix_start;
+853                     if (out_pos &gt;= prefix_len) {
+854                       out_pos -= prefix_len;
+855                     }
+856 
+857                     int copy_len = temp_written;
+858                     if (out_pos + copy_len &lt; output_size - 1) {
+859                       memcpy(output + out_pos, temp_output, copy_len);
+860                       out_pos += copy_len;
+861                       any_transformed = true;
+862                       continue;
+863                     }
+864                   }
+865                 }
+866               }
+867             }
+868           }
+869         }
+870       }
+871 
+872       /* Not a registered FD or formatting failed - copy original number */
+873       if (!copy_unformatted_decimal(int_start, p, output, output_size, &amp;out_pos)) {
+874         break;
+875       }
+876     } else {
+877       /* Check if this is the start of &quot;type=DIGIT&quot; pattern */
+878       if (*p == 't' &amp;&amp; p + 4 &lt; message + strlen(message) &amp;&amp; is_type_equals_pattern(p)) {
+879         if (!type_equals_inside_parens(p, message)) {
+880           const char *digit_end = p + 5;
+881           int pkt_value = parse_decimal_digits(digit_end, &amp;digit_end);
+882 
+883           if (pkt_value &gt; 0) {
+884             const char *name = named_get_packet_type(pkt_value);
+885             if (name &amp;&amp; write_formatted_type_equals(pkt_value, name, output, output_size, &amp;out_pos)) {
+886               p = digit_end;
+887               any_transformed = true;
+888               continue;
+889             }
+890           }
+891         }
+892       }
+893 
+894       /* Regular character - copy it */
+895       copy_char_to_output(output, &amp;out_pos, *p++);
+896     }
+897   }
+898 
+899   /* Null terminate */
+900   if (out_pos &lt; output_size) {
+901     output[out_pos] = '\0';
+902   } else {
+903     output[output_size - 1] = '\0';
+904   }
+905 
+906   return any_transformed ? (int)out_pos : -1;
+907 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>named_get()</b>, <b>named_get_by_type_and_id()</b>,
@@ -3284,51 +3293,51 @@
 <p class="Pp">Convenience wrapper that uses a thread-local buffer internally.
     Applies formatting iteratively until the message stops changing (fixpoint).
     Returns the original message if no formatting was applied.</p>
-<p class="Pp">Definition at line <b>909</b> of file <b>log/named.c</b>.</p>
-<pre>909                                                               {
-910   if (!message) {
-911     return message;
-912   }
-913 
-914   static _Thread_local char format_buffer[NAMED_FORMAT_BUFFER_SIZE];
-915   static _Thread_local char work_buffer[NAMED_FORMAT_BUFFER_SIZE];
-916 
-917   /* Apply formatting iteratively until the message stabilizes (no more changes) */
-918   const char *current = message;
-919   size_t max_iterations = 3; /* Reduce iterations to prevent recursion (prevent transforming already-transformed output) */
-920 
-921   for (size_t iter = 0; iter &lt; max_iterations; iter++) {
-922     int result = log_named_format_message(current, format_buffer, sizeof(format_buffer));
-923 
-924     if (result &lt;= 0) {
-925       /* No transformation was made, we've reached a fixpoint */
-926       return current == message ? message : format_buffer;
-927     }
-928 
-929     /* Check if the message changed */
-930     if (strcmp(current, format_buffer) == 0) {
-931       /* No actual change, return the current version */
-932       return format_buffer;
-933     }
-934 
-935     /* Message changed, prepare for next iteration */
-936     if (current == message) {
-937       /* First iteration, use format_buffer as input for next iteration */
-938       current = format_buffer;
-939     } else {
-940       /* Subsequent iterations, swap buffers */
-941       asciichat_error_t strcpy_result = SAFE_STRCPY(work_buffer, sizeof(work_buffer), format_buffer);
-942       if (strcpy_result != ASCIICHAT_OK) {
-943         log_error(&quot;Failed to copy format buffer: %s&quot;, asciichat_error_string(strcpy_result));
-944         return format_buffer;
-945       }
-946       current = work_buffer;
-947     }
-948   }
-949 
-950   /* Max iterations reached, return last formatted version */
-951   return format_buffer;
-952 }</pre>
+<p class="Pp">Definition at line <b>918</b> of file <b>log/named.c</b>.</p>
+<pre>918                                                               {
+919   if (!message) {
+920     return message;
+921   }
+922 
+923   static _Thread_local char format_buffer[NAMED_FORMAT_BUFFER_SIZE];
+924   static _Thread_local char work_buffer[NAMED_FORMAT_BUFFER_SIZE];
+925 
+926   /* Apply formatting iteratively until the message stabilizes (no more changes) */
+927   const char *current = message;
+928   size_t max_iterations = 3; /* Reduce iterations to prevent recursion (prevent transforming already-transformed output) */
+929 
+930   for (size_t iter = 0; iter &lt; max_iterations; iter++) {
+931     int result = log_named_format_message(current, format_buffer, sizeof(format_buffer));
+932 
+933     if (result &lt;= 0) {
+934       /* No transformation was made, we've reached a fixpoint */
+935       return current == message ? message : format_buffer;
+936     }
+937 
+938     /* Check if the message changed */
+939     if (strcmp(current, format_buffer) == 0) {
+940       /* No actual change, return the current version */
+941       return format_buffer;
+942     }
+943 
+944     /* Message changed, prepare for next iteration */
+945     if (current == message) {
+946       /* First iteration, use format_buffer as input for next iteration */
+947       current = format_buffer;
+948     } else {
+949       /* Subsequent iterations, swap buffers */
+950       asciichat_error_t strcpy_result = SAFE_STRCPY(work_buffer, sizeof(work_buffer), format_buffer);
+951       if (strcpy_result != ASCIICHAT_OK) {
+952         log_error(&quot;Failed to copy format buffer: %s&quot;, asciichat_error_string(strcpy_result));
+953         return format_buffer;
+954       }
+955       current = work_buffer;
+956     }
+957   }
+958 
+959   /* Max iterations reached, return last formatted version */
+960   return format_buffer;
+961 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>log_error</b>,

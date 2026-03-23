@@ -321,10 +321,9 @@ function(configure_llvm_post_project)
                     message(STATUS "${BoldYellow}Using Xcode SDK for system headers${ColorReset}: ${XCODE_SDK_PATH}")
                     # Clear CMAKE_OSX_SYSROOT so it doesn't get applied automatically
                     set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
-                    # Clang is hardcoded with wrong resource directory; -resource-dir is ignored
-                    # Use -nostdinc and explicit isystem paths to bypass clang's broken default
-                    message(STATUS "${BoldYellow}Using Xcode SDK + clang resource dir for headers${ColorReset}")
-                    # Put Xcode SDK FIRST so C headers with fundamental types are found before clang's C++ headers need them
+                    message(STATUS "${BoldYellow}Adding explicit isystem paths for Xcode SDK${ColorReset}")
+                    # Use Xcode SDK with proper include order: SDK C headers first, then clang builtins
+                    # Xcode SDK must come first to define fundamental C types (size_t, ptrdiff_t, etc.)
                     add_compile_options("-isystem${XCODE_SDK_PATH}/usr/include")
                     add_compile_options("-isystem${CLANG_RESOURCE_DIR}/include")
                     # Also set CMAKE_*_FLAGS for targets added before this function (e.g., ExternalProject builds)

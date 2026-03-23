@@ -323,17 +323,15 @@ acip_transport_destroy(ws);</pre>
 407   transport-&gt;crypto_ctx = crypto_ctx;
 408   transport-&gt;impl_data = tcp_data;
 409 
-410   log_info(&quot;[TCP_CREATE_STATE] &#x2705; CREATE_COMPLETE: transport=%p, sockfd=%d, is_connected=true, crypto=%s&quot;,
-411            (void *)transport, sockfd, crypto_ctx ? &quot;enabled&quot; : &quot;disabled&quot;);
-412 
-413   // Register transport
-414   NAMED_REGISTER_TRANSPORT(transport, name, NULL);
-415 
-416   // Register impl_data with transport as parent
-417   NAMED_REGISTER(tcp_data, &quot;impl&quot;, &quot;tcp_impl&quot;, &quot;0x%tx&quot;, (uintptr_t)(const void *)(transport));
-418 
-419   return transport;
-420 }</pre>
+410   // Register transport and impl_data before logging so named replacements work
+411   NAMED_REGISTER_TRANSPORT(transport, name, NULL);
+412   NAMED_REGISTER(tcp_data, &quot;impl&quot;, &quot;tcp_impl&quot;, &quot;0x%tx&quot;, (uintptr_t)(const void *)(transport));
+413 
+414   log_info(&quot;[TCP_CREATE_STATE] &#x2705; CREATE_COMPLETE: transport=%p, sockfd=%d, is_connected=true, crypto=%s&quot;,
+415            (void *)transport, sockfd, crypto_ctx ? &quot;enabled&quot; : &quot;disabled&quot;);
+416 
+417   return transport;
+418 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_transport::crypto_ctx</b>, <b>errno</b>,
@@ -362,55 +360,55 @@ acip_transport_destroy(ws);</pre>
 <p class="Pp"></p>
 <p class="Pp">Safe to pass NULL</p>
 </div>
-<p class="Pp">Definition at line <b>426</b> of file <b>tcp/transport.c</b>.</p>
-<pre>426                                                          {
-427   if (!transport) {
-428     log_debug(&quot;[TRANSPORT_DESTROY] &#x26A0;&#xFE0F;  NULL_TRANSPORT: nothing to destroy&quot;);
-429     return;
-430   }
+<p class="Pp">Definition at line <b>424</b> of file <b>tcp/transport.c</b>.</p>
+<pre>424                                                          {
+425   if (!transport) {
+426     log_debug(&quot;[TRANSPORT_DESTROY] &#x26A0;&#xFE0F;  NULL_TRANSPORT: nothing to destroy&quot;);
+427     return;
+428   }
+429 
+430   log_warn(&quot;[TRANSPORT_DESTROY] &#x1F534; DESTROY_START: transport=%p, impl_data=%p&quot;, (void *)transport, transport-&gt;impl_data);
 431 
-432   log_warn(&quot;[TRANSPORT_DESTROY] &#x1F534; DESTROY_START: transport=%p, impl_data=%p&quot;, (void *)transport, transport-&gt;impl_data);
-433 
-434   // Get type before we destroy for logging
-435   acip_transport_type_t type = 0;
-436   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;get_type) {
-437     type = transport-&gt;methods-&gt;get_type(transport);
-438     log_info(&quot;[TRANSPORT_DESTROY] &#x1F4CB; TRANSPORT_TYPE: type=%d (1=TCP, 2=WebSocket, 3=WebRTC, ...)&quot;, type);
-439   }
-440 
-441   // Close if still connected
-442   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;close &amp;&amp; transport-&gt;methods-&gt;is_connected &amp;&amp;
-443       transport-&gt;methods-&gt;is_connected(transport)) {
-444     log_warn(&quot;[TRANSPORT_DESTROY] &#x1F534; STILL_CONNECTED: calling close() first (type=%d)&quot;, type);
-445     asciichat_error_t close_result = transport-&gt;methods-&gt;close(transport);
-446     log_info(&quot;[TRANSPORT_DESTROY] &#x1F534; CLOSE_CALLED: result=%d&quot;, close_result != ASCIICHAT_OK ? -1 : 0);
-447   } else {
-448     log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; ALREADY_CLOSED: skipping close (type=%d)&quot;, type);
-449   }
-450 
-451   // Call custom destroy implementation if provided
-452   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;destroy_impl) {
-453     log_info(&quot;[TRANSPORT_DESTROY] &#x1F527; CALLING_DESTROY_IMPL: type=%d&quot;, type);
-454     transport-&gt;methods-&gt;destroy_impl(transport);
-455     log_info(&quot;[TRANSPORT_DESTROY] &#x2705; DESTROY_IMPL_COMPLETE: type=%d&quot;, type);
-456   } else {
-457     log_debug(&quot;[TRANSPORT_DESTROY] &#x23ED;&#xFE0F;  NO_CUSTOM_DESTROY: type=%d (using generic cleanup)&quot;, type);
-458   }
-459 
-460   // Free implementation data
-461   if (transport-&gt;impl_data) {
-462     log_debug(&quot;[TRANSPORT_DESTROY] &#x1F5D1;&#xFE0F;  FREEING_IMPL_DATA: %p&quot;, transport-&gt;impl_data);
-463     NAMED_UNREGISTER(transport-&gt;impl_data);
-464     SAFE_FREE(transport-&gt;impl_data);
-465     log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; IMPL_DATA_FREED&quot;);
-466   }
-467 
-468   // Free transport structure
-469   log_debug(&quot;[TRANSPORT_DESTROY] &#x1F5D1;&#xFE0F;  FREEING_TRANSPORT: %p&quot;, (void *)transport);
-470   SAFE_FREE(transport);
-471 
-472   log_warn(&quot;[TRANSPORT_DESTROY] &#x2705; DESTROY_COMPLETE: type=%d&quot;, type);
-473 }</pre>
+432   // Get type before we destroy for logging
+433   acip_transport_type_t type = 0;
+434   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;get_type) {
+435     type = transport-&gt;methods-&gt;get_type(transport);
+436     log_info(&quot;[TRANSPORT_DESTROY] &#x1F4CB; TRANSPORT_TYPE: type=%d (1=TCP, 2=WebSocket, 3=WebRTC, ...)&quot;, type);
+437   }
+438 
+439   // Close if still connected
+440   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;close &amp;&amp; transport-&gt;methods-&gt;is_connected &amp;&amp;
+441       transport-&gt;methods-&gt;is_connected(transport)) {
+442     log_warn(&quot;[TRANSPORT_DESTROY] &#x1F534; STILL_CONNECTED: calling close() first (type=%d)&quot;, type);
+443     asciichat_error_t close_result = transport-&gt;methods-&gt;close(transport);
+444     log_info(&quot;[TRANSPORT_DESTROY] &#x1F534; CLOSE_CALLED: result=%d&quot;, close_result != ASCIICHAT_OK ? -1 : 0);
+445   } else {
+446     log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; ALREADY_CLOSED: skipping close (type=%d)&quot;, type);
+447   }
+448 
+449   // Call custom destroy implementation if provided
+450   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;destroy_impl) {
+451     log_info(&quot;[TRANSPORT_DESTROY] &#x1F527; CALLING_DESTROY_IMPL: type=%d&quot;, type);
+452     transport-&gt;methods-&gt;destroy_impl(transport);
+453     log_info(&quot;[TRANSPORT_DESTROY] &#x2705; DESTROY_IMPL_COMPLETE: type=%d&quot;, type);
+454   } else {
+455     log_debug(&quot;[TRANSPORT_DESTROY] &#x23ED;&#xFE0F;  NO_CUSTOM_DESTROY: type=%d (using generic cleanup)&quot;, type);
+456   }
+457 
+458   // Free implementation data
+459   if (transport-&gt;impl_data) {
+460     log_debug(&quot;[TRANSPORT_DESTROY] &#x1F5D1;&#xFE0F;  FREEING_IMPL_DATA: %p&quot;, transport-&gt;impl_data);
+461     NAMED_UNREGISTER(transport-&gt;impl_data);
+462     SAFE_FREE(transport-&gt;impl_data);
+463     log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; IMPL_DATA_FREED&quot;);
+464   }
+465 
+466   // Free transport structure
+467   log_debug(&quot;[TRANSPORT_DESTROY] &#x1F5D1;&#xFE0F;  FREEING_TRANSPORT: %p&quot;, (void *)transport);
+468   SAFE_FREE(transport);
+469 
+470   log_warn(&quot;[TRANSPORT_DESTROY] &#x2705; DESTROY_COMPLETE: type=%d&quot;, type);
+471 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,

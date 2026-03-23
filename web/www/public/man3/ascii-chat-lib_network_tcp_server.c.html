@@ -113,32 +113,32 @@
 <i>len</i> Buffer size (recommend INET6_ADDRSTRLEN = 46 bytes)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to buf on success, NULL on error</div>
-<p class="Pp">Definition at line <b>488</b> of file
+<p class="Pp">Definition at line <b>491</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
-<pre>488                                                                                               {
-489   if (!ctx) {
-490     SET_ERRNO(ERROR_INVALID_PARAM, &quot;ctx is NULL&quot;);
-491     return NULL;
-492   }
-493   if (!buf) {
-494     SET_ERRNO(ERROR_INVALID_PARAM, &quot;buf is NULL&quot;);
-495     return NULL;
-496   }
-497   if (len == 0) {
-498     SET_ERRNO(ERROR_INVALID_PARAM, &quot;len is 0&quot;);
-499     return NULL;
-500   }
-501 
-502   // Determine address family
-503   int addr_family = (ctx-&gt;addr.ss_family == AF_INET) ? AF_INET : AF_INET6;
+<pre>491                                                                                               {
+492   if (!ctx) {
+493     SET_ERRNO(ERROR_INVALID_PARAM, &quot;ctx is NULL&quot;);
+494     return NULL;
+495   }
+496   if (!buf) {
+497     SET_ERRNO(ERROR_INVALID_PARAM, &quot;buf is NULL&quot;);
+498     return NULL;
+499   }
+500   if (len == 0) {
+501     SET_ERRNO(ERROR_INVALID_PARAM, &quot;len is 0&quot;);
+502     return NULL;
+503   }
 504 
-505   // Format IP address using existing utility
-506   if (format_ip_address(addr_family, (struct sockaddr *)&amp;ctx-&gt;addr, buf, len) != 0) {
-507     return NULL;
-508   }
-509 
-510   return buf;
-511 }</pre>
+505   // Determine address family
+506   int addr_family = (ctx-&gt;addr.ss_family == AF_INET) ? AF_INET : AF_INET6;
+507 
+508   // Format IP address using existing utility
+509   if (format_ip_address(addr_family, (struct sockaddr *)&amp;ctx-&gt;addr, buf, len) != 0) {
+510     return NULL;
+511   }
+512 
+513   return buf;
+514 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>tcp_client_context_t::addr</b>,
@@ -157,26 +157,26 @@
 <div class="Bd-indent"><i>ctx</i> Client context structure</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Port number (host byte order), or -1 on error</div>
-<p class="Pp">Definition at line <b>513</b> of file
+<p class="Pp">Definition at line <b>516</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
-<pre>513                                                                  {
-514   if (!ctx) {
-515     SET_ERRNO(ERROR_INVALID_PARAM, &quot;ctx is NULL&quot;);
-516     return -1;
-517   }
-518 
-519   // Extract port based on address family
-520   if (ctx-&gt;addr.ss_family == AF_INET) {
-521     struct sockaddr_in *addr_in = (struct sockaddr_in *)&amp;ctx-&gt;addr;
-522     return ntohs(addr_in-&gt;sin_port);
-523   } else if (ctx-&gt;addr.ss_family == AF_INET6) {
-524     struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)&amp;ctx-&gt;addr;
-525     return ntohs(addr_in6-&gt;sin6_port);
-526   }
-527 
-528   SET_ERRNO(ERROR_INVALID_STATE, &quot;Unknown address family: %d&quot;, ctx-&gt;addr.ss_family);
-529   return -1;
-530 }</pre>
+<pre>516                                                                  {
+517   if (!ctx) {
+518     SET_ERRNO(ERROR_INVALID_PARAM, &quot;ctx is NULL&quot;);
+519     return -1;
+520   }
+521 
+522   // Extract port based on address family
+523   if (ctx-&gt;addr.ss_family == AF_INET) {
+524     struct sockaddr_in *addr_in = (struct sockaddr_in *)&amp;ctx-&gt;addr;
+525     return ntohs(addr_in-&gt;sin_port);
+526   } else if (ctx-&gt;addr.ss_family == AF_INET6) {
+527     struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)&amp;ctx-&gt;addr;
+528     return ntohs(addr_in6-&gt;sin6_port);
+529   }
+530 
+531   SET_ERRNO(ERROR_INVALID_STATE, &quot;Unknown address family: %d&quot;, ctx-&gt;addr.ss_family);
+532   return -1;
+533 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>tcp_client_context_t::addr</b>,
@@ -199,43 +199,43 @@
 <i>client_data</i> User-provided client data (can be NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>362</b> of file
+<p class="Pp">Definition at line <b>365</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
-<pre>362                                                                                                   {
-363   if (!server) {
-364     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server is NULL&quot;);
-365   }
-366 
-367   if (socket == INVALID_SOCKET_VALUE) {
-368     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;socket is invalid&quot;);
-369   }
-370 
-371   // Allocate new entry
-372   tcp_client_entry_t *entry = SAFE_MALLOC(sizeof(tcp_client_entry_t), tcp_client_entry_t *);
-373   if (!entry) {
-374     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate client entry&quot;);
-375   }
-376 
-377   entry-&gt;socket = socket;
-378   entry-&gt;client_data = client_data;
+<pre>365                                                                                                   {
+366   if (!server) {
+367     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server is NULL&quot;);
+368   }
+369 
+370   if (socket == INVALID_SOCKET_VALUE) {
+371     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;socket is invalid&quot;);
+372   }
+373 
+374   // Allocate new entry
+375   tcp_client_entry_t *entry = SAFE_MALLOC(sizeof(tcp_client_entry_t), tcp_client_entry_t *);
+376   if (!entry) {
+377     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate client entry&quot;);
+378   }
 379 
-380   // Create thread pool for this client
-381   char pool_name[64];
-382   SAFE_SNPRINTF(pool_name, sizeof(pool_name), &quot;client_%d&quot;, socket);
-383   entry-&gt;threads = thread_pool_create(pool_name);
-384   if (!entry-&gt;threads) {
-385     SAFE_FREE(entry);
-386     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to create thread pool for client&quot;);
-387   }
-388 
-389   // Add to hash table (thread-safe with write lock)
-390   rwlock_wrlock(&amp;server-&gt;clients_rwlock);
-391   HASH_ADD(hh, server-&gt;clients, socket, sizeof(socket_t), entry);
-392   rwlock_wrunlock(&amp;server-&gt;clients_rwlock);
-393 
-394   log_debug(&quot;Added client socket=%d to registry&quot;, socket);
-395   return ASCIICHAT_OK;
-396 }</pre>
+380   entry-&gt;socket = socket;
+381   entry-&gt;client_data = client_data;
+382 
+383   // Create thread pool for this client
+384   char pool_name[64];
+385   SAFE_SNPRINTF(pool_name, sizeof(pool_name), &quot;client_%d&quot;, socket);
+386   entry-&gt;threads = thread_pool_create(pool_name);
+387   if (!entry-&gt;threads) {
+388     SAFE_FREE(entry);
+389     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to create thread pool for client&quot;);
+390   }
+391 
+392   // Add to hash table (thread-safe with write lock)
+393   rwlock_wrlock(&amp;server-&gt;clients_rwlock);
+394   HASH_ADD(hh, server-&gt;clients, socket, sizeof(socket_t), entry);
+395   rwlock_wrunlock(&amp;server-&gt;clients_rwlock);
+396 
+397   log_debug(&quot;Added client socket=%d to registry&quot;, socket);
+398   return ASCIICHAT_OK;
+399 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -258,60 +258,60 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>server</i> Server structure to clean up</div>
-<p class="Pp">Definition at line <b>298</b> of file
+<p class="Pp">Definition at line <b>301</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
-<pre>298                                               {
-299   if (!server) {
-300     return;
-301   }
-302 
-303   log_debug(&quot;Shutting down TCP server...&quot;);
-304 
-305   // Signal server to stop
-306   atomic_store_bool(&amp;server-&gt;running, false);
+<pre>301                                               {
+302   if (!server) {
+303     return;
+304   }
+305 
+306   log_debug(&quot;Shutting down TCP server...&quot;);
 307 
-308   // Close listen sockets
-309   if (server-&gt;listen_socket != INVALID_SOCKET_VALUE) {
-310     log_debug(&quot;Closing IPv4 listen socket&quot;);
-311     socket_close(server-&gt;listen_socket);
-312     server-&gt;listen_socket = INVALID_SOCKET_VALUE;
-313   }
-314 
-315   if (server-&gt;listen_socket6 != INVALID_SOCKET_VALUE) {
-316     log_debug(&quot;Closing IPv6 listen socket&quot;);
-317     socket_close(server-&gt;listen_socket6);
-318     server-&gt;listen_socket6 = INVALID_SOCKET_VALUE;
-319   }
-320 
-321   // Clean up client registry
-322   rwlock_wrlock(&amp;server-&gt;clients_rwlock);
+308   // Signal server to stop
+309   atomic_store_bool(&amp;server-&gt;running, false);
+310 
+311   // Close listen sockets
+312   if (server-&gt;listen_socket != INVALID_SOCKET_VALUE) {
+313     log_debug(&quot;Closing IPv4 listen socket&quot;);
+314     socket_close(server-&gt;listen_socket);
+315     server-&gt;listen_socket = INVALID_SOCKET_VALUE;
+316   }
+317 
+318   if (server-&gt;listen_socket6 != INVALID_SOCKET_VALUE) {
+319     log_debug(&quot;Closing IPv6 listen socket&quot;);
+320     socket_close(server-&gt;listen_socket6);
+321     server-&gt;listen_socket6 = INVALID_SOCKET_VALUE;
+322   }
 323 
-324   tcp_client_entry_t *entry = NULL, *tmp = NULL;
-325   HASH_ITER(hh, server-&gt;clients, entry, tmp) {
-326     // Call cleanup callback if set
-327     if (server-&gt;cleanup_fn &amp;&amp; entry-&gt;client_data) {
-328       server-&gt;cleanup_fn(entry-&gt;client_data);
-329     }
-330 
-331     // Destroy thread pool (stops all threads and frees resources)
-332     if (entry-&gt;threads) {
-333       thread_pool_destroy(entry-&gt;threads);
-334       entry-&gt;threads = NULL;
-335     }
-336 
-337     HASH_DEL(server-&gt;clients, entry);
-338     SAFE_FREE(entry);
-339   }
-340   server-&gt;clients = NULL;
-341 
-342   rwlock_wrunlock(&amp;server-&gt;clients_rwlock);
-343   rwlock_destroy(&amp;server-&gt;clients_rwlock);
+324   // Clean up client registry
+325   rwlock_wrlock(&amp;server-&gt;clients_rwlock);
+326 
+327   tcp_client_entry_t *entry = NULL, *tmp = NULL;
+328   HASH_ITER(hh, server-&gt;clients, entry, tmp) {
+329     // Call cleanup callback if set
+330     if (server-&gt;cleanup_fn &amp;&amp; entry-&gt;client_data) {
+331       server-&gt;cleanup_fn(entry-&gt;client_data);
+332     }
+333 
+334     // Destroy thread pool (stops all threads and frees resources)
+335     if (entry-&gt;threads) {
+336       thread_pool_destroy(entry-&gt;threads);
+337       entry-&gt;threads = NULL;
+338     }
+339 
+340     HASH_DEL(server-&gt;clients, entry);
+341     SAFE_FREE(entry);
+342   }
+343   server-&gt;clients = NULL;
 344 
-345   // Note: This function does NOT wait for client threads to exit
-346   // Caller is responsible for thread lifecycle management
+345   rwlock_wrunlock(&amp;server-&gt;clients_rwlock);
+346   rwlock_destroy(&amp;server-&gt;clients_rwlock);
 347 
-348   log_debug(&quot;TCP server shutdown complete&quot;);
-349 }</pre>
+348   // Note: This function does NOT wait for client threads to exit
+349   // Caller is responsible for thread lifecycle management
+350 
+351   log_debug(&quot;TCP server shutdown complete&quot;);
+352 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_bool()</b>,
@@ -339,22 +339,22 @@
 <i>callback</i> Function to call for each client
 <br/>
 <i>user_arg</i> User argument passed to callback</div>
-<p class="Pp">Definition at line <b>457</b> of file
+<p class="Pp">Definition at line <b>460</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
-<pre>457                                                                                                      {
-458   if (!server || !callback) {
-459     return;
-460   }
-461 
-462   rwlock_rdlock(&amp;server-&gt;clients_rwlock);
-463 
-464   tcp_client_entry_t *entry, *tmp;
-465   HASH_ITER(hh, server-&gt;clients, entry, tmp) {
-466     callback(entry-&gt;socket, entry-&gt;client_data, user_arg);
-467   }
-468 
-469   rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
-470 }</pre>
+<pre>460                                                                                                      {
+461   if (!server || !callback) {
+462     return;
+463   }
+464 
+465   rwlock_rdlock(&amp;server-&gt;clients_rwlock);
+466 
+467   tcp_client_entry_t *entry, *tmp;
+468   HASH_ITER(hh, server-&gt;clients, entry, tmp) {
+469     callback(entry-&gt;socket, entry-&gt;client_data, user_arg);
+470   }
+471 
+472   rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
+473 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>tcp_client_entry::client_data</b>,
@@ -378,29 +378,29 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK if found, ERROR_NOT_FOUND if not in
   registry</div>
-<p class="Pp">Definition at line <b>435</b> of file
+<p class="Pp">Definition at line <b>438</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
-<pre>435                                                                                                 {
-436   if (!server || !out_data) {
-437     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server or out_data is NULL&quot;);
-438   }
-439 
-440   rwlock_rdlock(&amp;server-&gt;clients_rwlock);
-441 
-442   tcp_client_entry_t *entry = NULL;
-443   HASH_FIND(hh, server-&gt;clients, &amp;socket, sizeof(socket_t), entry);
+<pre>438                                                                                                 {
+439   if (!server || !out_data) {
+440     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server or out_data is NULL&quot;);
+441   }
+442 
+443   rwlock_rdlock(&amp;server-&gt;clients_rwlock);
 444 
-445   if (!entry) {
-446     *out_data = NULL;
-447     rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
-448     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Client socket=%d not in registry&quot;, socket);
-449   }
-450 
-451   *out_data = entry-&gt;client_data;
-452   rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
+445   tcp_client_entry_t *entry = NULL;
+446   HASH_FIND(hh, server-&gt;clients, &amp;socket, sizeof(socket_t), entry);
+447 
+448   if (!entry) {
+449     *out_data = NULL;
+450     rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
+451     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Client socket=%d not in registry&quot;, socket);
+452   }
 453 
-454   return ASCIICHAT_OK;
-455 }</pre>
+454   *out_data = entry-&gt;client_data;
+455   rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
+456 
+457   return ASCIICHAT_OK;
+458 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -418,19 +418,19 @@
 <div class="Bd-indent"><i>server</i> Server structure</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of clients in registry</div>
-<p class="Pp">Definition at line <b>472</b> of file
+<p class="Pp">Definition at line <b>475</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
-<pre>472                                                          {
-473   if (!server) {
-474     return 0;
-475   }
-476 
-477   rwlock_rdlock(&amp;server-&gt;clients_rwlock);
-478   size_t count = HASH_COUNT(server-&gt;clients);
-479   rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
-480 
-481   return count;
-482 }</pre>
+<pre>475                                                          {
+476   if (!server) {
+477     return 0;
+478   }
+479 
+480   rwlock_rdlock(&amp;server-&gt;clients_rwlock);
+481   size_t count = HASH_COUNT(server-&gt;clients);
+482   rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
+483 
+484   return count;
+485 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>tcp_server::clients</b>,
@@ -457,38 +457,38 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, ERROR_NOT_FOUND if client not in
   registry</div>
-<p class="Pp">Definition at line <b>633</b> of file
+<p class="Pp">Definition at line <b>636</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
-<pre>633                                                                                                            {
-634   if (!server || !count) {
-635     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server or count is NULL&quot;);
-636   }
-637 
-638   if (client_socket == INVALID_SOCKET_VALUE) {
-639     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;client_socket is invalid&quot;);
-640   }
-641 
-642   *count = 0;
-643 
-644   // Find client entry
-645   rwlock_rdlock(&amp;server-&gt;clients_rwlock);
-646   tcp_client_entry_t *entry = NULL;
-647   HASH_FIND(hh, server-&gt;clients, &amp;client_socket, sizeof(socket_t), entry);
-648 
-649   if (!entry) {
-650     rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
-651     return SET_ERRNO(ERROR_NOT_FOUND, &quot;Client socket=%d not in registry&quot;, client_socket);
-652   }
-653 
-654   // Get thread count from pool
-655   if (entry-&gt;threads) {
-656     *count = thread_pool_get_count(entry-&gt;threads);
-657   }
-658 
-659   rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
-660 
-661   return ASCIICHAT_OK;
-662 }</pre>
+<pre>636                                                                                                            {
+637   if (!server || !count) {
+638     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server or count is NULL&quot;);
+639   }
+640 
+641   if (client_socket == INVALID_SOCKET_VALUE) {
+642     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;client_socket is invalid&quot;);
+643   }
+644 
+645   *count = 0;
+646 
+647   // Find client entry
+648   rwlock_rdlock(&amp;server-&gt;clients_rwlock);
+649   tcp_client_entry_t *entry = NULL;
+650   HASH_FIND(hh, server-&gt;clients, &amp;client_socket, sizeof(socket_t), entry);
+651 
+652   if (!entry) {
+653     rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
+654     return SET_ERRNO(ERROR_NOT_FOUND, &quot;Client socket=%d not in registry&quot;, client_socket);
+655   }
+656 
+657   // Get thread count from pool
+658   if (entry-&gt;threads) {
+659     *count = thread_pool_get_count(entry-&gt;threads);
+660   }
+661 
+662   rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
+663 
+664   return ASCIICHAT_OK;
+665 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>tcp_server::clients</b>,
@@ -602,17 +602,17 @@
 <div class="Bd-indent"><i>socket</i> Client socket to close
 <br/>
 <i>reason</i> Human-readable rejection reason (for logging)</div>
-<p class="Pp">Definition at line <b>532</b> of file
+<p class="Pp">Definition at line <b>535</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
-<pre>532                                                                    {
-533   if (socket == INVALID_SOCKET_VALUE) {
-534     SET_ERRNO(ERROR_INVALID_PARAM, &quot;socket is INVALID_SOCKET_VALUE&quot;);
-535     return;
-536   }
-537 
-538   log_warn(&quot;Rejecting client connection: %s&quot;, reason ? reason : &quot;unknown reason&quot;);
-539   socket_close(socket);
-540 }</pre>
+<pre>535                                                                    {
+536   if (socket == INVALID_SOCKET_VALUE) {
+537     SET_ERRNO(ERROR_INVALID_PARAM, &quot;socket is INVALID_SOCKET_VALUE&quot;);
+538     return;
+539   }
+540 
+541   log_warn(&quot;Rejecting client connection: %s&quot;, reason ? reason : &quot;unknown reason&quot;);
+542   socket_close(socket);
+543 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
@@ -634,44 +634,44 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK if removed, ERROR_NOT_FOUND if not in
   registry</div>
-<p class="Pp">Definition at line <b>398</b> of file
+<p class="Pp">Definition at line <b>401</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
-<pre>398                                                                                   {
-399   if (!server) {
-400     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server is NULL&quot;);
-401   }
-402 
-403   rwlock_wrlock(&amp;server-&gt;clients_rwlock);
-404 
-405   tcp_client_entry_t *entry = NULL;
-406   HASH_FIND(hh, server-&gt;clients, &amp;socket, sizeof(socket_t), entry);
+<pre>401                                                                                   {
+402   if (!server) {
+403     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server is NULL&quot;);
+404   }
+405 
+406   rwlock_wrlock(&amp;server-&gt;clients_rwlock);
 407 
-408   if (!entry) {
-409     rwlock_wrunlock(&amp;server-&gt;clients_rwlock);
-410     // Already removed (e.g., during shutdown) - this is fine
-411     log_debug(&quot;Client socket=%d already removed from registry&quot;, socket);
-412     return ASCIICHAT_OK;
-413   }
-414 
-415   // Call cleanup callback if set
-416   if (server-&gt;cleanup_fn &amp;&amp; entry-&gt;client_data) {
-417     server-&gt;cleanup_fn(entry-&gt;client_data);
-418   }
-419 
-420   // Destroy thread pool (stops all threads and frees resources)
-421   if (entry-&gt;threads) {
-422     thread_pool_destroy(entry-&gt;threads);
-423     entry-&gt;threads = NULL;
-424   }
-425 
-426   HASH_DEL(server-&gt;clients, entry);
-427   SAFE_FREE(entry);
+408   tcp_client_entry_t *entry = NULL;
+409   HASH_FIND(hh, server-&gt;clients, &amp;socket, sizeof(socket_t), entry);
+410 
+411   if (!entry) {
+412     rwlock_wrunlock(&amp;server-&gt;clients_rwlock);
+413     // Already removed (e.g., during shutdown) - this is fine
+414     log_debug(&quot;Client socket=%d already removed from registry&quot;, socket);
+415     return ASCIICHAT_OK;
+416   }
+417 
+418   // Call cleanup callback if set
+419   if (server-&gt;cleanup_fn &amp;&amp; entry-&gt;client_data) {
+420     server-&gt;cleanup_fn(entry-&gt;client_data);
+421   }
+422 
+423   // Destroy thread pool (stops all threads and frees resources)
+424   if (entry-&gt;threads) {
+425     thread_pool_destroy(entry-&gt;threads);
+426     entry-&gt;threads = NULL;
+427   }
 428 
-429   rwlock_wrunlock(&amp;server-&gt;clients_rwlock);
-430 
-431   log_debug(&quot;Removed client socket=%d from registry&quot;, socket);
-432   return ASCIICHAT_OK;
-433 }</pre>
+429   HASH_DEL(server-&gt;clients, entry);
+430   SAFE_FREE(entry);
+431 
+432   rwlock_wrunlock(&amp;server-&gt;clients_rwlock);
+433 
+434   log_debug(&quot;Removed client socket=%d from registry&quot;, socket);
+435   return ASCIICHAT_OK;
+436 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>tcp_server::cleanup_fn</b>,
@@ -776,58 +776,61 @@
 242     struct sockaddr_storage client_addr;
 243     socklen_t client_addr_len = sizeof(client_addr);
 244     socket_t client_socket = accept(ready_socket, (struct sockaddr *)&amp;client_addr, &amp;client_addr_len);
-245 
-246     if (client_socket == INVALID_SOCKET_VALUE) {
-247       log_warn(&quot;Failed to accept connection&quot;);
-248       continue;
-249     }
-250 
-251     // Format client IP for logging
-252     char client_ip[INET6_ADDRSTRLEN];
-253     // NOLINTNEXTLINE(clang-analyzer-core.UndefinedBinaryOperatorResult) - client_addr filled by accept()
-254     int addr_family = (client_addr.ss_family == AF_INET) ? AF_INET : AF_INET6;
-255     if (format_ip_address(addr_family, (struct sockaddr *)&amp;client_addr, client_ip, sizeof(client_ip)) != ASCIICHAT_OK) {
-256       SAFE_STRNCPY(client_ip, &quot;(unknown)&quot;, sizeof(client_ip));
-257     }
-258 
-259     log_debug(&quot;Accepted connection from %s&quot;, client_ip);
-260 
-261     // Allocate client context
-262     tcp_client_context_t *ctx = SAFE_MALLOC(sizeof(tcp_client_context_t), tcp_client_context_t *);
-263     if (!ctx) {
-264       log_error(&quot;Failed to allocate client context&quot;);
-265       socket_close(client_socket);
-266       continue;
-267     }
-268 
-269     ctx-&gt;client_socket = client_socket;
-270     ctx-&gt;addr = client_addr;
-271     ctx-&gt;addr_len = client_addr_len;
-272     ctx-&gt;user_data = server-&gt;config.user_data;
-273 
-274     // Spawn client handler thread
-275     // Handler is responsible for:
-276     // 1. Allocating client_data
-277     // 2. Calling tcp_server_add_client() to register
-278     // 3. Spawning additional worker threads via tcp_server_spawn_thread() if needed
-279     // 4. Processing client requests
-280     // 5. Calling tcp_server_remove_client() on disconnect
-281     // 6. Closing socket and freeing ctx
-282     asciichat_thread_t thread;
-283     if (asciichat_thread_create(&amp;thread, &quot;tcp_client&quot;, server-&gt;config.client_handler, ctx) != 0) {
-284       log_error(&quot;Failed to create client handler thread for %s&quot;, client_ip);
-285       SAFE_FREE(ctx);
-286       socket_close(client_socket);
-287       continue;
-288     }
-289 
-290     // Thread is detached (handler is responsible for cleanup)
-291     (void)thread; // Suppress unused warning
-292   }
-293 
-294   log_debug(&quot;TCP server accept loop exited&quot;);
-295   return ASCIICHAT_OK;
-296 }</pre>
+245     if (socket_is_valid(client_socket)) {
+246       NAMED_REGISTER_SOCKET(client_socket, &quot;tcp_client&quot;, NULL);
+247     }
+248 
+249     if (client_socket == INVALID_SOCKET_VALUE) {
+250       log_warn(&quot;Failed to accept connection&quot;);
+251       continue;
+252     }
+253 
+254     // Format client IP for logging
+255     char client_ip[INET6_ADDRSTRLEN];
+256     // NOLINTNEXTLINE(clang-analyzer-core.UndefinedBinaryOperatorResult) - client_addr filled by accept()
+257     int addr_family = (client_addr.ss_family == AF_INET) ? AF_INET : AF_INET6;
+258     if (format_ip_address(addr_family, (struct sockaddr *)&amp;client_addr, client_ip, sizeof(client_ip)) != ASCIICHAT_OK) {
+259       SAFE_STRNCPY(client_ip, &quot;(unknown)&quot;, sizeof(client_ip));
+260     }
+261 
+262     log_debug(&quot;Accepted connection from %s&quot;, client_ip);
+263 
+264     // Allocate client context
+265     tcp_client_context_t *ctx = SAFE_MALLOC(sizeof(tcp_client_context_t), tcp_client_context_t *);
+266     if (!ctx) {
+267       log_error(&quot;Failed to allocate client context&quot;);
+268       socket_close(client_socket);
+269       continue;
+270     }
+271 
+272     ctx-&gt;client_socket = client_socket;
+273     ctx-&gt;addr = client_addr;
+274     ctx-&gt;addr_len = client_addr_len;
+275     ctx-&gt;user_data = server-&gt;config.user_data;
+276 
+277     // Spawn client handler thread
+278     // Handler is responsible for:
+279     // 1. Allocating client_data
+280     // 2. Calling tcp_server_add_client() to register
+281     // 3. Spawning additional worker threads via tcp_server_spawn_thread() if needed
+282     // 4. Processing client requests
+283     // 5. Calling tcp_server_remove_client() on disconnect
+284     // 6. Closing socket and freeing ctx
+285     asciichat_thread_t thread;
+286     if (asciichat_thread_create(&amp;thread, &quot;tcp_client&quot;, server-&gt;config.client_handler, ctx) != 0) {
+287       log_error(&quot;Failed to create client handler thread for %s&quot;, client_ip);
+288       SAFE_FREE(ctx);
+289       socket_close(client_socket);
+290       continue;
+291     }
+292 
+293     // Thread is detached (handler is responsible for cleanup)
+294     (void)thread; // Suppress unused warning
+295   }
+296 
+297   log_debug(&quot;TCP server accept loop exited&quot;);
+298   return ASCIICHAT_OK;
+299 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>tcp_server_config_t::accept_timeout_sec</b>,
@@ -838,12 +841,12 @@
     <b>EINTR</b>, <b>ERROR_INVALID_PARAM</b>, <b>format_ip_address()</b>,
     <b>INVALID_SOCKET_VALUE</b>, <b>tcp_server::listen_socket</b>,
     <b>tcp_server::listen_socket6</b>, <b>log_debug</b>, <b>log_error</b>,
-    <b>log_warn</b>, <b>tcp_server::running</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
+    <b>log_warn</b>, <b>NAMED_REGISTER_SOCKET</b>, <b>tcp_server::running</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
     <b>socket_close()</b>, <b>socket_fd_isset()</b>, <b>socket_fd_set()</b>,
     <b>socket_fd_zero()</b>, <b>socket_get_error_string()</b>,
-    <b>socket_get_last_error()</b>, <b>socket_select()</b>,
-    <b>tcp_server_config_t::status_update_data</b>,
+    <b>socket_get_last_error()</b>, <b>socket_is_valid()</b>,
+    <b>socket_select()</b>, <b>tcp_server_config_t::status_update_data</b>,
     <b>tcp_server_config_t::status_update_fn</b>, <b>US_PER_SEC_INT</b>,
     <b>tcp_client_context_t::user_data</b>, and
     <b>tcp_server_config_t::user_data</b>.</p>
@@ -862,14 +865,14 @@
 <div class="Bd-indent"><i>server</i> Server structure
 <br/>
 <i>cleanup_fn</i> Cleanup callback (or NULL to disable)</div>
-<p class="Pp">Definition at line <b>355</b> of file
+<p class="Pp">Definition at line <b>358</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
-<pre>355                                                                                              {
-356   if (!server) {
-357     return;
-358   }
-359   server-&gt;cleanup_fn = cleanup_fn;
-360 }</pre>
+<pre>358                                                                                              {
+359   if (!server) {
+360     return;
+361   }
+362   server-&gt;cleanup_fn = cleanup_fn;
+363 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>tcp_server::cleanup_fn</b>.</p>
@@ -904,62 +907,62 @@
 <i>thread_name</i> Thread name for debugging (max 63 chars)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>546</b> of file
+<p class="Pp">Definition at line <b>549</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
-<pre>547                                                                                                   {
-548   if (!server || !thread_func) {
-549     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server or thread_func is NULL&quot;);
-550   }
-551 
-552   // For WebRTC clients (no socket): create thread directly without TCP server thread pool tracking
-553   // This allows render threads to work for both TCP and WebRTC clients
-554   if (client_socket == INVALID_SOCKET_VALUE) {
-555     // Extract thread handle from thread_arg if it's a client_info_t
-556     // We need to store the thread handle somewhere, but for now just create the thread
-557     // The caller must manage the thread handle directly for WebRTC clients
-558     log_debug(&quot;Spawning standalone thread '%s' (no socket, WebRTC client)&quot;, thread_name ? thread_name : &quot;unnamed&quot;);
-559 
-560     // For WebRTC clients, we can't use thread_pool since there's no socket entry
-561     // Instead, create the thread directly - the caller must handle the thread
-562     // This is a hack to allow reusing tcp_server_spawn_thread for WebRTC
-563     // In the future, consider a unified thread management system
-564     asciichat_thread_t temp_thread;
-565     asciichat_error_t result = asciichat_thread_create(&amp;temp_thread, &quot;tcp_worker&quot;, thread_func, thread_arg);
-566     if (result != ASCIICHAT_OK) {
-567       return result;
-568     }
-569 
-570     // Note: temp_thread handle is lost here, but the thread is running
-571     // The caller must manage thread lifecycle for WebRTC clients differently
-572     (void)temp_thread; // Suppress unused warning
-573     return ASCIICHAT_OK;
-574   }
-575 
-576   // Find client entry
-577   rwlock_rdlock(&amp;server-&gt;clients_rwlock);
-578   tcp_client_entry_t *entry = NULL;
-579   HASH_FIND(hh, server-&gt;clients, &amp;client_socket, sizeof(socket_t), entry);
-580 
-581   if (!entry) {
-582     rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
-583     return SET_ERRNO(ERROR_NOT_FOUND, &quot;Client socket=%d not in registry&quot;, client_socket);
-584   }
-585 
-586   // Spawn thread in client's thread pool
-587   asciichat_error_t result = thread_pool_spawn(entry-&gt;threads, thread_func, thread_arg, stop_id, thread_name);
+<pre>550                                                                                                   {
+551   if (!server || !thread_func) {
+552     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server or thread_func is NULL&quot;);
+553   }
+554 
+555   // For WebRTC clients (no socket): create thread directly without TCP server thread pool tracking
+556   // This allows render threads to work for both TCP and WebRTC clients
+557   if (client_socket == INVALID_SOCKET_VALUE) {
+558     // Extract thread handle from thread_arg if it's a client_info_t
+559     // We need to store the thread handle somewhere, but for now just create the thread
+560     // The caller must manage the thread handle directly for WebRTC clients
+561     log_debug(&quot;Spawning standalone thread '%s' (no socket, WebRTC client)&quot;, thread_name ? thread_name : &quot;unnamed&quot;);
+562 
+563     // For WebRTC clients, we can't use thread_pool since there's no socket entry
+564     // Instead, create the thread directly - the caller must handle the thread
+565     // This is a hack to allow reusing tcp_server_spawn_thread for WebRTC
+566     // In the future, consider a unified thread management system
+567     asciichat_thread_t temp_thread;
+568     asciichat_error_t result = asciichat_thread_create(&amp;temp_thread, &quot;tcp_worker&quot;, thread_func, thread_arg);
+569     if (result != ASCIICHAT_OK) {
+570       return result;
+571     }
+572 
+573     // Note: temp_thread handle is lost here, but the thread is running
+574     // The caller must manage thread lifecycle for WebRTC clients differently
+575     (void)temp_thread; // Suppress unused warning
+576     return ASCIICHAT_OK;
+577   }
+578 
+579   // Find client entry
+580   rwlock_rdlock(&amp;server-&gt;clients_rwlock);
+581   tcp_client_entry_t *entry = NULL;
+582   HASH_FIND(hh, server-&gt;clients, &amp;client_socket, sizeof(socket_t), entry);
+583 
+584   if (!entry) {
+585     rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
+586     return SET_ERRNO(ERROR_NOT_FOUND, &quot;Client socket=%d not in registry&quot;, client_socket);
+587   }
 588 
-589   rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
-590 
-591   if (result != ASCIICHAT_OK) {
-592     return result;
-593   }
-594 
-595   size_t thread_count = thread_pool_get_count(entry-&gt;threads);
-596   log_debug(&quot;Spawned thread '%s' (stop_id=%d) for client socket=%d (total_threads=%zu)&quot;,
-597             thread_name ? thread_name : &quot;unnamed&quot;, stop_id, client_socket, thread_count);
-598 
-599   return ASCIICHAT_OK;
-600 }</pre>
+589   // Spawn thread in client's thread pool
+590   asciichat_error_t result = thread_pool_spawn(entry-&gt;threads, thread_func, thread_arg, stop_id, thread_name);
+591 
+592   rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
+593 
+594   if (result != ASCIICHAT_OK) {
+595     return result;
+596   }
+597 
+598   size_t thread_count = thread_pool_get_count(entry-&gt;threads);
+599   log_debug(&quot;Spawned thread '%s' (stop_id=%d) for client socket=%d (total_threads=%zu)&quot;,
+600             thread_name ? thread_name : &quot;unnamed&quot;, stop_id, client_socket, thread_count);
+601 
+602   return ASCIICHAT_OK;
+603 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
@@ -984,38 +987,38 @@
 <i>client_socket</i> Client socket whose threads to stop</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>602</b> of file
+<p class="Pp">Definition at line <b>605</b> of file
     <b>lib/network/tcp/server.c</b>.</p>
-<pre>602                                                                                                {
-603   if (!server) {
-604     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server is NULL&quot;);
-605   }
-606 
-607   if (client_socket == INVALID_SOCKET_VALUE) {
-608     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;client_socket is invalid&quot;);
-609   }
-610 
-611   // Find client entry
-612   rwlock_rdlock(&amp;server-&gt;clients_rwlock);
-613   tcp_client_entry_t *entry = NULL;
-614   HASH_FIND(hh, server-&gt;clients, &amp;client_socket, sizeof(socket_t), entry);
-615 
-616   if (!entry) {
-617     rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
-618     return SET_ERRNO(ERROR_NOT_FOUND, &quot;Client socket=%d not in registry&quot;, client_socket);
-619   }
-620 
-621   // Stop all threads in client's thread pool (in stop_id order)
-622   asciichat_error_t result = ASCIICHAT_OK;
-623   if (entry-&gt;threads) {
-624     result = thread_pool_stop_all(entry-&gt;threads);
-625   }
-626 
-627   rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
-628 
-629   log_debug(&quot;All threads stopped for client socket=%d&quot;, client_socket);
-630   return result;
-631 }</pre>
+<pre>605                                                                                                {
+606   if (!server) {
+607     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;server is NULL&quot;);
+608   }
+609 
+610   if (client_socket == INVALID_SOCKET_VALUE) {
+611     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;client_socket is invalid&quot;);
+612   }
+613 
+614   // Find client entry
+615   rwlock_rdlock(&amp;server-&gt;clients_rwlock);
+616   tcp_client_entry_t *entry = NULL;
+617   HASH_FIND(hh, server-&gt;clients, &amp;client_socket, sizeof(socket_t), entry);
+618 
+619   if (!entry) {
+620     rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
+621     return SET_ERRNO(ERROR_NOT_FOUND, &quot;Client socket=%d not in registry&quot;, client_socket);
+622   }
+623 
+624   // Stop all threads in client's thread pool (in stop_id order)
+625   asciichat_error_t result = ASCIICHAT_OK;
+626   if (entry-&gt;threads) {
+627     result = thread_pool_stop_all(entry-&gt;threads);
+628   }
+629 
+630   rwlock_rdunlock(&amp;server-&gt;clients_rwlock);
+631 
+632   log_debug(&quot;All threads stopped for client socket=%d&quot;, client_socket);
+633   return result;
+634 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>tcp_server::clients</b>,
