@@ -22,6 +22,7 @@
 #include "ascii-chat/common/error_codes.h"
 #include "negotiate.h"
 #include "nat.h"
+#include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/endian.h>
@@ -43,8 +44,7 @@
  * @brief Get current time in milliseconds (portable)
  */
 static uint64_t session_get_current_time_ms(void) {
-  uint64_t current_time_ns = time_get_ns();
-  return time_ns_to_ms(current_time_ns);
+  return APP_CALLBACK_UINT64(platform_get_monotonic_time_us) / 1000;
 }
 
 discovery_session_t *discovery_session_create(const discovery_config_t *config) {
@@ -750,7 +750,7 @@ static uint32_t calculate_backoff_delay_ms(int attempt) {
 
   // Add jitter (0-1000ms) to prevent thundering herd
   // Use monotonic time as pseudo-random seed
-  uint32_t jitter_ms = (uint32_t)(platform_get_monotonic_time_us() % 1000);
+  uint32_t jitter_ms = (uint32_t)(APP_CALLBACK_UINT64(platform_get_monotonic_time_us) % 1000);
 
   return base_delay_ms + jitter_ms;
 }
@@ -1640,7 +1640,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
 
         log_info("WebRTC connection initiated, waiting for DataChannel...");
         session->webrtc_connection_initiated = true;
-        session->webrtc_last_attempt_time_ms = platform_get_monotonic_time_us() / 1000;
+        session->webrtc_last_attempt_time_ms = APP_CALLBACK_UINT64(platform_get_monotonic_time_us) / 1000;
       }
 
       // Check for ICE gathering timeout on all peers
@@ -1662,7 +1662,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
                      max_attempts + 1, backoff_ms);
 
             // Wait for backoff period
-            platform_sleep_ms(backoff_ms);
+            APP_CALLBACK_VOID_UINT(platform_sleep_ms, backoff_ms);
 
             // Destroy old peer manager
             webrtc_peer_manager_destroy(session->peer_manager);

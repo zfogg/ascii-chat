@@ -10,6 +10,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <ascii-chat/crypto/crypto.h>
 
 typedef int socket_t;
@@ -19,6 +20,10 @@ typedef struct {
   // Exit signals
   bool (*should_exit)(void);
   void (*signal_exit)(void);
+
+  // Platform timing / wait helpers
+  uint64_t (*platform_get_monotonic_time_us)(void);
+  void (*platform_sleep_ms)(unsigned int ms);
 
   // Server/client crypto setup
   void (*server_connection_set_ip)(const char *ip);
@@ -80,6 +85,16 @@ const app_callbacks_t *app_callbacks_get(void);
   })
 
 /**
+ * Call a uint64_t(void) callback
+ * Usage: uint64_t now = APP_CALLBACK_UINT64(platform_get_monotonic_time_us)
+ */
+#define APP_CALLBACK_UINT64(callback_name)                                                                             \
+  ({                                                                                                                   \
+    const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
+    (__cb && __cb->callback_name) ? __cb->callback_name() : 0ULL;                                                      \
+  })
+
+/**
  * Call a int(acip_transport_t *) callback
  * Usage: int result = APP_CALLBACK_INT_TRANSPORT(client_crypto_handshake, transport)
  */
@@ -94,6 +109,18 @@ const app_callbacks_t *app_callbacks_get(void);
  * Usage: APP_CALLBACK_VOID_UINT8(client_crypto_set_mode, mode)
  */
 #define APP_CALLBACK_VOID_UINT8(callback_name, value)                                                                  \
+  do {                                                                                                                 \
+    const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
+    if (__cb && __cb->callback_name) {                                                                                 \
+      __cb->callback_name(value);                                                                                      \
+    }                                                                                                                  \
+  } while (0)
+
+/**
+ * Call a void(unsigned int) callback
+ * Usage: APP_CALLBACK_VOID_UINT(platform_sleep_ms, ms)
+ */
+#define APP_CALLBACK_VOID_UINT(callback_name, value)                                                                   \
   do {                                                                                                                 \
     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
     if (__cb && __cb->callback_name) {                                                                                 \

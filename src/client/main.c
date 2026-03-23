@@ -634,6 +634,8 @@ int client_main(void) {
   static const app_callbacks_t client_crypto_callbacks = {
       .should_exit = should_exit,
       .signal_exit = signal_exit,
+      .platform_get_monotonic_time_us = platform_get_monotonic_time_us,
+      .platform_sleep_ms = platform_sleep_ms,
       .server_connection_set_ip = server_connection_set_ip,
       .server_connection_set_port = server_connection_set_port,
       .client_crypto_set_mode = client_crypto_set_mode,

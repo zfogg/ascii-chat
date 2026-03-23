@@ -965,6 +965,8 @@ int main(int argc, char *argv[]) {
   static const app_callbacks_t app_callbacks = {
       .should_exit = should_exit,
       .signal_exit = signal_exit,
+      .platform_get_monotonic_time_us = platform_get_monotonic_time_us,
+      .platform_sleep_ms = platform_sleep_ms,
   };
   app_callbacks_register(&app_callbacks);
 
