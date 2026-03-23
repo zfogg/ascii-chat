@@ -851,17 +851,22 @@ int client_main(void) {
   // Get reconnect attempts setting (-1 = unlimited, 0 = no retry, >0 = retry N times)
   int reconnect_attempts = GET_OPTION(reconnect_attempts);
 
-  // Create TCP client for network mode (will be used by session_client_like_run)
-  tcp_client_t *client_tcp = tcp_client_create();
-  if (!client_tcp) {
-    log_error("Failed to create TCP client for connection attempts");
-    return 1; // Return error to exit client
+  // Create TCP client only when the selected connection target actually uses TCP.
+  // WebSocket targets do not need the pre-created TCP client.
+  tcp_client_t *client_tcp = NULL;
+  if (!url_is_websocket(g_client_session.discovered_address)) {
+    client_tcp = tcp_client_create();
+    if (!client_tcp) {
+      log_error("Failed to create TCP client for connection attempts");
+      return 1; // Return error to exit client
+    }
   }
 
   // Configure session_client_like with client-specific settings
   session_client_like_config_t config = {
       .run_fn = client_run,
       .run_user_data = NULL,
+      .network_mode = true,
       .tcp_client = client_tcp,
       .websocket_client = NULL,
       .discovery = NULL,
@@ -879,8 +884,8 @@ int client_main(void) {
   asciichat_error_t session_result = session_client_like_run(&config);
   log_debug("[CLIENT_MAIN] session_client_like_run() returned %d", session_result);
 
-  // Note: TCP client lifecycle is managed by session_client_like_run() and connection attempts
-  // Do not destroy it here as it may be reused or already cleaned up
+  // Network client lifecycle is owned by connection_context_cleanup() after the session returns.
+  // Do not destroy the pre-created TCP client here; the connection context owns it now.
 
   // Cleanup connection context
   log_debug("[CLIENT_MAIN] About to call connection_context_cleanup()");

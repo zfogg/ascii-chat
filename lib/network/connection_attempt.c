@@ -37,10 +37,6 @@
 #include <string.h>
 #include <memory.h>
 
-// Forward declare session function (avoids header include issues)
-struct websocket_client;
-void session_client_like_set_websocket_client(struct websocket_client *ws_client);
-
 /* ============================================================================
  * State Machine Helper Functions
  * ============================================================================ */
@@ -104,6 +100,14 @@ void connection_context_cleanup(connection_attempt_context_t *ctx) {
   if (!ctx)
     return;
 
+  // Close active transport if still open
+  if (ctx->active_transport) {
+    acip_transport_close(ctx->active_transport);
+    acip_transport_destroy(ctx->active_transport);
+    ctx->active_transport = NULL;
+    log_debug("Transport connection closed");
+  }
+
   // Destroy TCP client instance if created
   if (ctx->tcp_client_instance) {
     tcp_client_destroy(&ctx->tcp_client_instance);
@@ -111,22 +115,10 @@ void connection_context_cleanup(connection_attempt_context_t *ctx) {
     log_debug("TCP client instance destroyed");
   }
 
-  // Note: Do NOT destroy the WebSocket client instance here. The WebSocket client
-  // is owned by the session layer (passed via config->websocket_client and also
-  // stored in g_websocket_client). The session cleanup will destroy it.
-  // We just clear the reference to prevent double-free.
   if (ctx->ws_client_instance) {
+    websocket_client_destroy(&ctx->ws_client_instance);
     ctx->ws_client_instance = NULL;
-    ctx->active_transport = NULL;
-    log_debug("WebSocket client reference cleared (ownership remains with session)");
-  }
-
-  // Close active transport if still open (only if not already destroyed by WebSocket client)
-  if (ctx->active_transport) {
-    acip_transport_close(ctx->active_transport);
-    acip_transport_destroy(ctx->active_transport);
-    ctx->active_transport = NULL;
-    log_debug("Transport connection closed");
+    log_debug("WebSocket client instance destroyed");
   }
 
   log_debug("Connection context cleaned up");
@@ -308,9 +300,6 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     ctx->active_transport = transport;
     ctx->ws_client_instance = ws_client;
 
-    // Update global websocket client so session_client_like_run() detects network mode
-    session_client_like_set_websocket_client(ws_client);
-
     return ASCIICHAT_OK;
   }
 
@@ -337,6 +326,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     log_debug("Created TCP client locally (not pre-created by framework)");
   } else {
     log_debug("Using pre-created TCP client from framework");
+    ctx->tcp_client_instance = tcp_client;
   }
 
   // Set timeout for this attempt
@@ -456,15 +446,10 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
   log_info("TCP connection established to %s:%u", endpoint.host, endpoint.port);
   connection_state_transition(ctx, CONN_STATE_CONNECTED);
   ctx->active_transport = transport;
-
-  // Store tcp_client in context for proper lifecycle management only if we created it locally
-  // If it's pre-created by the framework, the framework will manage its lifecycle
   if (created_tcp_client) {
     ctx->tcp_client_instance = tcp_client;
-    log_debug("TCP client instance stored in connection context for cleanup");
-  } else {
-    log_debug("Using framework-managed TCP client, not storing in context");
   }
+  log_debug("TCP client instance stored in connection context for cleanup");
 
   return ASCIICHAT_OK;
 }

@@ -414,6 +414,7 @@ int mirror_main(void) {
   session_client_like_config_t config = {
       .run_fn = mirror_run,
       .run_user_data = NULL,
+      .network_mode = false,
       .keyboard_handler = mirror_keyboard_handler,
       .print_newline_on_tty_exit = true, // Mirror prints newline to separate frame from prompt
   };

@@ -438,6 +438,7 @@ int discovery_main(void) {
   session_client_like_config_t config = {
       .run_fn = discovery_run,
       .run_user_data = NULL,
+      .network_mode = true,
       .tcp_client = NULL,
       .websocket_client = NULL,
       .discovery = (void *)g_discovery, // Opaque pointer to discovery session

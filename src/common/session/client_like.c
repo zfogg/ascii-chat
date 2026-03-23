@@ -23,7 +23,6 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/network/tcp/client.h>
-#include <ascii-chat/network/websocket/client.h>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/app_callbacks.h>
 
@@ -42,7 +41,6 @@ static bool (*g_render_should_exit)(void *) = NULL;
 
 // Module-level network clients (created by framework, accessed by run_fn)
 static tcp_client_t *g_tcp_client = NULL;
-static websocket_client_t *g_websocket_client = NULL;
 
 // Module-level stdin reader for ASCII-to-video rendering (stdin render mode only)
 static terminal_fd_reader_t *g_stdin_reader = NULL;
@@ -57,14 +55,6 @@ bool (*session_client_like_get_render_should_exit(void))(void *) {
 
 tcp_client_t *session_client_like_get_tcp_client(void) {
   return g_tcp_client;
-}
-
-websocket_client_t *session_client_like_get_websocket_client(void) {
-  return g_websocket_client;
-}
-
-void session_client_like_set_websocket_client(websocket_client_t *client) {
-  g_websocket_client = client;
 }
 
 terminal_fd_reader_t *session_client_like_get_stdin_reader(void) {
@@ -403,7 +393,6 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // Use network clients from config if provided (client mode), or skip for mirror mode
   // Mirror mode passes NULL for both tcp_client and websocket_client
   g_tcp_client = config->tcp_client;
-  g_websocket_client = config->websocket_client;
 
   // Determine the networking mode based on available indicators:
   // - If config has a discovery object, it's discovery mode (will create network clients later)
@@ -411,7 +400,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // - Otherwise, it's mirror mode (local-only capture)
   // Mirror mode has a run_fn (mirror_run) but no network components
   bool discovery_mode = (config->discovery != NULL);
-  bool network_mode = (g_tcp_client != NULL || g_websocket_client != NULL);
+  bool network_mode = config->network_mode || g_tcp_client != NULL || config->websocket_client != NULL;
   bool mirror_mode = (!discovery_mode && !network_mode);
 
   if (mirror_mode) {
@@ -749,15 +738,9 @@ cleanup:
   // Re-enable terminal output for shutdown logs
   log_set_terminal_output(true);
 
-  // Cleanup network transports (TCP/WebSocket clients)
-  if (g_websocket_client) {
-    log_debug("Destroying WebSocket client");
-    websocket_client_destroy(&g_websocket_client);
-  }
-  if (g_tcp_client) {
-    log_debug("Destroying TCP client");
-    tcp_client_destroy(&g_tcp_client);
-  }
+  g_tcp_client = NULL;
+  g_current_config = NULL;
+  g_render_should_exit = NULL;
 
   // CRITICAL: Terminate PortAudio device resources FIRST
   log_debug("Terminating PortAudio device resources");

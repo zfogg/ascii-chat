@@ -121,6 +121,9 @@ typedef struct session_client_like_config {
   /* Networking (NULL for mirror mode)                                  */
   /* ================================================================ */
 
+  /** True when this session should be treated as a networked client-like mode. */
+  bool network_mode;
+
   /**
    * Active TCP transport for this session. When non-NULL, teardown will
    * shut it down gracefully as part of the cleanup sequence.
@@ -262,28 +265,6 @@ bool (*session_client_like_get_render_should_exit(void))(void *);
  * @return Pointer to tcp_client_t, or NULL if not created or using WebSocket
  */
 tcp_client_t *session_client_like_get_tcp_client(void);
-
-/**
- * Get the WebSocket client created by session_client_like_run() (if applicable).
- *
- * Returns the WebSocket client created for WebSocket connections.
- * Only valid after session_client_like_run() is called and during run_fn execution.
- * May be NULL if TCP is being used instead.
- *
- * @return Pointer to websocket_client_t, or NULL if not created or using TCP
- */
-websocket_client_t *session_client_like_get_websocket_client(void);
-
-/**
- * Set the WebSocket client for this session.
- *
- * Called by connection_attempt_tcp() after successfully creating a WebSocket client
- * to update the global state. This ensures that session_client_like_run() correctly
- * detects network mode instead of mirror mode.
- *
- * @param client WebSocket client instance, or NULL to clear
- */
-void session_client_like_set_websocket_client(websocket_client_t *client);
 
 /**
  * Get the stdin frame reader for ASCII-to-video rendering (stdin render mode only).
