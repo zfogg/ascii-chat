@@ -60,7 +60,6 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   }
 
   session->state = DISCOVERY_STATE_INIT;
-  session->acds_socket = INVALID_SOCKET_VALUE;
   session->acds_transport = NULL;
   session->peer_manager = NULL;
   session->webrtc_transport_ready = false;
@@ -184,7 +183,6 @@ void discovery_session_destroy(discovery_session_t *session) {
     acip_transport_destroy(session->acds_transport);
     session->acds_transport = NULL;
   }
-  session->acds_socket = INVALID_SOCKET_VALUE;
 
   // Destroy host context if active
   if (session->host_ctx) {
@@ -488,7 +486,6 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
 
   SAFE_STRNCPY(session->acds_address, endpoint.host, sizeof(session->acds_address));
   session->acds_port = endpoint.port;
-  session->acds_socket = session->acds_transport->methods->get_socket(session->acds_transport);
 
   if (endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET) {
     log_info("Connected to ACDS via WebSocket: %s", endpoint.input);
@@ -2082,8 +2079,11 @@ static asciichat_error_t discovery_session_run_election(discovery_session_t *ses
     nat_detect_quality(&host_quality, stun_server, 0);
 
     // Measure bandwidth to ACDS
-    if (session->acds_socket != INVALID_SOCKET_VALUE) {
-      nat_measure_bandwidth(&host_quality, session->acds_socket);
+    if (session->acds_transport) {
+      socket_t acds_socket = acip_transport_get_socket(session->acds_transport);
+      if (acds_socket != INVALID_SOCKET_VALUE) {
+        nat_measure_bandwidth(&host_quality, acds_socket);
+      }
     }
   } else {
     // Fallback: use placeholder values

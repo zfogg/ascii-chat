@@ -159,7 +159,6 @@ typedef struct {
 
   // ACDS connection
   acip_transport_t *acds_transport; ///< Persistent transport for ACDS communication
-  socket_t acds_socket;             ///< Raw socket (owned by transport after creation)
   char acds_address[64];
   uint16_t acds_port;
   char acds_url[512]; ///< ACDS WebSocket URL (ws:// or wss://, if set uses WebSocket instead of TCP)

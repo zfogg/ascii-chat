@@ -498,167 +498,23 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     return 0;
   }
 
-  // Resolve server address using getaddrinfo() for IPv4/IPv6 support
-  // Special handling for localhost: ensure we try both IPv6 (::1) and IPv4 (127.0.0.1)
-  // Many systems only map "localhost" to 127.0.0.1 in /etc/hosts
-  bool is_localhost = (strcmp(address, "localhost") == 0 || is_localhost_ipv4(address) || is_localhost_ipv6(address));
-
-  struct addrinfo hints, *res = NULL, *addr_iter;
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_UNSPEC; // Allow IPv4 or IPv6
-  hints.ai_socktype = SOCK_STREAM;
-  if (is_localhost) {
-    hints.ai_flags = AI_NUMERICSERV; // Optimize for localhost
-  }
-
-  char port_str[16];
-  SAFE_SNPRINTF(port_str, sizeof(port_str), "%d", port);
-
-  // For localhost, try IPv6 loopback (::1) first, then fall back to DNS resolution
-  if (is_localhost) {
-    log_debug("Localhost detected - trying IPv6 loopback [::1]:%s first...", port_str);
-    hints.ai_family = AF_INET6;
-    hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
-
-    int ipv6_result = getaddrinfo("::1", port_str, &hints, &res);
-    if (ipv6_result == 0 && res != NULL) {
-      // Try IPv6 loopback connection
-      g_sockfd = socket_create("ipv6", res->ai_family, res->ai_socktype, res->ai_protocol);
-      if (g_sockfd != INVALID_SOCKET_VALUE) {
-        log_debug("Trying IPv6 loopback connection to [::1]:%s...", port_str);
-        if (connect_with_timeout(g_sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
-          log_debug("Connection successful using IPv6 loopback");
-          SAFE_STRNCPY(g_server_ip, "::1", sizeof(g_server_ip));
-          freeaddrinfo(res);
-          res = NULL; // Prevent double-free at connection_success label
-          goto connection_success;
-        }
-        if (socket_get_error(g_sockfd) != 0) {
-          log_debug("NETWORK_ERROR: %d", (int)socket_get_error(g_sockfd));
-        } else {
-          // log_debug("IPv6 loopback connection failed: %s", network_error_string());
-        }
-        close_socket(g_sockfd);
-        g_sockfd = INVALID_SOCKET_VALUE;
-      }
-      freeaddrinfo(res);
-      res = NULL;
-    }
-
-    // Check if user requested exit (Ctrl-C) before trying IPv4
-    if (should_exit()) {
-      log_debug("Exit requested during connection attempt");
-      return -1;
-    }
-
-    // IPv6 failed, try IPv4 loopback (127.0.0.1)
-    log_debug("IPv6 failed, trying IPv4 loopback 127.0.0.1:%s...", port_str);
-    hints.ai_family = AF_INET;
-
-    int ipv4_result = getaddrinfo("127.0.0.1", port_str, &hints, &res);
-    if (ipv4_result == 0 && res != NULL) {
-      g_sockfd = socket_create("ipv4", res->ai_family, res->ai_socktype, res->ai_protocol);
-      if (g_sockfd != INVALID_SOCKET_VALUE) {
-        log_debug("Trying IPv4 loopback connection to 127.0.0.1:%s...", port_str);
-        if (connect_with_timeout(g_sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
-          log_debug("Connection successful using IPv4 loopback");
-          SAFE_STRNCPY(g_server_ip, "127.0.0.1", sizeof(g_server_ip));
-          freeaddrinfo(res);
-          res = NULL; // Prevent double-free at connection_success label
-          goto connection_success;
-        }
-        if (socket_get_error(g_sockfd) != 0) {
-          log_debug("NETWORK_ERROR: %d", (int)socket_get_error(g_sockfd));
-        } else {
-          // log_debug("IPv4 loopback connection failed: %s", network_error_string());
-        }
-        close_socket(g_sockfd);
-        g_sockfd = INVALID_SOCKET_VALUE;
-      }
-      freeaddrinfo(res);
-      res = NULL;
-    }
-
-    // Both IPv6 and IPv4 loopback failed for localhost
-    log_warn("Could not connect to localhost using either IPv6 or IPv4 loopback");
+  asciichat_error_t connect_result =
+      connection_factory_open("client", address, (uint16_t)port, NULL, &g_client_transport, &endpoint);
+  if (connect_result != ASCIICHAT_OK || !g_client_transport) {
+    log_error("Failed to establish TCP transport: %s", asciichat_error_string(connect_result));
     return -1;
   }
 
-  // For non-localhost addresses, use standard resolution
-  log_debug("Resolving server address '%s' port %s...", address, port_str);
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_flags = 0;
-  int getaddr_result = getaddrinfo(address, port_str, &hints, &res);
-  if (getaddr_result != 0) {
-    log_error("Failed to resolve server address '%s': %s", address, gai_strerror(getaddr_result));
-    return -1;
-  }
-
-  // Try each address returned by getaddrinfo() until one succeeds
-  // Prefer IPv6 over IPv4: try IPv6 addresses first, then fall back to IPv4
-  for (int address_family = AF_INET6; address_family >= AF_INET; address_family -= (AF_INET6 - AF_INET)) {
-    for (addr_iter = res; addr_iter != NULL; addr_iter = addr_iter->ai_next) {
-      // Skip addresses that don't match current pass (IPv6 first, then IPv4)
-      if (addr_iter->ai_family != address_family) {
-        continue;
-      }
-
-      // Create socket with appropriate address family
-      const char *socket_name =
-          (addr_iter->ai_family == AF_INET6) ? "client_socket_server_ipv6" : "client_socket_server_ipv4";
-      g_sockfd = socket_create(socket_name, addr_iter->ai_family, addr_iter->ai_socktype, addr_iter->ai_protocol);
-      if (g_sockfd == INVALID_SOCKET_VALUE) {
-        log_debug("Could not create socket for address family %d: %s", addr_iter->ai_family, network_error_string());
-        continue; // Try next address
-      }
-
-      // Log which address family we're trying
-      if (addr_iter->ai_family == AF_INET) {
-        log_debug("Trying IPv4 connection...");
-      } else if (addr_iter->ai_family == AF_INET6) {
-        log_debug("Trying IPv6 connection...");
-      }
-
-      // Attempt connection with timeout
-      if (connect_with_timeout(g_sockfd, addr_iter->ai_addr, addr_iter->ai_addrlen, CONNECT_TIMEOUT)) {
-        // Connection successful!
-        log_debug("Connection successful using %s", addr_iter->ai_family == AF_INET    ? "IPv4"
-                                                    : addr_iter->ai_family == AF_INET6 ? "IPv6"
-                                                                                       : "unknown protocol");
-
-        // Extract server IP address for known_hosts
-        if (format_ip_address(addr_iter->ai_family, addr_iter->ai_addr, g_server_ip, sizeof(g_server_ip)) ==
-            ASCIICHAT_OK) {
-          log_debug("Resolved server IP: %s", g_server_ip);
-        } else {
-          log_warn("Failed to format server IP address");
-        }
-
-        goto connection_success; // Break out of both loops
-      }
-
-      // Connection failed - close socket and try next address
-      if (socket_get_error(g_sockfd) != 0) {
-        log_debug("NETWORK_ERROR: %d", (int)socket_get_error(g_sockfd));
-      } else {
-        // log_debug("Connection failed: %s", network_error_string());
-      }
-      close_socket(g_sockfd);
-      g_sockfd = INVALID_SOCKET_VALUE;
-    }
-  }
-
-connection_success:
-
-  if (res) {
-    freeaddrinfo(res);
-  }
-
-  // If we exhausted all addresses without success, fail
+  g_sockfd = g_client_transport->methods->get_socket(g_client_transport);
   if (g_sockfd == INVALID_SOCKET_VALUE) {
-    log_warn("Could not connect to server %s:%d (tried all addresses)", address, port);
+    log_error("TCP transport did not expose a valid socket");
+    acip_transport_destroy(g_client_transport);
+    g_client_transport = NULL;
     return -1;
   }
+
+  SAFE_STRNCPY(g_server_ip, endpoint.host, sizeof(g_server_ip));
+  log_debug("CLIENT_CONNECT: Resolved TCP endpoint host=%s port=%u", endpoint.host, endpoint.port);
 
   // Connection successful - extract local port for client ID
   struct sockaddr_storage local_addr = {0};
