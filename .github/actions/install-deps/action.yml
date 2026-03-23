@@ -620,6 +620,17 @@ runs:
         export CPPFLAGS="-I${BREW_PREFIX}/include"
         export LDFLAGS="-L${BREW_PREFIX}/lib"
 
+        # Point xcrun at the CommandLineTools SDK instead of the Xcode SDK.
+        # Homebrew LLVM uses CommandLineTools headers by default; if xcrun
+        # returns the Xcode SDK, CMake's project() caches Xcode SDK paths
+        # in find_* results, which then leak into compile commands as
+        # -isystem flags and break Homebrew LLVM's header search ordering.
+        if [ -d "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk" ]; then
+          export SDKROOT="/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk"
+          echo "SDKROOT=$SDKROOT" >> $GITHUB_ENV
+          echo "Set SDKROOT to CommandLineTools SDK: $SDKROOT"
+        fi
+
         # NOTE: Do NOT add Homebrew LLVM lib paths to LDFLAGS
         # This causes the main binary to link against Homebrew's libc++/libunwind
         # instead of the system libraries, failing the release build validation
