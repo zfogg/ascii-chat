@@ -697,7 +697,12 @@ runs:
 
         # Get Darwin version for config filename
         DARWIN_VERSION=$(uname -r | cut -d. -f1)
-        SDK_PATH=$(xcrun --show-sdk-path 2>/dev/null || echo "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
+        # Use Command Line Tools SDK (works with Homebrew LLVM), not Xcode SDK
+        SDK_PATH="/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk"
+        if [ ! -d "$SDK_PATH" ]; then
+          # Fallback to xcrun if Command Line Tools not found
+          SDK_PATH=$(xcrun --show-sdk-path 2>/dev/null || echo "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
+        fi
 
         # Detect LLVM version from installed directory
         LLVM_VERSION=$(ls -1 "${BREW_PREFIX}/opt/llvm/lib/clang/" 2>/dev/null | sort -V | tail -1)
@@ -710,8 +715,8 @@ runs:
         # Create x86_64 config
         cat > ~/.config/clang/x86_64-apple-darwin${DARWIN_VERSION}.cfg << EOF
         # Clang configuration for x86_64 macOS (Homebrew LLVM)
-        # Use resource-dir for headers - Homebrew LLVM is self-contained
-        # Do NOT use -isysroot with Xcode SDK (causes header incompatibility)
+        -isysroot ${SDK_PATH}
+        -isystem ${SDK_PATH}/usr/include
         -stdlib=libc++
         -resource-dir ${BREW_PREFIX}/opt/llvm/lib/clang/${LLVM_VERSION}
         EOF
@@ -719,8 +724,8 @@ runs:
         # Create ARM64 config
         cat > ~/.config/clang/arm64-apple-darwin${DARWIN_VERSION}.cfg << EOF
         # Clang configuration for ARM64 macOS (Homebrew LLVM)
-        # Use resource-dir for headers - Homebrew LLVM is self-contained
-        # Do NOT use -isysroot with Xcode SDK (causes header incompatibility)
+        -isysroot ${SDK_PATH}
+        -isystem ${SDK_PATH}/usr/include
         -stdlib=libc++
         -resource-dir ${BREW_PREFIX}/opt/llvm/lib/clang/${LLVM_VERSION}
         EOF
