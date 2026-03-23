@@ -447,9 +447,21 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
       log_info("Connected to ACDS via WebSocket");
       return ASCIICHAT_OK;
     } else {
-      set_error(session, ERROR_USAGE, "discovery-service-url must use tcp://, ws://, or wss:// scheme");
-      log_error("Invalid ACDS URL scheme: %s", session->acds_url);
-      return ERROR_USAGE;
+      // No recognized scheme — treat as tcp://host[:port]
+      const char *host_start = session->acds_url;
+      const char *colon = strrchr(host_start, ':');
+      if (colon && colon > host_start) {
+        size_t host_len = (size_t)(colon - host_start);
+        if (host_len < sizeof(session->acds_address)) {
+          memcpy(session->acds_address, host_start, host_len);
+          session->acds_address[host_len] = '\0';
+          session->acds_port = (uint16_t)atoi(colon + 1);
+          log_info("Parsed URL (default TCP): host=%s, port=%u", session->acds_address, session->acds_port);
+        }
+      } else {
+        SAFE_STRNCPY(session->acds_address, host_start, sizeof(session->acds_address));
+      }
+      // Fall through to TCP path below
     }
   }
 
