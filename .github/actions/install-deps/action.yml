@@ -699,13 +699,21 @@ runs:
         DARWIN_VERSION=$(uname -r | cut -d. -f1)
         SDK_PATH=$(xcrun --show-sdk-path 2>/dev/null || echo "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
 
+        # Detect LLVM version from installed directory
+        LLVM_VERSION=$(ls -1 "${BREW_PREFIX}/opt/llvm/lib/clang/" 2>/dev/null | sort -V | tail -1)
+        if [ -z "$LLVM_VERSION" ]; then
+          echo "ERROR: Could not detect LLVM version"
+          exit 1
+        fi
+        echo "Detected LLVM version: $LLVM_VERSION"
+
         # Create x86_64 config
         cat > ~/.config/clang/x86_64-apple-darwin${DARWIN_VERSION}.cfg << EOF
         # Clang configuration for x86_64 macOS
         -isysroot ${SDK_PATH}
         -isystem ${SDK_PATH}/usr/include
         -stdlib=libc++
-        -resource-dir ${BREW_PREFIX}/opt/llvm/lib/clang/21
+        -resource-dir ${BREW_PREFIX}/opt/llvm/lib/clang/${LLVM_VERSION}
         EOF
 
         # Create ARM64 config
@@ -714,7 +722,7 @@ runs:
         -isysroot ${SDK_PATH}
         -isystem ${SDK_PATH}/usr/include
         -stdlib=libc++
-        -resource-dir ${BREW_PREFIX}/opt/llvm/lib/clang/21
+        -resource-dir ${BREW_PREFIX}/opt/llvm/lib/clang/${LLVM_VERSION}
         EOF
 
         echo "Created clang config files for darwin${DARWIN_VERSION}"
