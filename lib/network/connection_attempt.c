@@ -38,6 +38,16 @@
 #include <string.h>
 #include <memory.h>
 
+static void destroy_tcp_client_owner(void *owner) {
+  tcp_client_t *tcp_client = (tcp_client_t *)owner;
+  tcp_client_destroy(&tcp_client);
+}
+
+static void destroy_websocket_client_owner(void *owner) {
+  websocket_client_t *ws_client = (websocket_client_t *)owner;
+  websocket_client_destroy(&ws_client);
+}
+
 /* ============================================================================
  * State Machine Helper Functions
  * ============================================================================ */
@@ -281,9 +291,8 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     connection_state_transition(ctx, CONN_STATE_CONNECTED);
     ctx->connection.transport = transport;
     ctx->connection.transport_type = ACIP_TRANSPORT_WEBSOCKET;
-    ctx->connection.backend = CONNECTION_HANDLE_WEBSOCKET;
-    ctx->connection.client_owner = ws_client;
-    ctx->connection.owns_client_owner = true;
+    ctx->connection.owner = ws_client;
+    ctx->connection.owner_destroy = destroy_websocket_client_owner;
 
     return ASCIICHAT_OK;
   }
@@ -411,10 +420,9 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
   connection_state_transition(ctx, CONN_STATE_CONNECTED);
   ctx->connection.transport = transport;
   ctx->connection.transport_type = ACIP_TRANSPORT_TCP;
-  ctx->connection.backend = CONNECTION_HANDLE_TCP;
-  ctx->connection.client_owner = tcp_client;
-  ctx->connection.owns_client_owner = true;
-  log_debug("TCP client instance stored in connection context for cleanup");
+  ctx->connection.owner = tcp_client;
+  ctx->connection.owner_destroy = destroy_tcp_client_owner;
+  log_debug("TCP owner stored in connection context for cleanup");
 
   return ASCIICHAT_OK;
 }
@@ -487,10 +495,9 @@ asciichat_error_t connection_attempt_websocket(connection_attempt_context_t *ctx
   connection_state_transition(ctx, CONN_STATE_CONNECTED);
   ctx->connection.transport = transport;
   ctx->connection.transport_type = ACIP_TRANSPORT_WEBSOCKET;
-  ctx->connection.backend = CONNECTION_HANDLE_WEBSOCKET;
-  ctx->connection.client_owner = ws_client;
-  ctx->connection.owns_client_owner = true;
-  log_debug("WebSocket client instance stored in connection context");
+  ctx->connection.owner = ws_client;
+  ctx->connection.owner_destroy = destroy_websocket_client_owner;
+  log_debug("WebSocket owner stored in connection context");
 
   return ASCIICHAT_OK;
 }
