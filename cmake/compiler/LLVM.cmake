@@ -32,14 +32,6 @@
 # =============================================================================
 
 function(configure_llvm_pre_project)
-    # Save whether CMAKE_OSX_SYSROOT was user-provided (before any auto-detection)
-    # If user explicitly passed -DCMAKE_OSX_SYSROOT=..., we shouldn't clear it later
-    if(CMAKE_OSX_SYSROOT AND NOT CMAKE_OSX_SYSROOT STREQUAL "")
-        set(ASCIICHAT_USER_PROVIDED_OSX_SYSROOT TRUE CACHE INTERNAL "User provided CMAKE_OSX_SYSROOT")
-    else()
-        set(ASCIICHAT_USER_PROVIDED_OSX_SYSROOT FALSE CACHE INTERNAL "User provided CMAKE_OSX_SYSROOT")
-    endif()
-
     # Check for ccache and use it if available (from centralized FindPrograms.cmake)
     if(ASCIICHAT_CCACHE_EXECUTABLE)
         set(CMAKE_C_COMPILER_LAUNCHER "${ASCIICHAT_CCACHE_EXECUTABLE}" CACHE STRING "C compiler launcher" FORCE)
@@ -256,13 +248,6 @@ function(configure_llvm_post_project)
         return()
     endif()
 
-    # Check if user explicitly provided CMAKE_OSX_SYSROOT on command line
-    # If so, we should respect their choice and not clear it
-    set(_user_provided_sysroot FALSE)
-    if(ASCIICHAT_USER_PROVIDED_OSX_SYSROOT)
-        set(_user_provided_sysroot TRUE)
-    endif()
-
     # Determine LLVM_ROOT_PREFIX from CMAKE_C_COMPILER or from LLVM_ROOT_PREFIX cache
     set(LLVM_ROOT_PREFIX "")
     if(CMAKE_C_COMPILER)
@@ -373,22 +358,15 @@ function(configure_llvm_post_project)
         set(ASCIICHAT_MACOS_SDK_FOR_TOOLS "${_macos_sdk_for_tools}" CACHE INTERNAL "Saved macOS SDK path for tools (defer, panic, etc.)")
     endif()
 
-    # For self-contained LLVM (Homebrew, git-built), clear CMAKE_OSX_SYSROOT
-    # so CMake doesn't pass -isysroot to the compiler. These compilers find
-    # system headers via their own driver (using CommandLineTools SDK).
-    # Adding an Xcode SDK -isysroot causes header conflicts.
-    if(_user_provided_sysroot)
-        message(STATUS "${BoldGreen}Keeping${ColorReset} ${BoldBlue}CMAKE_OSX_SYSROOT${ColorReset} (user-provided)")
-    elseif(LLVM_SOURCE_NAME MATCHES "Homebrew" OR LLVM_SOURCE_NAME MATCHES "git-built")
+    # For self-contained LLVM (Homebrew, git-built), clear CMAKE_OSX_SYSROOT.
+    # CMake's project() auto-sets it via xcrun, but these compilers find system
+    # headers on their own. The extra -isysroot breaks include ordering.
+    if(LLVM_SOURCE_NAME MATCHES "Homebrew" OR LLVM_SOURCE_NAME MATCHES "git-built")
         if(CMAKE_OSX_SYSROOT)
             message(STATUS "${BoldGreen}Clearing${ColorReset} ${BoldBlue}CMAKE_OSX_SYSROOT${ColorReset} for self-contained ${LLVM_SOURCE_NAME} (was: ${CMAKE_OSX_SYSROOT})")
             unset(CMAKE_OSX_SYSROOT CACHE)
             set(CMAKE_OSX_SYSROOT "" PARENT_SCOPE)
-        else()
-            message(STATUS "${BoldGreen}Using${ColorReset} self-contained ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset} (no sysroot override)")
         endif()
-    else()
-        message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset} with system SDK")
     endif()
 
     # Add library paths and linking for the detected LLVM installation
