@@ -382,20 +382,15 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
   log_debug("session_client_like_run(): Setting up network transports");
 
-  // Determine the networking mode based on available indicators:
-  // - If config has a discovery object, it's discovery mode (will create network clients later)
-  // - If network_mode is set, this is a networked client mode
-  // - Otherwise, it's mirror mode (local-only capture)
-  // Mirror mode has a run_fn (mirror_run) but no network components
-  bool discovery_mode = (config->discovery != NULL);
-  bool network_mode = config->network_mode || discovery_mode;
-  bool mirror_mode = (!discovery_mode && !network_mode);
+  bool mirror_mode = (config->kind == SESSION_CLIENT_LIKE_KIND_MIRROR);
+  bool client_mode = (config->kind == SESSION_CLIENT_LIKE_KIND_CLIENT);
+  bool discovery_mode = (config->kind == SESSION_CLIENT_LIKE_KIND_DISCOVERY);
 
   if (mirror_mode) {
     log_debug("Mirror mode detected - will use local capture with media source");
   } else if (discovery_mode) {
     log_debug("Discovery mode detected - discovery session will manage networking");
-  } else if (network_mode) {
+  } else if (client_mode) {
     log_debug("Client/Network mode detected - will use network capture without local media source");
   }
 
@@ -467,7 +462,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // Choose capture type based on mode determined earlier:
   // - Mirror mode: needs to capture local media (webcam, file, test pattern)
   // - Network modes (client/discovery): receive frames from network, no local capture
-  bool is_network_mode = network_mode || discovery_mode;
+  bool is_network_mode = client_mode || discovery_mode;
 
   if (!stdin_render_mode && is_network_mode) {
     // Network mode: create minimal capture context without media source

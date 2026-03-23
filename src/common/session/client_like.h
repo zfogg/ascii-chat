@@ -60,6 +60,12 @@ typedef struct terminal_fd_reader_s terminal_fd_reader_t;
 /* discovery_session is defined in src/discovery/session.h as an opaque type
    Discovery mode should include that header and cast to/from void * */
 
+typedef enum session_client_like_kind {
+  SESSION_CLIENT_LIKE_KIND_MIRROR = 0,
+  SESSION_CLIENT_LIKE_KIND_CLIENT,
+  SESSION_CLIENT_LIKE_KIND_DISCOVERY,
+} session_client_like_kind_t;
+
 /* ============================================================================
  * Callback Types
  * ============================================================================ */
@@ -118,8 +124,8 @@ typedef struct session_client_like_config {
   /* Networking (NULL for mirror mode)                                  */
   /* ================================================================ */
 
-  /** True when this session should be treated as a networked client-like mode. */
-  bool network_mode;
+  /** Explicit client-like mode kind. */
+  session_client_like_kind_t kind;
 
   /**
    * Active discovery session for this connection (opaque void *).

@@ -852,7 +852,7 @@ int client_main(void) {
   session_client_like_config_t config = {
       .run_fn = client_run,
       .run_user_data = NULL,
-      .network_mode = true,
+      .kind = SESSION_CLIENT_LIKE_KIND_CLIENT,
       .discovery = NULL,
       .custom_should_exit = NULL,
       .exit_user_data = NULL,
