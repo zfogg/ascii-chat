@@ -23,6 +23,7 @@
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/network/webrtc/turn.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/platform/abstraction.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -179,6 +180,12 @@ typedef struct {
   // Cached NAT quality (gathered once, reused for NETWORK_QUALITY packets)
   nat_quality_t cached_nat_quality;
   bool nat_quality_cached;
+
+  // NAT detection threading (non-blocking background detection)
+  asciichat_thread_t nat_detection_thread;
+  bool nat_detection_in_progress;
+  bool nat_detection_thread_started;
+  mutex_t nat_quality_mutex;
 
   // Ring Consensus (NEW P2P design)
   ring_consensus_t ring;

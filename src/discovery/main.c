@@ -321,19 +321,21 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
       return ASCIICHAT_OK;
     }
   } else {
-    // PARTICIPANT ROLE: Capture local media and display host's frames
+    // PARTICIPANT ROLE: Display host's frames
     log_info("Participant in session - displaying host's frames");
 
-    // Use the unified render loop that handles capture, ASCII conversion, and display
-    result = session_render_loop(capture, display, discovery_participant_render_should_exit,
-                                 NULL,                       // No custom capture callback
-                                 NULL,                       // No custom sleep callback
-                                 discovery_keyboard_handler, // Keyboard handler for interactive controls
-                                 g_discovery);               // Pass discovery session as user_data
-
-    if (result != ASCIICHAT_OK) {
-      log_error("Render loop failed with error code: %d", result);
+    // Don't call session_render_loop immediately in discovery mode
+    // Instead, stay in discovery_session_process loop which handles frame reception
+    // This prevents rendering garbage when no frames are available yet
+    while (discovery_session_is_active(g_discovery) && !should_exit()) {
+      result = discovery_session_process(g_discovery, 50 * NS_PER_MS_INT);
+      if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
+        log_error("Discovery session process failed: %d", result);
+        return result;
+      }
     }
+
+    log_debug("Participant session ended or exit requested");
   }
 
   return result;

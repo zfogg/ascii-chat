@@ -164,6 +164,11 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   session->should_exit_callback = config->should_exit_callback;
   session->exit_callback_data = config->exit_callback_data;
 
+  // Initialize mutex for NAT quality protection
+  if (mutex_init(&session->nat_quality_mutex, "discovery_nat_quality") != 0) {
+    log_warn("Failed to initialize NAT quality mutex");
+  }
+
   log_debug("Discovery session created (initiator=%d, acds=%s:%u)", session->is_initiator, session->acds_address,
             session->acds_port);
 
@@ -217,6 +222,19 @@ void discovery_session_destroy(discovery_session_t *session) {
     session->turn_count = 0;
   }
 
+  // Wait for NAT detection thread to complete if still running (with 500ms timeout)
+  if (session->nat_detection_thread_started) {
+    log_debug("Waiting for NAT detection thread to complete (500ms timeout)...");
+    int join_result = asciichat_thread_join_timeout(&session->nat_detection_thread, NULL, 500 * 1000 * 1000); // 500ms
+    if (join_result != 0) {
+      log_warn("NAT detection thread did not exit within 500ms, continuing cleanup anyway");
+    }
+    session->nat_detection_thread_started = false;
+  }
+
+  // Destroy NAT quality mutex
+  mutex_destroy(&session->nat_quality_mutex);
+
   SAFE_FREE(session);
 }
 
@@ -265,23 +283,85 @@ static void set_error(discovery_session_t *session, asciichat_error_t error, con
  * Collects NAT detection results using STUN and other methods.
  * This is non-blocking and may not have all data immediately.
  */
-static asciichat_error_t gather_nat_quality(nat_quality_t *quality) {
+/**
+ * @brief Background thread function for NAT quality detection
+ * Runs in a separate thread to avoid blocking the main thread
+ */
+static void *nat_detection_thread_fn(void *arg) {
+  if (!arg) {
+    return NULL;
+  }
+
+  discovery_session_t *session = (discovery_session_t *)arg;
+
+  // Parse STUN servers
+  const char *stun_servers_option = GET_OPTION(stun_servers);
+  const char *stun_server_for_probe = OPT_ENDPOINT_STUN_FALLBACK;
+
+  if (stun_servers_option && stun_servers_option[0] != '\0') {
+    stun_server_for_probe = OPT_ENDPOINT_STUN_FALLBACK;
+  }
+
+  const char *probe_host = stun_server_for_probe;
+  if (strncmp(probe_host, "stun:", 5) == 0) {
+    probe_host = stun_server_for_probe + 5;
+  }
+
+  // Run blocking NAT detection in this thread (not main thread)
+  nat_quality_t quality;
+  nat_quality_init(&quality);
+  asciichat_error_t result = nat_detect_quality(&quality, probe_host, 0);
+
+  if (result == ASCIICHAT_OK) {
+    // Lock and store result
+    mutex_lock(&session->nat_quality_mutex);
+    memcpy(&session->cached_nat_quality, &quality, sizeof(nat_quality_t));
+    session->nat_quality_cached = true;
+    mutex_unlock(&session->nat_quality_mutex);
+    log_info("★ NAT_DETECTION_COMPLETE (thread): tier=%d, nat_type=%s", nat_compute_tier(&quality),
+             nat_type_to_string(quality.nat_type));
+  } else {
+    log_warn("NAT detection failed in background thread, using defaults");
+    // Don't update - caller will use defaults
+  }
+
+  session->nat_detection_in_progress = false;
+  return NULL;
+}
+
+static asciichat_error_t gather_nat_quality(discovery_session_t *session, nat_quality_t *quality) {
   if (!quality) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "quality is NULL");
+  }
+  if (!session) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
   }
 
   // Initialize with defaults
   nat_quality_init(quality);
 
-  // For discovery clients, skip blocking NAT detection (UPnP/STUN probes)
-  // Discovery mode uses ACDS for session discovery, not direct TCP, so NAT tier
-  // doesn't affect connectivity. Blocking UPnP discovery hangs the main thread
-  // and prevents signal handling. Return safe defaults instead.
-  log_debug("★ DISCOVERY_NAT_SKIP: Skipping blocking NAT detection for discovery client");
+  // Start background NAT detection thread if not already running
+  if (!session->nat_detection_in_progress && !session->nat_detection_thread_started) {
+    log_debug("★ STARTING_NAT_DETECTION_THREAD: Starting background NAT detection");
+    session->nat_detection_in_progress = true;
+
+    int thread_result = asciichat_thread_create(&session->nat_detection_thread, "nat_detection", nat_detection_thread_fn,
+                                                 (void *)session);
+    if (thread_result == 0) {
+      session->nat_detection_thread_started = true;
+      log_debug("★ NAT_DETECTION_THREAD_STARTED: Background thread created successfully");
+    } else {
+      log_warn("Failed to start NAT detection thread, using defaults");
+      session->nat_detection_in_progress = false;
+    }
+  }
+
+  // Return conservative defaults while thread is running
+  log_debug("★ GATHER_NAT_QUALITY: Returning defaults (background thread in progress)");
   quality->detection_complete = true;
-  quality->nat_type = ACIP_NAT_TYPE_SYMMETRIC; // Conservative assumption
+  quality->nat_type = ACIP_NAT_TYPE_SYMMETRIC; // Conservative default
   quality->has_host_candidates = true;
-  quality->has_relay_candidates = true; // Assume WebRTC relay available
+  quality->has_relay_candidates = true;
 
   return ASCIICHAT_OK;
 }
@@ -298,21 +378,23 @@ static asciichat_error_t send_network_quality_to_acds(discovery_session_t *sessi
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session or ACDS transport");
   }
 
-  // Use cached NAT quality if available, otherwise gather and cache it
+  // Use cached NAT quality if available, otherwise start background detection
   nat_quality_t our_quality;
   if (!session->nat_quality_cached) {
     log_debug("★ GATHERING_NAT_QUALITY (first time)");
-    asciichat_error_t result = gather_nat_quality(&our_quality);
+    asciichat_error_t result = gather_nat_quality(session, &our_quality);
     if (result != ASCIICHAT_OK) {
       log_warn("Failed to gather NAT quality: %d", result);
       return result;
     }
-    // Cache the result
+    // Use returned defaults (thread will update cached value when ready)
     memcpy(&session->cached_nat_quality, &our_quality, sizeof(nat_quality_t));
     session->nat_quality_cached = true;
   } else {
     log_debug("★ USING_CACHED_NAT_QUALITY");
+    mutex_lock(&session->nat_quality_mutex);
     memcpy(&our_quality, &session->cached_nat_quality, sizeof(nat_quality_t));
+    mutex_unlock(&session->nat_quality_mutex);
   }
 
   // Convert to wire format
