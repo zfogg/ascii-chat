@@ -9,7 +9,7 @@
 FROM zfogg/ascii-chat-deps:latest AS builder
 
 # Accept VERSION build arg in builder stage
-ARG VERSION=0.0.0
+ENV VERSION=0.0.0
 
 ENV SOURCE_COMMIT="docker-build"
 
@@ -30,7 +30,7 @@ RUN cd /build && \
     mkdir -p .git && \
     touch .git/HEAD .git/index && \
     PROJECT_VERSION_OVERRIDE=${VERSION} \
-    SOURCE_COMMIT="docker-release" \
+    SOURCE_COMMIT="${SOURCE_COMMIT}" \
     cmake --build build_release && \
     cmake --install build_release --prefix /tmp/install && \
     strip /tmp/install/bin/ascii-chat

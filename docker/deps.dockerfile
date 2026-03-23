@@ -61,13 +61,15 @@ RUN rm -rf /build/deps/ascii-chat-deps /build/deps/doxygen-awesome-css && \
     git clone --depth 1 https://github.com/ibireme/yyjson.git /build/deps/ascii-chat-deps/yyjson && \
     rm -rf /build/deps/ascii-chat-deps/*/.git /build/deps/doxygen-awesome-css/.git
 
+ENV LIB_VERSION=0.3.0
+
 # Run cmake configure to populate .deps-cache/ with all FetchContent downloads.
 # Configures both Debug and Release presets.
 # After configure, remove the build/ artifacts (CMakeCache, ninja files, object files)
 # but keep .deps-cache/ which persists outside build/ (shared across all build types).
 RUN cmake --preset default \
-        -DUSE_MUSL=OFF \
-        -DASCIICHAT_ENABLE_ANALYZERS=OFF && \
+        -DASCIICHAT_ENABLE_ANALYZERS=OFF \
+        -DASCIICHAT_LIB_VERSION=${LIB_VERSION} && \
     rm -rf build/
 
 # Configure Release preset with musl for static linking.
@@ -75,5 +77,6 @@ RUN cmake --preset default \
 # Keep build_release/ directory so release.dockerfile can reuse it without reconfiguring
 RUN cmake --preset release-musl \
         -DUSE_MUSL=ON \
-        -DASCIICHAT_ENABLE_ANALYZERS=OFF
+        -DASCIICHAT_ENABLE_ANALYZERS=OFF \
+        -DASCIICHAT_LIB_VERSION=${LIB_VERSION}
 

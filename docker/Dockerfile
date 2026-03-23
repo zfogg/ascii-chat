@@ -23,11 +23,19 @@ COPY . /build/
 RUN rm -rf /build/deps/ascii-chat-deps /build/deps/doxygen-awesome-css && \
     mv /tmp/deps-preserve/* /build/deps/ && rm -rf /tmp/deps-preserve
 
-# Build ascii-chat (Debug build, configure is fast because .deps-cache/ is pre-populated)
-RUN make CMAKE_BUILD_TYPE=Debug EXTRA_CMAKE_ARGS="-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=0.3.0"
+# Accept VERSION build arg in builder stage
+ENV VERSION=0.0.0
+ENV LIB_VERSION=0.3.0
 
-# Install to /usr/local
-RUN make install CMAKE_BUILD_TYPE=Debug CMAKE_INSTALL_PREFIX=/usr/local
+# Build ascii-chat (Debug build, configure is fast because .deps-cache/ is pre-populated)
+RUN cd /build && \
+    mkdir -p .git && \
+    touch .git/HEAD .git/index && \
+    PROJECT_VERSION_OVERRIDE=${VERSION} \
+    SOURCE_COMMIT="${SOURCE_COMMIT}" \
+    make CMAKE_BUILD_TYPE=Debug \
+      EXTRA_CMAKE_ARGS="-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=${LIB_VERSION}" && \
+    make install CMAKE_BUILD_TYPE=Debug CMAKE_INSTALL_PREFIX=/usr/local
 
 # ============================================================================
 # Stage 2: Runtime
