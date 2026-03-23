@@ -202,7 +202,7 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
     long timeout_usec = (long)((timeout_sec_double - timeout_sec) * (double)US_PER_SEC_INT);
     struct timeval timeout = {.tv_sec = timeout_sec, .tv_usec = timeout_usec};
 
-    int select_result = socket_select((int)(max_fd + 1), &read_fds, NULL, NULL, &timeout);
+    int select_result = socket_select((int)max_fd, &read_fds, NULL, NULL, &timeout);
 
     if (select_result < 0) {
       // Check if interrupted by signal (expected during shutdown)
