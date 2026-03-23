@@ -36,6 +36,8 @@ function(configure_llvm_pre_project)
     # If user explicitly passed -DCMAKE_OSX_SYSROOT=..., we shouldn't clear it later
     if(CMAKE_OSX_SYSROOT AND NOT CMAKE_OSX_SYSROOT STREQUAL "")
         set(ASCIICHAT_USER_PROVIDED_OSX_SYSROOT TRUE CACHE INTERNAL "User provided CMAKE_OSX_SYSROOT")
+    else()
+        set(ASCIICHAT_USER_PROVIDED_OSX_SYSROOT FALSE CACHE INTERNAL "User provided CMAKE_OSX_SYSROOT")
     endif()
 
     # Check for ccache and use it if available (from centralized FindPrograms.cmake)
