@@ -371,13 +371,22 @@ function(configure_llvm_post_project)
         set(ASCIICHAT_MACOS_SDK_FOR_TOOLS "${_macos_sdk_for_tools}" CACHE INTERNAL "Saved macOS SDK path for tools (defer, panic, etc.)")
     endif()
 
-    # macOS SDK handling for self-contained LLVM (Homebrew, git-built):
-    # Keep CMAKE_OSX_SYSROOT (clang needs it for system headers) but don't
-    # clear it — the headers need sysroot context for #include_next chains.
+    # For self-contained LLVM (Homebrew, git-built), clear CMAKE_OSX_SYSROOT
+    # so CMake doesn't pass -isysroot to the compiler. These compilers find
+    # system headers via their own driver (using CommandLineTools SDK).
+    # Adding an Xcode SDK -isysroot causes header conflicts.
     if(_user_provided_sysroot)
         message(STATUS "${BoldGreen}Keeping${ColorReset} ${BoldBlue}CMAKE_OSX_SYSROOT${ColorReset} (user-provided)")
+    elseif(LLVM_SOURCE_NAME MATCHES "Homebrew" OR LLVM_SOURCE_NAME MATCHES "git-built")
+        if(CMAKE_OSX_SYSROOT)
+            message(STATUS "${BoldGreen}Clearing${ColorReset} ${BoldBlue}CMAKE_OSX_SYSROOT${ColorReset} for self-contained ${LLVM_SOURCE_NAME} (was: ${CMAKE_OSX_SYSROOT})")
+            unset(CMAKE_OSX_SYSROOT CACHE)
+            set(CMAKE_OSX_SYSROOT "" PARENT_SCOPE)
+        else()
+            message(STATUS "${BoldGreen}Using${ColorReset} self-contained ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset} (no sysroot override)")
+        endif()
     else()
-        message(STATUS "${BoldGreen}Using${ColorReset} self-contained ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset} with system SDK")
+        message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset} with system SDK")
     endif()
 
     # Add library paths and linking for the detected LLVM installation
