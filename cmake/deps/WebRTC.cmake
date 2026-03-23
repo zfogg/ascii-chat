@@ -184,9 +184,23 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
         # from clang config files, and we need to set it to the correct Cellar path
         # IMPORTANT: Pass CMAKE_OSX_SYSROOT so Abseil can find system Threads library
         if(APPLE AND CMAKE_CXX_COMPILER MATCHES "clang")
-            # Pass CMAKE_OSX_SYSROOT to WebRTC subprocess for system library discovery
-            if(CMAKE_OSX_SYSROOT)
-                list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}")
+            # Pass CMAKE_OSX_SYSROOT to WebRTC subprocess for system library discovery.
+            # The main build clears CMAKE_OSX_SYSROOT for Homebrew LLVM, but the
+            # subprocess cmake needs it for FindThreads. Use saved path or xcrun.
+            set(_webrtc_sysroot "${CMAKE_OSX_SYSROOT}")
+            if(NOT _webrtc_sysroot AND ASCIICHAT_MACOS_SDK_FOR_TOOLS)
+                set(_webrtc_sysroot "${ASCIICHAT_MACOS_SDK_FOR_TOOLS}")
+            endif()
+            if(NOT _webrtc_sysroot)
+                execute_process(
+                    COMMAND xcrun --show-sdk-path
+                    OUTPUT_VARIABLE _webrtc_sysroot
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    ERROR_QUIET
+                )
+            endif()
+            if(_webrtc_sysroot)
+                list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_OSX_SYSROOT=${_webrtc_sysroot}")
             endif()
             get_filename_component(LLVM_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
             get_filename_component(LLVM_ROOT "${LLVM_BIN_DIR}/.." ABSOLUTE)
