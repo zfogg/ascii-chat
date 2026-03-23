@@ -319,6 +319,7 @@ function(configure_llvm_post_project)
                 )
                 if(XCODE_SDK_PATH AND EXISTS "${XCODE_SDK_PATH}/usr/include")
                     message(STATUS "${BoldYellow}Using Xcode SDK for system headers${ColorReset}: ${XCODE_SDK_PATH}")
+                    # Let CMAKE_OSX_SYSROOT be set naturally by CMake
                 else()
                     message(WARNING "${BoldYellow}Xcode SDK not found; system headers may not be accessible${ColorReset}")
                 endif()
