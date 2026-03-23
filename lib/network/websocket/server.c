@@ -579,7 +579,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       yyjson_mut_obj_add_str(doc, root, "protocol", proto_ver);
 
       size_t json_len = 0;
-      char *json = yyjson_mut_write(doc, 0, &json_len);
+      char *json = yyjson_mut_write(doc, YYJSON_WRITE_PRETTY_TWO_SPACES, &json_len);
       yyjson_mut_doc_free(doc);
       if (!json)
         return -1;
@@ -653,12 +653,12 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       }
 
       size_t json_len = 0;
-      char *json = yyjson_mut_write(doc, 0, &json_len);
+      char *json = yyjson_mut_write(doc, YYJSON_WRITE_PRETTY_TWO_SPACES, &json_len);
       yyjson_mut_doc_free(doc);
       if (!json)
         return -1;
 
-      unsigned char buf[LWS_PRE + 2048];
+      unsigned char buf[LWS_PRE + 4096];
       unsigned char *start = buf + LWS_PRE;
       unsigned char *p = start;
       unsigned char *end = buf + sizeof(buf);
