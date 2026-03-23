@@ -292,59 +292,17 @@ function(configure_llvm_post_project)
 
     if(EXISTS "${CLANG_RESOURCE_DIR}/include")
         message(STATUS "${BoldGreen}Found${ColorReset} ${BoldBlue}Clang${ColorReset} resource directory: ${CLANG_RESOURCE_DIR}")
-        # On macOS, check if system headers are accessible. If not (broken Homebrew LLVM),
-        # don't use -resource-dir and instead use Xcode SDK with explicit -isysroot flag.
-        if(APPLE AND NOT EXISTS "${CLANG_RESOURCE_DIR}/include/mach-o/dyld.h")
-            message(STATUS "${BoldYellow}Resource directory lacks system headers; using Xcode SDK fallback${ColorReset}")
-            find_program(XCRUN_EXECUTABLE xcrun)
-            if(XCRUN_EXECUTABLE)
-                execute_process(
-                    COMMAND ${XCRUN_EXECUTABLE} --show-sdk-path
-                    OUTPUT_VARIABLE XCODE_SDK_PATH
-                    OUTPUT_STRIP_TRAILING_WHITESPACE
-                    ERROR_QUIET
-                )
-                if(XCODE_SDK_PATH AND EXISTS "${XCODE_SDK_PATH}/usr/include")
-                    message(STATUS "${BoldYellow}Using Xcode SDK for system headers${ColorReset}: ${XCODE_SDK_PATH}")
-                    # Let CMAKE_OSX_SYSROOT be set naturally by CMake
-                else()
-                    message(WARNING "${BoldYellow}Xcode SDK not found; system headers may not be accessible${ColorReset}")
-                endif()
-            endif()
-        else()
-            # Resource directory is valid, use it
-            string(APPEND CMAKE_C_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
-            string(APPEND CMAKE_CXX_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
-            string(APPEND CMAKE_OBJC_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
-            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
-            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
-            set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS}" PARENT_SCOPE)
-        endif()
+        # Set -resource-dir so clang uses the correct built-in headers.
+        # Self-contained compilers (Homebrew, git-built) find system headers
+        # via their own driver — no -isysroot needed.
+        string(APPEND CMAKE_C_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
+        string(APPEND CMAKE_CXX_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
+        string(APPEND CMAKE_OBJC_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+        set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS}" PARENT_SCOPE)
     else()
         message(WARNING "${BoldYellow}Could not find Clang resource directory${ColorReset} at: ${CLANG_RESOURCE_DIR}")
-
-        # Fallback for broken Homebrew LLVM installations: add Xcode SDK system include paths
-        if(APPLE)
-            # Try to find Xcode's system headers
-            find_program(XCRUN_EXECUTABLE xcrun)
-            if(XCRUN_EXECUTABLE)
-                execute_process(
-                    COMMAND ${XCRUN_EXECUTABLE} --show-sdk-path
-                    OUTPUT_VARIABLE XCODE_SDK_PATH
-                    OUTPUT_STRIP_TRAILING_WHITESPACE
-                    ERROR_QUIET
-                )
-
-                if(XCODE_SDK_PATH AND EXISTS "${XCODE_SDK_PATH}/usr/include")
-                    message(STATUS "${BoldYellow}Using Xcode SDK system headers as fallback${ColorReset}: ${XCODE_SDK_PATH}/usr/include")
-                    add_compile_options(-isysroot ${XCODE_SDK_PATH})
-                else()
-                    message(WARNING "${BoldYellow}Xcode SDK not found; system headers may not be accessible${ColorReset}")
-                endif()
-            else()
-                message(WARNING "${BoldYellow}xcrun not found; cannot determine Xcode SDK path${ColorReset}")
-            endif()
-        endif()
     endif()
 
     # macOS SDK handling:
