@@ -14,6 +14,8 @@
  * @author Zachary Fogg <me@zfo.gg>
  * @date 2025
  * @version 3.0
+ *
+ * Fix: CMAKE_OSX_SYSROOT properly configured for macOS builds
  */
 
 #include <stdio.h>
