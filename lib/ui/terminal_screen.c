@@ -383,23 +383,11 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     // Flush entire frame (header + logs + blank lines) in one atomic write
     frame_buffer_flush(g_frame_buf);
   } else {
-    // Grep mode: diff-based rendering. Only rewrite lines that changed.
-    // Logs fill renderable_log_rows; the last row is the `/` input line.
+    // Grep mode: render logs with frame buffer (same as normal mode)
+    // Just apply grep highlighting to visible logs
 
-    // Flush frame buffer (containing header) before rendering grep logs
-    frame_buffer_flush(g_frame_buf);
-
-    // Suppress logging during grep rendering to prevent log messages from
-    // interleaving with escape sequences and appearing as literal text in logs
-    log_level_t saved_level = log_get_level();
-    log_set_level(LOG_FATAL); // Suppress all logging except fatal errors during rendering
-
-    int log_idx = 0;
-    int lines_used = 0;
-    int fd = frame_buffer_get_screen_output_fd();
-    FILE *output_file = (fd == STDERR_FILENO) ? stderr : stdout;
-
-    for (int i = first_log_to_display; i < (int)log_count; i++) {
+    int terminal_lines_used = 0;
+    for (int i = first_log_to_display; i < (int)log_count && terminal_lines_used < log_area_rows; i++) {
       const char *original_msg = log_entries[i].message;
       const char *msg = original_msg;
 
@@ -424,173 +412,50 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       if (msg_display_width < 0) {
         msg_display_width = (int)strlen(msg);
       }
-      int lines_for_this = 1;
+      int lines_for_this_msg = 1;
       if (g_cached_term_size.cols > 0 && msg_display_width > g_cached_term_size.cols) {
-        lines_for_this = (msg_display_width + g_cached_term_size.cols - 1) / g_cached_term_size.cols;
+        lines_for_this_msg = (msg_display_width + g_cached_term_size.cols - 1) / g_cached_term_size.cols;
       }
 
-      // When logs are filtered (grep active), they're in a different order than before.
-      // Only use cached pointers when NOT filtering to avoid cache misses on every frame.
-      // This prevents the "spam" effect where all logs redraw constantly during grep searches.
-      bool same_as_before = false;
-      if (!log_search_is_active()) {
-        same_as_before = (log_idx < g_prev_log_count && g_prev_log_ptrs[log_idx] == original_msg);
-      }
-
-      if (same_as_before) {
-        // Content unchanged - skip past it without rewriting.
-        if (lines_for_this == 1) {
-          fprintf(output_file, "\n");
-        } else {
-          fprintf(output_file, "\x1b[%dB", lines_for_this);
-        }
-      } else {
-        // Content changed - overwrite and clear tail.
-        fprintf(output_file, "%s\n", msg);
-      }
-
-      if (log_idx < MAX_CACHED_LINES) {
-        g_prev_log_ptrs[log_idx] = original_msg;
-      }
-      log_idx++;
-      lines_used += lines_for_this;
-    }
-
-    // Fill blank lines up to renderable_log_rows. If there's one line of space left,
-    // render one more partial log (truncated to fit terminal width) instead of blank line.
-    int remaining = renderable_log_rows - lines_used;
-
-    if (remaining >= 1 && first_log_to_display > 0) {
-      // Render one more log line above the displayed ones, truncated to fit terminal width
-      int prev_idx = first_log_to_display - 1;
-      const char *prev_msg = log_entries[prev_idx].message;
-
-      int prev_width = display_width(prev_msg);
-      if (prev_width < 0) {
-        prev_width = (int)strlen(prev_msg);
-      }
-
-      if (prev_width > g_cached_term_size.cols) {
-        // Truncate to fit: progressively test shorter substrings until one fits
-        int target_width = g_cached_term_size.cols - 3; // Reserve space for ellipsis
-        if (target_width <= 0) {
-          fprintf(output_file, "...\x1b[K\n");
-        } else {
-          size_t src_len = strlen(prev_msg);
-          bool found = false;
-
-          for (size_t truncate_at = src_len; truncate_at > 0; truncate_at--) {
-            char test_buf[SESSION_LOG_LINE_MAX];
-            SAFE_STRNCPY(test_buf, prev_msg, truncate_at);
-            test_buf[truncate_at] = '\0';
-
-            int test_width = display_width(test_buf);
-            if (test_width < 0) {
-              test_width = (int)strlen(test_buf);
-            }
-
-            if (test_width <= target_width) {
-              // Found a length that fits
-              fprintf(output_file, "%s...\x1b[K\n", test_buf);
-              found = true;
-              break;
-            }
-          }
-
-          if (!found) {
-            fprintf(output_file, "...\x1b[K\n");
-          }
-        }
-      } else {
-        // Fits without truncation
-        fprintf(output_file, "%s\x1b[K\n", prev_msg);
-      }
-
-      remaining--;
-    }
-
-    // Fill remaining blank lines with color reset to prevent color bleed
-    for (int i = 0; i < remaining; i++) {
-      fprintf(output_file, "\n");
-    }
-
-    g_prev_log_count = log_idx;
-    g_prev_total_lines = lines_used;
-
-    // Flush buffered output before rendering grep UI to ensure correct order
-    fflush(output_file);
-
-    // Atomic grep UI rendering: combine cursor positioning and input line into
-    // a single write to prevent log output from interrupting the escape sequences.
-    // This prevents the race condition where logs appear between the cursor
-    // positioning command and the grep input line rendering.
-    char grep_ui_buffer[512];
-
-    // Validate terminal size before using it in formatting
-    if (g_cached_term_size.rows <= 0 || g_cached_term_size.rows > 9999) {
-      // Invalid terminal size - skip grep rendering to avoid malformed output
-      return;
-    }
-
-    int pos = snprintf(grep_ui_buffer, sizeof(grep_ui_buffer), "\x1b[%d;1H", g_cached_term_size.rows);
-
-    // Validate snprintf succeeded and produced expected output
-    if (pos > 0 && pos < (int)sizeof(grep_ui_buffer) - 256) {
-      // Lock while reading grep state to ensure atomic render
-      // Get the search pattern under mutex protection
-      mutex_t *grep_mutex = log_search_get_mutex();
-      if (grep_mutex) {
-        mutex_lock(grep_mutex);
-        int pattern_len = log_search_get_input_len();
-        const char *pattern = log_search_get_input_buffer();
-        int cursor_pos = log_search_get_cursor_position();
-
-        // Validate pattern_len and cursor_pos are within reasonable bounds
-        if (pattern_len < 0 || pattern_len > 256) {
-          pattern_len = 0;
-          pattern = NULL;
-        }
-        if (cursor_pos < 0 || cursor_pos > pattern_len) {
-          cursor_pos = pattern_len;
-        }
-
-        if (pattern_len > 0 && pattern) {
-          int remaining =
-              snprintf(grep_ui_buffer + pos, sizeof(grep_ui_buffer) - (size_t)pos, "/%.*s", pattern_len, pattern);
-          if (remaining > 0 && remaining < (int)sizeof(grep_ui_buffer) - (int)pos) {
-            pos += remaining;
-          }
-        } else {
-          // No pattern yet - just output the slash
-          if (pos + 1 < (int)sizeof(grep_ui_buffer)) {
-            grep_ui_buffer[pos++] = '/';
-          }
-        }
-
-        // Position cursor at the current edit position within the pattern
-        // After writing "/{pattern}", cursor is at column = 1 + pattern_len + 1
-        // We want it at column = 1 + cursor_pos + 1 (for "/" at column 1, then cursor_pos chars)
-        // So move left by: pattern_len - cursor_pos columns
-        int cursor_offset = pattern_len - cursor_pos;
-        if (cursor_offset > 0) {
-          int remaining =
-              snprintf(grep_ui_buffer + pos, sizeof(grep_ui_buffer) - (size_t)pos, "\x1b[%dD", cursor_offset);
-          if (remaining > 0 && remaining < (int)(sizeof(grep_ui_buffer) - (size_t)pos)) {
-            pos += remaining;
-          }
-        }
-
-        mutex_unlock(grep_mutex);
+      if (terminal_lines_used + lines_for_this_msg <= log_area_rows) {
+        frame_buffer_printf(g_frame_buf, "%s\n", msg);
+        terminal_lines_used += lines_for_this_msg;
       }
     }
 
-    // Write entire grep UI (cursor positioning + input) in single operation
-    if (pos > 0 && pos <= (int)sizeof(grep_ui_buffer)) {
-      platform_write_all(fd, grep_ui_buffer, (size_t)pos);
+    // Pad remaining log area with blank lines
+    while (terminal_lines_used < log_area_rows) {
+      frame_buffer_printf(g_frame_buf, "\n");
+      terminal_lines_used++;
     }
 
-    // Restore logging level after grep rendering completes
-    log_set_level(saved_level);
+    // Flush frame buffer before rendering grep UI
+    frame_buffer_flush(g_frame_buf);
+
+    // Grep input line UI (position cursor at bottom and display "/" prompt with pattern)
+    // Get the search pattern under mutex protection
+    mutex_t *grep_mutex = log_search_get_mutex();
+    if (grep_mutex && g_cached_term_size.rows > 0) {
+      mutex_lock(grep_mutex);
+      int pattern_len = log_search_get_input_len();
+      const char *pattern = log_search_get_input_buffer();
+      int cursor_pos = log_search_get_cursor_position();
+
+      // Render grep input line at bottom of screen
+      printf("\x1b[%d;1H/", g_cached_term_size.rows);
+      if (pattern_len > 0 && pattern) {
+        printf("%.*s", pattern_len, pattern);
+      }
+
+      // Position cursor at current edit position
+      int cursor_offset = pattern_len - cursor_pos;
+      if (cursor_offset > 0) {
+        printf("\x1b[%dD", cursor_offset);
+      }
+      fflush(stdout);
+
+      mutex_unlock(grep_mutex);
+    }
   }
 
   SAFE_FREE(log_entries);

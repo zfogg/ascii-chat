@@ -598,9 +598,14 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // Wait for splash animation to finish before proceeding to render loop
   // (splash_anim thread uses the display, must not be disrupted before cleanup)
   // But skip for immediate snapshots (snapshot-delay=0) which need to output first frame immediately
-  splash_intro_done();
-  if (!(GET_OPTION(snapshot_mode) && GET_OPTION(snapshot_delay) == 0.0)) {
-    splash_wait_for_animation();
+  // For discovery mode, keep the splash running - it stays visible while waiting for peers
+  if (config->discovery == NULL) {
+    splash_intro_done();
+    if (!(GET_OPTION(snapshot_mode) && GET_OPTION(snapshot_delay) == 0.0)) {
+      splash_wait_for_animation();
+    }
+  } else {
+    log_debug("[SETUP_SPLASH] Discovery mode: keeping splash visible while waiting for peers");
   }
 
   // ============================================================================
@@ -805,7 +810,10 @@ cleanup:
   // Stop splash animation and enforce minimum display time (even on error path)
   // But skip completely if shutting down - don't interact with splash at all during shutdown
   // The animation thread will exit on its own when it detects shutdown_is_requested()
-  if (!APP_CALLBACK_BOOL(should_exit)) {
+  // For discovery mode, keep the splash running - it stays visible while waiting for peers
+  if (config->discovery != NULL) {
+    log_debug("[CLEANUP] Discovery mode: keeping splash alive for peer waiting UI");
+  } else if (!APP_CALLBACK_BOOL(should_exit)) {
     log_debug("[CLEANUP] About to call splash_intro_done()");
     splash_intro_done();
     log_debug("[CLEANUP] splash_intro_done() returned");

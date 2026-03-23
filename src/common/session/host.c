@@ -720,6 +720,13 @@ static void *host_render_thread(void *arg) {
 
             // Display locally if display context is set
             if (host->display_context) {
+              // Disable terminal logging on first rendered frame so logs don't
+              // interleave with ASCII art output
+              static bool logging_disabled = false;
+              if (!logging_disabled) {
+                log_set_terminal_output(false);
+                logging_disabled = true;
+              }
               session_display_render_frame(host->display_context, grid_frame);
             }
 

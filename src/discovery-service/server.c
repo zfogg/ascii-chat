@@ -1112,6 +1112,9 @@ void *acds_client_handler(void *arg) {
   transport->user_data = client_data;
 
   // Main packet processing loop
+  uint64_t last_packet_time_ns = time_get_ns();
+  const uint64_t idle_disconnect_ns = 60ULL * NS_PER_SEC_INT; // Disconnect after 60s idle
+
   while (atomic_load_bool(&server->tcp_server.running)) {
     packet_type_t packet_type;
     void *payload = NULL;
@@ -1121,6 +1124,7 @@ void *acds_client_handler(void *arg) {
     int result = receive_packet(client_socket, &packet_type, &payload, &payload_size);
 
     if (result >= 0) {
+      last_packet_time_ns = time_get_ns();
       log_info("★ ACDS_CLIENT_HANDLER: Received packet type=%u from %s, payload_size=%zu", packet_type, client_ip, payload_size);
 
       // Track network stats (TCP packets)
@@ -1139,7 +1143,16 @@ void *acds_client_handler(void *arg) {
       asciichat_error_t error = GET_ERRNO();
       if (error == ERROR_NETWORK_TIMEOUT ||
           (error == ERROR_NETWORK && has_context && strstr(err_ctx.context_message, "timed out") != NULL)) {
-        // Timeout waiting for next packet - this is normal, continue waiting
+        // Check if client has been idle too long (abrupt disconnect without FIN)
+        uint64_t idle_ns = time_get_ns() - last_packet_time_ns;
+        if (idle_ns >= idle_disconnect_ns) {
+          log_info("Client %s: idle for %llu seconds, disconnecting", client_ip,
+                   (unsigned long long)(idle_ns / NS_PER_SEC_INT));
+          if (payload) {
+            buffer_pool_free(NULL, payload, payload_size);
+          }
+          break;
+        }
         log_debug("Client %s: receive timeout, continuing to wait for packets", client_ip);
         if (payload) {
           buffer_pool_free(NULL, payload, payload_size);
