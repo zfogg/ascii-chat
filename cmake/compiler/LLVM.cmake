@@ -327,6 +327,12 @@ function(configure_llvm_post_project)
                     # Put Xcode SDK FIRST so C headers with fundamental types are found before clang's C++ headers need them
                     add_compile_options("-isystem${XCODE_SDK_PATH}/usr/include")
                     add_compile_options("-isystem${CLANG_RESOURCE_DIR}/include")
+                    # Also set CMAKE_*_FLAGS for targets added before this function (e.g., ExternalProject builds)
+                    # Use space-separated flags (no list semicolons) to avoid tokenization breaking
+                    string(APPEND CMAKE_C_FLAGS " -isystem${XCODE_SDK_PATH}/usr/include -isystem${CLANG_RESOURCE_DIR}/include")
+                    string(APPEND CMAKE_CXX_FLAGS " -isystem${XCODE_SDK_PATH}/usr/include -isystem${CLANG_RESOURCE_DIR}/include")
+                    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
+                    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
                 else()
                     message(WARNING "${BoldYellow}Xcode SDK not found; system headers may not be accessible${ColorReset}")
                 endif()
