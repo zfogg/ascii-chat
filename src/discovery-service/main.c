@@ -449,7 +449,11 @@ cleanup_resources:
   // Stop and join WebSocket event loop thread
   if (g_ws_thread_started) {
     atomic_store_bool(&g_websocket_server.running, false);
-    asciichat_thread_join(&g_ws_thread, NULL);
+    websocket_server_cancel_service(&g_websocket_server);
+    int join_result = asciichat_thread_join_timeout(&g_ws_thread, NULL, 5000 * NS_PER_MS_INT);
+    if (join_result != 0) {
+      log_warn("WebSocket event loop thread did not exit within 5 seconds");
+    }
     g_ws_thread_started = false;
   }
   websocket_server_destroy(&g_websocket_server);
