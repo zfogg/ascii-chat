@@ -219,10 +219,9 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
 
 typedef void tcp_client_t;
 
-asciichat_error_t connection_attempt_tcp(const char *address, int port, tcp_client_t **out_client) {
+asciichat_error_t connection_attempt_tcp(const char *address, int port) {
   (void)address;
   (void)port;
-  (void)out_client;
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "TCP not supported in WASM");
 }
 
@@ -352,4 +351,3 @@ asciichat_error_t thread_pool_stop_all(void *pool) {
 bool platform_is_interactive(void) {
   return false;
 }
-

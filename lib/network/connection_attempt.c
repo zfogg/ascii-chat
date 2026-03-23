@@ -156,9 +156,8 @@ bool connection_check_timeout(const connection_attempt_context_t *ctx) {
  * and creates ACIP transport for protocol communication.
  */
 asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, const char *server_address,
-                                         uint16_t server_port, struct tcp_client *pre_created_tcp_client) {
-  log_info("=== connection_attempt_tcp CALLED: address='%s', port=%u, pre_created=%p ===", server_address, server_port,
-           (void *)pre_created_tcp_client);
+                                         uint16_t server_port) {
+  log_info("=== connection_attempt_tcp CALLED: address='%s', port=%u ===", server_address, server_port);
 
   if (!ctx || !server_address) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
@@ -298,20 +297,12 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     return result;
   }
 
-  // Use pre-created TCP client if provided, otherwise create one
-  tcp_client_t *tcp_client = pre_created_tcp_client;
-  bool created_tcp_client = false;
+  // Create TCP client internally so connection ownership stays in this layer.
+  tcp_client_t *tcp_client = tcp_client_create();
   if (!tcp_client) {
-    tcp_client = tcp_client_create();
-    created_tcp_client = true;
-    if (!tcp_client) {
-      log_error("Failed to create TCP client");
-      connection_state_transition(ctx, CONN_STATE_FAILED);
-      return SET_ERRNO(ERROR_NETWORK, "TCP client creation failed");
-    }
-    log_debug("Created TCP client locally (not pre-created by framework)");
-  } else {
-    log_debug("Using pre-created TCP client from framework");
+    log_error("Failed to create TCP client");
+    connection_state_transition(ctx, CONN_STATE_FAILED);
+    return SET_ERRNO(ERROR_NETWORK, "TCP client creation failed");
   }
 
   // Set timeout for this attempt
@@ -325,9 +316,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
 
   if (tcp_result != 0) {
     log_debug("TCP connection failed (tcp_client_connect returned %d)", tcp_result);
-    if (created_tcp_client) {
-      tcp_client_destroy(&tcp_client);
-    }
+    tcp_client_destroy(&tcp_client);
     connection_state_transition(ctx, CONN_STATE_FAILED);
     return SET_ERRNO(ERROR_NETWORK, "TCP connection failed after %u attempts", ctx->reconnect_attempt);
   }
@@ -336,9 +325,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
   socket_t sockfd = tcp_client_get_socket(tcp_client);
   if (sockfd == INVALID_SOCKET_VALUE) {
     log_error("Failed to get socket from TCP client");
-    if (created_tcp_client) {
-      tcp_client_destroy(&tcp_client);
-    }
+    tcp_client_destroy(&tcp_client);
     return SET_ERRNO(ERROR_NETWORK, "Invalid socket after TCP connection");
   }
 
@@ -382,9 +369,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     log_debug("Initializing crypto context...");
     if (APP_CALLBACK_INT(client_crypto_init) != 0) {
       log_error("Failed to initialize crypto context");
-      if (created_tcp_client) {
-        tcp_client_destroy(&tcp_client);
-      }
+      tcp_client_destroy(&tcp_client);
       return SET_ERRNO(ERROR_CRYPTO, "Crypto initialization failed");
     }
     log_debug("Crypto context initialized successfully");
@@ -393,9 +378,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     transport = acip_tcp_transport_create("connection", sockfd, NULL);
     if (!transport) {
       log_error("Failed to create ACIP transport for TCP");
-      if (created_tcp_client) {
-        tcp_client_destroy(&tcp_client);
-      }
+      tcp_client_destroy(&tcp_client);
       return SET_ERRNO(ERROR_NETWORK, "Failed to create ACIP transport");
     }
 
@@ -404,9 +387,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     if (APP_CALLBACK_INT_TRANSPORT(client_crypto_handshake, transport) != 0) {
       log_error("Crypto handshake failed");
       acip_transport_destroy(transport);
-      if (created_tcp_client) {
-        tcp_client_destroy(&tcp_client);
-      }
+      tcp_client_destroy(&tcp_client);
       return SET_ERRNO(ERROR_NETWORK, "Crypto handshake failed");
     }
     log_debug("Crypto handshake completed successfully");
@@ -421,9 +402,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     transport = acip_tcp_transport_create("connection", sockfd, NULL);
     if (!transport) {
       log_error("Failed to create ACIP transport for TCP");
-      if (created_tcp_client) {
-        tcp_client_destroy(&tcp_client);
-      }
+      tcp_client_destroy(&tcp_client);
       return SET_ERRNO(ERROR_NETWORK, "Failed to create ACIP transport");
     }
   }
@@ -432,11 +411,9 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
   connection_state_transition(ctx, CONN_STATE_CONNECTED);
   ctx->connection.transport = transport;
   ctx->connection.transport_type = ACIP_TRANSPORT_TCP;
-  if (created_tcp_client) {
-    ctx->connection.backend = CONNECTION_HANDLE_TCP;
-    ctx->connection.client_owner = tcp_client;
-    ctx->connection.owns_client_owner = true;
-  }
+  ctx->connection.backend = CONNECTION_HANDLE_TCP;
+  ctx->connection.client_owner = tcp_client;
+  ctx->connection.owns_client_owner = true;
   log_debug("TCP client instance stored in connection context for cleanup");
 
   return ASCIICHAT_OK;

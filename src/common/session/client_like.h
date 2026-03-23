@@ -56,8 +56,6 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <stdbool.h>
 
-/* Forward declarations - callers include full headers themselves */
-typedef struct tcp_client tcp_client_t;
 typedef struct websocket_client websocket_client_t;
 typedef struct terminal_fd_reader_s terminal_fd_reader_t;
 /* discovery_session is defined in src/discovery/session.h as an opaque type
@@ -123,13 +121,6 @@ typedef struct session_client_like_config {
 
   /** True when this session should be treated as a networked client-like mode. */
   bool network_mode;
-
-  /**
-   * Active TCP transport for this session. When non-NULL, teardown will
-   * shut it down gracefully as part of the cleanup sequence.
-   * NULL for mirror mode and discovery participant mode.
-   */
-  tcp_client_t *tcp_client;
 
   /**
    * Active WebSocket transport for this session. When non-NULL, teardown
@@ -254,17 +245,6 @@ typedef struct session_client_like_config {
  *         session_client_like_run() has not been called yet.
  */
 bool (*session_client_like_get_render_should_exit(void))(void *);
-
-/**
- * Get the TCP client created by session_client_like_run() (if applicable).
- *
- * Returns the TCP client created for direct TCP connections (non-WebSocket).
- * Only valid after session_client_like_run() is called and during run_fn execution.
- * May be NULL if WebSocket is being used instead.
- *
- * @return Pointer to tcp_client_t, or NULL if not created or using WebSocket
- */
-tcp_client_t *session_client_like_get_tcp_client(void);
 
 /**
  * Get the stdin frame reader for ASCII-to-video rendering (stdin render mode only).
