@@ -55,7 +55,7 @@ jobs:
 
       - name: Configure CMake build
         run: |
-          cmake --preset release -B build_release
+          cmake --preset release -B build_release -DUSE_MUSL=OFF
 
       - name: Save configure cache
         if: always()
