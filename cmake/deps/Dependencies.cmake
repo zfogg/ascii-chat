@@ -71,7 +71,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/WebRTC.cmake)
 # when CMAKE_OSX_SYSROOT points to Xcode SDK (headers not accessible with Homebrew LLVM)
 # Let Homebrew LLVM find headers via its own resource directory instead
 if(APPLE AND CMAKE_CXX_COMPILER MATCHES "clang")
-    unset(CMAKE_OSX_SYSROOT CACHE)
+    set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
 endif()
 
 # OpenSSL - SSL/TLS library (required by libdatachannel, libwebsockets, and TURN credentials)
