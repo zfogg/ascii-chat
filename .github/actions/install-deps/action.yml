@@ -256,14 +256,6 @@ runs:
         # Don't use set -e here - we need to survive install-deps failures
         set -uo pipefail
 
-        # Select Xcode 16.0 for compatibility with Homebrew LLVM
-        # Xcode 16.4 SDK headers are incompatible with LLVM 22's header search
-        XCODE_16_0="/Applications/Xcode_16.0.app"
-        if [ -d "$XCODE_16_0" ]; then
-          echo "Selecting Xcode 16.0 for LLVM compatibility"
-          sudo xcode-select -s "$XCODE_16_0"
-        fi
-
         echo "Running scripts/install-deps.sh to install build dependencies..."
         # install-deps.sh handles all Homebrew package installation
         # GitHub runners have pre-installed packages with version conflicts
@@ -690,48 +682,6 @@ runs:
             exit 1
           fi
         done
-
-        # Configure clang to work without Command Line Tools
-        # This allows Homebrew LLVM to find the macOS SDK
-        mkdir -p ~/.config/clang
-
-        # Get Darwin version for config filename
-        DARWIN_VERSION=$(uname -r | cut -d. -f1)
-        # Use Command Line Tools SDK (works with Homebrew LLVM), not Xcode SDK
-        SDK_PATH="/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk"
-        if [ ! -d "$SDK_PATH" ]; then
-          # Fallback to xcrun if Command Line Tools not found
-          SDK_PATH=$(xcrun --show-sdk-path 2>/dev/null || echo "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
-        fi
-
-        # Detect LLVM version from installed directory
-        LLVM_VERSION=$(ls -1 "${BREW_PREFIX}/opt/llvm/lib/clang/" 2>/dev/null | sort -V | tail -1)
-        if [ -z "$LLVM_VERSION" ]; then
-          echo "ERROR: Could not detect LLVM version"
-          exit 1
-        fi
-        echo "Detected LLVM version: $LLVM_VERSION"
-
-        # Create x86_64 config
-        cat > ~/.config/clang/x86_64-apple-darwin${DARWIN_VERSION}.cfg << EOF
-        # Clang configuration for x86_64 macOS (Homebrew LLVM)
-        -isysroot ${SDK_PATH}
-        -isystem ${SDK_PATH}/usr/include
-        -stdlib=libc++
-        -resource-dir ${BREW_PREFIX}/opt/llvm/lib/clang/${LLVM_VERSION}
-        EOF
-
-        # Create ARM64 config
-        cat > ~/.config/clang/arm64-apple-darwin${DARWIN_VERSION}.cfg << EOF
-        # Clang configuration for ARM64 macOS (Homebrew LLVM)
-        -isysroot ${SDK_PATH}
-        -isystem ${SDK_PATH}/usr/include
-        -stdlib=libc++
-        -resource-dir ${BREW_PREFIX}/opt/llvm/lib/clang/${LLVM_VERSION}
-        EOF
-
-        echo "Created clang config files for darwin${DARWIN_VERSION}"
-        ls -la ~/.config/clang/
 
     # =========================================================================
     # Pre-built Tools Download (macOS)
