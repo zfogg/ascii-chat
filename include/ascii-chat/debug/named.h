@@ -197,10 +197,11 @@ const char *named_get_format_spec(uintptr_t key);
  * @ingroup debug_named
  *
  * Registers an FD with a key that includes type namespace to avoid collisions
- * with packet types or other numeric values. Name is auto-generated as "fd=%d".
+ * with packet types or other numeric values. If name is non-NULL, uses "name (fd=N)"
+ * format; otherwise auto-generates as "fd=N".
  * In release builds (NDEBUG), this is a no-op and returns "fd=%d" string.
  */
-const char *named_register_fd(int fd, const char *file, int line, const char *func);
+const char *named_register_fd(int fd, const char *name, const char *file, int line, const char *func);
 
 /**
  * @brief Look up a registered file descriptor
@@ -697,7 +698,7 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
       _fd = platform_open((pathname), (flags));                                                                        \
     }                                                                                                                  \
     if (_fd >= 0) {                                                                                                    \
-      named_register_fd(_fd, __FILE__, __LINE__, __func__);                                                            \
+      named_register_fd(_fd, NULL, __FILE__, __LINE__, __func__);                                                            \
     }                                                                                                                  \
     _fd;                                                                                                               \
   })
@@ -714,14 +715,14 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
 /**
  * @brief Register an existing file descriptor
  * @param fd File descriptor (must be >= 0)
- * @param name Ignored - kept for API compatibility
+ * @param name Human-readable name for the fd (e.g., "inhibit"), or NULL for auto-generated
  * @ingroup debug_named
  *
  * Convenience macro for registering file descriptors that are already open.
- * Automatically uses "fd=%d" format specifier and type namespace to avoid collisions.
+ * If name is non-NULL, registers as "name (fd=N)"; otherwise uses "fd=N".
  * In release builds (NDEBUG), this is a no-op.
  */
-#define NAMED_REGISTER_FD(fd, name) named_register_fd((fd), __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_FD(fd, name) named_register_fd((fd), (name), __FILE__, __LINE__, __func__)
 
 /**
  * @brief Register an atomic_t with automatic format specifier

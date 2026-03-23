@@ -78,7 +78,7 @@ asciichat_error_t platform_enable_keepawake(void) {
   // Register the inhibit fd with the named registry for debug logging
   NAMED_REGISTER_FD(g_inhibit_fd, "inhibit");
 
-  log_debug("Keepawake enabled via systemd-inhibit (fd: %d)", g_inhibit_fd);
+  log_debug("Keepawake enabled via systemd-inhibit fd=%d", g_inhibit_fd);
   return ASCIICHAT_OK;
 
 #else
@@ -92,7 +92,7 @@ void platform_disable_keepawake(void) {
 #ifdef HAVE_LIBSYSTEMD
   if (g_inhibit_fd >= 0) {
     close(g_inhibit_fd);
-    log_debug("Keepawake disabled (closed inhibit fd: %d)", g_inhibit_fd);
+    log_debug("Keepawake disabled, closed inhibit fd=%d", g_inhibit_fd);
     // Unregister from named registry after logging
     NAMED_UNREGISTER_FD(g_inhibit_fd);
     g_inhibit_fd = -1;

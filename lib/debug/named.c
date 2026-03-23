@@ -434,7 +434,7 @@ static inline uintptr_t encode_pkt_type_key(int pkt_type) {
   return ((uintptr_t)-1 - 100000U - (unsigned int)pkt_type);
 }
 
-const char *named_register_fd(int fd, const char *file, int line, const char *func) {
+const char *named_register_fd(int fd, const char *name, const char *file, int line, const char *func) {
   if (fd < 0) {
     return "?";
   }
@@ -444,7 +444,11 @@ const char *named_register_fd(int fd, const char *file, int line, const char *fu
   }
 
   char name_buffer[256];
-  snprintf(name_buffer, sizeof(name_buffer), "fd=%d", fd);
+  if (name) {
+    snprintf(name_buffer, sizeof(name_buffer), "%s", name);
+  } else {
+    snprintf(name_buffer, sizeof(name_buffer), "fd=%d", fd);
+  }
 
   // Allocate entry BEFORE acquiring lock
   named_entry_t *entry = malloc(sizeof(named_entry_t));
