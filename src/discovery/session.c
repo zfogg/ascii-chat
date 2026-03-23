@@ -15,6 +15,7 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/connection_endpoint.h>
+#include <ascii-chat/network/connection_factory.h>
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/network/webrtc/peer_manager.h>
 #include <ascii-chat/discovery/identity.h>
@@ -22,20 +23,16 @@
 #include "negotiate.h"
 #include "nat.h"
 #include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/socket.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/network/websocket/client.h>
 
 #ifdef _WIN32
-#include <ws2tcpip.h> // For getaddrinfo on Windows
 #include <time.h>
 #else
-#include <netdb.h> // For getaddrinfo on POSIX
 #include <sys/time.h>
 #include <time.h>
 #endif
@@ -187,10 +184,7 @@ void discovery_session_destroy(discovery_session_t *session) {
     acip_transport_destroy(session->acds_transport);
     session->acds_transport = NULL;
   }
-  if (session->acds_socket != INVALID_SOCKET_VALUE) {
-    socket_close(session->acds_socket);
-    session->acds_socket = INVALID_SOCKET_VALUE;
-  }
+  session->acds_socket = INVALID_SOCKET_VALUE;
 
   // Destroy host context if active
   if (session->host_ctx) {
@@ -481,219 +475,28 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
 
   set_state(session, DISCOVERY_STATE_CONNECTING_ACDS);
 
-  connection_endpoint_t endpoint = {0};
   const char *endpoint_input = session->acds_url[0] != '\0' ? session->acds_url : session->acds_address;
   uint16_t endpoint_default_port = session->acds_port > 0 ? session->acds_port : ACIP_DISCOVERY_DEFAULT_PORT;
-
-  asciichat_error_t endpoint_result = connection_endpoint_resolve(endpoint_input, endpoint_default_port, &endpoint);
+  connection_endpoint_t endpoint = {0};
+  asciichat_error_t endpoint_result =
+      connection_factory_open("discovery_acds", endpoint_input, endpoint_default_port, NULL, &session->acds_transport,
+                              &endpoint);
   if (endpoint_result != ASCIICHAT_OK) {
-    set_error(session, endpoint_result, "Failed to resolve ACDS endpoint");
+    set_error(session, endpoint_result, "Failed to connect to ACDS");
     return endpoint_result;
   }
 
-  if (endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET) {
-    log_info("Connecting to ACDS via WebSocket: %s", endpoint.input);
-    acip_transport_t *transport = acip_websocket_client_transport_create("discovery_acds", endpoint.input, NULL);
-    if (!transport) {
-      set_error(session, ERROR_NETWORK_CONNECT, "Failed to create WebSocket connection to ACDS");
-      log_error("WebSocket connection to ACDS failed: %s", endpoint.input);
-      return ERROR_NETWORK_CONNECT;
-    }
-    session->acds_transport = transport;
-    log_info("Connected to ACDS via WebSocket");
-    return ASCIICHAT_OK;
-  }
-
-  // TCP path
   SAFE_STRNCPY(session->acds_address, endpoint.host, sizeof(session->acds_address));
   session->acds_port = endpoint.port;
+  session->acds_socket = session->acds_transport->methods->get_socket(session->acds_transport);
 
-  log_info("Connecting to ACDS at %s:%u...", session->acds_address, session->acds_port);
-
-  // Resolve hostname using getaddrinfo (supports both IP addresses and hostnames)
-  struct addrinfo hints, *result = NULL;
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_UNSPEC; // IPv4 and IPv6
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_protocol = IPPROTO_TCP;
-
-  char port_str[8];
-  safe_snprintf(port_str, sizeof(port_str), "%u", session->acds_port);
-
-  int gai_err = getaddrinfo(session->acds_address, port_str, &hints, &result);
-  if (gai_err != 0) {
-    set_error(session, ERROR_NETWORK_CONNECT, "Failed to resolve ACDS address");
-    log_error("getaddrinfo failed: %s", gai_strerror(gai_err));
-    return ERROR_NETWORK_CONNECT;
+  if (endpoint.protocol == CONNECTION_ENDPOINT_WEBSOCKET) {
+    log_info("Connected to ACDS via WebSocket: %s", endpoint.input);
+  } else {
+    log_info("Connected to ACDS at %s:%u", session->acds_address, session->acds_port);
   }
 
-  // Create socket
-  session->acds_socket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-  if (session->acds_socket == INVALID_SOCKET_VALUE) {
-    set_error(session, ERROR_NETWORK, "Failed to create socket");
-    freeaddrinfo(result);
-    return ERROR_NETWORK;
-  }
-
-  // Check exit flag before attempting connect
-  if (session->should_exit_callback && session->should_exit_callback(session->exit_callback_data)) {
-    socket_close(session->acds_socket);
-    session->acds_socket = INVALID_SOCKET_VALUE;
-    freeaddrinfo(result);
-    return ERROR_NETWORK_CONNECT;
-  }
-
-  // Set socket to non-blocking mode for timeout-aware connect
-  if (socket_set_nonblocking(session->acds_socket, true) != 0) {
-    set_error(session, ERROR_NETWORK, "Failed to set non-blocking mode");
-    socket_close(session->acds_socket);
-    session->acds_socket = INVALID_SOCKET_VALUE;
-    freeaddrinfo(result);
-    return ERROR_NETWORK;
-  }
-
-  // Attempt non-blocking connect
-  int connect_result = connect(session->acds_socket, result->ai_addr, (socklen_t)result->ai_addrlen);
-
-  if (connect_result == 0) {
-    // Connected immediately (unlikely but possible for localhost)
-    if (socket_set_blocking(session->acds_socket) != 0) {
-      set_error(session, ERROR_NETWORK, "Failed to set socket to blocking mode");
-      socket_close(session->acds_socket);
-      session->acds_socket = INVALID_SOCKET_VALUE;
-      freeaddrinfo(result);
-      return ERROR_NETWORK;
-    }
-    freeaddrinfo(result);
-    log_info("Connected to ACDS");
-
-    // Create ACDS transport
-    session->acds_transport = acip_tcp_transport_create("discovery_acds", session->acds_socket, NULL);
-    if (!session->acds_transport) {
-      log_error("Failed to create ACDS transport");
-      socket_close(session->acds_socket);
-      session->acds_socket = INVALID_SOCKET_VALUE;
-      return ERROR_NETWORK;
-    }
-
-    return ASCIICHAT_OK;
-  }
-
-  // Check for EINPROGRESS (non-blocking connect in progress)
-  int last_error = socket_get_last_error();
-  if (!socket_is_in_progress_error(last_error)) {
-    set_error(session, ERROR_NETWORK_CONNECT, "Failed to connect to ACDS");
-    socket_close(session->acds_socket);
-    session->acds_socket = INVALID_SOCKET_VALUE;
-    freeaddrinfo(result);
-    return ERROR_NETWORK_CONNECT;
-  }
-
-  // Poll for connection with 500ms timeout intervals, checking exit flag each iteration
-  const uint64_t start_time_ms = session_get_current_time_ms();
-  const uint64_t max_connect_timeout_ms = 2000; // 2 second hard timeout
-
-  while (1) {
-    // Check if we should exit
-    if (session->should_exit_callback && session->should_exit_callback(session->exit_callback_data)) {
-      log_debug("ACDS connection interrupted by exit signal");
-      socket_close(session->acds_socket);
-      session->acds_socket = INVALID_SOCKET_VALUE;
-      freeaddrinfo(result);
-      return ERROR_NETWORK_CONNECT;
-    }
-
-    // Check if hard timeout exceeded
-    uint64_t elapsed_ms = session_get_current_time_ms() - start_time_ms;
-    if (elapsed_ms >= max_connect_timeout_ms) {
-      log_debug("ACDS connection timeout after %lu ms", elapsed_ms);
-      set_error(session, ERROR_NETWORK_CONNECT, "Connection to ACDS timed out");
-      socket_close(session->acds_socket);
-      session->acds_socket = INVALID_SOCKET_VALUE;
-      freeaddrinfo(result);
-      return ERROR_NETWORK_CONNECT;
-    }
-
-    // Set up select() timeout (500ms)
-    struct timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = 500000; // 500ms
-
-    fd_set writefds, exceptfds;
-    socket_fd_zero(&writefds);
-    socket_fd_zero(&exceptfds);
-    socket_fd_set(session->acds_socket, &writefds);
-    socket_fd_set(session->acds_socket, &exceptfds);
-
-    int select_result = socket_select(session->acds_socket + 1, NULL, &writefds, &exceptfds, &tv);
-
-    if (select_result < 0) {
-      set_error(session, ERROR_NETWORK, "select() failed");
-      socket_close(session->acds_socket);
-      session->acds_socket = INVALID_SOCKET_VALUE;
-      freeaddrinfo(result);
-      return ERROR_NETWORK;
-    }
-
-    if (select_result == 0) {
-      // Timeout, loop again to check exit flag
-      continue;
-    }
-
-    // Socket is ready - check if connection succeeded or failed
-    if (socket_fd_isset(session->acds_socket, &exceptfds)) {
-      // Exception on socket means connection failed
-      int socket_errno = socket_get_error(session->acds_socket);
-      log_debug("ACDS connection failed with error: %d", socket_errno);
-      set_error(session, ERROR_NETWORK_CONNECT, "Failed to connect to ACDS");
-      socket_close(session->acds_socket);
-      session->acds_socket = INVALID_SOCKET_VALUE;
-      freeaddrinfo(result);
-      return ERROR_NETWORK_CONNECT;
-    }
-
-    if (socket_fd_isset(session->acds_socket, &writefds)) {
-      // Verify connection succeeded by checking SO_ERROR
-      int socket_errno = socket_get_error(session->acds_socket);
-
-      if (socket_errno == 0) {
-        // Connection succeeded - restore blocking mode for subsequent operations
-        if (socket_set_blocking(session->acds_socket) != 0) {
-          set_error(session, ERROR_NETWORK, "Failed to set socket to blocking mode");
-          socket_close(session->acds_socket);
-          session->acds_socket = INVALID_SOCKET_VALUE;
-          freeaddrinfo(result);
-          return ERROR_NETWORK;
-        }
-        freeaddrinfo(result);
-        log_info("Connected to ACDS");
-
-        // Create ACDS transport
-        session->acds_transport = acip_tcp_transport_create("discovery_acds", session->acds_socket, NULL);
-        if (!session->acds_transport) {
-          log_error("Failed to create ACDS transport");
-          socket_close(session->acds_socket);
-          session->acds_socket = INVALID_SOCKET_VALUE;
-          return ERROR_NETWORK;
-        }
-
-        return ASCIICHAT_OK;
-      }
-
-      // If EINPROGRESS, connection is still in progress, keep polling
-      if (socket_is_in_progress_error(socket_errno)) {
-        continue;
-      }
-
-      // Any other error means connection failed
-      log_debug("ACDS connection failed with SO_ERROR: %d", socket_errno);
-      set_error(session, ERROR_NETWORK_CONNECT, "Failed to connect to ACDS");
-      socket_close(session->acds_socket);
-      session->acds_socket = INVALID_SOCKET_VALUE;
-      freeaddrinfo(result);
-      return ERROR_NETWORK_CONNECT;
-    }
-  }
+  return ASCIICHAT_OK;
 }
 
 static asciichat_error_t create_session(discovery_session_t *session) {
@@ -1914,34 +1717,21 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
 
       // Poll ACDS for WebRTC signaling messages (SDP answer, ICE candidates)
       // while waiting for DataChannel to open
-      if (session->acds_transport) {
-        // Check if data available (non-blocking with timeout_ns)
-        struct timeval tv_timeout;
-        tv_timeout.tv_sec = timeout_ns / NS_PER_SEC_INT;
-        tv_timeout.tv_usec = (timeout_ns % NS_PER_SEC_INT) / 1000;
+      if (session->acds_transport && acip_transport_has_pending_data(session->acds_transport)) {
+        packet_type_t type;
+        void *data = NULL;
+        size_t len = 0;
+        void *alloc_buffer = NULL;
 
-        fd_set readfds;
-        FD_ZERO(&readfds);
-        FD_SET(session->acds_socket, &readfds);
+        asciichat_error_t recv_result =
+            packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
 
-        int select_result = select(session->acds_socket + 1, &readfds, NULL, NULL, &tv_timeout);
-        if (select_result > 0 && FD_ISSET(session->acds_socket, &readfds)) {
-          // Data available to read
-          packet_type_t type;
-          void *data = NULL;
-          size_t len = 0;
-          void *alloc_buffer = NULL;
-
-          asciichat_error_t recv_result =
-              packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
-
-          if (recv_result == ASCIICHAT_OK) {
-            // Dispatch to appropriate handler
-            handle_acds_webrtc_packet(session, type, data, len);
-            buffer_pool_free(NULL, alloc_buffer, 0);
-          } else {
-            log_debug("Failed to receive ACDS packet: %d", recv_result);
-          }
+        if (recv_result == ASCIICHAT_OK) {
+          // Dispatch to appropriate handler
+          handle_acds_webrtc_packet(session, type, data, len);
+          buffer_pool_free(NULL, alloc_buffer, 0);
+        } else {
+          log_debug("Failed to receive ACDS packet: %d", recv_result);
         }
       }
 
@@ -2091,27 +1881,20 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
 
   case DISCOVERY_STATE_ACTIVE:
     // Receive and handle ACDS packets for WebRTC signaling (NEW)
-    if (session->session_type == SESSION_TYPE_WEBRTC && session->acds_transport) {
-      // Use non-blocking polling to check for incoming ACDS packets
-      struct pollfd pfd = {.fd = session->acds_socket, .events = POLLIN, .revents = 0};
+    if (session->session_type == SESSION_TYPE_WEBRTC && session->acds_transport &&
+        acip_transport_has_pending_data(session->acds_transport)) {
+      packet_type_t type;
+      void *data = NULL;
+      size_t len = 0;
+      void *alloc_buffer = NULL;
 
-      int poll_result = socket_poll(&pfd, 1, 0); // Non-blocking poll (timeout=0)
+      asciichat_error_t recv_result =
+          packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
 
-      if (poll_result > 0 && (pfd.revents & POLLIN)) {
-        // Data available to read
-        packet_type_t type;
-        void *data = NULL;
-        size_t len = 0;
-        void *alloc_buffer = NULL;
-
-        asciichat_error_t recv_result =
-            packet_receive_via_transport(session->acds_transport, &type, &data, &len, &alloc_buffer);
-
-        if (recv_result == ASCIICHAT_OK) {
-          // Dispatch to appropriate handler
-          handle_acds_webrtc_packet(session, type, data, len);
-          buffer_pool_free(NULL, alloc_buffer, 0);
-        }
+      if (recv_result == ASCIICHAT_OK) {
+        // Dispatch to appropriate handler
+        handle_acds_webrtc_packet(session, type, data, len);
+        buffer_pool_free(NULL, alloc_buffer, 0);
       }
     }
 

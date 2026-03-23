@@ -183,6 +183,17 @@ typedef struct {
   bool (*is_connected)(acip_transport_t *transport);
 
   /**
+   * @brief Check whether the transport has pending readable data
+   *
+   * @param transport Transport instance
+   * @return true if data is ready to read, false otherwise
+   *
+   * @note This is a lightweight readiness hint, not a guarantee that recv()
+   *       will succeed.
+   */
+  bool (*has_pending_data)(acip_transport_t *transport);
+
+  /**
    * @brief Custom destroy implementation (optional)
    *
    * @param transport Transport instance
@@ -314,6 +325,13 @@ static inline bool acip_transport_is_connected(acip_transport_t *transport) {
     return false;
   }
   return transport->methods->is_connected(transport);
+}
+
+static inline bool acip_transport_has_pending_data(acip_transport_t *transport) {
+  if (!transport || !transport->methods || !transport->methods->has_pending_data) {
+    return false;
+  }
+  return transport->methods->has_pending_data(transport);
 }
 
 // =============================================================================

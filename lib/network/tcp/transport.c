@@ -312,6 +312,21 @@ static bool tcp_is_connected(acip_transport_t *transport) {
   return result;
 }
 
+static bool tcp_has_pending_data(acip_transport_t *transport) {
+  tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
+  if (!tcp || !socket_is_valid(tcp->sockfd)) {
+    return false;
+  }
+
+  fd_set readfds;
+  struct timeval tv = {0};
+  socket_fd_zero(&readfds);
+  socket_fd_set(tcp->sockfd, &readfds);
+
+  int select_result = socket_select(tcp->sockfd, &readfds, NULL, NULL, &tv);
+  return select_result > 0 && socket_fd_isset(tcp->sockfd, &readfds);
+}
+
 static void tcp_destroy_impl(acip_transport_t *transport) {
   tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
   if (tcp) {
@@ -334,6 +349,7 @@ static const acip_transport_methods_t tcp_methods = {
     .get_type = tcp_get_type,
     .get_socket = tcp_get_socket,
     .is_connected = tcp_is_connected,
+    .has_pending_data = tcp_has_pending_data,
     .destroy_impl = tcp_destroy_impl, // Destroy send_mutex
 };
 

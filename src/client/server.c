@@ -72,6 +72,7 @@
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/connection_endpoint.h>
+#include <ascii-chat/network/connection_factory.h>
 #include <ascii-chat/network/websocket/internal.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
@@ -411,8 +412,13 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     // Get crypto context for transport
     const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
 
-    // Create WebSocket transport (handles connection internally)
-    g_client_transport = acip_websocket_client_transport_create("client", ws_url, (crypto_context_t *)crypto_ctx);
+    // Create WebSocket transport through the shared factory.
+    asciichat_error_t ws_result =
+        connection_factory_open("client", ws_url, 0, (crypto_context_t *)crypto_ctx, &g_client_transport, &endpoint);
+    if (ws_result != ASCIICHAT_OK) {
+      log_error("Failed to create WebSocket ACIP transport");
+      return -1;
+    }
     if (!g_client_transport) {
       log_error("Failed to create WebSocket ACIP transport");
       return -1;

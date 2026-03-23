@@ -1242,6 +1242,18 @@ static bool websocket_is_connected(acip_transport_t *transport) {
   return connected;
 }
 
+static bool websocket_has_pending_data(acip_transport_t *transport) {
+  websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
+  if (!ws_data || !ws_data->recv_queue) {
+    return false;
+  }
+
+  mutex_lock(&ws_data->recv_mutex);
+  bool has_data = !ringbuffer_is_empty(ws_data->recv_queue);
+  mutex_unlock(&ws_data->recv_mutex);
+  return has_data;
+}
+
 // =============================================================================
 // WebSocket Transport Destroy Implementation
 // =============================================================================
@@ -1380,6 +1392,7 @@ static const acip_transport_methods_t websocket_methods = {
     .get_type = websocket_get_type,
     .get_socket = websocket_get_socket,
     .is_connected = websocket_is_connected,
+    .has_pending_data = websocket_has_pending_data,
     .destroy_impl = websocket_destroy_impl,
 };
 
