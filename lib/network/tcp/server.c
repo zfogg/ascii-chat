@@ -222,6 +222,7 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
       if (server->config.status_update_fn) {
         server->config.status_update_fn(server->config.status_update_data);
       }
+      log_debug_every(5000, "select() timeout on TCP server (no incoming connections)");
       continue;
     }
 

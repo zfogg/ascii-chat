@@ -240,7 +240,7 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
 
   packet_recv_result_t result =
       receive_packet_secure(tcp->sockfd, transport->crypto_ctx, enforce_encryption, &envelope);
-  log_info("[TCP_RECV_STATE] 📥 RECV_RESULT: code=%d (0=success, 1=eof, 2=crypto_error, 3=other), data_size=%zu",
+  log_info("[TCP_RECV_STATE] 📥 RECV_RESULT: code=%d (0=success, -1=eof, -2=error, -3=security), data_size=%zu",
            result, result == PACKET_RECV_SUCCESS ? envelope.len : 0);
 
   if (result != PACKET_RECV_SUCCESS) {

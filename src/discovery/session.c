@@ -580,7 +580,13 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
 
   if (connect_result == 0) {
     // Connected immediately (unlikely but possible for localhost)
-    socket_set_blocking(session->acds_socket);
+    if (socket_set_blocking(session->acds_socket) != 0) {
+      set_error(session, ERROR_NETWORK, "Failed to set socket to blocking mode");
+      socket_close(session->acds_socket);
+      session->acds_socket = INVALID_SOCKET_VALUE;
+      freeaddrinfo(result);
+      return ERROR_NETWORK;
+    }
     freeaddrinfo(result);
     log_info("Connected to ACDS");
 
@@ -675,7 +681,13 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
 
       if (socket_errno == 0) {
         // Connection succeeded - restore blocking mode for subsequent operations
-        socket_set_blocking(session->acds_socket);
+        if (socket_set_blocking(session->acds_socket) != 0) {
+          set_error(session, ERROR_NETWORK, "Failed to set socket to blocking mode");
+          socket_close(session->acds_socket);
+          session->acds_socket = INVALID_SOCKET_VALUE;
+          freeaddrinfo(result);
+          return ERROR_NETWORK;
+        }
         freeaddrinfo(result);
         log_info("Connected to ACDS");
 

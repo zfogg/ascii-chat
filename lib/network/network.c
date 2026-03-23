@@ -200,8 +200,8 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, uint64_t timeo
     int result = socket_poll(&pfd, 1, (int64_t)timeout_ns);
     if (result <= 0) {
       if (result == 0) {
-        SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, "recv_with_timeout timed out after %llu nanoseconds",
-                      (unsigned long long)timeout_ns);
+        SET_ERRNO(ERROR_NETWORK_TIMEOUT, "recv_with_timeout timed out after %llu nanoseconds",
+                  (unsigned long long)timeout_ns);
         return -1;
       }
       if (network_handle_select_error(result)) {
