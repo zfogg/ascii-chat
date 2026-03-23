@@ -24,6 +24,7 @@ typedef struct {
   // Platform timing / wait helpers
   uint64_t (*platform_get_monotonic_time_us)(void);
   void (*platform_sleep_ms)(unsigned int ms);
+  void (*platform_pump_events)(void);
 
   // Server/client crypto setup
   void (*server_connection_set_ip)(const char *ip);

@@ -208,7 +208,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
   // Show splash briefly for webcam, but skip sleep for media (which takes time anyway)
   if (!has_media && !GET_OPTION(snapshot_mode)) {
-  APP_CALLBACK_VOID_UINT(platform_sleep_ms, 250);
+    APP_CALLBACK_VOID(platform_pump_events);
+    APP_CALLBACK_VOID_UINT(platform_sleep_ms, 250);
   }
   log_debug("session_client_like_run(): After splash sleep");
 
@@ -710,7 +711,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
       while (remaining_ms > 0 && !APP_CALLBACK_BOOL(should_exit)) {
         unsigned int sleep_ms = (remaining_ms < check_interval_ms) ? remaining_ms : check_interval_ms;
-    APP_CALLBACK_VOID_UINT(platform_sleep_ms, sleep_ms);
+        APP_CALLBACK_VOID(platform_pump_events);
+        APP_CALLBACK_VOID_UINT(platform_sleep_ms, sleep_ms);
         remaining_ms -= sleep_ms;
       }
     }

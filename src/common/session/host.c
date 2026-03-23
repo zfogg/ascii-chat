@@ -18,6 +18,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/thread.h>
@@ -821,6 +822,7 @@ static void *host_render_thread(void *arg) {
     }
 
     // Small sleep to prevent busy-loop
+    APP_CALLBACK_VOID(platform_pump_events);
     platform_sleep_ms(1);
   }
 

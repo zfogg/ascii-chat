@@ -1662,6 +1662,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
                      max_attempts + 1, backoff_ms);
 
             // Wait for backoff period
+            APP_CALLBACK_VOID(platform_pump_events);
             APP_CALLBACK_VOID_UINT(platform_sleep_ms, backoff_ms);
 
             // Destroy old peer manager

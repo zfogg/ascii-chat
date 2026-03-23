@@ -18,6 +18,7 @@
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/network.h>
@@ -510,6 +511,7 @@ static void *participant_video_capture_thread(void *arg) {
     // Capture frame from media source (webcam, file, test pattern)
     image_t *raw_frame = session_capture_read_frame(p->video_capture);
     if (!raw_frame) {
+      APP_CALLBACK_VOID(platform_pump_events);
       platform_sleep_ms(1);
       continue;
     }
@@ -558,6 +560,7 @@ static void *participant_audio_capture_thread(void *arg) {
     // Read microphone samples (20ms chunk)
     size_t samples_read = session_audio_read_captured(p->audio_capture, sample_buffer, 960);
     if (samples_read <= 0) {
+      APP_CALLBACK_VOID(platform_pump_events);
       platform_sleep_ms(1);
       continue;
     }
