@@ -67,8 +67,16 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         include(${CMAKE_SOURCE_DIR}/cmake/utils/DetectMacOSSDK.cmake)
         asciichat_detect_macos_sdk(_detected_sdk)
         if(_detected_sdk)
-            set(CMAKE_OSX_SYSROOT "${_detected_sdk}" CACHE PATH "macOS SDK path" FORCE)
-            message(STATUS "Detected macOS SDK: ${CMAKE_OSX_SYSROOT}")
+            # For Homebrew LLVM (self-contained, has its own headers), don't set CMAKE_OSX_SYSROOT globally
+            # It causes system header not found errors. Only pass it to WebRTC for Threads discovery.
+            # For system clang, we need CMAKE_OSX_SYSROOT for system headers.
+            if(CMAKE_CXX_COMPILER MATCHES "homebrew" OR CMAKE_C_COMPILER MATCHES "homebrew" OR
+               CMAKE_CXX_COMPILER MATCHES "/opt/homebrew" OR CMAKE_C_COMPILER MATCHES "/opt/homebrew")
+                message(STATUS "Using Homebrew LLVM - skipping CMAKE_OSX_SYSROOT (will be passed to WebRTC only)")
+            else()
+                set(CMAKE_OSX_SYSROOT "${_detected_sdk}" CACHE PATH "macOS SDK path" FORCE)
+                message(STATUS "Detected macOS SDK: ${CMAKE_OSX_SYSROOT}")
+            endif()
         endif()
     endif()
 
