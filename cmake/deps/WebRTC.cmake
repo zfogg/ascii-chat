@@ -182,7 +182,12 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
         # On macOS with Homebrew LLVM, set explicit flags for WebRTC build
         # We DON'T inherit CMAKE_C/CXX_FLAGS because they may contain -resource-dir
         # from clang config files, and we need to set it to the correct Cellar path
+        # IMPORTANT: Pass CMAKE_OSX_SYSROOT so Abseil can find system Threads library
         if(APPLE AND CMAKE_CXX_COMPILER MATCHES "clang")
+            # Pass CMAKE_OSX_SYSROOT to WebRTC subprocess for system library discovery
+            if(CMAKE_OSX_SYSROOT)
+                list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}")
+            endif()
             get_filename_component(LLVM_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
             get_filename_component(LLVM_ROOT "${LLVM_BIN_DIR}/.." ABSOLUTE)
             set(CLANG_RESOURCE_DIR "${LLVM_ROOT}/lib/clang")
