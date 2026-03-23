@@ -663,12 +663,14 @@ int log_named_format_message(const char *message, char *output, size_t output_si
               (prefix_len == 6 && strncmp(check, "socket", 6) == 0) ||
               (prefix_len == 6 && strncmp(check, "sockfd", 6) == 0) ||
               (prefix_len == 8 && strncmp(check, "pkt_type", 8) == 0)) {
-            /* Only mark as already-formatted if inside parentheses, e.g. "(sockfd=15)".
+            /* Only mark as already-formatted if inside formatted output:
+             * - "(" before keyword: parenthesized value like "(sockfd=15)"
+             * - "/" before keyword: name part of type/name like "fd/fd=7"
              * Raw log patterns like "sockfd=15" should still be eligible for replacement. */
             const char *before_kw = check - 1;
             while (before_kw > message && isspace(*before_kw))
               before_kw--;
-            if (before_kw >= message && *before_kw == '(') {
+            if (before_kw >= message && (*before_kw == '(' || *before_kw == '/')) {
               is_already_formatted = true;
             }
           }
