@@ -132,7 +132,7 @@ jobs:
             cmake_args+=(-DASCIICHAT_SKIP_HARDENING_VALIDATION=ON)
           fi
 
-          cmake -B build "${cmake_args[@]}"
+          cmake -B build --debug-output "${cmake_args[@]}" -DCMAKE_VERBOSE_MAKEFILE=ON
 
       - name: Save configure cache (unit-tests)
         if: always()
@@ -385,10 +385,11 @@ jobs:
 
           FLAGS="-std=c2x --coverage"
 
-          cmake -B build --preset github \
+          cmake -B build --preset github --debug-output \
             -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_C_FLAGS="${FLAGS}"
+            -DCMAKE_C_FLAGS="${FLAGS}" \
+            -DCMAKE_VERBOSE_MAKEFILE=ON
 
       - name: Save configure cache (integration-tests)
         if: always()
@@ -542,7 +543,7 @@ jobs:
             -DASCIICHAT_SKIP_HARDENING_VALIDATION=ON
           )
 
-          cmake -B build "${cmake_args[@]}"
+          cmake -B build --debug-output "${cmake_args[@]}" -DCMAKE_VERBOSE_MAKEFILE=ON
 
       - name: Save configure cache (performance-tests)
         if: always()
