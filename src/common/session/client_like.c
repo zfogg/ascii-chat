@@ -765,9 +765,17 @@ cleanup:
     audio_ctx = NULL;
   }
 
-  // Destroy display
-  if (display) {
+  // Destroy display (check global context to see if discovery mode already destroyed it)
+  // Discovery participant mode may destroy the display early and clear the global context
+  session_display_ctx_t *current_global = session_display_get_global_context();
+  if (display && display == current_global) {
+    // Display is still valid (not destroyed by discovery mode)
     session_display_destroy(display);
+    display = NULL;
+  } else if (display && display != current_global) {
+    // Display was already destroyed (by discovery participant mode)
+    // Just NULL it out, don't call destroy again
+    log_debug("[CLEANUP] Display was already destroyed by discovery mode, skipping destroy");
     display = NULL;
   }
 

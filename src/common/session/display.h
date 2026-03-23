@@ -142,6 +142,30 @@ typedef struct session_display_ctx session_display_ctx_t;
 session_display_ctx_t *session_display_create(const session_display_config_t *config);
 
 /**
+ * @brief Get the global display context (used for signal handlers and special cleanup)
+ * @return Pointer to global display context, or NULL if not set
+ *
+ * Retrieves the display context that was set via session_display_set_global_context().
+ * Signal handlers and special modes (like discovery participant) use this to access
+ * the display without having a direct pointer.
+ *
+ * @ingroup session
+ */
+session_display_ctx_t *session_display_get_global_context(void);
+
+/**
+ * @brief Set the global display context (public setter for discovery cleanup)
+ * @param ctx Display context to set, or NULL to clear
+ *
+ * Sets the global display context. Signal handlers and special modes use this to track
+ * the active display context. Used by discovery participant mode to clear the global
+ * context after destroying the display early to prevent use-after-free in cleanup code.
+ *
+ * @ingroup session
+ */
+void session_display_set_global_context_public(session_display_ctx_t *ctx);
+
+/**
  * @brief Destroy session display context and free resources
  * @param ctx Display context to destroy (can be NULL)
  *

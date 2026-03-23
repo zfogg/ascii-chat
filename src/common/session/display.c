@@ -1152,6 +1152,16 @@ void session_display_set_global_context(session_display_ctx_t *ctx) {
   atomic_ptr_store(&g_current_display_ctx, (void *)ctx);
 }
 
+// Public getter for global display context
+session_display_ctx_t *session_display_get_global_context(void) {
+  return get_current_display_ctx();
+}
+
+// Public setter for global display context (used by discovery participant cleanup)
+void session_display_set_global_context_public(session_display_ctx_t *ctx) {
+  session_display_set_global_context(ctx);
+}
+
 // Called from Ctrl+C signal handler to request help screen closure
 void keyboard_help_signal_cancel(void) {
   atomic_store_bool(&g_help_signal_cancel, true);

@@ -324,7 +324,15 @@ static asciichat_error_t discovery_run(session_capture_ctx_t *capture, session_d
     // PARTICIPANT ROLE: Just wait for host connection
     // Don't use capture/display for participant discovery mode
     (void)capture;  // Not used
-    (void)display;  // Not used - don't render
+
+    // For participants, destroy the display context to reset terminal state
+    // and prevent the discovery framework from rendering anything
+    if (display) {
+      log_info("Participant mode - cleaning up display context");
+      session_display_destroy(display);
+      // Also clear the global display context to prevent signal handlers from using stale pointer
+      session_display_set_global_context_public(NULL);
+    }
 
     // Session is active and we're a participant. In discovery mode, participants
     // don't render anything - they just wait for the host. Return early to skip
