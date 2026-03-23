@@ -1456,6 +1456,7 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
   asciichat_error_t result = connect_to_acds(session);
   if (result != ASCIICHAT_OK) {
     log_error("discovery_session_start: connect_to_acds FAILED - result=%d", result);
+    set_state(session, DISCOVERY_STATE_FAILED);
     return result;
   }
   log_info("discovery_session_start: connect_to_acds succeeded");
