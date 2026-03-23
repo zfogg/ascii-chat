@@ -109,41 +109,6 @@ static void on_discovery_error(asciichat_error_t error, const char *message, voi
 }
 
 /**
- * @brief Exit condition callback for render loop (participant mode)
- *
- * Called by render loop to check if it should exit. Also processes
- * discovery session events to keep negotiation responsive.
- *
- * @param user_data Pointer to discovery_session_t
- * @return true if render loop should exit
- */
-static bool discovery_participant_render_should_exit(void *user_data) {
-  discovery_session_t *discovery = (discovery_session_t *)user_data;
-
-  // Check global exit flag first
-  if (should_exit()) {
-    return true;
-  }
-
-  // Process discovery session events (keep NAT negotiation responsive)
-  // 50ms timeout for responsiveness
-  asciichat_error_t result = discovery_session_process(discovery, 50 * NS_PER_MS_INT);
-  if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
-    log_error("Discovery session process failed: %d", result);
-    signal_exit();
-    return true;
-  }
-
-  // Exit if session is no longer active
-  if (!discovery_session_is_active(discovery)) {
-    // Still negotiating - continue loop
-    return false;
-  }
-
-  return false;
-}
-
-/**
  * Adapter function for session capture exit callback
  * Converts from void*->bool signature to match session_capture_should_exit_fn
  *

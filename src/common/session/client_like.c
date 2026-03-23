@@ -31,6 +31,7 @@
 // Forward declarations (implemented below)
 static bool capture_should_exit_adapter(void *user_data);
 static bool display_should_exit_adapter(void *user_data);
+static bool session_client_like_is_networked(session_client_like_kind_t kind);
 
 // Module-level config for adapter callbacks
 static const session_client_like_config_t *g_current_config = NULL;
@@ -85,6 +86,10 @@ static bool display_should_exit_adapter(void *user_data) {
     return g_current_config->custom_should_exit(g_current_config->exit_user_data);
   }
   return false;
+}
+
+static bool session_client_like_is_networked(session_client_like_kind_t kind) {
+  return kind == SESSION_CLIENT_LIKE_KIND_CLIENT || kind == SESSION_CLIENT_LIKE_KIND_DISCOVERY;
 }
 
 asciichat_error_t session_client_like_run(const session_client_like_config_t *config) {
@@ -382,16 +387,18 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
   log_debug("session_client_like_run(): Setting up network transports");
 
-  bool mirror_mode = (config->kind == SESSION_CLIENT_LIKE_KIND_MIRROR);
-  bool client_mode = (config->kind == SESSION_CLIENT_LIKE_KIND_CLIENT);
-  bool discovery_mode = (config->kind == SESSION_CLIENT_LIKE_KIND_DISCOVERY);
+  bool networked_mode = session_client_like_is_networked(config->kind);
 
-  if (mirror_mode) {
-    log_debug("Mirror mode detected - will use local capture with media source");
-  } else if (discovery_mode) {
-    log_debug("Discovery mode detected - discovery session will manage networking");
-  } else if (client_mode) {
-    log_debug("Client/Network mode detected - will use network capture without local media source");
+  switch (config->kind) {
+    case SESSION_CLIENT_LIKE_KIND_MIRROR:
+      log_debug("Mirror mode detected - will use local capture with media source");
+      break;
+    case SESSION_CLIENT_LIKE_KIND_CLIENT:
+      log_debug("Client/Network mode detected - will use network capture without local media source");
+      break;
+    case SESSION_CLIENT_LIKE_KIND_DISCOVERY:
+      log_debug("Discovery mode detected - discovery session will manage networking");
+      break;
   }
 
   // ============================================================================
@@ -420,7 +427,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
   bool stdin_render_mode = (render_file_opt && strcmp(render_file_opt, "-") == 0 &&
                             !terminal_is_stdin_tty() && height_explicitly_set &&
-                            !has_media_source && !mirror_mode);
+                            !has_media_source && config->kind != SESSION_CLIENT_LIKE_KIND_MIRROR);
 
   if (stdin_render_mode) {
     // Stdin render mode: read ASCII frames from stdin, output video to stdout
@@ -462,9 +469,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // Choose capture type based on mode determined earlier:
   // - Mirror mode: needs to capture local media (webcam, file, test pattern)
   // - Network modes (client/discovery): receive frames from network, no local capture
-  bool is_network_mode = client_mode || discovery_mode;
-
-  if (!stdin_render_mode && is_network_mode) {
+  if (!stdin_render_mode && networked_mode) {
     // Network mode: create minimal capture context without media source
     log_debug("Network mode detected - using network capture (no local media source)");
     int fps = GET_OPTION(fps);
