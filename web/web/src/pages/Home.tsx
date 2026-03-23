@@ -58,7 +58,7 @@ export function HomePage() {
           />
           <LinkedItemWithDescription
             mode_name="client"
-            description="Connect to ascii-chat servers via WebSocket and URL or IP over WebSocket."
+            description="Connect to ascii-chat servers via URL or IP over WebSocket."
             color="green"
           />
           <LinkedItemWithDescription
