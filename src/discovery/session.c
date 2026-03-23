@@ -1578,6 +1578,30 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
     }
   }
 
+  // Step 2: Receive CRYPTO_HANDSHAKE_COMPLETE from server to finalize handshake
+  {
+    packet_type_t pkt_type;
+    void *pkt_data = NULL;
+    size_t pkt_len = 0;
+    void *alloc_buffer = NULL;
+
+    result = packet_receive_via_transport(session->acds_transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
+    if (result != ASCIICHAT_OK) {
+      log_error("discovery_session_start: Failed to receive CRYPTO_HANDSHAKE_COMPLETE");
+      set_error(session, result, "Failed to receive handshake complete");
+      return result;
+    }
+
+    if (pkt_type != PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE) {
+      log_error("discovery_session_start: Expected CRYPTO_HANDSHAKE_COMPLETE, got packet type %d", pkt_type);
+      buffer_pool_free(NULL, alloc_buffer, 0);
+      set_error(session, ERROR_NETWORK_PROTOCOL, "Invalid crypto handshake completion packet");
+      return ERROR_NETWORK_PROTOCOL;
+    }
+
+    buffer_pool_free(NULL, alloc_buffer, 0);
+  }
+
   // For ACDS, handshake completes after key exchange (no auth required)
   log_info("discovery_session_start: ACDS handshake complete");
   log_info("discovery_session_start: Crypto handshake with ACDS completed");
