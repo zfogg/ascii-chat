@@ -1002,6 +1002,35 @@ void *acds_client_handler(void *arg) {
   // Perform crypto handshake (three-step process)
   log_debug("Performing crypto handshake with client %s", client_ip);
 
+  // Step -1: Receive and discard protocol version from client
+  {
+    packet_type_t pkt_type;
+    void *pkt_data = NULL;
+    size_t pkt_len = 0;
+    void *alloc_buffer = NULL;
+
+    handshake_result = packet_receive_via_transport(transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
+    if (handshake_result != ASCIICHAT_OK) {
+      log_warn("Failed to receive PROTOCOL_VERSION from client %s", client_ip);
+      acip_transport_destroy(transport);
+      tcp_server_remove_client(&server->tcp_server, client_socket);
+      SAFE_FREE(ctx);
+      return NULL;
+    }
+
+    if (pkt_type != PACKET_TYPE_PROTOCOL_VERSION) {
+      log_warn("Expected PROTOCOL_VERSION, got packet type %u from client %s", pkt_type, client_ip);
+      buffer_pool_free(NULL, alloc_buffer, 0);
+      acip_transport_destroy(transport);
+      tcp_server_remove_client(&server->tcp_server, client_socket);
+      SAFE_FREE(ctx);
+      return NULL;
+    }
+
+    buffer_pool_free(NULL, alloc_buffer, 0);
+    log_debug("Received PROTOCOL_VERSION from client %s", client_ip);
+  }
+
   // Step 0: Send crypto parameters
   handshake_result = crypto_handshake_server_send_parameters(&client_data->handshake_ctx, transport);
   if (handshake_result != ASCIICHAT_OK) {

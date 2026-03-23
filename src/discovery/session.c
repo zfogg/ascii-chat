@@ -1484,7 +1484,25 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
   memcpy(handshake_ctx.client_public_key.key, session->identity_pubkey, 32);
   memcpy(handshake_ctx.client_private_key.key.ed25519, session->identity_seckey, 64);
 
-  // Step 0: Receive CRYPTO_PARAMETERS from ACDS
+  // Step 0: Send protocol version to ACDS
+  log_debug("Sending protocol version to ACDS...");
+  protocol_version_packet_t client_version = {0};
+  client_version.protocol_version = HOST_TO_NET_U16(1);
+  client_version.protocol_revision = HOST_TO_NET_U16(0);
+  client_version.supports_encryption = 1;
+  client_version.compression_algorithms = 0;
+  client_version.compression_threshold = 0;
+  client_version.feature_flags = 0;
+
+  result = packet_send_via_transport(session->acds_transport, PACKET_TYPE_PROTOCOL_VERSION, &client_version,
+                                     sizeof(client_version), 0);
+  if (result != ASCIICHAT_OK) {
+    log_error("discovery_session_start: Failed to send protocol version to ACDS");
+    set_error(session, result, "Failed to send protocol version to ACDS");
+    return result;
+  }
+
+  // Step 0.5: Receive CRYPTO_PARAMETERS from ACDS
   {
     packet_type_t pkt_type;
     void *pkt_data = NULL;
@@ -1547,58 +1565,9 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
     }
   }
 
-  // Step 2: Auth response - receive AUTH_CHALLENGE and respond
-  {
-    packet_type_t pkt_type;
-    void *pkt_data = NULL;
-    size_t pkt_len = 0;
-    void *alloc_buffer = NULL;
-
-    result = packet_receive_via_transport(session->acds_transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
-    if (result != ASCIICHAT_OK) {
-      log_error("discovery_session_start: Failed to receive AUTH_CHALLENGE");
-      set_error(session, result, "Handshake auth response recv failed");
-      return result;
-    }
-
-    result =
-        crypto_handshake_client_auth_response(&handshake_ctx, session->acds_transport, pkt_type, pkt_data, pkt_len);
-    buffer_pool_free(NULL, alloc_buffer, 0);
-
-    if (result != ASCIICHAT_OK) {
-      log_error("discovery_session_start: Handshake auth response failed");
-      set_error(session, result, "Handshake auth response failed");
-      return result;
-    }
-  }
-
-  // Step 3: Complete handshake
-  // Note: Some servers (like ACDS without auth) complete the handshake in step 2,
-  // so check if we're already done before trying to receive another packet
-  if (handshake_ctx.state != CRYPTO_HANDSHAKE_READY) {
-    packet_type_t pkt_type;
-    void *pkt_data = NULL;
-    size_t pkt_len = 0;
-    void *alloc_buffer = NULL;
-
-    result = packet_receive_via_transport(session->acds_transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
-    if (result != ASCIICHAT_OK) {
-      log_error("discovery_session_start: Failed to receive HANDSHAKE_COMPLETE");
-      set_error(session, result, "Handshake complete recv failed");
-      return result;
-    }
-
-    result = crypto_handshake_client_complete(&handshake_ctx, session->acds_transport, pkt_type, pkt_data, pkt_len);
-    buffer_pool_free(NULL, alloc_buffer, 0);
-
-    if (result != ASCIICHAT_OK) {
-      log_error("discovery_session_start: Handshake complete failed");
-      set_error(session, result, "Handshake complete failed");
-      return result;
-    }
-  } else {
-    log_info("discovery_session_start: Handshake already complete from auth_response step");
-  }
+  // For ACDS, handshake completes after key exchange (no auth required)
+  log_info("discovery_session_start: ACDS handshake complete");
+  return ASCIICHAT_OK;
 
   log_info("discovery_session_start: Crypto handshake with ACDS completed");
 

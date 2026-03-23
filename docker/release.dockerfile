@@ -1,3 +1,4 @@
+# vim: set ft=dockerfile:
 # Multi-stage Dockerfile for ascii-chat release builds (static musl binary)
 # Build with: DOCKER_BUILDKIT=1 docker build -f docker/release.dockerfile -t zfogg/ascii-chat:release .
 # Set version: DOCKER_BUILDKIT=1 docker build --build-arg VERSION=0.9.13 -f docker/release.dockerfile -t zfogg/ascii-chat:0.9.13 .
