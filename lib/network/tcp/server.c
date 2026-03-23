@@ -241,7 +241,10 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
     // Accept connection
     struct sockaddr_storage client_addr;
     socklen_t client_addr_len = sizeof(client_addr);
-    socket_t client_socket = socket_accept(ready_socket, (struct sockaddr *)&client_addr, &client_addr_len, "tcp_client");
+    socket_t client_socket = accept(ready_socket, (struct sockaddr *)&client_addr, &client_addr_len);
+    if (socket_is_valid(client_socket)) {
+      NAMED_REGISTER_SOCKET(client_socket, "tcp_client", NULL);
+    }
 
     if (client_socket == INVALID_SOCKET_VALUE) {
       log_warn("Failed to accept connection");
