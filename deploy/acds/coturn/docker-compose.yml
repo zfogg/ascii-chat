@@ -6,8 +6,13 @@ services:
     container_name: ascii-chat-coturn
     restart: unless-stopped
 
-    # Use host networking for STUN/TURN (required for proper NAT traversal)
-    network_mode: host
+    # Expose STUN/TURN and relay ports
+    ports:
+      - "3478:3478/udp" # STUN/TURN
+      - "3478:3478/tcp" # STUN/TURN
+      - "5349:5349/udp" # STUN/TURN over TLS
+      - "5349:5349/tcp" # STUN/TURN over TLS
+      - "49152-65535:49152-65535/udp" # TURN relay range
 
     # Mount configuration and data
     volumes:
