@@ -325,14 +325,8 @@ function(configure_llvm_post_project)
                     # Use -nostdinc and explicit isystem paths to bypass clang's broken default
                     message(STATUS "${BoldYellow}Using Xcode SDK + clang resource dir for headers${ColorReset}")
                     # Put Xcode SDK FIRST so C headers with fundamental types are found before clang's C++ headers need them
-                    # Note: add_compile_options() doesn't apply to ExternalProject builds, so we also set CMAKE_*_FLAGS
                     add_compile_options("-isystem${XCODE_SDK_PATH}/usr/include")
                     add_compile_options("-isystem${CLANG_RESOURCE_DIR}/include")
-                    # Use list(APPEND) instead of string(APPEND) to preserve proper flag spacing for compiler
-                    list(APPEND CMAKE_C_FLAGS "-isystem${XCODE_SDK_PATH}/usr/include" "-isystem${CLANG_RESOURCE_DIR}/include")
-                    list(APPEND CMAKE_CXX_FLAGS "-isystem${XCODE_SDK_PATH}/usr/include" "-isystem${CLANG_RESOURCE_DIR}/include")
-                    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
-                    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
                 else()
                     message(WARNING "${BoldYellow}Xcode SDK not found; system headers may not be accessible${ColorReset}")
                 endif()
