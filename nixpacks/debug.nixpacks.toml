@@ -1,0 +1,73 @@
+# vim: set ft=toml:
+# Debug build for ascii-chat (Nix-based)
+# Based on the deps image produced by deps.nixpacks.toml.
+# Mirrors docker/Dockerfile using Nixpacks.
+#
+# Requires: nixpacks build . --config nixpacks/deps.nixpacks.toml --name zfogg/ascii-chat-deps-nix:latest
+# Build:    nixpacks build . --config nixpacks/debug.nixpacks.toml --name zfogg/ascii-chat-debug-nix:latest
+#
+# Run:      docker run --rm zfogg/ascii-chat-debug-nix:latest --help
+# Server:   docker run --rm -p 27224:27224 zfogg/ascii-chat-debug-nix:latest server
+# ACDS:     docker run --rm -p 27225:27225 zfogg/ascii-chat-debug-nix:latest discovery-service --port 27225
+
+providers = []
+
+# Use the deps image as the build base (all tools and .deps-cache/ pre-populated)
+buildImage = "zfogg/ascii-chat-deps-nix:latest"
+
+[variables]
+CC = "clang"
+CXX = "clang++"
+CMAKE_GENERATOR = "Ninja"
+DEBIAN_FRONTEND = "noninteractive"
+VERSION = "0.0.0"
+LIB_VERSION = "0.3.0"
+SOURCE_COMMIT = "docker-build"
+
+[phases.setup]
+cmds = [
+  # Preserve submodules from deps image before COPY overwrites them
+  "cp -a deps /tmp/deps-preserve || true",
+]
+
+[phases.restore]
+dependsOn = ["setup"]
+cmds = [
+  # Restore submodules from deps image (overwrite empty dirs from build context)
+  "rm -rf deps/ascii-chat-deps deps/doxygen-awesome-css",
+  "cp -a /tmp/deps-preserve/* deps/ 2>/dev/null || true",
+  "rm -rf /tmp/deps-preserve",
+]
+
+# Build ascii-chat Debug binary
+[phases.build]
+dependsOn = ["restore"]
+cmds = [
+  # Create minimal .git for cmake version detection
+  "mkdir -p .git && touch .git/HEAD .git/index",
+  # Build Debug (configure is fast because .deps-cache/ is pre-populated)
+  "make CMAKE_BUILD_TYPE=Debug EXTRA_CMAKE_ARGS='-DUSE_MUSL=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=${LIB_VERSION}'",
+  # Install to /usr/local
+  "make install CMAKE_BUILD_TYPE=Debug CMAKE_INSTALL_PREFIX=/usr/local",
+]
+
+[phases.runtime_setup]
+dependsOn = ["build"]
+cmds = [
+  # Create ACDS directory for keys
+  "mkdir -p /acds && chmod 755 /acds",
+  # Create data directory for ACDS database (volume mount point)
+  "mkdir -p /data",
+  # Create non-root user for running ascii-chat
+  "useradd -m -u 1001 -s /bin/bash ascii 2>/dev/null || true",
+  "mkdir -p /home/ascii/.config /home/ascii/.local/share",
+  "chown -R ascii:ascii /home/ascii 2>/dev/null || true",
+  "chown -R ascii:ascii /acds 2>/dev/null || true",
+  "chown -R ascii:ascii /data 2>/dev/null || true",
+  # Copy entrypoint script
+  "cp docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh",
+  "chmod +x /usr/local/bin/docker-entrypoint.sh",
+]
+
+[start]
+cmd = "/usr/local/bin/docker-entrypoint.sh --help"

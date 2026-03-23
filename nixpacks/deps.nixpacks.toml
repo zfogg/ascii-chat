@@ -1,0 +1,175 @@
+# vim: set ft=toml:
+# Dependencies stage for ascii-chat (Nix-based)
+# Builds the development environment with all build dependencies from Nix packages
+# and pre-downloads CMake FetchContent deps into .deps-cache/.
+#
+# Build: nixpacks build . --config nixpacks/deps.nixpacks.toml --name zfogg/ascii-chat-deps-nix:latest
+# Push:  docker push zfogg/ascii-chat-deps-nix:latest
+
+providers = []
+
+[variables]
+CC = "clang"
+CXX = "clang++"
+CMAKE_GENERATOR = "Ninja"
+DEBIAN_FRONTEND = "noninteractive"
+LIB_VERSION = "0.3.0"
+
+[phases.setup]
+# Pin nixpkgs to a recent unstable commit with CMake >= 3.28 and Clang >= 18
+nixpkgsArchive = "09061f748ee21f68a089cd5d91ec1859cd93d0be"
+nixPkgs = [
+  # LLVM/Clang toolchain
+  # llvmPackages.llvm.dev provides llvm-config (default output omits it)
+  "clang",
+  "llvm",
+  "llvmPackages.llvm.dev",
+  "llvmPackages.libclang",
+  "lld",
+
+  # Build tools
+  "cmake",
+  "ninja",
+  "pkg-config",
+  "gnumake",
+  "ccache",
+  "autoconf",
+  "automake",
+  "libtool",
+  "gperf",
+  "nasm",
+  "git",
+  "curl",
+  "wget",
+  "unzip",
+
+  # Required cmake deps (cmake/deps/*.cmake)
+  "zstd", # Zstd.cmake
+  "zlib", # Zlib.cmake
+  "bzip2", # Bzip2.cmake
+  "pcre2", # PCRE2.cmake
+  "libsodium", # Libsodium.cmake
+  "portaudio", # Portaudio.cmake
+  "libopus", # Opus.cmake
+  "sqlite", # SQLite3.cmake
+  "openssl", # OpenSSL.cmake
+  "miniupnpc", # Miniupnpc.cmake
+  "libnatpmp", # NAT-PMP (used alongside miniupnpc)
+  "ffmpeg", # FFmpeg.cmake
+  "abseil-cpp", # Abseil.cmake
+  "x264", # X264.cmake
+  "x265", # X265.cmake
+  "yyjson", # Yyjson.cmake
+  "libwebsockets", # Libwebsockets.cmake
+  "libdatachannel", # Libdatachannel.cmake
+  "libvterm", # Libvterm.cmake
+  "freetype", # FreeType2.cmake
+  "fontconfig", # Fontconfig.cmake
+  "mimalloc", # Mimalloc.cmake
+  "alsa-lib", # ALSA.cmake
+  "libffi", # Criterion dep
+  "protobufc", # Criterion dep (libprotobuf-c)
+  "musl", # musl libc for static builds
+
+  # Testing
+  "criterion", # Criterion.cmake
+
+  # Tools
+  "doxygen",
+  "yt-dlp",
+  "emscripten",
+]
+nixLibs = [
+  "zstd",
+  "zlib",
+  "bzip2",
+  "pcre2",
+  "libsodium",
+  "openssl",
+  "ffmpeg",
+  "portaudio",
+  "libopus",
+  "freetype",
+  "fontconfig",
+  "libvterm",
+  "x264",
+  "x265",
+  "yyjson",
+  "libwebsockets",
+  "libdatachannel",
+  "mimalloc",
+  "sqlite",
+  "miniupnpc",
+  "libnatpmp",
+  "alsa-lib",
+  "abseil-cpp",
+]
+
+# Clone only submodules that need custom forks, patching, or have hardcoded include paths.
+# All standard libraries (yyjson, x265, libde265, etc.) come from Nix packages above.
+[phases.submodules]
+dependsOn = ["setup"]
+cmds = [
+  # Remove existing submodule dirs from COPY (may be empty stubs from git)
+  "rm -rf deps/ascii-chat-deps deps/doxygen-awesome-css",
+  "mkdir -p deps/ascii-chat-deps deps/doxygen-awesome-css",
+
+  # BearSSL: custom fork (zfogg/BearSSL)
+  "git clone --depth 1 https://github.com/zfogg/BearSSL.git deps/ascii-chat-deps/bearssl",
+
+  # tomlc17: requires platform-specific patches (align8 overflow, Windows deprecation)
+  "git clone --depth 1 https://github.com/cktan/tomlc17 deps/ascii-chat-deps/tomlc17",
+
+  # libsodium-bcrypt-pbkdf: custom fork with UBSAN and Windows fixes
+  "git clone --depth 1 https://github.com/zfogg/libsodium-bcrypt-pbkdf.git deps/ascii-chat-deps/libsodium-bcrypt-pbkdf",
+
+  # sokol: header-only, not in nixpkgs, included via ascii-chat-deps/sokol/
+  "git clone --depth 1 https://github.com/floooh/sokol deps/ascii-chat-deps/sokol",
+
+  # mdns: requires patching to exclude main() (#ifndef MDNS_NO_MAIN)
+  "git clone --depth 1 https://github.com/mjansson/mdns.git deps/ascii-chat-deps/mdns",
+
+  # uthash: header-only, hardcoded include path (ascii-chat-deps/uthash/src/)
+  "git clone --depth 1 https://github.com/troydhanson/uthash.git deps/ascii-chat-deps/uthash",
+
+  # utf8proc: header-only, hardcoded include path (ascii-chat-deps/utf8proc/)
+  "git clone --depth 1 https://github.com/JuliaStrings/utf8proc.git deps/ascii-chat-deps/utf8proc",
+
+  # doxygen-awesome-css: docs styling
+  "git clone --depth 1 https://github.com/jothepro/doxygen-awesome-css.git deps/doxygen-awesome-css",
+
+  # Clean up .git dirs to save space
+  "find deps -name .git -type d -exec rm -rf {} + 2>/dev/null || true",
+]
+
+# Nix puts clang and llvm in separate read-only store paths. cmake expects
+# clang in the same prefix as llvm-config (llvm-config --prefix).
+# Create a unified LLVM directory with symlinks and a wrapper llvm-config.
+[phases.llvm_unify]
+dependsOn = ["setup"]
+cmds = [
+  "mkdir -p /usr/local/llvm/bin /usr/local/llvm/lib /usr/local/llvm/include",
+  "for tool in $(ls /root/.nix-profile/bin/clang* /root/.nix-profile/bin/llvm-* /root/.nix-profile/bin/lld* /root/.nix-profile/bin/ld.lld* 2>/dev/null); do ln -sf $tool /usr/local/llvm/bin/$(basename $tool) 2>/dev/null || true; done",
+  "mv /usr/local/llvm/bin/llvm-config /usr/local/llvm/bin/llvm-config-real 2>/dev/null || true && printf '#!/bin/sh\\ncase \"$1\" in --prefix) echo /usr/local/llvm ;; --bindir) echo /usr/local/llvm/bin ;; *) exec /usr/local/llvm/bin/llvm-config-real \"$@\" ;; esac\\n' > /usr/local/llvm/bin/llvm-config && chmod +x /usr/local/llvm/bin/llvm-config",
+  "ln -sf /usr/local/llvm/bin/* /usr/local/bin/ 2>/dev/null || true",
+  "CLANG_RES=$(clang --print-resource-dir 2>/dev/null) && [ -d \"$CLANG_RES\" ] && ln -sfn $CLANG_RES /usr/local/llvm/lib/clang 2>/dev/null || true",
+  "echo \"LLVM unified at /usr/local/llvm ($(llvm-config --version))\"",
+]
+
+# Run cmake configure to populate .deps-cache/ with all FetchContent downloads.
+# Configures both Debug and Release presets.
+[phases.configure]
+dependsOn = ["submodules", "llvm_unify"]
+cmds = [
+  # Configure with Dev build type (no sanitizers — configure only needs to populate .deps-cache/)
+  "cmake --preset dev -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=${LIB_VERSION}",
+  # Remove build artifacts but keep .deps-cache/ (shared across all build types)
+  "rm -rf build/",
+  # Configure release-musl preset (shares .deps-cache/)
+  "cmake --preset release-musl -DUSE_MUSL=ON -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=${LIB_VERSION}",
+]
+
+# This is a base/deps image, not a runnable app.
+# The start command is a no-op placeholder required by nixpacks.
+[start]
+cmd = "echo 'ascii-chat deps image ready. Use as buildImage in debug.nixpacks.toml.'"
