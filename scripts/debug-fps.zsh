@@ -15,6 +15,24 @@ server_wss_args=""
 
 SNAPSHOT_DELAY=3.5
 
+# Trace command helper function
+trace_command() {
+  local output_file="$1"
+  shift
+
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    # Check if dtrace can run (requires elevated privileges on modern macOS)
+    if dtrace -l >/dev/null 2>&1; then
+      dtrace -c "$*" -o "$output_file"
+    else
+      # dtrace blocked by SIP, just run command without tracing
+      env "$@" > "$output_file" 2>&1
+    fi
+  else
+    strace -f -o "$output_file" "$@"
+  fi
+}
+
 PORT=$(((RANDOM % 6000) + 2000))
 PORT_WS=$(((RANDOM % 6000) + 2000))
 
@@ -29,12 +47,6 @@ server_strace="$tmpdir/server-strace-$PORT.log"
 cert_file="/tmp/wss-test-cert.pem"
 key_file="/tmp/wss-test-key.pem"
 
-# Detect if macOS or Linux for strace/dstrace
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  STRACE_CMD="dstrace"
-else
-  STRACE_CMD="strace"
-fi
 
 
 while [[ $# -gt 0 ]]; do
@@ -86,6 +98,7 @@ case "$PROTO" in
   tcp)
     PROTO_PREFIX="tcp"
     echo "Testing TCP connectivity (snapshot delay: ${SNAPSHOT_DELAY}s)"
+    server_args=()
     ;;
 
   ws|wss)
@@ -101,12 +114,13 @@ case "$PROTO" in
     else
       PROTO_PREFIX="ws"
       echo "Testing WebSocket (WS) connectivity (snapshot delay: ${SNAPSHOT_DELAY}s)"
+      server_args=()
     fi
     ;;
 esac
 
-# Start WebSocket server with strace/dstrace
-"$STRACE_CMD" -f -o "$server_strace" \
+# Start WebSocket server with strace/dtrace
+trace_command "$server_strace" \
   "$BUILD_DIR"/bin/ascii-chat --log-file "$server_log" --log-level debug \
   server --port "$PORT" --websocket-port "$PORT_WS" "${server_args[@]}" \
   >/dev/null 2>&1 &
@@ -125,7 +139,7 @@ case "$PROTO" in
     PROTO_PORT="$PORT_WS"
     ;;
 esac
-timeout -k0.5 "$((SNAPSHOT_DELAY + 1))" "$STRACE_CMD" -f -o "$client_strace" \
+timeout -k0.5 "$((SNAPSHOT_DELAY + 1))" trace_command "$client_strace" \
   "$BUILD_DIR"/bin/ascii-chat \
   --log-level debug --log-file "$client_log" --sync-state 1 \
   --color true --color-mode truecolor \
