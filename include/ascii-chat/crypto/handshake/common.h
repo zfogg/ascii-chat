@@ -13,6 +13,8 @@
 #include "../../crypto/keys.h"
 #include "../../network/packet/packet.h"
 
+struct acip_transport;
+
 /**
  * @name Authentication Requirement Flags
  * @{
@@ -246,26 +248,26 @@ asciichat_error_t crypto_decrypt_packet_or_passthrough(const crypto_handshake_co
 /**
  * @brief Send REKEY_REQUEST packet (initiator side)
  * @param ctx Crypto handshake context (must be ready)
- * @param socket Socket to send on
+ * @param transport Transport to send on
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t crypto_handshake_rekey_request(crypto_handshake_context_t *ctx, socket_t socket);
+asciichat_error_t crypto_handshake_rekey_request(crypto_handshake_context_t *ctx, struct acip_transport *transport);
 
 /**
  * @brief Send REKEY_RESPONSE packet (responder side)
  * @param ctx Crypto handshake context (must be ready)
- * @param socket Socket to send on
+ * @param transport Transport to send on
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t crypto_handshake_rekey_response(crypto_handshake_context_t *ctx, socket_t socket);
+asciichat_error_t crypto_handshake_rekey_response(crypto_handshake_context_t *ctx, struct acip_transport *transport);
 
 /**
  * @brief Send REKEY_COMPLETE packet (initiator side)
  * @param ctx Crypto handshake context (must be ready)
- * @param socket Socket to send on
+ * @param transport Transport to send on
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t crypto_handshake_rekey_complete(crypto_handshake_context_t *ctx, socket_t socket);
+asciichat_error_t crypto_handshake_rekey_complete(crypto_handshake_context_t *ctx, struct acip_transport *transport);
 
 /**
  * @brief Process received REKEY_REQUEST packet (responder side)

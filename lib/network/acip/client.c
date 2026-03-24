@@ -48,83 +48,57 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
   bool enforce_encryption = (transport->crypto_ctx != NULL);
   log_debug("[ACIP_RECV] 🔐 CRYPTO_MODE: enforce_encryption=%s", enforce_encryption ? "yes" : "no");
 
-  // Try to get socket from transport
   socket_t sock = transport->methods->get_socket(transport);
-  log_debug("[ACIP_RECV] 🔌 TRANSPORT_TYPE: socket=%d (socket=TCP, INVALID=WebRTC/other)", sock);
+  log_debug("[ACIP_RECV] 🔌 TRANSPORT_SOCKET: socket=%d (INVALID=%d)", sock, INVALID_SOCKET_VALUE);
 
-  if (sock != INVALID_SOCKET_VALUE) {
-    // Socket-based transport (TCP): use receive_packet_secure() for socket I/O + parsing
-    log_info("[ACIP_RECV] 🔌 TCP_PATH: using receive_packet_secure(), sockfd=%d", sock);
-    packet_recv_result_t result = receive_packet_secure(sock, transport->crypto_ctx, enforce_encryption, &envelope);
+  void *packet_data = NULL;
+  void *allocated_buffer = NULL;
+  size_t packet_len = 0;
 
-    log_info("[ACIP_RECV] 📥 TCP_RECV_RESULT: code=%d (0=success, 1=eof, 2=crypto_error, 3=other)", result);
+  log_debug("[ACIP_RECV] 📥 RECV_CALL: using transport->methods->recv()");
+  asciichat_error_t recv_result = acip_transport_recv(transport, &packet_data, &packet_len, &allocated_buffer);
+  log_info("[ACIP_RECV] 📥 RECV_RESULT: error=%d, packet_len=%zu, data=%p, alloc=%p", recv_result, packet_len,
+           packet_data, allocated_buffer);
 
-    // Handle receive errors
-    if (result != PACKET_RECV_SUCCESS) {
-      if (result == PACKET_RECV_EOF) {
-        log_warn("[ACIP_RECV] ⚠️  EOF: Server closed connection");
-        return SET_ERRNO(ERROR_NETWORK, "Connection closed (EOF)");
-      } else if (result == PACKET_RECV_SECURITY_VIOLATION) {
-        log_error("[ACIP_RECV] ❌ SECURITY_VIOLATION: Encryption policy violated");
-        return SET_ERRNO(ERROR_CRYPTO, "Security violation: unencrypted packet when encryption required");
-      } else {
-        log_error("[ACIP_RECV] ❌ TCP_RECV_FAILED: receive_packet_secure returned %d", result);
-        return SET_ERRNO(ERROR_NETWORK, "Failed to receive packet");
-      }
-    }
-  } else {
-    // Non-socket transport (WebRTC): use transport's recv() method to get complete packet
-    log_info("[ACIP_RECV] 🌐 WEBRTC_PATH: using transport->methods->recv()");
-    void *packet_data = NULL;
-    void *allocated_buffer = NULL;
-    size_t packet_len = 0;
+  if (recv_result != ASCIICHAT_OK) {
+    log_error("[ACIP_RECV] ❌ RECV_FAILED: error code %d", recv_result);
+    return recv_result;
+  }
 
-    log_debug("[ACIP_RECV] 🌐 WEBRTC_RECV: calling recv() method");
-    asciichat_error_t recv_result = transport->methods->recv(transport, &packet_data, &packet_len, &allocated_buffer);
-    log_info("[ACIP_RECV] 🌐 WEBRTC_RECV_RESULT: error=%d, packet_len=%zu, data=%p, alloc=%p", recv_result, packet_len,
-             packet_data, allocated_buffer);
+  // Parse packet header
+  log_debug("[ACIP_RECV] HEADER_CHECK: packet_len=%zu, header_size=%zu", packet_len, sizeof(packet_header_t));
+  if (packet_len < sizeof(packet_header_t)) {
+    log_error("[ACIP_RECV] ❌ HEADER_TOO_SMALL: %zu < %zu", packet_len, sizeof(packet_header_t));
+    buffer_pool_free(NULL, allocated_buffer, packet_len);
+    return SET_ERRNO(ERROR_NETWORK, "Packet too small: %zu < %zu", packet_len, sizeof(packet_header_t));
+  }
 
-    if (recv_result != ASCIICHAT_OK) {
-      log_error("[ACIP_RECV] ❌ WEBRTC_RECV_FAILED: error code %d", recv_result);
-      return SET_ERRNO(ERROR_NETWORK, "Transport recv() failed");
-    }
+  const packet_header_t *header = (const packet_header_t *)packet_data;
+  envelope.type = NET_TO_HOST_U16(header->type);
+  envelope.len = NET_TO_HOST_U32(header->length);
+  envelope.data = (uint8_t *)packet_data + sizeof(packet_header_t);
+  envelope.allocated_buffer = allocated_buffer;
+  envelope.allocated_size = packet_len;
+  envelope.was_encrypted = false;
 
-    // Parse packet header
-    log_debug("[ACIP_RECV] 🌐 HEADER_CHECK: packet_len=%zu, header_size=%zu", packet_len, sizeof(packet_header_t));
-    if (packet_len < sizeof(packet_header_t)) {
-      log_error("[ACIP_RECV] ❌ HEADER_TOO_SMALL: %zu < %zu", packet_len, sizeof(packet_header_t));
-      buffer_pool_free(NULL, allocated_buffer, packet_len);
-      return SET_ERRNO(ERROR_NETWORK, "Packet too small: %zu < %zu", packet_len, sizeof(packet_header_t));
-    }
+  log_info("[ACIP_RECV] HEADER_PARSED: type=%u (0x%04x), len=%u, total_size=%zu", envelope.type, envelope.type,
+           envelope.len, packet_len);
 
-    const packet_header_t *header = (const packet_header_t *)packet_data;
-    envelope.type = NET_TO_HOST_U16(header->type);
-    envelope.len = NET_TO_HOST_U32(header->length);
-    envelope.data = (uint8_t *)packet_data + sizeof(packet_header_t);
-    envelope.allocated_buffer = allocated_buffer;
-    envelope.allocated_size = packet_len;
-    envelope.was_encrypted = false; // WebRTC currently doesn't support encryption in this path
+  log_dev_every(4500 * US_PER_MS_INT, "ACIP received packet: type=%u, len=%u, total_size=%zu", envelope.type,
+                envelope.len, packet_len);
 
-    log_info("[ACIP_RECV] 🌐 HEADER_PARSED: type=%u (0x%04x), len=%u, total_size=%zu", envelope.type, envelope.type,
-             envelope.len, packet_len);
-
-    log_dev_every(4500 * US_PER_MS_INT, "WebRTC received packet: type=%u, len=%u, total_size=%zu", envelope.type,
-                  envelope.len, packet_len);
-
-    // Validate packet length
-    log_debug("[ACIP_RECV] 🌐 LENGTH_VALIDATION: payload_size=%u vs actual=%zu", envelope.len,
+  // Validate packet length
+  log_debug("[ACIP_RECV] LENGTH_VALIDATION: payload_size=%u vs actual=%zu", envelope.len,
+            packet_len - sizeof(packet_header_t));
+  if (envelope.len != packet_len - sizeof(packet_header_t)) {
+    log_error("[ACIP_RECV] ❌ LENGTH_MISMATCH: header=%u, actual=%zu", envelope.len,
               packet_len - sizeof(packet_header_t));
-    if (envelope.len != packet_len - sizeof(packet_header_t)) {
-      log_error("[ACIP_RECV] ❌ LENGTH_MISMATCH: header=%u, actual=%zu", envelope.len,
-                packet_len - sizeof(packet_header_t));
-      buffer_pool_free(NULL, allocated_buffer, packet_len);
-      return SET_ERRNO(ERROR_NETWORK, "Packet length mismatch: header says %u, actual %zu", envelope.len,
-                       packet_len - sizeof(packet_header_t));
-    }
+    buffer_pool_free(NULL, allocated_buffer, packet_len);
+    return SET_ERRNO(ERROR_NETWORK, "Packet length mismatch: header says %u, actual %zu", envelope.len,
+                     packet_len - sizeof(packet_header_t));
   }
 
   // Handle PACKET_TYPE_ENCRYPTED from server (decrypt and extract inner packet)
-  // Uses shared decryption logic with receive_packet_secure() for TCP
   if (envelope.type == PACKET_TYPE_ENCRYPTED) {
     log_info("[ACIP_RECV] 🔐 ENCRYPTED_PACKET: decrypting PACKET_TYPE_ENCRYPTED (len=%u)", envelope.len);
     asciichat_error_t decrypt_result = packet_decrypt_envelope(&envelope, transport->crypto_ctx);

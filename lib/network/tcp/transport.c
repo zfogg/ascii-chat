@@ -260,6 +260,32 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
   *out_len = envelope.len;
   *out_allocated_buffer = envelope.allocated_buffer;
 
+  /*
+   * `receive_packet_secure()` returns two different buffer shapes:
+   * - plaintext packets: [header][payload]
+   * - encrypted packets: [payload only] with the decrypted header still
+   *   present at the start of the allocated buffer.
+   *
+   * The ACIP client code and transport-agnostic packet helpers expect a
+   * normalized packet buffer that always begins with the ACIP header, so
+   * copy encrypted packets into a compact [header][payload] buffer here.
+   */
+  if (envelope.data != envelope.allocated_buffer) {
+    size_t packet_size = sizeof(packet_header_t) + envelope.len;
+    uint8_t *normalized = buffer_pool_alloc(NULL, packet_size);
+    if (!normalized) {
+      buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate normalized packet buffer");
+    }
+
+    memcpy(normalized, envelope.allocated_buffer, packet_size);
+    buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+
+    *buffer = normalized;
+    *out_len = packet_size;
+    *out_allocated_buffer = normalized;
+  }
+
   if (envelope.len >= sizeof(packet_header_t)) {
     const packet_header_t *hdr = (const packet_header_t *)envelope.data;
     uint16_t pkt_type = NET_TO_HOST_U16(hdr->type);

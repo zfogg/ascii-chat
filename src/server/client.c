@@ -2272,20 +2272,20 @@ void *client_send_thread_func(void *arg) {
       if (should_rekey) {
         log_debug("Rekey threshold reached for client %s, initiating session rekey", client->client_id);
         mutex_lock(&client->client_state_mutex);
-        // Get socket reference briefly to avoid deadlock on TCP buffer full
+        // Get transport reference briefly to avoid deadlock on transport buffers
         mutex_lock(&client->send_mutex);
-        if (atomic_load_bool(&client->shutting_down) || client->socket == INVALID_SOCKET_VALUE) {
+        if (atomic_load_bool(&client->shutting_down) || !client->transport) {
           mutex_unlock(&client->send_mutex);
           mutex_unlock(&client->client_state_mutex);
-          log_warn("BREAK_REKEY: client_id=%s shutting_down=%d socket=%d", client->client_id,
-                   atomic_load_bool(&client->shutting_down), (int)client->socket);
+          log_warn("BREAK_REKEY: client_id=%s shutting_down=%d transport=%p", client->client_id,
+                   atomic_load_bool(&client->shutting_down), (void *)client->transport);
           break; // Client is shutting down, exit thread
         }
-        socket_t rekey_socket = client->socket;
+        acip_transport_t *rekey_transport = client->transport;
         mutex_unlock(&client->send_mutex);
 
         // Network I/O happens OUTSIDE the send_mutex (client_state_mutex still held for crypto state)
-        asciichat_error_t result = crypto_handshake_rekey_request(&client->crypto_handshake_ctx, rekey_socket);
+        asciichat_error_t result = crypto_handshake_rekey_request(&client->crypto_handshake_ctx, rekey_transport);
         mutex_unlock(&client->client_state_mutex);
 
         if (result != ASCIICHAT_OK) {
@@ -3594,18 +3594,18 @@ static void acip_server_on_crypto_rekey_request(const void *payload, size_t payl
 
   // Send REKEY_RESPONSE
   mutex_lock(&client->client_state_mutex);
-  // Get socket reference briefly to avoid deadlock on TCP buffer full
+  // Get transport reference briefly to avoid deadlock on transport buffers
   mutex_lock(&client->send_mutex);
-  if (atomic_load_bool(&client->shutting_down) || client->socket == INVALID_SOCKET_VALUE) {
+  if (atomic_load_bool(&client->shutting_down) || !client->transport) {
     mutex_unlock(&client->send_mutex);
     mutex_unlock(&client->client_state_mutex);
     return; // Client is shutting down
   }
-  socket_t rekey_socket = client->socket;
+  acip_transport_t *rekey_transport = client->transport;
   mutex_unlock(&client->send_mutex);
 
   // Network I/O happens OUTSIDE the send_mutex (client_state_mutex still held for crypto state)
-  crypto_result = crypto_handshake_rekey_response(&client->crypto_handshake_ctx, rekey_socket);
+  crypto_result = crypto_handshake_rekey_response(&client->crypto_handshake_ctx, rekey_transport);
   mutex_unlock(&client->client_state_mutex);
 
   if (crypto_result != ASCIICHAT_OK) {
@@ -3635,18 +3635,18 @@ static void acip_server_on_crypto_rekey_response(const void *payload, size_t pay
 
   // Send REKEY_COMPLETE to confirm and activate new key
   mutex_lock(&client->client_state_mutex);
-  // Get socket reference briefly to avoid deadlock on TCP buffer full
+  // Get transport reference briefly to avoid deadlock on transport buffers
   mutex_lock(&client->send_mutex);
-  if (atomic_load_bool(&client->shutting_down) || client->socket == INVALID_SOCKET_VALUE) {
+  if (atomic_load_bool(&client->shutting_down) || !client->transport) {
     mutex_unlock(&client->send_mutex);
     mutex_unlock(&client->client_state_mutex);
     return; // Client is shutting down
   }
-  socket_t complete_socket = client->socket;
+  acip_transport_t *complete_transport = client->transport;
   mutex_unlock(&client->send_mutex);
 
   // Network I/O happens OUTSIDE the send_mutex (client_state_mutex still held for crypto state)
-  crypto_result = crypto_handshake_rekey_complete(&client->crypto_handshake_ctx, complete_socket);
+  crypto_result = crypto_handshake_rekey_complete(&client->crypto_handshake_ctx, complete_transport);
   mutex_unlock(&client->client_state_mutex);
 
   if (crypto_result != ASCIICHAT_OK) {

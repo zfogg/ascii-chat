@@ -710,7 +710,6 @@ void server_connection_set_transport(acip_transport_t *transport) {
   // Mark connection as active when transport is set
   if (transport) {
     log_debug("[TRANSPORT_LIFECYCLE] Transport is non-NULL, extracting socket...");
-    // Extract socket from transport for backward compatibility with socket-based checks
     g_sockfd = acip_transport_get_socket(transport);
     log_debug("[TRANSPORT_LIFECYCLE] Socket extracted: %d from transport=%p", (int)g_sockfd, (void *)transport);
 
@@ -756,8 +755,7 @@ const char *server_connection_get_ip() {
 /**
  * @brief Set the server IP address
  *
- * Updates the global server IP address. Used by new connection code paths
- * that don't use the legacy server_connect() function.
+ * Updates the global server IP address for the active transport connection.
  *
  * @param ip Server IP address string
  *
@@ -776,8 +774,7 @@ void server_connection_set_ip(const char *ip) {
 /**
  * @brief Set the server port
  *
- * Updates the global server port. Used by new connection code paths
- * that don't use the legacy server_connect() function.
+ * Updates the global server port for the active transport connection.
  *
  * @param port Server port number
  *

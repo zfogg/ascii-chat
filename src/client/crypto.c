@@ -157,6 +157,7 @@
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/crypto/discovery_keys.h>
 #include <ascii-chat/buffer_pool.h>
@@ -432,7 +433,6 @@ int client_crypto_init(void) {
  * @ingroup client_crypto
  */
 int client_crypto_handshake(acip_transport_t *transport) {
-  socket_t socket = acip_transport_get_socket(transport);
   // If client has --no-encrypt, skip handshake entirely
   if (GET_OPTION(no_encrypt)) {
     log_debug("Client has --no-encrypt, skipping crypto handshake");
@@ -460,7 +460,8 @@ int client_crypto_handshake(acip_transport_t *transport) {
   client_version.compression_threshold = 0;
   client_version.feature_flags = 0;
 
-  int result = send_protocol_version_packet(socket, &client_version);
+  int result = packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &client_version,
+                                          sizeof(client_version), 0);
   if (result != 0) {
     log_error("Failed to send protocol version to server");
     STOP_TIMER("client_crypto_handshake");
@@ -471,9 +472,10 @@ int client_crypto_handshake(acip_transport_t *transport) {
   // Step 0b: Receive server's protocol version
   packet_type_t packet_type;
   void *payload = NULL;
+  void *alloc_buffer = NULL;
   size_t payload_len = 0;
 
-  result = receive_packet(socket, &packet_type, &payload, &payload_len);
+  result = packet_receive_via_transport(transport, &packet_type, &payload, &payload_len, &alloc_buffer);
   if (result != ASCIICHAT_OK || packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
     log_error("Failed to receive server protocol version (got type %u)", packet_type);
     log_error("Packet type 0x%x (decimal %u) - Expected 0x%x (decimal %d)", packet_type, packet_type,
@@ -481,8 +483,8 @@ int client_crypto_handshake(acip_transport_t *transport) {
     log_error("This suggests a protocol mismatch or packet corruption");
     log_error("Raw packet type bytes: %02x %02x %02x %02x", (packet_type >> 0) & 0xFF, (packet_type >> 8) & 0xFF,
               (packet_type >> 16) & 0xFF, (packet_type >> 24) & 0xFF);
-    if (payload) {
-      buffer_pool_free(NULL, payload, payload_len);
+    if (alloc_buffer) {
+      buffer_pool_free(NULL, alloc_buffer, 0);
     }
     STOP_TIMER("client_crypto_handshake");
     return -1;
@@ -491,14 +493,14 @@ int client_crypto_handshake(acip_transport_t *transport) {
   if (payload_len != sizeof(protocol_version_packet_t)) {
     log_error("Invalid protocol version packet size: %zu, expected %zu", payload_len,
               sizeof(protocol_version_packet_t));
-    buffer_pool_free(NULL, payload, payload_len);
+    buffer_pool_free(NULL, alloc_buffer, 0);
     STOP_TIMER("client_crypto_handshake");
     return -1;
   }
 
   protocol_version_packet_t server_version;
   memcpy(&server_version, payload, sizeof(protocol_version_packet_t));
-  buffer_pool_free(NULL, payload, payload_len);
+  buffer_pool_free(NULL, alloc_buffer, 0);
 
   // Convert from network byte order
   uint16_t server_proto_version = NET_TO_HOST_U16(server_version.protocol_version);
@@ -527,7 +529,8 @@ int client_crypto_handshake(acip_transport_t *transport) {
   client_caps.preferred_cipher =
       ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode) ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
 
-  result = send_crypto_capabilities_packet(socket, &client_caps);
+  result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_CAPABILITIES, &client_caps,
+                                     sizeof(client_caps), 0);
   if (result != 0) {
     log_error("Failed to send crypto capabilities to server");
     STOP_TIMER("client_crypto_handshake");
@@ -538,13 +541,14 @@ int client_crypto_handshake(acip_transport_t *transport) {
   // Step 0d: Receive server's crypto parameters
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Receiving server crypto parameters");
   payload = NULL;
+  alloc_buffer = NULL;
   payload_len = 0;
 
-  result = receive_packet(socket, &packet_type, &payload, &payload_len);
+  result = packet_receive_via_transport(transport, &packet_type, &payload, &payload_len, &alloc_buffer);
   if (result != ASCIICHAT_OK || packet_type != PACKET_TYPE_CRYPTO_PARAMETERS) {
     log_error("Failed to receive server crypto parameters (got type %u)", packet_type);
-    if (payload) {
-      buffer_pool_free(NULL, payload, payload_len);
+    if (alloc_buffer) {
+      buffer_pool_free(NULL, alloc_buffer, 0);
     }
     STOP_TIMER("client_crypto_handshake");
     return -1;
@@ -553,14 +557,14 @@ int client_crypto_handshake(acip_transport_t *transport) {
   if (payload_len != sizeof(crypto_parameters_packet_t)) {
     log_error("Invalid crypto parameters packet size: %zu, expected %zu", payload_len,
               sizeof(crypto_parameters_packet_t));
-    buffer_pool_free(NULL, payload, payload_len);
+    buffer_pool_free(NULL, alloc_buffer, 0);
     STOP_TIMER("client_crypto_handshake");
     return -1;
   }
 
   crypto_parameters_packet_t server_params;
   memcpy(&server_params, payload, sizeof(crypto_parameters_packet_t));
-  buffer_pool_free(NULL, payload, payload_len);
+  buffer_pool_free(NULL, alloc_buffer, 0);
 
   // Convert from network byte order
   uint16_t kex_pubkey_size = NET_TO_HOST_U16(server_params.kex_public_key_size);
@@ -624,7 +628,8 @@ int client_crypto_handshake(acip_transport_t *transport) {
       // Send the first expected key (client should only have one expected server key)
       // Format: 32-byte Ed25519 public key
       log_debug("Sending CRYPTO_CLIENT_HELLO with expected server key for multi-key selection");
-      result = send_packet(socket, PACKET_TYPE_CRYPTO_CLIENT_HELLO, expected_keys[0].key, ED25519_PUBLIC_KEY_SIZE);
+      result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_CLIENT_HELLO, expected_keys[0].key,
+                                         ED25519_PUBLIC_KEY_SIZE, 0);
 
       if (result != ASCIICHAT_OK) {
         FATAL(result, "Failed to send CRYPTO_CLIENT_HELLO packet");
@@ -644,14 +649,19 @@ int client_crypto_handshake(acip_transport_t *transport) {
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Starting key exchange");
   {
     packet_type_t packet_type;
-    uint8_t *payload = NULL;
+    void *payload = NULL;
+    void *alloc_buffer = NULL;
     size_t payload_len = 0;
-    int recv_result = receive_packet(socket, &packet_type, (void **)&payload, &payload_len);
+    int recv_result = packet_receive_via_transport(transport, &packet_type, &payload, &payload_len, &alloc_buffer);
     if (recv_result != ASCIICHAT_OK) {
+      if (alloc_buffer) {
+        buffer_pool_free(NULL, alloc_buffer, 0);
+      }
       FATAL(recv_result, "Failed to receive KEY_EXCHANGE_INIT from server");
     }
-    // Client handshake functions take ownership of payload
+    // Client handshake functions consume the received payload buffer
     result = crypto_handshake_client_key_exchange(&g_crypto_ctx, transport, packet_type, payload, payload_len);
+    buffer_pool_free(NULL, alloc_buffer, 0);
   }
   if (result != ASCIICHAT_OK) {
 #ifdef _WIN32
@@ -716,14 +726,19 @@ int client_crypto_handshake(acip_transport_t *transport) {
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Starting auth response");
   {
     packet_type_t packet_type;
-    uint8_t *payload = NULL;
+    void *payload = NULL;
+    void *alloc_buffer = NULL;
     size_t payload_len = 0;
-    int recv_result = receive_packet(socket, &packet_type, (void **)&payload, &payload_len);
+    int recv_result = packet_receive_via_transport(transport, &packet_type, &payload, &payload_len, &alloc_buffer);
     if (recv_result != ASCIICHAT_OK) {
+      if (alloc_buffer) {
+        buffer_pool_free(NULL, alloc_buffer, 0);
+      }
       FATAL(recv_result, "Failed to receive auth challenge from server");
     }
-    // Client handshake functions take ownership of payload
+    // Client handshake functions consume the received payload buffer
     result = crypto_handshake_client_auth_response(&g_crypto_ctx, transport, packet_type, payload, payload_len);
+    buffer_pool_free(NULL, alloc_buffer, 0);
   }
   if (result != ASCIICHAT_OK) {
     FATAL(result, "Crypto authentication failed");
@@ -746,14 +761,19 @@ int client_crypto_handshake(acip_transport_t *transport) {
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Waiting for handshake complete message");
   {
     packet_type_t packet_type;
-    uint8_t *payload = NULL;
+    void *payload = NULL;
+    void *alloc_buffer = NULL;
     size_t payload_len = 0;
-    int recv_result = receive_packet(socket, &packet_type, (void **)&payload, &payload_len);
+    int recv_result = packet_receive_via_transport(transport, &packet_type, &payload, &payload_len, &alloc_buffer);
     if (recv_result != ASCIICHAT_OK) {
+      if (alloc_buffer) {
+        buffer_pool_free(NULL, alloc_buffer, 0);
+      }
       FATAL(recv_result, "Failed to receive handshake completion from server");
     }
-    // Client handshake functions take ownership of payload
+    // Client handshake functions consume the received payload buffer
     result = crypto_handshake_client_complete(&g_crypto_ctx, transport, packet_type, payload, payload_len);
+    buffer_pool_free(NULL, alloc_buffer, 0);
   }
   if (result != ASCIICHAT_OK) {
     FATAL(result, "Crypto handshake completion failed");
@@ -879,13 +899,13 @@ int crypto_client_initiate_rekey(void) {
     return -1;
   }
 
-  socket_t socket = server_connection_get_socket();
-  if (socket == INVALID_SOCKET_VALUE) {
-    log_error("Cannot initiate rekey: invalid socket");
+  acip_transport_t *transport = server_connection_get_transport();
+  if (!transport) {
+    log_error("Cannot initiate rekey: invalid transport");
     return -1;
   }
 
-  asciichat_error_t result = crypto_handshake_rekey_request(&g_crypto_ctx, socket);
+  asciichat_error_t result = crypto_handshake_rekey_request(&g_crypto_ctx, transport);
   if (result != ASCIICHAT_OK) {
     log_error("Failed to send REKEY_REQUEST: %d", result);
     return -1;
@@ -931,13 +951,13 @@ int crypto_client_send_rekey_response(void) {
     return -1;
   }
 
-  socket_t socket = server_connection_get_socket();
-  if (socket == INVALID_SOCKET_VALUE) {
-    log_error("Cannot send rekey response: invalid socket");
+  acip_transport_t *transport = server_connection_get_transport();
+  if (!transport) {
+    log_error("Cannot send rekey response: invalid transport");
     return -1;
   }
 
-  asciichat_error_t result = crypto_handshake_rekey_response(&g_crypto_ctx, socket);
+  asciichat_error_t result = crypto_handshake_rekey_response(&g_crypto_ctx, transport);
   if (result != ASCIICHAT_OK) {
     log_error("Failed to send REKEY_RESPONSE: %d", result);
     return -1;
@@ -983,13 +1003,13 @@ int crypto_client_send_rekey_complete(void) {
     return -1;
   }
 
-  socket_t socket = server_connection_get_socket();
-  if (socket == INVALID_SOCKET_VALUE) {
-    log_error("Cannot send rekey complete: invalid socket");
+  acip_transport_t *transport = server_connection_get_transport();
+  if (!transport) {
+    log_error("Cannot send rekey complete: invalid transport");
     return -1;
   }
 
-  asciichat_error_t result = crypto_handshake_rekey_complete(&g_crypto_ctx, socket);
+  asciichat_error_t result = crypto_handshake_rekey_complete(&g_crypto_ctx, transport);
   if (result != ASCIICHAT_OK) {
     log_error("Failed to send REKEY_COMPLETE: %d", result);
     return -1;
