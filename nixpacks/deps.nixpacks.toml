@@ -9,19 +9,20 @@
 providers = []
 
 [variables]
-CC = "clang"
-CXX = "clang++"
 CMAKE_GENERATOR = "Ninja"
 DEBIAN_FRONTEND = "noninteractive"
 LIB_VERSION = "0.3.0"
-# Nix puts all packages in /root/.nix-profile/, so we need to tell pkg-config where to find them
-PKG_CONFIG_PATH = "/root/.nix-profile/lib/pkgconfig:/root/.nix-profile/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/local/lib/pkgconfig:/opt/local/lib/pkgconfig"
-CMAKE_PREFIX_PATH = "/root/.nix-profile:/usr/local/llvm"
-LD_LIBRARY_PATH = "/root/.nix-profile/lib:/usr/local/llvm/lib"
-LDFLAGS = "-L/root/.nix-profile/lib -L/usr/local/llvm/lib"
-CFLAGS = "-I/root/.nix-profile/include -I/usr/local/llvm/include"
-CPPFLAGS = "-I/root/.nix-profile/include -I/usr/local/llvm/include"
-PATH = "/usr/local/llvm/bin:/usr/local/bin:/root/.nix-profile/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/bin"
+
+[env]
+PATH = "/root/.nix-profile/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/bin"
+PKG_CONFIG_PATH = "/root/.nix-profile/lib/pkgconfig:/root/.nix-profile/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
+CMAKE_PREFIX_PATH = "/root/.nix-profile"
+LD_LIBRARY_PATH = "/root/.nix-profile/lib"
+LDFLAGS = "-L/root/.nix-profile/lib"
+CFLAGS = "-I/root/.nix-profile/include"
+CPPFLAGS = "-I/root/.nix-profile/include"
+CC = "/root/.nix-profile/bin/clang"
+CXX = "/root/.nix-profile/bin/clang++"
 
 [phases.setup]
 # Pin nixpkgs to a recent unstable commit with CMake >= 3.28 and Clang >= 18
@@ -116,7 +117,7 @@ nixLibs = [
 # Clone only submodules that need custom forks, patching, or have hardcoded include paths.
 # All standard libraries (yyjson, x265, libde265, etc.) come from Nix packages above.
 [phases.submodules]
-dependsOn = ["setup"]
+dependsOn = ["env_setup"]
 cmds = [
   # Remove existing submodule dirs from COPY (may be empty stubs from git)
   "rm -rf deps/ascii-chat-deps deps/doxygen-awesome-css",
@@ -150,71 +151,33 @@ cmds = [
   "find deps -name .git -type d -exec rm -rf {} + 2>/dev/null || true",
 ]
 
-# Nix puts clang and llvm in separate read-only store paths. cmake expects
-# clang in the same prefix as llvm-config (llvm-config --prefix).
-# Create a unified LLVM directory with symlinks and a wrapper llvm-config.
-[phases.llvm_unify]
-dependsOn = ["setup"]
+# Verify environment is properly set before running cmake
+[phases.verify_env]
+dependsOn = ["submodules"]
 cmds = [
-  "mkdir -p /usr/local/llvm/bin /usr/local/llvm/lib /usr/local/llvm/include",
-  # Link all LLVM and Clang tools from Nix profile
-  "for tool in $(ls -1 /root/.nix-profile/bin/clang* /root/.nix-profile/bin/llvm-* /root/.nix-profile/bin/lld* /root/.nix-profile/bin/ld.lld* 2>/dev/null || true); do ln -sf \"$tool\" /usr/local/llvm/bin/$(basename \"$tool\") 2>/dev/null || true; done",
-  # Also link ld for consistency
-  "[ -f /root/.nix-profile/bin/ld ] && ln -sf /root/.nix-profile/bin/ld /usr/local/llvm/bin/ld 2>/dev/null || true",
-  # Create wrapper llvm-config that returns our unified prefix
-  "if [ -f /usr/local/llvm/bin/llvm-config ]; then mv /usr/local/llvm/bin/llvm-config /usr/local/llvm/bin/llvm-config-real; fi",
-  "printf '#!/bin/sh\\ncase \"$1\" in --prefix) echo /usr/local/llvm ;; --bindir) echo /usr/local/llvm/bin ;; *) exec /usr/local/llvm/bin/llvm-config-real \"$@\" ;; esac\\n' > /usr/local/llvm/bin/llvm-config && chmod +x /usr/local/llvm/bin/llvm-config",
-  # Link all LLVM tools to /usr/local/bin so they're in PATH
-  "for tool in /usr/local/llvm/bin/*; do ln -sf \"$tool\" /usr/local/bin/$(basename \"$tool\") 2>/dev/null || true; done",
-  # Link Clang resource directory
-  "CLANG_RES=$(clang --print-resource-dir 2>/dev/null) && [ -n \"$CLANG_RES\" ] && [ -d \"$CLANG_RES\" ] && ln -sfn \"$CLANG_RES\" /usr/local/llvm/lib/clang 2>/dev/null || true",
-  # Verify
-  "echo \"LLVM unified at /usr/local/llvm\" && llvm-config --version",
-]
-
-# Link Nix lib directories to standard locations for pkg-config and CMake to find them
-[phases.link_nix_libs]
-dependsOn = ["llvm_unify"]
-cmds = [
-  "mkdir -p /usr/local/lib /usr/local/include",
-  # Link libraries from Nix to system paths
-  "find /root/.nix-profile/lib -maxdepth 1 -type f -o -type l | while read lib; do ln -sf \"$lib\" /usr/local/lib/$(basename \"$lib\") 2>/dev/null || true; done",
-  "find /root/.nix-profile/lib -maxdepth 1 -type d ! -name . | while read dir; do ln -sfn \"$dir\" /usr/local/lib/$(basename \"$dir\") 2>/dev/null || true; done",
-  # Link includes from Nix to system paths
-  "find /root/.nix-profile/include -maxdepth 1 -type f -o -type l | while read hdr; do ln -sf \"$hdr\" /usr/local/include/$(basename \"$hdr\") 2>/dev/null || true; done",
-  "find /root/.nix-profile/include -maxdepth 1 -type d ! -name . | while read dir; do ln -sfn \"$dir\" /usr/local/include/$(basename \"$dir\") 2>/dev/null || true; done",
-  # Link pkg-config files
-  "mkdir -p /usr/local/lib/pkgconfig /usr/local/share/pkgconfig",
-  "find /root/.nix-profile/lib/pkgconfig -maxdepth 1 -type f 2>/dev/null | while read pc; do ln -sf \"$pc\" /usr/local/lib/pkgconfig/$(basename \"$pc\") 2>/dev/null || true; done",
-  "find /root/.nix-profile/share/pkgconfig -maxdepth 1 -type f 2>/dev/null | while read pc; do ln -sf \"$pc\" /usr/local/share/pkgconfig/$(basename \"$pc\") 2>/dev/null || true; done",
-  "echo 'Nix libraries linked to /usr/local'",
-]
-
-# Verify LLVM and pkg-config setup before configure
-[phases.verify_setup]
-dependsOn = ["link_nix_libs"]
-cmds = [
-  "echo 'Verifying LLVM setup:'",
-  "which clang && clang --version | head -1",
-  "which llvm-config && llvm-config --version",
-  "echo ''",
-  "echo 'Verifying pkg-config setup:'",
-  "which pkg-config && pkg-config --version",
-  "echo 'Checking for zstd pkg-config:'",
-  "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/root/.nix-profile/lib/pkgconfig:/root/.nix-profile/share/pkgconfig:/usr/lib/pkgconfig pkg-config --exists libzstd && echo 'libzstd found!' || (echo 'libzstd NOT found in:' && find /usr/local/lib/pkgconfig -name '*zstd*' && find /root/.nix-profile -name '*zstd*.pc' 2>/dev/null)",
+  "echo 'Verifying environment setup...'",
+  "echo \"PATH=$PATH\"",
+  "echo \"CC=$CC\"",
+  "echo \"CXX=$CXX\"",
+  "echo \"CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH\"",
+  "echo \"PKG_CONFIG_PATH=$PKG_CONFIG_PATH\"",
+  "which clang || echo 'clang not in PATH'",
+  "which cmake || echo 'cmake not in PATH'",
+  "pkg-config --list-all | head -5 || echo 'pkg-config failed'",
+  "echo 'Environment verification complete'",
 ]
 
 # Run cmake configure to populate .deps-cache/ with all FetchContent downloads.
 # Configures both Debug and Release presets.
 [phases.configure]
-dependsOn = ["submodules", "verify_setup"]
+dependsOn = ["verify_env"]
 cmds = [
-  # Configure with Dev build type with proper environment and cmake hints
-  "PATH=/root/.nix-profile/bin:/usr/local/llvm/bin:/usr/local/bin:$PATH PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/root/.nix-profile/lib/pkgconfig:/root/.nix-profile/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig cmake --preset dev -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=${LIB_VERSION} -DASCIICHAT_LLVM_SEARCH_PATHS=/root/.nix-profile/bin:/usr/local/llvm/bin",
+  # Configure with Dev build type, explicitly set compiler paths
+  "cmake --preset dev -DCMAKE_C_COMPILER=/root/.nix-profile/bin/clang -DCMAKE_CXX_COMPILER=/root/.nix-profile/bin/clang++ -DCMAKE_PREFIX_PATH=/root/.nix-profile -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=${LIB_VERSION}",
   # Remove build artifacts but keep .deps-cache/ (shared across all build types)
   "rm -rf build/",
   # Configure release-musl preset (shares .deps-cache/)
-  "PATH=/root/.nix-profile/bin:/usr/local/llvm/bin:/usr/local/bin:$PATH PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/root/.nix-profile/lib/pkgconfig:/root/.nix-profile/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig cmake --preset release-musl -DUSE_MUSL=ON -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=${LIB_VERSION} -DASCIICHAT_LLVM_SEARCH_PATHS=/root/.nix-profile/bin:/usr/local/llvm/bin",
+  "cmake --preset release-musl -DCMAKE_C_COMPILER=/root/.nix-profile/bin/clang -DCMAKE_CXX_COMPILER=/root/.nix-profile/bin/clang++ -DCMAKE_PREFIX_PATH=/root/.nix-profile -DUSE_MUSL=ON -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=${LIB_VERSION}",
 ]
 
 # This is a base/deps image, not a runnable app.

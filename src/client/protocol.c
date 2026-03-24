@@ -553,33 +553,8 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   //
   // Success criteria: ws/wss FPS within 2% of TCP using --proto option in debug-fps.zsh
 
-  // Increment global frame counter BEFORE rendering (to track unique frames received)
-  int total_frames = atomic_fetch_add_u64(&g_frames_rendered, 1) + 1;
-
-  // Log every frame for simple FPS calculation via grep
-  static int client_frame_counter = 0;
-  client_frame_counter++;
-  log_info("[FRAMES_RENDERED_TOTAL] %d", total_frames);
-
-  // DEBUG: Periodically log frame stats on client side
-  if (client_frame_counter % 60 == 1) {
-    // Count lines and check for issues
-    int line_count = 0;
-    size_t frame_len = strlen(frame_data);
-    for (size_t i = 0; i < frame_len; i++) {
-      if (frame_data[i] == '\n')
-        line_count++;
-    }
-    log_info("🎬 CLIENT_FRAME: #%d received - %zu bytes, %d newlines, %ux%u", total_frames, frame_len, line_count,
-             header.width, header.height);
-  }
-
-  // Track frames actually reaching display (after frame rate limiting)
-  static int frames_to_display = 0;
-  frames_to_display++;
-  if (frames_to_display % 10 == 1) {
-    log_info("📺 FRAME_TO_DISPLAY: #%d (received: %d)", frames_to_display, total_frames);
-  }
+  // Frame counting now handled in session_display_write_ascii() which is called
+  // by both client and host/discovery modes for consistent metrics
 
   // Render ASCII art frame (display_render_frame will apply effects like --matrix)
   log_debug("🎬 CALLING_DISPLAY_RENDER: frame_data=%p len=%zu, calling display_render_frame()", frame_data,

@@ -627,7 +627,7 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   if (color_filter != COLOR_FILTER_NONE && color_filter != COLOR_FILTER_RAINBOW) {
     // Create a copy to avoid modifying the original
     filtered_image = image_new((size_t)display_image->w, (size_t)display_image->h);
-    if (filtered_image) {
+    if (filtered_image && filtered_image->pixels && display_image->pixels) {
       memcpy(filtered_image->pixels, display_image->pixels,
              (size_t)display_image->w * (size_t)display_image->h * sizeof(rgb_pixel_t));
 
@@ -812,6 +812,12 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
   bool use_tty_control = ctx->has_tty && (!ctx->snapshot_mode || terminal_is_interactive());
 
   START_TIMER("frame_write");
+
+  // Increment shared frame counter for both client and host rendering
+  // This metric is used by debug scripts to measure FPS across all modes
+  static atomic_t g_display_frames_rendered = {0};
+  int frame_number = atomic_fetch_add_u64(&g_display_frames_rendered, 1) + 1;
+  log_info("[FRAMES_RENDERED_TOTAL] %d", frame_number);
 
   if (use_tty_control) {
     // TTY mode: Buffer cursor control + frame data together for atomic frame display
