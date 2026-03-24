@@ -12,8 +12,6 @@ providers = []
 CMAKE_GENERATOR = "Ninja"
 DEBIAN_FRONTEND = "noninteractive"
 LIB_VERSION = "0.3.0"
-
-[env]
 PATH = "/root/.nix-profile/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/bin"
 PKG_CONFIG_PATH = "/root/.nix-profile/lib/pkgconfig:/root/.nix-profile/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
 CMAKE_PREFIX_PATH = "/root/.nix-profile"
@@ -21,8 +19,6 @@ LD_LIBRARY_PATH = "/root/.nix-profile/lib"
 LDFLAGS = "-L/root/.nix-profile/lib"
 CFLAGS = "-I/root/.nix-profile/include"
 CPPFLAGS = "-I/root/.nix-profile/include"
-CC = "/root/.nix-profile/bin/clang"
-CXX = "/root/.nix-profile/bin/clang++"
 
 [phases.setup]
 # Pin nixpkgs to a recent unstable commit with CMake >= 3.28 and Clang >= 18
@@ -152,32 +148,14 @@ cmds = [
 ]
 
 # Verify environment is properly set before running cmake
-[phases.verify_env]
-dependsOn = ["submodules"]
-cmds = [
-  "echo 'Verifying environment setup...'",
-  "echo \"PATH=$PATH\"",
-  "echo \"CC=$CC\"",
-  "echo \"CXX=$CXX\"",
-  "echo \"CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH\"",
-  "echo \"PKG_CONFIG_PATH=$PKG_CONFIG_PATH\"",
-  "which clang || echo 'clang not in PATH'",
-  "which cmake || echo 'cmake not in PATH'",
-  "pkg-config --list-all | head -5 || echo 'pkg-config failed'",
-  "echo 'Environment verification complete'",
-]
-
 # Run cmake configure to populate .deps-cache/ with all FetchContent downloads.
 # Configures both Debug and Release presets.
 [phases.configure]
-dependsOn = ["verify_env"]
+dependsOn = ["submodules"]
 cmds = [
-  # Configure with Dev build type, explicitly set compiler paths
-  "cmake --preset dev -DCMAKE_C_COMPILER=/root/.nix-profile/bin/clang -DCMAKE_CXX_COMPILER=/root/.nix-profile/bin/clang++ -DCMAKE_PREFIX_PATH=/root/.nix-profile -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=${LIB_VERSION}",
-  # Remove build artifacts but keep .deps-cache/ (shared across all build types)
-  "rm -rf build/",
-  # Configure release-musl preset (shares .deps-cache/)
-  "cmake --preset release-musl -DCMAKE_C_COMPILER=/root/.nix-profile/bin/clang -DCMAKE_CXX_COMPILER=/root/.nix-profile/bin/clang++ -DCMAKE_PREFIX_PATH=/root/.nix-profile -DUSE_MUSL=ON -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_LIB_VERSION=${LIB_VERSION}",
+  # Run cmake within nix flake develop environment
+  # Skip WebRTC and analyzers to avoid compilation during dependency cache population
+  "nix develop -c cmake --preset dev --debug-output -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_ENABLE_WEBRTC=OFF -DASCIICHAT_LIB_VERSION=${LIB_VERSION}",
 ]
 
 # This is a base/deps image, not a runnable app.

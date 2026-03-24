@@ -21,8 +21,6 @@ DEBIAN_FRONTEND = "noninteractive"
 VERSION = "0.0.0"
 LIB_VERSION = "0.3.0"
 SOURCE_COMMIT = "docker-build"
-
-[env]
 PATH = "/root/.nix-profile/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/bin"
 PKG_CONFIG_PATH = "/root/.nix-profile/lib/pkgconfig:/root/.nix-profile/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
 CMAKE_PREFIX_PATH = "/root/.nix-profile"
@@ -30,8 +28,6 @@ LD_LIBRARY_PATH = "/root/.nix-profile/lib"
 LDFLAGS = "-L/root/.nix-profile/lib"
 CFLAGS = "-I/root/.nix-profile/include"
 CPPFLAGS = "-I/root/.nix-profile/include"
-CC = "/root/.nix-profile/bin/clang"
-CXX = "/root/.nix-profile/bin/clang++"
 
 [phases.setup]
 cmds = [
