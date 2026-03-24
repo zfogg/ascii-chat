@@ -25,8 +25,8 @@ trace_command() {
     if dtrace -l >/dev/null 2>&1; then
       dtrace -c "$*" -o "$output_file"
     else
-      # dtrace blocked by SIP, just run command without tracing
-      env "$@" > "$output_file" 2>&1
+      # dtrace blocked by SIP, just run command without tracing, redirect to file
+      "$@" > "$output_file" 2>&1
     fi
   else
     strace -f -o "$output_file" "$@"
@@ -120,10 +120,17 @@ case "$PROTO" in
 esac
 
 # Start WebSocket server with strace/dtrace
-trace_command "$server_strace" \
-  "$BUILD_DIR"/bin/ascii-chat --log-file "$server_log" --log-level debug \
-  server --port "$PORT" --websocket-port "$PORT_WS" "${server_args[@]}" \
-  >/dev/null 2>&1 &
+if [[ "$OSTYPE" == "darwin"* ]] && ! dtrace -l >/dev/null 2>&1; then
+  # dtrace blocked, run without tracing
+  "$BUILD_DIR"/bin/ascii-chat --log-level debug --log-file "$server_log" \
+    server --port "$PORT" --websocket-port "$PORT_WS" "${server_args[@]}" \
+    >/dev/null 2>&1 &
+else
+  trace_command "$server_strace" \
+    "$BUILD_DIR"/bin/ascii-chat --log-level debug --log-file "$server_log" \
+    server --port "$PORT" --websocket-port "$PORT_WS" "${server_args[@]}" \
+    >/dev/null 2>&1 &
+fi
 SERVER_PID=$!
 sleep 0.25
 
@@ -139,15 +146,26 @@ case "$PROTO" in
     PROTO_PORT="$PORT_WS"
     ;;
 esac
-timeout -k0.5 "$((SNAPSHOT_DELAY + 1))" trace_command "$client_strace" \
-  "$BUILD_DIR"/bin/ascii-chat \
-  --log-level debug --log-file "$client_log" --sync-state 1 \
-  --color true --color-mode truecolor \
-  client "${PROTO_PREFIX}://localhost:$PROTO_PORT" \
-  --test-pattern \
-  --snapshot --snapshot-delay "$SNAPSHOT_DELAY" \
-  2>/dev/null \
-  | tee "$client_stdout" || EXIT_CODE=$?
+if [[ "$OSTYPE" == "darwin"* ]] && ! dtrace -l >/dev/null 2>&1; then
+  # dtrace blocked, run without tracing
+  timeout -k0.5 "$((SNAPSHOT_DELAY + 1))" \
+    "$BUILD_DIR"/bin/ascii-chat --log-level debug --log-file "$client_log" \
+    --sync-state 1 --color true --color-mode truecolor \
+    --snapshot --snapshot-delay "$SNAPSHOT_DELAY" \
+    client "${PROTO_PREFIX}://localhost:$PROTO_PORT" \
+    --test-pattern \
+    2>/dev/null \
+    | tee "$client_stdout" || EXIT_CODE=$?
+else
+  timeout -k0.5 "$((SNAPSHOT_DELAY + 1))" trace_command "$client_strace" \
+    "$BUILD_DIR"/bin/ascii-chat --log-level debug --log-file "$client_log" \
+    --sync-state 1 --color true --color-mode truecolor \
+    --snapshot --snapshot-delay "$SNAPSHOT_DELAY" \
+    client "${PROTO_PREFIX}://localhost:$PROTO_PORT" \
+    --test-pattern \
+    2>/dev/null \
+    | tee "$client_stdout" || EXIT_CODE=$?
+fi
 END_TIME=$(date +%s%N)
 
 # Calculate elapsed time in seconds
