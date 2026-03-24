@@ -3,35 +3,19 @@
 set -euo pipefail
 
 # Optional --build-dir and --proto parameters
-# Usage: ./debug-connectivity.sh [--build-dir <dir>] [--proto <tcp|ws|wss>]
+# Usage: ./debug-fps.sh [--build-dir <dir>] [--proto <tcp|ws|wss>]
 BUILD_DIR="build"
 PROTO="tcp"  # Default protocol
 
 export ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK='1'
 export ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 extra_client_args=""
 server_wss_args=""
 
 SNAPSHOT_DELAY=3.5
-
-# Trace command helper function
-trace_command() {
-  local output_file="$1"
-  shift
-
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    # Check if dtrace can run (requires elevated privileges on modern macOS)
-    if dtrace -l >/dev/null 2>&1; then
-      dtrace -c "$*" -o "$output_file"
-    else
-      # dtrace blocked by SIP, just run command without tracing, redirect to file
-      "$@" > "$output_file" 2>&1
-    fi
-  else
-    strace -f -o "$output_file" "$@"
-  fi
-}
 
 PORT=$(((RANDOM % 6000) + 2000))
 PORT_WS=$(((RANDOM % 6000) + 2000))
@@ -126,7 +110,7 @@ if [[ "$OSTYPE" == "darwin"* ]] && ! dtrace -l >/dev/null 2>&1; then
     server --port "$PORT" --websocket-port "$PORT_WS" "${server_args[@]}" \
     >/dev/null 2>&1 &
 else
-  trace_command "$server_strace" \
+  "$SCRIPT_DIR/trace_command.sh" "$server_strace" \
     "$BUILD_DIR"/bin/ascii-chat --log-level debug --log-file "$server_log" \
     server --port "$PORT" --websocket-port "$PORT_WS" "${server_args[@]}" \
     >/dev/null 2>&1 &
@@ -157,7 +141,7 @@ if [[ "$OSTYPE" == "darwin"* ]] && ! dtrace -l >/dev/null 2>&1; then
     2>/dev/null \
     | tee "$client_stdout" || EXIT_CODE=$?
 else
-  timeout -k0.5 "$((SNAPSHOT_DELAY + 1))" trace_command "$client_strace" \
+  timeout -k0.5 "$((SNAPSHOT_DELAY + 1))" "$SCRIPT_DIR/trace_command.sh" "$client_strace" \
     "$BUILD_DIR"/bin/ascii-chat --log-level debug --log-file "$client_log" \
     --sync-state 1 --color true --color-mode truecolor \
     client "${PROTO_PREFIX}://localhost:$PROTO_PORT" \

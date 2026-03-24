@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 # Optional --build-dir and --proto parameters
 # Usage: ./debug-acds.zsh [--build-dir <dir>] [--proto <tcp|ws|wss>]
 BUILD_DIR="build"
@@ -31,13 +33,6 @@ joiner_strace="$tmpdir/joiner-strace-$ACDS_PORT.log"
 
 cert_file="/tmp/wss-test-cert.pem"
 key_file="/tmp/wss-test-key.pem"
-
-# Detect if macOS or Linux for strace/dstrace
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  STRACE_CMD="dstrace"
-else
-  STRACE_CMD="strace"
-fi
 
 
 while [[ $# -gt 0 ]]; do
@@ -125,7 +120,7 @@ echo "Starting initiator to create session..."
 START_TIME=$(date +%s%N)
 EXIT_CODE=0
 
-timeout -k1 "$((SNAPSHOT_DELAY + 1))" "$STRACE_CMD" -f -o "$initiator_strace" \
+timeout -k1 "$((SNAPSHOT_DELAY + 1))" "$SCRIPT_DIR/trace_command.sh" "$initiator_strace" \
   "$BUILD_DIR"/bin/ascii-chat \
   --log-level debug --log-file "$initiator_log" --sync-state 1 \
   --color true --color-mode truecolor \
@@ -149,7 +144,7 @@ sleep 0.5
 
 # Start joiner (join session)
 echo "Starting joiner to join session..."
-timeout -k0.5 "$((SNAPSHOT_DELAY + 1))" "$STRACE_CMD" -f -o "$joiner_strace" \
+timeout -k0.5 "$((SNAPSHOT_DELAY + 1))" "$SCRIPT_DIR/trace_command.sh" "$joiner_strace" \
   "$BUILD_DIR"/bin/ascii-chat \
   --log-level debug --log-file "$joiner_log" --sync-state 1 \
   --color true --color-mode truecolor \
