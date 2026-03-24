@@ -88,6 +88,13 @@ if(NOT WIN32)
 endif()
 
 # =============================================================================
+# Convert PATH environment variable from colon-separated to CMake list format
+# =============================================================================
+# On Unix systems, PATH is colon-separated. CMake requires semicolon-separated lists.
+# This conversion allows find_program to properly search all PATH directories.
+string(REPLACE ":" ";" _CMAKE_PATH_LIST "$ENV{PATH}")
+
+# =============================================================================
 # Platform-specific search paths
 # =============================================================================
 if(WIN32)
@@ -134,6 +141,8 @@ elseif(APPLE)
 else()
     # Linux
     set(_LLVM_SEARCH_PATHS
+        /root/.nix-profile/bin
+        /nix/var/nix/profiles/default/bin
         /usr/local/bin
         /usr/lib/llvm/bin
         /usr/lib/llvm-22/bin
@@ -202,11 +211,11 @@ foreach(_ver IN LISTS _LLVM_SUPPORTED_VERSIONS)
     list(APPEND _llvm_config_names llvm-config-${_ver})
 endforeach()
 
-# Use find_program which respects PATH ordering
-# This allows user's PATH to take priority over our hardcoded search paths
+# Use find_program which searches PATH (from environment) first, then fallback hints
 find_program(ASCIICHAT_LLVM_CONFIG_EXECUTABLE
     NAMES ${_llvm_config_names}
-    HINTS ${ASCIICHAT_LLVM_SEARCH_PATHS}
+    PATHS ${_CMAKE_PATH_LIST} ${ASCIICHAT_LLVM_SEARCH_PATHS}
+    NO_DEFAULT_PATH
     DOC "llvm-config for LLVM toolchain info (determines which LLVM installation to use)"
 )
 unset(_llvm_config_names)
@@ -283,10 +292,11 @@ macro(_find_llvm_tool VAR_NAME)
             DOC "LLVM tool from ${ASCIICHAT_LLVM_BINDIR}"
         )
     else()
-        # Fallback mode: search PATH and known locations
+        # Fallback mode: search PATH (from environment) first, then known locations
         find_program(${VAR_NAME}
             NAMES ${_tool_names}
-            HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
+            PATHS ${_CMAKE_PATH_LIST} ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
+            NO_DEFAULT_PATH
             DOC "LLVM tool"
         )
     endif()
