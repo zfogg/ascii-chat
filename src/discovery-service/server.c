@@ -337,7 +337,7 @@ void acds_server_shutdown(acds_server_t *server) {
 static inline void acds_track_packet_sent(acds_server_t *server, size_t payload_size) {
   if (server) {
     // Packet size includes header (same as receive)
-    size_t total_packet_size = payload_size + 14;  // 4 (magic) + 1 (type) + 2 (length) + 4 (CRC) + 3 (client ID)
+    size_t total_packet_size = payload_size + 14; // 4 (magic) + 1 (type) + 2 (length) + 4 (CRC) + 3 (client ID)
     atomic_fetch_add_u64(&server->stats.bytes_sent, total_packet_size);
     atomic_fetch_add_u64(&server->stats.packets_sent, 1);
   }
@@ -408,7 +408,8 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
     }
 
     // Final key received - finalize session
-    log_info("SESSION_CREATE finalize from %s: received all %zu identity key(s)", client_ip, client_data->num_pending_keys);
+    log_info("SESSION_CREATE finalize from %s: received all %zu identity key(s)", client_ip,
+             client_data->num_pending_keys);
 
     // Auto-detect server's public IP if not provided (empty address)
     if (client_data->pending_session.server_address[0] == '\0') {
@@ -592,7 +593,8 @@ static void acds_on_session_create(const acip_session_create_t *req, acip_transp
   // Rate limiting check (only on first SESSION_CREATE)
   {
     bool allowed = false;
-    asciichat_error_t rate_check = rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_CREATE, NULL, &allowed);
+    asciichat_error_t rate_check =
+        rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_CREATE, NULL, &allowed);
     if (rate_check != ASCIICHAT_OK || !allowed) {
       acip_send_error(transport, ERROR_RATE_LIMITED, "Rate limit exceeded. Please try again later.");
       log_warn("Rate limit exceeded for SESSION_CREATE from %s", client_ip);
@@ -664,7 +666,8 @@ static void acds_on_session_lookup(const acip_session_lookup_t *req, acip_transp
   // Rate limiting check
   {
     bool allowed = false;
-    asciichat_error_t rate_check = rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_LOOKUP, NULL, &allowed);
+    asciichat_error_t rate_check =
+        rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_LOOKUP, NULL, &allowed);
     if (rate_check != ASCIICHAT_OK || !allowed) {
       acip_send_error(transport, ERROR_RATE_LIMITED, "Rate limit exceeded. Please try again later.");
       log_warn("Rate limit exceeded for SESSION_LOOKUP from %s", client_ip);
@@ -702,7 +705,8 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
   // Rate limiting check
   {
     bool allowed = false;
-    asciichat_error_t rate_check = rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_JOIN, NULL, &allowed);
+    asciichat_error_t rate_check =
+        rate_limiter_check(server->rate_limiter, client_ip, RATE_EVENT_SESSION_JOIN, NULL, &allowed);
     if (rate_check != ASCIICHAT_OK || !allowed) {
       acip_send_error(transport, ERROR_RATE_LIMITED, "Rate limit exceeded. Please try again later.");
       log_warn("Rate limit exceeded for SESSION_JOIN from %s", client_ip);
@@ -772,13 +776,13 @@ static void acds_on_session_join(const acip_session_join_t *req, acip_transport_
     // peer_count is the number of OTHER participants; total = peer_count + 1 (the new one)
     participant_joined.current_participant_count = resp.peer_count + 1;
 
-    asciichat_error_t broadcast_result = signaling_broadcast(
-        server->db, &server->tcp_server, resp.session_id, PACKET_TYPE_ACIP_PARTICIPANT_JOINED,
-        &participant_joined, sizeof(participant_joined), resp.participant_id);
+    asciichat_error_t broadcast_result =
+        signaling_broadcast(server->db, &server->tcp_server, resp.session_id, PACKET_TYPE_ACIP_PARTICIPANT_JOINED,
+                            &participant_joined, sizeof(participant_joined), resp.participant_id);
 
     if (broadcast_result != ASCIICHAT_OK) {
-      log_warn("Failed to broadcast PARTICIPANT_JOINED for session %02x%02x...: %d",
-               resp.session_id[0], resp.session_id[1], broadcast_result);
+      log_warn("Failed to broadcast PARTICIPANT_JOINED for session %02x%02x...: %d", resp.session_id[0],
+               resp.session_id[1], broadcast_result);
     } else {
       log_debug("Broadcasted PARTICIPANT_JOINED to other participants in session");
     }
@@ -853,7 +857,8 @@ static void acds_on_network_quality(const void *payload, size_t payload_len, aci
             quality->session_id[1], quality->participant_id[0], quality->participant_id[1]);
 
   // Validation and relay
-  asciichat_error_t relay_result = signaling_relay_network_quality(server->db, &server->tcp_server, quality, payload_len);
+  asciichat_error_t relay_result =
+      signaling_relay_network_quality(server->db, &server->tcp_server, quality, payload_len);
   if (relay_result != ASCIICHAT_OK) {
     acip_send_error(transport, relay_result, "NETWORK_QUALITY relay failed");
     log_warn("NETWORK_QUALITY relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));
@@ -921,7 +926,6 @@ static void acds_on_host_lost(const acip_host_lost_t *host_lost, acip_transport_
   // Participants already know who the new host is from the last FUTURE_HOST_ELECTED broadcast.
   // They will instantly failover to the pre-elected host.
   // ACDS just tracks migration timeout for cleanup.
-
 }
 
 // Global ACIP callback structure for ACDS
@@ -1067,8 +1071,8 @@ void *acds_client_handler(void *arg) {
       SAFE_FREE(ctx);
       return NULL;
     }
-    handshake_result =
-        crypto_handshake_server_auth_challenge(&client_data->handshake_ctx, transport, packet_type, payload, payload_len);
+    handshake_result = crypto_handshake_server_auth_challenge(&client_data->handshake_ctx, transport, packet_type,
+                                                              payload, payload_len);
     buffer_pool_free(NULL, payload, payload_len);
   }
   if (handshake_result != ASCIICHAT_OK) {
@@ -1128,11 +1132,12 @@ void *acds_client_handler(void *arg) {
 
     if (result >= 0) {
       last_packet_time_ns = time_get_ns();
-      log_info("★ ACDS_CLIENT_HANDLER: Received packet type=%u from %s, payload_size=%zu", packet_type, client_ip, payload_size);
+      log_info("★ ACDS_CLIENT_HANDLER: Received packet type=%u from %s, payload_size=%zu", packet_type, client_ip,
+               payload_size);
 
       // Track network stats (TCP packets)
       // Packet size includes header (6 bytes: magic 4 + type 1 + length 2 + CRC 4)
-      size_t total_packet_size = payload_size + 14;  // 4 (magic) + 1 (type) + 2 (length) + 4 (CRC) + 3 (client ID)
+      size_t total_packet_size = payload_size + 14; // 4 (magic) + 1 (type) + 2 (length) + 4 (CRC) + 3 (client ID)
       atomic_fetch_add_u64(&server->stats.bytes_received, total_packet_size);
       atomic_fetch_add_u64(&server->stats.packets_received, 1);
     }
@@ -1175,8 +1180,8 @@ void *acds_client_handler(void *arg) {
 
     // Multi-key session creation protocol: block non-PING/PONG/SESSION_CREATE messages
     if (client_data->in_multikey_session_create) {
-      bool allowed =
-          (packet_type == PACKET_TYPE_ACIP_SESSION_CREATE || packet_type == PACKET_TYPE_PING || packet_type == PACKET_TYPE_PONG);
+      bool allowed = (packet_type == PACKET_TYPE_ACIP_SESSION_CREATE || packet_type == PACKET_TYPE_PING ||
+                      packet_type == PACKET_TYPE_PONG);
 
       if (!allowed) {
         log_warn("Client %s sent packet type 0x%02X during multi-key session creation - only SESSION_CREATE/PING/PONG "
@@ -1262,6 +1267,23 @@ void *acds_websocket_client_handler(void *arg) {
   client_data->handshake_complete = false;
   transport->user_data = client_data;
 
+  // Initialize crypto handshake context with client IP name
+  char crypto_name[96];
+  SAFE_SNPRINTF(crypto_name, sizeof(crypto_name), "crypto_discovery_websocket_%s", client_ip);
+  asciichat_error_t hs_init_result = crypto_handshake_init(crypto_name, &client_data->handshake_ctx, true);
+  if (hs_init_result != ASCIICHAT_OK) {
+    log_error("Failed to initialize crypto handshake for WebSocket client %s", client_ip);
+    SAFE_FREE(client_data);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+
+  // Set server identity keys for handshake
+  client_data->handshake_ctx.server_public_key.type = KEY_TYPE_ED25519;
+  client_data->handshake_ctx.server_private_key.type = KEY_TYPE_ED25519;
+  memcpy(client_data->handshake_ctx.server_public_key.key, server->identity_public, 32);
+  memcpy(client_data->handshake_ctx.server_private_key.key.ed25519, server->identity_secret, 64);
+
   // Generate synthetic socket ID for tcp_server registry
   static _Atomic int g_ws_synthetic_id = INT_MAX;
   int synthetic_id = atomic_fetch_sub(&g_ws_synthetic_id, 1);
@@ -1294,6 +1316,112 @@ void *acds_websocket_client_handler(void *arg) {
   } else {
     log_info("WebSocket connection from %s - proceeding with crypto handshake%s", client_ip,
              auth_required ? " (client authentication required)" : "");
+
+    // Perform crypto handshake (three-step process)
+    log_debug("Performing crypto handshake with WebSocket client %s", client_ip);
+
+    // Step -1: Receive and discard protocol version from client
+    {
+      packet_type_t pkt_type;
+      void *pkt_data = NULL;
+      size_t pkt_len = 0;
+      void *alloc_buffer = NULL;
+
+      asciichat_error_t hs_result =
+          packet_receive_via_transport(transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
+      if (hs_result != ASCIICHAT_OK) {
+        log_warn("Failed to receive PROTOCOL_VERSION from WebSocket client %s", client_ip);
+        buffer_pool_free(NULL, alloc_buffer, 0);
+        tcp_server_remove_client(&server->tcp_server, synthetic_id);
+        SAFE_FREE(ctx);
+        return NULL;
+      }
+
+      if (pkt_type != PACKET_TYPE_PROTOCOL_VERSION) {
+        log_warn("Expected PROTOCOL_VERSION, got packet type %u from WebSocket client %s", pkt_type, client_ip);
+        buffer_pool_free(NULL, alloc_buffer, 0);
+        tcp_server_remove_client(&server->tcp_server, synthetic_id);
+        SAFE_FREE(ctx);
+        return NULL;
+      }
+
+      buffer_pool_free(NULL, alloc_buffer, 0);
+      log_debug("Received PROTOCOL_VERSION from WebSocket client %s", client_ip);
+    }
+
+    // Step 0: Send crypto parameters
+    asciichat_error_t hs_result = crypto_handshake_server_send_parameters(&client_data->handshake_ctx, transport);
+    if (hs_result != ASCIICHAT_OK) {
+      log_warn("Crypto parameters send failed for WebSocket client %s", client_ip);
+      tcp_server_remove_client(&server->tcp_server, synthetic_id);
+      SAFE_FREE(ctx);
+      return NULL;
+    }
+
+    // Step 1: Start handshake (send server key, receive client key)
+    hs_result = crypto_handshake_server_start(&client_data->handshake_ctx, transport);
+    if (hs_result != ASCIICHAT_OK) {
+      log_warn("Crypto handshake start failed for WebSocket client %s", client_ip);
+      tcp_server_remove_client(&server->tcp_server, synthetic_id);
+      SAFE_FREE(ctx);
+      return NULL;
+    }
+
+    // Step 2: Authentication challenge (if required)
+    {
+      packet_type_t pkt_type;
+      void *pkt_data = NULL;
+      size_t pkt_len = 0;
+      void *alloc_buffer = NULL;
+
+      hs_result = packet_receive_via_transport(transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
+      if (hs_result != ASCIICHAT_OK) {
+        log_warn("Failed to receive KEY_EXCHANGE_RESPONSE from WebSocket client %s", client_ip);
+        buffer_pool_free(NULL, alloc_buffer, 0);
+        tcp_server_remove_client(&server->tcp_server, synthetic_id);
+        SAFE_FREE(ctx);
+        return NULL;
+      }
+
+      hs_result =
+          crypto_handshake_server_auth_challenge(&client_data->handshake_ctx, transport, pkt_type, pkt_data, pkt_len);
+      buffer_pool_free(NULL, alloc_buffer, 0);
+    }
+    if (hs_result != ASCIICHAT_OK) {
+      log_warn("Crypto handshake auth challenge failed for WebSocket client %s", client_ip);
+      tcp_server_remove_client(&server->tcp_server, synthetic_id);
+      SAFE_FREE(ctx);
+      return NULL;
+    }
+
+    // Step 3: Complete handshake (verify and finalize) - skip if already complete
+    if (client_data->handshake_ctx.state != CRYPTO_HANDSHAKE_READY) {
+      packet_type_t pkt_type = 0;
+      void *pkt_data = NULL;
+      size_t pkt_len = 0;
+      void *alloc_buffer = NULL;
+
+      hs_result = packet_receive_via_transport(transport, &pkt_type, &pkt_data, &pkt_len, &alloc_buffer);
+      if (hs_result != ASCIICHAT_OK) {
+        log_warn("Failed to receive AUTH_RESPONSE from WebSocket client %s", client_ip);
+        buffer_pool_free(NULL, alloc_buffer, 0);
+        tcp_server_remove_client(&server->tcp_server, synthetic_id);
+        SAFE_FREE(ctx);
+        return NULL;
+      }
+
+      hs_result = crypto_handshake_server_complete(&client_data->handshake_ctx, transport, pkt_type, pkt_data, pkt_len);
+      buffer_pool_free(NULL, alloc_buffer, 0);
+      if (hs_result != ASCIICHAT_OK) {
+        log_warn("Crypto handshake complete failed for WebSocket client %s", client_ip);
+        tcp_server_remove_client(&server->tcp_server, synthetic_id);
+        SAFE_FREE(ctx);
+        return NULL;
+      }
+    }
+
+    client_data->handshake_complete = true;
+    log_debug("Crypto handshake completed for WebSocket client %s", client_ip);
   }
 
   // Main packet processing loop using transport recv
@@ -1349,8 +1477,8 @@ void *acds_websocket_client_handler(void *arg) {
 
     // Multi-key session creation protocol: block non-PING/PONG/SESSION_CREATE messages
     if (client_data->in_multikey_session_create) {
-      bool allowed =
-          (packet_type == PACKET_TYPE_ACIP_SESSION_CREATE || packet_type == PACKET_TYPE_PING || packet_type == PACKET_TYPE_PONG);
+      bool allowed = (packet_type == PACKET_TYPE_ACIP_SESSION_CREATE || packet_type == PACKET_TYPE_PING ||
+                      packet_type == PACKET_TYPE_PONG);
 
       if (!allowed) {
         log_warn("WebSocket client %s sent packet type 0x%02X during multi-key session creation - only "
@@ -1384,7 +1512,8 @@ void *acds_websocket_client_handler(void *arg) {
 
   // Cleanup
   tcp_server_remove_client(&server->tcp_server, synthetic_id);
-  log_debug("WebSocket client %s unregistered (total=%zu)", client_ip, tcp_server_get_client_count(&server->tcp_server));
+  log_debug("WebSocket client %s unregistered (total=%zu)", client_ip,
+            tcp_server_get_client_count(&server->tcp_server));
 
   // Transport is owned by WebSocket server, don't destroy it here
 
