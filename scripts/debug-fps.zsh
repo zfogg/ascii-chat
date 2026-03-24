@@ -151,18 +151,18 @@ if [[ "$OSTYPE" == "darwin"* ]] && ! dtrace -l >/dev/null 2>&1; then
   timeout -k0.5 "$((SNAPSHOT_DELAY + 1))" \
     "$BUILD_DIR"/bin/ascii-chat --log-level debug --log-file "$client_log" \
     --sync-state 1 --color true --color-mode truecolor \
-    --snapshot --snapshot-delay "$SNAPSHOT_DELAY" \
     client "${PROTO_PREFIX}://localhost:$PROTO_PORT" \
     --test-pattern \
+    --snapshot --snapshot-delay "$SNAPSHOT_DELAY" \
     2>/dev/null \
     | tee "$client_stdout" || EXIT_CODE=$?
 else
   timeout -k0.5 "$((SNAPSHOT_DELAY + 1))" trace_command "$client_strace" \
     "$BUILD_DIR"/bin/ascii-chat --log-level debug --log-file "$client_log" \
     --sync-state 1 --color true --color-mode truecolor \
-    --snapshot --snapshot-delay "$SNAPSHOT_DELAY" \
     client "${PROTO_PREFIX}://localhost:$PROTO_PORT" \
     --test-pattern \
+    --snapshot --snapshot-delay "$SNAPSHOT_DELAY" \
     2>/dev/null \
     | tee "$client_stdout" || EXIT_CODE=$?
 fi
