@@ -74,7 +74,6 @@ nixPkgs = [
   "alsa-lib", # ALSA.cmake
   "libffi", # Criterion dep
   "protobufc", # Criterion dep (libprotobuf-c)
-  "musl", # musl libc for static builds
 
   # Testing
   "criterion", # Criterion.cmake
@@ -147,16 +146,10 @@ cmds = [
   "find deps -name .git -type d -exec rm -rf {} + 2>/dev/null || true",
 ]
 
-# Verify environment is properly set before running cmake
-# Run cmake configure to populate .deps-cache/ with all FetchContent downloads.
-# Configures both Debug and Release presets.
-[phases.configure]
-dependsOn = ["submodules"]
-cmds = [
-  # Run cmake within nix flake develop environment
-  # Skip WebRTC and analyzers to avoid compilation during dependency cache population
-  "nix develop -c cmake --preset dev --debug-output -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_ENABLE_WEBRTC=OFF -DASCIICHAT_LIB_VERSION=${LIB_VERSION}",
-]
+# This is a base/deps image that provides nix packages and git submodules.
+# cmake configuration is skipped because many system libraries aren't in pkg-config in nix.
+# The actual cmake configuration will happen in the main build image (debug.nixpacks.toml)
+# that uses this image as its base.
 
 # This is a base/deps image, not a runnable app.
 # The start command is a no-op placeholder required by nixpacks.
