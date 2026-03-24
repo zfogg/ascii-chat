@@ -65,10 +65,23 @@ function(configure_llvm_pre_project)
             set(_clang_check_path "${LLVM_ROOT_PREFIX}/bin/clang")
         endif()
 
-        if(NOT LLVM_ROOT_PREFIX OR NOT EXISTS "${_clang_check_path}")
-            message(FATAL_ERROR "llvm-config reported LLVM at ${LLVM_ROOT_PREFIX}, but clang not found at ${_clang_check_path}\n"
-                            "Verify llvm-config is working correctly:\n"
-                            "  ${LLVM_CONFIG_EXECUTABLE} --prefix")
+        if(NOT LLVM_ROOT_PREFIX)
+            message(FATAL_ERROR "llvm-config --prefix returned empty result")
+        endif()
+
+        # Check if clang exists at the reported location, or use found ASCIICHAT_CLANG_EXECUTABLE (useful for Nix)
+        if(NOT EXISTS "${_clang_check_path}")
+            if(ASCIICHAT_CLANG_EXECUTABLE)
+                message(STATUS "clang not found at llvm-config path (${_clang_check_path}), using found clang: ${ASCIICHAT_CLANG_EXECUTABLE}")
+                # Derive LLVM root from the found clang executable for Nix compatibility
+                get_filename_component(_clang_dir "${ASCIICHAT_CLANG_EXECUTABLE}" DIRECTORY)
+                get_filename_component(LLVM_ROOT_PREFIX "${_clang_dir}" DIRECTORY)
+                unset(_clang_dir)
+            else()
+                message(FATAL_ERROR "llvm-config reported LLVM at ${LLVM_ROOT_PREFIX}, but clang not found at ${_clang_check_path}\n"
+                                "Verify llvm-config is working correctly:\n"
+                                "  ${LLVM_CONFIG_EXECUTABLE} --prefix")
+            endif()
         endif()
         unset(_clang_check_path)
     elseif(WIN32 AND ASCIICHAT_CLANG_EXECUTABLE)

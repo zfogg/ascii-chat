@@ -291,6 +291,16 @@ macro(_find_llvm_tool VAR_NAME)
             NO_DEFAULT_PATH
             DOC "LLVM tool from ${ASCIICHAT_LLVM_BINDIR}"
         )
+
+        # If strict search fails, fall back to PATH search (useful for Nix where store paths may not be accessible)
+        if(NOT ${VAR_NAME})
+            find_program(${VAR_NAME}
+                NAMES ${_tool_names}
+                PATHS ${_CMAKE_PATH_LIST} ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
+                NO_DEFAULT_PATH
+                DOC "LLVM tool (fallback from PATH)"
+            )
+        endif()
     else()
         # Fallback mode: search PATH (from environment) first, then known locations
         find_program(${VAR_NAME}
