@@ -23,6 +23,14 @@ DEBIAN_FRONTEND = "noninteractive"
 VERSION = "0.0.0"
 LIB_VERSION = "0.3.0"
 SOURCE_COMMIT = "docker-build"
+# Nix puts all packages in /root/.nix-profile/, so we need to tell pkg-config where to find them
+PKG_CONFIG_PATH = "/root/.nix-profile/lib/pkgconfig:/root/.nix-profile/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/local/lib/pkgconfig:/opt/local/lib/pkgconfig"
+CMAKE_PREFIX_PATH = "/root/.nix-profile:/usr/local/llvm"
+LD_LIBRARY_PATH = "/root/.nix-profile/lib:/usr/local/llvm/lib"
+LDFLAGS = "-L/root/.nix-profile/lib -L/usr/local/llvm/lib"
+CFLAGS = "-I/root/.nix-profile/include -I/usr/local/llvm/include"
+CPPFLAGS = "-I/root/.nix-profile/include -I/usr/local/llvm/include"
+PATH = "/usr/local/llvm/bin:/usr/local/bin:/root/.nix-profile/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/bin"
 
 [phases.setup]
 cmds = [
