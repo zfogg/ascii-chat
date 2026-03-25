@@ -217,9 +217,10 @@ export default function MirrorDemoWidget({
             addDebugLog(
               `Video metadata loaded: ${videoRef.current!.videoWidth}x${videoRef.current!.videoHeight}`,
             );
-            if (canvasRef.current) {
-              canvasRef.current.width = videoRef.current!.videoWidth;
-              canvasRef.current.height = videoRef.current!.videoHeight;
+            if (canvasRef.current && termDims.cols > 0 && termDims.rows > 0) {
+              // Scale canvas to terminal dimensions to fill the display
+              canvasRef.current.width = termDims.cols;
+              canvasRef.current.height = termDims.rows;
             }
             resolve();
           };
@@ -348,7 +349,7 @@ export default function MirrorDemoWidget({
     if (termDims.cols <= 0 || termDims.rows <= 0) return;
 
     const interval = setInterval(() => {
-      if (!isWasmReady() || !rendererRef.current) return;
+      if (!isWasmReady() || !rendererRef.current || !canvasRef.current || !videoRef.current) return;
 
       const frame = captureFrame();
       if (!frame) return;
@@ -420,10 +421,10 @@ export default function MirrorDemoWidget({
       </div>
 
       <div
-        className="relative rounded-lg border border-gray-700 bg-[#0c0c0c] overflow-hidden"
-        style={{ height, minHeight: `${minHeight}px`, width: "100%" }}
+        className="relative bg-[#0c0c0c] overflow-hidden"
+        style={{ height, minHeight: `${minHeight}px`, width: "100%", padding: 0, margin: 0 }}
       >
-        <div className="w-full h-full">
+        <div style={{ width: "100%", height: "100%", padding: 0, margin: 0, overflow: "hidden" }}>
           <AsciiRenderer
             ref={rendererRef}
             onDimensionsChange={handleDimensionsChange}
