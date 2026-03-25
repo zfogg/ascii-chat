@@ -143,7 +143,7 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   }
   palette_type_t palette_type = (palette_type_t)GET_OPTION(palette_type);
   bool preserve_aspect_ratio = true; // Preserve webcam aspect ratio
-  bool stretch = false;              // Don't stretch - maintain proportions
+  bool stretch = true;               // Stretch to fill container
 
   // Build terminal capabilities structure with user's color mode
   terminal_capabilities_t caps = {0}; // Zero-initialize all fields first
@@ -223,20 +223,9 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
     break;
   }
 
-  // For web mode: pre-calculate aspect-ratio-adjusted dimensions so we only get
-  // vertical padding (top/bottom), not horizontal padding (left/right spaces)
-  ssize_t adjusted_width = dst_width;
-  ssize_t adjusted_height = dst_height;
-  if (preserve_aspect_ratio) {
-    // This adjusts dimensions while preserving the video's aspect ratio
-    // The result eliminates the need for left/right padding
-    aspect_ratio(src_width, src_height, adjusted_width, adjusted_height, stretch,
-                 &adjusted_width, &adjusted_height);
-  }
-
   // Convert to ASCII using capability-aware function
-  char *ascii_output =
-      ascii_convert_with_capabilities(&img, adjusted_width, adjusted_height, &caps, preserve_aspect_ratio, stretch, palette_chars);
+  char *ascii_output = ascii_convert_with_capabilities(&img, dst_width, dst_height, &caps, preserve_aspect_ratio,
+                                                       stretch, palette_chars);
 
   // Clean up
   SAFE_FREE(rgb_pixels);
