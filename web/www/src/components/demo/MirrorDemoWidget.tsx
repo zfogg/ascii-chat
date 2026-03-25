@@ -494,21 +494,7 @@ export default function MirrorDemoWidget({
           {source && (
             <>
               {source === "demo" && (
-                <>
-                  <div className="absolute top-2 left-2 max-w-xs z-10 pointer-events-auto">
-                    <p className="text-xs text-gray-300 bg-gray-800/80 px-2 py-1 rounded">
-                      Locomotion (ODESZA Remix) - Live from LA State Historic Park 2019
-                    </p>
-                    <a
-                      href="https://www.youtube.com/watch?v=FvvOprCqORE"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-cyan-400 hover:text-cyan-300 underline mt-1 block px-2"
-                    >
-                      Watch on YouTube →
-                    </a>
-                  </div>
-                  <div className="absolute bottom-2 right-2 flex gap-2 z-10 pointer-events-auto">
+                <div className="absolute bottom-2 right-2 flex gap-2 z-10 pointer-events-auto">
                   <button
                     onClick={togglePause}
                     className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
@@ -536,7 +522,6 @@ export default function MirrorDemoWidget({
                     {muted ? "Unmute" : "Mute"}
                   </button>
                 </div>
-                </>
               )}
               {hasOptions && (
                 <div className="absolute bottom-2 left-2 flex flex-col gap-1 z-10 pointer-events-auto">
