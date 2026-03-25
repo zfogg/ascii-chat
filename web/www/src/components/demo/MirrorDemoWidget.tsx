@@ -288,7 +288,7 @@ export default function MirrorDemoWidget({
     } finally {
       setLoading(false);
     }
-  }, [initWasm, stop, applySelectedOption, addDebugLog]);
+  }, [initWasm, stop, applySelectedOption, addDebugLog, termDims]);
 
   const togglePause = useCallback(() => {
     if (videoRef.current) {
@@ -349,7 +349,13 @@ export default function MirrorDemoWidget({
     if (termDims.cols <= 0 || termDims.rows <= 0) return;
 
     const interval = setInterval(() => {
-      if (!isWasmReady() || !rendererRef.current || !canvasRef.current || !videoRef.current) return;
+      if (
+        !isWasmReady() ||
+        !rendererRef.current ||
+        !canvasRef.current ||
+        !videoRef.current
+      )
+        return;
 
       const frame = captureFrame();
       if (!frame) return;
@@ -422,9 +428,23 @@ export default function MirrorDemoWidget({
 
       <div
         className="relative bg-[#0c0c0c] overflow-hidden"
-        style={{ height, minHeight: `${minHeight}px`, width: "100%", padding: 0, margin: 0 }}
+        style={{
+          height,
+          minHeight: `${minHeight}px`,
+          width: "100%",
+          padding: 0,
+          margin: 0,
+        }}
       >
-        <div style={{ width: "100%", height: "100%", padding: 0, margin: 0, overflow: "hidden" }}>
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            padding: 0,
+            margin: 0,
+            overflow: "hidden",
+          }}
+        >
           <AsciiRenderer
             ref={rendererRef}
             onDimensionsChange={handleDimensionsChange}
