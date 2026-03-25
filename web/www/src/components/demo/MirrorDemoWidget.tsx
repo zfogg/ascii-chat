@@ -217,10 +217,10 @@ export default function MirrorDemoWidget({
             addDebugLog(
               `Video metadata loaded: ${videoRef.current!.videoWidth}x${videoRef.current!.videoHeight}`,
             );
-            if (canvasRef.current && termDims.cols > 0 && termDims.rows > 0) {
-              // Scale canvas to terminal dimensions to fill the display
-              canvasRef.current.width = termDims.cols;
-              canvasRef.current.height = termDims.rows;
+            if (canvasRef.current) {
+              // Set canvas to video dimensions to preserve aspect ratio
+              canvasRef.current.width = videoRef.current!.videoWidth;
+              canvasRef.current.height = videoRef.current!.videoHeight;
             }
             resolve();
           };
