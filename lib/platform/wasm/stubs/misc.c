@@ -9,9 +9,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-/* Forward declarations for opaque types */
-typedef struct video_fps_counter_t video_fps_counter_t;
-
 /* Audio stubs */
 asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
   (void)ctx;
@@ -23,17 +20,6 @@ void audio_terminate_portaudio_final(void) {
 
 /* Debug sync stubs */
 void debug_sync_cleanup_thread(void) {
-}
-
-/* FPS stubs */
-void fps_init(video_fps_counter_t *fps, double target_fps) {
-  (void)fps;
-  (void)target_fps;
-}
-
-uint64_t fps_frame_ns(video_fps_counter_t *fps) {
-  (void)fps;
-  return 41666666;  // ~24 FPS default
 }
 
 /* Terminal/rendering stubs */
@@ -49,14 +35,19 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
 typedef void render_file_t;
 typedef void media_source_t;
 
-render_file_t *render_file_create(const char *output_file) {
+render_file_t *render_file_create(const char *output_file, int width, int height, int fps, int vcodec_id) {
   (void)output_file;
+  (void)width;
+  (void)height;
+  (void)fps;
+  (void)vcodec_id;
   return NULL;  // No file rendering in browser
 }
 
-void render_file_set_audio_source(render_file_t *rf, media_source_t *source) {
+void render_file_set_audio_source(render_file_t *rf, media_source_t *source, int sample_rate) {
   (void)rf;
   (void)source;
+  (void)sample_rate;
 }
 
 void render_file_set_video_source(render_file_t *rf, media_source_t *source) {
@@ -64,19 +55,21 @@ void render_file_set_video_source(render_file_t *rf, media_source_t *source) {
   (void)source;
 }
 
-void render_file_write_frame(render_file_t *rf, const uint8_t *data, size_t len) {
+int render_file_write_frame(render_file_t *rf, const uint8_t *data, uint64_t duration_ns) {
   (void)rf;
   (void)data;
-  (void)len;
-}
-
-void render_file_destroy(render_file_t *rf) {
-  (void)rf;
-}
-
-void render_file_set_snapshot_actual_duration(render_file_t *rf, uint64_t duration_ns) {
-  (void)rf;
   (void)duration_ns;
+  return 0;
+}
+
+int render_file_destroy(render_file_t *rf) {
+  (void)rf;
+  return 0;
+}
+
+void render_file_set_snapshot_actual_duration(render_file_t *rf, double duration_sec) {
+  (void)rf;
+  (void)duration_sec;
 }
 
 /* Terminal stubs */
@@ -92,8 +85,7 @@ asciichat_error_t terminal_reset(int fd) {
 
 /* Symbol cache stubs */
 typedef void symbol_cache_t;
-void symbol_cache_destroy(symbol_cache_t *cache) {
-  (void)cache;
+void symbol_cache_destroy(void) {
 }
 
 /* Terminal resize detection stubs */

@@ -23,6 +23,7 @@
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/video/anim/digital_rain.h>
+#include <ascii-chat/util/aspect_ratio.h>
 #include <ascii-chat/common.h>
 
 // Global digital rain effect context
@@ -141,8 +142,8 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
     color_mode = TERM_COLOR_TRUECOLOR; // xterm.js supports truecolor
   }
   palette_type_t palette_type = (palette_type_t)GET_OPTION(palette_type);
-  bool aspect_ratio = true; // Preserve webcam aspect ratio
-  bool stretch = false;     // Don't stretch - maintain proportions
+  bool preserve_aspect_ratio = true; // Preserve webcam aspect ratio
+  bool stretch = false;              // Don't stretch - maintain proportions
 
   // Build terminal capabilities structure with user's color mode
   terminal_capabilities_t caps = {0}; // Zero-initialize all fields first
@@ -156,7 +157,7 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   caps.detection_reliable = true;
   caps.render_mode = (render_mode_t)GET_OPTION(render_mode);
   caps.wants_background = (caps.render_mode == RENDER_MODE_BACKGROUND);
-  caps.wants_padding = false;
+  caps.wants_padding = true;
   caps.palette_type = palette_type;
   caps.desired_fps = 60;
   caps.color_filter = filter;
@@ -222,9 +223,20 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
     break;
   }
 
+  // For web mode: pre-calculate aspect-ratio-adjusted dimensions so we only get
+  // vertical padding (top/bottom), not horizontal padding (left/right spaces)
+  ssize_t adjusted_width = dst_width;
+  ssize_t adjusted_height = dst_height;
+  if (preserve_aspect_ratio) {
+    // This adjusts dimensions while preserving the video's aspect ratio
+    // The result eliminates the need for left/right padding
+    aspect_ratio(src_width, src_height, adjusted_width, adjusted_height, stretch,
+                 &adjusted_width, &adjusted_height);
+  }
+
   // Convert to ASCII using capability-aware function
   char *ascii_output =
-      ascii_convert_with_capabilities(&img, dst_width, dst_height, &caps, aspect_ratio, stretch, palette_chars);
+      ascii_convert_with_capabilities(&img, adjusted_width, adjusted_height, &caps, preserve_aspect_ratio, stretch, palette_chars);
 
   // Clean up
   SAFE_FREE(rgb_pixels);

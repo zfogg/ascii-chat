@@ -17,6 +17,15 @@ int platform_pclose(FILE *stream) {
   return -1;
 }
 
+int platform_execute_subprocess(const char *executable, const char **argv,
+                                char *output_buffer, size_t output_size) {
+  (void)executable;
+  (void)argv;
+  (void)output_buffer;
+  (void)output_size;
+  return -1; // No subprocess support in WASM
+}
+
 // Opaque forward declarations
 typedef struct websocket_client_t websocket_client_t;
 typedef struct tcp_client_t tcp_client_t;

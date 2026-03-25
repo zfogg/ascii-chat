@@ -88,3 +88,21 @@ int platform_vsnprintf(char *str, size_t size, const char *format, va_list ap) {
 int platform_strncasecmp(const char *s1, const char *s2, size_t n) {
   return strncasecmp(s1, s2, n);
 }
+
+asciichat_error_t platform_strcpy(char *dest, size_t dest_size, const char *src) {
+  if (!dest || !src) {
+    return ERROR_INVALID_PARAM;
+  }
+  if (dest_size == 0) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  size_t src_len = strlen(src);
+  if (src_len >= dest_size) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  strncpy(dest, src, dest_size - 1);
+  dest[dest_size - 1] = '\0';
+  return ASCIICHAT_OK;
+}

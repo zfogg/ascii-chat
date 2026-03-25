@@ -126,9 +126,6 @@ void audio_analysis_track_sent_sample(float sample) {
   (void)sample;
 }
 
-void audio_analysis_init(void) {
-}
-
 void audio_analysis_track_received_sample(float sample) {
   (void)sample;
 }
