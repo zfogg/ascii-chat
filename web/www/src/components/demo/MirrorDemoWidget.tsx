@@ -25,10 +25,7 @@ import {
   type AsciiRendererHandle,
   Heading,
 } from "@ascii-chat/shared/components";
-import {
-  MediaSourceType,
-  type MediaSource,
-} from "@ascii-chat/shared/utils";
+import { MediaSourceType, type MediaSource } from "@ascii-chat/shared/utils";
 import { registerActiveDemo, unregisterActiveDemo } from "./activeDemo";
 import type { DemoOption } from "./types";
 

@@ -99,28 +99,30 @@ export function PageControlBar({
         </div>
         <div className="flex gap-2">
           {/* File playback controls (shown when playing a video file) */}
-          {isWebcamRunning && mediaSource === MediaSourceType.FILE && videoRef && (
-            <>
-              <button
-                onClick={handleTogglePause}
-                className="px-3 py-2 bg-terminal-4 text-terminal-bg rounded hover:bg-terminal-12 text-sm font-medium"
-              >
-                Pause/Play
-              </button>
-              <button
-                onClick={handleRestart}
-                className="px-3 py-2 bg-terminal-8 text-terminal-fg rounded hover:bg-terminal-7 text-sm"
-              >
-                Restart
-              </button>
-              <button
-                onClick={handleToggleMute}
-                className="px-3 py-2 bg-terminal-8 text-terminal-fg rounded hover:bg-terminal-7 text-sm"
-              >
-                Mute/Unmute
-              </button>
-            </>
-          )}
+          {isWebcamRunning &&
+            mediaSource === MediaSourceType.FILE &&
+            videoRef && (
+              <>
+                <button
+                  onClick={handleTogglePause}
+                  className="px-3 py-2 bg-terminal-4 text-terminal-bg rounded hover:bg-terminal-12 text-sm font-medium"
+                >
+                  Pause/Play
+                </button>
+                <button
+                  onClick={handleRestart}
+                  className="px-3 py-2 bg-terminal-8 text-terminal-fg rounded hover:bg-terminal-7 text-sm"
+                >
+                  Restart
+                </button>
+                <button
+                  onClick={handleToggleMute}
+                  className="px-3 py-2 bg-terminal-8 text-terminal-fg rounded hover:bg-terminal-7 text-sm"
+                >
+                  Mute/Unmute
+                </button>
+              </>
+            )}
           {showWebcamButton &&
             (isWebcamRunning ? (
               <button
