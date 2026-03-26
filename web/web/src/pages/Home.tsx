@@ -43,6 +43,9 @@ export function HomePage() {
         >
           ascii-chat
         </Heading>
+        <p className="text-sm text-gray-500 font-normal mb-4">
+          Zachary Fogg's personal website
+        </p>
         <p className="text-sm md:text-base text-terminal-8 font-normal mb-6">
           (Web Client)
         </p>
