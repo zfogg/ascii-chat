@@ -20,3 +20,4 @@ export type {
   Palette,
 } from "./Settings";
 export { Tooltip } from "./Tooltip";
+export { VideoUploadModal } from "./VideoUploadModal";

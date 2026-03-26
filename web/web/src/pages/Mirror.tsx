@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import "xterm/css/xterm.css";
 import {
   initMirrorWasm,
@@ -29,6 +29,7 @@ import {
   PageControlBar,
   PageLayout,
   AsciiChatWebHead,
+  VideoUploadModal,
 } from "../components";
 import type { SettingsConfig } from "../components";
 import {
@@ -44,6 +45,8 @@ import {
 } from "../hooks";
 
 export function MirrorPage() {
+  const [showUploadModal, setShowUploadModal] = useState(false);
+
   // Memoize WASM callbacks to prevent infinite re-render loops.
   // These are module-level functions that never change, so empty deps are correct.
   const initWasm = useCallback(() => initMirrorWasm(MirrorModuleFactory), []);
@@ -108,10 +111,13 @@ export function MirrorPage() {
     canvasRef,
     rendererRef,
     streamRef,
+    objectUrlRef,
     lastFrameTimeRef,
     frameIntervalRef,
     isWebcamRunning,
     setIsWebcamRunning,
+    mediaSource,
+    setMediaSource,
     error,
     setError,
     terminalDimensions,
@@ -147,17 +153,26 @@ export function MirrorPage() {
   });
 
   // Webcam start logic and auto-start effects
-  const { startWebcam } = useMirrorWebcam({
+  const { startWebcam, startVideoFile } = useMirrorWebcam({
     settings,
     videoRef,
     canvasRef,
     streamRef,
+    objectUrlRef,
     lastFrameTimeRef,
     setIsWebcamRunning,
+    setMediaSource,
     setError,
     wasmInitialized,
     isWebcamRunning,
   });
+
+  const handleVideoFileSelect = useCallback(
+    (file: File) => {
+      void startVideoFile(file);
+    },
+    [startVideoFile],
+  );
 
   // Sync terminal dimensions to WASM module when they change
   useEffect(() => {
@@ -209,8 +224,11 @@ export function MirrorPage() {
             fps={fps}
             targetFps={settings.targetFps}
             isWebcamRunning={isWebcamRunning}
+            mediaSource={mediaSource}
             onStartWebcam={startWebcam}
             onStopWebcam={stopWebcam}
+            onUploadClick={() => setShowUploadModal(true)}
+            videoRef={videoRef}
             onSettingsClick={() => setShowSettings(!showSettings)}
             showConnectionButton={false}
             showSettingsButton={true}
@@ -223,6 +241,13 @@ export function MirrorPage() {
             onFpsChange={setFps}
             error={error}
             showFps={isWebcamRunning}
+          />
+        }
+        modal={
+          <VideoUploadModal
+            isOpen={showUploadModal}
+            onClose={() => setShowUploadModal(false)}
+            onFileSelect={handleVideoFileSelect}
           />
         }
       />

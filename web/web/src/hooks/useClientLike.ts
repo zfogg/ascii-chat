@@ -20,6 +20,8 @@ export interface UseClientLikeOptions {
   onDimensionsChange?: (dims: { cols: number; rows: number }) => void;
 }
 
+export type MediaSource = "webcam" | "file" | null;
+
 export interface UseClientLikeReturn {
   // Refs
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -29,10 +31,13 @@ export interface UseClientLikeReturn {
   animationFrameRef: RefObject<number | null>;
   lastFrameTimeRef: RefObject<number>;
   frameIntervalRef: RefObject<number>;
+  objectUrlRef: RefObject<string | null>;
 
   // State
   isWebcamRunning: boolean;
   setIsWebcamRunning: (running: boolean) => void;
+  mediaSource: MediaSource;
+  setMediaSource: (source: MediaSource) => void;
   error: string;
   setError: (error: string) => void;
   terminalDimensions: { cols: number; rows: number };
@@ -81,9 +86,11 @@ export function useClientLike(
   const animationFrameRef = useRef<number | null>(null);
   const lastFrameTimeRef = useRef<number>(0);
   const frameIntervalRef = useRef<number>(1000 / 60);
+  const objectUrlRef = useRef<string | null>(null);
 
   // State
   const [isWebcamRunning, setIsWebcamRunning] = useState(false);
+  const [mediaSource, setMediaSource] = useState<MediaSource>(null);
   const [error, setError] = useState<string>("");
   const [terminalDimensions, setTerminalDimensions] = useState({
     cols: 0,
@@ -152,7 +159,7 @@ export function useClientLike(
     [onDimensionsChange],
   );
 
-  // Stop webcam
+  // Stop webcam or video file playback
   const stopWebcam = useCallback(() => {
     if (animationFrameRef.current !== null) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -165,11 +172,19 @@ export function useClientLike(
     }
 
     if (videoRef.current) {
+      videoRef.current.pause();
       videoRef.current.srcObject = null;
+      videoRef.current.src = "";
+    }
+
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
     }
 
     rendererRef.current?.clear();
     setIsWebcamRunning(false);
+    setMediaSource(null);
   }, []);
 
   return {
@@ -181,10 +196,13 @@ export function useClientLike(
     animationFrameRef,
     lastFrameTimeRef,
     frameIntervalRef,
+    objectUrlRef,
 
     // State
     isWebcamRunning,
     setIsWebcamRunning,
+    mediaSource,
+    setMediaSource,
     error,
     setError,
     terminalDimensions,

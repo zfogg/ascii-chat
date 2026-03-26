@@ -221,6 +221,11 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
     aspect_ratio(original->w, original->h, resized_width, resized_height, stretch, &resized_width, &resized_height);
   }
 
+  // Save the aspect-corrected dimensions in output row space (before half-block doubling)
+  // for padding calculations, since padding operates on output rows not pixel rows
+  ssize_t output_width = resized_width;
+  ssize_t output_height = resized_height;
+
   // Half-block mode doubles height for 2x vertical resolution (AFTER aspect ratio)
   if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
     resized_height = resized_height * 2;
@@ -230,20 +235,11 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   size_t pad_width = 0;
   size_t pad_height = 0;
 
-  log_dev("PADDING_CALC: use_aspect_ratio=%d wants_padding=%d width=%zd height=%zd resized_w=%zd resized_h=%zd",
-          use_aspect_ratio, caps->wants_padding, width, height, resized_width, resized_height);
-
   if (use_aspect_ratio && caps->wants_padding) {
-    ssize_t pad_width_ss = width > resized_width ? (width - resized_width) / 2 : 0;
+    ssize_t pad_width_ss = width > output_width ? (width - output_width) / 2 : 0;
     pad_width = (size_t)pad_width_ss;
 
-    ssize_t pad_height_ss = height > resized_height ? (height - resized_height) / 2 : 0;
-    // Halfblock mode uses 2 source rows per output row, so padding is halved
-    if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
-      log_dev("HALFBLOCK PADDING: before=%zd, render_mode=%d", pad_height_ss, caps->render_mode);
-      pad_height_ss /= 2;
-      log_dev("HALFBLOCK PADDING: after=%zd", pad_height_ss);
-    }
+    ssize_t pad_height_ss = height > output_height ? (height - output_height) / 2 : 0;
     pad_height = (size_t)pad_height_ss;
 
     log_debug_every(10 * US_PER_SEC_INT,

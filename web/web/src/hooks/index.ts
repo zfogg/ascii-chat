@@ -4,6 +4,7 @@ export { useClientLike } from "./useClientLike";
 export type {
   UseClientLikeOptions,
   UseClientLikeReturn,
+  MediaSource,
 } from "./useClientLike";
 export { useMirrorRenderLoop } from "@ascii-chat/shared/hooks";
 export { useMirrorWebcam } from "./useMirrorWebcam";

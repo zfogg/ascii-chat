@@ -143,7 +143,7 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   }
   palette_type_t palette_type = (palette_type_t)GET_OPTION(palette_type);
   bool preserve_aspect_ratio = true; // Preserve webcam aspect ratio
-  bool stretch = true;               // Stretch to fill container
+  bool stretch = false;              // Don't stretch - maintain proportions
 
   // Build terminal capabilities structure with user's color mode
   terminal_capabilities_t caps = {0}; // Zero-initialize all fields first

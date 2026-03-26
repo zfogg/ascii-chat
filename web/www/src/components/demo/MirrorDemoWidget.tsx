@@ -205,7 +205,7 @@ export default function MirrorDemoWidget({
 
       if (videoRef.current) {
         addDebugLog("Setting up video element");
-        videoRef.current.src = "/assets/demo-video-locomotion.mp4";
+        videoRef.current.src = "/assets/demo-video-sun-models.mp4";
         // Don't set crossOrigin for same-domain resources
         // (production server doesn't provide CORS headers)
         videoRef.current.loop = true;
@@ -288,7 +288,7 @@ export default function MirrorDemoWidget({
     } finally {
       setLoading(false);
     }
-  }, [initWasm, stop, applySelectedOption, addDebugLog, termDims]);
+  }, [initWasm, stop, applySelectedOption, addDebugLog]);
 
   const togglePause = useCallback(() => {
     if (videoRef.current) {
@@ -595,12 +595,12 @@ export default function MirrorDemoWidget({
       <p className="text-gray-600 text-xs mt-2 sm:text-right">
         Demo video:{" "}
         <a
-          href="https://www.youtube.com/watch?v=FvvOprCqORE"
+          href="https://www.youtube.com/watch?v=RtCaoKY769E"
           className="text-gray-500 hover:text-gray-400 underline"
           target="_blank"
           rel="noopener noreferrer"
         >
-          Locomotion (ODESZA Remix) - Live from LA State Historic Park 2019
+          Sun Models (ODESZA VIP Remix) - Live from Lollapalooza 2023
         </a>
       </p>
     </div>

@@ -1,3 +1,6 @@
+import type { RefObject } from "react";
+import type { MediaSource } from "../hooks/useClientLike";
+
 interface PageControlBarProps {
   title?: string | undefined;
   status?: string | undefined;
@@ -6,8 +9,11 @@ interface PageControlBarProps {
   fps?: number | undefined;
   targetFps?: number | undefined;
   isWebcamRunning?: boolean | undefined;
+  mediaSource?: MediaSource | undefined;
   onStartWebcam?: (() => void) | undefined;
   onStopWebcam?: (() => void) | undefined;
+  onUploadClick?: (() => void) | undefined;
+  videoRef?: RefObject<HTMLVideoElement | null> | undefined;
   showConnectionButton?: boolean | undefined;
   onConnectionClick?: (() => void) | undefined;
   onSettingsClick?: (() => void) | undefined;
@@ -22,8 +28,11 @@ export function PageControlBar({
   fps,
   targetFps,
   isWebcamRunning = false,
+  mediaSource,
   onStartWebcam,
   onStopWebcam,
+  onUploadClick,
+  videoRef,
   showConnectionButton = false,
   onConnectionClick,
   onSettingsClick,
@@ -39,6 +48,26 @@ export function PageControlBar({
   };
 
   const showWebcamButton = onStartWebcam || onStopWebcam;
+
+  const handleTogglePause = () => {
+    if (!videoRef?.current) return;
+    if (videoRef.current.paused) {
+      void videoRef.current.play();
+    } else {
+      videoRef.current.pause();
+    }
+  };
+
+  const handleRestart = () => {
+    if (!videoRef?.current) return;
+    videoRef.current.currentTime = 0;
+    void videoRef.current.play();
+  };
+
+  const handleToggleMute = () => {
+    if (!videoRef?.current) return;
+    videoRef.current.muted = !videoRef.current.muted;
+  };
 
   return (
     <div className="px-4 py-3 flex-shrink-0 border-b border-terminal-8">
@@ -69,21 +98,54 @@ export function PageControlBar({
           )}
         </div>
         <div className="flex gap-2">
+          {/* File playback controls (shown when playing a video file) */}
+          {isWebcamRunning && mediaSource === "file" && videoRef && (
+            <>
+              <button
+                onClick={handleTogglePause}
+                className="px-3 py-2 bg-terminal-4 text-terminal-bg rounded hover:bg-terminal-12 text-sm font-medium"
+              >
+                Pause/Play
+              </button>
+              <button
+                onClick={handleRestart}
+                className="px-3 py-2 bg-terminal-8 text-terminal-fg rounded hover:bg-terminal-7 text-sm"
+              >
+                Restart
+              </button>
+              <button
+                onClick={handleToggleMute}
+                className="px-3 py-2 bg-terminal-8 text-terminal-fg rounded hover:bg-terminal-7 text-sm"
+              >
+                Mute/Unmute
+              </button>
+            </>
+          )}
           {showWebcamButton &&
             (isWebcamRunning ? (
               <button
                 onClick={onStopWebcam}
                 className="px-4 py-2 bg-terminal-1 text-terminal-bg rounded hover:bg-terminal-9 text-sm font-medium"
               >
-                Stop Webcam
+                Stop
               </button>
             ) : (
-              <button
-                onClick={onStartWebcam}
-                className="px-4 py-2 bg-terminal-2 text-terminal-bg rounded hover:bg-terminal-10 text-sm font-medium"
-              >
-                Start Webcam
-              </button>
+              <>
+                <button
+                  onClick={onStartWebcam}
+                  className="px-4 py-2 bg-terminal-2 text-terminal-bg rounded hover:bg-terminal-10 text-sm font-medium"
+                >
+                  Start Webcam
+                </button>
+                {onUploadClick && (
+                  <button
+                    onClick={onUploadClick}
+                    className="px-4 py-2 bg-terminal-5 text-terminal-bg rounded hover:bg-terminal-13 text-sm font-medium"
+                  >
+                    Upload Video
+                  </button>
+                )}
+              </>
             ))}
           {showConnectionButton && (
             <button
