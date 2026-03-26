@@ -8,47 +8,47 @@ export const pageMetadata = {
       "Real-time terminal-based video chat with ASCII art rendering, end-to-end encryption, and audio support. Works on Linux, macOS, and Windows.",
   },
   docs: {
-    title: "Documentation - ascii-chat",
+    title: "Docs - ascii-chat",
     description:
       "Complete guides for configuring, using, and scripting ascii-chat. Learn about configuration, hardware, terminal modes, snapshots, networking, and media.",
   },
   configuration: {
-    title: "Configuration - ascii-chat",
+    title: "Configuration - Docs - ascii-chat",
     description:
       "Configure ascii-chat with CLI options, environment variables, config files, color schemes, and shell completions.",
   },
   hardware: {
-    title: "Hardware - ascii-chat",
+    title: "Hardware - Docs - ascii-chat",
     description:
       "Optimize ascii-chat for your hardware: webcams, microphones, speakers, keyboard shortcuts, and performance tuning.",
   },
   terminal: {
-    title: "Terminal - ascii-chat",
+    title: "Terminal - Docs - ascii-chat",
     description:
       "Terminal support in ascii-chat: color modes, dimensions, UTF-8 encoding, terminal detection, and capabilities.",
   },
   display: {
-    title: "Display - ascii-chat",
+    title: "Display - Docs - ascii-chat",
     description:
       "ASCII art rendering modes, color palettes, filters, animations, frame rates, and visual customization.",
   },
   snapshot: {
-    title: "Snapshot Mode - ascii-chat",
+    title: "Snapshot Mode - Docs - ascii-chat",
     description:
       "Capture single frames with ascii-chat snapshot mode. Perfect for scripting, automation, and batch processing.",
   },
   network: {
-    title: "Network - ascii-chat",
+    title: "Network - Docs - ascii-chat",
     description:
       "Networking in ascii-chat: connections, discovery service, NAT traversal, protocols, and multi-client support.",
   },
   media: {
-    title: "Media Files and URLs - ascii-chat",
+    title: "Media Files and URLs - Docs - ascii-chat",
     description:
       "Stream media in ascii-chat: local files, remote URLs, YouTube, TikTok, HLS, DASH, FFmpeg, and yt-dlp support.",
   },
   crypto: {
-    title: "Cryptography & Security - ascii-chat",
+    title: "Cryptography & Security - Docs - ascii-chat",
     description:
       "End-to-end encryption in ascii-chat: X25519, XSalsa20-Poly1305, SSH key authentication, TOFU, and security best practices.",
   },
