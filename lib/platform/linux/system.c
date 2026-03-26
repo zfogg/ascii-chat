@@ -34,16 +34,57 @@ int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *m
 
   char line[512];
   while (fgets(line, sizeof(line), maps) && count < max_matches) {
-    uintptr_t start, end, offset;
     char perms[5], device[10], path[PLATFORM_MAX_PATH_LENGTH];
-    unsigned long inode;
 
     // Parse: start-end perms offset device inode path
     // Example: 7f3a2b1c0000-7f3a2b1c1000 r-xp 00000000 08:02 12345678   /usr/lib/libsodium.so.23
-    int parsed = sscanf(line, "%lx-%lx %4s %lx %9s %lu", &start, &end, perms, &offset, device, &inode);
+    char *p = line;
+    char *end_ptr;
 
-    if (parsed < 6) {
-      continue; // Incomplete line
+    uintptr_t start = (uintptr_t)strtoul(p, &end_ptr, 16);
+    if (end_ptr == p || *end_ptr != '-') {
+      continue;
+    }
+    p = end_ptr + 1;
+
+    uintptr_t end = (uintptr_t)strtoul(p, &end_ptr, 16);
+    if (end_ptr == p || *end_ptr != ' ') {
+      continue;
+    }
+    p = end_ptr + 1;
+
+    // Parse perms field (4 chars like "r-xp")
+    if (strlen(p) < 4) {
+      continue;
+    }
+    memcpy(perms, p, 4);
+    perms[4] = '\0';
+    p += 4;
+    if (*p != ' ') {
+      continue;
+    }
+    p++;
+
+    uintptr_t offset = (uintptr_t)strtoul(p, &end_ptr, 16);
+    if (end_ptr == p || *end_ptr != ' ') {
+      continue;
+    }
+    p = end_ptr + 1;
+
+    // Parse device field (like "08:02")
+    char *space = strchr(p, ' ');
+    if (!space || (size_t)(space - p) >= sizeof(device)) {
+      continue;
+    }
+    memcpy(device, p, (size_t)(space - p));
+    device[space - p] = '\0';
+    p = space + 1;
+
+    // Skip whitespace and inode field
+    while (*p == ' ') p++;
+    strtoul(p, &end_ptr, 10);
+    if (end_ptr == p) {
+      continue;
     }
 
     // Skip lines without executable flag

@@ -1012,16 +1012,28 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
   rgb_start += 4; // Skip "rgb:"
 
   // Parse hex values (format is either RRRR/GGGG/BBBB or RR/GG/BB)
-  unsigned int r16, g16, b16;
-  if (sscanf(rgb_start, "%x/%x/%x", &r16, &g16, &b16) == 3) {
-    // Convert from 16-bit to 8-bit
-    *bg_r = (uint8_t)(r16 >> 8);
-    *bg_g = (uint8_t)(g16 >> 8);
-    *bg_b = (uint8_t)(b16 >> 8);
-    return true;
+  char *p = (char *)rgb_start;
+  char *end;
+  unsigned long r16 = strtoul(p, &end, 16);
+  if (end == p || *end != '/') {
+    return false;
+  }
+  p = end + 1;
+  unsigned long g16 = strtoul(p, &end, 16);
+  if (end == p || *end != '/') {
+    return false;
+  }
+  p = end + 1;
+  unsigned long b16 = strtoul(p, &end, 16);
+  if (end == p) {
+    return false;
   }
 
-  return false;
+  // Convert from 16-bit to 8-bit
+  *bg_r = (uint8_t)(r16 >> 8);
+  *bg_g = (uint8_t)(g16 >> 8);
+  *bg_b = (uint8_t)(b16 >> 8);
+  return true;
 }
 
 void terminal_stop_resize_detection(void) {

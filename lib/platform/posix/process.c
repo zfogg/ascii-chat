@@ -35,7 +35,7 @@ asciichat_error_t platform_popen(const char *name, const char *command, const ch
 
   FILE *stream = NULL;
   LOG_IO(name, {
-    stream = popen(command, mode);
+    stream = popen(command, mode); // NOLINT(bugprone-command-processor) - intentional shell usage
   });
   if (!stream) {
     return SET_ERRNO_SYS(ERROR_PROCESS_FAILED, "Failed to execute command: %s", command);

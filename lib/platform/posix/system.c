@@ -1118,7 +1118,7 @@ int platform_execute_subprocess(const char *executable, const char **argv,
     }
 
     // Use popen to capture output
-    FILE *pipe = popen(command_line, "r");
+    FILE *pipe = popen(command_line, "r"); // NOLINT(bugprone-command-processor) - intentional shell usage
     SAFE_FREE(command_line);
 
     if (!pipe) {
