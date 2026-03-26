@@ -132,23 +132,21 @@ export function PageControlBar({
                 Stop
               </button>
             ) : (
-              <>
-                <button
-                  onClick={onStartWebcam}
-                  className="px-4 py-2 bg-terminal-2 text-terminal-bg rounded hover:bg-terminal-10 text-sm font-medium"
-                >
-                  Start Webcam
-                </button>
-                {onUploadClick && (
-                  <button
-                    onClick={onUploadClick}
-                    className="px-4 py-2 bg-terminal-5 text-terminal-bg rounded hover:bg-terminal-13 text-sm font-medium"
-                  >
-                    Upload Video
-                  </button>
-                )}
-              </>
+              <button
+                onClick={onStartWebcam}
+                className="px-4 py-2 bg-terminal-2 text-terminal-bg rounded hover:bg-terminal-10 text-sm font-medium"
+              >
+                Start Webcam
+              </button>
             ))}
+          {onUploadClick && (
+            <button
+              onClick={onUploadClick}
+              className="px-4 py-2 bg-terminal-5 text-terminal-bg rounded hover:bg-terminal-13 text-sm font-medium"
+            >
+              Upload Video
+            </button>
+          )}
           {showConnectionButton && (
             <button
               onClick={onConnectionClick}
