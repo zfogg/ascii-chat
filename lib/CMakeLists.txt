@@ -452,6 +452,14 @@ if(VTERM_MUSL_TARGET)
     add_dependencies(ascii-chat-video ${VTERM_MUSL_TARGET})
 endif()
 
+# libvterm for terminal rendering in render-file
+if(VTERM_INCLUDE_DIRS)
+    target_include_directories(ascii-chat-video PRIVATE ${VTERM_INCLUDE_DIRS})
+endif()
+if(VTERM_LDFLAGS)
+    target_link_libraries(ascii-chat-video ${VTERM_LDFLAGS})
+endif()
+
 # FreeType2 for font rendering in render-file
 target_include_directories(ascii-chat-video PRIVATE ${FREETYPE_INCLUDE_DIRS})
 target_link_libraries(ascii-chat-video ${FREETYPE_LIBRARIES})
