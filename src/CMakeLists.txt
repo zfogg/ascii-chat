@@ -599,11 +599,15 @@ endif()  # BUILD_EXECUTABLES - close ascii-chat executable block
 
 if(BUILD_WEB AND BUILD_EXECUTABLES)
     # Minimal standalone executable: just adjectives, nouns, and main
-    add_executable(ascii-chat-strings
+    set(_strings_srcs
         ${CMAKE_CURRENT_SOURCE_DIR}/strings/main.c
         ${CMAKE_SOURCE_DIR}/lib/discovery/adjectives.c
         ${CMAKE_SOURCE_DIR}/lib/discovery/nouns.c
     )
+    if(USE_MUSL)
+        list(APPEND _strings_srcs ${CMAKE_SOURCE_DIR}/lib/musl_c23_compat.c)
+    endif()
+    add_executable(ascii-chat-strings ${_strings_srcs})
 
     if(ASCIICHAT_ENABLE_IPO)
         set_property(TARGET ascii-chat-strings PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
