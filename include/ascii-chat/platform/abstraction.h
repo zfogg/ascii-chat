@@ -2,30 +2,54 @@
 
 /**
  * @defgroup platform Platform Abstractions
- * @brief 🔌 Cross-platform abstractions for threading, sockets, and system calls, and hardware access
+ * @brief Cross-platform abstractions for threading, sockets, system calls, and hardware access
  * @{
  *
  * @file platform/abstraction.h
  * @brief Platform abstraction layer umbrella header providing unified cross-platform API
  *
- * This is the main entry point for the platform abstraction layer. It includes
- * all platform-specific component headers (system.h, terminal.h, thread.h, etc.)
- * and provides a unified API that works identically on Windows, Linux, and macOS.
+ * This is the main entry point for the platform abstraction layer. All code in the
+ * project uses the types and functions declared here (and in the component headers
+ * it includes) rather than calling OS APIs directly. This allows the same application
+ * code to compile and run on five targets:
  *
- * The actual function declarations and implementations are in the component headers:
- * - system.h / system.c - System functions, timers, environment variables
- * - terminal.h / terminal.c - Terminal I/O and control sequences
- * - thread.h - Threading primitives
- * - socket.h - Network socket operations
- * - mutex.h, rwlock.h, cond.h - Synchronization primitives
- * - string.h, memory.h - Safe string and memory functions
- * - file.h, process.h - File and process operations
+ * | Target   | Implementation directory     | Notes                                    |
+ * |----------|------------------------------|------------------------------------------|
+ * | Linux    | lib/platform/posix/ + linux/ | Full feature set, V4L2 webcam, ALSA      |
+ * | macOS    | lib/platform/posix/ + macos/ | Full feature set, AVFoundation webcam     |
+ * | Windows  | lib/platform/windows/        | Win32 APIs, WinSock2 sockets              |
+ * | WASM     | lib/platform/wasm/           | Emscripten, browser environment           |
  *
- * Platform-specific implementations are in lib/platform/posix/ and lib/platform/windows/
+ * POSIX platforms (Linux, macOS) share a common implementation in lib/platform/posix/
+ * with OS-specific extensions in lib/platform/linux/ and lib/platform/macos/.
+ *
+ * The WASM target (lib/platform/wasm/) compiles the core C code to WebAssembly via
+ * Emscripten for use in the browser-based web client (web.ascii-chat.com). It provides
+ * real implementations for video processing, ASCII conversion, terminal capabilities,
+ * and timing, while stubbing out functionality unavailable in a browser context
+ * (networking, audio capture, filesystem, process management) in lib/platform/wasm/stubs/.
+ *
+ * Component headers included by this file:
+ * - thread.h    - Thread creation, joining, and identification
+ * - mutex.h     - Mutual exclusion locks
+ * - rwlock.h    - Reader-writer locks
+ * - cond.h      - Condition variables
+ * - socket.h    - TCP/UDP socket operations and address helpers
+ * - terminal.h  - Terminal I/O, capabilities detection, ANSI sequences, render modes
+ * - system.h    - Timers, environment variables, signal handling, platform info
+ * - string.h    - Safe string functions (snprintf wrappers, UTF-8 helpers)
+ * - memory.h    - Safe memory allocation with leak tracking (SAFE_MALLOC, SAFE_FREE)
+ * - process.h   - Process spawning, pipes, and PID management
+ * - filesystem.h - File operations, path manipulation, directory traversal
+ * - pipe.h      - Named and anonymous pipe abstractions
+ *
+ * This header also defines:
+ * - Platform detection macros (PLATFORM_WINDOWS, PLATFORM_POSIX)
+ * - Compiler attribute macros (PACKED_ATTR, ALIGNED_ATTR, THREAD_LOCAL)
+ * - Windows POSIX compatibility shims (aligned_alloc, clock_gettime, gmtime_r, etc.)
+ * - Cross-platform sleep functions (platform_sleep_us, platform_sleep_ns)
+ * - Utility macros (UNUSED, PLATFORM_BINARY_NAME)
  */
-
-// ============================================================================
-// Platform Detection
 
 // ============================================================================
 // Platform Detection
@@ -208,9 +232,8 @@
 #include "../platform/memory.h"
 #include "../platform/process.h"
 #include "../platform/filesystem.h"
-// NOTE: uthash/uthash.h is NOT included here to avoid circular dependencies
-// Files that need uthash should include it directly AFTER common.h
-#include "../platform/filesystem.h"
+// NOTE: uthash/uthash.h is NOT included here to avoid circular dependencies.
+// Files that need uthash should include it directly AFTER common.h.
 #include "../platform/pipe.h"
 #ifndef __cplusplus
 #include "../debug/sync.h"
