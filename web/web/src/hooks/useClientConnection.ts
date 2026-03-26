@@ -303,10 +303,16 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     setPublicKey("");
   }, []);
 
-  // Auto-connect on mount with serverUrl
+  // Auto-connect on mount with serverUrl (development mode only)
   // Continuously retry connection with exponential backoff until successful
   // This allows page load before server startup, silently retrying in background
+  // This is a developer feature - disabled in production
   useEffect(() => {
+    // Only auto-connect in development mode
+    if (import.meta.env["NODE_ENV"] === "production") {
+      return;
+    }
+
     if (hasAutoConnected) return;
 
     const attemptConnect = async () => {
