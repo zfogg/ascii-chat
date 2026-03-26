@@ -4983,70 +4983,111 @@ for (int i = 0; i &lt; count; i++) {
 34 
 35   char line[512];
 36   while (fgets(line, sizeof(line), maps) &amp;&amp; count &lt; max_matches) {
-37     uintptr_t start, end, offset;
-38     char perms[5], device[10], path[PLATFORM_MAX_PATH_LENGTH];
-39     unsigned long inode;
-40 
-41     // Parse: start-end perms offset device inode path
-42     // Example: 7f3a2b1c0000-7f3a2b1c1000 r-xp 00000000 08:02 12345678   /usr/lib/libsodium.so.23
-43     int parsed = sscanf(line, &quot;%lx-%lx %4s %lx %9s %lu&quot;, &amp;start, &amp;end, perms, &amp;offset, device, &amp;inode);
-44 
-45     if (parsed &lt; 6) {
-46       continue; // Incomplete line
+37     char perms[5], device[10], path[PLATFORM_MAX_PATH_LENGTH];
+38 
+39     // Parse: start-end perms offset device inode path
+40     // Example: 7f3a2b1c0000-7f3a2b1c1000 r-xp 00000000 08:02 12345678   /usr/lib/libsodium.so.23
+41     char *p = line;
+42     char *end_ptr;
+43 
+44     uintptr_t start = (uintptr_t)strtoul(p, &amp;end_ptr, 16);
+45     if (end_ptr == p || *end_ptr != '-') {
+46       continue;
 47     }
-48 
-49     // Skip lines without executable flag
-50     if (perms[2] != 'x') {
-51       continue;
-52     }
-53 
-54     // Extract path more robustly by searching for the last whitespace-separated token
-55     // /proc/self/maps format: start-end perms offset device inode [path]
-56     // The path is optional and starts after the inode field
-57     path[0] = '\0';
-58 
-59     // Find the last whitespace and take everything after it as the path
-60     // This is more robust than trying to count fields
-61     int line_len = strlen(line);
-62     int path_start = -1;
-63 
-64     // Scan from the end backwards to find the last non-whitespace character
-65     for (int i = line_len - 1; i &gt;= 0; i--) {
-66       if (line[i] != ' ' &amp;&amp; line[i] != '\t' &amp;&amp; line[i] != '\n' &amp;&amp; line[i] != '\r') {
-67         // Found a non-whitespace char, now find the start of this token
-68         path_start = i;
-69         while (path_start &gt; 0 &amp;&amp; line[path_start - 1] != ' ' &amp;&amp; line[path_start - 1] != '\t') {
-70           path_start--;
-71         }
-72         break;
-73       }
-74     }
-75 
-76     if (path_start &gt; 0 &amp;&amp; line[path_start - 1] != '\0') {
-77       // Extract the path starting from path_start
-78       strncpy(path, &amp;line[path_start], PLATFORM_MAX_PATH_LENGTH - 1);
-79       path[PLATFORM_MAX_PATH_LENGTH - 1] = '\0';
-80       // Remove trailing whitespace
-81       int path_len = strlen(path);
-82       while (path_len &gt; 0 &amp;&amp; (path[path_len - 1] == '\n' || path[path_len - 1] == '\r')) {
-83         path[--path_len] = '\0';
-84       }
-85     }
-86 
-87     // Check if address falls within this segment
-88     if (perms[2] == 'x' &amp;&amp; path[0] == '/') {
-89       if (addr_int &gt;= start &amp;&amp; addr_int &lt; end) {
-90         strncpy(matches[count].path, path, PLATFORM_MAX_PATH_LENGTH - 1);
-91         matches[count].path[PLATFORM_MAX_PATH_LENGTH - 1] = '\0';
-92         matches[count].file_offset = (addr_int - start) + offset;
-93         count++;
-94       }
-95     }
-96   }
-97 
-98   fclose(maps);
-99   return count;
-100 }</pre>
+48     p = end_ptr + 1;
+49 
+50     uintptr_t end = (uintptr_t)strtoul(p, &amp;end_ptr, 16);
+51     if (end_ptr == p || *end_ptr != ' ') {
+52       continue;
+53     }
+54     p = end_ptr + 1;
+55 
+56     // Parse perms field (4 chars like &quot;r-xp&quot;)
+57     if (strlen(p) &lt; 4) {
+58       continue;
+59     }
+60     memcpy(perms, p, 4);
+61     perms[4] = '\0';
+62     p += 4;
+63     if (*p != ' ') {
+64       continue;
+65     }
+66     p++;
+67 
+68     uintptr_t offset = (uintptr_t)strtoul(p, &amp;end_ptr, 16);
+69     if (end_ptr == p || *end_ptr != ' ') {
+70       continue;
+71     }
+72     p = end_ptr + 1;
+73 
+74     // Parse device field (like &quot;08:02&quot;)
+75     char *space = strchr(p, ' ');
+76     if (!space || (size_t)(space - p) &gt;= sizeof(device)) {
+77       continue;
+78     }
+79     memcpy(device, p, (size_t)(space - p));
+80     device[space - p] = '\0';
+81     p = space + 1;
+82 
+83     // Skip whitespace and inode field
+84     while (*p == ' ') p++;
+85     strtoul(p, &amp;end_ptr, 10);
+86     if (end_ptr == p) {
+87       continue;
+88     }
+89 
+90     // Skip lines without executable flag
+91     if (perms[2] != 'x') {
+92       continue;
+93     }
+94 
+95     // Extract path more robustly by searching for the last whitespace-separated token
+96     // /proc/self/maps format: start-end perms offset device inode [path]
+97     // The path is optional and starts after the inode field
+98     path[0] = '\0';
+99 
+100     // Find the last whitespace and take everything after it as the path
+101     // This is more robust than trying to count fields
+102     int line_len = strlen(line);
+103     int path_start = -1;
+104 
+105     // Scan from the end backwards to find the last non-whitespace character
+106     for (int i = line_len - 1; i &gt;= 0; i--) {
+107       if (line[i] != ' ' &amp;&amp; line[i] != '\t' &amp;&amp; line[i] != '\n' &amp;&amp; line[i] != '\r') {
+108         // Found a non-whitespace char, now find the start of this token
+109         path_start = i;
+110         while (path_start &gt; 0 &amp;&amp; line[path_start - 1] != ' ' &amp;&amp; line[path_start - 1] != '\t') {
+111           path_start--;
+112         }
+113         break;
+114       }
+115     }
+116 
+117     if (path_start &gt; 0 &amp;&amp; line[path_start - 1] != '\0') {
+118       // Extract the path starting from path_start
+119       strncpy(path, &amp;line[path_start], PLATFORM_MAX_PATH_LENGTH - 1);
+120       path[PLATFORM_MAX_PATH_LENGTH - 1] = '\0';
+121       // Remove trailing whitespace
+122       int path_len = strlen(path);
+123       while (path_len &gt; 0 &amp;&amp; (path[path_len - 1] == '\n' || path[path_len - 1] == '\r')) {
+124         path[--path_len] = '\0';
+125       }
+126     }
+127 
+128     // Check if address falls within this segment
+129     if (perms[2] == 'x' &amp;&amp; path[0] == '/') {
+130       if (addr_int &gt;= start &amp;&amp; addr_int &lt; end) {
+131         strncpy(matches[count].path, path, PLATFORM_MAX_PATH_LENGTH - 1);
+132         matches[count].path[PLATFORM_MAX_PATH_LENGTH - 1] = '\0';
+133         matches[count].file_offset = (addr_int - start) + offset;
+134         count++;
+135       }
+136     }
+137   }
+138 
+139   fclose(maps);
+140   return count;
+141 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>platform_binary_match_t::file_offset</b>,
