@@ -143,6 +143,7 @@ export default function MirrorDemoWidget({
   );
 
   const startWebcam = useCallback(async () => {
+    rendererRef.current?.clear();
     setLoading(true);
     setError(null);
     try {
@@ -197,6 +198,7 @@ export default function MirrorDemoWidget({
   }, [initWasm, stop, applySelectedOption, termDims]);
 
   const startDemo = useCallback(async () => {
+    rendererRef.current?.clear();
     setLoading(true);
     setError(null);
     setDebugLogs([]);
