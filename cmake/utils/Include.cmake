@@ -31,9 +31,6 @@ function(configure_include_directories)
     # Also includes utf8proc: #include <ascii-chat-deps/utf8proc/utf8proc.h>
     include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/deps)
 
-    # Add ghostty include directories (for ghostty.h)
-    include_directories(SYSTEM ${GHOSTTY_INCLUDE_DIRS})
-
     # Add dependency include directories (matching pkg-config approach)
     if(WIN32)
         # Use triplet-specific include path (set earlier based on build type)

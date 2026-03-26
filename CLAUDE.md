@@ -737,7 +737,7 @@ Spurious `if(FOUND)` guards around linking create silent failures:
 - PCRE2, libsodium, BearSSL, yyjson — used unconditionally in multiple modules
 - FFmpeg, libwebsockets — required for musl static builds
 - PortAudio, Opus, JACK — audio pipeline components
-- Ghostty, libdatachannel, OpenSSL — networking and crypto
+- libdatachannel, OpenSSL — networking and crypto
 
 **The only legitimate conditionals for dependencies:**
 

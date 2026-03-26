@@ -3,10 +3,6 @@
  * @ingroup media
  * @brief Terminal-to-pixel renderer and render-file output (audio + video)
  *
- * Platform-specific renderers (Linux: FreeType+ghostty_vt, macOS: ghostty+Metal)
- * implement the functions declared here. render_file_* is the public orchestrator
- * called from the session display layer.
- *
  * Supports theme-aware rendering that adapts colors based on the terminal's
  * background theme (dark or light) for optimal readability.
  */

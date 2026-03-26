@@ -189,8 +189,6 @@ if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
         set(_rpath_list "$ORIGIN/../lib")
     endif()
 
-    # Add ghostty library path for runtime dependency resolution
-    list(APPEND _rpath_list "${ASCIICHAT_DEPS_CACHE_DIR}/ghostty/lib")
     if(CMAKE_BUILD_RPATH)
         list(APPEND _rpath_list ${CMAKE_BUILD_RPATH})
     endif()

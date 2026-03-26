@@ -41,7 +41,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
       *out_font_data = g_font_matrix_resurrected;
     if (out_font_data_size)
       *out_font_data_size = g_font_matrix_resurrected_size;
-    // For macOS, write bundled font to temp file since ghostty expects paths
+    // For macOS, write bundled font to temp file since the renderer expects file paths
     static char tmp_path[4096] = {0};
     if (tmp_path[0] == '\0' && out_font_data && *out_font_data) {
       strlcpy(tmp_path, "/tmp/ascii-chat-matrix-XXXXXX.ttf", sizeof(tmp_path));
@@ -64,7 +64,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
       *out_font_data = g_font_default;
     if (out_font_data_size)
       *out_font_data_size = g_font_default_size;
-    // For macOS, write bundled font to temp file since ghostty expects paths
+    // For macOS, write bundled font to temp file since the renderer expects file paths
     static char tmp_path_default[4096] = {0};
     if (tmp_path_default[0] == '\0' && out_font_data && *out_font_data) {
       strlcpy(tmp_path_default, "/tmp/ascii-chat-default-XXXXXX.ttf", sizeof(tmp_path_default));
@@ -83,13 +83,13 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
   }
 
   // Try to use system font (passed to CoreText).
-  // If this fails at runtime, ghostty will log an error but we can't detect that here.
+  // If this fails at runtime, CoreText will log an error but we can't detect that here.
   // Note: macOS CoreText is more forgiving with font names than Linux fontconfig.
   snprintf(out, out_size, "%s", eff);
   *out_is_path = false;
 
-  // Log that we're using a system font name (will be resolved by ghostty/CoreText)
-  log_debug("platform_font_resolve: using system font name '%s' (will be resolved by ghostty)", eff);
+  // Log that we're using a system font name (will be resolved by CoreText)
+  log_debug("platform_font_resolve: using system font name '%s' (will be resolved by CoreText)", eff);
   return ASCIICHAT_OK;
 }
 #endif // __APPLE__

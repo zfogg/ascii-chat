@@ -313,8 +313,8 @@ target_link_libraries(ascii-chat-platform
 )
 
 # Link render-file dependencies to platform module (for terminal renderers)
-target_include_directories(ascii-chat-platform PRIVATE ${PLATFORM_INCLUDES} ${GHOSTTY_INCLUDES})
-target_link_libraries(ascii-chat-platform ${PLATFORM_LIBS} ${GHOSTTY_LIBS})
+target_include_directories(ascii-chat-platform PRIVATE ${PLATFORM_INCLUDES})
+target_link_libraries(ascii-chat-platform ${PLATFORM_LIBS})
 
 # Add kernel headers for musl builds (needed for V4L2)
 if(USE_MUSL AND DEFINED MUSL_DEPS_DIR AND EXISTS "${MUSL_DEPS_DIR}/musl-deps/kernel-headers")
@@ -444,12 +444,10 @@ include_directories(SYSTEM ${FFMPEG_INCLUDE_DIRS})
 
 create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
 
-# Link external dependencies (FFmpeg, ghostty, freetype, fontconfig)
+# Link external dependencies (FFmpeg, freetype, fontconfig)
 # Module dependencies (util, platform, core, simd) are resolved through OBJECT library merging
 target_link_directories(ascii-chat-video PRIVATE ${FFMPEG_LIBRARY_DIRS})
 target_link_libraries(ascii-chat-video ${FFMPEG_LIBRARIES})
-target_include_directories(ascii-chat-video PRIVATE ${GHOSTTY_INCLUDES})
-target_link_libraries(ascii-chat-video ${GHOSTTY_LIBS})
 if(VTERM_MUSL_TARGET)
     add_dependencies(ascii-chat-video ${VTERM_MUSL_TARGET})
 endif()
@@ -770,7 +768,7 @@ add_library(ascii-chat-shared SHARED
     )
 
     # Set RPATH on shared library so it can find dependencies at runtime
-    # This ensures transitive dependencies (like libghostty-vt.so.0 and custom FFmpeg) are found
+    # This ensures transitive dependencies (like custom FFmpeg) are found
     if(APPLE OR UNIX)
         if(CMAKE_BUILD_TYPE STREQUAL "Release")
             # Release builds: use only relative paths to avoid embedded developer paths
@@ -791,9 +789,6 @@ add_library(ascii-chat-shared SHARED
         else()
             # Non-Release builds: use absolute paths (will be removed by remove_paths.sh in Release only)
             set(_shared_rpath_list "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
-
-            # Add ghostty library path for transitive dependency resolution
-            list(APPEND _shared_rpath_list "${ASCIICHAT_DEPS_CACHE_DIR}/ghostty/lib")
 
             if(CMAKE_BUILD_RPATH)
                 list(APPEND _shared_rpath_list ${CMAKE_BUILD_RPATH})
@@ -1143,14 +1138,6 @@ endif()
 if(FFMPEG_FOUND)
     target_link_directories(ascii-chat-shared PRIVATE ${FFMPEG_LIBRARY_DIRS})
     target_link_libraries(ascii-chat-shared PRIVATE ${FFMPEG_LIBRARIES})
-endif()
-
-# Link render-file dependencies
-if(NOT WIN32)
-    target_link_libraries(ascii-chat-shared PRIVATE ${GHOSTTY_LIBS})
-
-    # Add RPATH for ghostty shared library (unconditional - if code compiles, ghostty is found)
-    list(APPEND CMAKE_INSTALL_RPATH "${ASCIICHAT_DEPS_CACHE_DIR}/ghostty/lib")
 endif()
 
 # Link FreeType2 and Fontconfig for font rendering

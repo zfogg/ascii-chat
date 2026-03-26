@@ -101,7 +101,7 @@ bool parse_render_mode(const char *arg, void *dest, char **error_msg);
  * @param error_msg Optional error message output (set on failure)
  * @return true on success, false on error
  *
- * Controls the rendering theme when using pixel output (ghostty renderer).
+ * Controls the rendering theme when using pixel output.
  * The theme determines color palette for ANSI text rendering.
  *
  * Valid values:
