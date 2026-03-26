@@ -138,14 +138,14 @@
 <p class="Pp">Clean up terminal screen resources. Destroys the internal static
     frame buffer allocated by <b>terminal_screen_render()</b>. Call at program
     exit or when terminal screen rendering is no longer needed.</p>
-<p class="Pp">Definition at line <b>599</b> of file
+<p class="Pp">Definition at line <b>464</b> of file
   <b>terminal_screen.c</b>.</p>
-<pre>599                                    {
-600   if (g_frame_buf) {
-601     frame_buffer_destroy(g_frame_buf);
-602     g_frame_buf = NULL;
-603   }
-604 }</pre>
+<pre>464                                    {
+465   if (g_frame_buf) {
+466     frame_buffer_destroy(g_frame_buf);
+467     g_frame_buf = NULL;
+468   }
+469 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>frame_buffer_destroy()</b>.</p>
@@ -160,11 +160,11 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to log buffer, or NULL</div>
-<p class="Pp">Definition at line <b>628</b> of file
+<p class="Pp">Definition at line <b>493</b> of file
   <b>terminal_screen.c</b>.</p>
-<pre>628                                                            {
-629   return g_session_log_buffer;
-630 }</pre>
+<pre>493                                                            {
+494   return g_session_log_buffer;
+495 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -174,13 +174,13 @@
 <p class="Pp">Clear buffered logs for terminal screens. Clears all previously
     captured log entries from the buffer. Useful when transitioning between
     screens to start fresh.</p>
-<p class="Pp">Definition at line <b>622</b> of file
+<p class="Pp">Definition at line <b>487</b> of file
   <b>terminal_screen.c</b>.</p>
-<pre>622                                      {
-623   if (g_session_log_buffer) {
-624     session_log_buffer_clear(g_session_log_buffer);
-625   }
-626 }</pre>
+<pre>487                                      {
+488   if (g_session_log_buffer) {
+489     session_log_buffer_clear(g_session_log_buffer);
+490   }
+491 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_log_buffer_clear()</b>.</p>
@@ -192,14 +192,14 @@
   terminal_screen_log_destroy (void )</a></h2>
 <p class="Pp">Standard log cleanup for terminal screens. Destroys the session
     log buffer after screens are done rendering.</p>
-<p class="Pp">Definition at line <b>615</b> of file
+<p class="Pp">Definition at line <b>480</b> of file
   <b>terminal_screen.c</b>.</p>
-<pre>615                                        {
-616   if (g_session_log_buffer) {
-617     session_log_buffer_destroy(g_session_log_buffer);
-618     g_session_log_buffer = NULL;
-619   }
-620 }</pre>
+<pre>480                                        {
+481   if (g_session_log_buffer) {
+482     session_log_buffer_destroy(g_session_log_buffer);
+483     g_session_log_buffer = NULL;
+484   }
+485 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_log_buffer_destroy()</b>.</p>
@@ -215,16 +215,16 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to created buffer, or NULL on failure</div>
-<p class="Pp">Definition at line <b>606</b> of file
+<p class="Pp">Definition at line <b>471</b> of file
   <b>terminal_screen.c</b>.</p>
-<pre>606                                                      {
-607   if (g_session_log_buffer) {
-608     return g_session_log_buffer; // Already initialized
-609   }
-610 
-611   g_session_log_buffer = session_log_buffer_create();
-612   return g_session_log_buffer;
-613 }</pre>
+<pre>471                                                      {
+472   if (g_session_log_buffer) {
+473     return g_session_log_buffer; // Already initialized
+474   }
+475 
+476   g_session_log_buffer = session_log_buffer_create();
+477   return g_session_log_buffer;
+478 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_log_buffer_create()</b>.</p>
@@ -541,218 +541,83 @@
 383     // Flush entire frame (header + logs + blank lines) in one atomic write
 384     frame_buffer_flush(g_frame_buf);
 385   } else {
-386     // Grep mode: diff-based rendering. Only rewrite lines that changed.
-387     // Logs fill renderable_log_rows; the last row is the `/` input line.
+386     // Grep mode: render logs with frame buffer (same as normal mode)
+387     // Just apply grep highlighting to visible logs
 388 
-389     // Flush frame buffer (containing header) before rendering grep logs
-390     frame_buffer_flush(g_frame_buf);
-391 
-392     // Suppress logging during grep rendering to prevent log messages from
-393     // interleaving with escape sequences and appearing as literal text in logs
-394     log_level_t saved_level = log_get_level();
-395     log_set_level(LOG_FATAL); // Suppress all logging except fatal errors during rendering
-396 
-397     int log_idx = 0;
-398     int lines_used = 0;
-399     int fd = frame_buffer_get_screen_output_fd();
-400     FILE *output_file = (fd == STDERR_FILENO) ? stderr : stdout;
-401 
-402     for (int i = first_log_to_display; i &lt; (int)log_count; i++) {
-403       const char *original_msg = log_entries[i].message;
-404       const char *msg = original_msg;
-405 
-406       // Strip ANSI codes first to match against plain text
-407       char plain_text[SESSION_LOG_LINE_MAX] = {0};
-408       strip_ansi_codes(original_msg, plain_text, sizeof(plain_text));
-409 
-410       // Apply highlighting if match found in plain text
-411       size_t match_start = 0, match_len = 0;
-412       if (log_search_get_match_info(plain_text, &amp;match_start, &amp;match_len) &amp;&amp; match_len &gt; 0) {
-413         // Validate match is within bounds
-414         size_t plain_len = strlen(plain_text);
-415         if (match_start &lt; plain_len &amp;&amp; (match_start + match_len) &lt;= plain_len) {
-416           const char *highlighted = grep_highlight_colored(original_msg, plain_text, match_start, match_len);
-417           if (highlighted &amp;&amp; highlighted[0] != '\0') {
-418             msg = highlighted;
-419           }
-420         }
-421       }
-422 
-423       int msg_display_width = display_width(msg);
-424       if (msg_display_width &lt; 0) {
-425         msg_display_width = (int)strlen(msg);
-426       }
-427       int lines_for_this = 1;
-428       if (g_cached_term_size.cols &gt; 0 &amp;&amp; msg_display_width &gt; g_cached_term_size.cols) {
-429         lines_for_this = (msg_display_width + g_cached_term_size.cols - 1) / g_cached_term_size.cols;
-430       }
+389     int terminal_lines_used = 0;
+390     for (int i = first_log_to_display; i &lt; (int)log_count &amp;&amp; terminal_lines_used &lt; log_area_rows; i++) {
+391       const char *original_msg = log_entries[i].message;
+392       const char *msg = original_msg;
+393 
+394       // Strip ANSI codes first to match against plain text
+395       char plain_text[SESSION_LOG_LINE_MAX] = {0};
+396       strip_ansi_codes(original_msg, plain_text, sizeof(plain_text));
+397 
+398       // Apply highlighting if match found in plain text
+399       size_t match_start = 0, match_len = 0;
+400       if (log_search_get_match_info(plain_text, &amp;match_start, &amp;match_len) &amp;&amp; match_len &gt; 0) {
+401         // Validate match is within bounds
+402         size_t plain_len = strlen(plain_text);
+403         if (match_start &lt; plain_len &amp;&amp; (match_start + match_len) &lt;= plain_len) {
+404           const char *highlighted = grep_highlight_colored(original_msg, plain_text, match_start, match_len);
+405           if (highlighted &amp;&amp; highlighted[0] != '\0') {
+406             msg = highlighted;
+407           }
+408         }
+409       }
+410 
+411       int msg_display_width = display_width(msg);
+412       if (msg_display_width &lt; 0) {
+413         msg_display_width = (int)strlen(msg);
+414       }
+415       int lines_for_this_msg = 1;
+416       if (g_cached_term_size.cols &gt; 0 &amp;&amp; msg_display_width &gt; g_cached_term_size.cols) {
+417         lines_for_this_msg = (msg_display_width + g_cached_term_size.cols - 1) / g_cached_term_size.cols;
+418       }
+419 
+420       if (terminal_lines_used + lines_for_this_msg &lt;= log_area_rows) {
+421         frame_buffer_printf(g_frame_buf, &quot;%s\n&quot;, msg);
+422         terminal_lines_used += lines_for_this_msg;
+423       }
+424     }
+425 
+426     // Pad remaining log area with blank lines
+427     while (terminal_lines_used &lt; log_area_rows) {
+428       frame_buffer_printf(g_frame_buf, &quot;\n&quot;);
+429       terminal_lines_used++;
+430     }
 431 
-432       // When logs are filtered (grep active), they're in a different order than before.
-433       // Only use cached pointers when NOT filtering to avoid cache misses on every frame.
-434       // This prevents the &quot;spam&quot; effect where all logs redraw constantly during grep searches.
-435       bool same_as_before = false;
-436       if (!log_search_is_active()) {
-437         same_as_before = (log_idx &lt; g_prev_log_count &amp;&amp; g_prev_log_ptrs[log_idx] == original_msg);
-438       }
-439 
-440       if (same_as_before) {
-441         // Content unchanged - skip past it without rewriting.
-442         if (lines_for_this == 1) {
-443           fprintf(output_file, &quot;\n&quot;);
-444         } else {
-445           fprintf(output_file, &quot;\x1b[%dB&quot;, lines_for_this);
-446         }
-447       } else {
-448         // Content changed - overwrite and clear tail.
-449         fprintf(output_file, &quot;%s\n&quot;, msg);
-450       }
-451 
-452       if (log_idx &lt; MAX_CACHED_LINES) {
-453         g_prev_log_ptrs[log_idx] = original_msg;
+432     // Flush frame buffer before rendering grep UI
+433     frame_buffer_flush(g_frame_buf);
+434 
+435     // Grep input line UI (position cursor at bottom and display &quot;/&quot; prompt with pattern)
+436     // Get the search pattern under mutex protection
+437     mutex_t *grep_mutex = log_search_get_mutex();
+438     if (grep_mutex &amp;&amp; g_cached_term_size.rows &gt; 0) {
+439       mutex_lock(grep_mutex);
+440       int pattern_len = log_search_get_input_len();
+441       const char *pattern = log_search_get_input_buffer();
+442       int cursor_pos = log_search_get_cursor_position();
+443 
+444       // Render grep input line at bottom of screen
+445       printf(&quot;\x1b[%d;1H/&quot;, g_cached_term_size.rows);
+446       if (pattern_len &gt; 0 &amp;&amp; pattern) {
+447         printf(&quot;%.*s&quot;, pattern_len, pattern);
+448       }
+449 
+450       // Position cursor at current edit position
+451       int cursor_offset = pattern_len - cursor_pos;
+452       if (cursor_offset &gt; 0) {
+453         printf(&quot;\x1b[%dD&quot;, cursor_offset);
 454       }
-455       log_idx++;
-456       lines_used += lines_for_this;
-457     }
-458 
-459     // Fill blank lines up to renderable_log_rows. If there's one line of space left,
-460     // render one more partial log (truncated to fit terminal width) instead of blank line.
-461     int remaining = renderable_log_rows - lines_used;
-462 
-463     if (remaining &gt;= 1 &amp;&amp; first_log_to_display &gt; 0) {
-464       // Render one more log line above the displayed ones, truncated to fit terminal width
-465       int prev_idx = first_log_to_display - 1;
-466       const char *prev_msg = log_entries[prev_idx].message;
-467 
-468       int prev_width = display_width(prev_msg);
-469       if (prev_width &lt; 0) {
-470         prev_width = (int)strlen(prev_msg);
-471       }
-472 
-473       if (prev_width &gt; g_cached_term_size.cols) {
-474         // Truncate to fit: progressively test shorter substrings until one fits
-475         int target_width = g_cached_term_size.cols - 3; // Reserve space for ellipsis
-476         if (target_width &lt;= 0) {
-477           fprintf(output_file, &quot;...\x1b[K\n&quot;);
-478         } else {
-479           size_t src_len = strlen(prev_msg);
-480           bool found = false;
-481 
-482           for (size_t truncate_at = src_len; truncate_at &gt; 0; truncate_at--) {
-483             char test_buf[SESSION_LOG_LINE_MAX];
-484             SAFE_STRNCPY(test_buf, prev_msg, truncate_at);
-485             test_buf[truncate_at] = '\0';
-486 
-487             int test_width = display_width(test_buf);
-488             if (test_width &lt; 0) {
-489               test_width = (int)strlen(test_buf);
-490             }
-491 
-492             if (test_width &lt;= target_width) {
-493               // Found a length that fits
-494               fprintf(output_file, &quot;%s...\x1b[K\n&quot;, test_buf);
-495               found = true;
-496               break;
-497             }
-498           }
-499 
-500           if (!found) {
-501             fprintf(output_file, &quot;...\x1b[K\n&quot;);
-502           }
-503         }
-504       } else {
-505         // Fits without truncation
-506         fprintf(output_file, &quot;%s\x1b[K\n&quot;, prev_msg);
-507       }
-508 
-509       remaining--;
-510     }
-511 
-512     // Fill remaining blank lines with color reset to prevent color bleed
-513     for (int i = 0; i &lt; remaining; i++) {
-514       fprintf(output_file, &quot;\n&quot;);
-515     }
-516 
-517     g_prev_log_count = log_idx;
-518     g_prev_total_lines = lines_used;
-519 
-520     // Flush buffered output before rendering grep UI to ensure correct order
-521     fflush(output_file);
-522 
-523     // Atomic grep UI rendering: combine cursor positioning and input line into
-524     // a single write to prevent log output from interrupting the escape sequences.
-525     // This prevents the race condition where logs appear between the cursor
-526     // positioning command and the grep input line rendering.
-527     char grep_ui_buffer[512];
-528 
-529     // Validate terminal size before using it in formatting
-530     if (g_cached_term_size.rows &lt;= 0 || g_cached_term_size.rows &gt; 9999) {
-531       // Invalid terminal size - skip grep rendering to avoid malformed output
-532       return;
-533     }
-534 
-535     int pos = snprintf(grep_ui_buffer, sizeof(grep_ui_buffer), &quot;\x1b[%d;1H&quot;, g_cached_term_size.rows);
-536 
-537     // Validate snprintf succeeded and produced expected output
-538     if (pos &gt; 0 &amp;&amp; pos &lt; (int)sizeof(grep_ui_buffer) - 256) {
-539       // Lock while reading grep state to ensure atomic render
-540       // Get the search pattern under mutex protection
-541       mutex_t *grep_mutex = log_search_get_mutex();
-542       if (grep_mutex) {
-543         mutex_lock(grep_mutex);
-544         int pattern_len = log_search_get_input_len();
-545         const char *pattern = log_search_get_input_buffer();
-546         int cursor_pos = log_search_get_cursor_position();
-547 
-548         // Validate pattern_len and cursor_pos are within reasonable bounds
-549         if (pattern_len &lt; 0 || pattern_len &gt; 256) {
-550           pattern_len = 0;
-551           pattern = NULL;
-552         }
-553         if (cursor_pos &lt; 0 || cursor_pos &gt; pattern_len) {
-554           cursor_pos = pattern_len;
-555         }
-556 
-557         if (pattern_len &gt; 0 &amp;&amp; pattern) {
-558           int remaining =
-559               snprintf(grep_ui_buffer + pos, sizeof(grep_ui_buffer) - (size_t)pos, &quot;/%.*s&quot;, pattern_len, pattern);
-560           if (remaining &gt; 0 &amp;&amp; remaining &lt; (int)sizeof(grep_ui_buffer) - (int)pos) {
-561             pos += remaining;
-562           }
-563         } else {
-564           // No pattern yet - just output the slash
-565           if (pos + 1 &lt; (int)sizeof(grep_ui_buffer)) {
-566             grep_ui_buffer[pos++] = '/';
-567           }
-568         }
-569 
-570         // Position cursor at the current edit position within the pattern
-571         // After writing &quot;/{pattern}&quot;, cursor is at column = 1 + pattern_len + 1
-572         // We want it at column = 1 + cursor_pos + 1 (for &quot;/&quot; at column 1, then cursor_pos chars)
-573         // So move left by: pattern_len - cursor_pos columns
-574         int cursor_offset = pattern_len - cursor_pos;
-575         if (cursor_offset &gt; 0) {
-576           int remaining =
-577               snprintf(grep_ui_buffer + pos, sizeof(grep_ui_buffer) - (size_t)pos, &quot;\x1b[%dD&quot;, cursor_offset);
-578           if (remaining &gt; 0 &amp;&amp; remaining &lt; (int)(sizeof(grep_ui_buffer) - (size_t)pos)) {
-579             pos += remaining;
-580           }
-581         }
-582 
-583         mutex_unlock(grep_mutex);
-584       }
-585     }
-586 
-587     // Write entire grep UI (cursor positioning + input) in single operation
-588     if (pos &gt; 0 &amp;&amp; pos &lt;= (int)sizeof(grep_ui_buffer)) {
-589       platform_write_all(fd, grep_ui_buffer, (size_t)pos);
-590     }
-591 
-592     // Restore logging level after grep rendering completes
-593     log_set_level(saved_level);
-594   }
-595 
-596   SAFE_FREE(log_entries);
-597 }</pre>
+455       fflush(stdout);
+456 
+457       mutex_unlock(grep_mutex);
+458     }
+459   }
+460 
+461   SAFE_FREE(log_entries);
+462 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>terminal_size_t::cols</b>,
@@ -761,26 +626,22 @@
     <b>frame_buffer_clear_screen()</b>, <b>frame_buffer_create()</b>,
     <b>frame_buffer_cursor_home()</b>, <b>frame_buffer_destroy()</b>,
     <b>frame_buffer_flush()</b>, <b>frame_buffer_get_content()</b>,
-    <b>frame_buffer_get_length()</b>,
-    <b>frame_buffer_get_screen_output_fd()</b>, <b>frame_buffer_printf()</b>,
+    <b>frame_buffer_get_length()</b>, <b>frame_buffer_printf()</b>,
     <b>frame_buffer_reset()</b>, <b>grep_highlight_colored()</b>,
     <b>options_state::height</b>, <b>log_debug_every</b>, <b>log_dev_every</b>,
-    <b>log_error</b>, <b>LOG_FATAL</b>, <b>log_get_level()</b>,
-    <b>log_search_gather_and_filter_logs()</b>,
+    <b>log_error</b>, <b>log_search_gather_and_filter_logs()</b>,
     <b>log_search_get_cursor_position()</b>,
     <b>log_search_get_input_buffer()</b>, <b>log_search_get_input_len()</b>,
     <b>log_search_get_match_info()</b>, <b>log_search_get_mutex()</b>,
     <b>log_search_is_active()</b>, <b>log_search_is_entering()</b>,
     <b>log_search_needs_rerender()</b>, <b>log_search_render_input_line()</b>,
-    <b>log_set_level()</b>, <b>MAX_CACHED_LINES</b>,
     <b>session_log_entry_t::message</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
     <b>NS_PER_SEC_INT</b>, <b>options_get()</b>,
-    <b>platform_get_monotonic_time_us()</b>, <b>platform_write_all()</b>,
+    <b>platform_get_monotonic_time_us()</b>,
     <b>terminal_screen_config_t::render_header</b>,
     <b>terminal_size_t::rows</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SAFE_STRNCPY</b>, <b>session_log_buffer_get_recent()</b>,
-    <b>SESSION_LOG_BUFFER_SIZE</b>, <b>SESSION_LOG_LINE_MAX</b>,
-    <b>terminal_screen_config_t::show_logs</b>,
+    <b>session_log_buffer_get_recent()</b>, <b>SESSION_LOG_BUFFER_SIZE</b>,
+    <b>SESSION_LOG_LINE_MAX</b>, <b>terminal_screen_config_t::show_logs</b>,
     <b>TERM_SIZE_CHECK_INTERVAL_US</b>, <b>terminal_cursor_show()</b>,
     <b>terminal_get_size()</b>, <b>terminal_screen_config_t::user_data</b>, and
     <b>options_state::width</b>.</p>
@@ -798,11 +659,11 @@
 <p class="Pp">Configures where splash and status screens write their output.
     Should be called before <b>terminal_screen_render()</b> to control output
     destination.</p>
-<p class="Pp">Definition at line <b>632</b> of file
+<p class="Pp">Definition at line <b>497</b> of file
   <b>terminal_screen.c</b>.</p>
-<pre>632                                            {
-633   frame_buffer_set_screen_output_fd(fd);
-634 }</pre>
+<pre>497                                            {
+498   frame_buffer_set_screen_output_fd(fd);
+499 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>frame_buffer_set_screen_output_fd()</b>.</p>

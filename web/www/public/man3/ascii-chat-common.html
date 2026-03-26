@@ -1200,14 +1200,15 @@ if (result != OK) {
 <p class="Pp"></p>
 <p class="Pp">Definition at line <b>465</b> of file <b>common.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>client_crypto_init()</b>, <b>crypto_get_status()</b>,
-    <b>detect_default_ssh_key()</b>, <b>expand_ipv6()</b>,
-    <b>format_available_modes()</b>, <b>format_ip_with_port()</b>,
-    <b>image_print_color_background()</b>, <b>image_print_color_utf8()</b>,
-    <b>ipv4_to_ipv6_mapped()</b>, <b>keyboard_help_render()</b>,
-    <b>options_init()</b>, <b>parse_client_address()</b>,
-    <b>parse_mirror_media()</b>, <b>parse_server_bind_address()</b>,
-    <b>parse_volume()</b>, <b>rgb_to_ansi_bg()</b>, <b>rgb_to_ansi_fg()</b>,
+    <b>acds_websocket_client_handler()</b>, <b>client_crypto_init()</b>,
+    <b>crypto_get_status()</b>, <b>detect_default_ssh_key()</b>,
+    <b>expand_ipv6()</b>, <b>format_available_modes()</b>,
+    <b>format_ip_with_port()</b>, <b>image_print_color_background()</b>,
+    <b>image_print_color_utf8()</b>, <b>ipv4_to_ipv6_mapped()</b>,
+    <b>keyboard_help_render()</b>, <b>options_init()</b>,
+    <b>parse_client_address()</b>, <b>parse_mirror_media()</b>,
+    <b>parse_server_bind_address()</b>, <b>parse_volume()</b>,
+    <b>rgb_to_ansi_bg()</b>, <b>rgb_to_ansi_fg()</b>,
     <b>server_connection_establish()</b>, <b>server_crypto_handshake()</b>,
     <b>strip_equals_prefix()</b>, <b>symbol_cache_resolve_batch()</b>,
     <b>tcp_client_connect()</b>, <b>tcp_server_add_client()</b>,
@@ -1332,7 +1333,7 @@ if (result != OK) {
     <b>client_main()</b>, <b>client_set_server_address()</b>,
     <b>client_video_render_thread()</b>, <b>colorscheme_compile_scheme()</b>,
     <b>colorscheme_load_from_file()</b>, <b>config_create_default()</b>,
-    <b>config_schema_build_from_configs()</b>, <b>connection_attempt_tcp()</b>,
+    <b>config_schema_build_from_configs()</b>,
     <b>crypto_handshake_init_with_password()</b>,
     <b>database_session_create()</b>, <b>database_session_join()</b>,
     <b>database_session_leave()</b>, <b>detect_client_utf8_support()</b>,
@@ -1373,8 +1374,8 @@ if (result != OK) {
     <b>session_participant_create()</b>, <b>session_settings_from_options()</b>,
     <b>session_settings_init()</b>, <b>splash_set_update_notification()</b>,
     <b>tcp_client_connect()</b>, <b>tcp_server_run()</b>,
-    <b>terminal_screen_render()</b>, <b>thread_pool_create()</b>,
-    <b>thread_pool_create_with_workers()</b>, <b>thread_pool_spawn()</b>,
+    <b>thread_pool_create()</b>, <b>thread_pool_create_with_workers()</b>,
+    <b>thread_pool_spawn()</b>,
     <b>threaded_send_terminal_size_with_auto_detect()</b>, <b>time_pretty()</b>,
     <b>timer_start()</b>, <b>ui_status_gather()</b>,
     <b>update_check_load_cache()</b>, <b>update_check_perform()</b>,
@@ -2013,6 +2014,9 @@ fps_frame_ns(&amp;tracker, now, &quot;frame rendered&quot;);
     <b>fps_t::last_fps_report_ns</b>, <b>fps_t::last_frame_time_ns</b>,
     <b>NS_PER_SEC_INT</b>, <b>fps_t::report_interval_ns</b>,
     <b>time_elapsed_ns()</b>, and <b>fps_t::tracker_name</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_render_thread()</b>,
+    <b>client_video_render_thread()</b>, and
+    <b>session_capture_read_frame()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_fps_init_("><a class="permalink" href="#void_fps_init_(">void
@@ -2040,6 +2044,9 @@ fps_frame_ns(&amp;tracker, now, &quot;frame rendered&quot;);
 <p class="Pp"></p>
 <p class="Pp">References <b>fps_init_with_interval()</b>, and
     <b>NS_PER_SEC_INT</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_render_thread()</b>,
+    <b>client_video_render_thread()</b>, <b>session_capture_create()</b>, and
+    <b>session_network_capture_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_fps_init_with_interval_("><a class="permalink" href="#void_fps_init_with_interval_(">void

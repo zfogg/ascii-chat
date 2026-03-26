@@ -102,7 +102,7 @@
 <p class="Pp">Internal session participant structure.</p>
 <p class="Pp">Contains connection state, media stream state, and callback
     configuration.</p>
-<p class="Pp">Definition at line <b>43</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>44</b> of file <b>participant.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -111,14 +111,14 @@
 <h2 class="Ss" id="char_session_participant::address_"><a class="permalink" href="#char_session_participant::address_">char
   session_participant::address[<b>BUFFER_SIZE_SMALL</b>]</a></h2>
 <p class="Pp">Server address.</p>
-<p class="Pp">Definition at line <b>45</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>46</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_connect()</b>, and
     <b>session_participant_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_participant::audio_active</h2>
 <p class="Pp">Audio streaming active.</p>
-<p class="Pp">Definition at line <b>87</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>88</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_create()</b>,
     <b>session_participant_disconnect()</b>,
     <b>session_participant_is_audio_active()</b>,
@@ -129,7 +129,7 @@
 <h2 class="Ss"><b>session_audio_ctx_t</b>*
   session_participant::audio_capture</h2>
 <p class="Pp">Audio capture context (for microphone).</p>
-<p class="Pp">Definition at line <b>96</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>97</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_destroy()</b>,
     <b>session_participant_start_audio_capture()</b>, and
     <b>session_participant_stop_audio_capture()</b>.</p>
@@ -137,7 +137,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_participant::audio_capture_running</h2>
 <p class="Pp">Audio capture thread running flag.</p>
-<p class="Pp">Definition at line <b>108</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>109</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_destroy()</b>,
     <b>session_participant_start_audio_capture()</b>, and
     <b>session_participant_stop_audio_capture()</b>.</p>
@@ -146,7 +146,7 @@
 <h2 class="Ss"><b>asciichat_thread_t</b>
   session_participant::audio_capture_thread</h2>
 <p class="Pp">Audio capture thread handle.</p>
-<p class="Pp">Definition at line <b>102</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>103</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_start_audio_capture()</b>,
     and <b>session_participant_stop_audio_capture()</b>.</p>
 </section>
@@ -154,7 +154,7 @@
 <h2 class="Ss"><b>session_participant_callbacks_t</b>
   session_participant::callbacks</h2>
 <p class="Pp">Event callbacks.</p>
-<p class="Pp">Definition at line <b>66</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>67</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_connect()</b>,
     <b>session_participant_create()</b>, and
     <b>session_participant_disconnect()</b>.</p>
@@ -162,7 +162,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> session_participant::client_id</h2>
 <p class="Pp">Assigned client ID.</p>
-<p class="Pp">Definition at line <b>81</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>82</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_connect()</b>,
     <b>session_participant_create()</b>,
     <b>session_participant_disconnect()</b>, and
@@ -171,7 +171,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_participant::connected</h2>
 <p class="Pp">Currently connected.</p>
-<p class="Pp">Definition at line <b>78</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>79</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_connect()</b>,
     <b>session_participant_create()</b>, <b>session_participant_destroy()</b>,
     <b>session_participant_disconnect()</b>,
@@ -186,7 +186,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_participant::enable_audio</h2>
 <p class="Pp">Audio enabled.</p>
-<p class="Pp">Definition at line <b>60</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>61</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_create()</b>,
     <b>session_participant_start_audio()</b>, and
     <b>session_participant_start_audio_capture()</b>.</p>
@@ -194,7 +194,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_participant::enable_video</h2>
 <p class="Pp">Video enabled.</p>
-<p class="Pp">Definition at line <b>63</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>64</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_create()</b>,
     <b>session_participant_start_video()</b>, and
     <b>session_participant_start_video_capture()</b>.</p>
@@ -202,13 +202,13 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_participant::encryption_enabled</h2>
 <p class="Pp">Encryption enabled.</p>
-<p class="Pp">Definition at line <b>51</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>52</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_participant::initialized</h2>
 <p class="Pp">Context is initialized.</p>
-<p class="Pp">Definition at line <b>114</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>115</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_connect()</b>,
     <b>session_participant_create()</b>, <b>session_participant_destroy()</b>,
     <b>session_participant_disconnect()</b>,
@@ -233,7 +233,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>opus_codec_t</b>* session_participant::opus_encoder</h2>
 <p class="Pp">Opus encoder for audio compression.</p>
-<p class="Pp">Definition at line <b>111</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>112</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_destroy()</b>, and
     <b>session_participant_start_audio_capture()</b>.</p>
 </section>
@@ -241,7 +241,7 @@
 <h2 class="Ss" id="char_session_participant::password_"><a class="permalink" href="#char_session_participant::password_">char
   session_participant::password[<b>BUFFER_SIZE_SMALL</b>]</a></h2>
 <p class="Pp">Password (if any).</p>
-<p class="Pp">Definition at line <b>54</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>55</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_create()</b>, and
     <b>session_participant_destroy()</b>.</p>
 </section>
@@ -249,7 +249,7 @@
 <h2 class="Ss" id="int_session_participant::port"><a class="permalink" href="#int_session_participant::port">int
   session_participant::port</a></h2>
 <p class="Pp">Server port.</p>
-<p class="Pp">Definition at line <b>48</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>49</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_connect()</b>, and
     <b>session_participant_create()</b>.</p>
 </section>
@@ -257,21 +257,21 @@
 <h2 class="Ss" id="char_session_participant::server_key_"><a class="permalink" href="#char_session_participant::server_key_">char
   session_participant::server_key[<b>BUFFER_SIZE_MEDIUM</b>]</a></h2>
 <p class="Pp">Server key for verification (if any).</p>
-<p class="Pp">Definition at line <b>57</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>58</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_create()</b>, and
     <b>session_participant_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>session_settings_t</b> session_participant::settings</h2>
 <p class="Pp">Current session settings.</p>
-<p class="Pp">Definition at line <b>90</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>91</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_create()</b>, and
     <b>session_participant_get_settings()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>socket_t</b> session_participant::socket</h2>
 <p class="Pp">Connection socket.</p>
-<p class="Pp">Definition at line <b>72</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>73</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_connect()</b>,
     <b>session_participant_create()</b>, <b>session_participant_destroy()</b>,
     <b>session_participant_disconnect()</b>, and
@@ -282,7 +282,7 @@
   <b>acip_transport</b>* session_participant::transport</a></h2>
 <p class="Pp">Alternative transport (WebRTC, WebSocket, etc.) - NULL if using
     socket only.</p>
-<p class="Pp">Definition at line <b>75</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>76</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_create()</b>,
     <b>session_participant_get_transport()</b>,
     <b>session_participant_has_transport()</b>, and
@@ -292,7 +292,7 @@
 <h2 class="Ss" id="void*_session_participant::user_data"><a class="permalink" href="#void*_session_participant::user_data">void*
   session_participant::user_data</a></h2>
 <p class="Pp">User data for callbacks.</p>
-<p class="Pp">Definition at line <b>69</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>70</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_connect()</b>,
     <b>session_participant_create()</b>, and
     <b>session_participant_disconnect()</b>.</p>
@@ -300,7 +300,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_participant::video_active</h2>
 <p class="Pp">Video streaming active.</p>
-<p class="Pp">Definition at line <b>84</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>85</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_create()</b>,
     <b>session_participant_disconnect()</b>,
     <b>session_participant_is_video_active()</b>,
@@ -311,14 +311,14 @@
 <h2 class="Ss"><b>session_capture_ctx_t</b>*
   session_participant::video_capture</h2>
 <p class="Pp">Video capture context (for webcam/file media).</p>
-<p class="Pp">Definition at line <b>93</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>94</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_destroy()</b>, and
     <b>session_participant_start_video_capture()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_participant::video_capture_running</h2>
 <p class="Pp">Video capture thread running flag.</p>
-<p class="Pp">Definition at line <b>105</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>106</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_destroy()</b>,
     <b>session_participant_start_video_capture()</b>, and
     <b>session_participant_stop_video_capture()</b>.</p>
@@ -327,7 +327,7 @@
 <h2 class="Ss"><b>asciichat_thread_t</b>
   session_participant::video_capture_thread</h2>
 <p class="Pp">Video capture thread handle.</p>
-<p class="Pp">Definition at line <b>99</b> of file <b>participant.c</b>.</p>
+<p class="Pp">Definition at line <b>100</b> of file <b>participant.c</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_start_video_capture()</b>,
     and <b>session_participant_stop_video_capture()</b>.</p>
 <p class="Pp"></p>

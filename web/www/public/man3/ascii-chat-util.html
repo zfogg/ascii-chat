@@ -1670,9 +1670,8 @@ aspect_ratio(1920, 1080, 80, 40, false, &amp;out_w, &amp;out_h);
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>MIN_DIMENSION</b>.</p>
-<p class="Pp">Referenced by <b>ascii_convert()</b>,
-    <b>ascii_convert_with_capabilities()</b>, and
-  <b>mirror_convert_frame()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert()</b>, and
+    <b>ascii_convert_with_capabilities()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_aspect_ratio2_(const_ssize_t_img_width,_const_ssize_t_img_height,_const_ssize_t_target_width,_const_ssize_t_target_height,_ssize_t_*_out_width,_ssize_t_*_out_height)"><a class="permalink" href="#void_aspect_ratio2_(const_ssize_t_img_width,_const_ssize_t_img_height,_const_ssize_t_target_width,_const_ssize_t_target_height,_ssize_t_*_out_width,_ssize_t_*_out_height)">void
@@ -3375,9 +3374,8 @@ if (format_ip_address(AF_INET, &amp;addr, ip_str, sizeof(ip_str)) == ASCIICHAT_O
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>ERROR_NETWORK</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>server_connection_establish()</b>,
-    <b>tcp_client_connect()</b>, <b>tcp_client_context_get_ip()</b>, and
-    <b>tcp_server_run()</b>.</p>
+<p class="Pp">Referenced by <b>tcp_client_connect()</b>,
+    <b>tcp_client_context_get_ip()</b>, and <b>tcp_server_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> format_ip_with_port (const char * ip,
@@ -5206,8 +5204,7 @@ if (ipv4_to_ipv6_mapped(&quot;192.168.1.1&quot;, ipv6, sizeof(ipv6)) == ASCIICHA
 <p class="Pp">References <b>is_valid_ipv4()</b>.</p>
 <p class="Pp">Referenced by <b>client_main()</b>, <b>get_ip_type_string()</b>,
     <b>is_internet_ipv4()</b>, <b>parse_server_bind_address()</b>,
-    <b>server_connection_establish()</b>, <b>server_main()</b>, and
-    <b>tcp_client_connect()</b>.</p>
+    <b>server_main()</b>, and <b>tcp_client_connect()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_is_localhost_ipv6_(const_char_*_ip)"><a class="permalink" href="#int_is_localhost_ipv6_(const_char_*_ip)">int
@@ -5276,8 +5273,7 @@ if (ipv4_to_ipv6_mapped(&quot;192.168.1.1&quot;, ipv6, sizeof(ipv6)) == ASCIICHA
     <b>parse_ipv6_address()</b>.</p>
 <p class="Pp">Referenced by <b>get_ip_type_string()</b>,
     <b>is_internet_ipv6()</b>, <b>parse_server_bind_address()</b>,
-    <b>server_connection_establish()</b>, <b>server_main()</b>, and
-    <b>tcp_client_connect()</b>.</p>
+    <b>server_main()</b>, and <b>tcp_client_connect()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_is_valid_ip_(const_char_*_ip)"><a class="permalink" href="#int_is_valid_ip_(const_char_*_ip)">int
@@ -7047,7 +7043,7 @@ truncate_utf8_with_ellipsis(&quot;Hello, World!&quot;, buf, sizeof(buf), 10);
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>url_parts_t::scheme</b>, <b>SET_ERRNO</b>, <b>url_is_tcp_scheme()</b>,
     <b>url_parse()</b>, and <b>url_parts_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>.</p>
+<p class="Pp">Referenced by <b>connection_endpoint_resolve()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> url_is_tcp_scheme (const char * scheme)</h2>
@@ -7263,9 +7259,8 @@ if (url_parse(&quot;tcp://example.com:5000&quot;, &amp;parts) == ASCIICHAT_OK) {
     <b>url_parts_t::scheme</b>, <b>SET_ERRNO</b>,
     <b>url_is_websocket_scheme()</b>, <b>url_parse()</b>, and
     <b>url_parts_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>client_main()</b>,
-    <b>connection_attempt_tcp()</b>, and
-  <b>server_connection_establish()</b>.</p>
+<p class="Pp">Referenced by <b>client_main()</b>, and
+    <b>connection_endpoint_resolve()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> url_is_websocket_scheme (const char * scheme)</h2>
@@ -7570,9 +7565,9 @@ if (url_parse(&quot;https://user:pass@example.com:8443/api/v1?key=val#section&qu
     <b>url_parts_t::port</b>, <b>SAFE_FREE</b>, <b>url_parts_t::scheme</b>,
     <b>SET_ERRNO</b>, <b>url_parts_destroy()</b>, and
     <b>url_parts_t::userinfo</b>.</p>
-<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
-    <b>parse_public_key()</b>, <b>server_connection_establish()</b>,
-    <b>url_is_tcp()</b>, and <b>url_is_websocket()</b>.</p>
+<p class="Pp">Referenced by <b>connection_endpoint_resolve()</b>,
+    <b>parse_public_key()</b>, <b>url_is_tcp()</b>, and
+    <b>url_is_websocket()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_url_parts_destroy_("><a class="permalink" href="#void_url_parts_destroy_(">void
@@ -7618,9 +7613,9 @@ url_parts_destroy(&amp;parts);
     <b>url_parts_t::ipv6</b>, <b>url_parts_t::path</b>,
     <b>url_parts_t::port</b>, <b>SAFE_FREE</b>, <b>url_parts_t::scheme</b>,
     <b>SET_ERRNO</b>, and <b>url_parts_t::userinfo</b>.</p>
-<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
-    <b>parse_public_key()</b>, <b>server_connection_establish()</b>,
-    <b>url_is_tcp()</b>, <b>url_is_websocket()</b>, and <b>url_parse()</b>.</p>
+<p class="Pp">Referenced by <b>connection_endpoint_resolve()</b>,
+    <b>parse_public_key()</b>, <b>url_is_tcp()</b>, <b>url_is_websocket()</b>,
+    and <b>url_parse()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_utf8_char_count_(const_char_*_str)"><a class="permalink" href="#size_t_utf8_char_count_(const_char_*_str)">size_t

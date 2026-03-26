@@ -237,367 +237,367 @@
 <p class="Pp"></p>
 <p class="Pp"><b>AUDIO_FRAMES_PER_BUFFER</b> For buffer size constant</p>
 </div>
-<p class="Pp">Definition at line <b>763</b> of file <b>server/render.c</b>.</p>
-<pre>763                                             {
-764   client_info_t *client = (client_info_t *)arg;
-765 
-766   if (!client) {
-767     log_error(&quot;Invalid client info in audio render thread&quot;);
-768     return NULL;
-769   }
-770 
-771   // Take snapshot of client ID and display name at start to avoid race conditions
-772   char thread_client_id[MAX_CLIENT_ID_LEN];
-773   SAFE_STRNCPY(thread_client_id, client-&gt;client_id, sizeof(thread_client_id) - 1);
-774   char thread_display_name[64];
-775   bool is_webrtc = (client-&gt;socket == INVALID_SOCKET_VALUE);
-776   (void)is_webrtc; // May be unused in release builds
-777 
-778   // LOCK OPTIMIZATION: Only need client_state_mutex, not global rwlock
-779   // We already have a stable client pointer
-780   mutex_lock(&amp;client-&gt;client_state_mutex);
-781   SAFE_STRNCPY(thread_display_name, client-&gt;display_name, sizeof(thread_display_name));
-782   mutex_unlock(&amp;client-&gt;client_state_mutex);
-783 
-784 #ifdef DEBUG_THREADS
-785   log_debug(&quot;Audio render thread started for client %u (%s), webrtc=%d&quot;, thread_client_id, thread_display_name,
-786             is_webrtc);
-787 #endif
-788 
-789   // Mix buffer: up to 960 samples for adaptive reading
-790   // Normal: 480 samples = 10ms @ 48kHz
-791   // Catchup: 960 samples = 20ms when buffers are filling up
-792   float mix_buffer[960];
-793 
-794 // Opus frame accumulation buffer (960 samples = 20ms @ 48kHz)
-795 // Opus requires minimum 480 samples, 960 is optimal for 20ms frames
-796 #define OPUS_FRAME_SAMPLES 960
-797   float opus_frame_buffer[OPUS_FRAME_SAMPLES];
-798   int opus_frame_accumulated = 0;
-799 
-800   // Create Opus encoder for this client's audio stream (48kHz, mono, 128kbps, AUDIO mode for music quality)
-801   opus_codec_t *opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_AUDIO, 48000, 128000);
-802   if (!opus_encoder) {
-803     log_error(&quot;Failed to create Opus encoder for audio render thread (client %u)&quot;, thread_client_id);
-804     return NULL;
-805   }
-806 
-807   // FPS tracking for audio render thread
-808   fps_t audio_fps_tracker = {0};
-809   fps_init(&amp;audio_fps_tracker, AUDIO_RENDER_FPS, &quot;SERVER AUDIO&quot;);
-810 
-811   // Adaptive sleep for audio rate limiting at 100 FPS (10ms intervals, 480 samples @ 48kHz)
-812   adaptive_sleep_state_t audio_sleep_state = {0};
-813   adaptive_sleep_config_t audio_config = {
-814       .baseline_sleep_ns = 10 * NS_PER_MS_INT, // 10ms = 100 FPS (480 samples @ 48kHz)
-815       .min_speed_multiplier = 1.0,             // Constant rate (no slowdown)
-816       .max_speed_multiplier = 1.0,             // Constant rate (no speedup)
-817       .speedup_rate = 0.0,                     // No adaptive behavior (constant rate)
-818       .slowdown_rate = 0.0                     // No adaptive behavior (constant rate)
-819   };
-820   adaptive_sleep_init(&amp;audio_sleep_state, &amp;audio_config);
-821 
-822   // Per-thread counters (NOT static - each thread instance gets its own)
-823   int backpressure_check_counter = 0;
-824   int server_audio_frame_count = 0;
-825 
-826   bool should_continue = true;
-827   while (should_continue &amp;&amp; !atomic_load_bool(&amp;g_should_exit) &amp;&amp; !atomic_load_bool(&amp;client-&gt;shutting_down)) {
-828     log_debug_every(LOG_RATE_SLOW, &quot;Audio render loop iteration for client %u&quot;, thread_client_id);
-829 
-830     // Check for immediate shutdown
-831     if (atomic_load_bool(&amp;g_should_exit)) {
-832       log_debug(&quot;Audio render thread stopping for client %u (g_should_exit)&quot;, thread_client_id);
-833       break;
-834     }
-835 
-836     // Check thread state before acquiring any locks to prevent use-after-destroy.
-837     // If we acquire locks after client is being destroyed, we'll crash with SIGSEGV
-838     should_continue = (((int)atomic_load_bool(&amp;client-&gt;audio_render_thread_running) != 0) &amp;&amp;
-839                        ((int)atomic_load_bool(&amp;client-&gt;active) != 0) &amp;&amp; !atomic_load_bool(&amp;client-&gt;shutting_down));
-840 
-841     if (!should_continue) {
-842       log_debug(&quot;Audio render thread stopping for client %u (should_continue=false)&quot;, thread_client_id);
-843       break;
-844     }
-845 
-846     if (!g_audio_mixer) {
-847       log_dev_every(10 * NS_PER_MS_INT, &quot;Audio render waiting for mixer (client %u)&quot;, thread_client_id);
-848       // Check shutdown flag while waiting
-849       if (atomic_load_bool(&amp;g_should_exit))
-850         break;
-851       platform_sleep_ns(10 * NS_PER_MS_INT);
-852       continue;
-853     }
-854 
-855     // Optimization: No mutex needed - all fields are atomic or stable.
-856     // client_id: atomic_t - use atomic_load for thread safety
-857     // active: atomic_t - use atomic_load
-858     // audio_queue: Assigned once at init and never changes
-859     const char *client_id_snapshot = client-&gt;client_id;         // Atomic read
-860     bool active_snapshot = atomic_load_bool(&amp;client-&gt;active);        // Atomic read
-861     packet_queue_t *audio_queue_snapshot = client-&gt;audio_queue; // Stable after init
-862 
-863     // Check if client is still active after getting snapshot
-864     if (!active_snapshot || !audio_queue_snapshot) {
-865       break;
-866     }
-867 
-868     // Create mix excluding THIS client's audio using snapshot data
-869     START_TIMER(&quot;mix_%s&quot;, client_id_snapshot);
-870 
-871     // ADAPTIVE READING: Read more samples when we're behind to catch up
-872     // Normal: 480 samples per 10ms iteration
-873     // When behind: read up to 960 samples to catch up faster
-874     // Check source buffer levels to decide
-875     int samples_to_read = 480; // Default: 10ms worth
-876 
-877     // Log latency at each stage in the server pipeline
-878     // NOTE: Skipping mixer source latency logging due to potential use-after-free
-879     // when source IDs are freed during concurrent client cleanup
-880     if (g_audio_mixer) {
-881       // Log outgoing queue latency
-882       size_t queue_depth = packet_queue_size(audio_queue_snapshot);
-883       float queue_latency_ms = (float)queue_depth * 20.0f; // ~20ms per Opus packet
-884       log_dev_every(5 * NS_PER_MS_INT, &quot;LATENCY: Server send queue for client %s: %.1fms (%zu packets)&quot;,
-885                     client_id_snapshot, queue_latency_ms, queue_depth);
-886     }
-887 
-888     int samples_mixed = 0;
-889     if (GET_OPTION(no_audio_mixer)) {
-890       // Disable mixer.h processing: simple mixing without ducking/compression/etc
-891       // Just add audio from all sources except this client, no processing
-892       SAFE_MEMSET(mix_buffer, samples_to_read * sizeof(float), 0, samples_to_read * sizeof(float));
-893 
-894       if (g_audio_mixer) {
-895         int max_samples_in_frame = 0;
-896         // Simple mixing: just add all sources except current client
-897         for (int i = 0; i &lt; g_audio_mixer-&gt;max_sources; i++) {
-898           if (g_audio_mixer-&gt;source_ids[i] &amp;&amp; strcmp(g_audio_mixer-&gt;source_ids[i], client_id_snapshot) != 0 &amp;&amp;
-899               g_audio_mixer-&gt;source_buffers[i]) {
-900             // Read from this source and add to mix buffer
-901             float temp_buffer[960]; // Max adaptive read size
-902             int samples_read =
-903                 (int)audio_ring_buffer_read(g_audio_mixer-&gt;source_buffers[i], temp_buffer, samples_to_read);
-904 
-905             // Track the maximum samples we got from any source
-906             if (samples_read &gt; max_samples_in_frame) {
-907               max_samples_in_frame = samples_read;
-908             }
-909 
-910             // Add to mix buffer
-911             for (int j = 0; j &lt; samples_read; j++) {
-912               mix_buffer[j] += temp_buffer[j];
-913             }
-914           }
-915         }
-916         samples_mixed = max_samples_in_frame; // Only count samples we actually read
-917       }
-918 
-919       log_debug_every(LOG_RATE_DEFAULT,
-920                       &quot;Audio mixer DISABLED (--no-audio-mixer): simple mixing, samples=%d for client %u&quot;, samples_mixed,
-921                       client_id_snapshot);
-922     } else {
-923       // Use adaptive sample count in normal mixer mode
-924       uint32_t client_id_hash = fnv1a_hash_string(client_id_snapshot);
-925       samples_mixed = mixer_process_excluding_source(g_audio_mixer, mix_buffer, samples_to_read, client_id_hash);
-926     }
-927 
-928     STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 5 * NS_PER_MS_INT, &quot;mix_%s&quot;, &quot;Mixer for client %s: took&quot;,
-929                              client_id_snapshot);
-930 
-931     // Debug logging every 100 iterations (disabled - can slow down audio rendering)
-932     // log_debug_every(LOG_RATE_SLOW, &quot;Audio render for client %u: samples_mixed=%d&quot;, client_id_snapshot,
-933     // samples_mixed);
-934 
-935     // Accumulate all samples (including 0 or partial) until we have a full Opus frame
-936     // This maintains continuous stream without silence padding
-937     START_TIMER(&quot;accum_%s&quot;, client_id_snapshot);
-938 
-939     int space_available = OPUS_FRAME_SAMPLES - opus_frame_accumulated;
-940     int samples_to_copy = (samples_mixed &lt;= space_available) ? samples_mixed : space_available;
-941 
-942     // Only copy if we have samples, otherwise just wait for next frame
-943     if (samples_to_copy &gt; 0) {
-944       SAFE_MEMCPY(opus_frame_buffer + opus_frame_accumulated,
-945                   (OPUS_FRAME_SAMPLES - opus_frame_accumulated) * sizeof(float), mix_buffer,
-946                   samples_to_copy * sizeof(float));
-947       opus_frame_accumulated += samples_to_copy;
-948     }
-949 
-950     STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 2 * NS_PER_MS_INT, &quot;accum_%s&quot;, &quot;Accumulate for client %s: took&quot;,
-951                              client_id_snapshot);
-952 
-953     // Only encode and send when we have accumulated a full Opus frame
-954     if (opus_frame_accumulated &gt;= OPUS_FRAME_SAMPLES) {
-955       // OPTIMIZATION: Don't check queue depth every iteration - it's expensive (requires lock)
-956       // Only check periodically every 100 iterations (~0.6s at 172 fps)
-957       // NOTE: backpressure_check_counter is now per-thread (not static), so each client thread has its own counter
-958       bool apply_backpressure = false;
-959 
-960       if (++backpressure_check_counter &gt;= 100) {
-961         backpressure_check_counter = 0;
-962         size_t queue_depth = packet_queue_size(audio_queue_snapshot);
-963         // Opus frames are produced at ~50 FPS (20ms each)
-964         // Reduced threshold from 50 to 10 packets (~200ms buffer) to prevent audio gaps
-965         // On localhost, queue shouldn't back up at all; aggressive thresholds cause frame skipping
-966         apply_backpressure = (queue_depth &gt; 10); // &gt; 10 packets = ~200ms buffered at 50 FPS
-967 
-968         if (apply_backpressure) {
-969           log_warn_every(4500 * US_PER_MS_INT,
-970                          &quot;Audio backpressure for client %s: queue depth %zu packets (%.1fms buffered)&quot;,
-971                          client_id_snapshot, queue_depth, (float)queue_depth / 50.0f * 1000.0f);
-972         }
-973       }
-974 
-975       if (apply_backpressure) {
-976         // Skip this packet to let the queue drain
-977         // Reset accumulation buffer so fresh samples can be captured on next iteration.
-978         // Without this reset, we'd loop forever with stale audio and no space for new samples
-979         opus_frame_accumulated = 0;
-980         // Reduced sleep from 5.8ms to 1ms to minimize audio gaps on localhost
-981         platform_sleep_ns(1 * NS_PER_MS_INT);
-982         continue;
-983       }
-984 
-985       // Encode accumulated Opus frame (960 samples = 20ms @ 48kHz)
-986       uint8_t opus_buffer[1024]; // Max Opus frame size
-987 
-988       START_TIMER(&quot;opus_encode_%s&quot;, client_id_snapshot);
+<p class="Pp">Definition at line <b>765</b> of file <b>server/render.c</b>.</p>
+<pre>765                                             {
+766   client_info_t *client = (client_info_t *)arg;
+767 
+768   if (!client) {
+769     log_error(&quot;Invalid client info in audio render thread&quot;);
+770     return NULL;
+771   }
+772 
+773   // Take snapshot of client ID and display name at start to avoid race conditions
+774   char thread_client_id[MAX_CLIENT_ID_LEN];
+775   SAFE_STRNCPY(thread_client_id, client-&gt;client_id, sizeof(thread_client_id) - 1);
+776   char thread_display_name[64];
+777   bool is_webrtc = (client-&gt;socket == INVALID_SOCKET_VALUE);
+778   (void)is_webrtc; // May be unused in release builds
+779 
+780   // LOCK OPTIMIZATION: Only need client_state_mutex, not global rwlock
+781   // We already have a stable client pointer
+782   mutex_lock(&amp;client-&gt;client_state_mutex);
+783   SAFE_STRNCPY(thread_display_name, client-&gt;display_name, sizeof(thread_display_name));
+784   mutex_unlock(&amp;client-&gt;client_state_mutex);
+785 
+786 #ifdef DEBUG_THREADS
+787   log_debug(&quot;Audio render thread started for client %u (%s), webrtc=%d&quot;, thread_client_id, thread_display_name,
+788             is_webrtc);
+789 #endif
+790 
+791   // Mix buffer: up to 960 samples for adaptive reading
+792   // Normal: 480 samples = 10ms @ 48kHz
+793   // Catchup: 960 samples = 20ms when buffers are filling up
+794   float mix_buffer[960];
+795 
+796 // Opus frame accumulation buffer (960 samples = 20ms @ 48kHz)
+797 // Opus requires minimum 480 samples, 960 is optimal for 20ms frames
+798 #define OPUS_FRAME_SAMPLES 960
+799   float opus_frame_buffer[OPUS_FRAME_SAMPLES];
+800   int opus_frame_accumulated = 0;
+801 
+802   // Create Opus encoder for this client's audio stream (48kHz, mono, 128kbps, AUDIO mode for music quality)
+803   opus_codec_t *opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_AUDIO, 48000, 128000);
+804   if (!opus_encoder) {
+805     log_error(&quot;Failed to create Opus encoder for audio render thread (client %u)&quot;, thread_client_id);
+806     return NULL;
+807   }
+808 
+809   // FPS tracking for audio render thread
+810   fps_t audio_fps_tracker = {0};
+811   fps_init(&amp;audio_fps_tracker, AUDIO_RENDER_FPS, &quot;SERVER AUDIO&quot;);
+812 
+813   // Adaptive sleep for audio rate limiting at 100 FPS (10ms intervals, 480 samples @ 48kHz)
+814   adaptive_sleep_state_t audio_sleep_state = {0};
+815   adaptive_sleep_config_t audio_config = {
+816       .baseline_sleep_ns = 10 * NS_PER_MS_INT, // 10ms = 100 FPS (480 samples @ 48kHz)
+817       .min_speed_multiplier = 1.0,             // Constant rate (no slowdown)
+818       .max_speed_multiplier = 1.0,             // Constant rate (no speedup)
+819       .speedup_rate = 0.0,                     // No adaptive behavior (constant rate)
+820       .slowdown_rate = 0.0                     // No adaptive behavior (constant rate)
+821   };
+822   adaptive_sleep_init(&amp;audio_sleep_state, &amp;audio_config);
+823 
+824   // Per-thread counters (NOT static - each thread instance gets its own)
+825   int backpressure_check_counter = 0;
+826   int server_audio_frame_count = 0;
+827 
+828   bool should_continue = true;
+829   while (should_continue &amp;&amp; !atomic_load_bool(&amp;g_should_exit) &amp;&amp; !atomic_load_bool(&amp;client-&gt;shutting_down)) {
+830     log_debug_every(LOG_RATE_SLOW, &quot;Audio render loop iteration for client %u&quot;, thread_client_id);
+831 
+832     // Check for immediate shutdown
+833     if (atomic_load_bool(&amp;g_should_exit)) {
+834       log_debug(&quot;Audio render thread stopping for client %u (g_should_exit)&quot;, thread_client_id);
+835       break;
+836     }
+837 
+838     // Check thread state before acquiring any locks to prevent use-after-destroy.
+839     // If we acquire locks after client is being destroyed, we'll crash with SIGSEGV
+840     should_continue = (((int)atomic_load_bool(&amp;client-&gt;audio_render_thread_running) != 0) &amp;&amp;
+841                        ((int)atomic_load_bool(&amp;client-&gt;active) != 0) &amp;&amp; !atomic_load_bool(&amp;client-&gt;shutting_down));
+842 
+843     if (!should_continue) {
+844       log_debug(&quot;Audio render thread stopping for client %u (should_continue=false)&quot;, thread_client_id);
+845       break;
+846     }
+847 
+848     if (!g_audio_mixer) {
+849       log_dev_every(10 * NS_PER_MS_INT, &quot;Audio render waiting for mixer (client %u)&quot;, thread_client_id);
+850       // Check shutdown flag while waiting
+851       if (atomic_load_bool(&amp;g_should_exit))
+852         break;
+853       platform_sleep_ns(10 * NS_PER_MS_INT);
+854       continue;
+855     }
+856 
+857     // Optimization: No mutex needed - all fields are atomic or stable.
+858     // client_id: atomic_t - use atomic_load for thread safety
+859     // active: atomic_t - use atomic_load
+860     // audio_queue: Assigned once at init and never changes
+861     const char *client_id_snapshot = client-&gt;client_id;         // Atomic read
+862     bool active_snapshot = atomic_load_bool(&amp;client-&gt;active);        // Atomic read
+863     packet_queue_t *audio_queue_snapshot = client-&gt;audio_queue; // Stable after init
+864 
+865     // Check if client is still active after getting snapshot
+866     if (!active_snapshot || !audio_queue_snapshot) {
+867       break;
+868     }
+869 
+870     // Create mix excluding THIS client's audio using snapshot data
+871     START_TIMER(&quot;mix_%s&quot;, client_id_snapshot);
+872 
+873     // ADAPTIVE READING: Read more samples when we're behind to catch up
+874     // Normal: 480 samples per 10ms iteration
+875     // When behind: read up to 960 samples to catch up faster
+876     // Check source buffer levels to decide
+877     int samples_to_read = 480; // Default: 10ms worth
+878 
+879     // Log latency at each stage in the server pipeline
+880     // NOTE: Skipping mixer source latency logging due to potential use-after-free
+881     // when source IDs are freed during concurrent client cleanup
+882     if (g_audio_mixer) {
+883       // Log outgoing queue latency
+884       size_t queue_depth = packet_queue_size(audio_queue_snapshot);
+885       float queue_latency_ms = (float)queue_depth * 20.0f; // ~20ms per Opus packet
+886       log_dev_every(5 * NS_PER_MS_INT, &quot;LATENCY: Server send queue for client %s: %.1fms (%zu packets)&quot;,
+887                     client_id_snapshot, queue_latency_ms, queue_depth);
+888     }
+889 
+890     int samples_mixed = 0;
+891     if (GET_OPTION(no_audio_mixer)) {
+892       // Disable mixer.h processing: simple mixing without ducking/compression/etc
+893       // Just add audio from all sources except this client, no processing
+894       SAFE_MEMSET(mix_buffer, samples_to_read * sizeof(float), 0, samples_to_read * sizeof(float));
+895 
+896       if (g_audio_mixer) {
+897         int max_samples_in_frame = 0;
+898         // Simple mixing: just add all sources except current client
+899         for (int i = 0; i &lt; g_audio_mixer-&gt;max_sources; i++) {
+900           if (g_audio_mixer-&gt;source_ids[i] &amp;&amp; strcmp(g_audio_mixer-&gt;source_ids[i], client_id_snapshot) != 0 &amp;&amp;
+901               g_audio_mixer-&gt;source_buffers[i]) {
+902             // Read from this source and add to mix buffer
+903             float temp_buffer[960]; // Max adaptive read size
+904             int samples_read =
+905                 (int)audio_ring_buffer_read(g_audio_mixer-&gt;source_buffers[i], temp_buffer, samples_to_read);
+906 
+907             // Track the maximum samples we got from any source
+908             if (samples_read &gt; max_samples_in_frame) {
+909               max_samples_in_frame = samples_read;
+910             }
+911 
+912             // Add to mix buffer
+913             for (int j = 0; j &lt; samples_read; j++) {
+914               mix_buffer[j] += temp_buffer[j];
+915             }
+916           }
+917         }
+918         samples_mixed = max_samples_in_frame; // Only count samples we actually read
+919       }
+920 
+921       log_debug_every(LOG_RATE_DEFAULT,
+922                       &quot;Audio mixer DISABLED (--no-audio-mixer): simple mixing, samples=%d for client %u&quot;, samples_mixed,
+923                       client_id_snapshot);
+924     } else {
+925       // Use adaptive sample count in normal mixer mode
+926       uint32_t client_id_hash = fnv1a_hash_string(client_id_snapshot);
+927       samples_mixed = mixer_process_excluding_source(g_audio_mixer, mix_buffer, samples_to_read, client_id_hash);
+928     }
+929 
+930     STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 5 * NS_PER_MS_INT, &quot;mix_%s&quot;, &quot;Mixer for client %s: took&quot;,
+931                              client_id_snapshot);
+932 
+933     // Debug logging every 100 iterations (disabled - can slow down audio rendering)
+934     // log_debug_every(LOG_RATE_SLOW, &quot;Audio render for client %u: samples_mixed=%d&quot;, client_id_snapshot,
+935     // samples_mixed);
+936 
+937     // Accumulate all samples (including 0 or partial) until we have a full Opus frame
+938     // This maintains continuous stream without silence padding
+939     START_TIMER(&quot;accum_%s&quot;, client_id_snapshot);
+940 
+941     int space_available = OPUS_FRAME_SAMPLES - opus_frame_accumulated;
+942     int samples_to_copy = (samples_mixed &lt;= space_available) ? samples_mixed : space_available;
+943 
+944     // Only copy if we have samples, otherwise just wait for next frame
+945     if (samples_to_copy &gt; 0) {
+946       SAFE_MEMCPY(opus_frame_buffer + opus_frame_accumulated,
+947                   (OPUS_FRAME_SAMPLES - opus_frame_accumulated) * sizeof(float), mix_buffer,
+948                   samples_to_copy * sizeof(float));
+949       opus_frame_accumulated += samples_to_copy;
+950     }
+951 
+952     STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 2 * NS_PER_MS_INT, &quot;accum_%s&quot;, &quot;Accumulate for client %s: took&quot;,
+953                              client_id_snapshot);
+954 
+955     // Only encode and send when we have accumulated a full Opus frame
+956     if (opus_frame_accumulated &gt;= OPUS_FRAME_SAMPLES) {
+957       // OPTIMIZATION: Don't check queue depth every iteration - it's expensive (requires lock)
+958       // Only check periodically every 100 iterations (~0.6s at 172 fps)
+959       // NOTE: backpressure_check_counter is now per-thread (not static), so each client thread has its own counter
+960       bool apply_backpressure = false;
+961 
+962       if (++backpressure_check_counter &gt;= 100) {
+963         backpressure_check_counter = 0;
+964         size_t queue_depth = packet_queue_size(audio_queue_snapshot);
+965         // Opus frames are produced at ~50 FPS (20ms each)
+966         // Reduced threshold from 50 to 10 packets (~200ms buffer) to prevent audio gaps
+967         // On localhost, queue shouldn't back up at all; aggressive thresholds cause frame skipping
+968         apply_backpressure = (queue_depth &gt; 10); // &gt; 10 packets = ~200ms buffered at 50 FPS
+969 
+970         if (apply_backpressure) {
+971           log_warn_every(4500 * US_PER_MS_INT,
+972                          &quot;Audio backpressure for client %s: queue depth %zu packets (%.1fms buffered)&quot;,
+973                          client_id_snapshot, queue_depth, (float)queue_depth / 50.0f * 1000.0f);
+974         }
+975       }
+976 
+977       if (apply_backpressure) {
+978         // Skip this packet to let the queue drain
+979         // Reset accumulation buffer so fresh samples can be captured on next iteration.
+980         // Without this reset, we'd loop forever with stale audio and no space for new samples
+981         opus_frame_accumulated = 0;
+982         // Reduced sleep from 5.8ms to 1ms to minimize audio gaps on localhost
+983         platform_sleep_ns(1 * NS_PER_MS_INT);
+984         continue;
+985       }
+986 
+987       // Encode accumulated Opus frame (960 samples = 20ms @ 48kHz)
+988       uint8_t opus_buffer[1024]; // Max Opus frame size
 989 
-990       int opus_size =
-991           opus_codec_encode(opus_encoder, opus_frame_buffer, OPUS_FRAME_SAMPLES, opus_buffer, sizeof(opus_buffer));
-992 
-993       STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 10 * NS_PER_MS_INT, &quot;opus_encode_%s&quot;,
-994                                &quot;Opus encode for client %s: took&quot;, client_id_snapshot);
-995 
-996       // DEBUG: Log mix buffer and encoding results to see audio levels being sent
-997       {
-998         float peak = 0.0f, rms = 0.0f;
-999         for (int i = 0; i &lt; OPUS_FRAME_SAMPLES; i++) {
-1000           float abs_val = fabsf(opus_frame_buffer[i]);
-1001           if (abs_val &gt; peak)
-1002             peak = abs_val;
-1003           rms += opus_frame_buffer[i] * opus_frame_buffer[i];
-1004         }
-1005         rms = sqrtf(rms / OPUS_FRAME_SAMPLES);
-1006         // NOTE: server_audio_frame_count is now per-thread (not static), so each client thread has its own counter
-1007         server_audio_frame_count++;
-1008         if (server_audio_frame_count &lt;= 5 || server_audio_frame_count % 20 == 0) {
-1009           // Log first 4 samples to verify they look like valid audio (not NaN/Inf/garbage)
-1010           log_dev_every(4500 * US_PER_MS_INT,
-1011                         &quot;Server audio frame #%d for client %u: samples_mixed=%d, Peak=%.6f, RMS=%.6f, opus_size=%d, &quot;
-1012                         &quot;first4=[%.4f,%.4f,%.4f,%.4f]&quot;,
-1013                         server_audio_frame_count, client_id_snapshot, samples_mixed, peak, rms, opus_size,
-1014                         opus_frame_buffer[0], opus_frame_buffer[1], opus_frame_buffer[2], opus_frame_buffer[3]);
-1015         }
-1016       }
-1017 
-1018       // Always reset accumulation buffer after attempting to encode - we've consumed these samples
-1019       // If we don't reset, new audio samples would be dropped while stale data sits in the buffer
-1020       opus_frame_accumulated = 0;
-1021 
-1022       if (opus_size &lt;= 0) {
-1023         log_error(&quot;Failed to encode audio to Opus for client %s: opus_size=%d&quot;, client_id_snapshot, opus_size);
-1024       } else {
-1025         // Wrap Opus data in proper batch packet format for client parsing:
-1026         // Header: sample_rate (4B) + frame_duration (4B) + frame_count (4B)
-1027         // Frame sizes: frame_count * 2B (one uint16 per frame with Opus data size)
-1028         // Opus data: raw encoded audio
-1029 
-1030         // Fixed values for Opus encoding (standard 48kHz, 960 samples per frame = 20ms)
-1031         const uint32_t sample_rate = 48000;
-1032         const uint32_t frame_duration = 20; // milliseconds (960 samples / 48kHz = 20ms)
-1033         const uint32_t frame_count = 1;     // one Opus frame per packet
-1034         const uint16_t frame_size = (uint16_t)opus_size;
-1035 
-1036         // Calculate total packet size: 16-byte header + frame_sizes + opus data
-1037         const size_t header_size = 16; // 4 uint32s (sample_rate, frame_duration, frame_count, reserved)
-1038         const size_t frame_sizes_size = (size_t)frame_count * sizeof(uint16_t);
-1039         const size_t total_packet_size = header_size + frame_sizes_size + (size_t)opus_size;
-1040 
-1041         // Allocate buffer for the complete packet
-1042         uint8_t *packet_buffer = SAFE_MALLOC(total_packet_size, uint8_t *);
-1043         if (!packet_buffer) {
-1044           log_error(&quot;Failed to allocate Opus batch packet buffer for client %s (size=%zu)&quot;, client_id_snapshot,
-1045                     total_packet_size);
-1046         } else {
-1047           // Build header in network byte order
-1048           uint8_t *ptr = packet_buffer;
-1049 
-1050           // Write sample_rate (4 bytes, network byte order)
-1051           uint32_t sr_net = htonl(sample_rate);
-1052           memcpy(ptr, &amp;sr_net, 4);
-1053           ptr += 4;
-1054 
-1055           // Write frame_duration (4 bytes, network byte order)
-1056           uint32_t fd_net = htonl(frame_duration);
-1057           memcpy(ptr, &amp;fd_net, 4);
-1058           ptr += 4;
-1059 
-1060           // Write frame_count (4 bytes, network byte order)
-1061           uint32_t fc_net = htonl(frame_count);
-1062           memcpy(ptr, &amp;fc_net, 4);
-1063           ptr += 4;
-1064 
-1065           // Write reserved field (4 bytes, all zeros)
-1066           uint32_t reserved = 0;
-1067           memcpy(ptr, &amp;reserved, 4);
-1068           ptr += 4;
-1069 
-1070           // Write frame sizes (2 bytes per frame, network byte order)
-1071           for (uint32_t i = 0; i &lt; frame_count; i++) {
-1072             uint16_t fs_net = htons(frame_size);
-1073             memcpy(ptr, &amp;fs_net, 2);
-1074             ptr += 2;
-1075           }
-1076 
-1077           // Copy Opus data
-1078           memcpy(ptr, opus_buffer, (size_t)opus_size);
-1079 
-1080           // Queue the properly formatted packet
-1081           START_TIMER(&quot;audio_queue_%s&quot;, client_id_snapshot);
-1082 
-1083           int result = packet_queue_enqueue(audio_queue_snapshot, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_buffer,
-1084                                             total_packet_size, 0, true);
-1085 
-1086           STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 1 * NS_PER_MS_INT, &quot;audio_queue_%s&quot;,
-1087                                    &quot;Audio queue for client %s: took&quot;, client_id_snapshot);
-1088 
-1089           if (result &lt; 0) {
-1090             log_debug(&quot;Failed to queue Opus audio for client %s&quot;, client_id_snapshot);
-1091           } else {
-1092             // FPS tracking - audio packet successfully queued (handles lag detection and periodic reporting)
-1093             fps_frame_ns(&amp;audio_fps_tracker, time_get_ns(), &quot;audio packet queued&quot;);
-1094           }
-1095 
-1096           // Free the allocated packet buffer after queuing (packet_queue_enqueue copies data)
-1097           SAFE_FREE(packet_buffer);
-1098         }
-1099       }
-1100       // NOTE: opus_frame_accumulated is already reset at line 928 after encode attempt
-1101     }
-1102 
-1103     // Audio mixing rate limiting using adaptive sleep system
-1104     // Target: 10ms intervals (100 FPS) for 480 samples @ 48kHz
-1105     // Use queue_depth=0 and target_depth=0 for constant-rate audio processing
-1106     adaptive_sleep_do(&amp;audio_sleep_state, 0, 0);
-1107   }
-1108 
-1109 #ifdef DEBUG_THREADS
-1110   log_debug(&quot;Audio render thread stopped for client %u&quot;, thread_client_id);
-1111 #endif
-1112 
-1113   // Clean up Opus encoder
-1114   if (opus_encoder) {
-1115     opus_codec_destroy(opus_encoder);
-1116   }
-1117 
-1118   // Clean up thread-local error context before exit
-1119   asciichat_errno_destroy();
-1120 
-1121   return NULL;
-1122 }</pre>
+990       START_TIMER(&quot;opus_encode_%s&quot;, client_id_snapshot);
+991 
+992       int opus_size =
+993           opus_codec_encode(opus_encoder, opus_frame_buffer, OPUS_FRAME_SAMPLES, opus_buffer, sizeof(opus_buffer));
+994 
+995       STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 10 * NS_PER_MS_INT, &quot;opus_encode_%s&quot;,
+996                                &quot;Opus encode for client %s: took&quot;, client_id_snapshot);
+997 
+998       // DEBUG: Log mix buffer and encoding results to see audio levels being sent
+999       {
+1000         float peak = 0.0f, rms = 0.0f;
+1001         for (int i = 0; i &lt; OPUS_FRAME_SAMPLES; i++) {
+1002           float abs_val = fabsf(opus_frame_buffer[i]);
+1003           if (abs_val &gt; peak)
+1004             peak = abs_val;
+1005           rms += opus_frame_buffer[i] * opus_frame_buffer[i];
+1006         }
+1007         rms = sqrtf(rms / OPUS_FRAME_SAMPLES);
+1008         // NOTE: server_audio_frame_count is now per-thread (not static), so each client thread has its own counter
+1009         server_audio_frame_count++;
+1010         if (server_audio_frame_count &lt;= 5 || server_audio_frame_count % 20 == 0) {
+1011           // Log first 4 samples to verify they look like valid audio (not NaN/Inf/garbage)
+1012           log_dev_every(4500 * US_PER_MS_INT,
+1013                         &quot;Server audio frame #%d for client %u: samples_mixed=%d, Peak=%.6f, RMS=%.6f, opus_size=%d, &quot;
+1014                         &quot;first4=[%.4f,%.4f,%.4f,%.4f]&quot;,
+1015                         server_audio_frame_count, client_id_snapshot, samples_mixed, peak, rms, opus_size,
+1016                         opus_frame_buffer[0], opus_frame_buffer[1], opus_frame_buffer[2], opus_frame_buffer[3]);
+1017         }
+1018       }
+1019 
+1020       // Always reset accumulation buffer after attempting to encode - we've consumed these samples
+1021       // If we don't reset, new audio samples would be dropped while stale data sits in the buffer
+1022       opus_frame_accumulated = 0;
+1023 
+1024       if (opus_size &lt;= 0) {
+1025         log_error(&quot;Failed to encode audio to Opus for client %s: opus_size=%d&quot;, client_id_snapshot, opus_size);
+1026       } else {
+1027         // Wrap Opus data in proper batch packet format for client parsing:
+1028         // Header: sample_rate (4B) + frame_duration (4B) + frame_count (4B)
+1029         // Frame sizes: frame_count * 2B (one uint16 per frame with Opus data size)
+1030         // Opus data: raw encoded audio
+1031 
+1032         // Fixed values for Opus encoding (standard 48kHz, 960 samples per frame = 20ms)
+1033         const uint32_t sample_rate = 48000;
+1034         const uint32_t frame_duration = 20; // milliseconds (960 samples / 48kHz = 20ms)
+1035         const uint32_t frame_count = 1;     // one Opus frame per packet
+1036         const uint16_t frame_size = (uint16_t)opus_size;
+1037 
+1038         // Calculate total packet size: 16-byte header + frame_sizes + opus data
+1039         const size_t header_size = 16; // 4 uint32s (sample_rate, frame_duration, frame_count, reserved)
+1040         const size_t frame_sizes_size = (size_t)frame_count * sizeof(uint16_t);
+1041         const size_t total_packet_size = header_size + frame_sizes_size + (size_t)opus_size;
+1042 
+1043         // Allocate buffer for the complete packet
+1044         uint8_t *packet_buffer = SAFE_MALLOC(total_packet_size, uint8_t *);
+1045         if (!packet_buffer) {
+1046           log_error(&quot;Failed to allocate Opus batch packet buffer for client %s (size=%zu)&quot;, client_id_snapshot,
+1047                     total_packet_size);
+1048         } else {
+1049           // Build header in network byte order
+1050           uint8_t *ptr = packet_buffer;
+1051 
+1052           // Write sample_rate (4 bytes, network byte order)
+1053           uint32_t sr_net = htonl(sample_rate);
+1054           memcpy(ptr, &amp;sr_net, 4);
+1055           ptr += 4;
+1056 
+1057           // Write frame_duration (4 bytes, network byte order)
+1058           uint32_t fd_net = htonl(frame_duration);
+1059           memcpy(ptr, &amp;fd_net, 4);
+1060           ptr += 4;
+1061 
+1062           // Write frame_count (4 bytes, network byte order)
+1063           uint32_t fc_net = htonl(frame_count);
+1064           memcpy(ptr, &amp;fc_net, 4);
+1065           ptr += 4;
+1066 
+1067           // Write reserved field (4 bytes, all zeros)
+1068           uint32_t reserved = 0;
+1069           memcpy(ptr, &amp;reserved, 4);
+1070           ptr += 4;
+1071 
+1072           // Write frame sizes (2 bytes per frame, network byte order)
+1073           for (uint32_t i = 0; i &lt; frame_count; i++) {
+1074             uint16_t fs_net = htons(frame_size);
+1075             memcpy(ptr, &amp;fs_net, 2);
+1076             ptr += 2;
+1077           }
+1078 
+1079           // Copy Opus data
+1080           memcpy(ptr, opus_buffer, (size_t)opus_size);
+1081 
+1082           // Queue the properly formatted packet
+1083           START_TIMER(&quot;audio_queue_%s&quot;, client_id_snapshot);
+1084 
+1085           int result = packet_queue_enqueue(audio_queue_snapshot, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_buffer,
+1086                                             total_packet_size, 0, true);
+1087 
+1088           STOP_TIMER_AND_LOG_EVERY(dev, NS_PER_SEC_INT, 1 * NS_PER_MS_INT, &quot;audio_queue_%s&quot;,
+1089                                    &quot;Audio queue for client %s: took&quot;, client_id_snapshot);
+1090 
+1091           if (result &lt; 0) {
+1092             log_debug(&quot;Failed to queue Opus audio for client %s&quot;, client_id_snapshot);
+1093           } else {
+1094             // FPS tracking - audio packet successfully queued (handles lag detection and periodic reporting)
+1095             fps_frame_ns(&amp;audio_fps_tracker, time_get_ns(), &quot;audio packet queued&quot;);
+1096           }
+1097 
+1098           // Free the allocated packet buffer after queuing (packet_queue_enqueue copies data)
+1099           SAFE_FREE(packet_buffer);
+1100         }
+1101       }
+1102       // NOTE: opus_frame_accumulated is already reset at line 928 after encode attempt
+1103     }
+1104 
+1105     // Audio mixing rate limiting using adaptive sleep system
+1106     // Target: 10ms intervals (100 FPS) for 480 samples @ 48kHz
+1107     // Use queue_depth=0 and target_depth=0 for constant-rate audio processing
+1108     adaptive_sleep_do(&amp;audio_sleep_state, 0, 0);
+1109   }
+1110 
+1111 #ifdef DEBUG_THREADS
+1112   log_debug(&quot;Audio render thread stopped for client %u&quot;, thread_client_id);
+1113 #endif
+1114 
+1115   // Clean up Opus encoder
+1116   if (opus_encoder) {
+1117     opus_codec_destroy(opus_encoder);
+1118   }
+1119 
+1120   // Clean up thread-local error context before exit
+1121   asciichat_errno_destroy();
+1122 
+1123   return NULL;
+1124 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>client_info::active</b>, <b>adaptive_sleep_do()</b>,
@@ -824,330 +824,331 @@
 <p class="Pp"></p>
 <p class="Pp"><b>VIDEO_RENDER_FPS</b> For timing constant definition</p>
 </div>
-<p class="Pp">Definition at line <b>339</b> of file <b>server/render.c</b>.</p>
-<pre>339                                             {
-340   client_info_t *client = (client_info_t *)arg;
-341   if (!client) {
-342     log_error(&quot;NULL client pointer in video render thread&quot;);
-343     return NULL;
-344   }
-345 
-346   // Take snapshot of client ID and socket at start to avoid race conditions
-347   char thread_client_id[MAX_CLIENT_ID_LEN];
-348   SAFE_STRNCPY(thread_client_id, client-&gt;client_id, sizeof(thread_client_id) - 1);
-349   socket_t thread_socket = client-&gt;socket;
-350   bool is_webrtc = (thread_socket == INVALID_SOCKET_VALUE);
-351   (void)is_webrtc; // May be unused in release builds
-352 
-353   log_debug(&quot;Video render thread: client_id=%s, webrtc=%d&quot;, thread_client_id, is_webrtc);
-354 
-355   log_info(&quot;[VIDEO_RENDER_THREAD_START] &#x2605;&#x2605;&#x2605; LOCK STATE at thread entry for client %u&quot;, thread_client_id);
-356   // debug_sync_print_state();  // Disabled: causes AddressSanitizer stack-use-after-return crash
-357 
-358   // Wait for client to send terminal capabilities before rendering
-359   // Without capabilities, convert_composite_to_ascii() will fail
-360   int timeout_ms = 5000; // 5 second timeout
-361   int waited_ms = 0;
-362   while (!client-&gt;has_terminal_caps &amp;&amp; !atomic_load_bool(&amp;g_should_exit) &amp;&amp; !atomic_load_bool(&amp;client-&gt;shutting_down)) {
-363     if (waited_ms == 0) {
-364       log_debug(&quot;Waiting for terminal capabilities from client %u...&quot;, thread_client_id);
-365     }
-366     platform_sleep_ms(10);
-367     waited_ms += 10;
-368     if (waited_ms &gt;= timeout_ms) {
-369       log_warn(&quot;Timeout waiting for terminal capabilities from client %u (waited %dms)&quot;, thread_client_id, waited_ms);
-370       return NULL; // Exit thread if capabilities never arrive
-371     }
-372   }
-373   if (client-&gt;has_terminal_caps) {
-374     log_debug(&quot;Received terminal capabilities for client %u after %dms&quot;, thread_client_id, waited_ms);
-375   }
-376 
-377   // Get client's desired FPS from capabilities or use default
-378   int client_fps = VIDEO_RENDER_FPS; // Default to 60 FPS
-379   // Use snapshot pattern to avoid mutex in render thread
-380   bool has_caps = client-&gt;has_terminal_caps;
-381   int desired_fps = has_caps ? client-&gt;terminal_caps.desired_fps : 0;
-382   if (has_caps &amp;&amp; desired_fps &gt; 0) {
-383     client_fps = desired_fps;
-384     log_debug(&quot;Client %u requested FPS: %d (has_caps=%d, desired_fps=%d)&quot;, thread_client_id, client_fps, has_caps,
-385               desired_fps);
-386   } else {
-387     log_debug(&quot;Client %u using default FPS: %d (has_caps=%d, desired_fps=%d)&quot;, thread_client_id, client_fps, has_caps,
-388               desired_fps);
-389   }
-390 
-391   int base_frame_interval_ms = 1000 / client_fps;
-392   log_debug(&quot;Client %u render interval: %dms (%d FPS)&quot;, thread_client_id, base_frame_interval_ms, client_fps);
-393 
-394   // FPS tracking for video render thread
-395   fps_t video_fps_tracker = {0};
-396   fps_init(&amp;video_fps_tracker, client_fps, &quot;SERVER VIDEO&quot;);
-397 
-398   // Adaptive sleep for frame rate limiting
-399   adaptive_sleep_state_t sleep_state = {0};
-400   adaptive_sleep_config_t config = {
-401       .baseline_sleep_ns = (uint64_t)(NS_PER_SEC_INT / client_fps), // Dynamic FPS (typically 16.67ms for 60 FPS)
-402       .min_speed_multiplier = 1.0,                                  // Constant rate (no slowdown)
-403       .max_speed_multiplier = 1.0,                                  // Constant rate (no speedup)
-404       .speedup_rate = 0.0,                                          // No adaptive behavior (constant FPS)
-405       .slowdown_rate = 0.0                                          // No adaptive behavior (constant FPS)
-406   };
-407   adaptive_sleep_init(&amp;sleep_state, &amp;config);
-408 
-409   log_info(&quot;Video render loop STARTING for client %u&quot;, thread_client_id);
+<p class="Pp">Definition at line <b>340</b> of file <b>server/render.c</b>.</p>
+<pre>340                                             {
+341   client_info_t *client = (client_info_t *)arg;
+342   if (!client) {
+343     log_error(&quot;NULL client pointer in video render thread&quot;);
+344     return NULL;
+345   }
+346 
+347   // Take snapshot of client ID and socket at start to avoid race conditions
+348   char thread_client_id[MAX_CLIENT_ID_LEN];
+349   SAFE_STRNCPY(thread_client_id, client-&gt;client_id, sizeof(thread_client_id) - 1);
+350   socket_t thread_socket = client-&gt;socket;
+351   bool is_webrtc = (thread_socket == INVALID_SOCKET_VALUE);
+352   (void)is_webrtc; // May be unused in release builds
+353 
+354   log_debug(&quot;Video render thread: client_id=%s, webrtc=%d&quot;, thread_client_id, is_webrtc);
+355 
+356   log_info(&quot;[VIDEO_RENDER_THREAD_START] &#x2605;&#x2605;&#x2605; LOCK STATE at thread entry for client %u&quot;, thread_client_id);
+357   // debug_sync_print_state();  // Disabled: causes AddressSanitizer stack-use-after-return crash
+358 
+359   // Wait for client to send terminal capabilities before rendering
+360   // Without capabilities, convert_composite_to_ascii() will fail
+361   int timeout_ms = 5000; // 5 second timeout
+362   int waited_ms = 0;
+363   while (!client-&gt;has_terminal_caps &amp;&amp; !atomic_load_bool(&amp;g_should_exit) &amp;&amp; !atomic_load_bool(&amp;client-&gt;shutting_down)) {
+364     if (waited_ms == 0) {
+365       log_debug(&quot;Waiting for terminal capabilities from client %u...&quot;, thread_client_id);
+366     }
+367     APP_CALLBACK_VOID(platform_pump_events);
+368     platform_sleep_ms(10);
+369     waited_ms += 10;
+370     if (waited_ms &gt;= timeout_ms) {
+371       log_warn(&quot;Timeout waiting for terminal capabilities from client %u (waited %dms)&quot;, thread_client_id, waited_ms);
+372       return NULL; // Exit thread if capabilities never arrive
+373     }
+374   }
+375   if (client-&gt;has_terminal_caps) {
+376     log_debug(&quot;Received terminal capabilities for client %u after %dms&quot;, thread_client_id, waited_ms);
+377   }
+378 
+379   // Get client's desired FPS from capabilities or use default
+380   int client_fps = VIDEO_RENDER_FPS; // Default to 60 FPS
+381   // Use snapshot pattern to avoid mutex in render thread
+382   bool has_caps = client-&gt;has_terminal_caps;
+383   int desired_fps = has_caps ? client-&gt;terminal_caps.desired_fps : 0;
+384   if (has_caps &amp;&amp; desired_fps &gt; 0) {
+385     client_fps = desired_fps;
+386     log_debug(&quot;Client %u requested FPS: %d (has_caps=%d, desired_fps=%d)&quot;, thread_client_id, client_fps, has_caps,
+387               desired_fps);
+388   } else {
+389     log_debug(&quot;Client %u using default FPS: %d (has_caps=%d, desired_fps=%d)&quot;, thread_client_id, client_fps, has_caps,
+390               desired_fps);
+391   }
+392 
+393   int base_frame_interval_ms = 1000 / client_fps;
+394   log_debug(&quot;Client %u render interval: %dms (%d FPS)&quot;, thread_client_id, base_frame_interval_ms, client_fps);
+395 
+396   // FPS tracking for video render thread
+397   fps_t video_fps_tracker = {0};
+398   fps_init(&amp;video_fps_tracker, client_fps, &quot;SERVER VIDEO&quot;);
+399 
+400   // Adaptive sleep for frame rate limiting
+401   adaptive_sleep_state_t sleep_state = {0};
+402   adaptive_sleep_config_t config = {
+403       .baseline_sleep_ns = (uint64_t)(NS_PER_SEC_INT / client_fps), // Dynamic FPS (typically 16.67ms for 60 FPS)
+404       .min_speed_multiplier = 1.0,                                  // Constant rate (no slowdown)
+405       .max_speed_multiplier = 1.0,                                  // Constant rate (no speedup)
+406       .speedup_rate = 0.0,                                          // No adaptive behavior (constant FPS)
+407       .slowdown_rate = 0.0                                          // No adaptive behavior (constant FPS)
+408   };
+409   adaptive_sleep_init(&amp;sleep_state, &amp;config);
 410 
-411   bool should_continue = true;
-412   while (should_continue &amp;&amp; !atomic_load_bool(&amp;g_should_exit) &amp;&amp; !atomic_load_bool(&amp;client-&gt;shutting_down)) {
-413     START_TIMER(&quot;render_iteration&quot;);
-414     log_dev_every(10 * NS_PER_MS_INT, &quot;Video render loop iteration for client %u&quot;, thread_client_id);
-415 
-416     // Check for immediate shutdown
-417     if (atomic_load_bool(&amp;g_should_exit)) {
-418       log_debug(&quot;Video render thread stopping for client %u (g_should_exit)&quot;, thread_client_id);
-419       break;
-420     }
-421 
-422     bool video_running = atomic_load_bool(&amp;client-&gt;video_render_thread_running);
-423     bool active = atomic_load_bool(&amp;client-&gt;active);
-424     bool shutting_down = atomic_load_bool(&amp;client-&gt;shutting_down);
-425 
-426     should_continue = video_running &amp;&amp; active &amp;&amp; !shutting_down;
+411   log_info(&quot;Video render loop STARTING for client %u&quot;, thread_client_id);
+412 
+413   bool should_continue = true;
+414   while (should_continue &amp;&amp; !atomic_load_bool(&amp;g_should_exit) &amp;&amp; !atomic_load_bool(&amp;client-&gt;shutting_down)) {
+415     START_TIMER(&quot;render_iteration&quot;);
+416     log_dev_every(10 * NS_PER_MS_INT, &quot;Video render loop iteration for client %u&quot;, thread_client_id);
+417 
+418     // Check for immediate shutdown
+419     if (atomic_load_bool(&amp;g_should_exit)) {
+420       log_debug(&quot;Video render thread stopping for client %u (g_should_exit)&quot;, thread_client_id);
+421       break;
+422     }
+423 
+424     bool video_running = atomic_load_bool(&amp;client-&gt;video_render_thread_running);
+425     bool active = atomic_load_bool(&amp;client-&gt;active);
+426     bool shutting_down = atomic_load_bool(&amp;client-&gt;shutting_down);
 427 
-428     if (!should_continue) {
-429       log_debug(&quot;Video render thread stopping for client %u (should_continue=false: video_running=%d, active=%d, &quot;
-430                 &quot;shutting_down=%d)&quot;,
-431                 thread_client_id, video_running, active, shutting_down);
-432       break;
-433     }
-434 
-435     // Frame rate limiting using adaptive sleep system
-436     // Use queue_depth=0 and target_depth=0 for constant-rate renderer (no backlog management)
-437     uint64_t iter_start_ns = time_get_ns();
-438     START_TIMER(&quot;render_adaptive_sleep&quot;);
-439     adaptive_sleep_do(&amp;sleep_state, 0, 0);
-440     STOP_TIMER_AND_LOG(dev, 0, &quot;render_adaptive_sleep&quot;, &quot;adaptive_sleep completed&quot;);
-441     uint64_t after_sleep_ns = time_get_ns();
-442 
-443     // Capture timestamp for FPS tracking and frame timestamps
-444     uint64_t current_time_ns = time_get_ns();
-445 
-446     // Check thread state again before acquiring locks (client might have been destroyed during sleep).
-447     should_continue = atomic_load_bool(&amp;client-&gt;video_render_thread_running) &amp;&amp; atomic_load_bool(&amp;client-&gt;active) &amp;&amp;
-448                       !atomic_load_bool(&amp;client-&gt;shutting_down);
-449     if (!should_continue) {
-450       break;
-451     }
-452 
-453     // Optimization: No mutex needed - all fields are atomic or stable.
-454     // client_id: stable string pointer
-455     // width/height: stable uint16_t values (set once, never modified)
-456     // active: atomic_t - use atomic_load for thread safety
-457     const char *client_id_snapshot = client-&gt;client_id;            // Stable read
-458     unsigned short width_snapshot = client-&gt;width;                 // Stable uint16_t
-459     unsigned short height_snapshot = client-&gt;height;               // Stable uint16_t
-460     bool active_snapshot = atomic_load_bool(&amp;client-&gt;active);      // Atomic read
-461 
-462     // Check if client is still active after getting snapshot
-463     if (!active_snapshot) {
-464       break;
-465     }
-466 
-467     // Phase 2 IMPLEMENTED: Generate frame specifically for THIS client using snapshot data
-468     size_t frame_size = 0;
-469 
-470     // Check if any clients are sending video
-471     bool has_video_sources = any_clients_sending_video();
-472 
-473     // DIAGNOSTIC: Track when video sources become available
-474     static bool last_has_sources = false;
-475     if (has_video_sources != last_has_sources) {
-476       log_warn(&quot;DIAGNOSTIC: Client %u video sources: %s&quot;, thread_client_id,
-477                has_video_sources ? &quot;AVAILABLE&quot; : &quot;UNAVAILABLE&quot;);
-478       last_has_sources = has_video_sources;
-479     }
-480 
-481     log_debug_every(5 * NS_PER_MS_INT,
-482                     &quot;Video render iteration for client %u: has_video_sources=%d, width=%u, height=%u&quot;, thread_client_id,
-483                     has_video_sources, width_snapshot, height_snapshot);
-484 
-485     // Use default dimensions if client dimensions not received
-486     if (width_snapshot == 0 || height_snapshot == 0) {
-487       log_dev_every(5 * NS_PER_MS_INT, &quot;Using default dimensions for client %u (client reported: width=%u, height=%u)&quot;,
-488                     thread_client_id, width_snapshot, height_snapshot);
-489       // Use 80x25 as standard terminal size fallback for snapshot/test clients
-490       width_snapshot = 80;
-491       height_snapshot = 25;
-492     }
-493 
-494     // Generate frames for all clients with valid dimensions, regardless of whether other clients are sending video.
-495     // This ensures WebSocket snapshot clients (receive-only mode) receive frames even when no other clients are
-496     // sending video.
-497     int sources_count = 0; // Track number of video sources in this frame
-498 
-499     // DIAGNOSTIC: Track every frame generation attempt
-500     // Use per-client static variables to track frequency independently
-501     static uint32_t frame_gen_count = 0;
-502     static uint64_t frame_gen_start_time = 0;
-503 
-504     frame_gen_count++;
-505     if (frame_gen_count == 1) {
-506       frame_gen_start_time = current_time_ns;
-507     }
-508 
-509     // Log every 120 attempts (should be ~2 seconds at 60 Hz)
-510     if (frame_gen_count % 120 == 0) {
-511       uint64_t elapsed_ns = current_time_ns - frame_gen_start_time;
-512       double gen_fps = (120.0 / (elapsed_ns / (double)NS_PER_SEC_INT));
-513       log_warn(&quot;DIAGNOSTIC: Client %u LOOP running at %.1f FPS (120 iterations in %.2fs)&quot;, thread_client_id, gen_fps,
-514                elapsed_ns / (double)NS_PER_SEC_INT);
-515     }
-516 
-517     log_dev_every(5 * NS_PER_MS_INT, &quot;About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u&quot;,
-518                   thread_client_id, width_snapshot, height_snapshot);
-519 
-520     // debug_sync_print_state() is too expensive to call every frame (kills FPS)
+428     should_continue = video_running &amp;&amp; active &amp;&amp; !shutting_down;
+429 
+430     if (!should_continue) {
+431       log_debug(&quot;Video render thread stopping for client %u (should_continue=false: video_running=%d, active=%d, &quot;
+432                 &quot;shutting_down=%d)&quot;,
+433                 thread_client_id, video_running, active, shutting_down);
+434       break;
+435     }
+436 
+437     // Frame rate limiting using adaptive sleep system
+438     // Use queue_depth=0 and target_depth=0 for constant-rate renderer (no backlog management)
+439     uint64_t iter_start_ns = time_get_ns();
+440     START_TIMER(&quot;render_adaptive_sleep&quot;);
+441     adaptive_sleep_do(&amp;sleep_state, 0, 0);
+442     STOP_TIMER_AND_LOG(dev, 0, &quot;render_adaptive_sleep&quot;, &quot;adaptive_sleep completed&quot;);
+443     uint64_t after_sleep_ns = time_get_ns();
+444 
+445     // Capture timestamp for FPS tracking and frame timestamps
+446     uint64_t current_time_ns = time_get_ns();
+447 
+448     // Check thread state again before acquiring locks (client might have been destroyed during sleep).
+449     should_continue = atomic_load_bool(&amp;client-&gt;video_render_thread_running) &amp;&amp; atomic_load_bool(&amp;client-&gt;active) &amp;&amp;
+450                       !atomic_load_bool(&amp;client-&gt;shutting_down);
+451     if (!should_continue) {
+452       break;
+453     }
+454 
+455     // Optimization: No mutex needed - all fields are atomic or stable.
+456     // client_id: stable string pointer
+457     // width/height: stable uint16_t values (set once, never modified)
+458     // active: atomic_t - use atomic_load for thread safety
+459     const char *client_id_snapshot = client-&gt;client_id;            // Stable read
+460     unsigned short width_snapshot = client-&gt;width;                 // Stable uint16_t
+461     unsigned short height_snapshot = client-&gt;height;               // Stable uint16_t
+462     bool active_snapshot = atomic_load_bool(&amp;client-&gt;active);      // Atomic read
+463 
+464     // Check if client is still active after getting snapshot
+465     if (!active_snapshot) {
+466       break;
+467     }
+468 
+469     // Phase 2 IMPLEMENTED: Generate frame specifically for THIS client using snapshot data
+470     size_t frame_size = 0;
+471 
+472     // Check if any clients are sending video
+473     bool has_video_sources = any_clients_sending_video();
+474 
+475     // DIAGNOSTIC: Track when video sources become available
+476     static bool last_has_sources = false;
+477     if (has_video_sources != last_has_sources) {
+478       log_warn(&quot;DIAGNOSTIC: Client %u video sources: %s&quot;, thread_client_id,
+479                has_video_sources ? &quot;AVAILABLE&quot; : &quot;UNAVAILABLE&quot;);
+480       last_has_sources = has_video_sources;
+481     }
+482 
+483     log_debug_every(5 * NS_PER_MS_INT,
+484                     &quot;Video render iteration for client %u: has_video_sources=%d, width=%u, height=%u&quot;, thread_client_id,
+485                     has_video_sources, width_snapshot, height_snapshot);
+486 
+487     // Use default dimensions if client dimensions not received
+488     if (width_snapshot == 0 || height_snapshot == 0) {
+489       log_dev_every(5 * NS_PER_MS_INT, &quot;Using default dimensions for client %u (client reported: width=%u, height=%u)&quot;,
+490                     thread_client_id, width_snapshot, height_snapshot);
+491       // Use 80x25 as standard terminal size fallback for snapshot/test clients
+492       width_snapshot = 80;
+493       height_snapshot = 25;
+494     }
+495 
+496     // Generate frames for all clients with valid dimensions, regardless of whether other clients are sending video.
+497     // This ensures WebSocket snapshot clients (receive-only mode) receive frames even when no other clients are
+498     // sending video.
+499     int sources_count = 0; // Track number of video sources in this frame
+500 
+501     // DIAGNOSTIC: Track every frame generation attempt
+502     // Use per-client static variables to track frequency independently
+503     static uint32_t frame_gen_count = 0;
+504     static uint64_t frame_gen_start_time = 0;
+505 
+506     frame_gen_count++;
+507     if (frame_gen_count == 1) {
+508       frame_gen_start_time = current_time_ns;
+509     }
+510 
+511     // Log every 120 attempts (should be ~2 seconds at 60 Hz)
+512     if (frame_gen_count % 120 == 0) {
+513       uint64_t elapsed_ns = current_time_ns - frame_gen_start_time;
+514       double gen_fps = (120.0 / (elapsed_ns / (double)NS_PER_SEC_INT));
+515       log_warn(&quot;DIAGNOSTIC: Client %u LOOP running at %.1f FPS (120 iterations in %.2fs)&quot;, thread_client_id, gen_fps,
+516                elapsed_ns / (double)NS_PER_SEC_INT);
+517     }
+518 
+519     log_dev_every(5 * NS_PER_MS_INT, &quot;About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u&quot;,
+520                   thread_client_id, width_snapshot, height_snapshot);
 521 
-522     uint64_t frame_create_start_ns = time_get_ns();
-523     START_TIMER(&quot;render_create_frame&quot;);
-524     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
-525                                                             &amp;frame_size, NULL, &amp;sources_count);
-526     STOP_TIMER_AND_LOG(dev, 0, &quot;render_create_frame&quot;, &quot;create_mixed_ascii_frame completed&quot;);
-527     uint64_t frame_create_end_ns = time_get_ns();
-528 
-529     if (frame_gen_count % 120 == 0) {
-530       char sleep_str[32], create_str[32];
-531       time_pretty((uint64_t)(after_sleep_ns - iter_start_ns), -1, sleep_str, sizeof(sleep_str));
-532       time_pretty((uint64_t)(frame_create_end_ns - frame_create_start_ns), -1, create_str, sizeof(create_str));
-533       log_warn(&quot;  TIMING: adaptive_sleep=%s, frame_create=%s&quot;, sleep_str, create_str);
-534     }
-535 
-536     // Always send frames at configured FPS, even if no external video sources yet
-537     // This ensures single-client mode (like testing) still gets continuous frames
-538     // The frame data (animated background or test pattern) is still valid content
-539 
-540     // DEBUG: Log frame generation details
-541     static uint32_t last_frame_hash = -1; // Initialize to -1 so first frame is always new
-542     uint32_t current_frame_hash = 0;
-543     if (ascii_frame &amp;&amp; frame_size &gt; 0) {
-544       for (size_t i = 0; i &lt; frame_size &amp;&amp; i &lt; 1000; i++) {
-545         current_frame_hash = (uint32_t)((uint64_t)current_frame_hash * 31 + ((unsigned char *)ascii_frame)[i]);
-546       }
-547       if (current_frame_hash != last_frame_hash) {
-548         log_info(&quot;RENDER_FRAME CHANGE: Client %u frame #%zu sources=%d hash=0x%08x (prev=0x%08x)&quot;, thread_client_id,
-549                  frame_size, sources_count, current_frame_hash, last_frame_hash);
-550         last_frame_hash = current_frame_hash;
-551       } else {
-552         log_dev_every(25000, &quot;RENDER_FRAME DUPLICATE: Client %u frame #%zu sources=%d hash=0x%08x (no change)&quot;,
-553                       thread_client_id, frame_size, sources_count, current_frame_hash);
-554       }
-555     }
-556 
-557     log_dev_every(5 * NS_PER_MS_INT,
-558                   &quot;create_mixed_ascii_frame_for_client returned: ascii_frame=%p, frame_size=%zu, sources_count=%d&quot;,
-559                   (void *)ascii_frame, frame_size, sources_count);
-560 
-561     // Phase 2 IMPLEMENTED: Write frame to double buffer (never drops!)
-562     if (ascii_frame &amp;&amp; frame_size &gt; 0) {
-563       log_debug_every(5 * NS_PER_MS_INT, &quot;Buffering frame for client %u (size=%zu)&quot;, thread_client_id, frame_size);
-564       // GRID LAYOUT CHANGE DETECTION: Store source count with frame
-565       // Send thread will compare this with last sent count to detect grid changes
-566       atomic_store_bool(&amp;client-&gt;last_rendered_grid_sources, sources_count);
-567 
-568       // Use double-buffer system which has its own internal swap_mutex
-569       // No external locking needed - the double-buffer is thread-safe by design
-570       video_frame_buffer_t *vfb_snapshot = client-&gt;outgoing_video_buffer;
-571 
-572       if (vfb_snapshot) {
-573         video_frame_t *write_frame = video_frame_begin_write(vfb_snapshot);
-574         if (write_frame) {
-575           // Copy ASCII frame data to the back buffer (NOT holding rwlock - just double-buffer's internal lock)
-576           if (write_frame-&gt;data &amp;&amp; frame_size &lt;= vfb_snapshot-&gt;allocated_buffer_size) {
-577             memcpy(write_frame-&gt;data, ascii_frame, frame_size);
-578             write_frame-&gt;size = frame_size;
-579             write_frame-&gt;capture_timestamp_ns = current_time_ns;
-580 
-581             // Always commit frame at configured FPS rate (adaptive_sleep_do enforces timing).
-582             // Never skip frames based on content changes.
-583             {
-584               uint64_t commit_start_ns = time_get_ns();
-585               // Commit the frame (swaps buffers atomically using vfb-&gt;swap_mutex, NOT rwlock)
-586               START_TIMER(&quot;render_video_frame_commit&quot;);
-587               video_frame_commit(vfb_snapshot);
-588               STOP_TIMER_AND_LOG(dev, 0, &quot;render_video_frame_commit&quot;, &quot;video_frame_commit completed&quot;);
-589               uint64_t commit_end_ns = time_get_ns();
-590               char commit_duration_str[32];
-591               time_pretty((uint64_t)(commit_end_ns - commit_start_ns), -1, commit_duration_str,
-592                           sizeof(commit_duration_str));
-593 
-594               static uint32_t commits_count = 0;
-595               static uint64_t commits_start_time = 0;
-596               commits_count++;
-597               if (commits_count == 1) {
-598                 commits_start_time = commit_end_ns;
-599               }
-600               if (commits_count % 10 == 0) {
-601                 uint64_t elapsed_ns = commit_end_ns - commits_start_time;
-602                 double commit_fps = (10.0 / (elapsed_ns / (double)NS_PER_SEC_INT));
-603                 log_warn(&quot;DIAGNOSTIC: Client %u UNIQUE frames being sent at %.1f FPS (10 commits counted)&quot;,
-604                          thread_client_id, commit_fps);
-605               }
-606 
-607               log_info(&quot;[FRAME_COMMIT_TIMING] Client %u frame commit took %s (hash=0x%08x)&quot;, thread_client_id,
-608                        commit_duration_str, current_frame_hash);
-609 
-610               // ARCHITECTURE: Frame transmission is handled EXCLUSIVELY by the send thread
-611               // The send thread reads from this buffer and applies proper 60 FPS rate limiting
-612               // Do NOT send from render thread - it bypasses rate limiting and causes network congestion
-613               // Render thread responsibility: Generate frame &#x2192; Write to buffer &#x2192; Done
-614               // Send thread responsibility: Read from buffer &#x2192; Apply 60 FPS pacing &#x2192; Transmit
-615             }
-616 
-617           } else {
-618             log_warn(&quot;Frame too large for buffer: %zu &gt; %zu&quot;, frame_size, vfb_snapshot-&gt;allocated_buffer_size);
-619           }
-620 
-621           // FPS tracking - frame successfully generated (handles lag detection and periodic reporting)
-622           fps_frame_ns(&amp;video_fps_tracker, current_time_ns, &quot;frame rendered&quot;);
-623         }
-624       }
-625 
-626       SAFE_FREE(ascii_frame);
-627     } else {
-628       // No frame generated (probably no video sources) - this is normal, no error logging needed
-629       log_dev_every(10 * NS_PER_MS_INT, &quot;Per-client render: No video sources available for client %u&quot;,
-630                     client_id_snapshot);
-631     }
-632 
-633     uint64_t iter_end_ns = time_get_ns();
-634     if (frame_gen_count % 120 == 0) {
-635       char total_str[32];
-636       time_pretty((uint64_t)(iter_end_ns - iter_start_ns), -1, total_str, sizeof(total_str));
-637       log_warn(&quot;  TIMING: TOTAL_ITERATION=%s&quot;, total_str);
-638     }
-639     STOP_TIMER_AND_LOG(dev, 0, &quot;render_iteration&quot;, &quot;render_iteration completed (total)&quot;);
-640   }
-641 
-642 #ifdef DEBUG_THREADS
-643   log_debug(&quot;Video render thread stopped for client %u&quot;, thread_client_id);
-644 #endif
-645 
-646   // Clean up thread-local error context before exit
-647   asciichat_errno_destroy();
-648 
-649   return NULL;
-650 }</pre>
+522     // debug_sync_print_state() is too expensive to call every frame (kills FPS)
+523 
+524     uint64_t frame_create_start_ns = time_get_ns();
+525     START_TIMER(&quot;render_create_frame&quot;);
+526     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
+527                                                             &amp;frame_size, NULL, &amp;sources_count);
+528     STOP_TIMER_AND_LOG(dev, 0, &quot;render_create_frame&quot;, &quot;create_mixed_ascii_frame completed&quot;);
+529     uint64_t frame_create_end_ns = time_get_ns();
+530 
+531     if (frame_gen_count % 120 == 0) {
+532       char sleep_str[32], create_str[32];
+533       time_pretty((uint64_t)(after_sleep_ns - iter_start_ns), -1, sleep_str, sizeof(sleep_str));
+534       time_pretty((uint64_t)(frame_create_end_ns - frame_create_start_ns), -1, create_str, sizeof(create_str));
+535       log_warn(&quot;  TIMING: adaptive_sleep=%s, frame_create=%s&quot;, sleep_str, create_str);
+536     }
+537 
+538     // Always send frames at configured FPS, even if no external video sources yet
+539     // This ensures single-client mode (like testing) still gets continuous frames
+540     // The frame data (animated background or test pattern) is still valid content
+541 
+542     // DEBUG: Log frame generation details
+543     static uint32_t last_frame_hash = -1; // Initialize to -1 so first frame is always new
+544     uint32_t current_frame_hash = 0;
+545     if (ascii_frame &amp;&amp; frame_size &gt; 0) {
+546       for (size_t i = 0; i &lt; frame_size &amp;&amp; i &lt; 1000; i++) {
+547         current_frame_hash = (uint32_t)((uint64_t)current_frame_hash * 31 + ((unsigned char *)ascii_frame)[i]);
+548       }
+549       if (current_frame_hash != last_frame_hash) {
+550         log_info(&quot;RENDER_FRAME CHANGE: Client %u frame #%zu sources=%d hash=0x%08x (prev=0x%08x)&quot;, thread_client_id,
+551                  frame_size, sources_count, current_frame_hash, last_frame_hash);
+552         last_frame_hash = current_frame_hash;
+553       } else {
+554         log_dev_every(25000, &quot;RENDER_FRAME DUPLICATE: Client %u frame #%zu sources=%d hash=0x%08x (no change)&quot;,
+555                       thread_client_id, frame_size, sources_count, current_frame_hash);
+556       }
+557     }
+558 
+559     log_dev_every(5 * NS_PER_MS_INT,
+560                   &quot;create_mixed_ascii_frame_for_client returned: ascii_frame=%p, frame_size=%zu, sources_count=%d&quot;,
+561                   (void *)ascii_frame, frame_size, sources_count);
+562 
+563     // Phase 2 IMPLEMENTED: Write frame to double buffer (never drops!)
+564     if (ascii_frame &amp;&amp; frame_size &gt; 0) {
+565       log_debug_every(5 * NS_PER_MS_INT, &quot;Buffering frame for client %u (size=%zu)&quot;, thread_client_id, frame_size);
+566       // GRID LAYOUT CHANGE DETECTION: Store source count with frame
+567       // Send thread will compare this with last sent count to detect grid changes
+568       atomic_store_bool(&amp;client-&gt;last_rendered_grid_sources, sources_count);
+569 
+570       // Use double-buffer system which has its own internal swap_mutex
+571       // No external locking needed - the double-buffer is thread-safe by design
+572       video_frame_buffer_t *vfb_snapshot = client-&gt;outgoing_video_buffer;
+573 
+574       if (vfb_snapshot) {
+575         video_frame_t *write_frame = video_frame_begin_write(vfb_snapshot);
+576         if (write_frame) {
+577           // Copy ASCII frame data to the back buffer (NOT holding rwlock - just double-buffer's internal lock)
+578           if (write_frame-&gt;data &amp;&amp; frame_size &lt;= vfb_snapshot-&gt;allocated_buffer_size) {
+579             memcpy(write_frame-&gt;data, ascii_frame, frame_size);
+580             write_frame-&gt;size = frame_size;
+581             write_frame-&gt;capture_timestamp_ns = current_time_ns;
+582 
+583             // Always commit frame at configured FPS rate (adaptive_sleep_do enforces timing).
+584             // Never skip frames based on content changes.
+585             {
+586               uint64_t commit_start_ns = time_get_ns();
+587               // Commit the frame (swaps buffers atomically using vfb-&gt;swap_mutex, NOT rwlock)
+588               START_TIMER(&quot;render_video_frame_commit&quot;);
+589               video_frame_commit(vfb_snapshot);
+590               STOP_TIMER_AND_LOG(dev, 0, &quot;render_video_frame_commit&quot;, &quot;video_frame_commit completed&quot;);
+591               uint64_t commit_end_ns = time_get_ns();
+592               char commit_duration_str[32];
+593               time_pretty((uint64_t)(commit_end_ns - commit_start_ns), -1, commit_duration_str,
+594                           sizeof(commit_duration_str));
+595 
+596               static uint32_t commits_count = 0;
+597               static uint64_t commits_start_time = 0;
+598               commits_count++;
+599               if (commits_count == 1) {
+600                 commits_start_time = commit_end_ns;
+601               }
+602               if (commits_count % 10 == 0) {
+603                 uint64_t elapsed_ns = commit_end_ns - commits_start_time;
+604                 double commit_fps = (10.0 / (elapsed_ns / (double)NS_PER_SEC_INT));
+605                 log_warn(&quot;DIAGNOSTIC: Client %u UNIQUE frames being sent at %.1f FPS (10 commits counted)&quot;,
+606                          thread_client_id, commit_fps);
+607               }
+608 
+609               log_info(&quot;[FRAME_COMMIT_TIMING] Client %u frame commit took %s (hash=0x%08x)&quot;, thread_client_id,
+610                        commit_duration_str, current_frame_hash);
+611 
+612               // ARCHITECTURE: Frame transmission is handled EXCLUSIVELY by the send thread
+613               // The send thread reads from this buffer and applies proper 60 FPS rate limiting
+614               // Do NOT send from render thread - it bypasses rate limiting and causes network congestion
+615               // Render thread responsibility: Generate frame &#x2192; Write to buffer &#x2192; Done
+616               // Send thread responsibility: Read from buffer &#x2192; Apply 60 FPS pacing &#x2192; Transmit
+617             }
+618 
+619           } else {
+620             log_warn(&quot;Frame too large for buffer: %zu &gt; %zu&quot;, frame_size, vfb_snapshot-&gt;allocated_buffer_size);
+621           }
+622 
+623           // FPS tracking - frame successfully generated (handles lag detection and periodic reporting)
+624           fps_frame_ns(&amp;video_fps_tracker, current_time_ns, &quot;frame rendered&quot;);
+625         }
+626       }
+627 
+628       SAFE_FREE(ascii_frame);
+629     } else {
+630       // No frame generated (probably no video sources) - this is normal, no error logging needed
+631       log_dev_every(10 * NS_PER_MS_INT, &quot;Per-client render: No video sources available for client %u&quot;,
+632                     client_id_snapshot);
+633     }
+634 
+635     uint64_t iter_end_ns = time_get_ns();
+636     if (frame_gen_count % 120 == 0) {
+637       char total_str[32];
+638       time_pretty((uint64_t)(iter_end_ns - iter_start_ns), -1, total_str, sizeof(total_str));
+639       log_warn(&quot;  TIMING: TOTAL_ITERATION=%s&quot;, total_str);
+640     }
+641     STOP_TIMER_AND_LOG(dev, 0, &quot;render_iteration&quot;, &quot;render_iteration completed (total)&quot;);
+642   }
+643 
+644 #ifdef DEBUG_THREADS
+645   log_debug(&quot;Video render thread stopped for client %u&quot;, thread_client_id);
+646 #endif
+647 
+648   // Clean up thread-local error context before exit
+649   asciichat_errno_destroy();
+650 
+651   return NULL;
+652 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>client_info::active</b>, <b>adaptive_sleep_do()</b>,
     <b>adaptive_sleep_init()</b>,
     <b>video_frame_buffer_t::allocated_buffer_size</b>,
-    <b>any_clients_sending_video()</b>, <b>asciichat_errno_destroy()</b>,
-    <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
-    <b>video_frame_t::capture_timestamp_ns</b>, <b>client_info::client_id</b>,
-    <b>create_mixed_ascii_frame_for_client()</b>, <b>video_frame_t::data</b>,
-    <b>terminal_capabilities_t::desired_fps</b>, <b>fps_frame_ns()</b>,
-    <b>fps_init()</b>, <b>g_should_exit</b>,
+    <b>any_clients_sending_video()</b>, <b>APP_CALLBACK_VOID</b>,
+    <b>asciichat_errno_destroy()</b>, <b>atomic_load_bool()</b>,
+    <b>atomic_store_bool()</b>, <b>video_frame_t::capture_timestamp_ns</b>,
+    <b>client_info::client_id</b>, <b>create_mixed_ascii_frame_for_client()</b>,
+    <b>video_frame_t::data</b>, <b>terminal_capabilities_t::desired_fps</b>,
+    <b>fps_frame_ns()</b>, <b>fps_init()</b>, <b>g_should_exit</b>,
     <b>client_info::has_terminal_caps</b>, <b>client_info::height</b>,
     <b>INVALID_SOCKET_VALUE</b>, <b>client_info::last_rendered_grid_sources</b>,
     <b>log_debug</b>, <b>log_debug_every</b>, <b>log_dev_every</b>,
@@ -1261,78 +1262,78 @@
 <p class="Pp"><b>See also</b></p>
 <div class="Bd-indent"><b>stop_client_render_threads()</b> For cleanup
   implementation</div>
-<p class="Pp">Definition at line <b>1199</b> of file <b>server/render.c</b>.</p>
-<pre>1199                                                                                       {
-1200   log_info(&quot;&#x2605;&#x2605;&#x2605; create_client_render_threads() CALLED for client_id=%s&quot;, client ? client-&gt;client_id : &quot;NULL&quot;);
-1201 
-1202   if (!server_ctx || !client) {
-1203     log_error(&quot;Cannot create render threads: NULL %s&quot;, !server_ctx ? &quot;server_ctx&quot; : &quot;client&quot;);
-1204     return -1;
-1205   }
-1206 
-1207 #ifdef DEBUG_THREADS
-1208   log_debug(&quot;Creating render threads for client %s&quot;, client-&gt;client_id);
-1209 #endif
-1210 
-1211   // NOTE: Mutexes are already initialized in add_client() before any threads start
-1212   // This prevents race conditions where receive thread tries to use uninitialized mutexes
-1213 
-1214   // Initialize render thread control flags
-1215   // IMPORTANT: Set to true BEFORE creating thread to avoid race condition
-1216   // where thread starts and immediately exits because flag is false
-1217   atomic_store_bool(&amp;client-&gt;video_render_thread_running, true);
-1218   atomic_store_bool(&amp;client-&gt;audio_render_thread_running, true);
-1219 
-1220   // Create video rendering thread (stop_id=2, stop after receive thread)
-1221   char thread_name[64];
-1222   safe_snprintf(thread_name, sizeof(thread_name), &quot;video_render_%s&quot;, client-&gt;client_id);
-1223   asciichat_error_t video_result;
-1224 
-1225   if (client-&gt;is_tcp_client) {
-1226     video_result = tcp_server_spawn_thread(server_ctx-&gt;tcp_server, client-&gt;socket, client_video_render_thread, client,
-1227                                            2, thread_name);
-1228   } else {
-1229     log_debug(&quot;THREAD_CREATE: WebRTC/WebSocket render video thread for client %s&quot;, client-&gt;client_id);
-1230     video_result =
-1231         asciichat_thread_create(&amp;client-&gt;video_render_thread, thread_name, client_video_render_thread, client);
-1232   }
-1233 
-1234   if (video_result != ASCIICHAT_OK) {
-1235     // Reset flag since thread creation failed
-1236     atomic_store_bool(&amp;client-&gt;video_render_thread_running, false);
-1237     // Mutexes will be destroyed by remove_client() which called us
-1238     return -1;
-1239   }
-1240 
-1241   // Create audio rendering thread (stop_id=2, same priority as video)
-1242   safe_snprintf(thread_name, sizeof(thread_name), &quot;audio_render_%s&quot;, client-&gt;client_id);
-1243   asciichat_error_t audio_result;
-1244 
-1245   if (client-&gt;is_tcp_client) {
-1246     audio_result = tcp_server_spawn_thread(server_ctx-&gt;tcp_server, client-&gt;socket, client_audio_render_thread, client,
-1247                                            2, thread_name);
-1248   } else {
-1249     log_debug(&quot;THREAD_CREATE: WebRTC/WebSocket render audio thread for client %s&quot;, client-&gt;client_id);
-1250     audio_result =
-1251         asciichat_thread_create(&amp;client-&gt;audio_render_thread, thread_name, client_audio_render_thread, client);
-1252   }
-1253   if (audio_result != ASCIICHAT_OK) {
-1254     // Clean up video thread (atomic operation, no mutex needed)
-1255     atomic_store_bool(&amp;client-&gt;video_render_thread_running, false);
-1256     // Reset audio flag since thread creation failed
-1257     atomic_store_bool(&amp;client-&gt;audio_render_thread_running, false);
-1258     // tcp_server_stop_client_threads() will be called by remove_client()
-1259     // to clean up the video thread we just created
-1260     // Mutexes will be destroyed by remove_client() which called us
-1261     return -1;
-1262   }
-1263 
-1264 #ifdef DEBUG_THREADS
-1265   log_debug(&quot;Created render threads for client %s&quot;, client-&gt;client_id);
-1266 #endif
-1267 
-1268   return 0;
-1269 }</pre>
+<p class="Pp">Definition at line <b>1201</b> of file <b>server/render.c</b>.</p>
+<pre>1201                                                                                       {
+1202   log_info(&quot;&#x2605;&#x2605;&#x2605; create_client_render_threads() CALLED for client_id=%s&quot;, client ? client-&gt;client_id : &quot;NULL&quot;);
+1203 
+1204   if (!server_ctx || !client) {
+1205     log_error(&quot;Cannot create render threads: NULL %s&quot;, !server_ctx ? &quot;server_ctx&quot; : &quot;client&quot;);
+1206     return -1;
+1207   }
+1208 
+1209 #ifdef DEBUG_THREADS
+1210   log_debug(&quot;Creating render threads for client %s&quot;, client-&gt;client_id);
+1211 #endif
+1212 
+1213   // NOTE: Mutexes are already initialized in add_client() before any threads start
+1214   // This prevents race conditions where receive thread tries to use uninitialized mutexes
+1215 
+1216   // Initialize render thread control flags
+1217   // IMPORTANT: Set to true BEFORE creating thread to avoid race condition
+1218   // where thread starts and immediately exits because flag is false
+1219   atomic_store_bool(&amp;client-&gt;video_render_thread_running, true);
+1220   atomic_store_bool(&amp;client-&gt;audio_render_thread_running, true);
+1221 
+1222   // Create video rendering thread (stop_id=2, stop after receive thread)
+1223   char thread_name[64];
+1224   safe_snprintf(thread_name, sizeof(thread_name), &quot;video_render_%s&quot;, client-&gt;client_id);
+1225   asciichat_error_t video_result;
+1226 
+1227   if (client-&gt;is_tcp_client) {
+1228     video_result = tcp_server_spawn_thread(server_ctx-&gt;tcp_server, client-&gt;socket, client_video_render_thread, client,
+1229                                            2, thread_name);
+1230   } else {
+1231     log_debug(&quot;THREAD_CREATE: WebRTC/WebSocket render video thread for client %s&quot;, client-&gt;client_id);
+1232     video_result =
+1233         asciichat_thread_create(&amp;client-&gt;video_render_thread, thread_name, client_video_render_thread, client);
+1234   }
+1235 
+1236   if (video_result != ASCIICHAT_OK) {
+1237     // Reset flag since thread creation failed
+1238     atomic_store_bool(&amp;client-&gt;video_render_thread_running, false);
+1239     // Mutexes will be destroyed by remove_client() which called us
+1240     return -1;
+1241   }
+1242 
+1243   // Create audio rendering thread (stop_id=2, same priority as video)
+1244   safe_snprintf(thread_name, sizeof(thread_name), &quot;audio_render_%s&quot;, client-&gt;client_id);
+1245   asciichat_error_t audio_result;
+1246 
+1247   if (client-&gt;is_tcp_client) {
+1248     audio_result = tcp_server_spawn_thread(server_ctx-&gt;tcp_server, client-&gt;socket, client_audio_render_thread, client,
+1249                                            2, thread_name);
+1250   } else {
+1251     log_debug(&quot;THREAD_CREATE: WebRTC/WebSocket render audio thread for client %s&quot;, client-&gt;client_id);
+1252     audio_result =
+1253         asciichat_thread_create(&amp;client-&gt;audio_render_thread, thread_name, client_audio_render_thread, client);
+1254   }
+1255   if (audio_result != ASCIICHAT_OK) {
+1256     // Clean up video thread (atomic operation, no mutex needed)
+1257     atomic_store_bool(&amp;client-&gt;video_render_thread_running, false);
+1258     // Reset audio flag since thread creation failed
+1259     atomic_store_bool(&amp;client-&gt;audio_render_thread_running, false);
+1260     // tcp_server_stop_client_threads() will be called by remove_client()
+1261     // to clean up the video thread we just created
+1262     // Mutexes will be destroyed by remove_client() which called us
+1263     return -1;
+1264   }
+1265 
+1266 #ifdef DEBUG_THREADS
+1267   log_debug(&quot;Created render threads for client %s&quot;, client-&gt;client_id);
+1268 #endif
+1269 
+1270   return 0;
+1271 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
@@ -1457,95 +1458,95 @@
 <p class="Pp"></p>
 <p class="Pp"><b>asciichat_thread_join()</b> For platform-specific joining</p>
 </div>
-<p class="Pp">Definition at line <b>1352</b> of file <b>server/render.c</b>.</p>
-<pre>1352                                                        {
-1353   if (!client) {
-1354     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Client is NULL&quot;);
-1355     return;
-1356   }
-1357 
-1358   log_debug(&quot;Stopping render threads for client %s&quot;, client-&gt;client_id);
+<p class="Pp">Definition at line <b>1354</b> of file <b>server/render.c</b>.</p>
+<pre>1354                                                        {
+1355   if (!client) {
+1356     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Client is NULL&quot;);
+1357     return;
+1358   }
 1359 
-1360   // Signal threads to stop (atomic operations, no mutex needed)
-1361   atomic_store_bool(&amp;client-&gt;video_render_thread_running, false);
-1362   atomic_store_bool(&amp;client-&gt;audio_render_thread_running, false);
-1363 
-1364   // Wait for threads to finish (deterministic cleanup)
-1365   // During shutdown, don't wait forever for threads to join
-1366   bool is_shutting_down = atomic_load_bool(&amp;g_should_exit);
-1367 
-1368   if (asciichat_thread_is_initialized(&amp;client-&gt;video_render_thread)) {
-1369     log_debug(&quot;Joining video render thread for client %u&quot;, client-&gt;client_id);
-1370     int result;
-1371     if (is_shutting_down) {
-1372       // During shutdown, don't timeout - wait for thread to exit
-1373       // Timeouts mask the real problem: threads that are still running
-1374       log_debug(&quot;Shutdown mode: joining video render thread for client %u (no timeout)&quot;, client-&gt;client_id);
-1375       result = asciichat_thread_join(&amp;client-&gt;video_render_thread, NULL);
-1376       if (result != 0) {
-1377         log_warn(&quot;Video render thread for client %u failed to join during shutdown: %s&quot;, client-&gt;client_id,
-1378                  SAFE_STRERROR(result));
-1379       }
-1380     } else {
-1381       log_debug(&quot;Calling asciichat_thread_join for video thread of client %u&quot;, client-&gt;client_id);
-1382       result = asciichat_thread_join(&amp;client-&gt;video_render_thread, NULL);
-1383       log_debug(&quot;asciichat_thread_join returned %d for video thread of client %u&quot;, result, client-&gt;client_id);
-1384     }
-1385 
-1386     if (result == 0) {
-1387 #ifdef DEBUG_THREADS
-1388       log_debug(&quot;Video render thread joined for client %u&quot;, client-&gt;client_id);
-1389 #endif
-1390     } else if (result != -2) { // Don't log timeout errors again
-1391       if (is_shutting_down) {
-1392         log_warn(&quot;Failed to join video render thread for client %u during shutdown (continuing): %s&quot;, client-&gt;client_id,
-1393                  SAFE_STRERROR(result));
-1394       } else {
-1395         log_error(&quot;Failed to join video render thread for client %u: %s&quot;, client-&gt;client_id, SAFE_STRERROR(result));
-1396       }
-1397     }
-1398     // Clear thread handle safely using platform abstraction
-1399     asciichat_thread_init(&amp;client-&gt;video_render_thread);
-1400   }
-1401 
-1402   if (asciichat_thread_is_initialized(&amp;client-&gt;audio_render_thread)) {
-1403     int result;
-1404     if (is_shutting_down) {
-1405       // During shutdown, don't timeout - wait for thread to exit
-1406       // Timeouts mask the real problem: threads that are still running
-1407       log_debug(&quot;Shutdown mode: joining audio render thread for client %u (no timeout)&quot;, client-&gt;client_id);
-1408       result = asciichat_thread_join(&amp;client-&gt;audio_render_thread, NULL);
-1409       if (result != 0) {
-1410         log_warn(&quot;Audio render thread for client %u failed to join during shutdown: %s&quot;, client-&gt;client_id,
-1411                  SAFE_STRERROR(result));
-1412       }
-1413     } else {
-1414       result = asciichat_thread_join(&amp;client-&gt;audio_render_thread, NULL);
-1415     }
-1416 
-1417     if (result == 0) {
-1418 #ifdef DEBUG_THREADS
-1419       log_debug(&quot;Audio render thread joined for client %u&quot;, client-&gt;client_id);
-1420 #endif
-1421     } else if (result != -2) { // Don't log timeout errors again
-1422       if (is_shutting_down) {
-1423         log_warn(&quot;Failed to join audio render thread for client %u during shutdown (continuing): %s&quot;, client-&gt;client_id,
-1424                  SAFE_STRERROR(result));
-1425       } else {
-1426         log_error(&quot;Failed to join audio render thread for client %u: %s&quot;, client-&gt;client_id, SAFE_STRERROR(result));
-1427       }
-1428     }
-1429     // Clear thread handle safely using platform abstraction
-1430     asciichat_thread_init(&amp;client-&gt;audio_render_thread);
-1431   }
-1432 
-1433   // DO NOT destroy the mutex here - client.c will handle it
-1434   // mutex_destroy(&amp;client-&gt;client_state_mutex);
-1435 
-1436 #ifdef DEBUG_THREADS
-1437   log_debug(&quot;Successfully destroyed render threads for client %u&quot;, client-&gt;client_id);
-1438 #endif
-1439 }</pre>
+1360   log_debug(&quot;Stopping render threads for client %s&quot;, client-&gt;client_id);
+1361 
+1362   // Signal threads to stop (atomic operations, no mutex needed)
+1363   atomic_store_bool(&amp;client-&gt;video_render_thread_running, false);
+1364   atomic_store_bool(&amp;client-&gt;audio_render_thread_running, false);
+1365 
+1366   // Wait for threads to finish (deterministic cleanup)
+1367   // During shutdown, don't wait forever for threads to join
+1368   bool is_shutting_down = atomic_load_bool(&amp;g_should_exit);
+1369 
+1370   if (asciichat_thread_is_initialized(&amp;client-&gt;video_render_thread)) {
+1371     log_debug(&quot;Joining video render thread for client %u&quot;, client-&gt;client_id);
+1372     int result;
+1373     if (is_shutting_down) {
+1374       // During shutdown, don't timeout - wait for thread to exit
+1375       // Timeouts mask the real problem: threads that are still running
+1376       log_debug(&quot;Shutdown mode: joining video render thread for client %u (no timeout)&quot;, client-&gt;client_id);
+1377       result = asciichat_thread_join(&amp;client-&gt;video_render_thread, NULL);
+1378       if (result != 0) {
+1379         log_warn(&quot;Video render thread for client %u failed to join during shutdown: %s&quot;, client-&gt;client_id,
+1380                  SAFE_STRERROR(result));
+1381       }
+1382     } else {
+1383       log_debug(&quot;Calling asciichat_thread_join for video thread of client %u&quot;, client-&gt;client_id);
+1384       result = asciichat_thread_join(&amp;client-&gt;video_render_thread, NULL);
+1385       log_debug(&quot;asciichat_thread_join returned %d for video thread of client %u&quot;, result, client-&gt;client_id);
+1386     }
+1387 
+1388     if (result == 0) {
+1389 #ifdef DEBUG_THREADS
+1390       log_debug(&quot;Video render thread joined for client %u&quot;, client-&gt;client_id);
+1391 #endif
+1392     } else if (result != -2) { // Don't log timeout errors again
+1393       if (is_shutting_down) {
+1394         log_warn(&quot;Failed to join video render thread for client %u during shutdown (continuing): %s&quot;, client-&gt;client_id,
+1395                  SAFE_STRERROR(result));
+1396       } else {
+1397         log_error(&quot;Failed to join video render thread for client %u: %s&quot;, client-&gt;client_id, SAFE_STRERROR(result));
+1398       }
+1399     }
+1400     // Clear thread handle safely using platform abstraction
+1401     asciichat_thread_init(&amp;client-&gt;video_render_thread);
+1402   }
+1403 
+1404   if (asciichat_thread_is_initialized(&amp;client-&gt;audio_render_thread)) {
+1405     int result;
+1406     if (is_shutting_down) {
+1407       // During shutdown, don't timeout - wait for thread to exit
+1408       // Timeouts mask the real problem: threads that are still running
+1409       log_debug(&quot;Shutdown mode: joining audio render thread for client %u (no timeout)&quot;, client-&gt;client_id);
+1410       result = asciichat_thread_join(&amp;client-&gt;audio_render_thread, NULL);
+1411       if (result != 0) {
+1412         log_warn(&quot;Audio render thread for client %u failed to join during shutdown: %s&quot;, client-&gt;client_id,
+1413                  SAFE_STRERROR(result));
+1414       }
+1415     } else {
+1416       result = asciichat_thread_join(&amp;client-&gt;audio_render_thread, NULL);
+1417     }
+1418 
+1419     if (result == 0) {
+1420 #ifdef DEBUG_THREADS
+1421       log_debug(&quot;Audio render thread joined for client %u&quot;, client-&gt;client_id);
+1422 #endif
+1423     } else if (result != -2) { // Don't log timeout errors again
+1424       if (is_shutting_down) {
+1425         log_warn(&quot;Failed to join audio render thread for client %u during shutdown (continuing): %s&quot;, client-&gt;client_id,
+1426                  SAFE_STRERROR(result));
+1427       } else {
+1428         log_error(&quot;Failed to join audio render thread for client %u: %s&quot;, client-&gt;client_id, SAFE_STRERROR(result));
+1429       }
+1430     }
+1431     // Clear thread handle safely using platform abstraction
+1432     asciichat_thread_init(&amp;client-&gt;audio_render_thread);
+1433   }
+1434 
+1435   // DO NOT destroy the mutex here - client.c will handle it
+1436   // mutex_destroy(&amp;client-&gt;client_state_mutex);
+1437 
+1438 #ifdef DEBUG_THREADS
+1439   log_debug(&quot;Successfully destroyed render threads for client %u&quot;, client-&gt;client_id);
+1440 #endif
+1441 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_thread_init()</b>,

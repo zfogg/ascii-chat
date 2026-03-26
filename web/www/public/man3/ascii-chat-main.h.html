@@ -96,10 +96,10 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>cb</i> Function to call on exit signal, or NULL to
   unregister</div>
-<p class="Pp">Definition at line <b>137</b> of file <b>misc.c</b>.</p>
-<pre>137                                                     {
-138   (void)callback;
-139 }</pre>
+<p class="Pp">Definition at line <b>129</b> of file <b>misc.c</b>.</p>
+<pre>129                                                     {
+130   (void)callback;
+131 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_main()</b>, and
@@ -124,20 +124,20 @@
 <p class="Pp"></p>
 <p class="Pp">Set up global signal handlers Called once at startup before mode
     dispatch</p>
-<p class="Pp">Definition at line <b>337</b> of file <b>main.c</b>.</p>
-<pre>337                                  {
-338   platform_set_console_ctrl_handler(console_ctrl_handler);
-339 
-340 #ifndef _WIN32
-341   platform_signal_handler_t handlers[] = {
-342       {SIGINT, handle_sigterm},
-343       {SIGTERM, handle_sigterm},
-344       {SIGPIPE, SIG_IGN},
-345   };
-346   platform_register_signal_handlers(handlers, 3);
-347   log_debug(&quot;Signal handlers registered&quot;);
-348 #endif
-349 }</pre>
+<p class="Pp">Definition at line <b>341</b> of file <b>main.c</b>.</p>
+<pre>341                                  {
+342   platform_set_console_ctrl_handler(console_ctrl_handler);
+343 
+344 #ifndef _WIN32
+345   platform_signal_handler_t handlers[] = {
+346       {SIGINT, handle_sigterm},
+347       {SIGTERM, handle_sigterm},
+348       {SIGPIPE, SIG_IGN},
+349   };
+350   platform_register_signal_handlers(handlers, 3);
+351   log_debug(&quot;Signal handlers registered&quot;);
+352 #endif
+353 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_debug</b>,
@@ -155,10 +155,10 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if shutdown has been requested, false
   otherwise</div>
-<p class="Pp">Definition at line <b>144</b> of file <b>misc.c</b>.</p>
-<pre>144                        {
-145   return false;
-146 }</pre>
+<p class="Pp">Definition at line <b>136</b> of file <b>misc.c</b>.</p>
+<pre>136                        {
+137   return false;
+138 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>, and
@@ -179,9 +179,9 @@
     callback if set. Safe to call from signal handlers (uses only atomics and
     function pointers). Called by signal handlers (SIGTERM, Ctrl+C) and normal
     code (errors, timeouts).</p>
-<p class="Pp">Definition at line <b>141</b> of file <b>misc.c</b>.</p>
-<pre>141                        {
-142 }</pre>
+<p class="Pp">Definition at line <b>133</b> of file <b>misc.c</b>.</p>
+<pre>133                        {
+134 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_bool()</b>, and

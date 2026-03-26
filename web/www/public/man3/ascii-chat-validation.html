@@ -678,108 +678,110 @@
   format, ...)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/util/validation.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>154</b> of file
+<p class="Pp">Definition at line <b>155</b> of file
   <b>server/protocol.c</b>.</p>
-<pre>154                                                                                     {
-155   if (!client) {
-156     return;
-157   }
-158 
-159   protocol_cleanup_thread_locals();
-160 
-161   // Atomically set the disconnect flag and get the old value
-162   // This ensures only one thread proceeds to disconnect (the first one)
-163   bool already_requested = atomic_exchange_bool(&amp;client-&gt;protocol_disconnect_requested, true);
-164   if (already_requested) {
-165     return;  // Already disconnecting, don't do it again
-166   }
-167 
-168   char reason[BUFFER_SIZE_SMALL] = {0};
-169   if (format) {
-170     va_list args;
-171     va_start(args, format);
-172     safe_vsnprintf(reason, sizeof(reason), format, args);
-173     va_end(args);
-174   } else {
-175     SAFE_STRNCPY(reason, &quot;Protocol violation&quot;, sizeof(reason));
-176   }
-177 
-178   const char *reason_str = reason[0] != '\0' ? reason : &quot;Protocol violation&quot;;
-179   const char *client_id = client-&gt;client_id;
-180 
-181   socket_t socket_snapshot = INVALID_SOCKET_VALUE;
-182   const crypto_context_t *crypto_ctx = NULL;
-183   acip_transport_t *transport_snapshot = NULL;
-184 
-185   mutex_lock(&amp;client-&gt;client_state_mutex);
-186   if (client-&gt;socket != INVALID_SOCKET_VALUE) {
-187     socket_snapshot = client-&gt;socket;
-188     if (client-&gt;crypto_initialized) {
-189       crypto_ctx = crypto_handshake_get_context(&amp;client-&gt;crypto_handshake_ctx);
-190     }
-191   }
-192   mutex_unlock(&amp;client-&gt;client_state_mutex);
-193 
-194   // Get transport reference for WebSocket clients
-195   mutex_lock(&amp;client-&gt;send_mutex);
-196   transport_snapshot = client-&gt;transport;
-197   mutex_unlock(&amp;client-&gt;send_mutex);
-198 
-199   // NOTE: Disconnecting a client due to the client's own bad behavior isn't an
-200   // error for us, it's desired behavior for us, so we simply warn and do not
-201   // have a need for asciichat_errno here.
-202   log_warn(&quot;Disconnecting client %u due to protocol violation: %s&quot;, client_id, reason_str);
-203 
-204   if (socket_snapshot != INVALID_SOCKET_VALUE) {
-205     // Protect socket writes with send_mutex to prevent race with send_thread.
-206     // This receive_thread and send_thread both write to same socket.
-207     mutex_lock(&amp;client-&gt;send_mutex);
-208 
-209     asciichat_error_t log_result =
-210         log_network_message(socket_snapshot, (const struct crypto_context_t *)crypto_ctx, LOG_ERROR,
-211                             REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, &quot;Protocol violation: %s&quot;, reason_str);
-212     if (log_result != ASCIICHAT_OK) {
-213       log_warn(&quot;Failed to send remote log to client %u: %s&quot;, client_id, asciichat_error_string(log_result));
-214     }
-215 
-216     asciichat_error_t send_result = packet_send_error(socket_snapshot, crypto_ctx, ERROR_NETWORK_PROTOCOL, reason_str);
-217     if (send_result != ASCIICHAT_OK) {
-218       log_warn(&quot;Failed to send error packet to client %u: %s&quot;, client_id, asciichat_error_string(send_result));
-219     }
-220 
-221     mutex_unlock(&amp;client-&gt;send_mutex);
-222   } else if (transport_snapshot) {
-223     // For WebSocket clients, try to send error via transport
-224     log_debug(&quot;Sending error to WebSocket client %u via transport&quot;, client_id);
-225     acip_send_error(transport_snapshot, ERROR_NETWORK_PROTOCOL, reason_str);
-226   }
-227 
-228   platform_sleep_ms(500);
-229 
-230   log_debug(&quot;Setting active=false in disconnect_client_for_bad_data (client_id=%u, reason=%s)&quot;, client_id, reason_str);
-231   atomic_store_bool(&amp;client-&gt;active, false);
-232   atomic_store_bool(&amp;client-&gt;shutting_down, true);
-233   atomic_store_bool(&amp;client-&gt;send_thread_running, false);
-234   atomic_store_bool(&amp;client-&gt;video_render_thread_running, false);
-235   atomic_store_bool(&amp;client-&gt;audio_render_thread_running, false);
-236 
-237   if (client-&gt;audio_queue) {
-238     packet_queue_stop(client-&gt;audio_queue);
-239   }
-240 
-241   mutex_lock(&amp;client-&gt;client_state_mutex);
-242   if (client-&gt;socket != INVALID_SOCKET_VALUE) {
-243     socket_shutdown(client-&gt;socket, 2);
-244     socket_close(client-&gt;socket);
-245     client-&gt;socket = INVALID_SOCKET_VALUE;
-246   }
-247   mutex_unlock(&amp;client-&gt;client_state_mutex);
-248 }</pre>
+<pre>155                                                                                     {
+156   if (!client) {
+157     return;
+158   }
+159 
+160   protocol_cleanup_thread_locals();
+161 
+162   // Atomically set the disconnect flag and get the old value
+163   // This ensures only one thread proceeds to disconnect (the first one)
+164   bool already_requested = atomic_exchange_bool(&amp;client-&gt;protocol_disconnect_requested, true);
+165   if (already_requested) {
+166     return;  // Already disconnecting, don't do it again
+167   }
+168 
+169   char reason[BUFFER_SIZE_SMALL] = {0};
+170   if (format) {
+171     va_list args;
+172     va_start(args, format);
+173     safe_vsnprintf(reason, sizeof(reason), format, args);
+174     va_end(args);
+175   } else {
+176     SAFE_STRNCPY(reason, &quot;Protocol violation&quot;, sizeof(reason));
+177   }
+178 
+179   const char *reason_str = reason[0] != '\0' ? reason : &quot;Protocol violation&quot;;
+180   const char *client_id = client-&gt;client_id;
+181 
+182   socket_t socket_snapshot = INVALID_SOCKET_VALUE;
+183   const crypto_context_t *crypto_ctx = NULL;
+184   acip_transport_t *transport_snapshot = NULL;
+185 
+186   mutex_lock(&amp;client-&gt;client_state_mutex);
+187   if (client-&gt;socket != INVALID_SOCKET_VALUE) {
+188     socket_snapshot = client-&gt;socket;
+189     if (client-&gt;crypto_initialized) {
+190       crypto_ctx = crypto_handshake_get_context(&amp;client-&gt;crypto_handshake_ctx);
+191     }
+192   }
+193   mutex_unlock(&amp;client-&gt;client_state_mutex);
+194 
+195   // Get transport reference for WebSocket clients
+196   mutex_lock(&amp;client-&gt;send_mutex);
+197   transport_snapshot = client-&gt;transport;
+198   mutex_unlock(&amp;client-&gt;send_mutex);
+199 
+200   // NOTE: Disconnecting a client due to the client's own bad behavior isn't an
+201   // error for us, it's desired behavior for us, so we simply warn and do not
+202   // have a need for asciichat_errno here.
+203   log_warn(&quot;Disconnecting client %u due to protocol violation: %s&quot;, client_id, reason_str);
+204 
+205   if (socket_snapshot != INVALID_SOCKET_VALUE) {
+206     // Protect socket writes with send_mutex to prevent race with send_thread.
+207     // This receive_thread and send_thread both write to same socket.
+208     mutex_lock(&amp;client-&gt;send_mutex);
+209 
+210     asciichat_error_t log_result =
+211         log_network_message(socket_snapshot, (const struct crypto_context_t *)crypto_ctx, LOG_ERROR,
+212                             REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, &quot;Protocol violation: %s&quot;, reason_str);
+213     if (log_result != ASCIICHAT_OK) {
+214       log_warn(&quot;Failed to send remote log to client %u: %s&quot;, client_id, asciichat_error_string(log_result));
+215     }
+216 
+217     asciichat_error_t send_result = packet_send_error(socket_snapshot, crypto_ctx, ERROR_NETWORK_PROTOCOL, reason_str);
+218     if (send_result != ASCIICHAT_OK) {
+219       log_warn(&quot;Failed to send error packet to client %u: %s&quot;, client_id, asciichat_error_string(send_result));
+220     }
+221 
+222     mutex_unlock(&amp;client-&gt;send_mutex);
+223   } else if (transport_snapshot) {
+224     // For WebSocket clients, try to send error via transport
+225     log_debug(&quot;Sending error to WebSocket client %u via transport&quot;, client_id);
+226     acip_send_error(transport_snapshot, ERROR_NETWORK_PROTOCOL, reason_str);
+227   }
+228 
+229   APP_CALLBACK_VOID(platform_pump_events);
+230   platform_sleep_ms(500);
+231 
+232   log_debug(&quot;Setting active=false in disconnect_client_for_bad_data (client_id=%u, reason=%s)&quot;, client_id, reason_str);
+233   atomic_store_bool(&amp;client-&gt;active, false);
+234   atomic_store_bool(&amp;client-&gt;shutting_down, true);
+235   atomic_store_bool(&amp;client-&gt;send_thread_running, false);
+236   atomic_store_bool(&amp;client-&gt;video_render_thread_running, false);
+237   atomic_store_bool(&amp;client-&gt;audio_render_thread_running, false);
+238 
+239   if (client-&gt;audio_queue) {
+240     packet_queue_stop(client-&gt;audio_queue);
+241   }
+242 
+243   mutex_lock(&amp;client-&gt;client_state_mutex);
+244   if (client-&gt;socket != INVALID_SOCKET_VALUE) {
+245     socket_shutdown(client-&gt;socket, 2);
+246     socket_close(client-&gt;socket);
+247     client-&gt;socket = INVALID_SOCKET_VALUE;
+248   }
+249   mutex_unlock(&amp;client-&gt;client_state_mutex);
+250 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_send_error()</b>, <b>client_info::active</b>,
-    <b>args</b>, <b>ASCIICHAT_OK</b>, <b>atomic_exchange_bool()</b>,
-    <b>atomic_store_bool()</b>, <b>client_info::audio_queue</b>,
+    <b>APP_CALLBACK_VOID</b>, <b>args</b>, <b>ASCIICHAT_OK</b>,
+    <b>atomic_exchange_bool()</b>, <b>atomic_store_bool()</b>,
+    <b>client_info::audio_queue</b>,
     <b>client_info::audio_render_thread_running</b>, <b>BUFFER_SIZE_SMALL</b>,
     <b>client_info::client_id</b>, <b>client_info::client_state_mutex</b>,
     <b>client_info::crypto_handshake_ctx</b>,

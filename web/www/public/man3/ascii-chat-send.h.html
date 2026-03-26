@@ -600,8 +600,10 @@
     <b>packet_header_t::length</b>, <b>log_warn</b>, <b>NET_TO_HOST_U16</b>,
     <b>NET_TO_HOST_U32</b>, <b>SET_ERRNO</b>, and
   <b>packet_header_t::type</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_process()</b>, and
-    <b>discovery_session_start()</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_handler()</b>,
+    <b>acds_websocket_client_handler()</b>, <b>client_crypto_handshake()</b>,
+    <b>discovery_session_process()</b>, and
+  <b>discovery_session_start()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> packet_send_via_transport
@@ -737,18 +739,22 @@
     <b>acip_send_remote_log()</b>, <b>acip_send_server_state()</b>,
     <b>acip_send_session_created()</b>, <b>acip_send_session_info()</b>,
     <b>acip_send_session_joined()</b>, <b>acip_send_stream_start()</b>,
-    <b>acip_send_stream_stop()</b>, <b>client_send_thread_func()</b>,
+    <b>acip_send_stream_stop()</b>, <b>client_crypto_handshake()</b>,
+    <b>client_send_thread_func()</b>,
     <b>crypto_handshake_client_key_exchange()</b>,
+    <b>crypto_handshake_rekey_complete()</b>,
+    <b>crypto_handshake_rekey_request()</b>,
+    <b>crypto_handshake_rekey_response()</b>,
     <b>crypto_handshake_server_auth_challenge()</b>,
     <b>crypto_handshake_server_complete()</b>,
     <b>crypto_handshake_server_send_parameters()</b>,
     <b>crypto_handshake_server_start()</b>,
     <b>discovery_session_become_host()</b>,
     <b>discovery_session_handle_host_disconnect()</b>,
-    <b>discovery_session_process()</b>, <b>discovery_session_stop()</b>,
-    <b>threaded_send_audio_opus()</b>, <b>threaded_send_image_frame_h265()</b>,
-    <b>threaded_send_packet()</b>, and
-  <b>websocket_client_send_packet()</b>.</p>
+    <b>discovery_session_process()</b>, <b>discovery_session_start()</b>,
+    <b>discovery_session_stop()</b>, <b>threaded_send_audio_opus()</b>,
+    <b>threaded_send_image_frame_h265()</b>, <b>threaded_send_packet()</b>, and
+    <b>websocket_client_send_packet()</b>.</p>
 </section>
 </section>
 <section class="Sh">

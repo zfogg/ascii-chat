@@ -397,25 +397,27 @@ $ ascii-chat mirror --file movie.mp4
 414   session_client_like_config_t config = {
 415       .run_fn = mirror_run,
 416       .run_user_data = NULL,
-417       .keyboard_handler = mirror_keyboard_handler,
-418       .print_newline_on_tty_exit = true, // Mirror prints newline to separate frame from prompt
-419   };
-420 
-421   log_info(&quot;mirror_main: Starting session_client_like_run&quot;);
-422   // Run shared initialization/teardown with mode-specific loop
-423   asciichat_error_t result = session_client_like_run(&amp;config);
-424   log_info(&quot;mirror_main: session_client_like_run returned with result=%d&quot;, result);
-425 
-426   if (result != ASCIICHAT_OK) {
-427     log_error(&quot;Mirror mode failed with error code: %d&quot;, result);
-428   }
-429 
-430   return (int)result;
-431 }</pre>
+417       .kind = SESSION_CLIENT_LIKE_KIND_MIRROR,
+418       .keyboard_handler = mirror_keyboard_handler,
+419       .print_newline_on_tty_exit = true, // Mirror prints newline to separate frame from prompt
+420   };
+421 
+422   log_info(&quot;mirror_main: Starting session_client_like_run&quot;);
+423   // Run shared initialization/teardown with mode-specific loop
+424   asciichat_error_t result = session_client_like_run(&amp;config);
+425   log_info(&quot;mirror_main: session_client_like_run returned with result=%d&quot;, result);
+426 
+427   if (result != ASCIICHAT_OK) {
+428     log_error(&quot;Mirror mode failed with error code: %d&quot;, result);
+429   }
+430 
+431   return (int)result;
+432 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
-    <b>log_error</b>, <b>log_info</b>, <b>mutex_init()</b>, and
+    <b>log_error</b>, <b>log_info</b>, <b>mutex_init()</b>,
+    <b>SESSION_CLIENT_LIKE_KIND_MIRROR</b>, and
     <b>session_client_like_run()</b>.</p>
 </section>
 </section>

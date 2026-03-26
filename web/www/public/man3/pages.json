@@ -1122,6 +1122,54 @@
     "sourcePath": null
   },
   {
+    "name": "connection_endpoint.c",
+    "title": "connection_endpoint.c",
+    "file": "ascii-chat-connection_endpoint.c.html",
+    "sourcePath": "lib/network/connection_endpoint.c"
+  },
+  {
+    "name": "connection_endpoint.h",
+    "title": "connection_endpoint.h",
+    "file": "ascii-chat-connection_endpoint.h.html",
+    "sourcePath": "include/ascii-chat/network/connection_endpoint.h"
+  },
+  {
+    "name": "connection_endpoint_t",
+    "title": "connection_endpoint_t",
+    "file": "ascii-chat-connection_endpoint_t.html",
+    "sourcePath": null
+  },
+  {
+    "name": "connection_factory.c",
+    "title": "connection_factory.c",
+    "file": "ascii-chat-connection_factory.c.html",
+    "sourcePath": "lib/network/connection_factory.c"
+  },
+  {
+    "name": "connection_factory.h",
+    "title": "connection_factory.h",
+    "file": "ascii-chat-connection_factory.h.html",
+    "sourcePath": "include/ascii-chat/network/connection_factory.h"
+  },
+  {
+    "name": "connection_handle.c",
+    "title": "connection_handle.c",
+    "file": "ascii-chat-connection_handle.c.html",
+    "sourcePath": "lib/network/connection_handle.c"
+  },
+  {
+    "name": "connection_handle.h",
+    "title": "connection_handle.h",
+    "file": "ascii-chat-connection_handle.h.html",
+    "sourcePath": "include/ascii-chat/network/connection_handle.h"
+  },
+  {
+    "name": "connection_handle_t",
+    "title": "connection_handle_t",
+    "file": "ascii-chat-connection_handle_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "connection_state.h",
     "title": "connection_state.h",
     "file": "ascii-chat-connection_state.h.html",
@@ -6219,12 +6267,6 @@
     "name": "websocket_server_config_t",
     "title": "websocket_server_config_t",
     "file": "ascii-chat-websocket_server_config_t.html",
-    "sourcePath": null
-  },
-  {
-    "name": "websocket_stats_t",
-    "title": "websocket_stats_t",
-    "file": "ascii-chat-websocket_stats_t.html",
     "sourcePath": null
   },
   {

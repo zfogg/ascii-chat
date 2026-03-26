@@ -163,13 +163,13 @@
   PING_INTERVAL_NS (1LL * <b>NS_PER_SEC_INT</b>)</a></h2>
 <p class="Pp">Ping interval in nanoseconds (must be less than server
   timeout)</p>
-<p class="Pp">Definition at line <b>108</b> of file <b>keepalive.c</b>.</p>
+<p class="Pp">Definition at line <b>109</b> of file <b>keepalive.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_PING_SLEEP_INTERVAL_NS___(1LL_*_"><a class="permalink" href="#_define_PING_SLEEP_INTERVAL_NS___(1LL_*_">#define
   PING_SLEEP_INTERVAL_NS (1LL * <b>NS_PER_SEC_INT</b>)</a></h2>
 <p class="Pp">Sleep interval for ping timing loop (1 second in nanoseconds)</p>
-<p class="Pp">Definition at line <b>111</b> of file <b>keepalive.c</b>.</p>
+<p class="Pp">Definition at line <b>112</b> of file <b>keepalive.c</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -185,31 +185,31 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, negative on error</div>
-<p class="Pp">Definition at line <b>234</b> of file <b>keepalive.c</b>.</p>
-<pre>234                              {
-235   if (g_ping_thread_created) {
-236     log_warn(&quot;Ping thread already created&quot;);
-237     return 0;
-238   }
-239 
-240   // Register keepalive atomics with named debug registry
-241   static bool keepalive_atomics_registered = false;
-242   if (!keepalive_atomics_registered) {
-243     NAMED_REGISTER_ATOMIC(&amp;g_ping_thread_exited, &quot;keepalive_ping_thread_exit_confirmation&quot;, NULL);
-244     keepalive_atomics_registered = true;
-245   }
-246 
-247   // Start ping thread for keepalive
-248   atomic_store_bool(&amp;g_ping_thread_exited, false);
-249   if (thread_pool_spawn(g_client_worker_pool, ping_thread_func, NULL, 3, &quot;keepalive_ping&quot;) != ASCIICHAT_OK) {
-250     log_error(&quot;Failed to spawn ping thread in worker pool&quot;);
-251     LOG_ERRNO_IF_SET(&quot;Ping thread creation failed&quot;);
-252     return -1;
-253   }
-254 
-255   g_ping_thread_created = true;
-256   return 0;
-257 }</pre>
+<p class="Pp">Definition at line <b>236</b> of file <b>keepalive.c</b>.</p>
+<pre>236                              {
+237   if (g_ping_thread_created) {
+238     log_warn(&quot;Ping thread already created&quot;);
+239     return 0;
+240   }
+241 
+242   // Register keepalive atomics with named debug registry
+243   static bool keepalive_atomics_registered = false;
+244   if (!keepalive_atomics_registered) {
+245     NAMED_REGISTER_ATOMIC(&amp;g_ping_thread_exited, &quot;keepalive_ping_thread_exit_confirmation&quot;, NULL);
+246     keepalive_atomics_registered = true;
+247   }
+248 
+249   // Start ping thread for keepalive
+250   atomic_store_bool(&amp;g_ping_thread_exited, false);
+251   if (thread_pool_spawn(g_client_worker_pool, ping_thread_func, NULL, 3, &quot;keepalive_ping&quot;) != ASCIICHAT_OK) {
+252     log_error(&quot;Failed to spawn ping thread in worker pool&quot;);
+253     LOG_ERRNO_IF_SET(&quot;Ping thread creation failed&quot;);
+254     return -1;
+255   }
+256 
+257   g_ping_thread_created = true;
+258   return 0;
+259 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
@@ -225,31 +225,31 @@
 <p class="Pp"></p>
 <p class="Pp">Gracefully stops the ping thread and cleans up resources. Safe to
     call multiple times.</p>
-<p class="Pp">Definition at line <b>267</b> of file <b>keepalive.c</b>.</p>
-<pre>267                              {
-268   if (!g_ping_thread_created) {
-269     return;
-270   }
-271 
-272   // Don't call signal_exit() here - that's for global shutdown only!
-273   // The ping thread monitors connection state and will exit when connection is lost
-274 
-275   // Wait for thread to exit gracefully
-276   int wait_count = 0;
-277   while (wait_count &lt; 20 &amp;&amp; !atomic_load_bool(&amp;g_ping_thread_exited)) {
-278     platform_sleep_ns(100 * NS_PER_MS_INT); // 100ms
-279     wait_count++;
-280   }
-281 
-282   if (!atomic_load_bool(&amp;g_ping_thread_exited)) {
-283     log_warn(&quot;Ping thread not responding - will be joined by thread pool&quot;);
-284   }
-285 
-286   // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
-287   g_ping_thread_created = false;
-288 
-289   log_debug(&quot;Ping thread stopped and joined&quot;);
-290 }</pre>
+<p class="Pp">Definition at line <b>269</b> of file <b>keepalive.c</b>.</p>
+<pre>269                              {
+270   if (!g_ping_thread_created) {
+271     return;
+272   }
+273 
+274   // Don't call signal_exit() here - that's for global shutdown only!
+275   // The ping thread monitors connection state and will exit when connection is lost
+276 
+277   // Wait for thread to exit gracefully
+278   int wait_count = 0;
+279   while (wait_count &lt; 20 &amp;&amp; !atomic_load_bool(&amp;g_ping_thread_exited)) {
+280     platform_sleep_ns(100 * NS_PER_MS_INT); // 100ms
+281     wait_count++;
+282   }
+283 
+284   if (!atomic_load_bool(&amp;g_ping_thread_exited)) {
+285     log_warn(&quot;Ping thread not responding - will be joined by thread pool&quot;);
+286   }
+287 
+288   // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
+289   g_ping_thread_created = false;
+290 
+291   log_debug(&quot;Ping thread stopped and joined&quot;);
+292 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>, <b>log_debug</b>,
@@ -263,10 +263,10 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if thread has exited, false otherwise</div>
-<p class="Pp">Definition at line <b>299</b> of file <b>keepalive.c</b>.</p>
-<pre>299                                {
-300   return atomic_load_bool(&amp;g_ping_thread_exited);
-301 }</pre>
+<p class="Pp">Definition at line <b>301</b> of file <b>keepalive.c</b>.</p>
+<pre>301                                {
+302   return atomic_load_bool(&amp;g_ping_thread_exited);
+303 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>.</p>

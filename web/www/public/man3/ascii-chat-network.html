@@ -1149,8 +1149,7 @@
     attempts and quicker failure detection.</p>
 <p class="Pp">Definition at line <b>101</b> of file
   <b>network/network.h</b>.</p>
-<p class="Pp">Referenced by <b>server_connection_establish()</b>, and
-    <b>tcp_client_connect()</b>.</p>
+<p class="Pp">Referenced by <b>tcp_client_connect()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_FEATURE_DELTA_FRAMES___0x02"><a class="permalink" href="#_define_FEATURE_DELTA_FRAMES___0x02">#define
@@ -2246,8 +2245,7 @@
     <b>socket_get_last_error()</b>, <b>socket_getsockopt()</b>,
     <b>socket_is_in_progress_error()</b>, <b>socket_is_would_block_error()</b>,
     <b>socket_select()</b>, and <b>socket_set_blocking()</b>.</p>
-<p class="Pp">Referenced by <b>server_connection_establish()</b>, and
-    <b>tcp_client_connect()</b>.</p>
+<p class="Pp">Referenced by <b>tcp_client_connect()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> dns_test_connectivity (const char * hostname)</h2>
@@ -3497,9 +3495,8 @@
 <p class="Pp">References <b>ASCIICHAT_OK</b>, and <b>packet_receive()</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
     <b>acds_session_create()</b>, <b>acds_session_join()</b>,
-    <b>acds_session_lookup()</b>, <b>client_crypto_handshake()</b>,
-    <b>discovery_session_process()</b>, and
-  <b>server_crypto_handshake()</b>.</p>
+    <b>acds_session_lookup()</b>, <b>discovery_session_process()</b>, and
+    <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>packet_recv_result_t</b> receive_packet_secure
@@ -3753,8 +3750,8 @@
     <b>PACKET_TYPE_ENCRYPTED</b>, <b>RECV_TIMEOUT</b>,
     <b>recv_with_timeout()</b>, <b>SET_ERRNO</b>,
     <b>packet_envelope_t::type</b>, and <b>packet_header_t::type</b>.</p>
-<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
-    <b>acip_server_receive_and_dispatch()</b>, and <b>add_client()</b>.</p>
+<p class="Pp">Referenced by <b>acip_server_receive_and_dispatch()</b>, and
+    <b>add_client()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="ssize_t_recv_with_timeout_("><a class="permalink" href="#ssize_t_recv_with_timeout_(">ssize_t
@@ -3816,8 +3813,8 @@
 200     int result = socket_poll(&amp;pfd, 1, (int64_t)timeout_ns);
 201     if (result &lt;= 0) {
 202       if (result == 0) {
-203         SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, &quot;recv_with_timeout timed out after %llu nanoseconds&quot;,
-204                       (unsigned long long)timeout_ns);
+203         SET_ERRNO(ERROR_NETWORK_TIMEOUT, &quot;recv_with_timeout timed out after %llu nanoseconds&quot;,
+204                   (unsigned long long)timeout_ns);
 205         return -1;
 206       }
 207       if (network_handle_select_error(result)) {
@@ -3859,7 +3856,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>EBADF</b>, <b>errno</b>,
     <b>ERROR_NETWORK_TIMEOUT</b>, <b>INVALID_SOCKET_VALUE</b>, <b>log_debug</b>,
-    <b>SET_ERRNO_SYS</b>, <b>socket_poll()</b>, and <b>socket_recv()</b>.</p>
+    <b>SET_ERRNO</b>, <b>SET_ERRNO_SYS</b>, <b>socket_poll()</b>, and
+    <b>socket_recv()</b>.</p>
 <p class="Pp">Referenced by <b>packet_receive()</b>, and
     <b>receive_packet_secure()</b>.</p>
 </section>
@@ -3902,8 +3900,7 @@
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
     <b>PACKET_TYPE_CRYPTO_CAPABILITIES</b>, <b>send_packet()</b>, and
     <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
-    <b>discovery_session_process()</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_process()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_send_crypto_parameters_packet_("><a class="permalink" href="#int_send_crypto_parameters_packet_(">int
@@ -4101,11 +4098,7 @@
 <p class="Pp">References <b>ASCIICHAT_OK</b>, and <b>packet_send()</b>.</p>
 <p class="Pp">Referenced by <b>acds_session_create()</b>,
     <b>acds_session_join()</b>, <b>acds_session_lookup()</b>,
-    <b>acip_server_send_error()</b>, <b>client_crypto_handshake()</b>,
-    <b>crypto_handshake_rekey_complete()</b>,
-    <b>crypto_handshake_rekey_request()</b>,
-    <b>crypto_handshake_rekey_response()</b>,
-    <b>send_crypto_capabilities_packet()</b>,
+    <b>acip_server_send_error()</b>, <b>send_crypto_capabilities_packet()</b>,
     <b>send_crypto_parameters_packet()</b>, <b>send_error_packet_message()</b>,
     <b>send_ping_packet()</b>, <b>send_pong_packet()</b>,
     <b>send_protocol_version_packet()</b>, <b>signaling_relay_ice()</b>,
@@ -4402,9 +4395,8 @@
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
     <b>PACKET_TYPE_PROTOCOL_VERSION</b>, <b>send_packet()</b>, and
     <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
-    <b>discovery_session_process()</b>, and
-  <b>server_crypto_handshake()</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_process()</b>, and
+    <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="ssize_t_send_with_timeout_("><a class="permalink" href="#ssize_t_send_with_timeout_(">ssize_t

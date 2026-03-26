@@ -5837,10 +5837,11 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... bob@example.com
 <p class="Pp">Ed25519 seed (32) + public key (32) = 64 bytes</p>
 <p class="Pp">Definition at line <b>94</b> of file <b>key_types.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>crypto_sign_ephemeral_key()</b>, <b>discovery_session_start()</b>,
-    <b>ed25519_sign_message()</b>, <b>parse_private_key()</b>,
-    <b>parse_ssh_private_key()</b>, <b>private_key_to_x25519()</b>,
-    <b>ssh_agent_add_key()</b>, and <b>validate_private_key()</b>.</p>
+    <b>acds_websocket_client_handler()</b>, <b>crypto_sign_ephemeral_key()</b>,
+    <b>discovery_session_start()</b>, <b>ed25519_sign_message()</b>,
+    <b>parse_private_key()</b>, <b>parse_ssh_private_key()</b>,
+    <b>private_key_to_x25519()</b>, <b>ssh_agent_add_key()</b>, and
+    <b>validate_private_key()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_private_key_t::gpg_keygrip_64_"><a class="permalink" href="#char_private_key_t::gpg_keygrip_64_">char
@@ -5855,18 +5856,20 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... bob@example.com
   } private_key_t::key</a></h2>
 <p class="Pp">Private key data (union based on key type)</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>crypto_sign_ephemeral_key()</b>, <b>discovery_session_start()</b>,
-    <b>ed25519_sign_message()</b>, <b>parse_private_key()</b>,
-    <b>parse_ssh_private_key()</b>, <b>private_key_to_x25519()</b>,
-    <b>ssh_agent_add_key()</b>, and <b>validate_private_key()</b>.</p>
+    <b>acds_websocket_client_handler()</b>, <b>crypto_sign_ephemeral_key()</b>,
+    <b>discovery_session_start()</b>, <b>ed25519_sign_message()</b>,
+    <b>parse_private_key()</b>, <b>parse_ssh_private_key()</b>,
+    <b>private_key_to_x25519()</b>, <b>ssh_agent_add_key()</b>, and
+    <b>validate_private_key()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> public_key_t::key[32]</h2>
 <p class="Pp">Public key data (always 32 bytes)</p>
 <p class="Pp">Definition at line <b>71</b> of file <b>key_types.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>check_key_patterns()</b>, <b>check_key_strength()</b>,
-    <b>check_known_host()</b>, <b>compare_public_keys()</b>,
+    <b>acds_websocket_client_handler()</b>, <b>check_key_patterns()</b>,
+    <b>check_key_strength()</b>, <b>check_known_host()</b>,
+    <b>compare_public_keys()</b>,
     <b>crypto_handshake_server_auth_challenge()</b>,
     <b>crypto_handshake_server_complete()</b>,
     <b>discovery_keys_download_https()</b>, <b>discovery_keys_load_file()</b>,
@@ -5901,7 +5904,8 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... bob@example.com
 <p class="Pp">Key type (Ed25519, X25519, or GPG)</p>
 <p class="Pp">Definition at line <b>92</b> of file <b>key_types.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>client_crypto_init()</b>, <b>crypto_handshake_client_auth_response()</b>,
+    <b>acds_websocket_client_handler()</b>, <b>client_crypto_init()</b>,
+    <b>crypto_handshake_client_auth_response()</b>,
     <b>crypto_handshake_client_key_exchange()</b>,
     <b>crypto_handshake_server_send_parameters()</b>,
     <b>crypto_handshake_server_start()</b>, <b>crypto_sign_ephemeral_key()</b>,
@@ -5915,7 +5919,7 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... bob@example.com
 <p class="Pp">Key type (Ed25519, X25519, or GPG)</p>
 <p class="Pp">Definition at line <b>70</b> of file <b>key_types.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>compare_public_keys()</b>,
+    <b>acds_websocket_client_handler()</b>, <b>compare_public_keys()</b>,
     <b>crypto_handshake_server_auth_challenge()</b>,
     <b>crypto_handshake_server_complete()</b>, <b>discovery_session_start()</b>,
     <b>ed25519_sign_message()</b>, <b>format_public_key()</b>,

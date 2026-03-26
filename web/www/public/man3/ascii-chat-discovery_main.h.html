@@ -138,116 +138,115 @@ ascii-chat swift-river-mountain
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, non-zero error code on failure</div>
-<p class="Pp">Definition at line <b>352</b> of file <b>discovery/main.c</b>.</p>
-<pre>352                          {
-353   log_debug(&quot;discovery_main() starting&quot;);
-354 
-355   // Discovery-specific setup: initialize ACDS connection and session negotiation
-356   // Note: Shared setup (keepawake, splash, terminal, capture, display, audio)
-357   // is handled by session_client_like_run()
-358 
-359   // Get session string from options (command-line argument)
-360   const char *session_string = GET_OPTION(session_string);
-361   bool is_initiator = (session_string == NULL || session_string[0] == '\0');
-362 
-363   int port_int = GET_OPTION(port);
+<p class="Pp">Definition at line <b>325</b> of file <b>discovery/main.c</b>.</p>
+<pre>325                          {
+326   log_debug(&quot;discovery_main() starting&quot;);
+327 
+328   // Discovery-specific setup: initialize ACDS connection and session negotiation
+329   // Note: Shared setup (keepawake, splash, terminal, capture, display, audio)
+330   // is handled by session_client_like_run()
+331 
+332   // Get session string from options (command-line argument)
+333   const char *session_string = GET_OPTION(session_string);
+334   bool is_initiator = (session_string == NULL || session_string[0] == '\0');
+335 
+336   int port_int = GET_OPTION(port);
+337 
+338   log_debug(&quot;Discovery: is_initiator=%d, port=%d&quot;, is_initiator, port_int);
+339 
+340   // Validate mutually exclusive options: discovery_service_url vs discovery_port
+341   const char *service_url = GET_OPTION(discovery_service_url);
+342   if (service_url &amp;&amp; service_url[0] != '\0') {
+343     int discovery_port = GET_OPTION(discovery_port);
+344     if (discovery_port != ACIP_DISCOVERY_DEFAULT_PORT) {
+345       log_fatal(&quot;--discovery-service-url and --discovery-service-port are mutually exclusive&quot;);
+346       return ERROR_USAGE;
+347     }
+348   }
+349 
+350   // Create discovery session configuration
+351   discovery_config_t discovery_config = {
+352       .acds_address = GET_OPTION(discovery_server),
+353       .acds_port = (uint16_t)GET_OPTION(discovery_port),
+354       .acds_url = service_url,
+355       .session_string = is_initiator ? NULL : session_string,
+356       .local_port = (uint16_t)port_int,
+357       .on_state_change = on_discovery_state_change,
+358       .on_session_ready = on_session_ready,
+359       .on_error = on_discovery_error,
+360       .callback_user_data = NULL,
+361       .should_exit_callback = discovery_capture_should_exit_adapter,
+362       .exit_callback_data = NULL,
+363   };
 364 
-365   log_debug(&quot;Discovery: is_initiator=%d, port=%d&quot;, is_initiator, port_int);
-366 
-367   // Validate mutually exclusive options: discovery_service_url vs discovery_port
-368   const char *service_url = GET_OPTION(discovery_service_url);
-369   if (service_url &amp;&amp; service_url[0] != '\0') {
-370     int discovery_port = GET_OPTION(discovery_port);
-371     if (discovery_port != ACIP_DISCOVERY_DEFAULT_PORT) {
-372       log_fatal(&quot;--discovery-service-url and --discovery-service-port are mutually exclusive&quot;);
-373       return ERROR_USAGE;
-374     }
-375   }
-376 
-377   // Create discovery session configuration
-378   discovery_config_t discovery_config = {
-379       .acds_address = GET_OPTION(discovery_server),
-380       .acds_port = (uint16_t)GET_OPTION(discovery_port),
-381       .acds_url = service_url,
-382       .session_string = is_initiator ? NULL : session_string,
-383       .local_port = (uint16_t)port_int,
-384       .on_state_change = on_discovery_state_change,
-385       .on_session_ready = on_session_ready,
-386       .on_error = on_discovery_error,
-387       .callback_user_data = NULL,
-388       .should_exit_callback = discovery_capture_should_exit_adapter,
-389       .exit_callback_data = NULL,
-390   };
-391 
-392   // Create discovery session (stored in global for discovery_run() to access)
-393   g_discovery = discovery_session_create(&amp;discovery_config);
-394   if (!g_discovery) {
-395     log_fatal(&quot;Failed to create discovery session&quot;);
-396     return ERROR_MEMORY;
-397   }
-398 
-399   // Start discovery session (connects to ACDS, creates/joins, initiates NAT negotiation)
-400   log_debug(&quot;Discovery: starting discovery session&quot;);
-401   asciichat_error_t result = discovery_session_start(g_discovery);
-402   if (result != ASCIICHAT_OK) {
-403     log_fatal(&quot;Failed to start discovery session: %d&quot;, result);
-404     discovery_session_destroy(g_discovery);
-405     g_discovery = NULL;
-406     return result;
-407   }
-408 
-409   // No network interrupt callback needed - discovery session handles its own shutdown
-410   set_interrupt_callback(NULL);
-411 
-412   /* ========================================================================
-413    * Configure and Run Shared Client-Like Session Framework
-414    * ========================================================================
-415    * session_client_like_run() handles all shared initialization:
-416    * - Terminal output management
-417    * - Keepawake system
-418    * - Splash screen lifecycle
-419    * - Media source selection
-420    * - FPS probing
-421    * - Audio initialization
-422    * - Display context creation
-423    * - Proper cleanup ordering
-424    *
-425    * Discovery mode provides:
-426    * - discovery_run() callback: NAT negotiation, role determination, media handling
-427    * - discovery_keyboard_handler: interactive controls for participant role
-428    */
-429 
-430   session_client_like_config_t config = {
-431       .run_fn = discovery_run,
-432       .run_user_data = NULL,
-433       .tcp_client = NULL,
-434       .websocket_client = NULL,
-435       .discovery = (void *)g_discovery, // Opaque pointer to discovery session
-436       .custom_should_exit = NULL,
-437       .exit_user_data = NULL,
-438       .keyboard_handler = discovery_keyboard_handler,
-439       .max_reconnect_attempts = 0, // Discovery doesn't retry - role is determined once
-440       .should_reconnect_callback = NULL,
-441       .reconnect_user_data = NULL,
-442       .reconnect_delay_ms = 0,
-443       .print_newline_on_tty_exit = false, // Server/participant manages cursor
-444   };
-445 
-446   log_debug(&quot;Discovery: calling session_client_like_run()&quot;);
-447   asciichat_error_t session_result = session_client_like_run(&amp;config);
-448   log_debug(&quot;Discovery: session_client_like_run() returned %d&quot;, session_result);
-449 
-450   // Cleanup discovery session
-451   log_debug(&quot;Discovery: cleaning up&quot;);
-452 
-453   if (g_discovery) {
-454     discovery_session_stop(g_discovery);
-455     discovery_session_destroy(g_discovery);
-456     g_discovery = NULL;
-457   }
-458 
-459   return (session_result == ASCIICHAT_OK) ? 0 : (int)session_result;
-460 }</pre>
+365   // Create discovery session (stored in global for discovery_run() to access)
+366   g_discovery = discovery_session_create(&amp;discovery_config);
+367   if (!g_discovery) {
+368     log_fatal(&quot;Failed to create discovery session&quot;);
+369     return ERROR_MEMORY;
+370   }
+371 
+372   // Start discovery session (connects to ACDS, creates/joins, initiates NAT negotiation)
+373   log_debug(&quot;Discovery: starting discovery session&quot;);
+374   asciichat_error_t result = discovery_session_start(g_discovery);
+375   if (result != ASCIICHAT_OK) {
+376     log_fatal(&quot;Failed to start discovery session: %d&quot;, result);
+377     discovery_session_destroy(g_discovery);
+378     g_discovery = NULL;
+379     return result;
+380   }
+381 
+382   // No network interrupt callback needed - discovery session handles its own shutdown
+383   set_interrupt_callback(NULL);
+384 
+385   /* ========================================================================
+386    * Configure and Run Shared Client-Like Session Framework
+387    * ========================================================================
+388    * session_client_like_run() handles all shared initialization:
+389    * - Terminal output management
+390    * - Keepawake system
+391    * - Splash screen lifecycle
+392    * - Media source selection
+393    * - FPS probing
+394    * - Audio initialization
+395    * - Display context creation
+396    * - Proper cleanup ordering
+397    *
+398    * Discovery mode provides:
+399    * - discovery_run() callback: NAT negotiation, role determination, media handling
+400    * - discovery_keyboard_handler: interactive controls for participant role
+401    */
+402 
+403   session_client_like_config_t config = {
+404       .run_fn = discovery_run,
+405       .run_user_data = NULL,
+406       .kind = SESSION_CLIENT_LIKE_KIND_DISCOVERY,
+407       .discovery = (void *)g_discovery, // Opaque pointer to discovery session
+408       .custom_should_exit = NULL,
+409       .exit_user_data = NULL,
+410       .keyboard_handler = discovery_keyboard_handler,
+411       .max_reconnect_attempts = 0, // Discovery doesn't retry - role is determined once
+412       .should_reconnect_callback = NULL,
+413       .reconnect_user_data = NULL,
+414       .reconnect_delay_ms = 0,
+415       .print_newline_on_tty_exit = false, // Server/participant manages cursor
+416   };
+417 
+418   log_debug(&quot;Discovery: calling session_client_like_run()&quot;);
+419   asciichat_error_t session_result = session_client_like_run(&amp;config);
+420   log_debug(&quot;Discovery: session_client_like_run() returned %d&quot;, session_result);
+421 
+422   // Cleanup discovery session
+423   log_debug(&quot;Discovery: cleaning up&quot;);
+424 
+425   if (g_discovery) {
+426     discovery_session_stop(g_discovery);
+427     discovery_session_destroy(g_discovery);
+428     g_discovery = NULL;
+429   }
+430 
+431   return (session_result == ASCIICHAT_OK) ? 0 : (int)session_result;
+432 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ACIP_DISCOVERY_DEFAULT_PORT</b>,
@@ -255,7 +254,8 @@ ascii-chat swift-river-mountain
     <b>discovery_session_destroy()</b>, <b>discovery_session_start()</b>,
     <b>discovery_session_stop()</b>, <b>ERROR_MEMORY</b>, <b>ERROR_USAGE</b>,
     <b>GET_OPTION</b>, <b>log_debug</b>, <b>log_fatal</b>,
-    <b>session_client_like_run()</b>, and <b>set_interrupt_callback()</b>.</p>
+    <b>SESSION_CLIENT_LIKE_KIND_DISCOVERY</b>, <b>session_client_like_run()</b>,
+    and <b>set_interrupt_callback()</b>.</p>
 </section>
 </section>
 <section class="Sh">

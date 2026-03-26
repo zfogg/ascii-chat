@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>connection_handle.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">connection_handle.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">connection_handle.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">connection_handle.h - Shared connection ownership handle for TCP
+    and WebSocket clients.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>connection_handle_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>connection_handle_init</b> (<b>connection_handle_t</b>
+    *handle)
+  <br/>
+  void <b>connection_handle_cleanup</b> (<b>connection_handle_t</b> *handle)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Shared connection ownership handle for TCP and WebSocket
+  clients.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>connection_handle.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_connection_handle_cleanup_("><a class="permalink" href="#void_connection_handle_cleanup_(">void
+  connection_handle_cleanup (<b>connection_handle_t</b> * handle)</a></h2>
+<p class="Pp">Definition at line <b>16</b> of file
+  <b>connection_handle.c</b>.</p>
+<pre>16                                                             {
+17   if (!handle) {
+18     return;
+19   }
+20 
+21   if (handle-&gt;transport) {
+22     acip_transport_close(handle-&gt;transport);
+23     acip_transport_destroy(handle-&gt;transport);
+24     handle-&gt;transport = NULL;
+25   }
+26 
+27   if (handle-&gt;owner &amp;&amp; handle-&gt;owner_destroy) {
+28     handle-&gt;owner_destroy(handle-&gt;owner);
+29   }
+30 
+31   handle-&gt;owner = NULL;
+32   handle-&gt;owner_destroy = NULL;
+33   handle-&gt;transport_type = ACIP_TRANSPORT_TCP;
+34 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_transport_destroy()</b>,
+    <b>ACIP_TRANSPORT_TCP</b>, <b>connection_handle_t::owner</b>,
+    <b>connection_handle_t::owner_destroy</b>,
+    <b>connection_handle_t::transport</b>, and
+    <b>connection_handle_t::transport_type</b>.</p>
+<p class="Pp">Referenced by <b>app_client_destroy()</b>, and
+    <b>connection_context_cleanup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_connection_handle_init_("><a class="permalink" href="#void_connection_handle_init_(">void
+  connection_handle_init (<b>connection_handle_t</b> * handle)</a></h2>
+<p class="Pp">Definition at line <b>7</b> of file
+  <b>connection_handle.c</b>.</p>
+<pre>7                                                          {
+8   if (!handle) {
+9     return;
+10   }
+11 
+12   *handle = (connection_handle_t){0};
+13   handle-&gt;transport_type = ACIP_TRANSPORT_TCP;
+14 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ACIP_TRANSPORT_TCP</b>, and
+    <b>connection_handle_t::transport_type</b>.</p>
+<p class="Pp">Referenced by <b>app_client_create()</b>, and
+    <b>connection_context_init()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

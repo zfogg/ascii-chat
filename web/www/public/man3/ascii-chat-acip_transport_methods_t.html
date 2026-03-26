@@ -60,8 +60,11 @@
   Get underlying socket (if applicable). <b>bool</b>(* <b>is_connected</b>
     )(<b>acip_transport_t</b> *transport)
   <br/>
-  Check if transport is connected. void(* <b>destroy_impl</b>
+  Check if transport is connected. <b>bool</b>(* <b>has_pending_data</b>
     )(<b>acip_transport_t</b> *transport)
+  <br/>
+  Check whether the transport has pending readable data. void(*
+    <b>destroy_impl</b> )(<b>acip_transport_t</b> *transport)
   <br/>
   Custom destroy implementation (optional).
   <br/>
@@ -111,7 +114,7 @@
 <p class="Pp"></p>
 <p class="Pp">May be NULL if no custom cleanup needed</p>
 </div>
-<p class="Pp">Definition at line <b>194</b> of file <b>transport.h</b>.</p>
+<p class="Pp">Definition at line <b>205</b> of file <b>transport.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_transport_destroy()</b>.</p>
 </section>
 <section class="Ss">
@@ -142,6 +145,19 @@
 <div class="Bd-indent">Transport type enum value</div>
 <p class="Pp">Definition at line <b>164</b> of file <b>transport.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_transport_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b>(* acip_transport_methods_t::has_pending_data)
+  (<b>acip_transport_t</b> *transport)</h2>
+<p class="Pp">Check whether the transport has pending readable data.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if data is ready to read, false otherwise</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This is a lightweight readiness hint, not a guarantee
+  that <b>recv()</b> will succeed.</div>
+<p class="Pp">Definition at line <b>194</b> of file <b>transport.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b>(* acip_transport_methods_t::is_connected)
@@ -182,8 +198,7 @@
 <p class="Pp">For WebSocket: unwraps WebSocket frame</p>
 </div>
 <p class="Pp">Definition at line <b>145</b> of file <b>transport.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
-    <b>acip_server_receive_and_dispatch()</b>, and
+<p class="Pp">Referenced by <b>acip_server_receive_and_dispatch()</b>, and
     <b>client_receive_thread()</b>.</p>
 </section>
 <section class="Ss">

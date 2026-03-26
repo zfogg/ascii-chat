@@ -154,15 +154,16 @@
   <br/>
   <br/>
   <b>asciichat_error_t</b> <b>crypto_handshake_rekey_request</b>
-    (<b>crypto_handshake_context_t</b> *ctx, <b>socket_t</b> socket)
+    (<b>crypto_handshake_context_t</b> *ctx, struct <b>acip_transport</b>
+    *transport)
   <br/>
   Send REKEY_REQUEST packet (initiator side). <b>asciichat_error_t</b>
     <b>crypto_handshake_rekey_response</b> (<b>crypto_handshake_context_t</b>
-    *ctx, <b>socket_t</b> socket)
+    *ctx, struct <b>acip_transport</b> *transport)
   <br/>
   Send REKEY_RESPONSE packet (responder side). <b>asciichat_error_t</b>
     <b>crypto_handshake_rekey_complete</b> (<b>crypto_handshake_context_t</b>
-    *ctx, <b>socket_t</b> socket)
+    *ctx, struct <b>acip_transport</b> *transport)
   <br/>
   Send REKEY_COMPLETE packet (initiator side). <b>asciichat_error_t</b>
     <b>crypto_handshake_process_rekey_request</b>
@@ -205,7 +206,7 @@
 <h2 class="Ss" id="_define_AUTH_REQUIRE_CLIENT_KEY___0x02"><a class="permalink" href="#_define_AUTH_REQUIRE_CLIENT_KEY___0x02">#define
   AUTH_REQUIRE_CLIENT_KEY 0x02</a></h2>
 <p class="Pp">Server requires client key authentication (whitelist).</p>
-<p class="Pp">Definition at line <b>26</b> of file
+<p class="Pp">Definition at line <b>28</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_auth_response()</b>, and
     <b>crypto_handshake_server_auth_challenge()</b>.</p>
@@ -214,7 +215,7 @@
 <h2 class="Ss" id="_define_AUTH_REQUIRE_PASSWORD___0x01"><a class="permalink" href="#_define_AUTH_REQUIRE_PASSWORD___0x01">#define
   AUTH_REQUIRE_PASSWORD 0x01</a></h2>
 <p class="Pp">Server requires password authentication.</p>
-<p class="Pp">Definition at line <b>24</b> of file
+<p class="Pp">Definition at line <b>26</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_auth_response()</b>, and
     <b>crypto_handshake_server_auth_challenge()</b>.</p>
@@ -252,16 +253,16 @@
     </i></b></a></dt>
   <dd>Handshake failed (cannot recover)</dd>
 </dl>
-<p class="Pp">Definition at line <b>38</b> of file
+<p class="Pp">Definition at line <b>40</b> of file
     <b>crypto/handshake/common.h</b>.</p>
-<pre>38              {
-39   CRYPTO_HANDSHAKE_DISABLED = 0,   
-40   CRYPTO_HANDSHAKE_INIT,           
-41   CRYPTO_HANDSHAKE_KEY_EXCHANGE,   
-42   CRYPTO_HANDSHAKE_AUTHENTICATING, 
-43   CRYPTO_HANDSHAKE_READY,          
-44   CRYPTO_HANDSHAKE_FAILED          
-45 } crypto_handshake_state_t;</pre>
+<pre>40              {
+41   CRYPTO_HANDSHAKE_DISABLED = 0,   
+42   CRYPTO_HANDSHAKE_INIT,           
+43   CRYPTO_HANDSHAKE_KEY_EXCHANGE,   
+44   CRYPTO_HANDSHAKE_AUTHENTICATING, 
+45   CRYPTO_HANDSHAKE_READY,          
+46   CRYPTO_HANDSHAKE_FAILED          
+47 } crypto_handshake_state_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -291,22 +292,22 @@
 <i>plaintext_len</i> Output parameter for actual plaintext length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>363</b> of file
+<p class="Pp">Definition at line <b>365</b> of file
     <b>crypto/handshake/common.c</b>.</p>
-<pre>366                                                                               {
-367   if (!crypto_ready) {
-368     // No encryption - just copy data
-369     if (ciphertext_len &gt; plaintext_size) {
-370       SET_ERRNO(ERROR_BUFFER, &quot;Ciphertext too large for plaintext buffer: %zu &gt; %zu&quot;, ciphertext_len, plaintext_size);
-371       return ERROR_BUFFER;
-372     }
-373     memcpy(plaintext, ciphertext, ciphertext_len);
-374     *plaintext_len = ciphertext_len;
-375     return ASCIICHAT_OK;
-376   }
-377 
-378   return crypto_handshake_decrypt_packet(ctx, ciphertext, ciphertext_len, plaintext, plaintext_size, plaintext_len);
-379 }</pre>
+<pre>368                                                                               {
+369   if (!crypto_ready) {
+370     // No encryption - just copy data
+371     if (ciphertext_len &gt; plaintext_size) {
+372       SET_ERRNO(ERROR_BUFFER, &quot;Ciphertext too large for plaintext buffer: %zu &gt; %zu&quot;, ciphertext_len, plaintext_size);
+373       return ERROR_BUFFER;
+374     }
+375     memcpy(plaintext, ciphertext, ciphertext_len);
+376     *plaintext_len = ciphertext_len;
+377     return ASCIICHAT_OK;
+378   }
+379 
+380   return crypto_handshake_decrypt_packet(ctx, ciphertext, ciphertext_len, plaintext, plaintext_size, plaintext_len);
+381 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -337,22 +338,22 @@
 <i>ciphertext_len</i> Output parameter for actual length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>344</b> of file
+<p class="Pp">Definition at line <b>346</b> of file
     <b>crypto/handshake/common.c</b>.</p>
-<pre>347                                                                                {
-348   if (!crypto_ready) {
-349     // No encryption - just copy data
-350     if (plaintext_len &gt; ciphertext_size) {
-351       SET_ERRNO(ERROR_BUFFER, &quot;Plaintext too large for ciphertext buffer: %zu &gt; %zu&quot;, plaintext_len, ciphertext_size);
-352       return ERROR_BUFFER;
-353     }
-354     memcpy(ciphertext, plaintext, plaintext_len);
-355     *ciphertext_len = plaintext_len;
-356     return ASCIICHAT_OK;
-357   }
-358 
-359   return crypto_handshake_encrypt_packet(ctx, plaintext, plaintext_len, ciphertext, ciphertext_size, ciphertext_len);
-360 }</pre>
+<pre>349                                                                                {
+350   if (!crypto_ready) {
+351     // No encryption - just copy data
+352     if (plaintext_len &gt; ciphertext_size) {
+353       SET_ERRNO(ERROR_BUFFER, &quot;Plaintext too large for ciphertext buffer: %zu &gt; %zu&quot;, plaintext_len, ciphertext_size);
+354       return ERROR_BUFFER;
+355     }
+356     memcpy(ciphertext, plaintext, plaintext_len);
+357     *ciphertext_len = plaintext_len;
+358     return ASCIICHAT_OK;
+359   }
+360 
+361   return crypto_handshake_encrypt_packet(ctx, plaintext, plaintext_len, ciphertext, ciphertext_size, ciphertext_len);
+362 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -381,22 +382,22 @@
 <i>plaintext_len</i> Output parameter for actual plaintext length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>326</b> of file
+<p class="Pp">Definition at line <b>328</b> of file
     <b>crypto/handshake/common.c</b>.</p>
-<pre>328                                                                          {
-329   if (!ctx || !crypto_handshake_is_ready(ctx)) {
-330     SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid state: ctx=%p, ready=%d&quot;, ctx, ctx ? crypto_handshake_is_ready(ctx) : 0);
-331     return ERROR_INVALID_STATE;
-332   }
-333 
-334   crypto_result_t result = crypto_decrypt((crypto_context_t *)&amp;ctx-&gt;crypto_ctx, ciphertext, ciphertext_len, plaintext,
-335                                           plaintext_size, plaintext_len);
-336   if (result != CRYPTO_OK) {
-337     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to decrypt packet: %s&quot;, crypto_result_to_string(result));
-338   }
-339 
-340   return ASCIICHAT_OK;
-341 }</pre>
+<pre>330                                                                          {
+331   if (!ctx || !crypto_handshake_is_ready(ctx)) {
+332     SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid state: ctx=%p, ready=%d&quot;, ctx, ctx ? crypto_handshake_is_ready(ctx) : 0);
+333     return ERROR_INVALID_STATE;
+334   }
+335 
+336   crypto_result_t result = crypto_decrypt((crypto_context_t *)&amp;ctx-&gt;crypto_ctx, ciphertext, ciphertext_len, plaintext,
+337                                           plaintext_size, plaintext_len);
+338   if (result != CRYPTO_OK) {
+339     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to decrypt packet: %s&quot;, crypto_result_to_string(result));
+340   }
+341 
+342   return ASCIICHAT_OK;
+343 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -412,18 +413,18 @@
 <p class="Pp">Cleanup crypto handshake context with secure memory wiping.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>ctx</i> Handshake context to cleanup</div>
-<p class="Pp">Definition at line <b>282</b> of file
+<p class="Pp">Definition at line <b>284</b> of file
     <b>crypto/handshake/common.c</b>.</p>
-<pre>282                                                                {
-283   if (!ctx)
-284     return;
-285 
-286   // Cleanup core crypto context
-287   crypto_destroy(&amp;ctx-&gt;crypto_ctx);
-288 
-289   // Zero out sensitive data
-290   sodium_memzero(ctx, sizeof(crypto_handshake_context_t));
-291 }</pre>
+<pre>284                                                                {
+285   if (!ctx)
+286     return;
+287 
+288   // Cleanup core crypto context
+289   crypto_destroy(&amp;ctx-&gt;crypto_ctx);
+290 
+291   // Zero out sensitive data
+292   sodium_memzero(ctx, sizeof(crypto_handshake_context_t));
+293 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_handshake_context_t::crypto_ctx</b>, and
@@ -454,22 +455,22 @@
 <i>ciphertext_len</i> Output parameter for actual ciphertext length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>308</b> of file
+<p class="Pp">Definition at line <b>310</b> of file
     <b>crypto/handshake/common.c</b>.</p>
-<pre>310                                                                           {
-311   if (!ctx || !crypto_handshake_is_ready(ctx)) {
-312     SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid state: ctx=%p, ready=%d&quot;, ctx, ctx ? crypto_handshake_is_ready(ctx) : 0);
-313     return ERROR_INVALID_STATE;
-314   }
-315 
-316   crypto_result_t result = crypto_encrypt((crypto_context_t *)&amp;ctx-&gt;crypto_ctx, plaintext, plaintext_len, ciphertext,
-317                                           ciphertext_size, ciphertext_len);
-318   if (result != CRYPTO_OK) {
-319     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to encrypt packet: %s&quot;, crypto_result_to_string(result));
-320   }
-321 
-322   return ASCIICHAT_OK;
-323 }</pre>
+<pre>312                                                                           {
+313   if (!ctx || !crypto_handshake_is_ready(ctx)) {
+314     SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid state: ctx=%p, ready=%d&quot;, ctx, ctx ? crypto_handshake_is_ready(ctx) : 0);
+315     return ERROR_INVALID_STATE;
+316   }
+317 
+318   crypto_result_t result = crypto_encrypt((crypto_context_t *)&amp;ctx-&gt;crypto_ctx, plaintext, plaintext_len, ciphertext,
+319                                           ciphertext_size, ciphertext_len);
+320   if (result != CRYPTO_OK) {
+321     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to encrypt packet: %s&quot;, crypto_result_to_string(result));
+322   }
+323 
+324   return ASCIICHAT_OK;
+325 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -488,13 +489,13 @@
 <div class="Bd-indent"><i>ctx</i> Handshake context</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to crypto context, or NULL if ctx is NULL</div>
-<p class="Pp">Definition at line <b>301</b> of file
+<p class="Pp">Definition at line <b>303</b> of file
     <b>crypto/handshake/common.c</b>.</p>
-<pre>301                                                                                             {
-302   if (!ctx || !crypto_handshake_is_ready(ctx))
-303     return NULL;
-304   return &amp;ctx-&gt;crypto_ctx;
-305 }</pre>
+<pre>303                                                                                             {
+304   if (!ctx || !crypto_handshake_is_ready(ctx))
+305     return NULL;
+306   return &amp;ctx-&gt;crypto_ctx;
+307 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_handshake_context_t::crypto_ctx</b>, and
@@ -519,52 +520,52 @@
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">The context is automatically registered with the debug naming
     system.</p>
-<p class="Pp">Definition at line <b>18</b> of file
+<p class="Pp">Definition at line <b>20</b> of file
     <b>crypto/handshake/common.c</b>.</p>
-<pre>18                                                                                                            {
-19   if (!name) {
-20     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Crypto context name is required&quot;);
-21   }
-22 
-23   if (!ctx) {
-24     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p&quot;, ctx);
-25   }
-26 
-27   // Register crypto context with debug naming system
-28   NAMED_REGISTER_CRYPTO_CONTEXT(ctx, name, NULL);
-29 
-30   // Zero out the context
-31   memset(ctx, 0, sizeof(crypto_handshake_context_t));
-32 
-33   // Initialize core crypto context
-34 #ifndef NDEBUG
-35   log_info(&quot;&#x2605;&#x2605;&#x2605; BEFORE crypto_init()&quot;);
-36   debug_sync_print_state();
-37 #endif
-38   crypto_result_t result = crypto_init(&amp;ctx-&gt;crypto_ctx);
-39 #ifndef NDEBUG
-40   log_info(&quot;&#x2605;&#x2605;&#x2605; AFTER crypto_init(), result=%d&quot;, result);
-41   debug_sync_print_state();
-42 #endif
-43   if (result != CRYPTO_OK) {
-44     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to initialize crypto context: %s&quot;, crypto_result_to_string(result));
-45   }
-46 
-47   ctx-&gt;state = CRYPTO_HANDSHAKE_INIT;
-48   ctx-&gt;is_server = is_server;
-49   ctx-&gt;verify_server_key = false;
-50   ctx-&gt;require_client_auth = false;
-51   ctx-&gt;server_uses_client_auth = false; // Set to true only if authenticated packet received
-52 
-53   // Load server keys if this is a server
-54   if (is_server) {
-55     log_dev(&quot;Server crypto handshake initialized (ephemeral keys)&quot;);
-56   } else {
-57     log_dev(&quot;Client crypto handshake initialized&quot;);
-58   }
-59 
-60   return ASCIICHAT_OK;
-61 }</pre>
+<pre>20                                                                                                            {
+21   if (!name) {
+22     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Crypto context name is required&quot;);
+23   }
+24 
+25   if (!ctx) {
+26     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p&quot;, ctx);
+27   }
+28 
+29   // Register crypto context with debug naming system
+30   NAMED_REGISTER_CRYPTO_CONTEXT(ctx, name, NULL);
+31 
+32   // Zero out the context
+33   memset(ctx, 0, sizeof(crypto_handshake_context_t));
+34 
+35   // Initialize core crypto context
+36 #ifndef NDEBUG
+37   log_info(&quot;&#x2605;&#x2605;&#x2605; BEFORE crypto_init()&quot;);
+38   debug_sync_print_state();
+39 #endif
+40   crypto_result_t result = crypto_init(&amp;ctx-&gt;crypto_ctx);
+41 #ifndef NDEBUG
+42   log_info(&quot;&#x2605;&#x2605;&#x2605; AFTER crypto_init(), result=%d&quot;, result);
+43   debug_sync_print_state();
+44 #endif
+45   if (result != CRYPTO_OK) {
+46     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to initialize crypto context: %s&quot;, crypto_result_to_string(result));
+47   }
+48 
+49   ctx-&gt;state = CRYPTO_HANDSHAKE_INIT;
+50   ctx-&gt;is_server = is_server;
+51   ctx-&gt;verify_server_key = false;
+52   ctx-&gt;require_client_auth = false;
+53   ctx-&gt;server_uses_client_auth = false; // Set to true only if authenticated packet received
+54 
+55   // Load server keys if this is a server
+56   if (is_server) {
+57     log_dev(&quot;Server crypto handshake initialized (ephemeral keys)&quot;);
+58   } else {
+59     log_dev(&quot;Client crypto handshake initialized&quot;);
+60   }
+61 
+62   return ASCIICHAT_OK;
+63 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -578,9 +579,9 @@
     <b>SET_ERRNO</b>, <b>crypto_handshake_context_t::state</b>, and
     <b>crypto_handshake_context_t::verify_server_key</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>client_crypto_init()</b>, <b>client_generate_keypair()</b>,
-    <b>client_handle_key_exchange_init()</b>, <b>discovery_session_start()</b>,
-    and <b>server_crypto_handshake()</b>.</p>
+    <b>acds_websocket_client_handler()</b>, <b>client_crypto_init()</b>,
+    <b>client_generate_keypair()</b>, <b>client_handle_key_exchange_init()</b>,
+    <b>discovery_session_start()</b>, and <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_init_with_password
@@ -602,42 +603,42 @@
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">The context is automatically registered with the debug naming
     system.</p>
-<p class="Pp">Definition at line <b>245</b> of file
+<p class="Pp">Definition at line <b>247</b> of file
     <b>crypto/handshake/common.c</b>.</p>
-<pre>246                                                                             {
-247   if (!name) {
-248     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Crypto context name is required&quot;);
-249   }
-250 
-251   if (!ctx || !password) {
-252     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, password=%p&quot;, ctx, password);
-253   }
-254 
-255   // Register crypto context with debug naming system
-256   NAMED_REGISTER_CRYPTO_CONTEXT(ctx, name, NULL);
-257 
-258   // Zero out the context
-259   memset(ctx, 0, sizeof(crypto_handshake_context_t));
-260 
-261   // Initialize core crypto context with password
-262   crypto_result_t result = crypto_init_with_password(&amp;ctx-&gt;crypto_ctx, password);
-263   if (result != CRYPTO_OK) {
-264     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to initialize crypto context with password: %s&quot;,
-265                      crypto_result_to_string(result));
-266   }
-267 
-268   ctx-&gt;state = CRYPTO_HANDSHAKE_INIT;
-269   ctx-&gt;is_server = is_server;
-270   ctx-&gt;verify_server_key = false;
-271   ctx-&gt;require_client_auth = false;
-272   ctx-&gt;server_uses_client_auth = false; // Set to true only if authenticated packet received
-273   ctx-&gt;has_password = true;
-274 
-275   // Store password temporarily (will be cleared after key derivation)
-276   SAFE_STRNCPY(ctx-&gt;password, password, sizeof(ctx-&gt;password) - 1);
-277 
-278   return ASCIICHAT_OK;
-279 }</pre>
+<pre>248                                                                             {
+249   if (!name) {
+250     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Crypto context name is required&quot;);
+251   }
+252 
+253   if (!ctx || !password) {
+254     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, password=%p&quot;, ctx, password);
+255   }
+256 
+257   // Register crypto context with debug naming system
+258   NAMED_REGISTER_CRYPTO_CONTEXT(ctx, name, NULL);
+259 
+260   // Zero out the context
+261   memset(ctx, 0, sizeof(crypto_handshake_context_t));
+262 
+263   // Initialize core crypto context with password
+264   crypto_result_t result = crypto_init_with_password(&amp;ctx-&gt;crypto_ctx, password);
+265   if (result != CRYPTO_OK) {
+266     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to initialize crypto context with password: %s&quot;,
+267                      crypto_result_to_string(result));
+268   }
+269 
+270   ctx-&gt;state = CRYPTO_HANDSHAKE_INIT;
+271   ctx-&gt;is_server = is_server;
+272   ctx-&gt;verify_server_key = false;
+273   ctx-&gt;require_client_auth = false;
+274   ctx-&gt;server_uses_client_auth = false; // Set to true only if authenticated packet received
+275   ctx-&gt;has_password = true;
+276 
+277   // Store password temporarily (will be cleared after key derivation)
+278   SAFE_STRNCPY(ctx-&gt;password, password, sizeof(ctx-&gt;password) - 1);
+279 
+280   return ASCIICHAT_OK;
+281 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -664,13 +665,13 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if handshake is complete and encryption is ready,
   false otherwise</div>
-<p class="Pp">Definition at line <b>294</b> of file
+<p class="Pp">Definition at line <b>296</b> of file
     <b>crypto/handshake/common.c</b>.</p>
-<pre>294                                                                       {
-295   if (!ctx)
-296     return false;
-297   return ctx-&gt;state == CRYPTO_HANDSHAKE_READY &amp;&amp; crypto_is_ready(&amp;ctx-&gt;crypto_ctx);
-298 }</pre>
+<pre>296                                                                       {
+297   if (!ctx)
+298     return false;
+299   return ctx-&gt;state == CRYPTO_HANDSHAKE_READY &amp;&amp; crypto_is_ready(&amp;ctx-&gt;crypto_ctx);
+300 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_handshake_context_t::crypto_ctx</b>,
@@ -706,52 +707,52 @@
 <p class="Pp">Process received REKEY_COMPLETE packet (responder side). Verifies
     that the packet decrypts with the new shared secret. If successful, commits
     to the new key.</p>
-<p class="Pp">Definition at line <b>587</b> of file
+<p class="Pp">Definition at line <b>589</b> of file
     <b>crypto/handshake/common.c</b>.</p>
-<pre>588                                                                              {
-589   if (!ctx || !crypto_handshake_is_ready(ctx)) {
-590     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Handshake not ready for rekeying: ctx=%p, ready=%d&quot;, ctx,
-591                      ctx ? crypto_handshake_is_ready(ctx) : 0);
-592   }
-593 
-594   if (!ctx-&gt;crypto_ctx.rekey_in_progress || !ctx-&gt;crypto_ctx.has_temp_key) {
-595     return SET_ERRNO(ERROR_INVALID_STATE, &quot;No rekey in progress or temp key missing&quot;);
-596   }
-597 
-598   log_debug(&quot;Received REKEY_COMPLETE packet (%zu bytes), verifying with NEW key&quot;, packet_len);
+<pre>590                                                                              {
+591   if (!ctx || !crypto_handshake_is_ready(ctx)) {
+592     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Handshake not ready for rekeying: ctx=%p, ready=%d&quot;, ctx,
+593                      ctx ? crypto_handshake_is_ready(ctx) : 0);
+594   }
+595 
+596   if (!ctx-&gt;crypto_ctx.rekey_in_progress || !ctx-&gt;crypto_ctx.has_temp_key) {
+597     return SET_ERRNO(ERROR_INVALID_STATE, &quot;No rekey in progress or temp key missing&quot;);
+598   }
 599 
-600   // Temporarily swap keys to decrypt with NEW key
-601   uint8_t old_shared_key[CRYPTO_SHARED_KEY_SIZE];
-602   memcpy(old_shared_key, ctx-&gt;crypto_ctx.shared_key, CRYPTO_SHARED_KEY_SIZE);
-603   memcpy(ctx-&gt;crypto_ctx.shared_key, ctx-&gt;crypto_ctx.temp_shared_key, CRYPTO_SHARED_KEY_SIZE);
-604 
-605   // Attempt to decrypt with NEW key
-606   uint8_t plaintext[256];
-607   size_t plaintext_len = 0;
-608   crypto_result_t result =
-609       crypto_decrypt(&amp;ctx-&gt;crypto_ctx, packet, packet_len, plaintext, sizeof(plaintext), &amp;plaintext_len);
-610 
-611   // Restore old key immediately
-612   memcpy(ctx-&gt;crypto_ctx.shared_key, old_shared_key, CRYPTO_SHARED_KEY_SIZE);
-613   sodium_memzero(old_shared_key, sizeof(old_shared_key));
-614 
-615   if (result != CRYPTO_OK) {
-616     crypto_rekey_abort(&amp;ctx-&gt;crypto_ctx);
-617     return SET_ERRNO(ERROR_CRYPTO, &quot;REKEY_COMPLETE decryption failed (key mismatch): %s&quot;,
-618                      crypto_result_to_string(result));
-619   }
-620 
-621   log_debug(&quot;REKEY_COMPLETE verified successfully, committing to new key&quot;);
+600   log_debug(&quot;Received REKEY_COMPLETE packet (%zu bytes), verifying with NEW key&quot;, packet_len);
+601 
+602   // Temporarily swap keys to decrypt with NEW key
+603   uint8_t old_shared_key[CRYPTO_SHARED_KEY_SIZE];
+604   memcpy(old_shared_key, ctx-&gt;crypto_ctx.shared_key, CRYPTO_SHARED_KEY_SIZE);
+605   memcpy(ctx-&gt;crypto_ctx.shared_key, ctx-&gt;crypto_ctx.temp_shared_key, CRYPTO_SHARED_KEY_SIZE);
+606 
+607   // Attempt to decrypt with NEW key
+608   uint8_t plaintext[256];
+609   size_t plaintext_len = 0;
+610   crypto_result_t result =
+611       crypto_decrypt(&amp;ctx-&gt;crypto_ctx, packet, packet_len, plaintext, sizeof(plaintext), &amp;plaintext_len);
+612 
+613   // Restore old key immediately
+614   memcpy(ctx-&gt;crypto_ctx.shared_key, old_shared_key, CRYPTO_SHARED_KEY_SIZE);
+615   sodium_memzero(old_shared_key, sizeof(old_shared_key));
+616 
+617   if (result != CRYPTO_OK) {
+618     crypto_rekey_abort(&amp;ctx-&gt;crypto_ctx);
+619     return SET_ERRNO(ERROR_CRYPTO, &quot;REKEY_COMPLETE decryption failed (key mismatch): %s&quot;,
+620                      crypto_result_to_string(result));
+621   }
 622 
-623   // Commit to new key (atomic switch)
-624   result = crypto_rekey_commit(&amp;ctx-&gt;crypto_ctx);
-625   if (result != CRYPTO_OK) {
-626     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to commit rekey: %s&quot;, crypto_result_to_string(result));
-627   }
-628 
-629   log_debug(&quot;Session rekeying completed successfully (responder side)&quot;);
-630   return ASCIICHAT_OK;
-631 }</pre>
+623   log_debug(&quot;REKEY_COMPLETE verified successfully, committing to new key&quot;);
+624 
+625   // Commit to new key (atomic switch)
+626   result = crypto_rekey_commit(&amp;ctx-&gt;crypto_ctx);
+627   if (result != CRYPTO_OK) {
+628     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to commit rekey: %s&quot;, crypto_result_to_string(result));
+629   }
+630 
+631   log_debug(&quot;Session rekeying completed successfully (responder side)&quot;);
+632   return ASCIICHAT_OK;
+633 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -780,53 +781,53 @@
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Process received REKEY_REQUEST packet (responder side). Extracts
     peer's new ephemeral public key and computes new shared secret.</p>
-<p class="Pp">Definition at line <b>501</b> of file
+<p class="Pp">Definition at line <b>503</b> of file
     <b>crypto/handshake/common.c</b>.</p>
-<pre>502                                                                             {
-503   if (!ctx || !crypto_handshake_is_ready(ctx)) {
-504     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Handshake not ready for rekeying: ctx=%p, ready=%d&quot;, ctx,
-505                      ctx ? crypto_handshake_is_ready(ctx) : 0);
-506   }
-507 
-508   // DDoS PROTECTION: Rate limit rekey requests
-509   time_t now = time(NULL);
-510   if (ctx-&gt;crypto_ctx.rekey_last_request_time &gt; 0) {
-511     time_t elapsed = now - ctx-&gt;crypto_ctx.rekey_last_request_time;
-512     time_t min_request_interval_seconds = (time_t)(REKEY_MIN_REQUEST_INTERVAL / NS_PER_SEC_INT);
-513     if (elapsed &lt; min_request_interval_seconds) {
-514       return SET_ERRNO(ERROR_CRYPTO,
-515                        &quot;SECURITY: Rekey request rejected - too frequent (%ld sec since last, minimum %ld sec required)&quot;,
-516                        (long)elapsed, (long)min_request_interval_seconds);
-517     }
-518   }
-519 
-520   // Update last request time
-521   ctx-&gt;crypto_ctx.rekey_last_request_time = now;
-522 
-523   // Validate packet size (should be 32 bytes for X25519 public key)
-524   if (packet_len != CRYPTO_PUBLIC_KEY_SIZE) {
-525     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid REKEY_REQUEST packet size: %zu (expected %d)&quot;, packet_len,
-526                      CRYPTO_PUBLIC_KEY_SIZE);
-527   }
-528 
-529   log_debug(&quot;Received REKEY_REQUEST with peer's new ephemeral public key (32 bytes)&quot;);
+<pre>504                                                                             {
+505   if (!ctx || !crypto_handshake_is_ready(ctx)) {
+506     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Handshake not ready for rekeying: ctx=%p, ready=%d&quot;, ctx,
+507                      ctx ? crypto_handshake_is_ready(ctx) : 0);
+508   }
+509 
+510   // DDoS PROTECTION: Rate limit rekey requests
+511   time_t now = time(NULL);
+512   if (ctx-&gt;crypto_ctx.rekey_last_request_time &gt; 0) {
+513     time_t elapsed = now - ctx-&gt;crypto_ctx.rekey_last_request_time;
+514     time_t min_request_interval_seconds = (time_t)(REKEY_MIN_REQUEST_INTERVAL / NS_PER_SEC_INT);
+515     if (elapsed &lt; min_request_interval_seconds) {
+516       return SET_ERRNO(ERROR_CRYPTO,
+517                        &quot;SECURITY: Rekey request rejected - too frequent (%ld sec since last, minimum %ld sec required)&quot;,
+518                        (long)elapsed, (long)min_request_interval_seconds);
+519     }
+520   }
+521 
+522   // Update last request time
+523   ctx-&gt;crypto_ctx.rekey_last_request_time = now;
+524 
+525   // Validate packet size (should be 32 bytes for X25519 public key)
+526   if (packet_len != CRYPTO_PUBLIC_KEY_SIZE) {
+527     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid REKEY_REQUEST packet size: %zu (expected %d)&quot;, packet_len,
+528                      CRYPTO_PUBLIC_KEY_SIZE);
+529   }
 530 
-531   // Initialize our rekey process (generates our new ephemeral keypair)
-532   crypto_result_t result = crypto_rekey_init(&amp;ctx-&gt;crypto_ctx);
-533   if (result != CRYPTO_OK) {
-534     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to initialize rekey: %s&quot;, crypto_result_to_string(result));
-535   }
-536 
-537   // Process peer's public key and compute new shared secret
-538   result = crypto_rekey_process_request(&amp;ctx-&gt;crypto_ctx, packet);
-539   if (result != CRYPTO_OK) {
-540     crypto_rekey_abort(&amp;ctx-&gt;crypto_ctx);
-541     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to process REKEY_REQUEST: %s&quot;, crypto_result_to_string(result));
-542   }
-543 
-544   log_debug(&quot;REKEY_REQUEST processed successfully, new shared secret computed (responder side)&quot;);
-545   return ASCIICHAT_OK;
-546 }</pre>
+531   log_debug(&quot;Received REKEY_REQUEST with peer's new ephemeral public key (32 bytes)&quot;);
+532 
+533   // Initialize our rekey process (generates our new ephemeral keypair)
+534   crypto_result_t result = crypto_rekey_init(&amp;ctx-&gt;crypto_ctx);
+535   if (result != CRYPTO_OK) {
+536     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to initialize rekey: %s&quot;, crypto_result_to_string(result));
+537   }
+538 
+539   // Process peer's public key and compute new shared secret
+540   result = crypto_rekey_process_request(&amp;ctx-&gt;crypto_ctx, packet);
+541   if (result != CRYPTO_OK) {
+542     crypto_rekey_abort(&amp;ctx-&gt;crypto_ctx);
+543     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to process REKEY_REQUEST: %s&quot;, crypto_result_to_string(result));
+544   }
+545 
+546   log_debug(&quot;REKEY_REQUEST processed successfully, new shared secret computed (responder side)&quot;);
+547   return ASCIICHAT_OK;
+548 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -855,36 +856,36 @@
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Process received REKEY_RESPONSE packet (initiator side). Extracts
     peer's new ephemeral public key and computes new shared secret.</p>
-<p class="Pp">Definition at line <b>552</b> of file
+<p class="Pp">Definition at line <b>554</b> of file
     <b>crypto/handshake/common.c</b>.</p>
-<pre>553                                                                              {
-554   if (!ctx || !crypto_handshake_is_ready(ctx)) {
-555     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Handshake not ready for rekeying: ctx=%p, ready=%d&quot;, ctx,
-556                      ctx ? crypto_handshake_is_ready(ctx) : 0);
-557   }
-558 
-559   // Validate packet size (should be 32 bytes for X25519 public key)
-560   if (packet_len != CRYPTO_PUBLIC_KEY_SIZE) {
-561     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid REKEY_RESPONSE packet size: %zu (expected %d)&quot;, packet_len,
-562                      CRYPTO_PUBLIC_KEY_SIZE);
-563   }
-564 
-565   if (!ctx-&gt;crypto_ctx.rekey_in_progress || !ctx-&gt;crypto_ctx.has_temp_key) {
-566     return SET_ERRNO(ERROR_INVALID_STATE, &quot;No rekey in progress or temp key missing&quot;);
-567   }
-568 
-569   log_debug(&quot;Received REKEY_RESPONSE with peer's new ephemeral public key (32 bytes)&quot;);
+<pre>555                                                                              {
+556   if (!ctx || !crypto_handshake_is_ready(ctx)) {
+557     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Handshake not ready for rekeying: ctx=%p, ready=%d&quot;, ctx,
+558                      ctx ? crypto_handshake_is_ready(ctx) : 0);
+559   }
+560 
+561   // Validate packet size (should be 32 bytes for X25519 public key)
+562   if (packet_len != CRYPTO_PUBLIC_KEY_SIZE) {
+563     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid REKEY_RESPONSE packet size: %zu (expected %d)&quot;, packet_len,
+564                      CRYPTO_PUBLIC_KEY_SIZE);
+565   }
+566 
+567   if (!ctx-&gt;crypto_ctx.rekey_in_progress || !ctx-&gt;crypto_ctx.has_temp_key) {
+568     return SET_ERRNO(ERROR_INVALID_STATE, &quot;No rekey in progress or temp key missing&quot;);
+569   }
 570 
-571   // Process peer's public key and compute new shared secret
-572   crypto_result_t result = crypto_rekey_process_response(&amp;ctx-&gt;crypto_ctx, packet);
-573   if (result != CRYPTO_OK) {
-574     crypto_rekey_abort(&amp;ctx-&gt;crypto_ctx);
-575     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to process REKEY_RESPONSE: %s&quot;, crypto_result_to_string(result));
-576   }
-577 
-578   log_debug(&quot;REKEY_RESPONSE processed successfully, new shared secret computed (initiator side)&quot;);
-579   return ASCIICHAT_OK;
-580 }</pre>
+571   log_debug(&quot;Received REKEY_RESPONSE with peer's new ephemeral public key (32 bytes)&quot;);
+572 
+573   // Process peer's public key and compute new shared secret
+574   crypto_result_t result = crypto_rekey_process_response(&amp;ctx-&gt;crypto_ctx, packet);
+575   if (result != CRYPTO_OK) {
+576     crypto_rekey_abort(&amp;ctx-&gt;crypto_ctx);
+577     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to process REKEY_RESPONSE: %s&quot;, crypto_result_to_string(result));
+578   }
+579 
+580   log_debug(&quot;REKEY_RESPONSE processed successfully, new shared secret computed (initiator side)&quot;);
+581   return ASCIICHAT_OK;
+582 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -899,122 +900,122 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_rekey_complete
-  (<b>crypto_handshake_context_t</b> * ctx, <b>socket_t</b> socket)</h2>
+  (<b>crypto_handshake_context_t</b> * ctx, <b>acip_transport_t</b> *
+  transport)</h2>
 <p class="Pp">Send REKEY_COMPLETE packet (initiator side).</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>ctx</i> Crypto handshake context (must be ready)
 <br/>
-<i>socket</i> Socket to send on</div>
+<i>transport</i> Transport to send on</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Send REKEY_COMPLETE packet (initiator side). Note: This packet is
     encrypted with the new shared secret. It proves that both sides have
     computed the same shared secret.</p>
-<p class="Pp">Definition at line <b>446</b> of file
+<p class="Pp">Definition at line <b>454</b> of file
     <b>crypto/handshake/common.c</b>.</p>
-<pre>446                                                                                                     {
-447   if (!ctx || !crypto_handshake_is_ready(ctx)) {
-448     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Handshake not ready for rekeying: ctx=%p, ready=%d&quot;, ctx,
-449                      ctx ? crypto_handshake_is_ready(ctx) : 0);
-450   }
-451 
-452   if (!ctx-&gt;crypto_ctx.rekey_in_progress || !ctx-&gt;crypto_ctx.has_temp_key) {
-453     return SET_ERRNO(ERROR_INVALID_STATE, &quot;No rekey in progress or temp key missing&quot;);
-454   }
-455 
-456   // Encrypt empty payload with NEW key to prove possession
-457   uint8_t plaintext[1] = {0}; // Minimal payload
-458   uint8_t ciphertext[256];    // Sufficient for nonce + MAC + minimal payload
-459   size_t ciphertext_len = 0;
-460 
-461   // Temporarily swap keys to encrypt with NEW key
-462   uint8_t old_shared_key[CRYPTO_SHARED_KEY_SIZE];
-463   memcpy(old_shared_key, ctx-&gt;crypto_ctx.shared_key, CRYPTO_SHARED_KEY_SIZE);
-464   memcpy(ctx-&gt;crypto_ctx.shared_key, ctx-&gt;crypto_ctx.temp_shared_key, CRYPTO_SHARED_KEY_SIZE);
-465 
-466   // Encrypt with NEW key
-467   crypto_result_t result =
-468       crypto_encrypt(&amp;ctx-&gt;crypto_ctx, plaintext, sizeof(plaintext), ciphertext, sizeof(ciphertext), &amp;ciphertext_len);
+<pre>454                                                                                                                 {
+455   if (!ctx || !crypto_handshake_is_ready(ctx)) {
+456     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Handshake not ready for rekeying: ctx=%p, ready=%d&quot;, ctx,
+457                      ctx ? crypto_handshake_is_ready(ctx) : 0);
+458   }
+459   if (!transport) {
+460     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Transport is NULL&quot;);
+461   }
+462 
+463   if (!ctx-&gt;crypto_ctx.rekey_in_progress || !ctx-&gt;crypto_ctx.has_temp_key) {
+464     return SET_ERRNO(ERROR_INVALID_STATE, &quot;No rekey in progress or temp key missing&quot;);
+465   }
+466 
+467   // Encrypt empty payload with NEW key to prove possession
+468   uint8_t plaintext[1] = {0}; // Minimal payload
 469 
-470   // Restore old key immediately (commit will happen after successful send)
-471   memcpy(ctx-&gt;crypto_ctx.shared_key, old_shared_key, CRYPTO_SHARED_KEY_SIZE);
-472   sodium_memzero(old_shared_key, sizeof(old_shared_key));
-473 
-474   if (result != CRYPTO_OK) {
-475     crypto_rekey_abort(&amp;ctx-&gt;crypto_ctx);
-476     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to encrypt REKEY_COMPLETE: %s&quot;, crypto_result_to_string(result));
-477   }
-478 
-479   // Send encrypted REKEY_COMPLETE
-480   log_debug(&quot;Sending REKEY_COMPLETE (encrypted with NEW key, %zu bytes)&quot;, ciphertext_len);
-481   int send_result = send_packet(socket, PACKET_TYPE_CRYPTO_REKEY_COMPLETE, ciphertext, ciphertext_len);
-482   if (send_result != 0) {
-483     crypto_rekey_abort(&amp;ctx-&gt;crypto_ctx);
-484     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send REKEY_COMPLETE packet&quot;);
-485   }
-486 
-487   // Commit to new key (atomic switch)
-488   result = crypto_rekey_commit(&amp;ctx-&gt;crypto_ctx);
-489   if (result != CRYPTO_OK) {
-490     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to commit rekey: %s&quot;, crypto_result_to_string(result));
-491   }
-492 
-493   log_debug(&quot;Session rekeying completed successfully (initiator side)&quot;);
-494   return ASCIICHAT_OK;
-495 }</pre>
+470   // Temporarily swap keys to encrypt with NEW key
+471   uint8_t old_shared_key[CRYPTO_SHARED_KEY_SIZE];
+472   memcpy(old_shared_key, ctx-&gt;crypto_ctx.shared_key, CRYPTO_SHARED_KEY_SIZE);
+473   memcpy(ctx-&gt;crypto_ctx.shared_key, ctx-&gt;crypto_ctx.temp_shared_key, CRYPTO_SHARED_KEY_SIZE);
+474 
+475   // Restore old key immediately after the transport send completes.
+476   // The transport encrypts the packet using the active shared key, so we
+477   // keep the temporary key installed only for the duration of this send.
+478   asciichat_error_t send_result =
+479       packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_REKEY_COMPLETE, plaintext, sizeof(plaintext), 0);
+480 
+481   memcpy(ctx-&gt;crypto_ctx.shared_key, old_shared_key, CRYPTO_SHARED_KEY_SIZE);
+482   sodium_memzero(old_shared_key, sizeof(old_shared_key));
+483 
+484   if (send_result != ASCIICHAT_OK) {
+485     crypto_rekey_abort(&amp;ctx-&gt;crypto_ctx);
+486     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send REKEY_COMPLETE packet&quot;);
+487   }
+488 
+489   // Commit to new key (atomic switch)
+490   crypto_result_t commit_result = crypto_rekey_commit(&amp;ctx-&gt;crypto_ctx);
+491   if (commit_result != CRYPTO_OK) {
+492     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to commit rekey: %s&quot;, crypto_result_to_string(commit_result));
+493   }
+494 
+495   log_debug(&quot;Session rekeying completed successfully (initiator side)&quot;);
+496   return ASCIICHAT_OK;
+497 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>crypto_handshake_context_t::crypto_ctx</b>, <b>crypto_encrypt()</b>,
+    <b>crypto_handshake_context_t::crypto_ctx</b>,
     <b>crypto_handshake_is_ready()</b>, <b>CRYPTO_OK</b>,
     <b>crypto_rekey_abort()</b>, <b>crypto_rekey_commit()</b>,
     <b>crypto_result_to_string()</b>, <b>CRYPTO_SHARED_KEY_SIZE</b>,
-    <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>,
-    <b>crypto_context_t::has_temp_key</b>, <b>log_debug</b>,
+    <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>ERROR_NETWORK</b>, <b>crypto_context_t::has_temp_key</b>,
+    <b>log_debug</b>, <b>packet_send_via_transport()</b>,
     <b>PACKET_TYPE_CRYPTO_REKEY_COMPLETE</b>,
-    <b>crypto_context_t::rekey_in_progress</b>, <b>send_packet()</b>,
-    <b>SET_ERRNO</b>, <b>crypto_context_t::shared_key</b>, and
+    <b>crypto_context_t::rekey_in_progress</b>, <b>SET_ERRNO</b>,
+    <b>crypto_context_t::shared_key</b>, and
     <b>crypto_context_t::temp_shared_key</b>.</p>
 <p class="Pp">Referenced by <b>crypto_client_send_rekey_complete()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_rekey_request
-  (<b>crypto_handshake_context_t</b> * ctx, <b>socket_t</b> socket)</h2>
+  (<b>crypto_handshake_context_t</b> * ctx, <b>acip_transport_t</b> *
+  transport)</h2>
 <p class="Pp">Send REKEY_REQUEST packet (initiator side).</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>ctx</i> Crypto handshake context (must be ready)
 <br/>
-<i>socket</i> Socket to send on</div>
+<i>transport</i> Transport to send on</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Send REKEY_REQUEST packet (initiator side). Sends the initiator's
     new ephemeral public key to the peer.</p>
-<p class="Pp">Definition at line <b>389</b> of file
+<p class="Pp">Definition at line <b>391</b> of file
     <b>crypto/handshake/common.c</b>.</p>
-<pre>389                                                                                                    {
-390   if (!ctx || !crypto_handshake_is_ready(ctx)) {
-391     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Handshake not ready for rekeying: ctx=%p, ready=%d&quot;, ctx,
-392                      ctx ? crypto_handshake_is_ready(ctx) : 0);
-393   }
-394 
-395   // Initialize rekey process (generates new ephemeral keypair)
-396   crypto_result_t result = crypto_rekey_init(&amp;ctx-&gt;crypto_ctx);
-397   if (result != CRYPTO_OK) {
-398     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to initialize rekey: %s&quot;, crypto_result_to_string(result));
-399   }
-400 
-401   // Send REKEY_REQUEST with new ephemeral public key (32 bytes)
-402   log_debug(&quot;Sending REKEY_REQUEST with new ephemeral X25519 public key (32 bytes)&quot;);
-403   int send_result =
-404       send_packet(socket, PACKET_TYPE_CRYPTO_REKEY_REQUEST, ctx-&gt;crypto_ctx.temp_public_key, CRYPTO_PUBLIC_KEY_SIZE);
-405   if (send_result != 0) {
-406     crypto_rekey_abort(&amp;ctx-&gt;crypto_ctx); // Clean up temp keys on failure
-407     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send REKEY_REQUEST packet&quot;);
-408   }
-409 
-410   log_debug(&quot;REKEY_REQUEST sent successfully, awaiting REKEY_RESPONSE&quot;);
-411   return ASCIICHAT_OK;
-412 }</pre>
+<pre>391                                                                                                                {
+392   if (!ctx || !crypto_handshake_is_ready(ctx)) {
+393     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Handshake not ready for rekeying: ctx=%p, ready=%d&quot;, ctx,
+394                      ctx ? crypto_handshake_is_ready(ctx) : 0);
+395   }
+396   if (!transport) {
+397     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Transport is NULL&quot;);
+398   }
+399 
+400   // Initialize rekey process (generates new ephemeral keypair)
+401   crypto_result_t result = crypto_rekey_init(&amp;ctx-&gt;crypto_ctx);
+402   if (result != CRYPTO_OK) {
+403     return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to initialize rekey: %s&quot;, crypto_result_to_string(result));
+404   }
+405 
+406   // Send REKEY_REQUEST with new ephemeral public key (32 bytes)
+407   log_debug(&quot;Sending REKEY_REQUEST with new ephemeral X25519 public key (32 bytes)&quot;);
+408   asciichat_error_t send_result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_REKEY_REQUEST,
+409                                                             ctx-&gt;crypto_ctx.temp_public_key, CRYPTO_PUBLIC_KEY_SIZE, 0);
+410   if (send_result != ASCIICHAT_OK) {
+411     crypto_rekey_abort(&amp;ctx-&gt;crypto_ctx); // Clean up temp keys on failure
+412     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send REKEY_REQUEST packet&quot;);
+413   }
+414 
+415   log_debug(&quot;REKEY_REQUEST sent successfully, awaiting REKEY_RESPONSE&quot;);
+416   return ASCIICHAT_OK;
+417 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -1022,59 +1023,65 @@
     <b>crypto_handshake_is_ready()</b>, <b>CRYPTO_OK</b>,
     <b>CRYPTO_PUBLIC_KEY_SIZE</b>, <b>crypto_rekey_abort()</b>,
     <b>crypto_rekey_init()</b>, <b>crypto_result_to_string()</b>,
-    <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>,
-    <b>log_debug</b>, <b>PACKET_TYPE_CRYPTO_REKEY_REQUEST</b>,
-    <b>send_packet()</b>, <b>SET_ERRNO</b>, and
+    <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>ERROR_NETWORK</b>, <b>log_debug</b>, <b>packet_send_via_transport()</b>,
+    <b>PACKET_TYPE_CRYPTO_REKEY_REQUEST</b>, <b>SET_ERRNO</b>, and
     <b>crypto_context_t::temp_public_key</b>.</p>
 <p class="Pp">Referenced by <b>client_send_thread_func()</b>, and
     <b>crypto_client_initiate_rekey()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> crypto_handshake_rekey_response
-  (<b>crypto_handshake_context_t</b> * ctx, <b>socket_t</b> socket)</h2>
+  (<b>crypto_handshake_context_t</b> * ctx, <b>acip_transport_t</b> *
+  transport)</h2>
 <p class="Pp">Send REKEY_RESPONSE packet (responder side).</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>ctx</i> Crypto handshake context (must be ready)
 <br/>
-<i>socket</i> Socket to send on</div>
+<i>transport</i> Transport to send on</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Send REKEY_RESPONSE packet (responder side). Sends the responder's
     new ephemeral public key to the peer.</p>
-<p class="Pp">Definition at line <b>418</b> of file
+<p class="Pp">Definition at line <b>423</b> of file
     <b>crypto/handshake/common.c</b>.</p>
-<pre>418                                                                                                     {
-419   if (!ctx || !crypto_handshake_is_ready(ctx)) {
-420     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Handshake not ready for rekeying: ctx=%p, ready=%d&quot;, ctx,
-421                      ctx ? crypto_handshake_is_ready(ctx) : 0);
-422   }
-423 
-424   if (!ctx-&gt;crypto_ctx.rekey_in_progress || !ctx-&gt;crypto_ctx.has_temp_key) {
-425     return SET_ERRNO(ERROR_INVALID_STATE, &quot;No rekey in progress or temp key missing&quot;);
-426   }
-427 
-428   // Send REKEY_RESPONSE with new ephemeral public key (32 bytes)
-429   log_debug(&quot;Sending REKEY_RESPONSE with new ephemeral X25519 public key (32 bytes)&quot;);
-430   int send_result =
-431       send_packet(socket, PACKET_TYPE_CRYPTO_REKEY_RESPONSE, ctx-&gt;crypto_ctx.temp_public_key, CRYPTO_PUBLIC_KEY_SIZE);
-432   if (send_result != 0) {
-433     crypto_rekey_abort(&amp;ctx-&gt;crypto_ctx); // Clean up temp keys on failure
-434     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send REKEY_RESPONSE packet&quot;);
-435   }
-436 
-437   log_debug(&quot;REKEY_RESPONSE sent successfully, awaiting REKEY_COMPLETE&quot;);
-438   return ASCIICHAT_OK;
-439 }</pre>
+<pre>423                                                                                                                 {
+424   if (!ctx || !crypto_handshake_is_ready(ctx)) {
+425     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Handshake not ready for rekeying: ctx=%p, ready=%d&quot;, ctx,
+426                      ctx ? crypto_handshake_is_ready(ctx) : 0);
+427   }
+428   if (!transport) {
+429     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Transport is NULL&quot;);
+430   }
+431 
+432   if (!ctx-&gt;crypto_ctx.rekey_in_progress || !ctx-&gt;crypto_ctx.has_temp_key) {
+433     return SET_ERRNO(ERROR_INVALID_STATE, &quot;No rekey in progress or temp key missing&quot;);
+434   }
+435 
+436   // Send REKEY_RESPONSE with new ephemeral public key (32 bytes)
+437   log_debug(&quot;Sending REKEY_RESPONSE with new ephemeral X25519 public key (32 bytes)&quot;);
+438   asciichat_error_t send_result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_REKEY_RESPONSE,
+439                                                             ctx-&gt;crypto_ctx.temp_public_key, CRYPTO_PUBLIC_KEY_SIZE, 0);
+440   if (send_result != ASCIICHAT_OK) {
+441     crypto_rekey_abort(&amp;ctx-&gt;crypto_ctx); // Clean up temp keys on failure
+442     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send REKEY_RESPONSE packet&quot;);
+443   }
+444 
+445   log_debug(&quot;REKEY_RESPONSE sent successfully, awaiting REKEY_COMPLETE&quot;);
+446   return ASCIICHAT_OK;
+447 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
     <b>crypto_handshake_context_t::crypto_ctx</b>,
     <b>crypto_handshake_is_ready()</b>, <b>CRYPTO_PUBLIC_KEY_SIZE</b>,
-    <b>crypto_rekey_abort()</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>ERROR_NETWORK</b>, <b>crypto_context_t::has_temp_key</b>,
-    <b>log_debug</b>, <b>PACKET_TYPE_CRYPTO_REKEY_RESPONSE</b>,
-    <b>crypto_context_t::rekey_in_progress</b>, <b>send_packet()</b>,
-    <b>SET_ERRNO</b>, and <b>crypto_context_t::temp_public_key</b>.</p>
+    <b>crypto_rekey_abort()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>,
+    <b>crypto_context_t::has_temp_key</b>, <b>log_debug</b>,
+    <b>packet_send_via_transport()</b>,
+    <b>PACKET_TYPE_CRYPTO_REKEY_RESPONSE</b>,
+    <b>crypto_context_t::rekey_in_progress</b>, <b>SET_ERRNO</b>, and
+    <b>crypto_context_t::temp_public_key</b>.</p>
 <p class="Pp">Referenced by <b>crypto_client_send_rekey_response()</b>.</p>
 </section>
 <section class="Ss">
@@ -1088,49 +1095,49 @@
 <i>params</i> Negotiated crypto parameters (from capabilities negotiation)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>64</b> of file
+<p class="Pp">Definition at line <b>66</b> of file
     <b>crypto/handshake/common.c</b>.</p>
-<pre>65                                                                                             {
-66   if (!ctx || !params) {
-67     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, params=%p&quot;, ctx, params);
-68   }
-69 
-70   // Client receives network byte order and must convert
-71   // Server uses host byte order and must NOT convert
-72   if (ctx-&gt;is_server) {
-73     // Server: values are already in host byte order
-74     // Update crypto context with negotiated parameters directly
-75     ctx-&gt;crypto_ctx.public_key_size = params-&gt;kex_public_key_size;
-76     ctx-&gt;crypto_ctx.auth_public_key_size = params-&gt;auth_public_key_size;
-77     ctx-&gt;crypto_ctx.shared_key_size = params-&gt;shared_secret_size;
-78     ctx-&gt;crypto_ctx.signature_size = params-&gt;signature_size;
-79   } else {
-80     // Client: convert from network byte order
-81     // Update crypto context with negotiated parameters directly
-82     ctx-&gt;crypto_ctx.public_key_size = NET_TO_HOST_U16(params-&gt;kex_public_key_size);
-83     ctx-&gt;crypto_ctx.auth_public_key_size = NET_TO_HOST_U16(params-&gt;auth_public_key_size);
-84     ctx-&gt;crypto_ctx.shared_key_size = NET_TO_HOST_U16(params-&gt;shared_secret_size);
-85     ctx-&gt;crypto_ctx.signature_size = NET_TO_HOST_U16(params-&gt;signature_size);
-86   }
-87   // Update crypto context with negotiated parameters directly
-88   ctx-&gt;crypto_ctx.nonce_size = params-&gt;nonce_size;
-89   ctx-&gt;crypto_ctx.mac_size = params-&gt;mac_size;
-90   ctx-&gt;crypto_ctx.hmac_size = params-&gt;hmac_size;
-91   ctx-&gt;crypto_ctx.auth_challenge_size =
-92       AUTH_CHALLENGE_SIZE; // Auth challenge size is fixed for now, could be negotiated later
-93   ctx-&gt;crypto_ctx.encryption_key_size =
-94       (uint8_t)ctx-&gt;crypto_ctx.shared_key_size;                       // Use shared key size as encryption key size
-95   ctx-&gt;crypto_ctx.private_key_size = ctx-&gt;crypto_ctx.public_key_size; // Same as public key for X25519
-96   ctx-&gt;crypto_ctx.salt_size = ARGON2ID_SALT_SIZE;                     // Salt size doesn't change
-97 
-98   log_debug(&quot;Crypto parameters set: kex_key=%u, auth_key=%u, sig=%u, &quot;
-99             &quot;secret=%u, nonce=%u, mac=%u, hmac=%u&quot;,
-100             ctx-&gt;crypto_ctx.public_key_size, ctx-&gt;crypto_ctx.auth_public_key_size, ctx-&gt;crypto_ctx.signature_size,
-101             ctx-&gt;crypto_ctx.shared_key_size, ctx-&gt;crypto_ctx.nonce_size, ctx-&gt;crypto_ctx.mac_size,
-102             ctx-&gt;crypto_ctx.hmac_size);
-103 
-104   return ASCIICHAT_OK;
-105 }</pre>
+<pre>67                                                                                             {
+68   if (!ctx || !params) {
+69     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, params=%p&quot;, ctx, params);
+70   }
+71 
+72   // Client receives network byte order and must convert
+73   // Server uses host byte order and must NOT convert
+74   if (ctx-&gt;is_server) {
+75     // Server: values are already in host byte order
+76     // Update crypto context with negotiated parameters directly
+77     ctx-&gt;crypto_ctx.public_key_size = params-&gt;kex_public_key_size;
+78     ctx-&gt;crypto_ctx.auth_public_key_size = params-&gt;auth_public_key_size;
+79     ctx-&gt;crypto_ctx.shared_key_size = params-&gt;shared_secret_size;
+80     ctx-&gt;crypto_ctx.signature_size = params-&gt;signature_size;
+81   } else {
+82     // Client: convert from network byte order
+83     // Update crypto context with negotiated parameters directly
+84     ctx-&gt;crypto_ctx.public_key_size = NET_TO_HOST_U16(params-&gt;kex_public_key_size);
+85     ctx-&gt;crypto_ctx.auth_public_key_size = NET_TO_HOST_U16(params-&gt;auth_public_key_size);
+86     ctx-&gt;crypto_ctx.shared_key_size = NET_TO_HOST_U16(params-&gt;shared_secret_size);
+87     ctx-&gt;crypto_ctx.signature_size = NET_TO_HOST_U16(params-&gt;signature_size);
+88   }
+89   // Update crypto context with negotiated parameters directly
+90   ctx-&gt;crypto_ctx.nonce_size = params-&gt;nonce_size;
+91   ctx-&gt;crypto_ctx.mac_size = params-&gt;mac_size;
+92   ctx-&gt;crypto_ctx.hmac_size = params-&gt;hmac_size;
+93   ctx-&gt;crypto_ctx.auth_challenge_size =
+94       AUTH_CHALLENGE_SIZE; // Auth challenge size is fixed for now, could be negotiated later
+95   ctx-&gt;crypto_ctx.encryption_key_size =
+96       (uint8_t)ctx-&gt;crypto_ctx.shared_key_size;                       // Use shared key size as encryption key size
+97   ctx-&gt;crypto_ctx.private_key_size = ctx-&gt;crypto_ctx.public_key_size; // Same as public key for X25519
+98   ctx-&gt;crypto_ctx.salt_size = ARGON2ID_SALT_SIZE;                     // Salt size doesn't change
+99 
+100   log_debug(&quot;Crypto parameters set: kex_key=%u, auth_key=%u, sig=%u, &quot;
+101             &quot;secret=%u, nonce=%u, mac=%u, hmac=%u&quot;,
+102             ctx-&gt;crypto_ctx.public_key_size, ctx-&gt;crypto_ctx.auth_public_key_size, ctx-&gt;crypto_ctx.signature_size,
+103             ctx-&gt;crypto_ctx.shared_key_size, ctx-&gt;crypto_ctx.nonce_size, ctx-&gt;crypto_ctx.mac_size,
+104             ctx-&gt;crypto_ctx.hmac_size);
+105 
+106   return ASCIICHAT_OK;
+107 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ARGON2ID_SALT_SIZE</b>, <b>ASCIICHAT_OK</b>,
@@ -1170,14 +1177,14 @@
 <div class="Bd-indent">true if rekey should be initiated, false otherwise</div>
 <p class="Pp">Check if rekeying should be triggered for this handshake context.
     Wrapper around <b>crypto_should_rekey()</b> for handshake context.</p>
-<p class="Pp">Definition at line <b>637</b> of file
+<p class="Pp">Definition at line <b>639</b> of file
     <b>crypto/handshake/common.c</b>.</p>
-<pre>637                                                                           {
-638   if (!ctx || !crypto_handshake_is_ready(ctx)) {
-639     return false;
-640   }
-641   return crypto_should_rekey(&amp;ctx-&gt;crypto_ctx);
-642 }</pre>
+<pre>639                                                                           {
+640   if (!ctx || !crypto_handshake_is_ready(ctx)) {
+641     return false;
+642   }
+643   return crypto_should_rekey(&amp;ctx-&gt;crypto_ctx);
+644 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_handshake_context_t::crypto_ctx</b>,
@@ -1198,142 +1205,142 @@
 <i>packet_size</i> Actual packet size received</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK if valid, error code on failure</div>
-<p class="Pp">Definition at line <b>108</b> of file
+<p class="Pp">Definition at line <b>110</b> of file
     <b>crypto/handshake/common.c</b>.</p>
-<pre>109                                                                             {
-110   if (!ctx) {
-111     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p&quot;, ctx);
-112   }
-113 
-114   switch (packet_type) {
-115   case PACKET_TYPE_CRYPTO_CAPABILITIES:
-116     if (packet_size != sizeof(crypto_capabilities_packet_t)) {
-117       // Don't  return an error code, just set the errno and return the error code
-118       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid crypto capabilities packet size: %zu (expected %zu)&quot;,
-119                        packet_size, sizeof(crypto_capabilities_packet_t));
-120     }
-121     break;
-122 
-123   case PACKET_TYPE_CRYPTO_PARAMETERS:
-124     if (packet_size != sizeof(crypto_parameters_packet_t)) {
-125       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid crypto parameters packet size: %zu (expected %zu)&quot;, packet_size,
-126                        sizeof(crypto_parameters_packet_t));
-127     }
-128     break;
-129 
-130   case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT:
-131     // Server can send either:
-132     // 1. Simple format: kex_public_key_size (when server has no identity key)
-133     // 2. Authenticated format: kex_public_key_size + auth_public_key_size + signature_size
-134     {
-135       size_t simple_size = ctx-&gt;crypto_ctx.public_key_size;
-136       size_t authenticated_size =
-137           ctx-&gt;crypto_ctx.public_key_size + ctx-&gt;crypto_ctx.auth_public_key_size + ctx-&gt;crypto_ctx.signature_size;
-138 
-139       if (packet_size != simple_size &amp;&amp; packet_size != authenticated_size) {
-140         return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
-141                          &quot;Invalid KEY_EXCHANGE_INIT size: %zu (expected %zu for simple or %zu for authenticated: &quot;
-142                          &quot;kex=%u + auth=%u + sig=%u)&quot;,
-143                          packet_size, simple_size, authenticated_size, ctx-&gt;crypto_ctx.public_key_size,
-144                          ctx-&gt;crypto_ctx.auth_public_key_size, ctx-&gt;crypto_ctx.signature_size);
-145       }
-146     }
-147     break;
-148 
-149   case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP:
-150     // Client can send either:
-151     // 1. Simple format: kex_public_key_size (when server has no identity key)
-152     // 2. Authenticated format: kex_public_key_size + client_auth_key_size + client_sig_size + [gpg_key_id_len:1] +
-153     // [gpg_key_id:0-16]
-154     {
-155       size_t simple_size = ctx-&gt;crypto_ctx.public_key_size;
-156       // For authenticated format, use Ed25519 sizes since client has Ed25519 key
-157       size_t ed25519_auth_size = ED25519_PUBLIC_KEY_SIZE; // Ed25519 public key is always 32 bytes
-158       size_t ed25519_sig_size = ED25519_SIGNATURE_SIZE;   // Ed25519 signature is always 64 bytes
-159       size_t authenticated_min_size = ctx-&gt;crypto_ctx.public_key_size + ed25519_auth_size + ed25519_sig_size;
-160       size_t authenticated_max_size = authenticated_min_size + 1 + 40; // +1 for length, +40 for max GPG key ID
-161 
-162       if (packet_size != simple_size &amp;&amp;
-163           (packet_size &lt; authenticated_min_size || packet_size &gt; authenticated_max_size)) {
-164         return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
-165                          &quot;Invalid KEY_EXCHANGE_RESP size: %zu (expected %zu for simple or %zu-%zu for authenticated: &quot;
-166                          &quot;kex=%u + auth=%u + sig=%u + optional GPG key ID)&quot;,
-167                          packet_size, simple_size, authenticated_min_size, authenticated_max_size,
-168                          ctx-&gt;crypto_ctx.public_key_size, ed25519_auth_size, ed25519_sig_size);
-169       }
-170     }
-171     break;
-172 
-173   case PACKET_TYPE_CRYPTO_AUTH_CHALLENGE:
-174     // Server sends: 1 byte auth_flags + auth_challenge_size byte nonce
-175     {
-176       size_t expected_size = AUTH_CHALLENGE_FLAGS_SIZE + ctx-&gt;crypto_ctx.auth_challenge_size;
-177       if (packet_size != expected_size) {
-178         return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid AUTH_CHALLENGE size: %zu (expected %zu: flags=%d + nonce=%u)&quot;,
-179                          packet_size, expected_size, AUTH_CHALLENGE_FLAGS_SIZE, ctx-&gt;crypto_ctx.auth_challenge_size);
-180       }
-181     }
-182     break;
-183 
-184   case PACKET_TYPE_CRYPTO_AUTH_RESPONSE:
-185     // Client sends: hmac_size + auth_challenge_size bytes client_nonce + [gpg_key_id_len:1] + [gpg_key_id:0-40]
-186     {
-187       size_t min_size = ctx-&gt;crypto_ctx.hmac_size + ctx-&gt;crypto_ctx.auth_challenge_size;
-188       size_t max_size = min_size + 1 + 40; // +1 for length, +40 for max GPG key ID
-189       if (packet_size &lt; min_size || packet_size &gt; max_size) {
-190         return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
-191                          &quot;Invalid AUTH_RESPONSE size: %zu (expected %zu-%zu: hmac=%u + &quot;
-192                          &quot;nonce=%u + optional GPG key ID)&quot;,
-193                          packet_size, min_size, max_size, ctx-&gt;crypto_ctx.hmac_size,
-194                          ctx-&gt;crypto_ctx.auth_challenge_size);
-195       }
-196     }
-197     break;
-198 
-199   case PACKET_TYPE_CRYPTO_AUTH_FAILED:
-200     // Variable size - just check reasonable limits
-201     if (packet_size &gt; MAX_AUTH_FAILED_PACKET_SIZE) {
-202       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid AUTH_FAILED size: %zu (max %d)&quot;, packet_size,
-203                        MAX_AUTH_FAILED_PACKET_SIZE);
-204     }
-205     break;
-206 
-207   case PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP:
-208     // Server sends: hmac_size bytes
-209     if (packet_size != ctx-&gt;crypto_ctx.hmac_size) {
-210       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid SERVER_AUTH_RESP size: %zu (expected %u)&quot;, packet_size,
-211                        ctx-&gt;crypto_ctx.hmac_size);
-212     }
-213     break;
-214 
-215   case PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE:
-216     // Empty packet
-217     if (packet_size != 0) {
-218       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid HANDSHAKE_COMPLETE size: %zu (expected 0)&quot;, packet_size);
-219     }
-220     break;
-221 
-222   case PACKET_TYPE_CRYPTO_NO_ENCRYPTION:
-223     // Empty packet
-224     if (packet_size != 0) {
-225       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid NO_ENCRYPTION size: %zu (expected 0)&quot;, packet_size);
-226     }
-227     break;
-228 
-229   case PACKET_TYPE_ENCRYPTED:
-230     // Variable size - check reasonable limits
-231     if (packet_size &gt; MAX_ENCRYPTED_PACKET_SIZE) { // 64KB max for encrypted packets
-232       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid ENCRYPTED size: %zu (max %d)&quot;, packet_size,
-233                        MAX_ENCRYPTED_PACKET_SIZE);
-234     }
-235     break;
-236 
-237   default:
-238     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Unknown crypto packet type: %u&quot;, packet_type);
-239   }
-240 
-241   return ASCIICHAT_OK;
-242 }</pre>
+<pre>111                                                                             {
+112   if (!ctx) {
+113     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p&quot;, ctx);
+114   }
+115 
+116   switch (packet_type) {
+117   case PACKET_TYPE_CRYPTO_CAPABILITIES:
+118     if (packet_size != sizeof(crypto_capabilities_packet_t)) {
+119       // Don't  return an error code, just set the errno and return the error code
+120       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid crypto capabilities packet size: %zu (expected %zu)&quot;,
+121                        packet_size, sizeof(crypto_capabilities_packet_t));
+122     }
+123     break;
+124 
+125   case PACKET_TYPE_CRYPTO_PARAMETERS:
+126     if (packet_size != sizeof(crypto_parameters_packet_t)) {
+127       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid crypto parameters packet size: %zu (expected %zu)&quot;, packet_size,
+128                        sizeof(crypto_parameters_packet_t));
+129     }
+130     break;
+131 
+132   case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT:
+133     // Server can send either:
+134     // 1. Simple format: kex_public_key_size (when server has no identity key)
+135     // 2. Authenticated format: kex_public_key_size + auth_public_key_size + signature_size
+136     {
+137       size_t simple_size = ctx-&gt;crypto_ctx.public_key_size;
+138       size_t authenticated_size =
+139           ctx-&gt;crypto_ctx.public_key_size + ctx-&gt;crypto_ctx.auth_public_key_size + ctx-&gt;crypto_ctx.signature_size;
+140 
+141       if (packet_size != simple_size &amp;&amp; packet_size != authenticated_size) {
+142         return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
+143                          &quot;Invalid KEY_EXCHANGE_INIT size: %zu (expected %zu for simple or %zu for authenticated: &quot;
+144                          &quot;kex=%u + auth=%u + sig=%u)&quot;,
+145                          packet_size, simple_size, authenticated_size, ctx-&gt;crypto_ctx.public_key_size,
+146                          ctx-&gt;crypto_ctx.auth_public_key_size, ctx-&gt;crypto_ctx.signature_size);
+147       }
+148     }
+149     break;
+150 
+151   case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP:
+152     // Client can send either:
+153     // 1. Simple format: kex_public_key_size (when server has no identity key)
+154     // 2. Authenticated format: kex_public_key_size + client_auth_key_size + client_sig_size + [gpg_key_id_len:1] +
+155     // [gpg_key_id:0-16]
+156     {
+157       size_t simple_size = ctx-&gt;crypto_ctx.public_key_size;
+158       // For authenticated format, use Ed25519 sizes since client has Ed25519 key
+159       size_t ed25519_auth_size = ED25519_PUBLIC_KEY_SIZE; // Ed25519 public key is always 32 bytes
+160       size_t ed25519_sig_size = ED25519_SIGNATURE_SIZE;   // Ed25519 signature is always 64 bytes
+161       size_t authenticated_min_size = ctx-&gt;crypto_ctx.public_key_size + ed25519_auth_size + ed25519_sig_size;
+162       size_t authenticated_max_size = authenticated_min_size + 1 + 40; // +1 for length, +40 for max GPG key ID
+163 
+164       if (packet_size != simple_size &amp;&amp;
+165           (packet_size &lt; authenticated_min_size || packet_size &gt; authenticated_max_size)) {
+166         return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
+167                          &quot;Invalid KEY_EXCHANGE_RESP size: %zu (expected %zu for simple or %zu-%zu for authenticated: &quot;
+168                          &quot;kex=%u + auth=%u + sig=%u + optional GPG key ID)&quot;,
+169                          packet_size, simple_size, authenticated_min_size, authenticated_max_size,
+170                          ctx-&gt;crypto_ctx.public_key_size, ed25519_auth_size, ed25519_sig_size);
+171       }
+172     }
+173     break;
+174 
+175   case PACKET_TYPE_CRYPTO_AUTH_CHALLENGE:
+176     // Server sends: 1 byte auth_flags + auth_challenge_size byte nonce
+177     {
+178       size_t expected_size = AUTH_CHALLENGE_FLAGS_SIZE + ctx-&gt;crypto_ctx.auth_challenge_size;
+179       if (packet_size != expected_size) {
+180         return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid AUTH_CHALLENGE size: %zu (expected %zu: flags=%d + nonce=%u)&quot;,
+181                          packet_size, expected_size, AUTH_CHALLENGE_FLAGS_SIZE, ctx-&gt;crypto_ctx.auth_challenge_size);
+182       }
+183     }
+184     break;
+185 
+186   case PACKET_TYPE_CRYPTO_AUTH_RESPONSE:
+187     // Client sends: hmac_size + auth_challenge_size bytes client_nonce + [gpg_key_id_len:1] + [gpg_key_id:0-40]
+188     {
+189       size_t min_size = ctx-&gt;crypto_ctx.hmac_size + ctx-&gt;crypto_ctx.auth_challenge_size;
+190       size_t max_size = min_size + 1 + 40; // +1 for length, +40 for max GPG key ID
+191       if (packet_size &lt; min_size || packet_size &gt; max_size) {
+192         return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
+193                          &quot;Invalid AUTH_RESPONSE size: %zu (expected %zu-%zu: hmac=%u + &quot;
+194                          &quot;nonce=%u + optional GPG key ID)&quot;,
+195                          packet_size, min_size, max_size, ctx-&gt;crypto_ctx.hmac_size,
+196                          ctx-&gt;crypto_ctx.auth_challenge_size);
+197       }
+198     }
+199     break;
+200 
+201   case PACKET_TYPE_CRYPTO_AUTH_FAILED:
+202     // Variable size - just check reasonable limits
+203     if (packet_size &gt; MAX_AUTH_FAILED_PACKET_SIZE) {
+204       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid AUTH_FAILED size: %zu (max %d)&quot;, packet_size,
+205                        MAX_AUTH_FAILED_PACKET_SIZE);
+206     }
+207     break;
+208 
+209   case PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP:
+210     // Server sends: hmac_size bytes
+211     if (packet_size != ctx-&gt;crypto_ctx.hmac_size) {
+212       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid SERVER_AUTH_RESP size: %zu (expected %u)&quot;, packet_size,
+213                        ctx-&gt;crypto_ctx.hmac_size);
+214     }
+215     break;
+216 
+217   case PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE:
+218     // Empty packet
+219     if (packet_size != 0) {
+220       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid HANDSHAKE_COMPLETE size: %zu (expected 0)&quot;, packet_size);
+221     }
+222     break;
+223 
+224   case PACKET_TYPE_CRYPTO_NO_ENCRYPTION:
+225     // Empty packet
+226     if (packet_size != 0) {
+227       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid NO_ENCRYPTION size: %zu (expected 0)&quot;, packet_size);
+228     }
+229     break;
+230 
+231   case PACKET_TYPE_ENCRYPTED:
+232     // Variable size - check reasonable limits
+233     if (packet_size &gt; MAX_ENCRYPTED_PACKET_SIZE) { // 64KB max for encrypted packets
+234       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid ENCRYPTED size: %zu (max %d)&quot;, packet_size,
+235                        MAX_ENCRYPTED_PACKET_SIZE);
+236     }
+237     break;
+238 
+239   default:
+240     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Unknown crypto packet type: %u&quot;, packet_type);
+241   }
+242 
+243   return ASCIICHAT_OK;
+244 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>AUTH_CHALLENGE_FLAGS_SIZE</b>,

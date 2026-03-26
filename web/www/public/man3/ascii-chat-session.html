@@ -344,8 +344,15 @@
   <b>session_display_ctx_t</b> * <b>session_display_create</b> (const
     <b>session_display_config_t</b> *config)
   <br/>
-  Create a new session display context. void <b>session_display_destroy</b>
+  Create a new session display context. <b>session_display_ctx_t</b> *
+    <b>session_display_get_global_context</b> (void)
+  <br/>
+  Get the global display context (used for signal handlers and special cleanup).
+    void <b>session_display_set_global_context_public</b>
     (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  Set the global display context (public setter for discovery cleanup). void
+    <b>session_display_destroy</b> (<b>session_display_ctx_t</b> *ctx)
   <br/>
   Destroy session display context and free resources. void
     <b>session_display_set_stdin_reader</b> (<b>session_display_ctx_t</b> *ctx,
@@ -1470,12 +1477,12 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Thread-safe using atomic operations</div>
-<p class="Pp">Definition at line <b>1161</b> of file
+<p class="Pp">Definition at line <b>1177</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1161                                              {
-1162   bool expected = true;
-1163   return atomic_cas_bool(&amp;g_help_signal_cancel, &amp;expected, false);
-1164 }</pre>
+<pre>1177                                              {
+1178   bool expected = true;
+1179   return atomic_cas_bool(&amp;g_help_signal_cancel, &amp;expected, false);
+1180 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_cas_bool()</b>.</p>
@@ -1495,21 +1502,21 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Thread-safe: Uses atomic load</div>
-<p class="Pp">Definition at line <b>1166</b> of file
+<p class="Pp">Definition at line <b>1182</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1166                                                          {
-1167   if (!ctx) {
-1168     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL&quot;);
-1169     return false;
-1170   }
-1171 
-1172   // Disable help in snapshot mode only - allow help state check even if stdin/stdout aren't TTYs
-1173   if (GET_OPTION(snapshot_mode)) {
-1174     return false;
-1175   }
-1176 
-1177   return atomic_load_bool(&amp;ctx-&gt;keyboard_help_active);
-1178 }</pre>
+<pre>1182                                                          {
+1183   if (!ctx) {
+1184     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL&quot;);
+1185     return false;
+1186   }
+1187 
+1188   // Disable help in snapshot mode only - allow help state check even if stdin/stdout aren't TTYs
+1189   if (GET_OPTION(snapshot_mode)) {
+1190     return false;
+1191   }
+1192 
+1193   return atomic_load_bool(&amp;ctx-&gt;keyboard_help_active);
+1194 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -1533,19 +1540,19 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Safe to call from signal handlers</div>
-<p class="Pp">Definition at line <b>1183</b> of file
+<p class="Pp">Definition at line <b>1199</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1183                                           {
-1184   session_display_ctx_t *ctx = get_current_display_ctx();
-1185   if (!ctx) {
-1186     platform_write_all(STDERR_FILENO, &quot;[DEBUG: ctx is NULL]\n&quot;, 20);
-1187     return false;
-1188   }
-1189   bool active = atomic_load_bool(&amp;ctx-&gt;keyboard_help_active);
-1190   const char *msg = active ? &quot;[DEBUG: help active]\n&quot; : &quot;[DEBUG: help inactive]\n&quot;;
-1191   platform_write_all(STDERR_FILENO, msg, active ? 22 : 24);
-1192   return active;
-1193 }</pre>
+<pre>1199                                           {
+1200   session_display_ctx_t *ctx = get_current_display_ctx();
+1201   if (!ctx) {
+1202     platform_write_all(STDERR_FILENO, &quot;[DEBUG: ctx is NULL]\n&quot;, 20);
+1203     return false;
+1204   }
+1205   bool active = atomic_load_bool(&amp;ctx-&gt;keyboard_help_active);
+1206   const char *msg = active ? &quot;[DEBUG: help active]\n&quot; : &quot;[DEBUG: help inactive]\n&quot;;
+1207   platform_write_all(STDERR_FILENO, msg, active ? 22 : 24);
+1208   return active;
+1209 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>,
@@ -1906,11 +1913,11 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Safe to call from signal handlers</div>
-<p class="Pp">Definition at line <b>1156</b> of file
+<p class="Pp">Definition at line <b>1172</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1156                                        {
-1157   atomic_store_bool(&amp;g_help_signal_cancel, true);
-1158 }</pre>
+<pre>1172                                        {
+1173   atomic_store_bool(&amp;g_help_signal_cancel, true);
+1174 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_bool()</b>.</p>
@@ -1930,17 +1937,17 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Thread-safe: Uses atomic bool for lock-free toggle</div>
 <p class="Pp">Toggle keyboard help on/off.</p>
-<p class="Pp">Definition at line <b>1125</b> of file
+<p class="Pp">Definition at line <b>1131</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1125                                                       {
-1126   if (!ctx) {
-1127     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL&quot;);
-1128     return;
-1129   }
-1130 
-1131   bool current = atomic_load_bool(&amp;ctx-&gt;keyboard_help_active);
-1132   atomic_store_bool(&amp;ctx-&gt;keyboard_help_active, !current);
-1133 }</pre>
+<pre>1131                                                       {
+1132   if (!ctx) {
+1133     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL&quot;);
+1134     return;
+1135   }
+1136 
+1137   bool current = atomic_load_bool(&amp;ctx-&gt;keyboard_help_active);
+1138   atomic_store_bool(&amp;ctx-&gt;keyboard_help_active, !current);
+1139 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
@@ -1962,14 +1969,14 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Safe to call from signal handlers</div>
-<p class="Pp">Definition at line <b>1195</b> of file
+<p class="Pp">Definition at line <b>1211</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1195                                        {
-1196   session_display_ctx_t *ctx = get_current_display_ctx();
-1197   if (ctx) {
-1198     keyboard_help_toggle(ctx);
-1199   }
-1200 }</pre>
+<pre>1211                                        {
+1212   session_display_ctx_t *ctx = get_current_display_ctx();
+1213   if (ctx) {
+1214     keyboard_help_toggle(ctx);
+1215   }
+1216 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>keyboard_help_toggle()</b>.</p>
@@ -3257,10 +3264,10 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to <b>terminal_fd_reader_t</b>, or NULL if not in
   stdin render mode</div>
-<p class="Pp">Definition at line <b>70</b> of file <b>client_like.c</b>.</p>
-<pre>70                                                                  {
-71   return g_stdin_reader;
-72 }</pre>
+<p class="Pp">Definition at line <b>53</b> of file <b>client_like.c</b>.</p>
+<pre>53                                                                  {
+54   return g_stdin_reader;
+55 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -3272,25 +3279,25 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>ctx</i> Display context (must not be NULL)</div>
 <p class="Pp">Clears the terminal screen and moves cursor to home position.</p>
-<p class="Pp">Definition at line <b>1029</b> of file
+<p class="Pp">Definition at line <b>1035</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1029                                                        {
-1030   if (!ctx || !ctx-&gt;initialized) {
-1031     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL or uninitialized&quot;);
-1032     return;
-1033   }
-1034 
-1035   // Skip terminal clear in snapshot mode to preserve rendered output
-1036   if (ctx-&gt;snapshot_mode) {
-1037     return;
-1038   }
-1039 
-1040   // Only perform terminal operations when we have a valid TTY (not when piping)
-1041   if (ctx-&gt;has_tty &amp;&amp; ctx-&gt;tty_info.fd &gt;= 0) {
-1042     (void)terminal_clear_screen();
-1043     (void)terminal_cursor_home(ctx-&gt;tty_info.fd);
+<pre>1035                                                        {
+1036   if (!ctx || !ctx-&gt;initialized) {
+1037     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL or uninitialized&quot;);
+1038     return;
+1039   }
+1040 
+1041   // Skip terminal clear in snapshot mode to preserve rendered output
+1042   if (ctx-&gt;snapshot_mode) {
+1043     return;
 1044   }
-1045 }</pre>
+1045 
+1046   // Only perform terminal operations when we have a valid TTY (not when piping)
+1047   if (ctx-&gt;has_tty &amp;&amp; ctx-&gt;tty_info.fd &gt;= 0) {
+1048     (void)terminal_clear_screen();
+1049     (void)terminal_cursor_home(ctx-&gt;tty_info.fd);
+1050   }
+1051 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>tty_info_t::fd</b>,
@@ -3457,7 +3464,7 @@ fps_counter_destroy(fps);</pre>
 627   if (color_filter != COLOR_FILTER_NONE &amp;&amp; color_filter != COLOR_FILTER_RAINBOW) {
 628     // Create a copy to avoid modifying the original
 629     filtered_image = image_new((size_t)display_image-&gt;w, (size_t)display_image-&gt;h);
-630     if (filtered_image) {
+630     if (filtered_image &amp;&amp; filtered_image-&gt;pixels &amp;&amp; display_image-&gt;pixels) {
 631       memcpy(filtered_image-&gt;pixels, display_image-&gt;pixels,
 632              (size_t)display_image-&gt;w * (size_t)display_image-&gt;h * sizeof(rgb_pixel_t));
 633 
@@ -3845,19 +3852,19 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>ctx</i> Display context (must not be NULL)</div>
 <p class="Pp">Moves the cursor to the top-left corner (1,1) of the terminal.</p>
-<p class="Pp">Definition at line <b>1047</b> of file
+<p class="Pp">Definition at line <b>1053</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1047                                                              {
-1048   if (!ctx || !ctx-&gt;initialized) {
-1049     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL or uninitialized&quot;);
-1050     return;
-1051   }
-1052 
-1053   int fd = ctx-&gt;has_tty ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
-1054   if (fd &gt;= 0) {
-1055     (void)terminal_cursor_home(fd);
-1056   }
-1057 }</pre>
+<pre>1053                                                              {
+1054   if (!ctx || !ctx-&gt;initialized) {
+1055     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL or uninitialized&quot;);
+1056     return;
+1057   }
+1058 
+1059   int fd = ctx-&gt;has_tty ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
+1060   if (fd &gt;= 0) {
+1061     (void)terminal_cursor_home(fd);
+1062   }
+1063 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>tty_info_t::fd</b>,
@@ -3951,48 +3958,48 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">Encodes image via render_file/FFmpeg encoder. No-op if
     --render-file not set. Used by the encode thread in the threaded
   pipeline.</p>
-<p class="Pp">Definition at line <b>917</b> of file
+<p class="Pp">Definition at line <b>923</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>917                                                                                                           {
-918   static int call_count = 0;
-919   if (call_count++ &lt; 5) {
-920     log_info(&quot;session_display_encode_frame: CALLED (ctx=%p, image=%p, captured_ns=%llu, ctx-&gt;render_file=%p)&quot;,
-921              (void *)ctx, (void *)image, (unsigned long long)captured_ns, ctx ? (void *)ctx-&gt;render_file : NULL);
-922   }
-923 
-924   if (!ctx || !ctx-&gt;initialized) {
-925     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Display context is NULL or uninitialized&quot;);
-926     return;
-927   }
-928 
-929   if (!image) {
-930     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Image is NULL&quot;);
-931     return;
-932   }
-933 
-934   // Only encode if render_file is active
-935   if (!ctx-&gt;render_file) {
-936     log_warn_every(10 * NS_PER_SEC_INT, &quot;session_display_encode_frame: render_file is NULL, skipping encode&quot;);
+<pre>923                                                                                                           {
+924   static int call_count = 0;
+925   if (call_count++ &lt; 5) {
+926     log_info(&quot;session_display_encode_frame: CALLED (ctx=%p, image=%p, captured_ns=%llu, ctx-&gt;render_file=%p)&quot;,
+927              (void *)ctx, (void *)image, (unsigned long long)captured_ns, ctx ? (void *)ctx-&gt;render_file : NULL);
+928   }
+929 
+930   if (!ctx || !ctx-&gt;initialized) {
+931     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Display context is NULL or uninitialized&quot;);
+932     return;
+933   }
+934 
+935   if (!image) {
+936     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Image is NULL&quot;);
 937     return;
 938   }
 939 
-940   // Convert image to ASCII
-941   char *ascii = session_display_convert_to_ascii(ctx, image);
-942   if (!ascii) {
-943     log_warn(&quot;session_display_encode_frame: Failed to convert image to ASCII&quot;);
-944     return;
-945   }
-946 
-947   // Write ASCII to render-file encoder
-948 #ifndef _WIN32
-949   asciichat_error_t fe = render_file_write_frame(ctx-&gt;render_file, ascii, captured_ns);
-950   if (fe != ASCIICHAT_OK) {
-951     log_warn_every(5 * NS_PER_SEC_INT, &quot;render-file: encode failed (%s)&quot;, asciichat_error_string(fe));
-952   }
-953 #endif
-954 
-955   SAFE_FREE(ascii);
-956 }</pre>
+940   // Only encode if render_file is active
+941   if (!ctx-&gt;render_file) {
+942     log_warn_every(10 * NS_PER_SEC_INT, &quot;session_display_encode_frame: render_file is NULL, skipping encode&quot;);
+943     return;
+944   }
+945 
+946   // Convert image to ASCII
+947   char *ascii = session_display_convert_to_ascii(ctx, image);
+948   if (!ascii) {
+949     log_warn(&quot;session_display_encode_frame: Failed to convert image to ASCII&quot;);
+950     return;
+951   }
+952 
+953   // Write ASCII to render-file encoder
+954 #ifndef _WIN32
+955   asciichat_error_t fe = render_file_write_frame(ctx-&gt;render_file, ascii, captured_ns);
+956   if (fe != ASCIICHAT_OK) {
+957     log_warn_every(5 * NS_PER_SEC_INT, &quot;render-file: encode failed (%s)&quot;, asciichat_error_string(fe));
+958   }
+959 #endif
+960 
+961   SAFE_FREE(ascii);
+962 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -4031,6 +4038,28 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">References <b>session_display_ctx::caps</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>session_display_ctx::initialized</b>, and
     <b>SET_ERRNO</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>session_display_ctx_t</b> * session_display_get_global_context
+  (void )</h2>
+<p class="Pp">#include &lt;<b>src/common/session/display.h</b>&gt;<b></b></p>
+<p class="Pp">Get the global display context (used for signal handlers and
+    special cleanup).</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to global display context, or NULL if not
+  set</div>
+<p class="Pp">Retrieves the display context that was set via
+    <b>session_display_set_global_context()</b>. Signal handlers and special
+    modes (like discovery participant) use this to access the display without
+    having a direct pointer.</p>
+<p class="Pp">Definition at line <b>1162</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<pre>1162                                                                 {
+1163   return get_current_display_ctx();
+1164 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_session_display_get_luminance_palette_("><a class="permalink" href="#const_char_*_session_display_get_luminance_palette_(">const
@@ -4196,15 +4225,15 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if audio playback is available, false
   otherwise</div>
-<p class="Pp">Definition at line <b>1059</b> of file
+<p class="Pp">Definition at line <b>1065</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1059                                                                     {
-1060   if (!ctx || !ctx-&gt;initialized) {
-1061     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL or uninitialized&quot;);
-1062     return false;
-1063   }
-1064   return ctx-&gt;audio_playback_enabled;
-1065 }</pre>
+<pre>1065                                                                     {
+1066   if (!ctx || !ctx-&gt;initialized) {
+1067     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL or uninitialized&quot;);
+1068     return false;
+1069   }
+1070   return ctx-&gt;audio_playback_enabled;
+1071 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_display_ctx::audio_playback_enabled</b>,
@@ -4296,39 +4325,39 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">Displays the current FPS value as a reverse-video overlay in the
     top-right corner of the terminal. Only renders in TTY mode. Safe to call
     when fps_counter is NULL.</p>
-<p class="Pp">Definition at line <b>978</b> of file
+<p class="Pp">Definition at line <b>984</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>978                                                                     {
-979   if (!ctx || !ctx-&gt;fps_counter || !ctx-&gt;initialized) {
-980     return;
-981   }
-982 
-983   // Only render overlay in TTY mode
-984   if (!ctx-&gt;has_tty) {
-985     return;
-986   }
-987 
-988   // Get current FPS value from counter
-989   float fps = fps_counter_get(ctx-&gt;fps_counter);
-990 
-991   // Get terminal width for right-alignment
-992   int term_cols = (int)terminal_get_effective_width();
+<pre>984                                                                     {
+985   if (!ctx || !ctx-&gt;fps_counter || !ctx-&gt;initialized) {
+986     return;
+987   }
+988 
+989   // Only render overlay in TTY mode
+990   if (!ctx-&gt;has_tty) {
+991     return;
+992   }
 993 
-994   // Position at row 1, right side of screen
-995   // Column = term_cols - 7 (to fit &quot;FPS:144&quot; which is 7 chars)
-996   // Use reverse video (\033[7m) for visibility, then reset (\033[0m)
-997   char overlay[64];
-998   int overlay_len = snprintf(overlay, sizeof(overlay), &quot;\033[1;%dH\033[7mFPS:%3.0f\033[0m&quot;, term_cols - 6, fps);
+994   // Get current FPS value from counter
+995   float fps = fps_counter_get(ctx-&gt;fps_counter);
+996 
+997   // Get terminal width for right-alignment
+998   int term_cols = (int)terminal_get_effective_width();
 999 
-1000   if (overlay_len &gt; 0 &amp;&amp; overlay_len &lt; (int)sizeof(overlay)) {
-1001     // Write overlay to TTY
-1002     int fd = (ctx-&gt;has_tty &amp;&amp; ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
-1003     (void)platform_write_all(fd, overlay, overlay_len);
-1004 
-1005     // Flush to ensure overlay appears immediately
-1006     (void)terminal_flush(fd);
-1007   }
-1008 }</pre>
+1000   // Position at row 1, right side of screen
+1001   // Column = term_cols - 7 (to fit &quot;FPS:144&quot; which is 7 chars)
+1002   // Use reverse video (\033[7m) for visibility, then reset (\033[0m)
+1003   char overlay[64];
+1004   int overlay_len = snprintf(overlay, sizeof(overlay), &quot;\033[1;%dH\033[7mFPS:%3.0f\033[0m&quot;, term_cols - 6, fps);
+1005 
+1006   if (overlay_len &gt; 0 &amp;&amp; overlay_len &lt; (int)sizeof(overlay)) {
+1007     // Write overlay to TTY
+1008     int fd = (ctx-&gt;has_tty &amp;&amp; ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
+1009     (void)platform_write_all(fd, overlay, overlay_len);
+1010 
+1011     // Flush to ensure overlay appears immediately
+1012     (void)terminal_flush(fd);
+1013   }
+1014 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>tty_info_t::fd</b>,
@@ -4386,26 +4415,26 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>ctx</i> Display context (must not be NULL)</div>
 <p class="Pp">Resets terminal attributes (colors, cursor visibility, etc.) to
     defaults. Useful for cleanup or error recovery.</p>
-<p class="Pp">Definition at line <b>1010</b> of file
+<p class="Pp">Definition at line <b>1016</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1010                                                        {
-1011   if (!ctx || !ctx-&gt;initialized) {
-1012     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL or uninitialized&quot;);
-1013     return;
-1014   }
-1015 
-1016   // Skip terminal reset in snapshot mode to preserve rendered output
-1017   if (ctx-&gt;snapshot_mode) {
-1018     return;
-1019   }
-1020 
-1021   // Only perform terminal operations if we have a valid TTY
-1022   if (ctx-&gt;has_tty &amp;&amp; ctx-&gt;tty_info.fd &gt;= 0) {
-1023     (void)terminal_reset(ctx-&gt;tty_info.fd);
-1024     (void)terminal_cursor_show();
-1025     (void)terminal_flush(ctx-&gt;tty_info.fd);
-1026   }
-1027 }</pre>
+<pre>1016                                                        {
+1017   if (!ctx || !ctx-&gt;initialized) {
+1018     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL or uninitialized&quot;);
+1019     return;
+1020   }
+1021 
+1022   // Skip terminal reset in snapshot mode to preserve rendered output
+1023   if (ctx-&gt;snapshot_mode) {
+1024     return;
+1025   }
+1026 
+1027   // Only perform terminal operations if we have a valid TTY
+1028   if (ctx-&gt;has_tty &amp;&amp; ctx-&gt;tty_info.fd &gt;= 0) {
+1029     (void)terminal_reset(ctx-&gt;tty_info.fd);
+1030     (void)terminal_cursor_show();
+1031     (void)terminal_flush(ctx-&gt;tty_info.fd);
+1032   }
+1033 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>tty_info_t::fd</b>,
@@ -4461,16 +4490,39 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Must be called from the render loop
   startup/shutdown</div>
-<p class="Pp">Definition at line <b>1151</b> of file
+<p class="Pp">Definition at line <b>1157</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1151                                                                     {
-1152   atomic_ptr_store(&amp;g_current_display_ctx, (void *)ctx);
-1153 }</pre>
+<pre>1157                                                                     {
+1158   atomic_ptr_store(&amp;g_current_display_ctx, (void *)ctx);
+1159 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_ptr_store()</b>.</p>
-<p class="Pp">Referenced by <b>session_client_like_run()</b>, and
+<p class="Pp">Referenced by <b>session_client_like_run()</b>,
+    <b>session_display_set_global_context_public()</b>, and
     <b>session_render_loop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_display_set_global_context_public_("><a class="permalink" href="#void_session_display_set_global_context_public_(">void
+  session_display_set_global_context_public (<b>session_display_ctx_t</b> *
+  ctx)</a></h2>
+<p class="Pp">#include &lt;<b>src/common/session/display.h</b>&gt;<b></b></p>
+<p class="Pp">Set the global display context (public setter for discovery
+    cleanup).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Display context to set, or NULL to clear</div>
+<p class="Pp">Sets the global display context. Signal handlers and special modes
+    use this to track the active display context. Used by discovery participant
+    mode to clear the global context after destroying the display early to
+    prevent use-after-free in cleanup code.</p>
+<p class="Pp">Definition at line <b>1167</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<pre>1167                                                                            {
+1168   session_display_set_global_context(ctx);
+1169 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>session_display_set_global_context()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_session_display_set_render_audio_source_("><a class="permalink" href="#void_session_display_set_render_audio_source_(">void
@@ -4543,30 +4595,30 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">In snapshot mode, this function provides the actual wall-clock
     duration of frame capture, allowing the encoder to calculate correct frame
     durations so the output video spans exactly the specified duration.</p>
-<p class="Pp">Definition at line <b>1202</b> of file
+<p class="Pp">Definition at line <b>1218</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1202                                                                                                           {
-1203   log_info(&quot;session_display_set_snapshot_actual_duration: CALLED with duration=%.3f, ctx=%p, render_file=%p&quot;,
-1204            actual_duration_sec, (void *)ctx, ctx ? (void *)ctx-&gt;render_file : NULL);
-1205 
-1206   if (!ctx) {
-1207     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL&quot;);
-1208     return;
-1209   }
-1210 
-1211   if (!ctx-&gt;render_file) {
-1212     log_warn(&quot;  -&gt; render_file is NULL, cannot set duration&quot;);
-1213     return; // No render_file context, nothing to do
-1214   }
-1215 
-1216 #ifndef _WIN32
-1217   // Pass the actual duration to the render_file module, which passes it to the encoder
-1218   if (ctx-&gt;render_file) {
-1219     log_info(&quot;  -&gt; Passing duration %.3f to render_file encoder&quot;, actual_duration_sec);
-1220     render_file_set_snapshot_actual_duration(ctx-&gt;render_file, actual_duration_sec);
-1221   }
-1222 #endif
-1223 }</pre>
+<pre>1218                                                                                                           {
+1219   log_info(&quot;session_display_set_snapshot_actual_duration: CALLED with duration=%.3f, ctx=%p, render_file=%p&quot;,
+1220            actual_duration_sec, (void *)ctx, ctx ? (void *)ctx-&gt;render_file : NULL);
+1221 
+1222   if (!ctx) {
+1223     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session display context is NULL&quot;);
+1224     return;
+1225   }
+1226 
+1227   if (!ctx-&gt;render_file) {
+1228     log_warn(&quot;  -&gt; render_file is NULL, cannot set duration&quot;);
+1229     return; // No render_file context, nothing to do
+1230   }
+1231 
+1232 #ifndef _WIN32
+1233   // Pass the actual duration to the render_file module, which passes it to the encoder
+1234   if (ctx-&gt;render_file) {
+1235     log_info(&quot;  -&gt; Passing duration %.3f to render_file encoder&quot;, actual_duration_sec);
+1236     render_file_set_snapshot_actual_duration(ctx-&gt;render_file, actual_duration_sec);
+1237   }
+1238 #endif
+1239 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>log_info</b>,
@@ -4699,110 +4751,117 @@ fps_counter_destroy(fps);</pre>
 813 
 814   START_TIMER(&quot;frame_write&quot;);
 815 
-816   if (use_tty_control) {
-817     // TTY mode: Buffer cursor control + frame data together for atomic frame display
-818     const char *cursor_home_sequence = &quot;\033[H\033[3J&quot;; // 7 bytes total
-819     size_t cursor_seq_len = 7;
-820     size_t total_size = cursor_seq_len + frame_len;
+816   // Increment shared frame counter for both client and host rendering
+817   // This metric is used by debug scripts to measure FPS across all modes
+818   static atomic_t g_display_frames_rendered = {0};
+819   int frame_number = atomic_fetch_add_u64(&amp;g_display_frames_rendered, 1) + 1;
+820   log_info(&quot;[FRAMES_RENDERED_TOTAL] %d&quot;, frame_number);
 821 
-822     char *frame_buffer = SAFE_MALLOC(total_size, char *);
-823     if (frame_buffer) {
-824       memcpy(frame_buffer, cursor_home_sequence, cursor_seq_len);
-825       memcpy(frame_buffer + cursor_seq_len, display_frame, frame_len);
-826 
-827       log_debug(&quot;FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout&quot;, total_size, cursor_seq_len,
-828                 frame_len);
-829       ssize_t written = platform_write_all(STDOUT_FILENO, frame_buffer, total_size);
-830       log_debug(&quot;FRAME_WRITE_TTY: Wrote %zd bytes (requested %zu)&quot;, written, total_size);
-831 
-832       // Start snapshot timer on first ASCII frame rendered
-833       if (GET_OPTION(snapshot_mode) &amp;&amp; !g_snapshot_first_frame_rendered) {
-834         g_snapshot_first_frame_rendered = true;
-835         g_snapshot_first_frame_rendered_ns = time_get_ns();
-836         log_info(&quot;SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii) - Timer started&quot;);
-837       }
-838 
-839       // Tick FPS counter
-840       if (ctx-&gt;fps_counter) {
-841         fps_counter_tick(ctx-&gt;fps_counter);
-842       }
-843 
-844       SAFE_FREE(frame_buffer);
-845     }
-846 
-847     // Flush buffers
-848     log_debug(&quot;FRAME_FLUSH: Flushing stdout&quot;);
-849     (void)fflush(stdout);
-850     int flush_fd = (ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
-851     (void)terminal_flush(flush_fd);
+822   if (use_tty_control) {
+823     // TTY mode: Buffer cursor control + frame data together for atomic frame display
+824     const char *cursor_home_sequence = &quot;\033[H\033[3J&quot;; // 7 bytes total
+825     size_t cursor_seq_len = 7;
+826     size_t total_size = cursor_seq_len + frame_len;
+827 
+828     char *frame_buffer = SAFE_MALLOC(total_size, char *);
+829     if (frame_buffer) {
+830       memcpy(frame_buffer, cursor_home_sequence, cursor_seq_len);
+831       memcpy(frame_buffer + cursor_seq_len, display_frame, frame_len);
+832 
+833       log_debug(&quot;FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout&quot;, total_size, cursor_seq_len,
+834                 frame_len);
+835       ssize_t written = platform_write_all(STDOUT_FILENO, frame_buffer, total_size);
+836       log_debug(&quot;FRAME_WRITE_TTY: Wrote %zd bytes (requested %zu)&quot;, written, total_size);
+837 
+838       // Start snapshot timer on first ASCII frame rendered
+839       if (GET_OPTION(snapshot_mode) &amp;&amp; !g_snapshot_first_frame_rendered) {
+840         g_snapshot_first_frame_rendered = true;
+841         g_snapshot_first_frame_rendered_ns = time_get_ns();
+842         log_info(&quot;SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii) - Timer started&quot;);
+843       }
+844 
+845       // Tick FPS counter
+846       if (ctx-&gt;fps_counter) {
+847         fps_counter_tick(ctx-&gt;fps_counter);
+848       }
+849 
+850       SAFE_FREE(frame_buffer);
+851     }
 852 
-853     // Render FPS counter overlay if enabled
-854     if (ctx-&gt;fps_counter &amp;&amp; GET_OPTION(fps_counter)) {
-855       session_display_render_fps_overlay(ctx);
-856     }
-857   } else if (terminal_is_interactive()) {
-858     // Piped to interactive terminal: output ASCII frames with newline
-859     char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
-860     if (write_buf) {
-861       memcpy(write_buf, display_frame, frame_len);
-862       write_buf[frame_len] = '\n';
-863       (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
-864       SAFE_FREE(write_buf);
-865     }
-866 
-867     // Flush buffers
-868     (void)fflush(stdout);
-869     int flush_fd = (ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
-870     (void)terminal_flush(flush_fd);
-871   } else {
-872     // Non-interactive piped output
-873     // BUT: Don't write ASCII frames to stdout if render_file is using stdout (--render-file=&quot;-&quot;)
-874     if (!ctx-&gt;render_file) {
-875       // No render-file, safe to write ASCII frames to stdout
-876       char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
-877       if (write_buf) {
-878         memcpy(write_buf, display_frame, frame_len);
-879         write_buf[frame_len] = '\n';
-880         (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
-881 
-882         // Start snapshot timer on first ASCII frame rendered
-883         if (GET_OPTION(snapshot_mode) &amp;&amp; !g_snapshot_first_frame_rendered) {
-884           g_snapshot_first_frame_rendered = true;
-885           g_snapshot_first_frame_rendered_ns = time_get_ns();
-886           log_info(&quot;SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii piped) - Timer started&quot;);
-887         }
-888 
-889         SAFE_FREE(write_buf);
-890       }
-891 
-892       // Flush buffers (skip terminal_flush on pipes to avoid blocking in snapshot mode)
-893       (void)fflush(stdout);
-894       if (!GET_OPTION(snapshot_mode) || ctx-&gt;has_tty) {
-895         int flush_fd = (ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
-896         (void)terminal_flush(flush_fd);
-897       }
-898     } else {
-899       // render_file is using stdout: skip ASCII output to avoid mixing with video
-900       if (GET_OPTION(snapshot_mode) &amp;&amp; !g_snapshot_first_frame_rendered) {
-901         g_snapshot_first_frame_rendered = true;
-902         g_snapshot_first_frame_rendered_ns = time_get_ns();
-903         log_info(&quot;SNAPSHOT: FIRST FRAME RENDERED (render_file piped) - Timer started&quot;);
-904       }
-905     }
-906   }
-907 
-908   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, &quot;frame_write&quot;,
-909                            &quot;FRAME_WRITE: Write and flush complete (%.2f ms)&quot;);
-910 
-911   // Clean up digital rain result if allocated
-912   if (rain_result) {
-913     SAFE_FREE(rain_result);
-914   }
-915 }</pre>
+853     // Flush buffers
+854     log_debug(&quot;FRAME_FLUSH: Flushing stdout&quot;);
+855     (void)fflush(stdout);
+856     int flush_fd = (ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
+857     (void)terminal_flush(flush_fd);
+858 
+859     // Render FPS counter overlay if enabled
+860     if (ctx-&gt;fps_counter &amp;&amp; GET_OPTION(fps_counter)) {
+861       session_display_render_fps_overlay(ctx);
+862     }
+863   } else if (terminal_is_interactive()) {
+864     // Piped to interactive terminal: output ASCII frames with newline
+865     char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
+866     if (write_buf) {
+867       memcpy(write_buf, display_frame, frame_len);
+868       write_buf[frame_len] = '\n';
+869       (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
+870       SAFE_FREE(write_buf);
+871     }
+872 
+873     // Flush buffers
+874     (void)fflush(stdout);
+875     int flush_fd = (ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
+876     (void)terminal_flush(flush_fd);
+877   } else {
+878     // Non-interactive piped output
+879     // BUT: Don't write ASCII frames to stdout if render_file is using stdout (--render-file=&quot;-&quot;)
+880     if (!ctx-&gt;render_file) {
+881       // No render-file, safe to write ASCII frames to stdout
+882       char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
+883       if (write_buf) {
+884         memcpy(write_buf, display_frame, frame_len);
+885         write_buf[frame_len] = '\n';
+886         (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
+887 
+888         // Start snapshot timer on first ASCII frame rendered
+889         if (GET_OPTION(snapshot_mode) &amp;&amp; !g_snapshot_first_frame_rendered) {
+890           g_snapshot_first_frame_rendered = true;
+891           g_snapshot_first_frame_rendered_ns = time_get_ns();
+892           log_info(&quot;SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii piped) - Timer started&quot;);
+893         }
+894 
+895         SAFE_FREE(write_buf);
+896       }
+897 
+898       // Flush buffers (skip terminal_flush on pipes to avoid blocking in snapshot mode)
+899       (void)fflush(stdout);
+900       if (!GET_OPTION(snapshot_mode) || ctx-&gt;has_tty) {
+901         int flush_fd = (ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
+902         (void)terminal_flush(flush_fd);
+903       }
+904     } else {
+905       // render_file is using stdout: skip ASCII output to avoid mixing with video
+906       if (GET_OPTION(snapshot_mode) &amp;&amp; !g_snapshot_first_frame_rendered) {
+907         g_snapshot_first_frame_rendered = true;
+908         g_snapshot_first_frame_rendered_ns = time_get_ns();
+909         log_info(&quot;SNAPSHOT: FIRST FRAME RENDERED (render_file piped) - Timer started&quot;);
+910       }
+911     }
+912   }
+913 
+914   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, &quot;frame_write&quot;,
+915                            &quot;FRAME_WRITE: Write and flush complete (%.2f ms)&quot;);
+916 
+917   // Clean up digital rain result if allocated
+918   if (rain_result) {
+919     SAFE_FREE(rain_result);
+920   }
+921 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_exchange_bool()</b>,
-    <b>atomic_load_bool()</b>, <b>session_display_ctx::caps</b>,
+    <b>atomic_fetch_add_u64()</b>, <b>atomic_load_bool()</b>,
+    <b>session_display_ctx::caps</b>,
     <b>terminal_capabilities_t::color_level</b>,
     <b>session_display_ctx::digital_rain</b>, <b>digital_rain_apply()</b>,
     <b>digital_rain_set_color_from_filter()</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -4846,58 +4905,58 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">Writes audio samples to the playback ring buffer for playback
     through speakers. Used in mirror mode to play file audio or other audio
     sources.</p>
-<p class="Pp">Definition at line <b>1067</b> of file
+<p class="Pp">Definition at line <b>1073</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>1067                                                                                                                    {
-1068   if (!ctx || !ctx-&gt;initialized || !buffer || num_samples == 0) {
-1069     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, buffer=%p, num_samples=%zu&quot;, ctx, buffer,
-1070                      num_samples);
-1071   }
-1072 
-1073   if (!ctx-&gt;audio_playback_enabled || !ctx-&gt;audio_ctx) {
-1074     // Audio not enabled, but not an error - just skip silently
-1075     return ASCIICHAT_OK;
-1076   }
-1077 
-1078   // For mirror mode with local files: write samples directly without jitter buffering
-1079   // The jitter buffer is designed for network scenarios with irregular packet arrivals
-1080   // For local playback, we just want raw samples flowing to the speakers
-1081   audio_context_t *audio_ctx = (audio_context_t *)ctx-&gt;audio_ctx;
-1082   if (audio_ctx &amp;&amp; audio_ctx-&gt;playback_buffer) {
-1083     audio_ring_buffer_t *rb = audio_ctx-&gt;playback_buffer;
-1084 
-1085     // Simple direct write: append samples to ring buffer without network-oriented complexity
-1086     uint32_t write_idx = (uint32_t)atomic_load_u64(&amp;rb-&gt;write_index);
-1087     uint32_t read_idx = (uint32_t)atomic_load_u64(&amp;rb-&gt;read_index);
-1088 
-1089     // Calculate available space in ring buffer
-1090     uint32_t available = (read_idx - write_idx - 1) &amp; (AUDIO_RING_BUFFER_SIZE - 1);
-1091 
-1092     if ((uint32_t)num_samples &gt; available) {
-1093       // Buffer full - just skip this write to avoid distortion from overwriting old audio
-1094       return ASCIICHAT_OK;
-1095     }
-1096 
-1097     // Direct memcpy to ring buffer, handling wrap-around
-1098     uint32_t space_before_wrap = AUDIO_RING_BUFFER_SIZE - write_idx;
-1099     if ((uint32_t)num_samples &lt;= space_before_wrap) {
-1100       memcpy(&amp;rb-&gt;data[write_idx], buffer, num_samples * sizeof(float));
-1101     } else {
-1102       // Split write: first part to end of buffer, second part wraps to beginning
-1103       uint32_t first_part = space_before_wrap;
-1104       uint32_t second_part = num_samples - first_part;
-1105       memcpy(&amp;rb-&gt;data[write_idx], buffer, first_part * sizeof(float));
-1106       memcpy(&amp;rb-&gt;data[0], &amp;buffer[first_part], second_part * sizeof(float));
-1107     }
-1108 
-1109     // Update write index atomically
-1110     atomic_store_u64(&amp;rb-&gt;write_index, (write_idx + num_samples) % AUDIO_RING_BUFFER_SIZE);
-1111 
-1112     return ASCIICHAT_OK;
-1113   }
+<pre>1073                                                                                                                    {
+1074   if (!ctx || !ctx-&gt;initialized || !buffer || num_samples == 0) {
+1075     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, buffer=%p, num_samples=%zu&quot;, ctx, buffer,
+1076                      num_samples);
+1077   }
+1078 
+1079   if (!ctx-&gt;audio_playback_enabled || !ctx-&gt;audio_ctx) {
+1080     // Audio not enabled, but not an error - just skip silently
+1081     return ASCIICHAT_OK;
+1082   }
+1083 
+1084   // For mirror mode with local files: write samples directly without jitter buffering
+1085   // The jitter buffer is designed for network scenarios with irregular packet arrivals
+1086   // For local playback, we just want raw samples flowing to the speakers
+1087   audio_context_t *audio_ctx = (audio_context_t *)ctx-&gt;audio_ctx;
+1088   if (audio_ctx &amp;&amp; audio_ctx-&gt;playback_buffer) {
+1089     audio_ring_buffer_t *rb = audio_ctx-&gt;playback_buffer;
+1090 
+1091     // Simple direct write: append samples to ring buffer without network-oriented complexity
+1092     uint32_t write_idx = (uint32_t)atomic_load_u64(&amp;rb-&gt;write_index);
+1093     uint32_t read_idx = (uint32_t)atomic_load_u64(&amp;rb-&gt;read_index);
+1094 
+1095     // Calculate available space in ring buffer
+1096     uint32_t available = (read_idx - write_idx - 1) &amp; (AUDIO_RING_BUFFER_SIZE - 1);
+1097 
+1098     if ((uint32_t)num_samples &gt; available) {
+1099       // Buffer full - just skip this write to avoid distortion from overwriting old audio
+1100       return ASCIICHAT_OK;
+1101     }
+1102 
+1103     // Direct memcpy to ring buffer, handling wrap-around
+1104     uint32_t space_before_wrap = AUDIO_RING_BUFFER_SIZE - write_idx;
+1105     if ((uint32_t)num_samples &lt;= space_before_wrap) {
+1106       memcpy(&amp;rb-&gt;data[write_idx], buffer, num_samples * sizeof(float));
+1107     } else {
+1108       // Split write: first part to end of buffer, second part wraps to beginning
+1109       uint32_t first_part = space_before_wrap;
+1110       uint32_t second_part = num_samples - first_part;
+1111       memcpy(&amp;rb-&gt;data[write_idx], buffer, first_part * sizeof(float));
+1112       memcpy(&amp;rb-&gt;data[0], &amp;buffer[first_part], second_part * sizeof(float));
+1113     }
 1114 
-1115   return ASCIICHAT_OK;
-1116 }</pre>
+1115     // Update write index atomically
+1116     atomic_store_u64(&amp;rb-&gt;write_index, (write_idx + num_samples) % AUDIO_RING_BUFFER_SIZE);
+1117 
+1118     return ASCIICHAT_OK;
+1119   }
+1120 
+1121   return ASCIICHAT_OK;
+1122 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_u64()</b>,
@@ -4923,27 +4982,27 @@ fps_counter_destroy(fps);</pre>
 <i>len</i> Length of data in bytes</div>
 <p class="Pp">Directly writes raw bytes to the terminal without any frame
     processing. Useful for RLE-expanded frames or pre-formatted output.</p>
-<p class="Pp">Definition at line <b>958</b> of file
+<p class="Pp">Definition at line <b>964</b> of file
     <b>src/common/session/display.c</b>.</p>
-<pre>958                                                                                          {
-959   if (!ctx || !ctx-&gt;initialized || !data || len == 0) {
-960     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, data=%p, len=%zu&quot;, ctx, data, len);
-961     return;
-962   }
-963 
-964   int fd = -1;
-965   if (ctx-&gt;has_tty &amp;&amp; ctx-&gt;tty_info.fd &gt;= 0) {
-966     fd = ctx-&gt;tty_info.fd;
-967   } else {
-968     fd = STDOUT_FILENO;
-969   }
-970 
-971   // Write all data with automatic retry on transient errors
-972   (void)platform_write_all(fd, data, len);
-973 
-974   // Flush immediately after write to TTY to ensure data is sent
-975   (void)terminal_flush(fd);
-976 }</pre>
+<pre>964                                                                                          {
+965   if (!ctx || !ctx-&gt;initialized || !data || len == 0) {
+966     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: ctx=%p, data=%p, len=%zu&quot;, ctx, data, len);
+967     return;
+968   }
+969 
+970   int fd = -1;
+971   if (ctx-&gt;has_tty &amp;&amp; ctx-&gt;tty_info.fd &gt;= 0) {
+972     fd = ctx-&gt;tty_info.fd;
+973   } else {
+974     fd = STDOUT_FILENO;
+975   }
+976 
+977   // Write all data with automatic retry on transient errors
+978   (void)platform_write_all(fd, data, len);
+979 
+980   // Flush immediately after write to TTY to ensure data is sent
+981   (void)terminal_flush(fd);
+982 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>tty_info_t::fd</b>,
@@ -5326,74 +5385,74 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">on_client_join callback is invoked on successful
   registration.</div>
-<p class="Pp">Definition at line <b>955</b> of file <b>host.c</b>.</p>
-<pre>955                                                                                                   {
-956   if (!host || !host-&gt;initialized) {
-957     return 0;
-958   }
-959 
-960   mutex_lock(&amp;host-&gt;clients_mutex);
-961 
-962   // Check if we have room
-963   if (host-&gt;client_count &gt;= host-&gt;max_clients) {
-964     mutex_unlock(&amp;host-&gt;clients_mutex);
-965     SET_ERRNO(ERROR_SESSION_FULL, &quot;Maximum clients reached&quot;);
+<p class="Pp">Definition at line <b>964</b> of file <b>host.c</b>.</p>
+<pre>964                                                                                                   {
+965   if (!host || !host-&gt;initialized) {
 966     return 0;
 967   }
 968 
-969   // Find empty slot
-970   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
-971     if (!host-&gt;clients[i].active) {
-972       host-&gt;clients[i].participant_type = PARTICIPANT_TYPE_NETWORK;
-973       host-&gt;clients[i].client_id = host-&gt;next_client_id++;
-974       host-&gt;clients[i].socket = socket;
-975       if (ip) {
-976         SAFE_STRNCPY(host-&gt;clients[i].ip_address, ip, sizeof(host-&gt;clients[i].ip_address));
-977       }
-978       host-&gt;clients[i].port = port;
-979       host-&gt;clients[i].active = true;
-980       host-&gt;clients[i].video_active = false;
-981       host-&gt;clients[i].audio_active = false;
-982       host-&gt;clients[i].connected_at = (uint64_t)time(NULL);
-983       host-&gt;clients[i].transport = NULL; // No alternative transport initially
-984 
-985       // Allocate media buffers
-986       host-&gt;clients[i].incoming_video = image_new(480, 270);                        // Network-optimal size (HD preview)
-987       host-&gt;clients[i].incoming_audio = ringbuffer_create(sizeof(float), 960 * 10); // ~200ms buffer @ 48kHz
-988 
-989       if (!host-&gt;clients[i].incoming_video || !host-&gt;clients[i].incoming_audio) {
-990         // Cleanup on allocation failure
-991         if (host-&gt;clients[i].incoming_video) {
-992           image_destroy(host-&gt;clients[i].incoming_video);
-993           host-&gt;clients[i].incoming_video = NULL;
-994         }
-995         if (host-&gt;clients[i].incoming_audio) {
-996           ringbuffer_destroy(host-&gt;clients[i].incoming_audio);
-997           host-&gt;clients[i].incoming_audio = NULL;
-998         }
-999         host-&gt;clients[i].active = false;
-1000         mutex_unlock(&amp;host-&gt;clients_mutex);
-1001         SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate media buffers for client&quot;);
-1002         return 0;
-1003       }
-1004 
-1005       uint32_t client_id = host-&gt;clients[i].client_id;
-1006       host-&gt;client_count++;
-1007 
-1008       mutex_unlock(&amp;host-&gt;clients_mutex);
-1009 
-1010       // Invoke callback
-1011       if (host-&gt;callbacks.on_client_join) {
-1012         host-&gt;callbacks.on_client_join(host, client_id, host-&gt;user_data);
-1013       }
-1014 
-1015       return client_id;
-1016     }
-1017   }
+969   mutex_lock(&amp;host-&gt;clients_mutex);
+970 
+971   // Check if we have room
+972   if (host-&gt;client_count &gt;= host-&gt;max_clients) {
+973     mutex_unlock(&amp;host-&gt;clients_mutex);
+974     SET_ERRNO(ERROR_SESSION_FULL, &quot;Maximum clients reached&quot;);
+975     return 0;
+976   }
+977 
+978   // Find empty slot
+979   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
+980     if (!host-&gt;clients[i].active) {
+981       host-&gt;clients[i].participant_type = PARTICIPANT_TYPE_NETWORK;
+982       host-&gt;clients[i].client_id = host-&gt;next_client_id++;
+983       host-&gt;clients[i].socket = socket;
+984       if (ip) {
+985         SAFE_STRNCPY(host-&gt;clients[i].ip_address, ip, sizeof(host-&gt;clients[i].ip_address));
+986       }
+987       host-&gt;clients[i].port = port;
+988       host-&gt;clients[i].active = true;
+989       host-&gt;clients[i].video_active = false;
+990       host-&gt;clients[i].audio_active = false;
+991       host-&gt;clients[i].connected_at = (uint64_t)time(NULL);
+992       host-&gt;clients[i].transport = NULL; // No alternative transport initially
+993 
+994       // Allocate media buffers
+995       host-&gt;clients[i].incoming_video = image_new(480, 270);                        // Network-optimal size (HD preview)
+996       host-&gt;clients[i].incoming_audio = ringbuffer_create(sizeof(float), 960 * 10); // ~200ms buffer @ 48kHz
+997 
+998       if (!host-&gt;clients[i].incoming_video || !host-&gt;clients[i].incoming_audio) {
+999         // Cleanup on allocation failure
+1000         if (host-&gt;clients[i].incoming_video) {
+1001           image_destroy(host-&gt;clients[i].incoming_video);
+1002           host-&gt;clients[i].incoming_video = NULL;
+1003         }
+1004         if (host-&gt;clients[i].incoming_audio) {
+1005           ringbuffer_destroy(host-&gt;clients[i].incoming_audio);
+1006           host-&gt;clients[i].incoming_audio = NULL;
+1007         }
+1008         host-&gt;clients[i].active = false;
+1009         mutex_unlock(&amp;host-&gt;clients_mutex);
+1010         SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate media buffers for client&quot;);
+1011         return 0;
+1012       }
+1013 
+1014       uint32_t client_id = host-&gt;clients[i].client_id;
+1015       host-&gt;client_count++;
+1016 
+1017       mutex_unlock(&amp;host-&gt;clients_mutex);
 1018 
-1019   mutex_unlock(&amp;host-&gt;clients_mutex);
-1020   return 0;
-1021 }</pre>
+1019       // Invoke callback
+1020       if (host-&gt;callbacks.on_client_join) {
+1021         host-&gt;callbacks.on_client_join(host, client_id, host-&gt;user_data);
+1022       }
+1023 
+1024       return client_id;
+1025     }
+1026   }
+1027 
+1028   mutex_unlock(&amp;host-&gt;clients_mutex);
+1029   return 0;
+1030 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host_client_t::active</b>,
@@ -5437,82 +5496,82 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp">Only one memory participant per host is supported.</p>
 </div>
-<p class="Pp">Definition at line <b>1023</b> of file <b>host.c</b>.</p>
-<pre>1023                                                                    {
-1024   if (!host || !host-&gt;initialized) {
-1025     return 0;
-1026   }
-1027 
-1028   mutex_lock(&amp;host-&gt;clients_mutex);
-1029 
-1030   // Check if we have room
-1031   if (host-&gt;client_count &gt;= host-&gt;max_clients) {
-1032     mutex_unlock(&amp;host-&gt;clients_mutex);
-1033     SET_ERRNO(ERROR_SESSION_FULL, &quot;Maximum clients reached&quot;);
+<p class="Pp">Definition at line <b>1032</b> of file <b>host.c</b>.</p>
+<pre>1032                                                                    {
+1033   if (!host || !host-&gt;initialized) {
 1034     return 0;
 1035   }
 1036 
-1037   // Check if memory participant already exists (only one allowed)
-1038   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
-1039     if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].participant_type == PARTICIPANT_TYPE_MEMORY) {
-1040       mutex_unlock(&amp;host-&gt;clients_mutex);
-1041       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Memory participant already exists&quot;);
-1042       return 0;
-1043     }
+1037   mutex_lock(&amp;host-&gt;clients_mutex);
+1038 
+1039   // Check if we have room
+1040   if (host-&gt;client_count &gt;= host-&gt;max_clients) {
+1041     mutex_unlock(&amp;host-&gt;clients_mutex);
+1042     SET_ERRNO(ERROR_SESSION_FULL, &quot;Maximum clients reached&quot;);
+1043     return 0;
 1044   }
 1045 
-1046   // Find empty slot
+1046   // Check if memory participant already exists (only one allowed)
 1047   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
-1048     if (!host-&gt;clients[i].active) {
-1049       host-&gt;clients[i].participant_type = PARTICIPANT_TYPE_MEMORY;
-1050       host-&gt;clients[i].client_id = host-&gt;next_client_id++;
-1051       host-&gt;clients[i].socket = INVALID_SOCKET_VALUE; // No socket for memory participant
-1052       SAFE_STRNCPY(host-&gt;clients[i].ip_address, &quot;memory&quot;, sizeof(host-&gt;clients[i].ip_address));
-1053       host-&gt;clients[i].port = 0;
-1054       host-&gt;clients[i].active = true;
-1055       host-&gt;clients[i].video_active = true;  // Memory participants always have active video/audio
-1056       host-&gt;clients[i].audio_active = true;
-1057       host-&gt;clients[i].connected_at = (uint64_t)time(NULL);
-1058       host-&gt;clients[i].transport = NULL;
-1059 
-1060       // Allocate media buffers (same as network clients)
-1061       host-&gt;clients[i].incoming_video = image_new(480, 270);
-1062       host-&gt;clients[i].incoming_audio = ringbuffer_create(sizeof(float), 960 * 10);
-1063 
-1064       if (!host-&gt;clients[i].incoming_video || !host-&gt;clients[i].incoming_audio) {
-1065         if (host-&gt;clients[i].incoming_video) {
-1066           image_destroy(host-&gt;clients[i].incoming_video);
-1067           host-&gt;clients[i].incoming_video = NULL;
-1068         }
-1069         if (host-&gt;clients[i].incoming_audio) {
-1070           ringbuffer_destroy(host-&gt;clients[i].incoming_audio);
-1071           host-&gt;clients[i].incoming_audio = NULL;
-1072         }
-1073         host-&gt;clients[i].active = false;
-1074         mutex_unlock(&amp;host-&gt;clients_mutex);
-1075         SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate media buffers for memory participant&quot;);
-1076         return 0;
-1077       }
-1078 
-1079       uint32_t participant_id = host-&gt;clients[i].client_id;
-1080       host-&gt;client_count++;
-1081 
-1082       mutex_unlock(&amp;host-&gt;clients_mutex);
-1083 
-1084       log_info(&quot;Added memory participant with ID %u&quot;, participant_id);
-1085 
-1086       // Invoke callback
-1087       if (host-&gt;callbacks.on_client_join) {
-1088         host-&gt;callbacks.on_client_join(host, participant_id, host-&gt;user_data);
-1089       }
+1048     if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].participant_type == PARTICIPANT_TYPE_MEMORY) {
+1049       mutex_unlock(&amp;host-&gt;clients_mutex);
+1050       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Memory participant already exists&quot;);
+1051       return 0;
+1052     }
+1053   }
+1054 
+1055   // Find empty slot
+1056   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
+1057     if (!host-&gt;clients[i].active) {
+1058       host-&gt;clients[i].participant_type = PARTICIPANT_TYPE_MEMORY;
+1059       host-&gt;clients[i].client_id = host-&gt;next_client_id++;
+1060       host-&gt;clients[i].socket = INVALID_SOCKET_VALUE; // No socket for memory participant
+1061       SAFE_STRNCPY(host-&gt;clients[i].ip_address, &quot;memory&quot;, sizeof(host-&gt;clients[i].ip_address));
+1062       host-&gt;clients[i].port = 0;
+1063       host-&gt;clients[i].active = true;
+1064       host-&gt;clients[i].video_active = true;  // Memory participants always have active video/audio
+1065       host-&gt;clients[i].audio_active = true;
+1066       host-&gt;clients[i].connected_at = (uint64_t)time(NULL);
+1067       host-&gt;clients[i].transport = NULL;
+1068 
+1069       // Allocate media buffers (same as network clients)
+1070       host-&gt;clients[i].incoming_video = image_new(480, 270);
+1071       host-&gt;clients[i].incoming_audio = ringbuffer_create(sizeof(float), 960 * 10);
+1072 
+1073       if (!host-&gt;clients[i].incoming_video || !host-&gt;clients[i].incoming_audio) {
+1074         if (host-&gt;clients[i].incoming_video) {
+1075           image_destroy(host-&gt;clients[i].incoming_video);
+1076           host-&gt;clients[i].incoming_video = NULL;
+1077         }
+1078         if (host-&gt;clients[i].incoming_audio) {
+1079           ringbuffer_destroy(host-&gt;clients[i].incoming_audio);
+1080           host-&gt;clients[i].incoming_audio = NULL;
+1081         }
+1082         host-&gt;clients[i].active = false;
+1083         mutex_unlock(&amp;host-&gt;clients_mutex);
+1084         SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate media buffers for memory participant&quot;);
+1085         return 0;
+1086       }
+1087 
+1088       uint32_t participant_id = host-&gt;clients[i].client_id;
+1089       host-&gt;client_count++;
 1090 
-1091       return participant_id;
-1092     }
-1093   }
+1091       mutex_unlock(&amp;host-&gt;clients_mutex);
+1092 
+1093       log_info(&quot;Added memory participant with ID %u&quot;, participant_id);
 1094 
-1095   mutex_unlock(&amp;host-&gt;clients_mutex);
-1096   return 0;
-1097 }</pre>
+1095       // Invoke callback
+1096       if (host-&gt;callbacks.on_client_join) {
+1097         host-&gt;callbacks.on_client_join(host, participant_id, host-&gt;user_data);
+1098       }
+1099 
+1100       return participant_id;
+1101     }
+1102   }
+1103 
+1104   mutex_unlock(&amp;host-&gt;clients_mutex);
+1105   return 0;
+1106 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host_client_t::active</b>,
@@ -5547,35 +5606,35 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Sends an ASCII frame to all connected clients.</p>
-<p class="Pp">Definition at line <b>1285</b> of file <b>host.c</b>.</p>
-<pre>1285                                                                                         {
-1286   if (!host || !host-&gt;initialized || !frame) {
-1287     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_broadcast_frame: invalid parameter&quot;);
-1288   }
-1289 
-1290   if (!host-&gt;running) {
-1291     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_host_broadcast_frame: not running&quot;);
-1292   }
-1293 
-1294   // Broadcast ASCII frame to all connected clients
-1295   size_t frame_len = strlen(frame) + 1; // Include null terminator
-1296   asciichat_error_t result = ASCIICHAT_OK;
-1297 
-1298   mutex_lock(&amp;host-&gt;clients_mutex);
-1299   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
-1300     if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].socket != INVALID_SOCKET_VALUE) {
-1301       asciichat_error_t send_result =
-1302           packet_send(host-&gt;clients[i].socket, PACKET_TYPE_ASCII_FRAME, (const void *)frame, frame_len);
-1303       if (send_result != ASCIICHAT_OK) {
-1304         log_warn(&quot;Failed to send ASCII frame to client %u&quot;, host-&gt;clients[i].client_id);
-1305         result = send_result; // Store error but continue broadcasting to other clients
-1306       }
-1307     }
-1308   }
-1309   mutex_unlock(&amp;host-&gt;clients_mutex);
-1310 
-1311   return result;
-1312 }</pre>
+<p class="Pp">Definition at line <b>1294</b> of file <b>host.c</b>.</p>
+<pre>1294                                                                                         {
+1295   if (!host || !host-&gt;initialized || !frame) {
+1296     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_broadcast_frame: invalid parameter&quot;);
+1297   }
+1298 
+1299   if (!host-&gt;running) {
+1300     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_host_broadcast_frame: not running&quot;);
+1301   }
+1302 
+1303   // Broadcast ASCII frame to all connected clients
+1304   size_t frame_len = strlen(frame) + 1; // Include null terminator
+1305   asciichat_error_t result = ASCIICHAT_OK;
+1306 
+1307   mutex_lock(&amp;host-&gt;clients_mutex);
+1308   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
+1309     if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].socket != INVALID_SOCKET_VALUE) {
+1310       asciichat_error_t send_result =
+1311           packet_send(host-&gt;clients[i].socket, PACKET_TYPE_ASCII_FRAME, (const void *)frame, frame_len);
+1312       if (send_result != ASCIICHAT_OK) {
+1313         log_warn(&quot;Failed to send ASCII frame to client %u&quot;, host-&gt;clients[i].client_id);
+1314         result = send_result; // Store error but continue broadcasting to other clients
+1315       }
+1316     }
+1317   }
+1318   mutex_unlock(&amp;host-&gt;clients_mutex);
+1319 
+1320   return result;
+1321 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host_client_t::active</b>,
@@ -5603,26 +5662,26 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if alternative transport is set, false
   otherwise</div>
-<p class="Pp">Definition at line <b>1501</b> of file <b>host.c</b>.</p>
-<pre>1501                                                                                  {
-1502   if (!host || !host-&gt;initialized) {
-1503     return false;
-1504   }
-1505 
-1506   mutex_lock(&amp;host-&gt;clients_mutex);
-1507 
-1508   // Find client with matching ID
-1509   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
-1510     if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].client_id == client_id) {
-1511       bool has_transport = host-&gt;clients[i].transport != NULL;
-1512       mutex_unlock(&amp;host-&gt;clients_mutex);
-1513       return has_transport;
-1514     }
-1515   }
+<p class="Pp">Definition at line <b>1510</b> of file <b>host.c</b>.</p>
+<pre>1510                                                                                  {
+1511   if (!host || !host-&gt;initialized) {
+1512     return false;
+1513   }
+1514 
+1515   mutex_lock(&amp;host-&gt;clients_mutex);
 1516 
-1517   mutex_unlock(&amp;host-&gt;clients_mutex);
-1518   return false;
-1519 }</pre>
+1517   // Find client with matching ID
+1518   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
+1519     if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].client_id == client_id) {
+1520       bool has_transport = host-&gt;clients[i].transport != NULL;
+1521       mutex_unlock(&amp;host-&gt;clients_mutex);
+1522       return has_transport;
+1523     }
+1524   }
+1525 
+1526   mutex_unlock(&amp;host-&gt;clients_mutex);
+1527   return false;
+1528 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host_client_t::active</b>,
@@ -5650,62 +5709,62 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp">On failure, sets asciichat_errno with error details.</p>
 </div>
-<p class="Pp">Definition at line <b>172</b> of file <b>host.c</b>.</p>
-<pre>172                                                                          {
-173   if (!config) {
-174     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_create: NULL config&quot;);
-175     return NULL;
-176   }
-177 
-178   // Allocate host
-179   session_host_t *host = SAFE_CALLOC(1, sizeof(session_host_t), session_host_t *);
-180 
-181   // Copy configuration
-182   host-&gt;port = config-&gt;port &gt; 0 ? config-&gt;port : OPT_PORT_INT_DEFAULT;
-183   host-&gt;max_clients = config-&gt;max_clients &gt; 0 ? config-&gt;max_clients : SESSION_HOST_DEFAULT_MAX_CLIENTS;
-184   host-&gt;encryption_enabled = config-&gt;encryption_enabled;
-185 
-186   if (config-&gt;ipv4_address) {
-187     SAFE_STRNCPY(host-&gt;ipv4_address, config-&gt;ipv4_address, sizeof(host-&gt;ipv4_address));
-188   }
-189 
-190   if (config-&gt;ipv6_address) {
-191     SAFE_STRNCPY(host-&gt;ipv6_address, config-&gt;ipv6_address, sizeof(host-&gt;ipv6_address));
-192   }
-193 
-194   if (config-&gt;key_path) {
-195     SAFE_STRNCPY(host-&gt;key_path, config-&gt;key_path, sizeof(host-&gt;key_path));
-196   }
-197 
-198   if (config-&gt;password) {
-199     SAFE_STRNCPY(host-&gt;password, config-&gt;password, sizeof(host-&gt;password));
-200   }
-201 
-202   host-&gt;callbacks = config-&gt;callbacks;
-203   host-&gt;user_data = config-&gt;user_data;
-204 
-205   // Initialize sockets to invalid
-206   host-&gt;socket_v4 = INVALID_SOCKET_VALUE;
-207   host-&gt;socket_v6 = INVALID_SOCKET_VALUE;
-208   host-&gt;running = false;
-209 
-210   // Allocate client array
-211   host-&gt;clients = SAFE_CALLOC((size_t)host-&gt;max_clients, sizeof(session_host_client_t), session_host_client_t *);
-212 
-213   host-&gt;client_count = 0;
-214   host-&gt;next_client_id = 1;
-215 
-216   // Initialize mutex
-217   if (mutex_init(&amp;host-&gt;clients_mutex, &quot;host_clients&quot;) != 0) {
-218     SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize clients mutex&quot;);
-219     SAFE_FREE(host-&gt;clients);
-220     SAFE_FREE(host);
-221     return NULL;
-222   }
-223 
-224   host-&gt;initialized = true;
-225   return host;
-226 }</pre>
+<p class="Pp">Definition at line <b>173</b> of file <b>host.c</b>.</p>
+<pre>173                                                                          {
+174   if (!config) {
+175     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_create: NULL config&quot;);
+176     return NULL;
+177   }
+178 
+179   // Allocate host
+180   session_host_t *host = SAFE_CALLOC(1, sizeof(session_host_t), session_host_t *);
+181 
+182   // Copy configuration
+183   host-&gt;port = config-&gt;port &gt; 0 ? config-&gt;port : OPT_PORT_INT_DEFAULT;
+184   host-&gt;max_clients = config-&gt;max_clients &gt; 0 ? config-&gt;max_clients : SESSION_HOST_DEFAULT_MAX_CLIENTS;
+185   host-&gt;encryption_enabled = config-&gt;encryption_enabled;
+186 
+187   if (config-&gt;ipv4_address) {
+188     SAFE_STRNCPY(host-&gt;ipv4_address, config-&gt;ipv4_address, sizeof(host-&gt;ipv4_address));
+189   }
+190 
+191   if (config-&gt;ipv6_address) {
+192     SAFE_STRNCPY(host-&gt;ipv6_address, config-&gt;ipv6_address, sizeof(host-&gt;ipv6_address));
+193   }
+194 
+195   if (config-&gt;key_path) {
+196     SAFE_STRNCPY(host-&gt;key_path, config-&gt;key_path, sizeof(host-&gt;key_path));
+197   }
+198 
+199   if (config-&gt;password) {
+200     SAFE_STRNCPY(host-&gt;password, config-&gt;password, sizeof(host-&gt;password));
+201   }
+202 
+203   host-&gt;callbacks = config-&gt;callbacks;
+204   host-&gt;user_data = config-&gt;user_data;
+205 
+206   // Initialize sockets to invalid
+207   host-&gt;socket_v4 = INVALID_SOCKET_VALUE;
+208   host-&gt;socket_v6 = INVALID_SOCKET_VALUE;
+209   host-&gt;running = false;
+210 
+211   // Allocate client array
+212   host-&gt;clients = SAFE_CALLOC((size_t)host-&gt;max_clients, sizeof(session_host_client_t), session_host_client_t *);
+213 
+214   host-&gt;client_count = 0;
+215   host-&gt;next_client_id = 1;
+216 
+217   // Initialize mutex
+218   if (mutex_init(&amp;host-&gt;clients_mutex, &quot;host_clients&quot;) != 0) {
+219     SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize clients mutex&quot;);
+220     SAFE_FREE(host-&gt;clients);
+221     SAFE_FREE(host);
+222     return NULL;
+223   }
+224 
+225   host-&gt;initialized = true;
+226   return host;
+227 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host::callbacks</b>,
@@ -5741,61 +5800,61 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>host</i> Host to destroy (can be NULL)</div>
 <p class="Pp">Stops if running, disconnects all clients, and releases all
     resources. Safe to call with NULL.</p>
-<p class="Pp">Definition at line <b>228</b> of file <b>host.c</b>.</p>
-<pre>228                                                 {
-229   if (!host) {
-230     return;
-231   }
-232 
-233   // Stop if running
-234   if (host-&gt;running) {
-235     session_host_stop(host);
-236   }
-237 
-238   // Clean up audio resources
-239   if (host-&gt;audio_ctx) {
-240     session_audio_destroy(host-&gt;audio_ctx);
-241     host-&gt;audio_ctx = NULL;
-242   }
-243   if (host-&gt;opus_decoder) {
-244     opus_codec_destroy(host-&gt;opus_decoder);
-245     host-&gt;opus_decoder = NULL;
-246   }
-247 
-248   // Close sockets
-249   if (host-&gt;socket_v4 != INVALID_SOCKET_VALUE) {
-250     socket_close(host-&gt;socket_v4);
-251     host-&gt;socket_v4 = INVALID_SOCKET_VALUE;
-252   }
-253   if (host-&gt;socket_v6 != INVALID_SOCKET_VALUE) {
-254     socket_close(host-&gt;socket_v6);
-255     host-&gt;socket_v6 = INVALID_SOCKET_VALUE;
-256   }
-257 
-258   // Free client array and per-client resources
-259   if (host-&gt;clients) {
-260     for (int i = 0; i &lt; host-&gt;max_clients; i++) {
-261       if (host-&gt;clients[i].incoming_video) {
-262         image_destroy(host-&gt;clients[i].incoming_video);
-263         host-&gt;clients[i].incoming_video = NULL;
-264       }
-265       if (host-&gt;clients[i].incoming_audio) {
-266         ringbuffer_destroy(host-&gt;clients[i].incoming_audio);
-267         host-&gt;clients[i].incoming_audio = NULL;
-268       }
-269     }
-270     SAFE_FREE(host-&gt;clients);
-271   }
-272 
-273   // Destroy mutex
-274   mutex_destroy(&amp;host-&gt;clients_mutex);
-275 
-276   // Clear sensitive data
-277   memset(host-&gt;password, 0, sizeof(host-&gt;password));
-278 
-279   host-&gt;initialized = false;
-280   SAFE_FREE(host);
-281 }</pre>
+<p class="Pp">Definition at line <b>229</b> of file <b>host.c</b>.</p>
+<pre>229                                                 {
+230   if (!host) {
+231     return;
+232   }
+233 
+234   // Stop if running
+235   if (host-&gt;running) {
+236     session_host_stop(host);
+237   }
+238 
+239   // Clean up audio resources
+240   if (host-&gt;audio_ctx) {
+241     session_audio_destroy(host-&gt;audio_ctx);
+242     host-&gt;audio_ctx = NULL;
+243   }
+244   if (host-&gt;opus_decoder) {
+245     opus_codec_destroy(host-&gt;opus_decoder);
+246     host-&gt;opus_decoder = NULL;
+247   }
+248 
+249   // Close sockets
+250   if (host-&gt;socket_v4 != INVALID_SOCKET_VALUE) {
+251     socket_close(host-&gt;socket_v4);
+252     host-&gt;socket_v4 = INVALID_SOCKET_VALUE;
+253   }
+254   if (host-&gt;socket_v6 != INVALID_SOCKET_VALUE) {
+255     socket_close(host-&gt;socket_v6);
+256     host-&gt;socket_v6 = INVALID_SOCKET_VALUE;
+257   }
+258 
+259   // Free client array and per-client resources
+260   if (host-&gt;clients) {
+261     for (int i = 0; i &lt; host-&gt;max_clients; i++) {
+262       if (host-&gt;clients[i].incoming_video) {
+263         image_destroy(host-&gt;clients[i].incoming_video);
+264         host-&gt;clients[i].incoming_video = NULL;
+265       }
+266       if (host-&gt;clients[i].incoming_audio) {
+267         ringbuffer_destroy(host-&gt;clients[i].incoming_audio);
+268         host-&gt;clients[i].incoming_audio = NULL;
+269       }
+270     }
+271     SAFE_FREE(host-&gt;clients);
+272   }
+273 
+274   // Destroy mutex
+275   mutex_destroy(&amp;host-&gt;clients_mutex);
+276 
+277   // Clear sensitive data
+278   memset(host-&gt;password, 0, sizeof(host-&gt;password));
+279 
+280   host-&gt;initialized = false;
+281   SAFE_FREE(host);
+282 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host::audio_ctx</b>,
@@ -5829,31 +5888,31 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent">ASCIICHAT_OK on success, ERROR_NOT_FOUND if not
   found</div>
 <p class="Pp">Retrieves information about a connected client.</p>
-<p class="Pp">Definition at line <b>1231</b> of file <b>host.c</b>.</p>
-<pre>1231                                                                                                                        {
-1232   if (!host || !host-&gt;initialized || !info) {
-1233     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_find_client: invalid parameter&quot;);
-1234   }
-1235 
-1236   mutex_lock(&amp;host-&gt;clients_mutex);
-1237 
-1238   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
-1239     if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].client_id == client_id) {
-1240       info-&gt;client_id = host-&gt;clients[i].client_id;
-1241       SAFE_STRNCPY(info-&gt;ip_address, host-&gt;clients[i].ip_address, sizeof(info-&gt;ip_address));
-1242       info-&gt;port = host-&gt;clients[i].port;
-1243       info-&gt;video_active = host-&gt;clients[i].video_active;
-1244       info-&gt;audio_active = host-&gt;clients[i].audio_active;
-1245       info-&gt;connected_at = host-&gt;clients[i].connected_at;
+<p class="Pp">Definition at line <b>1240</b> of file <b>host.c</b>.</p>
+<pre>1240                                                                                                                        {
+1241   if (!host || !host-&gt;initialized || !info) {
+1242     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_find_client: invalid parameter&quot;);
+1243   }
+1244 
+1245   mutex_lock(&amp;host-&gt;clients_mutex);
 1246 
-1247       mutex_unlock(&amp;host-&gt;clients_mutex);
-1248       return ASCIICHAT_OK;
-1249     }
-1250   }
-1251 
-1252   mutex_unlock(&amp;host-&gt;clients_mutex);
-1253   return SET_ERRNO(ERROR_NOT_FOUND, &quot;Client not found: %u&quot;, client_id);
-1254 }</pre>
+1247   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
+1248     if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].client_id == client_id) {
+1249       info-&gt;client_id = host-&gt;clients[i].client_id;
+1250       SAFE_STRNCPY(info-&gt;ip_address, host-&gt;clients[i].ip_address, sizeof(info-&gt;ip_address));
+1251       info-&gt;port = host-&gt;clients[i].port;
+1252       info-&gt;video_active = host-&gt;clients[i].video_active;
+1253       info-&gt;audio_active = host-&gt;clients[i].audio_active;
+1254       info-&gt;connected_at = host-&gt;clients[i].connected_at;
+1255 
+1256       mutex_unlock(&amp;host-&gt;clients_mutex);
+1257       return ASCIICHAT_OK;
+1258     }
+1259   }
+1260 
+1261   mutex_unlock(&amp;host-&gt;clients_mutex);
+1262   return SET_ERRNO(ERROR_NOT_FOUND, &quot;Client not found: %u&quot;, client_id);
+1263 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host_client_t::active</b>,
@@ -5882,13 +5941,13 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>host</i> Host handle (can be NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of connected clients, 0 if NULL</div>
-<p class="Pp">Definition at line <b>1256</b> of file <b>host.c</b>.</p>
-<pre>1256                                                         {
-1257   if (!host || !host-&gt;initialized) {
-1258     return 0;
-1259   }
-1260   return host-&gt;client_count;
-1261 }</pre>
+<p class="Pp">Definition at line <b>1265</b> of file <b>host.c</b>.</p>
+<pre>1265                                                         {
+1266   if (!host || !host-&gt;initialized) {
+1267     return 0;
+1268   }
+1269   return host-&gt;client_count;
+1270 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host::client_count</b>, and
@@ -5908,24 +5967,24 @@ fps_counter_destroy(fps);</pre>
 <i>max_ids</i> Maximum number of IDs to return (size of ids array)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of IDs written to array</div>
-<p class="Pp">Definition at line <b>1263</b> of file <b>host.c</b>.</p>
-<pre>1263                                                                                   {
-1264   if (!host || !host-&gt;initialized || !ids || max_ids &lt;= 0) {
-1265     return 0;
-1266   }
-1267 
-1268   mutex_lock(&amp;host-&gt;clients_mutex);
-1269 
-1270   int count = 0;
-1271   for (int i = 0; i &lt; host-&gt;max_clients &amp;&amp; count &lt; max_ids; i++) {
-1272     if (host-&gt;clients[i].active) {
-1273       ids[count++] = host-&gt;clients[i].client_id;
-1274     }
+<p class="Pp">Definition at line <b>1272</b> of file <b>host.c</b>.</p>
+<pre>1272                                                                                   {
+1273   if (!host || !host-&gt;initialized || !ids || max_ids &lt;= 0) {
+1274     return 0;
 1275   }
 1276 
-1277   mutex_unlock(&amp;host-&gt;clients_mutex);
-1278   return count;
-1279 }</pre>
+1277   mutex_lock(&amp;host-&gt;clients_mutex);
+1278 
+1279   int count = 0;
+1280   for (int i = 0; i &lt; host-&gt;max_clients &amp;&amp; count &lt; max_ids; i++) {
+1281     if (host-&gt;clients[i].active) {
+1282       ids[count++] = host-&gt;clients[i].client_id;
+1283     }
+1284   }
+1285 
+1286   mutex_unlock(&amp;host-&gt;clients_mutex);
+1287   return count;
+1288 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host_client_t::active</b>,
@@ -5949,26 +6008,26 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Transport pointer if set, NULL if using socket transport
   or client not found</div>
-<p class="Pp">Definition at line <b>1481</b> of file <b>host.c</b>.</p>
-<pre>1481                                                                                               {
-1482   if (!host || !host-&gt;initialized) {
-1483     return NULL;
-1484   }
-1485 
-1486   mutex_lock(&amp;host-&gt;clients_mutex);
-1487 
-1488   // Find client with matching ID
-1489   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
-1490     if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].client_id == client_id) {
-1491       acip_transport_t *transport = host-&gt;clients[i].transport;
-1492       mutex_unlock(&amp;host-&gt;clients_mutex);
-1493       return transport;
-1494     }
-1495   }
+<p class="Pp">Definition at line <b>1490</b> of file <b>host.c</b>.</p>
+<pre>1490                                                                                               {
+1491   if (!host || !host-&gt;initialized) {
+1492     return NULL;
+1493   }
+1494 
+1495   mutex_lock(&amp;host-&gt;clients_mutex);
 1496 
-1497   mutex_unlock(&amp;host-&gt;clients_mutex);
-1498   return NULL;
-1499 }</pre>
+1497   // Find client with matching ID
+1498   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
+1499     if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].client_id == client_id) {
+1500       acip_transport_t *transport = host-&gt;clients[i].transport;
+1501       mutex_unlock(&amp;host-&gt;clients_mutex);
+1502       return transport;
+1503     }
+1504   }
+1505 
+1506   mutex_unlock(&amp;host-&gt;clients_mutex);
+1507   return NULL;
+1508 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host_client_t::active</b>,
@@ -5999,48 +6058,48 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Sample data is copied, so caller retains ownership.</div>
-<p class="Pp">Definition at line <b>1144</b> of file <b>host.c</b>.</p>
-<pre>1145                                                           {
-1146   if (!host || !host-&gt;initialized || !samples || count == 0) {
-1147     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_inject_audio: invalid parameters&quot;);
-1148   }
-1149 
-1150   mutex_lock(&amp;host-&gt;clients_mutex);
-1151 
-1152   // Find memory participant
-1153   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
-1154     if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].client_id == participant_id &amp;&amp;
-1155         host-&gt;clients[i].participant_type == PARTICIPANT_TYPE_MEMORY) {
-1156 
-1157       if (!host-&gt;clients[i].incoming_audio) {
-1158         mutex_unlock(&amp;host-&gt;clients_mutex);
-1159         return SET_ERRNO(ERROR_INVALID_STATE, &quot;Memory participant has no audio buffer&quot;);
-1160       }
-1161 
-1162       // Write samples to ringbuffer (one at a time)
-1163       size_t written = 0;
-1164       for (size_t j = 0; j &lt; count; j++) {
-1165         if (ringbuffer_write(host-&gt;clients[i].incoming_audio, &amp;samples[j])) {
-1166           written++;
-1167         } else {
-1168           break; // Buffer full
-1169         }
-1170       }
-1171 
-1172       if (written &lt; count) {
-1173         log_warn_every(NS_PER_MS_INT, &quot;Audio ringbuffer full, dropped %zu samples&quot;, count - written);
-1174       }
-1175 
-1176       host-&gt;clients[i].audio_active = true;
-1177 
-1178       mutex_unlock(&amp;host-&gt;clients_mutex);
-1179       return ASCIICHAT_OK;
-1180     }
-1181   }
-1182 
-1183   mutex_unlock(&amp;host-&gt;clients_mutex);
-1184   return SET_ERRNO(ERROR_NOT_FOUND, &quot;Memory participant not found&quot;);
-1185 }</pre>
+<p class="Pp">Definition at line <b>1153</b> of file <b>host.c</b>.</p>
+<pre>1154                                                           {
+1155   if (!host || !host-&gt;initialized || !samples || count == 0) {
+1156     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_inject_audio: invalid parameters&quot;);
+1157   }
+1158 
+1159   mutex_lock(&amp;host-&gt;clients_mutex);
+1160 
+1161   // Find memory participant
+1162   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
+1163     if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].client_id == participant_id &amp;&amp;
+1164         host-&gt;clients[i].participant_type == PARTICIPANT_TYPE_MEMORY) {
+1165 
+1166       if (!host-&gt;clients[i].incoming_audio) {
+1167         mutex_unlock(&amp;host-&gt;clients_mutex);
+1168         return SET_ERRNO(ERROR_INVALID_STATE, &quot;Memory participant has no audio buffer&quot;);
+1169       }
+1170 
+1171       // Write samples to ringbuffer (one at a time)
+1172       size_t written = 0;
+1173       for (size_t j = 0; j &lt; count; j++) {
+1174         if (ringbuffer_write(host-&gt;clients[i].incoming_audio, &amp;samples[j])) {
+1175           written++;
+1176         } else {
+1177           break; // Buffer full
+1178         }
+1179       }
+1180 
+1181       if (written &lt; count) {
+1182         log_warn_every(NS_PER_MS_INT, &quot;Audio ringbuffer full, dropped %zu samples&quot;, count - written);
+1183       }
+1184 
+1185       host-&gt;clients[i].audio_active = true;
+1186 
+1187       mutex_unlock(&amp;host-&gt;clients_mutex);
+1188       return ASCIICHAT_OK;
+1189     }
+1190   }
+1191 
+1192   mutex_unlock(&amp;host-&gt;clients_mutex);
+1193   return SET_ERRNO(ERROR_NOT_FOUND, &quot;Memory participant not found&quot;);
+1194 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host_client_t::active</b>,
@@ -6076,51 +6135,51 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Frame data is copied, so caller retains ownership.</div>
-<p class="Pp">Definition at line <b>1099</b> of file <b>host.c</b>.</p>
-<pre>1099                                                                                                                  {
-1100   if (!host || !host-&gt;initialized || !frame) {
-1101     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_inject_frame: invalid parameters&quot;);
-1102   }
-1103 
-1104   mutex_lock(&amp;host-&gt;clients_mutex);
-1105 
-1106   // Find memory participant
-1107   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
-1108     if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].client_id == participant_id &amp;&amp;
-1109         host-&gt;clients[i].participant_type == PARTICIPANT_TYPE_MEMORY) {
-1110 
-1111       if (!host-&gt;clients[i].incoming_video) {
-1112         mutex_unlock(&amp;host-&gt;clients_mutex);
-1113         return SET_ERRNO(ERROR_INVALID_STATE, &quot;Memory participant has no video buffer&quot;);
-1114       }
-1115 
-1116       // Copy frame data into buffer
-1117       image_t *dest = host-&gt;clients[i].incoming_video;
-1118       if (dest-&gt;w != frame-&gt;w || dest-&gt;h != frame-&gt;h) {
-1119         // Reallocate if size changed
-1120         image_destroy(dest);
-1121         dest = image_new(frame-&gt;w, frame-&gt;h);
-1122         if (!dest) {
-1123           host-&gt;clients[i].incoming_video = NULL;
-1124           mutex_unlock(&amp;host-&gt;clients_mutex);
-1125           return SET_ERRNO(ERROR_MEMORY, &quot;Failed to reallocate video buffer&quot;);
-1126         }
-1127         host-&gt;clients[i].incoming_video = dest;
-1128       }
-1129 
-1130       // Copy pixel data
-1131       memcpy(dest-&gt;pixels, frame-&gt;pixels, frame-&gt;w * frame-&gt;h * sizeof(rgb_pixel_t));
-1132 
-1133       host-&gt;clients[i].video_active = true;
-1134 
-1135       mutex_unlock(&amp;host-&gt;clients_mutex);
-1136       return ASCIICHAT_OK;
-1137     }
-1138   }
-1139 
-1140   mutex_unlock(&amp;host-&gt;clients_mutex);
-1141   return SET_ERRNO(ERROR_NOT_FOUND, &quot;Memory participant not found&quot;);
-1142 }</pre>
+<p class="Pp">Definition at line <b>1108</b> of file <b>host.c</b>.</p>
+<pre>1108                                                                                                                  {
+1109   if (!host || !host-&gt;initialized || !frame) {
+1110     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_inject_frame: invalid parameters&quot;);
+1111   }
+1112 
+1113   mutex_lock(&amp;host-&gt;clients_mutex);
+1114 
+1115   // Find memory participant
+1116   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
+1117     if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].client_id == participant_id &amp;&amp;
+1118         host-&gt;clients[i].participant_type == PARTICIPANT_TYPE_MEMORY) {
+1119 
+1120       if (!host-&gt;clients[i].incoming_video) {
+1121         mutex_unlock(&amp;host-&gt;clients_mutex);
+1122         return SET_ERRNO(ERROR_INVALID_STATE, &quot;Memory participant has no video buffer&quot;);
+1123       }
+1124 
+1125       // Copy frame data into buffer
+1126       image_t *dest = host-&gt;clients[i].incoming_video;
+1127       if (dest-&gt;w != frame-&gt;w || dest-&gt;h != frame-&gt;h) {
+1128         // Reallocate if size changed
+1129         image_destroy(dest);
+1130         dest = image_new(frame-&gt;w, frame-&gt;h);
+1131         if (!dest) {
+1132           host-&gt;clients[i].incoming_video = NULL;
+1133           mutex_unlock(&amp;host-&gt;clients_mutex);
+1134           return SET_ERRNO(ERROR_MEMORY, &quot;Failed to reallocate video buffer&quot;);
+1135         }
+1136         host-&gt;clients[i].incoming_video = dest;
+1137       }
+1138 
+1139       // Copy pixel data
+1140       memcpy(dest-&gt;pixels, frame-&gt;pixels, frame-&gt;w * frame-&gt;h * sizeof(rgb_pixel_t));
+1141 
+1142       host-&gt;clients[i].video_active = true;
+1143 
+1144       mutex_unlock(&amp;host-&gt;clients_mutex);
+1145       return ASCIICHAT_OK;
+1146     }
+1147   }
+1148 
+1149   mutex_unlock(&amp;host-&gt;clients_mutex);
+1150   return SET_ERRNO(ERROR_NOT_FOUND, &quot;Memory participant not found&quot;);
+1151 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host_client_t::active</b>,
@@ -6145,13 +6204,13 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>host</i> Host handle (can be NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if running, false otherwise</div>
-<p class="Pp">Definition at line <b>944</b> of file <b>host.c</b>.</p>
-<pre>944                                                    {
-945   if (!host || !host-&gt;initialized) {
-946     return false;
-947   }
-948   return host-&gt;running;
-949 }</pre>
+<p class="Pp">Definition at line <b>953</b> of file <b>host.c</b>.</p>
+<pre>953                                                    {
+954   if (!host || !host-&gt;initialized) {
+955     return false;
+956   }
+957   return host-&gt;running;
+958 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host::initialized</b>, and
@@ -6172,50 +6231,50 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">on_client_leave callback is invoked before removal.</div>
-<p class="Pp">Definition at line <b>1187</b> of file <b>host.c</b>.</p>
-<pre>1187                                                                                        {
-1188   if (!host || !host-&gt;initialized) {
-1189     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_remove_client: invalid host&quot;);
-1190   }
-1191 
-1192   mutex_lock(&amp;host-&gt;clients_mutex);
-1193 
-1194   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
-1195     if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].client_id == client_id) {
-1196       // Invoke callback before removing
-1197       mutex_unlock(&amp;host-&gt;clients_mutex);
-1198       if (host-&gt;callbacks.on_client_leave) {
-1199         host-&gt;callbacks.on_client_leave(host, client_id, host-&gt;user_data);
-1200       }
-1201       mutex_lock(&amp;host-&gt;clients_mutex);
+<p class="Pp">Definition at line <b>1196</b> of file <b>host.c</b>.</p>
+<pre>1196                                                                                        {
+1197   if (!host || !host-&gt;initialized) {
+1198     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_remove_client: invalid host&quot;);
+1199   }
+1200 
+1201   mutex_lock(&amp;host-&gt;clients_mutex);
 1202 
-1203       // Close socket
-1204       if (host-&gt;clients[i].socket != INVALID_SOCKET_VALUE) {
-1205         socket_close(host-&gt;clients[i].socket);
-1206         host-&gt;clients[i].socket = INVALID_SOCKET_VALUE;
-1207       }
-1208 
-1209       // Clean up media buffers
-1210       if (host-&gt;clients[i].incoming_video) {
-1211         image_destroy(host-&gt;clients[i].incoming_video);
-1212         host-&gt;clients[i].incoming_video = NULL;
-1213       }
-1214       if (host-&gt;clients[i].incoming_audio) {
-1215         ringbuffer_destroy(host-&gt;clients[i].incoming_audio);
-1216         host-&gt;clients[i].incoming_audio = NULL;
-1217       }
-1218 
-1219       host-&gt;clients[i].active = false;
-1220       host-&gt;client_count--;
-1221 
-1222       mutex_unlock(&amp;host-&gt;clients_mutex);
-1223       return ASCIICHAT_OK;
-1224     }
-1225   }
-1226 
-1227   mutex_unlock(&amp;host-&gt;clients_mutex);
-1228   return SET_ERRNO(ERROR_NOT_FOUND, &quot;Client not found: %u&quot;, client_id);
-1229 }</pre>
+1203   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
+1204     if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].client_id == client_id) {
+1205       // Invoke callback before removing
+1206       mutex_unlock(&amp;host-&gt;clients_mutex);
+1207       if (host-&gt;callbacks.on_client_leave) {
+1208         host-&gt;callbacks.on_client_leave(host, client_id, host-&gt;user_data);
+1209       }
+1210       mutex_lock(&amp;host-&gt;clients_mutex);
+1211 
+1212       // Close socket
+1213       if (host-&gt;clients[i].socket != INVALID_SOCKET_VALUE) {
+1214         socket_close(host-&gt;clients[i].socket);
+1215         host-&gt;clients[i].socket = INVALID_SOCKET_VALUE;
+1216       }
+1217 
+1218       // Clean up media buffers
+1219       if (host-&gt;clients[i].incoming_video) {
+1220         image_destroy(host-&gt;clients[i].incoming_video);
+1221         host-&gt;clients[i].incoming_video = NULL;
+1222       }
+1223       if (host-&gt;clients[i].incoming_audio) {
+1224         ringbuffer_destroy(host-&gt;clients[i].incoming_audio);
+1225         host-&gt;clients[i].incoming_audio = NULL;
+1226       }
+1227 
+1228       host-&gt;clients[i].active = false;
+1229       host-&gt;client_count--;
+1230 
+1231       mutex_unlock(&amp;host-&gt;clients_mutex);
+1232       return ASCIICHAT_OK;
+1233     }
+1234   }
+1235 
+1236   mutex_unlock(&amp;host-&gt;clients_mutex);
+1237   return SET_ERRNO(ERROR_NOT_FOUND, &quot;Client not found: %u&quot;, client_id);
+1238 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host_client_t::active</b>,
@@ -6247,33 +6306,33 @@ fps_counter_destroy(fps);</pre>
 <i></i><b>frame</b><i></i><b> ASCII frame data (must not be NULL)</b></div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>1314</b> of file <b>host.c</b>.</p>
-<pre>1314                                                                                                        {
-1315   if (!host || !host-&gt;initialized || !frame) {
-1316     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_send_frame: invalid parameter&quot;);
-1317   }
-1318 
-1319   if (!host-&gt;running) {
-1320     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_host_send_frame: not running&quot;);
-1321   }
-1322 
-1323   // Send ASCII frame to specific client
-1324   size_t frame_len = strlen(frame) + 1; // Include null terminator
-1325 
-1326   mutex_lock(&amp;host-&gt;clients_mutex);
-1327   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
-1328     if (host-&gt;clients[i].client_id == client_id &amp;&amp; host-&gt;clients[i].active &amp;&amp;
-1329         host-&gt;clients[i].socket != INVALID_SOCKET_VALUE) {
-1330       asciichat_error_t result =
-1331           packet_send(host-&gt;clients[i].socket, PACKET_TYPE_ASCII_FRAME, (const void *)frame, frame_len);
-1332       mutex_unlock(&amp;host-&gt;clients_mutex);
-1333       return result;
-1334     }
-1335   }
-1336   mutex_unlock(&amp;host-&gt;clients_mutex);
-1337 
-1338   return SET_ERRNO(ERROR_NOT_FOUND, &quot;session_host_send_frame: client %u not found&quot;, client_id);
-1339 }</pre>
+<p class="Pp">Definition at line <b>1323</b> of file <b>host.c</b>.</p>
+<pre>1323                                                                                                        {
+1324   if (!host || !host-&gt;initialized || !frame) {
+1325     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_send_frame: invalid parameter&quot;);
+1326   }
+1327 
+1328   if (!host-&gt;running) {
+1329     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_host_send_frame: not running&quot;);
+1330   }
+1331 
+1332   // Send ASCII frame to specific client
+1333   size_t frame_len = strlen(frame) + 1; // Include null terminator
+1334 
+1335   mutex_lock(&amp;host-&gt;clients_mutex);
+1336   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
+1337     if (host-&gt;clients[i].client_id == client_id &amp;&amp; host-&gt;clients[i].active &amp;&amp;
+1338         host-&gt;clients[i].socket != INVALID_SOCKET_VALUE) {
+1339       asciichat_error_t result =
+1340           packet_send(host-&gt;clients[i].socket, PACKET_TYPE_ASCII_FRAME, (const void *)frame, frame_len);
+1341       mutex_unlock(&amp;host-&gt;clients_mutex);
+1342       return result;
+1343     }
+1344   }
+1345   mutex_unlock(&amp;host-&gt;clients_mutex);
+1346 
+1347   return SET_ERRNO(ERROR_NOT_FOUND, &quot;session_host_send_frame: client %u not found&quot;, client_id);
+1348 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host_client_t::active</b>,
@@ -6314,37 +6373,37 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp">If both socket and transport exist, transport takes precedence</p>
 </div>
-<p class="Pp">Definition at line <b>1449</b> of file <b>host.c</b>.</p>
-<pre>1450                                                                                  {
-1451   if (!host || !host-&gt;initialized) {
-1452     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Host is NULL or not initialized&quot;);
-1453   }
-1454 
-1455   mutex_lock(&amp;host-&gt;clients_mutex);
-1456 
-1457   // Find client with matching ID
-1458   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
-1459     if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].client_id == client_id) {
-1460       log_info(&quot;session_host_set_client_transport: Setting transport=%p for client %u (was=%p)&quot;, transport, client_id,
-1461                host-&gt;clients[i].transport);
-1462 
-1463       host-&gt;clients[i].transport = transport;
-1464 
-1465       if (transport) {
-1466         log_info(&quot;WebRTC transport now active for client %u&quot;, client_id);
-1467       } else {
-1468         log_info(&quot;WebRTC transport cleared for client %u, reverting to socket&quot;, client_id);
-1469       }
-1470 
-1471       mutex_unlock(&amp;host-&gt;clients_mutex);
-1472       return ASCIICHAT_OK;
-1473     }
-1474   }
-1475 
-1476   mutex_unlock(&amp;host-&gt;clients_mutex);
-1477   log_warn(&quot;Client %u not found&quot;, client_id);
-1478   return SET_ERRNO(ERROR_NOT_FOUND, &quot;Client not found&quot;);
-1479 }</pre>
+<p class="Pp">Definition at line <b>1458</b> of file <b>host.c</b>.</p>
+<pre>1459                                                                                  {
+1460   if (!host || !host-&gt;initialized) {
+1461     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Host is NULL or not initialized&quot;);
+1462   }
+1463 
+1464   mutex_lock(&amp;host-&gt;clients_mutex);
+1465 
+1466   // Find client with matching ID
+1467   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
+1468     if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].client_id == client_id) {
+1469       log_info(&quot;session_host_set_client_transport: Setting transport=%p for client %u (was=%p)&quot;, transport, client_id,
+1470                host-&gt;clients[i].transport);
+1471 
+1472       host-&gt;clients[i].transport = transport;
+1473 
+1474       if (transport) {
+1475         log_info(&quot;WebRTC transport now active for client %u&quot;, client_id);
+1476       } else {
+1477         log_info(&quot;WebRTC transport cleared for client %u, reverting to socket&quot;, client_id);
+1478       }
+1479 
+1480       mutex_unlock(&amp;host-&gt;clients_mutex);
+1481       return ASCIICHAT_OK;
+1482     }
+1483   }
+1484 
+1485   mutex_unlock(&amp;host-&gt;clients_mutex);
+1486   log_warn(&quot;Client %u not found&quot;, client_id);
+1487   return SET_ERRNO(ERROR_NOT_FOUND, &quot;Client not found&quot;);
+1488 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host_client_t::active</b>,
@@ -6375,15 +6434,15 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Can be called before or after render thread is
   started.</div>
-<p class="Pp">Definition at line <b>1345</b> of file <b>host.c</b>.</p>
-<pre>1345                                                                                                       {
-1346   if (!host || !host-&gt;initialized) {
-1347     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_set_display: invalid host&quot;);
-1348   }
-1349 
-1350   host-&gt;display_context = display;
-1351   return ASCIICHAT_OK;
-1352 }</pre>
+<p class="Pp">Definition at line <b>1354</b> of file <b>host.c</b>.</p>
+<pre>1354                                                                                                       {
+1355   if (!host || !host-&gt;initialized) {
+1356     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_set_display: invalid host&quot;);
+1357   }
+1358 
+1359   host-&gt;display_context = display;
+1360   return ASCIICHAT_OK;
+1361 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -6401,66 +6460,66 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Binds to the configured port and starts accepting connections.
     This function may start background threads for connection handling.</p>
-<p class="Pp">Definition at line <b>824</b> of file <b>host.c</b>.</p>
-<pre>824                                                            {
-825   if (!host || !host-&gt;initialized) {
-826     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_start: invalid host&quot;);
-827   }
-828 
-829   if (host-&gt;running) {
-830     return ASCIICHAT_OK; // Already running
-831   }
-832 
-833   // Create listen socket(s)
-834   // For simplicity, we bind to IPv4 if specified, otherwise default to 0.0.0.0
-835   const char *bind_address = host-&gt;ipv4_address[0] ? host-&gt;ipv4_address : &quot;0.0.0.0&quot;;
-836 
-837   host-&gt;socket_v4 = create_listen_socket(bind_address, host-&gt;port);
-838   if (host-&gt;socket_v4 == INVALID_SOCKET_VALUE) {
-839     log_error(&quot;Failed to create IPv4 listen socket&quot;);
-840     if (host-&gt;callbacks.on_error) {
-841       host-&gt;callbacks.on_error(host, ERROR_NETWORK_BIND, &quot;Failed to create listen socket&quot;, host-&gt;user_data);
-842     }
-843     return GET_ERRNO();
-844   }
+<p class="Pp">Definition at line <b>833</b> of file <b>host.c</b>.</p>
+<pre>833                                                            {
+834   if (!host || !host-&gt;initialized) {
+835     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_start: invalid host&quot;);
+836   }
+837 
+838   if (host-&gt;running) {
+839     return ASCIICHAT_OK; // Already running
+840   }
+841 
+842   // Create listen socket(s)
+843   // For simplicity, we bind to IPv4 if specified, otherwise default to 0.0.0.0
+844   const char *bind_address = host-&gt;ipv4_address[0] ? host-&gt;ipv4_address : &quot;0.0.0.0&quot;;
 845 
-846   host-&gt;running = true;
-847   log_info(&quot;Session host listening on %s:%d&quot;, bind_address, host-&gt;port);
-848 
-849   // Spawn accept loop thread
-850   host-&gt;accept_thread_running = true;
-851   if (asciichat_thread_create(&amp;host-&gt;accept_thread, &quot;accept&quot;, accept_loop_thread, host) != 0) {
-852     log_error(&quot;Failed to spawn accept loop thread&quot;);
-853     host-&gt;accept_thread_running = false;
-854     if (host-&gt;callbacks.on_error) {
-855       host-&gt;callbacks.on_error(host, ERROR_THREAD, &quot;Failed to spawn accept loop thread&quot;, host-&gt;user_data);
-856     }
-857     socket_close(host-&gt;socket_v4);
-858     host-&gt;socket_v4 = INVALID_SOCKET_VALUE;
-859     host-&gt;running = false;
-860     return SET_ERRNO(ERROR_THREAD, &quot;Failed to spawn accept loop thread&quot;);
-861   }
-862 
-863   // Spawn receive loop thread
-864   host-&gt;receive_thread_running = true;
-865   if (asciichat_thread_create(&amp;host-&gt;receive_thread, &quot;host_recv&quot;, receive_loop_thread, host) != 0) {
-866     log_error(&quot;Failed to spawn receive loop thread&quot;);
-867     host-&gt;receive_thread_running = false;
-868     host-&gt;accept_thread_running = false;
-869     asciichat_thread_join(&amp;host-&gt;accept_thread, NULL);
-870     if (host-&gt;callbacks.on_error) {
-871       host-&gt;callbacks.on_error(host, ERROR_THREAD, &quot;Failed to spawn receive loop thread&quot;, host-&gt;user_data);
-872     }
-873     socket_close(host-&gt;socket_v4);
-874     host-&gt;socket_v4 = INVALID_SOCKET_VALUE;
-875     host-&gt;running = false;
-876     return SET_ERRNO(ERROR_THREAD, &quot;Failed to spawn receive loop thread&quot;);
-877   }
-878 
-879   // Spawn render thread (optional - can be started later)
-880   // This thread handles video mixing and audio distribution
-881   return ASCIICHAT_OK;
-882 }</pre>
+846   host-&gt;socket_v4 = create_listen_socket(bind_address, host-&gt;port);
+847   if (host-&gt;socket_v4 == INVALID_SOCKET_VALUE) {
+848     log_error(&quot;Failed to create IPv4 listen socket&quot;);
+849     if (host-&gt;callbacks.on_error) {
+850       host-&gt;callbacks.on_error(host, ERROR_NETWORK_BIND, &quot;Failed to create listen socket&quot;, host-&gt;user_data);
+851     }
+852     return GET_ERRNO();
+853   }
+854 
+855   host-&gt;running = true;
+856   log_info(&quot;Session host listening on %s:%d&quot;, bind_address, host-&gt;port);
+857 
+858   // Spawn accept loop thread
+859   host-&gt;accept_thread_running = true;
+860   if (asciichat_thread_create(&amp;host-&gt;accept_thread, &quot;accept&quot;, accept_loop_thread, host) != 0) {
+861     log_error(&quot;Failed to spawn accept loop thread&quot;);
+862     host-&gt;accept_thread_running = false;
+863     if (host-&gt;callbacks.on_error) {
+864       host-&gt;callbacks.on_error(host, ERROR_THREAD, &quot;Failed to spawn accept loop thread&quot;, host-&gt;user_data);
+865     }
+866     socket_close(host-&gt;socket_v4);
+867     host-&gt;socket_v4 = INVALID_SOCKET_VALUE;
+868     host-&gt;running = false;
+869     return SET_ERRNO(ERROR_THREAD, &quot;Failed to spawn accept loop thread&quot;);
+870   }
+871 
+872   // Spawn receive loop thread
+873   host-&gt;receive_thread_running = true;
+874   if (asciichat_thread_create(&amp;host-&gt;receive_thread, &quot;host_recv&quot;, receive_loop_thread, host) != 0) {
+875     log_error(&quot;Failed to spawn receive loop thread&quot;);
+876     host-&gt;receive_thread_running = false;
+877     host-&gt;accept_thread_running = false;
+878     asciichat_thread_join(&amp;host-&gt;accept_thread, NULL);
+879     if (host-&gt;callbacks.on_error) {
+880       host-&gt;callbacks.on_error(host, ERROR_THREAD, &quot;Failed to spawn receive loop thread&quot;, host-&gt;user_data);
+881     }
+882     socket_close(host-&gt;socket_v4);
+883     host-&gt;socket_v4 = INVALID_SOCKET_VALUE;
+884     host-&gt;running = false;
+885     return SET_ERRNO(ERROR_THREAD, &quot;Failed to spawn receive loop thread&quot;);
+886   }
+887 
+888   // Spawn render thread (optional - can be started later)
+889   // This thread handles video mixing and audio distribution
+890   return ASCIICHAT_OK;
+891 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host::accept_thread</b>,
@@ -6498,61 +6557,61 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp">Call <b>session_host_stop_render()</b> to stop the thread.</p>
 </div>
-<p class="Pp">Definition at line <b>1358</b> of file <b>host.c</b>.</p>
-<pre>1358                                                                   {
-1359   if (!host || !host-&gt;initialized) {
-1360     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_start_render: invalid host&quot;);
-1361   }
-1362 
-1363   if (!host-&gt;running) {
-1364     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_host_start_render: not running&quot;);
-1365   }
-1366 
-1367   if (host-&gt;render_thread_running) {
-1368     return ASCIICHAT_OK; // Already running
-1369   }
-1370 
-1371   // Create audio context for mixing (host mode = true)
-1372   if (!host-&gt;audio_ctx) {
-1373     host-&gt;audio_ctx = session_audio_create(true);
-1374     if (!host-&gt;audio_ctx) {
-1375       return SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to create audio context&quot;);
-1376     }
-1377   }
-1378 
-1379   // Create Opus decoder for decoding incoming Opus audio (48kHz)
-1380   if (!host-&gt;opus_decoder) {
-1381     host-&gt;opus_decoder = opus_codec_create_decoder(48000);
-1382     if (!host-&gt;opus_decoder) {
-1383       session_audio_destroy(host-&gt;audio_ctx);
-1384       host-&gt;audio_ctx = NULL;
-1385       return SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to create Opus decoder&quot;);
-1386     }
-1387   }
-1388 
-1389   // Create Opus encoder for encoding mixed audio for broadcast (48kHz, VOIP mode, 24kbps)
-1390   if (!host-&gt;opus_encoder) {
-1391     host-&gt;opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
-1392     if (!host-&gt;opus_encoder) {
-1393       opus_codec_destroy(host-&gt;opus_decoder);
-1394       host-&gt;opus_decoder = NULL;
-1395       session_audio_destroy(host-&gt;audio_ctx);
-1396       host-&gt;audio_ctx = NULL;
-1397       return SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to create Opus encoder&quot;);
-1398     }
-1399   }
-1400 
-1401   // Spawn render thread
-1402   host-&gt;render_thread_running = true;
-1403   if (asciichat_thread_create(&amp;host-&gt;render_thread, &quot;render&quot;, host_render_thread, host) != 0) {
-1404     log_error(&quot;Failed to spawn render thread&quot;);
-1405     host-&gt;render_thread_running = false;
-1406     return SET_ERRNO(ERROR_THREAD, &quot;Failed to spawn render thread&quot;);
-1407   }
-1408 
-1409   log_info(&quot;Host render thread started&quot;);
-1410   return ASCIICHAT_OK;
-1411 }</pre>
+<p class="Pp">Definition at line <b>1367</b> of file <b>host.c</b>.</p>
+<pre>1367                                                                   {
+1368   if (!host || !host-&gt;initialized) {
+1369     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_host_start_render: invalid host&quot;);
+1370   }
+1371 
+1372   if (!host-&gt;running) {
+1373     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_host_start_render: not running&quot;);
+1374   }
+1375 
+1376   if (host-&gt;render_thread_running) {
+1377     return ASCIICHAT_OK; // Already running
+1378   }
+1379 
+1380   // Create audio context for mixing (host mode = true)
+1381   if (!host-&gt;audio_ctx) {
+1382     host-&gt;audio_ctx = session_audio_create(true);
+1383     if (!host-&gt;audio_ctx) {
+1384       return SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to create audio context&quot;);
+1385     }
+1386   }
+1387 
+1388   // Create Opus decoder for decoding incoming Opus audio (48kHz)
+1389   if (!host-&gt;opus_decoder) {
+1390     host-&gt;opus_decoder = opus_codec_create_decoder(48000);
+1391     if (!host-&gt;opus_decoder) {
+1392       session_audio_destroy(host-&gt;audio_ctx);
+1393       host-&gt;audio_ctx = NULL;
+1394       return SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to create Opus decoder&quot;);
+1395     }
+1396   }
+1397 
+1398   // Create Opus encoder for encoding mixed audio for broadcast (48kHz, VOIP mode, 24kbps)
+1399   if (!host-&gt;opus_encoder) {
+1400     host-&gt;opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
+1401     if (!host-&gt;opus_encoder) {
+1402       opus_codec_destroy(host-&gt;opus_decoder);
+1403       host-&gt;opus_decoder = NULL;
+1404       session_audio_destroy(host-&gt;audio_ctx);
+1405       host-&gt;audio_ctx = NULL;
+1406       return SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to create Opus encoder&quot;);
+1407     }
+1408   }
+1409 
+1410   // Spawn render thread
+1411   host-&gt;render_thread_running = true;
+1412   if (asciichat_thread_create(&amp;host-&gt;render_thread, &quot;render&quot;, host_render_thread, host) != 0) {
+1413     log_error(&quot;Failed to spawn render thread&quot;);
+1414     host-&gt;render_thread_running = false;
+1415     return SET_ERRNO(ERROR_THREAD, &quot;Failed to spawn render thread&quot;);
+1416   }
+1417 
+1418   log_info(&quot;Host render thread started&quot;);
+1419   return ASCIICHAT_OK;
+1420 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
@@ -6576,66 +6635,66 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>host</i> Host handle (must not be NULL)</div>
 <p class="Pp">Gracefully stops the server, disconnects all clients, and cleans
     up.</p>
-<p class="Pp">Definition at line <b>884</b> of file <b>host.c</b>.</p>
-<pre>884                                              {
-885   if (!host || !host-&gt;initialized || !host-&gt;running) {
-886     return;
-887   }
-888 
-889   // Stop render thread if running
-890   if (host-&gt;render_thread_running) {
-891     host-&gt;render_thread_running = false;
-892     asciichat_thread_join(&amp;host-&gt;render_thread, NULL);
-893     log_info(&quot;Render thread joined&quot;);
-894   }
-895 
-896   // Stop receive loop thread (reads from client sockets)
-897   if (host-&gt;receive_thread_running) {
-898     host-&gt;receive_thread_running = false;
-899     asciichat_thread_join(&amp;host-&gt;receive_thread, NULL);
-900     log_info(&quot;Receive loop thread joined&quot;);
-901   }
-902 
-903   // Stop accept loop thread (before closing listen socket)
-904   if (host-&gt;accept_thread_running) {
-905     host-&gt;accept_thread_running = false;
-906     asciichat_thread_join(&amp;host-&gt;accept_thread, NULL);
-907     log_info(&quot;Accept loop thread joined&quot;);
-908   }
-909 
-910   // Disconnect all clients
-911   mutex_lock(&amp;host-&gt;clients_mutex);
-912   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
-913     if (host-&gt;clients[i].active) {
-914       // Invoke callback
-915       if (host-&gt;callbacks.on_client_leave) {
-916         host-&gt;callbacks.on_client_leave(host, host-&gt;clients[i].client_id, host-&gt;user_data);
-917       }
+<p class="Pp">Definition at line <b>893</b> of file <b>host.c</b>.</p>
+<pre>893                                              {
+894   if (!host || !host-&gt;initialized || !host-&gt;running) {
+895     return;
+896   }
+897 
+898   // Stop render thread if running
+899   if (host-&gt;render_thread_running) {
+900     host-&gt;render_thread_running = false;
+901     asciichat_thread_join(&amp;host-&gt;render_thread, NULL);
+902     log_info(&quot;Render thread joined&quot;);
+903   }
+904 
+905   // Stop receive loop thread (reads from client sockets)
+906   if (host-&gt;receive_thread_running) {
+907     host-&gt;receive_thread_running = false;
+908     asciichat_thread_join(&amp;host-&gt;receive_thread, NULL);
+909     log_info(&quot;Receive loop thread joined&quot;);
+910   }
+911 
+912   // Stop accept loop thread (before closing listen socket)
+913   if (host-&gt;accept_thread_running) {
+914     host-&gt;accept_thread_running = false;
+915     asciichat_thread_join(&amp;host-&gt;accept_thread, NULL);
+916     log_info(&quot;Accept loop thread joined&quot;);
+917   }
 918 
-919       // Close socket
-920       if (host-&gt;clients[i].socket != INVALID_SOCKET_VALUE) {
-921         socket_close(host-&gt;clients[i].socket);
-922         host-&gt;clients[i].socket = INVALID_SOCKET_VALUE;
-923       }
-924 
-925       host-&gt;clients[i].active = false;
-926     }
-927   }
-928   host-&gt;client_count = 0;
-929   mutex_unlock(&amp;host-&gt;clients_mutex);
-930 
-931   // Close listen sockets
-932   if (host-&gt;socket_v4 != INVALID_SOCKET_VALUE) {
-933     socket_close(host-&gt;socket_v4);
-934     host-&gt;socket_v4 = INVALID_SOCKET_VALUE;
-935   }
-936   if (host-&gt;socket_v6 != INVALID_SOCKET_VALUE) {
-937     socket_close(host-&gt;socket_v6);
-938     host-&gt;socket_v6 = INVALID_SOCKET_VALUE;
-939   }
-940 
-941   host-&gt;running = false;
-942 }</pre>
+919   // Disconnect all clients
+920   mutex_lock(&amp;host-&gt;clients_mutex);
+921   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
+922     if (host-&gt;clients[i].active) {
+923       // Invoke callback
+924       if (host-&gt;callbacks.on_client_leave) {
+925         host-&gt;callbacks.on_client_leave(host, host-&gt;clients[i].client_id, host-&gt;user_data);
+926       }
+927 
+928       // Close socket
+929       if (host-&gt;clients[i].socket != INVALID_SOCKET_VALUE) {
+930         socket_close(host-&gt;clients[i].socket);
+931         host-&gt;clients[i].socket = INVALID_SOCKET_VALUE;
+932       }
+933 
+934       host-&gt;clients[i].active = false;
+935     }
+936   }
+937   host-&gt;client_count = 0;
+938   mutex_unlock(&amp;host-&gt;clients_mutex);
+939 
+940   // Close listen sockets
+941   if (host-&gt;socket_v4 != INVALID_SOCKET_VALUE) {
+942     socket_close(host-&gt;socket_v4);
+943     host-&gt;socket_v4 = INVALID_SOCKET_VALUE;
+944   }
+945   if (host-&gt;socket_v6 != INVALID_SOCKET_VALUE) {
+946     socket_close(host-&gt;socket_v6);
+947     host-&gt;socket_v6 = INVALID_SOCKET_VALUE;
+948   }
+949 
+950   host-&gt;running = false;
+951 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_host::accept_thread</b>,
@@ -6665,38 +6724,38 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>host</i> Host handle (must not be NULL)</div>
 <p class="Pp">Gracefully stops the render thread and cleans up audio
   resources.</p>
-<p class="Pp">Definition at line <b>1413</b> of file <b>host.c</b>.</p>
-<pre>1413                                                     {
-1414   if (!host || !host-&gt;initialized) {
-1415     return;
-1416   }
-1417 
-1418   if (!host-&gt;render_thread_running) {
-1419     return;
-1420   }
-1421 
-1422   // Signal thread to stop
-1423   host-&gt;render_thread_running = false;
-1424 
-1425   // Wait for thread to complete
-1426   asciichat_thread_join(&amp;host-&gt;render_thread, NULL);
-1427 
-1428   // Clean up audio resources
-1429   if (host-&gt;audio_ctx) {
-1430     session_audio_destroy(host-&gt;audio_ctx);
-1431     host-&gt;audio_ctx = NULL;
-1432   }
-1433   if (host-&gt;opus_decoder) {
-1434     opus_codec_destroy(host-&gt;opus_decoder);
-1435     host-&gt;opus_decoder = NULL;
-1436   }
-1437   if (host-&gt;opus_encoder) {
-1438     opus_codec_destroy(host-&gt;opus_encoder);
-1439     host-&gt;opus_encoder = NULL;
-1440   }
-1441 
-1442   log_info(&quot;Host render thread stopped&quot;);
-1443 }</pre>
+<p class="Pp">Definition at line <b>1422</b> of file <b>host.c</b>.</p>
+<pre>1422                                                     {
+1423   if (!host || !host-&gt;initialized) {
+1424     return;
+1425   }
+1426 
+1427   if (!host-&gt;render_thread_running) {
+1428     return;
+1429   }
+1430 
+1431   // Signal thread to stop
+1432   host-&gt;render_thread_running = false;
+1433 
+1434   // Wait for thread to complete
+1435   asciichat_thread_join(&amp;host-&gt;render_thread, NULL);
+1436 
+1437   // Clean up audio resources
+1438   if (host-&gt;audio_ctx) {
+1439     session_audio_destroy(host-&gt;audio_ctx);
+1440     host-&gt;audio_ctx = NULL;
+1441   }
+1442   if (host-&gt;opus_decoder) {
+1443     opus_codec_destroy(host-&gt;opus_decoder);
+1444     host-&gt;opus_decoder = NULL;
+1445   }
+1446   if (host-&gt;opus_encoder) {
+1447     opus_codec_destroy(host-&gt;opus_encoder);
+1448     host-&gt;opus_encoder = NULL;
+1449   }
+1450 
+1451   log_info(&quot;Host render thread stopped&quot;);
+1452 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_thread_join()</b>,
@@ -6855,51 +6914,51 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp">on_error callback is invoked on failure.</p>
 </div>
-<p class="Pp">Definition at line <b>272</b> of file <b>participant.c</b>.</p>
-<pre>272                                                                         {
-273   log_debug(&quot;session_participant_connect: enter - p=%p&quot;, p);
-274 
-275   if (!p || !p-&gt;initialized) {
-276     log_debug(&quot;session_participant_connect: invalid param or not initialized&quot;);
-277     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_participant_connect: invalid participant&quot;);
-278   }
-279 
-280   log_debug(&quot;session_participant_connect: p-&gt;initialized=%d, p-&gt;connected=%d&quot;, p-&gt;initialized, p-&gt;connected);
-281 
-282   if (p-&gt;connected) {
-283     log_debug(&quot;session_participant_connect: already connected, returning OK&quot;);
-284     return ASCIICHAT_OK; // Already connected
-285   }
-286 
-287   // Create TCP connection to server
-288   log_debug(&quot;session_participant_connect: calling connect_to_server(%s, %d)&quot;, p-&gt;address, p-&gt;port);
-289   p-&gt;socket = connect_to_server(p-&gt;address, p-&gt;port);
-290   log_debug(&quot;session_participant_connect: connect_to_server returned socket=%d (INVALID=%d)&quot;, p-&gt;socket,
-291             INVALID_SOCKET_VALUE);
-292 
-293   if (p-&gt;socket == INVALID_SOCKET_VALUE) {
-294     log_error(&quot;Failed to connect to server at %s:%d&quot;, p-&gt;address, p-&gt;port);
-295     if (p-&gt;callbacks.on_error) {
-296       p-&gt;callbacks.on_error(p, ERROR_NETWORK_CONNECT, &quot;Failed to connect to server&quot;, p-&gt;user_data);
-297     }
-298     return GET_ERRNO();
-299   }
-300 
-301   log_debug(&quot;session_participant_connect: setting p-&gt;connected=true&quot;);
-302   p-&gt;connected = true;
-303   p-&gt;client_id = 0; // Will be assigned by server
-304 
-305   log_info(&quot;Connected to server at %s:%d (socket=%d)&quot;, p-&gt;address, p-&gt;port, p-&gt;socket);
-306   log_debug(&quot;session_participant_connect: p-&gt;connected=%d after setting&quot;, p-&gt;connected);
-307 
-308   // Invoke callback
-309   if (p-&gt;callbacks.on_connected) {
-310     p-&gt;callbacks.on_connected(p, p-&gt;client_id, p-&gt;user_data);
-311   }
-312 
-313   log_debug(&quot;session_participant_connect: returning ASCIICHAT_OK&quot;);
-314   return ASCIICHAT_OK;
-315 }</pre>
+<p class="Pp">Definition at line <b>273</b> of file <b>participant.c</b>.</p>
+<pre>273                                                                         {
+274   log_debug(&quot;session_participant_connect: enter - p=%p&quot;, p);
+275 
+276   if (!p || !p-&gt;initialized) {
+277     log_debug(&quot;session_participant_connect: invalid param or not initialized&quot;);
+278     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_participant_connect: invalid participant&quot;);
+279   }
+280 
+281   log_debug(&quot;session_participant_connect: p-&gt;initialized=%d, p-&gt;connected=%d&quot;, p-&gt;initialized, p-&gt;connected);
+282 
+283   if (p-&gt;connected) {
+284     log_debug(&quot;session_participant_connect: already connected, returning OK&quot;);
+285     return ASCIICHAT_OK; // Already connected
+286   }
+287 
+288   // Create TCP connection to server
+289   log_debug(&quot;session_participant_connect: calling connect_to_server(%s, %d)&quot;, p-&gt;address, p-&gt;port);
+290   p-&gt;socket = connect_to_server(p-&gt;address, p-&gt;port);
+291   log_debug(&quot;session_participant_connect: connect_to_server returned socket=%d (INVALID=%d)&quot;, p-&gt;socket,
+292             INVALID_SOCKET_VALUE);
+293 
+294   if (p-&gt;socket == INVALID_SOCKET_VALUE) {
+295     log_error(&quot;Failed to connect to server at %s:%d&quot;, p-&gt;address, p-&gt;port);
+296     if (p-&gt;callbacks.on_error) {
+297       p-&gt;callbacks.on_error(p, ERROR_NETWORK_CONNECT, &quot;Failed to connect to server&quot;, p-&gt;user_data);
+298     }
+299     return GET_ERRNO();
+300   }
+301 
+302   log_debug(&quot;session_participant_connect: setting p-&gt;connected=true&quot;);
+303   p-&gt;connected = true;
+304   p-&gt;client_id = 0; // Will be assigned by server
+305 
+306   log_info(&quot;Connected to server at %s:%d (socket=%d)&quot;, p-&gt;address, p-&gt;port, p-&gt;socket);
+307   log_debug(&quot;session_participant_connect: p-&gt;connected=%d after setting&quot;, p-&gt;connected);
+308 
+309   // Invoke callback
+310   if (p-&gt;callbacks.on_connected) {
+311     p-&gt;callbacks.on_connected(p, p-&gt;client_id, p-&gt;user_data);
+312   }
+313 
+314   log_debug(&quot;session_participant_connect: returning ASCIICHAT_OK&quot;);
+315   return ASCIICHAT_OK;
+316 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_participant::address</b>,
@@ -6938,61 +6997,61 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp">On failure, sets asciichat_errno with error details.</p>
 </div>
-<p class="Pp">Definition at line <b>121</b> of file <b>participant.c</b>.</p>
-<pre>121                                                                                               {
-122   log_info(&quot;session_participant_create: START - config=%p&quot;, config);
-123 
-124   if (!config) {
-125     log_error(&quot;session_participant_create: config is NULL&quot;);
-126     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_participant_create: NULL config&quot;);
-127     return NULL;
-128   }
-129 
-130   // Allocate participant
-131   session_participant_t *p = SAFE_CALLOC(1, sizeof(session_participant_t), session_participant_t *);
-132   log_info(&quot;session_participant_create: allocated p=%p&quot;, p);
-133 
-134   // Copy configuration
-135   if (config-&gt;address) {
-136     SAFE_STRNCPY(p-&gt;address, config-&gt;address, sizeof(p-&gt;address));
-137   } else {
-138     SAFE_STRNCPY(p-&gt;address, &quot;127.0.0.1&quot;, sizeof(p-&gt;address));
-139   }
-140 
-141   p-&gt;port = config-&gt;port &gt; 0 ? config-&gt;port : OPT_PORT_INT_DEFAULT;
-142   p-&gt;encryption_enabled = config-&gt;encryption_enabled;
-143 
-144   log_info(&quot;session_participant_create: address=%s, port=%d&quot;, p-&gt;address, p-&gt;port);
-145 
-146   if (config-&gt;password) {
-147     SAFE_STRNCPY(p-&gt;password, config-&gt;password, sizeof(p-&gt;password));
-148   }
-149 
-150   if (config-&gt;server_key) {
-151     SAFE_STRNCPY(p-&gt;server_key, config-&gt;server_key, sizeof(p-&gt;server_key));
-152   }
-153 
-154   p-&gt;enable_audio = config-&gt;enable_audio;
-155   p-&gt;enable_video = config-&gt;enable_video;
-156   p-&gt;callbacks = config-&gt;callbacks;
-157   p-&gt;user_data = config-&gt;user_data;
-158 
-159   // Initialize socket to invalid
-160   p-&gt;socket = INVALID_SOCKET_VALUE;
-161   p-&gt;transport = NULL; // No alternative transport initially
-162   p-&gt;connected = false;
-163   p-&gt;client_id = 0;
-164   p-&gt;video_active = false;
-165   p-&gt;audio_active = false;
-166 
-167   // Initialize settings
-168   session_settings_init(&amp;p-&gt;settings);
-169 
-170   p-&gt;initialized = true;
-171   log_info(&quot;session_participant_create: DONE - returning p=%p (initialized=%d, connected=%d)&quot;, p, p-&gt;initialized,
-172            p-&gt;connected);
-173   return p;
-174 }</pre>
+<p class="Pp">Definition at line <b>122</b> of file <b>participant.c</b>.</p>
+<pre>122                                                                                               {
+123   log_info(&quot;session_participant_create: START - config=%p&quot;, config);
+124 
+125   if (!config) {
+126     log_error(&quot;session_participant_create: config is NULL&quot;);
+127     SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_participant_create: NULL config&quot;);
+128     return NULL;
+129   }
+130 
+131   // Allocate participant
+132   session_participant_t *p = SAFE_CALLOC(1, sizeof(session_participant_t), session_participant_t *);
+133   log_info(&quot;session_participant_create: allocated p=%p&quot;, p);
+134 
+135   // Copy configuration
+136   if (config-&gt;address) {
+137     SAFE_STRNCPY(p-&gt;address, config-&gt;address, sizeof(p-&gt;address));
+138   } else {
+139     SAFE_STRNCPY(p-&gt;address, &quot;127.0.0.1&quot;, sizeof(p-&gt;address));
+140   }
+141 
+142   p-&gt;port = config-&gt;port &gt; 0 ? config-&gt;port : OPT_PORT_INT_DEFAULT;
+143   p-&gt;encryption_enabled = config-&gt;encryption_enabled;
+144 
+145   log_info(&quot;session_participant_create: address=%s, port=%d&quot;, p-&gt;address, p-&gt;port);
+146 
+147   if (config-&gt;password) {
+148     SAFE_STRNCPY(p-&gt;password, config-&gt;password, sizeof(p-&gt;password));
+149   }
+150 
+151   if (config-&gt;server_key) {
+152     SAFE_STRNCPY(p-&gt;server_key, config-&gt;server_key, sizeof(p-&gt;server_key));
+153   }
+154 
+155   p-&gt;enable_audio = config-&gt;enable_audio;
+156   p-&gt;enable_video = config-&gt;enable_video;
+157   p-&gt;callbacks = config-&gt;callbacks;
+158   p-&gt;user_data = config-&gt;user_data;
+159 
+160   // Initialize socket to invalid
+161   p-&gt;socket = INVALID_SOCKET_VALUE;
+162   p-&gt;transport = NULL; // No alternative transport initially
+163   p-&gt;connected = false;
+164   p-&gt;client_id = 0;
+165   p-&gt;video_active = false;
+166   p-&gt;audio_active = false;
+167 
+168   // Initialize settings
+169   session_settings_init(&amp;p-&gt;settings);
+170 
+171   p-&gt;initialized = true;
+172   log_info(&quot;session_participant_create: DONE - returning p=%p (initialized=%d, connected=%d)&quot;, p, p-&gt;initialized,
+173            p-&gt;connected);
+174   return p;
+175 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_participant::address</b>,
@@ -7035,52 +7094,52 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>p</i> Participant to destroy (can be NULL)</div>
 <p class="Pp">Disconnects if connected, stops all streams, and releases all
     resources. Safe to call with NULL.</p>
-<p class="Pp">Definition at line <b>176</b> of file <b>participant.c</b>.</p>
-<pre>176                                                            {
-177   if (!p) {
-178     return;
-179   }
-180 
-181   // Disconnect if connected
-182   if (p-&gt;connected) {
-183     session_participant_disconnect(p);
-184   }
-185 
-186   // Stop capture threads if running
-187   if (p-&gt;video_capture_running) {
-188     session_participant_stop_video_capture(p);
-189   }
-190   if (p-&gt;audio_capture_running) {
-191     session_participant_stop_audio_capture(p);
-192   }
-193 
-194   // Clean up media capture contexts
-195   if (p-&gt;video_capture) {
-196     session_capture_destroy(p-&gt;video_capture);
-197     p-&gt;video_capture = NULL;
-198   }
-199   if (p-&gt;audio_capture) {
-200     session_audio_destroy(p-&gt;audio_capture);
-201     p-&gt;audio_capture = NULL;
-202   }
-203   if (p-&gt;opus_encoder) {
-204     opus_codec_destroy(p-&gt;opus_encoder);
-205     p-&gt;opus_encoder = NULL;
-206   }
-207 
-208   // Close socket if open
-209   if (p-&gt;socket != INVALID_SOCKET_VALUE) {
-210     socket_close(p-&gt;socket);
-211     p-&gt;socket = INVALID_SOCKET_VALUE;
-212   }
-213 
-214   // Clear sensitive data
-215   memset(p-&gt;password, 0, sizeof(p-&gt;password));
-216   memset(p-&gt;server_key, 0, sizeof(p-&gt;server_key));
-217 
-218   p-&gt;initialized = false;
-219   SAFE_FREE(p);
-220 }</pre>
+<p class="Pp">Definition at line <b>177</b> of file <b>participant.c</b>.</p>
+<pre>177                                                            {
+178   if (!p) {
+179     return;
+180   }
+181 
+182   // Disconnect if connected
+183   if (p-&gt;connected) {
+184     session_participant_disconnect(p);
+185   }
+186 
+187   // Stop capture threads if running
+188   if (p-&gt;video_capture_running) {
+189     session_participant_stop_video_capture(p);
+190   }
+191   if (p-&gt;audio_capture_running) {
+192     session_participant_stop_audio_capture(p);
+193   }
+194 
+195   // Clean up media capture contexts
+196   if (p-&gt;video_capture) {
+197     session_capture_destroy(p-&gt;video_capture);
+198     p-&gt;video_capture = NULL;
+199   }
+200   if (p-&gt;audio_capture) {
+201     session_audio_destroy(p-&gt;audio_capture);
+202     p-&gt;audio_capture = NULL;
+203   }
+204   if (p-&gt;opus_encoder) {
+205     opus_codec_destroy(p-&gt;opus_encoder);
+206     p-&gt;opus_encoder = NULL;
+207   }
+208 
+209   // Close socket if open
+210   if (p-&gt;socket != INVALID_SOCKET_VALUE) {
+211     socket_close(p-&gt;socket);
+212     p-&gt;socket = INVALID_SOCKET_VALUE;
+213   }
+214 
+215   // Clear sensitive data
+216   memset(p-&gt;password, 0, sizeof(p-&gt;password));
+217   memset(p-&gt;server_key, 0, sizeof(p-&gt;server_key));
+218 
+219   p-&gt;initialized = false;
+220   SAFE_FREE(p);
+221 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_participant::audio_capture</b>,
@@ -7112,38 +7171,38 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">on_disconnected callback is invoked after
   disconnection.</div>
-<p class="Pp">Definition at line <b>317</b> of file <b>participant.c</b>.</p>
-<pre>317                                                               {
-318   if (!p || !p-&gt;initialized) {
-319     return;
-320   }
-321 
-322   if (!p-&gt;connected) {
-323     return;
-324   }
-325 
-326   // Stop media streams
-327   if (p-&gt;video_active) {
-328     session_participant_stop_video(p);
-329   }
-330   if (p-&gt;audio_active) {
-331     session_participant_stop_audio(p);
-332   }
-333 
-334   // Close socket
-335   if (p-&gt;socket != INVALID_SOCKET_VALUE) {
-336     socket_close(p-&gt;socket);
-337     p-&gt;socket = INVALID_SOCKET_VALUE;
-338   }
-339 
-340   p-&gt;connected = false;
-341   p-&gt;client_id = 0;
-342 
-343   // Invoke callback
-344   if (p-&gt;callbacks.on_disconnected) {
-345     p-&gt;callbacks.on_disconnected(p, p-&gt;user_data);
-346   }
-347 }</pre>
+<p class="Pp">Definition at line <b>318</b> of file <b>participant.c</b>.</p>
+<pre>318                                                               {
+319   if (!p || !p-&gt;initialized) {
+320     return;
+321   }
+322 
+323   if (!p-&gt;connected) {
+324     return;
+325   }
+326 
+327   // Stop media streams
+328   if (p-&gt;video_active) {
+329     session_participant_stop_video(p);
+330   }
+331   if (p-&gt;audio_active) {
+332     session_participant_stop_audio(p);
+333   }
+334 
+335   // Close socket
+336   if (p-&gt;socket != INVALID_SOCKET_VALUE) {
+337     socket_close(p-&gt;socket);
+338     p-&gt;socket = INVALID_SOCKET_VALUE;
+339   }
+340 
+341   p-&gt;connected = false;
+342   p-&gt;client_id = 0;
+343 
+344   // Invoke callback
+345   if (p-&gt;callbacks.on_disconnected) {
+346     p-&gt;callbacks.on_disconnected(p, p-&gt;user_data);
+347   }
+348 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_participant::audio_active</b>,
@@ -7169,13 +7228,13 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>p</i> Participant handle (can be NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Client ID if connected, 0 otherwise</div>
-<p class="Pp">Definition at line <b>356</b> of file <b>participant.c</b>.</p>
-<pre>356                                                                      {
-357   if (!p || !p-&gt;initialized || !p-&gt;connected) {
-358     return 0;
-359   }
-360   return p-&gt;client_id;
-361 }</pre>
+<p class="Pp">Definition at line <b>357</b> of file <b>participant.c</b>.</p>
+<pre>357                                                                      {
+358   if (!p || !p-&gt;initialized || !p-&gt;connected) {
+359     return 0;
+360   }
+361   return p-&gt;client_id;
+362 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_participant::client_id</b>,
@@ -7194,15 +7253,15 @@ fps_counter_destroy(fps);</pre>
 <i>settings</i> Output settings structure (must not be NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>466</b> of file <b>participant.c</b>.</p>
-<pre>466                                                                                                            {
-467   if (!p || !p-&gt;initialized || !settings) {
-468     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_participant_get_settings: invalid parameter&quot;);
-469   }
-470 
-471   memcpy(settings, &amp;p-&gt;settings, sizeof(session_settings_t));
-472   return ASCIICHAT_OK;
-473 }</pre>
+<p class="Pp">Definition at line <b>467</b> of file <b>participant.c</b>.</p>
+<pre>467                                                                                                            {
+468   if (!p || !p-&gt;initialized || !settings) {
+469     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_participant_get_settings: invalid parameter&quot;);
+470   }
+471 
+472   memcpy(settings, &amp;p-&gt;settings, sizeof(session_settings_t));
+473   return ASCIICHAT_OK;
+474 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -7220,13 +7279,13 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">The socket file descriptor, or INVALID_SOCKET_VALUE if
   not connected</div>
-<p class="Pp">Definition at line <b>363</b> of file <b>participant.c</b>.</p>
-<pre>363                                                                   {
-364   if (!p || !p-&gt;initialized) {
-365     return INVALID_SOCKET_VALUE;
-366   }
-367   return p-&gt;socket;
-368 }</pre>
+<p class="Pp">Definition at line <b>364</b> of file <b>participant.c</b>.</p>
+<pre>364                                                                   {
+365   if (!p || !p-&gt;initialized) {
+366     return INVALID_SOCKET_VALUE;
+367   }
+368   return p-&gt;socket;
+369 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_participant::initialized</b>,
@@ -7248,14 +7307,14 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Transport pointer if set, NULL if using socket
   transport</div>
-<p class="Pp">Definition at line <b>744</b> of file <b>participant.c</b>.</p>
-<pre>744                                                                               {
-745   if (!p || !p-&gt;initialized) {
-746     return NULL;
-747   }
-748 
-749   return p-&gt;transport;
-750 }</pre>
+<p class="Pp">Definition at line <b>747</b> of file <b>participant.c</b>.</p>
+<pre>747                                                                               {
+748   if (!p || !p-&gt;initialized) {
+749     return NULL;
+750   }
+751 
+752   return p-&gt;transport;
+753 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_participant::initialized</b>, and
@@ -7275,14 +7334,14 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if alternative transport is set, false
   otherwise</div>
-<p class="Pp">Definition at line <b>752</b> of file <b>participant.c</b>.</p>
-<pre>752                                                                  {
-753   if (!p) {
-754     return false;
-755   }
-756 
-757   return p-&gt;transport != NULL;
-758 }</pre>
+<p class="Pp">Definition at line <b>755</b> of file <b>participant.c</b>.</p>
+<pre>755                                                                  {
+756   if (!p) {
+757     return false;
+758   }
+759 
+760   return p-&gt;transport != NULL;
+761 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_participant::transport</b>.</p>
@@ -7297,13 +7356,13 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>p</i> Participant handle (can be NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if audio is active, false otherwise</div>
-<p class="Pp">Definition at line <b>455</b> of file <b>participant.c</b>.</p>
-<pre>455                                                                    {
-456   if (!p || !p-&gt;initialized) {
-457     return false;
-458   }
-459   return p-&gt;audio_active;
-460 }</pre>
+<p class="Pp">Definition at line <b>456</b> of file <b>participant.c</b>.</p>
+<pre>456                                                                    {
+457   if (!p || !p-&gt;initialized) {
+458     return false;
+459   }
+460   return p-&gt;audio_active;
+461 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_participant::audio_active</b>, and
@@ -7319,13 +7378,13 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>p</i> Participant handle (can be NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if connected, false otherwise</div>
-<p class="Pp">Definition at line <b>349</b> of file <b>participant.c</b>.</p>
-<pre>349                                                                 {
-350   if (!p || !p-&gt;initialized) {
-351     return false;
-352   }
-353   return p-&gt;connected;
-354 }</pre>
+<p class="Pp">Definition at line <b>350</b> of file <b>participant.c</b>.</p>
+<pre>350                                                                 {
+351   if (!p || !p-&gt;initialized) {
+352     return false;
+353   }
+354   return p-&gt;connected;
+355 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_participant::connected</b>, and
@@ -7342,13 +7401,13 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>p</i> Participant handle (can be NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if video is active, false otherwise</div>
-<p class="Pp">Definition at line <b>411</b> of file <b>participant.c</b>.</p>
-<pre>411                                                                    {
-412   if (!p || !p-&gt;initialized) {
-413     return false;
-414   }
-415   return p-&gt;video_active;
-416 }</pre>
+<p class="Pp">Definition at line <b>412</b> of file <b>participant.c</b>.</p>
+<pre>412                                                                    {
+413   if (!p || !p-&gt;initialized) {
+414     return false;
+415   }
+416   return p-&gt;video_active;
+417 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_participant::initialized</b>, and
@@ -7373,20 +7432,20 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Actual settings change is signaled via
   on_settings_changed callback.</div>
-<p class="Pp">Definition at line <b>475</b> of file <b>participant.c</b>.</p>
-<pre>475                                                                                                                      {
-476   if (!p || !p-&gt;initialized || !settings) {
-477     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_participant_request_settings: invalid parameter&quot;);
-478   }
-479 
-480   if (!p-&gt;connected) {
-481     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_participant_request_settings: not connected&quot;);
-482   }
-483 
-484   // TODO: Send settings update request to server
-485 
-486   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;session_participant_request_settings: not implemented yet&quot;);
-487 }</pre>
+<p class="Pp">Definition at line <b>476</b> of file <b>participant.c</b>.</p>
+<pre>476                                                                                                                      {
+477   if (!p || !p-&gt;initialized || !settings) {
+478     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_participant_request_settings: invalid parameter&quot;);
+479   }
+480 
+481   if (!p-&gt;connected) {
+482     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_participant_request_settings: not connected&quot;);
+483   }
+484 
+485   // TODO: Send settings update request to server
+486 
+487   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;session_participant_request_settings: not implemented yet&quot;);
+488 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_participant::connected</b>,
@@ -7419,24 +7478,24 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp"></p>
 <p class="Pp">If both socket and transport exist, transport takes precedence</p>
 </div>
-<p class="Pp">Definition at line <b>726</b> of file <b>participant.c</b>.</p>
-<pre>726                                                                                                            {
-727   if (!p || !p-&gt;initialized) {
-728     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Participant is NULL or not initialized&quot;);
-729   }
-730 
-731   log_info(&quot;session_participant_set_transport: Setting transport=%p (was=%p)&quot;, transport, p-&gt;transport);
-732 
-733   p-&gt;transport = transport;
-734 
-735   if (transport) {
-736     log_info(&quot;WebRTC transport now active for participant&quot;);
-737   } else {
-738     log_info(&quot;WebRTC transport cleared, reverting to socket&quot;);
-739   }
-740 
-741   return ASCIICHAT_OK;
-742 }</pre>
+<p class="Pp">Definition at line <b>729</b> of file <b>participant.c</b>.</p>
+<pre>729                                                                                                            {
+730   if (!p || !p-&gt;initialized) {
+731     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Participant is NULL or not initialized&quot;);
+732   }
+733 
+734   log_info(&quot;session_participant_set_transport: Setting transport=%p (was=%p)&quot;, transport, p-&gt;transport);
+735 
+736   p-&gt;transport = transport;
+737 
+738   if (transport) {
+739     log_info(&quot;WebRTC transport now active for participant&quot;);
+740   } else {
+741     log_info(&quot;WebRTC transport cleared, reverting to socket&quot;);
+742   }
+743 
+744   return ASCIICHAT_OK;
+745 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
@@ -7456,29 +7515,29 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">Starts capturing audio from the microphone and streaming to the
     server. Also starts audio playback for receiving audio from other
     participants.</p>
-<p class="Pp">Definition at line <b>418</b> of file <b>participant.c</b>.</p>
-<pre>418                                                                             {
-419   if (!p || !p-&gt;initialized) {
-420     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_participant_start_audio: invalid participant&quot;);
-421   }
-422 
-423   if (!p-&gt;connected) {
-424     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_participant_start_audio: not connected&quot;);
-425   }
-426 
-427   if (p-&gt;audio_active) {
-428     return ASCIICHAT_OK; // Already active
-429   }
-430 
-431   if (!p-&gt;enable_audio) {
-432     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_participant_start_audio: audio not enabled&quot;);
-433   }
-434 
-435   // TODO: Start audio using session_audio_ctx_t
-436 
-437   p-&gt;audio_active = true;
-438   return ASCIICHAT_OK;
-439 }</pre>
+<p class="Pp">Definition at line <b>419</b> of file <b>participant.c</b>.</p>
+<pre>419                                                                             {
+420   if (!p || !p-&gt;initialized) {
+421     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_participant_start_audio: invalid participant&quot;);
+422   }
+423 
+424   if (!p-&gt;connected) {
+425     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_participant_start_audio: not connected&quot;);
+426   }
+427 
+428   if (p-&gt;audio_active) {
+429     return ASCIICHAT_OK; // Already active
+430   }
+431 
+432   if (!p-&gt;enable_audio) {
+433     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_participant_start_audio: audio not enabled&quot;);
+434   }
+435 
+436   // TODO: Start audio using session_audio_ctx_t
+437 
+438   p-&gt;audio_active = true;
+439   return ASCIICHAT_OK;
+440 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -7515,58 +7574,58 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">Use <b>session_participant_stop_audio_capture()</b> to stop
     transmission</p>
 </div>
-<p class="Pp">Definition at line <b>647</b> of file <b>participant.c</b>.</p>
-<pre>647                                                                                     {
-648   if (!p || !p-&gt;initialized) {
-649     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_participant_start_audio_capture: invalid participant&quot;);
-650   }
-651 
-652   if (!p-&gt;connected) {
-653     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_participant_start_audio_capture: not connected&quot;);
-654   }
-655 
-656   if (!p-&gt;enable_audio) {
-657     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_participant_start_audio_capture: audio not enabled&quot;);
-658   }
-659 
-660   if (p-&gt;audio_capture_running) {
-661     return ASCIICHAT_OK; // Already running
-662   }
-663 
-664   // Create audio capture context if not already created
-665   if (!p-&gt;audio_capture) {
-666     p-&gt;audio_capture = session_audio_create(false); // false = participant mode (no mixing)
-667     if (!p-&gt;audio_capture) {
-668       return SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to create audio capture context&quot;);
-669     }
-670   }
-671 
-672   // Start audio capture and playback
-673   asciichat_error_t err = session_audio_start_duplex(p-&gt;audio_capture);
-674   if (err != ASCIICHAT_OK) {
-675     return SET_ERRNO(err, &quot;Failed to start audio duplex&quot;);
-676   }
-677 
-678   // Create Opus encoder for audio compression (48kHz, VOIP mode, 24 kbps)
-679   if (!p-&gt;opus_encoder) {
-680     p-&gt;opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
-681     if (!p-&gt;opus_encoder) {
-682       session_audio_stop(p-&gt;audio_capture);
-683       return SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to create Opus encoder&quot;);
-684     }
-685   }
-686 
-687   // Spawn audio capture thread
-688   p-&gt;audio_capture_running = true;
-689   if (asciichat_thread_create(&amp;p-&gt;audio_capture_thread, &quot;audio_capture&quot;, participant_audio_capture_thread, p) != 0) {
-690     log_error(&quot;Failed to spawn audio capture thread&quot;);
-691     p-&gt;audio_capture_running = false;
-692     return SET_ERRNO(ERROR_THREAD, &quot;Failed to spawn audio capture thread&quot;);
-693   }
-694 
-695   log_info(&quot;Audio capture started&quot;);
-696   return ASCIICHAT_OK;
-697 }</pre>
+<p class="Pp">Definition at line <b>650</b> of file <b>participant.c</b>.</p>
+<pre>650                                                                                     {
+651   if (!p || !p-&gt;initialized) {
+652     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_participant_start_audio_capture: invalid participant&quot;);
+653   }
+654 
+655   if (!p-&gt;connected) {
+656     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_participant_start_audio_capture: not connected&quot;);
+657   }
+658 
+659   if (!p-&gt;enable_audio) {
+660     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_participant_start_audio_capture: audio not enabled&quot;);
+661   }
+662 
+663   if (p-&gt;audio_capture_running) {
+664     return ASCIICHAT_OK; // Already running
+665   }
+666 
+667   // Create audio capture context if not already created
+668   if (!p-&gt;audio_capture) {
+669     p-&gt;audio_capture = session_audio_create(false); // false = participant mode (no mixing)
+670     if (!p-&gt;audio_capture) {
+671       return SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to create audio capture context&quot;);
+672     }
+673   }
+674 
+675   // Start audio capture and playback
+676   asciichat_error_t err = session_audio_start_duplex(p-&gt;audio_capture);
+677   if (err != ASCIICHAT_OK) {
+678     return SET_ERRNO(err, &quot;Failed to start audio duplex&quot;);
+679   }
+680 
+681   // Create Opus encoder for audio compression (48kHz, VOIP mode, 24 kbps)
+682   if (!p-&gt;opus_encoder) {
+683     p-&gt;opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
+684     if (!p-&gt;opus_encoder) {
+685       session_audio_stop(p-&gt;audio_capture);
+686       return SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to create Opus encoder&quot;);
+687     }
+688   }
+689 
+690   // Spawn audio capture thread
+691   p-&gt;audio_capture_running = true;
+692   if (asciichat_thread_create(&amp;p-&gt;audio_capture_thread, &quot;audio_capture&quot;, participant_audio_capture_thread, p) != 0) {
+693     log_error(&quot;Failed to spawn audio capture thread&quot;);
+694     p-&gt;audio_capture_running = false;
+695     return SET_ERRNO(ERROR_THREAD, &quot;Failed to spawn audio capture thread&quot;);
+696   }
+697 
+698   log_info(&quot;Audio capture started&quot;);
+699   return ASCIICHAT_OK;
+700 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
@@ -7594,29 +7653,29 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
 <p class="Pp">Starts capturing video from the webcam and streaming to the
     server.</p>
-<p class="Pp">Definition at line <b>374</b> of file <b>participant.c</b>.</p>
-<pre>374                                                                             {
-375   if (!p || !p-&gt;initialized) {
-376     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_participant_start_video: invalid participant&quot;);
-377   }
-378 
-379   if (!p-&gt;connected) {
-380     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_participant_start_video: not connected&quot;);
-381   }
-382 
-383   if (p-&gt;video_active) {
-384     return ASCIICHAT_OK; // Already active
-385   }
-386 
-387   if (!p-&gt;enable_video) {
-388     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_participant_start_video: video not enabled&quot;);
-389   }
-390 
-391   // TODO: Start webcam capture thread using session_capture_ctx_t
-392 
-393   p-&gt;video_active = true;
-394   return ASCIICHAT_OK;
-395 }</pre>
+<p class="Pp">Definition at line <b>375</b> of file <b>participant.c</b>.</p>
+<pre>375                                                                             {
+376   if (!p || !p-&gt;initialized) {
+377     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_participant_start_video: invalid participant&quot;);
+378   }
+379 
+380   if (!p-&gt;connected) {
+381     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_participant_start_video: not connected&quot;);
+382   }
+383 
+384   if (p-&gt;video_active) {
+385     return ASCIICHAT_OK; // Already active
+386   }
+387 
+388   if (!p-&gt;enable_video) {
+389     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_participant_start_video: video not enabled&quot;);
+390   }
+391 
+392   // TODO: Start webcam capture thread using session_capture_ctx_t
+393 
+394   p-&gt;video_active = true;
+395   return ASCIICHAT_OK;
+396 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -7652,49 +7711,49 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">Use <b>session_participant_stop_video_capture()</b> to stop
     transmission</p>
 </div>
-<p class="Pp">Definition at line <b>586</b> of file <b>participant.c</b>.</p>
-<pre>586                                                                                     {
-587   if (!p || !p-&gt;initialized) {
-588     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_participant_start_video_capture: invalid participant&quot;);
-589   }
-590 
-591   if (!p-&gt;connected) {
-592     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_participant_start_video_capture: not connected&quot;);
-593   }
-594 
-595   if (!p-&gt;enable_video) {
-596     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_participant_start_video_capture: video not enabled&quot;);
-597   }
-598 
-599   if (p-&gt;video_capture_running) {
-600     return ASCIICHAT_OK; // Already running
-601   }
-602 
-603   // Create video capture context if not already created
-604   if (!p-&gt;video_capture) {
-605     session_capture_config_t config = {
-606         .type = MEDIA_SOURCE_WEBCAM,
-607         .path = &quot;0&quot;, // Default device
-608         .target_fps = 60,
-609         .resize_for_network = true, // Optimize for bandwidth
-610     };
-611     p-&gt;video_capture = session_capture_create(&amp;config);
-612     if (!p-&gt;video_capture) {
-613       return SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to create video capture context&quot;);
-614     }
-615   }
-616 
-617   // Spawn video capture thread (media source is ready in ctx)
-618   p-&gt;video_capture_running = true;
-619   if (asciichat_thread_create(&amp;p-&gt;video_capture_thread, &quot;video_capture&quot;, participant_video_capture_thread, p) != 0) {
-620     log_error(&quot;Failed to spawn video capture thread&quot;);
-621     p-&gt;video_capture_running = false;
-622     return SET_ERRNO(ERROR_THREAD, &quot;Failed to spawn video capture thread&quot;);
-623   }
-624 
-625   log_info(&quot;Video capture started&quot;);
-626   return ASCIICHAT_OK;
-627 }</pre>
+<p class="Pp">Definition at line <b>589</b> of file <b>participant.c</b>.</p>
+<pre>589                                                                                     {
+590   if (!p || !p-&gt;initialized) {
+591     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;session_participant_start_video_capture: invalid participant&quot;);
+592   }
+593 
+594   if (!p-&gt;connected) {
+595     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_participant_start_video_capture: not connected&quot;);
+596   }
+597 
+598   if (!p-&gt;enable_video) {
+599     return SET_ERRNO(ERROR_INVALID_STATE, &quot;session_participant_start_video_capture: video not enabled&quot;);
+600   }
+601 
+602   if (p-&gt;video_capture_running) {
+603     return ASCIICHAT_OK; // Already running
+604   }
+605 
+606   // Create video capture context if not already created
+607   if (!p-&gt;video_capture) {
+608     session_capture_config_t config = {
+609         .type = MEDIA_SOURCE_WEBCAM,
+610         .path = &quot;0&quot;, // Default device
+611         .target_fps = 60,
+612         .resize_for_network = true, // Optimize for bandwidth
+613     };
+614     p-&gt;video_capture = session_capture_create(&amp;config);
+615     if (!p-&gt;video_capture) {
+616       return SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to create video capture context&quot;);
+617     }
+618   }
+619 
+620   // Spawn video capture thread (media source is ready in ctx)
+621   p-&gt;video_capture_running = true;
+622   if (asciichat_thread_create(&amp;p-&gt;video_capture_thread, &quot;video_capture&quot;, participant_video_capture_thread, p) != 0) {
+623     log_error(&quot;Failed to spawn video capture thread&quot;);
+624     p-&gt;video_capture_running = false;
+625     return SET_ERRNO(ERROR_THREAD, &quot;Failed to spawn video capture thread&quot;);
+626   }
+627 
+628   log_info(&quot;Video capture started&quot;);
+629   return ASCIICHAT_OK;
+630 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_thread_create()</b>,
@@ -7715,20 +7774,20 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">Stop audio capture and streaming.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>p</i> Participant handle (must not be NULL)</div>
-<p class="Pp">Definition at line <b>441</b> of file <b>participant.c</b>.</p>
-<pre>441                                                               {
-442   if (!p || !p-&gt;initialized) {
-443     return;
-444   }
-445 
-446   if (!p-&gt;audio_active) {
-447     return;
-448   }
-449 
-450   // TODO: Stop audio
-451 
-452   p-&gt;audio_active = false;
-453 }</pre>
+<p class="Pp">Definition at line <b>442</b> of file <b>participant.c</b>.</p>
+<pre>442                                                               {
+443   if (!p || !p-&gt;initialized) {
+444     return;
+445   }
+446 
+447   if (!p-&gt;audio_active) {
+448     return;
+449   }
+450 
+451   // TODO: Stop audio
+452 
+453   p-&gt;audio_active = false;
+454 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_participant::audio_active</b>, and
@@ -7746,29 +7805,29 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>p</i> Participant handle (must not be NULL)</div>
 <p class="Pp">Stops the audio capture background thread and cleans up resources.
     Safe to call if audio is not running.</p>
-<p class="Pp">Definition at line <b>699</b> of file <b>participant.c</b>.</p>
-<pre>699                                                                       {
-700   if (!p || !p-&gt;initialized) {
-701     return;
-702   }
-703 
-704   if (!p-&gt;audio_capture_running) {
-705     return;
-706   }
-707 
-708   // Signal thread to stop
-709   p-&gt;audio_capture_running = false;
+<p class="Pp">Definition at line <b>702</b> of file <b>participant.c</b>.</p>
+<pre>702                                                                       {
+703   if (!p || !p-&gt;initialized) {
+704     return;
+705   }
+706 
+707   if (!p-&gt;audio_capture_running) {
+708     return;
+709   }
 710 
-711   // Wait for thread to complete
-712   asciichat_thread_join(&amp;p-&gt;audio_capture_thread, NULL);
+711   // Signal thread to stop
+712   p-&gt;audio_capture_running = false;
 713 
-714   // Stop audio streams
-715   if (p-&gt;audio_capture) {
-716     session_audio_stop(p-&gt;audio_capture);
-717   }
-718 
-719   log_info(&quot;Audio capture stopped&quot;);
-720 }</pre>
+714   // Wait for thread to complete
+715   asciichat_thread_join(&amp;p-&gt;audio_capture_thread, NULL);
+716 
+717   // Stop audio streams
+718   if (p-&gt;audio_capture) {
+719     session_audio_stop(p-&gt;audio_capture);
+720   }
+721 
+722   log_info(&quot;Audio capture stopped&quot;);
+723 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_thread_join()</b>,
@@ -7787,20 +7846,20 @@ fps_counter_destroy(fps);</pre>
 <p class="Pp">Stop video capture and streaming.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>p</i> Participant handle (must not be NULL)</div>
-<p class="Pp">Definition at line <b>397</b> of file <b>participant.c</b>.</p>
-<pre>397                                                               {
-398   if (!p || !p-&gt;initialized) {
-399     return;
-400   }
-401 
-402   if (!p-&gt;video_active) {
-403     return;
-404   }
-405 
-406   // TODO: Stop webcam capture thread
-407 
-408   p-&gt;video_active = false;
-409 }</pre>
+<p class="Pp">Definition at line <b>398</b> of file <b>participant.c</b>.</p>
+<pre>398                                                               {
+399   if (!p || !p-&gt;initialized) {
+400     return;
+401   }
+402 
+403   if (!p-&gt;video_active) {
+404     return;
+405   }
+406 
+407   // TODO: Stop webcam capture thread
+408 
+409   p-&gt;video_active = false;
+410 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_participant::initialized</b>, and
@@ -7818,24 +7877,24 @@ fps_counter_destroy(fps);</pre>
 <div class="Bd-indent"><i>p</i> Participant handle (must not be NULL)</div>
 <p class="Pp">Stops the video capture background thread and cleans up resources.
     Safe to call if video is not running.</p>
-<p class="Pp">Definition at line <b>629</b> of file <b>participant.c</b>.</p>
-<pre>629                                                                       {
-630   if (!p || !p-&gt;initialized) {
-631     return;
-632   }
-633 
-634   if (!p-&gt;video_capture_running) {
-635     return;
-636   }
-637 
-638   // Signal thread to stop
-639   p-&gt;video_capture_running = false;
+<p class="Pp">Definition at line <b>632</b> of file <b>participant.c</b>.</p>
+<pre>632                                                                       {
+633   if (!p || !p-&gt;initialized) {
+634     return;
+635   }
+636 
+637   if (!p-&gt;video_capture_running) {
+638     return;
+639   }
 640 
-641   // Wait for thread to complete
-642   asciichat_thread_join(&amp;p-&gt;video_capture_thread, NULL);
+641   // Signal thread to stop
+642   p-&gt;video_capture_running = false;
 643 
-644   log_info(&quot;Video capture stopped&quot;);
-645 }</pre>
+644   // Wait for thread to complete
+645   asciichat_thread_join(&amp;p-&gt;video_capture_thread, NULL);
+646 
+647   log_info(&quot;Video capture stopped&quot;);
+648 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_thread_join()</b>,

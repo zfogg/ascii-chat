@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>connection_endpoint.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">connection_endpoint.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">connection_endpoint.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">connection_endpoint.c - Shared endpoint normalization for TCP and
+    WebSocket connections.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">const char * <b>connection_endpoint_protocol_name</b>
+    (<b>connection_endpoint_protocol_t</b> protocol)
+  <br/>
+  <b>asciichat_error_t</b> <b>connection_endpoint_resolve</b> (const char
+    *input, <b>uint16_t</b> default_port, <b>connection_endpoint_t</b>
+    *endpoint_out)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Shared endpoint normalization for TCP and WebSocket
+  connections.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>connection_endpoint.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_connection_endpoint_protocol_name_("><a class="permalink" href="#const_char_*_connection_endpoint_protocol_name_(">const
+  char * connection_endpoint_protocol_name
+  (<b>connection_endpoint_protocol_t</b> protocol)</a></h2>
+<p class="Pp">Definition at line <b>12</b> of file
+  <b>connection_endpoint.c</b>.</p>
+<pre>12                                                                                        {
+13   switch (protocol) {
+14   case CONNECTION_ENDPOINT_TCP:
+15     return &quot;TCP&quot;;
+16   case CONNECTION_ENDPOINT_WEBSOCKET:
+17     return &quot;WebSocket&quot;;
+18   default:
+19     return &quot;Unknown&quot;;
+20   }
+21 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>CONNECTION_ENDPOINT_TCP</b>, and
+    <b>CONNECTION_ENDPOINT_WEBSOCKET</b>.</p>
+<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> connection_endpoint_resolve (const char
+  * input, <b>uint16_t</b> default_port, <b>connection_endpoint_t</b> *
+  endpoint_out)</h2>
+<p class="Pp">Resolve an input string into a normalized TCP or WebSocket
+    endpoint.</p>
+<p class="Pp"></p>
+<p class="Pp">Supported inputs:</p>
+<ul class="Bl-bullet">
+  <li>ws://host[:port]</li>
+  <li>wss://host[:port]</li>
+  <li>tcp://host[:port]</li>
+  <li>bare hostnames or host:port pairs</li>
+</ul>
+<p class="Pp">Bare hostnames are treated as TCP endpoints and use default_port
+    when the input does not specify a port.</p>
+<p class="Pp">Definition at line <b>39</b> of file
+  <b>connection_endpoint.c</b>.</p>
+<pre>40                                                                                    {
+41   if (!input || !*input || !endpoint_out) {
+42     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;input or endpoint_out is NULL&quot;);
+43   }
+44 
+45   url_parts_t parts = {0};
+46   asciichat_error_t result;
+47 
+48   if (url_is_websocket(input)) {
+49     result = url_parse(input, &amp;parts);
+50     if (result != ASCIICHAT_OK) {
+51       return result;
+52     }
+53     result = connection_endpoint_from_parts(endpoint_out, &amp;parts, CONNECTION_ENDPOINT_WEBSOCKET, default_port, input);
+54     url_parts_destroy(&amp;parts);
+55     return result;
+56   }
+57 
+58   if (url_is_tcp(input)) {
+59     result = url_parse(input, &amp;parts);
+60     if (result != ASCIICHAT_OK) {
+61       return result;
+62     }
+63     result = connection_endpoint_from_parts(endpoint_out, &amp;parts, CONNECTION_ENDPOINT_TCP, default_port, input);
+64     url_parts_destroy(&amp;parts);
+65     return result;
+66   }
+67 
+68   /* Unsupported explicit scheme. Bare hostnames are allowed and have no &quot;://&quot;. */
+69   if (strstr(input, &quot;://&quot;) != NULL) {
+70     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unsupported connection scheme: %s&quot;, input);
+71   }
+72 
+73   result = url_parse(input, &amp;parts);
+74   if (result != ASCIICHAT_OK) {
+75     return result;
+76   }
+77 
+78   result = connection_endpoint_from_parts(endpoint_out, &amp;parts, CONNECTION_ENDPOINT_TCP, default_port, input);
+79   url_parts_destroy(&amp;parts);
+80   return result;
+81 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>CONNECTION_ENDPOINT_TCP</b>,
+    <b>CONNECTION_ENDPOINT_WEBSOCKET</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>SET_ERRNO</b>, <b>url_is_tcp()</b>, <b>url_is_websocket()</b>,
+    <b>url_parse()</b>, and <b>url_parts_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
+    <b>connection_factory_open()</b>, and
+  <b>server_connection_establish()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -141,138 +141,108 @@
 48   bool enforce_encryption = (transport-&gt;crypto_ctx != NULL);
 49   log_debug(&quot;[ACIP_RECV] &#x1F510; CRYPTO_MODE: enforce_encryption=%s&quot;, enforce_encryption ? &quot;yes&quot; : &quot;no&quot;);
 50 
-51   // Try to get socket from transport
-52   socket_t sock = transport-&gt;methods-&gt;get_socket(transport);
-53   log_debug(&quot;[ACIP_RECV] &#x1F50C; TRANSPORT_TYPE: socket=%d (socket=TCP, INVALID=WebRTC/other)&quot;, sock);
-54 
-55   if (sock != INVALID_SOCKET_VALUE) {
-56     // Socket-based transport (TCP): use receive_packet_secure() for socket I/O + parsing
-57     log_info(&quot;[ACIP_RECV] &#x1F50C; TCP_PATH: using receive_packet_secure(), sockfd=%d&quot;, sock);
-58     packet_recv_result_t result = receive_packet_secure(sock, transport-&gt;crypto_ctx, enforce_encryption, &amp;envelope);
-59 
-60     log_info(&quot;[ACIP_RECV] &#x1F4E5; TCP_RECV_RESULT: code=%d (0=success, 1=eof, 2=crypto_error, 3=other)&quot;, result);
-61 
-62     // Handle receive errors
-63     if (result != PACKET_RECV_SUCCESS) {
-64       if (result == PACKET_RECV_EOF) {
-65         log_warn(&quot;[ACIP_RECV] &#x26A0;&#xFE0F;  EOF: Server closed connection&quot;);
-66         return SET_ERRNO(ERROR_NETWORK, &quot;Connection closed (EOF)&quot;);
-67       } else if (result == PACKET_RECV_SECURITY_VIOLATION) {
-68         log_error(&quot;[ACIP_RECV] &#x274C; SECURITY_VIOLATION: Encryption policy violated&quot;);
-69         return SET_ERRNO(ERROR_CRYPTO, &quot;Security violation: unencrypted packet when encryption required&quot;);
-70       } else {
-71         log_error(&quot;[ACIP_RECV] &#x274C; TCP_RECV_FAILED: receive_packet_secure returned %d&quot;, result);
-72         return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive packet&quot;);
-73       }
-74     }
-75   } else {
-76     // Non-socket transport (WebRTC): use transport's recv() method to get complete packet
-77     log_info(&quot;[ACIP_RECV] &#x1F310; WEBRTC_PATH: using transport-&gt;methods-&gt;recv()&quot;);
-78     void *packet_data = NULL;
-79     void *allocated_buffer = NULL;
-80     size_t packet_len = 0;
-81 
-82     log_debug(&quot;[ACIP_RECV] &#x1F310; WEBRTC_RECV: calling recv() method&quot;);
-83     asciichat_error_t recv_result = transport-&gt;methods-&gt;recv(transport, &amp;packet_data, &amp;packet_len, &amp;allocated_buffer);
-84     log_info(&quot;[ACIP_RECV] &#x1F310; WEBRTC_RECV_RESULT: error=%d, packet_len=%zu, data=%p, alloc=%p&quot;, recv_result, packet_len,
-85              packet_data, allocated_buffer);
+51   socket_t sock = transport-&gt;methods-&gt;get_socket(transport);
+52   log_debug(&quot;[ACIP_RECV] &#x1F50C; TRANSPORT_SOCKET: socket=%d (INVALID=%d)&quot;, sock, INVALID_SOCKET_VALUE);
+53 
+54   void *packet_data = NULL;
+55   void *allocated_buffer = NULL;
+56   size_t packet_len = 0;
+57 
+58   log_debug(&quot;[ACIP_RECV] &#x1F4E5; RECV_CALL: using transport-&gt;methods-&gt;recv()&quot;);
+59   asciichat_error_t recv_result = acip_transport_recv(transport, &amp;packet_data, &amp;packet_len, &amp;allocated_buffer);
+60   log_info(&quot;[ACIP_RECV] &#x1F4E5; RECV_RESULT: error=%d, packet_len=%zu, data=%p, alloc=%p&quot;, recv_result, packet_len,
+61            packet_data, allocated_buffer);
+62 
+63   if (recv_result != ASCIICHAT_OK) {
+64     log_error(&quot;[ACIP_RECV] &#x274C; RECV_FAILED: error code %d&quot;, recv_result);
+65     return recv_result;
+66   }
+67 
+68   // Parse packet header
+69   log_debug(&quot;[ACIP_RECV] HEADER_CHECK: packet_len=%zu, header_size=%zu&quot;, packet_len, sizeof(packet_header_t));
+70   if (packet_len &lt; sizeof(packet_header_t)) {
+71     log_error(&quot;[ACIP_RECV] &#x274C; HEADER_TOO_SMALL: %zu &lt; %zu&quot;, packet_len, sizeof(packet_header_t));
+72     buffer_pool_free(NULL, allocated_buffer, packet_len);
+73     return SET_ERRNO(ERROR_NETWORK, &quot;Packet too small: %zu &lt; %zu&quot;, packet_len, sizeof(packet_header_t));
+74   }
+75 
+76   const packet_header_t *header = (const packet_header_t *)packet_data;
+77   envelope.type = NET_TO_HOST_U16(header-&gt;type);
+78   envelope.len = NET_TO_HOST_U32(header-&gt;length);
+79   envelope.data = (uint8_t *)packet_data + sizeof(packet_header_t);
+80   envelope.allocated_buffer = allocated_buffer;
+81   envelope.allocated_size = packet_len;
+82   envelope.was_encrypted = false;
+83 
+84   log_info(&quot;[ACIP_RECV] HEADER_PARSED: type=%u (0x%04x), len=%u, total_size=%zu&quot;, envelope.type, envelope.type,
+85            envelope.len, packet_len);
 86 
-87     if (recv_result != ASCIICHAT_OK) {
-88       log_error(&quot;[ACIP_RECV] &#x274C; WEBRTC_RECV_FAILED: error code %d&quot;, recv_result);
-89       return SET_ERRNO(ERROR_NETWORK, &quot;Transport recv() failed&quot;);
-90     }
-91 
-92     // Parse packet header
-93     log_debug(&quot;[ACIP_RECV] &#x1F310; HEADER_CHECK: packet_len=%zu, header_size=%zu&quot;, packet_len, sizeof(packet_header_t));
-94     if (packet_len &lt; sizeof(packet_header_t)) {
-95       log_error(&quot;[ACIP_RECV] &#x274C; HEADER_TOO_SMALL: %zu &lt; %zu&quot;, packet_len, sizeof(packet_header_t));
-96       buffer_pool_free(NULL, allocated_buffer, packet_len);
-97       return SET_ERRNO(ERROR_NETWORK, &quot;Packet too small: %zu &lt; %zu&quot;, packet_len, sizeof(packet_header_t));
-98     }
-99 
-100     const packet_header_t *header = (const packet_header_t *)packet_data;
-101     envelope.type = NET_TO_HOST_U16(header-&gt;type);
-102     envelope.len = NET_TO_HOST_U32(header-&gt;length);
-103     envelope.data = (uint8_t *)packet_data + sizeof(packet_header_t);
-104     envelope.allocated_buffer = allocated_buffer;
-105     envelope.allocated_size = packet_len;
-106     envelope.was_encrypted = false; // WebRTC currently doesn't support encryption in this path
-107 
-108     log_info(&quot;[ACIP_RECV] &#x1F310; HEADER_PARSED: type=%u (0x%04x), len=%u, total_size=%zu&quot;, envelope.type, envelope.type,
-109              envelope.len, packet_len);
-110 
-111     log_dev_every(4500 * US_PER_MS_INT, &quot;WebRTC received packet: type=%u, len=%u, total_size=%zu&quot;, envelope.type,
-112                   envelope.len, packet_len);
-113 
-114     // Validate packet length
-115     log_debug(&quot;[ACIP_RECV] &#x1F310; LENGTH_VALIDATION: payload_size=%u vs actual=%zu&quot;, envelope.len,
-116               packet_len - sizeof(packet_header_t));
-117     if (envelope.len != packet_len - sizeof(packet_header_t)) {
-118       log_error(&quot;[ACIP_RECV] &#x274C; LENGTH_MISMATCH: header=%u, actual=%zu&quot;, envelope.len,
-119                 packet_len - sizeof(packet_header_t));
-120       buffer_pool_free(NULL, allocated_buffer, packet_len);
-121       return SET_ERRNO(ERROR_NETWORK, &quot;Packet length mismatch: header says %u, actual %zu&quot;, envelope.len,
-122                        packet_len - sizeof(packet_header_t));
-123     }
-124   }
-125 
-126   // Handle PACKET_TYPE_ENCRYPTED from server (decrypt and extract inner packet)
-127   // Uses shared decryption logic with receive_packet_secure() for TCP
-128   if (envelope.type == PACKET_TYPE_ENCRYPTED) {
-129     log_info(&quot;[ACIP_RECV] &#x1F510; ENCRYPTED_PACKET: decrypting PACKET_TYPE_ENCRYPTED (len=%u)&quot;, envelope.len);
-130     asciichat_error_t decrypt_result = packet_decrypt_envelope(&amp;envelope, transport-&gt;crypto_ctx);
-131     if (decrypt_result != ASCIICHAT_OK) {
-132       log_error(&quot;[ACIP_RECV] &#x274C; DECRYPT_FAILED: %d&quot;, decrypt_result);
-133       buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
-134       return decrypt_result;
-135     }
-136   }
-137 
-138   // Dispatch packet to appropriate ACIP handler
-139   log_info(&quot;[ACIP_RECV] &#x1F3AF; DISPATCH_START: type=%u (0x%04x), data_len=%u, callbacks=%p&quot;, envelope.type, envelope.type,
-140            envelope.len, (void *)callbacks);
-141   asciichat_error_t dispatch_result =
-142       acip_handle_client_packet(transport, envelope.type, envelope.data, envelope.len, callbacks);
-143 
-144   if (dispatch_result != ASCIICHAT_OK) {
-145     log_error(&quot;[ACIP_RECV] &#x274C; DISPATCH_FAILED: type=%u, error=%d&quot;, envelope.type, dispatch_result);
-146   } else {
-147     log_info(&quot;[ACIP_RECV] &#x2705; DISPATCH_OK: type=%u (0x%04x) handled by callbacks&quot;, envelope.type, envelope.type);
-148   }
-149 
-150   // Always free the allocated buffer (even if handler failed)
-151   log_debug(&quot;[ACIP_RECV] &#x1F5D1;&#xFE0F;  CLEANUP: freeing buffer %p (size=%zu)&quot;, envelope.allocated_buffer,
-152             envelope.allocated_size);
-153   if (envelope.allocated_buffer) {
-154     buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
-155   }
-156 
-157   log_debug(&quot;[ACIP_RECV] &#x2705; RECV_COMPLETE: type=%u, result=%d&quot;, envelope.type,
-158             dispatch_result != ASCIICHAT_OK ? -1 : 0);
-159 
-160   // Return handler result
-161   return dispatch_result;
-162 }</pre>
+87   log_dev_every(4500 * US_PER_MS_INT, &quot;ACIP received packet: type=%u, len=%u, total_size=%zu&quot;, envelope.type,
+88                 envelope.len, packet_len);
+89 
+90   // Validate packet length
+91   log_debug(&quot;[ACIP_RECV] LENGTH_VALIDATION: payload_size=%u vs actual=%zu&quot;, envelope.len,
+92             packet_len - sizeof(packet_header_t));
+93   if (envelope.len != packet_len - sizeof(packet_header_t)) {
+94     log_error(&quot;[ACIP_RECV] &#x274C; LENGTH_MISMATCH: header=%u, actual=%zu&quot;, envelope.len,
+95               packet_len - sizeof(packet_header_t));
+96     buffer_pool_free(NULL, allocated_buffer, packet_len);
+97     return SET_ERRNO(ERROR_NETWORK, &quot;Packet length mismatch: header says %u, actual %zu&quot;, envelope.len,
+98                      packet_len - sizeof(packet_header_t));
+99   }
+100 
+101   // Handle PACKET_TYPE_ENCRYPTED from server (decrypt and extract inner packet)
+102   if (envelope.type == PACKET_TYPE_ENCRYPTED) {
+103     log_info(&quot;[ACIP_RECV] &#x1F510; ENCRYPTED_PACKET: decrypting PACKET_TYPE_ENCRYPTED (len=%u)&quot;, envelope.len);
+104     asciichat_error_t decrypt_result = packet_decrypt_envelope(&amp;envelope, transport-&gt;crypto_ctx);
+105     if (decrypt_result != ASCIICHAT_OK) {
+106       log_error(&quot;[ACIP_RECV] &#x274C; DECRYPT_FAILED: %d&quot;, decrypt_result);
+107       buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+108       return decrypt_result;
+109     }
+110   }
+111 
+112   // Dispatch packet to appropriate ACIP handler
+113   log_info(&quot;[ACIP_RECV] &#x1F3AF; DISPATCH_START: type=%u (0x%04x), data_len=%u, callbacks=%p&quot;, envelope.type, envelope.type,
+114            envelope.len, (void *)callbacks);
+115   asciichat_error_t dispatch_result =
+116       acip_handle_client_packet(transport, envelope.type, envelope.data, envelope.len, callbacks);
+117 
+118   if (dispatch_result != ASCIICHAT_OK) {
+119     log_error(&quot;[ACIP_RECV] &#x274C; DISPATCH_FAILED: type=%u, error=%d&quot;, envelope.type, dispatch_result);
+120   } else {
+121     log_info(&quot;[ACIP_RECV] &#x2705; DISPATCH_OK: type=%u (0x%04x) handled by callbacks&quot;, envelope.type, envelope.type);
+122   }
+123 
+124   // Always free the allocated buffer (even if handler failed)
+125   log_debug(&quot;[ACIP_RECV] &#x1F5D1;&#xFE0F;  CLEANUP: freeing buffer %p (size=%zu)&quot;, envelope.allocated_buffer,
+126             envelope.allocated_size);
+127   if (envelope.allocated_buffer) {
+128     buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+129   }
+130 
+131   log_debug(&quot;[ACIP_RECV] &#x2705; RECV_COMPLETE: type=%u, result=%d&quot;, envelope.type,
+132             dispatch_result != ASCIICHAT_OK ? -1 : 0);
+133 
+134   // Return handler result
+135   return dispatch_result;
+136 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_handle_client_packet()</b>,
     <b>packet_envelope_t::allocated_buffer</b>,
     <b>packet_envelope_t::allocated_size</b>, <b>ASCIICHAT_OK</b>,
     <b>buffer_pool_free()</b>, <b>acip_transport::crypto_ctx</b>,
-    <b>packet_envelope_t::data</b>, <b>ERROR_CRYPTO</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>,
-    <b>acip_transport_methods_t::get_socket</b>, <b>INVALID_SOCKET_VALUE</b>,
-    <b>acip_transport_methods_t::is_connected</b>,
+    <b>packet_envelope_t::data</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_NETWORK</b>, <b>acip_transport_methods_t::get_socket</b>,
+    <b>INVALID_SOCKET_VALUE</b>, <b>acip_transport_methods_t::is_connected</b>,
     <b>packet_envelope_t::len</b>, <b>packet_header_t::length</b>,
     <b>log_debug</b>, <b>log_dev_every</b>, <b>log_error</b>, <b>log_info</b>,
-    <b>log_warn</b>, <b>acip_transport::methods</b>, <b>NET_TO_HOST_U16</b>,
+    <b>acip_transport::methods</b>, <b>NET_TO_HOST_U16</b>,
     <b>NET_TO_HOST_U32</b>, <b>packet_decrypt_envelope()</b>,
-    <b>PACKET_RECV_EOF</b>, <b>PACKET_RECV_SECURITY_VIOLATION</b>,
-    <b>PACKET_RECV_SUCCESS</b>, <b>PACKET_TYPE_ENCRYPTED</b>,
-    <b>receive_packet_secure()</b>, <b>acip_transport_methods_t::recv</b>,
-    <b>SET_ERRNO</b>, <b>packet_envelope_t::type</b>,
-    <b>packet_header_t::type</b>, <b>US_PER_MS_INT</b>, and
-    <b>packet_envelope_t::was_encrypted</b>.</p>
+    <b>PACKET_TYPE_ENCRYPTED</b>, <b>SET_ERRNO</b>,
+    <b>packet_envelope_t::type</b>, <b>packet_header_t::type</b>,
+    <b>US_PER_MS_INT</b>, and <b>packet_envelope_t::was_encrypted</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> acip_send_capabilities
@@ -289,15 +259,15 @@
 <i>cap_len</i> Capability data length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>326</b> of file
+<p class="Pp">Definition at line <b>300</b> of file
     <b>lib/network/acip/client.c</b>.</p>
-<pre>326                                                                                                             {
-327   if (!transport || !cap_data) {
-328     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or cap_data&quot;);
-329   }
-330 
-331   return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_CAPABILITIES, cap_data, cap_len, 0);
-332 }</pre>
+<pre>300                                                                                                             {
+301   if (!transport || !cap_data) {
+302     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or cap_data&quot;);
+303   }
+304 
+305   return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_CAPABILITIES, cap_data, cap_len, 0);
+306 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
@@ -316,16 +286,16 @@
 <i>capabilities</i> Client capability bitmask (video, audio, etc.)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>288</b> of file
+<p class="Pp">Definition at line <b>262</b> of file
     <b>lib/network/acip/client.c</b>.</p>
-<pre>288                                                                                            {
-289   if (!transport) {
-290     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
-291   }
-292 
-293   // Simple capability byte payload
-294   return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_JOIN, &amp;capabilities, sizeof(capabilities), 0);
-295 }</pre>
+<pre>262                                                                                            {
+263   if (!transport) {
+264     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
+265   }
+266 
+267   // Simple capability byte payload
+268   return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_JOIN, &amp;capabilities, sizeof(capabilities), 0);
+269 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
@@ -342,16 +312,16 @@
 <div class="Bd-indent"><i>transport</i> Transport instance</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>297</b> of file
+<p class="Pp">Definition at line <b>271</b> of file
     <b>lib/network/acip/client.c</b>.</p>
-<pre>297                                                                       {
-298   if (!transport) {
-299     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
-300   }
-301 
-302   // Leave has no payload
-303   return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_LEAVE, NULL, 0, 0);
-304 }</pre>
+<pre>271                                                                       {
+272   if (!transport) {
+273     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
+274   }
+275 
+276   // Leave has no payload
+277   return packet_send_via_transport(transport, PACKET_TYPE_CLIENT_LEAVE, NULL, 0, 0);
+278 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
@@ -377,59 +347,59 @@
 <i>pixel_format</i> Pixel format (e.g., RGB24)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>168</b> of file
+<p class="Pp">Definition at line <b>142</b> of file
     <b>lib/network/acip/client.c</b>.</p>
-<pre>169                                                                                 {
-170   log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME: Called with %ux%u, transport=%p, pixel_data=%p&quot;, width, height, (void *)transport,
-171             pixel_data);
-172 
-173   if (!transport || !pixel_data) {
-174     log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME: Invalid params&quot;);
-175     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or pixel_data&quot;);
-176   }
-177 
-178   // Calculate pixel data size (3 bytes per pixel for RGB24)
-179   size_t pixel_size = (size_t)width * height * 3;
-180   log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME: pixel_size=%zu&quot;, pixel_size);
-181 
-182   // Create image frame packet header
-183   image_frame_packet_t header;
-184   header.width = HOST_TO_NET_U32(width);
-185   header.height = HOST_TO_NET_U32(height);
-186   header.pixel_format = HOST_TO_NET_U32(pixel_format);
-187   header.compressed_size = 0;
-188   header.checksum = 0;
-189   header.timestamp = 0;
+<pre>143                                                                                 {
+144   log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME: Called with %ux%u, transport=%p, pixel_data=%p&quot;, width, height, (void *)transport,
+145             pixel_data);
+146 
+147   if (!transport || !pixel_data) {
+148     log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME: Invalid params&quot;);
+149     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or pixel_data&quot;);
+150   }
+151 
+152   // Calculate pixel data size (3 bytes per pixel for RGB24)
+153   size_t pixel_size = (size_t)width * height * 3;
+154   log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME: pixel_size=%zu&quot;, pixel_size);
+155 
+156   // Create image frame packet header
+157   image_frame_packet_t header;
+158   header.width = HOST_TO_NET_U32(width);
+159   header.height = HOST_TO_NET_U32(height);
+160   header.pixel_format = HOST_TO_NET_U32(pixel_format);
+161   header.compressed_size = 0;
+162   header.checksum = 0;
+163   header.timestamp = 0;
+164 
+165   // Calculate total size
+166   size_t total_size;
+167   if (checked_size_add(sizeof(header), pixel_size, &amp;total_size) != ASCIICHAT_OK) {
+168     log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME: Overflow in size calculation&quot;);
+169     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Packet size overflow&quot;);
+170   }
+171 
+172   log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME: total_size=%zu, allocating buffer&quot;, total_size);
+173 
+174   // Allocate buffer
+175   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
+176   if (!buffer) {
+177     log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME: Failed to allocate %zu bytes&quot;, total_size);
+178     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer: %zu bytes&quot;, total_size);
+179   }
+180 
+181   // Build packet
+182   memcpy(buffer, &amp;header, sizeof(header));
+183   memcpy(buffer + sizeof(header), pixel_data, pixel_size);
+184 
+185   log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME: About to send packet&quot;);
+186   // Send via transport
+187   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME, buffer, total_size, 0);
+188 
+189   log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME: packet_send_via_transport returned %d&quot;, result);
 190 
-191   // Calculate total size
-192   size_t total_size;
-193   if (checked_size_add(sizeof(header), pixel_size, &amp;total_size) != ASCIICHAT_OK) {
-194     log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME: Overflow in size calculation&quot;);
-195     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Packet size overflow&quot;);
-196   }
-197 
-198   log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME: total_size=%zu, allocating buffer&quot;, total_size);
-199 
-200   // Allocate buffer
-201   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
-202   if (!buffer) {
-203     log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME: Failed to allocate %zu bytes&quot;, total_size);
-204     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer: %zu bytes&quot;, total_size);
-205   }
-206 
-207   // Build packet
-208   memcpy(buffer, &amp;header, sizeof(header));
-209   memcpy(buffer + sizeof(header), pixel_data, pixel_size);
-210 
-211   log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME: About to send packet&quot;);
-212   // Send via transport
-213   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME, buffer, total_size, 0);
-214 
-215   log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME: packet_send_via_transport returned %d&quot;, result);
-216 
-217   buffer_pool_free(NULL, buffer, total_size);
-218   return result;
-219 }</pre>
+191   buffer_pool_free(NULL, buffer, total_size);
+192   return result;
+193 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
@@ -498,60 +468,60 @@
 <i>height</i> Frame height in pixels</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Error code</div>
-<p class="Pp">Definition at line <b>234</b> of file
+<p class="Pp">Definition at line <b>208</b> of file
     <b>lib/network/acip/client.c</b>.</p>
-<pre>235                                                                                                       {
-236   if (!transport || !encoder || !pixel_data) {
-237     log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME_H265: Invalid params&quot;);
-238     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport, encoder, or pixel_data&quot;);
-239   }
-240 
-241   // Allocate output buffer for H.265 encoding
-242   // H.265 can produce output larger than input due to codec overhead
-243   // Use 2x multiplier to account for worst-case frame content
-244   size_t output_buffer_size = 5 + (width * height * 2);
-245   log_dev(&quot;[ACIP_SEND_H265_1] About to allocate output buffer (%zu bytes)&quot;, output_buffer_size);
-246   uint8_t *output_buffer = buffer_pool_alloc(NULL, output_buffer_size);
-247   log_dev(&quot;[ACIP_SEND_H265_2] &#x2705; Allocated output buffer&quot;);
-248   if (!output_buffer) {
-249     log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME_H265: Failed to allocate output buffer&quot;);
-250     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate H.265 output buffer: %zu bytes&quot;, output_buffer_size);
-251   }
-252 
-253   // Encode frame
-254   size_t encoded_size = output_buffer_size - 5;
-255   log_dev(&quot;[ACIP_SEND_H265_3] Calling h265_encode&quot;);
-256   asciichat_error_t encode_result = h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data,
-257                                                 output_buffer + 5, &amp;encoded_size);
-258   log_dev(&quot;[ACIP_SEND_H265_4] h265_encode returned: %d, encoded_size=%zu&quot;, encode_result, encoded_size);
-259 
-260   if (encode_result != ASCIICHAT_OK) {
-261     log_error(&quot;H.265 encoding failed: %s&quot;, asciichat_error_string(encode_result));
-262     buffer_pool_free(NULL, output_buffer, output_buffer_size);
-263     return encode_result;
-264   }
-265 
-266   // Prepare H.265 packet: [flags:u8][width:u16][height:u16][h265_data...]
-267   output_buffer[0] = 0; // flags: no flags set by default
-268   output_buffer[1] = (width &gt;&gt; 8) &amp; 0xFF;
-269   output_buffer[2] = width &amp; 0xFF;
-270   output_buffer[3] = (height &gt;&gt; 8) &amp; 0xFF;
-271   output_buffer[4] = height &amp; 0xFF;
-272 
-273   size_t total_size = 5 + encoded_size;
-274 
-275   log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME_H265: Encoded %ux%u &#x2192; %zu bytes&quot;, width, height, total_size);
-276 
-277   // Send via transport
-278   log_dev(&quot;[ACIP_SEND_H265_5] Calling packet_send_via_transport with %zu bytes&quot;, total_size);
-279   asciichat_error_t result =
-280       packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME_H265, output_buffer, total_size, 0);
-281   log_dev(&quot;[ACIP_SEND_H265_6] packet_send_via_transport returned: %d&quot;, result);
-282 
-283   buffer_pool_free(NULL, output_buffer, output_buffer_size);
-284   log_dev(&quot;[ACIP_SEND_H265_7] &#x2705; Freed output buffer, returning from acip_send_image_frame_h265&quot;);
-285   return result;
-286 }</pre>
+<pre>209                                                                                                       {
+210   if (!transport || !encoder || !pixel_data) {
+211     log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME_H265: Invalid params&quot;);
+212     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport, encoder, or pixel_data&quot;);
+213   }
+214 
+215   // Allocate output buffer for H.265 encoding
+216   // H.265 can produce output larger than input due to codec overhead
+217   // Use 2x multiplier to account for worst-case frame content
+218   size_t output_buffer_size = 5 + (width * height * 2);
+219   log_dev(&quot;[ACIP_SEND_H265_1] About to allocate output buffer (%zu bytes)&quot;, output_buffer_size);
+220   uint8_t *output_buffer = buffer_pool_alloc(NULL, output_buffer_size);
+221   log_dev(&quot;[ACIP_SEND_H265_2] &#x2705; Allocated output buffer&quot;);
+222   if (!output_buffer) {
+223     log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME_H265: Failed to allocate output buffer&quot;);
+224     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate H.265 output buffer: %zu bytes&quot;, output_buffer_size);
+225   }
+226 
+227   // Encode frame
+228   size_t encoded_size = output_buffer_size - 5;
+229   log_dev(&quot;[ACIP_SEND_H265_3] Calling h265_encode&quot;);
+230   asciichat_error_t encode_result = h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data,
+231                                                 output_buffer + 5, &amp;encoded_size);
+232   log_dev(&quot;[ACIP_SEND_H265_4] h265_encode returned: %d, encoded_size=%zu&quot;, encode_result, encoded_size);
+233 
+234   if (encode_result != ASCIICHAT_OK) {
+235     log_error(&quot;H.265 encoding failed: %s&quot;, asciichat_error_string(encode_result));
+236     buffer_pool_free(NULL, output_buffer, output_buffer_size);
+237     return encode_result;
+238   }
+239 
+240   // Prepare H.265 packet: [flags:u8][width:u16][height:u16][h265_data...]
+241   output_buffer[0] = 0; // flags: no flags set by default
+242   output_buffer[1] = (width &gt;&gt; 8) &amp; 0xFF;
+243   output_buffer[2] = width &amp; 0xFF;
+244   output_buffer[3] = (height &gt;&gt; 8) &amp; 0xFF;
+245   output_buffer[4] = height &amp; 0xFF;
+246 
+247   size_t total_size = 5 + encoded_size;
+248 
+249   log_debug(&quot;&#x2605; ACIP_SEND_IMAGE_FRAME_H265: Encoded %ux%u &#x2192; %zu bytes&quot;, width, height, total_size);
+250 
+251   // Send via transport
+252   log_dev(&quot;[ACIP_SEND_H265_5] Calling packet_send_via_transport with %zu bytes&quot;, total_size);
+253   asciichat_error_t result =
+254       packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME_H265, output_buffer, total_size, 0);
+255   log_dev(&quot;[ACIP_SEND_H265_6] packet_send_via_transport returned: %d&quot;, result);
+256 
+257   buffer_pool_free(NULL, output_buffer, output_buffer_size);
+258   log_dev(&quot;[ACIP_SEND_H265_7] &#x2705; Freed output buffer, returning from acip_send_image_frame_h265&quot;);
+259   return result;
+260 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
@@ -573,15 +543,15 @@
 <i>version</i> Protocol version structure</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>334</b> of file
+<p class="Pp">Definition at line <b>308</b> of file
     <b>lib/network/acip/client.c</b>.</p>
-<pre>334                                                                                                                     {
-335   if (!transport || !version) {
-336     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or version&quot;);
-337   }
-338 
-339   return packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, version, sizeof(*version), 0);
-340 }</pre>
+<pre>308                                                                                                                     {
+309   if (!transport || !version) {
+310     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or version&quot;);
+311   }
+312 
+313   return packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, version, sizeof(*version), 0);
+314 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
@@ -600,17 +570,17 @@
 <i>stream_types</i> Stream type bitmask (video, audio, etc.)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>306</b> of file
+<p class="Pp">Definition at line <b>280</b> of file
     <b>lib/network/acip/client.c</b>.</p>
-<pre>306                                                                                             {
-307   if (!transport) {
-308     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
-309   }
-310 
-311   // Server expects uint32_t (4 bytes), not uint8_t
-312   uint32_t stream_types_net = HOST_TO_NET_U32((uint32_t)stream_types);
-313   return packet_send_via_transport(transport, PACKET_TYPE_STREAM_START, &amp;stream_types_net, sizeof(stream_types_net), 0);
-314 }</pre>
+<pre>280                                                                                             {
+281   if (!transport) {
+282     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
+283   }
+284 
+285   // Server expects uint32_t (4 bytes), not uint8_t
+286   uint32_t stream_types_net = HOST_TO_NET_U32((uint32_t)stream_types);
+287   return packet_send_via_transport(transport, PACKET_TYPE_STREAM_START, &amp;stream_types_net, sizeof(stream_types_net), 0);
+288 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>HOST_TO_NET_U32</b>,
@@ -629,17 +599,17 @@
 <i>stream_types</i> Stream type bitmask (video, audio, etc.)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>316</b> of file
+<p class="Pp">Definition at line <b>290</b> of file
     <b>lib/network/acip/client.c</b>.</p>
-<pre>316                                                                                            {
-317   if (!transport) {
-318     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
-319   }
-320 
-321   // Server expects uint32_t (4 bytes), not uint8_t
-322   uint32_t stream_types_net = HOST_TO_NET_U32((uint32_t)stream_types);
-323   return packet_send_via_transport(transport, PACKET_TYPE_STREAM_STOP, &amp;stream_types_net, sizeof(stream_types_net), 0);
-324 }</pre>
+<pre>290                                                                                            {
+291   if (!transport) {
+292     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
+293   }
+294 
+295   // Server expects uint32_t (4 bytes), not uint8_t
+296   uint32_t stream_types_net = HOST_TO_NET_U32((uint32_t)stream_types);
+297   return packet_send_via_transport(transport, PACKET_TYPE_STREAM_STOP, &amp;stream_types_net, sizeof(stream_types_net), 0);
+298 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>HOST_TO_NET_U32</b>,

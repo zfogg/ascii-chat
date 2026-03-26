@@ -160,7 +160,15 @@
     <b>session_display_set_global_context</b> (<b>session_display_ctx_t</b>
     *ctx)
   <br/>
-  Set the global display context (for signal handlers like Ctrl+C). void
+  Set the global display context (for signal handlers like Ctrl+C).
+    <b>session_display_ctx_t</b> * <b>session_display_get_global_context</b>
+    (void)
+  <br/>
+  Get the global display context (used for signal handlers and special cleanup).
+    void <b>session_display_set_global_context_public</b>
+    (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  Set the global display context (public setter for discovery cleanup). void
     <b>keyboard_help_signal_cancel</b> (void)
   <br/>
   Request help screen closure from signal handler (Ctrl+C). <b>bool</b>

@@ -54,9 +54,13 @@
   <br/>
   #define <b>APP_CALLBACK_INT</b>(callback_name)
   <br/>
+  #define <b>APP_CALLBACK_UINT64</b>(callback_name)
+  <br/>
   #define <b>APP_CALLBACK_INT_TRANSPORT</b>(callback_name, transport)
   <br/>
   #define <b>APP_CALLBACK_VOID_UINT8</b>(callback_name, value)
+  <br/>
+  #define <b>APP_CALLBACK_VOID_UINT</b>(callback_name, value)
   <br/>
   #define <b>APP_CALLBACK_VOID_STR</b>(callback_name, value)
   <br/>
@@ -103,12 +107,12 @@
 <pre></pre>
 <p class="Pp">Call a void(void) callback and return bool Usage: bool result =
     <b>APP_CALLBACK_BOOL(should_exit)</b></p>
-<p class="Pp">Definition at line <b>66</b> of file <b>app_callbacks.h</b>.</p>
-<pre>66 #define APP_CALLBACK_BOOL(callback_name)                                                                               \
-67   ({                                                                                                                   \
-68     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-69     (__cb &amp;&amp; __cb-&gt;callback_name) ? __cb-&gt;callback_name() : false;                                                     \
-70   })</pre>
+<p class="Pp">Definition at line <b>72</b> of file <b>app_callbacks.h</b>.</p>
+<pre>72 #define APP_CALLBACK_BOOL(callback_name)                                                                               \
+73   ({                                                                                                                   \
+74     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
+75     (__cb &amp;&amp; __cb-&gt;callback_name) ? __cb-&gt;callback_name() : false;                                                     \
+76   })</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
@@ -128,12 +132,12 @@
 <pre></pre>
 <p class="Pp">Call a void(void) callback and return int Usage: int result =
     <b>APP_CALLBACK_INT(client_crypto_init)</b></p>
-<p class="Pp">Definition at line <b>76</b> of file <b>app_callbacks.h</b>.</p>
-<pre>76 #define APP_CALLBACK_INT(callback_name)                                                                                \
-77   ({                                                                                                                   \
-78     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-79     (__cb &amp;&amp; __cb-&gt;callback_name) ? __cb-&gt;callback_name() : -1;                                                        \
-80   })</pre>
+<p class="Pp">Definition at line <b>82</b> of file <b>app_callbacks.h</b>.</p>
+<pre>82 #define APP_CALLBACK_INT(callback_name)                                                                                \
+83   ({                                                                                                                   \
+84     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
+85     (__cb &amp;&amp; __cb-&gt;callback_name) ? __cb-&gt;callback_name() : -1;                                                        \
+86   })</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>, and
@@ -152,12 +156,12 @@
 <pre></pre>
 <p class="Pp">Call a int(acip_transport_t *) callback Usage: int result =
     <b>APP_CALLBACK_INT_TRANSPORT(client_crypto_handshake, transport)</b></p>
-<p class="Pp">Definition at line <b>86</b> of file <b>app_callbacks.h</b>.</p>
-<pre>86 #define APP_CALLBACK_INT_TRANSPORT(callback_name, transport)                                                           \
-87   ({                                                                                                                   \
-88     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-89     (__cb &amp;&amp; __cb-&gt;callback_name) ? __cb-&gt;callback_name(transport) : -1;                                                  \
-90   })</pre>
+<p class="Pp">Definition at line <b>102</b> of file <b>app_callbacks.h</b>.</p>
+<pre>102 #define APP_CALLBACK_INT_TRANSPORT(callback_name, transport)                                                           \
+103   ({                                                                                                                   \
+104     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
+105     (__cb &amp;&amp; __cb-&gt;callback_name) ? __cb-&gt;callback_name(transport) : -1;                                                  \
+106   })</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>.</p>
@@ -176,16 +180,39 @@
 <p class="Pp">Get a pointer return value from callback Usage: const
     <b>crypto_context_t</b> *ctx =
     <b>APP_CALLBACK_PTR(crypto_client_get_context)</b></p>
-<p class="Pp">Definition at line <b>132</b> of file <b>app_callbacks.h</b>.</p>
-<pre>132 #define APP_CALLBACK_PTR(callback_name)                                                                                \
-133   ({                                                                                                                   \
-134     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-135     (__cb &amp;&amp; __cb-&gt;callback_name) ? __cb-&gt;callback_name() : NULL;                                                      \
-136   })</pre>
+<p class="Pp">Definition at line <b>160</b> of file <b>app_callbacks.h</b>.</p>
+<pre>160 #define APP_CALLBACK_PTR(callback_name)                                                                                \
+161   ({                                                                                                                   \
+162     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
+163     (__cb &amp;&amp; __cb-&gt;callback_name) ? __cb-&gt;callback_name() : NULL;                                                      \
+164   })</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>, and
     <b>connection_attempt_websocket()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_APP_CALLBACK_UINT64(_callback_name)"><a class="permalink" href="#_define_APP_CALLBACK_UINT64(_callback_name)">#define
+  APP_CALLBACK_UINT64( callback_name)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>({                                                                                                                   \
+<br/>
+  const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
+<br/>
+  (__cb &amp;&amp; __cb-&gt;callback_name) ? __cb-&gt;callback_name() : 0ULL;                                                      \
+})</pre>
+<pre></pre>
+<p class="Pp">Call a <b>uint64_t(void)</b> callback Usage: <b>uint64_t</b> now =
+    <b>APP_CALLBACK_UINT64(platform_get_monotonic_time_us)</b></p>
+<p class="Pp">Definition at line <b>92</b> of file <b>app_callbacks.h</b>.</p>
+<pre>92 #define APP_CALLBACK_UINT64(callback_name)                                                                             \
+93   ({                                                                                                                   \
+94     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
+95     (__cb &amp;&amp; __cb-&gt;callback_name) ? __cb-&gt;callback_name() : 0ULL;                                                      \
+96   })</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>discovery_session_process()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_APP_CALLBACK_VOID(_callback_name)"><a class="permalink" href="#_define_APP_CALLBACK_VOID(_callback_name)">#define
@@ -204,18 +231,20 @@
 <pre></pre>
 <p class="Pp">Call a void(void) callback safely Usage:
     <b>APP_CALLBACK_VOID(audio_stop_thread)</b></p>
-<p class="Pp">Definition at line <b>54</b> of file <b>app_callbacks.h</b>.</p>
-<pre>54 #define APP_CALLBACK_VOID(callback_name)                                                                               \
-55   do {                                                                                                                 \
-56     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-57     if (__cb &amp;&amp; __cb-&gt;callback_name) {                                                                                 \
-58       __cb-&gt;callback_name();                                                                                           \
-59     }                                                                                                                  \
-60   } while (0)</pre>
+<p class="Pp">Definition at line <b>60</b> of file <b>app_callbacks.h</b>.</p>
+<pre>60 #define APP_CALLBACK_VOID(callback_name)                                                                               \
+61   do {                                                                                                                 \
+62     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
+63     if (__cb &amp;&amp; __cb-&gt;callback_name) {                                                                                 \
+64       __cb-&gt;callback_name();                                                                                           \
+65     }                                                                                                                  \
+66   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>session_client_like_run()</b>, and
-    <b>session_render_loop()</b>.</p>
+<p class="Pp">Referenced by <b>acds_server_shutdown()</b>,
+    <b>client_receive_thread()</b>, <b>client_video_render_thread()</b>,
+    <b>disconnect_client_for_bad_data()</b>, <b>discovery_session_process()</b>,
+    <b>session_client_like_run()</b>, and <b>session_render_loop()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_APP_CALLBACK_VOID_INT(_callback_name,__value)"><a class="permalink" href="#_define_APP_CALLBACK_VOID_INT(_callback_name,__value)">#define
@@ -234,14 +263,14 @@
 <pre></pre>
 <p class="Pp">Call a void(int) callback Usage:
     <b>APP_CALLBACK_VOID_INT(server_connection_set_port, port)</b></p>
-<p class="Pp">Definition at line <b>120</b> of file <b>app_callbacks.h</b>.</p>
-<pre>120 #define APP_CALLBACK_VOID_INT(callback_name, value)                                                                    \
-121   do {                                                                                                                 \
-122     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-123     if (__cb &amp;&amp; __cb-&gt;callback_name) {                                                                                 \
-124       __cb-&gt;callback_name(value);                                                                                      \
-125     }                                                                                                                  \
-126   } while (0)</pre>
+<p class="Pp">Definition at line <b>148</b> of file <b>app_callbacks.h</b>.</p>
+<pre>148 #define APP_CALLBACK_VOID_INT(callback_name, value)                                                                    \
+149   do {                                                                                                                 \
+150     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
+151     if (__cb &amp;&amp; __cb-&gt;callback_name) {                                                                                 \
+152       __cb-&gt;callback_name(value);                                                                                      \
+153     }                                                                                                                  \
+154   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>.</p>
@@ -263,17 +292,47 @@
 <pre></pre>
 <p class="Pp">Call a void(const char *) callback Usage:
     <b>APP_CALLBACK_VOID_STR(server_connection_set_ip, ip_addr)</b></p>
-<p class="Pp">Definition at line <b>108</b> of file <b>app_callbacks.h</b>.</p>
-<pre>108 #define APP_CALLBACK_VOID_STR(callback_name, value)                                                                    \
-109   do {                                                                                                                 \
-110     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-111     if (__cb &amp;&amp; __cb-&gt;callback_name) {                                                                                 \
-112       __cb-&gt;callback_name(value);                                                                                      \
-113     }                                                                                                                  \
-114   } while (0)</pre>
+<p class="Pp">Definition at line <b>136</b> of file <b>app_callbacks.h</b>.</p>
+<pre>136 #define APP_CALLBACK_VOID_STR(callback_name, value)                                                                    \
+137   do {                                                                                                                 \
+138     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
+139     if (__cb &amp;&amp; __cb-&gt;callback_name) {                                                                                 \
+140       __cb-&gt;callback_name(value);                                                                                      \
+141     }                                                                                                                  \
+142   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_APP_CALLBACK_VOID_UINT(_callback_name,__value)"><a class="permalink" href="#_define_APP_CALLBACK_VOID_UINT(_callback_name,__value)">#define
+  APP_CALLBACK_VOID_UINT( callback_name, value)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
+<br/>
+  if (__cb &amp;&amp; __cb-&gt;callback_name) {                                                                                 \
+<br/>
+    __cb-&gt;callback_name(value);                                                                                      \
+<br/>
+  }                                                                                                                  \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp">Call a void(unsigned int) callback Usage:
+    <b>APP_CALLBACK_VOID_UINT(platform_sleep_ms, ms)</b></p>
+<p class="Pp">Definition at line <b>124</b> of file <b>app_callbacks.h</b>.</p>
+<pre>124 #define APP_CALLBACK_VOID_UINT(callback_name, value)                                                                   \
+125   do {                                                                                                                 \
+126     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
+127     if (__cb &amp;&amp; __cb-&gt;callback_name) {                                                                                 \
+128       __cb-&gt;callback_name(value);                                                                                      \
+129     }                                                                                                                  \
+130   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>discovery_session_process()</b>, and
+    <b>session_client_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_APP_CALLBACK_VOID_UINT8(_callback_name,__value)"><a class="permalink" href="#_define_APP_CALLBACK_VOID_UINT8(_callback_name,__value)">#define
@@ -292,14 +351,14 @@
 <pre></pre>
 <p class="Pp">Call a void(uint8_t) callback Usage:
     <b>APP_CALLBACK_VOID_UINT8(client_crypto_set_mode, mode)</b></p>
-<p class="Pp">Definition at line <b>96</b> of file <b>app_callbacks.h</b>.</p>
-<pre>96 #define APP_CALLBACK_VOID_UINT8(callback_name, value)                                                                  \
-97   do {                                                                                                                 \
-98     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
-99     if (__cb &amp;&amp; __cb-&gt;callback_name) {                                                                                 \
-100       __cb-&gt;callback_name(value);                                                                                      \
-101     }                                                                                                                  \
-102   } while (0)</pre>
+<p class="Pp">Definition at line <b>112</b> of file <b>app_callbacks.h</b>.</p>
+<pre>112 #define APP_CALLBACK_VOID_UINT8(callback_name, value)                                                                  \
+113   do {                                                                                                                 \
+114     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
+115     if (__cb &amp;&amp; __cb-&gt;callback_name) {                                                                                 \
+116       __cb-&gt;callback_name(value);                                                                                      \
+117     }                                                                                                                  \
+118   } while (0)</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>.</p>

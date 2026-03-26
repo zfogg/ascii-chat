@@ -106,24 +106,56 @@
 <p class="Pp">Platform abstraction layer umbrella header providing unified
     cross-platform API.</p>
 <p class="Pp">This is the main entry point for the platform abstraction layer.
-    It includes all platform-specific component headers (<b>system.h</b>,
-    <b>terminal.h</b>, thread.h, etc.) and provides a unified API that works
-    identically on Windows, Linux, and macOS.</p>
+    All code in the project uses the types and functions declared here (and in
+    the component headers it includes) rather than calling OS APIs directly.
+    This allows the same application code to compile and run on five
+  targets:</p>
 <p class="Pp"></p>
-<p class="Pp">The actual function declarations and implementations are in the
-    component headers:</p>
+<p class="Pp">Target Implementation directory Notes Linux lib/platform/posix/ +
+    linux/ Full feature set, V4L2 webcam, ALSA macOS lib/platform/posix/ +
+    macos/ Full feature set, AVFoundation webcam Windows lib/platform/windows/
+    Win32 APIs, WinSock2 sockets WASM lib/platform/wasm/ Emscripten, browser
+    environment</p>
+<p class="Pp"></p>
+<p class="Pp">POSIX platforms (Linux, macOS) share a common implementation in
+    lib/platform/posix/ with OS-specific extensions in lib/platform/linux/ and
+    lib/platform/macos/.</p>
+<p class="Pp"></p>
+<p class="Pp">The WASM target (lib/platform/wasm/) compiles the core C code to
+    WebAssembly via Emscripten for use in the browser-based web client
+    (web.ascii-chat.com). It provides real implementations for video processing,
+    ASCII conversion, terminal capabilities, and timing, while stubbing out
+    functionality unavailable in a browser context (networking, audio capture,
+    filesystem, process management) in lib/platform/wasm/stubs/.</p>
+<p class="Pp"></p>
+<p class="Pp">Component headers included by this file:</p>
 <ul class="Bl-bullet">
-  <li><b>system.h</b> / system.c - System functions, timers, environment
-      variables</li>
-  <li><b>terminal.h</b> / terminal.c - Terminal I/O and control sequences</li>
-  <li>thread.h - Threading primitives</li>
-  <li><b>socket.h</b> - Network socket operations</li>
-  <li>mutex.h, <b>rwlock.h</b>, <b>cond.h</b> - Synchronization primitives</li>
-  <li>string.h, memory.h - Safe string and memory functions</li>
-  <li>file.h, <b>process.h</b> - File and process operations</li>
+  <li>thread.h - Thread creation, joining, and identification</li>
+  <li>mutex.h - Mutual exclusion locks</li>
+  <li><b>rwlock.h</b> - Reader-writer locks</li>
+  <li><b>cond.h</b> - Condition variables</li>
+  <li><b>socket.h</b> - TCP/UDP socket operations and address helpers</li>
+  <li><b>terminal.h</b> - Terminal I/O, capabilities detection, ANSI sequences,
+      render modes</li>
+  <li><b>system.h</b> - Timers, environment variables, signal handling, platform
+      info</li>
+  <li>string.h - Safe string functions (snprintf wrappers, UTF-8 helpers)</li>
+  <li>memory.h - Safe memory allocation with leak tracking (SAFE_MALLOC,
+      SAFE_FREE)</li>
+  <li><b>process.h</b> - Process spawning, pipes, and PID management</li>
+  <li><b>filesystem.h</b> - File operations, path manipulation, directory
+      traversal</li>
+  <li><b>pipe.h</b> - Named and anonymous pipe abstractions</li>
 </ul>
-<p class="Pp">Platform-specific implementations are in lib/platform/posix/ and
-    lib/platform/windows/</p>
+<p class="Pp">This header also defines:</p>
+<ul class="Bl-bullet">
+  <li>Platform detection macros (PLATFORM_WINDOWS, PLATFORM_POSIX)</li>
+  <li>Compiler attribute macros (PACKED_ATTR, ALIGNED_ATTR, THREAD_LOCAL)</li>
+  <li>Windows POSIX compatibility shims (aligned_alloc, clock_gettime, gmtime_r,
+      etc.)</li>
+  <li>Cross-platform sleep functions (platform_sleep_us, platform_sleep_ns)</li>
+  <li>Utility macros (UNUSED, PLATFORM_BINARY_NAME)</li>
+</ul>
 <p class="Pp">Definition in file <b>abstraction.h</b>.</p>
 </section>
 <section class="Sh">

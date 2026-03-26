@@ -110,7 +110,7 @@
 <p class="Pp">Internal session host structure.</p>
 <p class="Pp">Contains server state, client list, and callback
   configuration.</p>
-<p class="Pp">Definition at line <b>85</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>86</b> of file <b>host.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -118,21 +118,21 @@
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_thread_t</b> session_host::accept_thread</h2>
 <p class="Pp">Accept thread handle.</p>
-<p class="Pp">Definition at line <b>138</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>139</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_start()</b>, and
     <b>session_host_stop()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_host::accept_thread_running</h2>
 <p class="Pp">Accept thread is running.</p>
-<p class="Pp">Definition at line <b>141</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>142</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_start()</b>, and
     <b>session_host_stop()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>session_audio_ctx_t</b>* session_host::audio_ctx</h2>
 <p class="Pp">Audio context for mixing (host only).</p>
-<p class="Pp">Definition at line <b>156</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>157</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_destroy()</b>,
     <b>session_host_start_render()</b>, and
   <b>session_host_stop_render()</b>.</p>
@@ -140,7 +140,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>session_host_callbacks_t</b> session_host::callbacks</h2>
 <p class="Pp">Event callbacks.</p>
-<p class="Pp">Definition at line <b>108</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>109</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>, <b>session_host_create()</b>,
     <b>session_host_remove_client()</b>, <b>session_host_start()</b>, and
@@ -150,7 +150,7 @@
 <h2 class="Ss" id="int_session_host::client_count"><a class="permalink" href="#int_session_host::client_count">int
   session_host::client_count</a></h2>
 <p class="Pp">Current client count.</p>
-<p class="Pp">Definition at line <b>129</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>130</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>, <b>session_host_create()</b>,
     <b>session_host_get_client_count()</b>, <b>session_host_remove_client()</b>,
@@ -159,7 +159,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>session_host_client_t</b>* session_host::clients</h2>
 <p class="Pp">Client array.</p>
-<p class="Pp">Definition at line <b>126</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>127</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>,
     <b>session_host_broadcast_frame()</b>,
@@ -175,7 +175,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>mutex_t</b> session_host::clients_mutex</h2>
 <p class="Pp">Client list mutex.</p>
-<p class="Pp">Definition at line <b>135</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>136</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>,
     <b>session_host_broadcast_frame()</b>,
@@ -193,19 +193,19 @@
   <b>session_display_ctx</b>* session_host::display_context</a></h2>
 <p class="Pp">Display context for local frame rendering (optional, can be
   NULL).</p>
-<p class="Pp">Definition at line <b>114</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>115</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_set_display()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_host::encryption_enabled</h2>
 <p class="Pp">Encryption enabled.</p>
-<p class="Pp">Definition at line <b>99</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>100</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_host::initialized</h2>
 <p class="Pp">Context is initialized.</p>
-<p class="Pp">Definition at line <b>165</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>166</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>,
     <b>session_host_broadcast_frame()</b>,
@@ -226,7 +226,7 @@
 <h2 class="Ss" id="char_session_host::ipv4_address_64_"><a class="permalink" href="#char_session_host::ipv4_address_64_">char
   session_host::ipv4_address[64]</a></h2>
 <p class="Pp">IPv4 bind address.</p>
-<p class="Pp">Definition at line <b>90</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>91</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_create()</b>, and
     <b>session_host_start()</b>.</p>
 </section>
@@ -234,21 +234,21 @@
 <h2 class="Ss" id="char_session_host::ipv6_address_64_"><a class="permalink" href="#char_session_host::ipv6_address_64_">char
   session_host::ipv6_address[64]</a></h2>
 <p class="Pp">IPv6 bind address.</p>
-<p class="Pp">Definition at line <b>93</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>94</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_session_host::key_path_512_"><a class="permalink" href="#char_session_host::key_path_512_">char
   session_host::key_path[512]</a></h2>
 <p class="Pp">Key path.</p>
-<p class="Pp">Definition at line <b>102</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>103</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_session_host::max_clients"><a class="permalink" href="#int_session_host::max_clients">int
   session_host::max_clients</a></h2>
 <p class="Pp">Maximum clients.</p>
-<p class="Pp">Definition at line <b>96</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>97</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>,
     <b>session_host_broadcast_frame()</b>,
@@ -264,7 +264,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> session_host::next_client_id</h2>
 <p class="Pp">Next client ID counter.</p>
-<p class="Pp">Definition at line <b>132</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>133</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>, and
     <b>session_host_create()</b>.</p>
@@ -272,7 +272,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>opus_codec_t</b>* session_host::opus_decoder</h2>
 <p class="Pp">Opus decoder for decoding incoming Opus audio.</p>
-<p class="Pp">Definition at line <b>159</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>160</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_destroy()</b>,
     <b>session_host_start_render()</b>, and
   <b>session_host_stop_render()</b>.</p>
@@ -280,7 +280,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>opus_codec_t</b>* session_host::opus_encoder</h2>
 <p class="Pp">Opus encoder for encoding mixed audio for broadcast.</p>
-<p class="Pp">Definition at line <b>162</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>163</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_start_render()</b>, and
     <b>session_host_stop_render()</b>.</p>
 </section>
@@ -288,7 +288,7 @@
 <h2 class="Ss" id="char_session_host::password_256_"><a class="permalink" href="#char_session_host::password_256_">char
   session_host::password[256]</a></h2>
 <p class="Pp">Password.</p>
-<p class="Pp">Definition at line <b>105</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>106</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_create()</b>, and
     <b>session_host_destroy()</b>.</p>
 </section>
@@ -296,21 +296,21 @@
 <h2 class="Ss" id="int_session_host::port"><a class="permalink" href="#int_session_host::port">int
   session_host::port</a></h2>
 <p class="Pp">Port to listen on.</p>
-<p class="Pp">Definition at line <b>87</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>88</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_create()</b>, and
     <b>session_host_start()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_thread_t</b> session_host::receive_thread</h2>
 <p class="Pp">Receive thread handle.</p>
-<p class="Pp">Definition at line <b>144</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>145</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_start()</b>, and
     <b>session_host_stop()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_host::receive_thread_running</h2>
 <p class="Pp">Receive thread is running.</p>
-<p class="Pp">Definition at line <b>147</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>148</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_start()</b>, and
     <b>session_host_stop()</b>.</p>
 </section>
@@ -318,21 +318,21 @@
 <h2 class="Ss"><b>asciichat_thread_t</b> session_host::render_thread</h2>
 <p class="Pp">Render thread handle (for video mixing and audio
   distribution).</p>
-<p class="Pp">Definition at line <b>150</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>151</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_start_render()</b>,
     <b>session_host_stop()</b>, and <b>session_host_stop_render()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_host::render_thread_running</h2>
 <p class="Pp">Render thread is running.</p>
-<p class="Pp">Definition at line <b>153</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>154</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_start_render()</b>,
     <b>session_host_stop()</b>, and <b>session_host_stop_render()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_host::running</h2>
 <p class="Pp">Server is running.</p>
-<p class="Pp">Definition at line <b>123</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>124</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_broadcast_frame()</b>,
     <b>session_host_create()</b>, <b>session_host_destroy()</b>,
     <b>session_host_is_running()</b>, <b>session_host_send_frame()</b>,
@@ -342,7 +342,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>socket_t</b> session_host::socket_v4</h2>
 <p class="Pp">IPv4 listen socket.</p>
-<p class="Pp">Definition at line <b>117</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>118</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_create()</b>,
     <b>session_host_destroy()</b>, <b>session_host_start()</b>, and
     <b>session_host_stop()</b>.</p>
@@ -350,7 +350,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>socket_t</b> session_host::socket_v6</h2>
 <p class="Pp">IPv6 listen socket.</p>
-<p class="Pp">Definition at line <b>120</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>121</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_create()</b>,
     <b>session_host_destroy()</b>, and <b>session_host_stop()</b>.</p>
 </section>
@@ -358,7 +358,7 @@
 <h2 class="Ss" id="void*_session_host::user_data"><a class="permalink" href="#void*_session_host::user_data">void*
   session_host::user_data</a></h2>
 <p class="Pp">User data for callbacks.</p>
-<p class="Pp">Definition at line <b>111</b> of file <b>host.c</b>.</p>
+<p class="Pp">Definition at line <b>112</b> of file <b>host.c</b>.</p>
 <p class="Pp">Referenced by <b>session_host_add_client()</b>,
     <b>session_host_add_memory_participant()</b>, <b>session_host_create()</b>,
     <b>session_host_remove_client()</b>, <b>session_host_start()</b>, and

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>connection_endpoint_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">connection_endpoint_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">connection_endpoint_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">connection_endpoint_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include
+  &lt;include/ascii-chat/network/connection_endpoint.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>connection_endpoint_protocol_t</b> <b>protocol</b>
+  <br/>
+  char <b>input</b> [512]
+  <br/>
+  char <b>host</b> [256]
+  <br/>
+  <b>uint16_t</b> <b>port</b>
+  <br/>
+  <b>bool</b> <b>has_explicit_port</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>21</b> of file
+  <b>connection_endpoint.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> connection_endpoint_t::has_explicit_port</h2>
+<p class="Pp">Definition at line <b>26</b> of file
+  <b>connection_endpoint.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_connection_endpoint_t::host_256_"><a class="permalink" href="#char_connection_endpoint_t::host_256_">char
+  connection_endpoint_t::host[256]</a></h2>
+<p class="Pp">Definition at line <b>24</b> of file
+  <b>connection_endpoint.h</b>.</p>
+<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>, and
+    <b>server_connection_establish()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_connection_endpoint_t::input_512_"><a class="permalink" href="#char_connection_endpoint_t::input_512_">char
+  connection_endpoint_t::input[512]</a></h2>
+<p class="Pp">Definition at line <b>23</b> of file
+  <b>connection_endpoint.h</b>.</p>
+<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
+    <b>connection_factory_open()</b>, and
+  <b>server_connection_establish()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint16_t</b> connection_endpoint_t::port</h2>
+<p class="Pp">Definition at line <b>25</b> of file
+  <b>connection_endpoint.h</b>.</p>
+<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>, and
+    <b>server_connection_establish()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>connection_endpoint_protocol_t</b>
+  connection_endpoint_t::protocol</h2>
+<p class="Pp">Definition at line <b>22</b> of file
+  <b>connection_endpoint.h</b>.</p>
+<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
+    <b>connection_factory_open()</b>, and
+  <b>server_connection_establish()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.19</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

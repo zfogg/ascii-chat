@@ -360,19 +360,19 @@ log_info(&quot;Frame took %s&quot;, duration_str);
   NS_PER_SEC_INT (1000ULL * <b>NS_PER_MS_INT</b>)</a></h2>
 <p class="Pp">#include &lt;<b>include/ascii-chat/util/time.h</b>&gt;<b></b></p>
 <p class="Pp">Definition at line <b>157</b> of file <b>time.h</b>.</p>
-<p class="Pp">Referenced by <b>add_client()</b>,
+<p class="Pp">Referenced by <b>acds_client_handler()</b>, <b>add_client()</b>,
     <b>ascii_convert_with_capabilities()</b>, <b>asciichat_instr_log_line()</b>,
     <b>calculate_cache_eviction_score()</b>,
     <b>client_audio_render_thread()</b>, <b>client_video_render_thread()</b>,
     <b>consensus_coordinator_on_collection_start()</b>,
     <b>crypto_handshake_process_rekey_request()</b>, <b>crypto_rekey_init()</b>,
-    <b>discovery_session_process()</b>, <b>ffmpeg_encoder_write_frame()</b>,
-    <b>fps_frame_ns()</b>, <b>fps_init()</b>,
-    <b>get_current_time_formatted()</b>, <b>handle_image_frame_packet()</b>,
-    <b>log_template_apply()</b>, <b>mixer_process_excluding_source()</b>,
-    <b>nat_measure_bandwidth()</b>, <b>packet_receive()</b>,
-    <b>receive_packet_secure()</b>, <b>server_main()</b>,
-    <b>session_capture_create()</b>, <b>session_display_convert_to_ascii()</b>,
+    <b>ffmpeg_encoder_write_frame()</b>, <b>fps_frame_ns()</b>,
+    <b>fps_init()</b>, <b>get_current_time_formatted()</b>,
+    <b>handle_image_frame_packet()</b>, <b>log_template_apply()</b>,
+    <b>mixer_process_excluding_source()</b>, <b>nat_measure_bandwidth()</b>,
+    <b>packet_receive()</b>, <b>receive_packet_secure()</b>,
+    <b>server_main()</b>, <b>session_capture_create()</b>,
+    <b>session_display_convert_to_ascii()</b>,
     <b>session_display_encode_frame()</b>, <b>session_display_write_ascii()</b>,
     <b>session_network_capture_create()</b>, <b>session_pipeline_run_main()</b>,
     <b>session_render_loop()</b>, <b>terminal_fd_reader_next()</b>,
@@ -1470,7 +1470,8 @@ uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
 117 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>acip_server_receive_and_dispatch()</b>,
+<p class="Pp">Referenced by <b>acds_client_handler()</b>,
+    <b>acip_server_receive_and_dispatch()</b>,
     <b>ascii_convert_with_capabilities()</b>, <b>asciichat_instr_log_line()</b>,
     <b>atomic_on_cas()</b>, <b>atomic_on_fetch()</b>, <b>atomic_on_load()</b>,
     <b>atomic_on_store()</b>, <b>atomic_ptr_on_cas()</b>,

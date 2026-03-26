@@ -251,7 +251,7 @@
 <p class="Pp"></p>
 <p class="Pp">Thread handles are valid only when threads are running.</p>
 </div>
-<p class="Pp">Definition at line <b>81</b> of file
+<p class="Pp">Definition at line <b>82</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 </section>
 <section class="Sh">
@@ -259,7 +259,7 @@
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> client_info::active</h2>
-<p class="Pp">Definition at line <b>130</b> of file
+<p class="Pp">Definition at line <b>131</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>any_clients_sending_video()</b>, <b>client_audio_render_thread()</b>,
@@ -272,7 +272,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>packet_queue_t</b>* client_info::audio_queue</h2>
-<p class="Pp">Definition at line <b>147</b> of file
+<p class="Pp">Definition at line <b>148</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>cleanup_client_packet_queues()</b>, <b>client_audio_render_thread()</b>,
@@ -282,14 +282,14 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_thread_t</b> client_info::audio_render_thread</h2>
-<p class="Pp">Definition at line <b>176</b> of file
+<p class="Pp">Definition at line <b>177</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>create_client_render_threads()</b>,
     <b>remove_client()</b>, and <b>stop_client_render_threads()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> client_info::audio_render_thread_running</h2>
-<p class="Pp">Definition at line <b>178</b> of file
+<p class="Pp">Definition at line <b>179</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>client_audio_render_thread()</b>,
     <b>client_receive_thread()</b>, <b>create_client_render_threads()</b>,
@@ -298,20 +298,20 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> client_info::can_send_audio</h2>
-<p class="Pp">Definition at line <b>97</b> of file
+<p class="Pp">Definition at line <b>98</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>handle_client_join_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> client_info::can_send_video</h2>
-<p class="Pp">Definition at line <b>96</b> of file
+<p class="Pp">Definition at line <b>97</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>handle_client_join_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_client_info::client_id_"><a class="permalink" href="#char_client_info::client_id_">char
   client_info::client_id[<b>MAX_CLIENT_ID_LEN</b>]</a></h2>
-<p class="Pp">Definition at line <b>89</b> of file
+<p class="Pp">Definition at line <b>90</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>any_clients_sending_video()</b>,
@@ -336,7 +336,7 @@
 <section class="Ss">
 <h2 class="Ss" id="char_client_info::client_ip_INET_ADDRSTRLEN_"><a class="permalink" href="#char_client_info::client_ip_INET_ADDRSTRLEN_">char
   client_info::client_ip[INET_ADDRSTRLEN]</a></h2>
-<p class="Pp">Definition at line <b>92</b> of file
+<p class="Pp">Definition at line <b>93</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>, and
     <b>process_decrypted_packet()</b>.</p>
@@ -344,39 +344,39 @@
 <section class="Ss">
 <h2 class="Ss" id="char_client_info::client_luminance_palette_256_"><a class="permalink" href="#char_client_info::client_luminance_palette_256_">char
   client_info::client_luminance_palette[256]</a></h2>
-<p class="Pp">Definition at line <b>122</b> of file
+<p class="Pp">Definition at line <b>123</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_client_info::client_palette_chars_256_"><a class="permalink" href="#char_client_info::client_palette_chars_256_">char
   client_info::client_palette_chars[256]</a></h2>
-<p class="Pp">Definition at line <b>120</b> of file
+<p class="Pp">Definition at line <b>121</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> client_info::client_palette_initialized</h2>
-<p class="Pp">Definition at line <b>124</b> of file
+<p class="Pp">Definition at line <b>125</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_client_info::client_palette_len"><a class="permalink" href="#size_t_client_info::client_palette_len">size_t
   client_info::client_palette_len</a></h2>
-<p class="Pp">Definition at line <b>121</b> of file
+<p class="Pp">Definition at line <b>122</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>palette_type_t</b> client_info::client_palette_type</h2>
-<p class="Pp">Definition at line <b>123</b> of file
+<p class="Pp">Definition at line <b>124</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>mutex_t</b> client_info::client_state_mutex</h2>
-<p class="Pp">Definition at line <b>181</b> of file
+<p class="Pp">Definition at line <b>182</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>client_audio_render_thread()</b>, <b>client_dispatch_thread()</b>,
@@ -387,14 +387,14 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> client_info::codec_capabilities_audio</h2>
-<p class="Pp">Definition at line <b>104</b> of file
+<p class="Pp">Definition at line <b>105</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, and
     <b>handle_client_capabilities_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> client_info::codec_capabilities_video</h2>
-<p class="Pp">Definition at line <b>103</b> of file
+<p class="Pp">Definition at line <b>104</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>,
     <b>handle_client_capabilities_packet()</b>,
@@ -404,7 +404,7 @@
 <section class="Ss">
 <h2 class="Ss" id="time_t_client_info::connected_at"><a class="permalink" href="#time_t_client_info::connected_at">time_t
   client_info::connected_at</a></h2>
-<p class="Pp">Definition at line <b>133</b> of file
+<p class="Pp">Definition at line <b>134</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, and
   <b>add_webrtc_client()</b>.</p>
@@ -412,19 +412,19 @@
 <section class="Ss">
 <h2 class="Ss" id="void*_client_info::crypto_ciphertext_buffer"><a class="permalink" href="#void*_client_info::crypto_ciphertext_buffer">void*
   client_info::crypto_ciphertext_buffer</a></h2>
-<p class="Pp">Definition at line <b>171</b> of file
+<p class="Pp">Definition at line <b>172</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_client_info::crypto_ciphertext_size"><a class="permalink" href="#size_t_client_info::crypto_ciphertext_size">size_t
   client_info::crypto_ciphertext_size</a></h2>
-<p class="Pp">Definition at line <b>172</b> of file
+<p class="Pp">Definition at line <b>173</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>crypto_handshake_context_t</b>
   client_info::crypto_handshake_ctx</h2>
-<p class="Pp">Definition at line <b>185</b> of file
+<p class="Pp">Definition at line <b>186</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>client_send_thread_func()</b>, <b>crypto_server_cleanup_client()</b>,
@@ -435,7 +435,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> client_info::crypto_initialized</h2>
-<p class="Pp">Definition at line <b>186</b> of file
+<p class="Pp">Definition at line <b>187</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>client_send_thread_func()</b>, <b>crypto_server_cleanup_client()</b>,
@@ -445,18 +445,18 @@
 <section class="Ss">
 <h2 class="Ss" id="void*_client_info::crypto_plaintext_buffer"><a class="permalink" href="#void*_client_info::crypto_plaintext_buffer">void*
   client_info::crypto_plaintext_buffer</a></h2>
-<p class="Pp">Definition at line <b>169</b> of file
+<p class="Pp">Definition at line <b>170</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_client_info::crypto_plaintext_size"><a class="permalink" href="#size_t_client_info::crypto_plaintext_size">size_t
   client_info::crypto_plaintext_size</a></h2>
-<p class="Pp">Definition at line <b>170</b> of file
+<p class="Pp">Definition at line <b>171</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>cond_t</b> client_info::dispatch_queue_cond</h2>
-<p class="Pp">Definition at line <b>153</b> of file
+<p class="Pp">Definition at line <b>154</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_webrtc_client()</b>,
     <b>client_dispatch_thread()</b>, <b>client_receive_thread()</b>, and
@@ -464,14 +464,14 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_thread_t</b> client_info::dispatch_thread</h2>
-<p class="Pp">Definition at line <b>151</b> of file
+<p class="Pp">Definition at line <b>152</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>remove_client()</b>, and
     <b>stop_client_threads()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> client_info::dispatch_thread_running</h2>
-<p class="Pp">Definition at line <b>152</b> of file
+<p class="Pp">Definition at line <b>153</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>client_dispatch_thread()</b>,
     <b>remove_client()</b>, and <b>stop_client_threads()</b>.</p>
@@ -479,7 +479,7 @@
 <section class="Ss">
 <h2 class="Ss" id="char_client_info::display_name_"><a class="permalink" href="#char_client_info::display_name_">char
   client_info::display_name[<b>MAX_DISPLAY_NAME_LEN</b>]</a></h2>
-<p class="Pp">Definition at line <b>91</b> of file
+<p class="Pp">Definition at line <b>92</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>client_audio_render_thread()</b>, <b>client_receive_thread()</b>,
@@ -490,73 +490,73 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> client_info::encrypt_data</h2>
-<p class="Pp">Definition at line <b>187</b> of file
+<p class="Pp">Definition at line <b>188</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> client_info::frames_received</h2>
-<p class="Pp">Definition at line <b>135</b> of file
+<p class="Pp">Definition at line <b>136</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>handle_image_frame_h265_packet()</b>, and
     <b>handle_image_frame_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> client_info::frames_received_logged</h2>
-<p class="Pp">Definition at line <b>136</b> of file
+<p class="Pp">Definition at line <b>137</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>handle_image_frame_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> client_info::frames_sent</h2>
-<p class="Pp">Definition at line <b>134</b> of file
+<p class="Pp">Definition at line <b>135</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>update_server_stats()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> client_info::frames_sent_count</h2>
-<p class="Pp">Definition at line <b>164</b> of file
+<p class="Pp">Definition at line <b>165</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>client_send_thread_func()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void*_client_info::h265_decode_frame"><a class="permalink" href="#void*_client_info::h265_decode_frame">void*
   client_info::h265_decode_frame</a></h2>
-<p class="Pp">Definition at line <b>111</b> of file
+<p class="Pp">Definition at line <b>112</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>cleanup_client_media_buffers()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void*_client_info::h265_decoder_ctx"><a class="permalink" href="#void*_client_info::h265_decoder_ctx">void*
   client_info::h265_decoder_ctx</a></h2>
-<p class="Pp">Definition at line <b>110</b> of file
+<p class="Pp">Definition at line <b>111</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>cleanup_client_media_buffers()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void*_client_info::h265_rgb_frame"><a class="permalink" href="#void*_client_info::h265_rgb_frame">void*
   client_info::h265_rgb_frame</a></h2>
-<p class="Pp">Definition at line <b>112</b> of file
+<p class="Pp">Definition at line <b>113</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>cleanup_client_media_buffers()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void*_client_info::h265_sws_ctx"><a class="permalink" href="#void*_client_info::h265_sws_ctx">void*
   client_info::h265_sws_ctx</a></h2>
-<p class="Pp">Definition at line <b>113</b> of file
+<p class="Pp">Definition at line <b>114</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>cleanup_client_media_buffers()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> client_info::has_terminal_caps</h2>
-<p class="Pp">Definition at line <b>117</b> of file
+<p class="Pp">Definition at line <b>118</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>client_video_render_thread()</b>, and
     <b>handle_client_capabilities_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> client_info::height</h2>
-<p class="Pp">Definition at line <b>127</b> of file
+<p class="Pp">Definition at line <b>128</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>client_send_thread_func()</b>,
     <b>client_video_render_thread()</b>,
@@ -566,13 +566,13 @@
 <section class="Ss">
 <h2 class="Ss" id="UT_hash_handle_client_info::hh"><a class="permalink" href="#UT_hash_handle_client_info::hh">UT_hash_handle
   client_info::hh</a></h2>
-<p class="Pp">Definition at line <b>197</b> of file
+<p class="Pp">Definition at line <b>198</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>audio_ring_buffer_t</b>*
   client_info::incoming_audio_buffer</h2>
-<p class="Pp">Definition at line <b>141</b> of file
+<p class="Pp">Definition at line <b>142</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>cleanup_client_media_buffers()</b>, <b>handle_audio_batch_packet()</b>,
@@ -582,7 +582,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>video_frame_buffer_t</b>*
   client_info::incoming_video_buffer</h2>
-<p class="Pp">Definition at line <b>140</b> of file
+<p class="Pp">Definition at line <b>141</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>cleanup_client_media_buffers()</b>,
@@ -591,7 +591,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> client_info::is_sending_audio</h2>
-<p class="Pp">Definition at line <b>100</b> of file
+<p class="Pp">Definition at line <b>101</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>handle_audio_batch_packet()</b>,
     <b>handle_audio_opus_packet()</b>, <b>handle_stream_start_packet()</b>,
@@ -599,7 +599,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> client_info::is_sending_video</h2>
-<p class="Pp">Definition at line <b>99</b> of file
+<p class="Pp">Definition at line <b>100</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>any_clients_sending_video()</b>,
     <b>handle_image_frame_h265_packet()</b>, <b>handle_image_frame_packet()</b>,
@@ -608,7 +608,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> client_info::is_tcp_client</h2>
-<p class="Pp">Definition at line <b>84</b> of file
+<p class="Pp">Definition at line <b>85</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>client_receive_thread()</b>, <b>create_client_render_threads()</b>, and
@@ -616,13 +616,13 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> client_info::last_received_frame_hash</h2>
-<p class="Pp">Definition at line <b>137</b> of file
+<p class="Pp">Definition at line <b>138</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>handle_image_frame_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> client_info::last_rendered_grid_sources</h2>
-<p class="Pp">Definition at line <b>160</b> of file
+<p class="Pp">Definition at line <b>161</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>client_send_thread_func()</b>, and
@@ -630,7 +630,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> client_info::last_sent_grid_sources</h2>
-<p class="Pp">Definition at line <b>161</b> of file
+<p class="Pp">Definition at line <b>162</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>, and
     <b>client_send_thread_func()</b>.</p>
@@ -638,7 +638,7 @@
 <section class="Ss">
 <h2 class="Ss" id="void*_client_info::opus_decoder"><a class="permalink" href="#void*_client_info::opus_decoder">void*
   client_info::opus_decoder</a></h2>
-<p class="Pp">Definition at line <b>107</b> of file
+<p class="Pp">Definition at line <b>108</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>cleanup_client_media_buffers()</b>,
     <b>handle_audio_opus_batch_packet()</b>, <b>handle_audio_opus_packet()</b>,
@@ -647,7 +647,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>video_frame_buffer_t</b>*
   client_info::outgoing_video_buffer</h2>
-<p class="Pp">Definition at line <b>144</b> of file
+<p class="Pp">Definition at line <b>145</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>cleanup_client_media_buffers()</b>, <b>client_send_thread_func()</b>,
@@ -656,13 +656,13 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>participant_type_t</b> client_info::participant_type</h2>
-<p class="Pp">Definition at line <b>82</b> of file
+<p class="Pp">Definition at line <b>83</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_client_info::pending_packet_length"><a class="permalink" href="#size_t_client_info::pending_packet_length">size_t
   client_info::pending_packet_length</a></h2>
-<p class="Pp">Definition at line <b>194</b> of file
+<p class="Pp">Definition at line <b>195</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>, and
     <b>server_crypto_handshake()</b>.</p>
@@ -670,14 +670,14 @@
 <section class="Ss">
 <h2 class="Ss" id="void*_client_info::pending_packet_payload"><a class="permalink" href="#void*_client_info::pending_packet_payload">void*
   client_info::pending_packet_payload</a></h2>
-<p class="Pp">Definition at line <b>193</b> of file
+<p class="Pp">Definition at line <b>194</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>packet_type_t</b> client_info::pending_packet_type</h2>
-<p class="Pp">Definition at line <b>192</b> of file
+<p class="Pp">Definition at line <b>193</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>, and
     <b>server_crypto_handshake()</b>.</p>
@@ -685,35 +685,35 @@
 <section class="Ss">
 <h2 class="Ss" id="int_client_info::port"><a class="permalink" href="#int_client_info::port">int
   client_info::port</a></h2>
-<p class="Pp">Definition at line <b>93</b> of file
+<p class="Pp">Definition at line <b>94</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, and
   <b>add_webrtc_client()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> client_info::protocol_disconnect_requested</h2>
-<p class="Pp">Definition at line <b>132</b> of file
+<p class="Pp">Definition at line <b>133</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>client_receive_thread()</b>, and
     <b>disconnect_client_for_bad_data()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_thread_t</b> client_info::receive_thread</h2>
-<p class="Pp">Definition at line <b>86</b> of file
+<p class="Pp">Definition at line <b>87</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>remove_client()</b>, and
     <b>stop_client_threads()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>thread_id_t</b> client_info::receive_thread_id</h2>
-<p class="Pp">Definition at line <b>87</b> of file
+<p class="Pp">Definition at line <b>88</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>client_receive_thread()</b>, and
     <b>remove_client()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>packet_queue_t</b>* client_info::received_packet_queue</h2>
-<p class="Pp">Definition at line <b>150</b> of file
+<p class="Pp">Definition at line <b>151</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_webrtc_client()</b>,
     <b>cleanup_client_packet_queues()</b>, <b>client_dispatch_thread()</b>, and
@@ -722,7 +722,7 @@
 <section class="Ss">
 <h2 class="Ss" id="void*_client_info::send_buffer"><a class="permalink" href="#void*_client_info::send_buffer">void*
   client_info::send_buffer</a></h2>
-<p class="Pp">Definition at line <b>167</b> of file
+<p class="Pp">Definition at line <b>168</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>, and
     <b>cleanup_client_media_buffers()</b>.</p>
@@ -730,14 +730,14 @@
 <section class="Ss">
 <h2 class="Ss" id="size_t_client_info::send_buffer_size"><a class="permalink" href="#size_t_client_info::send_buffer_size">size_t
   client_info::send_buffer_size</a></h2>
-<p class="Pp">Definition at line <b>168</b> of file
+<p class="Pp">Definition at line <b>169</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>, and
     <b>cleanup_client_media_buffers()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>mutex_t</b> client_info::send_mutex</h2>
-<p class="Pp">Definition at line <b>182</b> of file
+<p class="Pp">Definition at line <b>183</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>broadcast_server_state_to_all_clients()</b>,
@@ -747,14 +747,14 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_thread_t</b> client_info::send_thread</h2>
-<p class="Pp">Definition at line <b>156</b> of file
+<p class="Pp">Definition at line <b>157</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>remove_client()</b>, and
     <b>stop_client_threads()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> client_info::send_thread_running</h2>
-<p class="Pp">Definition at line <b>157</b> of file
+<p class="Pp">Definition at line <b>158</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>client_receive_thread()</b>,
     <b>client_send_thread_func()</b>, <b>disconnect_client_for_bad_data()</b>,
@@ -763,21 +763,21 @@
 <section class="Ss">
 <h2 class="Ss" id="void*_client_info::server_ctx"><a class="permalink" href="#void*_client_info::server_ctx">void*
   client_info::server_ctx</a></h2>
-<p class="Pp">Definition at line <b>88</b> of file
+<p class="Pp">Definition at line <b>89</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>, and
     <b>client_receive_thread()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> client_info::session_client_id</h2>
-<p class="Pp">Definition at line <b>90</b> of file
+<p class="Pp">Definition at line <b>91</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>, and
     <b>remove_client()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> client_info::shutting_down</h2>
-<p class="Pp">Definition at line <b>131</b> of file
+<p class="Pp">Definition at line <b>132</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>client_audio_render_thread()</b>, <b>client_receive_thread()</b>,
@@ -787,7 +787,7 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>socket_t</b> client_info::socket</h2>
-<p class="Pp">Definition at line <b>83</b> of file
+<p class="Pp">Definition at line <b>84</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>client_audio_render_thread()</b>, <b>client_receive_thread()</b>,
@@ -803,14 +803,14 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>terminal_capabilities_t</b> client_info::terminal_caps</h2>
-<p class="Pp">Definition at line <b>116</b> of file
+<p class="Pp">Definition at line <b>117</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>client_video_render_thread()</b>, and
     <b>handle_client_capabilities_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>acip_transport_t</b>* client_info::transport</h2>
-<p class="Pp">Definition at line <b>85</b> of file
+<p class="Pp">Definition at line <b>86</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>broadcast_server_state_to_all_clients()</b>,
@@ -822,14 +822,14 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_thread_t</b> client_info::video_render_thread</h2>
-<p class="Pp">Definition at line <b>175</b> of file
+<p class="Pp">Definition at line <b>176</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>create_client_render_threads()</b>,
     <b>remove_client()</b>, and <b>stop_client_render_threads()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> client_info::video_render_thread_running</h2>
-<p class="Pp">Definition at line <b>177</b> of file
+<p class="Pp">Definition at line <b>178</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>client_receive_thread()</b>,
     <b>client_video_render_thread()</b>, <b>create_client_render_threads()</b>,
@@ -838,13 +838,13 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> client_info::wants_stretch</h2>
-<p class="Pp">Definition at line <b>98</b> of file
+<p class="Pp">Definition at line <b>99</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>handle_client_join_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> client_info::width</h2>
-<p class="Pp">Definition at line <b>127</b> of file
+<p class="Pp">Definition at line <b>128</b> of file
     <b>include/ascii-chat/network/client.h</b>.</p>
 <p class="Pp">Referenced by <b>client_send_thread_func()</b>,
     <b>client_video_render_thread()</b>,

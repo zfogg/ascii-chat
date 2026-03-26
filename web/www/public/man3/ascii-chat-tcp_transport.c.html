@@ -77,82 +77,82 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Caller retains socket ownership (transport doesn't close
   on destroy)</div>
-<p class="Pp">Definition at line <b>344</b> of file <b>tcp/transport.c</b>.</p>
-<pre>344                                                                                                              {
-345   if (!name) {
-346     SET_ERRNO(ERROR_INVALID_STATE, &quot;Transport name is required&quot;);
-347     return NULL;
-348   }
-349 
-350   if (sockfd == INVALID_SOCKET_VALUE) {
-351     log_error(&quot;[TCP_CREATE_STATE] &#x274C; INVALID_SOCKET: sockfd=%d&quot;, sockfd);
-352     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket descriptor&quot;);
-353     return NULL;
-354   }
-355 
-356   log_info(&quot;[TCP_CREATE_STATE] &#x1F7E2; CREATE_START: sockfd=%d, crypto=%s&quot;, sockfd, crypto_ctx ? &quot;yes&quot; : &quot;no&quot;);
-357 
-358   // Allocate transport structure
-359   acip_transport_t *transport = SAFE_MALLOC(sizeof(acip_transport_t), acip_transport_t *);
-360   if (!transport) {
-361     log_error(&quot;[TCP_CREATE_STATE] &#x274C; ALLOC_TRANSPORT_FAILED: size=%zu&quot;, sizeof(acip_transport_t));
-362     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate TCP transport&quot;);
-363     return NULL;
-364   }
-365 
-366   log_debug(&quot;[TCP_CREATE_STATE] &#x1F7E2; TRANSPORT_ALLOCATED: transport=%p&quot;, (void *)transport);
-367 
-368   // Allocate TCP-specific data
-369   tcp_transport_data_t *tcp_data = SAFE_MALLOC(sizeof(tcp_transport_data_t), tcp_transport_data_t *);
-370   if (!tcp_data) {
-371     log_error(&quot;[TCP_CREATE_STATE] &#x274C; ALLOC_TCP_DATA_FAILED: size=%zu&quot;, sizeof(tcp_transport_data_t));
-372     SAFE_FREE(transport);
-373     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate TCP transport data&quot;);
-374     return NULL;
-375   }
-376 
-377   log_debug(&quot;[TCP_CREATE_STATE] &#x1F7E2; TCP_DATA_ALLOCATED: tcp_data=%p&quot;, (void *)tcp_data);
-378 
-379   // Initialize TCP data
-380   tcp_data-&gt;sockfd = sockfd;
-381   tcp_data-&gt;is_connected = true;
-382 
-383   // Initialize send mutex to protect concurrent sends from multiple threads
-384   int mutex_result = mutex_init(&amp;tcp_data-&gt;send_mutex, &quot;tcp_send&quot;);
-385   if (mutex_result != 0) {
-386     log_error(&quot;[TCP_CREATE_STATE] &#x274C; MUTEX_INIT_FAILED: result=%d&quot;, mutex_result);
-387     SAFE_FREE(tcp_data);
-388     SAFE_FREE(transport);
-389     SET_ERRNO(ERROR_MEMORY, &quot;Failed to initialize send mutex&quot;);
-390     return NULL;
-391   }
-392 
-393   log_info(&quot;[TCP_CREATE_STATE] &#x1F7E2; TCP_DATA_INITIALIZED: sockfd=%d, is_connected=true, send_mutex=initialized&quot;, sockfd);
-394 
-395   // Enable TCP_NODELAY to disable Nagle's algorithm
-396   // This ensures small packets are sent immediately instead of being buffered
-397   int nodelay = 1;
-398   if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (const char *)&amp;nodelay, sizeof(nodelay)) &lt; 0) {
-399     log_warn(&quot;[TCP_CREATE_STATE] &#x26A0;&#xFE0F;  TCP_NODELAY_FAILED: sockfd=%d, %s&quot;, sockfd, SAFE_STRERROR(errno));
-400     // Continue anyway - this is not fatal
-401   } else {
-402     log_debug(&quot;[TCP_CREATE_STATE] &#x1F7E2; TCP_NODELAY_SET: sockfd=%d&quot;, sockfd);
-403   }
-404 
-405   // Initialize transport
-406   transport-&gt;methods = &amp;tcp_methods;
-407   transport-&gt;crypto_ctx = crypto_ctx;
-408   transport-&gt;impl_data = tcp_data;
+<p class="Pp">Definition at line <b>386</b> of file <b>tcp/transport.c</b>.</p>
+<pre>386                                                                                                              {
+387   if (!name) {
+388     SET_ERRNO(ERROR_INVALID_STATE, &quot;Transport name is required&quot;);
+389     return NULL;
+390   }
+391 
+392   if (sockfd == INVALID_SOCKET_VALUE) {
+393     log_error(&quot;[TCP_CREATE_STATE] &#x274C; INVALID_SOCKET: sockfd=%d&quot;, sockfd);
+394     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket descriptor&quot;);
+395     return NULL;
+396   }
+397 
+398   log_info(&quot;[TCP_CREATE_STATE] &#x1F7E2; CREATE_START: sockfd=%d, crypto=%s&quot;, sockfd, crypto_ctx ? &quot;yes&quot; : &quot;no&quot;);
+399 
+400   // Allocate transport structure
+401   acip_transport_t *transport = SAFE_MALLOC(sizeof(acip_transport_t), acip_transport_t *);
+402   if (!transport) {
+403     log_error(&quot;[TCP_CREATE_STATE] &#x274C; ALLOC_TRANSPORT_FAILED: size=%zu&quot;, sizeof(acip_transport_t));
+404     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate TCP transport&quot;);
+405     return NULL;
+406   }
+407 
+408   log_debug(&quot;[TCP_CREATE_STATE] &#x1F7E2; TRANSPORT_ALLOCATED: transport=%p&quot;, (void *)transport);
 409 
-410   // Register transport and impl_data before logging so named replacements work
-411   NAMED_REGISTER_TRANSPORT(transport, name, NULL);
-412   NAMED_REGISTER(tcp_data, &quot;impl&quot;, &quot;tcp_impl&quot;, &quot;0x%tx&quot;, (uintptr_t)(const void *)(transport));
-413 
-414   log_info(&quot;[TCP_CREATE_STATE] &#x2705; CREATE_COMPLETE: transport=%p, sockfd=%d, is_connected=true, crypto=%s&quot;,
-415            (void *)transport, sockfd, crypto_ctx ? &quot;enabled&quot; : &quot;disabled&quot;);
-416 
-417   return transport;
-418 }</pre>
+410   // Allocate TCP-specific data
+411   tcp_transport_data_t *tcp_data = SAFE_MALLOC(sizeof(tcp_transport_data_t), tcp_transport_data_t *);
+412   if (!tcp_data) {
+413     log_error(&quot;[TCP_CREATE_STATE] &#x274C; ALLOC_TCP_DATA_FAILED: size=%zu&quot;, sizeof(tcp_transport_data_t));
+414     SAFE_FREE(transport);
+415     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate TCP transport data&quot;);
+416     return NULL;
+417   }
+418 
+419   log_debug(&quot;[TCP_CREATE_STATE] &#x1F7E2; TCP_DATA_ALLOCATED: tcp_data=%p&quot;, (void *)tcp_data);
+420 
+421   // Initialize TCP data
+422   tcp_data-&gt;sockfd = sockfd;
+423   tcp_data-&gt;is_connected = true;
+424 
+425   // Initialize send mutex to protect concurrent sends from multiple threads
+426   int mutex_result = mutex_init(&amp;tcp_data-&gt;send_mutex, &quot;tcp_send&quot;);
+427   if (mutex_result != 0) {
+428     log_error(&quot;[TCP_CREATE_STATE] &#x274C; MUTEX_INIT_FAILED: result=%d&quot;, mutex_result);
+429     SAFE_FREE(tcp_data);
+430     SAFE_FREE(transport);
+431     SET_ERRNO(ERROR_MEMORY, &quot;Failed to initialize send mutex&quot;);
+432     return NULL;
+433   }
+434 
+435   log_info(&quot;[TCP_CREATE_STATE] &#x1F7E2; TCP_DATA_INITIALIZED: sockfd=%d, is_connected=true, send_mutex=initialized&quot;, sockfd);
+436 
+437   // Enable TCP_NODELAY to disable Nagle's algorithm
+438   // This ensures small packets are sent immediately instead of being buffered
+439   int nodelay = 1;
+440   if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (const char *)&amp;nodelay, sizeof(nodelay)) &lt; 0) {
+441     log_warn(&quot;[TCP_CREATE_STATE] &#x26A0;&#xFE0F;  TCP_NODELAY_FAILED: sockfd=%d, %s&quot;, sockfd, SAFE_STRERROR(errno));
+442     // Continue anyway - this is not fatal
+443   } else {
+444     log_debug(&quot;[TCP_CREATE_STATE] &#x1F7E2; TCP_NODELAY_SET: sockfd=%d&quot;, sockfd);
+445   }
+446 
+447   // Initialize transport
+448   transport-&gt;methods = &amp;tcp_methods;
+449   transport-&gt;crypto_ctx = crypto_ctx;
+450   transport-&gt;impl_data = tcp_data;
+451 
+452   // Register transport and impl_data before logging so named replacements work
+453   NAMED_REGISTER_TRANSPORT(transport, name, NULL);
+454   NAMED_REGISTER(tcp_data, &quot;impl&quot;, &quot;tcp_impl&quot;, &quot;0x%tx&quot;, (uintptr_t)(const void *)(transport));
+455 
+456   log_info(&quot;[TCP_CREATE_STATE] &#x2705; CREATE_COMPLETE: transport=%p, sockfd=%d, is_connected=true, crypto=%s&quot;,
+457            (void *)transport, sockfd, crypto_ctx ? &quot;enabled&quot; : &quot;disabled&quot;);
+458 
+459   return transport;
+460 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_transport::crypto_ctx</b>, <b>errno</b>,
@@ -181,55 +181,55 @@
 <p class="Pp"></p>
 <p class="Pp">Safe to pass NULL</p>
 </div>
-<p class="Pp">Definition at line <b>424</b> of file <b>tcp/transport.c</b>.</p>
-<pre>424                                                          {
-425   if (!transport) {
-426     log_debug(&quot;[TRANSPORT_DESTROY] &#x26A0;&#xFE0F;  NULL_TRANSPORT: nothing to destroy&quot;);
-427     return;
-428   }
-429 
-430   log_warn(&quot;[TRANSPORT_DESTROY] &#x1F534; DESTROY_START: transport=%p, impl_data=%p&quot;, (void *)transport, transport-&gt;impl_data);
-431 
-432   // Get type before we destroy for logging
-433   acip_transport_type_t type = 0;
-434   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;get_type) {
-435     type = transport-&gt;methods-&gt;get_type(transport);
-436     log_info(&quot;[TRANSPORT_DESTROY] &#x1F4CB; TRANSPORT_TYPE: type=%d (1=TCP, 2=WebSocket, 3=WebRTC, ...)&quot;, type);
-437   }
-438 
-439   // Close if still connected
-440   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;close &amp;&amp; transport-&gt;methods-&gt;is_connected &amp;&amp;
-441       transport-&gt;methods-&gt;is_connected(transport)) {
-442     log_warn(&quot;[TRANSPORT_DESTROY] &#x1F534; STILL_CONNECTED: calling close() first (type=%d)&quot;, type);
-443     asciichat_error_t close_result = transport-&gt;methods-&gt;close(transport);
-444     log_info(&quot;[TRANSPORT_DESTROY] &#x1F534; CLOSE_CALLED: result=%d&quot;, close_result != ASCIICHAT_OK ? -1 : 0);
-445   } else {
-446     log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; ALREADY_CLOSED: skipping close (type=%d)&quot;, type);
-447   }
-448 
-449   // Call custom destroy implementation if provided
-450   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;destroy_impl) {
-451     log_info(&quot;[TRANSPORT_DESTROY] &#x1F527; CALLING_DESTROY_IMPL: type=%d&quot;, type);
-452     transport-&gt;methods-&gt;destroy_impl(transport);
-453     log_info(&quot;[TRANSPORT_DESTROY] &#x2705; DESTROY_IMPL_COMPLETE: type=%d&quot;, type);
-454   } else {
-455     log_debug(&quot;[TRANSPORT_DESTROY] &#x23ED;&#xFE0F;  NO_CUSTOM_DESTROY: type=%d (using generic cleanup)&quot;, type);
-456   }
-457 
-458   // Free implementation data
-459   if (transport-&gt;impl_data) {
-460     log_debug(&quot;[TRANSPORT_DESTROY] &#x1F5D1;&#xFE0F;  FREEING_IMPL_DATA: %p&quot;, transport-&gt;impl_data);
-461     NAMED_UNREGISTER(transport-&gt;impl_data);
-462     SAFE_FREE(transport-&gt;impl_data);
-463     log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; IMPL_DATA_FREED&quot;);
-464   }
-465 
-466   // Free transport structure
-467   log_debug(&quot;[TRANSPORT_DESTROY] &#x1F5D1;&#xFE0F;  FREEING_TRANSPORT: %p&quot;, (void *)transport);
-468   SAFE_FREE(transport);
-469 
-470   log_warn(&quot;[TRANSPORT_DESTROY] &#x2705; DESTROY_COMPLETE: type=%d&quot;, type);
-471 }</pre>
+<p class="Pp">Definition at line <b>466</b> of file <b>tcp/transport.c</b>.</p>
+<pre>466                                                          {
+467   if (!transport) {
+468     log_debug(&quot;[TRANSPORT_DESTROY] &#x26A0;&#xFE0F;  NULL_TRANSPORT: nothing to destroy&quot;);
+469     return;
+470   }
+471 
+472   log_warn(&quot;[TRANSPORT_DESTROY] &#x1F534; DESTROY_START: transport=%p, impl_data=%p&quot;, (void *)transport, transport-&gt;impl_data);
+473 
+474   // Get type before we destroy for logging
+475   acip_transport_type_t type = 0;
+476   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;get_type) {
+477     type = transport-&gt;methods-&gt;get_type(transport);
+478     log_info(&quot;[TRANSPORT_DESTROY] &#x1F4CB; TRANSPORT_TYPE: type=%d (1=TCP, 2=WebSocket, 3=WebRTC, ...)&quot;, type);
+479   }
+480 
+481   // Close if still connected
+482   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;close &amp;&amp; transport-&gt;methods-&gt;is_connected &amp;&amp;
+483       transport-&gt;methods-&gt;is_connected(transport)) {
+484     log_warn(&quot;[TRANSPORT_DESTROY] &#x1F534; STILL_CONNECTED: calling close() first (type=%d)&quot;, type);
+485     asciichat_error_t close_result = transport-&gt;methods-&gt;close(transport);
+486     log_info(&quot;[TRANSPORT_DESTROY] &#x1F534; CLOSE_CALLED: result=%d&quot;, close_result != ASCIICHAT_OK ? -1 : 0);
+487   } else {
+488     log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; ALREADY_CLOSED: skipping close (type=%d)&quot;, type);
+489   }
+490 
+491   // Call custom destroy implementation if provided
+492   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;destroy_impl) {
+493     log_info(&quot;[TRANSPORT_DESTROY] &#x1F527; CALLING_DESTROY_IMPL: type=%d&quot;, type);
+494     transport-&gt;methods-&gt;destroy_impl(transport);
+495     log_info(&quot;[TRANSPORT_DESTROY] &#x2705; DESTROY_IMPL_COMPLETE: type=%d&quot;, type);
+496   } else {
+497     log_debug(&quot;[TRANSPORT_DESTROY] &#x23ED;&#xFE0F;  NO_CUSTOM_DESTROY: type=%d (using generic cleanup)&quot;, type);
+498   }
+499 
+500   // Free implementation data
+501   if (transport-&gt;impl_data) {
+502     log_debug(&quot;[TRANSPORT_DESTROY] &#x1F5D1;&#xFE0F;  FREEING_IMPL_DATA: %p&quot;, transport-&gt;impl_data);
+503     NAMED_UNREGISTER(transport-&gt;impl_data);
+504     SAFE_FREE(transport-&gt;impl_data);
+505     log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; IMPL_DATA_FREED&quot;);
+506   }
+507 
+508   // Free transport structure
+509   log_debug(&quot;[TRANSPORT_DESTROY] &#x1F5D1;&#xFE0F;  FREEING_TRANSPORT: %p&quot;, (void *)transport);
+510   SAFE_FREE(transport);
+511 
+512   log_warn(&quot;[TRANSPORT_DESTROY] &#x2705; DESTROY_COMPLETE: type=%d&quot;, type);
+513 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -240,7 +240,7 @@
     <b>log_info</b>, <b>log_warn</b>, <b>acip_transport::methods</b>,
     <b>NAMED_UNREGISTER</b>, and <b>SAFE_FREE</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>connection_attempt_tcp()</b>, <b>connection_context_cleanup()</b>,
+    <b>connection_attempt_tcp()</b>, <b>connection_handle_cleanup()</b>,
     <b>discovery_session_destroy()</b>, <b>remove_client()</b>,
     <b>server_connection_close()</b>, <b>server_connection_establish()</b>,
     <b>server_connection_set_transport()</b>, and <b>server_main()</b>.</p>

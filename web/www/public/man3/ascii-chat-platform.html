@@ -33,8 +33,8 @@
 <p class="Pp">platform - Platform Abstractions</p>
 <p class="Pp">
   <br/>
-   - &#x1F50C; Cross-platform abstractions for threading, sockets, and system
-    calls, and hardware access</p>
+   - Cross-platform abstractions for threading, sockets, system calls, and
+    hardware access.</p>
 <p class="Pp"></p>
 </section>
 <section class="Sh">
@@ -1390,8 +1390,8 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">&#x1F50C; Cross-platform abstractions for threading, sockets, and
-    system calls, and hardware access</p>
+<p class="Pp">Cross-platform abstractions for threading, sockets, system calls,
+    and hardware access.</p>
 <p class="Pp">Provides platform-independent functions for locating and
     connecting to:</p>
 <ul class="Bl-bullet">
@@ -2346,7 +2346,7 @@ if (ready &gt; 0) {
   <b>attribute</b>((aligned))).</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>x</i> Alignment in bytes (must be power of 2)</div>
-<p class="Pp">Definition at line <b>168</b> of file <b>abstraction.h</b>.</p>
+<p class="Pp">Definition at line <b>192</b> of file <b>abstraction.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ASCIICHAT_API___"><a class="permalink" href="#_define_ASCIICHAT_API___">#define
@@ -2623,12 +2623,8 @@ if (ready &gt; 0) {
     <b>client_audio_render_thread()</b>, <b>client_receive_thread()</b>,
     <b>client_send_thread_func()</b>, <b>client_video_render_thread()</b>,
     <b>connect_with_timeout()</b>, <b>connection_attempt_tcp()</b>,
-    <b>crypto_client_initiate_rekey()</b>,
-    <b>crypto_client_send_rekey_complete()</b>,
-    <b>crypto_client_send_rekey_response()</b>,
     <b>disconnect_client_for_bad_data()</b>,
     <b>discovery_session_check_host_alive()</b>,
-    <b>discovery_session_create()</b>, <b>discovery_session_destroy()</b>,
     <b>discovery_session_process()</b>,
     <b>handle_client_capabilities_packet()</b>,
     <b>handle_client_join_packet()</b>, <b>handle_image_frame_h265_packet()</b>,
@@ -2935,7 +2931,7 @@ if (ready &gt; 0) {
 } PACKED_ATTR packed_struct_t;
 </pre>
 </div>
-<p class="Pp">Definition at line <b>161</b> of file <b>abstraction.h</b>.</p>
+<p class="Pp">Definition at line <b>185</b> of file <b>abstraction.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_PACKED_STRUCT_BEGIN"><a class="permalink" href="#_define_PACKED_STRUCT_BEGIN">#define
@@ -2943,7 +2939,7 @@ if (ready &gt; 0) {
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/abstraction.h</b>&gt;<b></b></p>
 <p class="Pp">Begin a packed structure (POSIX: no-op, uses attribute).</p>
-<p class="Pp">Definition at line <b>143</b> of file <b>abstraction.h</b>.</p>
+<p class="Pp">Definition at line <b>167</b> of file <b>abstraction.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_PACKED_STRUCT_END"><a class="permalink" href="#_define_PACKED_STRUCT_END">#define
@@ -2951,7 +2947,7 @@ if (ready &gt; 0) {
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/abstraction.h</b>&gt;<b></b></p>
 <p class="Pp">End a packed structure (POSIX: no-op, uses attribute).</p>
-<p class="Pp">Definition at line <b>145</b> of file <b>abstraction.h</b>.</p>
+<p class="Pp">Definition at line <b>169</b> of file <b>abstraction.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_PATH_DELIM___'/'"><a class="permalink" href="#_define_PATH_DELIM___'/'">#define
@@ -3077,7 +3073,7 @@ if (ready &gt; 0) {
 printf(&quot;Usage: %s [options]\n&quot;, binary_name);
 </pre>
 </div>
-<p class="Pp">Definition at line <b>664</b> of file <b>abstraction.h</b>.</p>
+<p class="Pp">Definition at line <b>687</b> of file <b>abstraction.h</b>.</p>
 <p class="Pp">Referenced by <b>options_config_calculate_max_col_width()</b>.</p>
 </section>
 <section class="Ss">
@@ -3179,7 +3175,7 @@ printf(&quot;Usage: %s [options]\n&quot;, binary_name);
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/abstraction.h</b>&gt;<b></b></p>
 <p class="Pp">Platform detection: 1 on POSIX, 0 on Windows.</p>
-<p class="Pp">Definition at line <b>71</b> of file <b>abstraction.h</b>.</p>
+<p class="Pp">Definition at line <b>95</b> of file <b>abstraction.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_PLATFORM_SHELL_NULL_REDIRECT___'2_/dev/null'"><a class="permalink" href="#_define_PLATFORM_SHELL_NULL_REDIRECT___'2_/dev/null'">#define
@@ -3202,7 +3198,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
               // On Unix: gpg --export 0x... 2&gt;/dev/null
 </pre>
 </div>
-<p class="Pp">Definition at line <b>686</b> of file <b>abstraction.h</b>.</p>
+<p class="Pp">Definition at line <b>709</b> of file <b>abstraction.h</b>.</p>
 <p class="Pp">Referenced by <b>check_gpg_key_expiry()</b>,
     <b>gpg_get_public_key()</b>, and <b>parse_gpg_keys_from_response()</b>.</p>
 </section>
@@ -3243,7 +3239,7 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/platform/abstraction.h</b>&gt;<b></b></p>
 <p class="Pp">Platform detection: 1 on Windows, 0 on POSIX.</p>
-<p class="Pp">Definition at line <b>69</b> of file <b>abstraction.h</b>.</p>
+<p class="Pp">Definition at line <b>93</b> of file <b>abstraction.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_PROMPT_OPTS_DEFAULT___("><a class="permalink" href="#_define_PROMPT_OPTS_DEFAULT___(">#define
@@ -4007,10 +4003,10 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>audio_destroy()</b>, <b>audio_stop_duplex()</b>,
-    <b>discover_session_parallel()</b>, <b>discovery_session_destroy()</b>,
-    <b>ffmpeg_decoder_destroy()</b>, <b>parallel_connect()</b>,
-    <b>remove_client()</b>, <b>server_main()</b>, <b>session_host_start()</b>,
-    <b>session_host_stop()</b>, <b>session_host_stop_render()</b>,
+    <b>discover_session_parallel()</b>, <b>ffmpeg_decoder_destroy()</b>,
+    <b>parallel_connect()</b>, <b>remove_client()</b>, <b>server_main()</b>,
+    <b>session_host_start()</b>, <b>session_host_stop()</b>,
+    <b>session_host_stop_render()</b>,
     <b>session_participant_stop_audio_capture()</b>,
     <b>session_participant_stop_video_capture()</b>,
     <b>session_pipeline_create()</b>, <b>splash_wait_for_animation()</b>,
@@ -4044,9 +4040,10 @@ system(cmd);  // On Windows: gpg --export 0x... 2&gt;nul
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>acds_main()</b>, <b>audio_start_thread()</b>,
-    <b>debug_sync_cleanup_thread()</b>, <b>ffmpeg_decoder_stop_prefetch()</b>,
-    <b>server_main()</b>, <b>session_pipeline_destroy()</b>,
-    <b>splash_wait_for_animation()</b>, and <b>thread_pool_stop_all()</b>.</p>
+    <b>debug_sync_cleanup_thread()</b>, <b>discovery_session_destroy()</b>,
+    <b>ffmpeg_decoder_stop_prefetch()</b>, <b>server_main()</b>,
+    <b>session_pipeline_destroy()</b>, <b>splash_wait_for_animation()</b>, and
+    <b>thread_pool_stop_all()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>thread_id_t</b> asciichat_thread_self (void )</h2>
@@ -5790,7 +5787,7 @@ for (int i = 0; i &lt; count; i++) {
 92 #ifdef HAVE_LIBSYSTEMD
 93   if (g_inhibit_fd &gt;= 0) {
 94     close(g_inhibit_fd);
-95     log_debug(&quot;Keepawake disabled (closed inhibit fd: %d)&quot;, g_inhibit_fd);
+95     log_debug(&quot;Keepawake disabled, closed inhibit fd=%d&quot;, g_inhibit_fd);
 96     // Unregister from named registry after logging
 97     NAMED_UNREGISTER_FD(g_inhibit_fd);
 98     g_inhibit_fd = -1;
@@ -5890,7 +5887,7 @@ for (int i = 0; i &lt; count; i++) {
 78   // Register the inhibit fd with the named registry for debug logging
 79   NAMED_REGISTER_FD(g_inhibit_fd, &quot;inhibit&quot;);
 80 
-81   log_debug(&quot;Keepawake enabled via systemd-inhibit (fd: %d)&quot;, g_inhibit_fd);
+81   log_debug(&quot;Keepawake enabled via systemd-inhibit fd=%d&quot;, g_inhibit_fd);
 82   return ASCIICHAT_OK;
 83 
 84 #else
@@ -6003,6 +6000,17 @@ if (exit_code == 0) {
 <p class="Pp"></p>
 <p class="Pp">More secure than system() as it doesn't invoke a shell</p>
 </div>
+<p class="Pp">Definition at line <b>20</b> of file
+    <b>platform/wasm/stubs/network.c</b>.</p>
+<pre>21                                                                          {
+22   (void)executable;
+23   (void)argv;
+24   (void)output_buffer;
+25   (void)output_size;
+26   return -1; // No subprocess support in WASM
+27 }</pre>
+<pre></pre>
+<p class="Pp"></p>
 <p class="Pp">Referenced by <b>gpg_sign_with_key()</b>,
     <b>update_check_get_upgrade_suggestion()</b>, and
     <b>yt_dlp_is_available()</b>.</p>
@@ -6206,10 +6214,10 @@ if (platform_find_config_file(&quot;config.toml&quot;, &amp;list) == ASCIICHAT_O
 <p class="Pp"></p>
 <p class="Pp">Use this sparingly - prefer normal exit() whenever possible.</p>
 </div>
-<p class="Pp">Definition at line <b>133</b> of file <b>misc.c</b>.</p>
-<pre>133                                         {
-134   (void)exit_code;
-135 }</pre>
+<p class="Pp">Definition at line <b>125</b> of file <b>misc.c</b>.</p>
+<pre>125                                         {
+126   (void)exit_code;
+127 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_main()</b>.</p>
@@ -6551,8 +6559,8 @@ if (platform_get_executable_path(exe_path, sizeof(exe_path))) {
 48 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>backtrace_print()</b>,
-    <b>discovery_session_process()</b>, <b>server_main()</b>,
+<p class="Pp">Referenced by <b>backtrace_print()</b>, <b>client_main()</b>,
+    <b>discovery_session_process()</b>, <b>main()</b>, <b>server_main()</b>,
     <b>terminal_screen_render()</b>, <b>ui_status_update()</b>, and
     <b>webrtc_is_gathering_timed_out()</b>.</p>
 </section>
@@ -6931,10 +6939,10 @@ platform_install_crash_handler(my_crash_handler);
   possible</div>
 <p class="Pp">Use this to check before calling prompt functions in contexts
     where non-interactive operation is acceptable (e.g., scripted usage).</p>
-<p class="Pp">Definition at line <b>352</b> of file <b>comprehensive.c</b>.</p>
-<pre>352                                    {
-353   return false;
-354 }</pre>
+<p class="Pp">Definition at line <b>348</b> of file <b>comprehensive.c</b>.</p>
+<pre>348                                    {
+349   return false;
+350 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
@@ -8054,10 +8062,10 @@ platform_register_signal_handlers(handlers, 2);
 <p class="Pp"></p>
 <p class="Pp">POSIX systems return ASCIICHAT_OK but do nothing</p>
 </div>
-<p class="Pp">Definition at line <b>111</b> of file <b>misc.c</b>.</p>
-<pre>111                                                           {
-112   return ASCIICHAT_OK;
-113 }</pre>
+<p class="Pp">Definition at line <b>103</b> of file <b>misc.c</b>.</p>
+<pre>103                                                           {
+104   return ASCIICHAT_OK;
+105 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
@@ -8123,12 +8131,12 @@ platform_register_signal_handlers(handlers, 2);
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Previous signal handler, or SIG_ERR on error</div>
 <p class="Pp">Registers a signal handler for the specified signal.</p>
-<p class="Pp">Definition at line <b>127</b> of file <b>misc.c</b>.</p>
-<pre>127                                                                     {
-128   (void)sig;
-129   (void)handler;
-130   return NULL;
-131 }</pre>
+<p class="Pp">Definition at line <b>119</b> of file <b>misc.c</b>.</p>
+<pre>119                                                                     {
+120   (void)sig;
+121   (void)handler;
+122   return NULL;
+123 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>client_main()</b>, <b>main()</b>,
@@ -8169,10 +8177,11 @@ platform_register_signal_handlers(handlers, 2);
 29 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>acds_server_shutdown()</b>,
+<p class="Pp">Referenced by <b>acds_server_shutdown()</b>, <b>client_main()</b>,
     <b>client_receive_thread()</b>, <b>client_video_render_thread()</b>,
     <b>disconnect_client_for_bad_data()</b>, <b>discovery_session_process()</b>,
-    <b>session_client_like_run()</b>, and <b>ui_mdns_select()</b>.</p>
+    <b>main()</b>, <b>session_client_like_run()</b>, and
+    <b>ui_mdns_select()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_platform_sleep_ns_("><a class="permalink" href="#void_platform_sleep_ns_(">void
@@ -8495,6 +8504,29 @@ platform_stderr_restore(handle);        // stderr restored
 <i>src</i> Source string</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on error</div>
+<p class="Pp">Definition at line <b>92</b> of file
+    <b>platform/wasm/string.c</b>.</p>
+<pre>92                                                                                  {
+93   if (!dest || !src) {
+94     return ERROR_INVALID_PARAM;
+95   }
+96   if (dest_size == 0) {
+97     return ERROR_INVALID_PARAM;
+98   }
+99 
+100   size_t src_len = strlen(src);
+101   if (src_len &gt;= dest_size) {
+102     return ERROR_INVALID_PARAM;
+103   }
+104 
+105   strncpy(dest, src, dest_size - 1);
+106   dest[dest_size - 1] = '\0';
+107   return ASCIICHAT_OK;
+108 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, and
+  <b>ERROR_INVALID_PARAM</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_*_platform_strdup_(const_char_*_s)"><a class="permalink" href="#char_*_platform_strdup_(const_char_*_s)">char
@@ -8986,8 +9018,8 @@ platform_stderr_restore(handle);        // stderr restored
     <b>log_json_async_safe()</b>, <b>log_search_render_input_line()</b>,
     <b>session_client_like_run()</b>,
     <b>session_display_render_fps_overlay()</b>,
-    <b>session_display_write_ascii()</b>, <b>session_display_write_raw()</b>,
-    and <b>terminal_screen_render()</b>.</p>
+    <b>session_display_write_ascii()</b>, and
+    <b>session_display_write_raw()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_rwlock_destroy_("><a class="permalink" href="#int_rwlock_destroy_(">int
@@ -9670,11 +9702,10 @@ platform_stderr_restore(handle);        // stderr restored
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>acds_client_disconnect()</b>,
     <b>acds_client_handler()</b>, <b>disconnect_client_for_bad_data()</b>,
-    <b>discovery_session_destroy()</b>, <b>https_get()</b>,
-    <b>parallel_connect()</b>, <b>remove_client()</b>, <b>server_main()</b>,
-    <b>session_host_destroy()</b>, <b>session_host_remove_client()</b>,
-    <b>session_host_start()</b>, <b>session_host_stop()</b>,
-    <b>session_participant_destroy()</b>,
+    <b>https_get()</b>, <b>parallel_connect()</b>, <b>remove_client()</b>,
+    <b>server_main()</b>, <b>session_host_destroy()</b>,
+    <b>session_host_remove_client()</b>, <b>session_host_start()</b>,
+    <b>session_host_stop()</b>, <b>session_participant_destroy()</b>,
     <b>session_participant_disconnect()</b>, <b>tcp_server_destroy()</b>,
     <b>tcp_server_reject_client()</b>, and <b>tcp_server_run()</b>.</p>
 </section>
@@ -9775,8 +9806,7 @@ if (!socket_is_valid(sock)) {
     return false;
 }
 </pre>
-<p class="Pp">Referenced by <b>server_connection_establish()</b>, and
-    <b>tcp_client_connect()</b>.</p>
+<p class="Pp">Referenced by <b>tcp_client_connect()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_socket_fd_isset_("><a class="permalink" href="#int_socket_fd_isset_(">int
@@ -9827,7 +9857,6 @@ if (!socket_is_valid(sock)) {
 <div class="Bd-indent"><i>sock</i> Socket to query</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Error code (platform-specific)</div>
-<p class="Pp">Referenced by <b>server_connection_establish()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_socket_get_error_string_(void_)"><a class="permalink" href="#const_char_*_socket_get_error_string_(void_)">const
@@ -11536,11 +11565,11 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">On Windows, clears console screen buffer.</p>
 </div>
-<p class="Pp">Definition at line <b>83</b> of file <b>misc.c</b>.</p>
-<pre>83                                                     {
-84   (void)fd;
-85   return ASCIICHAT_OK;
-86 }</pre>
+<p class="Pp">Definition at line <b>76</b> of file <b>misc.c</b>.</p>
+<pre>76                                                     {
+77   (void)fd;
+78   return ASCIICHAT_OK;
+79 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
@@ -11847,11 +11876,11 @@ while (total_sent &lt; len) {
 <p class="Pp"></p>
 <p class="Pp">Terminal state is reset immediately.</p>
 </div>
-<p class="Pp">Definition at line <b>88</b> of file <b>misc.c</b>.</p>
-<pre>88                                          {
-89   (void)fd;
-90   return ASCIICHAT_OK;
-91 }</pre>
+<p class="Pp">Definition at line <b>81</b> of file <b>misc.c</b>.</p>
+<pre>81                                          {
+82   (void)fd;
+83   return ASCIICHAT_OK;
+84 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>

@@ -43,9 +43,7 @@
   <br/>
   void * <b>run_user_data</b>
   <br/>
-  <b>tcp_client_t</b> * <b>tcp_client</b>
-  <br/>
-  <b>websocket_client_t</b> * <b>websocket_client</b>
+  <b>session_client_like_kind_t</b> <b>kind</b>
   <br/>
   void * <b>discovery</b>
   <br/>
@@ -78,7 +76,7 @@
 <p class="Pp">All media, display, audio, FPS, and snapshot settings are read
     automatically from <b>GET_OPTION()</b> inside the function. Callers only
     provide the fields below that differ per mode.</p>
-<p class="Pp">Definition at line <b>109</b> of file <b>client_like.h</b>.</p>
+<p class="Pp">Definition at line <b>112</b> of file <b>client_like.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -97,7 +95,7 @@
       false</dd>
 </dl>
 <p class="Pp">NULL = use only the global <b>should_exit()</b>.</p>
-<p class="Pp">Definition at line <b>161</b> of file <b>client_like.h</b>.</p>
+<p class="Pp">Definition at line <b>153</b> of file <b>client_like.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void*_session_client_like_config::discovery"><a class="permalink" href="#void*_session_client_like_config::discovery">void*
@@ -107,14 +105,14 @@
     check, and the session will be stopped during teardown. NULL for mirror mode
     and TCP client mode. Cast from <b>discovery_session_t</b> * when used
     (include <b>src/discovery/session.h</b>).</p>
-<p class="Pp">Definition at line <b>145</b> of file <b>client_like.h</b>.</p>
+<p class="Pp">Definition at line <b>137</b> of file <b>client_like.h</b>.</p>
 <p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void*_session_client_like_config::exit_user_data"><a class="permalink" href="#void*_session_client_like_config::exit_user_data">void*
   session_client_like_config::exit_user_data</a></h2>
 <p class="Pp">User data for custom_should_exit callback</p>
-<p class="Pp">Definition at line <b>164</b> of file <b>client_like.h</b>.</p>
+<p class="Pp">Definition at line <b>156</b> of file <b>client_like.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>session_keyboard_handler_fn</b>
@@ -126,7 +124,14 @@
 <p class="Pp">Mirror and discovery modes use
     <b>session_handle_keyboard_input()</b>. Client mode may pass NULL (server
     drives display).</p>
-<p class="Pp">Definition at line <b>224</b> of file <b>client_like.h</b>.</p>
+<p class="Pp">Definition at line <b>216</b> of file <b>client_like.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>session_client_like_kind_t</b>
+  session_client_like_config::kind</h2>
+<p class="Pp">Explicit client-like mode kind.</p>
+<p class="Pp">Definition at line <b>128</b> of file <b>client_like.h</b>.</p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_session_client_like_config::max_reconnect_attempts"><a class="permalink" href="#int_session_client_like_config::max_reconnect_attempts">int
@@ -140,7 +145,7 @@
 <p class="Pp"></p>
 <p class="Pp">When run_fn returns non-OK, <b>session_client_like_run()</b>
     checks this to decide whether to retry or exit.</p>
-<p class="Pp">Definition at line <b>182</b> of file <b>client_like.h</b>.</p>
+<p class="Pp">Definition at line <b>174</b> of file <b>client_like.h</b>.</p>
 <p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
 </section>
 <section class="Ss">
@@ -150,7 +155,7 @@
 <p class="Pp"></p>
 <p class="Pp">Mirror mode: true. Client and discovery modes: false (server/host
     manages cursor).</p>
-<p class="Pp">Definition at line <b>237</b> of file <b>client_like.h</b>.</p>
+<p class="Pp">Definition at line <b>229</b> of file <b>client_like.h</b>.</p>
 <p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
 </section>
 <section class="Ss">
@@ -162,28 +167,28 @@
 <p class="Pp">Can be a fixed value (e.g., 1000 for 1 second) or exponential
     backoff. Modes with backoff can use should_reconnect_callback to calculate
     delay based on attempt number.</p>
-<p class="Pp">Definition at line <b>211</b> of file <b>client_like.h</b>.</p>
+<p class="Pp">Definition at line <b>203</b> of file <b>client_like.h</b>.</p>
 <p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void*_session_client_like_config::reconnect_user_data"><a class="permalink" href="#void*_session_client_like_config::reconnect_user_data">void*
   session_client_like_config::reconnect_user_data</a></h2>
 <p class="Pp">User data for should_reconnect_callback</p>
-<p class="Pp">Definition at line <b>201</b> of file <b>client_like.h</b>.</p>
+<p class="Pp">Definition at line <b>193</b> of file <b>client_like.h</b>.</p>
 <p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>session_client_like_run_fn</b>
   session_client_like_config::run_fn</h2>
 <p class="Pp">Mode-specific main loop callback (required, never NULL)</p>
-<p class="Pp">Definition at line <b>115</b> of file <b>client_like.h</b>.</p>
+<p class="Pp">Definition at line <b>118</b> of file <b>client_like.h</b>.</p>
 <p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void*_session_client_like_config::run_user_data"><a class="permalink" href="#void*_session_client_like_config::run_user_data">void*
   session_client_like_config::run_user_data</a></h2>
 <p class="Pp">User data passed to run_fn</p>
-<p class="Pp">Definition at line <b>118</b> of file <b>client_like.h</b>.</p>
+<p class="Pp">Definition at line <b>121</b> of file <b>client_like.h</b>.</p>
 <p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
 </section>
 <section class="Ss">
@@ -204,24 +209,7 @@
 <p class="Pp"></p>
 <p class="Pp">NULL = always attempt reconnection (unless max_reconnect_attempts
     reached).</p>
-<p class="Pp">Definition at line <b>198</b> of file <b>client_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>tcp_client_t</b>* session_client_like_config::tcp_client</h2>
-<p class="Pp">Active TCP transport for this session. When non-NULL, teardown
-    will shut it down gracefully as part of the cleanup sequence. NULL for
-    mirror mode and discovery participant mode.</p>
-<p class="Pp">Definition at line <b>129</b> of file <b>client_like.h</b>.</p>
-<p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>websocket_client_t</b>*
-  session_client_like_config::websocket_client</h2>
-<p class="Pp">Active WebSocket transport for this session. When non-NULL,
-    teardown will close it as part of the cleanup sequence. NULL for mirror mode
-    and TCP-only client mode.</p>
-<p class="Pp">Definition at line <b>136</b> of file <b>client_like.h</b>.</p>
+<p class="Pp">Definition at line <b>190</b> of file <b>client_like.h</b>.</p>
 <p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
 <p class="Pp"></p>
 </section>

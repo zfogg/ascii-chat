@@ -122,7 +122,7 @@
 <p class="Pp">State validation: Functions validate current state before
     proceeding. Invalid state transitions return ERROR_INVALID_STATE.</p>
 </div>
-<p class="Pp">Definition at line <b>70</b> of file
+<p class="Pp">Definition at line <b>72</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 </section>
 <section class="Sh">
@@ -133,7 +133,7 @@
   crypto_handshake_context_t::client_challenge_nonce[32]</h2>
 <p class="Pp">Mutual authentication (client challenges server) Client-generated
     nonce for server to prove knowledge of shared secret</p>
-<p class="Pp">Definition at line <b>109</b> of file
+<p class="Pp">Definition at line <b>111</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_complete()</b>, and
     <b>crypto_handshake_server_complete()</b>.</p>
@@ -142,7 +142,7 @@
 <h2 class="Ss"><b>public_key_t</b>
   crypto_handshake_context_t::client_ed25519_key</h2>
 <p class="Pp">Client's Ed25519 key (received during handshake)</p>
-<p class="Pp">Definition at line <b>100</b> of file
+<p class="Pp">Definition at line <b>102</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_server_auth_challenge()</b>, and
     <b>crypto_handshake_server_complete()</b>.</p>
@@ -151,7 +151,7 @@
 <h2 class="Ss"><b>bool</b>
   crypto_handshake_context_t::client_ed25519_key_verified</h2>
 <p class="Pp">Whether client's Ed25519 key was verified against whitelist</p>
-<p class="Pp">Definition at line <b>101</b> of file
+<p class="Pp">Definition at line <b>103</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_server_auth_challenge()</b>, and
     <b>crypto_handshake_server_complete()</b>.</p>
@@ -161,7 +161,7 @@
   crypto_handshake_context_t::client_gpg_key_id[41]</a></h2>
 <p class="Pp">Client's GPG key ID (8/16/40 hex chars + null terminator, for
     server verification)</p>
-<p class="Pp">Definition at line <b>84</b> of file
+<p class="Pp">Definition at line <b>86</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>.</p>
 </section>
@@ -169,14 +169,14 @@
 <h2 class="Ss" id="char_crypto_handshake_context_t::client_keys_path_4096_"><a class="permalink" href="#char_crypto_handshake_context_t::client_keys_path_4096_">char
   crypto_handshake_context_t::client_keys_path[4096]</a></h2>
 <p class="Pp">Server: client keys file path (whitelist)</p>
-<p class="Pp">Definition at line <b>95</b> of file
+<p class="Pp">Definition at line <b>97</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>private_key_t</b>
   crypto_handshake_context_t::client_private_key</h2>
 <p class="Pp">Client's Ed25519 private key (for signing challenges)</p>
-<p class="Pp">Definition at line <b>82</b> of file
+<p class="Pp">Definition at line <b>84</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_auth_response()</b>,
     <b>crypto_handshake_client_key_exchange()</b>, and
@@ -187,14 +187,14 @@
   crypto_handshake_context_t::client_public_key</h2>
 <p class="Pp">Client identity (client only) Client's Ed25519 public key (for
     authentication)</p>
-<p class="Pp">Definition at line <b>81</b> of file
+<p class="Pp">Definition at line <b>83</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_start()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> crypto_handshake_context_t::client_sent_identity</h2>
 <p class="Pp">Whether client provided an identity key during handshake</p>
-<p class="Pp">Definition at line <b>102</b> of file
+<p class="Pp">Definition at line <b>104</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_server_auth_challenge()</b>, and
     <b>crypto_handshake_server_complete()</b>.</p>
@@ -204,7 +204,7 @@
   crypto_handshake_context_t::client_whitelist</h2>
 <p class="Pp">Client whitelist (server only) Pointer to whitelist array (server
     only)</p>
-<p class="Pp">Definition at line <b>98</b> of file
+<p class="Pp">Definition at line <b>100</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_server_auth_challenge()</b>, and
     <b>server_crypto_handshake()</b>.</p>
@@ -214,7 +214,7 @@
   crypto_handshake_context_t::crypto_ctx</h2>
 <p class="Pp">Core cryptographic context Core crypto context (keys, encryption
     state)</p>
-<p class="Pp">Definition at line <b>72</b> of file
+<p class="Pp">Definition at line <b>74</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_auth_response()</b>,
     <b>crypto_handshake_client_complete()</b>,
@@ -243,7 +243,7 @@
 <h2 class="Ss" id="char_crypto_handshake_context_t::expected_server_key_256_"><a class="permalink" href="#char_crypto_handshake_context_t::expected_server_key_256_">char
   crypto_handshake_context_t::expected_server_key[256]</a></h2>
 <p class="Pp">Expected server key fingerprint (client only, for known_hosts)</p>
-<p class="Pp">Definition at line <b>83</b> of file
+<p class="Pp">Definition at line <b>85</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>.</p>
 </section>
@@ -251,14 +251,14 @@
 <h2 class="Ss"><b>bool</b> crypto_handshake_context_t::has_password</h2>
 <p class="Pp">Password authentication Whether password authentication is
   enabled</p>
-<p class="Pp">Definition at line <b>105</b> of file
+<p class="Pp">Definition at line <b>107</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_init_with_password()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> crypto_handshake_context_t::is_server</h2>
 <p class="Pp">True if this is the server side</p>
-<p class="Pp">Definition at line <b>74</b> of file
+<p class="Pp">Definition at line <b>76</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_init()</b>,
     <b>crypto_handshake_init_with_password()</b>, and
@@ -268,7 +268,7 @@
 <h2 class="Ss" id="size_t_crypto_handshake_context_t::num_whitelisted_clients"><a class="permalink" href="#size_t_crypto_handshake_context_t::num_whitelisted_clients">size_t
   crypto_handshake_context_t::num_whitelisted_clients</a></h2>
 <p class="Pp">Number of whitelisted clients</p>
-<p class="Pp">Definition at line <b>99</b> of file
+<p class="Pp">Definition at line <b>101</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_server_auth_challenge()</b>, and
     <b>server_crypto_handshake()</b>.</p>
@@ -278,14 +278,14 @@
   crypto_handshake_context_t::password[256]</a></h2>
 <p class="Pp">Password for authentication (temporary storage, cleared after
   use)</p>
-<p class="Pp">Definition at line <b>106</b> of file
+<p class="Pp">Definition at line <b>108</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_init_with_password()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> crypto_handshake_context_t::require_client_auth</h2>
 <p class="Pp">Server: require client authentication (whitelist)</p>
-<p class="Pp">Definition at line <b>93</b> of file
+<p class="Pp">Definition at line <b>95</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>,
     <b>crypto_handshake_init()</b>,
@@ -300,21 +300,21 @@
   crypto_handshake_context_t::server_hostname[256]</a></h2>
 <p class="Pp">Connection info for known_hosts Server hostname
   (user-provided)</p>
-<p class="Pp">Definition at line <b>87</b> of file
+<p class="Pp">Definition at line <b>89</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_crypto_handshake_context_t::server_ip_256_"><a class="permalink" href="#char_crypto_handshake_context_t::server_ip_256_">char
   crypto_handshake_context_t::server_ip[256]</a></h2>
 <p class="Pp">Server IP address (resolved from connection)</p>
-<p class="Pp">Definition at line <b>88</b> of file
+<p class="Pp">Definition at line <b>90</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> crypto_handshake_context_t::server_port</h2>
 <p class="Pp">Server port</p>
-<p class="Pp">Definition at line <b>89</b> of file
+<p class="Pp">Definition at line <b>91</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>.</p>
 </section>
@@ -322,9 +322,10 @@
 <h2 class="Ss"><b>private_key_t</b>
   crypto_handshake_context_t::server_private_key</h2>
 <p class="Pp">Server's long-term Ed25519 private key (for signing)</p>
-<p class="Pp">Definition at line <b>78</b> of file
+<p class="Pp">Definition at line <b>80</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
+    <b>acds_websocket_client_handler()</b>,
     <b>crypto_handshake_server_send_parameters()</b>,
     <b>crypto_handshake_server_start()</b>, and
     <b>server_crypto_handshake()</b>.</p>
@@ -334,16 +335,17 @@
   crypto_handshake_context_t::server_public_key</h2>
 <p class="Pp">Server identity (server only) Server's long-term Ed25519 public
     key (identity)</p>
-<p class="Pp">Definition at line <b>77</b> of file
+<p class="Pp">Definition at line <b>79</b> of file
     <b>crypto/handshake/common.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_handler()</b>, and
+<p class="Pp">Referenced by <b>acds_client_handler()</b>,
+    <b>acds_websocket_client_handler()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b>
   crypto_handshake_context_t::server_uses_client_auth</h2>
 <p class="Pp">Client: whether server requested client authentication</p>
-<p class="Pp">Definition at line <b>94</b> of file
+<p class="Pp">Definition at line <b>96</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>,
     <b>crypto_handshake_init()</b>, and
@@ -353,9 +355,10 @@
 <h2 class="Ss"><b>crypto_handshake_state_t</b>
   crypto_handshake_context_t::state</h2>
 <p class="Pp">Current handshake state (validated by each function)</p>
-<p class="Pp">Definition at line <b>73</b> of file
+<p class="Pp">Definition at line <b>75</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
+    <b>acds_websocket_client_handler()</b>,
     <b>crypto_handshake_client_auth_response()</b>,
     <b>crypto_handshake_client_complete()</b>,
     <b>crypto_handshake_client_key_exchange()</b>,
@@ -364,14 +367,14 @@
     <b>crypto_handshake_is_ready()</b>,
     <b>crypto_handshake_server_auth_challenge()</b>,
     <b>crypto_handshake_server_complete()</b>,
-    <b>crypto_handshake_server_start()</b>, <b>discovery_session_start()</b>,
-    and <b>server_crypto_handshake()</b>.</p>
+    <b>crypto_handshake_server_start()</b>, and
+    <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> crypto_handshake_context_t::verify_server_key</h2>
 <p class="Pp">Authentication configuration Client: verify server key against
     known_hosts</p>
-<p class="Pp">Definition at line <b>92</b> of file
+<p class="Pp">Definition at line <b>94</b> of file
     <b>crypto/handshake/common.h</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>,
     <b>crypto_handshake_init()</b>, and
