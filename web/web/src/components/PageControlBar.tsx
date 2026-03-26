@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import type { MediaSource } from "../hooks/useClientLike";
+import { MediaSourceType, type MediaSource } from "../hooks/useClientLike";
 
 interface PageControlBarProps {
   title?: string | undefined;
@@ -99,7 +99,7 @@ export function PageControlBar({
         </div>
         <div className="flex gap-2">
           {/* File playback controls (shown when playing a video file) */}
-          {isWebcamRunning && mediaSource === "file" && videoRef && (
+          {isWebcamRunning && mediaSource === MediaSourceType.FILE && videoRef && (
             <>
               <button
                 onClick={handleTogglePause}

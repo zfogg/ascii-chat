@@ -20,7 +20,8 @@ export interface UseClientLikeOptions {
   onDimensionsChange?: (dims: { cols: number; rows: number }) => void;
 }
 
-export type MediaSource = "webcam" | "file" | null;
+import { MediaSourceType, type MediaSource } from "@ascii-chat/shared/utils";
+export { MediaSourceType, type MediaSource };
 
 export interface UseClientLikeReturn {
   // Refs

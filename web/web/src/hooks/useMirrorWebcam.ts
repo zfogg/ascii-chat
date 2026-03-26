@@ -7,7 +7,7 @@ import {
   type MutableRefObject,
 } from "react";
 import type { SettingsConfig } from "../components";
-import type { MediaSource } from "./useClientLike";
+import { MediaSourceType, type MediaSource } from "./useClientLike";
 import {
   isWasmReady,
   setColorMode,
@@ -121,7 +121,7 @@ export function useMirrorWebcam({
         );
         lastFrameTimeRef.current = performance.now();
         setIsWebcamRunning(true);
-        setMediaSource("webcam");
+        setMediaSource(MediaSourceType.WEBCAM);
         console.timeEnd("[Mirror] Total startWebcam time");
         return;
       }
@@ -169,7 +169,7 @@ export function useMirrorWebcam({
 
       lastFrameTimeRef.current = performance.now();
       setIsWebcamRunning(true);
-      setMediaSource("webcam");
+      setMediaSource(MediaSourceType.WEBCAM);
       console.timeEnd("[Mirror] Total startWebcam time");
     } catch (err) {
       setError(`Failed to start webcam: ${String(err)}`);
@@ -316,7 +316,7 @@ export function useMirrorWebcam({
 
         lastFrameTimeRef.current = performance.now();
         setIsWebcamRunning(true);
-        setMediaSource("file");
+        setMediaSource(MediaSourceType.FILE);
         console.log("[Mirror] Video file playing");
       } catch (err) {
         setError(`Failed to play video file: ${String(err)}`);

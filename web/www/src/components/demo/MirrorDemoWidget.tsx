@@ -25,10 +25,12 @@ import {
   type AsciiRendererHandle,
   Heading,
 } from "@ascii-chat/shared/components";
+import {
+  MediaSourceType,
+  type MediaSource,
+} from "@ascii-chat/shared/utils";
 import { registerActiveDemo, unregisterActiveDemo } from "./activeDemo";
 import type { DemoOption } from "./types";
-
-type DemoSource = "webcam" | "demo" | null;
 
 interface MirrorDemoWidgetProps {
   demoOptions?: DemoOption[];
@@ -60,7 +62,7 @@ export default function MirrorDemoWidget({
   minHeight = 200,
   showHeader = true,
 }: MirrorDemoWidgetProps) {
-  const [source, setSource] = useState<DemoSource>(null);
+  const [source, setSource] = useState<MediaSource>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wasmReady, setWasmReady] = useState(false);
@@ -77,7 +79,7 @@ export default function MirrorDemoWidget({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const frameIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const sourceRef = useRef<DemoSource>(null);
+  const sourceRef = useRef<MediaSource>(null);
   const frameCountRef = useRef(0);
 
   const { captureFrame } = useCanvasCapture(videoRef, canvasRef);
@@ -181,8 +183,13 @@ export default function MirrorDemoWidget({
       setFlipX(sourceFlipX);
       setFlipY(false);
       applySelectedOption(sourceFlipX);
-      sourceRef.current = "webcam";
-      setSource("webcam");
+
+      if (termDims.cols > 0 && termDims.rows > 0) {
+        setDimensions(termDims.cols, termDims.rows);
+      }
+
+      sourceRef.current = MediaSourceType.WEBCAM;
+      setSource(MediaSourceType.WEBCAM);
     } catch (err) {
       setError(
         `Camera access failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -190,7 +197,7 @@ export default function MirrorDemoWidget({
     } finally {
       setLoading(false);
     }
-  }, [initWasm, stop, applySelectedOption]);
+  }, [initWasm, stop, applySelectedOption, termDims]);
 
   const startDemo = useCallback(async () => {
     setLoading(true);
@@ -278,9 +285,16 @@ export default function MirrorDemoWidget({
       setFlipX(sourceFlipX);
       setFlipY(false);
       applySelectedOption(sourceFlipX);
-      sourceRef.current = "demo";
+
+      // Re-sync terminal dimensions now that the video is playing,
+      // in case xterm measured dimensions before the layout settled
+      if (termDims.cols > 0 && termDims.rows > 0) {
+        setDimensions(termDims.cols, termDims.rows);
+      }
+
+      sourceRef.current = MediaSourceType.FILE;
       addDebugLog("Demo started successfully");
-      setSource("demo");
+      setSource(MediaSourceType.FILE);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       addDebugLog(`ERROR: ${errorMsg}`);
@@ -288,7 +302,7 @@ export default function MirrorDemoWidget({
     } finally {
       setLoading(false);
     }
-  }, [initWasm, stop, applySelectedOption, addDebugLog]);
+  }, [initWasm, stop, applySelectedOption, addDebugLog, termDims]);
 
   const togglePause = useCallback(() => {
     if (videoRef.current) {
@@ -321,7 +335,7 @@ export default function MirrorDemoWidget({
     (option: DemoOption) => {
       setSelectedOptionId(option.id);
       if (isWasmReady() && source) {
-        const sourceFlipX = source === "webcam";
+        const sourceFlipX = source === MediaSourceType.WEBCAM;
         applyDemoOption(option, sourceFlipX);
       }
     },
@@ -487,7 +501,7 @@ export default function MirrorDemoWidget({
                 </div>
               )}
               {hasOptions && selectedOption?.description && (
-                <p className="text-gray-400 text-xs text-center px-4">
+                <p className="text-gray-200 text-xs text-center px-2 py-1 bg-gray-800 rounded">
                   {selectedOption.description}
                 </p>
               )}
@@ -513,7 +527,7 @@ export default function MirrorDemoWidget({
 
           {source && (
             <>
-              {source === "demo" && (
+              {source === MediaSourceType.FILE && (
                 <div className="absolute bottom-2 right-2 flex gap-2 z-10 pointer-events-auto">
                   <button
                     onClick={togglePause}
