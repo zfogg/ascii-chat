@@ -355,6 +355,16 @@ if(USE_MUSL)
         -lm -lpthread
     )
 
+    # Link libvterm for terminal emulation in render-file
+    target_link_libraries(ascii-chat PRIVATE
+        ${MUSL_DEPS_DIR_STATIC}/libvterm/lib/libvterm.a
+    )
+
+    # Link FreeType for font rendering in render-file
+    target_link_libraries(ascii-chat PRIVATE
+        ${MUSL_DEPS_DIR_STATIC}/freetype/lib/libfreetype.a
+    )
+
     # Link FFmpeg for media file streaming (musl-built static libraries - required)
     target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LIBRARIES})
 

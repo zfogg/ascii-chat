@@ -7,7 +7,9 @@
 #include <ascii-chat/platform/font.h>
 #include <ascii-chat/font.h>
 #include <ascii-chat/log/log.h>
+#ifndef USE_MUSL
 #include <fontconfig/fontconfig.h>
+#endif
 #include <string.h>
 #include <sys/stat.h>
 #include <stddef.h>
@@ -24,6 +26,7 @@ static bool file_exists(const char *p) {
   return stat(p, &st) == 0;
 }
 
+#ifndef USE_MUSL
 static asciichat_error_t resolve_via_fontconfig(const char *name, char *out, size_t sz) {
   FcConfig *fc = FcInitLoadConfigAndFonts();
   FcPattern *pat = FcNameParse((const FcChar8 *)name);
@@ -50,6 +53,7 @@ static asciichat_error_t resolve_via_fontconfig(const char *name, char *out, siz
   FcPatternDestroy(match);
   return ASCIICHAT_OK;
 }
+#endif
 
 asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_size, bool *out_is_path,
                                         const uint8_t **out_font_data, size_t *out_font_data_size) {
@@ -91,6 +95,7 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
     return ASCIICHAT_OK;
   }
 
+#ifndef USE_MUSL
   *out_is_path = true;
   asciichat_error_t err = resolve_via_fontconfig(eff, out, out_size);
   if (err != ASCIICHAT_OK && strcmp(eff, k_fallback) != 0) {
@@ -111,5 +116,16 @@ asciichat_error_t platform_font_resolve(const char *spec, char *out, size_t out_
   }
 
   return err;
+#else
+  // musl static builds: fontconfig not available, use bundled default font
+  log_debug("platform_font_resolve: using bundled default font (musl build, no fontconfig)");
+  if (out_font_data)
+    *out_font_data = g_font_default;
+  if (out_font_data_size)
+    *out_font_data_size = g_font_default_size;
+  out[0] = '\0';
+  *out_is_path = false;
+  return ASCIICHAT_OK;
+#endif
 }
 #endif
