@@ -262,8 +262,12 @@ function(configure_asan_ubsan_sanitizers)
                 OUTPUT_STRIP_TRAILING_WHITESPACE
                 ERROR_QUIET
             )
-            # If --print-runtime-dir fails or returns non-existent path, try resource-dir/lib/linux
-            if(NOT CLANG_RUNTIME_DIR OR NOT EXISTS "${CLANG_RUNTIME_DIR}")
+            # If --print-runtime-dir fails, returns non-existent path, or the directory
+            # doesn't contain the ASan shared library, try resource-dir/lib/linux instead.
+            # Some LLVM installations (e.g. Homebrew) put the .so in lib/linux/ while
+            # --print-runtime-dir points to lib/x86_64-unknown-linux-gnu/ (static libs only).
+            file(GLOB _asan_so "${CLANG_RUNTIME_DIR}/libclang_rt.asan-*.so")
+            if(NOT CLANG_RUNTIME_DIR OR NOT EXISTS "${CLANG_RUNTIME_DIR}" OR NOT _asan_so)
                 execute_process(
                     COMMAND ${CMAKE_C_COMPILER} --print-resource-dir
                     OUTPUT_VARIABLE CLANG_RESOURCE_DIR
