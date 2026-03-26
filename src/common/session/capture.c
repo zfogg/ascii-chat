@@ -454,11 +454,24 @@ image_t *session_capture_process_for_transmission(session_capture_ctx_t *ctx, im
 }
 
 void session_capture_sleep_for_fps(session_capture_ctx_t *ctx) {
-  if (!ctx || !ctx->initialized) {
+  if (!ctx || !ctx->initialized || !ctx->source) {
     return;
   }
 
-  // Use adaptive sleep with queue_depth=0, target_depth=0 for constant rate
+  // For file/stdin sources: use direct FPS sleep (no adaptation)
+  // This avoids the adaptive sleep multipliers which cause 2x slowdown
+  media_source_type_t source_type = media_source_get_type(ctx->source);
+  if (source_type == MEDIA_SOURCE_FILE || source_type == MEDIA_SOURCE_STDIN) {
+    uint32_t target_fps = session_capture_get_target_fps(ctx);
+    if (target_fps > 0) {
+      uint64_t sleep_ns = NS_PER_SEC_INT / target_fps;
+      platform_sleep_ns(sleep_ns);
+    }
+    return;
+  }
+
+  // For network/webcam sources: use adaptive sleep to handle variable network conditions
+  // queue_depth=0, target_depth=0 maintains constant frame rate
   adaptive_sleep_do(&ctx->sleep_state, 0, 0);
 }
 

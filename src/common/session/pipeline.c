@@ -247,7 +247,8 @@ static void *pipeline_capture_thread(void *arg) {
         display_copy->pixels = SAFE_MALLOC(frame->w * frame->h * 3, uint8_t *);
         memcpy(display_copy->pixels, frame->pixels, frame->w * frame->h * 3);
 
-        log_info("[PIPELINE_CAPTURE_PUSH_DISPLAY] Pushing %dx%d frame to display_queue", display_copy->w, display_copy->h);
+        uint64_t push_time_ns = time_get_ns();
+        log_info("[PIPELINE_CAPTURE_PUSH_DISPLAY] Pushing %dx%d frame to display_queue at %llu ns", display_copy->w, display_copy->h, (unsigned long long)push_time_ns);
         if (!frame_queue_push(pipeline->display_queue, display_copy, 0)) {
             // Non-blocking: drop if queue full
             log_warn("[PIPELINE_CAPTURE_DROP] Display queue full, dropping frame");
@@ -452,6 +453,7 @@ asciichat_error_t session_pipeline_run_main(
         bool exit_check = should_exit(user_data);
         log_debug_every(NS_PER_SEC_INT, "[PIPELINE_DEBUG] should_exit=%d, stop=%d, snapshot_done=%d", exit_check, atomic_load_bool(&pipeline->stop), snapshot_done);
 
+        uint64_t pop_time_ns = time_get_ns();
         pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline->display_queue, 1 * NS_PER_MS_INT);
 
         if (!frame) continue;  // timeout, check should_exit again
@@ -473,9 +475,9 @@ asciichat_error_t session_pipeline_run_main(
             break;
         }
 
-        // Log frame details after validation
-        log_debug("[PIPELINE_MAIN_POP] frame=%p, pixels=%p, w=%d, h=%d",
-                  (void *)frame, (void *)frame->pixels, frame->w, frame->h);
+        // Log frame pop with timestamp
+        log_info("[PIPELINE_MAIN_POP] frame=%p, pixels=%p, w=%d, h=%d at %llu ns",
+                  (void *)frame, (void *)frame->pixels, frame->w, frame->h, (unsigned long long)pop_time_ns);
 
         // Check if help screen is active - if so, don't render ASCII frames
         bool help_is_active = pipeline->display && keyboard_help_is_active(pipeline->display);
