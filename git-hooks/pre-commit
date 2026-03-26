@@ -5,13 +5,10 @@ set -e
 # Get list of staged files and export for subprocesses
 export all_staged=$(git diff --cached --name-only --diff-filter=ACM || true)
 
-# Check each web project
-cwp="scripts/check-web-project.zsh"
+# Check C formatting and web projects in parallel
 bun x concurrently --kill-others-on-fail --kill-timeout $((1000 * 20)) \
   "scripts/clang-format-and-add.zsh" \
-  "$cwp 'web/web'" \
-  "$cwp 'web/www'" \
-  "$cwp 'web/discovery'"
+  "scripts/check-web-project.zsh"
 
 # Build web/www and git add man pages
 if echo "$all_staged" | grep -q "^(web/www/|web/packages/)"; then
