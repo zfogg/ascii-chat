@@ -281,6 +281,11 @@ include_directories(
     ${DEPS_ROOT}/ascii-chat-deps/utf8proc
     ${libvterm_wasm_SOURCE_DIR}/include  # libvterm headers
     ${raylib_wasm_SOURCE_DIR}/src  # raylib headers
+    # FetchContent dependency includes (needed for all targets)
+    ${FETCHCONTENT_BASE_DIR}/sodium-src/libsodium/src/libsodium/include
+    ${FETCHCONTENT_BASE_DIR}/pcre2-src
+    ${FETCHCONTENT_BASE_DIR}/opus-src/include
+    ${FETCHCONTENT_BASE_DIR}/zstd-src/lib
 )
 
 # Source files for WASM mirror entry point
