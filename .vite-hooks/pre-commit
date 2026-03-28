@@ -1,1 +1,1 @@
-vp staged
+cd web && vp staged
