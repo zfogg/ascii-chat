@@ -130,7 +130,7 @@ if(USE_MUSL)
     return()
 endif()
 
-include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/../utils/FindDependency.cmake)
 
 # On macOS, prefer Homebrew PCRE2 over system PCRE2 for consistency
 if(APPLE AND NOT USE_MUSL AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")

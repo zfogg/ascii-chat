@@ -118,7 +118,7 @@ if(USE_MUSL)
     return()
 endif()
 
-include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/../utils/FindDependency.cmake)
 
 find_dependency_library(
     NAME LIBSODIUM

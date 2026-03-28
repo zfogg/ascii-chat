@@ -29,237 +29,27 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # Global add_definitions() affects all targets including native dependency builds (Opus, etc)
 # Apply only to WASM executables and common library below
 
-# Cache WASM dependencies outside build/ to persist across rebuilds
-# Note: WASM artifacts are build-type independent, shared across all configurations
-if(NOT ASCIICHAT_WEB_DEPS_DIR)
-    set(ASCIICHAT_WEB_DEPS_DIR "${CMAKE_SOURCE_DIR}/.deps-cache/web")
+# Inherit FETCHCONTENT_BASE_DIR and ASCIICHAT_DEPS_CACHE_ROOT from parent cmake
+# These are passed via -D flags in the WASM execute_process call (CMakeLists.txt)
+if(NOT FETCHCONTENT_BASE_DIR)
+    set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache/src" CACHE PATH "FetchContent source cache" FORCE)
 endif()
-file(MAKE_DIRECTORY "${ASCIICHAT_WEB_DEPS_DIR}")
+if(NOT ASCIICHAT_DEPS_CACHE_ROOT)
+    set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache" CACHE PATH "Dependency cache root" FORCE)
+endif()
 
-# Fetch and build dependencies for WASM
+# Include all WASM dependency configuration files
+# Each file handles EMSCRIPTEN builds and sets output variables:
+# - FOO_LIBRARIES: libraries to link
+# - FOO_INCLUDE_DIRS: include directories
 include(FetchContent)
-
-# Pass Emscripten toolchain to FetchContent sub-builds via per-package CMAKE_ARGS
-if(DEFINED CMAKE_TOOLCHAIN_FILE AND CMAKE_TOOLCHAIN_FILE)
-    set(FetchContent_Toolchain_Args
-        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-    )
-else()
-    set(FetchContent_Toolchain_Args
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-    )
-endif()
-
-set(Sodium_CMAKE_ARGS ${FetchContent_Toolchain_Args} -DCMAKE_INSTALL_PREFIX=${SODIUM_PREFIX})
-set(pcre2_CMAKE_ARGS ${FetchContent_Toolchain_Args} -DCMAKE_INSTALL_PREFIX=${PCRE2_PREFIX})
-set(Opus_CMAKE_ARGS ${FetchContent_Toolchain_Args} -DCMAKE_INSTALL_PREFIX=${OPUS_PREFIX})
-set(zstd_CMAKE_ARGS ${FetchContent_Toolchain_Args} -DCMAKE_INSTALL_PREFIX=${ZSTD_PREFIX})
-set(raylib_CMAKE_ARGS ${FetchContent_Toolchain_Args} -DCMAKE_INSTALL_PREFIX=${RAYLIB_PREFIX})
-
-# Suppress verbose configure output from dependency builds
-set(CMAKE_MESSAGE_LOG_LEVEL_BACKUP "${CMAKE_MESSAGE_LOG_LEVEL}")
-set(CMAKE_MESSAGE_LOG_LEVEL "WARNING")
-set(FETCHCONTENT_QUIET ON)
-set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)
-
-# Set FetchContent base dir to our cache
-set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_WEB_DEPS_DIR}/_deps")
-
-# ==============================================================================
-# Simplified approach: just use FetchContent with proper caching via disk
-# ==============================================================================
-# The dependencies are cached in .deps-cache via FETCHCONTENT_BASE_DIR
-# On subsequent builds, FetchContent finds them and reuses them (no rebuild)
-
-set(SODIUM_PREFIX "${ASCIICHAT_WEB_DEPS_DIR}")
-set(PCRE2_PREFIX "${ASCIICHAT_WEB_DEPS_DIR}")
-set(OPUS_PREFIX "${ASCIICHAT_WEB_DEPS_DIR}")
-set(ZSTD_PREFIX "${ASCIICHAT_WEB_DEPS_DIR}")
-set(RAYLIB_PREFIX "${ASCIICHAT_WEB_DEPS_DIR}")
-
-if(BUILD_WEB)
-    # libsodium - check cache BEFORE FetchContent declaration
-    # Support both old and new cache locations for backwards compatibility
-    set(sodium_a_path "${FETCHCONTENT_BASE_DIR}/sodium-build/libsodium.a")
-    if(EXISTS "${sodium_a_path}")
-        message(STATUS "Using cached Sodium: ${sodium_a_path}")
-        if(NOT TARGET sodium)
-            add_library(sodium STATIC IMPORTED GLOBAL)
-            set_target_properties(sodium PROPERTIES
-                IMPORTED_LOCATION "${sodium_a_path}"
-                INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/sodium-src/libsodium/src/libsodium/include"
-            )
-        endif()
-    else()
-        FetchContent_Declare(Sodium
-            GIT_REPOSITORY https://github.com/robinlinden/libsodium-cmake.git
-            GIT_TAG e5b985ad0dd235d8c4307ea3a385b45e76c74c6a
-            UPDATE_DISCONNECTED ON
-            CMAKE_ARGS ${Sodium_CMAKE_ARGS}
-        )
-        set(SODIUM_DISABLE_TESTS ON)
-        FetchContent_MakeAvailable(Sodium)
-    endif()
-
-    # PCRE2 - check cache BEFORE FetchContent declaration
-    if(EXISTS "${FETCHCONTENT_BASE_DIR}/pcre2-build/libpcre2-8.a")
-        message(STATUS "Using cached PCRE2: ${FETCHCONTENT_BASE_DIR}/pcre2-build/libpcre2-8.a")
-        if(NOT TARGET pcre2-8)
-            add_library(pcre2-8 STATIC IMPORTED GLOBAL)
-            set_target_properties(pcre2-8 PROPERTIES
-                IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/pcre2-build/libpcre2-8.a"
-                INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/pcre2-build;${FETCHCONTENT_BASE_DIR}/pcre2-src"
-            )
-        endif()
-    else()
-        FetchContent_Declare(pcre2
-            GIT_REPOSITORY https://github.com/PCRE2Project/pcre2.git
-            GIT_TAG pcre2-10.44
-            UPDATE_DISCONNECTED ON
-            CMAKE_ARGS ${pcre2_CMAKE_ARGS}
-        )
-        set(PCRE2_BUILD_TESTS OFF CACHE BOOL "Build PCRE2 tests")
-        set(PCRE2_BUILD_PCRE2GREP OFF CACHE BOOL "Build pcre2grep")
-        FetchContent_MakeAvailable(pcre2)
-    endif()
-
-    # Opus - check cache BEFORE FetchContent declaration
-    if(EXISTS "${FETCHCONTENT_BASE_DIR}/opus-build/libopus.a")
-        message(STATUS "Using cached Opus: ${FETCHCONTENT_BASE_DIR}/opus-build/libopus.a")
-        if(NOT TARGET opus)
-            add_library(opus STATIC IMPORTED GLOBAL)
-            set_target_properties(opus PROPERTIES
-                IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/opus-build/libopus.a"
-                INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/opus-src/include"
-            )
-        endif()
-    else()
-        FetchContent_Declare(Opus
-            GIT_REPOSITORY https://github.com/xiph/opus.git
-            GIT_TAG v1.5.2
-            UPDATE_DISCONNECTED ON
-            CMAKE_ARGS ${Opus_CMAKE_ARGS}
-        )
-        set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "Build Opus programs")
-        set(OPUS_BUILD_TESTING OFF CACHE BOOL "Build Opus tests")
-        set(OPUS_INSTALL OFF CACHE BOOL "Install Opus")
-        set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
-        FetchContent_MakeAvailable(Opus)
-    endif()
-
-    # zstd - check cache BEFORE FetchContent declaration
-    if(EXISTS "${FETCHCONTENT_BASE_DIR}/zstd-build/lib/libzstd.a")
-        message(STATUS "Using cached zstd: ${FETCHCONTENT_BASE_DIR}/zstd-build/lib/libzstd.a")
-        if(NOT TARGET zstd::libzstd)
-            add_library(zstd::libzstd STATIC IMPORTED GLOBAL)
-            set_target_properties(zstd::libzstd PROPERTIES
-                IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/zstd-build/lib/libzstd.a"
-                INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/zstd-src/lib"
-            )
-        endif()
-    else()
-        FetchContent_Declare(zstd
-            GIT_REPOSITORY https://github.com/facebook/zstd.git
-            GIT_TAG v1.5.5
-            SOURCE_SUBDIR build/cmake
-            UPDATE_DISCONNECTED ON
-            CMAKE_ARGS ${zstd_CMAKE_ARGS}
-        )
-        set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "Build zstd programs")
-        set(ZSTD_BUILD_TESTS OFF CACHE BOOL "Build zstd tests")
-        set(ZSTD_BUILD_SHARED OFF CACHE BOOL "Build shared library")
-        set(ZSTD_BUILD_STATIC ON CACHE BOOL "Build static library")
-        set(ZSTD_MULTITHREAD_SUPPORT OFF CACHE BOOL "Disable zstd threading for WASM")
-        FetchContent_MakeAvailable(zstd)
-    endif()
-
-    # raylib - check cache BEFORE FetchContent declaration
-    if(EXISTS "${FETCHCONTENT_BASE_DIR}/raylib_wasm-build/libraylib.a")
-        message(STATUS "Using cached raylib: ${FETCHCONTENT_BASE_DIR}/raylib_wasm-build/libraylib.a")
-        if(NOT TARGET raylib)
-            add_library(raylib STATIC IMPORTED GLOBAL)
-            set_target_properties(raylib PROPERTIES
-                IMPORTED_LOCATION "${FETCHCONTENT_BASE_DIR}/raylib_wasm-build/libraylib.a"
-                INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/raylib_wasm-src/src"
-            )
-        endif()
-    else()
-        FetchContent_Declare(raylib_wasm
-            GIT_REPOSITORY https://github.com/raysan5/raylib.git
-            GIT_TAG 5.5
-            UPDATE_DISCONNECTED ON
-            CMAKE_ARGS ${raylib_CMAKE_ARGS}
-        )
-        set(PLATFORM "Web" CACHE STRING "" FORCE)
-        set(GRAPHICS "GRAPHICS_API_OPENGL_ES2" CACHE STRING "" FORCE)
-        FetchContent_MakeAvailable(raylib_wasm)
-    endif()
-endif()
-
-# ==============================================================================
-# libvterm - handled by Libvterm.cmake
-# ==============================================================================
-# Download and extract libvterm source (no CMakeLists.txt build step)
-set(libvterm_wasm_SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/libvterm-src")
-set(libvterm_wasm_ARCHIVE "${FETCHCONTENT_BASE_DIR}/libvterm-0.3.3.tar.gz")
-
-if(NOT EXISTS "${libvterm_wasm_SOURCE_DIR}")
-    # Download tarball if not cached
-    if(NOT EXISTS "${libvterm_wasm_ARCHIVE}")
-        message(STATUS "Downloading libvterm v0.3.3...")
-        file(DOWNLOAD
-            "https://github.com/neovim/libvterm/archive/refs/tags/v0.3.3.tar.gz"
-            "${libvterm_wasm_ARCHIVE}"
-            TIMEOUT 60
-            STATUS DOWNLOAD_STATUS
-        )
-        list(GET DOWNLOAD_STATUS 0 DOWNLOAD_CODE)
-        if(NOT DOWNLOAD_CODE EQUAL 0)
-            message(FATAL_ERROR "Failed to download libvterm (code ${DOWNLOAD_CODE})")
-        endif()
-    endif()
-
-    # Create temporary extraction directory
-    set(libvterm_EXTRACT_DIR "${FETCHCONTENT_BASE_DIR}/libvterm-extract-tmp")
-    file(MAKE_DIRECTORY "${libvterm_EXTRACT_DIR}")
-
-    message(STATUS "Extracting libvterm...")
-    execute_process(
-        COMMAND ${CMAKE_COMMAND} -E tar xzf "${libvterm_wasm_ARCHIVE}"
-        WORKING_DIRECTORY "${libvterm_EXTRACT_DIR}"
-        RESULT_VARIABLE TAR_RESULT
-    )
-    if(NOT TAR_RESULT EQUAL 0)
-        message(FATAL_ERROR "Failed to extract libvterm (code ${TAR_RESULT})")
-    endif()
-
-    # Move extracted content to final location
-    # GitHub releases extract to repo-version/ format (libvterm-0.3.3/)
-    if(EXISTS "${libvterm_EXTRACT_DIR}/libvterm-0.3.3")
-        file(RENAME "${libvterm_EXTRACT_DIR}/libvterm-0.3.3" "${libvterm_wasm_SOURCE_DIR}")
-    else()
-        message(FATAL_ERROR "Extracted libvterm not found in ${libvterm_EXTRACT_DIR}")
-    endif()
-endif()
-
-message(STATUS "libvterm source at: ${libvterm_wasm_SOURCE_DIR}")
-
-set(CMAKE_SOURCE_DIR_PARENT "${CMAKE_CURRENT_SOURCE_DIR}/../../")
-
-# Check if libvterm.a is already cached - if so, skip full cmake build
-set(libvterm_cached_a "${libvterm_wasm_SOURCE_DIR}/libvterm.a")
-if(EXISTS "${libvterm_cached_a}")
-    message(STATUS "Using cached libvterm: ${libvterm_cached_a}")
-    set(VTERM_LDFLAGS "${libvterm_cached_a}")
-    set(VTERM_INCLUDE_DIRS "${libvterm_wasm_SOURCE_DIR}/include")
-else()
-    # No cached .a file, need to build it
-    include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/deps/Libvterm.cmake")
-endif()
-
-# Restore original message log level
-set(CMAKE_MESSAGE_LOG_LEVEL "${CMAKE_MESSAGE_LOG_LEVEL_BACKUP}")
+get_filename_component(_cmake_dir "${CMAKE_CURRENT_SOURCE_DIR}/../../cmake" ABSOLUTE)
+include(${_cmake_dir}/deps/Libsodium.cmake)
+include(${_cmake_dir}/deps/PCRE2.cmake)
+include(${_cmake_dir}/deps/Opus.cmake)
+include(${_cmake_dir}/deps/Zstd.cmake)
+include(${_cmake_dir}/deps/Raylib.cmake)
+include(${_cmake_dir}/deps/Libvterm.cmake)
 
 # TOML (using tomlc17 from deps)
 # No FetchContent needed - using vendored tomlc17
@@ -279,14 +69,13 @@ include_directories(
     ${DEPS_ROOT}
     ${DEPS_ROOT}/ascii-chat-deps/tomlc17/src
     ${DEPS_ROOT}/ascii-chat-deps/utf8proc
-    ${libvterm_wasm_SOURCE_DIR}/include  # libvterm headers
-    ${raylib_wasm_SOURCE_DIR}/src  # raylib headers
-    # FetchContent dependency includes (needed for all targets)
-    ${FETCHCONTENT_BASE_DIR}/sodium-src/libsodium/src/libsodium/include
-    ${FETCHCONTENT_BASE_DIR}/pcre2-build
-    ${FETCHCONTENT_BASE_DIR}/pcre2-src
-    ${FETCHCONTENT_BASE_DIR}/opus-src/include
-    ${FETCHCONTENT_BASE_DIR}/zstd-src/lib
+    # Dependency includes from cmake/deps/*.cmake output variables
+    ${VTERM_INCLUDE_DIRS}  # libvterm
+    ${RAYLIB_INCLUDE_DIRS}  # raylib
+    ${LIBSODIUM_INCLUDE_DIRS}  # libsodium
+    ${PCRE2_INCLUDE_DIRS}  # pcre2
+    ${OPUS_INCLUDE_DIRS}  # opus
+    ${ZSTD_INCLUDE_DIRS}  # zstd
     # FreeType for rendering
     /usr/include/freetype2
 )
@@ -554,47 +343,35 @@ if(DEFINED EMSCRIPTEN)
     target_link_options(wasm-common PRIVATE -sUSE_FREETYPE=1)
 endif()
 
-# Libvterm was built by cmake/deps/Libvterm.cmake when EMSCRIPTEN is defined
-# VTERM_LDFLAGS and VTERM_INCLUDE_DIRS are set by that file
-
-# Link dependencies for shared library with explicit library paths
-target_link_options(wasm-common PRIVATE
-    -L${FETCHCONTENT_BASE_DIR}/sodium-build
-    -L${FETCHCONTENT_BASE_DIR}/pcre2-build
-    -L${FETCHCONTENT_BASE_DIR}/raylib_wasm-build
-)
+# Link dependencies using output variables from cmake/deps/*.cmake
+# These are set by Libsodium.cmake, PCRE2.cmake, Raylib.cmake, Libvterm.cmake, etc.
+if(RAYLIB_LINK_DIR)
+    target_link_options(wasm-common PRIVATE -L${RAYLIB_LINK_DIR})
+endif()
 
 target_link_libraries(wasm-common PRIVATE
-    sodium
-    pcre2-8
+    ${LIBSODIUM_LIBRARIES}
+    ${PCRE2_LIBRARIES}
     ${VTERM_LDFLAGS}
-    raylib
+    ${RAYLIB_LIBRARIES}
 )
 
 target_include_directories(wasm-common PRIVATE
+    ${LIBSODIUM_INCLUDE_DIRS}
+    ${PCRE2_INCLUDE_DIRS}
+    ${OPUS_INCLUDE_DIRS}
+    ${ZSTD_INCLUDE_DIRS}
     ${VTERM_INCLUDE_DIRS}
+    ${RAYLIB_INCLUDE_DIRS}
 )
 
 # NOTE: FFmpeg is loaded at runtime via ffmpeg.wasm (npm package)
 # See web/web/package.json for ffmpeg.wasm dependency
 
-# Add include directories for wasm-common (FetchContent handles these via IMPORTED targets)
-target_include_directories(wasm-common PRIVATE
-    ${FETCHCONTENT_BASE_DIR}/sodium-src/libsodium/src/libsodium/include
-    ${FETCHCONTENT_BASE_DIR}/pcre2-build
-    ${FETCHCONTENT_BASE_DIR}/pcre2-src
-    ${FETCHCONTENT_BASE_DIR}/opus-src/include
-    ${FETCHCONTENT_BASE_DIR}/zstd-src/lib
-    ${FETCHCONTENT_BASE_DIR}/raylib_wasm-src/src
-)
-
 # Apply sanitizers
 apply_sanitizers_to_target(wasm-common)
 
 # Create WASM mirror module
-message("DEBUG: WEB_SRC_MIRROR=${WEB_SRC_MIRROR}")
-message("DEBUG: LIB_SRC_MIRROR_ONLY=${LIB_SRC_MIRROR_ONLY}")
-message("DEBUG: CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
 add_executable(mirror-web
     ${WEB_SRC_MIRROR}
     ${LIB_SRC_MIRROR_ONLY}
@@ -613,17 +390,15 @@ target_compile_options(mirror-web PRIVATE -pthread -msimd128 -sUSE_FREETYPE=1)
 target_link_options(mirror-web PRIVATE -pthread -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=4 -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1)
 
 # Link dependencies with explicit library paths for wasm-ld
-target_link_options(mirror-web PRIVATE
-    -L${FETCHCONTENT_BASE_DIR}/sodium-build
-    -L${FETCHCONTENT_BASE_DIR}/pcre2-build
-    -L${FETCHCONTENT_BASE_DIR}/raylib_wasm-build/raylib
-)
+if(RAYLIB_LINK_DIR)
+    target_link_options(mirror-web PRIVATE -L${RAYLIB_LINK_DIR})
+endif()
 
 target_link_libraries(mirror-web PRIVATE
-    sodium
-    pcre2-8
+    ${LIBSODIUM_LIBRARIES}
+    ${PCRE2_LIBRARIES}
     ${VTERM_LDFLAGS}
-    raylib
+    ${RAYLIB_LIBRARIES}
 )
 
 # Apply sanitizers
@@ -661,29 +436,29 @@ target_compile_definitions(client-web PRIVATE
 target_compile_options(client-web PRIVATE -pthread -sUSE_FREETYPE=1)
 target_link_options(client-web PRIVATE
     -pthread -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=4 -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1
-    -L${FETCHCONTENT_BASE_DIR}/sodium-build
-    -L${FETCHCONTENT_BASE_DIR}/pcre2-build
-    -L${FETCHCONTENT_BASE_DIR}/opus-build
-    -L${FETCHCONTENT_BASE_DIR}/zstd-build/lib
-    -L${FETCHCONTENT_BASE_DIR}/raylib_wasm-build/raylib
 )
+
+# Add library search paths if needed
+if(RAYLIB_LINK_DIR)
+    target_link_options(client-web PRIVATE -L${RAYLIB_LINK_DIR})
+endif()
 
 # Add include directories for dependencies (needed because wasm-common object files don't auto-inherit INTERFACE_INCLUDE_DIRECTORIES)
 target_include_directories(client-web PRIVATE
-    ${FETCHCONTENT_BASE_DIR}/sodium-src/libsodium/src/libsodium/include
-    ${FETCHCONTENT_BASE_DIR}/pcre2-src
-    ${FETCHCONTENT_BASE_DIR}/opus-src/include
-    ${FETCHCONTENT_BASE_DIR}/zstd-src/lib
-    ${FETCHCONTENT_BASE_DIR}/raylib_wasm-src/src
+    ${LIBSODIUM_INCLUDE_DIRS}
+    ${PCRE2_INCLUDE_DIRS}
+    ${OPUS_INCLUDE_DIRS}
+    ${ZSTD_INCLUDE_DIRS}
+    ${RAYLIB_INCLUDE_DIRS}
 )
 
 # Link dependencies for client mode
 target_link_libraries(client-web PRIVATE
-    sodium
-    pcre2-8
-    opus
+    ${LIBSODIUM_LIBRARIES}
+    ${PCRE2_LIBRARIES}
+    ${OPUS_LIBRARIES}
     ${VTERM_LDFLAGS}
-    raylib
+    ${RAYLIB_LIBRARIES}
 )
 
 # Apply sanitizers

@@ -3,7 +3,8 @@
 # =============================================================================
 # Cross-platform configuration for libvterm terminal emulation
 #
-# For musl builds: libvterm is built from source (FetchContent)
+# For WASM/Emscripten: Built from source with Emscripten toolchain
+# For musl builds: libvterm is built from source
 # For native builds: Uses system package manager
 #
 # Outputs (variables set by this file):
@@ -15,6 +16,16 @@
 #   - GHOSTTY_INCLUDES: Backwards compatibility alias for RENDER_FILE_INCLUDES
 # =============================================================================
 # NOTE: FreeType2 and Fontconfig must be included by Dependencies.cmake before this file
+
+include(FetchContent)
+
+# Shared source URL for all builds (GIT_REPOSITORY + GIT_TAG)
+FetchContent_Declare(libvterm-src
+    GIT_REPOSITORY https://github.com/neovim/libvterm.git
+    GIT_TAG v0.3.3
+    SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/libvterm-src"
+    UPDATE_DISCONNECTED ON
+)
 
 # All builds: Try to find libvterm
 
@@ -81,6 +92,9 @@ endif()
 # WASM builds: Build libvterm from source using Emscripten
 if(DEFINED EMSCRIPTEN)
     message(STATUS "Configuring ${BoldBlue}libvterm${ColorReset} from source (WASM)...")
+
+    FetchContent_Populate(libvterm-src)
+    set(libvterm_wasm_SOURCE_DIR "${libvterm-src_SOURCE_DIR}")
 
     # Generate encoding .inc files from .tbl files
     file(GLOB TBL_FILES "${libvterm_wasm_SOURCE_DIR}/src/encoding/*.tbl")
