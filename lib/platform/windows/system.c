@@ -1223,28 +1223,87 @@ int platform_access(const char *path, int mode) {
 // ============================================================================
 
 platform_stderr_redirect_handle_t platform_stderr_redirect_to_null(void) {
-  // Windows: No-op - return invalid handle
   platform_stderr_redirect_handle_t handle = {.original_fd = -1, .devnull_fd = -1};
+
+  handle.original_fd = _dup(STDERR_FILENO);
+  if (handle.original_fd < 0) return handle;
+
+  handle.devnull_fd = _open("NUL", _O_WRONLY);
+  if (handle.devnull_fd < 0) {
+    _close(handle.original_fd);
+    handle.original_fd = -1;
+    return handle;
+  }
+
+  if (_dup2(handle.devnull_fd, STDERR_FILENO) < 0) {
+    _close(handle.original_fd);
+    _close(handle.devnull_fd);
+    handle.original_fd = -1;
+    handle.devnull_fd = -1;
+  }
+
   return handle;
 }
 
 void platform_stderr_restore(platform_stderr_redirect_handle_t handle) {
-  // Windows: No-op
-  (void)handle;
+  if (handle.original_fd >= 0) {
+    _dup2(handle.original_fd, STDERR_FILENO);
+    _close(handle.original_fd);
+  }
+  if (handle.devnull_fd >= 0) {
+    _close(handle.devnull_fd);
+  }
 }
 
 void platform_stdio_redirect_to_null_permanent(void) {
-  // Windows: No-op
+  int devnull = _open("NUL", _O_WRONLY);
+  if (devnull >= 0) {
+    _dup2(devnull, STDOUT_FILENO);
+    _dup2(devnull, STDERR_FILENO);
+    _close(devnull);
+  }
 }
 
 platform_stderr_redirect_handle_t platform_stdout_stderr_redirect_to_null(void) {
-  // Windows: No-op
-  return (platform_stderr_redirect_handle_t){-1, -1};
+  platform_stderr_redirect_handle_t handle = {.original_fd = -1, .devnull_fd = -1};
+
+  int saved_stdout = _dup(STDOUT_FILENO);
+  int saved_stderr = _dup(STDERR_FILENO);
+  if (saved_stdout < 0 || saved_stderr < 0) {
+    if (saved_stdout >= 0) _close(saved_stdout);
+    if (saved_stderr >= 0) _close(saved_stderr);
+    return handle;
+  }
+
+  int devnull = _open("NUL", _O_WRONLY);
+  if (devnull < 0) {
+    _close(saved_stdout);
+    _close(saved_stderr);
+    return handle;
+  }
+
+  if (_dup2(devnull, STDOUT_FILENO) < 0 || _dup2(devnull, STDERR_FILENO) < 0) {
+    _close(devnull);
+    _close(saved_stdout);
+    _close(saved_stderr);
+    return handle;
+  }
+
+  _close(devnull);
+  handle.original_fd = saved_stdout;
+  handle.devnull_fd = saved_stderr;
+  return handle;
 }
 
 void platform_stdout_stderr_restore(platform_stderr_redirect_handle_t handle) {
-  // Windows: No-op
-  (void)handle; // unused
+  if (handle.original_fd >= 0) {
+    _dup2(handle.original_fd, STDOUT_FILENO);
+    _close(handle.original_fd);
+  }
+  if (handle.devnull_fd >= 0) {
+    _dup2(handle.devnull_fd, STDERR_FILENO);
+    _close(handle.devnull_fd);
+  }
 }
 
 /**
@@ -1274,15 +1333,15 @@ asciichat_error_t platform_register_signal_handlers(const platform_signal_handle
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid handlers or count");
   }
 
-  // On Windows, we only support SIGINT and SIGTERM via console control handlers
   for (int i = 0; i < count; i++) {
-    if (handlers[i].sig == SIGINT || handlers[i].sig == SIGTERM) {
-      // Create a wrapper that adapts console control handler to signal handler
-      // Note: This is a limitation - Windows console handlers are different from POSIX signal handlers
-      // For now, just log that we got a handler registered
-      log_debug("Registered signal handler for signal %d", handlers[i].sig);
+    int sig = handlers[i].sig;
+    // Windows CRT supports signal() for SIGINT, SIGTERM, SIGABRT, SIGFPE, SIGSEGV, SIGILL
+    if (sig == SIGINT || sig == SIGTERM || sig == SIGABRT) {
+      signal(sig, handlers[i].handler);
+      log_debug("Registered signal handler for signal %d", sig);
     } else {
-      log_warn("Signal %d is not supported on Windows (only SIGINT/SIGTERM)", handlers[i].sig);
+      // SIGPIPE, SIGWINCH, SIGUSR1/2 don't exist on Windows - silently skip
+      log_debug("Signal %d not available on Windows, skipping", sig);
     }
   }
 
