@@ -41,6 +41,13 @@ if(NOT DEFINED ASCIICHAT_DEPS_CACHE_DIR OR ASCIICHAT_DEPS_CACHE_DIR STREQUAL "")
     set(ASCIICHAT_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type" FORCE)
 endif()
 
+# Shared source download cache for FetchContent (not build-type-qualified)
+# All platforms (iOS, musl, WASM, native) share the same source files via one FETCHCONTENT_BASE_DIR
+# Build artifacts go into ${ASCIICHAT_DEPS_CACHE_DIR}/<dep>/ (build-type-qualified) as needed
+if(NOT DEFINED FETCHCONTENT_BASE_DIR OR FETCHCONTENT_BASE_DIR STREQUAL "")
+    set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/src" CACHE PATH "FetchContent source cache" FORCE)
+endif()
+
 # Validate paths are not empty (which would create directories at root /)
 if(NOT ASCIICHAT_DEPS_CACHE_ROOT OR ASCIICHAT_DEPS_CACHE_ROOT STREQUAL "" OR ASCIICHAT_DEPS_CACHE_ROOT STREQUAL "/")
     message(FATAL_ERROR "ASCIICHAT_DEPS_CACHE_ROOT is invalid: '${ASCIICHAT_DEPS_CACHE_ROOT}'\n"
@@ -419,6 +426,8 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
             "${WASM_SOURCE_DIR}"
             -DCMAKE_TOOLCHAIN_FILE=${EMSCRIPTEN_TOOLCHAIN_FILE}
             -DASCIICHAT_WEB_DEPS_DIR=${ASCIICHAT_DEPS_CACHE_DIR}/web
+            -DFETCHCONTENT_BASE_DIR=${FETCHCONTENT_BASE_DIR}
+            -DASCIICHAT_DEPS_CACHE_ROOT=${ASCIICHAT_DEPS_CACHE_ROOT}
         )
         execute_process(
             COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}

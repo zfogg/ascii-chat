@@ -31,11 +31,14 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # Inherit FETCHCONTENT_BASE_DIR and ASCIICHAT_DEPS_CACHE_ROOT from parent cmake
 # These are passed via -D flags in the WASM execute_process call (CMakeLists.txt)
+# Fallback: compute repo root from CMAKE_CURRENT_SOURCE_DIR (src/web) by going up two levels
 if(NOT FETCHCONTENT_BASE_DIR)
-    set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache/src" CACHE PATH "FetchContent source cache" FORCE)
+    get_filename_component(_repo_root "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
+    set(FETCHCONTENT_BASE_DIR "${_repo_root}/.deps-cache/src" CACHE PATH "FetchContent source cache" FORCE)
 endif()
 if(NOT ASCIICHAT_DEPS_CACHE_ROOT)
-    set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache" CACHE PATH "Dependency cache root" FORCE)
+    get_filename_component(_repo_root "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
+    set(ASCIICHAT_DEPS_CACHE_ROOT "${_repo_root}/.deps-cache" CACHE PATH "Dependency cache root" FORCE)
 endif()
 
 # Include all WASM dependency configuration files

@@ -196,15 +196,15 @@ void ascii_renderer_init(int pixel_width, int pixel_height) {
 #ifdef __EMSCRIPTEN__
 EMSCRIPTEN_KEEPALIVE
 #endif
-void ascii_renderer_render_frame(const char *ansi_data, int len) {
-  log_debug("[ascii_renderer_render_frame] Called with ansi_data=%p, len=%d", ansi_data, len);
+void ascii_renderer_render_frame(const char *ansi_data, size_t len) {
+  log_debug("[ascii_renderer_render_frame] Called with ansi_data=%p, len=%zu", ansi_data, len);
 
   if (!renderer.vt || !renderer.framebuffer) {
     log_warn("ascii_renderer_render_frame: renderer not initialized");
     return;
   }
 
-  if (!ansi_data || len <= 0) {
+  if (!ansi_data || len == 0) {
     log_warn("ascii_renderer_render_frame: empty ANSI input");
     return;
   }
