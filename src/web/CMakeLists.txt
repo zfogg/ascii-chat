@@ -81,6 +81,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/deps/Libvterm.cmake")
 FetchContent_Declare(Sodium
     GIT_REPOSITORY https://github.com/robinlinden/libsodium-cmake.git
     GIT_TAG e5b985ad0dd235d8c4307ea3a385b45e76c74c6a
+    UPDATE_DISCONNECTED ON
 )
 set(SODIUM_DISABLE_TESTS ON)
 if(BUILD_WEB AND NOT sodium_POPULATED)
@@ -91,6 +92,7 @@ endif()
 FetchContent_Declare(pcre2
     GIT_REPOSITORY https://github.com/PCRE2Project/pcre2.git
     GIT_TAG pcre2-10.44
+    UPDATE_DISCONNECTED ON
 )
 set(PCRE2_BUILD_TESTS OFF CACHE BOOL "Build PCRE2 tests")
 set(PCRE2_BUILD_PCRE2GREP OFF CACHE BOOL "Build pcre2grep")

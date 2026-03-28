@@ -610,6 +610,7 @@ void update_dimensions_for_full_height(options_t *opts) {
 
   unsigned short int term_width, term_height;
 
+  // Note: Logging is not available during options_init, so we can't use log_debug here
   asciichat_error_t result = get_terminal_size(&term_width, &term_height);
   if (result == ASCIICHAT_OK) {
     // If both dimensions are auto, set height to terminal height and let

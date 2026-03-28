@@ -950,15 +950,15 @@ SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, &quot;%s&quot;, value);
 <p class="Pp">Print project links with link emoji and colored styling.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>desc</i> Output file stream (typically stdout)</div>
-<p class="Pp">Definition at line <b>743</b> of file <b>options/common.c</b>.</p>
-<pre>743                                      {
-744   if (!desc) {
-745     return;
-746   }
-747 
-748   (void)fprintf(desc, &quot;&#x1F517; %s\n&quot;, colored_string(LOG_COLOR_GREY, &quot;https://ascii-chat.com&quot;));
-749   (void)fprintf(desc, &quot;&#x1F517; %s\n&quot;, colored_string(LOG_COLOR_GREY, &quot;https://github.com/zfogg/ascii-chat&quot;));
-750 }</pre>
+<p class="Pp">Definition at line <b>739</b> of file <b>options/common.c</b>.</p>
+<pre>739                                      {
+740   if (!desc) {
+741     return;
+742   }
+743 
+744   (void)fprintf(desc, &quot;&#x1F517; %s\n&quot;, colored_string(LOG_COLOR_GREY, &quot;https://ascii-chat.com&quot;));
+745   (void)fprintf(desc, &quot;&#x1F517; %s\n&quot;, colored_string(LOG_COLOR_GREY, &quot;https://github.com/zfogg/ascii-chat&quot;));
+746 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>colored_string()</b>, and <b>LOG_COLOR_GREY</b>.</p>
@@ -1127,37 +1127,33 @@ if (auto_height || auto_width) {
 </pre>
 <p class="Pp">Definition at line <b>606</b> of file <b>options/common.c</b>.</p>
 <pre>606                                                         {
-607   log_info(&quot;[PERF] update_dimensions_for_full_height START&quot;);
-608   if (!opts) {
-609     log_info(&quot;[PERF] opts is NULL, returning&quot;);
-610     return;
-611   }
+607   if (!opts) {
+608     return;
+609   }
+610 
+611   unsigned short int term_width, term_height;
 612 
-613   unsigned short int term_width, term_height;
-614 
-615   // Note: Logging is not available during options_init, so we can't use log_debug here
-616   log_info(&quot;[PERF] About to call get_terminal_size&quot;);
-617   asciichat_error_t result = get_terminal_size(&amp;term_width, &amp;term_height);
-618   log_info(&quot;[PERF] get_terminal_size returned&quot;);
-619   if (result == ASCIICHAT_OK) {
-620     // If both dimensions are auto, set height to terminal height and let
-621     // aspect_ratio calculate width
-622     if (opts-&gt;auto_height &amp;&amp; opts-&gt;auto_width) {
-623       opts-&gt;height = term_height;
-624       opts-&gt;width = term_width; // Also set width when both are auto
+613   // Note: Logging is not available during options_init, so we can't use log_debug here
+614   asciichat_error_t result = get_terminal_size(&amp;term_width, &amp;term_height);
+615   if (result == ASCIICHAT_OK) {
+616     // If both dimensions are auto, set height to terminal height and let
+617     // aspect_ratio calculate width
+618     if (opts-&gt;auto_height &amp;&amp; opts-&gt;auto_width) {
+619       opts-&gt;height = term_height;
+620       opts-&gt;width = term_width; // Also set width when both are auto
+621     }
+622     // If only height is auto, use full terminal height
+623     else if (opts-&gt;auto_height) {
+624       opts-&gt;height = term_height;
 625     }
-626     // If only height is auto, use full terminal height
-627     else if (opts-&gt;auto_height) {
-628       opts-&gt;height = term_height;
+626     // If only width is auto, use full terminal width
+627     else if (opts-&gt;auto_width) {
+628       opts-&gt;width = term_width;
 629     }
-630     // If only width is auto, use full terminal width
-631     else if (opts-&gt;auto_width) {
-632       opts-&gt;width = term_width;
-633     }
-634   } else {
-635     // Terminal size detection failed, but we can still continue with defaults
-636   }
-637 }</pre>
+630   } else {
+631     // Terminal size detection failed, but we can still continue with defaults
+632   }
+633 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -1185,33 +1181,33 @@ if (auto_height || auto_width) {
 update_dimensions_to_terminal_size();
 log_info(&quot;Terminal dimensions: %dx%d&quot;, opt_width, opt_height);
 </pre>
-<p class="Pp">Definition at line <b>639</b> of file <b>options/common.c</b>.</p>
-<pre>639                                                          {
-640   if (!opts) {
-641     return;
-642   }
-643 
-644   unsigned short int term_width, term_height;
-645   // Get current terminal size (get_terminal_size already handles ioctl first, then $COLUMNS/$LINES fallback)
-646   asciichat_error_t terminal_result = get_terminal_size(&amp;term_width, &amp;term_height);
-647   if (terminal_result == ASCIICHAT_OK) {
-648     // Use INFO level so this is visible without -v flag (important for debugging dimension issues)
-649     log_dev(&quot;Terminal size detected: %ux%u (auto_width=%d, auto_height=%d)&quot;, term_width, term_height, opts-&gt;auto_width,
-650             opts-&gt;auto_height);
-651     if (opts-&gt;auto_width) {
-652       opts-&gt;width = term_width;
-653       log_debug(&quot;Auto-width: set width to %u&quot;, opts-&gt;width);
+<p class="Pp">Definition at line <b>635</b> of file <b>options/common.c</b>.</p>
+<pre>635                                                          {
+636   if (!opts) {
+637     return;
+638   }
+639 
+640   unsigned short int term_width, term_height;
+641   // Get current terminal size (get_terminal_size already handles ioctl first, then $COLUMNS/$LINES fallback)
+642   asciichat_error_t terminal_result = get_terminal_size(&amp;term_width, &amp;term_height);
+643   if (terminal_result == ASCIICHAT_OK) {
+644     // Use INFO level so this is visible without -v flag (important for debugging dimension issues)
+645     log_dev(&quot;Terminal size detected: %ux%u (auto_width=%d, auto_height=%d)&quot;, term_width, term_height, opts-&gt;auto_width,
+646             opts-&gt;auto_height);
+647     if (opts-&gt;auto_width) {
+648       opts-&gt;width = term_width;
+649       log_debug(&quot;Auto-width: set width to %u&quot;, opts-&gt;width);
+650     }
+651     if (opts-&gt;auto_height) {
+652       opts-&gt;height = term_height;
+653       log_debug(&quot;Auto-height: set height to %u&quot;, opts-&gt;height);
 654     }
-655     if (opts-&gt;auto_height) {
-656       opts-&gt;height = term_height;
-657       log_debug(&quot;Auto-height: set height to %u&quot;, opts-&gt;height);
-658     }
-659     log_debug(&quot;Final dimensions: %ux%u&quot;, opts-&gt;width, opts-&gt;height);
-660   } else {
-661     // Terminal detection failed - keep the default values set in options_init()
-662     log_warn(&quot;TERMINAL_DETECT_FAIL: Could not detect terminal size, using defaults: %ux%u&quot;, opts-&gt;width, opts-&gt;height);
-663   }
-664 }</pre>
+655     log_debug(&quot;Final dimensions: %ux%u&quot;, opts-&gt;width, opts-&gt;height);
+656   } else {
+657     // Terminal detection failed - keep the default values set in options_init()
+658     log_warn(&quot;TERMINAL_DETECT_FAIL: Could not detect terminal size, using defaults: %ux%u&quot;, opts-&gt;width, opts-&gt;height);
+659   }
+660 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -1286,24 +1282,24 @@ if (result != ASCIICHAT_OK) {
     return result;
 }
 </pre>
-<p class="Pp">Definition at line <b>721</b> of file <b>options/common.c</b>.</p>
-<pre>721                                                                                     {
-722   if (!config || !opts) {
-723     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or options is NULL&quot;);
-724   }
-725 
-726   char *error_message = NULL;
-727   // Cast opaque config pointer to actual type
-728   const options_config_t *config_typed = (const options_config_t *)config;
-729   asciichat_error_t result = options_config_validate(config_typed, opts, &amp;error_message);
-730   if (result != ASCIICHAT_OK) {
-731     if (error_message) {
-732       log_error(&quot;%s&quot;, error_message);
-733       free(error_message);
-734     }
-735   }
-736   return result;
-737 }</pre>
+<p class="Pp">Definition at line <b>717</b> of file <b>options/common.c</b>.</p>
+<pre>717                                                                                     {
+718   if (!config || !opts) {
+719     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or options is NULL&quot;);
+720   }
+721 
+722   char *error_message = NULL;
+723   // Cast opaque config pointer to actual type
+724   const options_config_t *config_typed = (const options_config_t *)config;
+725   asciichat_error_t result = options_config_validate(config_typed, opts, &amp;error_message);
+726   if (result != ASCIICHAT_OK) {
+727     if (error_message) {
+728       log_error(&quot;%s&quot;, error_message);
+729       free(error_message);
+730     }
+731   }
+732   return result;
+733 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
