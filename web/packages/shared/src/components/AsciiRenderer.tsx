@@ -5,26 +5,7 @@ import {
   useImperativeHandle,
   useRef,
 } from "react";
-import { getMirrorModule } from "../wasm/mirror";
-
-// Local type definition to avoid import dependency on wasm module
-interface MirrorModule {
-  canvas?: HTMLCanvasElement;
-  _ascii_renderer_init(width: number, height: number): void;
-  _ascii_renderer_render_frame(ptr: number, len: number): void;
-  _ascii_renderer_resize(width: number, height: number): void;
-  _ascii_renderer_get_cols(): number;
-  _ascii_renderer_get_rows(): number;
-  _ascii_renderer_get_framebuffer(): number;
-  _ascii_renderer_get_framebuffer_width(): number;
-  _ascii_renderer_get_framebuffer_height(): number;
-  _ascii_renderer_get_framebuffer_stride(): number;
-  _ascii_renderer_shutdown(): void;
-  _malloc(size: number): number;
-  _free(ptr: number): void;
-  HEAPU8: Uint8Array;
-  UTF8ToString(ptr: number): string;
-}
+import { getMirrorModule, type MirrorModule } from "../wasm/mirror";
 
 export interface AsciiRendererHandle {
   writeFrame(ansiString: string): void;
@@ -171,7 +152,11 @@ export const AsciiRenderer = forwardRef<
         const outPtr = moduleRef.current!._malloc(8); // pointer to renderer
 
         // Write config struct to WASM memory
-        const view = new DataView(moduleRef.current!.HEAPU8.buffer, configPtr, configSize);
+        const view = new DataView(
+          moduleRef.current!.HEAPU8.buffer,
+          configPtr,
+          configSize,
+        );
         let offset = 0;
 
         // cols (int32)
@@ -192,8 +177,13 @@ export const AsciiRenderer = forwardRef<
 
         // font_spec (char[512]) - "Courier New"
         const fontSpec = "Courier New";
-        for (let i = 0; i < fontSpec.length && offset < configPtr + 512 + 4 + 4 + 8; i++) {
-          moduleRef.current!.HEAPU8[configPtr + offset + i] = fontSpec.charCodeAt(i);
+        for (
+          let i = 0;
+          i < fontSpec.length && offset < configPtr + 512 + 4 + 4 + 8;
+          i++
+        ) {
+          moduleRef.current!.HEAPU8[configPtr + offset + i] =
+            fontSpec.charCodeAt(i);
         }
         offset += 512;
 
@@ -214,23 +204,33 @@ export const AsciiRenderer = forwardRef<
           console.log(
             `[AsciiRenderer initRenderer] Calling _term_renderer_create(configPtr=${configPtr}, outPtr=${outPtr}) at ${initCallTime.toFixed(0)}ms`,
           );
-          const result = moduleRef.current!._term_renderer_create(configPtr, outPtr);
+          const result = moduleRef.current!._term_renderer_create(
+            configPtr,
+            outPtr,
+          );
           console.log(
             `[AsciiRenderer initRenderer] _term_renderer_create returned ${result} at ${performance.now().toFixed(0)}ms`,
           );
 
           if (result !== 0) {
-            throw new Error(`term_renderer_create failed with error code ${result}`);
+            throw new Error(
+              `term_renderer_create failed with error code ${result}`,
+            );
           }
 
           // Read renderer pointer from outPtr
-          const rendererPtr = new DataView(moduleRef.current!.HEAPU8.buffer, outPtr, 8).getBigInt64(0, true);
+          const rendererPtr = new DataView(
+            moduleRef.current!.HEAPU8.buffer,
+            outPtr,
+            8,
+          ).getBigInt64(0, true);
           console.log(`[AsciiRenderer] Got renderer pointer: ${rendererPtr}`);
           return Number(rendererPtr);
         };
 
         const beforeDoInit = performance.now();
         const rendererPtr = doInit();
+        rendererPtrRef.current = rendererPtr;
         const afterDoInit = performance.now();
         console.log(
           `[AsciiRenderer initRenderer] doInit completed at ${afterDoInit.toFixed(0)}ms (${(afterDoInit - beforeDoInit).toFixed(1)}ms total)`,
@@ -243,8 +243,12 @@ export const AsciiRenderer = forwardRef<
 
         const getDimsStart = performance.now();
         // Get actual dimensions from renderer
-        const cols = moduleRef.current!._term_renderer_get_cols(rendererPtr);
-        const rows = moduleRef.current!._term_renderer_get_rows(rendererPtr);
+        const cols = moduleRef.current!._term_renderer_get_cols(
+          rendererPtrRef.current,
+        );
+        const rows = moduleRef.current!._term_renderer_get_rows(
+          rendererPtrRef.current,
+        );
 
         console.log(
           `[AsciiRenderer initRenderer] Got dimensions at ${performance.now().toFixed(0)}ms: ${cols}x${rows} (took ${(performance.now() - getDimsStart).toFixed(1)}ms)`,
@@ -332,9 +336,12 @@ export const AsciiRenderer = forwardRef<
       }
 
       if (firstRenderDoneRef.current && moduleRef.current) {
-        moduleRef.current._ascii_renderer_resize(width, height);
-        const cols = moduleRef.current._ascii_renderer_get_cols();
-        const rows = moduleRef.current._ascii_renderer_get_rows();
+        const cols = moduleRef.current._term_renderer_get_cols(
+          rendererPtrRef.current,
+        );
+        const rows = moduleRef.current._term_renderer_get_rows(
+          rendererPtrRef.current,
+        );
 
         updateDimensions(cols, rows);
       }
@@ -433,46 +440,43 @@ export const AsciiRenderer = forwardRef<
 
           // Check the function before calling it
           console.log(
-            "[DEBUG writeFrame] moduleRef.current._ascii_renderer_render_frame type:",
-            typeof moduleRef.current._ascii_renderer_render_frame,
+            "[DEBUG writeFrame] moduleRef.current._term_renderer_feed type:",
+            typeof moduleRef.current._term_renderer_feed,
           );
           console.log(
             "[DEBUG writeFrame] Function exists:",
-            !!moduleRef.current._ascii_renderer_render_frame,
+            !!moduleRef.current._term_renderer_feed,
           );
 
           // Log what we're about to call
           console.log(
-            "[DEBUG writeFrame] About to call _ascii_renderer_render_frame with:",
+            "[DEBUG writeFrame] About to call _term_renderer_feed with:",
             {
+              rendererPtr: rendererPtrRef.current,
               ptr: ptr,
               "data.length": data.length,
-              ptr_type: typeof ptr,
-              len_type: typeof data.length,
             },
           );
 
-          // Render frame - direct call to WASM function
+          // Render frame - call term_renderer_feed with renderer pointer
           console.log(
-            `[writeFrame] Calling _ascii_renderer_render_frame(${ptr}, ${data.length})`,
+            `[writeFrame] Calling _term_renderer_feed(${rendererPtrRef.current}, ${ptr}, ${data.length})`,
           );
           console.log(
             `[writeFrame] ansiString contains: ${ansiString.substring(0, 200).replace(/\n/g, "\\n")}`,
           );
-          console.log(
-            `[WASM-CALL] Function type: ${typeof moduleRef.current._ascii_renderer_render_frame}, Function obj: ${Object.prototype.toString.call(moduleRef.current._ascii_renderer_render_frame)}`,
-          );
-          console.log(
-            `[WASM-CALL] Calling with ptr=${ptr} (type=${typeof ptr}), len=${data.length} (type=${typeof data.length})`,
-          );
           try {
-            moduleRef.current._ascii_renderer_render_frame(ptr, data.length);
+            const feedResult = moduleRef.current._term_renderer_feed(
+              rendererPtrRef.current,
+              ptr,
+              data.length,
+            );
             console.log(
-              `[writeFrame] _ascii_renderer_render_frame returned successfully`,
+              `[writeFrame] _term_renderer_feed returned ${feedResult}`,
             );
           } catch (wasmError) {
             console.error(
-              `[WASM-ERROR-DETAILS] Caught error calling _ascii_renderer_render_frame:`,
+              `[WASM-ERROR-DETAILS] Caught error calling _term_renderer_feed:`,
               {
                 message:
                   wasmError instanceof Error
@@ -481,10 +485,11 @@ export const AsciiRenderer = forwardRef<
                 name: wasmError instanceof Error ? wasmError.name : "Unknown",
                 stack:
                   wasmError instanceof Error ? wasmError.stack : "No stack",
+                rendererPtr: rendererPtrRef.current,
                 ptr: ptr,
                 len: data.length,
                 moduleType: typeof moduleRef.current,
-                functionName: "_ascii_renderer_render_frame",
+                functionName: "_term_renderer_feed",
               },
             );
             throw wasmError;
@@ -502,16 +507,20 @@ export const AsciiRenderer = forwardRef<
             if (
               canvas &&
               canvas.getContext &&
-              moduleRef.current._ascii_renderer_get_framebuffer
+              moduleRef.current._term_renderer_pixels
             ) {
-              const fbPtr =
-                moduleRef.current._ascii_renderer_get_framebuffer?.();
-              const fbWidth =
-                moduleRef.current._ascii_renderer_get_framebuffer_width?.();
-              const fbHeight =
-                moduleRef.current._ascii_renderer_get_framebuffer_height?.();
-              const fbStride =
-                moduleRef.current._ascii_renderer_get_framebuffer_stride?.();
+              const fbPtr = moduleRef.current._term_renderer_pixels(
+                rendererPtrRef.current,
+              );
+              const fbWidth = moduleRef.current._term_renderer_width_px(
+                rendererPtrRef.current,
+              );
+              const fbHeight = moduleRef.current._term_renderer_height_px(
+                rendererPtrRef.current,
+              );
+              const fbStride = moduleRef.current._term_renderer_pitch(
+                rendererPtrRef.current,
+              );
 
               console.log("[Canvas Entry] Framebuffer getters:", {
                 fbPtr,
@@ -603,8 +612,8 @@ export const AsciiRenderer = forwardRef<
             err.message.includes("signature mismatch")
           ) {
             console.error(
-              "[WASM Signature Mismatch] _ascii_renderer_render_frame issue - function type:",
-              typeof moduleRef.current._ascii_renderer_render_frame,
+              "[WASM Signature Mismatch] _term_renderer_feed issue - function type:",
+              typeof moduleRef.current._term_renderer_feed,
               "moduleRef:",
               moduleRef.current,
             );
@@ -635,7 +644,16 @@ export const AsciiRenderer = forwardRef<
 
       clear() {
         if (!moduleRef.current || !setupDoneRef.current) return;
-        moduleRef.current._ascii_renderer_render_frame(0, 0);
+        // Clear by feeding empty data
+        const emptyPtr = moduleRef.current._malloc(1);
+        if (emptyPtr) {
+          moduleRef.current._term_renderer_feed(
+            rendererPtrRef.current,
+            emptyPtr,
+            0,
+          );
+          moduleRef.current._free(emptyPtr);
+        }
       },
     }),
     [showFps, onFpsChange],
