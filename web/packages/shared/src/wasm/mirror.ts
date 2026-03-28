@@ -29,17 +29,14 @@ interface MirrorModuleExports {
   ): number;
   _mirror_free_string(ptr: number): void;
   _get_help_text(mode: number, option_name: number): number;
-  // ASCII renderer functions (libvterm + FreeType + raylib)
-  _ascii_renderer_init(pixel_width: number, pixel_height: number): void;
-  _ascii_renderer_render_frame(ansi_data_ptr: number, len: number): void;
-  _ascii_renderer_resize(pixel_width: number, pixel_height: number): void;
-  _ascii_renderer_get_cols(): number;
-  _ascii_renderer_get_rows(): number;
-  _ascii_renderer_get_framebuffer(): number;
-  _ascii_renderer_get_framebuffer_width(): number;
-  _ascii_renderer_get_framebuffer_height(): number;
-  _ascii_renderer_get_framebuffer_stride(): number;
-  _ascii_renderer_shutdown(): void;
+  // Terminal renderer functions (libvterm + FreeType)
+  _term_renderer_create(cfg_ptr: number, out_ptr: number): number;
+  _term_renderer_feed(r: number, ansi_data_ptr: number, len: number): number;
+  _term_renderer_pixels(r: number): number;
+  _term_renderer_width_px(r: number): number;
+  _term_renderer_height_px(r: number): number;
+  _term_renderer_pitch(r: number): number;
+  _term_renderer_destroy(r: number): void;
   // Memory management
   _malloc(size: number): number;
   _free(ptr: number): void;
@@ -52,16 +49,13 @@ export interface MirrorModule extends WasmModule {
   _mirror_convert_frame: MirrorModuleExports["_mirror_convert_frame"];
   _mirror_free_string: MirrorModuleExports["_mirror_free_string"];
   _get_help_text: MirrorModuleExports["_get_help_text"];
-  _ascii_renderer_init: MirrorModuleExports["_ascii_renderer_init"];
-  _ascii_renderer_render_frame: MirrorModuleExports["_ascii_renderer_render_frame"];
-  _ascii_renderer_resize: MirrorModuleExports["_ascii_renderer_resize"];
-  _ascii_renderer_get_cols: MirrorModuleExports["_ascii_renderer_get_cols"];
-  _ascii_renderer_get_rows: MirrorModuleExports["_ascii_renderer_get_rows"];
-  _ascii_renderer_get_framebuffer: MirrorModuleExports["_ascii_renderer_get_framebuffer"];
-  _ascii_renderer_get_framebuffer_width: MirrorModuleExports["_ascii_renderer_get_framebuffer_width"];
-  _ascii_renderer_get_framebuffer_height: MirrorModuleExports["_ascii_renderer_get_framebuffer_height"];
-  _ascii_renderer_get_framebuffer_stride: MirrorModuleExports["_ascii_renderer_get_framebuffer_stride"];
-  _ascii_renderer_shutdown: MirrorModuleExports["_ascii_renderer_shutdown"];
+  _term_renderer_create: MirrorModuleExports["_term_renderer_create"];
+  _term_renderer_feed: MirrorModuleExports["_term_renderer_feed"];
+  _term_renderer_pixels: MirrorModuleExports["_term_renderer_pixels"];
+  _term_renderer_width_px: MirrorModuleExports["_term_renderer_width_px"];
+  _term_renderer_height_px: MirrorModuleExports["_term_renderer_height_px"];
+  _term_renderer_pitch: MirrorModuleExports["_term_renderer_pitch"];
+  _term_renderer_destroy: MirrorModuleExports["_term_renderer_destroy"];
 }
 
 // Re-export enums and types from shared options module

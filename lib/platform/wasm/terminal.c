@@ -1,6 +1,6 @@
 /**
  * @file platform/wasm/terminal.c
- * @brief Terminal abstraction for WASM/Emscripten via EM_JS bridge to xterm.js
+ * @brief Terminal abstraction for WASM/Emscripten via EM_JS bridge web
  * @ingroup platform
  */
 
@@ -28,7 +28,6 @@ static void js_terminal_write(const char *data, int len) {
   (void)len;
 }
 
-
 // ============================================================================
 // Platform API Implementation
 // ============================================================================
@@ -43,7 +42,7 @@ int platform_get_terminal_size(int *cols, int *rows) {
 }
 
 // Color mode detection - not needed for WASM mirror mode
-// Terminal capabilities are managed via JavaScript xterm.js settings
+// Terminal capabilities are managed via JavaScript
 
 int platform_write_terminal(const char *data, size_t len) {
   js_terminal_write(data, (int)len);
@@ -53,7 +52,7 @@ int platform_write_terminal(const char *data, size_t len) {
 // Stub implementations (not needed for mirror mode)
 int platform_set_terminal_raw_mode(bool enable) {
   (void)enable;
-  return 0; // No-op: xterm.js handles this
+  return 0;
 }
 
 int platform_read_keyboard(char *buffer, size_t len) {
@@ -95,7 +94,7 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
 
 // Terminal UTF-8 support detection
 bool terminal_supports_utf8(void) {
-  return true; // xterm.js supports UTF-8
+  return true;
 }
 
 // Piped output detection
@@ -115,11 +114,11 @@ bool terminal_is_stdin_tty(void) {
 }
 
 bool terminal_is_stdout_tty(void) {
-  return true; // xterm.js output is a TTY
+  return true;
 }
 
 bool terminal_is_stderr_tty(void) {
-  return true; // xterm.js output is a TTY
+  return true;
 }
 
 bool terminal_is_interactive(void) {
@@ -136,22 +135,22 @@ bool terminal_can_prompt_user(void) {
 
 // Terminal background detection
 bool terminal_has_dark_background(void) {
-  return true; // Default to dark background for xterm.js
+  return true; // Default to dark background for terminals
 }
 
 // Terminal flush stub
 asciichat_error_t terminal_flush(int fd) {
   (void)fd;
-  return ASCIICHAT_OK; // No-op - xterm.js handles flushing
+  return ASCIICHAT_OK;
 }
 
 // Terminal capabilities detection stub
 terminal_capabilities_t detect_terminal_capabilities(void) {
   terminal_capabilities_t caps = {0};
-  caps.color_level = TERM_COLOR_TRUECOLOR; // xterm.js supports truecolor
+  caps.color_level = TERM_COLOR_TRUECOLOR;
   caps.capabilities = 0;
   caps.color_count = 16777216;
-  caps.utf8_support = true; // xterm.js supports UTF-8
+  caps.utf8_support = true;
   caps.detection_reliable = true;
   caps.render_mode = RENDER_MODE_FOREGROUND; // Default to foreground mode
   platform_strlcpy(caps.term_type, "xterm-256color", sizeof(caps.term_type));
@@ -165,7 +164,7 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
 
 // Terminal background color query stub
 bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b) {
-  // Return dark background (black) for xterm.js
+  // Return dark background (black)
   if (bg_r)
     *bg_r = 0;
   if (bg_g)
@@ -185,16 +184,16 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
 asciichat_error_t terminal_set_echo(bool enabled) {
   // Send ANSI escape sequence for echo control (xterm ignores but passes through)
   if (!enabled) {
-    write(STDOUT_FILENO, "\033[?25l", 6);  // Hide cursor
+    write(STDOUT_FILENO, "\033[?25l", 6); // Hide cursor
   } else {
-    write(STDOUT_FILENO, "\033[?25h", 6);  // Show cursor
+    write(STDOUT_FILENO, "\033[?25h", 6); // Show cursor
   }
   return ASCIICHAT_OK;
 }
 
 bool terminal_should_use_control_sequences(int fd) {
   (void)fd;
-  return true;  // Always use ANSI sequences in browser
+  return true; // Always use ANSI sequences in browser
 }
 
 asciichat_error_t terminal_clear_screen(void) {

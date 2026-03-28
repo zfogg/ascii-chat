@@ -119,9 +119,10 @@ set(PLATFORM_SRC
     ${LIB_ROOT}/video/webcam/wasm/webcam_wasm.c
 )
 
-# WASM rendering components (libvterm + FreeType + raylib)
+# WASM rendering components (libvterm + FreeType)
+# Uses the cross-platform terminal renderer instead of WASM-specific implementation
 set(WASM_RENDERER_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/renderer/ascii_renderer.c
+    ${LIB_ROOT}/media/render/terminal.c
 )
 
 # Third-party dependencies (source-included)
@@ -353,6 +354,8 @@ target_compile_definitions(wasm-common PRIVATE
 
 # Enable Emscripten's pthread support
 target_compile_options(wasm-common PRIVATE -pthread)
+# Suppress regparm attribute errors from system pthread.h in Emscripten builds
+target_compile_options(wasm-common PRIVATE -Wno-error -Qunused-arguments)
 target_link_options(wasm-common PRIVATE -pthread -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=4 -Wno-error=pthreads-mem-growth)
 
 # Add FreeType via Emscripten port, libvterm, and raylib support
@@ -489,17 +492,14 @@ set(EXPORTED_FUNCTIONS_MIRROR
     _mirror_convert_frame
     _mirror_free_string
     _get_help_text
-    # ASCII renderer functions (raylib + libvterm + FreeType)
-    _ascii_renderer_init
-    _ascii_renderer_render_frame
-    _ascii_renderer_resize
-    _ascii_renderer_get_cols
-    _ascii_renderer_get_rows
-    _ascii_renderer_get_framebuffer
-    _ascii_renderer_get_framebuffer_width
-    _ascii_renderer_get_framebuffer_height
-    _ascii_renderer_get_framebuffer_stride
-    _ascii_renderer_shutdown
+    # Terminal renderer functions (libvterm + FreeType)
+    _term_renderer_create
+    _term_renderer_feed
+    _term_renderer_pixels
+    _term_renderer_width_px
+    _term_renderer_height_px
+    _term_renderer_pitch
+    _term_renderer_destroy
     # Option getters/setters for live option updates (no restart needed)
     _set_width
     _set_height
@@ -529,13 +529,14 @@ set(EXPORTED_FUNCTIONS_MIRROR
 
 # Exported functions for client module
 set(EXPORTED_FUNCTIONS_CLIENT
-    # ASCII renderer functions (raylib + libvterm + FreeType)
-    _ascii_renderer_init
-    _ascii_renderer_render_frame
-    _ascii_renderer_resize
-    _ascii_renderer_get_cols
-    _ascii_renderer_get_rows
-    _ascii_renderer_shutdown
+    # Terminal renderer functions (libvterm + FreeType)
+    _term_renderer_create
+    _term_renderer_feed
+    _term_renderer_pixels
+    _term_renderer_width_px
+    _term_renderer_height_px
+    _term_renderer_pitch
+    _term_renderer_destroy
     # Option getters/setters for live option updates (no restart needed)
     _set_width
     _set_height
@@ -585,6 +586,7 @@ target_link_options(mirror-web PRIVATE
     -sUSE_WEBGL2=1
     -sFULL_ES2=1
     -sGL_ENABLE_GET_PROC_ADDRESS=1
+    -sEMULATE_FUNCTION_POINTER_CASTS=1
     -msimd128
     -O3
     --no-entry
@@ -608,6 +610,7 @@ target_link_options(client-web PRIVATE
     -sUSE_WEBGL2=1
     -sFULL_ES2=1
     -sGL_ENABLE_GET_PROC_ADDRESS=1
+    -sEMULATE_FUNCTION_POINTER_CASTS=1
     -msimd128
     -O3
     --no-entry
