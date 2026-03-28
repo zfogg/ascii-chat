@@ -89,7 +89,8 @@ export const AsciiRenderer = forwardRef<
     );
     if (wasmModuleReady) {
       const getModuleStart = performance.now();
-      // Lazy-load wasm module to avoid build failures when wasm is not available
+      // Lazy-load wasm module at runtime to avoid build failures when wasm is not available
+      // @ts-ignore - Module may not exist in all builds (e.g., discovery)
       import("@ascii-chat/shared/wasm")
         .then((wasmModule) => {
           const module = wasmModule.getMirrorModule();
@@ -223,28 +224,30 @@ export const AsciiRenderer = forwardRef<
       `[AsciiRenderer] initRenderer function defined at ${performance.now().toFixed(0)}ms`,
     );
 
-    // Wait for canvas to have layout by using requestAnimationFrame
-    // This lets the browser complete layout calculations before we check dimensions
-    let rafId: number | undefined;
+    // Use setTimeout instead of RAF for hidden canvas initialization
+    // RAF callbacks don't fire reliably for hidden/non-rendering canvases
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     let retryCount = 0;
     let startTime = performance.now();
-    const maxRetries = 10; // Only retry 10 times (~160ms with RAF)
-    const maxWaitTime = 500; // Max 500ms wait before using fallback dimensions
+    const maxRetries = 50; // 50 retries * 50ms = 2.5 seconds max wait
+    const retryDelayMs = 50;
+    const maxWaitTime = 2500; // Max 2.5 seconds wait before using fallback dimensions
 
     const checkAndInit = () => {
       const checkTimeA = performance.now();
       if (!rafCallbackFiredRef.current) {
         rafCallbackFiredRef.current = true;
         console.log(
-          `[AsciiRenderer checkAndInit] FIRST CALLBACK FIRED at ${checkTimeA.toFixed(0)}ms`,
+          `[AsciiRenderer checkAndInit] FIRST CALLBACK FIRED at ${checkTimeA.toFixed(0)}ms (${(checkTimeA - startTime).toFixed(0)}ms after scheduled)`,
         );
       }
       retryCount++;
       const elapsed = performance.now() - startTime;
       const checkTime = performance.now();
 
+      const canvasRect = canvas.getBoundingClientRect();
       console.log(
-        `[AsciiRenderer checkAndInit] at ${checkTime.toFixed(0)}ms: retry=${retryCount}, elapsed=${elapsed.toFixed(1)}ms, module=${!!moduleRef.current}, clientWidth=${canvas.clientWidth}, clientHeight=${canvas.clientHeight}`,
+        `[AsciiRenderer checkAndInit] at ${checkTime.toFixed(0)}ms: retry=${retryCount}, elapsed=${elapsed.toFixed(1)}ms, module=${!!moduleRef.current}, clientWidth=${canvas.clientWidth}, clientHeight=${canvas.clientHeight}, boundingRect=${canvasRect.width}x${canvasRect.height}@(${canvasRect.left},${canvasRect.top})`,
       );
 
       // Wait for module to be available AND canvas to have layout
@@ -262,11 +265,11 @@ export const AsciiRenderer = forwardRef<
           `[AsciiRenderer checkAndInit] initRenderer returned at ${performance.now().toFixed(0)}ms (took ${(performance.now() - initStart).toFixed(1)}ms)`,
         );
       } else if (retryCount < maxRetries && elapsed < maxWaitTime) {
-        // Use RAF to wait for next cycle (either module load or layout)
+        // Use setTimeout to wait for next check
         console.log(
-          `[AsciiRenderer checkAndInit] Waiting at ${performance.now().toFixed(0)}ms (module=${moduleReady}, canvasDims=${canvasDimsReady}), scheduling next check`,
+          `[AsciiRenderer checkAndInit] Waiting at ${performance.now().toFixed(0)}ms (module=${moduleReady}, canvasDims=${canvasDimsReady}), scheduling next check in ${retryDelayMs}ms`,
         );
-        rafId = requestAnimationFrame(checkAndInit);
+        timeoutId = setTimeout(checkAndInit, retryDelayMs);
       } else {
         // Force initialization with fallback dimensions after timeout
         console.log(
@@ -285,36 +288,34 @@ export const AsciiRenderer = forwardRef<
       `[AsciiRenderer] checkAndInit function defined at ${fnDefTime.toFixed(0)}ms`,
     );
 
-    // Start checking on next animation frame
+    console.log(
+      `[AsciiRenderer] About to start timer scheduling block at ${performance.now().toFixed(0)}ms`,
+    );
+
+    // Schedule first check immediately
     const scheduleInitTime = performance.now();
     console.log(
-      `[AsciiRenderer Init] About to call requestAnimationFrame at ${scheduleInitTime.toFixed(0)}ms (${(scheduleInitTime - fnDefTime).toFixed(1)}ms after fn def)`,
+      `[AsciiRenderer Init] Scheduling first check at ${scheduleInitTime.toFixed(0)}ms`,
     );
-    try {
-      rafId = requestAnimationFrame(checkAndInit);
-      console.log(
-        `[AsciiRenderer Init] requestAnimationFrame returned rafId=${rafId} at ${performance.now().toFixed(0)}ms`,
-      );
-    } catch (err) {
-      console.error(
-        `[AsciiRenderer Init] requestAnimationFrame threw error:`,
-        err,
-      );
-    }
+    timeoutId = setTimeout(checkAndInit, 0);
+    console.log(
+      `[AsciiRenderer Init] setTimeout returned at ${performance.now().toFixed(0)}ms`,
+    );
 
     return () => {
-      const shouldCancel = setupDoneRef.current || rafCallbackFiredRef.current;
+      const cleanupTime = performance.now();
+      const timeSinceSchedule = cleanupTime - effectStartTime;
       console.log(
-        `[AsciiRenderer] EFFECT-2 CLEANUP at ${performance.now().toFixed(0)}ms: rafId=${rafId}, setupDone=${setupDoneRef.current}, callbackFired=${rafCallbackFiredRef.current}, shouldCancel=${shouldCancel}`,
+        `[AsciiRenderer] EFFECT-2 CLEANUP at ${cleanupTime.toFixed(0)}ms: timeoutId=${timeoutId}, setupDone=${setupDoneRef.current}, callbackFired=${rafCallbackFiredRef.current}, timeSinceScheduled=${timeSinceSchedule.toFixed(1)}ms`,
       );
-      if (rafId !== undefined && shouldCancel) {
+      if (timeoutId !== undefined) {
         console.log(
-          `[AsciiRenderer] EFFECT-2 CLEANUP: Canceling RAF`,
+          `[AsciiRenderer] EFFECT-2 CLEANUP: Clearing timeout ${timeoutId}`,
         );
-        cancelAnimationFrame(rafId);
+        clearTimeout(timeoutId);
       }
     };
-  }, [updateDimensions]);
+  }, []);
 
   // Handle canvas resizes
   useEffect(() => {
