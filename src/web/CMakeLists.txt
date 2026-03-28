@@ -636,17 +636,24 @@ target_compile_definitions(client-web PRIVATE
 target_compile_options(client-web PRIVATE -pthread -sUSE_FREETYPE=1)
 target_link_options(client-web PRIVATE -pthread -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=4 -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1)
 
+# Add include directories for dependencies (needed because wasm-common object files don't auto-inherit INTERFACE_INCLUDE_DIRECTORIES)
+target_include_directories(client-web PRIVATE
+    ${FETCHCONTENT_BASE_DIR}/sodium-src/libsodium/src/libsodium/include
+    ${FETCHCONTENT_BASE_DIR}/pcre2-src
+    ${FETCHCONTENT_BASE_DIR}/opus-src/include
+    ${FETCHCONTENT_BASE_DIR}/zstd-src/lib
+    ${FETCHCONTENT_BASE_DIR}/raylib_wasm-src/src
+)
+
 # Link dependencies for client mode
 target_link_libraries(client-web PRIVATE
     sodium
     pcre2-8
     opus
-    libzstd_static
+    zstd
     ${VTERM_LDFLAGS}
     raylib
 )
-
-# Include directories already handled by imported targets
 
 # Apply sanitizers
 apply_sanitizers_to_target(client-web)
